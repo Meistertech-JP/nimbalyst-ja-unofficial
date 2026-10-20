@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 interface ClaudeCommandsLearnMoreDialogProps {
   isOpen: boolean;
@@ -8,55 +9,55 @@ interface ClaudeCommandsLearnMoreDialogProps {
 
 interface CommandInfo {
   name: string;
-  description: string;
+  descriptionKey: string;
 }
 
 interface CommandGroup {
-  title: string;
-  packageName: string;
+  titleKey: string;
+  packageKey: string;
   commands: CommandInfo[];
 }
 
 const COMMAND_GROUPS: CommandGroup[] = [
   {
-    title: 'Core',
-    packageName: 'Essential for all workflows',
+    titleKey: 'dialogs:claude_commands.groups.core',
+    packageKey: 'dialogs:claude_commands.subtitles.core',
     commands: [
       {
         name: '/track',
-        description: 'Log bugs, ideas, tasks, and decisions with unique IDs',
+        descriptionKey: 'dialogs:claude_commands.commands.track',
       },
       {
         name: '/mockup',
-        description: 'Create visual UI mockups you can draw on',
+        descriptionKey: 'dialogs:claude_commands.commands.mockup',
       },
     ],
   },
   {
-    title: 'Developer',
-    packageName: 'For software development',
+    titleKey: 'dialogs:claude_commands.groups.developer',
+    packageKey: 'dialogs:claude_commands.subtitles.developer',
     commands: [
       {
         name: '/analyze-code',
-        description: 'Analyze code quality and suggest improvements',
+        descriptionKey: 'dialogs:claude_commands.commands.analyze_code',
       },
       {
         name: '/write-tests',
-        description: 'Generate comprehensive tests for code',
+        descriptionKey: 'dialogs:claude_commands.commands.write_tests',
       },
     ],
   },
   {
-    title: 'Product Manager',
-    packageName: 'For product planning',
+    titleKey: 'dialogs:claude_commands.groups.product_manager',
+    packageKey: 'dialogs:claude_commands.subtitles.product_manager',
     commands: [
       {
         name: '/roadmap',
-        description: 'Generate product roadmap from plans and features',
+        descriptionKey: 'dialogs:claude_commands.commands.roadmap',
       },
       {
         name: '/user-research',
-        description: 'Document user research findings',
+        descriptionKey: 'dialogs:claude_commands.commands.user_research',
       },
     ],
   },
@@ -67,6 +68,7 @@ export function ClaudeCommandsLearnMoreDialog({
   onClose,
   onOpenSettings,
 }: ClaudeCommandsLearnMoreDialogProps): React.ReactElement | null {
+  const { t } = useTranslation(['dialogs']);
   if (!isOpen) return null;
 
   return (
@@ -80,12 +82,12 @@ export function ClaudeCommandsLearnMoreDialog({
       >
         <div className="claude-commands-learn-more-header flex items-center justify-between px-6 py-5 border-b border-[var(--nim-border)]">
           <h2 className="m-0 text-lg font-semibold text-[var(--nim-text)]">
-            Claude Commands for Nimbalyst
+            {t('dialogs:claude_commands.title')}
           </h2>
           <button
             className="claude-commands-learn-more-close nim-btn-icon w-8 h-8 text-[28px] leading-none rounded transition-all duration-200"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('dialogs:claude_commands.close')}
           >
             &times;
           </button>
@@ -95,54 +97,43 @@ export function ClaudeCommandsLearnMoreDialog({
           {/* Introduction */}
           <section className="claude-commands-learn-more-section">
             <p className="claude-commands-learn-more-intro m-0 text-sm text-[var(--nim-text)]">
-              Installing Claude Commands adds slash commands that help Claude
-              work better with Nimbalyst. These commands enable structured
-              planning, visual mockups, issue tracking, and more.
+              {t('dialogs:claude_commands.intro')}
             </p>
           </section>
 
           {/* nimbalyst-local folder */}
           <section className="claude-commands-learn-more-section">
             <h3 className="m-0 mb-1 text-sm font-semibold text-[var(--nim-text)]">
-              The nimbalyst-local Folder
+              {t('dialogs:claude_commands.folder_title')}
             </h3>
             <p className="m-0 mb-3 text-[13px] leading-relaxed text-[var(--nim-text-muted)]">
-              A{' '}
-              <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]">
-                nimbalyst-local
-              </code>{' '}
-              folder will be created in your project root to store working
-              documents:
+              <Trans t={t} i18nKey="dialogs:claude_commands.folder_description" components={{ code: <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]" /> }} />
             </p>
             <div className="claude-commands-folder-structure bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg px-4 py-3 my-3">
               <pre className="m-0 font-mono text-xs leading-relaxed text-[var(--nim-text-muted)] whitespace-pre">
                 {`nimbalyst-local/
-├── plans/        # Plan documents (.md)
-├── tracker/      # Bugs, ideas, tasks (.md)
-├── mockups/      # UI mockups (.mockup.html)
-└── existing-screens/  # UI references`}
+├── plans/        # ${t('dialogs:claude_commands.folder_entries.plans')} (.md)
+├── tracker/      # ${t('dialogs:claude_commands.folder_entries.tracker')} (.md)
+├── mockups/      # ${t('dialogs:claude_commands.folder_entries.mockups')} (.mockup.html)
+└── existing-screens/  # ${t('dialogs:claude_commands.folder_entries.references')}`}
               </pre>
             </div>
             <p className="claude-commands-learn-more-note m-0 text-xs italic text-[var(--nim-text-faint)]">
-              This folder is automatically added to{' '}
-              <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]">
-                .gitignore
-              </code>{' '}
-              to keep your repository clean and avoid merge conflicts.
+              <Trans t={t} i18nKey="dialogs:claude_commands.folder_note" components={{ code: <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]" /> }} />
             </p>
           </section>
 
           {/* Slash Commands by Group */}
           {COMMAND_GROUPS.map((group) => (
             <section
-              key={group.title}
+              key={group.titleKey}
               className="claude-commands-learn-more-section"
             >
               <h3 className="m-0 mb-1 text-sm font-semibold text-[var(--nim-text)]">
-                {group.title}
+                {t(group.titleKey)}
               </h3>
               <p className="claude-commands-group-subtitle m-0 mb-3 text-xs text-[var(--nim-text-faint)]">
-                {group.packageName}
+                {t(group.packageKey)}
               </p>
               <div className="claude-commands-list flex flex-col gap-3">
                 {group.commands.map((cmd) => (
@@ -156,7 +147,7 @@ export function ClaudeCommandsLearnMoreDialog({
                       </code>
                     </div>
                     <p className="claude-commands-item-description m-0 text-xs text-[var(--nim-text-muted)]">
-                      {cmd.description}
+                      {t(cmd.descriptionKey)}
                     </p>
                   </div>
                 ))}
@@ -167,8 +158,7 @@ export function ClaudeCommandsLearnMoreDialog({
           {/* Additional info */}
           <section className="claude-commands-learn-more-section">
             <p className="claude-commands-learn-more-note m-0 text-xs italic text-[var(--nim-text-faint)]">
-              Commands work with Claude Code (the agentic coding feature). You
-              can manage installed packages in{' '}
+              {t('dialogs:claude_commands.additional_prefix')}{' '}
               <button
                 className="claude-commands-learn-more-link bg-transparent border-none p-0 text-inherit font-inherit italic text-[var(--nim-primary)] cursor-pointer underline transition-colors duration-200 hover:text-[var(--nim-primary-hover)]"
                 onClick={() => {
@@ -176,9 +166,9 @@ export function ClaudeCommandsLearnMoreDialog({
                   onOpenSettings();
                 }}
               >
-                Project Settings
+                {t('dialogs:claude_commands.project_settings')}
               </button>
-              .
+              {t('dialogs:claude_commands.additional_suffix')}
             </p>
           </section>
         </div>
@@ -188,7 +178,7 @@ export function ClaudeCommandsLearnMoreDialog({
             className="claude-commands-learn-more-btn nim-btn-primary px-5 py-2.5 rounded-md text-sm font-medium"
             onClick={onClose}
           >
-            Got it
+            {t('dialogs:claude_commands.got_it')}
           </button>
         </div>
       </div>

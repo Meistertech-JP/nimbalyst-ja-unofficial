@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VList } from 'virtua';
 import { copyToClipboard } from '@nimbalyst/runtime';
 import { DatabaseDashboard } from './DatabaseDashboard';
@@ -137,6 +138,7 @@ function SyntaxHighlightedJSON({ data }: { data: object }) {
 }
 
 export function DatabaseBrowser() {
+  const { t } = useTranslation(['common']);
   const [tables, setTables] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [tableSchema, setTableSchema] = useState<Column[]>([]);
@@ -217,7 +219,7 @@ export function DatabaseBrowser() {
       if (result.success) {
         setTables(result.tables);
       } else {
-        setError(result.error || 'Failed to load tables');
+        setError(result.error || t('common:database.load_tables_failed'));
       }
     } catch (err) {
       setError(String(err));
@@ -226,7 +228,7 @@ export function DatabaseBrowser() {
     }
   };
 
-  const loadTableSchema = async (tableName: string) => {
+  const loadTableSchema = useCallback(async (tableName: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -235,16 +237,16 @@ export function DatabaseBrowser() {
       if (result.success) {
         setTableSchema(result.columns);
       } else {
-        setError(result.error || 'Failed to load table schema');
+        setError(result.error || t('common:database.load_schema_failed'));
       }
     } catch (err) {
       setError(String(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const loadTableData = async (tableName: string, offset: number = 0, sort?: { column: string; direction: 'asc' | 'desc' }) => {
+  const loadTableData = useCallback(async (tableName: string, offset: number = 0, sort?: { column: string; direction: 'asc' | 'desc' }) => {
     try {
       setLoading(true);
       setError(null);
@@ -266,16 +268,16 @@ export function DatabaseBrowser() {
       if (result.success) {
         setTableData(result);
       } else {
-        setError(result.error || 'Failed to load table data');
+        setError(result.error || t('common:database.load_data_failed'));
       }
     } catch (err) {
       setError(String(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, t]);
 
-  const loadPrimaryKeys = async (tableName: string) => {
+  const loadPrimaryKeys = useCallback(async (tableName: string) => {
     try {
       const result = await window.electronAPI.invoke('database:getPrimaryKeys', tableName);
       if (result.success) {
@@ -286,7 +288,7 @@ export function DatabaseBrowser() {
     } catch {
       setPrimaryKeys([]);
     }
-  };
+  }, []);
 
   const handleTableSelect = useCallback((tableName: string) => {
     setSelectedTable(tableName);
@@ -301,7 +303,7 @@ export function DatabaseBrowser() {
     loadTableSchema(tableName);
     loadTableData(tableName, 0);
     loadPrimaryKeys(tableName);
-  }, []);
+  }, [loadTableSchema, loadTableData, loadPrimaryKeys]);
 
   const handlePageChange = (newPage: number) => {
     if (selectedTable && tableData) {
@@ -314,7 +316,7 @@ export function DatabaseBrowser() {
 
   const executeQuery = async () => {
     if (!sqlQuery.trim()) {
-      setQueryError('Please enter a SQL query');
+      setQueryError(t('common:database.query_required'));
       return;
     }
 
@@ -335,7 +337,7 @@ export function DatabaseBrowser() {
         setSortColumn(null);
         setSortDirection('asc');
       } else {
-        setQueryError(result.error || 'Query failed');
+        setQueryError(result.error || t('common:database.query_failed'));
       }
     } catch (err) {
       setQueryError(String(err));
@@ -441,11 +443,11 @@ export function DatabaseBrowser() {
   const handleModalEditStart = () => {
     if (!expandedCell) return;
     if (primaryKeys.length === 0) {
-      setModalEditError('Cannot edit: this table has no primary key');
+      setModalEditError(t('common:database.no_primary_key'));
       return;
     }
     if (expandedCell.rowIndex === undefined) {
-      setModalEditError('Cannot edit cells from query results');
+      setModalEditError(t('common:database.query_readonly'));
       return;
     }
     setModalEditValue(formatCellValue(expandedCell.value));
@@ -513,7 +515,7 @@ export function DatabaseBrowser() {
         const sort = sortColumn ? { column: sortColumn, direction: sortDirection } : undefined;
         loadTableData(selectedTable, offset, sort);
       } else {
-        setModalEditError(result.error || 'Failed to update cell');
+        setModalEditError(result.error || t('common:database.update_cell_failed'));
       }
     } catch (err) {
       setModalEditError(String(err));
@@ -540,14 +542,14 @@ export function DatabaseBrowser() {
     <div className="database-browser flex h-screen w-screen overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif] before:content-[''] before:fixed before:inset-x-0 before:top-0 before:h-10 before:z-[1000] before:pointer-events-none before:[-webkit-app-region:drag] bg-nim text-nim">
       <div className="database-browser-sidebar w-[250px] flex flex-col border-r border-[var(--nim-border)] bg-nim-secondary">
         <div className="sidebar-header flex items-center justify-between p-4 border-b border-[var(--nim-border)] relative z-[1001]">
-          <h2 className="text-base font-semibold m-0">Tables</h2>
-          <button onClick={loadTables} className="refresh-button bg-transparent border-none text-xl cursor-pointer py-1 px-2 rounded [-webkit-app-region:no-drag] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]" title="Refresh tables">
+          <h2 className="text-base font-semibold m-0">{t('common:database.tables')}</h2>
+          <button onClick={loadTables} className="refresh-button bg-transparent border-none text-xl cursor-pointer py-1 px-2 rounded [-webkit-app-region:no-drag] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]" title={t('common:database.refresh_tables')}>
             ↻
           </button>
         </div>
 
         <div className="tables-list flex-1 overflow-y-auto p-2">
-          {loading && tables.length === 0 && <div className="loading py-5 text-center text-[var(--nim-text-muted)]">Loading tables...</div>}
+          {loading && tables.length === 0 && <div className="loading py-5 text-center text-[var(--nim-text-muted)]">{t('common:database.loading_tables')}</div>}
           {error && <div className="error text-[#ff6b6b] bg-[rgba(255,107,107,0.1)] p-3 rounded mt-2 text-[13px]">{error}</div>}
           {tables.map(table => (
             <div
@@ -566,7 +568,7 @@ export function DatabaseBrowser() {
           <div className={`query-header flex items-center justify-between cursor-pointer select-none ${!sqlExpanded ? 'py-3 px-4' : 'mb-3'}`} onClick={() => setSqlExpanded(!sqlExpanded)}>
             <div className="query-title flex items-center gap-2">
               <span className="expand-icon text-xs text-[var(--nim-text-muted)] transition-transform duration-200">{sqlExpanded ? '▼' : '▶'}</span>
-              <h3 className="text-sm font-semibold m-0">SQL Query</h3>
+              <h3 className="text-sm font-semibold m-0">{t('common:database.sql_query')}</h3>
             </div>
             {sqlExpanded && (
               <button
@@ -574,7 +576,7 @@ export function DatabaseBrowser() {
                 disabled={loading}
                 className="execute-button text-white border-none py-1.5 px-4 rounded text-sm cursor-pointer font-medium bg-[var(--nim-primary)] hover:enabled:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Execute
+                {t('common:database.execute')}
               </button>
             )}
           </div>
@@ -590,7 +592,7 @@ export function DatabaseBrowser() {
                     executeQuery();
                   }
                 }}
-                placeholder="Enter SELECT query... (Cmd+Enter to execute)"
+                placeholder={t('common:database.query_placeholder')}
                 rows={5}
               />
               {queryError && <div className="error text-[#ff6b6b] bg-[rgba(255,107,107,0.1)] p-3 rounded mt-2 text-[13px]">{queryError}</div>}
@@ -601,19 +603,19 @@ export function DatabaseBrowser() {
         {selectedTable && !queryResult && (
           <div className="table-view flex-1 border border-[var(--nim-border)] rounded-lg flex flex-col overflow-hidden bg-nim-secondary">
             <div className="table-header flex items-center justify-between p-4 border-b border-[var(--nim-border)]">
-              <h3 className="text-base font-semibold m-0">Table: {selectedTable}</h3>
+              <h3 className="text-base font-semibold m-0">{t('common:database.table_label', { table: selectedTable })}</h3>
               <div className="tab-buttons flex gap-2">
                 <button
                   className={`tab-button border border-[var(--nim-border)] py-1.5 px-4 rounded cursor-pointer text-[13px] font-medium transition-all duration-200 ${activeTab === 'data' ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setActiveTab('data')}
                 >
-                  Data
+                  {t('common:database.data')}
                 </button>
                 <button
                   className={`tab-button border border-[var(--nim-border)] py-1.5 px-4 rounded cursor-pointer text-[13px] font-medium transition-all duration-200 ${activeTab === 'schema' ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setActiveTab('schema')}
                 >
-                  Schema
+                  {t('common:database.schema')}
                 </button>
               </div>
             </div>
@@ -624,10 +626,10 @@ export function DatabaseBrowser() {
                   <table className="schema-table w-full border-collapse text-[13px]">
                     <thead>
                       <tr>
-                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">Column</th>
-                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">Type</th>
-                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">Nullable</th>
-                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">Default</th>
+                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">{t('common:database.column')}</th>
+                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">{t('common:database.type')}</th>
+                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">{t('common:database.nullable')}</th>
+                        <th className="py-2 px-3 text-left border-b border-r border-[var(--nim-border)] font-semibold text-nim-muted sticky top-0 z-[1] bg-nim-tertiary">{t('common:database.default')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -649,13 +651,13 @@ export function DatabaseBrowser() {
               <div className="data-tab flex-1 flex flex-col overflow-hidden p-4 gap-3">
                 <div className="data-header flex items-center justify-between">
                   <div className="data-header-left flex items-center gap-3">
-                    <h4 className="text-sm font-semibold m-0">{tableData.totalCount} total rows{tableLoadTimeMs !== null && <span className="query-time font-normal text-[var(--nim-text-muted)] text-[13px]"> - {tableLoadTimeMs}ms</span>}</h4>
+                    <h4 className="text-sm font-semibold m-0">{t('common:database.total_rows_count', { count: tableData.totalCount })}{tableLoadTimeMs !== null && <span className="query-time font-normal text-[var(--nim-text-muted)] text-[13px]"> - {tableLoadTimeMs}ms</span>}</h4>
                     <button
                       className="column-picker-button py-1 px-3 rounded cursor-pointer text-[13px] border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
                       onClick={() => setShowColumnPicker(!showColumnPicker)}
-                      title="Show/hide columns"
+                      title={t('common:database.show_hide_columns')}
                     >
-                      ⚙ Columns
+                      ⚙ {t('common:database.columns')}
                     </button>
                   </div>
                   {totalPages > 1 && (
@@ -665,17 +667,17 @@ export function DatabaseBrowser() {
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 0 || loading}
                       >
-                        Previous
+                        {t('common:database.previous')}
                       </button>
                       <span>
-                        Page {currentPage + 1} of {totalPages}
+                        {t('common:database.page_of', { page: currentPage + 1, total: totalPages })}
                       </span>
                       <button
                         className="py-1 px-3 rounded cursor-pointer text-[13px] border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:enabled:bg-[var(--nim-bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages - 1 || loading}
                       >
-                        Next
+                        {t('common:database.next')}
                       </button>
                     </div>
                   )}
@@ -684,7 +686,7 @@ export function DatabaseBrowser() {
                 {showColumnPicker && tableData.rows.length > 0 && (
                   <div className="column-picker p-3 mb-2 rounded border border-[var(--nim-border)] shadow-sm bg-nim-secondary">
                     <div className="column-picker-header flex items-center justify-between mb-3 pb-2 border-b border-[var(--nim-border)]">
-                      <strong className="text-[13px]">Show/Hide Columns</strong>
+                      <strong className="text-[13px]">{t('common:database.show_hide_columns')}</strong>
                       <button className="bg-transparent border-none text-xl cursor-pointer p-0 w-6 h-6 flex items-center justify-center rounded text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]" onClick={() => setShowColumnPicker(false)}>×</button>
                     </div>
                     <div className="column-picker-list grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2 max-h-[300px] overflow-y-auto">
@@ -703,7 +705,7 @@ export function DatabaseBrowser() {
                   </div>
                 )}
 
-                {loading && <div className="loading py-5 text-center text-[var(--nim-text-muted)]">Loading...</div>}
+                {loading && <div className="loading py-5 text-center text-[var(--nim-text-muted)]">{t('common:database.loading')}</div>}
 
                 {!loading && tableData.rows.length > 0 && (() => {
                   const allColumns = Object.keys(tableData.rows[0]);
@@ -736,7 +738,7 @@ export function DatabaseBrowser() {
                                     key={col}
                                     className="virtual-table-cell clickable py-2 px-3 text-[13px] border-r border-[var(--nim-border)] overflow-hidden text-ellipsis whitespace-nowrap last:border-r-0 cursor-pointer hover:bg-[var(--nim-bg-hover)]"
                                     onClick={() => handleCellClick(col, value, idx)}
-                                    title="Click to view/edit"
+                                    title={t('common:database.click_view_edit')}
                                   >
                                     {value === null ? (
                                       <span className="null-value text-[var(--nim-text-faint)] italic">NULL</span>
@@ -757,7 +759,7 @@ export function DatabaseBrowser() {
                 })()}
 
                 {!loading && tableData.rows.length === 0 && (
-                  <div className="no-data py-5 text-center text-[var(--nim-text-muted)]">No data</div>
+                  <div className="no-data py-5 text-center text-[var(--nim-text-muted)]">{t('common:database.no_data')}</div>
                 )}
               </div>
             )}
@@ -767,10 +769,10 @@ export function DatabaseBrowser() {
         {queryResult && (
           <div className="query-results flex-1 border border-[var(--nim-border)] rounded-lg p-4 flex flex-col overflow-hidden gap-3 bg-nim-secondary">
             <div className="data-header flex items-center justify-between">
-              <h4 className="text-sm font-semibold m-0">Query Results ({queryResult.rowCount} rows){queryTimeMs !== null && <span className="query-time font-normal text-[var(--nim-text-muted)] text-[13px]"> - {queryTimeMs}ms</span>}</h4>
+              <h4 className="text-sm font-semibold m-0">{t('common:database.query_results', { count: queryResult.rowCount })}{queryTimeMs !== null && <span className="query-time font-normal text-[var(--nim-text-muted)] text-[13px]"> - {queryTimeMs}ms</span>}</h4>
             </div>
 
-            {loading && <div className="loading py-5 text-center text-[var(--nim-text-muted)]">Loading...</div>}
+            {loading && <div className="loading py-5 text-center text-[var(--nim-text-muted)]">{t('common:database.loading')}</div>}
 
             {!loading && queryResult.rows.length > 0 && (() => {
               const columns = Object.keys(queryResult.rows[0]);
@@ -803,7 +805,7 @@ export function DatabaseBrowser() {
                                 key={colIdx}
                                 className="virtual-table-cell clickable py-2 px-3 text-[13px] border-r border-[var(--nim-border)] overflow-hidden text-ellipsis whitespace-nowrap last:border-r-0 cursor-pointer hover:bg-[var(--nim-bg-hover)]"
                                 onClick={() => handleCellClick(col, value)}
-                                title="Click to expand"
+                                title={t('common:database.click_expand')}
                               >
                                 {value === null ? (
                                   <span className="null-value text-[var(--nim-text-faint)] italic">NULL</span>
@@ -824,7 +826,7 @@ export function DatabaseBrowser() {
             })()}
 
             {!loading && queryResult.rows.length === 0 && (
-              <div className="no-data py-5 text-center text-[var(--nim-text-muted)]">No results</div>
+              <div className="no-data py-5 text-center text-[var(--nim-text-muted)]">{t('common:database.no_results')}</div>
             )}
           </div>
         )}
@@ -848,14 +850,14 @@ export function DatabaseBrowser() {
                       onClick={() => { setModalEditing(false); setModalEditError(null); }}
                       disabled={modalEditSaving}
                     >
-                      Cancel
+                      {t('common:database.cancel')}
                     </button>
                     <button
                       className="text-white border-none py-1.5 px-3 rounded text-[13px] cursor-pointer min-w-[70px] bg-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)] disabled:opacity-50"
                       onClick={handleModalEditSave}
                       disabled={modalEditSaving}
                     >
-                      {modalEditSaving ? 'Saving...' : 'Save'}
+                      {modalEditSaving ? t('common:database.saving') : t('common:database.save')}
                     </button>
                   </>
                 ) : (
@@ -865,14 +867,14 @@ export function DatabaseBrowser() {
                         className="border-none py-1.5 px-3 rounded text-[13px] cursor-pointer bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
                         onClick={handleModalEditStart}
                       >
-                        Edit
+                        {t('common:database.edit')}
                       </button>
                     )}
                     <button
                       className="text-white border-none py-1.5 px-3 rounded text-[13px] cursor-pointer min-w-[70px] bg-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)]"
                       onClick={handleCopyCellValue}
                     >
-                      {copiedCell ? 'Copied!' : 'Copy'}
+                      {copiedCell ? t('common:database.copied') : t('common:database.copy')}
                     </button>
                   </>
                 )}

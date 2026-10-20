@@ -79,6 +79,9 @@ const spreadsheetDescriptor = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  return import('i18next').then(({ default: i18next }) =>
+    i18next.changeLanguage('en'),
+  );
 });
 
 function renderActions(fileName: string) {
@@ -177,7 +180,14 @@ describe('CommonFileActions Share to Team catalog eligibility', () => {
 
   it('keeps Monaco files visible but disabled with the catalog reason', () => {
     const reason = 'The built-in Monaco editor does not yet provide a collaborative binding for ".ts".';
-    mocks.resolveShareability.mockReturnValue({ state: 'unsupported', reason });
+    mocks.resolveShareability.mockReturnValue({
+      state: 'unsupported',
+      reason,
+      reasonMetadata: {
+        code: 'monaco_binding_unavailable',
+        params: { suffix: '.ts' },
+      },
+    });
     renderActions('index.ts');
 
     const action = screen.getByRole('button', { name: /Share to Team/ });
@@ -185,6 +195,33 @@ describe('CommonFileActions Share to Team catalog eligibility', () => {
     expect(action.textContent).toContain(reason);
     fireEvent.click(action);
     expect(mocks.openDialog).not.toHaveBeenCalled();
+  });
+
+  it('renders typed catalog reasons in the active UI language', async () => {
+    mocks.resolveShareability.mockReturnValue({
+      state: 'unsupported',
+      reason: 'No collaborative codec is registered for document type "diagram".',
+      reasonMetadata: {
+        code: 'no_collab_codec',
+        params: { codecId: 'diagram' },
+      },
+    });
+
+    renderActions('roadmap.diagram');
+    expect(
+      screen.getByText(
+        'No collaborative codec is registered for document type "diagram".',
+      ),
+    ).toBeTruthy();
+
+    const i18next = (await import('i18next')).default;
+    await i18next.changeLanguage('ja');
+    expect(
+      screen.getByText(
+        'ドキュメント形式「diagram」用の共同編集コーデックが登録されていません。',
+      ),
+    ).toBeTruthy();
+    await i18next.changeLanguage('en');
   });
 
   it('does not offer Share to Team for an already-shared collaborative document', () => {

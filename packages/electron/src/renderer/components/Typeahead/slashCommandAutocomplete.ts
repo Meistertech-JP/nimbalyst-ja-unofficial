@@ -105,6 +105,17 @@ function getCommandSection(command: SlashCommandEntry): string {
   return 'User Commands';
 }
 
+// Presentation keys are separate from the stable section names used for grouping/order.
+const sectionLabelKeys: Record<string, string> = {
+  'Project Skills': 'typeahead.project_skills',
+  'Plugin Skills': 'typeahead.plugin_skills',
+  'User Skills': 'typeahead.user_skills',
+  'Built-in Commands': 'typeahead.builtin_commands',
+  'Project Commands': 'typeahead.project_commands',
+  'Extension Commands': 'typeahead.extension_commands',
+  'User Commands': 'typeahead.user_commands',
+};
+
 export function buildSlashCommandOptions(
   commands: SlashCommandEntry[],
   query: string,
@@ -132,8 +143,13 @@ export function buildSlashCommandOptions(
         ? `/${command.name} ${command.argumentHint}`
         : `/${command.name}`,
       description: command.description || `Execute ${command.name} command`,
+      descriptionTranslation: command.description ? undefined : {
+        key: 'typeahead.execute_command',
+        values: { name: command.name },
+      },
       icon: getCommandIcon(command),
       section: hasQuery ? undefined : getCommandSection(command),
+      sectionLabelKey: hasQuery ? undefined : sectionLabelKeys[getCommandSection(command)],
       data: command,
     }));
 }

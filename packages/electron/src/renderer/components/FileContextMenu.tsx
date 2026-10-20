@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
-import type { NewFileType, ExtensionFileType } from './NewFileMenu';
+import {
+  getExtensionFileTypeDisplayName,
+  getExtensionNewFileType,
+  type NewFileType,
+  type ExtensionFileType,
+} from './NewFileMenu';
 import { CommonFileActions } from './CommonFileActions';
 import { useFloatingMenu, FloatingPortal, virtualElement } from '../hooks/useFloatingMenu';
 import { historyDialogFileAtom } from '../store';
@@ -40,6 +46,7 @@ export function FileContextMenu({
   selectedPaths,
   extensionFileTypes = []
 }: FileContextMenuProps) {
+  const { t } = useTranslation(['files']);
   const openHistoryDialog = useSetAtom(historyDialogFileAtom);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(fileName);
@@ -100,7 +107,9 @@ export function FileContextMenu({
 
     if (hasMultipleSelected && onDeleteMultiple) {
       const selectedArray = Array.from(selectedPaths);
-      const confirmMessage = `Are you sure you want to delete ${selectedArray.length} items?`;
+      const confirmMessage = t('files:context.confirm_delete_multiple', {
+        count: selectedArray.length,
+      });
 
       if (window.confirm(confirmMessage)) {
         onDeleteMultiple(selectedArray);
@@ -108,8 +117,8 @@ export function FileContextMenu({
       }
     } else {
       const confirmMessage = fileType === 'directory'
-        ? `Are you sure you want to delete the folder "${fileName}" and all its contents?`
-        : `Are you sure you want to delete "${fileName}"?`;
+        ? t('files:context.confirm_delete_folder', { name: fileName })
+        : t('files:context.confirm_delete_file', { name: fileName });
 
       if (window.confirm(confirmMessage)) {
         onDelete(filePath);
@@ -173,7 +182,7 @@ export function FileContextMenu({
             onClick={handleDelete}
           >
             <MaterialSymbol icon="delete" size={18} />
-            <span>Delete {selectedPaths.size} Items</span>
+            <span>{t('files:context.delete_multiple', { count: selectedPaths.size })}</span>
           </div>
         </div>
       </FloatingPortal>
@@ -203,37 +212,46 @@ export function FileContextMenu({
               <>
                 <div className={menuItemClasses} onClick={() => { onNewFile(filePath, 'markdown'); onClose(); }}>
                   <MaterialSymbol icon="description" size={18} />
-                  <span>New Markdown File</span>
+                  <span>{t('files:context.new_markdown')}</span>
                 </div>
                 {/* Mockup is contributed by the mockuplm extension (.mockup.html);
                     a hardcoded built-in entry here would duplicate it. */}
-                {extensionFileTypes.map((extType) => (
+                {extensionFileTypes
+                  .filter((extType) => extType.action !== 'openVirtualTab')
+                  .map((extType) => (
                   <div
                     key={extType.extension}
                     className={menuItemClasses}
-                    onClick={() => { onNewFile(filePath, `ext:${extType.extension}`); onClose(); }}
+                    onClick={() => {
+                      onNewFile(filePath, getExtensionNewFileType(extType));
+                      onClose();
+                    }}
                   >
                     <MaterialSymbol icon={extType.icon} size={18} />
-                    <span>New {extType.displayName}</span>
+                    <span>
+                      {t('files:context.new_type', {
+                        type: getExtensionFileTypeDisplayName(t, extType),
+                      })}
+                    </span>
                   </div>
-                ))}
+                  ))}
                 <div className={menuItemClasses} onClick={() => { onNewFile(filePath, 'any'); onClose(); }}>
                   <MaterialSymbol icon="note_add" size={18} />
-                  <span>New File...</span>
+                  <span>{t('files:context.new_file')}</span>
                 </div>
               </>
             )}
             {onNewFolder && (
               <div className={menuItemClasses} onClick={() => { onNewFolder(filePath); onClose(); }}>
                 <MaterialSymbol icon="create_new_folder" size={18} />
-                <span>New Folder</span>
+                <span>{t('files:context.new_folder')}</span>
               </div>
             )}
             {(onNewFile || onNewFolder) && <div className={separatorClasses} />}
             {onViewWorkspaceHistory && (
               <div className={menuItemClasses} onClick={() => { onViewWorkspaceHistory(filePath); onClose(); }}>
                 <MaterialSymbol icon="history" size={18} />
-                <span>View Folder History...</span>
+                <span>{t('files:context.view_folder_history')}</span>
               </div>
             )}
           </>
@@ -242,7 +260,7 @@ export function FileContextMenu({
         {fileType === 'file' && (
           <div className={menuItemClasses} onClick={() => { openHistoryDialog(filePath); onClose(); }}>
             <MaterialSymbol icon="history" size={18} />
-            <span>View History...</span>
+            <span>{t('files:context.view_history')}</span>
           </div>
         )}
 
@@ -259,7 +277,7 @@ export function FileContextMenu({
 
         <div className={menuItemClasses} onClick={handleRenameClick}>
           <MaterialSymbol icon="edit" size={18} />
-          <span>Rename</span>
+          <span>{t('files:context.rename')}</span>
         </div>
 
         <div className={separatorClasses} />
@@ -270,7 +288,7 @@ export function FileContextMenu({
           onClick={handleDelete}
         >
           <MaterialSymbol icon="delete" size={18} />
-          <span>Delete</span>
+          <span>{t('files:context.delete')}</span>
         </div>
       </div>
     </FloatingPortal>

@@ -14,6 +14,7 @@ import {DraggableBlockPlugin_EXPERIMENTAL} from '@lexical/react/LexicalDraggable
 import {$createParagraphNode, $getNearestNodeFromDOMNode} from 'lexical';
 import {useRef, useState, useEffect, useCallback} from 'react';
 import {draggableBlockMenuRegistry, DraggableBlockMenuItem} from './DraggableBlockMenuRegistry';
+import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
 
 const DRAGGABLE_BLOCK_MENU_CLASSNAME = 'draggable-block-menu';
 
@@ -26,6 +27,7 @@ export default function DraggableBlockPlugin({
 }: {
   anchorElem?: HTMLElement;
 }): JSX.Element {
+  const {t} = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   const menuRef = useRef<HTMLDivElement>(null);
   const targetLineRef = useRef<HTMLDivElement>(null);
@@ -135,7 +137,7 @@ export default function DraggableBlockPlugin({
       menuComponent={
         <div ref={menuRef} className="icon draggable-block-menu">
           <button
-            title="Click to add below"
+            title={t('editor:shared_ui.add_block_below', 'Click to add below')}
             className="icon icon-plus"
             onClick={insertBlock}
           />
@@ -144,7 +146,7 @@ export default function DraggableBlockPlugin({
             <div ref={dropdownRef} className="draggable-dropdown">
               <button onClick={deleteNode} className="dropdown-item">
                 <span className="material-symbols-outlined">delete</span>
-                Delete
+                {t('common:delete', 'Delete')}
               </button>
               {menuItems.length > 0 && (
                 <>

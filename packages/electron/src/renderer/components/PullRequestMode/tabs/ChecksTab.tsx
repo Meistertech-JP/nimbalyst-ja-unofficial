@@ -6,6 +6,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import {
   getPullRequestService,
@@ -38,16 +39,17 @@ function groupOf(check: PullRequestCheckRow): CheckGroup {
   }
 }
 
-const GROUP_META: Record<CheckGroup, { label: string; icon: string; className: string }> = {
-  failure: { label: 'Failing', icon: 'error', className: 'text-nim-error' },
-  pending: { label: 'In progress', icon: 'pending', className: 'text-nim-warning' },
-  success: { label: 'Passing', icon: 'check_circle', className: 'text-nim-success' },
-  other: { label: 'Other', icon: 'remove_circle', className: 'text-nim-muted' },
+const GROUP_META: Record<CheckGroup, { icon: string; className: string }> = {
+  failure: { icon: 'error', className: 'text-nim-error' },
+  pending: { icon: 'pending', className: 'text-nim-warning' },
+  success: { icon: 'check_circle', className: 'text-nim-success' },
+  other: { icon: 'remove_circle', className: 'text-nim-muted' },
 };
 
 const GROUP_ORDER: CheckGroup[] = ['failure', 'pending', 'success', 'other'];
 
 export function ChecksTab({ workspaceId, remote, pr, refreshToken }: ChecksTabProps): JSX.Element {
+  const { t } = useTranslation(['common']);
   const [checks, setChecks] = useState<PullRequestCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,9 @@ export function ChecksTab({ workspaceId, remote, pr, refreshToken }: ChecksTabPr
         if (!cancelled) setChecks(rows);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load checks');
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : t('common:pull_request.failed_load_checks'));
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -70,7 +74,7 @@ export function ChecksTab({ workspaceId, remote, pr, refreshToken }: ChecksTabPr
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, remote, pr.number, refreshToken]);
+  }, [workspaceId, remote, pr.number, refreshToken, t]);
 
   const grouped = useMemo(() => {
     const map: Record<CheckGroup, PullRequestCheckRow[]> = {
@@ -94,19 +98,29 @@ export function ChecksTab({ workspaceId, remote, pr, refreshToken }: ChecksTabPr
       {loading && checks.length === 0 ? (
         <div className="flex items-center justify-center gap-2 py-6 text-nim-muted text-sm">
           <div className="spinner w-4 h-4 border-[2px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-          Loading checks…
+          {t('common:pull_request.loading_checks')}
         </div>
       ) : error ? (
         <div className="text-nim-error text-sm p-4">{error}</div>
       ) : checks.length === 0 ? (
-        <div className="text-nim-faint text-sm text-center py-6">No checks reported.</div>
+        <div className="text-nim-faint text-sm text-center py-6">
+          {t('common:pull_request.no_checks')}
+        </div>
       ) : (
         GROUP_ORDER.filter((g) => grouped[g].length > 0).map((group) => {
           const meta = GROUP_META[group];
           return (
             <div key={group}>
               <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-nim-faint bg-nim-secondary border-b border-nim">
-                {meta.label} ({grouped[group].length})
+                {t(`common:pull_request.checks_${
+                  group === 'failure'
+                    ? 'failing'
+                    : group === 'pending'
+                      ? 'in_progress'
+                      : group === 'success'
+                        ? 'passing'
+                        : 'other'
+                }`)} ({grouped[group].length})
               </div>
               {grouped[group].map((check) => (
                 <div
@@ -121,7 +135,7 @@ export function ChecksTab({ workspaceId, remote, pr, refreshToken }: ChecksTabPr
                       className="text-xs text-nim-link hover:text-nim-link-hover hover:underline shrink-0"
                       onClick={() => openExternal(check.detailsUrl)}
                     >
-                      Details
+                      {t('common:pull_request.details')}
                     </button>
                   )}
                 </div>

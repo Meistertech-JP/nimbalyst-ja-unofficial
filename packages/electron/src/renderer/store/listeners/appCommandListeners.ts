@@ -13,6 +13,7 @@
  */
 
 import { store } from '@nimbalyst/runtime/store';
+import type { InstallProgressEvent } from '../../../shared/types/extensionInstallProgress';
 import {
   agentInsertPlanReferenceRequestAtom,
   closeActiveTabRequestAtom,
@@ -37,7 +38,6 @@ import {
   toggleAIChatPanelRequestAtom,
   unifiedOnboardingRequestAtom,
   windowsClaudeCodeWarningRequestAtom,
-  type InstallProgressStage,
 } from '../atoms/appCommands';
 
 let onboardingCounter = 0;
@@ -179,12 +179,14 @@ export function initAppCommandListeners(): () => void {
 
   const u12 = window.electronAPI?.on?.(
     'extension-marketplace:install-progress',
-    (event: { stage: InstallProgressStage; message: string }) => {
+    (event: InstallProgressEvent) => {
       marketplaceInstallProgressCounter += 1;
       store.set(marketplaceInstallProgressAtom, {
         version: marketplaceInstallProgressCounter,
         stage: event.stage,
         message: event.message,
+        messageKey: event.messageKey,
+        messageParams: event.messageParams,
       });
     },
   );

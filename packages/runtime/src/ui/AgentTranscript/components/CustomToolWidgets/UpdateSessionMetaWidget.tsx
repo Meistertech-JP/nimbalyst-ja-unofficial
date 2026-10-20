@@ -9,6 +9,7 @@
 
 import React from 'react';
 import type { CustomToolWidgetProps } from './index';
+import { useRuntimeTranslation } from '../../../RuntimeTranslation';
 
 // ---------- Types ----------
 
@@ -120,6 +121,14 @@ const getPhaseStyle = (phase: string | null) =>
 // ---------- Small components ----------
 
 const PhaseBadge: React.FC<{ phase: string }> = ({ phase }) => {
+  const { t } = useRuntimeTranslation();
+  const labels: Record<string, string> = {
+    backlog: t('agents:status.phase_backlog', 'Backlog'),
+    planning: t('agents:status.phase_planning', 'Planning'),
+    implementing: t('agents:status.phase_implementing', 'Implementing'),
+    validating: t('agents:status.phase_validating', 'Validating'),
+    complete: t('agents:status.phase_complete', 'Complete'),
+  };
   const style = getPhaseStyle(phase)!;
   return (
     <span
@@ -132,7 +141,7 @@ const PhaseBadge: React.FC<{ phase: string }> = ({ phase }) => {
         color: style.text,
       }}
     >
-      {phase}
+      {labels[phase] ?? phase}
     </span>
   );
 };
@@ -196,6 +205,7 @@ const Arrow: React.FC = () => (
 // ---------- Main widget ----------
 
 export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ message }) => {
+  const { t } = useRuntimeTranslation();
   const tool = message.toolCall;
   if (!tool) return null;
 
@@ -226,7 +236,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
               background: 'var(--nim-bg-tertiary)',
             }}
           >
-            <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Session Meta</span>
+            <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('aichat:session_meta.title', 'Session Meta')}</span>
             {name && <span style={{ color: 'var(--nim-text-muted)', fontSize: '10px' }}>{name}</span>}
           </div>
         </div>
@@ -250,7 +260,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
             borderBottom: '1px solid var(--nim-border)',
           }}
         >
-          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Session Meta</span>
+          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('aichat:session_meta.title', 'Session Meta')}</span>
         </div>
         <div style={{ padding: '6px 10px', color: 'var(--nim-text-muted)', whiteSpace: 'pre-wrap', fontSize: '10px' }}>
           {fallbackText}
@@ -295,7 +305,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         }}
       >
         <span style={{ fontWeight: 600, color: 'var(--nim-text)', fontSize: '11px' }}>
-          Session Meta
+          {t('aichat:session_meta.title', 'Session Meta')}
         </span>
       </div>
 
@@ -305,7 +315,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {(after.name || nameSkipped) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '36px' }}>
-              Name
+              {t('common:collab.name', 'Name')}
             </span>
             <span style={{ fontSize: '11px', color: 'var(--nim-text)', fontWeight: 500 }}>
               {after.name}
@@ -322,7 +332,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   lineHeight: '16px',
                 }}
               >
-                set
+                {t('aichat:session_meta.set', 'set')}
               </span>
             )}
             {nameSkipped && (
@@ -333,7 +343,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   fontStyle: 'italic',
                 }}
               >
-                (already set)
+                {t('aichat:session_meta.already_set', '(already set)')}
               </span>
             )}
           </div>
@@ -343,7 +353,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {(after.phase || phaseChanged) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '36px' }}>
-              Phase
+              {t('aichat:transcript_sidebar.phase', 'Phase')}
             </span>
             {phaseChanged ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -351,7 +361,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   <PhaseBadge phase={before.phase} />
                 ) : (
                   <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-                    none
+                    {t('tracker:groups.none', 'None')}
                   </span>
                 )}
                 <Arrow />
@@ -359,7 +369,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   <PhaseBadge phase={after.phase} />
                 ) : (
                   <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-                    none
+                    {t('tracker:groups.none', 'None')}
                   </span>
                 )}
               </div>
@@ -373,7 +383,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {(after.tags.length > 0 || removed.length > 0) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
             <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '36px', paddingTop: '1px' }}>
-              Tags
+              {t('tracker:columns.tags', 'Tags')}
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
               {kept.map((t) => (
@@ -392,7 +402,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {/* Empty state: nothing at all */}
         {!after.name && !after.phase && after.tags.length === 0 && removed.length === 0 && (
           <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-            No metadata set
+            {t('aichat:session_meta.empty', 'No metadata set')}
           </span>
         )}
       </div>

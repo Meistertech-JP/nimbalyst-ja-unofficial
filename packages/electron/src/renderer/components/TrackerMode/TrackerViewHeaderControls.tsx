@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import {
   DisplayOptionsPanel,
@@ -83,10 +85,12 @@ function iconForField(field: TrackerFilterField): string {
   return 'text_fields';
 }
 
-function filterValueLabel(value: unknown, op?: TrackerFilterOp): string {
+function filterValueLabel(value: unknown, op: TrackerFilterOp | undefined, t: TFunction): string {
   if (value === undefined) return '';
   const text = Array.isArray(value) ? value.join(', ') : String(value);
-  return op === 'in-last' || op === 'not-in-last' ? `${text} days` : text;
+  return op === 'in-last' || op === 'not-in-last'
+    ? t('tracker:filters.days', { value: text })
+    : text;
 }
 
 type FilterMenuMode = 'fields' | 'field' | 'advanced';
@@ -102,6 +106,7 @@ export function TrackerViewHeaderControls({
   onFiltersChange,
   openFiltersToken = 0,
 }: TrackerViewHeaderControlsProps): JSX.Element {
+  const { t } = useTranslation(['tracker']);
   const [showFilters, setShowFilters] = useState(false);
   const [showDisplayOptions, setShowDisplayOptions] = useState(false);
   const [menuMode, setMenuMode] = useState<FilterMenuMode>('fields');
@@ -253,7 +258,7 @@ export function TrackerViewHeaderControls({
         className="min-w-8 text-right text-[11px] tabular-nums text-nim-faint"
         data-testid="tracker-view-item-count"
       >
-        {itemCount} item{itemCount === 1 ? '' : 's'}
+        {t('tracker:filters.item_count', { count: itemCount })}
       </span>
 
       <div className="relative" ref={filterRootRef}>
@@ -277,7 +282,7 @@ export function TrackerViewHeaderControls({
           data-testid="tracker-view-filter-button"
         >
           <MaterialSymbol icon="filter_list" size={14} />
-          Filter
+          {t('tracker:filters.filter')}
           {activeFilterCount > 0 && (
             <span className="rounded-full bg-[var(--nim-primary)] px-1.5 text-[10px] leading-4 text-white">
               {activeFilterCount}
@@ -291,7 +296,7 @@ export function TrackerViewHeaderControls({
               menuMode === 'advanced' ? 'w-[620px]' : 'w-[360px]'
             }`}
             role="dialog"
-            aria-label="Tracker filters"
+            aria-label={t('tracker:filters.tracker_filters')}
             data-testid="tracker-filter-builder"
           >
             {menuMode !== 'advanced' && (
@@ -305,7 +310,7 @@ export function TrackerViewHeaderControls({
                   <input
                     autoFocus
                     className="h-9 w-full rounded-md border border-transparent bg-transparent pl-8 pr-10 text-[15px] text-nim outline-none placeholder:text-nim-faint focus:border-nim-focus"
-                    placeholder="Add filter…"
+                    placeholder={t('tracker:filters.add_filter_placeholder')}
                     value={query}
                     onChange={event => {
                       setQuery(event.target.value);
@@ -343,7 +348,7 @@ export function TrackerViewHeaderControls({
                 {activeFilterCount > 0 && (
                   <div className="border-b border-nim px-2 py-2" data-testid="tracker-filter-active-list">
                     <div className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wider text-nim-faint">
-                      Active filters
+                      {t('tracker:filters.active_filters')}
                     </div>
                     {(filters?.clauses ?? []).map((clause, index) => {
                       if (!isClauseComplete(clause)) return null;
@@ -359,14 +364,20 @@ export function TrackerViewHeaderControls({
                           })} size={15} className="text-nim-faint" />
                           <span className="min-w-0 flex-1 truncate">
                             {field?.label ?? clause.field}{' '}
-                            <span className="text-nim-muted">{OP_LABELS[clause.op]}</span>{' '}
-                            {filterValueLabel(clause.value, clause.op)}
+                            <span className="text-nim-muted">
+                              {t(`tracker:filters.operators.${clause.op}`, {
+                                defaultValue: OP_LABELS[clause.op],
+                              })}
+                            </span>{' '}
+                            {filterValueLabel(clause.value, clause.op, t)}
                           </span>
                           <button
                             type="button"
                             className="rounded p-0.5 text-nim-faint hover:bg-nim-tertiary hover:text-nim"
                             onClick={() => removeActiveFilter(index)}
-                            aria-label={`Remove ${field?.label ?? clause.field} filter`}
+                            aria-label={t('tracker:filters.remove_field_filter', {
+                              field: field?.label ?? clause.field,
+                            })}
                           >
                             <MaterialSymbol icon="close" size={13} />
                           </button>
@@ -396,7 +407,7 @@ export function TrackerViewHeaderControls({
                     data-testid="tracker-filter-advanced"
                   >
                     <MaterialSymbol icon="filter_alt" size={19} className="text-nim-muted" />
-                    <span className="flex-1">Advanced filter</span>
+                    <span className="flex-1">{t('tracker:filters.advanced_filter')}</span>
                   </button>
                 </div>
 
@@ -431,7 +442,7 @@ export function TrackerViewHeaderControls({
                   })}
                   {matchingFields.length === 0 && (
                     <div className="px-3 py-8 text-center text-[12px] text-nim-faint">
-                      No matching fields
+                      {t('tracker:filters.no_matching_fields')}
                     </div>
                   )}
                 </div>
@@ -446,22 +457,24 @@ export function TrackerViewHeaderControls({
                       type="button"
                       className="inline-flex h-7 w-7 items-center justify-center rounded text-nim-muted hover:bg-nim-tertiary hover:text-nim"
                       onClick={() => setMenuMode('fields')}
-                      aria-label="Back to filter fields"
+                      aria-label={t('tracker:filters.back_to_fields')}
                     >
                       <MaterialSymbol icon="arrow_back" size={16} />
                     </button>
-                    <span className="text-xs font-semibold text-nim">Advanced filter</span>
+                    <span className="text-xs font-semibold text-nim">
+                      {t('tracker:filters.advanced_filter')}
+                    </span>
                   </div>
                   <label className="flex items-center gap-2 text-[11px] text-nim-muted">
-                    Match
+                    {t('tracker:filters.match')}
                     <select
                       className="rounded border border-nim bg-nim px-2 py-1 text-nim"
                       value={combinator}
                       onChange={event => setCombinator(event.target.value as 'and' | 'or')}
                       data-testid="tracker-filter-builder-combinator"
                     >
-                      <option value="and">all filters</option>
-                      <option value="or">any filter</option>
+                      <option value="and">{t('tracker:filters.all_filters')}</option>
+                      <option value="or">{t('tracker:filters.any_filter')}</option>
                     </select>
                   </label>
                 </div>
@@ -493,7 +506,7 @@ export function TrackerViewHeaderControls({
                               value: undefined,
                             });
                           }}
-                          aria-label={`Filter ${index + 1} field`}
+                          aria-label={t('tracker:filters.filter_field', { number: index + 1 })}
                           data-testid={`tracker-filter-builder-field-${index}`}
                         >
                           {filterFields.map(candidate => (
@@ -507,33 +520,41 @@ export function TrackerViewHeaderControls({
                             op: event.target.value as TrackerFilterOp,
                             value: undefined,
                           })}
-                          aria-label={`Filter ${index + 1} operator`}
+                          aria-label={t('tracker:filters.filter_operator', { number: index + 1 })}
                           data-testid={`tracker-filter-builder-op-${index}`}
                         >
                           {operators.map(operator => (
-                            <option key={operator} value={operator}>{OP_LABELS[operator]}</option>
+                            <option key={operator} value={operator}>
+                              {t(`tracker:filters.operators.${operator}`, {
+                                defaultValue: OP_LABELS[operator],
+                              })}
+                            </option>
                           ))}
                         </select>
                         <div className="min-w-0">
                           {isUnary ? (
-                            <span className="px-2 text-[11px] text-nim-faint">No value</span>
+                            <span className="px-2 text-[11px] text-nim-faint">
+                              {t('tracker:filters.no_value')}
+                            </span>
                           ) : isRange ? (
                             <div className="flex items-center gap-1">
                               <input
                                 type={inputType(field, clause.op)}
                                 className="min-w-0 flex-1 rounded border border-nim bg-nim-secondary px-2 py-1.5 text-xs text-nim outline-none focus:border-nim-focus"
                                 value={valueAsText(range[0])}
-                                placeholder="From"
+                                placeholder={t('tracker:filters.from')}
                                 onChange={event => updateClause(index, {
                                   value: [event.target.value, range[1]],
                                 })}
                               />
-                              <span className="text-[10px] text-nim-faint">to</span>
+                              <span className="text-[10px] text-nim-faint">
+                                {t('tracker:filters.to_separator')}
+                              </span>
                               <input
                                 type={inputType(field, clause.op)}
                                 className="min-w-0 flex-1 rounded border border-nim bg-nim-secondary px-2 py-1.5 text-xs text-nim outline-none focus:border-nim-focus"
                                 value={valueAsText(range[1])}
-                                placeholder="To"
+                                placeholder={t('tracker:filters.to')}
                                 onChange={event => updateClause(index, {
                                   value: [range[0], event.target.value],
                                 })}
@@ -546,7 +567,7 @@ export function TrackerViewHeaderControls({
                               onChange={event => updateClause(index, { value: event.target.value })}
                               data-testid={`tracker-filter-builder-value-${index}`}
                             >
-                              <option value="">Choose…</option>
+                              <option value="">{t('tracker:filters.choose')}</option>
                               {options.map(option => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
                               ))}
@@ -556,7 +577,9 @@ export function TrackerViewHeaderControls({
                               type={inputType(field, clause.op)}
                               className="w-full rounded border border-nim bg-nim-secondary px-2 py-1.5 text-xs text-nim outline-none focus:border-nim-focus"
                               value={valueAsText(clause.value)}
-                              placeholder={isList ? 'Comma-separated values' : 'Value'}
+                              placeholder={isList
+                                ? t('tracker:filters.comma_separated_values')
+                                : t('tracker:filters.value')}
                               onChange={event => updateClause(index, {
                                 value: isList
                                   ? event.target.value.split(',').map(value => value.trim()).filter(Boolean)
@@ -573,7 +596,7 @@ export function TrackerViewHeaderControls({
                             current.length === 1
                               ? [firstClause(filterFields)]
                               : current.filter((_, clauseIndex) => clauseIndex !== index))}
-                          aria-label={`Remove filter ${index + 1}`}
+                          aria-label={t('tracker:filters.remove_filter', { number: index + 1 })}
                         >
                           <MaterialSymbol icon="close" size={14} />
                         </button>
@@ -587,7 +610,7 @@ export function TrackerViewHeaderControls({
                     data-testid="tracker-filter-builder-add"
                   >
                     <MaterialSymbol icon="add" size={13} />
-                    Add filter
+                    {t('tracker:filters.add_filter')}
                   </button>
                 </div>
 
@@ -601,7 +624,7 @@ export function TrackerViewHeaderControls({
                     }}
                     data-testid="tracker-filter-builder-clear"
                   >
-                    Clear all
+                    {t('tracker:filters.clear_all')}
                   </button>
                   <button
                     type="button"
@@ -609,7 +632,7 @@ export function TrackerViewHeaderControls({
                     onClick={applyFilters}
                     data-testid="tracker-filter-builder-apply"
                   >
-                    Apply filters
+                    {t('tracker:filters.apply_filters')}
                   </button>
                 </div>
               </>
@@ -669,18 +692,33 @@ export function TrackerViewHeaderControls({
               setShowFilters(false);
               setShowDisplayOptions(open => !open);
             }}
-            title="Display options — columns & grouping"
-            aria-label="Display options"
+            title={t('tracker:filters.display_options_title')}
+            aria-label={t('tracker:filters.display_options')}
             aria-expanded={showDisplayOptions}
             data-testid="tracker-view-display-options"
           >
             <MaterialSymbol icon="view_column" size={14} />
-            Columns
+            {t('tracker:filters.columns')}
           </button>
           {showDisplayOptions && (
             <DisplayOptionsPanel
               availableColumns={availableColumns}
               config={columnConfig}
+              labels={{
+                title: t('tracker:filters.display_options'),
+                grouping: t('tracker:display.grouping'),
+                groupItems: t('tracker:display.group_items'),
+                noGrouping: t('tracker:display.no_grouping'),
+                status: t('tracker:columns.status'),
+                priority: t('tracker:columns.priority'),
+                type: t('tracker:columns.type'),
+                owner: t('tracker:columns.owner'),
+                properties: t('tracker:display.properties'),
+                hideColumn: t('tracker:display.hide_column'),
+                hidden: t('tracker:display.hidden'),
+                show: t('tracker:display.show'),
+                reset: t('tracker:display.reset'),
+              }}
               onConfigChange={onColumnConfigChange}
               onClose={() => setShowDisplayOptions(false)}
             />

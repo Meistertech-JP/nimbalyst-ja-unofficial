@@ -33,6 +33,8 @@ import {
   type GitHubReleaseAsset,
 } from './extensionReleaseAsset';
 import { getAgentProviderRegistry } from '../extensions/AgentProviderRegistry';
+import type { InstallProgressEvent } from '../../shared/types/extensionInstallProgress';
+export type { InstallProgressStage, InstallProgressEvent } from '../../shared/types/extensionInstallProgress';
 
 // Import mock registry data (used as fallback when live registry is unreachable)
 import mockRegistry from '../data/extensionRegistry.json';
@@ -244,18 +246,6 @@ async function fetchLatestRelease(owner: string, repo: string): Promise<GitHubRe
 // Install progress reporting
 // ---------------------------------------------------------------------------
 
-export type InstallProgressStage =
-  | 'checking-release'
-  | 'downloading-release'
-  | 'cloning'
-  | 'installing'
-  | 'done';
-
-export interface InstallProgressEvent {
-  stage: InstallProgressStage;
-  message: string;
-}
-
 type ProgressReporter = (event: InstallProgressEvent) => void;
 
 const noopProgress: ProgressReporter = () => {};
@@ -396,7 +386,7 @@ async function installFromPackageUrl(opts: InstallFromPackageUrlOptions): Promis
     const finalInstallPath = path.join(extensionsDir, extensionId);
 
     // 5. Replace any existing installation by moving staging to final
-    progress({ stage: 'installing', message: `Installing ${extensionId}...` });
+    progress({ stage: 'installing', message: `Installing ${extensionId}...`, messageKey: 'installing', messageParams: { extensionId } });
     await fs.rm(finalInstallPath, { recursive: true, force: true });
     await fs.rename(stagingPath, finalInstallPath);
     stagingPath = null; // Moved successfully; do not clean up in finally
@@ -477,7 +467,7 @@ async function installFromGitHub(
   const [owner, repoName] = repo.split('/');
 
   logger.main.info(`[ExtMarketplace] GitHub install: ${githubUrl} -- trying release asset`);
-  progress({ stage: 'checking-release', message: 'Checking for release artifact...' });
+  progress({ stage: 'checking-release', message: 'Checking for release artifact...', messageKey: 'checking_release' });
 
   // ---- Path 1: release asset ----------------------------------------------
   let release: GitHubRelease | null = null;
@@ -494,7 +484,7 @@ async function installFromGitHub(
     const asset = selectReleaseAsset(release.assets, { repoName, subdir });
     if (asset) {
       logger.main.info(`[ExtMarketplace] GitHub install: ${githubUrl} -- using release asset ${asset.name} (tag ${release.tag_name})`);
-      progress({ stage: 'downloading-release', message: `Downloading ${asset.name} (${release.tag_name})...` });
+      progress({ stage: 'downloading-release', message: `Downloading ${asset.name} (${release.tag_name})...`, messageKey: 'downloading_release', messageParams: { assetName: asset.name, releaseTag: release.tag_name } });
 
       const releaseTag = release.tag_name;
       const releaseResult = await installFromPackageUrl({
@@ -520,6 +510,8 @@ async function installFromGitHub(
         progress({
           stage: 'done',
           message: `Installed ${releaseResult.extensionId} from release ${releaseTag}`,
+          messageKey: 'installed_release',
+          messageParams: { extensionId: releaseResult.extensionId ?? '', releaseTag },
         });
       }
       // Hard fail: do not fall through if the release asset was present but broken.
@@ -531,7 +523,7 @@ async function installFromGitHub(
   }
 
   // ---- Path 2: clone-source fallback -------------------------------------
-  progress({ stage: 'cloning', message: 'No release artifact found, cloning source...' });
+  progress({ stage: 'cloning', message: 'No release artifact found, cloning source...', messageKey: 'cloning' });
   return installFromGitHubCloneSource(githubUrl, repo, subdir, progress);
 }
 
@@ -613,7 +605,7 @@ async function installFromGitHubCloneSource(
     }
 
     // Validation passed -- safe to replace any existing installation.
-    progress({ stage: 'installing', message: `Installing ${extensionId}...` });
+    progress({ stage: 'installing', message: `Installing ${extensionId}...`, messageKey: 'installing', messageParams: { extensionId } });
     await fs.rm(installPath, { recursive: true, force: true });
     await copyDirectory(sourceDir, installPath);
 
@@ -635,7 +627,7 @@ async function installFromGitHubCloneSource(
     notifyExtensionsChanged(extensionId, installPath);
 
     logger.main.info(`[ExtMarketplace] [github-clone] installed ${extensionId} v${manifest.version ?? '0.0.0'}`);
-    progress({ stage: 'done', message: `Installed ${extensionId} from source` });
+    progress({ stage: 'done', message: `Installed ${extensionId} from source`, messageKey: 'installed_source', messageParams: { extensionId } });
     return { success: true, extensionId };
 
   } catch (err) {

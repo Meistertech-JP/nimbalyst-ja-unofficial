@@ -19,6 +19,8 @@ import type {
   VNode,
 } from '@revolist/revogrid';
 import type { CellEditorDescriptor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerCellEditors';
+import type { TFunction } from 'i18next';
+import { rendererI18n } from '../../../i18n';
 
 /** A tracker item the relationship editor can target. */
 export interface RelationshipCandidate {
@@ -29,6 +31,7 @@ export interface RelationshipCandidate {
 }
 
 export interface TrackerEditorContext {
+  t?: TFunction;
   /** Candidates for relationship cells, narrowed by the field's target types. */
   relationshipCandidates?: () => RelationshipCandidate[];
 }
@@ -312,7 +315,7 @@ function createRelationshipEditor(
             type: 'text',
             class: 'tracker-grid-editor-input',
             list: listId,
-            placeholder: descriptor.multiValue ? 'Comma-separated items' : 'Pick an item',
+            placeholder: (context.t ?? rendererI18n.t)(descriptor.multiValue ? 'tracker:grid.relationship_multiple' : 'tracker:grid.relationship_single'),
             value: seed,
             ref: (el: HTMLInputElement | null) => { input = el; },
             onKeyDown: (e: KeyboardEvent) => commitOnNavigationKeys(e, resolveIds, save, close),

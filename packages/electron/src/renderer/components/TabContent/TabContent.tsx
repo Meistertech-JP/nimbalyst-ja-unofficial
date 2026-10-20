@@ -21,6 +21,7 @@ import { TabEditor } from '../TabEditor/TabEditor';
 import { CollaborativeTabEditor } from '../TabEditor/CollaborativeTabEditor';
 import { TabEditorErrorBoundary } from '../TabEditorErrorBoundary';
 import { logger } from '../../utils/logger';
+import { withRuntimeTranslations } from '../../i18n/RuntimeTranslationBridge';
 import { useTabsActions, type TabData, notifyDirtyStateChange, isTrackerTabPath } from '../../contexts/TabsContext';
 import { TrackerResourceEditor } from '../AgentMode/TrackerResourceEditor';
 import { SharedDocsListView } from '../CollabMode/SharedDocsListView';
@@ -290,7 +291,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
     // index. No save/dirty/getContent wiring; opening a row hands off via
     // pendingCollabDocumentAtom (see SharedDocsListView).
     if (isSharedHomeTab(tab.filePath)) {
-      root.render(
+      root.render(withRuntimeTranslations(
         <JotaiProvider store={store}>
           <TabEditorErrorBoundary
             filePath={tab.filePath}
@@ -306,7 +307,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
             <SharedDocsListView workspacePath={propsRef.current.workspaceId ?? ''} />
           </TabEditorErrorBoundary>
         </JotaiProvider>
-      );
+      ));
       tabInstancesRef.current.set(tab.id, { root, element, tabData: tab, content });
       return;
     }
@@ -316,7 +317,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
     // (PGLite / collaborative Y.Doc via TrackerItemDetail).
     if (tab.kind === 'tracker' || isTrackerTabPath(tab.filePath)) {
       const trackerItemId = tab.trackerItemId ?? tab.filePath.replace(/^tracker:\/\//, '');
-      root.render(
+      root.render(withRuntimeTranslations(
         <JotaiProvider store={store}>
           <TabEditorErrorBoundary
             filePath={tab.filePath}
@@ -343,7 +344,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
             />
           </TabEditorErrorBoundary>
         </JotaiProvider>
-      );
+      ));
       tabInstancesRef.current.set(tab.id, { root, element, tabData: tab, content });
       return;
     }
@@ -397,7 +398,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
       return;
     }
 
-    root.render(
+    root.render(withRuntimeTranslations(
       <JotaiProvider store={store}>
         <TabEditorErrorBoundary
           filePath={tab.filePath}
@@ -440,7 +441,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
           )}
         </TabEditorErrorBoundary>
       </JotaiProvider>
-    );
+    ));
 
     tabInstancesRef.current.set(tab.id, { root, element, tabData: tab, content });
   }, []);

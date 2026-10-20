@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
 import type {
   TrackerColumnDef,
   TypeColumnConfig,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin';
 import { TrackerViewHeaderControls } from '../TrackerViewHeaderControls';
+
+afterEach(async () => { cleanup(); await i18next.changeLanguage('en'); });
 
 const columns = [
   {
@@ -126,6 +129,27 @@ describe('TrackerViewHeaderControls', () => {
       ...columnConfig,
       groupBy: 'status',
     });
+  });
+
+  it('updates runtime display controls in Japanese while preserving saved grouping and column identifiers', async () => {
+    const { onColumnConfigChange } = renderControls();
+    fireEvent.click(screen.getByTestId('tracker-view-display-options'));
+    await act(async () => { await i18next.changeLanguage('ja'); });
+
+    expect(screen.getByText('表示オプション')).toBeTruthy();
+    expect(screen.getByText('表示するプロパティ')).toBeTruthy();
+    expect(screen.getByText('非表示')).toBeTruthy();
+    expect(screen.getByText('表示')).toBeTruthy();
+    const grouping = screen.getByLabelText('トラッカー項目のグループ化') as HTMLSelectElement;
+    expect(Array.from(grouping.options).map(option => [option.value, option.textContent])).toEqual([
+      ['', 'グループ化なし'], ['status', 'ステータス'], ['priority', '優先度'], ['type', '種類'], ['owner', '担当者'],
+    ]);
+    fireEvent.change(grouping, { target: { value: 'status' } });
+    expect(onColumnConfigChange).toHaveBeenLastCalledWith({ ...columnConfig, groupBy: 'status' });
+    fireEvent.click(screen.getByTitle('列を非表示'));
+    expect(onColumnConfigChange).toHaveBeenLastCalledWith({ ...columnConfig, visibleColumns: ['title'] });
+    fireEvent.click(screen.getByText('既定値に戻す'));
+    expect(onColumnConfigChange).toHaveBeenLastCalledWith(columnConfig);
   });
 
   it('builds multiple field-aware clauses with AND/OR semantics', () => {
@@ -339,7 +363,7 @@ describe('TrackerViewHeaderControls', () => {
   it('uses the same display-options panel for column visibility', () => {
     const { onColumnConfigChange } = renderControls();
     fireEvent.click(screen.getByTestId('tracker-view-display-options'));
-    expect(screen.getByText('Display Options')).toBeTruthy();
+    expect(screen.getByText('Display options')).toBeTruthy();
 
     fireEvent.click(screen.getAllByText('Priority').find(element => element.tagName === 'SPAN')!);
     expect(onColumnConfigChange).toHaveBeenCalledWith({

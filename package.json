@@ -2,8 +2,8 @@
   "name": "nimbalyst-monorepo",
   "version": "0.33.1",
   "private": true,
-  "description": "Monorepo for Nimbalyst - A rich text editor built with Meta's Lexical framework",
-  "author": "Nimbalyst Team",
+  "description": "Nimbalyst — Unofficial Japanese Edition",
+  "author": "Nimbalyst, Inc.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nimbalyst/nimbalyst.git"
+    "url": "https://github.com/Meistertech-JP/nimbalyst-ja-unofficial.git"
   },
   "scripts": {
     "build": "npm run build --prefix packages/runtime",

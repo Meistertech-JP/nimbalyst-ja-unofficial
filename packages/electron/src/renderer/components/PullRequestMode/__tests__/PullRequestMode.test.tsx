@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import i18next from 'i18next';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Provider as JotaiProvider } from 'jotai';
@@ -183,10 +184,22 @@ describe('PullRequestMode review session action', () => {
     store.set(windowModeAtom, 'pr-review');
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
     store.set(prRemoteAtom, null);
     store.set(prListAtom, []);
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes the missing remote placeholder and preserves the workspace name across language changes', async () => {
+    store.set(prRemoteAtom, null);
+    await i18next.changeLanguage('ja');
+    const { container } = render(<JotaiProvider store={store}>
+      <PullRequestMode workspacePath="/workspace" workspaceName="Keep My Workspace" isActive />
+    </JotaiProvider>);
+    expect(container.querySelector('.pr-review-placeholder')?.textContent).toBe('GitHubリモートがKeep My Workspaceに見つかりません。');
+    await act(async () => { await i18next.changeLanguage('en'); });
+    expect(container.querySelector('.pr-review-placeholder')?.textContent).toBe('No GitHub remote detected for Keep My Workspace.');
   });
 
   it('creates and links a review session, opens it in the pane, and stays in PR mode', async () => {

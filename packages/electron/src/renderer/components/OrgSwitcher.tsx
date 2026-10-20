@@ -14,6 +14,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import {
   useFloating, offset, flip, shift, autoUpdate,
@@ -38,6 +39,7 @@ function initials(name: string): string {
 }
 
 export function OrgSwitcher() {
+  const { t } = useTranslation(['common']);
   const activePath = useAtomValue(activeWorkspacePathAtom);
 
   const [orgs, setOrgs] = useState<OrgEntry[]>([]);
@@ -94,6 +96,21 @@ export function OrgSwitcher() {
     [orgs, activeOrgId],
   );
 
+  const getRoleLabel = (role: string): string => {
+    switch (role.toLowerCase()) {
+      case 'owner':
+        return t('common:organization_switcher.roles.owner');
+      case 'admin':
+        return t('common:organization_switcher.roles.admin');
+      case 'member':
+        return t('common:organization_switcher.roles.member');
+      case 'guest':
+        return t('common:organization_switcher.roles.guest');
+      default:
+        return role;
+    }
+  };
+
   const { refs, floatingStyles, context } = useFloating({
     open,
     onOpenChange: setOpen,
@@ -126,8 +143,12 @@ export function OrgSwitcher() {
         {...getReferenceProps()}
         className="org-switcher-button w-10 h-10 mx-auto mt-2 mb-1 rounded-lg bg-gradient-to-br from-[#60a5fa] to-[#a78bfa] text-white text-[12px] font-semibold flex items-center justify-center shadow-sm hover:brightness-110 transition"
         data-testid="org-switcher"
-        title={activeOrg ? `Organization: ${activeOrg.name}` : 'Organization'}
-        aria-label="Switch organization"
+        title={
+          activeOrg
+            ? t('common:organization_switcher.title', { name: activeOrg.name })
+            : t('common:organization')
+        }
+        aria-label={t('common:organization_switcher.switch')}
       >
         {activeOrg ? initials(activeOrg.name) : <MaterialSymbol icon="corporate_fare" size={18} />}
       </button>
@@ -141,7 +162,7 @@ export function OrgSwitcher() {
             className="org-switcher-menu z-[1000] min-w-[220px] bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-lg shadow-lg py-1.5"
           >
             <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-[var(--nim-text-faint)]">
-              Organizations
+              {t('common:organization_switcher.heading')}
             </div>
             {orgs.map((o) => (
               <button
@@ -154,7 +175,9 @@ export function OrgSwitcher() {
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-[13px] text-[var(--nim-text)] truncate">{o.name}</span>
-                  <span className="block text-[10px] text-[var(--nim-text-faint)] font-mono">{o.role}</span>
+                  <span className="block text-[10px] text-[var(--nim-text-faint)] font-mono">
+                    {getRoleLabel(o.role)}
+                  </span>
                 </span>
                 {o.orgId === activeOrgId && <MaterialSymbol icon="check" size={14} className="text-[var(--nim-text-muted)]" />}
               </button>
@@ -164,7 +187,12 @@ export function OrgSwitcher() {
                 setOpen(false);
                 if (pendingOrgId) goToTeamSurface(pendingOrgId);
               }}>
-                {pendingInviteCount} pending invitation{pendingInviteCount === 1 ? '' : 's'}
+                {t(
+                  pendingInviteCount === 1
+                    ? 'common:organization_switcher.pending_invitations_one'
+                    : 'common:organization_switcher.pending_invitations_other',
+                  { count: pendingInviteCount },
+                )}
               </button>
             )}
             <div className="border-t border-[var(--nim-border)] mt-1 pt-1">
@@ -173,7 +201,7 @@ export function OrgSwitcher() {
                 onClick={() => goToTeamSurface()}
               >
                 <MaterialSymbol icon="settings" size={14} />
-                Manage organization…
+                {t('common:organization_switcher.manage')}
               </button>
               <button
                 className="org-switcher-new-organization w-full flex items-center gap-2 px-3 py-2 text-[12px] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-secondary)]"
@@ -184,7 +212,7 @@ export function OrgSwitcher() {
                 }}
               >
                 <MaterialSymbol icon="add" size={14} />
-                New organization
+                {t('common:organization_switcher.new')}
               </button>
             </div>
           </div>

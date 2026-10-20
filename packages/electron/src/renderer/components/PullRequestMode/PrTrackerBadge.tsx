@@ -6,6 +6,7 @@
  */
 
 import type { CSSProperties, JSX } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import {
@@ -49,6 +50,7 @@ interface PrTrackerBadgeProps {
 }
 
 export function PrTrackerBadge({ record, compact, onClick, title }: PrTrackerBadgeProps): JSX.Element | null {
+  const { t } = useTranslation(['tracker']);
   const option = statusOptionFor(record);
   if (!option) return null;
   const priority = getRecordPriority(record);
@@ -62,7 +64,7 @@ export function PrTrackerBadge({ record, compact, onClick, title }: PrTrackerBad
         <span
           className="w-1.5 h-1.5 rounded-full shrink-0"
           style={{ backgroundColor: priorityColor }}
-          title={`${priority} priority`}
+          title={t('tracker:plans.priority_title', { priority: t(`tracker:kanban.priority_${priority}`) })}
         />
       )}
     </>

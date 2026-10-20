@@ -1,4 +1,5 @@
 import React, { useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getEditorContextEntry,
   dismissEditorContextItem,
@@ -63,6 +64,7 @@ function getCombinedSnapshot(): number {
  * pushes a new selection.
  */
 export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath }) => {
+  const { t } = useTranslation('aichat');
   useSyncExternalStore(subscribeAll, getCombinedSnapshot);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
 
@@ -112,8 +114,8 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
     otherChips.push({
       key: 'text-selection',
       icon: 'text_select_start',
-      label: 'Selection',
-      tooltip: `Selected text will be included: "${preview}"`,
+      label: t('selection_chips.selection'),
+      tooltip: t('context_indicators.selection_tooltip', { text: preview }),
       onRemove: () => clearTextSelection(),
     });
   }
@@ -131,8 +133,8 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
     otherChips.push({
       key: 'mockup-annotations',
       icon: 'draw',
-      label: 'Mockup annotations',
-      tooltip: 'Annotations drawn on your mockup will be included with your prompt',
+      label: t('selection_chips.mockup_annotations'),
+      tooltip: t('context_indicators.mockup_annotations_tooltip'),
       onRemove: () => clearMockupAnnotationsForFile(mockupFilePath),
     });
   }
@@ -214,7 +216,7 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
           <button
             type="button"
             className="selection-chip-remove"
-            aria-label={`Remove ${chip.label} from context`}
+            aria-label={t('selection_chips.remove', { label: chip.label })}
             onClick={chip.onRemove}
             style={{
               display: 'inline-flex',
@@ -242,7 +244,7 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
           key={`group:${label}`}
           type="button"
           className="selection-chips-group-toggle"
-          aria-label={expanded ? `Show fewer ${label}` : `Show ${hiddenCount} more ${label}`}
+          aria-label={expanded ? t('selection_chips.show_fewer', { label }) : t('selection_chips.show_more', { count: hiddenCount, label })}
           onClick={() => {
             setExpandedGroups((previous) => {
               const next = new Set(previous);
@@ -260,7 +262,7 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
             textDecoration: 'underline',
           }}
         >
-          {expanded ? `Show fewer ${label}` : `+${hiddenCount} more ${label}`}
+          {expanded ? t('selection_chips.show_fewer', { label }) : t('selection_chips.more', { count: hiddenCount, label })}
         </button>
       ))}
 
@@ -285,7 +287,7 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
             textDecoration: 'underline',
           }}
         >
-          {dismissedCount} hidden — restore
+          {t('selection_chips.restore', { count: dismissedCount })}
         </button>
       )}
     </div>

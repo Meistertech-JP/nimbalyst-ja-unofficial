@@ -11,6 +11,7 @@
  */
 
 import React, { useEffect, useRef, useCallback, useId, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import type { TipDefinition } from './types';
 
@@ -96,6 +97,9 @@ export function TipCard({
   variant = 'floating',
   inlineFooterExtras,
 }: TipCardProps) {
+  const { t } = useTranslation('common');
+  const tipKey = tip.id.replace(/^tip-/, '').replace(/-/g, '_');
+  const translatedBody = t(`tip_content.${tipKey}.body`, { defaultValue: tip.content.body });
   const cardRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const bodyId = useId();
@@ -125,7 +129,7 @@ export function TipCard({
     onSecondaryAction?.();
   }, [onSecondaryAction]);
 
-  const renderedBody = useMemo(() => parseMarkdownBody(tip.content.body), [tip.content.body]);
+  const renderedBody = useMemo(() => parseMarkdownBody(translatedBody), [translatedBody]);
 
   const floatingClasses =
     'tip-card fixed bottom-5 left-[50px] w-[340px] bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-[10px] z-[10000] overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.35),0_2px_8px_rgba(0,0,0,0.2)] motion-safe:animate-[tip-slide-in_0.3s_ease-out_forwards]';
@@ -174,18 +178,18 @@ export function TipCard({
         <div className="flex-1 min-w-0">
           {!isFloating && (
             <div className="tip-card-overline mb-0.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--nim-text-faint)]">
-              Tip
+              {t('tips.overline')}
             </div>
           )}
           <div id={titleId} className={titleClasses}>
-            {tip.content.title}
+            {t(`tip_content.${tipKey}.title`, { defaultValue: tip.content.title })}
           </div>
         </div>
         {isFloating && onDismiss && (
           <button
             className="nim-btn-icon w-6 h-6 flex items-center justify-center shrink-0 -mt-0.5 -mr-1 text-[var(--nim-text-faint)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)] rounded transition-all duration-150"
             onClick={onDismiss}
-            aria-label="Dismiss tip"
+            aria-label={t('tips.dismiss')}
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -214,7 +218,7 @@ export function TipCard({
               className={primaryButtonClasses}
               onClick={handleActionClick}
             >
-              {tip.content.action.label}
+              {t(`tip_content.${tipKey}.action`, { defaultValue: tip.content.action.label })}
             </button>
           )}
           {tip.content.secondaryAction && (
@@ -222,7 +226,7 @@ export function TipCard({
               className={secondaryButtonClasses}
               onClick={handleSecondaryClick}
             >
-              {tip.content.secondaryAction.label}
+              {t(`tip_content.${tipKey}.secondary`, { defaultValue: tip.content.secondaryAction.label })}
             </button>
           )}
           {!isFloating && inlineFooterExtras && (

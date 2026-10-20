@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRuntimeTranslation } from '../../../RuntimeTranslation';
 
 interface Props {
   children: React.ReactNode;
@@ -50,6 +51,19 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
     const { error, showDetails } = this.state;
     if (!error) return this.props.children;
 
+    return <ToolWidgetErrorFallback error={error} showDetails={showDetails} toolName={this.props.toolName} onToggleDetails={this.toggleDetails} onCopy={this.copyError} onRetry={this.reset} />;
+  }
+}
+
+const ToolWidgetErrorFallback: React.FC<{
+  error: Error;
+  showDetails: boolean;
+  toolName?: string;
+  onToggleDetails: () => void;
+  onCopy: () => Promise<void>;
+  onRetry: () => void;
+}> = ({ error, showDetails, toolName, onToggleDetails, onCopy, onRetry }) => {
+  const { t } = useRuntimeTranslation();
     return (
       <div
         role="alert"
@@ -64,15 +78,15 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontWeight: 600, color: 'var(--nim-error, #ef4444)' }}>
-            Widget failed to render
+            {t('aichat:widget_error.render_failed', 'Widget failed to render')}
           </span>
           <span style={{ color: 'var(--nim-text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>
-            {this.props.toolName ?? 'unknown tool'}
+            {toolName ?? t('aichat:rich_transcript.unknown_tool', 'unknown tool')}
           </span>
           <span style={{ flex: 1 }} />
           <button
             type="button"
-            onClick={this.toggleDetails}
+            onClick={onToggleDetails}
             style={{
               background: 'transparent',
               border: '1px solid var(--nim-border)',
@@ -83,11 +97,11 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            {showDetails ? 'Hide details' : 'Show details'}
+            {showDetails ? t('aichat:widget_error.hide_details', 'Hide details') : t('aichat:interactive.show_details', 'Show details')}
           </button>
           <button
             type="button"
-            onClick={this.copyError}
+            onClick={onCopy}
             style={{
               background: 'transparent',
               border: '1px solid var(--nim-border)',
@@ -98,11 +112,11 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            Copy
+            {t('common:copy', 'Copy')}
           </button>
           <button
             type="button"
-            onClick={this.reset}
+            onClick={onRetry}
             style={{
               background: 'transparent',
               border: '1px solid var(--nim-border)',
@@ -113,11 +127,11 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            Retry
+            {t('common:retry', 'Retry')}
           </button>
         </div>
         <div style={{ marginTop: '4px', color: 'var(--nim-text-muted)' }}>
-          {error.message || 'Unknown error'}
+          {error.message || t('dialogs:error.unknown', 'Unknown error')}
         </div>
         {showDetails && error.stack && (
           <pre
@@ -139,5 +153,4 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
         )}
       </div>
     );
-  }
-}
+};

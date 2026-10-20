@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { ThinkingMode } from '../../utils/modelUtils';
 import { DEFAULT_THINKING_MODE } from '../../utils/modelUtils';
@@ -21,6 +22,7 @@ export function ThinkingModeSelector({
   disabled = false,
   disabledTitle,
 }: ThinkingModeSelectorProps) {
+  const { t } = useTranslation('aichat');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -55,19 +57,19 @@ export function ThinkingModeSelector({
     THINKING_MODE_OPTIONS.find(option => option.key === DEFAULT_THINKING_MODE)!;
 
   return (
-    <div className="relative inline-block" ref={dropdownRef}>
+    <div className="thinking-mode-selector-wrapper relative inline-block" ref={dropdownRef}>
       <button
         data-testid="thinking-mode-selector"
         className={`thinking-mode-selector flex items-center gap-1 px-2 py-[3px] rounded-xl text-[11px] font-medium transition-all duration-200 outline-none whitespace-nowrap bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] border border-[var(--nim-border)] ${disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)]'}`}
         onClick={() => {
           if (!disabled) setIsOpen(!isOpen);
         }}
-        aria-label={`Extended thinking: ${currentMode.label}`}
+        aria-label={t('thinking.selected_label', { mode: t(`thinking.${currentMode.key}`) })}
         disabled={disabled}
         title={disabled ? disabledTitle : undefined}
       >
         <MaterialSymbol icon="psychology_alt" size={12} />
-        <span>{currentMode.label}</span>
+        <span>{t(`thinking.${currentMode.key}`)}</span>
         <MaterialSymbol icon="expand_more" size={14} className={`transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -82,7 +84,7 @@ export function ThinkingModeSelector({
                 setIsOpen(false);
               }}
             >
-              <span>{option.label}</span>
+              <span>{t(`thinking.${option.key}`)}</span>
               {option.key === mode && <MaterialSymbol icon="check" size={14} />}
             </button>
           ))}

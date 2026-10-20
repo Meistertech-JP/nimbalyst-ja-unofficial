@@ -38,6 +38,7 @@ import { worktreesFeatureAvailableAtom } from '../store/atoms/appSettings';
 import { emptyTranscriptVisibleCountAtom } from './atoms';
 import type { FeatureUsageRecord } from '../../shared/featureUsage';
 import { tipTargetsScreen } from './filesEmptyTipSelection';
+import { rendererI18n } from '../i18n';
 
 /**
  * Safety-net re-evaluation interval. Tips are evaluated immediately when the
@@ -291,8 +292,8 @@ export function TipProvider({ children, currentMode, workspacePath }: TipProvide
     const tip = tips.find((t) => t.id === tipId);
     if (!tip) {
       errorNotificationService.showInfo(
-        'Unknown Tip',
-        `Tip "${tipId}" not found.`,
+        rendererI18n.t('notifications:guidance.unknown_tip'),
+        rendererI18n.t('notifications:guidance.tip_not_found', { id: tipId }),
         { duration: 3000 }
       );
       return;
@@ -324,8 +325,8 @@ export function TipProvider({ children, currentMode, workspacePath }: TipProvide
       store.set(walkthroughStateAtom, newState);
       setActiveTipId(null);
       errorNotificationService.showInfo(
-        'Tips Reset',
-        'All tips will show again.',
+        rendererI18n.t('notifications:guidance.tips_reset'),
+        rendererI18n.t('notifications:guidance.tips_reset_message'),
         { duration: 3000 }
       );
     })();

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import i18next from 'i18next';
 
 // Keep the component isolated: jotai atom reads return defaults, and the store
 // atom families are callable stubs so importing them has no side effects.
@@ -58,9 +59,19 @@ const setElementWidth = (element: Element, { clientWidth, scrollWidth }: { clien
   });
 };
 
-afterEach(() => cleanup());
+afterEach(async () => { cleanup(); vi.restoreAllMocks(); await i18next.changeLanguage('en'); });
 
 describe('SessionListItem - full name on hover (#577, #429)', () => {
+  it('updates the memoized relative time when the language changes without changing the timestamp', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(baseProps.createdAt + 120_000);
+    render(<SessionListItem {...baseProps} title="Keep this user title" />);
+    expect(screen.getByText('2 mins ago')).toBeTruthy();
+    await act(async () => { await i18next.changeLanguage('ja'); });
+    expect(screen.getByText('2分前')).toBeTruthy();
+    expect(screen.getByText('Keep this user title')).toBeTruthy();
+    await act(async () => { await i18next.changeLanguage('en'); });
+    expect(screen.getByText('2 mins ago')).toBeTruthy();
+  });
   it('expands the clipped title from the rendered title position', async () => {
     const long = 'A very long session name that runs well past the forty character cutoff';
     const { container } = render(<SessionListItem {...baseProps} title={long} />);

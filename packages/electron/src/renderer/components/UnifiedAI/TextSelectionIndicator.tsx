@@ -1,4 +1,5 @@
 import React, { useSyncExternalStore, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Represents a text selection from the editor
@@ -110,6 +111,7 @@ export const TextSelectionIndicator: React.FC<TextSelectionIndicatorProps> = ({
   currentFilePath,
   lastUserMessageTimestamp
 }) => {
+  const { t } = useTranslation('aichat');
   // Subscribe to selection changes using React 18's useSyncExternalStore
   // This ensures the component re-renders when the external state changes
   useSyncExternalStore(subscribe, getSnapshot);
@@ -161,7 +163,7 @@ export const TextSelectionIndicator: React.FC<TextSelectionIndicatorProps> = ({
     : selectionText;
 
   // Use native title attribute for tooltip - browser handles escaping automatically
-  const tooltipText = `Selected text will be included: "${previewText}"`;
+  const tooltipText = t('context_indicators.selection_tooltip', { text: previewText });
 
   return (
     <div
@@ -177,7 +179,7 @@ export const TextSelectionIndicator: React.FC<TextSelectionIndicatorProps> = ({
         gap: '4px'
       }}
     >
-      <span>+ selection</span>
+      <span>{t('context_indicators.selection')}</span>
     </div>
   );
 };

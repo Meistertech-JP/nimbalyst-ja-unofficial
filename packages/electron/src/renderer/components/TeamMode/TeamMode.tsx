@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { useAtom } from 'jotai';
 
@@ -8,7 +9,7 @@ import { OrganizationMembersRolesPanel } from '../Settings/panels/OrganizationMe
 import { OrganizationProjectsPanel } from '../Settings/panels/OrganizationProjectsPanel';
 import { ProjectSharingPanel } from '../Settings/panels/ProjectSharingPanel';
 import { AlphaBadge } from '../common/AlphaBadge';
-import { TEAM_ALPHA_TOOLTIP, TeamAlphaNotice } from '../common/TeamAlphaNotice';
+import { TeamAlphaNotice } from '../common/TeamAlphaNotice';
 import { selectedOrgIdAtom } from '../../store/atoms/orgScope';
 import { OrgWindowSwitcher } from './OrgWindowSwitcher';
 import { isActiveMembership, persistLastSelectedOrgId, resolveDefaultOrgId } from './defaultOrg';
@@ -19,11 +20,11 @@ export const TEAM_CONSOLE_URL = 'https://console.nimbalyst.com';
 
 type AdminTab = 'members' | 'projects' | 'billing' | 'danger';
 
-const ADMIN_TABS: Array<{ id: AdminTab; label: string; icon: string }> = [
-  { id: 'members', label: 'Members', icon: 'groups' },
-  { id: 'projects', label: 'Projects', icon: 'folder' },
-  { id: 'billing', label: 'Billing', icon: 'credit_card' },
-  { id: 'danger', label: 'Danger zone', icon: 'warning' },
+const ADMIN_TABS: Array<{ id: AdminTab; labelKey: string; icon: string }> = [
+  { id: 'members', labelKey: 'project:team.members', icon: 'groups' },
+  { id: 'projects', labelKey: 'project:team.projects', icon: 'folder' },
+  { id: 'billing', labelKey: 'settings:organization_ui.billing', icon: 'credit_card' },
+  { id: 'danger', labelKey: 'project:team.danger_zone', icon: 'warning' },
 ];
 
 interface TeamSummary {
@@ -37,6 +38,7 @@ interface TeamSummary {
 }
 
 export function TeamMode({ workspacePath, isActive = true }: { workspacePath?: string; isActive?: boolean }) {
+  const { t } = useTranslation(['project', 'settings', 'common']);
   const [selectedOrgId, setSelectedOrgId] = useAtom(selectedOrgIdAtom);
   const [team, setTeam] = useState<TeamSummary | null>(null);
   const [organizations, setOrganizations] = useState<TeamSummary[]>([]);
@@ -127,7 +129,7 @@ export function TeamMode({ workspacePath, isActive = true }: { workspacePath?: s
   useEffect(() => { setAccessProjectId(null); }, [team?.orgId, tab]);
 
   if (loading) {
-    return <div className="team-mode-loading flex flex-1 items-center justify-center text-sm text-[var(--nim-text-muted)]">Loading organization…</div>;
+    return <div className="team-mode-loading flex flex-1 items-center justify-center text-sm text-[var(--nim-text-muted)]">{t('org.loading')}</div>;
   }
 
   // No org resolved: offer to create one (or accept a pending invite).
@@ -136,10 +138,10 @@ export function TeamMode({ workspacePath, isActive = true }: { workspacePath?: s
       <section className="team-mode team-mode-unbound flex h-full flex-col overflow-hidden" data-component="TeamMode">
         <header className="team-mode-header border-b border-[var(--nim-border)] px-6 py-5">
           <h1 className="m-0 flex items-center gap-2 text-xl font-semibold text-[var(--nim-text)]">
-            Organizations
-            <AlphaBadge size="sm" tooltip={TEAM_ALPHA_TOOLTIP} />
+            {t('common:organization_switcher.heading')}
+            <AlphaBadge size="sm" tooltip={t('settings:organization_ui.alpha_tooltip')} />
           </h1>
-          <p className="m-0 mt-1 text-sm text-[var(--nim-text-muted)]">Create an organization to collaborate with a team, or accept a pending invitation.</p>
+          <p className="m-0 mt-1 text-sm text-[var(--nim-text-muted)]">{t('common:team_mode.unbound_description')}</p>
           <TeamAlphaNotice className="mt-2.5 max-w-[640px]" />
         </header>
         <main className="team-mode-content flex-1 overflow-y-auto p-6">
@@ -166,18 +168,18 @@ export function TeamMode({ workspacePath, isActive = true }: { workspacePath?: s
         </div>
         <div className="min-w-0 flex-1 select-text">
           <p className="m-0 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">
-            Administer organization
-            <AlphaBadge size="xs" tooltip={TEAM_ALPHA_TOOLTIP} />
+            {t('common:team_mode.administer')}
+            <AlphaBadge size="xs" tooltip={t('settings:organization_ui.alpha_tooltip')} />
           </p>
           <h1 className="m-0 truncate text-xl font-semibold text-[var(--nim-text)]">{team.name}</h1>
-          {boundEmail && <p className="m-0 mt-0.5 truncate text-xs text-[var(--nim-text-muted)]">Owned by {boundEmail}</p>}
+          {boundEmail && <p className="m-0 mt-0.5 truncate text-xs text-[var(--nim-text-muted)]">{t('common:team_mode.owned_by', { email: boundEmail })}</p>}
         </div>
         <button
           type="button"
           className="team-console-link flex items-center gap-1.5 rounded-md border border-[var(--nim-border)] bg-transparent px-3 py-2 text-xs text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
           onClick={() => window.electronAPI.openExternal(TEAM_CONSOLE_URL)}
         >
-          Open web console <MaterialSymbol icon="open_in_new" size={14} />
+          {t('common:team_mode.open_console')} <MaterialSymbol icon="open_in_new" size={14} />
         </button>
       </header>
 
@@ -201,7 +203,7 @@ export function TeamMode({ workspacePath, isActive = true }: { workspacePath?: s
               }`}
             >
               <MaterialSymbol icon={item.icon} size={18} fill={tab === item.id} />
-              {item.label}
+              {t(item.labelKey)}
             </button>
           ))}
         </nav>
@@ -219,7 +221,7 @@ export function TeamMode({ workspacePath, isActive = true }: { workspacePath?: s
                       className="team-project-access-back mb-4 flex items-center gap-1.5 text-xs text-[var(--nim-link)]"
                       onClick={() => setAccessProjectId(null)}
                     >
-                      <MaterialSymbol icon="arrow_back" size={14} /> All projects
+                      <MaterialSymbol icon="arrow_back" size={14} /> {t('common:team_mode.all_projects')}
                     </button>
                     <ProjectSharingPanel target={{ kind: 'organizationProject', orgId: team.orgId, projectId: accessProjectId }} />
                   </div>

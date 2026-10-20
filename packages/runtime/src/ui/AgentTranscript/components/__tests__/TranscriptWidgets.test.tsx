@@ -1753,7 +1753,7 @@ describe('UpdateSessionMetaWidget', () => {
     expect(screen.getByText('Dark mode implementation')).toBeDefined();
     expect(screen.getByText('set')).toBeDefined();
     // Phase badge
-    expect(screen.getByText('implementing')).toBeDefined();
+    expect(screen.getByText('Implementing')).toBeDefined();
     // Tags with added prefix
     expect(screen.getByText(/feature/)).toBeDefined();
     expect(screen.getByText(/ui/)).toBeDefined();
@@ -1784,8 +1784,8 @@ describe('UpdateSessionMetaWidget', () => {
       </Wrapper>
     );
     // Both phases should appear
-    expect(screen.getByText('planning')).toBeDefined();
-    expect(screen.getByText('implementing')).toBeDefined();
+    expect(screen.getByText('Planning')).toBeDefined();
+    expect(screen.getByText('Implementing')).toBeDefined();
     // Arrow between them
     expect(container.textContent).toContain('\u2192');
   });
@@ -1949,7 +1949,7 @@ describe('UpdateSessionMetaWidget', () => {
     );
     expect(screen.getByText('Bug fix')).toBeDefined();
     expect(screen.getByText('#bug-fix')).toBeDefined();
-    expect(screen.getByText('implementing')).toBeDefined();
+    expect(screen.getByText('Implementing')).toBeDefined();
     // Should show the "set" badge since name changed from null
     expect(container.textContent).toContain('set');
   });

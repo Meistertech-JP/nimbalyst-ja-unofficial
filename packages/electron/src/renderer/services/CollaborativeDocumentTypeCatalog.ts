@@ -49,9 +49,48 @@ export interface CollaborativeDocumentTypeDescriptor {
   };
 }
 
+export type CollaborativeShareabilityReasonMetadata =
+  | { code: 'no_registered_type'; params: { fileName: string } }
+  | { code: 'no_editor_owner'; params: { suffix: string } }
+  | {
+      code: 'metadata_unavailable';
+      params: { documentType: string; editorId?: string; suffix?: string };
+    }
+  | { code: 'conflicting_editors'; params: { suffix: string; owners: string } }
+  | { code: 'conflicting_codecs_for_editor'; params: { codecs: string } }
+  | {
+      code: 'conflicting_codecs_for_suffix';
+      params: { suffix: string; codecs: string };
+    }
+  | {
+      code: 'missing_custom_editor';
+      params: { extension?: string; suffix: string };
+    }
+  | {
+      code: 'missing_editor_component';
+      params: { extension?: string; component?: string };
+    }
+  | {
+      code: 'missing_collab_binding';
+      params: { extension?: string; suffix: string };
+    }
+  | { code: 'monaco_binding_unavailable'; params: { suffix: string } }
+  | { code: 'no_collab_editor'; params: { suffix: string } }
+  | { code: 'no_collab_codec'; params: { codecId: string } }
+  | {
+      code: 'codec_suffix_unsupported';
+      params: { codecId: string; suffix: string };
+    }
+  | { code: 'codec_seed_export_missing'; params: { codecId: string } };
+
 export type CollaborativeShareability =
   | { state: 'ready'; descriptor: CollaborativeDocumentTypeDescriptor }
-  | { state: 'unsupported'; descriptor?: CollaborativeDocumentTypeDescriptor; reason: string };
+  | {
+      state: 'unsupported';
+      descriptor?: CollaborativeDocumentTypeDescriptor;
+      reason: string;
+      reasonMetadata: CollaborativeShareabilityReasonMetadata;
+    };
 
 interface CatalogLoadedExtension {
   manifest: ExtensionManifest;
@@ -84,8 +123,13 @@ interface CatalogEntry {
   hasEditorComponent: boolean;
   declaresCollabBinding: boolean;
   codec?: CollabCodec;
-  codecConflictReason?: string;
+  codecConflictReason?: CatalogDisabledReason;
   sourceOrder: number;
+}
+
+interface CatalogDisabledReason {
+  message: string;
+  metadata: CollaborativeShareabilityReasonMetadata;
 }
 
 interface CatalogState {
@@ -271,6 +315,10 @@ export class CollaborativeDocumentTypeCatalog {
       return {
         state: 'unsupported',
         reason: `No collaborative document type is registered for "${fileNameOnly(fileName)}".`,
+        reasonMetadata: {
+          code: 'no_registered_type',
+          params: { fileName: fileNameOnly(fileName) },
+        },
       };
     }
 
@@ -292,6 +340,10 @@ export class CollaborativeDocumentTypeCatalog {
       return {
         state: 'unsupported',
         reason: `No collaborative editor owns the "${suffix}" file type.`,
+        reasonMetadata: {
+          code: 'no_editor_owner',
+          params: { suffix },
+        },
       };
     }
     return this.resultForEntry(entry, suffix);
@@ -319,6 +371,14 @@ export class CollaborativeDocumentTypeCatalog {
       return {
         state: 'unsupported',
         reason: `The collaborative${owner}${ext} is unavailable for document type "${documentType}".`,
+        reasonMetadata: {
+          code: 'metadata_unavailable',
+          params: {
+            documentType,
+            ...(editorId ? { editorId } : {}),
+            ...(suffix ? { suffix } : {}),
+          },
+        },
       };
     }
     return this.resultForEntry(entry, resolvedSuffix);
@@ -350,7 +410,14 @@ export class CollaborativeDocumentTypeCatalog {
 
   private resultForEntry(entry: CatalogEntry, suffix: string): CollaborativeShareability {
     const reason = this.disabledReason(entry, suffix, this.state.customOwnersBySuffix);
-    if (reason) return { state: 'unsupported', descriptor: entry.descriptor, reason };
+    if (reason) {
+      return {
+        state: 'unsupported',
+        descriptor: entry.descriptor,
+        reason: reason.message,
+        reasonMetadata: reason.metadata,
+      };
+    }
     return { state: 'ready', descriptor: entry.descriptor };
   }
 
@@ -358,42 +425,103 @@ export class CollaborativeDocumentTypeCatalog {
     entry: CatalogEntry,
     suffix: string,
     customOwnersBySuffix: Map<string, string[]>,
-  ): string | undefined {
+  ): CatalogDisabledReason | undefined {
     const owners = customOwnersBySuffix.get(suffix) ?? [];
     if (owners.length > 1) {
-      return `Conflicting custom editors claim "${suffix}": ${owners.join(', ')}.`;
+      return {
+        message: `Conflicting custom editors claim "${suffix}": ${owners.join(', ')}.`,
+        metadata: {
+          code: 'conflicting_editors',
+          params: { suffix, owners: owners.join(', ') },
+        },
+      };
     }
     if (entry.codecConflictReason) return entry.codecConflictReason;
 
     const { descriptor } = entry;
     if (descriptor.editor.kind === 'extension') {
-      const extensionLabel = entry.extensionName ?? descriptor.editor.extensionId ?? 'Unknown extension';
+      const extension = entry.extensionName ?? descriptor.editor.extensionId;
+      const extensionLabel = extension ?? 'Unknown extension';
       if (!entry.hasEditorContribution) {
-        return `The owning extension "${extensionLabel}" does not declare a custom editor for "${suffix}".`;
+        return {
+          message: `The owning extension "${extensionLabel}" does not declare a custom editor for "${suffix}".`,
+          metadata: {
+            code: 'missing_custom_editor',
+            params: { extension, suffix },
+          },
+        };
       }
       if (!entry.hasEditorComponent) {
-        return `The owning extension "${extensionLabel}" does not provide editor component "${descriptor.editor.componentName ?? 'unknown'}".`;
+        return {
+          message: `The owning extension "${extensionLabel}" does not provide editor component "${descriptor.editor.componentName ?? 'unknown'}".`,
+          metadata: {
+            code: 'missing_editor_component',
+            params: {
+              extension,
+              component: descriptor.editor.componentName,
+            },
+          },
+        };
       }
       if (!entry.declaresCollabBinding) {
-        return `The owning extension "${extensionLabel}" does not declare a collaborative editor binding for "${suffix}".`;
+        return {
+          message: `The owning extension "${extensionLabel}" does not declare a collaborative editor binding for "${suffix}".`,
+          metadata: {
+            code: 'missing_collab_binding',
+            params: { extension, suffix },
+          },
+        };
       }
     } else if (descriptor.editor.kind === 'monaco' && !this.monacoBindingAvailable) {
-      return `The built-in Monaco editor does not yet provide a collaborative binding for "${suffix}".`;
+      return {
+        message: `The built-in Monaco editor does not yet provide a collaborative binding for "${suffix}".`,
+        metadata: {
+          code: 'monaco_binding_unavailable',
+          params: { suffix },
+        },
+      };
     } else if (descriptor.editor.kind === 'opaque') {
-      return `No collaborative editor is registered for "${suffix}".`;
+      return {
+        message: `No collaborative editor is registered for "${suffix}".`,
+        metadata: {
+          code: 'no_collab_editor',
+          params: { suffix },
+        },
+      };
     }
 
     if (!entry.codec) {
-      return `No collaborative codec is registered for document type "${descriptor.content.codecId}".`;
+      return {
+        message: `No collaborative codec is registered for document type "${descriptor.content.codecId}".`,
+        metadata: {
+          code: 'no_collab_codec',
+          params: { codecId: descriptor.content.codecId },
+        },
+      };
     }
     if (!entry.codec.fileExtensions.some(ext => normalizeSuffix(ext) === suffix)) {
-      return `Collaborative codec "${entry.codec.documentType}" does not support the exact "${suffix}" suffix.`;
+      return {
+        message: `Collaborative codec "${entry.codec.documentType}" does not support the exact "${suffix}" suffix.`,
+        metadata: {
+          code: 'codec_suffix_unsupported',
+          params: {
+            codecId: entry.codec.documentType,
+            suffix,
+          },
+        },
+      };
     }
     if (
       typeof entry.codec.seedFromFile !== 'function' ||
       typeof entry.codec.exportToFile !== 'function'
     ) {
-      return `Collaborative codec "${entry.codec.documentType}" is missing deterministic seed/export support.`;
+      return {
+        message: `Collaborative codec "${entry.codec.documentType}" is missing deterministic seed/export support.`,
+        metadata: {
+          code: 'codec_seed_export_missing',
+          params: { codecId: entry.codec.documentType },
+        },
+      };
     }
     return undefined;
   }
@@ -480,9 +608,20 @@ export class CollaborativeDocumentTypeCatalog {
         const fileExtensions = sortSuffixes([...suffixes, ...(codec?.fileExtensions ?? [])]);
         const localCreate = !!menuMatch;
         const component = extension.module.components?.[editor.component];
-        const codecConflictReason = matchingCodecs.length > 1
-          ? `Conflicting collaborative codecs claim this editor's suffixes: ${matchingCodecs.map(item => item.documentType).sort().join(', ')}.`
-          : undefined;
+        const conflictingCodecs = matchingCodecs
+          .map(item => item.documentType)
+          .sort()
+          .join(', ');
+        const codecConflictReason: CatalogDisabledReason | undefined =
+          matchingCodecs.length > 1
+            ? {
+                message: `Conflicting collaborative codecs claim this editor's suffixes: ${conflictingCodecs}.`,
+                metadata: {
+                  code: 'conflicting_codecs_for_editor',
+                  params: { codecs: conflictingCodecs },
+                },
+              }
+            : undefined;
 
         entries.push({
           descriptor: {
@@ -559,7 +698,19 @@ export class CollaborativeDocumentTypeCatalog {
           declaresCollabBinding: false,
           codec,
           codecConflictReason: matchingCodecs.length > 1
-            ? `Conflicting collaborative codecs claim "${suffix}": ${matchingCodecs.map(item => item.documentType).sort().join(', ')}.`
+            ? {
+                message: `Conflicting collaborative codecs claim "${suffix}": ${matchingCodecs.map(item => item.documentType).sort().join(', ')}.`,
+                metadata: {
+                  code: 'conflicting_codecs_for_suffix',
+                  params: {
+                    suffix,
+                    codecs: matchingCodecs
+                      .map(item => item.documentType)
+                      .sort()
+                      .join(', '),
+                  },
+                },
+              }
             : undefined,
           sourceOrder: sourceOrder++,
         });
@@ -606,7 +757,7 @@ export class CollaborativeDocumentTypeCatalog {
         history: ready,
         export: ready,
         embed: false,
-        ...(reason ? { disabledReason: reason } : {}),
+        ...(reason ? { disabledReason: reason.message } : {}),
       };
     }
     provisionalState.descriptors = entries

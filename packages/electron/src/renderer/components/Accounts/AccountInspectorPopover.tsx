@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import {
   FloatingPortal,
@@ -50,6 +51,7 @@ export function AccountInspectorPopover({
   onOpenApplicationSettings,
   onOpenProjectSettings,
 }: AccountInspectorPopoverProps) {
+  const { t } = useTranslation(['common', 'dialogs']);
   const { refs, floatingStyles, context } = useFloating({
     open: true,
     onOpenChange: (open) => { if (!open) onClose(); },
@@ -89,7 +91,7 @@ export function AccountInspectorPopover({
           onClick={onOpenApplicationSettings}
         >
           <MaterialSymbol icon="settings" size={20} className="shrink-0 text-[var(--nim-text-muted)]" />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">Application Settings</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('account_ui.application_settings')}</span>
           <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />
         </button>
         <button
@@ -99,7 +101,7 @@ export function AccountInspectorPopover({
           onClick={onOpenProjectSettings}
         >
           <MaterialSymbol icon="tune" size={20} className="shrink-0 text-[var(--nim-text-muted)]" />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">Project Settings</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('dialogs:claude_commands.project_settings')}</span>
           <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />
         </button>
 
@@ -128,8 +130,8 @@ export function AccountInspectorPopover({
             onClick={() => onManageOrganization(undefined)}
           >
             <MaterialSymbol icon="corporate_fare" size={20} className="shrink-0 text-[var(--nim-text-muted)]" />
-            <span className="min-w-0 flex-1 truncate text-sm">No organization</span>
-            <span className="shrink-0 text-[11px] text-[var(--nim-text-muted)]">Set up</span>
+            <span className="min-w-0 flex-1 truncate text-sm">{t('account_ui.no_organization')}</span>
+            <span className="shrink-0 text-[11px] text-[var(--nim-text-muted)]">{t('account_ui.set_up')}</span>
             <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />
           </button>
         )}
@@ -147,10 +149,10 @@ export function AccountInspectorPopover({
             {email ? (email[0] ?? '?').toUpperCase() : <MaterialSymbol icon="person" size={18} />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">Account</span>
-            <span className="block truncate text-sm font-medium">{email ?? 'Sign in'}</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">{t('account')}</span>
+            <span className="block truncate text-sm font-medium">{email ?? t('account_ui.sign_in')}</span>
             <span className={`block text-[11px] ${expired ? 'text-[var(--nim-warning)]' : 'text-[var(--nim-text-muted)]'}`}>
-              {email ? (expired ? 'Session expired — reconnect' : 'Manage account & sign-in') : 'Sign in to sync and collaborate'}
+              {email ? (expired ? t('account_ui.expired_reconnect') : t('account_ui.manage_sign_in')) : t('account_ui.sign_in_sync')}
             </span>
           </span>
           <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />

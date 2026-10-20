@@ -16,6 +16,7 @@ import { autoMatchTeamForWorkspace } from '../services/TeamService';
 import { initializeTrackerSync } from '../services/TrackerSyncManager';
 import { updateTrackerSchemaWorkspace } from '../services/TrackerSchemaService';
 import { getDialogDefaultPath, rememberDialogSelection } from '../utils/dialogPaths';
+import { t } from '../i18n';
 
 let workspaceManagerWindow: BrowserWindow | null = null;
 
@@ -88,7 +89,7 @@ export function createWorkspaceManagerWindow() {
     height: 700,
     minWidth: 900,
     minHeight: 600,
-    title: 'Project Manager - Nimbalyst',
+    title: t('project:workspace.window_title'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -158,10 +159,10 @@ export function createWorkspaceManagerWindow() {
     console.warn('[WorkspaceManager] Window became unresponsive');
     const choice = dialog.showMessageBoxSync(workspaceManagerWindow!, {
       type: 'warning',
-      buttons: ['Reload', 'Keep Waiting'],
+      buttons: [t('common:reload'), t('errors:native_dialogs.keep_waiting')],
       defaultId: 0,
-      message: 'Project Manager is not responding',
-      detail: 'Would you like to reload the window?'
+      message: t('errors:native_dialogs.manager_not_responding'),
+      detail: t('errors:native_dialogs.reload_window_prompt')
     });
 
     if (choice === 0 && workspaceManagerWindow && !workspaceManagerWindow.isDestroyed()) {
@@ -308,9 +309,9 @@ export function setupWorkspaceManagerHandlers() {
   safeHandle('workspace-manager:create-workspace-dialog', async () => {
     const defaultPath = getDialogDefaultPath({ suggestedName: 'Untitled Workspace' });
     const result = await dialog.showSaveDialog({
-      title: 'Create New Workspace',
+      title: t('errors:native_dialogs.create_workspace'),
       defaultPath,
-      buttonLabel: 'Create',
+      buttonLabel: t('common:create'),
       properties: ['createDirectory', 'showOverwriteConfirmation']
     });
 

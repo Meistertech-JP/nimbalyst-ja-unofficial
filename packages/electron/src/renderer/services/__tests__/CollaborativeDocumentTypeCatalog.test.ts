@@ -178,6 +178,10 @@ describe('CollaborativeDocumentTypeCatalog', () => {
     expect(catalog.resolveShareability('roadmap.diagram')).toMatchObject({
       state: 'unsupported',
       reason: 'No collaborative codec is registered for document type "diagram".',
+      reasonMetadata: {
+        code: 'no_collab_codec',
+        params: { codecId: 'diagram' },
+      },
     });
     extensions.set([]);
     expect(catalog.resolveShareability('roadmap.diagram').state).toBe('unsupported');
@@ -200,6 +204,13 @@ describe('CollaborativeDocumentTypeCatalog', () => {
     expect(result).toMatchObject({
       state: 'unsupported',
       reason: 'Conflicting custom editors claim ".diagram": com.example.a, com.example.b.',
+      reasonMetadata: {
+        code: 'conflicting_editors',
+        params: {
+          suffix: '.diagram',
+          owners: 'com.example.a, com.example.b',
+        },
+      },
     });
     catalog.dispose();
   });
@@ -280,14 +291,29 @@ describe('CollaborativeDocumentTypeCatalog', () => {
     expect(catalog.resolveShareability('x.menuonly')).toMatchObject({
       state: 'unsupported',
       reason: 'The owning extension "menu-only" does not declare a custom editor for ".menuonly".',
+      reasonMetadata: {
+        code: 'missing_custom_editor',
+        params: { extension: 'menu-only', suffix: '.menuonly' },
+      },
     });
     expect(catalog.resolveShareability('x.component')).toMatchObject({
       state: 'unsupported',
       reason: 'The owning extension "missing-component" does not provide editor component "MissingEditor".',
+      reasonMetadata: {
+        code: 'missing_editor_component',
+        params: {
+          extension: 'missing-component',
+          component: 'MissingEditor',
+        },
+      },
     });
     expect(catalog.resolveShareability('x.binding')).toMatchObject({
       state: 'unsupported',
       reason: 'The owning extension "missing-binding" does not declare a collaborative editor binding for ".binding".',
+      reasonMetadata: {
+        code: 'missing_collab_binding',
+        params: { extension: 'missing-binding', suffix: '.binding' },
+      },
     });
     expect(catalog.resolveShareability('x.codec')).toMatchObject({
       state: 'unsupported',

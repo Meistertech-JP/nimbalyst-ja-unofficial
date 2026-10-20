@@ -18,6 +18,7 @@
 import log from 'electron-log/main';
 import { BrowserWindow, Notification } from 'electron';
 import { findWindowByWorkspace } from '../window/WindowManager';
+import { t } from '../i18n';
 import {
   type SessionWakeup,
   type SessionWakeupsStore,
@@ -274,10 +275,10 @@ export class SessionWakeupScheduler {
 function notifyWakeupFired(row: SessionWakeup): void {
   if (!Notification.isSupported()) return;
   try {
-    const title = 'Session resumed';
+    const title = t('errors:notifications.session_resumed');
     const body = row.reason
       ? `${row.reason}`
-      : 'A scheduled wakeup has fired.';
+      : t('errors:notifications.wakeup_fired');
     const notification = new Notification({ title, body, silent: false });
     notification.on('failed', (_event, error) => {
       logger.warn('Wakeup notification failed', {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface HistoricalGraphProps {
@@ -14,6 +15,7 @@ interface TimeSeriesDataPoint {
 }
 
 export const HistoricalGraph: React.FC<HistoricalGraphProps> = ({ workspaceId }) => {
+  const { t, i18n } = useTranslation(['common']);
   const [data, setData] = useState<TimeSeriesDataPoint[]>([]);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [loading, setLoading] = useState(true);
@@ -49,12 +51,12 @@ export const HistoricalGraph: React.FC<HistoricalGraphProps> = ({ workspaceId })
   }, [timeRange, workspaceId]);
 
   if (loading) {
-    return <div className="historical-graph-loading flex items-center justify-center min-h-[400px] text-nim-muted text-base">Loading...</div>;
+    return <div className="historical-graph-loading flex items-center justify-center min-h-[400px] text-nim-muted text-base">{t('common:usage_report.loading')}</div>;
   }
 
   const chartData = data.map((point) => ({
     // Use UTC date formatting since timestamps are truncated to UTC midnight
-    date: new Date(point.timestamp).toLocaleDateString(undefined, { timeZone: 'UTC' }),
+    date: new Date(point.timestamp).toLocaleDateString(i18n.resolvedLanguage, { timeZone: 'UTC' }),
     'Input Tokens': point.inputTokens,
     'Output Tokens': point.outputTokens,
     Sessions: point.sessionCount,
@@ -63,7 +65,7 @@ export const HistoricalGraph: React.FC<HistoricalGraphProps> = ({ workspaceId })
   return (
     <div className="historical-graph flex flex-col gap-6">
       <div className="historical-graph-controls flex justify-between items-center">
-        <h3 className="m-0 text-lg font-semibold text-nim">Token Usage Over Time</h3>
+        <h3 className="m-0 text-lg font-semibold text-nim">{t('common:usage_report.token_usage_time')}</h3>
         <div className="time-range-selector flex gap-1">
           {(['week', 'month', 'quarter', 'year'] as const).map((range) => (
             <button
@@ -75,7 +77,7 @@ export const HistoricalGraph: React.FC<HistoricalGraphProps> = ({ workspaceId })
               }`}
               onClick={() => setTimeRange(range)}
             >
-              {range.charAt(0).toUpperCase() + range.slice(1)}
+              {t(`common:usage_report.${range}`)}
             </button>
           ))}
         </div>
@@ -96,12 +98,12 @@ export const HistoricalGraph: React.FC<HistoricalGraphProps> = ({ workspaceId })
               }}
             />
             <Legend />
-            <Line type="monotone" dataKey="Input Tokens" stroke="#8884d8" strokeWidth={2} />
-            <Line type="monotone" dataKey="Output Tokens" stroke="#82ca9d" strokeWidth={2} />
+            <Line type="monotone" dataKey="Input Tokens" name={t('common:usage_report.input_tokens')} stroke="#8884d8" strokeWidth={2} />
+            <Line type="monotone" dataKey="Output Tokens" name={t('common:usage_report.output_tokens')} stroke="#82ca9d" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
       ) : (
-        <div className="no-data flex items-center justify-center min-h-[400px] text-nim-muted text-base">No data available for this time range</div>
+        <div className="no-data flex items-center justify-center min-h-[400px] text-nim-muted text-base">{t('common:usage_report.no_range_data')}</div>
       )}
     </div>
   );

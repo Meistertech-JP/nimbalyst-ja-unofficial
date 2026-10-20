@@ -2,6 +2,7 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
 
 import { SecurityEncryptionSection } from '../H2EncryptionMigration';
 
@@ -28,7 +29,25 @@ describe('organization encryption status', () => {
     };
   });
 
-  afterEach(() => cleanup());
+  afterEach(async () => {
+    cleanup();
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes document finalization progress without offering a manual migration', async () => {
+    await i18next.changeLanguage('ja');
+    (window as any).electronAPI.team.getEncryptionMigrationStatus.mockResolvedValue({
+      success: true,
+      migration: { status: 'migrating', startedAt: '2026-07-13T12:00:00.000Z', phase: 'documents', documentsCompleted: 2, documentsTotal: 5 },
+    });
+
+    render(<SecurityEncryptionSection orgId="org-1" isAdmin />);
+
+    expect(await screen.findByText('共有ドキュメントの処理を完了中（2/5）')).toBeTruthy();
+    expect(screen.getByText('Nimbalystによる暗号化')).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect((window as any).electronAPI.team.getKeyCustodyStatus).toHaveBeenCalledWith('org-1');
+  });
 
   it('is status-only while a forced legacy migration runs silently', async () => {
     render(<SecurityEncryptionSection orgId="org-1" workspacePath="/workspace" isAdmin />);

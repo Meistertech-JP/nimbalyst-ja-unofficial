@@ -33,6 +33,7 @@ import {
 import { $isMockupNode } from './MockupNode';
 import { useDocumentPath } from '../../DocumentPathContext';
 import { localAssetUrl } from '../../utils/localAssetUrl';
+import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -330,6 +331,7 @@ export default function MockupComponent({
   nodeKey: NodeKey;
   resizable: boolean;
 }): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const imageRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isSelected, setSelected, clearSelection] =
@@ -474,13 +476,13 @@ export default function MockupComponent({
       >
         <div className="mockup-placeholder">
           <span className="mockup-spinner" />
-          Generating screenshot...
+          {t('aichat:visual.mockup_generating', 'Generating screenshot...')}
         </div>
         {showEditButton && (
           <button
             className="mockup-edit-button"
             onClick={handleEditClick}
-            title="Edit mockup"
+            title={t('aichat:visual.mockup_edit_title', 'Edit mockup')}
           >
             <svg
               width="16"
@@ -495,7 +497,7 @@ export default function MockupComponent({
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
-            Edit
+            {t('aichat:visual.mockup_edit', 'Edit')}
           </button>
         )}
       </div>
@@ -513,8 +515,8 @@ export default function MockupComponent({
         {isLoadError ? (
           <div className="mockup-error">
             <span className="mockup-error-icon">!</span>
-            <span className="mockup-error-text">Screenshot not found</span>
-            <span className="mockup-error-hint">Click Edit to open the mockup</span>
+            <span className="mockup-error-text">{t('aichat:visual.mockup_not_found', 'Screenshot not found')}</span>
+            <span className="mockup-error-hint">{t('aichat:visual.mockup_edit_hint', 'Click Edit to open the mockup')}</span>
           </div>
         ) : (
           <img
@@ -535,7 +537,7 @@ export default function MockupComponent({
           <button
             className="mockup-edit-button"
             onClick={handleEditClick}
-            title="Edit mockup"
+            title={t('aichat:visual.mockup_edit_title', 'Edit mockup')}
           >
             <svg
               width="16"
@@ -550,7 +552,7 @@ export default function MockupComponent({
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
-            Edit
+            {t('aichat:visual.mockup_edit', 'Edit')}
           </button>
         )}
 

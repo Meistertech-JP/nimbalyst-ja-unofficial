@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import {
   isClauseComplete,
@@ -32,6 +33,7 @@ export function TrackerActiveFilterPills({
   onManage,
   onRemove,
 }: TrackerActiveFilterPillsProps): JSX.Element | null {
+  const { t } = useTranslation(['tracker']);
   const activeClauses = (filters?.clauses ?? [])
     .map((clause, clauseIndex) => ({ clause, clauseIndex }))
     .filter(({ clause }) => isClauseComplete(clause));
@@ -47,7 +49,7 @@ export function TrackerActiveFilterPills({
         const value = UNARY_OPS.has(clause.op)
           ? ''
           : clause.op === 'in-last' || clause.op === 'not-in-last'
-            ? `${optionLabel(field, clause.value)} days`
+            ? t('tracker:filters.days', { value: optionLabel(field, clause.value) })
             : optionLabel(field, clause.value);
         return (
           <div
@@ -59,17 +61,19 @@ export function TrackerActiveFilterPills({
               type="button"
               className="flex h-full items-center gap-1.5 px-2 hover:bg-nim-tertiary hover:text-nim"
               onClick={onManage}
-              title="Manage filters"
+              title={t('tracker:filters.manage')}
             >
               <span className="font-medium text-nim">{field?.label ?? clause.field}</span>
-              <span className="text-nim-faint">{OP_LABELS[clause.op]}</span>
+              <span className="text-nim-faint">
+                {t(`tracker:filters.operators.${clause.op}`, { defaultValue: OP_LABELS[clause.op] })}
+              </span>
               {value && <span className="max-w-36 truncate">{value}</span>}
             </button>
             <button
               type="button"
               className="inline-flex h-full w-6 items-center justify-center border-l border-nim text-nim-faint hover:bg-nim-tertiary hover:text-nim"
               onClick={() => onRemove(clauseIndex)}
-              aria-label={`Remove ${field?.label ?? clause.field} filter`}
+              aria-label={t('tracker:filters.remove', { field: field?.label ?? clause.field })}
             >
               <MaterialSymbol icon="close" size={12} />
             </button>

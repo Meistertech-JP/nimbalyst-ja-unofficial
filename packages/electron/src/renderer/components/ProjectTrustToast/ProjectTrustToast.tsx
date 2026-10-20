@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import { permissionsChangedVersionAtom } from '../../store/atoms/permissions';
 import {
   DEFAULT_PROJECT_TRUST_CHOICE,
-  PROJECT_TRUST_CHOICE_DESCRIPTIONS,
-  PROJECT_TRUST_CHOICE_LABELS,
   getProjectTrustChoice,
+  getProjectTrustChoiceDescription,
+  getProjectTrustChoiceLabel,
   persistProjectTrustChoice,
   type ProjectTrustChoice,
 } from './projectTrustChoices';
@@ -37,6 +38,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
   forceShow = false,
   onDismiss,
 }) => {
+  const { t } = useTranslation(['project']);
   const posthog = usePostHog();
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +51,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
   const permissionChangeTimeoutRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
-  const projectName = workspacePath?.split(/[\\/]/).pop() || 'this project';
+  const projectName = workspacePath?.split(/[\\/]/).pop() || t('project:trust_toast.this_project');
 
   const releasePermissionChangeSuppression = useCallback(() => {
     if (permissionChangeTimeoutRef.current) {
@@ -238,7 +240,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
     if (!workspacePath || isSubmitting) return;
 
     const confirmed = window.confirm(
-      `Stop trusting "${projectName}"?\n\nThe AI agent won't run any tools in this workspace until you trust it again.`
+      t('project:trust_toast.confirm_revoke', { project: projectName })
     );
     if (!confirmed) {
       return;
@@ -269,6 +271,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
     workspacePath,
     isSubmitting,
     projectName,
+    t,
     suppressPermissionChangeEvents,
     onDismiss,
     posthog,
@@ -329,14 +332,13 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
               id="project-trust-toast-title"
               className="project-trust-toast-title m-0 mb-[3px] text-[17px] font-semibold text-nim"
             >
-              Set up agents for "{projectName}"
+              {t('project:trust_toast.setup_title', { project: projectName })}
             </h2>
             <p
               id="project-trust-toast-subtitle"
               className="project-trust-toast-subtitle m-0 text-[13px] leading-[1.45] text-nim-muted"
             >
-              Choose how much your coding agents can do on their own. You can
-              change this anytime.
+              {t('project:trust_toast.setup_subtitle')}
             </p>
           </div>
         </div>
@@ -400,11 +402,11 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
                           : 'text-sm font-semibold text-nim'
                       }`}
                     >
-                      {PROJECT_TRUST_CHOICE_LABELS[choice]}
+                      {getProjectTrustChoiceLabel(choice, t)}
                     </span>
                     {choice === 'agent-verified' && (
                       <span className="project-trust-toast-option-badge rounded-full bg-[color-mix(in_srgb,var(--nim-success)_15%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold tracking-[0.02em] text-nim-success">
-                        Recommended
+                        {t('project:trust_toast.recommended')}
                       </span>
                     )}
                   </span>
@@ -419,18 +421,18 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
                   >
                     {choice === 'agent-verified' ? (
                       <>
-                        Works without interrupting you;{' '}
+                        {t('project:trust_toast.agent_verified_before')}{' '}
                         <strong className="font-medium text-nim">
-                          risky actions
+                          {t('project:trust_toast.agent_verified_risky')}
                         </strong>{' '}
-                        like deploys and destructive commands{' '}
+                        {t('project:trust_toast.agent_verified_middle')}{' '}
                         <strong className="font-medium text-nim">
-                          pause for your OK
+                          {t('project:trust_toast.agent_verified_pause')}
                         </strong>
-                        .
+                        {t('project:trust_toast.agent_verified_after')}
                       </>
                     ) : (
-                      PROJECT_TRUST_CHOICE_DESCRIPTIONS[choice]
+                      getProjectTrustChoiceDescription(choice, t)
                     )}
                   </span>
                 </span>
@@ -470,17 +472,16 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
             />
           </svg>
           <span>
-            Agents can run this project's code. If you don't recognize where
-            this project came from,{' '}
+            {t('project:trust_toast.footnote_before')}{' '}
             <button
               type="button"
               className="project-trust-toast-revoke-link cursor-pointer border-none bg-transparent p-0 font-inherit text-nim-muted underline disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleDontTrust}
               disabled={isSubmitting}
             >
-              don't trust it
+              {t('project:trust_toast.dont_trust_it')}
             </button>
-            .
+            {t('project:trust_toast.footnote_after')}
           </span>
         </div>
 
@@ -490,7 +491,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
             className="project-trust-toast-settings-link cursor-pointer rounded border-none bg-transparent px-0.5 py-1 text-[13px] text-nim-faint transition-colors duration-150 hover:underline"
             onClick={handleOpenSettings}
           >
-            Advanced settings
+            {t('project:trust_toast.advanced_settings')}
           </button>
           <div className="project-trust-toast-actions flex gap-2">
             <button
@@ -499,7 +500,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
               onClick={handleDismiss}
               disabled={isSubmitting}
             >
-              Not now
+              {t('project:trust_toast.not_now')}
             </button>
             <button
               type="button"
@@ -507,7 +508,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
               onClick={handleSave}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Saving...' : 'Start working'}
+              {isSubmitting ? t('project:trust_toast.saving') : t('project:trust_toast.start_working')}
             </button>
           </div>
         </div>

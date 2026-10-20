@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { rendererI18n } from '../../i18n';
 import {
   FloatingPortal,
   autoUpdate,
@@ -80,8 +82,8 @@ export async function launchSessionPrompt({
     if (!ensured.success) {
       throw new Error(
         ensured.claudeNotInstalled
-          ? 'Claude Code CLI is not installed.'
-          : ensured.error || 'Failed to start the Claude Code CLI session.',
+          ? rendererI18n.t('aichat:launch.cli_not_installed', { defaultValue: 'Claude Code CLI is not installed.' })
+          : ensured.error || rendererI18n.t('aichat:launch.cli_start_failed', { defaultValue: 'Failed to start the Claude Code CLI session.' }),
       );
     }
     const result = await window.electronAPI.terminal.submitClaudeCliPrompt({
@@ -90,7 +92,7 @@ export async function launchSessionPrompt({
       prompt,
       attachments,
     });
-    if (!result.success) throw new Error('Failed to submit the Claude Code CLI prompt.');
+    if (!result.success) throw new Error(rendererI18n.t('aichat:launch.cli_submit_failed', { defaultValue: 'Failed to submit the Claude Code CLI prompt.' }));
     return;
   }
 
@@ -106,11 +108,12 @@ export async function launchSessionPrompt({
     workspacePath,
   );
   if (result?.success === false) {
-    throw new Error(result.error || 'Failed to start the session.');
+    throw new Error(result.error || rendererI18n.t('aichat:launch.start_failed', { defaultValue: 'Failed to start the session.' }));
   }
 }
 
 export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspacePath }) => {
+  const { t } = useTranslation('aichat');
   const requestVersion = useAtomValue(sessionLaunchPopupRequestAtom);
   const requestVersionRef = useRef(requestVersion);
   const workspaceKey = workspacePath ?? '';
@@ -290,7 +293,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
       launchMode = 'planning';
       prompt = prompt.slice(planCommand[0].length).trim();
       if (!prompt) {
-        setError('Add instructions after /plan before starting the session.');
+        setError(t('launch.plan_instructions'));
         return;
       }
     }
@@ -312,7 +315,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
             thinkingMode,
           },
         }) ?? null;
-        if (!sessionId) throw new Error('Failed to create the session.');
+        if (!sessionId) throw new Error(t('launch.create_failed'));
         setCreatedSessionId(sessionId);
       }
 
@@ -333,13 +336,13 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
       void backgroundLaunch.catch((backgroundError) => {
         console.error('[SessionLaunchPopup] Background session failed:', backgroundError);
         errorNotificationService.showError(
-          'Background session failed',
-          backgroundError instanceof Error ? backgroundError.message : 'Failed to start the session.',
+          t('launch.background_failed'),
+          backgroundError instanceof Error ? backgroundError.message : t('launch.start_failed'),
         );
       });
     } catch (launchError) {
       console.error('[SessionLaunchPopup] Failed to launch session:', launchError);
-      setError(launchError instanceof Error ? launchError.message : 'Failed to start the session.');
+      setError(launchError instanceof Error ? launchError.message : t('launch.start_failed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -354,6 +357,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
     sessionRegistry,
     setDraft,
     thinkingMode,
+    t,
     workspacePath,
   ]);
 
@@ -373,7 +377,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
           width: 'min(720px, calc(100vw - 32px))',
         }}
         className="session-launch-popup z-[901] overflow-hidden rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg)] shadow-2xl"
-        aria-label="Launch new session"
+        aria-label={t('launch.aria')}
         data-drag-offset-x={dragOffset.x}
         data-drag-offset-y={dragOffset.y}
         {...getFloatingProps()}
@@ -386,11 +390,11 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
           onPointerUp={finishTitleDrag}
           onPointerCancel={finishTitleDrag}
         >
-          <span>Launch New Session</span>
+          <span>{t('launch.title')}</span>
           <button
             type="button"
             className="flex h-6 w-6 items-center justify-center rounded text-[var(--nim-text-muted)] transition-colors hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--nim-border-focus)]"
-            aria-label="Close session launch popup"
+            aria-label={t('launch.close')}
             onClick={() => setOpen(false)}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -405,7 +409,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
           onSend={() => void handleSend()}
           disabled={isSubmitting}
           isLoading={isSubmitting}
-          placeholder="Ask or instruct..."
+          placeholder={t('launch.placeholder')}
           workspacePath={workspacePath}
           sessionId={draft.pendingSessionId ?? undefined}
           attachments={draft.attachments}
@@ -417,7 +421,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
           currentModel={selectedModel}
           onModelChange={createdSessionId ? undefined : handleModelChange}
           readOnlyModel={Boolean(createdSessionId)}
-          readOnlyModelTitle="This session was already created; retry to submit the prompt"
+          readOnlyModelTitle={t('launch.created_retry')}
           sessionHasMessages={false}
           currentProvider={provider}
           effortLevel={effortLevel}

@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useFloating, offset, flip, shift, FloatingPortal, size } from '@floating-ui/react';
 import {MaterialSymbol} from "../../../ui";
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 export interface SelectOption {
   value: string;
@@ -29,6 +30,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   placeholder = 'Select...',
   required = false,
 }) => {
+  const { t } = useRuntimeTranslation();
+  const resolvedPlaceholder = placeholder === undefined
+    ? t('tracker:filters.choose', 'Choose…')
+    : placeholder;
   const [isOpen, setIsOpen] = useState(false);
 
   const { refs, floatingStyles } = useFloating({
@@ -86,13 +91,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           // so the value stays visible and editable instead of silently vanishing.
           <span
             className="custom-select-value custom-select-value-unknown flex items-center gap-1.5 flex-1 text-[var(--nim-text-secondary)]"
-            title={`Unrecognized option: ${value}`}
+            title={t('tracker:reference.unrecognized_option', `Unrecognized option: ${value}`, { value })}
           >
             <MaterialSymbol icon="help_outline" size={16} />
             <span>{String(value)}</span>
           </span>
         ) : (
-          <span className="custom-select-placeholder text-[var(--nim-text-faint)]">{placeholder}</span>
+          <span className="custom-select-placeholder text-[var(--nim-text-faint)]">{resolvedPlaceholder}</span>
         )}
         <MaterialSymbol icon={isOpen ? 'expand_less' : 'expand_more'} size={16} />
       </button>
@@ -111,7 +116,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 className="custom-select-option flex items-center gap-1.5 w-full py-2 px-2.5 border-none cursor-pointer text-[13px] text-[var(--nim-text)] text-left transition-colors duration-100 hover:bg-[var(--nim-bg-hover)]"
                 onClick={() => handleSelect('')}
               >
-                <span className="custom-select-option-label flex-1">None</span>
+                <span className="custom-select-option-label flex-1">{t('tracker:groups.none', 'None')}</span>
               </button>
             )}
             {options.map((option) => (

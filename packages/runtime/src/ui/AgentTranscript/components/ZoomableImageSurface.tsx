@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { copyImageToClipboard } from '../../../utils/clipboard';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -38,6 +39,7 @@ export const ZoomableImageSurface: React.FC<ZoomableImageSurfaceProps> = ({
   onImageLoad,
   onImageError,
 }) => {
+  const { t } = useRuntimeTranslation();
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -195,7 +197,7 @@ export const ZoomableImageSurface: React.FC<ZoomableImageSurfaceProps> = ({
               className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               onClick={() => setZoomMode('fit')}
             >
-              Fit
+              {t('aichat:media.fit', 'Fit')}
             </button>
             <button
               type="button"
@@ -232,12 +234,12 @@ export const ZoomableImageSurface: React.FC<ZoomableImageSurfaceProps> = ({
               disabled={copyState === 'copying'}
             >
               {copyState === 'copying'
-                ? 'Copying...'
+                ? t('aichat:media.copying', 'Copying...')
                 : copyState === 'copied'
-                  ? 'Copied'
+                  ? t('dialogs:share.copied', 'Copied')
                   : copyState === 'error'
-                    ? 'Copy failed'
-                    : 'Copy image'}
+                    ? t('files:operations.copy_failed', 'Copy failed')
+                    : t('aichat:media.copy_image', 'Copy image')}
             </button>
           </div>
         </div>

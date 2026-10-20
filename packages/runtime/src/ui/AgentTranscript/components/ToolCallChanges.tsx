@@ -16,6 +16,7 @@ import type { ToolCallDiffResult } from './CustomToolWidgets';
 import { DiffViewer } from './DiffViewer';
 import { NewFilePreview } from './NewFilePreview';
 import { toProjectRelative } from '../utils/pathResolver';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../RuntimeTranslation';
 
 interface ToolCallChangesProps {
   diffs: ToolCallDiffResult[] | null | undefined;
@@ -32,29 +33,29 @@ interface ToolCallChangesProps {
   canEmbedFile?: (filePath: string) => boolean;
 }
 
-function getOperationBadge(operation: string): { label: string; colorClass: string; bgClass: string } {
+function getOperationBadge(operation: string, t: RuntimeTranslate): { label: string; colorClass: string; bgClass: string } {
   switch (operation) {
     case 'create':
       return {
-        label: 'Created',
+        label: t('files:edits.created', 'Created'),
         colorClass: 'text-nim-success',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-success)_15%,transparent)]',
       };
     case 'delete':
       return {
-        label: 'Deleted',
+        label: t('files:edits.deleted', 'Deleted'),
         colorClass: 'text-nim-error',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]',
       };
     case 'bash':
       return {
-        label: 'Shell',
+        label: t('aichat:edit_preview.shell', 'Shell'),
         colorClass: 'text-nim-faint',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-text-faint)_15%,transparent)]',
       };
     default:
       return {
-        label: 'Edited',
+        label: t('aichat:file_gutter.edited', 'Edited'),
         colorClass: 'text-nim-primary',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-primary)_15%,transparent)]',
       };
@@ -69,6 +70,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
   renderEmbeddedFile,
   canEmbedFile,
 }) => {
+  const { t } = useRuntimeTranslation();
   const [changesExpanded, setChangesExpanded] = useState(false);
 
   // Don't render anything if not expanded or no diffs
@@ -81,7 +83,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
   const fileCount = diffs.length;
   const primaryFilePath = diffs[0]?.filePath;
   const primarySupportsEmbeddedPreview = !!canEmbedFile?.(diffs[0]?.filePath);
-  const summaryParts = [`${fileCount} file${fileCount !== 1 ? 's' : ''} changed`];
+  const summaryParts = [t('aichat:edit_preview.files_changed', fileCount === 1 ? '{{count}} file changed' : '{{count}} files changed', { count: fileCount })];
   if (totalAdded > 0) summaryParts.push(`+${totalAdded}`);
   if (totalRemoved > 0) summaryParts.push(`-${totalRemoved}`);
   const summary = summaryParts.join(' ');
@@ -104,7 +106,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
             </svg>
           </div>
           <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">
-            File Changes
+            {t('aichat:file_change.title', 'File Changes')}
           </span>
           <span className="text-[0.65rem] text-nim-faint font-sans">
             ({summary})
@@ -123,7 +125,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
         <div className="flex flex-col">
           {diffs.map((diff, idx) => {
             const relPath = toProjectRelative(diff.filePath, workspacePath);
-            const badge = getOperationBadge(diff.operation);
+            const badge = getOperationBadge(diff.operation, t);
             const hasDiffContent = diff.diffs.length > 0;
             const hasNewContent = !hasDiffContent && !!diff.content;
             const isSecondaryEmbeddableFile =
@@ -150,7 +152,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
                     <button
                       className="text-[0.75rem] text-nim-muted flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap hover:text-nim-primary hover:underline cursor-pointer bg-transparent border-none p-0 m-0 font-[inherit] text-left"
                       onClick={() => onOpenFile(diff.filePath)}
-                      title={`Open ${relPath}`}
+                      title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: relPath })}
                       type="button"
                     >
                       <code>{relPath}</code>

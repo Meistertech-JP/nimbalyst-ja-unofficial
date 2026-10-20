@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { ModelIdentifier } from '@nimbalyst/runtime/ai/server/types';
@@ -82,6 +83,7 @@ interface GitOperationsPanelProps {
 
 export const GitOperationsPanel: React.FC<GitOperationsPanelProps> = React.memo(
   ({ workspacePath, workstreamId, sessionId, editedFiles, worktreeId, worktreePath, onWorktreeArchived, onFileClick }) => {
+    const { t, i18n } = useTranslation(['git', 'dialogs']);
     // Use useAtomValue for read-only, useSetAtom for write-only to minimize re-renders
     const gitStatus = useAtomValue(gitStatusAtom);
     const setGitStatus = useSetAtom(gitStatusAtom);
@@ -238,7 +240,7 @@ export const GitOperationsPanel: React.FC<GitOperationsPanelProps> = React.memo(
 
       if (!sessionResult?.id) {
         console.error('[GitOperationsPanel] Failed to create AI session: no session ID returned');
-        alert('Failed to create AI session. Please try again.');
+        alert(t('git:ai_session_create_failed'));
         return;
       }
 
@@ -249,7 +251,7 @@ export const GitOperationsPanel: React.FC<GitOperationsPanelProps> = React.memo(
 
       if (!sessionData) {
         console.error('[GitOperationsPanel] Failed to load AI session:', newSessionId);
-        alert('Failed to load AI session. Please check the session list.');
+        alert(t('git:ai_session_load_failed'));
         return;
       }
 
@@ -262,7 +264,7 @@ export const GitOperationsPanel: React.FC<GitOperationsPanelProps> = React.memo(
           draftInput: draftMessage
         }
       }));
-    }, [workspacePath, worktreeId, defaultModel]);
+    }, [workspacePath, worktreeId, defaultModel, t]);
 
     // Keep selected agent model in sync with default
     useEffect(() => {
@@ -1253,7 +1255,7 @@ Please proceed with this strategy.`;
           );
 
           if (result?.success && result.existsElsewhere) {
-            warningToShow = 'Warning: Some of these commits exist on other branches. Squashing will rewrite history and may cause issues when merging.';
+            warningToShow = t('git:squash_shared_warning');
           }
         } catch (err) {
           console.error('Failed to check commit existence:', err);
@@ -1271,7 +1273,7 @@ Please proceed with this strategy.`;
       // Proceed with squash
       setShowSquashModal(false);
       await handleWorktreeSquash(commitsToSquash, message);
-    }, [selectedCommits, squashWarning, worktreePath, handleWorktreeSquash]);
+    }, [selectedCommits, squashWarning, worktreePath, handleWorktreeSquash, t]);
 
     // Calculate which commits can be selected (for disabling checkboxes)
     const getSelectableCommits = useCallback((): Set<string> => {
@@ -1372,7 +1374,7 @@ Please proceed with this strategy.`;
               <div className="flex flex-col gap-2 pt-3">
                 {/* Commit mode toggle and header */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-[var(--nim-text)]">Commit</span>
+                  <span className="text-[11px] font-semibold text-[var(--nim-text)]">{t('git:commit')}</span>
                   <HelpTooltip testId="git-commit-mode-toggle">
                     <div className="flex rounded-[3px] overflow-hidden border border-[var(--nim-border)]" data-testid="git-commit-mode-toggle">
                       <button
@@ -1380,18 +1382,18 @@ Please proceed with this strategy.`;
                           commitMode === 'manual' ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]' : 'hover:bg-[var(--nim-bg-tertiary)] hover:opacity-60'
                         }`}
                         onClick={() => setCommitMode('manual')}
-                        aria-label="Manual commit message"
+                        aria-label={t('git:manual_commit_message')}
                       >
-                        Manual
+                        {t('git:manual')}
                       </button>
                       <button
                         className={`px-1.5 py-0.5 border-none bg-transparent text-[var(--nim-text-muted)] text-[10px] font-medium cursor-pointer transition-all duration-150 ${
                           commitMode === 'smart' ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]' : 'hover:bg-[var(--nim-bg-tertiary)] hover:opacity-60'
                         }`}
                         onClick={() => setCommitMode('smart')}
-                        aria-label="AI-assisted commit"
+                        aria-label={t('git:ai_assisted_commit')}
                       >
-                        Smart
+                        {t('git:smart')}
                       </button>
                     </div>
                   </HelpTooltip>
@@ -1404,7 +1406,7 @@ Please proceed with this strategy.`;
                       className="w-full p-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[11px] font-[var(--nim-font-mono)] resize-y focus:outline-none focus:border-[var(--nim-primary)]"
                       value={commitMessage}
                       onChange={(e) => setCommitMessage(e.target.value)}
-                      placeholder="Enter commit message..."
+                      placeholder={t('git:commit_placeholder')}
                       rows={3}
                     />
                     <button
@@ -1412,7 +1414,7 @@ Please proceed with this strategy.`;
                       onClick={handleManualCommit}
                       disabled={isCommitting || !commitMessage?.trim() || stagedFiles.size === 0}
                     >
-                      {isCommitting ? 'Committing...' : `Commit (${stagedFiles.size})`}
+                      {isCommitting ? t('git:committing') : t('git:commit_count', { count: stagedFiles.size })}
                     </button>
                   </div>
                 )}
@@ -1421,7 +1423,7 @@ Please proceed with this strategy.`;
                 {commitMode === 'smart' && (
                   <div className="flex flex-col gap-2" data-testid="git-operations-smart-mode">
                     <p className="text-xs text-[var(--nim-text-muted)] m-0 leading-normal">
-                      Let AI analyze your changes and propose a commit message.
+                      {t('git:smart_description')}
                     </p>
                     <HelpTooltip testId="git-operations-commit-with-ai-button">
                       <button
@@ -1431,7 +1433,7 @@ Please proceed with this strategy.`;
                         data-testid="git-operations-commit-with-ai-button"
                       >
                         <MaterialSymbol icon="auto_awesome" size={16} />
-                        Commit with AI
+                        {t('git:commit_with_ai')}
                       </button>
                     </HelpTooltip>
                   </div>
@@ -1444,7 +1446,7 @@ Please proceed with this strategy.`;
               <div className="flex flex-col gap-3 pt-3">
                 {/* Section header with refresh button */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-[var(--nim-text)]">Commit & Sync</span>
+                  <span className="text-[11px] font-semibold text-[var(--nim-text)]">{t('git:commit_sync')}</span>
                   <div className="flex items-center gap-2">
                     <HelpTooltip testId="git-commit-mode-toggle">
                       <div className="flex rounded-[3px] overflow-hidden border border-[var(--nim-border)]" data-testid="git-commit-mode-toggle">
@@ -1453,18 +1455,18 @@ Please proceed with this strategy.`;
                             worktreeCommitMode === 'manual' ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]' : 'hover:bg-[var(--nim-bg-tertiary)] hover:opacity-60'
                           }`}
                           onClick={() => setWorktreeCommitMode('manual')}
-                          aria-label="Manual commit message"
+                          aria-label={t('git:manual_commit_message')}
                         >
-                          Manual
+                          {t('git:manual')}
                         </button>
                         <button
                           className={`px-1.5 py-0.5 border-none bg-transparent text-[var(--nim-text-muted)] text-[10px] font-medium cursor-pointer transition-all duration-150 ${
                             worktreeCommitMode === 'smart' ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]' : 'hover:bg-[var(--nim-bg-tertiary)] hover:opacity-60'
                           }`}
                           onClick={() => setWorktreeCommitMode('smart')}
-                          aria-label="AI-assisted commit"
+                          aria-label={t('git:ai_assisted_commit')}
                         >
-                          Smart
+                          {t('git:smart')}
                         </button>
                       </div>
                     </HelpTooltip>
@@ -1486,10 +1488,10 @@ Please proceed with this strategy.`;
                         }
                       }}
                       className="flex items-center gap-1 px-2 py-1 text-[10px] text-[var(--nim-primary)] hover:bg-[var(--nim-bg-hover)] rounded transition-colors"
-                      title="Refresh worktree status and uncommitted files"
+                      title={t('git:refresh_worktree')}
                     >
                       <MaterialSymbol icon="refresh" size={14} />
-                      <span>Refresh</span>
+                      <span>{t('git:refresh')}</span>
                     </button>
                   </div>
                 </div>
@@ -1500,13 +1502,13 @@ Please proceed with this strategy.`;
                     {worktreeCommitsBehind > 0 && (
                       <span className="flex items-center gap-1.5 text-[var(--nim-warning)] font-medium">
                         <MaterialSymbol icon="warning" size={14} />
-                        {worktreeCommitsBehind} commit{worktreeCommitsBehind !== 1 ? 's' : ''} behind {worktreeRepoRootBranch || 'base'}
+                        {t('git:commits_behind', { count: worktreeCommitsBehind, branch: worktreeRepoRootBranch || t('git:base_branch') })}
                       </span>
                     )}
                     {worktreeIsMerged && (
                       <span className="flex items-center gap-1.5 text-[var(--nim-success)] font-medium">
                         <MaterialSymbol icon="check_circle" size={14} />
-                        Merged to {worktreeRepoRootBranch || 'base'}
+                        {t('git:merged_to', { branch: worktreeRepoRootBranch || t('git:base_branch') })}
                       </span>
                     )}
                   </div>
@@ -1517,7 +1519,7 @@ Please proceed with this strategy.`;
                   <div className="flex flex-col gap-2" data-testid="git-operations-manual-mode">
                     <textarea
                       className="w-full p-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[11px] font-[var(--nim-font-mono)] resize-y focus:outline-none focus:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
-                      placeholder="Commit message..."
+                      placeholder={t('git:commit_placeholder')}
                       value={worktreeCommitMessage}
                       onChange={(e) => setWorktreeCommitMessage(e.target.value)}
                       disabled={worktreeIsCommitting}
@@ -1530,7 +1532,7 @@ Please proceed with this strategy.`;
                 {worktreeCommitMode === 'smart' && (
                   <div className="flex flex-col gap-2" data-testid="git-operations-smart-mode">
                     <p className="text-xs text-[var(--nim-text-muted)] m-0 leading-normal">
-                      Let AI analyze your changes and propose a commit message.
+                      {t('git:smart_description')}
                     </p>
                   </div>
                 )}
@@ -1543,17 +1545,17 @@ Please proceed with this strategy.`;
                       className="w-full p-2 border-none rounded bg-[var(--nim-primary)] text-white text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleWorktreeCommit}
                       disabled={!worktreeCanCommit}
-                      title={worktreeStagedCount === 0 ? 'Stage files to commit' : !worktreeCommitMessage.trim() ? 'Enter commit message' : 'Commit staged changes'}
+                      title={worktreeStagedCount === 0 ? t('git:stage_files_to_commit') : !worktreeCommitMessage.trim() ? t('git:enter_commit_message') : t('git:commit_staged_changes')}
                     >
                       {worktreeIsCommitting ? (
                         <>
                           <MaterialSymbol icon="progress_activity" size={16} />
-                          <span>Committing...</span>
+                          <span>{t('git:committing')}</span>
                         </>
                       ) : (
                         <>
                           <MaterialSymbol icon="check" size={16} />
-                          <span>Commit ({worktreeStagedCount})</span>
+                          <span>{t('git:commit_count', { count: worktreeStagedCount })}</span>
                         </>
                       )}
                     </button>
@@ -1567,7 +1569,7 @@ Please proceed with this strategy.`;
                         data-testid="git-operations-commit-with-ai-button"
                       >
                         <MaterialSymbol icon="auto_awesome" size={16} />
-                        Commit with AI
+                        {t('git:commit_with_ai')}
                       </button>
                     </HelpTooltip>
                   )}
@@ -1582,21 +1584,21 @@ Please proceed with this strategy.`;
                     disabled={!worktreeCanRebase}
                     title={
                       worktreeCommitsBehind === 0
-                        ? 'Already up to date with base branch'
+                        ? t('git:rebase_up_to_date')
                         : worktreeHasUncommittedChanges
-                          ? `Bring in ${worktreeCommitsBehind} commit${worktreeCommitsBehind === 1 ? '' : 's'} from ${worktreeRepoRootBranch || 'base branch'} (uncommitted changes will be auto-stashed)`
-                          : `Bring in ${worktreeCommitsBehind} commit${worktreeCommitsBehind === 1 ? '' : 's'} from ${worktreeRepoRootBranch || 'base branch'}`
+                          ? t('git:rebase_bring_commits_stashed', { count: worktreeCommitsBehind, branch: worktreeRepoRootBranch || t('git:base_branch') })
+                          : t('git:rebase_bring_commits', { count: worktreeCommitsBehind, branch: worktreeRepoRootBranch || t('git:base_branch') })
                     }
                   >
                     {worktreeIsRebasing ? (
                       <>
                         <MaterialSymbol icon="progress_activity" size={16} />
-                        <span>Rebasing...</span>
+                        <span>{t('git:rebasing')}</span>
                       </>
                     ) : (
                       <>
                         <MaterialSymbol icon="sync" size={16} />
-                        <span>Rebase{worktreeCommitsBehind > 0 ? ` (${worktreeCommitsBehind})` : ''}</span>
+                        <span>{worktreeCommitsBehind > 0 ? t('git:rebase_count', { count: worktreeCommitsBehind }) : t('git:rebase')}</span>
                       </>
                     )}
                   </button>
@@ -1607,23 +1609,23 @@ Please proceed with this strategy.`;
                     disabled={!worktreeCanMerge}
                     title={
                       worktreeIsMerged
-                        ? 'Already merged to base branch'
+                        ? t('git:already_merged')
                         : worktreeCommitsBehind > 0
-                          ? `Rebase first to bring in ${worktreeCommitsBehind} commit${worktreeCommitsBehind === 1 ? '' : 's'} from ${worktreeRepoRootBranch || 'base branch'}`
+                          ? t('git:rebase_first', { count: worktreeCommitsBehind, branch: worktreeRepoRootBranch || t('git:base_branch') })
                           : !worktreeHasCommits
-                            ? 'No commits to merge'
-                            : `Merge commits into ${worktreeRepoRootBranch || 'base branch'}`
+                            ? t('git:no_commits_to_merge')
+                            : t('git:merge_into', { branch: worktreeRepoRootBranch || t('git:base_branch') })
                     }
                   >
                     {worktreeIsMerging ? (
                       <>
                         <MaterialSymbol icon="progress_activity" size={16} />
-                        <span>Merging...</span>
+                        <span>{t('git:merging')}</span>
                       </>
                     ) : (
                       <>
                         <MaterialSymbol icon="merge" size={16} />
-                        <span>Merge to {worktreeRepoRootBranch || 'base'}</span>
+                        <span>{t('git:merge_to', { branch: worktreeRepoRootBranch || t('git:base_branch') })}</span>
                       </>
                     )}
                   </button>
@@ -1634,10 +1636,10 @@ Please proceed with this strategy.`;
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between text-[11px] font-semibold text-[var(--nim-text)]">
                       <span>
-                        Commits{' '}
+                        {t('git:commits')}{' '}
                         {worktreeUniqueCommitsAhead !== undefined && worktreeUniqueCommitsAhead !== worktreeCommits.length ? (
-                          <span title={`${worktreeUniqueCommitsAhead} unique commit${worktreeUniqueCommitsAhead !== 1 ? 's' : ''}, ${worktreeCommits.length - worktreeUniqueCommitsAhead} already on ${worktreeRepoRootBranch || 'base'}`}>
-                            ({worktreeUniqueCommitsAhead} unique / {worktreeCommits.length} total)
+                          <span title={t('git:unique_commits_title', { count: worktreeUniqueCommitsAhead, existing: worktreeCommits.length - worktreeUniqueCommitsAhead, branch: worktreeRepoRootBranch || t('git:base_branch') })}>
+                            ({t('git:unique_total', { unique: worktreeUniqueCommitsAhead, total: worktreeCommits.length })})
                           </span>
                         ) : (
                           <span>({worktreeCommits.length})</span>
@@ -1649,9 +1651,9 @@ Please proceed with this strategy.`;
                       <div className="flex items-center justify-between gap-2 p-2 bg-[var(--nim-bg-tertiary)] rounded border border-[var(--nim-border)]">
                         <div className="text-[11px] text-[var(--nim-text-muted)]">
                           {selectedCommits.size === 1 ? (
-                            <span>Select at least one more commit</span>
+                            <span>{t('git:select_more_commit')}</span>
                           ) : (
-                            <span>{selectedCommits.size} commits selected</span>
+                            <span>{t('git:commits_selected', { count: selectedCommits.size })}</span>
                           )}
                         </div>
                         <div className="flex gap-2">
@@ -1660,7 +1662,7 @@ Please proceed with this strategy.`;
                             className="bg-transparent border-none text-[var(--nim-primary)] text-[10px] font-medium cursor-pointer p-0 hover:underline"
                             onClick={handleClearSelection}
                           >
-                            Clear
+                            {t('git:clear')}
                           </button>
                           <button
                             type="button"
@@ -1668,7 +1670,7 @@ Please proceed with this strategy.`;
                             onClick={handleSquashClick}
                             disabled={selectedCommits.size < 2 || isSquashing}
                           >
-                            {isSquashing ? 'Squashing...' : `Squash ${selectedCommits.size} Commits`}
+                            {isSquashing ? t('git:squashing') : t('git:squash_commits', { count: selectedCommits.size })}
                           </button>
                         </div>
                       </div>
@@ -1684,7 +1686,7 @@ Please proceed with this strategy.`;
                             className={`flex items-center gap-2 p-2 rounded text-[11px] ${
                               isSelected ? 'bg-[var(--nim-bg-selected)] border border-[var(--nim-primary)]' : 'hover:bg-[var(--nim-bg-tertiary)]'
                             } ${isEquivalent ? 'opacity-60' : ''}`}
-                            title={isEquivalent ? `Equivalent commit exists on ${worktreeRepoRootBranch || 'base'} - will be skipped during rebase` : undefined}
+                            title={isEquivalent ? t('git:equivalent_commit', { branch: worktreeRepoRootBranch || t('git:base_branch') }) : undefined}
                           >
                             {worktreeCommits.length > 1 && (
                               <input
@@ -1693,7 +1695,7 @@ Please proceed with this strategy.`;
                                 disabled={!canSelect && !isSelected}
                                 onChange={() => handleToggleCommit(commit.hash)}
                                 className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                title={!canSelect && !isSelected ? 'Only consecutive commits can be squashed' : 'Select for squashing'}
+                                title={!canSelect && !isSelected ? t('git:only_consecutive') : t('git:select_for_squash')}
                               />
                             )}
                             <div className={`font-[var(--nim-font-mono)] text-[10px] font-semibold ${isEquivalent ? 'text-[var(--nim-text-muted)]' : 'text-[var(--nim-primary)]'}`}>
@@ -1703,7 +1705,7 @@ Please proceed with this strategy.`;
                               {commit.message}
                             </div>
                             {isEquivalent && (
-                              <span className="text-[9px] text-[var(--nim-text-faint)] whitespace-nowrap">on {worktreeRepoRootBranch || 'base'}</span>
+                              <span className="text-[9px] text-[var(--nim-text-faint)] whitespace-nowrap">{t('git:on_branch', { branch: worktreeRepoRootBranch || t('git:base_branch') })}</span>
                             )}
                           </div>
                         );
@@ -1729,7 +1731,7 @@ Please proceed with this strategy.`;
                 onClick={() => setShowHistory(!showHistory)}
                 className="git-operations-panel__btn-text bg-transparent border-none text-[var(--nim-primary)] text-[10px] font-medium cursor-pointer p-0 hover:underline"
               >
-                {showHistory ? 'Hide' : 'Show'} Recent Commits
+                {showHistory ? t('git:hide_recent') : t('git:show_recent')}
               </button>
             </div>
 
@@ -1745,7 +1747,7 @@ Please proceed with this strategy.`;
                       {commit.message}
                     </div>
                     <div className="git-operations-panel__commit-meta text-[var(--nim-text-faint)] text-[10px]">
-                      {commit.author} • {new Date(commit.date).toLocaleDateString()}
+                      {commit.author} • {new Date(commit.date).toLocaleDateString(i18n.resolvedLanguage)}
                     </div>
                   </div>
                 ))}
@@ -1833,7 +1835,7 @@ Please proceed with this strategy.`;
             worktreeName={worktreeName}
             onArchive={handleArchiveWorktree}
             onKeep={handleKeepWorktree}
-            contextMessage="Merge successful!"
+            contextMessage={t('dialogs:archive.merge_success')}
             hasUncommittedChanges={worktreeHasUncommittedChanges}
             uncommittedFileCount={worktreeChangedFiles.length}
           />

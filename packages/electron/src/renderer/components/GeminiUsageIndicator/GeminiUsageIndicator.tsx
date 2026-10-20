@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import {
   geminiUsageAtom,
@@ -17,6 +18,7 @@ import {
 } from '../../store/atoms/geminiUsageAtoms';
 import { GeminiUsagePopover } from './GeminiUsagePopover';
 import { refreshGeminiUsage } from '../../store/listeners/geminiUsageListeners';
+import { localizeUsageResetTime } from '../ClaudeUsageIndicator/usagePresentation';
 
 const RING_RADIUS = 12;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -26,6 +28,7 @@ interface GeminiUsageIndicatorProps {
 }
 
 export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ className }) => {
+  const { t } = useTranslation(['common']);
   const usage = useAtomValue(geminiUsageAtom);
   const isAvailable = useAtomValue(geminiUsageAvailableAtom);
   const sessionColor = useAtomValue(geminiUsageSessionColorAtom);
@@ -61,14 +64,14 @@ export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ clas
   const strokeColor = colorClasses[effectiveSessionColor] || colorClasses.muted;
 
   const tooltipContent = usage?.notStarted
-    ? usage.error || 'Gemini usage will appear after your first request'
+    ? usage.error || t('common:usage_indicator.gemini_not_started_short')
     : usage?.error
-      ? `Gemini usage unavailable: ${usage.error}`
+      ? t('common:usage_indicator.error_unavailable', { provider: 'Gemini', error: usage.error })
       : usage
         ? limitsAvailable
-          ? `Gemini: ${Math.round(utilization)}% (resets ${formatResetTime(usage.fiveHour.resetsAt)})`
-          : 'Gemini usage (limits unavailable)'
-        : 'Gemini usage unavailable';
+          ? t('common:usage_indicator.gemini_tooltip', { percent: Math.round(utilization), time: localizeUsageResetTime(formatResetTime(usage.fiveHour.resetsAt), t) })
+          : t('common:usage_indicator.gemini_limits_unavailable_short')
+        : t('common:usage_indicator.unavailable', { provider: 'Gemini' });
 
   return (
     <div className={`relative ${className || ''}`}>
@@ -77,7 +80,7 @@ export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ clas
         onClick={handleClick}
         title={tooltipContent}
         className="relative w-9 h-9 flex items-center justify-center bg-transparent border-none rounded-md cursor-pointer transition-all duration-150 p-0 hover:bg-nim-tertiary active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2"
-        aria-label="Gemini Usage"
+        aria-label={t('common:usage_indicator.gemini_title')}
         data-testid="gemini-usage-indicator"
       >
         <svg

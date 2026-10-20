@@ -22,6 +22,7 @@ import { atom } from 'jotai';
 import { atomFamily } from '../debug/atomFamilyRegistry';
 import { ModelIdentifier } from '@nimbalyst/runtime/ai/server/types';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
+import { rendererI18n } from '../../i18n';
 import {
   store,
   addSessionFullAtom,
@@ -128,7 +129,7 @@ export const openSessionInTabActionAtom = atom(null, async (get, set, sessionId:
     if (sessionListItem && !registry.has(sessionId)) {
       set(addSessionFullAtom, {
         id: sessionListItem.id,
-        title: sessionListItem.title || 'Untitled Session',
+        title: sessionListItem.title || rendererI18n.t('sessions:history.untitled_session'),
         createdAt: sessionListItem.createdAt,
         updatedAt: sessionListItem.updatedAt,
         provider: sessionListItem.provider || 'claude-code',
@@ -294,11 +295,11 @@ export const deleteSessionActionAtom = atom(null, async (get, set, sessionId: st
       }
     } else {
       console.error('[sessionHistoryActions] Failed to delete session:', result.error);
-      errorNotificationService.showError('Failed to delete session', result.error || 'Unknown error');
+      errorNotificationService.showError(rendererI18n.t('sessions:notifications.delete_failed'), result.error || rendererI18n.t('sessions:notifications.unknown_error'));
     }
   } catch (err) {
     console.error('[sessionHistoryActions] Error deleting session:', err);
-    errorNotificationService.showError('Failed to delete session', String(err));
+    errorNotificationService.showError(rendererI18n.t('sessions:notifications.delete_failed'), String(err));
   }
 });
 
@@ -376,11 +377,11 @@ export const branchSessionActionAtom = atom(null, async (get, set, sessionId: st
       await set(openSessionInTabActionAtom, result.session.id);
     } else {
       console.error('[sessionHistoryActions] Failed to branch session:', result.error);
-      errorNotificationService.showError('Failed to branch conversation', result.error || 'Unknown error');
+      errorNotificationService.showError(rendererI18n.t('sessions:notifications.branch_failed'), result.error || rendererI18n.t('sessions:notifications.unknown_error'));
     }
   } catch (err) {
     console.error('[sessionHistoryActions] Error branching session:', err);
-    errorNotificationService.showError('Failed to branch conversation', String(err));
+    errorNotificationService.showError(rendererI18n.t('sessions:notifications.branch_failed'), String(err));
   }
 });
 
@@ -410,12 +411,13 @@ export const createNewSessionActionAtom = atom(
       const sessionId = options.sessionId ?? crypto.randomUUID();
       const parsedModel = model ? ModelIdentifier.tryParse(model) : null;
       const provider = parsedModel?.provider || 'claude-code';
+      const sessionTitle = rendererI18n.t('sessions:new_session');
       const result = await window.electronAPI.invoke('sessions:create', {
         session: {
           id: sessionId,
           provider,
           model,
-          title: 'New Session',
+          title: sessionTitle,
           mode: options.mode,
           metadata: options.metadata,
         },
@@ -425,7 +427,7 @@ export const createNewSessionActionAtom = atom(
       if (result.success && result.id) {
         set(addSessionFullAtom, {
           id: result.id,
-          title: 'New Session',
+          title: sessionTitle,
           createdAt: Date.now(),
           updatedAt: Date.now(),
           provider,
@@ -495,19 +497,20 @@ export const createNewWorktreeSessionActionAtom = atom(
         ipcOptions,
       );
       if (!worktreeResult.success || !worktreeResult.worktree) {
-        throw new Error(worktreeResult.error || 'Failed to create worktree');
+        throw new Error(worktreeResult.error || rendererI18n.t('git:worktree_picker.create_failed'));
       }
 
       const worktree = worktreeResult.worktree;
       const sessionId = crypto.randomUUID();
       const parsedModel = defaultModel ? ModelIdentifier.tryParse(defaultModel) : null;
       const provider = parsedModel?.provider || 'claude-code';
+      const sessionTitle = rendererI18n.t('sessions:worktree_session_title', { name: worktree.name });
       const result: SessionCreateResult = await window.electronAPI.invoke('sessions:create', {
         session: {
           id: sessionId,
           provider,
           model: defaultModel,
-          title: `Worktree: ${worktree.name}`,
+          title: sessionTitle,
           worktreeId: worktree.id,
         },
         workspaceId: workspacePath,
@@ -516,7 +519,7 @@ export const createNewWorktreeSessionActionAtom = atom(
       if (result.success && result.id) {
         set(addSessionFullAtom, {
           id: result.id,
-          title: `Worktree: ${worktree.name}`,
+          title: sessionTitle,
           createdAt: Date.now(),
           updatedAt: Date.now(),
           provider,
@@ -571,18 +574,19 @@ export const createWorktreeSessionCoreActionAtom = atom(
 
     const defaultModel = get(defaultAgentModelAtom);
     const worktreeResult = await window.electronAPI.invoke('worktree:get', worktreeId);
-    if (!worktreeResult?.worktree) throw new Error('Worktree not found');
+    if (!worktreeResult?.worktree) throw new Error(rendererI18n.t('common:session_actions.worktree_not_found'));
 
     const worktree = worktreeResult.worktree;
     const sessionId = crypto.randomUUID();
     const parsedModel = defaultModel ? ModelIdentifier.tryParse(defaultModel) : null;
     const provider = parsedModel?.provider || 'claude-code';
+    const sessionTitle = rendererI18n.t('sessions:new_session');
     const result = await window.electronAPI.invoke('sessions:create', {
       session: {
         id: sessionId,
         provider,
         model: defaultModel,
-        title: 'New Session',
+        title: sessionTitle,
         worktreeId: worktree.id,
       },
       workspaceId: workspacePath,
@@ -591,7 +595,7 @@ export const createWorktreeSessionCoreActionAtom = atom(
     if (result.success && result.id) {
       set(addSessionFullAtom, {
         id: result.id,
-        title: 'New Session',
+        title: sessionTitle,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         provider,
@@ -617,7 +621,7 @@ export const createWorktreeSessionCoreActionAtom = atom(
       return result.id;
     }
 
-    throw new Error(result.error || 'Failed to create session');
+    throw new Error(result.error || rendererI18n.t('sessions:notifications.create_failed'));
   },
 );
 
@@ -631,8 +635,8 @@ export const addSessionToWorktreeActionAtom = atom(null, async (_get, set, workt
     await set(createWorktreeSessionCoreActionAtom, worktreeId);
   } catch (error) {
     errorNotificationService.showError(
-      'Failed to Create Session',
-      error instanceof Error ? error.message : 'An unexpected error occurred while adding a session to the worktree.',
+      rendererI18n.t('sessions:notifications.create_failed'),
+      error instanceof Error ? error.message : rendererI18n.t('sessions:notifications.create_failed_message'),
       { duration: 5000 },
     );
   }

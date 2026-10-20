@@ -17,6 +17,7 @@
  * loop cannot start.
  */
 import { dialog } from 'electron';
+import i18next from 'i18next';
 
 const ERROR_THROTTLE_MS = 5000; // suppress duplicate errors within this window
 const MAX_DIALOGS_PER_MINUTE = 3;
@@ -69,7 +70,11 @@ export function createUncaughtExceptionHandler(): (error: Error & { code?: strin
     dialogTimestamps.push(now);
 
     dialog.showErrorBox(
-      'Nimbalyst - Uncaught Exception',
+      // Bootstrap installs this handler before settings/i18n initialization.
+      // Avoid importing main i18n (and its store) into that early path.
+      i18next.isInitialized
+        ? i18next.t('errors:native_dialogs.uncaught_exception', { defaultValue: 'Nimbalyst - Uncaught Exception' })
+        : 'Nimbalyst - Uncaught Exception',
       `${error.name}: ${error.message}\n\n${error.stack || ''}`,
     );
   };

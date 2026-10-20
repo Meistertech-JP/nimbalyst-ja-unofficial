@@ -19,6 +19,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import {
   useFloating,
@@ -55,7 +57,7 @@ import { useDocUnread } from '../../hooks/useDocUnread';
 import { getCollabNodeName } from './collabTree';
 import { getRelativeTimeString } from '../../utils/dateFormatting';
 import { getCollaborativeDocumentTypeCatalog } from '../../services/CollaborativeDocumentTypeCatalog';
-import { resolveSharedDocumentTypePresentation } from '../../utils/sharedDocumentTypeMetadata';
+import { getSharedDocumentTypeDisplayLabel, resolveSharedDocumentTypePresentation } from '../../utils/sharedDocumentTypeMetadata';
 import { sharedDocTypeColor, resolveMyMemberIds } from './sharedHomeTab';
 import { bucketItemCount, bucketQueryLength, toStableAnalyticsCategory } from '../../../shared/analytics/teamAnalytics';
 import { trackTeamAnalyticsEvent } from '../../utils/teamAnalytics';
@@ -86,13 +88,13 @@ interface FacetOption {
   color?: string;
 }
 
-const SEGMENTS: Array<{ id: Segment; label: string; icon: string }> = [
-  { id: 'all', label: 'All', icon: 'apps' },
-  { id: 'favorites', label: 'Favorites', icon: 'star' },
-  { id: 'review', label: 'Unread', icon: 'mark_email_unread' },
-  { id: 'recent', label: 'Recently opened', icon: 'history' },
-  { id: 'sharedWithMe', label: 'Shared with me', icon: 'call_received' },
-  { id: 'sharedByMe', label: 'Shared by me', icon: 'call_made' },
+const SEGMENTS: Array<{ id: Segment; icon: string }> = [
+  { id: 'all', icon: 'apps' },
+  { id: 'favorites', icon: 'star' },
+  { id: 'review', icon: 'mark_email_unread' },
+  { id: 'recent', icon: 'history' },
+  { id: 'sharedWithMe', icon: 'call_received' },
+  { id: 'sharedByMe', icon: 'call_made' },
 ];
 
 /** Columns whose natural first click sorts high-to-low (time, flags). */
@@ -102,8 +104,8 @@ const DESC_FIRST_COLUMNS: ReadonlySet<SortColumn> = new Set<SortColumn>([
   'needsReview',
 ]);
 
-function docName(doc: SharedDocument): string {
-  return getCollabNodeName(doc.title) || doc.title || 'Untitled';
+function docName(doc: SharedDocument, t: TFunction): string {
+  return getCollabNodeName(doc.title) || doc.title || t('common:collab.untitled');
 }
 
 /**
@@ -118,16 +120,18 @@ function memberName(
   id: string | null | undefined,
   members: Map<string, MemberInfo>,
   myIds: ReadonlySet<string>,
+  t: TFunction,
 ): string {
-  if (!id) return 'Unknown';
-  if (myIds.has(id)) return 'You';
+  if (!id) return t('common:collab.unknown');
+  if (myIds.has(id)) return t('common:collab.you');
   const info = members.get(id);
   if (info?.name) return info.name;
   if (info?.email) return info.email.split('@')[0];
-  return 'Unknown';
+  return t('common:collab.unknown');
 }
 
 export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspacePath: _workspacePath }) => {
+  const { t } = useTranslation(['common', 'extensions']);
   // Keep read receipts flowing even when the sidebar (which also mounts this
   // hook) is collapsed/unmounted. Idempotent double-mount is harmless.
   useDocUnread();
@@ -153,10 +157,10 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
   const folderNames = useMemo(() => {
     const map = new Map<string, string>();
     for (const f of folders as SharedFolder[]) {
-      map.set(f.folderId, f.decryptFailed ? 'Locked' : f.name);
+      map.set(f.folderId, f.decryptFailed ? t('common:collab.locked') : f.name);
     }
     return map;
-  }, [folders]);
+  }, [folders, t]);
 
   const [segment, setSegment] = useState<Segment>('all');
   const [query, setQuery] = useState('');
@@ -280,48 +284,55 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
   const typeOptions = useMemo<FacetOption[]>(() => {
     const map = new Map<string, FacetOption>();
     for (const doc of openableDocs) {
-      const label = typePresentation(doc).typeLabel;
-      if (!map.has(label)) {
-        map.set(label, { value: label, label, color: sharedDocTypeColor(label, doc.documentType) });
+      const presentation = typePresentation(doc);
+      const value = presentation.typeLabel;
+      if (!map.has(value)) {
+        map.set(value, {
+          value,
+          label: getSharedDocumentTypeDisplayLabel(presentation, t),
+          color: sharedDocTypeColor(value, doc.documentType),
+        });
       }
     }
-    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [openableDocs, typePresentation]);
+    return [...map.values()].sort((a, b) => a.value.localeCompare(b.value));
+  }, [openableDocs, typePresentation, t]);
 
   const peopleOptions = useMemo<FacetOption[]>(() => {
     const map = new Map<string, FacetOption>();
     for (const doc of openableDocs) {
       if (!doc.createdBy) continue;
       if (!map.has(doc.createdBy)) {
-        map.set(doc.createdBy, { value: doc.createdBy, label: memberName(doc.createdBy, members, myMemberIds) });
+        map.set(doc.createdBy, { value: doc.createdBy, label: memberName(doc.createdBy, members, myMemberIds, t) });
       }
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [openableDocs, members, myMemberIds]);
+  }, [openableDocs, members, myMemberIds, t]);
 
   const folderOptions = useMemo<FacetOption[]>(() => {
     const map = new Map<string, FacetOption>();
     for (const doc of openableDocs) {
       const value = doc.parentFolderId ?? ROOT_FOLDER;
       if (!map.has(value)) {
-        const label = doc.parentFolderId ? folderNames.get(doc.parentFolderId) ?? 'Unknown folder' : 'No folder';
+        const label = doc.parentFolderId
+          ? folderNames.get(doc.parentFolderId) ?? t('common:collab.unknown_folder')
+          : t('common:collab.no_folder');
         map.set(value, { value, label });
       }
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [openableDocs, folderNames]);
+  }, [openableDocs, folderNames, t]);
 
   // --- Facet + search filtering ---
   const trimmedQuery = query.trim().toLowerCase();
   const filteredDocs = useMemo(() => {
     return segmentDocs.filter((d) => {
-      if (trimmedQuery && !docName(d).toLowerCase().includes(trimmedQuery)) return false;
+      if (trimmedQuery && !docName(d, t).toLowerCase().includes(trimmedQuery)) return false;
       if (selectedTypes.size > 0 && !selectedTypes.has(typePresentation(d).typeLabel)) return false;
       if (selectedPeople.size > 0 && !(d.createdBy && selectedPeople.has(d.createdBy))) return false;
       if (selectedFolders.size > 0 && !selectedFolders.has(d.parentFolderId ?? ROOT_FOLDER)) return false;
       return true;
     });
-  }, [segmentDocs, trimmedQuery, selectedTypes, selectedPeople, selectedFolders, typePresentation]);
+  }, [segmentDocs, trimmedQuery, selectedTypes, selectedPeople, selectedFolders, typePresentation, t]);
 
   useEffect(() => {
     if (!trimmedQuery) {
@@ -358,11 +369,11 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
     const value = (doc: SharedDocument): string | number => {
       switch (sortColumn) {
         case 'name':
-          return docName(doc).toLowerCase();
+          return docName(doc, t).toLowerCase();
         case 'type':
           return typePresentation(doc).typeLabel.toLowerCase();
         case 'createdBy':
-          return memberName(doc.createdBy, members, myMemberIds).toLowerCase();
+          return memberName(doc.createdBy, members, myMemberIds, t).toLowerCase();
         case 'lastEdited':
           return doc.updatedAt ?? 0;
         case 'viewedByMe':
@@ -388,7 +399,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
       if (cmp === 0) cmp = (a.updatedAt ?? 0) - (b.updatedAt ?? 0);
       return cmp * dir;
     });
-  }, [filteredDocs, sortColumn, sortDirection, typePresentation, members, myMemberIds, receipts, folderNames, unreadIds]);
+  }, [filteredDocs, sortColumn, sortDirection, typePresentation, members, myMemberIds, receipts, folderNames, unreadIds, t]);
 
   const handleSort = useCallback((column: SortColumn) => {
     setSortColumn((prevColumn) => {
@@ -425,7 +436,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
   }, [orgId]);
 
   const totalOpenable = allDocs.filter((d) => !d.decryptFailed).length;
-  const sortLabel = SORT_LABELS[sortColumn];
+  const sortLabel = t(`common:collab.sort_${sortColumn}`);
 
   return (
     <div className="shared-docs-list-view h-full flex flex-col min-h-0 bg-nim select-text">
@@ -433,17 +444,19 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
       <div className="shared-docs-list-header flex items-center gap-3 px-4 py-2.5 border-b border-nim shrink-0">
         <div className="flex items-center gap-2 shrink-0">
           <MaterialSymbol icon="groups" size={20} className="text-[var(--nim-text-muted)]" />
-          <span className="text-[15px] font-semibold text-[var(--nim-text)]">Shared</span>
+          <span className="text-[15px] font-semibold text-[var(--nim-text)]">
+            {t('common:collab.shared')}
+          </span>
         </div>
         <div className="shared-docs-list-search flex items-center gap-2 flex-1 max-w-[520px] mx-auto rounded-md px-3 py-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] focus-within:border-[var(--nim-primary)]">
           <MaterialSymbol icon="search" size={17} className="text-[var(--nim-text-muted)]" />
           <input
             ref={searchRef}
             className="flex-1 bg-transparent border-none outline-none text-[13px] text-[var(--nim-text)] placeholder:text-[var(--nim-text-faint)]"
-            placeholder="Search shared documents"
+            placeholder={t('common:collab.search_placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search shared documents"
+            aria-label={t('common:collab.search_label')}
           />
           <kbd className="shrink-0 text-[10.5px] text-[var(--nim-text-faint)] border border-[var(--nim-border)] rounded px-1 py-0.5">⌘K</kbd>
         </div>
@@ -452,8 +465,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
             type="button"
             className={`flex items-center justify-center px-1.5 py-1 border-none cursor-pointer ${viewMode === 'list' ? 'bg-[var(--nim-bg-active)] text-[var(--nim-text)]' : 'bg-transparent text-[var(--nim-text-muted)]'}`}
             onClick={() => setViewMode('list')}
-            title="List view"
-            aria-label="List view"
+            title={t('common:collab.list_view')}
+            aria-label={t('common:collab.list_view')}
             aria-pressed={viewMode === 'list'}
           >
             <MaterialSymbol icon="format_list_bulleted" size={17} />
@@ -461,8 +474,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
           <button
             type="button"
             className="flex items-center justify-center px-1.5 py-1 border-none cursor-not-allowed bg-transparent text-[var(--nim-text-faint)] opacity-50"
-            title="Grid view (coming soon)"
-            aria-label="Grid view (coming soon)"
+            title={t('common:collab.grid_view_coming_soon')}
+            aria-label={t('common:collab.grid_view_coming_soon')}
             disabled
           >
             <MaterialSymbol icon="grid_view" size={17} />
@@ -489,7 +502,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
                 data-segment={seg.id}
               >
                 <MaterialSymbol icon={seg.icon} size={15} fill={seg.id === 'favorites' && active} />
-                {seg.label}
+                {t(`common:collab.segment_${seg.id}`)}
                 {seg.id === 'review' && reviewCount > 0 && (
                   <span className="shared-docs-segment-badge text-[10.5px] font-semibold rounded-full px-1.5 py-px bg-[var(--nim-primary)] text-white">
                     {reviewCount}
@@ -501,7 +514,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <FacetDropdown
-            label="Type"
+            label={t('common:collab.type')}
             icon="category"
             options={typeOptions}
             selected={selectedTypes}
@@ -509,7 +522,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
             onClear={() => setSelectedTypes(new Set())}
           />
           <FacetDropdown
-            label="People"
+            label={t('common:collab.people')}
             icon="group"
             options={peopleOptions}
             selected={selectedPeople}
@@ -517,7 +530,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
             onClear={() => setSelectedPeople(new Set())}
           />
           <FacetDropdown
-            label="Folder"
+            label={t('common:collab.folder')}
             icon="folder"
             options={folderOptions}
             selected={selectedFolders}
@@ -534,22 +547,22 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
             <MaterialSymbol icon="folder_shared" size={34} className="text-[var(--nim-text-faint)]" />
             <p className="mt-2 mb-0 text-[13px] text-[var(--nim-text-muted)]">
               {trimmedQuery
-                ? `No shared documents match “${query.trim()}”.`
-                : 'No shared documents here yet.'}
+                ? t('common:collab.no_match_for', { query: query.trim() })
+                : t('common:collab.no_documents_here')}
             </p>
           </div>
         ) : (
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="shared-docs-thead sticky top-0 z-10 bg-nim border-b border-nim text-[11px] uppercase tracking-wide text-[var(--nim-text-muted)]">
-                <HeaderCell label="Unread" column="needsReview" icon="mark_email_unread" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-8" />
+                <HeaderCell label={t('common:collab.unread')} column="needsReview" icon="mark_email_unread" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-8" />
                 <th className="w-8 px-2 py-2" />
-                <HeaderCell label="Name" column="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Type" column="type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Created by" column="createdBy" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Last edited" column="lastEdited" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Viewed by me" column="viewedByMe" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Folder" column="folder" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('common:collab.name')} column="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('common:collab.type')} column="type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('common:collab.created_by')} column="createdBy" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('common:collab.last_edited')} column="lastEdited" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('common:collab.viewed_by_me')} column="viewedByMe" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('common:collab.folder')} column="folder" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
@@ -573,8 +586,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
                       {needsReview ? (
                         <span
                           className="shared-docs-review-dot inline-block w-2 h-2 rounded-full bg-[var(--nim-primary)] align-middle"
-                          title="Changed since you last viewed"
-                          aria-label="Unread"
+                          title={t('common:collab.changed_since_viewed')}
+                          aria-label={t('common:collab.unread')}
                         />
                       ) : null}
                     </td>
@@ -587,8 +600,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
                             ? 'text-[var(--nim-warning)] opacity-100'
                             : 'text-[var(--nim-text-faint)] opacity-0 group-hover:opacity-80 hover:!opacity-100'
                         }`}
-                        title={favorited ? 'Unfavorite' : 'Favorite'}
-                        aria-label={favorited ? 'Unfavorite' : 'Favorite'}
+                        title={favorited ? t('common:collab.unfavorite') : t('common:collab.favorite')}
+                        aria-label={favorited ? t('common:collab.unfavorite') : t('common:collab.favorite')}
                         aria-pressed={favorited}
                         onClick={(e) => { e.stopPropagation(); toggleFavoriteDoc(doc.documentId); }}
                       >
@@ -601,11 +614,11 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
                         <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center" style={{ color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` }}>
                           <MaterialSymbol icon={pres.icon} size={16} />
                         </span>
-                        <span className="truncate text-[13.5px] text-[var(--nim-text)]">{docName(doc)}</span>
+                        <span className="truncate text-[13.5px] text-[var(--nim-text)]">{docName(doc, t)}</span>
                         {/* Row hover quick actions */}
                         <span className="shared-docs-row-actions ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 pl-2">
-                          <RowAction icon="open_in_new" title="Open" onClick={(e) => { e.stopPropagation(); openDoc(doc); }} />
-                          <RowAction icon="link" title="Copy link" onClick={(e) => { e.stopPropagation(); copyLink(doc); }} />
+                          <RowAction icon="open_in_new" title={t('common:open')} onClick={(e) => { e.stopPropagation(); openDoc(doc); }} />
+                          <RowAction icon="link" title={t('common:collab.copy_link')} onClick={(e) => { e.stopPropagation(); copyLink(doc); }} />
                         </span>
                       </div>
                     </td>
@@ -616,20 +629,20 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
                         style={{ color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` }}
                       >
                         <MaterialSymbol icon={pres.icon} size={13} />
-                        {pres.typeLabel}
+                        {getSharedDocumentTypeDisplayLabel(pres, t)}
                       </span>
                     </td>
                     {/* Created by */}
                     <td className="px-2 py-2 align-middle whitespace-nowrap">
-                      <UserAvatar identity={memberName(doc.createdBy, members, myMemberIds)} showName size={20} />
+                      <UserAvatar identity={memberName(doc.createdBy, members, myMemberIds, t)} showName size={20} />
                     </td>
                     {/* Last edited */}
                     <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px] text-[var(--nim-text-muted)]">
                       {doc.updatedAt ? (
                         <span>
-                          {getRelativeTimeString(doc.updatedAt)}
+                    {getRelativeTimeString(doc.updatedAt, t)}
                           {lastWriter && (
-                            <span className="text-[var(--nim-text-faint)]"> · {memberName(lastWriter, members, myMemberIds)}</span>
+                            <span className="text-[var(--nim-text-faint)]"> · {memberName(lastWriter, members, myMemberIds, t)}</span>
                           )}
                         </span>
                       ) : (
@@ -639,11 +652,11 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
                     {/* Viewed by me */}
                     <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px]">
                       {viewedAt > 0 ? (
-                        <span className="text-[var(--nim-text-muted)]">{getRelativeTimeString(viewedAt)}</span>
+                      <span className="text-[var(--nim-text-muted)]">{getRelativeTimeString(viewedAt, t)}</span>
                       ) : (
                         <span className="flex items-center gap-1 text-[var(--nim-warning)]">
                           <MaterialSymbol icon="visibility_off" size={14} />
-                          Never
+                          {t('common:collab.never')}
                         </span>
                       )}
                     </td>
@@ -668,28 +681,21 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ workspac
 
       {/* Footer */}
       <div className="shared-docs-list-footer flex items-center gap-2 px-4 py-1.5 border-t border-nim shrink-0 text-[11.5px] text-[var(--nim-text-muted)]">
-        <span>{sortedDocs.length} of {totalOpenable} documents</span>
+        <span>{t('common:collab.documents_count', {
+          shown: sortedDocs.length,
+          total: totalOpenable,
+        })}</span>
         {reviewCount > 0 && (
           <>
             <span className="text-[var(--nim-text-faint)]">·</span>
-            <span>{reviewCount} unread</span>
+            <span>{t('common:collab.unread_count', { count: reviewCount })}</span>
           </>
         )}
         <span className="text-[var(--nim-text-faint)]">·</span>
-        <span>Sorted by {sortLabel}</span>
+        <span>{t('common:collab.sorted_by', { sort: sortLabel })}</span>
       </div>
     </div>
   );
-};
-
-const SORT_LABELS: Record<SortColumn, string> = {
-  name: 'name',
-  type: 'type',
-  createdBy: 'created by',
-  lastEdited: 'last edited',
-  viewedByMe: 'viewed by me',
-  folder: 'folder',
-  needsReview: 'unread',
 };
 
 const HeaderCell: React.FC<{
@@ -703,6 +709,7 @@ const HeaderCell: React.FC<{
   icon?: string;
   className?: string;
 }> = ({ label, column, sortColumn, sortDirection, onSort, align = 'left', icon, className }) => {
+  const { t } = useTranslation(['common']);
   const active = sortColumn === column;
   const sortIcon = active ? (sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more';
   return (
@@ -713,8 +720,8 @@ const HeaderCell: React.FC<{
           active ? 'text-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]'
         } ${align === 'right' ? 'flex-row-reverse' : ''}`}
         onClick={() => onSort(column)}
-        title={icon ? `Sort by ${label}` : undefined}
-        aria-label={icon ? `Sort by ${label}` : undefined}
+        title={icon ? t('common:collab.sort_by', { column: label }) : undefined}
+        aria-label={icon ? t('common:collab.sort_by', { column: label }) : undefined}
       >
         {icon ? (
           <MaterialSymbol icon={icon} size={15} fill={active} />
@@ -738,6 +745,7 @@ const FacetDropdown: React.FC<{
   onToggle: (value: string) => void;
   onClear: () => void;
 }> = ({ label, icon, options, selected, onToggle, onClear }) => {
+  const { t } = useTranslation(['common']);
   const [open, setOpen] = useState(false);
   const count = selected.size;
 
@@ -765,7 +773,7 @@ const FacetDropdown: React.FC<{
             : 'bg-transparent text-[var(--nim-text-muted)] border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]'
         }`}
         data-facet={label.toLowerCase()}
-        aria-label={`Filter by ${label}`}
+        aria-label={t('common:collab.filter_by', { label })}
       >
         <MaterialSymbol icon={icon} size={15} />
         {label}
@@ -792,12 +800,14 @@ const FacetDropdown: React.FC<{
                   className="text-[11px] text-[var(--nim-primary)] bg-transparent border-none cursor-pointer hover:underline"
                   onClick={onClear}
                 >
-                  Clear
+                  {t('common:collab.clear')}
                 </button>
               )}
             </div>
             {options.length === 0 ? (
-              <div className="px-3 py-2 text-[12px] text-[var(--nim-text-faint)]">No options</div>
+              <div className="px-3 py-2 text-[12px] text-[var(--nim-text-faint)]">
+                {t('common:collab.no_options')}
+              </div>
             ) : (
               options.map((opt) => {
                 const checked = selected.has(opt.value);

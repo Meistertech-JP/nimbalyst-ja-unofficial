@@ -14,6 +14,7 @@
 import React from 'react';
 import type { CustomToolWidgetProps } from './index';
 import { SessionReferenceChip } from '../../session/SessionReferenceChip';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../../RuntimeTranslation';
 
 interface ActionMeta {
   label: string;
@@ -22,16 +23,16 @@ interface ActionMeta {
   detailArg?: string;
 }
 
-const ACTIONS: Record<string, ActionMeta> = {
-  send_prompt: { label: 'Send prompt', icon: 'send', detailArg: 'prompt' },
-  respond_to_prompt: { label: 'Respond to prompt', icon: 'reply', detailArg: 'response' },
-  spawn_session: { label: 'Spawn session', icon: 'rocket_launch', detailArg: 'prompt' },
-  create_session: { label: 'Create session', icon: 'add_circle', detailArg: 'initialPrompt' },
-  get_session_status: { label: 'Get session status', icon: 'query_stats' },
-  get_session_result: { label: 'Get session result', icon: 'task_alt' },
-  list_queued_prompts: { label: 'List queued prompts', icon: 'list' },
-  list_spawned_sessions: { label: 'List spawned sessions', icon: 'account_tree' },
-};
+const getActions = (t: RuntimeTranslate): Record<string, ActionMeta> => ({
+  send_prompt: { label: t('aichat:cross_session.send', 'Send prompt'), icon: 'send', detailArg: 'prompt' },
+  respond_to_prompt: { label: t('aichat:cross_session.respond', 'Respond to prompt'), icon: 'reply', detailArg: 'response' },
+  spawn_session: { label: t('aichat:cross_session.spawn', 'Spawn session'), icon: 'rocket_launch', detailArg: 'prompt' },
+  create_session: { label: t('aichat:cross_session.create', 'Create session'), icon: 'add_circle', detailArg: 'initialPrompt' },
+  get_session_status: { label: t('aichat:cross_session.status', 'Get session status'), icon: 'query_stats' },
+  get_session_result: { label: t('aichat:cross_session.result', 'Get session result'), icon: 'task_alt' },
+  list_queued_prompts: { label: t('aichat:cross_session.queued', 'List queued prompts'), icon: 'list' },
+  list_spawned_sessions: { label: t('aichat:cross_session.spawned', 'List spawned sessions'), icon: 'account_tree' },
+});
 
 /** Strip an `mcp__<server>__` prefix to the bare tool name. */
 function bareToolName(name: string): string {
@@ -105,11 +106,12 @@ export const CrossSessionToolWidget: React.FC<CustomToolWidgetProps> = ({
   isExpanded,
   onToggle,
 }) => {
+  const { t } = useRuntimeTranslation();
   const tool = message.toolCall;
   if (!tool) return null;
 
   const bare = tool.mcpTool || bareToolName(tool.toolName);
-  const action = ACTIONS[bare] ?? { label: bare, icon: 'account_tree' };
+  const action = getActions(t)[bare] ?? { label: bare, icon: 'account_tree' };
   const args = (tool.arguments ?? {}) as Record<string, unknown>;
 
   // Target session(s): the addressed session from args, plus any minted/listed
@@ -182,7 +184,7 @@ export const CrossSessionToolWidget: React.FC<CustomToolWidgetProps> = ({
               fontSize: '12px',
             }}
           >
-            {isExpanded ? 'Hide' : 'Details'}
+            {isExpanded ? t('common:gutter.hide', 'Hide') : t('common:collab_history.details', 'Details')}
             <span
               className="material-symbols-outlined"
               aria-hidden="true"

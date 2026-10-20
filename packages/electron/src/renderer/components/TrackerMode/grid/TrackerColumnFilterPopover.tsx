@@ -8,6 +8,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useFloating,
   offset,
@@ -21,7 +22,6 @@ import {
 import type { FieldDefinition } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import {
   opsForFieldType,
-  OP_LABELS,
   UNARY_OPS,
   type TrackerFieldFilter,
   type TrackerFilterOp,
@@ -85,6 +85,7 @@ export function TrackerColumnFilterPopover({
   onApply,
   onClose,
 }: TrackerColumnFilterPopoverProps): JSX.Element {
+  const { t } = useTranslation(['tracker', 'common']);
   const ops = useMemo(() => opsForFieldType(field?.type), [field?.type]);
   const [combinator, setCombinator] = useState<'and' | 'or'>(initialCombinator);
   const [drafts, setDrafts] = useState<DraftClause[]>(() =>
@@ -138,25 +139,25 @@ export function TrackerColumnFilterPopover({
         className="tracker-column-filter-popover z-50 w-72 rounded-md border border-nim bg-nim-secondary p-2 shadow-lg text-[13px]"
         data-testid="tracker-column-filter-popover"
       >
-        <div className="mb-2 text-[11px] font-medium text-nim-muted">Filter: {columnLabel}</div>
+        <div className="mb-2 text-[11px] font-medium text-nim-muted">{t('tracker:filters.column_title', { column: columnLabel })}</div>
 
         <label className="mb-1 flex items-center justify-between gap-2 text-[11px] text-nim-muted">
-          Match
+          {t('tracker:filters.match')}
           <select
             className="rounded border border-nim bg-nim px-2 py-1 text-nim"
             value={combinator}
             onChange={e => setCombinator(e.target.value as 'and' | 'or')}
             data-testid="tracker-column-filter-combinator"
           >
-            <option value="and">all conditions</option>
-            <option value="or">any condition</option>
+            <option value="and">{t('tracker:filters.all_conditions')}</option>
+            <option value="or">{t('tracker:filters.any_condition')}</option>
           </select>
         </label>
         {/* The combinator is one setting for the whole grid, not per column, so
             say so -- otherwise flipping it here silently changes how every other
             column's filter combines too. */}
         <div className="mb-2 text-[10px] leading-tight text-nim-faint">
-          Applies across every column filter, not just this one.
+          {t('tracker:filters.column_combinator_hint')}
         </div>
 
         {drafts.map((draft, index) => {
@@ -173,14 +174,14 @@ export function TrackerColumnFilterPopover({
                   data-testid={`tracker-column-filter-op-${index}`}
                 >
                   {ops.map(o => (
-                    <option key={o} value={o}>{OP_LABELS[o]}</option>
+                    <option key={o} value={o}>{t(`tracker:filters.operators.${o}`)}</option>
                   ))}
                 </select>
                 {drafts.length > 1 && (
                   <button
                     className="px-1 text-nim-muted hover:text-nim"
                     onClick={() => setDrafts(current => current.filter((_, i) => i !== index))}
-                    aria-label={`Remove condition ${index + 1}`}
+                    aria-label={t('tracker:filters.remove_condition', { number: index + 1 })}
                   >
                     ×
                   </button>
@@ -195,7 +196,7 @@ export function TrackerColumnFilterPopover({
                     onChange={e => updateDraft(index, { text: e.target.value })}
                     data-testid={`tracker-column-filter-value-${index}`}
                   >
-                    <option value="">Choose…</option>
+                    <option value="">{t('tracker:filters.choose')}</option>
                     {selectOptions.map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
@@ -206,9 +207,9 @@ export function TrackerColumnFilterPopover({
                     value={draft.text}
                     autoFocus={index === 0}
                     placeholder={
-                      isRange ? 'from, to'
-                        : isList ? 'comma-separated values'
-                          : 'value'
+                      isRange ? t('tracker:filters.range_placeholder')
+                        : isList ? t('tracker:filters.comma_separated_values')
+                          : t('tracker:filters.value')
                     }
                     onChange={e => updateDraft(index, { text: e.target.value })}
                     onKeyDown={e => {
@@ -228,7 +229,7 @@ export function TrackerColumnFilterPopover({
           onClick={() => setDrafts(current => [...current, { op: ops[0], text: '' }])}
           data-testid="tracker-column-filter-add"
         >
-          + Add condition
+          {t('tracker:filters.add_condition')}
         </button>
 
         <div className="flex items-center justify-between gap-2">
@@ -237,14 +238,14 @@ export function TrackerColumnFilterPopover({
             onClick={clear}
             data-testid="tracker-column-filter-clear"
           >
-            Clear
+            {t('common:clear')}
           </button>
           <button
             className="rounded bg-[var(--nim-primary)] px-2 py-1 text-[11px] font-medium text-white hover:opacity-90"
             onClick={apply}
             data-testid="tracker-column-filter-apply"
           >
-            Apply
+            {t('tracker:filters.apply')}
           </button>
         </div>
       </div>

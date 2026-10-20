@@ -86,6 +86,13 @@ function setting<S extends z.ZodTypeAny>(
  *     ai.trackerAutomation, ai.diffPeekSize
  */
 export const SETTINGS_REGISTRY = {
+  // ---- Application settings ----
+  uiLanguage: setting(
+    z.enum(['system', 'en', 'ja']),
+    { store: 'app-settings', path: 'uiLanguage' },
+    'system',
+  ),
+
   // ---- AI providers (per-key) ----
   'ai.provider.claude': setting(
     ProviderConfigSchema,

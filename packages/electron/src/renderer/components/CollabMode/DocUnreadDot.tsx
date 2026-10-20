@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { docUnreadAtom } from '../../store/atoms/docUnread';
@@ -15,6 +16,7 @@ interface DocUnreadDotProps {
 }
 
 export const DocUnreadDot: React.FC<DocUnreadDotProps> = ({ documentId, className }) => {
+  const { t } = useTranslation(['common']);
   const unread = useAtomValue(docUnreadAtom(documentId));
   if (!unread) return null;
   return (
@@ -22,8 +24,8 @@ export const DocUnreadDot: React.FC<DocUnreadDotProps> = ({ documentId, classNam
       className={`doc-unread-dot inline-flex items-center justify-center shrink-0 text-[var(--nim-primary)]${
         className ? ` ${className}` : ''
       }`}
-      title="New activity"
-      aria-label="Unread"
+      title={t('common:collab.new_activity')}
+      aria-label={t('common:collab.unread')}
     >
       <MaterialSymbol icon="circle" size={8} fill />
     </span>

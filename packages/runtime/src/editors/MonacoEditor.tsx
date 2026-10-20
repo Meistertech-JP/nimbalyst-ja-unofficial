@@ -23,6 +23,7 @@ import { useCollaborativeEditor } from '../extensions/useCollaborativeEditor';
 import type { EditorHost } from '../extensions/editorHost';
 import type { ConfigTheme } from '../editor';
 import type { editor as MonacoEditorType } from 'monaco-editor';
+import { useRuntimeTranslation } from '../ui/RuntimeTranslation';
 
 /**
  * Opt-in collaboration config for MonacoEditor. When provided AND the host
@@ -114,6 +115,7 @@ export function MonacoEditor({
   onGetContent: onGetContentProp,
   onDiffChangeCountUpdate,
 }: MonacoEditorProps): React.ReactElement {
+  const { t } = useRuntimeTranslation();
   const transformLoadContent = config.transformLoadContent;
   const transformSaveContent = config.transformSaveContent;
 
@@ -310,7 +312,7 @@ export function MonacoEditor({
         height: '100%',
         color: 'var(--nim-text-muted)'
       }}>
-        <span>Loading...</span>
+        <span>{t('editor:loading', 'Loading...')}</span>
       </div>
     );
   }
@@ -325,7 +327,7 @@ export function MonacoEditor({
         height: '100%',
         color: 'var(--nim-error)'
       }}>
-        <span>Failed to load: {loadError.message}</span>
+        <span>{t('editor:load_failed', 'Failed to load: {{error}}', { error: loadError.message })}</span>
       </div>
     );
   }

@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
 
 const { trackTeamAnalyticsEvent } = vi.hoisted(() => ({
   trackTeamAnalyticsEvent: vi.fn(),
@@ -159,6 +160,54 @@ function makeHarness(options: {
 
 describe('CollaborativeDocumentCreationOrchestrator', () => {
   beforeEach(() => trackTeamAnalyticsEvent.mockClear());
+  afterEach(async () => { await i18next.changeLanguage('en'); });
+
+  it.each([
+    ['invalid-name', '共有ドキュメントには、有効な名前と登録済みの拡張子が必要です。'],
+    ['workspace-unavailable', '共有ドキュメントを作成するためのアクティブなワークスペースがありません。'],
+    ['invalid-parent-folder', '選択された共有フォルダーは存在しなくなりました。'],
+    ['config-unavailable', '新しいドキュメントのチーム共同作業用の認証情報を取得できませんでした。'],
+    ['seed-failed', 'サーバーが共有コンテンツの初期データの受信を確認できませんでした。'],
+    ['register-failed', '共有ドキュメントの登録に失敗しました。'],
+    ['local-origin-failed', 'ローカルソースのリンクを保存できませんでした。'],
+  ])('localizes %s without changing error identity or publishing a failed document', async (code, message) => {
+    await i18next.changeLanguage('ja');
+    const harness = makeHarness();
+    if (code === 'workspace-unavailable') harness.deps.getWorkspacePath = () => null;
+    if (code === 'config-unavailable') harness.deps.resolveConfig = async () => null;
+    if (code === 'seed-failed') harness.deps.seed = async () => ({ ok: false });
+    if (code === 'register-failed') harness.deps.register = async () => { throw 'E_REGISTER'; };
+    if (code === 'local-origin-failed') harness.deps.saveLocalOrigin = async () => ({ success: false });
+    await expect(harness.orchestrator.create({
+      descriptor: markdownDescriptor,
+      requestedName: code === 'invalid-name' ? '' : 'User Title',
+      parentFolderId: code === 'invalid-parent-folder' ? 'missing-folder' : null,
+      sourceContent: '# User content',
+      operationId: 'op-raw',
+      documentId: 'doc-raw',
+      localOrigin: code === 'local-origin-failed' ? '/workspace/User Title.md' : undefined,
+    })).rejects.toMatchObject({ code, message, operationId: 'op-raw', documentId: 'doc-raw', announced: code === 'local-origin-failed' });
+    expect(harness.published).toEqual([]);
+    if (code !== 'local-origin-failed') expect(harness.documents).toEqual([]);
+    expect(trackTeamAnalyticsEvent).toHaveBeenCalledWith('collab_operation_failed', expect.objectContaining({
+      errorCategory: code === 'seed-failed' ? 'server' : code === 'register-failed' ? 'registration_failed' : 'unknown',
+    }));
+  });
+
+  it('localizes a name collision while retaining the exact user filename', async () => {
+    await i18next.changeLanguage('ja');
+    const harness = makeHarness({ documents: [{ documentId: 'existing', title: 'User Title.md', documentType: 'markdown' } as SharedDocument] });
+    await expect(harness.orchestrator.create({ descriptor: markdownDescriptor, requestedName: 'User Title', parentFolderId: null }))
+      .rejects.toMatchObject({ code: 'name-collision', message: '「User Title.md」という名前の共有ドキュメントまたはフォルダーは既に存在します。' });
+    expect(harness.events).toEqual([]);
+  });
+
+  it('preserves a service-supplied seed error in Japanese', async () => {
+    await i18next.changeLanguage('ja');
+    const harness = makeHarness({ seedResults: [false] });
+    await expect(harness.orchestrator.create({ descriptor: markdownDescriptor, requestedName: 'Unannounced', parentFolderId: null, sourceContent: 'content' }))
+      .rejects.toMatchObject({ code: 'seed-failed', message: 'ack timed out' });
+  });
 
   it('can create a cascade child without publishing it as the pending open document', async () => {
     const harness = makeHarness({ descriptor: mockupDescriptor });

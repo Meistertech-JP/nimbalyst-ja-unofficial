@@ -14,6 +14,7 @@ import {
   useImperativeHandle,
   useRef,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { ResizablePanel } from '../AgenticCoding/ResizablePanel';
@@ -61,6 +62,7 @@ export const PullRequestMode = forwardRef<PullRequestModeRef, PullRequestModePro
   onFileOpen,
   onPanelStateChange,
 }, ref): JSX.Element {
+  const { t } = useTranslation(['common']);
   const remote = useAtomValue(prRemoteAtom);
   const layout = useAtomValue(prModeLayoutAtom);
   const setLayout = useSetAtom(setPrModeLayoutAtom);
@@ -290,7 +292,7 @@ export const PullRequestMode = forwardRef<PullRequestModeRef, PullRequestModePro
       <div className="pr-review-mode flex flex-col h-full w-full overflow-hidden">
         <GhOnboardingBanner />
         <div className="pr-review-placeholder flex flex-1 items-center justify-center text-nim-muted text-sm">
-          No GitHub remote detected for {workspaceName}.
+          {t('common:pull_request.no_remote', { workspace: workspaceName })}
         </div>
       </div>
     );
@@ -336,9 +338,11 @@ export const PullRequestMode = forwardRef<PullRequestModeRef, PullRequestModePro
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-nim bg-nim-secondary text-nim-faint">
                 <MaterialSymbol icon="merge" size={24} />
               </div>
-              <div className="text-sm font-medium text-nim">Select a pull request</div>
+              <div className="text-sm font-medium text-nim">
+                {t('common:pull_request.select_pull_request')}
+              </div>
               <div className="text-sm text-nim-muted">
-                Pick a PR from the left to review its conversation, files, commits, and checks.
+                {t('common:pull_request.select_pull_request_description')}
               </div>
             </div>
           </div>

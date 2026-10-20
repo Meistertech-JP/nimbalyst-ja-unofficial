@@ -32,7 +32,9 @@ import {
   allSharedDocumentsAtom,
 } from '../store/atoms/collabDocuments';
 import { getCollaborativeDocumentTypeCatalog } from '../services/CollaborativeDocumentTypeCatalog';
+import { rendererI18n } from '../i18n';
 import { createCollaborativeDocument } from '../services/collaborativeDocumentCreationOrchestrator';
+import { getShareabilityReasonText } from '../utils/shareabilityReasonText';
 import type { ContentMode } from '../types/WindowModeTypes';
 import { dialogRef } from '../contexts/DialogContext';
 import { DIALOG_IDS } from '../dialogs';
@@ -816,7 +818,12 @@ export function useIPCHandlers(props: UseIPCHandlersProps) {
           const catalog = getCollaborativeDocumentTypeCatalog();
           const fileExtension = catalog.inferFileExtension(requestedDocumentType, title);
           const resolution = catalog.resolveMetadata(requestedDocumentType, fileExtension);
-          if (resolution.state !== 'ready') throw new Error(resolution.reason);
+          if (resolution.state !== 'ready') {
+            const reason = resolution.reasonMetadata
+              ? getShareabilityReasonText(rendererI18n.t, resolution.reasonMetadata)
+              : resolution.reason;
+            throw new Error(reason);
+          }
 
           const document = await createCollaborativeDocument({
             descriptor: resolution.descriptor,

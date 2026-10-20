@@ -37,6 +37,7 @@ import {
   getTypeIcon,
   getInitials,
 } from '../TrackerPlugin/components/trackerColumns';
+import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
 
 function normalizeStatus(status: string | undefined): string | undefined {
   return status?.trim().toLowerCase();
@@ -220,6 +221,7 @@ export function TrackerReferenceChip({
   previewStateKey,
   variant = 'default',
 }: TrackerReferenceChipProps): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const resolved = useResolvedTrackerReference(referenceKey);
   const [open, setOpen] = React.useState(false);
   const referenceHostRef = React.useRef<HTMLElement | null>(null);
@@ -276,6 +278,9 @@ export function TrackerReferenceChip({
 
   const normalizedStatus = normalizeStatus(resolved?.status);
   const statusPresentation = getStatusPresentation(normalizedStatus);
+  const localizedStatusLabel = statusPresentation && normalizedStatus
+    ? t(`tracker:plans.status_${normalizedStatus.replace(/-/g, '_')}`, statusPresentation.label)
+    : statusPresentation?.label;
   const isCompleted = statusPresentation?.tone === 'completed';
   const label = resolved?.issueKey ?? referenceKey;
   const title = resolved?.title;
@@ -330,7 +335,7 @@ export function TrackerReferenceChip({
           <span
             className="material-symbols-outlined tracker-reference-chip-type-icon"
             role="img"
-            aria-label={`${displayLabel(resolved?.type ?? '')} item`}
+            aria-label={t('tracker:reference.type_item', `${displayLabel(resolved?.type ?? '')} item`, { type: displayLabel(resolved?.type ?? '') })}
             style={{
               color: typeColor,
               flexShrink: 0,
@@ -395,13 +400,13 @@ export function TrackerReferenceChip({
                 {statusPresentation.icon}
               </span>
             ) : null}
-            {statusPresentation.label}
+            {localizedStatusLabel}
           </span>
         ) : null}
         {ownerInitials ? (
           <span
             className="tracker-reference-chip-owner"
-            aria-label={`Owner: ${resolved?.owner}`}
+            aria-label={t('tracker:reference.owner', `Owner: ${resolved?.owner}`, { owner: resolved?.owner ?? '' })}
             title={resolved?.owner}
             style={{
               display: 'inline-flex',
@@ -459,6 +464,7 @@ function TrackerReferencePreview({
   resolved,
   onGoTo,
 }: TrackerReferencePreviewProps): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const typeColor = resolved?.type
     ? getTypeColor(resolved.type)
     : 'var(--nim-text-muted)';
@@ -476,6 +482,9 @@ function TrackerReferencePreview({
     updatedDate && !Number.isNaN(updatedDate.getTime())
       ? formatRelativeDate(updatedDate)
       : '';
+  const localizedStatusLabel = resolved?.status
+    ? t(`tracker:plans.status_${normalizeStatus(resolved.status)?.replace(/-/g, '_') ?? ''}`, displayLabel(resolved.status))
+    : '';
 
   return (
     <div
@@ -546,7 +555,7 @@ function TrackerReferencePreview({
               <MetadataBadge
                 className="tracker-reference-preview-status"
                 color={resolvedStatusColor}
-                label={displayLabel(resolved.status)}
+                label={localizedStatusLabel}
               />
             ) : null}
             {resolved.priority ? (
@@ -554,7 +563,7 @@ function TrackerReferencePreview({
                 className="tracker-reference-preview-priority"
                 color={priorityColor}
                 icon="flag"
-                label={`${displayLabel(resolved.priority)} priority`}
+                label={t('tracker:reference.priority', `${displayLabel(resolved.priority)} priority`, { priority: displayLabel(resolved.priority) })}
               />
             ) : null}
           </div>
@@ -591,8 +600,8 @@ function TrackerReferencePreview({
                 schedule
               </span>
               {updatedLabel
-                ? `Updated ${updatedLabel}`
-                : 'Update time unavailable'}
+                ? t('tracker:reference.updated', `Updated ${updatedLabel}`, { display: updatedLabel })
+                : t('tracker:reference.updated_unavailable', 'Update time unavailable')}
               {resolved.owner ? ` · ${resolved.owner}` : ''}
             </div>
             <button
@@ -611,7 +620,7 @@ function TrackerReferencePreview({
                 cursor: 'pointer',
               }}
             >
-              Go to item
+              {t('tracker:reference.go_to_item', 'Go to item')}
             </button>
           </div>
         </>
@@ -620,7 +629,7 @@ function TrackerReferencePreview({
           <div style={{ fontWeight: 600, marginBottom: '4px' }}>
             {referenceKey}
           </div>
-          <div>This tracker item couldn’t be resolved in this workspace.</div>
+          <div>{t('tracker:reference.unresolved', 'This tracker item couldn’t be resolved in this workspace.')}</div>
         </div>
       )}
     </div>

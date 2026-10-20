@@ -7,17 +7,18 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import {
   codexUsageAtom,
   codexUsageAvailableAtom,
   codexUsageIndicatorColorAtom,
   codexUsageMostConstrainedWindowAtom,
-  formatCodexWindowLabel,
   formatResetTime,
 } from '../../store/atoms/codexUsageAtoms';
 import { CodexUsagePopover } from './CodexUsagePopover';
 import { refreshCodexUsage } from '../../store/listeners/codexUsageListeners';
+import { localizeCodexWindowLabel, localizeUsageResetTime } from '../ClaudeUsageIndicator/usagePresentation';
 
 const RING_RADIUS = 12;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -27,6 +28,7 @@ interface CodexUsageIndicatorProps {
 }
 
 export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ className }) => {
+  const { t } = useTranslation(['aichat', 'common']);
   const usage = useAtomValue(codexUsageAtom);
   const isAvailable = useAtomValue(codexUsageAvailableAtom);
   const indicatorColor = useAtomValue(codexUsageIndicatorColorAtom);
@@ -63,18 +65,18 @@ export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ classN
   const strokeColor = colorClasses[effectiveIndicatorColor] || colorClasses.muted;
 
   const constrainedLabel = mostConstrained
-    ? [mostConstrained.limit.name, formatCodexWindowLabel(mostConstrained.window)]
+    ? [mostConstrained.limit.name, localizeCodexWindowLabel(mostConstrained.window, t)]
         .filter(Boolean)
         .join(' · ')
     : null;
 
   const tooltipContent = usage?.error
-    ? `Codex usage unavailable: ${usage.error}`
+    ? t('aichat:usage.indicator_error', { error: usage.error })
     : usage
       ? limitsAvailable
-        ? `Codex ${constrainedLabel}: ${Math.round(utilization)}% (resets ${formatResetTime(mostConstrained?.window.resetsAt ?? null)})`
-        : 'Codex usage (limits unavailable)'
-      : 'Codex usage unavailable';
+        ? t('common:usage_indicator.codex_limit_tooltip', { limit: constrainedLabel, percent: Math.round(utilization), time: localizeUsageResetTime(formatResetTime(mostConstrained?.window.resetsAt ?? null), t) })
+        : t('aichat:usage.indicator_limits_unavailable')
+      : t('aichat:usage.indicator_unavailable');
 
   return (
     <div className={`relative ${className || ''}`}>
@@ -83,7 +85,7 @@ export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ classN
         onClick={handleClick}
         title={tooltipContent}
         className="relative w-9 h-9 flex items-center justify-center bg-transparent border-none rounded-md cursor-pointer transition-all duration-150 p-0 hover:bg-nim-tertiary active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2"
-        aria-label="Codex Usage"
+        aria-label={t('aichat:usage.codex_usage')}
         data-testid="codex-usage-indicator"
       >
         <svg

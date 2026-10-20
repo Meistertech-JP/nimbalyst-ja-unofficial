@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { rendererI18n } from '../i18n';
 import { errorNotificationService } from '../services/ErrorNotificationService';
 import { getTeamSyncProvider } from '../store/atoms/collabDocuments';
 
@@ -25,15 +26,15 @@ async function hashText(value: string): Promise<string> {
 
 function formatRelativeTime(ms: number): string {
   const diff = Date.now() - ms;
-  if (diff < 0) return 'just now';
+  if (diff < 0) return rendererI18n.t('common:collab_local_origin.just_now');
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return new Date(ms).toLocaleDateString();
+  if (minutes < 1) return rendererI18n.t('common:collab_local_origin.just_now');
+  if (minutes < 60) return rendererI18n.t('common:collab_local_origin.minutes_ago', { count: minutes });
+  if (hours < 24) return rendererI18n.t('common:collab_local_origin.hours_ago', { count: hours });
+  if (days < 7) return rendererI18n.t('common:collab_local_origin.days_ago', { count: days });
+  return new Date(ms).toLocaleDateString(rendererI18n.resolvedLanguage ?? rendererI18n.language);
 }
 
 /**
@@ -61,10 +62,10 @@ function resolveEditorLabel(workspacePath: string, userId: string | null | undef
 function describeSharedChange(result: ReuploadResult, workspacePath: string): string | null {
   const at = result.lastEditedAt ?? null;
   const who = resolveEditorLabel(workspacePath, result.lastEditorId);
-  const when = at ? `${formatRelativeTime(at)} (${new Date(at).toLocaleString()})` : null;
-  if (who && when) return `${who} last edited this shared document ${when}.`;
-  if (who) return `${who} last edited this shared document.`;
-  if (when) return `This shared document was last edited ${when}.`;
+  const when = at ? `${formatRelativeTime(at)} (${new Date(at).toLocaleString(rendererI18n.resolvedLanguage ?? rendererI18n.language)})` : null;
+  if (who && when) return rendererI18n.t('common:collab_local_origin.shared_last_edited_by_when', { who, when });
+  if (who) return rendererI18n.t('common:collab_local_origin.shared_last_edited_by', { who });
+  if (when) return rendererI18n.t('common:collab_local_origin.shared_last_edited_when', { when });
   return null;
 }
 
@@ -72,20 +73,20 @@ function buildConflictPrompt(result: ReuploadResult, workspacePath: string): str
   let kind: string;
   switch (result.conflictKind) {
     case 'missing-baseline':
-      kind = 'No sync baseline exists for this local source yet.';
+      kind = rendererI18n.t('common:collab_local_origin.conflict_missing_baseline');
       break;
     case 'shared-ahead':
-      kind = 'The shared document changed since this local source was last linked.';
+      kind = rendererI18n.t('common:collab_local_origin.conflict_shared_ahead');
       break;
     case 'diverged':
-      kind = 'Both the local file and the shared document changed.';
+      kind = rendererI18n.t('common:collab_local_origin.conflict_diverged');
       break;
     default:
       kind = '';
       break;
   }
   const context = describeSharedChange(result, workspacePath);
-  const action = 'Your push will overwrite the shared document with the current local file. Continue?';
+  const action = rendererI18n.t('common:collab_local_origin.conflict_action');
   return [context, kind, action].filter(Boolean).join(' ');
 }
 
@@ -106,15 +107,15 @@ export async function tryRendererHeadlessReupload(
   const resolvedPath = result.binding?.resolvedPath;
   const documentType = result.binding?.documentType;
   if (!resolvedPath || !documentType || !window.electronAPI?.readFileContent) {
-    return { status: 'error', message: result.message || 'The linked local source is not available.' };
+    return { status: 'error', message: result.message || rendererI18n.t('common:collab_local_origin.linked_source_unavailable') };
   }
   try {
     const fileRes = await window.electronAPI.readFileContent(resolvedPath);
     if (!fileRes?.success) {
-      return { status: 'error', message: fileRes?.error || 'Could not read the linked local source.' };
+      return { status: 'error', message: fileRes?.error || rendererI18n.t('common:collab_local_origin.read_source_failed') };
     }
     if (typeof fileRes.content !== 'string') {
-      return { status: 'error', message: 'The linked local source is not text-readable.' };
+      return { status: 'error', message: rendererI18n.t('common:collab_local_origin.source_not_text') };
     }
 
     const sourceHash = await hashText(fileRes.content);
@@ -130,7 +131,7 @@ export async function tryRendererHeadlessReupload(
       console.warn('[useCollabLocalOrigin] renderer-headless shared export failed:', sharedRead.error);
       return {
         status: 'error',
-        message: sharedRead.error || 'Could not read the current shared document state.',
+        message: sharedRead.error || rendererI18n.t('common:collab_local_origin.read_shared_failed'),
       };
     }
 
@@ -169,7 +170,7 @@ export async function tryRendererHeadlessReupload(
       console.warn('[useCollabLocalOrigin] renderer-headless reupload failed:', headless.error);
       return {
         status: 'error',
-        message: headless.error || 'Could not write the local file into the shared document.',
+        message: headless.error || rendererI18n.t('common:collab_local_origin.write_shared_failed'),
       };
     }
 
@@ -244,9 +245,9 @@ export function useCollabLocalOrigin(
     }
 
     const result = await window.electronAPI.openFileDialog({
-      title: 'Relink Local Source',
+      title: rendererI18n.t('common:collab_local_origin.relink_title'),
       defaultPath: binding?.resolvedPath ?? workspacePath,
-      buttonLabel: 'Relink',
+      buttonLabel: rendererI18n.t('common:collab_local_origin.relink_button'),
     });
     const selectedPath = result?.filePaths?.[0];
     if (result?.canceled || !selectedPath) {
@@ -263,16 +264,16 @@ export function useCollabLocalOrigin(
       });
       if (!relinkResult.success) {
         errorNotificationService.showError(
-          'Relink failed',
-          relinkResult.error || 'Could not relink the local source.',
+          rendererI18n.t('common:collab_local_origin.relink_failed'),
+          relinkResult.error || rendererI18n.t('common:collab_local_origin.relink_failed_message'),
         );
         return false;
       }
 
       setBinding(relinkResult.binding ?? null);
       errorNotificationService.showInfo(
-        'Local source linked',
-        relinkResult.binding?.relativePath || 'The shared document is now linked to a local file.',
+        rendererI18n.t('common:collab_local_origin.linked_title'),
+        relinkResult.binding?.relativePath || rendererI18n.t('common:collab_local_origin.linked_message'),
         { duration: 4000 },
       );
       return true;
@@ -285,7 +286,7 @@ export function useCollabLocalOrigin(
     if (!workspacePath || !documentId || !window.electronAPI?.documentSync?.clearLocalOrigin) {
       return false;
     }
-    if (!window.confirm('Clear the local source link for this shared document?')) {
+    if (!window.confirm(rendererI18n.t('common:collab_local_origin.clear_confirm'))) {
       return false;
     }
 
@@ -294,15 +295,15 @@ export function useCollabLocalOrigin(
       const result = await window.electronAPI.documentSync.clearLocalOrigin(workspacePath, documentId);
       if (!result.success) {
         errorNotificationService.showError(
-          'Clear failed',
-          result.error || 'Could not clear the local source link.',
+          rendererI18n.t('common:collab_local_origin.clear_failed'),
+          result.error || rendererI18n.t('common:collab_local_origin.clear_failed_message'),
         );
         return false;
       }
       setBinding(null);
       errorNotificationService.showInfo(
-        'Local source cleared',
-        'This shared document no longer has a linked local file.',
+        rendererI18n.t('common:collab_local_origin.cleared_title'),
+        rendererI18n.t('common:collab_local_origin.cleared_message'),
         { duration: 3000 },
       );
       return true;
@@ -347,8 +348,8 @@ export function useCollabLocalOrigin(
         if (rendererResult.status === 'uploaded') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            'Shared document updated',
-            'Pushed the current local file into the shared document.',
+            rendererI18n.t('common:collab_local_origin.updated_title'),
+            rendererI18n.t('common:collab_local_origin.updated_message'),
             { duration: 5000 },
           );
           return true;
@@ -356,8 +357,8 @@ export function useCollabLocalOrigin(
         if (rendererResult.status === 'noop') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            'Nothing to upload',
-            'The local source and shared document already match the last synced baseline.',
+            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
+            rendererI18n.t('common:collab_local_origin.nothing_to_upload_baseline'),
             { duration: 3500 },
           );
           return true;
@@ -374,19 +375,19 @@ export function useCollabLocalOrigin(
       switch (result.status) {
         case 'uploaded': {
           const migrationSummary = result.migration && (result.migration.okCount > 0 || result.migration.failedCount > 0)
-            ? ` Uploaded ${result.migration.okCount} attachment${result.migration.okCount === 1 ? '' : 's'}${result.migration.failedCount > 0 ? `; ${result.migration.failedCount} failed.` : '.'}`
+            ? ` ${rendererI18n.t('common:collab_local_origin.attachments_uploaded', { count: result.migration.okCount })}${result.migration.failedCount > 0 ? `; ${rendererI18n.t('common:collab_local_origin.attachments_failed', { count: result.migration.failedCount })}.` : '.'}`
             : '';
           errorNotificationService.showInfo(
-            'Shared document updated',
-            `${result.message || 'Uploaded the current local file to the shared document.'}${migrationSummary}`,
+            rendererI18n.t('common:collab_local_origin.updated_title'),
+            `${result.message || rendererI18n.t('common:collab_local_origin.uploaded_message')}${migrationSummary}`,
             { duration: 5000 },
           );
           return true;
         }
         case 'noop':
           errorNotificationService.showInfo(
-            'Nothing to upload',
-            result.message || 'The local file already matches the shared document baseline.',
+            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
+            result.message || rendererI18n.t('common:collab_local_origin.nothing_to_upload_file'),
             { duration: 3500 },
           );
           return true;
@@ -395,8 +396,8 @@ export function useCollabLocalOrigin(
         case 'error':
         default:
           errorNotificationService.showError(
-            'Re-upload failed',
-            result.message || 'Could not re-upload from the local source.',
+            rendererI18n.t('common:collab_local_origin.reupload_failed'),
+            result.message || rendererI18n.t('common:collab_local_origin.reupload_failed_message'),
           );
           return false;
       }
@@ -495,8 +496,8 @@ export function useLocalFileSharedDocLink(
         if (rendererResult.status === 'uploaded') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            'Shared document updated',
-            'Pushed the current local file into the shared document.',
+            rendererI18n.t('common:collab_local_origin.updated_title'),
+            rendererI18n.t('common:collab_local_origin.updated_message'),
             { duration: 5000 },
           );
           return true;
@@ -504,8 +505,8 @@ export function useLocalFileSharedDocLink(
         if (rendererResult.status === 'noop') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            'Nothing to upload',
-            'The local source and shared document already match the last synced baseline.',
+            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
+            rendererI18n.t('common:collab_local_origin.nothing_to_upload_baseline'),
             { duration: 3500 },
           );
           return true;
@@ -522,19 +523,19 @@ export function useLocalFileSharedDocLink(
       switch (result.status) {
         case 'uploaded': {
           const migrationSummary = result.migration && (result.migration.okCount > 0 || result.migration.failedCount > 0)
-            ? ` Uploaded ${result.migration.okCount} attachment${result.migration.okCount === 1 ? '' : 's'}${result.migration.failedCount > 0 ? `; ${result.migration.failedCount} failed.` : '.'}`
+            ? ` ${rendererI18n.t('common:collab_local_origin.attachments_uploaded', { count: result.migration.okCount })}${result.migration.failedCount > 0 ? `; ${rendererI18n.t('common:collab_local_origin.attachments_failed', { count: result.migration.failedCount })}.` : '.'}`
             : '';
           errorNotificationService.showInfo(
-            'Shared document updated',
-            `${result.message || 'Uploaded the current local file to the shared document.'}${migrationSummary}`,
+            rendererI18n.t('common:collab_local_origin.updated_title'),
+            `${result.message || rendererI18n.t('common:collab_local_origin.uploaded_message')}${migrationSummary}`,
             { duration: 5000 },
           );
           return true;
         }
         case 'noop':
           errorNotificationService.showInfo(
-            'Nothing to upload',
-            result.message || 'The local file already matches the shared document baseline.',
+            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
+            result.message || rendererI18n.t('common:collab_local_origin.nothing_to_upload_file'),
             { duration: 3500 },
           );
           return true;
@@ -543,8 +544,8 @@ export function useLocalFileSharedDocLink(
         case 'error':
         default:
           errorNotificationService.showError(
-            'Re-upload failed',
-            result.message || 'Could not re-upload from the local source.',
+            rendererI18n.t('common:collab_local_origin.reupload_failed'),
+            result.message || rendererI18n.t('common:collab_local_origin.reupload_failed_message'),
           );
           return false;
       }

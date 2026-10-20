@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { sessionWakeupAtom, type SessionWakeupView } from '../../store/atoms/sessions';
@@ -7,21 +9,21 @@ interface WakeupBannerProps {
   sessionId?: string | null;
 }
 
-function formatRelativeFireAt(fireAt: number): string {
+function formatRelativeFireAt(fireAt: number, t: TFunction): string {
   const ms = fireAt - Date.now();
-  if (ms <= 0) return 'now';
+  if (ms <= 0) return t('aichat:wakeup.now');
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `in ${seconds}s`;
+  if (seconds < 60) return t('aichat:wakeup.in_seconds', { count: seconds });
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `in ${minutes}m`;
+  if (minutes < 60) return t('aichat:wakeup.in_minutes', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `in ${hours}h ${minutes % 60}m`;
+  if (hours < 24) return t('aichat:wakeup.in_hours', { count: hours, remainder: minutes % 60 });
   const days = Math.floor(hours / 24);
-  return `in ${days}d ${hours % 24}h`;
+  return t('aichat:wakeup.in_days', { count: days, remainder: hours % 24 });
 }
 
-function formatAbsoluteFireAt(fireAt: number): string {
-  return new Date(fireAt).toLocaleString(undefined, {
+function formatAbsoluteFireAt(fireAt: number, language: string): string {
+  return new Date(fireAt).toLocaleString(language, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -29,19 +31,19 @@ function formatAbsoluteFireAt(fireAt: number): string {
   });
 }
 
-function statusLabel(wakeup: SessionWakeupView): string {
+function statusLabel(wakeup: SessionWakeupView, t: TFunction, language: string): string {
   switch (wakeup.status) {
     case 'pending':
-      return `Scheduled to resume ${formatRelativeFireAt(wakeup.fireAt)} (${formatAbsoluteFireAt(wakeup.fireAt)})`;
+      return t('aichat:wakeup.scheduled', { relative: formatRelativeFireAt(wakeup.fireAt, t), absolute: formatAbsoluteFireAt(wakeup.fireAt, language) });
     case 'firing':
-      return 'Resuming session…';
+      return t('aichat:wakeup.resuming');
     case 'waiting_for_workspace':
-      return 'Waiting for the workspace window to open';
+      return t('aichat:wakeup.waiting_workspace');
     case 'overdue': {
       const hoursAgo = Math.max(0, Math.floor((Date.now() - wakeup.fireAt) / 3_600_000));
       return hoursAgo > 0
-        ? `Wakeup was due ${hoursAgo}h ago — fire now or cancel?`
-        : 'Wakeup was due while the app was closed — fire now or cancel?';
+        ? t('aichat:wakeup.overdue_hours', { hours: hoursAgo })
+        : t('aichat:wakeup.overdue_closed');
     }
     default:
       return '';
@@ -49,6 +51,7 @@ function statusLabel(wakeup: SessionWakeupView): string {
 }
 
 export function WakeupBanner({ sessionId }: WakeupBannerProps) {
+  const { t, i18n } = useTranslation('aichat');
   const effectiveSessionId = sessionId || '__no_session__';
   const wakeup = useAtomValue(sessionWakeupAtom(effectiveSessionId));
   const [busy, setBusy] = useState(false);
@@ -98,11 +101,11 @@ export function WakeupBanner({ sessionId }: WakeupBannerProps) {
   const iconColor = isOverdue ? 'text-nim-warning' : 'text-nim-primary';
 
   return (
-    <div className={containerClass} data-testid="wakeup-banner">
+    <div className={`wakeup-banner ${containerClass}`} data-testid="wakeup-banner">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <MaterialSymbol icon="schedule" size={16} className={iconColor} />
         <span className={textClass}>
-          {statusLabel(wakeup)}
+          {statusLabel(wakeup, t, i18n.resolvedLanguage ?? i18n.language)}
           {wakeup.reason ? <span className="opacity-80"> — {wakeup.reason}</span> : null}
         </span>
       </div>
@@ -114,10 +117,10 @@ export function WakeupBanner({ sessionId }: WakeupBannerProps) {
             disabled={busy}
             className="flex items-center gap-1 px-2.5 py-1 bg-transparent border border-current rounded text-[11px] font-medium cursor-pointer transition-all duration-200 hover:enabled:bg-current/10 disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="wakeup-banner-run-now"
-            title="Fire this wakeup right now"
+            title={t('wakeup.fire_now_title')}
           >
             <MaterialSymbol icon="bolt" size={14} />
-            Fire now
+            {t('wakeup.fire_now')}
           </button>
         )}
         <button
@@ -126,10 +129,10 @@ export function WakeupBanner({ sessionId }: WakeupBannerProps) {
           disabled={busy}
           className="flex items-center gap-1 px-2.5 py-1 bg-transparent border border-nim-border rounded text-nim-text-muted text-[11px] font-medium cursor-pointer transition-all duration-200 hover:enabled:bg-nim-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           data-testid="wakeup-banner-cancel"
-          title="Cancel the scheduled wakeup"
+          title={t('wakeup.cancel_title')}
         >
           <MaterialSymbol icon="cancel" size={14} />
-          Cancel
+          {t('wakeup.cancel')}
         </button>
       </div>
     </div>

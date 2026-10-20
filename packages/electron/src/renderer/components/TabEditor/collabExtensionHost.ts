@@ -39,6 +39,7 @@ import {
   setEditorContextItems as storeSetEditorContextItems,
 } from '../../stores/editorContextStore';
 import type { EditorContext, EditorContextItem } from '@nimbalyst/runtime';
+import { rendererI18n } from '../../i18n';
 
 /** Origin tag for awareness updates we inject from remote broadcasts. */
 const REMOTE_AWARENESS_ORIGIN = Symbol('nimbalyst:collab-remote-awareness');
@@ -198,8 +199,8 @@ export function createCollaborationContext(args: {
       if (outcome.ok) return;
       const detail = outcome.error instanceof Error ? outcome.error.message : String(outcome.error ?? '');
       errorNotificationService.showWarning(
-        'Shared document seed not confirmed',
-        'The initial shared content was not confirmed by the server. Re-upload the local source before teammates rely on this document.',
+        rendererI18n.t('editor:collab.seed_not_confirmed'),
+        rendererI18n.t('editor:collab.seed_not_confirmed_message'),
         { details: detail || undefined, duration: 10000 },
       );
     },

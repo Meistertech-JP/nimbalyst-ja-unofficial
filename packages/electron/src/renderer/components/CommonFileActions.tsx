@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getEmbeddableExtensions, MaterialSymbol } from '@nimbalyst/runtime';
 import { store } from '@nimbalyst/runtime/store';
 import { useAtomValue } from 'jotai';
@@ -22,6 +23,7 @@ import {
 } from '../store/atoms/collabDocuments';
 import { activeWorkspacePathAtom } from '../store/atoms/openProjects';
 import { getRelativePath } from '../utils/pathUtils';
+import { getShareabilityReasonText } from '../utils/shareabilityReasonText';
 import { dialogRef, DIALOG_IDS } from '../dialogs';
 import type { ShareToTeamData } from '../dialogs';
 import { joinCollabPath, normalizeCollabPath } from './CollabMode/collabTree';
@@ -71,6 +73,7 @@ function decodeBase64Bytes(base64: string): Uint8Array {
 export async function readShareToTeamSourceContent(
   filePath: string,
   descriptor: CollaborativeDocumentTypeDescriptor,
+  fallbackReason = 'source-read-failed',
 ): Promise<string | Uint8Array> {
   const binary = descriptor.content.strategy === 'opaque-versioned';
   const api = window.electronAPI;
@@ -78,7 +81,10 @@ export async function readShareToTeamSourceContent(
     ? await api.readFileContent(filePath, binary ? { binary: true } : undefined)
     : await api?.invoke?.('read-file-content', filePath, binary ? { binary: true } : undefined);
   if (!result?.success || typeof result.content !== 'string') {
-    const reason = result && 'error' in result ? result.error : 'The source file could not be read.';
+    const reason =
+      result && 'error' in result && typeof result.error === 'string'
+        ? result.error
+        : fallbackReason;
     throw new Error(reason);
   }
   return binary ? decodeBase64Bytes(result.content) : result.content;
@@ -94,6 +100,7 @@ export function CommonFileActions({
   showIcons = true,
   useButtons = false,
 }: CommonFileActionsProps) {
+  const { t } = useTranslation(['files']);
   const actions = useFileActions(filePath, fileName);
   const hasTeam = useAtomValue(workspaceHasTeamAtom);
   const documentTypeCatalog = getCollaborativeDocumentTypeCatalog();
@@ -106,6 +113,12 @@ export function CommonFileActions({
     () => documentTypeCatalog.resolveShareability(fileName),
     [catalogRevision, documentTypeCatalog, fileName],
   );
+  const shareabilityReason =
+    shareability.state === 'unsupported'
+      ? shareability.reasonMetadata
+        ? getShareabilityReasonText(t, shareability.reasonMetadata)
+        : shareability.reason
+      : undefined;
   const runShareToTeam = useCallback(async (
     folderId: string | null,
     folderPath: string,
@@ -136,9 +149,13 @@ export function CommonFileActions({
     );
     if (liveResolution.state !== 'ready') {
       trackShareFailure(liveResolution.reason);
+      const localizedReason = liveResolution.reasonMetadata
+        ? getShareabilityReasonText(t, liveResolution.reasonMetadata)
+        : liveResolution.reason;
       errorNotificationService.showError(
-        'Could not share to team',
-        liveResolution.reason,
+        t('files:notifications.share_failed_title'),
+        localizedReason,
+        { details: liveResolution.reason },
       );
       return;
     }
@@ -148,12 +165,19 @@ export function CommonFileActions({
     // Read file content to seed the collaborative document on first share.
     let initialContent: string | Uint8Array;
     try {
-      initialContent = await readShareToTeamSourceContent(filePath, descriptor);
+      initialContent = await readShareToTeamSourceContent(
+        filePath,
+        descriptor,
+        t('files:notifications.source_read_failed'),
+      );
     } catch (err) {
       trackShareFailure(err);
       errorNotificationService.showError(
-        'Could not share to team',
-        err instanceof Error ? err.message : String(err),
+        t('files:notifications.share_failed_title'),
+        t('files:notifications.source_read_failed'),
+        {
+          details: err instanceof Error ? err.message : String(err),
+        },
       );
       return;
     }
@@ -189,7 +213,9 @@ export function CommonFileActions({
       try {
         const openResult = await documentSync.open(workspacePath, documentId, shareTitle, documentType);
         if (!openResult.success || !openResult.config) {
-          throw new Error(openResult.error || 'Failed to open collab document for migration');
+          throw new Error(
+            openResult.error || t('files:notifications.open_failed'),
+          );
         }
         const { orgId, documentId: openedDocumentId } = openResult.config;
         try {
@@ -245,8 +271,10 @@ export function CommonFileActions({
       });
       trackShareFailure(new Error('Asset migration failed'));
       errorNotificationService.showError(
-        'Could not share to team',
-        `All ${migrationToast.failedCount ?? ''} attached images failed to upload. Check your connection and try again.`,
+        t('files:notifications.share_failed_title'),
+        t('files:notifications.share_failed_message', {
+          count: migrationToast.failedCount ?? 0,
+        }),
         { duration: 8000 },
       );
       return;
@@ -269,13 +297,17 @@ export function CommonFileActions({
         selectedPaths: new Set(selectedEmbeddedDocumentPaths),
         parentFolderId: folderId,
         readSourceContent: candidate =>
-          readShareToTeamSourceContent(candidate.absolutePath, candidate.descriptor),
+          readShareToTeamSourceContent(
+            candidate.absolutePath,
+            candidate.descriptor,
+            t('files:notifications.source_read_failed'),
+          ),
         createDocument: createCollaborativeDocument,
         generateId: () => crypto.randomUUID(),
         resolveOrgId: async () => {
           const orgId = store.get(activeTeamOrgIdAtom);
           if (!orgId) {
-            throw new Error('The active team organization is unavailable.');
+            throw new Error(t('files:notifications.active_team_unavailable'));
           }
           return orgId;
         },
@@ -325,11 +357,13 @@ export function CommonFileActions({
         }
       }
       const details = error instanceof CollaborativeDocumentCreationError
-        ? `${error.code} (document ${error.documentId})`
-        : undefined;
+        ? `${error.message}\n${error.code} (document ${error.documentId})`
+        : error instanceof Error
+          ? error.message
+          : String(error);
       errorNotificationService.showError(
-        'Could not share to team',
-        error instanceof Error ? error.message : String(error),
+        t('files:notifications.share_failed_title'),
+        t('files:notifications.share_failed_generic'),
         { details, duration: 10000 },
       );
       return;
@@ -372,54 +406,93 @@ export function CommonFileActions({
     // Attachment and linked-document outcomes are independent: a doc can lose
     // an image upload AND a linked embed. Report both in one toast rather than
     // letting either result hide the other.
-    const linkedParts: string[] = [];
+    const linkedMessages: string[] = [];
     if (linkedCount > 0) {
-      linkedParts.push(`Shared ${linkedCount} linked document${linkedCount === 1 ? '' : 's'}.`);
+      linkedMessages.push(
+        t(
+          linkedCount === 1
+            ? 'files:notifications.linked_shared_one'
+            : 'files:notifications.linked_shared_other',
+          { count: linkedCount },
+        ),
+      );
     }
     if (linkedFailureCount > 0) {
-      linkedParts.push(`${linkedFailureCount} linked document${linkedFailureCount === 1 ? '' : 's'} could not be shared and remain local links.`);
+      linkedMessages.push(
+        t(
+          linkedFailureCount === 1
+            ? 'files:notifications.linked_failed_one'
+            : 'files:notifications.linked_failed_other',
+          { count: linkedFailureCount },
+        ),
+      );
     }
-    const linkedSummary = linkedParts.length > 0 ? ` ${linkedParts.join(' ')}` : '';
+    const withLinkedOutcomes = (message: string): string =>
+      [message, ...linkedMessages].join(' ');
     const linkedDetails = linkedFailureCount > 0
       ? embeddedShareResult.failures
           .map(failure => `${failure.fileName}: ${failure.error}`)
           .join('\n')
       : undefined;
+    const unavailableDetails = [
+      migrationToast.kind === 'unavailable' ? migrationToast.message : undefined,
+      linkedDetails,
+    ]
+      .filter((detail): detail is string => !!detail)
+      .join('\n') || undefined;
 
     switch (migrationToast.kind) {
       case 'ok':
       case 'no-assets':
       default: {
-        const body = migrationToast.kind === 'ok'
-          ? `"${finalTitle}" is now a collaborative document. Migrated ${migrationToast.okCount} attachment${migrationToast.okCount === 1 ? '' : 's'}.${linkedSummary}`
-          : `"${finalTitle}" is now a collaborative document.${linkedSummary}`;
+        const body = withLinkedOutcomes(
+          migrationToast.kind === 'ok'
+            ? t('files:notifications.success_message', {
+                title: finalTitle,
+                count: migrationToast.okCount ?? 0,
+              })
+            : t('files:notifications.shared_message', { title: finalTitle }),
+        );
         if (linkedFailureCount > 0) {
           errorNotificationService.showWarning(
-            'Shared with missing linked documents',
+            t('files:notifications.linked_partial_title'),
             body,
             { details: linkedDetails, duration: 10000 },
           );
         } else {
-          errorNotificationService.showInfo('Shared to team', body, { duration: 4000 });
+          errorNotificationService.showInfo(
+            t('files:notifications.shared_title'),
+            body,
+            { duration: 4000 },
+          );
         }
         break;
       }
       case 'partial':
         errorNotificationService.showWarning(
-          'Shared with missing attachments',
-          `"${finalTitle}" was shared but ${migrationToast.failedCount} attachment${migrationToast.failedCount === 1 ? '' : 's'} failed to upload.${linkedSummary}`,
+          t('files:notifications.partial_title'),
+          withLinkedOutcomes(
+            t('files:notifications.partial_message', {
+              title: finalTitle,
+              count: migrationToast.failedCount ?? 0,
+            }),
+          ),
           { details: linkedDetails, duration: 8000 },
         );
         break;
       case 'unavailable':
         errorNotificationService.showWarning(
-          'Shared to team',
-          `"${finalTitle}" is now collaborative, but image attachments could not be migrated${migrationToast.message ? `: ${migrationToast.message}` : '.'}${linkedSummary}`,
-          { details: linkedDetails, duration: 8000 },
+          t('files:notifications.partial_title'),
+          withLinkedOutcomes(
+            t('files:notifications.unavailable_message', {
+              title: finalTitle,
+            }),
+          ),
+          { details: unavailableDetails, duration: 8000 },
         );
         break;
     }
-  }, [documentTypeCatalog, filePath, fileName]);
+  }, [documentTypeCatalog, filePath, fileName, t]);
 
   const openShareToTeamDialog = useCallback(async () => {
     if (shareability.state !== 'ready') return;
@@ -429,7 +502,11 @@ export function CommonFileActions({
     let embeddedDocuments: EmbeddedDocumentCandidate[] = [];
     if (descriptor.documentType === 'markdown' && workspacePath) {
       try {
-        const source = await readShareToTeamSourceContent(filePath, descriptor);
+        const source = await readShareToTeamSourceContent(
+          filePath,
+          descriptor,
+          t('files:notifications.source_read_failed'),
+        );
         if (typeof source === 'string') {
           embeddedDocuments = await discoverEmbeddedDocuments({
             markdown: source,
@@ -482,7 +559,7 @@ export function CommonFileActions({
         );
       },
     });
-  }, [documentTypeCatalog, filePath, fileName, runShareToTeam, shareability]);
+  }, [documentTypeCatalog, filePath, fileName, runShareToTeam, shareability, t]);
 
   const Item = useButtons ? 'button' : 'div';
 
@@ -494,7 +571,7 @@ export function CommonFileActions({
         onClick={() => { actions.openInDefaultApp(); onClose(); }}
       >
         {showIcons && <MaterialSymbol icon="launch" size={iconSize} />}
-        <span>Open in Default App</span>
+        <span>{t('files:actions.open_default')}</span>
       </Item>
 
       {/* Open in External Editor (conditional) */}
@@ -504,7 +581,11 @@ export function CommonFileActions({
           onClick={() => { actions.openInExternalEditor(); onClose(); }}
         >
           {showIcons && <MaterialSymbol icon="open_in_new" size={iconSize} />}
-          <span>Open in {actions.externalEditorName}</span>
+          <span>
+            {t('files:actions.open_external', {
+              editor: actions.externalEditorName,
+            })}
+          </span>
         </Item>
       )}
 
@@ -514,7 +595,7 @@ export function CommonFileActions({
         onClick={() => { actions.revealInFinder(); onClose(); }}
       >
         {showIcons && <MaterialSymbol icon="folder_open" size={iconSize} />}
-        <span>Show in Finder</span>
+        <span>{t('files:actions.show_finder')}</span>
       </Item>
 
       {/* Copy Path */}
@@ -524,7 +605,7 @@ export function CommonFileActions({
           onClick={() => { actions.copyFilePath(); onClose(); }}
         >
           {showIcons && <MaterialSymbol icon="content_copy" size={iconSize} />}
-          <span>Copy Path</span>
+          <span>{t('files:actions.copy_path')}</span>
         </Item>
       )}
 
@@ -535,7 +616,7 @@ export function CommonFileActions({
           onClick={() => { actions.shareLink(); onClose(); }}
         >
           {showIcons && <MaterialSymbol icon="share" size={iconSize} />}
-          <span>Share Link</span>
+          <span>{t('files:actions.share_link')}</span>
         </Item>
       )}
 
@@ -545,7 +626,7 @@ export function CommonFileActions({
         <Item
           className={`${menuItemClass} ${shareability.state === 'ready' ? '' : 'opacity-55 cursor-not-allowed'}`}
           aria-disabled={shareability.state !== 'ready'}
-          title={shareability.state === 'unsupported' ? shareability.reason : undefined}
+          title={shareabilityReason}
           onClick={() => {
             if (shareability.state !== 'ready') return;
             void openShareToTeamDialog();
@@ -554,10 +635,10 @@ export function CommonFileActions({
         >
           {showIcons && <MaterialSymbol icon="group" size={iconSize} />}
           <span className="min-w-0 flex-1">
-            <span className="block">Share to Team</span>
+            <span className="block">{t('files:actions.share_team')}</span>
             {shareability.state === 'unsupported' && (
               <span className="block text-[11px] leading-snug text-nim-disabled mt-0.5">
-                {shareability.reason}
+                {shareabilityReason}
               </span>
             )}
           </span>

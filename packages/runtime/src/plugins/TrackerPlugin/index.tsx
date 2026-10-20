@@ -50,6 +50,7 @@ import { generateTrackerId } from './models/IDGenerator';
 import { formatLocalDateOnly } from './models/dateUtils';
 import { $isHeadingNode } from '@lexical/rich-text';
 import { $getRoot } from 'lexical';
+import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
 import './TrackerItem.css';
 
 interface TrackerEditorState {
@@ -87,11 +88,11 @@ function generateId(prefix: string): string {
   return `${prefix}_${timestamp}${random}`;
 }
 
-function insertTrackerItemNode(editor: LexicalEditor, type: TrackerItemType, existingText?: string): void {
+function insertTrackerItemNode(editor: LexicalEditor, type: TrackerItemType, existingText?: string, defaultTitle?: string): void {
   editor.update(() => {
     const selection = $getSelection();
 
-    const title = existingText || `New ${type}`;
+    const title = existingText || defaultTitle || `New ${type}`;
 
     // Generate ID prefix based on type
     let prefix = 'tsk';
@@ -133,8 +134,8 @@ function insertTrackerItemNode(editor: LexicalEditor, type: TrackerItemType, exi
 /**
  * Extract the first heading or a default title from the document
  */
-function extractDocumentTitle(editor: LexicalEditor): string {
-  let title = 'Untitled';
+function extractDocumentTitle(editor: LexicalEditor, fallbackTitle = 'Untitled'): string {
+  let title = fallbackTitle;
 
   editor.getEditorState().read(() => {
     const root = $getRoot();
@@ -149,7 +150,7 @@ function extractDocumentTitle(editor: LexicalEditor): string {
     }
   });
 
-  return title || 'Untitled';
+  return title || fallbackTitle;
 }
 
 /**
@@ -184,7 +185,7 @@ function removeCommandText(editor: LexicalEditor): void {
 /**
  * Convert document to a plan by adding plan frontmatter
  */
-async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: string) => void): Promise<void> {
+async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: string) => void, fallbackTitle?: string): Promise<void> {
   if (!onContentChange) {
     console.warn('[TrackerPlugin] Cannot convert to plan: no content change handler');
     return;
@@ -194,7 +195,7 @@ async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: 
   removeCommandText(editor);
 
   // Extract title and get current content as markdown
-  const title = extractDocumentTitle(editor);
+  const title = extractDocumentTitle(editor, fallbackTitle);
   const planId = generateTrackerId('plan');
   const now = new Date();
 
@@ -230,7 +231,7 @@ async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: 
 /**
  * Convert document to a decision by adding decision frontmatter
  */
-async function convertToDecision(editor: LexicalEditor, onContentChange?: (content: string) => void): Promise<void> {
+async function convertToDecision(editor: LexicalEditor, onContentChange?: (content: string) => void, fallbackTitle?: string): Promise<void> {
   if (!onContentChange) {
     console.warn('[TrackerPlugin] Cannot convert to decision: no content change handler');
     return;
@@ -240,7 +241,7 @@ async function convertToDecision(editor: LexicalEditor, onContentChange?: (conte
   removeCommandText(editor);
 
   // Extract title and get current content as markdown
-  const title = extractDocumentTitle(editor);
+  const title = extractDocumentTitle(editor, fallbackTitle);
   const decisionId = generateTrackerId('decision');
   const now = new Date();
 
@@ -276,6 +277,7 @@ export interface TrackerPluginProps {}
 
 function TrackerPlugin(): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
+  const { t } = useRuntimeTranslation();
   const [query, setQuery] = useState<string | null>(null);
   const [editorState, setEditorState] = useState<TrackerEditorState | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -427,45 +429,45 @@ function TrackerPlugin(): JSX.Element | null {
     return editor.registerCommand(
       INSERT_TRACKER_TASK_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'task');
+        insertTrackerItemNode(editor, 'task', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.task', 'task') }));
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor]);
+  }, [editor, t]);
 
   useReactEffect(() => {
     return editor.registerCommand(
       INSERT_TRACKER_BUG_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'bug');
+        insertTrackerItemNode(editor, 'bug', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.bug', 'bug') }));
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor]);
+  }, [editor, t]);
 
   useReactEffect(() => {
     return editor.registerCommand(
       INSERT_TRACKER_PLAN_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'plan');
+        insertTrackerItemNode(editor, 'plan', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.plan', 'plan') }));
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor]);
+  }, [editor, t]);
 
   useReactEffect(() => {
     return editor.registerCommand(
       INSERT_TRACKER_IDEA_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'idea');
+        insertTrackerItemNode(editor, 'idea', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.idea', 'idea') }));
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor]);
+  }, [editor, t]);
 
   // Register document conversion commands
   useReactEffect(() => {
@@ -474,14 +476,14 @@ function TrackerPlugin(): JSX.Element | null {
       () => {
         // Get onContentChange from window if available (set by DocumentHeaderContainer)
         const onContentChange = (window as any).__documentContentChangeHandler;
-        convertToPlan(editor, onContentChange).catch(error => {
+        convertToPlan(editor, onContentChange, t('tracker:inline.untitled', 'Untitled')).catch(error => {
           console.error('[TrackerPlugin] Failed to convert to plan:', error);
         });
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor]);
+  }, [editor, t]);
 
   useReactEffect(() => {
     return editor.registerCommand(
@@ -489,14 +491,14 @@ function TrackerPlugin(): JSX.Element | null {
       () => {
         // Get onContentChange from window if available (set by DocumentHeaderContainer)
         const onContentChange = (window as any).__documentContentChangeHandler;
-        convertToDecision(editor, onContentChange).catch(error => {
+        convertToDecision(editor, onContentChange, t('tracker:inline.untitled', 'Untitled')).catch(error => {
           console.error('[TrackerPlugin] Failed to convert to decision:', error);
         });
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor]);
+  }, [editor, t]);
 
 
   // Handle tracker-item-toggle and tracker-item-edit events
@@ -726,8 +728,12 @@ function TrackerPlugin(): JSX.Element | null {
   // When the user has typed a query that matches nothing, show a disabled hint
   // rather than an empty floating box.
   const noMatchLabel = typeFilter
-    ? (searchQuery ? `No ${typeFilter} items match “${searchQuery}”` : `No ${typeFilter} items`)
-    : (searchQuery ? `No tracker items match “${searchQuery}”` : 'No tracker items yet');
+    ? (searchQuery
+      ? t('tracker:inline.no_type_items_match', 'No {{type}} items match “{{query}}”', { type: typeFilter, query: searchQuery })
+      : t('tracker:inline.no_type_items', 'No {{type}} items', { type: typeFilter }))
+    : (searchQuery
+      ? t('tracker:inline.no_items_match', 'No tracker items match “{{query}}”', { query: searchQuery })
+      : t('tracker:inline.no_items_yet', 'No tracker items yet'));
   const menuOptions: TypeaheadMenuOption[] = filteredOptions.length > 0
     ? filteredOptions
     : [{
@@ -741,7 +747,7 @@ function TrackerPlugin(): JSX.Element | null {
   const typeaheadHeader = typeFilter ? (
     <div className="tracker-typeahead-filter-hint">
       <span className="material-symbols-outlined">filter_list</span>
-      Filtering by type: <strong>{typeFilter}</strong>
+      {t('tracker:inline.filtering_by_type', 'Filtering by type:')} <strong>{typeFilter}</strong>
     </div>
   ) : undefined;
 
@@ -799,7 +805,7 @@ function TrackerPlugin(): JSX.Element | null {
             <textarea
               value={value}
               onChange={(e) => handleChange(e.target.value)}
-              placeholder={`Add ${label.toLowerCase()}...`}
+              placeholder={t('tracker:inline.add_field', 'Add {{field}}...', { field: label.toLowerCase() })}
               rows={4}
             />
           </div>
@@ -813,7 +819,7 @@ function TrackerPlugin(): JSX.Element | null {
               value={value}
               onChange={(e) => handleChange(e.target.value)}
             >
-              {!field.required && <option value="">None</option>}
+              {!field.required && <option value="">{t('tracker:inline.none', 'None')}</option>}
               {field.options?.map((option: any) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -831,12 +837,12 @@ function TrackerPlugin(): JSX.Element | null {
               type={field.type === 'number' ? 'number' : 'text'}
               value={value}
               onChange={(e) => handleChange(e.target.value)}
-              placeholder={`Enter ${label.toLowerCase()}...`}
+              placeholder={t('tracker:inline.enter_field', 'Enter {{field}}...', { field: label.toLowerCase() })}
             />
           </div>
         );
     }
-  }, [editorState, updateTrackerData]);
+  }, [editorState, updateTrackerData, t]);
 
   // Group fields for layout
   const fields = model?.fields || [];
@@ -880,7 +886,7 @@ function TrackerPlugin(): JSX.Element | null {
           {/* Title field - always first */}
           {titleField && (
             <div className="tracker-item-popover-field">
-              <label>Title</label>
+              <label>{t('tracker:columns.title', 'Title')}</label>
               <input
                 type="text"
                 value={editorState.data.title}
@@ -888,7 +894,7 @@ function TrackerPlugin(): JSX.Element | null {
                   updateTrackerData(editorState.nodeKey, { title: e.target.value });
                   setEditorState({ ...editorState, data: { ...editorState.data, title: e.target.value } });
                 }}
-                placeholder="Enter title"
+                placeholder={t('tracker:inline.enter_title', 'Enter title')}
               />
             </div>
           )}
@@ -913,17 +919,19 @@ function TrackerPlugin(): JSX.Element | null {
               className="tracker-item-convert-button"
               disabled={converting}
               onClick={() => handleConvertToReference(editorState.nodeKey, editorState.data)}
-              title="Create a real tracked item from this inline note and replace it with a live reference chip"
+              title={t('tracker:inline.convert_title', 'Create a real tracked item from this inline note and replace it with a live reference chip')}
             >
               <span className="material-symbols-outlined">sync_alt</span>
-              {converting ? 'Converting…' : 'Convert to tracked reference'}
+              {converting
+                ? t('tracker:inline.converting', 'Converting…')
+                : t('tracker:inline.convert', 'Convert to tracked reference')}
             </button>
           </div>
 
           <div className="tracker-item-popover-footer">
-            <span className="tracker-item-date">Created: {editorState.data.created ? new Date(editorState.data.created).toLocaleString() : 'N/A'}</span>
-            <span className="tracker-item-date">Updated: {editorState.data.updated ? new Date(editorState.data.updated).toLocaleString() : 'N/A'}</span>
-            <span className="tracker-item-id">ID: {editorState.data.id}</span>
+            <span className="tracker-item-date">{t('tracker:inline.created', 'Created:')} {editorState.data.created ? new Date(editorState.data.created).toLocaleString() : t('tracker:inline.not_available', 'N/A')}</span>
+            <span className="tracker-item-date">{t('tracker:inline.updated', 'Updated:')} {editorState.data.updated ? new Date(editorState.data.updated).toLocaleString() : t('tracker:inline.not_available', 'N/A')}</span>
+            <span className="tracker-item-id">{t('tracker:inline.id', 'ID')}: {editorState.data.id}</span>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import type { JSX, RefObject } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FloatingPortal } from '@floating-ui/react';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { TrackerFilterOp } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
@@ -46,6 +47,7 @@ export function TrackerFilterValueMenu({
   menuRef,
   testIdPrefix = 'tracker-filter',
 }: TrackerFilterValueMenuProps): JSX.Element {
+  const { t } = useTranslation(['tracker']);
   const [query, setQuery] = useState('');
   const [relativeDays, setRelativeDays] = useState('7');
   const [pendingValues, setPendingValues] = useState<Set<string>>(
@@ -58,12 +60,12 @@ export function TrackerFilterValueMenu({
   const options = useMemo(() => {
     if (field.type === 'boolean') {
       return [
-        { value: 'true', label: 'True' },
-        { value: 'false', label: 'False' },
+        { value: 'true', label: t('tracker:filters.true') },
+        { value: 'false', label: t('tracker:filters.false') },
       ];
     }
     return field.options ?? [];
-  }, [field]);
+  }, [field, t]);
   const matchingOptions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return options;
@@ -123,7 +125,7 @@ export function TrackerFilterValueMenu({
             <input
               autoFocus={placement === 'below'}
               className="h-9 w-full rounded-md bg-transparent px-1 text-[15px] text-nim outline-none placeholder:text-nim-faint"
-              placeholder="Filter…"
+              placeholder={t('tracker:filters.search')}
               value={query}
               onChange={event => setQuery(event.target.value)}
               onKeyDown={event => {
@@ -152,7 +154,7 @@ export function TrackerFilterValueMenu({
           <div className="p-3">
             <div className="mb-2 flex items-center gap-2 text-[11px] text-nim-muted">
               <MaterialSymbol icon="calendar_today" size={15} />
-              Relative days
+              {t('tracker:filters.relative_days')}
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -162,10 +164,10 @@ export function TrackerFilterValueMenu({
                 className="min-w-0 flex-1 rounded border border-nim bg-nim px-2 py-2 text-[13px] text-nim outline-none focus:border-nim-focus"
                 value={relativeDays}
                 onChange={event => setRelativeDays(event.target.value)}
-                aria-label="Number of days"
+                aria-label={t('tracker:filters.number_of_days')}
                 data-testid={`${testIdPrefix}-relative-days`}
               />
-              <span className="text-[12px] text-nim-muted">days</span>
+              <span className="text-[12px] text-nim-muted">{t('tracker:filters.days_unit')}</span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button
@@ -175,7 +177,7 @@ export function TrackerFilterValueMenu({
                 onClick={() => onSelect(Number(relativeDays), 'in-last')}
                 data-testid={`${testIdPrefix}-relative-in-last`}
               >
-                In last
+                {t('tracker:filters.in_last')}
               </button>
               <button
                 type="button"
@@ -184,7 +186,7 @@ export function TrackerFilterValueMenu({
                 onClick={() => onSelect(Number(relativeDays), 'not-in-last')}
                 data-testid={`${testIdPrefix}-relative-not-in-last`}
               >
-                Not in last
+                {t('tracker:filters.not_in_last')}
               </button>
             </div>
             {onClear && (
@@ -194,7 +196,7 @@ export function TrackerFilterValueMenu({
                 onClick={onClear}
                 data-testid={`${testIdPrefix}-clear`}
               >
-                Clear filter
+                {t('tracker:filters.clear')}
               </button>
             )}
           </div>
@@ -210,7 +212,7 @@ export function TrackerFilterValueMenu({
                     data-testid={`${testIdPrefix}-relative-current-user`}
                   >
                     <MaterialSymbol icon="person" size={17} className="text-nim-muted" />
-                    Is current user
+                    {t('tracker:filters.current_user')}
                   </button>
                   <button
                     type="button"
@@ -219,7 +221,7 @@ export function TrackerFilterValueMenu({
                     data-testid={`${testIdPrefix}-relative-not-current-user`}
                   >
                     <MaterialSymbol icon="person_off" size={17} className="text-nim-muted" />
-                    Is not current user
+                    {t('tracker:filters.not_current_user')}
                   </button>
                 </div>
               )}
@@ -261,7 +263,7 @@ export function TrackerFilterValueMenu({
                     <span className="min-w-0 flex-1 truncate">{option.label}</span>
                     {option.count !== undefined && (
                       <span className="shrink-0 text-[12px] tabular-nums text-nim-faint">
-                        {option.count} issue{option.count === 1 ? '' : 's'}
+                        {t('tracker:filters.issues_count', { count: option.count })}
                       </span>
                     )}
                   </button>
@@ -269,7 +271,7 @@ export function TrackerFilterValueMenu({
               })}
               {matchingOptionsWithIssues.length === 0 && field.type !== 'user' && (
                 <div className="px-3 py-8 text-center text-[12px] text-nim-faint">
-                  No matching values
+                  {t('tracker:filters.no_matching_values')}
                 </div>
               )}
             </div>
@@ -279,8 +281,7 @@ export function TrackerFilterValueMenu({
                   <>
                     <MaterialSymbol icon="progress_activity" size={17} className="text-nim-faint" />
                     <span className="flex-1">
-                      {unmatchedOptionCount} option
-                      {unmatchedOptionCount === 1 ? '' : 's'} not matching any issues
+                      {t('tracker:filters.unmatched_options', { count: unmatchedOptionCount })}
                     </span>
                   </>
                 )}
@@ -291,7 +292,7 @@ export function TrackerFilterValueMenu({
                     onClick={onClear}
                     data-testid={`${testIdPrefix}-clear`}
                   >
-                    Clear filter
+                    {t('tracker:filters.clear')}
                   </button>
                 )}
                 {allowsMultiple && (
@@ -302,7 +303,9 @@ export function TrackerFilterValueMenu({
                     onClick={() => onSelect(Array.from(pendingValues), 'in')}
                     data-testid={`${testIdPrefix}-apply-multiple`}
                   >
-                    Apply{pendingValues.size > 0 ? ` (${pendingValues.size})` : ''}
+                    {pendingValues.size > 0
+                      ? t('tracker:filters.apply_count', { count: pendingValues.size })
+                      : t('tracker:filters.apply')}
                   </button>
                 )}
               </div>
@@ -321,7 +324,7 @@ export function TrackerFilterValueMenu({
               onClick={() => onSelect(query, '=')}
               data-testid={`${testIdPrefix}-quick-apply`}
             >
-              Filter for “{query || '…'}”
+              {t('tracker:filters.filter_for', { query: query || '…' })}
             </button>
             {onClear && (
               <button
@@ -330,7 +333,7 @@ export function TrackerFilterValueMenu({
                 onClick={onClear}
                 data-testid={`${testIdPrefix}-clear`}
               >
-                Clear filter
+                {t('tracker:filters.clear')}
               </button>
             )}
           </div>

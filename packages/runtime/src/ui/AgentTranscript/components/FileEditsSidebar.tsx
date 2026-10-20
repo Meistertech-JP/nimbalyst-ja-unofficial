@@ -12,6 +12,7 @@ import {
 } from '@floating-ui/react';
 import type { FileEditSummary } from '../types';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 import { useDiffPeek } from '../../git/useDiffPeek';
 import {
   buildFileDirectoryTree,
@@ -135,6 +136,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
   diffPeekHeight,
   onDiffPeekResize,
 }) => {
+  const { t } = useRuntimeTranslation();
   // Diff peek state — shared with GitCommitConfirmationWidget via useDiffPeek.
   const { peekSupported, registerRowEl, togglePeek, isActive, popoverElement } = useDiffPeek({
     getDiff: onGetDiff,
@@ -391,20 +393,27 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
 
     if (isCommitted) {
       if (operation === 'delete') {
-        return `${relativePath} - Deleted and committed`;
+        return `${relativePath} - ${t('files:edits.deleted_committed', 'Deleted and committed')}`;
       }
-      return `${relativePath} - Committed`;
+      return `${relativePath} - ${t('files:edits.committed', 'Committed')}`;
     }
 
     // Build tooltip based on operation and git status
     const operationText = {
-      create: 'Created',
-      edit: 'Edited',
-      delete: 'Deleted',
-      rename: 'Renamed'
-    }[operation || 'edit'] || 'Modified';
+      create: t('files:edits.created', 'Created'),
+      edit: t('aichat:file_gutter.edited', 'Edited'),
+      delete: t('files:edits.deleted', 'Deleted'),
+      rename: t('files:edits.renamed', 'Renamed')
+    }[operation || 'edit'] || t('files:edits.modified', 'Modified');
 
-    const gitStatusText = status ? ` (${status.status})` : '';
+    const statusLabels: Record<FileGitStatus['status'], string> = {
+      modified: t('files:edits.status_modified', 'modified'),
+      staged: t('files:edits.status_staged', 'staged'),
+      untracked: t('files:edits.status_untracked', 'untracked'),
+      unchanged: t('files:edits.status_unchanged', 'unchanged'),
+      deleted: t('files:edits.status_deleted', 'deleted'),
+    };
+    const gitStatusText = status ? ` (${statusLabels[status.status] ?? status.status})` : '';
     return `${relativePath} - ${operationText}${gitStatusText}`;
   };
 
@@ -466,7 +475,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
               }}
             >
               <MaterialSymbol icon="open_in_new" size={16} className="text-[var(--nim-text-muted)]" />
-              Open in Files
+              {t('files:edits.open_in_files', 'Open in Files')}
             </button>
           )}
           {onViewDiff && (
@@ -478,7 +487,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
               }}
             >
               <MaterialSymbol icon="difference" size={16} className="text-[var(--nim-text-muted)]" />
-              View Diff
+              {t('files:edits.view_diff', 'View Diff')}
             </button>
           )}
           {onOpenInExternalEditor && externalEditorName && (
@@ -490,7 +499,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
               }}
             >
               <MaterialSymbol icon="open_in_new" size={16} className="text-[var(--nim-text-muted)]" />
-              Open in {externalEditorName}
+              {t('files:actions.open_external', 'Open in {{editor}}', { editor: externalEditorName })}
             </button>
           )}
           {(onOpenInFiles || onViewDiff || onOpenInExternalEditor) && (onCopyPath || onRevealInFinder) && (
@@ -505,7 +514,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
               }}
             >
               <MaterialSymbol icon="content_copy" size={16} className="text-[var(--nim-text-muted)]" />
-              Copy Path
+              {t('files:actions.copy_path', 'Copy Path')}
             </button>
           )}
           {onRevealInFinder && (
@@ -517,7 +526,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
               }}
             >
               <MaterialSymbol icon="folder_open" size={16} className="text-[var(--nim-text-muted)]" />
-              Reveal in Finder
+              {t('common:projects.reveal_finder', 'Reveal in Finder')}
             </button>
           )}
         </div>
@@ -606,13 +615,13 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
               {formatFileName(filePath)}
             </div>
             {isDeleted && (
-              <span className="text-[0.6875rem] text-[var(--nim-text-muted)] shrink-0">(deleted)</span>
+              <span className="text-[0.6875rem] text-[var(--nim-text-muted)] shrink-0">{t('files:edits.deleted_suffix', '(deleted)')}</span>
             )}
             {/* Yellow dot indicator for files pending review */}
             {hasPendingReview && (
               <span
                 className="file-edits-sidebar__pending-dot w-1 h-1 rounded-full bg-[#fbbf24] shrink-0 ml-1"
-                title="Pending review - changes not yet committed"
+                title={t('files:edits.pending_review', 'Pending review - changes not yet committed')}
               />
             )}
           </div>
@@ -624,7 +633,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
             className={`file-edits-sidebar__peek-btn shrink-0 w-5 h-5 flex items-center justify-center rounded text-[var(--nim-text-faint)] hover:text-[var(--nim-primary)] hover:bg-[var(--nim-bg-tertiary)] transition-opacity bg-transparent border-0 cursor-pointer ${
               isPinned ? 'opacity-100 text-[var(--nim-primary)]' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
             }`}
-            title={isPinned ? 'Hide diff' : 'Show diff'}
+            title={isPinned ? t('files:edits.hide_diff', 'Hide diff') : t('files:edits.show_diff', 'Show diff')}
             onClick={(e) => {
               e.stopPropagation();
               togglePeek(filePath);
@@ -763,7 +772,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
           <button
             onClick={() => setGroupByDirectory(!groupByDirectory)}
             className={`file-edits-sidebar__control-button flex items-center justify-center w-7 h-7 p-0 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-all hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed ${groupByDirectory ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : ''}`}
-            title="Group by directory"
+            title={t('files:sidebar.group_by_directory', 'Group by directory')}
           >
             <MaterialSymbol icon="folder" size={18} />
           </button>
@@ -771,7 +780,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
             onClick={expandAll}
             disabled={!groupByDirectory}
             className="file-edits-sidebar__control-button flex items-center justify-center w-7 h-7 p-0 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-all hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Expand all"
+            title={t('files:sidebar.expand_all', 'Expand all')}
           >
             <MaterialSymbol icon="unfold_more" size={18} />
           </button>
@@ -779,7 +788,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
             onClick={collapseAll}
             disabled={!groupByDirectory}
             className="file-edits-sidebar__control-button flex items-center justify-center w-7 h-7 p-0 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-all hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Collapse all"
+            title={t('files:sidebar.collapse_all', 'Collapse all')}
           >
             <MaterialSymbol icon="unfold_less" size={18} />
           </button>
@@ -810,7 +819,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
               )}
             </div>
             <span className="text-[0.8125rem] text-[var(--nim-text-muted)]">
-              Select all ({rootSelectionInfo.uncommittedCount} uncommitted)
+              {t('files:edits.select_all', 'Select all ({{count}} uncommitted)', { count: rootSelectionInfo.uncommittedCount })}
             </span>
           </div>
         )}
@@ -819,13 +828,13 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
             {scopeMode === 'current-changes' && totalSessionFilesCount && totalSessionFilesCount > 0 ? (
               // Uncommitted Session Edits mode with no uncommitted changes
               <div className="flex flex-col items-center">
-                <div>No uncommitted changes</div>
+                <div>{t('files:edits.no_uncommitted_changes', 'No uncommitted changes')}</div>
                 {onShowSessionFiles && (
                   <button
                     onClick={onShowSessionFiles}
                     className="mt-2 text-[var(--nim-primary)] hover:underline cursor-pointer bg-transparent border-none text-sm"
                   >
-                    Show all session edits ({totalSessionFilesCount})
+                    {t('files:edits.show_all_session', 'Show all session edits ({{count}})', { count: totalSessionFilesCount })}
                   </button>
                 )}
                 {onShowAllUncommitted && totalUncommittedCount && totalUncommittedCount > 0 && (
@@ -833,51 +842,51 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
                     onClick={onShowAllUncommitted}
                     className="mt-2 text-[var(--nim-primary)] hover:underline cursor-pointer bg-transparent border-none text-sm"
                   >
-                    Show all uncommitted files ({totalUncommittedCount})
+                    {t('files:edits.show_all_uncommitted', 'Show all uncommitted files ({{count}})', { count: totalUncommittedCount })}
                   </button>
                 )}
               </div>
             ) : scopeMode === 'current-changes' ? (
               // Uncommitted Session Edits mode with no session files at all
               <>
-                <div>No files edited yet</div>
+                <div>{t('files:edits.no_edits', 'No files edited yet')}</div>
                 {onShowAllUncommitted && totalUncommittedCount && totalUncommittedCount > 0 && (
                   <button
                     onClick={onShowAllUncommitted}
                     className="mt-2 text-[var(--nim-primary)] hover:underline cursor-pointer bg-transparent border-none text-sm"
                   >
-                    Show all uncommitted files ({totalUncommittedCount})
+                    {t('files:edits.show_all_uncommitted', 'Show all uncommitted files ({{count}})', { count: totalUncommittedCount })}
                   </button>
                 )}
               </>
             ) : scopeMode === 'session-files' ? (
               // All Session Edits mode with no files
               <>
-                <div>No files edited in this session</div>
+                <div>{t('files:edits.no_session_edits', 'No files edited in this session')}</div>
                 {onShowAllUncommitted && totalUncommittedCount && totalUncommittedCount > 0 && (
                   <button
                     onClick={onShowAllUncommitted}
                     className="mt-2 text-[var(--nim-primary)] hover:underline cursor-pointer bg-transparent border-none text-sm"
                   >
-                    Show all uncommitted files ({totalUncommittedCount})
+                    {t('files:edits.show_all_uncommitted', 'Show all uncommitted files ({{count}})', { count: totalUncommittedCount })}
                   </button>
                 )}
               </>
             ) : scopeMode === 'all-changes' ? (
               // All Uncommitted Files mode with no files
               <>
-                <div>No uncommitted files</div>
+                <div>{t('files:edits.no_uncommitted_files', 'No uncommitted files')}</div>
                 {onShowSessionFiles && totalSessionFilesCount && totalSessionFilesCount > 0 && (
                   <button
                     onClick={onShowSessionFiles}
                     className="mt-2 text-[var(--nim-primary)] hover:underline cursor-pointer bg-transparent border-none text-sm"
                   >
-                    Show session edits ({totalSessionFilesCount})
+                    {t('files:edits.show_session', 'Show session edits ({{count}})', { count: totalSessionFilesCount })}
                   </button>
                 )}
               </>
             ) : (
-              'No files edited yet'
+              t('files:edits.no_edits', 'No files edited yet')
             )}
           </div>
         ) : (
@@ -894,7 +903,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
                   onClick={onShowAllUncommitted}
                   className="text-[var(--nim-primary)] hover:underline cursor-pointer bg-transparent border-none text-sm"
                 >
-                  Show all uncommitted files ({totalUncommittedCount})
+                  {t('files:edits.show_all_uncommitted', 'Show all uncommitted files ({{count}})', { count: totalUncommittedCount })}
                 </button>
               </div>
             )}

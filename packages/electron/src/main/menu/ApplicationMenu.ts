@@ -40,6 +40,7 @@ import { updateWindowTitleBars, updateNativeTheme } from '../theme/ThemeManager'
 import { refreshWorkspaceFileTree } from '../file/FileWatcherDebug';
 import { getFolderContents } from '../utils/FileTree';
 import { logger } from '../utils/logger';
+import { t } from '../i18n';
 import { getFocusedWindow } from '../utils/windowFocus';
 import { showSplashScreen } from '../window/SplashScreen';
 import { autoUpdaterService } from '../services/autoUpdater';
@@ -113,7 +114,7 @@ function createWindowListMenu(): any[] {
         if (menuItems.length > 0) {
             menuItems.push({ type: 'separator' });
         }
-        menuItems.push({ label: 'Open Projects', enabled: false });
+        menuItems.push({ label: t('menu:open_projects'), enabled: false });
         workspaceWindows.forEach(({ window, title }) => {
             menuItems.push({
                 label: title,
@@ -133,7 +134,7 @@ function createWindowListMenu(): any[] {
         if (menuItems.length > 0) {
             menuItems.push({ type: 'separator' });
         }
-        menuItems.push({ label: 'Open Documents', enabled: false });
+        menuItems.push({ label: t('menu:open_documents'), enabled: false });
         documentWindows.forEach(({ window, title }) => {
             menuItems.push({
                 label: title,
@@ -153,7 +154,7 @@ function createWindowListMenu(): any[] {
     //     if (menuItems.length > 0) {
     //         menuItems.push({ type: 'separator' });
     //     }
-    //     menuItems.push({ label: 'Other Windows', enabled: false });
+    //     menuItems.push({ label: t('menu:other_windows'), enabled: false });
     //     otherWindows.forEach(({ window, title }) => {
     //         const accelerator = shortcutIndex < 9 ? `CmdOrCtrl+${shortcutIndex + 1}` : undefined;
     //         shortcutIndex++;
@@ -201,7 +202,10 @@ async function createRecentSubmenu(): Promise<any[]> {
                         const items = getRecentItems('workspaces').filter(item => item.path !== workspace.path);
                         store.set('recent.workspaces', items);
                         updateApplicationMenu();
-                        dialog.showErrorBox('Project Not Found', `The project "${workspace.name}" could not be found at:\n${workspace.path}`);
+                        dialog.showErrorBox(
+                            t('menu:project_not_found_title'),
+                            t('menu:project_not_found_message', { name: workspace.name, path: workspace.path }),
+                        );
                     }
                 }
             });
@@ -209,7 +213,7 @@ async function createRecentSubmenu(): Promise<any[]> {
 
         submenu.push({ type: 'separator' });
         submenu.push({
-            label: 'Clear Recent Projects',
+            label: t('menu:clear_recent_projects'),
             click: async () => {
                 clearRecentItems('workspaces');
                 updateApplicationMenu();
@@ -219,7 +223,7 @@ async function createRecentSubmenu(): Promise<any[]> {
 
     // If no recent items
     if (submenu.length === 0) {
-        submenu.push({ label: 'No Recent Projects', enabled: false });
+        submenu.push({ label: t('menu:no_recent_projects'), enabled: false });
     }
 
     return submenu;
@@ -233,11 +237,11 @@ export async function createApplicationMenu() {
 
     const template: any[] = [
         {
-            label: 'File',
+            label: t('menu:file.title'),
             submenu: [
                 {
                     id: 'file-new-file',
-                    label: 'New File...',
+                    label: t('menu:new_file'),
                     click: async () => {
                         const focusedWindow = getFocusedWindow();
 
@@ -268,7 +272,7 @@ export async function createApplicationMenu() {
                 },
                 {
                     id: 'file-new-session',
-                    label: 'Launch New Session...',
+                    label: t('menu:launch_new_session'),
                     accelerator: KeyboardShortcuts.file.sessionLaunchPopup,
                     click: async () => {
                         const focusedWindow = getFocusedWindow();
@@ -288,7 +292,7 @@ export async function createApplicationMenu() {
                 },
                 {
                     id: 'file-new-browser-tab',
-                    label: 'New Browser Tab',
+                    label: t('menu:new_browser_tab'),
                     accelerator: KeyboardShortcuts.file.newBrowserTab,
                     click: async () => {
                         const focusedWindow = getFocusedWindow();
@@ -316,7 +320,7 @@ export async function createApplicationMenu() {
                 },
                 {
                     id: 'file-new-extension-project',
-                    label: 'New Extension Project...',
+                    label: t('menu:new_extension_project'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('menu_action_used', {
                             menu: 'file',
@@ -329,7 +333,7 @@ export async function createApplicationMenu() {
                 },
                 {
                     id: 'file-import-claude-code-sessions',
-                    label: 'Import Claude Code Sessions...',
+                    label: t('menu:import_claude_code_sessions'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('claude_code_import_dialog_opened', {
                             source: 'file_menu',
@@ -343,7 +347,7 @@ export async function createApplicationMenu() {
                 {
                     // Hidden menu item that handles Cmd+N dynamically based on current mode
                     id: 'file-new-dynamic',
-                    label: 'New',
+                    label: t('menu:new'),
                     accelerator: KeyboardShortcuts.file.newFile,
                     visible: false, // Hidden from menu - only provides the accelerator
                     click: async () => {
@@ -380,7 +384,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Open...',
+                    label: t('menu:open'),
                     accelerator: KeyboardShortcuts.file.open,
                     click: async () => {
                         const focusedWindow = BrowserWindow.getFocusedWindow();
@@ -415,7 +419,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Open Project...',
+                    label: t('menu:open_project'),
                     click: async () => {
                         // Track menu action
                         AnalyticsService.getInstance().sendEvent('menu_action_used', {
@@ -429,12 +433,12 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Recent Projects',
+                    label: t('menu:recent_projects'),
                     submenu: await createRecentSubmenu()
                 },
                 ...(process.platform !== 'darwin' ? [
                   {
-                      label: 'Settings...',
+                      label: t('menu:settings'),
                       accelerator: KeyboardShortcuts.window.aiModels,
                       click: async () => {
                           // Track settings opened
@@ -452,7 +456,7 @@ export async function createApplicationMenu() {
                 ]: []),
                 { type: 'separator' },
                 {
-                    label: 'Save',
+                    label: t('menu:save'),
                     accelerator: KeyboardShortcuts.file.save,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -463,7 +467,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Close Tab',
+                    label: t('menu:close_tab'),
                     accelerator: KeyboardShortcuts.file.closeTab,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -488,7 +492,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Reopen Closed Tab',
+                    label: t('menu:reopen_closed_tab'),
                     accelerator: KeyboardShortcuts.file.reopenClosedTab,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -511,7 +515,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Close Project',
+                    label: t('menu:close_project'),
                     accelerator: KeyboardShortcuts.file.closeProject,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -544,7 +548,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Quit',
+                    label: t('menu:quit'),
                     accelerator: KeyboardShortcuts.file.quit,
                     click: async () => {
                         try {
@@ -560,15 +564,15 @@ export async function createApplicationMenu() {
             ]
         },
         {
-            label: 'Edit',
+            label: t('menu:edit.title'),
             submenu: [
-                { label: 'Undo', accelerator: KeyboardShortcuts.edit.undo, role: 'undo' },
-                { label: 'Redo', accelerator: KeyboardShortcuts.edit.redo, role: 'redo' },
+                { label: t('menu:undo'), accelerator: KeyboardShortcuts.edit.undo, role: 'undo' },
+                { label: t('menu:redo'), accelerator: KeyboardShortcuts.edit.redo, role: 'redo' },
                 { type: 'separator' },
-                { label: 'Cut', accelerator: KeyboardShortcuts.edit.cut, role: 'cut' },
-                { label: 'Copy', accelerator: KeyboardShortcuts.edit.copy, role: 'copy' },
+                { label: t('menu:cut'), accelerator: KeyboardShortcuts.edit.cut, role: 'cut' },
+                { label: t('menu:copy'), accelerator: KeyboardShortcuts.edit.copy, role: 'copy' },
                 {
-                    label: 'Copy as Markdown',
+                    label: t('menu:copy_as_markdown'),
                     accelerator: KeyboardShortcuts.edit.copyMarkdown,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -577,11 +581,11 @@ export async function createApplicationMenu() {
                         }
                     }
                 },
-                { label: 'Paste', accelerator: KeyboardShortcuts.edit.paste, role: 'paste' },
-                { label: 'Select All', accelerator: KeyboardShortcuts.edit.selectAll, role: 'selectAll' },
+                { label: t('menu:paste'), accelerator: KeyboardShortcuts.edit.paste, role: 'paste' },
+                { label: t('menu:select_all'), accelerator: KeyboardShortcuts.edit.selectAll, role: 'selectAll' },
                 { type: 'separator' },
                 {
-                    label: 'Find...',
+                    label: t('menu:find'),
                     accelerator: KeyboardShortcuts.edit.find,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -591,7 +595,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Find Next',
+                    label: t('menu:find_next'),
                     accelerator: KeyboardShortcuts.edit.findNext,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -601,7 +605,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Find Previous',
+                    label: t('menu:find_previous'),
                     accelerator: KeyboardShortcuts.edit.findPrevious,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -612,7 +616,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'View Local History...',
+                    label: t('menu:view_local_history'),
                     accelerator: KeyboardShortcuts.edit.viewHistory,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -622,7 +626,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'View Folder History...',
+                    label: t('menu:view_folder_history'),
                     accelerator: 'CmdOrCtrl+Shift+H',
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -633,7 +637,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Approve Current Action',
+                    label: t('menu:approve_current_action'),
                     accelerator: KeyboardShortcuts.edit.approve,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -643,7 +647,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Reject Current Action',
+                    label: t('menu:reject_current_action'),
                     accelerator: KeyboardShortcuts.edit.reject,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -655,11 +659,11 @@ export async function createApplicationMenu() {
             ]
         },
         {
-            label: 'View',
+            label: t('menu:view.title'),
             submenu: [
                 // View Modes
                 {
-                    label: 'Files Mode',
+                    label: t('menu:files_mode'),
                     accelerator: KeyboardShortcuts.view.filesMode,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -669,7 +673,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Agent Mode',
+                    label: t('menu:agent_mode'),
                     accelerator: KeyboardShortcuts.view.agentMode,
                     click: async () => {
                         console.log('[Menu] Agent Mode clicked');
@@ -684,7 +688,7 @@ export async function createApplicationMenu() {
                 { type: 'separator' },
                 // Panels
                 {
-                    label: 'Toggle AI Chat Panel',
+                    label: t('menu:toggle_ai_chat_panel'),
                     accelerator: KeyboardShortcuts.view.toggleAIChat,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -694,7 +698,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Toggle Bottom Panel',
+                    label: t('menu:toggle_bottom_panel'),
                     accelerator: KeyboardShortcuts.view.toggleBottomPanel,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -706,7 +710,7 @@ export async function createApplicationMenu() {
                 { type: 'separator' },
                 // Navigation
                 {
-                    label: 'Navigate Back',
+                    label: t('menu:navigate_back'),
                     accelerator: KeyboardShortcuts.view.navigateBack,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -716,7 +720,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Navigate Forward',
+                    label: t('menu:navigate_forward'),
                     accelerator: KeyboardShortcuts.view.navigateForward,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -728,7 +732,7 @@ export async function createApplicationMenu() {
                 { type: 'separator' },
                 // Tab Navigation
                 {
-                    label: 'Next Tab',
+                    label: t('menu:next_tab'),
                     accelerator: KeyboardShortcuts.view.nextTab,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -738,7 +742,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Previous Tab',
+                    label: t('menu:previous_tab'),
                     accelerator: KeyboardShortcuts.view.prevTab,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -750,7 +754,7 @@ export async function createApplicationMenu() {
                 { type: 'separator' },
                 // Zoom
                 {
-                    label: 'Actual Size',
+                    label: t('menu:actual_size'),
                     accelerator: KeyboardShortcuts.view.actualSize,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -758,7 +762,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Zoom In',
+                    label: t('menu:zoom_in'),
                     accelerator: KeyboardShortcuts.view.zoomIn,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -775,7 +779,7 @@ export async function createApplicationMenu() {
                     // Electron `Plus` accelerator can also miss the keystroke
                     // when Windows reports the unshifted `=` keycode. Pattern
                     // matches the hidden `New File` accelerator above. See #205.
-                    label: 'Zoom In (alt)',
+                    label: t('menu:zoom_in_alt'),
                     accelerator: 'CmdOrCtrl+=',
                     visible: false,
                     click: async () => {
@@ -791,7 +795,7 @@ export async function createApplicationMenu() {
                     // produces `+` on QWERTY layouts; some keyboard drivers
                     // report this with the Shift modifier still set, so the
                     // bare `CmdOrCtrl+=` binding above doesn't always catch it.
-                    label: 'Zoom In (Shift+=)',
+                    label: t('menu:zoom_in_shift'),
                     accelerator: 'CmdOrCtrl+Shift+=',
                     visible: false,
                     click: async () => {
@@ -806,7 +810,7 @@ export async function createApplicationMenu() {
                     // Hidden alias for the numeric keypad `+`. Reported as a
                     // distinct keycode from the main-row `+`, so neither
                     // CmdOrCtrl+Plus nor CmdOrCtrl+= pick it up.
-                    label: 'Zoom In (numpad)',
+                    label: t('menu:zoom_in_numpad'),
                     accelerator: 'CmdOrCtrl+numadd',
                     visible: false,
                     click: async () => {
@@ -818,7 +822,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Zoom Out',
+                    label: t('menu:zoom_out'),
                     accelerator: KeyboardShortcuts.view.zoomOut,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -831,7 +835,7 @@ export async function createApplicationMenu() {
                 {
                     // Hidden alias for the numeric keypad `-`. Symmetric with
                     // the numpad zoom-in binding above.
-                    label: 'Zoom Out (numpad)',
+                    label: t('menu:zoom_out_numpad'),
                     accelerator: 'CmdOrCtrl+numsub',
                     visible: false,
                     click: async () => {
@@ -845,10 +849,10 @@ export async function createApplicationMenu() {
                 { type: 'separator' },
                 // Appearance
                 {
-                    label: 'Theme',
+                    label: t('menu:theme'),
                     submenu: [
                         {
-                            label: 'Light',
+                            label: t('menu:light'),
                             type: 'radio',
                             checked: currentTheme === 'light',
                             click: async () => {
@@ -877,7 +881,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Dark',
+                            label: t('menu:dark'),
                             type: 'radio',
                             checked: currentTheme === 'dark',
                             click: async () => {
@@ -906,7 +910,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Crystal Dark',
+                            label: t('menu:crystal_dark'),
                             type: 'radio',
                             checked: currentTheme === 'crystal-dark',
                             click: async () => {
@@ -935,7 +939,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'System',
+                            label: t('menu:system'),
                             type: 'radio',
                             checked: currentTheme === 'system',
                             click: async () => {
@@ -970,7 +974,7 @@ export async function createApplicationMenu() {
                 { type: 'separator' },
                 // Full screen
                 {
-                    label: 'Toggle Full Screen',
+                    label: t('menu:toggle_full_screen'),
                     accelerator: KeyboardShortcuts.view.toggleFullScreen,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -982,10 +986,10 @@ export async function createApplicationMenu() {
             ]
         },
         {
-            label: 'Window',
+            label: t('menu:window.title'),
             submenu: [
                 {
-                    label: 'Project Manager',
+                    label: t('menu:project_manager'),
                     accelerator: KeyboardShortcuts.window.workspaceManager,
                     click: async () => {
                         // Track menu action
@@ -1001,7 +1005,7 @@ export async function createApplicationMenu() {
                     // No orgId: the window opens on the last-selected organization
                     // (or the first one you belong to), same as the switcher's
                     // untargeted entry points.
-                    label: 'Organization Manager (Alpha)',
+                    label: t('menu:organization_manager'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('menu_action_used', {
                             menu: 'window',
@@ -1012,7 +1016,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Switch Project',
+                    label: t('menu:switch_project'),
                     accelerator: KeyboardShortcuts.window.projectQuickOpen,
                     registerAccelerator: false, // Handled by renderer keyboard handler
                     click: () => {
@@ -1022,7 +1026,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Quick Open',
+                    label: t('menu:quick_open'),
                     accelerator: KeyboardShortcuts.file.open,
                     registerAccelerator: false,
                     click: () => {
@@ -1031,7 +1035,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Session Quick Open',
+                    label: t('menu:session_quick_open'),
                     accelerator: KeyboardShortcuts.window.sessionQuickOpen,
                     registerAccelerator: false,
                     click: () => {
@@ -1040,7 +1044,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Prompt Quick Open',
+                    label: t('menu:prompt_quick_open'),
                     accelerator: KeyboardShortcuts.window.promptQuickOpen,
                     registerAccelerator: false,
                     click: () => {
@@ -1049,7 +1053,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Content Search',
+                    label: t('menu:content_search'),
                     accelerator: KeyboardShortcuts.window.contentSearch,
                     registerAccelerator: false,
                     click: () => {
@@ -1058,7 +1062,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Memory Search',
+                    label: t('menu:global_search'),
                     accelerator: KeyboardShortcuts.window.globalSearch,
                     registerAccelerator: false, // Handled by renderer keyboard handler
                     click: () => {
@@ -1067,7 +1071,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Team Quick Open',
+                    label: t('menu:team_quick_open'),
                     accelerator: KeyboardShortcuts.window.teamQuickOpen,
                     registerAccelerator: false, // Handled by renderer keyboard handler
                     click: () => {
@@ -1077,7 +1081,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'AI Usage Report',
+                    label: t('menu:ai_usage_report'),
                     click: async () => {
                         // Track menu action
                         AnalyticsService.getInstance().sendEvent('menu_action_used', {
@@ -1088,14 +1092,14 @@ export async function createApplicationMenu() {
                     }
                 },
                 // {
-                //     label: 'Session Manager',
+                //     label: t('menu:session_manager'),
                 //     accelerator: KeyboardShortcuts.window.sessionManager,
                 //     click: async () => {
                 //         createSessionManagerWindow();
                 //     }
                 // },
                 // {
-                //     label: 'Agentic Coding...',
+                //     label: t('menu:agentic_coding'),
                 //     accelerator: KeyboardShortcuts.window.agenticCoding,
                 //     click: async () => {
                 //         const focused = getFocusedWindow();
@@ -1120,23 +1124,23 @@ export async function createApplicationMenu() {
                 //     }
                 // },
                 { type: 'separator' },
-                { label: 'Minimize', accelerator: KeyboardShortcuts.window.minimize, role: 'minimize' },
+                { label: t('menu:minimize'), accelerator: KeyboardShortcuts.window.minimize, role: 'minimize' },
                 { type: 'separator' },
-                { label: 'Bring All to Front', role: 'front' },
+                { label: t('menu:bring_all_to_front'), role: 'front' },
                 { type: 'separator' },
                 ...createWindowListMenu()
             ]
         },
         {
-            label: 'Developer',
+            label: t('menu:developer'),
             submenu: [
                 {
-                    label: 'For assisting the development of Nimbalyst',
+                    label: t('menu:development_assistance'),
                     enabled: false
                 },
                 { type: 'separator' },
                 {
-                    label: 'Toggle Developer Tools',
+                    label: t('menu:toggle_developer_tools'),
                     accelerator: KeyboardShortcuts.view.toggleDevTools,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -1144,7 +1148,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'New Extension Project...',
+                    label: t('menu:new_extension_project'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('menu_action_used', {
                             menu: 'developer',
@@ -1157,7 +1161,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Reload',
+                    label: t('menu:reload'),
                     accelerator: KeyboardShortcuts.view.reload,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -1165,7 +1169,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Force Reload',
+                    label: t('menu:force_reload'),
                     accelerator: KeyboardShortcuts.view.forceReload,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -1174,19 +1178,19 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Developer Dashboard',
+                    label: t('menu:developer_dashboard'),
                     click: () => {
                         createDeveloperDashboardWindow();
                     }
                 },
                 {
-                    label: 'Diff Ergonomics Test Harness',
+                    label: t('menu:diff_ergonomics_test_harness'),
                     click: async () => {
                         await runDiffErgonomicsHarness(getFocusedWindow());
                     }
                 },
                 {
-                    label: 'Refresh File Tree',
+                    label: t('menu:refresh_file_tree'),
                     accelerator: KeyboardShortcuts.developer.refreshFileTree,
                     click: async () => {
                         const focused = getFocusedWindow();
@@ -1197,7 +1201,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Open Debug Log',
+                    label: t('menu:open_debug_log'),
                     click: async () => {
                         const logPath = path.join(app.getPath('userData'), 'nimbalyst-debug.log');
 
@@ -1208,12 +1212,12 @@ export async function createApplicationMenu() {
 
                         shell.openPath(logPath).catch((err: any) => {
                             console.error('Failed to open debug log:', err);
-                            dialog.showErrorBox('Error', `Could not open debug log at: ${logPath}`);
+                            dialog.showErrorBox(t('menu:generic_error_title'), t('menu:debug_log_open_failed', { path: logPath }));
                         });
                     }
                 },
                 {
-                    label: 'Open Main Log',
+                    label: t('menu:open_main_log'),
                     click: async () => {
                         const logPath = path.join(app.getPath('userData'), 'logs', 'main.log');
 
@@ -1228,12 +1232,12 @@ export async function createApplicationMenu() {
 
                         shell.openPath(logPath).catch((err: any) => {
                             console.error('Failed to open main log:', err);
-                            dialog.showErrorBox('Error', `Could not open main log at: ${logPath}`);
+                            dialog.showErrorBox(t('menu:generic_error_title'), t('menu:main_log_open_failed', { path: logPath }));
                         });
                     }
                 },
                 {
-                    label: 'Rotate Logs',
+                    label: t('menu:rotate_logs'),
                     click: async () => {
                         const userData = app.getPath('userData');
                         const results: string[] = [];
@@ -1319,8 +1323,8 @@ export async function createApplicationMenu() {
                         if (focused) {
                             dialog.showMessageBox(focused, {
                                 type: 'info',
-                                title: 'Log Rotation',
-                                message: 'Logs Rotated',
+                                title: t('menu:log_rotation_title'),
+                                message: t('menu:log_rotation_message'),
                                 detail: results.join('\n'),
                                 buttons: ['OK']
                             });
@@ -1328,21 +1332,21 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Open User Data Directory',
+                    label: t('menu:open_user_data_directory'),
                     click: async () => {
                         const userDataPath = app.getPath('userData');
                         shell.openPath(userDataPath).catch((err: any) => {
                             console.error('Failed to open user data directory:', err);
-                            dialog.showErrorBox('Error', `Could not open user data directory at: ${userDataPath}`);
+                            dialog.showErrorBox(t('menu:generic_error_title'), t('menu:user_data_open_failed', { path: userDataPath }));
                         });
                     }
                 },
                 { type: 'separator' },
                 {
-                    label: 'Show Dialogs',
+                    label: t('menu:show_dialogs'),
                     submenu: [
                         {
-                            label: 'Show Onboarding (New User)',
+                            label: t('menu:show_onboarding_new_user'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1351,7 +1355,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Onboarding (Existing User)',
+                            label: t('menu:show_onboarding_existing_user'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1360,7 +1364,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Discord Invitation',
+                            label: t('menu:show_discord_invitation'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1369,7 +1373,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Extension Project Intro',
+                            label: t('menu:show_extension_project_intro'),
                             click: async () => {
                                 await showExtensionProjectIntroDialog(getFocusedWindow(), {
                                     forceShow: true,
@@ -1378,7 +1382,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Worktree Onboarding',
+                            label: t('menu:show_worktree_onboarding'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1387,7 +1391,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Windows Warning',
+                            label: t('menu:show_windows_warning'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1396,7 +1400,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Commands Toast',
+                            label: t('menu:show_commands_toast'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1405,7 +1409,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Trust Toast',
+                            label: t('menu:show_trust_toast'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1414,7 +1418,7 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Show Figma MCP Migration Toast',
+                            label: t('menu:show_figma_mcp_migration_toast'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1423,32 +1427,32 @@ export async function createApplicationMenu() {
                             }
                         },
                         {
-                            label: 'Reset Worktree Onboarding',
+                            label: t('menu:reset_worktree_onboarding'),
                             click: () => {
                                 setWorktreeOnboardingShown(false);
                             }
                         },
                         { type: 'separator' },
                         {
-                            label: 'Show Database Recovery Dialog',
+                            label: t('menu:show_database_recovery_dialog'),
                             click: async () => {
                                 database.showRecoveryDialog();
                             }
                         },
                         {
-                            label: 'Show Splash Screen',
+                            label: t('menu:show_splash_screen'),
                             click: () => {
                                 showSplashScreen();
                             }
                         },
                         { type: 'separator' },
                         {
-                            label: 'Show Update Error Toast',
+                            label: t('menu:show_update_error_toast'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
                                     focused.webContents.send('update-toast:error', {
-                                        message: 'Certificate verification failed: the update signature does not match'
+                                        message: t('menu:update_signature_mismatch')
                                     });
                                 }
                             }
@@ -1456,11 +1460,11 @@ export async function createApplicationMenu() {
                     ]
                 },
                 {
-                    label: 'Show Walkthroughs',
+                    label: t('menu:show_walkthroughs'),
                     submenu: [
                         // Dynamically generated from registered walkthroughs
                         ...getRegisteredWalkthroughs().map(walkthrough => ({
-                            label: walkthrough.name,
+                            label: t(`menu:walkthrough_names.${walkthrough.id}`, { defaultValue: walkthrough.name }),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1470,7 +1474,7 @@ export async function createApplicationMenu() {
                         })),
                         ...(getRegisteredWalkthroughs().length > 0 ? [{ type: 'separator' as const }] : []),
                         {
-                            label: 'Reset All Walkthroughs',
+                            label: t('menu:reset_all_walkthroughs'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1481,10 +1485,10 @@ export async function createApplicationMenu() {
                     ]
                 },
                 {
-                    label: 'Show Tips',
+                    label: t('menu:show_tips'),
                     submenu: [
                         ...getRegisteredTips().map(tip => ({
-                            label: tip.name,
+                            label: t(`menu:tip_names.${tip.id}`, { defaultValue: tip.name }),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1494,7 +1498,7 @@ export async function createApplicationMenu() {
                         })),
                         ...(getRegisteredTips().length > 0 ? [{ type: 'separator' as const }] : []),
                         {
-                            label: 'Reset All Tips',
+                            label: t('menu:reset_all_tips'),
                             click: async () => {
                                 const focused = getFocusedWindow();
                                 if (focused) {
@@ -1507,7 +1511,7 @@ export async function createApplicationMenu() {
                 ...(isDev ? [
                     { type: 'separator' },
                     {
-                        label: 'Database Browser',
+                        label: t('menu:database_browser'),
                         click: async () => {
                             createDatabaseBrowserWindow();
                         }
@@ -1523,20 +1527,21 @@ export async function createApplicationMenu() {
             label: app.getName(),
             submenu: [
                 {
-                    label: 'About Nimbalyst',
+                    label: t('menu:about_nimbalyst'),
                     click: async () => {
                         createAboutWindow();
                     }
                 },
                 {
-                    label: 'Check for Updates...',
+                    label: t('menu:check_for_updates'),
+                    enabled: autoUpdaterService.isEnabled(),
                     click: async () => {
                         autoUpdaterService.checkForUpdatesWithUI();
                     }
                 },
                 { type: 'separator' },
                 {
-                    label: 'Settings...',
+                    label: t('menu:settings'),
                     accelerator: KeyboardShortcuts.window.aiModels,
                     click: async () => {
                         // Track settings opened
@@ -1552,14 +1557,14 @@ export async function createApplicationMenu() {
                     }
                 },
                 { type: 'separator' },
-                { label: 'Services', submenu: [] },
+                { label: t('menu:services'), submenu: [] },
                 { type: 'separator' },
-                { label: 'Hide ' + app.getName(), accelerator: 'Command+H', role: 'hide' },
-                { label: 'Hide Others', accelerator: 'Command+Shift+H', role: 'hideothers' },
-                { label: 'Show All', role: 'unhide' },
+                { label: t('menu:hide') + app.getName(), accelerator: 'Command+H', role: 'hide' },
+                { label: t('menu:hide_others'), accelerator: 'Command+Shift+H', role: 'hideothers' },
+                { label: t('menu:show_all'), role: 'unhide' },
                 { type: 'separator' },
                 {
-                    label: 'Quit',
+                    label: t('menu:quit'),
                     accelerator: 'Command+Q',
                     click: async () => {
                         try {
@@ -1577,10 +1582,10 @@ export async function createApplicationMenu() {
 
         // Add Help menu for macOS
         template.push({
-            label: 'Help',
+            label: t('menu:help.title'),
             submenu: [
                 // {
-                //     label: 'Welcome',
+                //     label: t('menu:welcome'),
                 //     click: async () => {
                 //         // Track help accessed
                 //         AnalyticsService.getInstance().sendEvent('help_accessed', {
@@ -1595,7 +1600,7 @@ export async function createApplicationMenu() {
                 //     }
                 // },
                 {
-                    label: 'Documentation',
+                    label: t('menu:documentation'),
                     click: async () => {
                         // Track help accessed
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
@@ -1606,7 +1611,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Install Chrome Extension',
+                    label: t('menu:install_chrome_extension'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'chrome_extension',
@@ -1617,7 +1622,7 @@ export async function createApplicationMenu() {
                 },
                 // Extension SDK Documentation - only show when Extension Development Kit is enabled
                 ...(isExtensionDevToolsEnabled() ? [{
-                    label: 'Extension SDK Documentation',
+                    label: t('menu:extension_sdk_documentation'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'extension_sdk_docs',
@@ -1630,14 +1635,14 @@ export async function createApplicationMenu() {
                             createWindow(false, true, sdkDocsPath);
                         } else {
                             dialog.showErrorBox(
-                                'SDK Documentation Not Found',
-                                'The Extension SDK documentation could not be found. Please reinstall Nimbalyst.'
+                                t('menu:sdk_docs_not_found_title'),
+                                t('menu:sdk_docs_not_found_message'),
                             );
                         }
                     }
                 }] : []),
                 {
-                    label: 'Keyboard Shortcuts',
+                    label: t('menu:keyboard_shortcuts'),
                     accelerator: 'CmdOrCtrl+/',
                     click: async () => {
                         // Track help accessed
@@ -1653,7 +1658,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Send Feedback...',
+                    label: t('menu:send_feedback'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'feedback',
@@ -1666,7 +1671,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Browse Issues on GitHub',
+                    label: t('menu:browse_issues_on_github'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'github_issues',
@@ -1676,7 +1681,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'GitHub Discussions',
+                    label: t('menu:github_discussions'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'github_discussions',
@@ -1687,10 +1692,10 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Community',
+                    label: t('menu:community'),
                     submenu: [
                         {
-                            label: 'Join Discord',
+                            label: t('menu:join_discord'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'discord', context: 'menu' });
                                 shell.openExternal('https://discord.gg/ubZDt4esEn');
@@ -1698,35 +1703,35 @@ export async function createApplicationMenu() {
                         },
                         { type: 'separator' },
                         {
-                            label: 'YouTube',
+                            label: t('menu:youtube'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'youtube', context: 'menu' });
                                 shell.openExternal('https://youtube.com/@nimbalyst');
                             }
                         },
                         {
-                            label: 'LinkedIn',
+                            label: t('menu:linkedin'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'linkedin', context: 'menu' });
                                 shell.openExternal('https://linkedin.com/company/nimbalyst');
                             }
                         },
                         {
-                            label: 'X (Twitter)',
+                            label: t('menu:x_twitter'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'x', context: 'menu' });
                                 shell.openExternal('https://x.com/nimbalyst');
                             }
                         },
                         {
-                            label: 'TikTok',
+                            label: t('menu:tiktok'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'tiktok', context: 'menu' });
                                 shell.openExternal('https://www.tiktok.com/@nimbalyst');
                             }
                         },
                         {
-                            label: 'Instagram',
+                            label: t('menu:instagram'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'instagram', context: 'menu' });
                                 shell.openExternal('https://www.instagram.com/nimbalyst');
@@ -1739,10 +1744,10 @@ export async function createApplicationMenu() {
     } else {
         // Windows and Linux
         template.push({
-            label: 'Help',
+            label: t('menu:help.title'),
             submenu: [
                 {
-                    label: 'Welcome',
+                    label: t('menu:welcome'),
                     click: async () => {
                         // Track help accessed
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
@@ -1757,7 +1762,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Documentation',
+                    label: t('menu:documentation'),
                     click: async () => {
                         // Track help accessed
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
@@ -1768,7 +1773,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Install Chrome Extension',
+                    label: t('menu:install_chrome_extension'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'chrome_extension',
@@ -1779,7 +1784,7 @@ export async function createApplicationMenu() {
                 },
                 // Extension SDK Documentation - only show when Extension Development Kit is enabled
                 ...(isExtensionDevToolsEnabled() ? [{
-                    label: 'Extension SDK Documentation',
+                    label: t('menu:extension_sdk_documentation'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'extension_sdk_docs',
@@ -1792,14 +1797,14 @@ export async function createApplicationMenu() {
                             createWindow(false, true, sdkDocsPath);
                         } else {
                             dialog.showErrorBox(
-                                'SDK Documentation Not Found',
-                                'The Extension SDK documentation could not be found. Please reinstall Nimbalyst.'
+                                t('menu:sdk_docs_not_found_title'),
+                                t('menu:sdk_docs_not_found_message'),
                             );
                         }
                     }
                 }] : []),
                 {
-                    label: 'Keyboard Shortcuts',
+                    label: t('menu:keyboard_shortcuts'),
                     accelerator: 'CmdOrCtrl+/',
                     click: async () => {
                         // Track help accessed
@@ -1815,7 +1820,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Send Feedback...',
+                    label: t('menu:send_feedback'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'feedback',
@@ -1828,7 +1833,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'Browse Issues on GitHub',
+                    label: t('menu:browse_issues_on_github'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'github_issues',
@@ -1838,7 +1843,7 @@ export async function createApplicationMenu() {
                     }
                 },
                 {
-                    label: 'GitHub Discussions',
+                    label: t('menu:github_discussions'),
                     click: async () => {
                         AnalyticsService.getInstance().sendEvent('help_accessed', {
                             helpType: 'github_discussions',
@@ -1849,10 +1854,10 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'Community',
+                    label: t('menu:community'),
                     submenu: [
                         {
-                            label: 'Join Discord',
+                            label: t('menu:join_discord'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'discord', context: 'menu' });
                                 shell.openExternal('https://discord.gg/ubZDt4esEn');
@@ -1860,35 +1865,35 @@ export async function createApplicationMenu() {
                         },
                         { type: 'separator' },
                         {
-                            label: 'YouTube',
+                            label: t('menu:youtube'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'youtube', context: 'menu' });
                                 shell.openExternal('https://youtube.com/@nimbalyst');
                             }
                         },
                         {
-                            label: 'LinkedIn',
+                            label: t('menu:linkedin'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'linkedin', context: 'menu' });
                                 shell.openExternal('https://linkedin.com/company/nimbalyst');
                             }
                         },
                         {
-                            label: 'X (Twitter)',
+                            label: t('menu:x_twitter'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'x', context: 'menu' });
                                 shell.openExternal('https://x.com/nimbalyst');
                             }
                         },
                         {
-                            label: 'TikTok',
+                            label: t('menu:tiktok'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'tiktok', context: 'menu' });
                                 shell.openExternal('https://www.tiktok.com/@nimbalyst');
                             }
                         },
                         {
-                            label: 'Instagram',
+                            label: t('menu:instagram'),
                             click: async () => {
                                 AnalyticsService.getInstance().sendEvent('help_accessed', { helpType: 'instagram', context: 'menu' });
                                 shell.openExternal('https://www.instagram.com/nimbalyst');
@@ -1898,13 +1903,14 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'About Nimbalyst',
+                    label: t('menu:about_nimbalyst'),
                     click: async () => {
                         createAboutWindow();
                     }
                 },
                 {
-                    label: 'Check for Updates...',
+                    label: t('menu:check_for_updates'),
+                    enabled: autoUpdaterService.isEnabled(),
                     click: async () => {
                         autoUpdaterService.checkForUpdatesWithUI();
                     }

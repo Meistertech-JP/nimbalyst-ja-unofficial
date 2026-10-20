@@ -1,5 +1,6 @@
 import React from 'react';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 interface NotHandledBoxProps {
   type: string;
@@ -13,6 +14,7 @@ interface NotHandledBoxProps {
  * since Claude Code doesn't have visible thinking output to compare with).
  */
 export const NotHandledBox: React.FC<NotHandledBoxProps> = ({ type, description }) => {
+  const { t } = useRuntimeTranslation();
   return (
     <div className="not-handled-box border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg-secondary)] p-3">
       <div className="flex items-center gap-2 mb-2">
@@ -21,7 +23,7 @@ export const NotHandledBox: React.FC<NotHandledBoxProps> = ({ type, description 
           {type}
         </span>
         <span className="ml-auto text-xs text-[var(--nim-text-faint)] uppercase tracking-wide">
-          Not Handled
+          {t('aichat:conversation_controls.not_handled', 'Not Handled')}
         </span>
       </div>
       {description && (

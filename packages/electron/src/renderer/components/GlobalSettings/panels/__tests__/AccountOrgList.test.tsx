@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import i18next from 'i18next';
 
 vi.mock('@nimbalyst/runtime', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
@@ -28,7 +29,29 @@ describe('AccountOrgList', () => {
     (window as any).electronAPI = { team: { openManagementWindow, acceptInvite } };
   });
 
-  afterEach(() => cleanup());
+  afterEach(async () => {
+    cleanup();
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes known roles and secondary accounts while preserving organization IDs', async () => {
+    await i18next.changeLanguage('ja');
+    render(<AccountOrgList group={group({ organizations: [{ orgId: 'org-shared', name: 'Acme', role: 'admin', isPending: false, alsoReachableBy: ['b@example.com'] }] })} />);
+    expect(screen.getByTestId('account-org-role-badge').textContent).toBe('管理者');
+    expect(screen.getByText(/b@example.comでもサインイン中/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '管理' }));
+    expect(openManagementWindow).toHaveBeenCalledWith({ orgId: 'org-shared' });
+  });
+
+  it('translates invite failures and retains unknown role identifiers', async () => {
+    await i18next.changeLanguage('ja');
+    acceptInvite.mockResolvedValue({ success: false });
+    render(<AccountOrgList group={group({ organizations: [{ orgId: 'org-invite', name: 'Acme', role: 'custom-role', isPending: true, alsoReachableBy: [] }] })} />);
+    expect(screen.getByTestId('account-org-role-badge').textContent).toBe('custom-role');
+    fireEvent.click(screen.getByTestId('account-org-accept-invite'));
+    expect(await screen.findByText('招待を承認できませんでした')).toBeTruthy();
+    expect(acceptInvite).toHaveBeenCalledWith('org-invite');
+  });
 
   it('opens the org management window targeted at the clicked organization', () => {
     render(

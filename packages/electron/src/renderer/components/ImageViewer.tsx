@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ZoomableImageSurface } from '@nimbalyst/runtime/ui/AgentTranscript/components/ZoomableImageSurface';
 import { nimAssetUrl } from '../utils/assetUrl';
 
@@ -15,8 +16,9 @@ interface ImageViewerProps {
 }
 
 export const ImageViewer: React.FC<ImageViewerProps> = ({ filePath, fileName }) => {
+  const { t } = useTranslation('common');
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
@@ -28,9 +30,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ filePath, fileName }) 
         // workspace + userData roots.
         const absolute = filePath.startsWith('file://') ? filePath.replace(/^file:\/\//, '') : filePath;
         setImageSrc(nimAssetUrl(absolute));
-        setError(null);
+        setHasError(false);
       } catch (err) {
-        setError('Failed to load image');
+        setHasError(true);
         console.error('Error loading image:', err);
       }
     };
@@ -39,15 +41,15 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ filePath, fileName }) 
   }, [filePath]);
 
   const handleImageError = () => {
-    setError('Failed to load image');
+    setHasError(true);
   };
 
-  if (error) {
+  if (hasError) {
     return (
       <div className="flex items-center justify-center h-full text-nim-muted">
         <div className="text-center">
           <div className="text-5xl mb-4">📷</div>
-          <div>{error}</div>
+          <div>{t('image_viewer.load_failed')}</div>
           <div className="text-xs mt-2 opacity-70">{fileName}</div>
         </div>
       </div>
@@ -57,7 +59,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ filePath, fileName }) 
   if (!imageSrc) {
     return (
       <div className="flex items-center justify-center h-full text-nim-muted">
-        Loading...
+        {t('image_viewer.loading')}
       </div>
     );
   }

@@ -10,6 +10,7 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
@@ -34,17 +35,14 @@ interface PullRequestListViewProps {
   isActive: boolean;
 }
 
-const SORT_OPTIONS: { id: PrSortKey; label: string }[] = [
-  { id: 'updated', label: 'Last activity' },
-  { id: 'created', label: 'Created' },
-  { id: 'number', label: 'Number' },
-];
+const SORT_OPTIONS: PrSortKey[] = ['updated', 'created', 'number'];
 
 export function PullRequestListView({
   workspaceId,
   remote,
   isActive,
 }: PullRequestListViewProps): JSX.Element {
+  const { t } = useTranslation(['common']);
   const layout = useAtomValue(prModeLayoutAtom);
   const setLayout = useSetAtom(setPrModeLayoutAtom);
   const ghStatus = useAtomValue(ghCliStatusAtom);
@@ -77,11 +75,11 @@ export function PullRequestListView({
       });
       setPrList(rows);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load pull requests');
+      setError(err instanceof Error ? err.message : t('common:pull_request.failed_load_list'));
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, remote, stateParam, awaitingMyReview, setPrList, setLoading, setError]);
+  }, [workspaceId, remote, stateParam, awaitingMyReview, setPrList, setLoading, setError, t]);
 
   // Fetch on enter / filter change / poll broadcast.
   useEffect(() => {
@@ -125,7 +123,9 @@ export function PullRequestListView({
   }, [prList, activeFilters, trackerStatusFilters, trackerReferences, ghStatus?.user, search, sortKey]);
 
   const sortMenu = useFloatingMenu({ placement: 'bottom-end' });
-  const activeSortLabel = SORT_OPTIONS.find((o) => o.id === sortKey)?.label ?? 'Last activity';
+  const activeSortLabel = t(`common:pull_request.${
+    sortKey === 'updated' ? 'last_activity' : sortKey
+  }`);
 
   const handleSelect = useCallback(
     (id: string) => setLayout({ selectedItemId: id }),
@@ -150,7 +150,7 @@ export function PullRequestListView({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title or number"
+            placeholder={t('common:pull_request.list_search')}
             data-testid="pr-search-input"
             className="nim-input w-full h-8 text-sm !py-0 !pl-7"
           />
@@ -176,17 +176,19 @@ export function PullRequestListView({
             >
               {SORT_OPTIONS.map((opt) => (
                 <button
-                  key={opt.id}
+                  key={opt}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-                    sortKey === opt.id ? 'text-nim bg-nim-active' : 'text-nim-muted hover:bg-nim-tertiary hover:text-nim'
+                    sortKey === opt ? 'text-nim bg-nim-active' : 'text-nim-muted hover:bg-nim-tertiary hover:text-nim'
                   }`}
                   onClick={() => {
-                    setLayout({ sortKey: opt.id });
+                    setLayout({ sortKey: opt });
                     sortMenu.setIsOpen(false);
                   }}
                 >
-                  {sortKey === opt.id && <MaterialSymbol icon="check" size={13} />}
-                  <span className={sortKey === opt.id ? '' : 'pl-[21px]'}>{opt.label}</span>
+                  {sortKey === opt && <MaterialSymbol icon="check" size={13} />}
+                  <span className={sortKey === opt ? '' : 'pl-[21px]'}>
+                    {t(`common:pull_request.${opt === 'updated' ? 'last_activity' : opt}`)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -197,7 +199,7 @@ export function PullRequestListView({
           onClick={() => void runFetch()}
           disabled={loading}
           className="flex items-center justify-center w-8 h-8 text-nim-muted hover:text-nim border border-nim rounded transition-colors shrink-0 disabled:opacity-50"
-          title="Refresh"
+          title={t('common:pull_request.refresh')}
           data-testid="pr-refresh-button"
         >
           <MaterialSymbol icon="refresh" size={16} className={loading ? 'animate-spin' : ''} />
@@ -214,19 +216,21 @@ export function PullRequestListView({
               className="mt-1 text-xs text-nim-link hover:text-nim-link-hover hover:underline"
               onClick={() => void runFetch()}
             >
-              Retry
+              {t('common:pull_request.retry')}
             </button>
           </div>
         ) : loading && prList.length === 0 ? (
           <div className="flex items-center justify-center gap-2 py-10 text-nim-muted text-sm">
             <div className="spinner w-5 h-5 border-[3px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-            Loading pull requests…
+            {t('common:pull_request.loading_list')}
           </div>
         ) : visibleRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-[60px] px-5 text-nim-faint gap-2">
             <MaterialSymbol icon="inbox" size={40} className="opacity-50" />
             <span className="text-sm text-center">
-              {hasActiveNarrowing ? 'No pull requests match these filters' : 'No pull requests'}
+              {hasActiveNarrowing
+                ? t('common:pull_request.no_match_filters')
+                : t('common:pull_request.no_pull_requests')}
             </span>
             {hasActiveNarrowing && (
               <button
@@ -236,7 +240,7 @@ export function PullRequestListView({
                   setLayout({ activeFilters: ['open'] });
                 }}
               >
-                Clear filters
+                {t('common:pull_request.clear_filters')}
               </button>
             )}
           </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { CollapsibleGroup } from './CollapsibleGroup';
@@ -55,6 +55,7 @@ import { blitzCreatedAtom, blitzDisplayNameUpdateAtom } from '../../store/atoms/
 import { superLoopListAtom, upsertSuperLoopAtom, removeSuperLoopAtom } from '../../store/atoms/superLoop';
 import { useSuperLoopDialog } from '../../hooks/useSuperLoop';
 import { workspaceSessionTurnActivityAtom } from '../../store/atoms/sessionActivity';
+import { useTranslation } from 'react-i18next';
 import { sessionKanbanTagsAtom } from '../../store/atoms/sessionKanban';
 import {
   isWorkstreamParentSession,
@@ -137,16 +138,28 @@ const DEFAULT_SEARCH_FILTERS: SearchFilters = {
 };
 
 const TIME_RANGE_LABELS: Record<SearchTimeRange, string> = {
-  '7d': 'Last 7 days',
-  '30d': 'Last 30 days',
-  '90d': 'Last 90 days',
-  'all': 'All time',
+  '7d': 'sessions:history.last_7d',
+  '30d': 'sessions:history.last_30d',
+  '90d': 'sessions:history.last_90d',
+  'all': 'sessions:history.all_time',
 };
 
 const DIRECTION_LABELS: Record<SearchDirection, string> = {
-  'all': 'All messages',
-  'input': 'User prompts only',
-  'output': 'Assistant only',
+  'all': 'sessions:history.all_messages',
+  'input': 'sessions:history.user_prompts_only',
+  'output': 'sessions:history.assistant_only',
+};
+
+const GROUP_LABEL_KEYS: Record<string, string> = {
+  Today: 'sessions:history.today',
+  Yesterday: 'sessions:history.yesterday',
+  'This Week': 'sessions:history.this_week',
+  'Last Week': 'sessions:history.last_week',
+  'This Month': 'sessions:history.this_month',
+  'Last Month': 'sessions:history.last_month',
+  Older: 'sessions:history.older',
+  Pinned: 'sessions:history.pinned',
+  'Meta Agent': 'agents:meta.title',
 };
 
 function getLiveSessionOrderTimestamp(
@@ -208,6 +221,7 @@ function compareNumbersAsc(a: number, b: number): number {
  * now); we keep the constant for code paths that still branch on it.
  */
 const SessionHistoryComponent: React.FC = () => {
+  const { t } = useTranslation(['agents','sessions','common']);
   const workspacePath = useAtomValue(activeWorkspacePathAtom) ?? '';
   const activeSessionId = useAtomValue(globalActiveSessionIdAtom);
   const collapsedGroups = useAtomValue(collapsedGroupsAtom);
@@ -669,7 +683,7 @@ const SessionHistoryComponent: React.FC = () => {
       });
     } catch (err) {
       console.error('[SessionHistory] Failed to load sessions:', err);
-      setError('Failed to load sessions');
+      setError('sessions:errors.load_failed');
     }
   }, [refreshSessions]);
 
@@ -688,7 +702,7 @@ const SessionHistoryComponent: React.FC = () => {
       if (result.success && Array.isArray(result.sessions)) {
         let searchResults: SessionItem[] = result.sessions.map((s: any) => ({
           id: s.id,
-          title: s.title || 'Untitled Session',
+          title: s.title || '',
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
           provider: s.provider || 'claude',
@@ -713,7 +727,7 @@ const SessionHistoryComponent: React.FC = () => {
       }
     } catch (err) {
       console.error('[SessionHistory] Failed to search sessions:', err);
-      setError('Failed to search sessions');
+      setError('sessions:errors.search_failed');
     } finally {
       setIsSearching(false);
     }
@@ -738,7 +752,7 @@ const SessionHistoryComponent: React.FC = () => {
       await executeSearch(query);
     } catch (err) {
       console.error('[SessionHistory] Failed to search sessions:', err);
-      setError('Failed to search sessions');
+      setError('sessions:errors.search_failed');
     }
   }, [workspacePath, executeSearch]);
 
@@ -997,11 +1011,11 @@ const SessionHistoryComponent: React.FC = () => {
         }
       } else {
         console.error('[SessionHistory] Failed to build FTS index:', result.error);
-        setError('Failed to build search index');
+        setError('sessions:errors.index_failed');
       }
     } catch (err) {
       console.error('[SessionHistory] Failed to build FTS index:', err);
-      setError('Failed to build search index');
+      setError('sessions:errors.index_failed');
     } finally {
       setIsIndexBuilding(false);
       setShowIndexDialog(false);
@@ -1157,8 +1171,8 @@ const SessionHistoryComponent: React.FC = () => {
     try {
       const result = await window.electronAPI.invoke('sessions:update-metadata', sessionId, { isArchived: true });
       if (result && typeof result === 'object' && result.success === false) {
-        const message = (result.error && String(result.error)) || 'The backend rejected the archive request.';
-        errorNotificationService.showError('Failed to archive session', message);
+        const message = (result.error && String(result.error)) || t('agents:notifications.archive_rejected');
+        errorNotificationService.showError(t('sessions:errors.archive_failed'), message);
         console.error('[SessionHistory] Archive rejected by backend:', message);
         return;
       }
@@ -1173,7 +1187,7 @@ const SessionHistoryComponent: React.FC = () => {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      errorNotificationService.showError('Failed to archive session', message);
+      errorNotificationService.showError(t('sessions:errors.archive_failed'), message);
       console.error('[SessionHistory] Failed to archive session:', err);
     }
   };
@@ -1201,10 +1215,10 @@ const SessionHistoryComponent: React.FC = () => {
         .filter(({ r }) => r && typeof r === 'object' && r.success === false);
       if (failures.length > 0) {
         const message = failures
-          .map(({ r, sessionId }) => `${sessionId}: ${(r && r.error && String(r.error)) || 'rejected'}`)
+          .map(({ r, sessionId }) => `${sessionId}: ${(r && r.error && String(r.error)) || t('sessions:errors.rejected')}`)
           .join('\n');
         errorNotificationService.showError(
-          `Failed to archive meta-agent session (${failures.length} of ${sessionIds.length} rejected)`,
+          t('sessions:errors.meta_archive_rejected', { count: failures.length, total: sessionIds.length }),
           message,
         );
         console.error('[SessionHistory] Meta-agent archive rejected by backend:', failures);
@@ -1217,10 +1231,10 @@ const SessionHistoryComponent: React.FC = () => {
       setSessions(prev => prev.filter(session => !sessionIds.includes(session.id)));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      errorNotificationService.showError('Failed to archive meta-agent session', message);
+      errorNotificationService.showError(t('sessions:errors.meta_archive_failed'), message);
       console.error('[SessionHistory] Failed to archive meta-agent session:', err);
     }
-  }, [getMetaAgentGroupSessionIds, onSessionArchive, updateSessionStore]);
+  }, [getMetaAgentGroupSessionIds, onSessionArchive, updateSessionStore, t]);
 
   // Clean up UI state after a worktree archive (used by both auto-archive and dialog confirm paths)
   const cleanupAfterWorktreeArchive = useCallback((worktreeId: string) => {
@@ -1249,7 +1263,7 @@ const SessionHistoryComponent: React.FC = () => {
   const handleArchiveWorktree = async (worktreeId: string) => {
     // Get worktree info from cache
     const worktreeData = worktreeCache.get(worktreeId);
-    const worktreeName = worktreeData?.displayName || worktreeData?.name || worktreeData?.path?.split('/').pop() || 'worktree';
+    const worktreeName = worktreeData?.displayName || worktreeData?.name || worktreeData?.path?.split('/').pop() || t('agents:context.worktree');
     const worktreePath = worktreeData?.path || '';
 
     const autoArchived = await showArchiveWorktreeDialog({
@@ -1268,28 +1282,28 @@ const SessionHistoryComponent: React.FC = () => {
     const worktreeData = worktreeCache.get(worktreeId);
     if (!worktreeData?.path) return;
 
-    const worktreeName = worktreeData.displayName || worktreeData.name || 'worktree';
+    const worktreeName = worktreeData.displayName || worktreeData.name || t('agents:context.worktree');
 
     try {
       const preview = await window.electronAPI.worktreeListGitignored(worktreeData.path);
       if (!preview.success || preview.count === 0) return;
 
       const confirmed = window.confirm(
-        `Remove ${preview.count} gitignored ${preview.count === 1 ? 'item' : 'items'} from "${worktreeName}"?\n\nThis includes files like node_modules and build artifacts that can be regenerated.`
+        t('sessions:bulk.clean_gitignored_confirm', { count: preview.count, name: worktreeName })
       );
       if (!confirmed) return;
 
       const result = await window.electronAPI.worktreeCleanGitignored(worktreeData.path);
       if (result.success) {
-        window.alert(`Removed ${result.count} gitignored ${result.count === 1 ? 'item' : 'items'} from "${worktreeName}".`);
+        window.alert(t('sessions:bulk.clean_gitignored_success', { count: result.count, name: worktreeName }));
       } else {
         console.error('[SessionHistory] Failed to clean gitignored files:', result.error);
-        window.alert(`Failed to clean gitignored files: ${result.error}`);
+        window.alert(t('sessions:bulk.clean_gitignored_failure', { error: result.error }));
       }
     } catch (error) {
       console.error('[SessionHistory] Failed to clean gitignored files:', error);
     }
-  }, [worktreeCache]);
+  }, [worktreeCache, t]);
 
   // Handle archive confirmation from the dialog
   const handleConfirmArchiveWorktree = useCallback(async () => {
@@ -1768,7 +1782,7 @@ const SessionHistoryComponent: React.FC = () => {
     if (!onSessionDelete) return;
 
     const count = selectedSessionIds.size;
-    const confirmed = window.confirm(`Are you sure you want to permanently delete ${count} session${count > 1 ? 's' : ''}? This cannot be undone.`);
+    const confirmed = window.confirm(t('sessions:bulk.delete_confirm', { count }));
     if (!confirmed) return;
 
     for (const sessionId of selectedSessionIds) {
@@ -2616,7 +2630,7 @@ const SessionHistoryComponent: React.FC = () => {
 
               const children: SessionItem[] = result.children.map((c: any) => ({
                 id: c.id,
-                title: c.title || 'Untitled Session',
+                title: c.title || '',
                 createdAt: c.createdAt,
                 updatedAt: c.updatedAt,
                 provider: c.provider || 'claude',
@@ -2704,7 +2718,7 @@ const SessionHistoryComponent: React.FC = () => {
                   className="session-history-search-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                   data-testid="session-quick-search-button"
                   onClick={onOpenQuickSearch}
-                  aria-label="Search sessions"
+                  aria-label={t('sessions:search')}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -2718,8 +2732,8 @@ const SessionHistoryComponent: React.FC = () => {
                 className="session-history-import-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                 data-testid="import-sessions-button"
                 onClick={onImportSessions}
-                title="Import Claude Agent sessions"
-                aria-label="Import sessions"
+                title={t('sessions:import_claude')}
+                aria-label={t('sessions:import')}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M13.5 8.5V12.5C13.5 13.0523 13.0523 13.5 12.5 13.5H3.5C2.94772 13.5 2.5 13.0523 2.5 12.5V8.5M8 2.5V10.5M8 10.5L5.5 8M8 10.5L10.5 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2733,8 +2747,8 @@ const SessionHistoryComponent: React.FC = () => {
                   className="session-history-new-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                   data-testid="new-dropdown-button"
                   onClick={handleNewButtonClick}
-                  title="Create new..."
-                  aria-label="Create new session, worktree, or terminal"
+                  title={t('sessions:create_new')}
+                  aria-label={t('sessions:create_session_worktree_terminal')}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -2745,23 +2759,23 @@ const SessionHistoryComponent: React.FC = () => {
             </>
           }
         />
-        <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">Agent Sessions</div>
+        <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">{t('sessions:agent_sessions')}</div>
         <div className="session-history-search px-3 py-2 border-b border-[var(--nim-border)] shrink-0 relative">
           <input
             type="text"
             className="session-history-search-input nim-input w-full pl-3 pr-9 py-2 text-[13px] text-[var(--nim-text)] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded outline-none transition-colors duration-150 placeholder:text-[var(--nim-text-faint)] focus:border-[var(--nim-primary)] focus:bg-[var(--nim-bg)]"
-            placeholder="Search sessions..."
+            placeholder={t('sessions:search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search sessions"
+            aria-label={t('sessions:search')}
           />
           {searchQuery && (
             <button
               type="button"
               className="session-history-search-clear absolute right-5 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded text-[var(--nim-text-muted)] bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
               onClick={() => setSearchQuery('')}
-              aria-label="Clear search"
-              title="Clear search"
+                aria-label={t('sessions:history.clear_search')}
+                title={t('sessions:history.clear_search')}
             >
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -2774,8 +2788,8 @@ const SessionHistoryComponent: React.FC = () => {
             <button
               className="session-history-sort-button flex items-center justify-center px-1.5 py-1 text-xs rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] cursor-pointer transition-all duration-150 outline-none hover:bg-[var(--nim-bg-tertiary)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] [&_svg]:block"
               onClick={toggleSortDropdown}
-              title={`Sorted by: ${sortBy === 'updated' ? 'Last Updated' : 'Created'}`}
-              aria-label="Sort sessions"
+              title={t('sessions:history.sorted_by', { sort: sortBy === 'updated' ? t('sessions:last_updated') : t('sessions:created') })}
+              aria-label={t('sessions:history.sort_sessions')}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M8 2V14M8 14L4 10M8 14L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2787,7 +2801,7 @@ const SessionHistoryComponent: React.FC = () => {
                   className={`session-history-sort-option flex items-center justify-between w-full px-3 py-2 text-[13px] border-none text-[var(--nim-text)] cursor-pointer transition-colors duration-150 text-left gap-2 hover:bg-[var(--nim-bg-hover)] [&>span]:flex-1 [&_svg]:shrink-0 [&_svg]:text-[var(--nim-primary)] ${sortBy === 'updated' ? 'bg-[var(--nim-bg-selected)] font-medium' : ''}`}
                   onClick={() => selectSortOption('updated')}
                 >
-                  <span>Last Updated</span>
+                  <span>{t('sessions:last_updated')}</span>
                   {sortBy === 'updated' && (
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2798,7 +2812,7 @@ const SessionHistoryComponent: React.FC = () => {
                   className={`session-history-sort-option flex items-center justify-between w-full px-3 py-2 text-[13px] border-none text-[var(--nim-text)] cursor-pointer transition-colors duration-150 text-left gap-2 hover:bg-[var(--nim-bg-hover)] [&>span]:flex-1 [&_svg]:shrink-0 [&_svg]:text-[var(--nim-primary)] ${sortBy === 'created' ? 'bg-[var(--nim-bg-selected)] font-medium' : ''}`}
                   onClick={() => selectSortOption('created')}
                 >
-                  <span>Created</span>
+                  <span>{t('sessions:created')}</span>
                   {sortBy === 'created' && (
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2810,7 +2824,7 @@ const SessionHistoryComponent: React.FC = () => {
           </div>
         </div>
         <div className="session-history-loading flex flex-col items-center justify-center px-4 py-8 text-center text-[var(--nim-text-faint)] text-[13px]">
-          <span>Searching sessions...</span>
+          <span>{t('sessions:searching')}</span>
         </div>
       </div>
     );
@@ -2833,8 +2847,8 @@ const SessionHistoryComponent: React.FC = () => {
                   className="session-history-new-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                   data-testid="new-dropdown-button"
                   onClick={handleNewButtonClick}
-                  title="Create new..."
-                  aria-label="Create new session, worktree, or terminal"
+                  title={t('sessions:create_new')}
+                  aria-label={t('sessions:create_session_worktree_terminal')}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -2845,9 +2859,9 @@ const SessionHistoryComponent: React.FC = () => {
             </>
           }
         />
-        <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">Agent Sessions</div>
+        <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">{t('sessions:agent_sessions')}</div>
         <div className="session-history-error flex flex-col items-center justify-center px-4 py-8 text-center text-[var(--nim-error)] text-[13px]">
-          <span>{error}</span>
+          <span>{t(error)}</span>
         </div>
       </div>
     );
@@ -2881,7 +2895,7 @@ const SessionHistoryComponent: React.FC = () => {
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          <span>New Session</span>
+          <span>{t('sessions:new_session')}</span>
           <span className="session-history-new-option-shortcut flex-none text-[11px] text-[var(--nim-text-muted)] opacity-70">{getShortcutDisplay(KeyboardShortcuts.file.newSession)}</span>
         </button>
       )}
@@ -2891,7 +2905,7 @@ const SessionHistoryComponent: React.FC = () => {
           data-testid="new-worktree-session-button"
           onClick={() => { if (isGitRepo) { openWorktreeBaseBranchPicker(); } }}
           disabled={!isGitRepo}
-          title={!isGitRepo ? 'Worktrees require a git repository' : undefined}
+          title={!isGitRepo ? t('sessions:worktree_requires_git') : undefined}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M5 13v-2.5a1.5 1.5 0 0 1 1.5-1.5h3"/>
@@ -2901,7 +2915,7 @@ const SessionHistoryComponent: React.FC = () => {
             <path d="M5 6v2.5a1.5 1.5 0 0 0 1.5 1.5"/>
             <path d="M12 7v4M10 9h4"/>
           </svg>
-          <span>New Worktree</span>
+          <span>{t('sessions:new_worktree')}</span>
           <span className="session-history-new-option-shortcut flex-none text-[11px] text-[var(--nim-text-muted)] opacity-70">{getShortcutDisplay(KeyboardShortcuts.window.newWorktree)}</span>
         </button>
       )}
@@ -2911,12 +2925,12 @@ const SessionHistoryComponent: React.FC = () => {
           data-testid="new-blitz-button"
           onClick={() => { if (isGitRepo) { onNewBlitz(); newDropdownMenu.setIsOpen(false); } }}
           disabled={!isGitRepo}
-          title={!isGitRepo ? 'Blitz requires a git repository' : undefined}
+          title={!isGitRepo ? t('sessions:blitz_requires_git') : undefined}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M9 2L4 9h4l-1 5 5-7H8l1-5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="flex-1">New Blitz</span>
+          <span className="flex-1">{t('sessions:new_blitz')}</span>
           <AlphaBadge size="xs" />
         </button>
       )}
@@ -2930,7 +2944,7 @@ const SessionHistoryComponent: React.FC = () => {
             <path d="M3 5L7 9L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M9 13H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          <span>New Terminal</span>
+          <span>{t('sessions:new_terminal')}</span>
         </button>
       )}
       {isSuperLoopsAvailable && (
@@ -2939,13 +2953,13 @@ const SessionHistoryComponent: React.FC = () => {
           data-testid="new-super-loop-button"
           onClick={() => { if (isGitRepo) { openSuperLoopDialog(); newDropdownMenu.setIsOpen(false); } }}
           disabled={!isGitRepo}
-          title={!isGitRepo ? 'Super Loops require a git repository' : undefined}
+          title={!isGitRepo ? t('sessions:superloops_requires_git') : undefined}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M13 5.5H9.5M13 5.5L10.5 3M13 5.5L10.5 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M3 10.5H6.5M3 10.5L5.5 8M3 10.5L5.5 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="flex-1">New Super Loop</span>
+          <span className="flex-1">{t('sessions:new_super_loop')}</span>
           <AlphaBadge size="xs" />
         </button>
       )}
@@ -2956,7 +2970,7 @@ const SessionHistoryComponent: React.FC = () => {
           onClick={() => { void handleNewMetaAgent(); newDropdownMenu.setIsOpen(false); }}
         >
           <MaterialSymbol icon="hub" size={14} />
-          <span className="flex-1">New Meta Agent</span>
+          <span className="flex-1">{t('sessions:new_meta_agent')}</span>
           <AlphaBadge size="xs" />
         </button>
       )}
@@ -2999,8 +3013,8 @@ const SessionHistoryComponent: React.FC = () => {
                   className="session-history-import-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                   data-testid="import-sessions-button"
                   onClick={onImportSessions}
-                  title="Import Claude Agent sessions"
-                  aria-label="Import sessions"
+                  title={t('sessions:import_claude')}
+                  aria-label={t('sessions:import')}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M13.5 8.5V12.5C13.5 13.0523 13.0523 13.5 12.5 13.5H3.5C2.94772 13.5 2.5 13.0523 2.5 12.5V8.5M8 2.5V10.5M8 10.5L5.5 8M8 10.5L10.5 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3014,8 +3028,8 @@ const SessionHistoryComponent: React.FC = () => {
                     className="session-history-new-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                     data-testid="new-dropdown-button"
                     onClick={handleNewButtonClick}
-                    title="Create new..."
-                    aria-label="Create new session or worktree"
+                    title={t('sessions:create_new')}
+                    aria-label={t('sessions:create_session_worktree')}
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -3028,8 +3042,8 @@ const SessionHistoryComponent: React.FC = () => {
                   className="session-history-new-terminal-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                   data-testid="new-terminal-button"
                   onClick={() => onNewTerminal()}
-                  title="New terminal"
-                  aria-label="Create new terminal"
+                  title={t('sessions:new_terminal_title')}
+                  aria-label={t('sessions:create_new_terminal')}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M3 5L7 9L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3040,11 +3054,11 @@ const SessionHistoryComponent: React.FC = () => {
             </>
           }
         />
-        <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">Agent Sessions</div>
+        <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">{t('sessions:agent_sessions')}</div>
         <div className="session-history-empty flex flex-col items-center justify-center px-4 py-8 text-center text-[var(--nim-text-faint)] text-[13px]">
-          <p className="my-1">No sessions yet</p>
+          <p className="my-1">{t('sessions:none')}</p>
           <p className="session-history-empty-hint my-1 text-xs text-[var(--nim-text-faint)]">
-            Create a new session to get started
+            {t('sessions:no_sessions_hint')}
           </p>
         </div>
         {/* Mount the new-session dropdown here too. Without this, clicking +
@@ -3078,14 +3092,14 @@ const SessionHistoryComponent: React.FC = () => {
                 });
                 setViewMode(newMode);
               }}
-              aria-label={viewMode === 'kanban' ? 'Switch to list view' : 'Switch to kanban view'}
+              aria-label={t(viewMode === 'kanban' ? 'sessions:history.switch_list' : 'sessions:history.switch_kanban')}
             >
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="1.5" y="2" width="3.5" height="12" rx="0.75" stroke="currentColor" strokeWidth="1.25"/>
                 <rect x="6.25" y="2" width="3.5" height="8" rx="0.75" stroke="currentColor" strokeWidth="1.25"/>
                 <rect x="11" y="2" width="3.5" height="10" rx="0.75" stroke="currentColor" strokeWidth="1.25"/>
               </svg>
-              Kanban
+              {t('sessions:history.kanban')}
             </button>
           </HelpTooltip>
           {onOpenQuickSearch && (
@@ -3094,7 +3108,7 @@ const SessionHistoryComponent: React.FC = () => {
                 className="session-history-search-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                 data-testid="session-quick-search-button"
                 onClick={onOpenQuickSearch}
-                aria-label="Search sessions"
+                aria-label={t('sessions:search')}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -3108,8 +3122,8 @@ const SessionHistoryComponent: React.FC = () => {
               className="session-history-import-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
               data-testid="import-sessions-button"
               onClick={onImportSessions}
-              title="Import Claude Agent sessions"
-              aria-label="Import sessions"
+              title={t('sessions:import_claude')}
+              aria-label={t('sessions:import')}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M13.5 8.5V12.5C13.5 13.0523 13.0523 13.5 12.5 13.5H3.5C2.94772 13.5 2.5 13.0523 2.5 12.5V8.5M8 2.5V10.5M8 10.5L5.5 8M8 10.5L10.5 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3123,8 +3137,8 @@ const SessionHistoryComponent: React.FC = () => {
                 className="session-history-new-button flex items-center justify-center p-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:bg-[var(--nim-bg-tertiary)] [&_svg]:block"
                 data-testid="new-dropdown-button"
                 onClick={handleNewButtonClick}
-                title="Create new..."
-                aria-label="Create new session, worktree, or terminal"
+                title={t('sessions:create_new')}
+                aria-label={t('sessions:create_session_worktree_terminal')}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -3135,13 +3149,13 @@ const SessionHistoryComponent: React.FC = () => {
           </>
         }
       />
-      <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">Agent Sessions</div>
+      <div className="session-history-section-label px-3 py-1.5 text-[11px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">{t('sessions:agent_sessions')}</div>
       <div className="session-history-search px-3 py-2 border-b border-[var(--nim-border)] shrink-0 relative z-10">
         <input
           ref={searchInputRef}
           type="text"
           className="session-history-search-input nim-input w-full px-3 py-2 pr-14 text-[13px] text-[var(--nim-text)] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded outline-none transition-colors duration-150 placeholder:text-[var(--nim-text-faint)] focus:border-[var(--nim-primary)] focus:bg-[var(--nim-bg)]"
-          placeholder="Search or type # to filter by tag..."
+          placeholder={t('sessions:search_filter_tag')}
           value={showTagDropdown
             ? (searchQuery ? searchQuery + ' ' : '') + '#' + tagQuery
             : searchQuery}
@@ -3207,7 +3221,7 @@ const SessionHistoryComponent: React.FC = () => {
           onFocus={() => {
             if (tagQuery) setShowTagDropdown(true);
           }}
-          aria-label="Search sessions or filter by tag"
+          aria-label={t('sessions:search_filter_tag')}
         />
         {(searchQuery || tagFilter.tags.length > 0 || showTagDropdown) && (
           <button
@@ -3219,8 +3233,8 @@ const SessionHistoryComponent: React.FC = () => {
               setShowTagDropdown(false);
               if (tagFilter.tags.length > 0) setTagFilter({ tags: [] });
             }}
-            aria-label="Clear search and tag filters"
-            title="Clear search and tag filters"
+            aria-label={t('sessions:history.clear_search_and_tag_filters')}
+            title={t('sessions:history.clear_search_and_tag_filters')}
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -3253,23 +3267,23 @@ const SessionHistoryComponent: React.FC = () => {
               ))
             ) : (
               <div className="px-3 py-2 text-[12px] text-[var(--nim-text-faint)] italic">
-                {tagQuery ? 'No matching tags' : 'No tags in this workspace yet'}
+                {t(tagQuery ? 'sessions:history.no_matching_tags' : 'sessions:history.no_tags_workspace')}
               </div>
             )}
           </div>
         )}
         {isSearching && (
           <div className="session-history-search-status absolute right-12 top-1/2 -translate-y-1/2 text-xs text-[var(--nim-text-faint)] pointer-events-none">
-            {contentSearchTriggered ? 'Searching messages...' : 'Searching...'}
+            {t(contentSearchTriggered ? 'sessions:history.searching_messages' : 'sessions:history.searching')}
           </div>
         )}
         {!isSearching && searchQuery && !contentSearchTriggered && (
           <button
             className="session-history-content-search-hint absolute right-12 top-1/2 -translate-y-1/2 text-xs text-[var(--nim-text-muted)] bg-transparent border-none cursor-pointer flex items-center gap-1 px-2 py-1 rounded transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-primary)]"
             onClick={searchMessageContents}
-            title="Press Tab to search message contents"
+            title={t('sessions:history.search_contents_hint')}
           >
-            ⇥ Search contents
+            {t('sessions:history.search_contents')}
           </button>
         )}
         {/* Search filters dropdown - only visible when content search is active */}
@@ -3282,8 +3296,8 @@ const SessionHistoryComponent: React.FC = () => {
                   : 'text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]'
               }`}
               onClick={() => setShowSearchFilters(!showSearchFilters)}
-              title="Search filters"
-              aria-label="Search filters"
+              title={t('sessions:history.search_filters')}
+              aria-label={t('sessions:history.search_filters')}
             >
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -3292,7 +3306,7 @@ const SessionHistoryComponent: React.FC = () => {
             {showSearchFilters && (
               <div className="absolute right-0 top-full mt-1 z-[100] min-w-[160px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg shadow-lg overflow-hidden">
                 <div className="px-3 py-2 text-xs font-medium text-[var(--nim-text-muted)] border-b border-[var(--nim-border)]">
-                  Time Range
+                  {t('sessions:history.time_range')}
                 </div>
                 {(Object.entries(TIME_RANGE_LABELS) as [SearchTimeRange, string][]).map(([value, label]) => (
                   <button
@@ -3308,12 +3322,12 @@ const SessionHistoryComponent: React.FC = () => {
                       executeSearch(searchQuery, newFilters);
                     }}
                   >
-                    {label}
+                    {t(label)}
                     {searchFilters.timeRange === value && <span className="float-right">✓</span>}
                   </button>
                 ))}
                 <div className="px-3 py-2 text-xs font-medium text-[var(--nim-text-muted)] border-t border-b border-[var(--nim-border)]">
-                  Message Type
+                  {t('sessions:history.message_type')}
                 </div>
                 {(Object.entries(DIRECTION_LABELS) as [SearchDirection, string][]).map(([value, label]) => (
                   <button
@@ -3329,7 +3343,7 @@ const SessionHistoryComponent: React.FC = () => {
                       executeSearch(searchQuery, newFilters);
                     }}
                   >
-                    {label}
+                    {t(label)}
                     {searchFilters.direction === value && <span className="float-right">✓</span>}
                   </button>
                 ))}
@@ -3349,7 +3363,7 @@ const SessionHistoryComponent: React.FC = () => {
                 type="button"
                 className="session-history-tag-chip flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border cursor-pointer bg-blue-400/[0.12] border-blue-400/30 text-blue-400 hover:bg-blue-400/[0.18]"
                 onClick={() => removeTagFilter(tag)}
-                title={`Remove #${tag} filter`}
+                title={t('sessions:history.remove_tag_filter', { tag })}
                 data-testid={`session-list-tag-chip-${tag}`}
               >
                 #{tag}
@@ -3363,8 +3377,8 @@ const SessionHistoryComponent: React.FC = () => {
         <button
           className={`session-history-archive-filter flex items-center justify-center px-1.5 py-1 text-xs rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-faint)] cursor-pointer transition-all duration-150 outline-none hover:bg-[var(--nim-bg-tertiary)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] [&_svg]:block ${showArchived ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white hover:opacity-90' : ''}`}
           onClick={toggleShowArchived}
-          title={showArchived ? 'Hide archived sessions' : 'Show archived sessions'}
-          aria-label={showArchived ? 'Hide archived sessions' : 'Show archived sessions'}
+          title={t(showArchived ? 'sessions:history.hide_archived' : 'sessions:history.show_archived')}
+          aria-label={t(showArchived ? 'sessions:history.hide_archived' : 'sessions:history.show_archived')}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M2 5h12M4 5v8a1 1 0 001 1h6a1 1 0 001-1V5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3374,9 +3388,9 @@ const SessionHistoryComponent: React.FC = () => {
         {(() => {
           const hasFilter = searchQuery.trim().length > 0 || tagFilter.tags.length > 0;
           const visibleCount = sessions.length;
-          const totalLabel = `${iosMatchCount} non-archived session${iosMatchCount === 1 ? '' : 's'} in this workspace (matches the iOS project list count)`;
+          const totalLabel = t(iosMatchCount === 1 ? 'sessions:history.total_session_title' : 'sessions:history.total_sessions_title', { count: iosMatchCount });
           const title = hasFilter
-            ? `${visibleCount} of ${iosMatchCount} visible after current filters -- ${totalLabel}`
+            ? t('sessions:history.filtered_total_title', { visible: visibleCount, total: iosMatchCount, detail: totalLabel })
             : totalLabel;
           return (
             <span
@@ -3385,8 +3399,8 @@ const SessionHistoryComponent: React.FC = () => {
               data-testid="session-list-match-count"
             >
               {hasFilter
-                ? `${visibleCount} of ${iosMatchCount} session${iosMatchCount === 1 ? '' : 's'}`
-                : `${iosMatchCount} session${iosMatchCount === 1 ? '' : 's'}`}
+                ? t(iosMatchCount === 1 ? 'sessions:history.match_count_single' : 'sessions:history.match_count', { visible: visibleCount, total: iosMatchCount })
+                : t(iosMatchCount === 1 ? 'sessions:history.session_count' : 'sessions:history.session_count_plural', { count: iosMatchCount })}
             </span>
           );
         })()}
@@ -3394,8 +3408,8 @@ const SessionHistoryComponent: React.FC = () => {
           <button
             className="session-history-sort-button flex items-center justify-center px-1.5 py-1 text-xs rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] cursor-pointer transition-all duration-150 outline-none hover:bg-[var(--nim-bg-tertiary)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] [&_svg]:block"
             onClick={toggleSortDropdown}
-            title={`Sorted by: ${sortBy === 'updated' ? 'Last Updated' : 'Created'}`}
-            aria-label="Sort sessions"
+            title={t('sessions:history.sorted_by', { sort: sortBy === 'updated' ? t('sessions:last_updated') : t('sessions:created') })}
+            aria-label={t('sessions:history.sort_sessions')}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M8 2V14M8 14L4 10M8 14L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3407,7 +3421,7 @@ const SessionHistoryComponent: React.FC = () => {
                 className={`session-history-sort-option flex items-center justify-between w-full px-3 py-2 text-[13px] border-none text-[var(--nim-text)] cursor-pointer transition-colors duration-150 text-left gap-2 hover:bg-[var(--nim-bg-hover)] [&>span]:flex-1 [&_svg]:shrink-0 [&_svg]:text-[var(--nim-primary)] ${sortBy === 'updated' ? 'bg-[var(--nim-bg-selected)] font-medium' : ''}`}
                 onClick={() => selectSortOption('updated')}
               >
-                <span>Last Updated</span>
+                <span>{t('sessions:last_updated')}</span>
                 {sortBy === 'updated' && (
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3418,7 +3432,7 @@ const SessionHistoryComponent: React.FC = () => {
                 className={`session-history-sort-option flex items-center justify-between w-full px-3 py-2 text-[13px] border-none text-[var(--nim-text)] cursor-pointer transition-colors duration-150 text-left gap-2 hover:bg-[var(--nim-bg-hover)] [&>span]:flex-1 [&_svg]:shrink-0 [&_svg]:text-[var(--nim-primary)] ${sortBy === 'created' ? 'bg-[var(--nim-bg-selected)] font-medium' : ''}`}
                 onClick={() => selectSortOption('created')}
               >
-                <span>Created</span>
+                <span>{t('sessions:created')}</span>
                 {sortBy === 'created' && (
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3431,35 +3445,35 @@ const SessionHistoryComponent: React.FC = () => {
       </div>
       {(selectedSessionIds.size > 0 || selectedGroupIds.size > 0) && (
         <div className="session-history-bulk-actions flex items-center justify-between px-3 py-2 bg-[var(--nim-bg-selected)] border-b border-[var(--nim-border)] gap-2">
-          <span className="session-history-bulk-count text-xs font-medium text-[var(--nim-text)]">{selectedSessionIds.size + selectedGroupIds.size} selected</span>
+          <span className="session-history-bulk-count text-xs font-medium text-[var(--nim-text)]">{t('sessions:history.selected_count', { count: selectedSessionIds.size + selectedGroupIds.size })}</span>
           <div className="session-history-bulk-buttons flex gap-1.5">
             {showArchived ? (
-              <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] [&_svg]:shrink-0" onClick={handleBulkUnarchive} title="Unarchive selected">
+              <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] [&_svg]:shrink-0" onClick={handleBulkUnarchive} title={t('sessions:unarchive_selected')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M2 5h12M4 5v8a1 1 0 001 1h6a1 1 0 001-1V5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M8 11V7M6 9l2-2 2 2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Unarchive
+                {t('sessions:unarchive')}
               </button>
             ) : (
-              <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] [&_svg]:shrink-0" onClick={handleBulkArchive} title="Archive selected">
+              <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] [&_svg]:shrink-0" onClick={handleBulkArchive} title={t('sessions:archive_selected')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M2 5h12M4 5v8a1 1 0 001 1h6a1 1 0 001-1V5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M8 7v4M6 9l2 2 2-2" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Archive
+                {t('sessions:archive')}
               </button>
             )}
             {(
-              <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-error)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-error)] hover:border-[var(--nim-error)] hover:text-white [&_svg]:shrink-0" onClick={handleBulkDelete} title="Delete selected">
+              <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-error)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-error)] hover:border-[var(--nim-error)] hover:text-white [&_svg]:shrink-0" onClick={handleBulkDelete} title={t('sessions:delete_selected')}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M2 4h12M5.333 4V2.667A.667.667 0 016 2h4a.667.667 0 01.667.667V4M12.667 4v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Delete
+                {t('sessions:delete')}
               </button>
             )}
-            <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] [&_svg]:shrink-0" onClick={clearSelection} title="Clear selection">
-              Cancel
+            <button className="session-history-bulk-button flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer transition-all duration-150 hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] [&_svg]:shrink-0" onClick={clearSelection} title={t('sessions:clear_selection')}>
+              {t('common:cancel')}
             </button>
           </div>
         </div>
@@ -3468,9 +3482,9 @@ const SessionHistoryComponent: React.FC = () => {
         {groupKeys.length === 0 && (hasSearchQuery || hasTagFilter) ? (
           // No results for the active search/tag filter - offer a clear affordance
           <div className="session-history-empty flex flex-col items-center justify-center px-4 py-8 text-center text-[var(--nim-text-faint)] text-[13px]">
-            <p className="my-1">No matching sessions found</p>
+            <p className="my-1">{t('sessions:no_matching')}</p>
             <p className="session-history-empty-hint my-1 text-xs text-[var(--nim-text-faint)]">
-              {hasSearchQuery && hasTagFilter ? 'Adjust your search or ' : hasSearchQuery ? 'Try a different search term or ' : 'Remove the active tag filter or '}
+              {t(hasSearchQuery && hasTagFilter ? 'sessions:history.adjust_search' : hasSearchQuery ? 'sessions:history.try_different_search' : 'sessions:history.remove_tag_or')}{' '}
               <button
                 className="session-history-clear-search-link bg-transparent border-none text-[var(--nim-primary)] cursor-pointer underline p-0 text-inherit font-inherit hover:opacity-80"
                 onClick={() => {
@@ -3479,7 +3493,7 @@ const SessionHistoryComponent: React.FC = () => {
                 }}
                 type="button"
               >
-                {hasSearchQuery && hasTagFilter ? 'clear search and tags' : hasSearchQuery ? 'clear search' : 'clear tag filter'}
+                {t(hasSearchQuery && hasTagFilter ? 'sessions:history.clear_search_and_tags' : hasSearchQuery ? 'sessions:history.clear_search_link' : 'sessions:history.clear_tag_filter')}
               </button>
             </p>
           </div>
@@ -3501,14 +3515,14 @@ const SessionHistoryComponent: React.FC = () => {
                         className="collapsible-group-header flex items-center gap-2 w-full py-2 px-3 bg-transparent border-none cursor-pointer text-xs font-semibold text-nim-muted text-left transition-colors duration-150 hover:bg-nim-hover"
                         onClick={() => handleToggleGroup(entry.groupKey)}
                         aria-expanded={entry.isExpanded}
-                        aria-label={`${entry.groupKey} group, ${entry.isExpanded ? 'expanded' : 'collapsed'}`}
+                        aria-label={t('sessions:history.group_label', { group: t(GROUP_LABEL_KEYS[entry.groupKey], { defaultValue: entry.groupKey }), state: t(entry.isExpanded ? 'sessions:history.group_expanded' : 'sessions:history.group_collapsed') })}
                       >
                         <MaterialSymbol
                           icon="chevron_right"
                           size={12}
                           className={`collapsible-group-chevron shrink-0 text-nim-faint transition-transform duration-200 ${entry.isExpanded ? 'rotate-90' : ''}`}
                         />
-                        <span className="collapsible-group-title flex-1 overflow-hidden text-ellipsis whitespace-nowrap uppercase tracking-wide">{entry.groupKey}</span>
+                        <span className="collapsible-group-title flex-1 overflow-hidden text-ellipsis whitespace-nowrap uppercase tracking-wide">{t(GROUP_LABEL_KEYS[entry.groupKey], { defaultValue: entry.groupKey })}</span>
                         <span className="collapsible-group-count shrink-0 text-[0.625rem] text-nim-faint font-normal">{entry.itemCount}</span>
                       </button>
                     </div>
@@ -3526,7 +3540,7 @@ const SessionHistoryComponent: React.FC = () => {
                   return (
                     <BlitzGroup
                       blitzId={item.blitzId}
-                      title={blitzData?.displayName || (blitzData?.prompt ? blitzData.prompt.slice(0, 60) + (blitzData.prompt.length > 60 ? '...' : '') : 'Loading...')}
+                      title={blitzData?.displayName || (blitzData?.prompt ? blitzData.prompt.slice(0, 60) + (blitzData.prompt.length > 60 ? '...' : '') : t('sessions:history.loading'))}
                       isExpanded={isBlitzExpanded}
                       isActive={isBlitzActive}
                       isPinned={blitzData?.isPinned}
@@ -3563,7 +3577,7 @@ const SessionHistoryComponent: React.FC = () => {
                     <WorkstreamGroup
                       type="worktree"
                       id={item.worktreeId}
-                      title={worktreeData?.displayName || worktreeData?.name || 'Loading...'}
+                      title={worktreeData?.displayName || worktreeData?.name || t('sessions:history.loading')}
                       isExpanded={isWorktreeExpanded}
                       isActive={item.sessions.some(s => s.id === activeSessionId)}
                       isSelected={selectedGroupIds.has(`worktree:${item.worktreeId}`)}
@@ -3592,7 +3606,7 @@ const SessionHistoryComponent: React.FC = () => {
                       onSessionPinToggle={handleSessionPinToggle}
                       onSessionRename={onSessionRename}
                       onSessionBranch={onSessionBranch}
-                      worktree={worktreeData || { id: item.worktreeId, name: 'Loading...', path: '', branch: '' }}
+                      worktree={worktreeData || { id: item.worktreeId, name: t('sessions:history.loading'), path: '', branch: '' }}
                       gitStatus={worktreeData?.gitStatus}
                       onWorktreePinToggle={handleWorktreePinToggle}
                       onWorktreeArchive={handleArchiveWorktree}
@@ -3615,7 +3629,7 @@ const SessionHistoryComponent: React.FC = () => {
                     <WorkstreamGroup
                       type="workstream"
                       id={session.id}
-                      title={session.title || 'Untitled Workstream'}
+                      title={session.title || t('sessions:history.untitled_workstream')}
                       isExpanded={isWorkstreamExpanded}
                       isActive={isWorkstreamActive}
                       isSelected={selectedGroupIds.has(`workstream:${session.id}`)}
@@ -3700,7 +3714,7 @@ const SessionHistoryComponent: React.FC = () => {
                 return (
                   <SessionListItem
                     id={session.id}
-                    title={session.title || 'Untitled Session'}
+                    title={session.title || t('sessions:history.untitled_session')}
                     createdAt={session.createdAt}
                     updatedAt={session.updatedAt}
                     isActive={session.id === activeSessionId}

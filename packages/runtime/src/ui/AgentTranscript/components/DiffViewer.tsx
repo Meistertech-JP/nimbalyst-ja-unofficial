@@ -1,5 +1,6 @@
 import React from 'react';
 import { stripCommonContext } from '../utils/stripCommonContext';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 // Diff line styles - use color-mix for subtle backgrounds
 const diffLineStyles = {
@@ -62,10 +63,11 @@ interface DiffViewerProps {
 }
 
 export const DiffViewer: React.FC<DiffViewerProps> = ({ edit, filePath: contextFilePath, maxHeight = '20rem', onOpenFile, absoluteFilePath }) => {
+  const { t } = useRuntimeTranslation();
   // Extract the relevant diff information from the edit object
   const replacements = edit.replacements || [];
   // Use file path from props (session context) or fallback to edit fields
-  const filePath = contextFilePath || edit.filePath || edit.file_path || edit.targetFilePath || 'Unknown file';
+  const filePath = contextFilePath || edit.filePath || edit.file_path || edit.targetFilePath || t('aichat:diff.unknown_file', 'Unknown file');
 
   // Helper to render clickable file header
   const renderFileHeader = (displayPath: string) => {
@@ -85,7 +87,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ edit, filePath: contextF
           <button
             className="diff-file-header-link bg-transparent border-none p-0 m-0 font-inherit text-[var(--nim-link)] cursor-pointer no-underline text-left hover:underline"
             onClick={handleClick}
-            title={`Open ${pathToOpen}`}
+            title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: pathToOpen })}
           >
             {displayPath}
           </button>
@@ -197,7 +199,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ edit, filePath: contextF
     <div className="diff-viewer font-mono text-xs leading-normal bg-[var(--nim-bg-secondary)] rounded-md border border-[var(--nim-border)] flex flex-col" style={{ maxHeight }}>
       {renderFileHeader(filePath)}
       <div className="diff-content overflow-auto py-1 flex-1 min-h-0"><div className="diff-content-inner inline-block min-w-full">
-        {edit.operation && renderDiffLine('info', '\u2022', `Operation: ${edit.operation}`, 'operation')}
+        {edit.operation && renderDiffLine('info', '\u2022', t('aichat:diff.operation', 'Operation: {{operation}}', { operation: edit.operation }), 'operation')}
         {edit.instruction && renderDiffLine('info', '\u2022', edit.instruction, 'instruction')}
       </div></div>
     </div>

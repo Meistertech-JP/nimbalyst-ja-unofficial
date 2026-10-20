@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { bucketMemberCount, bucketProjectCount, categorizeTeamAnalyticsError } from '../../../../shared/analytics/teamAnalytics';
 import { trackTeamAnalyticsEvent } from '../../../utils/teamAnalytics';
@@ -37,6 +38,7 @@ interface MergeOrgWizardProps {
 type Step = 'configure' | 'running' | 'done';
 
 export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, memberCount, onClose, onMerged }: MergeOrgWizardProps) {
+  const { t } = useTranslation(['dialogs']);
   const candidates = survivorCandidates.filter(o => o.orgId !== drainedOrg.orgId);
   const [step, setStep] = useState<Step>('configure');
   const [survivorOrgId, setSurvivorOrgId] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
           callerRole: 'admin',
           errorCategory: categorizeTeamAnalyticsError('organization', res?.error),
         });
-        setError(res?.error || 'Merge failed');
+        setError(res?.error || t('dialogs:merge_org.error'));
         setStep('configure');
       }
     } catch (err) {
@@ -103,17 +105,16 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-[16px] font-semibold text-[var(--nim-text)] flex items-center gap-2">
             <MaterialSymbol icon="merge" size={20} className="text-[var(--nim-primary)]" />
-            Merge organization into another
+            {t('dialogs:merge_org.title')}
           </h3>
           {step !== 'running' && (
-            <button className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]" onClick={onClose} aria-label="Close" data-testid="merge-org-close">
+            <button className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]" onClick={onClose} aria-label={t('dialogs:merge_org.close')} data-testid="merge-org-close">
               <MaterialSymbol icon="close" size={20} />
             </button>
           )}
         </div>
         <p className="text-[12px] text-[var(--nim-text-muted)] mb-4">
-          Moves all of <span className="font-medium text-[var(--nim-text)]">{drainedOrg.name}</span>&apos;s projects
-          ({projectCount}) and members ({memberCount}) into another organization. This cannot be undone.
+          {t('dialogs:merge_org.description', { name: drainedOrg.name, projects: projectCount, members: memberCount })}
         </p>
 
         {error && (
@@ -126,11 +127,11 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
           <div data-testid="merge-org-configure">
             {candidates.length === 0 ? (
               <p className="text-[13px] text-[var(--nim-text-muted)]">
-                You don&apos;t own or admin another organization to merge into.
+                {t('dialogs:merge_org.no_candidates')}
               </p>
             ) : (
               <>
-                <label className="text-[12px] font-medium text-[var(--nim-text-muted)] block mb-1">Merge into (survivor)</label>
+                <label className="text-[12px] font-medium text-[var(--nim-text-muted)] block mb-1">{t('dialogs:merge_org.survivor')}</label>
                 <div className="flex flex-col gap-1.5 mb-4">
                   {candidates.map(o => (
                     <button
@@ -150,11 +151,11 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
 
                 <label className="flex items-center gap-2 text-[12px] text-[var(--nim-text-muted)] mb-4 cursor-pointer">
                   <input type="checkbox" checked={deleteDrained} onChange={(e) => setDeleteDrained(e.target.checked)} data-testid="merge-org-delete-drained" />
-                  Delete <span className="font-medium text-[var(--nim-text)]">{drainedOrg.name}</span> after the merge (only if it fully empties)
+                  {t('dialogs:merge_org.delete_after', { name: drainedOrg.name })}
                 </label>
 
                 <label className="text-[12px] text-[var(--nim-text-muted)] block mb-1">
-                  Type <span className="font-mono font-semibold text-[var(--nim-text)]">{drainedOrg.name}</span> to confirm:
+                  {t('dialogs:merge_org.type_confirm', { name: drainedOrg.name })}
                 </label>
                 <input
                   type="text"
@@ -172,8 +173,8 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
         {step === 'running' && (
           <div className="py-6 text-center text-[13px] text-[var(--nim-text-muted)]" data-testid="merge-org-running">
             <MaterialSymbol icon="progress_activity" size={28} className="text-[var(--nim-primary)] animate-spin" />
-            <div className="mt-2">Merging… moving projects, transferring access, uniting members.</div>
-            <div className="mt-1 text-[11px] text-[var(--nim-text-faint)]">Do not close this window.</div>
+            <div className="mt-2">{t('dialogs:merge_org.progress')}</div>
+            <div className="mt-1 text-[11px] text-[var(--nim-text-faint)]">{t('dialogs:merge_org.do_not_close')}</div>
           </div>
         )}
 
@@ -181,14 +182,14 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
           <div className="py-4 text-[13px] text-[var(--nim-text)]" data-testid="merge-org-done">
             <div className={`flex items-center gap-2 font-medium mb-2 ${result.partial ? 'text-[var(--nim-warning,#d97706)]' : 'text-[var(--nim-success,#16a34a)]'}`}>
               <MaterialSymbol icon={result.partial ? 'warning' : 'check_circle'} size={20} />
-              {result.partial ? 'Merge partially completed' : `Merged into ${survivorName}`}
+              {result.partial ? t('dialogs:merge_org.partial_done') : t('dialogs:merge_org.merged_into', { name: survivorName })}
             </div>
             <ul className="text-[12px] text-[var(--nim-text-muted)] list-disc pl-5 space-y-0.5">
-              <li>{result.movedProjects.length} project{result.movedProjects.length === 1 ? '' : 's'} moved</li>
-              {result.rosterElevated > 0 && <li>{result.rosterElevated} member role{result.rosterElevated === 1 ? '' : 's'} elevated</li>}
-              {result.rosterToInvite > 0 && <li>{result.rosterToInvite} member{result.rosterToInvite === 1 ? '' : 's'} invited to the survivor</li>}
-              <li>{result.drainedDeleted ? `${drainedOrg.name} was deleted` : `${drainedOrg.name} kept`}</li>
-              {result.partial && <li className="text-[var(--nim-warning,#d97706)]">Stopped at project {result.failedProjectId}: {result.error}</li>}
+              <li>{t('dialogs:merge_org.projects_moved', { count: result.movedProjects.length })}</li>
+              {result.rosterElevated > 0 && <li>{t('dialogs:merge_org.roles_elevated', { count: result.rosterElevated })}</li>}
+              {result.rosterToInvite > 0 && <li>{t('dialogs:merge_org.members_invited', { count: result.rosterToInvite })}</li>}
+              <li>{result.drainedDeleted ? t('dialogs:merge_org.org_deleted', { name: drainedOrg.name }) : t('dialogs:merge_org.org_kept', { name: drainedOrg.name })}</li>
+              {result.partial && <li className="text-[var(--nim-warning,#d97706)]">{t('dialogs:merge_org.stopped', { project: result.failedProjectId, error: result.error })}</li>}
             </ul>
           </div>
         )}
@@ -197,7 +198,7 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
           {step === 'configure' && (
             <>
               <button className="px-3.5 py-2 text-[13px] rounded-md text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-secondary)]" onClick={onClose} data-testid="merge-org-cancel">
-                Cancel
+                {t('dialogs:merge_org.cancel')}
               </button>
               <button
                 className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-error,#dc2626)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -205,13 +206,13 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
                 disabled={!confirmOk}
                 data-testid="merge-org-run"
               >
-                Merge organization
+                {t('dialogs:merge_org.merge')}
               </button>
             </>
           )}
           {step === 'done' && (
             <button className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-white" onClick={onClose} data-testid="merge-org-finish">
-              Done
+              {t('dialogs:merge_org.done')}
             </button>
           )}
         </div>

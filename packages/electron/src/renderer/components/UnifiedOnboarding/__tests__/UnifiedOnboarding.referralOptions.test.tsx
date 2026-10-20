@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import i18next from 'i18next';
 import { UnifiedOnboarding } from '../UnifiedOnboarding';
 
 const NEW_REFERRAL_OPTIONS = [
@@ -14,7 +15,13 @@ const NEW_REFERRAL_OPTIONS = [
 ];
 
 describe('UnifiedOnboarding referral options', () => {
-  afterEach(() => {
+  beforeEach(async () => {
+    await i18next.changeLanguage('en');
+  });
+
+  afterEach(async () => {
+    cleanup();
+    await i18next.changeLanguage('en');
     delete (window as any).electronAPI;
   });
 
@@ -74,5 +81,39 @@ describe('UnifiedOnboarding referral options', () => {
     expect(onComplete).toHaveBeenCalledWith(
       expect.objectContaining({ referralSource: 'search:AI code editor' }),
     );
+  });
+
+  it('localizes discovery labels and validation without changing stored values', async () => {
+    (window as any).electronAPI = { invoke: vi.fn().mockResolvedValue({}) };
+    const onComplete = vi.fn();
+
+    render(<UnifiedOnboarding isOpen onComplete={onComplete} onSkip={() => {}} forcedMode="new" />);
+    fireEvent.click(screen.getByText('Standard Mode'));
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'invalid' } });
+    expect(screen.getByText('Please enter a valid email address')).toBeTruthy();
+
+    await act(async () => { await i18next.changeLanguage('ja'); });
+
+    expect(screen.getByText('標準モード')).toBeTruthy();
+    expect(screen.getByText('有効なメールアドレスを入力してください')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('メールアドレス'), { target: { value: '' } });
+    const referralSelect = screen.getByLabelText('Nimbalystをどこで知りましたか？');
+    expect((within(referralSelect).getByRole('option', { name: '講座・研修' }) as HTMLOptionElement).value)
+      .toBe('course_training');
+    fireEvent.change(referralSelect, { target: { value: 'course_training' } });
+    fireEvent.click(screen.getByRole('button', { name: '始める' }));
+    expect(onComplete).toHaveBeenLastCalledWith(expect.objectContaining({ referralSource: 'course_training' }));
+
+    fireEvent.change(referralSelect, { target: { value: 'search' } });
+    fireEvent.change(screen.getByLabelText('何を検索しましたか？'), { target: { value: 'AIエディター' } });
+    fireEvent.click(screen.getByRole('button', { name: '始める' }));
+    expect(onComplete).toHaveBeenLastCalledWith(expect.objectContaining({ referralSource: 'search:AIエディター' }));
+
+    fireEvent.change(referralSelect, { target: { value: 'social' } });
+    const platformSelect = screen.getByLabelText('どのプラットフォームですか？');
+    expect((within(platformSelect).getByRole('option', { name: 'その他' }) as HTMLOptionElement).value).toBe('Other');
+    fireEvent.change(platformSelect, { target: { value: 'Other' } });
+    fireEvent.click(screen.getByRole('button', { name: '始める' }));
+    expect(onComplete).toHaveBeenLastCalledWith(expect.objectContaining({ referralSource: 'social:Other' }));
   });
 });

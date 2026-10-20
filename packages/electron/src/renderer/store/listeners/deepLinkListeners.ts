@@ -20,6 +20,7 @@ import { pendingCollabDocumentAtom, pendingCollabFolderAtom } from '../atoms/col
 import { setTrackerModeLayoutAtom } from '../atoms/trackers';
 import { activeWorkspacePathAtom } from '../atoms/openProjects';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
+import { rendererI18n } from '../../i18n';
 
 interface SharedDocPayload {
   documentId: string;
@@ -118,14 +119,14 @@ export function initDeepLinkListeners(): () => void {
     }) => {
       if (data?.reason === 'not-authenticated') {
         errorNotificationService.showWarning(
-          'Sign in required',
-          'Sign in to your Nimbalyst team account to open this shared folder.',
+          rendererI18n.t('common:deep_links.sign_in_required'),
+          rendererI18n.t('common:deep_links.folder_sign_in'),
           { duration: 6000 }
         );
       } else {
         errorNotificationService.showWarning(
-          'No matching workspace',
-          'You do not have a workspace open for the team that owns this folder.',
+          rendererI18n.t('common:deep_links.no_matching_workspace'),
+          rendererI18n.t('common:deep_links.folder_no_workspace'),
           { duration: 6000 }
         );
       }
@@ -149,14 +150,14 @@ export function initDeepLinkListeners(): () => void {
     }) => {
       if (data?.reason === 'not-authenticated') {
         errorNotificationService.showWarning(
-          'Sign in required',
-          'Sign in to your Nimbalyst team account to open this shared document.',
+          rendererI18n.t('common:deep_links.sign_in_required'),
+          rendererI18n.t('common:deep_links.document_sign_in'),
           { duration: 6000 }
         );
       } else {
         errorNotificationService.showWarning(
-          'No matching workspace',
-          'You do not have a workspace open for the team that owns this document.',
+          rendererI18n.t('common:deep_links.no_matching_workspace'),
+          rendererI18n.t('common:deep_links.document_no_workspace'),
           { duration: 6000 }
         );
       }
@@ -172,14 +173,14 @@ export function initDeepLinkListeners(): () => void {
     }) => {
       if (data?.reason === 'not-authenticated') {
         errorNotificationService.showWarning(
-          'Sign in required',
-          'Sign in to your Nimbalyst team account to open this tracker.',
+          rendererI18n.t('common:deep_links.sign_in_required'),
+          rendererI18n.t('common:deep_links.tracker_sign_in'),
           { duration: 6000 }
         );
       } else {
         errorNotificationService.showWarning(
-          'No matching workspace',
-          'You do not have a workspace open for the team that owns this tracker.',
+          rendererI18n.t('common:deep_links.no_matching_workspace'),
+          rendererI18n.t('common:deep_links.tracker_no_workspace'),
           { duration: 6000 }
         );
       }

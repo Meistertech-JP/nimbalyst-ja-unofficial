@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useRuntimeTranslation } from '../RuntimeTranslation';
 
 interface UnifiedDiffViewProps {
   diff: string;
@@ -63,19 +64,20 @@ function parseUnifiedDiff(diff: string): DiffLine[] {
 const PLACEHOLDER_BASE = 'p-4 text-center text-xs italic text-[var(--nim-text-faint)]';
 
 export function UnifiedDiffView({ diff, isBinary, loading, error }: UnifiedDiffViewProps) {
+  const { t } = useRuntimeTranslation();
   const lines = useMemo(() => (diff ? parseUnifiedDiff(diff) : []), [diff]);
 
   if (loading) {
-    return <div className={PLACEHOLDER_BASE}>Loading diff...</div>;
+    return <div className={PLACEHOLDER_BASE}>{t('dialogs:history.loading_diff', 'Loading diff...')}</div>;
   }
   if (error) {
     return <div className="p-4 text-center text-xs not-italic text-[var(--nim-error)]">{error}</div>;
   }
   if (isBinary) {
-    return <div className={PLACEHOLDER_BASE}>Binary file</div>;
+    return <div className={PLACEHOLDER_BASE}>{t('files:diff_peek.binary', 'Binary file')}</div>;
   }
   if (!diff || lines.length === 0) {
-    return <div className={PLACEHOLDER_BASE}>No textual changes</div>;
+    return <div className={PLACEHOLDER_BASE}>{t('files:diff_peek.no_text_changes', 'No textual changes')}</div>;
   }
 
   return (

@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import {
   claudeUsageAtom,
@@ -15,6 +16,7 @@ import {
 } from '../../store/atoms/claudeUsageAtoms';
 import { ClaudeUsagePopover } from './ClaudeUsagePopover';
 import { refreshClaudeUsage } from '../../store/listeners/claudeUsageListeners';
+import { localizeUsageResetTime } from './usagePresentation';
 
 const RING_RADIUS = 12;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -24,6 +26,7 @@ interface ClaudeUsageIndicatorProps {
 }
 
 export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ className }) => {
+  const { t } = useTranslation(['common']);
   const usage = useAtomValue(claudeUsageAtom);
   const isAvailable = useAtomValue(claudeUsageAvailableAtom);
   const sessionColor = useAtomValue(claudeUsageSessionColorAtom);
@@ -59,10 +62,10 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
   const strokeColor = colorClasses[effectiveSessionColor] || colorClasses.muted;
 
   const tooltipContent = usage?.error
-    ? `Claude usage unavailable: ${usage.error}`
+    ? t('common:usage_indicator.error_unavailable', { provider: 'Claude', error: usage.error })
     : usage
-      ? `Session: ${Math.round(utilization)}% (resets ${formatResetTime(usage.fiveHour.resetsAt)})`
-      : 'Claude usage unavailable';
+      ? t('common:usage_indicator.session_tooltip', { percent: Math.round(utilization), time: localizeUsageResetTime(formatResetTime(usage.fiveHour.resetsAt), t) })
+      : t('common:usage_indicator.unavailable', { provider: 'Claude' });
 
   return (
     <div className={`relative ${className || ''}`}>
@@ -71,7 +74,7 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
         onClick={handleClick}
         title={tooltipContent}
         className="relative w-9 h-9 flex items-center justify-center bg-transparent border-none rounded-md cursor-pointer transition-all duration-150 p-0 hover:bg-nim-tertiary active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2"
-        aria-label="Claude Usage"
+        aria-label={t('common:usage_indicator.claude_title')}
         data-testid="claude-usage-indicator"
       >
         <svg

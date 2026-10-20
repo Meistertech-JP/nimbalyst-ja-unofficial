@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 // Inject api-service-error widget styles once. Color treatment matches
 // the rate-limit widget's "warning" variant (not "blocked") because these
@@ -152,14 +153,15 @@ interface ApiServiceErrorWidgetProps {
  * widget is intended to neutralise.
  */
 export const ApiServiceErrorWidget: React.FC<ApiServiceErrorWidgetProps> = ({ content }) => {
+  const { t } = useRuntimeTranslation();
   useEffect(() => { injectApiServiceErrorStyles(); }, []);
   const [copied, setCopied] = useState(false);
   const info = parseApiServiceError(content);
 
   const isOverloaded = info.errorType === 'overloaded_error';
   const title = isOverloaded
-    ? 'The Claude API is temporarily overloaded'
-    : 'The Claude API returned a temporary error';
+    ? t('errors:api_service.overloaded_title', 'The Claude API is temporarily overloaded')
+    : t('errors:api_service.error_title', 'The Claude API returned a temporary error');
 
   const copyRequestId = async () => {
     if (!info.requestId) return;
@@ -194,13 +196,13 @@ export const ApiServiceErrorWidget: React.FC<ApiServiceErrorWidgetProps> = ({ co
 
       <div className="text-[var(--nim-text-muted)] text-[0.85rem] leading-relaxed">
         {isOverloaded
-          ? 'This is an upstream capacity error on the API side, not a bug in Nimbalyst. The API will accept new requests once load eases. Retrying in a minute usually works; switching to a less-loaded model also helps.'
-          : 'This is a transient upstream error on the API side, not a bug in Nimbalyst. Most cases clear within a few minutes.'}
+          ? t('errors:api_service.overloaded_detail', 'This is an upstream capacity error on the API side, not a bug in Nimbalyst. The API will accept new requests once load eases. Retrying in a minute usually works; switching to a less-loaded model also helps.')
+          : t('errors:api_service.error_detail', 'This is a transient upstream error on the API side, not a bug in Nimbalyst. Most cases clear within a few minutes.')}
       </div>
 
       <ul className="text-[var(--nim-text-muted)] text-[0.8rem] leading-relaxed list-disc pl-5 m-0">
         <li>
-          Check the status page at{' '}
+          {t('errors:api_service.status_before', 'Check the status page at')}{' '}
           <a
             href="https://status.claude.com"
             target="_blank"
@@ -209,28 +211,27 @@ export const ApiServiceErrorWidget: React.FC<ApiServiceErrorWidgetProps> = ({ co
           >
             status.claude.com
           </a>{' '}
-          for an active incident on your model.
+          {t('errors:api_service.status_after', 'for an active incident on your model.')}
         </li>
-        <li>Retry the request. Transient {info.errorType || 'api_error'} responses usually clear on the next attempt.</li>
-        <li>If your model is listed as degraded, try a different one from Settings until the incident resolves.</li>
+        <li>{t('errors:api_service.retry_detail', 'Retry the request. Transient {{errorType}} responses usually clear on the next attempt.', { errorType: info.errorType || 'api_error' })}</li>
+        <li>{t('errors:api_service.switch_model', 'If your model is listed as degraded, try a different one from Settings until the incident resolves.')}</li>
         {info.requestId && (
           <li>
-            If the error keeps firing for more than a few minutes on the same prompt and model,
-            include the request id when contacting support:{' '}
+            {t('errors:api_service.support', 'If the error keeps firing for more than a few minutes on the same prompt and model, include the request id when contacting support:')}{' '}
             <code className="req-id">{info.requestId}</code>{' '}
             <button
               type="button"
               onClick={copyRequestId}
               className="ml-1 text-[0.7rem] text-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)] underline-offset-2 hover:underline"
             >
-              {copied ? 'copied' : 'copy'}
+              {copied ? t('errors:api_service.copied', 'copied') : t('errors:api_service.copy', 'copy')}
             </button>
           </li>
         )}
       </ul>
 
       <details>
-        <summary>Show raw error payload</summary>
+        <summary>{t('errors:api_service.raw_payload', 'Show raw error payload')}</summary>
         <pre>{info.raw}</pre>
       </details>
     </div>

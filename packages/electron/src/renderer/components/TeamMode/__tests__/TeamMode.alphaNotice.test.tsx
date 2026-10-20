@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import i18next from 'i18next';
 import { Provider, createStore } from 'jotai';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,7 +36,24 @@ function installApi(teams: unknown[]) {
 // Nobody should set up an organization without being told Teams is alpha and
 // will be paid after launch — on both the create surface and the admin surface.
 describe('TeamMode alpha disclosure', () => {
-  afterEach(() => cleanup());
+  afterEach(async () => {
+    cleanup();
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes administration labels without translating organization or account data', async () => {
+    await i18next.changeLanguage('ja');
+    installApi([team]);
+    const store = createStore();
+    store.set(selectedOrgIdAtom, 'org-1');
+    render(<Provider store={store}><TeamMode /></Provider>);
+
+    expect(await screen.findByRole('heading', { name: 'Acme' })).toBeTruthy();
+    expect(screen.getByText('組織を管理')).toBeTruthy();
+    expect(screen.getByText('所有者: a@example.com')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Webコンソールを開く/ })).toBeTruthy();
+    expect(screen.getByTestId('team-tab-members').textContent).toContain('メンバー');
+  });
 
   it('discloses the alpha status on the unbound create-an-organization surface', async () => {
     installApi([]);

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ModelComparisonProps {
@@ -15,6 +16,7 @@ interface ProviderUsageStats {
 }
 
 export const ModelComparison: React.FC<ModelComparisonProps> = ({ workspaceId }) => {
+  const { t } = useTranslation(['common']);
   const [data, setData] = useState<ProviderUsageStats[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +38,7 @@ export const ModelComparison: React.FC<ModelComparisonProps> = ({ workspaceId })
   if (loading) {
     return (
       <div className="model-comparison-loading flex items-center justify-center min-h-[400px] text-base text-nim-muted">
-        Loading...
+        {t('common:usage_report.loading')}
       </div>
     );
   }
@@ -49,7 +51,7 @@ export const ModelComparison: React.FC<ModelComparisonProps> = ({ workspaceId })
 
   return (
     <div className="model-comparison flex flex-col gap-6">
-      <h3 className="m-0 text-lg font-semibold text-nim">Usage by Model</h3>
+      <h3 className="m-0 text-lg font-semibold text-nim">{t('common:usage_report.usage_by_model')}</h3>
 
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height={400}>
@@ -66,12 +68,12 @@ export const ModelComparison: React.FC<ModelComparisonProps> = ({ workspaceId })
               }}
             />
             <Legend />
-            <Bar dataKey="Total Tokens" fill="var(--nim-primary)" />
+            <Bar dataKey="Total Tokens" name={t('common:usage_report.total_tokens')} fill="var(--nim-primary)" />
           </BarChart>
         </ResponsiveContainer>
       ) : (
         <div className="no-data flex items-center justify-center min-h-[400px] text-base text-nim-muted">
-          No model usage data available
+          {t('common:usage_report.no_model_data')}
         </div>
       )}
     </div>

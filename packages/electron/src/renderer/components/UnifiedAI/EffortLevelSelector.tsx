@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { EffortLevel } from '../../utils/modelUtils';
 import { EFFORT_LEVELS, DEFAULT_EFFORT_LEVEL } from '../../utils/modelUtils';
@@ -11,6 +12,7 @@ interface EffortLevelSelectorProps {
 }
 
 export function EffortLevelSelector({ level, onLevelChange, disabled = false, disabledTitle }: EffortLevelSelectorProps) {
+  const { t } = useTranslation('aichat');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -43,19 +45,19 @@ export function EffortLevelSelector({ level, onLevelChange, disabled = false, di
   const currentLevel = EFFORT_LEVELS.find(l => l.key === level) ?? EFFORT_LEVELS.find(l => l.key === DEFAULT_EFFORT_LEVEL)!;
 
   return (
-    <div className="relative inline-block" ref={dropdownRef}>
+    <div className="effort-level-selector-wrapper relative inline-block" ref={dropdownRef}>
       <button
         data-testid="effort-level-selector"
         className={`flex items-center gap-1 px-2 py-[3px] rounded-xl text-[11px] font-medium transition-all duration-200 outline-none whitespace-nowrap bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] border border-[var(--nim-border)] ${disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)]'}`}
         onClick={() => {
           if (!disabled) setIsOpen(!isOpen);
         }}
-        aria-label={`Effort level: ${currentLevel.label}`}
+        aria-label={t('effort.selected_label', { level: t(`effort.${currentLevel.key}`) })}
         disabled={disabled}
         title={disabled ? disabledTitle : undefined}
       >
         <MaterialSymbol icon="psychology" size={12} />
-        <span>{currentLevel.label}</span>
+        <span>{t(`effort.${currentLevel.key}`)}</span>
         <MaterialSymbol icon="expand_more" size={14} className={`transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -67,7 +69,7 @@ export function EffortLevelSelector({ level, onLevelChange, disabled = false, di
               className={`flex items-center justify-between gap-2 px-2 py-1.5 w-full border-none rounded text-xs cursor-pointer transition-[background] duration-150 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] ${l.key === level ? 'bg-[var(--nim-bg-secondary)] text-[var(--nim-primary)]' : ''}`}
               onClick={() => { onLevelChange(l.key); setIsOpen(false); }}
             >
-              <span>{l.label}</span>
+              <span>{t(`effort.${l.key}`)}</span>
               {l.key === level && <MaterialSymbol icon="check" size={14} />}
             </button>
           ))}

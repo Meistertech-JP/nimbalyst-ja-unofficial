@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
+import { getDefaultFrontmatterForType } from '@nimbalyst/runtime';
 import { UnifiedEditorHeaderBar } from '../UnifiedEditorHeaderBar';
 
 const { buildSharedDocumentDeepLink, copyToClipboard } = vi.hoisted(() => ({
@@ -45,7 +47,7 @@ vi.mock('../../../store/atoms/windowMode', async () => {
 });
 
 vi.mock('../../../services/RendererDocumentService', () => ({
-  getDocumentService: vi.fn(),
+  getDocumentService: vi.fn(() => ({ notifyFrontmatterChanged: vi.fn() })),
 }));
 
 vi.mock('../../CommonFileActions', () => ({ CommonFileActions: () => null }));
@@ -88,10 +90,12 @@ vi.mock('../../../hooks/useCollabLocalOrigin', () => ({
   }),
 }));
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   buildSharedDocumentDeepLink.mockClear();
   copyToClipboard.mockClear();
+  vi.unstubAllGlobals();
+  await i18next.changeLanguage('en');
 });
 
 const lexicalEditor = {
@@ -102,6 +106,32 @@ const lexicalEditor = {
 };
 
 describe('UnifiedEditorHeaderBar shared document link', () => {
+  it('translates PDF failure guidance but preserves the diagnostic and export options', async () => {
+    const api = {
+      showSaveDialogPdf: vi.fn(async () => '/fixture/User doc.pdf'),
+      exportHtmlToPdf: vi.fn(async () => ({ success: false, error: 'E_EXPORT_DENIED' })),
+      showErrorDialog: vi.fn(),
+    };
+    vi.stubGlobal('electronAPI', api);
+    render(<UnifiedEditorHeaderBar filePath="/fixture/User doc.md" fileName="User doc.md" isMarkdown lexicalEditor={lexicalEditor} />);
+    await act(async () => { await i18next.changeLanguage('ja'); });
+    fireEvent.click(screen.getByTitle('その他の操作'));
+    fireEvent.click(screen.getByRole('button', { name: 'PDFにエクスポート…' }));
+    await waitFor(() => expect(api.showErrorDialog).toHaveBeenCalledWith('エクスポートに失敗しました', 'PDFをエクスポートできませんでした: E_EXPORT_DENIED'));
+    expect(api.showSaveDialogPdf).toHaveBeenCalledWith({ defaultPath: 'User doc.pdf' });
+    expect(api.exportHtmlToPdf).toHaveBeenCalledWith({ html: '', outputPath: '/fixture/User doc.pdf', pageSize: 'Letter', generateDocumentOutline: true, generateTaggedPDF: true });
+  });
+
+  it('translates built-in document types without changing their stored identifiers', async () => {
+    render(<UnifiedEditorHeaderBar filePath="/fixture/User doc.md" fileName="User doc.md" isMarkdown lexicalEditor={lexicalEditor} />);
+    await act(async () => { await i18next.changeLanguage('ja'); });
+    fireEvent.click(screen.getByTitle('その他の操作'));
+    fireEvent.mouseEnter(screen.getByText('ドキュメント種別を設定').parentElement!);
+    expect(screen.getByText('決定事項')).toBeTruthy();
+    fireEvent.click(screen.getByText('計画'));
+    expect(getDefaultFrontmatterForType).toHaveBeenCalledWith('plan');
+  });
+
   it('shows and copies the canonical deep link for an open collaborative document', async () => {
     render(
       <UnifiedEditorHeaderBar

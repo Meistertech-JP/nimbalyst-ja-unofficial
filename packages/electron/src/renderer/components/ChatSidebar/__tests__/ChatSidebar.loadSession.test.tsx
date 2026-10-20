@@ -7,6 +7,7 @@
 import React, { createRef } from 'react';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
 import { ChatSidebar, type ChatSidebarRef } from '../ChatSidebar';
 
 vi.mock('../../../store', async () => {
@@ -36,7 +37,8 @@ vi.mock('../../AIChat/SessionDropdown', () => ({
 }));
 
 describe('ChatSidebar loadSession vs auto-init', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18next.changeLanguage('en');
     (window as any).electronAPI = {
       invoke: vi.fn().mockImplementation(async (channel: string) => {
         if (channel === 'sessions:list') {
@@ -50,9 +52,10 @@ describe('ChatSidebar loadSession vs auto-init', () => {
     };
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
     vi.restoreAllMocks();
+    await i18next.changeLanguage('en');
   });
 
   it('keeps a host-loaded session instead of the auto-selected most recent one', async () => {

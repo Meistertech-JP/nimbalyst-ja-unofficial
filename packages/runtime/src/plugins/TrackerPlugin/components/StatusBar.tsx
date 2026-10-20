@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { TrackerDataModel, FieldDefinition } from '../models/TrackerDataModel';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 import { TrackerFieldEditor, formatDateTimeDisplay } from './TrackerFieldEditor';
 import './StatusBarSlider.css';
 
@@ -22,6 +23,7 @@ export interface StatusBarProps {
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({ model, data, onChange, onClose, trackerItemLink }) => {
+  const { t } = useRuntimeTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [localData, setLocalData] = useState<Record<string, any>>(data);
 
@@ -60,7 +62,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ model, data, onChange, onC
         <button
           className="status-bar-toggle bg-transparent border-none p-1.5 px-3 cursor-pointer rounded text-[var(--nim-text-muted)] flex items-center gap-1 transition-all duration-200 w-full justify-between text-[13px] hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
           onClick={() => setIsCollapsed(false)}
-          aria-label="Expand status bar"
+          aria-label={t('tracker:status_bar.expand', 'Expand status bar')}
         >
           <div className="flex items-center gap-2">
             <MaterialSymbol icon={model.icon} size={18} />
@@ -84,8 +86,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({ model, data, onChange, onC
             <button
               type="button"
               className="status-bar-tracker-item-link inline-flex items-center gap-1 rounded-full border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--nim-text-muted)] transition-colors hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-              title={`Open tracker item: ${trackerItemLink.title}`}
-              aria-label={`Open tracker item ${trackerItemLink.label}`}
+              title={t('tracker:status_bar.open_item_title', 'Open tracker item: {{title}}', { title: trackerItemLink.title })}
+              aria-label={t('tracker:status_bar.open_item_label', 'Open tracker item {{label}}', { label: trackerItemLink.label })}
               onClick={(event) => {
                 event.stopPropagation();
                 trackerItemLink.onOpen();
@@ -100,8 +102,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({ model, data, onChange, onC
           {localData.created && (() => {
             const { display, title } = formatDateTimeDisplay(localData.created);
             return (
-              <span className="text-[11px] text-[var(--nim-text-faint)]" title={`Created: ${title}`}>
-                Created {display}
+              <span className="text-[11px] text-[var(--nim-text-faint)]" title={t('tracker:status_bar.created_title', 'Created: {{title}}', { title })}>
+                {t('tracker:status_bar.created', 'Created {{display}}', { display })}
               </span>
             );
           })()}
@@ -115,8 +117,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({ model, data, onChange, onC
             }
             const { display, title } = formatDateTimeDisplay(localData.updated);
             return (
-              <span className="text-[11px] text-[var(--nim-text-faint)]" title={`Updated: ${title}`}>
-                Updated {display}
+              <span className="text-[11px] text-[var(--nim-text-faint)]" title={t('tracker:status_bar.updated_title', 'Updated: {{title}}', { title })}>
+                {t('tracker:status_bar.updated', 'Updated {{display}}', { display })}
               </span>
             );
           })()}
@@ -127,7 +129,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ model, data, onChange, onC
                 e.stopPropagation();
                 onClose();
               }}
-              aria-label="Remove tracker"
+              aria-label={t('tracker:status_bar.remove_tracker', 'Remove tracker')}
             >
               <MaterialSymbol icon="close" size={18} />
             </button>

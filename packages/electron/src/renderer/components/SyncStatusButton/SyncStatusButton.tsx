@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { HelpTooltip } from '../../help';
@@ -40,6 +41,7 @@ interface SyncStatusButtonProps {
 }
 
 export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePath, onOpenSettings }) => {
+  const { t } = useTranslation(['common']);
   const [status, setStatus] = useState<SyncStatus>({
     appConfigured: false,
     projectEnabled: false,
@@ -208,23 +210,23 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePat
 
   const getStatusLabel = (): string => {
     if (!status.projectEnabled) {
-      return 'Sync disabled for this project';
+      return t('common:sync_status.disabled_project');
     }
     if (status.error) {
-      return 'Sync error';
+      return t('common:sync_status.error');
     }
     if (status.syncing) {
-      return 'Syncing...';
+      return t('common:sync_status.syncing');
     }
     if (status.connected) {
-      return 'Sync connected';
+      return t('common:sync_status.connected');
     }
-    return 'Sync disconnected';
+    return t('common:sync_status.disconnected');
   };
 
   const formatLastSync = (): string => {
     if (!status.stats.lastSyncedAt) {
-      return 'Never';
+      return t('common:sync_status.never');
     }
     const date = new Date(status.stats.lastSyncedAt);
     const now = new Date();
@@ -234,15 +236,15 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePat
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) {
-      return 'Just now';
+      return t('common:sync_status.just_now');
     }
     if (diffMins < 60) {
-      return `${diffMins}m ago`;
+      return t(`common:sync_status.minutes_ago_${diffMins === 1 ? 'one' : 'other'}`, { count: diffMins });
     }
     if (diffHours < 24) {
-      return `${diffHours}h ago`;
+      return t(`common:sync_status.hours_ago_${diffHours === 1 ? 'one' : 'other'}`, { count: diffHours });
     }
-    return `${diffDays}d ago`;
+    return t('common:sync_status.days_ago', { count: diffDays });
   };
 
   return (
@@ -272,12 +274,12 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePat
         >
           <div className="sync-menu-header flex justify-between items-center px-3.5 py-3 bg-[var(--nim-bg-tertiary)] border-b border-[var(--nim-border)]">
             <span className="sync-menu-title text-[13px] font-semibold text-[var(--nim-text)]">
-              Session Sync
+              {t('common:sync_status.title')}
             </span>
             <span
               className={`sync-status-badge text-[11px] font-medium px-2 py-0.5 rounded-[10px] ${getBadgeColorClass()}`}
             >
-              {status.projectEnabled ? (status.connected ? 'Connected' : 'Disconnected') : 'Disabled'}
+              {status.projectEnabled ? (status.connected ? t('common:sync_status.connected_short') : t('common:sync_status.disconnected_short')) : t('common:sync_status.disabled_short')}
             </span>
           </div>
 
@@ -297,13 +299,13 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePat
 
           <div className="sync-menu-stats px-3.5 py-3">
             <div className="sync-stat flex justify-between items-center py-1">
-              <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">Sessions synced</span>
+              <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">{t('common:sync_status.sessions_synced')}</span>
               <span className="sync-stat-value text-xs font-medium text-[var(--nim-text)]">
                 {status.stats.sessionCount}
               </span>
             </div>
             <div className="sync-stat flex justify-between items-center py-1">
-              <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">Last sync</span>
+              <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">{t('common:sync_status.last_sync')}</span>
               <span className="sync-stat-value text-xs font-medium text-[var(--nim-text)]">
                 {formatLastSync()}
               </span>
@@ -316,18 +318,18 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePat
               <div className="px-3.5 py-3">
                 <div className="flex items-center gap-1.5 mb-2">
                   <MaterialSymbol icon="description" size={14} className="text-[var(--nim-text-muted)]" />
-                  <span className="text-[11px] font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">Document Sync</span>
+                  <span className="text-[11px] font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">{t('common:sync_status.document_sync')}</span>
                 </div>
                 <div className="sync-stat flex justify-between items-center py-1">
-                  <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">Files tracked</span>
+                  <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">{t('common:sync_status.files_tracked')}</span>
                   <span className="sync-stat-value text-xs font-medium text-[var(--nim-text)]">
                     {status.docSyncStats.fileCount}
                   </span>
                 </div>
                 <div className="sync-stat flex justify-between items-center py-1">
-                  <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">Status</span>
+                  <span className="sync-stat-label text-xs text-[var(--nim-text-muted)]">{t('common:sync_status.status_label')}</span>
                   <span className={`sync-stat-value text-xs font-medium ${status.docSyncStats.connected ? 'text-[#22c55e]' : 'text-[var(--nim-text-faint)]'}`}>
-                    {status.docSyncStats.connected ? 'Connected' : 'Disconnected'}
+                    {status.docSyncStats.connected ? t('common:sync_status.connected_short') : t('common:sync_status.disconnected_short')}
                   </span>
                 </div>
               </div>
@@ -345,7 +347,7 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePat
               <span className="text-[var(--nim-text-muted)]">
                 <MaterialSymbol icon={status.projectEnabled ? 'toggle_on' : 'toggle_off'} size={18} />
               </span>
-              <span>{status.projectEnabled ? 'Disable sync for this project' : 'Enable sync for this project'}</span>
+              <span>{status.projectEnabled ? t('common:sync_status.disable_project') : t('common:sync_status.enable_project')}</span>
             </button>
             <button
               className="sync-menu-action flex items-center gap-2.5 w-full px-2.5 py-2 bg-transparent border-none rounded-md text-[var(--nim-text)] text-[13px] text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
@@ -355,7 +357,7 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({ workspacePat
               <span className="text-[var(--nim-text-muted)]">
                 <MaterialSymbol icon="settings" size={18} />
               </span>
-              <span>Sync settings</span>
+              <span>{t('common:sync_status.settings')}</span>
             </button>
           </div>
         </div>

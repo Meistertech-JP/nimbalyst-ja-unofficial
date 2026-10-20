@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 const COLLAPSE_THRESHOLD = 30;
 const COLLAPSED_LINES = 20;
@@ -53,6 +54,7 @@ export const NewFilePreview: React.FC<NewFilePreviewProps> = ({
   onOpenFile,
   absoluteFilePath,
 }) => {
+  const { t } = useRuntimeTranslation();
   const lines = content.split('\n');
   const lineCount = lines.length;
   const isLong = lineCount > COLLAPSE_THRESHOLD;
@@ -80,14 +82,14 @@ export const NewFilePreview: React.FC<NewFilePreviewProps> = ({
             <button
               className="bg-transparent border-none p-0 m-0 font-inherit text-[var(--nim-link)] cursor-pointer no-underline text-left hover:underline"
               onClick={handleOpenFile}
-              title={`Open ${pathToOpen}`}
+              title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: pathToOpen! })}
             >
               {filePath}
             </button>
           ) : (
             <span>{filePath}</span>
           )}
-          <span className="text-[var(--nim-text-faint)] ml-auto">{lineCount} lines</span>
+          <span className="text-[var(--nim-text-faint)] ml-auto">{t('aichat:edit_preview.lines', lineCount === 1 ? '{{count}} line' : '{{count}} lines', { count: lineCount })}</span>
         </div>
       )}
 
@@ -137,7 +139,7 @@ export const NewFilePreview: React.FC<NewFilePreviewProps> = ({
               onClick={() => setIsCollapsed(false)}
               className="text-xs text-[var(--nim-link)] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-full px-3 py-1 cursor-pointer hover:bg-[var(--nim-bg-hover)]"
             >
-              Show all {lineCount} lines
+              {t('aichat:edit_preview.show_all_lines', 'Show all {{count}} lines', { count: lineCount })}
             </button>
           </div>
         )}
@@ -150,7 +152,7 @@ export const NewFilePreview: React.FC<NewFilePreviewProps> = ({
             onClick={() => setIsCollapsed(true)}
             className="text-xs text-[var(--nim-text-faint)] bg-transparent border-none cursor-pointer hover:text-[var(--nim-text-muted)]"
           >
-            Collapse
+            {t('common:collab.collapse', 'Collapse')}
           </button>
         </div>
       )}

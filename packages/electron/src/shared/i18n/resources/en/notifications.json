@@ -1,0 +1,21 @@
+{
+  "archive": {
+    "auto_rejected": "The backend rejected the auto-archive."
+  },
+  "guidance": {
+    "unknown_tip": "Unknown Tip",
+    "tip_not_found": "Tip \"{{id}}\" not found.",
+    "tips_reset": "Tips Reset",
+    "tips_reset_message": "All tips will show again.",
+    "walkthrough_not_found": "Walkthrough Not Found",
+    "unknown_walkthrough": "Unknown walkthrough: {{id}}",
+    "cannot_show_walkthrough": "Cannot Show Walkthrough",
+    "walkthrough_target_missing": "\"{{name}}\" requires UI elements that aren't visible on this screen. Try switching to {{mode}} first.",
+    "walkthrough_conditions_unmet": "\"{{name}}\" conditions aren't met. Try switching to {{mode}} first.",
+    "walkthroughs_reset": "Walkthroughs Reset",
+    "walkthroughs_reset_message": "All walkthrough guides will show again."
+  },
+  "window": {
+    "unsaved_quit": "You have unsaved changes. Are you sure you want to quit?"
+  }
+}

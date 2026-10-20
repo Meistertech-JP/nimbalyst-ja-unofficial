@@ -4,6 +4,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { EditorHost } from '@nimbalyst/runtime';
 
@@ -26,6 +27,7 @@ interface CollaborativeEmbedEditorProps {
 export const CollaborativeEmbedEditor: React.FC<
   CollaborativeEmbedEditorProps
 > = ({ registration, request }) => {
+  const { t } = useTranslation(['common']);
   const { theme } = useTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
@@ -99,7 +101,7 @@ export const CollaborativeEmbedEditor: React.FC<
         className="embed-frame__body--placeholder"
         data-testid="collaborative-embed-error"
       >
-        <p>Could not load shared embed</p>
+        <p>{t('common:embed.shared_load_failed')}</p>
         <code>{error.message}</code>
       </div>
     );
@@ -111,7 +113,7 @@ export const CollaborativeEmbedEditor: React.FC<
         className="embed-frame__loading"
         data-testid="collaborative-embed-loading"
       >
-        Loading shared embed...
+        {t('common:embed.shared_loading')}
       </div>
     );
   }

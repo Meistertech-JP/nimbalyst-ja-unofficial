@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAtomValue } from 'jotai';
 import { KeyboardShortcuts, getShortcutDisplay } from '../../../shared/KeyboardShortcuts';
 import {
@@ -23,6 +25,109 @@ interface ShortcutGroup {
 }
 
 type TabId = 'general' | 'editor' | 'extensions';
+
+const SHORTCUT_I18N_KEYS: Record<string, string> = {
+  File: 'dialogs:keyboard_shortcuts.groups.file',
+  Edit: 'dialogs:keyboard_shortcuts.groups.edit',
+  View: 'dialogs:keyboard_shortcuts.groups.view',
+  Window: 'dialogs:keyboard_shortcuts.groups.window',
+  'Tracker Grid': 'dialogs:keyboard_shortcuts.groups.tracker_grid',
+  'Text Formatting': 'dialogs:keyboard_shortcuts.groups.text_formatting',
+  'Paragraph Formatting': 'dialogs:keyboard_shortcuts.groups.paragraph_formatting',
+  'Text Alignment': 'dialogs:keyboard_shortcuts.groups.text_alignment',
+  'Text Case & Size': 'dialogs:keyboard_shortcuts.groups.text_case_size',
+  'New File / New Session': 'dialogs:keyboard_shortcuts.labels.new_file_session',
+  'Launch Session Popup': 'dialogs:keyboard_shortcuts.labels.launch_session_popup',
+  'New Browser Tab': 'dialogs:keyboard_shortcuts.labels.new_browser_tab',
+  'Open File': 'dialogs:keyboard_shortcuts.labels.open_file',
+  Save: 'dialogs:keyboard_shortcuts.labels.save',
+  'Close Tab': 'dialogs:keyboard_shortcuts.labels.close_tab',
+  'Reopen Closed Tab': 'dialogs:keyboard_shortcuts.labels.reopen_closed_tab',
+  'Close Project': 'dialogs:keyboard_shortcuts.labels.close_project',
+  Quit: 'dialogs:keyboard_shortcuts.labels.quit',
+  Undo: 'dialogs:keyboard_shortcuts.labels.undo',
+  Redo: 'dialogs:keyboard_shortcuts.labels.redo',
+  Cut: 'dialogs:keyboard_shortcuts.labels.cut',
+  Copy: 'dialogs:keyboard_shortcuts.labels.copy',
+  Paste: 'dialogs:keyboard_shortcuts.labels.paste',
+  'Paste as Text': 'dialogs:keyboard_shortcuts.labels.paste_as_text',
+  'Select All': 'dialogs:keyboard_shortcuts.labels.select_all',
+  Find: 'dialogs:keyboard_shortcuts.labels.find',
+  'Find Next': 'dialogs:keyboard_shortcuts.labels.find_next',
+  'Find Previous': 'dialogs:keyboard_shortcuts.labels.find_previous',
+  'View Local History': 'dialogs:keyboard_shortcuts.labels.view_history',
+  'Approve Current Action': 'dialogs:keyboard_shortcuts.labels.approve',
+  'Reject Current Action': 'dialogs:keyboard_shortcuts.labels.reject',
+  'Toggle Plan Mode (Claude Code)': 'dialogs:keyboard_shortcuts.labels.toggle_plan_mode',
+  'Choose AI Model (AI input focused)': 'dialogs:keyboard_shortcuts.labels.choose_ai_model',
+  'Files Mode': 'dialogs:keyboard_shortcuts.labels.files_mode',
+  'Agent Mode': 'dialogs:keyboard_shortcuts.labels.agent_mode',
+  'Session Kanban View': 'dialogs:keyboard_shortcuts.labels.session_kanban',
+  'Toggle AI Chat Panel': 'dialogs:keyboard_shortcuts.labels.toggle_ai_chat',
+  'Toggle Bottom Panel': 'dialogs:keyboard_shortcuts.labels.toggle_bottom_panel',
+  'Toggle Terminal Panel': 'dialogs:keyboard_shortcuts.labels.toggle_terminal',
+  'Toggle Claude CLI Terminal Drawer': 'dialogs:keyboard_shortcuts.labels.toggle_cli_drawer',
+  'Tracker Mode': 'dialogs:keyboard_shortcuts.labels.tracker_mode',
+  'Shared Documents': 'dialogs:keyboard_shortcuts.labels.shared_documents',
+  'Toggle Sidebar': 'dialogs:keyboard_shortcuts.labels.toggle_sidebar',
+  'Navigate Back': 'dialogs:keyboard_shortcuts.labels.navigate_back',
+  'Navigate Forward': 'dialogs:keyboard_shortcuts.labels.navigate_forward',
+  'Next Tab': 'dialogs:keyboard_shortcuts.labels.next_tab',
+  'Previous Tab': 'dialogs:keyboard_shortcuts.labels.previous_tab',
+  'Actual Size': 'dialogs:keyboard_shortcuts.labels.actual_size',
+  'Zoom In': 'dialogs:keyboard_shortcuts.labels.zoom_in',
+  'Zoom Out': 'dialogs:keyboard_shortcuts.labels.zoom_out',
+  'Toggle Full Screen': 'dialogs:keyboard_shortcuts.labels.toggle_fullscreen',
+  'Project Manager': 'dialogs:keyboard_shortcuts.labels.project_manager',
+  'Switch Project': 'dialogs:keyboard_shortcuts.labels.switch_project',
+  'Session Quick Open': 'dialogs:keyboard_shortcuts.labels.session_quick_open',
+  'Prompt Quick Open': 'dialogs:keyboard_shortcuts.labels.prompt_quick_open',
+  'Content Search': 'dialogs:keyboard_shortcuts.labels.content_search',
+  'Memory Search': 'dialogs:keyboard_shortcuts.labels.memory_search',
+  'Team Quick Open': 'dialogs:keyboard_shortcuts.labels.team_quick_open',
+  'New Worktree': 'dialogs:keyboard_shortcuts.labels.new_worktree',
+  Settings: 'dialogs:keyboard_shortcuts.labels.settings',
+  Minimize: 'dialogs:keyboard_shortcuts.labels.minimize',
+  'Move between cells': 'dialogs:keyboard_shortcuts.labels.move_between_cells',
+  'Edit focused cell': 'dialogs:keyboard_shortcuts.labels.edit_focused_cell',
+  'Open focused item details': 'dialogs:keyboard_shortcuts.labels.open_focused_item',
+  'Commit edit / next row': 'dialogs:keyboard_shortcuts.labels.commit_edit',
+  'Cancel edit / close details': 'dialogs:keyboard_shortcuts.labels.cancel_edit',
+  Bold: 'dialogs:keyboard_shortcuts.labels.bold',
+  Italic: 'dialogs:keyboard_shortcuts.labels.italic',
+  Underline: 'dialogs:keyboard_shortcuts.labels.underline',
+  Strikethrough: 'dialogs:keyboard_shortcuts.labels.strikethrough',
+  'Insert Link': 'dialogs:keyboard_shortcuts.labels.insert_link',
+  'Clear Formatting': 'dialogs:keyboard_shortcuts.labels.clear_formatting',
+  'Normal Text': 'dialogs:keyboard_shortcuts.labels.normal_text',
+  'Heading 1': 'dialogs:keyboard_shortcuts.labels.heading_1',
+  'Heading 2': 'dialogs:keyboard_shortcuts.labels.heading_2',
+  'Heading 3': 'dialogs:keyboard_shortcuts.labels.heading_3',
+  'Numbered List': 'dialogs:keyboard_shortcuts.labels.numbered_list',
+  'Bullet List': 'dialogs:keyboard_shortcuts.labels.bullet_list',
+  'Check List': 'dialogs:keyboard_shortcuts.labels.check_list',
+  'Code Block': 'dialogs:keyboard_shortcuts.labels.code_block',
+  Quote: 'dialogs:keyboard_shortcuts.labels.quote',
+  'Left Align': 'dialogs:keyboard_shortcuts.labels.left_align',
+  'Center Align': 'dialogs:keyboard_shortcuts.labels.center_align',
+  'Right Align': 'dialogs:keyboard_shortcuts.labels.right_align',
+  Justify: 'dialogs:keyboard_shortcuts.labels.justify',
+  Indent: 'dialogs:keyboard_shortcuts.labels.indent',
+  Outdent: 'dialogs:keyboard_shortcuts.labels.outdent',
+  Lowercase: 'dialogs:keyboard_shortcuts.labels.lowercase',
+  Uppercase: 'dialogs:keyboard_shortcuts.labels.uppercase',
+  Capitalize: 'dialogs:keyboard_shortcuts.labels.capitalize',
+  'Increase Font Size': 'dialogs:keyboard_shortcuts.labels.increase_font',
+  'Decrease Font Size': 'dialogs:keyboard_shortcuts.labels.decrease_font',
+  Subscript: 'dialogs:keyboard_shortcuts.labels.subscript',
+  Superscript: 'dialogs:keyboard_shortcuts.labels.superscript',
+  'Pull Requests': 'dialogs:keyboard_shortcuts.labels.pull_requests',
+};
+
+function translateShortcutLabel(label: string, t: TFunction): string {
+  const key = SHORTCUT_I18N_KEYS[label];
+  return key ? t(key) : label;
+}
 
 const IS_MAC = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
@@ -82,6 +187,7 @@ function buildExtensionShortcutGroups(keybindings: RegisteredKeybinding[]): Shor
 }
 
 export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDialogProps) {
+  const { t } = useTranslation(['dialogs']);
   const [activeTab, setActiveTab] = useState<TabId>('general');
   const [extensionGroups, setExtensionGroups] = useState<ShortcutGroup[]>([]);
   const developerMode = useAtomValue(developerModeAtom);
@@ -190,10 +296,10 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
     {
       title: 'Tracker Grid',
       shortcuts: [
-        { label: 'Move between cells', shortcut: 'Arrow keys / Tab' },
-        { label: 'Edit focused cell', shortcut: 'F2 or start typing' },
+        { label: 'Move between cells', shortcut: t('dialogs:keyboard_shortcuts.shortcut_descriptions.move_cells') },
+        { label: 'Edit focused cell', shortcut: t('dialogs:keyboard_shortcuts.shortcut_descriptions.edit_cell') },
         { label: 'Open focused item details', shortcut: 'Enter' },
-        { label: 'Commit edit / next row', shortcut: 'Enter (while editing)' },
+        { label: 'Commit edit / next row', shortcut: t('dialogs:keyboard_shortcuts.shortcut_descriptions.commit_edit') },
         { label: 'Cancel edit / close details', shortcut: 'Escape' },
       ],
     },
@@ -276,12 +382,12 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
       >
         <div className="keyboard-shortcuts-dialog-header flex items-center justify-between px-6 py-5 border-b border-[var(--nim-border)]">
           <h2 className="m-0 text-xl font-semibold text-[var(--nim-text)]">
-            Keyboard Shortcuts
+            {t('dialogs:keyboard_shortcuts.title')}
           </h2>
           <button
             className="keyboard-shortcuts-dialog-close flex items-center justify-center w-8 h-8 p-0 bg-transparent border-none text-[32px] leading-none text-[var(--nim-text-muted)] cursor-pointer rounded transition-all duration-200 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('dialogs:keyboard_shortcuts.close')}
           >
             ×
           </button>
@@ -299,7 +405,7 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
                   : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
               }`}
             >
-              {tab === 'general' ? 'General' : tab === 'editor' ? 'Editor Formatting' : 'Extensions'}
+              {tab === 'general' ? t('dialogs:keyboard_shortcuts.tabs.general') : tab === 'editor' ? t('dialogs:keyboard_shortcuts.tabs.editor') : t('dialogs:keyboard_shortcuts.tabs.extensions')}
             </button>
           ))}
         </div>
@@ -307,13 +413,13 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
         <div className="keyboard-shortcuts-dialog-content overflow-y-auto flex-1 p-6 grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-8 max-[900px]:grid-cols-1 max-[600px]:p-5 max-[600px]:gap-6">
           {shortcutGroups.length === 0 && activeTab === 'extensions' ? (
             <div className="text-[var(--nim-text-muted)] text-sm">
-              No extension keybindings registered. Extensions can contribute keybindings via their manifest.json.
+              {t('dialogs:keyboard_shortcuts.no_extensions')}
             </div>
           ) : (
             shortcutGroups.map((group) => (
               <div key={group.title} className="keyboard-shortcuts-group flex flex-col gap-3">
                 <h3 className="keyboard-shortcuts-group-title m-0 text-sm font-semibold text-[var(--nim-text-muted)] uppercase tracking-[0.5px]">
-                  {group.title}
+                  {translateShortcutLabel(group.title, t)}
                 </h3>
                 <div className="keyboard-shortcuts-list flex flex-col gap-1">
                   {group.shortcuts.map((item) => (
@@ -322,7 +428,7 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
                       className="keyboard-shortcut-item flex items-center justify-between py-1.5 gap-4"
                     >
                       <span className="keyboard-shortcut-label text-[var(--nim-text)] text-sm flex-1">
-                        {item.label}
+                        {translateShortcutLabel(item.label, t)}
                       </span>
                       <kbd className="keyboard-shortcut-key bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-2.5 py-1 font-sans text-[13px] font-medium text-[var(--nim-text)] whitespace-nowrap shadow-[0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3)] min-w-[60px] text-center">
                         {getShortcutDisplay(item.shortcut)}
@@ -336,7 +442,7 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
         </div>
 
         <div className="px-6 py-3 border-t border-[var(--nim-border)] text-[var(--nim-text-muted)] text-xs">
-          Press <kbd className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 mx-1">Esc</kbd> to close
+          {t('dialogs:keyboard_shortcuts.press_to_close', { key: 'Esc' })}
         </div>
       </div>
     </div>

@@ -52,6 +52,7 @@ import { useRuntimeSettings } from './context/RuntimeSettingsContext';
 import CodeHighlightPlugin from './plugins/CodeHighlightPlugin';
 import { useExtensionEditorComponents } from './extensions/extensionEditorComponentsStore';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
+import { useRuntimeTranslation } from '../ui/RuntimeTranslation';
 
 interface EditorProps {
   config?: EditorConfig;
@@ -65,6 +66,7 @@ interface EditorProps {
  * mount through `useExtensionEditorComponents()`.
  */
 export default function Editor({ config = DEFAULT_EDITOR_CONFIG }: EditorProps): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const runtimeSettings = useRuntimeSettings();
   const {
     isCodeHighlighted,
@@ -79,7 +81,9 @@ export default function Editor({ config = DEFAULT_EDITOR_CONFIG }: EditorProps):
   } = config;
 
   const isEditable = useLexicalEditable();
-  const placeholder = isRichText ? 'Enter some rich text...' : 'Enter some plain text...';
+  const placeholder = isRichText
+    ? t('editor:formatting.rich_text_placeholder', 'Enter some rich text...')
+    : t('editor:formatting.plain_text_placeholder', 'Enter some plain text...');
 
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
   const [isSmallWidthViewport, setIsSmallWidthViewport] = useState<boolean>(false);
@@ -200,8 +204,8 @@ export default function Editor({ config = DEFAULT_EDITOR_CONFIG }: EditorProps):
   // `registerExtensionEditorComponent` at app startup.
   const extensionEditorComponents = useExtensionEditorComponents();
   const floatingTextToolbarActions = useMemo(
-    () => getCommentToolbarActions(config.comments, editor),
-    [config.comments, editor],
+    () => getCommentToolbarActions(config.comments, editor, t),
+    [config.comments, editor, t],
   );
 
   return (

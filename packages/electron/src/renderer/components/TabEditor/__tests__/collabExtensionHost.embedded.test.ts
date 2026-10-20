@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
 
 const mocks = vi.hoisted(() => ({
   storeSet: vi.fn(),
   setEditorContext: vi.fn(),
   setEditorContextItems: vi.fn(),
+  showWarning: vi.fn(),
 }));
 
 vi.mock('@nimbalyst/runtime/store', () => ({
@@ -16,12 +18,31 @@ vi.mock('../../../stores/editorContextStore', () => ({
   setEditorContextItems: mocks.setEditorContextItems,
 }));
 vi.mock('../../../services/ErrorNotificationService', () => ({
-  errorNotificationService: { showWarning: vi.fn() },
+  errorNotificationService: { showWarning: mocks.showWarning },
 }));
 
-import { createCollabExtensionHost } from '../collabExtensionHost';
+import { createCollaborationContext, createCollabExtensionHost } from '../collabExtensionHost';
 
 describe('createCollabExtensionHost embedded mode', () => {
+  afterEach(async () => { mocks.showWarning.mockClear(); await i18next.changeLanguage('en'); });
+
+  it('translates seed warnings at report time while preserving source content and diagnostics', async () => {
+    const context = createCollaborationContext({
+      syncProvider: { getYDoc: () => ({}) } as never,
+      awareness: {} as never,
+      activeConfig: {
+        workspacePath: '/fixture', orgId: 'team-a', documentId: 'doc-a', title: 'User title',
+        serverUrl: 'ws://unused', getJwt: async () => 'fixture', userId: 'user-a', accountId: 'account-a', initialContent: 'User content',
+      },
+    });
+    await i18next.changeLanguage('ja');
+    context.reportSeedOutcome?.({ ok: true });
+    expect(mocks.showWarning).not.toHaveBeenCalled();
+    context.reportSeedOutcome?.({ ok: false, error: new Error('E_SEED_UNACKNOWLEDGED') });
+    expect(mocks.showWarning).toHaveBeenCalledWith('共有ドキュメントの初期内容を確認できませんでした', expect.any(String), { details: 'E_SEED_UNACKNOWLEDGED', duration: 10000 });
+    expect(await context.loadInitialContent?.()).toBe('User content');
+  });
+
   it('enforces read-only embedded semantics without polluting tab state', () => {
     const onDirtyChange = vi.fn();
     const collaboration = { yDoc: {} } as never;

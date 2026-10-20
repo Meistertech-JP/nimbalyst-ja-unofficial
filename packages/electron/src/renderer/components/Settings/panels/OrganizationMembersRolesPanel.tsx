@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { ActionGuard } from './ActionGuard';
 import { AlphaBadge } from '../../common/AlphaBadge';
@@ -39,6 +40,7 @@ export function OrganizationMembersRolesPanel({
   readOnlyRoles?: boolean;
   allowOrganizationCreation?: boolean;
 }) {
+  const { t } = useTranslation(['settings', 'project', 'common']);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [callerRole, setCallerRole] = useState('member');
@@ -76,24 +78,24 @@ export function OrganizationMembersRolesPanel({
     <section className="organization-members-roles-panel" data-testid="organization-members-roles-panel" data-component="OrganizationMembersRolesPanel">
       <header className="mb-5 border-b border-[var(--nim-border)] pb-4">
         <h2 className="m-0 flex items-center gap-2 text-xl font-semibold">
-          Members &amp; Roles
-          <AlphaBadge size="sm" tooltip={TEAM_ALPHA_TOOLTIP} />
+          {t('settings:organization_ui.members_roles')}
+          <AlphaBadge size="sm" tooltip={t('settings:organization_ui.alpha_tooltip', { defaultValue: TEAM_ALPHA_TOOLTIP })} />
         </h2>
         <p className="m-0 mt-1 text-sm text-[var(--nim-text-muted)]">
-          {selected ? `${selected.name} · ${callerRole}${selected.sourceEmail ? ` · ${selected.sourceEmail}` : ''}` : 'Choose an organization.'}
+          {selected ? `${selected.name} · ${t(`project:org.role_${callerRole}`, { defaultValue: callerRole })}${selected.sourceEmail ? ` · ${selected.sourceEmail}` : ''}` : t('settings:organization_ui.choose')}
         </p>
       </header>
 
       {pending.length > 0 && (
         <div className="organization-invitation-inbox mb-5" data-testid="organization-invitation-inbox">
-          <h3 className="m-0 mb-2 text-sm font-semibold">Pending invitations</h3>
+          <h3 className="m-0 mb-2 text-sm font-semibold">{t('settings:organization_ui.pending_invitations')}</h3>
           <div className="flex flex-col gap-2">
             {pending.map((invitation) => (
               <article key={`${invitation.orgId}:${invitation.sourceEmail ?? ''}`} className="pending-invitation-card flex items-center gap-3 rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3" data-testid="pending-invitation-card">
                 <MaterialSymbol icon="mail" size={18} />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{invitation.name}</div>
-                  <div className="text-xs text-[var(--nim-text-muted)]">Invited account: {invitation.sourceEmail ?? 'signed-in account'}</div>
+                  <div className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.invited_account', { account: invitation.sourceEmail ?? t('settings:organization_ui.signed_in_account') })}</div>
                 </div>
                 <button
                   type="button"
@@ -101,7 +103,7 @@ export function OrganizationMembersRolesPanel({
                   data-testid="pending-invitation-accept"
                   onClick={() => void window.electronAPI.organization.acceptInvitation(invitation.orgId)
                     .then((result) => {
-                      if (result?.success === false) throw new Error(result.error ?? 'Could not accept invitation');
+                      if (result?.success === false) throw new Error(result.error ?? t('settings:organization_ui.accept_failed'));
                       trackTeamAnalyticsEvent('team_invitation_accepted', {
                         surface: 'desktop',
                         entryPoint: 'organization_manager',
@@ -120,7 +122,7 @@ export function OrganizationMembersRolesPanel({
                       setError(String(reason));
                     })}
                 >
-                  Accept
+                  {t('settings:organization_ui.accept')}
                 </button>
               </article>
             ))}
@@ -129,7 +131,7 @@ export function OrganizationMembersRolesPanel({
       )}
 
       {allowOrganizationCreation && <details className="new-organization-card mb-5 rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3" data-testid="new-organization-card">
-        <summary className="cursor-pointer text-sm font-semibold">New organization</summary>
+        <summary className="cursor-pointer text-sm font-semibold">{t('settings:organization_ui.new')}</summary>
         <TeamAlphaNotice className="mt-3" />
         <form
           className="mt-3 flex flex-col gap-2"
@@ -141,7 +143,7 @@ export function OrganizationMembersRolesPanel({
               name: newOrganizationName.trim(),
               sourcePersonalOrgId: sourcePersonalOrgId || undefined,
             }).then((result) => {
-              if (!result?.success) throw new Error(result?.error ?? 'Could not create organization');
+              if (!result?.success) throw new Error(result?.error ?? t('settings:organization_ui.create_failed'));
               trackTeamAnalyticsEvent('team_organization_created', {
                 surface: 'desktop',
                 entryPoint: 'organization_manager',
@@ -164,9 +166,9 @@ export function OrganizationMembersRolesPanel({
           }}
         >
           {accounts.length > 1 && (
-            <label className="text-xs text-[var(--nim-text-muted)]">Owning personal account<select className="mt-1 block w-full rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-2 text-sm text-[var(--nim-text)]" value={sourcePersonalOrgId} onChange={(event) => setSourcePersonalOrgId(event.target.value)}>{accounts.map((account) => <option key={account.personalOrgId} value={account.personalOrgId}>{account.email ?? account.personalOrgId}</option>)}</select></label>
+            <label className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.owning_account')}<select className="mt-1 block w-full rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-2 text-sm text-[var(--nim-text)]" value={sourcePersonalOrgId} onChange={(event) => setSourcePersonalOrgId(event.target.value)}>{accounts.map((account) => <option key={account.personalOrgId} value={account.personalOrgId}>{account.email ?? account.personalOrgId}</option>)}</select></label>
           )}
-          <div className="flex gap-2"><input className="min-w-0 flex-1 rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-2 text-sm" value={newOrganizationName} onChange={(event) => setNewOrganizationName(event.target.value)} placeholder="Organization name" /><button className="rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-white" type="submit">Create</button></div>
+          <div className="flex gap-2"><input className="min-w-0 flex-1 rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-2 text-sm" value={newOrganizationName} onChange={(event) => setNewOrganizationName(event.target.value)} placeholder={t('settings:organization_ui.name')} /><button className="rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-white" type="submit">{t('common:create')}</button></div>
         </form>
       </details>}
 
@@ -181,7 +183,7 @@ export function OrganizationMembersRolesPanel({
                 </div>
                 {readOnlyRoles ? (
                   <span className="member-role-badge rounded-full bg-[var(--nim-bg-tertiary)] px-2.5 py-1 text-xs capitalize text-[var(--nim-text-muted)]">
-                    {member.role}
+                    {t(`project:org.role_${member.role}`, { defaultValue: member.role })}
                   </span>
                 ) : <select
                   value={member.role}
@@ -192,7 +194,7 @@ export function OrganizationMembersRolesPanel({
                     const nextRole = event.target.value;
                     void window.electronAPI.organization.updateMemberRole(orgId, member.memberId, nextRole)
                       .then((result) => {
-                        if (result?.success === false) throw new Error(result.error ?? 'Could not update member role');
+                        if (result?.success === false) throw new Error(result.error ?? t('settings:organization_ui.role_failed'));
                         trackTeamAnalyticsEvent('team_member_role_changed', {
                           surface: 'desktop',
                           callerRole: analyticsCallerRole,
@@ -213,15 +215,15 @@ export function OrganizationMembersRolesPanel({
                       });
                   }}
                 >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                  <option value="owner">Owner</option>
+                  <option value="member">{t('project:org.role_member')}</option>
+                  <option value="admin">{t('project:org.role_admin')}</option>
+                  <option value="owner">{t('project:org.role_owner')}</option>
                 </select>}
               </div>
             ))}
           </div>
 
-          <ActionGuard allowed={canAdminister} reason="An organization owner or admin is required to invite members.">
+          <ActionGuard allowed={canAdminister} reason={t('settings:organization_ui.invite_requires_admin')}>
             <form
               className="organization-invite-form mt-4 flex gap-2"
               data-testid="organization-invite-form"
@@ -230,7 +232,7 @@ export function OrganizationMembersRolesPanel({
                 if (!inviteEmail.trim()) return;
                 void window.electronAPI.organization.inviteMember(orgId, inviteEmail.trim())
                   .then((result) => {
-                    if (result?.success === false) throw new Error(result.error ?? 'Could not send invitation');
+                    if (result?.success === false) throw new Error(result.error ?? t('settings:organization_ui.invite_failed'));
                     trackTeamAnalyticsEvent('team_invitation_sent', {
                       surface: 'desktop',
                       entryPoint: 'organization_manager',
@@ -253,7 +255,7 @@ export function OrganizationMembersRolesPanel({
               }}
             >
               <input className="min-w-0 flex-1 rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-2 text-sm" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="teammate@example.com" />
-              <button className="rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-white" type="submit">Invite</button>
+              <button className="rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-white" type="submit">{t('project:team.invite')}</button>
             </form>
           </ActionGuard>
         </>

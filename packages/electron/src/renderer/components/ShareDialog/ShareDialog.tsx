@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol, copyToClipboard } from '@nimbalyst/runtime';
 import {
@@ -26,9 +27,9 @@ type ExpirationOption = {
 };
 
 const EXPIRATION_OPTIONS: ExpirationOption[] = [
-  { label: '1 day', value: 1 },
-  { label: '7 days', value: 7 },
-  { label: '30 days', value: 30 },
+  { label: 'expiration_1', value: 1 },
+  { label: 'expiration_7', value: 7 },
+  { label: 'expiration_30', value: 30 },
 ];
 
 type ShareState = 'ready' | 'sharing' | 'success' | 'error';
@@ -41,6 +42,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   filePath,
   title,
 }) => {
+  const { t } = useTranslation(['dialogs']);
   const [shareState, setShareState] = useState<ShareState>('ready');
   const [errorMessage, setErrorMessage] = useState('');
   const [shareUrl, setShareUrl] = useState('');
@@ -147,7 +149,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           addShare({
             shareId: result.shareId,
             sessionId,
-            title: title ?? 'Untitled',
+            title: title ?? t('dialogs:share.untitled'),
             sizeBytes: 0,
             createdAt: new Date().toISOString(),
             expiresAt,
@@ -157,14 +159,14 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           });
         }
       } else {
-        setErrorMessage(result?.error ?? 'Failed to share');
+        setErrorMessage(result?.error ?? t('dialogs:share.failed'));
         setShareState('error');
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred');
+      setErrorMessage(error instanceof Error ? error.message : t('dialogs:share.unexpected'));
       setShareState('error');
     }
-  }, [contentType, sessionId, filePath, expirationDays, selectedPersonalOrgId, title, addShare]);
+  }, [contentType, sessionId, filePath, expirationDays, selectedPersonalOrgId, title, addShare, t]);
 
   const handleCopyUrl = useCallback(async () => {
     if (!shareUrl) return;
@@ -175,7 +177,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 
   if (!isOpen) return null;
 
-  const contentLabel = contentType === 'session' ? 'session' : 'file';
+  const contentLabel = t(contentType === 'session' ? 'dialogs:share.session' : 'dialogs:share.file');
   const isAlreadyShared = !!existingShare;
   const needsAuth = authState?.isAuthenticated === false;
 
@@ -192,7 +194,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
         <button
           className="absolute top-4 right-4 w-8 h-8 p-0 flex items-center justify-center bg-transparent border-none text-[28px] leading-none cursor-pointer rounded-md z-[1] text-[var(--nim-text-muted)] transition-[color,transform] duration-200 hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] hover:scale-110"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('dialogs:share.close')}
         >
           &times;
         </button>
@@ -204,7 +206,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               <MaterialSymbol icon="share" size={22} />
             </div>
             <h2 className="m-0 text-lg font-semibold text-[var(--nim-text)]">
-              Share {contentLabel}
+              {t('dialogs:share.title', { content: contentLabel })}
             </h2>
           </div>
 
@@ -212,7 +214,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           {needsAuth ? (
             <div className="share-dialog-login flex flex-col gap-4">
               <p className="m-0 text-[0.8125rem] text-[var(--nim-text-muted)]">
-                Sign in to share encrypted links.
+                {t('dialogs:share.sign_in_description')}
               </p>
               <AccountLoginForm mode="first-sign-in" />
               <div className="flex justify-end">
@@ -221,7 +223,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   className="rounded-lg border-none bg-transparent px-4 py-2.5 text-[0.8125rem] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                   onClick={onClose}
                 >
-                  Cancel
+                  {t('dialogs:share.cancel')}
                 </button>
               </div>
             </div>
@@ -232,12 +234,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                 <MaterialSymbol icon="lock" size={18} className="shrink-0 mt-0.5 text-[var(--nim-text-muted)]" />
                 <div>
                   <p className="m-0 text-[0.8125rem] text-[var(--nim-text)]">
-                    Anyone with the link can view this {contentLabel}
+                    {t('dialogs:share.anyone_can_view', { content: contentLabel })}
                   </p>
                   <p className="m-0 mt-1 text-[0.75rem] text-[var(--nim-text-faint)]">
-                    Content is end-to-end encrypted.
+                    {t('dialogs:share.encrypted')}
                     <br />
-                    No one without the link -- including Nimbalyst Servers -- can see it.
+                    {t('dialogs:share.no_one_without_link')}
                   </p>
                 </div>
               </div>
@@ -255,7 +257,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   )}
                   <div>
                   <label className="block text-[0.75rem] font-medium text-[var(--nim-text-muted)] mb-1.5">
-                    Link expires after
+                    {t('dialogs:share.expires_after')}
                   </label>
                   <select
                     className="w-full px-3 py-2 text-[0.8125rem] rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer outline-none transition-colors duration-150 focus:border-[var(--nim-primary)] [&>option]:bg-[var(--nim-bg)] [&>option]:text-[var(--nim-text)]"
@@ -266,12 +268,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   >
                     {EXPIRATION_OPTIONS.map((opt) => (
                       <option key={String(opt.value)} value={String(opt.value)}>
-                        {opt.label}
+                        {t('dialogs:share.' + opt.label)}
                       </option>
                     ))}
                   </select>
                   <p className="m-0 mt-1.5 text-[0.6875rem] text-[var(--nim-text-faint)]">
-                    Your choice will be remembered for next time
+                    {t('dialogs:share.remember_choice')}
                   </p>
                   </div>
                 </div>
@@ -281,7 +283,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               {shareState === 'success' && shareUrl && (
                 <div className="mb-5">
                   <label className="block text-[0.75rem] font-medium text-[var(--nim-text-muted)] mb-1.5">
-                    Share link
+                    {t('dialogs:share.share_link')}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -297,7 +299,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       onClick={handleCopyUrl}
                     >
                       <MaterialSymbol icon={urlCopied ? 'check' : 'content_copy'} size={14} />
-                      {urlCopied ? 'Copied' : 'Copy'}
+                      {urlCopied ? t('dialogs:share.copied') : t('dialogs:share.copy')}
                     </button>
                   </div>
                 </div>
@@ -317,7 +319,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     className="px-5 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium cursor-pointer text-[var(--nim-text)] bg-[var(--nim-bg-hover)] transition-colors duration-150 hover:bg-[var(--nim-border)]"
                     onClick={onClose}
                   >
-                    Done
+                    {t('dialogs:share.done')}
                   </button>
                 ) : (
                   <>
@@ -325,7 +327,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       className="px-4 py-2.5 rounded-lg border-none text-[0.8125rem] cursor-pointer text-[var(--nim-text-muted)] bg-transparent transition-colors duration-150 hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
                       onClick={onClose}
                     >
-                      Cancel
+                      {t('dialogs:share.cancel')}
                     </button>
                     <button
                       className="flex items-center gap-2 px-5 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium cursor-pointer text-white bg-[var(--nim-primary)] transition-all duration-150 hover:brightness-110 disabled:opacity-50 disabled:cursor-default"
@@ -335,19 +337,19 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       {shareState === 'sharing' ? (
                         <>
                           <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />
-                          Sharing...
+                          {t('dialogs:share.sharing')}
                         </>
                       ) : shareState === 'error' ? (
-                        'Retry'
+                        t('dialogs:share.retry')
                       ) : isAlreadyShared ? (
                         <>
                           <MaterialSymbol icon="link" size={14} />
-                          Update link
+                          {t('dialogs:share.update_link')}
                         </>
                       ) : (
                         <>
                           <MaterialSymbol icon="link" size={14} />
-                          Copy link
+                          {t('dialogs:share.copy_link')}
                         </>
                       )}
                     </button>

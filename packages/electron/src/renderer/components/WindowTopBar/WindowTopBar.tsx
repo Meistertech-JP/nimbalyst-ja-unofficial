@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { MAIN_WINDOW_TITLE_BAR_HEIGHT } from '../../../shared/windowChrome';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
@@ -89,8 +90,9 @@ function PanelButton({
   side: 'left' | 'right';
   control: WindowTopBarPanelControl;
 }) {
+  const { t } = useTranslation(['menu']);
   const menu = useFloatingMenu({ placement: 'bottom-end' });
-  const action = control.collapsed ? 'Show' : 'Hide';
+  const actionLabel = t(control.collapsed ? 'menu:top_bar.show_panel' : 'menu:top_bar.hide_panel', { label: control.label });
   const selectedOption = control.options?.find((option) => option.selected);
 
   if (control.options) {
@@ -103,7 +105,7 @@ function PanelButton({
           className="window-top-bar__panel-button window-top-bar__panel-selector window-top-bar__no-drag"
           data-testid={`window-top-bar-${side}-pane`}
           data-collapsed={control.collapsed}
-          aria-label={`Choose ${control.label}: ${selectedOption?.label ?? 'Hidden'}`}
+          aria-label={t('menu:top_bar.choose_panel', { label: control.label, selection: selectedOption?.label ?? t('menu:top_bar.hidden') })}
           aria-haspopup="menu"
           aria-expanded={menu.isOpen}
           title={control.label}
@@ -156,8 +158,8 @@ function PanelButton({
       className="window-top-bar__panel-button window-top-bar__no-drag"
       data-testid={`window-top-bar-${side}-pane`}
       data-collapsed={control.collapsed}
-      aria-label={`${action} ${control.label}`}
-      title={`${action} ${control.label}`}
+      aria-label={actionLabel}
+      title={actionLabel}
       onClick={control.onToggle}
     >
       <MaterialSymbol
@@ -175,15 +177,16 @@ function GitStatusMenu({
   gitStatus: WindowTopBarGitStatus | null;
   actions: WindowTopBarGitActions;
 }) {
+  const { t } = useTranslation(['menu']);
   const menu = useFloatingMenu({ placement: 'bottom-end' });
   const branchTitle = gitStatus
     ? [
         gitStatus.branch,
-        gitStatus.hasUncommitted ? 'Modified' : null,
-        gitStatus.ahead > 0 ? `${gitStatus.ahead} ahead` : null,
-        gitStatus.behind > 0 ? `${gitStatus.behind} behind` : null,
+        gitStatus.hasUncommitted ? t('menu:top_bar.modified') : null,
+        gitStatus.ahead > 0 ? t('menu:top_bar.ahead', { count: gitStatus.ahead }) : null,
+        gitStatus.behind > 0 ? t('menu:top_bar.behind', { count: gitStatus.behind }) : null,
       ].filter(Boolean).join(' · ')
-    : 'Git unavailable';
+    : t('menu:top_bar.git_unavailable');
   const busy = actions.busyAction != null;
 
   return (
@@ -196,7 +199,7 @@ function GitStatusMenu({
         data-testid="window-top-bar-git-status"
         data-state={gitStatus ? 'available' : 'unavailable'}
         title={branchTitle}
-        aria-label={`Git actions: ${branchTitle}`}
+        aria-label={t('menu:top_bar.git_actions', { branch: branchTitle })}
         aria-haspopup="menu"
         aria-expanded={menu.isOpen}
         onClick={() => menu.setIsOpen(!menu.isOpen)}
@@ -207,14 +210,14 @@ function GitStatusMenu({
             <span className="window-top-bar__branch">{gitStatus.branch}</span>
             {gitStatus.hasUncommitted && (
               <span className="window-top-bar__git-detail window-top-bar__dirty">
-                Modified
+                {t('menu:top_bar.modified')}
               </span>
             )}
             {gitStatus.ahead > 0 && (
               <span
                 className="window-top-bar__git-detail window-top-bar__git-count"
-                title={`${gitStatus.ahead} ahead`}
-                aria-label={`${gitStatus.ahead} ahead`}
+                title={t('menu:top_bar.ahead', { count: gitStatus.ahead })}
+                aria-label={t('menu:top_bar.ahead', { count: gitStatus.ahead })}
               >
                 <MaterialSymbol icon="arrow_upward" size={14} />
                 {gitStatus.ahead}
@@ -223,8 +226,8 @@ function GitStatusMenu({
             {gitStatus.behind > 0 && (
               <span
                 className="window-top-bar__git-detail window-top-bar__git-count"
-                title={`${gitStatus.behind} behind`}
-                aria-label={`${gitStatus.behind} behind`}
+                title={t('menu:top_bar.behind', { count: gitStatus.behind })}
+                aria-label={t('menu:top_bar.behind', { count: gitStatus.behind })}
               >
                 <MaterialSymbol icon="arrow_downward" size={14} />
                 {gitStatus.behind}
@@ -232,7 +235,7 @@ function GitStatusMenu({
             )}
           </>
         ) : (
-          <span className="window-top-bar__git-unavailable">Git unavailable</span>
+          <span className="window-top-bar__git-unavailable">{t('menu:top_bar.git_unavailable')}</span>
         )}
         <MaterialSymbol icon="arrow_drop_down" size={16} />
       </button>
@@ -253,7 +256,7 @@ function GitStatusMenu({
               onClick={actions.onPull}
             >
               <MaterialSymbol icon="arrow_downward" size={17} />
-              <span>{actions.busyAction === 'pull' ? 'Pulling…' : 'Pull'}</span>
+              <span>{t(actions.busyAction === 'pull' ? 'menu:top_bar.pulling' : 'menu:top_bar.pull')}</span>
             </button>
             <button
               type="button"
@@ -263,7 +266,7 @@ function GitStatusMenu({
               onClick={actions.onPush}
             >
               <MaterialSymbol icon="arrow_upward" size={17} />
-              <span>{actions.busyAction === 'push' ? 'Pushing…' : 'Push'}</span>
+              <span>{t(actions.busyAction === 'push' ? 'menu:top_bar.pushing' : 'menu:top_bar.push')}</span>
             </button>
             <div className="window-top-bar__menu-separator" />
             <button
@@ -274,7 +277,7 @@ function GitStatusMenu({
               onClick={actions.onOpenLog}
             >
               <MaterialSymbol icon="history" size={17} />
-              <span>Open Git Log</span>
+              <span>{t('menu:top_bar.open_git_log')}</span>
             </button>
             {actions.gitLogAvailable === false && actions.onOpenExtensionSettings && (
               <button
@@ -287,7 +290,7 @@ function GitStatusMenu({
                 }}
               >
                 <MaterialSymbol icon="extension" size={17} />
-                <span>Enable Git Extension…</span>
+                <span>{t('menu:top_bar.enable_git_extension')}</span>
               </button>
             )}
             {actions.feedback && (
@@ -320,6 +323,7 @@ export function WindowTopBar({
   panelControls,
   newSessionControl,
 }: WindowTopBarProps) {
+  const { t } = useTranslation(['menu']);
   return (
     <header
       className="window-top-bar"
@@ -374,7 +378,7 @@ export function WindowTopBar({
                 onClick={newSessionControl.onCreate}
               >
                 <MaterialSymbol icon="add" size={17} />
-                <span>New</span>
+                <span>{t('menu:new')}</span>
               </button>
             )}
             {panelControls?.left && (

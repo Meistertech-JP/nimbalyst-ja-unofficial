@@ -12,12 +12,25 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useFloating, offset, flip, shift, FloatingPortal } from '@floating-ui/react';
 import type { TrackerItemType } from '../../../core/DocumentService';
 import type { TrackerRecord } from '../../../core/TrackerRecord';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 import { getRecordTitle } from '../trackerRecordAccessors';
 import { getStatusColor, getPriorityColor, getTypeColor, getTypeIcon } from './trackerColumns';
 
 const PRIORITIES = ['critical', 'high', 'medium', 'low'] as const;
 
 export interface TrackerRowContextMenuProps {
+  /** Optional host-localized captions; action values and selected IDs are untouched. */
+  presentation?: {
+    selectedCount?: (count: number) => string;
+    setStatus?: string;
+    setPriority?: string;
+    priorityLabel?: (priority: string) => string;
+    addToCollection?: string;
+    copyLink?: string;
+    archive?: string;
+    delete?: string;
+    deleteConfirm?: (count: number) => string;
+  };
   /** Anchor rect for the menu; `null` keeps it closed. */
   anchor: DOMRect | null;
   refs: ReturnType<typeof useFloating>['refs'];
@@ -39,6 +52,7 @@ export interface TrackerRowContextMenuProps {
 }
 
 export function TrackerRowContextMenu({
+  presentation,
   anchor,
   refs,
   floatingStyles,
@@ -55,6 +69,7 @@ export function TrackerRowContextMenu({
   closeContextMenu,
   clearSelection,
 }: TrackerRowContextMenuProps): JSX.Element | null {
+  const { t } = useRuntimeTranslation();
   if (!anchor || selectedIds.size === 0) return null;
 
   const statusType = activeTypeFilter !== 'all' ? activeTypeFilter : undefined;
@@ -69,11 +84,15 @@ export function TrackerRowContextMenu({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-3 py-1 text-[11px] text-[var(--nim-text-faint)] font-medium">
-          {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+          {presentation?.selectedCount?.(selectedIds.size) ?? t(
+            selectedIds.size === 1 ? 'tracker:kanban.selected_count_one' : 'tracker:kanban.selected_count_other',
+            selectedIds.size === 1 ? '{{count}} item selected' : '{{count}} items selected',
+            { count: selectedIds.size },
+          )}
         </div>
         <div className="border-b border-[var(--nim-border)] my-1" />
 
-        <ContextSubmenu label="Set Status" icon="swap_horiz">
+        <ContextSubmenu label={presentation?.setStatus ?? t('tracker:kanban.set_status', 'Set Status')} icon="swap_horiz">
           {statusOptions.map(opt => {
             const value = typeof opt === 'string' ? opt : opt.value;
             const label = typeof opt === 'string'
@@ -95,7 +114,7 @@ export function TrackerRowContextMenu({
           })}
         </ContextSubmenu>
 
-        <ContextSubmenu label="Set Priority" icon="flag">
+        <ContextSubmenu label={presentation?.setPriority ?? t('tracker:kanban.set_priority', 'Set Priority')} icon="flag">
           {PRIORITIES.map(p => (
             <button
               key={p}
@@ -106,13 +125,13 @@ export function TrackerRowContextMenu({
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: getPriorityColor(p) }}
               />
-              {p.charAt(0).toUpperCase() + p.slice(1)}
+            {presentation?.priorityLabel?.(p) ?? t(`tracker:kanban.priority_${p}`, p.charAt(0).toUpperCase() + p.slice(1))}
             </button>
           ))}
         </ContextSubmenu>
 
         {onAddToCollection && collectionTargets.length > 0 && (
-          <ContextSubmenu label="Add to Collection" icon="inventory_2">
+          <ContextSubmenu label={presentation?.addToCollection ?? t('tracker:kanban.add_to_collection', 'Add to Collection')} icon="inventory_2">
             {collectionTargets.map(collection => (
               <button
                 key={collection.id}
@@ -144,7 +163,7 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">link</span>
-            Copy Link
+            {presentation?.copyLink ?? t('tracker:kanban.copy_link', 'Copy Link')}
           </button>
         )}
 
@@ -159,7 +178,7 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">archive</span>
-            Archive
+            {presentation?.archive ?? t('tracker:kanban.archive', 'Archive')}
           </button>
         )}
 
@@ -170,14 +189,19 @@ export function TrackerRowContextMenu({
             onClick={() => {
               closeContextMenu();
               const ids = Array.from(selectedIds);
-              if (window.confirm(`Delete ${ids.length} item${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) {
+              const fallbackConfirm = t(
+                ids.length === 1 ? 'tracker:kanban.delete_confirm_one' : 'tracker:kanban.delete_confirm_other',
+                ids.length === 1 ? 'Delete {{count}} item? This cannot be undone.' : 'Delete {{count}} items? This cannot be undone.',
+                { count: ids.length },
+              );
+              if (window.confirm(presentation?.deleteConfirm?.(ids.length) ?? fallbackConfirm)) {
                 onDeleteItems(ids);
                 clearSelection();
               }
             }}
           >
             <span className="material-symbols-outlined text-sm">delete</span>
-            Delete
+            {presentation?.delete ?? t('tracker:kanban.delete', 'Delete')}
           </button>
         )}
       </div>

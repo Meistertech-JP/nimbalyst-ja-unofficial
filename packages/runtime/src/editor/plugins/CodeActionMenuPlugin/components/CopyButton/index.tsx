@@ -16,6 +16,7 @@ import {useState} from 'react';
 import {copyToClipboard} from '../../../../../utils/clipboard';
 
 import {useDebounce} from '../../utils';
+import {useRuntimeTranslation} from '../../../../../ui/RuntimeTranslation';
 
 interface Props {
   editor: LexicalEditor;
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function CopyButton({editor, getCodeDOMNode}: Props) {
+  const {t} = useRuntimeTranslation();
   const [isCopyCompleted, setCopyCompleted] = useState<boolean>(false);
 
   const removeSuccessIcon = useDebounce(() => {
@@ -59,7 +61,7 @@ export function CopyButton({editor, getCodeDOMNode}: Props) {
   }
 
   return (
-    <button className="menu-item" onClick={handleClick} aria-label="copy">
+    <button className="menu-item" onClick={handleClick} aria-label={t('common:copy', 'Copy')}>
       {isCopyCompleted ? (
         <i className="format success" />
       ) : (

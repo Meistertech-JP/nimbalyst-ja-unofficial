@@ -7,6 +7,7 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getMockupPlatformService,
   hasMockupPlatformService,
@@ -70,6 +71,7 @@ export function MockupPickerMenuHost(): JSX.Element | null {
 }
 
 function MockupPickerMenu({ onClose }: MockupPickerMenuProps): JSX.Element {
+  const { t } = useTranslation('editor');
   const [mockups, setMockups] = useState<MockupFileInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,7 +138,7 @@ function MockupPickerMenu({ onClose }: MockupPickerMenuProps): JSX.Element {
 
   // Options: "New Mockup" + filtered mockups
   const options = [
-    { id: 'new', label: '+ New Mockup', isNew: true },
+    { id: 'new', label: `+ ${t('mockup.new_title')}`, isNew: true },
     ...filteredMockups.map((wf) => ({
       id: wf.absolutePath,
       label: wf.name,
@@ -359,13 +361,13 @@ function MockupPickerMenu({ onClose }: MockupPickerMenuProps): JSX.Element {
               ref={inputRef}
               type="text"
               className="mockup-picker-input w-full px-4 py-3 border-none border-b border-b-[var(--nim-border)] text-sm bg-transparent text-[var(--nim-text)] outline-none placeholder:text-[var(--nim-text-faint)]"
-              placeholder="Enter mockup name..."
+              placeholder={t('mockup.enter_name')}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               autoFocus
             />
             <div className="mockup-picker-create-hint px-3 py-2 text-xs text-[var(--nim-text-faint)]">
-              Press Enter to create, Escape to cancel
+              {t('mockup.create_hint')}
             </div>
           </div>
         ) : (
@@ -374,14 +376,14 @@ function MockupPickerMenu({ onClose }: MockupPickerMenuProps): JSX.Element {
               ref={inputRef}
               type="text"
               className="mockup-picker-input w-full px-4 py-3 border-none border-b border-b-[var(--nim-border)] text-sm bg-transparent text-[var(--nim-text)] outline-none placeholder:text-[var(--nim-text-faint)]"
-              placeholder="Search mockups..."
+              placeholder={t('mockup.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <div className="mockup-picker-list flex-1 overflow-y-auto p-1">
               {isLoading ? (
                 <div className="mockup-picker-loading p-4 text-center text-sm text-[var(--nim-text-muted)]">
-                  Loading...
+                  {t('mockup.loading')}
                 </div>
               ) : (
                 options.map((option, index) => (

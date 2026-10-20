@@ -21,6 +21,7 @@ import { store } from '@nimbalyst/runtime/store';
 import { DocumentModelRegistry } from './document-model/DocumentModelRegistry';
 import type { DocumentModelEditorHandle } from './document-model/types';
 import { fileDeletedAtomFamily } from '../store/atoms/fileWatch';
+import { withRuntimeTranslations } from '../i18n/RuntimeTranslationBridge';
 
 const LOG_PREFIX = '[HiddenTabManager]';
 const TTL_MS = 30_000; // 30 seconds after last release before cleanup
@@ -221,7 +222,7 @@ class HiddenTabManager {
     // Create React root and mount
     const root = createRoot(container);
     const EditorComponent = editorInfo.component as React.ComponentType<{ host: EditorHost }>;
-    root.render(React.createElement(EditorComponent, { host }));
+    root.render(withRuntimeTranslations(React.createElement(EditorComponent, { host })));
 
     // Subscribe to file-deleted atom: when a delete is detected for this
     // path, unmount immediately so no autosave can recreate the file.

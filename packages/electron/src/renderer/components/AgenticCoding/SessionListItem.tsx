@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
 import { getRelativeTimeString } from '../../utils/dateFormatting';
@@ -13,6 +14,7 @@ import { FullTitleTooltip } from './FullTitleTooltip';
  * Only this component re-renders when the session's state changes.
  */
 export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: number }>(({ sessionId, messageCount }) => {
+  const { t } = useTranslation(['agents']);
   // Use aggregated atom that checks this session AND any children (for workstreams)
   const hasPendingInteractivePrompt = useAtomValue(sessionHasPendingInteractivePromptAtom(sessionId));
   const isProcessing = useAtomValue(sessionOrChildProcessingAtom(sessionId));
@@ -24,7 +26,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
   // All interactive prompts (AskUserQuestion, ExitPlanMode, ToolPermission, etc.) show same indicator
   if (hasPendingInteractivePrompt) {
     return (
-      <div className="session-list-item-status waiting-for-input flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="session-list-item-status waiting-for-input flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title={t('agents:status.waiting')}>
         <MaterialSymbol icon="contact_support" size={14} />
       </div>
     );
@@ -32,7 +34,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 
   if (isProcessing) {
     return (
-      <div className="session-list-item-status processing flex items-center justify-center w-5 h-5 text-[var(--nim-primary)] opacity-80" title="Processing...">
+      <div className="session-list-item-status processing flex items-center justify-center w-5 h-5 text-[var(--nim-primary)] opacity-80" title={t('agents:status.processing_ellipsis')}>
         <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />
       </div>
     );
@@ -40,7 +42,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 
   if (hasPendingPrompt) {
     return (
-      <div className="session-list-item-status pending-prompt flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="session-list-item-status pending-prompt flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title={t('agents:status.waiting')}>
         <MaterialSymbol icon="help" size={14} />
       </div>
     );
@@ -49,9 +51,14 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
   if (wakeup) {
     const isOverdue = wakeup.status === 'overdue';
     const colorClass = isOverdue ? 'text-[var(--nim-warning)]' : 'text-[var(--nim-primary)]';
-    const tooltip = isOverdue
-      ? `Overdue wakeup${wakeup.reason ? ` — ${wakeup.reason}` : ''}`
-      : `Scheduled wakeup at ${new Date(wakeup.fireAt).toLocaleString()}${wakeup.reason ? ` — ${wakeup.reason}` : ''}`;
+    const time = new Date(wakeup.fireAt).toLocaleString();
+    const tooltip = wakeup.reason
+      ? isOverdue
+        ? t('agents:status.wakeup_overdue_with_reason', { reason: wakeup.reason })
+        : t('agents:status.wakeup_scheduled_with_reason', { time, reason: wakeup.reason })
+      : isOverdue
+        ? t('agents:status.wakeup_overdue')
+        : t('agents:status.wakeup_scheduled', { time });
     return (
       <div className={`session-list-item-status wakeup flex items-center justify-center w-5 h-5 ${colorClass} opacity-80`} title={tooltip}>
         <MaterialSymbol icon="schedule" size={14} />
@@ -61,7 +68,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 
   if (hasUnread) {
     return (
-      <div className="session-list-item-status unread flex items-center justify-center w-5 h-5 text-[var(--nim-primary)]" title="Unread response">
+      <div className="session-list-item-status unread flex items-center justify-center w-5 h-5 text-[var(--nim-primary)]" title={t('agents:status.unread')}>
         <MaterialSymbol icon="circle" size={8} fill />
       </div>
     );
@@ -74,15 +81,16 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
   return null;
 });
 
-const PHASE_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  backlog: { label: 'Backlog', color: 'var(--nim-text-faint)', bg: 'rgba(128,128,128,0.12)' },
-  planning: { label: 'Planning', color: 'var(--nim-primary)', bg: 'rgba(96,165,250,0.12)' },
-  implementing: { label: 'Implementing', color: 'var(--nim-warning)', bg: 'rgba(251,191,36,0.12)' },
-  validating: { label: 'Validating', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
-  complete: { label: 'Complete', color: 'var(--nim-success)', bg: 'rgba(74,222,128,0.12)' },
+const PHASE_STYLES: Record<string, { labelKey: string; color: string; bg: string }> = {
+  backlog: { labelKey: 'agents:status.phase_backlog', color: 'var(--nim-text-faint)', bg: 'rgba(128,128,128,0.12)' },
+  planning: { labelKey: 'agents:status.phase_planning', color: 'var(--nim-primary)', bg: 'rgba(96,165,250,0.12)' },
+  implementing: { labelKey: 'agents:status.phase_implementing', color: 'var(--nim-warning)', bg: 'rgba(251,191,36,0.12)' },
+  validating: { labelKey: 'agents:status.phase_validating', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+  complete: { labelKey: 'agents:status.phase_complete', color: 'var(--nim-success)', bg: 'rgba(74,222,128,0.12)' },
 };
 
 const SessionPhaseBadge = memo<{ phase: string }>(({ phase }) => {
+  const { t } = useTranslation(['agents']);
   const style = PHASE_STYLES[phase];
   if (!style) return null;
   return (
@@ -90,7 +98,7 @@ const SessionPhaseBadge = memo<{ phase: string }>(({ phase }) => {
       className="session-list-item-phase text-[0.5625rem] leading-tight px-1 py-px rounded font-medium whitespace-nowrap"
       style={{ color: style.color, backgroundColor: style.bg }}
     >
-      {style.label}
+      {t(style.labelKey)}
     </span>
   );
 });
@@ -167,6 +175,7 @@ export const SessionListItem = memo<SessionListItemProps>(({
   branchedAt,
   phase,
 }) => {
+  const { t } = useTranslation(['agents']);
   const [isHovering, setIsHovering] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -383,7 +392,7 @@ export const SessionListItem = memo<SessionListItemProps>(({
     }
   }, [isRenaming]);
 
-  const displayTitle = title || 'Untitled Session';
+  const displayTitle = title || t('agents:status.untitled_session');
 
   // Per-session live activity. Bumped on every `ai:message-logged`; only
   // this list item re-renders when its own activity ticks, instead of the
@@ -395,10 +404,12 @@ export const SessionListItem = memo<SessionListItemProps>(({
 
   // Show timestamp based on current sort order
   const timestamp = sortBy === 'updated' ? (effectiveUpdatedAt || createdAt) : createdAt;
-  const timestampLabel = sortBy === 'updated' ? 'updated' : 'created';
+  const timestampLabel = sortBy === 'updated'
+    ? t('agents:accessibility.updated_label')
+    : t('agents:accessibility.created_label');
 
   const { relativeTime, fullDateTime } = useMemo(() => ({
-    relativeTime: getRelativeTimeString(timestamp),
+    relativeTime: getRelativeTimeString(timestamp, t),
     fullDateTime: new Date(timestamp).toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
@@ -408,7 +419,7 @@ export const SessionListItem = memo<SessionListItemProps>(({
       hour12: true,
       timeZoneName: 'short'
     }),
-  }), [timestamp]);
+  }), [timestamp, t]);
 
   // Extract model ID from provider:model format
   const displayModel = model?.includes(':') ? model.split(':')[1] : model;
@@ -450,7 +461,12 @@ export const SessionListItem = memo<SessionListItemProps>(({
           onClick(e as unknown as React.MouseEvent);
         }
       }}
-      aria-label={`Session: ${displayTitle}, ${timestampLabel} ${relativeTime}${isLoaded ? ' (loaded in tab)' : ''}${isArchived ? ' (archived)' : ''}`}
+      aria-label={[
+        t('agents:context.session_label', { title: displayTitle }),
+        `${timestampLabel} ${relativeTime}`,
+        isLoaded ? t('agents:accessibility.loaded_in_tab') : null,
+        isArchived ? t('agents:accessibility.archived_status') : null,
+      ].filter(Boolean).join(', ')}
       aria-current={isActive ? 'page' : undefined}
     >
       <div className={`session-list-item-icon shrink-0 mt-0.5 text-[var(--nim-text-muted)] flex items-center relative ${isActive ? '[&]:text-[var(--nim-primary)] [&_svg]:text-[var(--nim-primary)]' : '[&_svg]:text-[var(--nim-text-muted)]'} ${isWorkstream ? 'workstream-icon' : ''} ${isWorktreeSession ? 'worktree-icon' : ''}`}>
@@ -490,10 +506,10 @@ export const SessionListItem = memo<SessionListItemProps>(({
         <MaterialSymbol icon="push_pin" size={12} className={`session-list-item-pin-icon shrink-0 -ml-1 opacity-70 ${isActive ? 'text-[var(--nim-primary)] opacity-80' : 'text-[var(--nim-text-faint)]'}`} />
       )}
       {branchedAt && (
-        <MaterialSymbol icon="fork_right" size={12} className={`session-list-item-branch-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title="Branched conversation" />
+        <MaterialSymbol icon="fork_right" size={12} className={`session-list-item-branch-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title={t('agents:status.branched')} />
       )}
       {shareInfo && (
-        <MaterialSymbol icon="link" size={12} className={`session-list-item-share-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title="Shared" />
+        <MaterialSymbol icon="link" size={12} className={`session-list-item-share-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title={t('agents:status.shared')} />
       )}
       <div className="session-list-item-content flex-1 min-w-0 overflow-hidden">
         {isRenaming ? (
@@ -525,7 +541,7 @@ export const SessionListItem = memo<SessionListItemProps>(({
       </div>
       <div className="session-list-item-right shrink-0 flex items-center gap-1.5 ml-auto">
         {uncommittedCount !== undefined && uncommittedCount > 0 && (
-          <span className="session-list-item-badge uncommitted text-[0.6875rem] px-1.5 py-0.5 rounded-xl font-semibold whitespace-nowrap bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]" title={`${uncommittedCount} uncommitted change${uncommittedCount !== 1 ? 's' : ''}`}>
+          <span className="session-list-item-badge uncommitted text-[0.6875rem] px-1.5 py-0.5 rounded-xl font-semibold whitespace-nowrap bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]" title={t(uncommittedCount === 1 ? 'agents:status.uncommitted_one' : 'agents:status.uncommitted_other', { count: uncommittedCount })}>
             {uncommittedCount}
           </span>
         )}

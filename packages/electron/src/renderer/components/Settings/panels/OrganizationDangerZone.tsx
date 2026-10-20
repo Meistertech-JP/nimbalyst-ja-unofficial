@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActionGuard } from './ActionGuard';
 import { MergeOrgWizard } from './MergeOrgWizard';
 import { bucketMemberCount, bucketProjectCount, categorizeTeamAnalyticsError } from '../../../../shared/analytics/teamAnalytics';
 import { trackTeamAnalyticsEvent } from '../../../utils/teamAnalytics';
 
 export function OrganizationDangerZone({ orgId }: { orgId?: string }) {
+  const { t } = useTranslation(['settings', 'project', 'common']);
   const [role, setRole] = useState('member');
   const [confirmation, setConfirmation] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -37,33 +39,33 @@ export function OrganizationDangerZone({ orgId }: { orgId?: string }) {
   const canDelete = role === 'owner' || role === 'admin';
   return (
     <section className="organization-danger-zone" data-testid="organization-danger-zone" data-component="OrganizationDangerZone">
-      <h2 className="m-0 text-xl font-semibold text-[var(--nim-error)]">Danger Zone</h2>
-      <p className="text-sm text-[var(--nim-text-muted)]">Leaving, ownership transfer, consolidation, and deletion are organization-scoped actions.</p>
+      <h2 className="m-0 text-xl font-semibold text-[var(--nim-error)]">{t('project:team.danger_zone')}</h2>
+      <p className="text-sm text-[var(--nim-text-muted)]">{t('settings:organization_ui.danger_description')}</p>
       <div className="mt-4 rounded-lg border border-[var(--nim-border)] p-4">
-        <h3 className="m-0 text-sm font-semibold">Leave organization</h3>
-        <p className="text-xs text-[var(--nim-text-muted)]">Your access to every organization project will be removed. Last-owner constraints are enforced by the server.</p>
-        <ActionGuard allowed={false} reason="Leave is disabled until the collaboration server enforces last-owner invariants.">
-          <button type="button" disabled className="organization-leave rounded border border-[var(--nim-border)] px-3 py-2 text-sm disabled:opacity-40" data-testid="organization-leave">Leave organization</button>
+        <h3 className="m-0 text-sm font-semibold">{t('settings:organization_ui.leave')}</h3>
+        <p className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.leave_description')}</p>
+        <ActionGuard allowed={false} reason={t('settings:organization_ui.leave_disabled')}>
+          <button type="button" disabled className="organization-leave rounded border border-[var(--nim-border)] px-3 py-2 text-sm disabled:opacity-40" data-testid="organization-leave">{t('settings:organization_ui.leave')}</button>
         </ActionGuard>
       </div>
       <div className="mt-4 rounded-lg border border-[var(--nim-border)] p-4">
-        <h3 className="m-0 text-sm font-semibold">Merge organization</h3>
-        <p className="text-xs text-[var(--nim-text-muted)]">Move every project and merge the roster into another organization you administer.</p>
-        <ActionGuard allowed={canDelete && mergeCandidates.length > 0} reason="An admin role in this organization and another destination organization is required.">
-          <button type="button" className="organization-merge rounded border border-[var(--nim-border)] px-3 py-2 text-sm" data-testid="organization-merge" onClick={() => setShowMerge(true)}>Merge into another organization…</button>
+        <h3 className="m-0 text-sm font-semibold">{t('settings:organization_ui.merge')}</h3>
+        <p className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.merge_description')}</p>
+        <ActionGuard allowed={canDelete && mergeCandidates.length > 0} reason={t('settings:organization_ui.merge_requires_admin')}>
+          <button type="button" className="organization-merge rounded border border-[var(--nim-border)] px-3 py-2 text-sm" data-testid="organization-merge" onClick={() => setShowMerge(true)}>{t('settings:organization_ui.merge_into')}</button>
         </ActionGuard>
       </div>
       <div className="mt-4 rounded-lg border border-[var(--nim-border)] p-4">
-        <h3 className="m-0 text-sm font-semibold">Transfer ownership</h3>
-        <p className="text-xs text-[var(--nim-text-muted)]">Choose another active member before leaving or deleting an organization you own.</p>
-        <ActionGuard allowed={false} reason="Ownership transfer is disabled until the collaboration server enforces last-owner invariants.">
-          <button type="button" disabled className="rounded border border-[var(--nim-border)] px-3 py-2 text-sm disabled:opacity-40" data-testid="organization-transfer-ownership">Transfer ownership</button>
+        <h3 className="m-0 text-sm font-semibold">{t('settings:organization_ui.transfer')}</h3>
+        <p className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.transfer_description')}</p>
+        <ActionGuard allowed={false} reason={t('settings:organization_ui.transfer_disabled')}>
+          <button type="button" disabled className="rounded border border-[var(--nim-border)] px-3 py-2 text-sm disabled:opacity-40" data-testid="organization-transfer-ownership">{t('settings:organization_ui.transfer')}</button>
         </ActionGuard>
       </div>
       <div className="mt-4 rounded-lg border border-[var(--nim-error)] p-4">
-        <h3 className="m-0 text-sm font-semibold">Delete organization</h3>
-        <p className="text-xs text-[var(--nim-text-muted)]">Type the organization id to confirm. Server ownership and data constraints are enforced before deletion.</p>
-        <ActionGuard allowed={Boolean(orgId) && canDelete} reason="An organization owner or admin is required.">
+        <h3 className="m-0 text-sm font-semibold">{t('settings:organization_ui.delete')}</h3>
+        <p className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.delete_description')}</p>
+        <ActionGuard allowed={Boolean(orgId) && canDelete} reason={t('settings:organization_ui.requires_admin')}>
           <div className="flex gap-2"><input className="min-w-0 flex-1 rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-2 text-sm" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /><button type="button" disabled={!orgId || confirmation !== orgId} className="rounded bg-[var(--nim-error)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={() => orgId && void window.electronAPI.organization.deleteOrganization(orgId).then((result) => {
             if (result?.success) {
               trackTeamAnalyticsEvent('team_organization_deleted', {
@@ -72,7 +74,7 @@ export function OrganizationDangerZone({ orgId }: { orgId?: string }) {
                 memberCountBucket: bucketMemberCount(memberCount),
                 projectCountBucket: bucketProjectCount(projectCount),
               });
-              setMessage('Organization deleted.');
+              setMessage(t('settings:organization_ui.deleted'));
               // Refresh every org-directory surface so the deleted org stops
               // lingering in the switcher/roster (settings review finding).
               window.dispatchEvent(new CustomEvent('nimbalyst:organizations-changed'));
@@ -84,7 +86,7 @@ export function OrganizationDangerZone({ orgId }: { orgId?: string }) {
                 callerRole: role === 'owner' || role === 'admin' || role === 'member' ? role : 'unknown',
                 errorCategory: categorizeTeamAnalyticsError('organization', result?.error),
               });
-              setMessage(result?.error ?? 'Delete failed');
+              setMessage(result?.error ?? t('settings:organization_ui.delete_failed'));
             }
           }).catch((error) => {
             trackTeamAnalyticsEvent('team_operation_failed', {
@@ -94,8 +96,8 @@ export function OrganizationDangerZone({ orgId }: { orgId?: string }) {
               callerRole: role === 'owner' || role === 'admin' || role === 'member' ? role : 'unknown',
               errorCategory: categorizeTeamAnalyticsError('organization', error),
             });
-            setMessage(error instanceof Error ? error.message : 'Delete failed');
-          })}>Delete</button></div>
+            setMessage(error instanceof Error ? error.message : t('settings:organization_ui.delete_failed'));
+          })}>{t('common:delete')}</button></div>
         </ActionGuard>
       </div>
       {message && <p className="select-text text-sm">{message}</p>}
@@ -108,7 +110,7 @@ export function OrganizationDangerZone({ orgId }: { orgId?: string }) {
           onClose={() => setShowMerge(false)}
           onMerged={() => {
             setShowMerge(false);
-            setMessage('Organization merge finished.');
+            setMessage(t('settings:organization_ui.merge_finished'));
             window.dispatchEvent(new CustomEvent('nimbalyst:organizations-changed'));
           }}
         />

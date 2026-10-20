@@ -38,6 +38,7 @@ import {getSelectedNode} from '../../utils/getSelectedNode';
 import {setFloatingElemPosition} from '../../utils/setFloatingElemPosition';
 import {SHORTCUTS} from '../ShortcutsPlugin/shortcuts';
 import type {FloatingTextToolbarAction} from './types';
+import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
 import {
   formatBulletList,
   formatCheckList,
@@ -63,12 +64,13 @@ function BlockFormatDropDown({
   blockType: keyof typeof blockTypeToBlockName;
   editor: LexicalEditor;
 }): JSX.Element {
+  const {t} = useRuntimeTranslation();
   return (
     <DropDown
       buttonClassName="popup-item block-controls"
       buttonIconClassName={'icon block-type ' + blockType}
       buttonLabel=""
-      buttonAriaLabel="Formatting options for text style">
+      buttonAriaLabel={t('editor:formatting.text_style_options', 'Formatting options for text style')}>
       <DropDownItem
         className={
           'item wide ' + dropDownActiveClass(blockType === 'paragraph')
@@ -76,7 +78,7 @@ function BlockFormatDropDown({
         onClick={() => formatParagraph(editor)}>
         <div className="icon-text-container">
           <i className="icon paragraph" />
-          <span className="text">Normal</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.normal_text', 'Normal Text')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.NORMAL}</span>
       </DropDownItem>
@@ -85,7 +87,7 @@ function BlockFormatDropDown({
         onClick={() => formatHeading(editor, blockType, 'h1')}>
         <div className="icon-text-container">
           <i className="icon h1" />
-          <span className="text">Heading 1</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.heading_1', 'Heading 1')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.HEADING1}</span>
       </DropDownItem>
@@ -94,7 +96,7 @@ function BlockFormatDropDown({
         onClick={() => formatHeading(editor, blockType, 'h2')}>
         <div className="icon-text-container">
           <i className="icon h2" />
-          <span className="text">Heading 2</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.heading_2', 'Heading 2')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.HEADING2}</span>
       </DropDownItem>
@@ -103,7 +105,7 @@ function BlockFormatDropDown({
         onClick={() => formatHeading(editor, blockType, 'h3')}>
         <div className="icon-text-container">
           <i className="icon h3" />
-          <span className="text">Heading 3</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.heading_3', 'Heading 3')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.HEADING3}</span>
       </DropDownItem>
@@ -112,7 +114,7 @@ function BlockFormatDropDown({
         onClick={() => formatNumberedList(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon numbered-list" />
-          <span className="text">Numbered List</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.numbered_list', 'Numbered List')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.NUMBERED_LIST}</span>
       </DropDownItem>
@@ -121,7 +123,7 @@ function BlockFormatDropDown({
         onClick={() => formatBulletList(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon bullet-list" />
-          <span className="text">Bullet List</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.bullet_list', 'Bullet List')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.BULLET_LIST}</span>
       </DropDownItem>
@@ -130,7 +132,7 @@ function BlockFormatDropDown({
         onClick={() => formatCheckList(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon check-list" />
-          <span className="text">Check List</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.check_list', 'Check List')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.CHECK_LIST}</span>
       </DropDownItem>
@@ -139,7 +141,7 @@ function BlockFormatDropDown({
         onClick={() => formatQuote(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon quote" />
-          <span className="text">Quote</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.quote', 'Quote')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.QUOTE}</span>
       </DropDownItem>
@@ -148,7 +150,7 @@ function BlockFormatDropDown({
         onClick={() => formatCode(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon code" />
-          <span className="text">Code Block</span>
+          <span className="text">{t('dialogs:keyboard_shortcuts.labels.code_block', 'Code Block')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.CODE_BLOCK}</span>
       </DropDownItem>
@@ -191,6 +193,7 @@ function TextFormatFloatingToolbar({
   setIsLinkEditMode: Dispatch<boolean>;
   actions: ReadonlyArray<FloatingTextToolbarAction>;
 }): JSX.Element {
+  const {t} = useRuntimeTranslation();
   const popupCharStylesEditorRef = useRef<HTMLDivElement | null>(null);
 
   const insertLink = useCallback(() => {
@@ -330,8 +333,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
             }}
             className={'popup-item spaced ' + (isBold ? 'active' : '')}
-            title="Bold"
-            aria-label="Format text as bold">
+            title={t('dialogs:keyboard_shortcuts.labels.bold', 'Bold')}
+            aria-label={t('editor:formatting.bold_description', 'Format text as bold')}>
             <i className="format bold" />
           </button>
           <button
@@ -340,8 +343,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
             }}
             className={'popup-item spaced ' + (isItalic ? 'active' : '')}
-            title="Italic"
-            aria-label="Format text as italics">
+            title={t('dialogs:keyboard_shortcuts.labels.italic', 'Italic')}
+            aria-label={t('editor:formatting.italic_description', 'Format text as italics')}>
             <i className="format italic" />
           </button>
           <button
@@ -350,8 +353,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
             }}
             className={'popup-item spaced ' + (isUnderline ? 'active' : '')}
-            title="Underline"
-            aria-label="Format text to underlined">
+            title={t('dialogs:keyboard_shortcuts.labels.underline', 'Underline')}
+            aria-label={t('editor:formatting.underline_description', 'Format text to underlined')}>
             <i className="format underline" />
           </button>
           <button
@@ -360,8 +363,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough');
             }}
             className={'popup-item spaced ' + (isStrikethrough ? 'active' : '')}
-            title="Strikethrough"
-            aria-label="Format text with a strikethrough">
+            title={t('dialogs:keyboard_shortcuts.labels.strikethrough', 'Strikethrough')}
+            aria-label={t('editor:formatting.strikethrough_description', 'Format text with a strikethrough')}>
             <i className="format strikethrough" />
           </button>
           {/* Commented out non-markdown focused formatting options
@@ -422,16 +425,16 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
             }}
             className={'popup-item spaced ' + (isCode ? 'active' : '')}
-            title="Insert code block"
-            aria-label="Insert code block">
+            title={t('editor:formatting.insert_code', 'Insert code block')}
+            aria-label={t('editor:formatting.insert_code', 'Insert code block')}>
             <i className="format code" />
           </button>
           <button
             type="button"
             onClick={insertLink}
             className={'popup-item spaced ' + (isLink ? 'active' : '')}
-            title="Insert link"
-            aria-label="Insert link">
+            title={t('dialogs:keyboard_shortcuts.labels.insert_link', 'Insert Link')}
+            aria-label={t('dialogs:keyboard_shortcuts.labels.insert_link', 'Insert Link')}>
             <i className="format link" />
           </button>
           {actions.length > 0 && <div className="divider" />}

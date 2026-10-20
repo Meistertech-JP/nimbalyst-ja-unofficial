@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getFileIcon } from '@nimbalyst/runtime';
+import { useTranslation } from 'react-i18next';
 
 interface WorkspaceFile {
   path: string;
@@ -33,6 +34,7 @@ export function WorkspaceHistoryFileTree({
   onFileSelect,
   onDeletedFileToggle
 }: WorkspaceHistoryFileTreeProps) {
+  const { t } = useTranslation(['dialogs']);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
 
   // Build tree structure from flat file paths
@@ -100,20 +102,18 @@ export function WorkspaceHistoryFileTree({
   }, [files, workspacePath]);
 
   // Auto-expand directories that contain the selected file
-  useMemo(() => {
+  useEffect(() => {
     if (selectedFilePath) {
       const parts = selectedFilePath.replace(workspacePath + '/', '').split('/');
       let currentPath = workspacePath;
-      const newExpanded = new Set(expandedDirs);
-
-      for (let i = 0; i < parts.length - 1; i++) {
-        currentPath = currentPath + '/' + parts[i];
-        newExpanded.add(currentPath);
-      }
-
-      if (newExpanded.size !== expandedDirs.size) {
-        setExpandedDirs(newExpanded);
-      }
+      setExpandedDirs(previous => {
+        const next = new Set(previous);
+        for (let i = 0; i < parts.length - 1; i++) {
+          currentPath = currentPath + '/' + parts[i];
+          next.add(currentPath);
+        }
+        return next.size === previous.size ? previous : next;
+      });
     }
   }, [selectedFilePath, workspacePath]);
 
@@ -180,7 +180,11 @@ export function WorkspaceHistoryFileTree({
           {getFileIcon(node.name)}
         </span>
         <span className="workspace-history-tree-name">{node.name}</span>
-        {isDeleted && <span className="workspace-history-deleted-label">(deleted)</span>}
+        {isDeleted && (
+          <span className="workspace-history-deleted-label">
+            {t('dialogs:history.deleted_label')}
+          </span>
+        )}
       </div>
     );
   };
@@ -188,7 +192,7 @@ export function WorkspaceHistoryFileTree({
   if (files.length === 0) {
     return (
       <div className="workspace-history-tree-empty">
-        No files with history in this workspace
+        {t('dialogs:history.no_files')}
       </div>
     );
   }

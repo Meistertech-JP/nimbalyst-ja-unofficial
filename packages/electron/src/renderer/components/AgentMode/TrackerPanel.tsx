@@ -7,6 +7,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { trackerItemByIdAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
@@ -43,6 +44,7 @@ const TYPE_ICONS: Record<string, string> = {
 export const TrackerPanel: React.FC<TrackerPanelProps> = React.memo(({
   workstreamId,
 }) => {
+  const { t } = useTranslation(['agents']);
   const isCollapsed = useAtomValue(trackerPanelCollapsedAtom);
   const toggleCollapsed = useSetAtom(toggleTrackerPanelCollapsedAtom);
   const setWindowMode = useSetAtom(setWindowModeAtom);
@@ -112,7 +114,7 @@ export const TrackerPanel: React.FC<TrackerPanelProps> = React.memo(({
           className="text-[var(--nim-text-muted)] shrink-0"
         />
         <span className="tracker-panel-title text-xs font-medium text-[var(--nim-text)]">
-          Trackers
+          {t('agents:panels.trackers')}
         </span>
         <span className="tracker-panel-count ml-auto text-[11px] text-[var(--nim-text-muted)] font-mono">
           {linkedItemIds.length}
@@ -145,6 +147,7 @@ interface TrackerItemRowProps {
 }
 
 const TrackerItemRow: React.FC<TrackerItemRowProps> = React.memo(({ itemId, onNavigate }) => {
+  const { t } = useTranslation(['agents']);
   const item = useAtomValue(trackerItemByIdAtom(itemId));
   const prRemote = useAtomValue(prRemoteAtom);
 
@@ -163,7 +166,7 @@ const TrackerItemRow: React.FC<TrackerItemRowProps> = React.memo(({ itemId, onNa
 
   const color = TYPE_COLORS[item.primaryType] || '#6b7280';
   const icon = TYPE_ICONS[item.primaryType] || 'label';
-  const title = (item.fields.title as string) || 'Untitled';
+  const title = (item.fields.title as string) || t('agents:session_tabs.untitled');
   const status = item.fields.status as string;
 
   return (
@@ -187,7 +190,7 @@ const TrackerItemRow: React.FC<TrackerItemRowProps> = React.memo(({ itemId, onNa
           role="button"
           tabIndex={-1}
           className="shrink-0 inline-flex items-center text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]"
-          title={`Open #${prReference.number} in the PRs view`}
+          title={t('agents:panels.open_pr', { number: prReference.number })}
           data-testid="tracker-item-open-pr"
           onClick={(e) => {
             e.stopPropagation();

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ActivityHeatmapProps {
   workspaceId?: string;
@@ -14,20 +15,21 @@ type ActivityMetric = 'sessions' | 'messages' | 'edits';
 
 const METRIC_LABELS: Record<ActivityMetric, { title: string; description: string }> = {
   sessions: {
-    title: 'AI Sessions Created',
-    description: 'When new AI chat sessions are started',
+    title: 'common:usage_report.sessions_title',
+    description: 'common:usage_report.sessions_description',
   },
   messages: {
-    title: 'AI Messages Sent',
-    description: 'When you send messages to AI',
+    title: 'common:usage_report.messages_title',
+    description: 'common:usage_report.messages_description',
   },
   edits: {
-    title: 'Documents Edited',
-    description: 'When documents are saved',
+    title: 'common:usage_report.edits_title',
+    description: 'common:usage_report.edits_description',
   },
 };
 
 export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId }) => {
+  const { t } = useTranslation(['common']);
   const [data, setData] = useState<ActivityHeatmapData[]>([]);
   const [loading, setLoading] = useState(true);
   const [metric, setMetric] = useState<ActivityMetric>('messages');
@@ -58,14 +60,14 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId })
   if (loading) {
     return (
       <div className="activity-heatmap-loading flex items-center justify-center min-h-[200px] text-[var(--nim-text-muted)] text-sm">
-        Loading...
+        {t('common:usage_report.loading')}
       </div>
     );
   }
 
   // Create a 2D grid: rows = days (0-6), columns = hours (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => t(`common:usage_report.day_${day}`));
 
   // Find max activity for scaling
   const maxActivity = Math.max(...data.map((d) => d.activityCount), 1);
@@ -90,10 +92,10 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId })
       <div className="heatmap-header-section flex justify-between items-start gap-4">
         <div>
           <h3 className="m-0 text-base font-semibold text-[var(--nim-text)]">
-            {currentMetricLabels.title}
+            {t(currentMetricLabels.title)}
           </h3>
           <p className="heatmap-description mt-1 mb-0 text-xs text-[var(--nim-text-muted)]">
-            {currentMetricLabels.description}
+            {t(currentMetricLabels.description)}
           </p>
         </div>
         <div className="metric-toggle flex gap-1 bg-[var(--nim-bg-secondary)] p-1 rounded-md">
@@ -103,7 +105,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId })
               className={`metric-button border-none px-3 py-1.5 text-xs font-medium text-[var(--nim-text-muted)] cursor-pointer rounded transition-all duration-200 whitespace-nowrap hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] ${metric === m ? 'active bg-[var(--nim-bg)] text-[var(--nim-text)] shadow-sm' : ''}`}
               onClick={() => setMetric(m)}
             >
-              {METRIC_LABELS[m].title.replace(/^(AI |Documents )/g, '')}
+              {t(`common:usage_report.${m}_short`)}
             </button>
           ))}
         </div>
@@ -133,11 +135,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId })
               {hours.map((hour) => {
                 const intensity = getIntensity(dayIndex, hour);
                 const count = activityMap.get(`${dayIndex}-${hour}`) || 0;
-                const tooltipText = (() => {
-                  if (metric === 'messages') return `${count} message${count !== 1 ? 's' : ''} sent`;
-                  if (metric === 'edits') return `${count} edit${count !== 1 ? 's' : ''} saved`;
-                  return `${count} session${count !== 1 ? 's' : ''} started`;
-                })();
+                const tooltipText = t(`common:usage_report.${metric}_tooltip`, { count });
                 return (
                   <div
                     key={hour}
@@ -160,7 +158,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId })
         </div>
 
         <div className="heatmap-legend flex items-center gap-1.5 mt-2 justify-center text-[10px] text-[var(--nim-text-muted)]">
-          <span>Less</span>
+          <span>{t('common:usage_report.less')}</span>
           <div
             className="legend-gradient w-[100px] h-2 rounded-sm"
             style={{
@@ -168,7 +166,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ workspaceId })
                 'linear-gradient(to right, rgba(var(--nim-accent-rgb), 0), rgba(var(--nim-accent-rgb), 0.8))',
             }}
           ></div>
-          <span>More</span>
+          <span>{t('common:usage_report.more')}</span>
         </div>
       </div>
     </div>

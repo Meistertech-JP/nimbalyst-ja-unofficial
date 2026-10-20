@@ -10,6 +10,7 @@ import { CustomSelect } from './CustomSelect';
 import { UserAvatar } from './UserAvatar';
 import { getInitials, stringToColor } from './trackerColumns';
 import { RelationshipFieldEditor, type RelationshipCandidate } from './RelationshipFieldEditor';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 /** Team member info for user picker dropdown */
 export interface TeamMemberOption {
@@ -90,6 +91,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
   relationshipCandidates,
   onOpenRelationship,
 }) => {
+  const { t } = useRuntimeTranslation();
   const fieldId = `field-${field.name}`;
   const label = formatFieldLabel(field.name);
   // Field type is authoritative from the schema definition
@@ -212,7 +214,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
             className={`${inputClasses} min-h-[80px] resize-y`}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={field.required ? 'Required' : 'Optional'}
+            placeholder={field.required ? t('tracker:fields.required', 'Required') : t('tracker:fields.optional', 'Optional')}
           />
         </div>
       );
@@ -224,7 +226,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
           <UserFieldInput
             value={value || ''}
             onChange={onChange}
-            placeholder={field.required ? 'Required' : 'Optional'}
+            placeholder={field.required ? t('tracker:fields.required', 'Required') : t('tracker:fields.optional', 'Optional')}
             teamMembers={teamMembers}
           />
         </div>
@@ -240,7 +242,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
             className={inputClasses}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={field.required ? 'Required' : 'Optional'}
+            placeholder={field.required ? t('tracker:fields.required', 'Required') : t('tracker:fields.optional', 'Optional')}
           />
         </div>
       );
@@ -264,7 +266,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
             id={fieldId}
             value={value}
             onChange={onChange}
-            placeholder={field.required ? 'Required' : 'https://...'}
+            placeholder={field.required ? t('tracker:fields.required', 'Required') : 'https://...'}
           />
         </div>
       );
@@ -313,6 +315,7 @@ const TagChipsInput: React.FC<{
   value: string[];
   onChange: (value: string[]) => void;
 }> = ({ value, onChange }) => {
+  const { t } = useRuntimeTranslation();
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -364,7 +367,7 @@ const TagChipsInput: React.FC<{
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleAdd}
-        placeholder={value.length === 0 ? 'Add tag...' : ''}
+        placeholder={value.length === 0 ? t('tracker:fields.add_tag', 'Add tag...') : ''}
       />
     </div>
   );
@@ -380,6 +383,7 @@ const UserFieldInput: React.FC<{
   placeholder?: string;
   teamMembers?: TeamMemberOption[];
 }> = ({ value, onChange, placeholder, teamMembers }) => {
+  const { t } = useRuntimeTranslation();
   const [showDropdown, setShowDropdown] = useState(false);
   const [filterText, setFilterText] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -430,7 +434,7 @@ const UserFieldInput: React.FC<{
           <button
             className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] p-0.5"
             onClick={() => { onChange(''); setFilterText(''); }}
-            title="Clear"
+            title={t('common:clear', 'Clear')}
           >
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
@@ -489,6 +493,7 @@ const UrlFieldInput: React.FC<{
   onChange: (value: UrlFieldValue | undefined) => void;
   placeholder?: string;
 }> = ({ id, value, onChange, placeholder }) => {
+  const { t } = useRuntimeTranslation();
   const normalized = normalizeUrlValue(value);
 
   const update = (next: UrlFieldValue) => {
@@ -523,7 +528,7 @@ const UrlFieldInput: React.FC<{
             target="_blank"
             rel="noopener noreferrer"
             className="text-[var(--nim-text-faint)] hover:text-[var(--nim-primary)] p-1"
-            title="Open link"
+            title={t('tracker:fields.open_link', 'Open link')}
           >
             <span className="material-symbols-outlined text-sm">open_in_new</span>
           </a>
@@ -534,7 +539,7 @@ const UrlFieldInput: React.FC<{
         className={`${inputClasses} text-[12px]`}
         value={normalized.label || ''}
         onChange={(e) => update({ ...normalized, label: e.target.value })}
-        placeholder="Display label (optional)"
+        placeholder={t('tracker:fields.display_label_optional', 'Display label (optional)')}
       />
     </div>
   );

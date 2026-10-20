@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import i18next from 'i18next';
 import { WindowTopBar, clampGitFeedbackMessage } from '../WindowTopBar';
 
 vi.mock('@nimbalyst/runtime', () => ({
@@ -10,9 +11,36 @@ vi.mock('@nimbalyst/runtime', () => ({
   ),
 }));
 
-afterEach(() => cleanup());
+afterEach(async () => { cleanup(); await i18next.changeLanguage('en'); });
 
 describe('WindowTopBar', () => {
+  it('localizes actions and counts without changing identifiers or invoking Git on language changes', async () => {
+    const onPull = vi.fn();
+    const onPush = vi.fn();
+    const onToggle = vi.fn();
+    render(<WindowTopBar
+      workspaceName="User workspace"
+      activeModeLabel="Custom mode"
+      gitStatus={{ branch: 'feature/keep-id', hasUncommitted: true, ahead: 2, behind: 3 }}
+      gitActions={{ onPull, onPush, onOpenLog: vi.fn() }}
+      panelControls={{ left: { label: 'Custom panel', collapsed: true, onToggle } }}
+    />);
+    await act(async () => { await i18next.changeLanguage('ja'); });
+    expect(screen.getByText('feature/keep-id')).toBeTruthy();
+    expect(screen.getByText('Custom mode')).toBeTruthy();
+    expect(screen.getByTitle('2コミット先行')).toBeTruthy();
+    expect(screen.getByTitle('3コミット遅れ')).toBeTruthy();
+    expect(screen.getByText('変更あり')).toBeTruthy();
+    expect(onPull).not.toHaveBeenCalled();
+    expect(onPush).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Custom panelを表示' }));
+    expect(onToggle).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByTestId('window-top-bar-git-status'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'プル' }));
+    expect(onPull).toHaveBeenCalledOnce();
+    expect(onPush).not.toHaveBeenCalled();
+  });
+
   it('renders stable markers, workspace identity, and active mode', () => {
     render(
       <WindowTopBar

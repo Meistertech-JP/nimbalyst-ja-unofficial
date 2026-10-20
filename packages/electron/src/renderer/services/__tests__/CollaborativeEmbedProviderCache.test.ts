@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
 
 const syncMocks = vi.hoisted(() => ({
   providerOptions: [] as any[],
@@ -58,11 +59,30 @@ beforeEach(() => {
   vi.mocked(resolveCollabConfigForUri).mockReset();
 });
 
-afterEach(() => {
+afterEach(async () => {
   vi.unstubAllGlobals();
+  await i18next.changeLanguage('en');
 });
 
 describe('CollaborativeEmbedProviderCache', () => {
+  it('localizes open failures while preserving the requested document ID', async () => {
+    await i18next.changeLanguage('ja');
+    vi.mocked(resolveCollabConfigForUri).mockResolvedValue(null);
+    await expect(createDefaultResource({ workspacePath: '/workspace', orgId: 'team-1', documentId: 'doc-raw', title: 'User Title', documentType: 'markdown', metadata: { metadataVersion: 2, fileExtension: '.md', editorId: 'builtin.lexical' } }))
+      .rejects.toThrow('共有ドキュメントdoc-rawを開けませんでした。');
+  });
+
+  it('localizes a team mismatch and still closes the incorrectly scoped document', async () => {
+    await i18next.changeLanguage('ja');
+    const closeDoc = vi.fn().mockResolvedValue(undefined);
+    (window as any).electronAPI = { documentSync: { closeDoc } };
+    vi.mocked(resolveCollabConfigForUri).mockResolvedValue({ orgId: 'team-other' } as any);
+    await expect(createDefaultResource({ workspacePath: '/workspace', orgId: 'team-1', documentId: 'doc-raw', title: 'User Title', documentType: 'markdown', metadata: { metadataVersion: 2, fileExtension: '.md', editorId: 'builtin.lexical' } }))
+      .rejects.toThrow('埋め込まれたドキュメントは別のチームに属しています。');
+    expect(closeDoc).toHaveBeenCalledWith('doc-raw');
+    expect(syncMocks.providerOptions).toEqual([]);
+  });
+
   it('refcounts duplicate embeds and destroys the child attachment after the final release', async () => {
     const destroy = vi.fn();
     const close = vi.fn(async () => {});

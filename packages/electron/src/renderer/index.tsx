@@ -27,6 +27,8 @@ import {
 import { initAnalyticsListeners } from './store/listeners/analyticsListeners';
 import { initializeTheme } from './hooks/useTheme';
 import { offscreenEditorRenderer } from './services/OffscreenEditorRenderer';
+import { initRendererI18n } from './i18n';
+import { withRuntimeTranslations } from './i18n/RuntimeTranslationBridge';
 import {
   voiceModeSettingsAtom,
   initVoiceModeSettings,
@@ -67,6 +69,7 @@ import {
   registerSettingsChangeListener,
 } from './store/atoms/settingAtomFamily';
 import { registerGutterCustomizationListener } from './store/listeners/gutterCustomizationListeners';
+import type { AppLocalePreference } from '../shared/i18n/types';
 
 // console.log('[RENDERER] Imports complete at', new Date().toISOString());
 
@@ -131,6 +134,7 @@ initializeTheme();
 try {
   const snapshot = await window.electronAPI.settingsGetAll();
   hydrateSettingsAtoms(snapshot as any);
+  await initRendererI18n(snapshot.uiLanguage as AppLocalePreference);
   registerSettingsChangeListener();
 } catch (err) {
   // Fail loud, fail fast: a missing settings snapshot means components would
@@ -281,7 +285,7 @@ posthog.onSessionId(async (sessionId: string, windowId, changeReason) => {
 // IPC listeners (including ai:promptClaimed) live in store/listeners/* and
 // are initialized inside App.tsx once React mounts.
 
-root.render(
+root.render(withRuntimeTranslations(
   <React.StrictMode>
     <ErrorBoundary>
       <JotaiProvider store={store}>
@@ -291,7 +295,7 @@ root.render(
       </JotaiProvider>
     </ErrorBoundary>
   </React.StrictMode>
-);
+));
 
 // console.log('[RENDERER] React render called at', new Date().toISOString());
 

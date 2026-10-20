@@ -7,6 +7,22 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { TrackerColumnDef, TypeColumnConfig } from './trackerColumns';
 
+const defaultLabels = {
+  title: 'Display Options',
+  grouping: 'Grouping',
+  groupItems: 'Group tracker items',
+  noGrouping: 'No grouping',
+  status: 'Status',
+  priority: 'Priority',
+  type: 'Type',
+  owner: 'Owner',
+  properties: 'Display properties',
+  hideColumn: 'Hide column',
+  hidden: 'Hidden',
+  show: 'Show',
+  reset: 'Reset to defaults',
+};
+
 interface DisplayOptionsPanelProps {
   /** All available columns for this type */
   availableColumns: TrackerColumnDef[];
@@ -16,6 +32,8 @@ interface DisplayOptionsPanelProps {
   onConfigChange: (config: TypeColumnConfig) => void;
   /** Close the panel */
   onClose: () => void;
+  /** Host-localized presentation; column and grouping identifiers stay unchanged. */
+  labels?: Partial<typeof defaultLabels>;
 }
 
 export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
@@ -23,7 +41,9 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
   config,
   onConfigChange,
   onClose,
+  labels,
 }) => {
+  const text = { ...defaultLabels, ...labels };
   const panelRef = useRef<HTMLDivElement>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -105,11 +125,11 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
 
   // Grouping options
   const groupByOptions = [
-    { value: '', label: 'No grouping' },
-    { value: 'status', label: 'Status' },
-    { value: 'priority', label: 'Priority' },
-    { value: 'type', label: 'Type' },
-    { value: 'owner', label: 'Owner' },
+    { value: '', label: text.noGrouping },
+    { value: 'status', label: text.status },
+    { value: 'priority', label: text.priority },
+    { value: 'type', label: text.type },
+    { value: 'owner', label: text.owner },
   ];
 
   return (
@@ -119,17 +139,17 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
     >
       {/* Header */}
       <div className="px-3 py-2 border-b border-[var(--nim-border)]">
-        <span className="text-xs font-semibold text-[var(--nim-text)]">Display Options</span>
+        <span className="text-xs font-semibold text-[var(--nim-text)]">{text.title}</span>
       </div>
 
       {/* Grouping */}
       <div className="px-3 py-2 border-b border-[var(--nim-border)]">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-[var(--nim-text-muted)]">Grouping</span>
+          <span className="text-[11px] text-[var(--nim-text-muted)]">{text.grouping}</span>
           <select
             value={config.groupBy || ''}
             onChange={(e) => onConfigChange({ ...config, groupBy: e.target.value || null })}
-            aria-label="Group tracker items"
+            aria-label={text.groupItems}
             className="text-xs bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 text-[var(--nim-text)] outline-none"
           >
             {groupByOptions.map(opt => (
@@ -141,7 +161,7 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
 
       {/* Visible columns (drag-reorderable) */}
       <div className="px-3 py-2 border-b border-[var(--nim-border)]">
-        <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">Display properties</span>
+        <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">{text.properties}</span>
         <div className="mt-1.5 space-y-0.5">
           {visibleColumns.map(col => (
             <div
@@ -163,7 +183,7 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
                 <button
                   onClick={() => toggleColumn(col.id)}
                   className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] transition-colors"
-                  title="Hide column"
+                  title={text.hideColumn}
                 >
                   <span className="material-symbols-outlined text-[14px]">visibility</span>
                 </button>
@@ -176,7 +196,7 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
       {/* Hidden columns */}
       {hiddenColumns.length > 0 && (
         <div className="px-3 py-2">
-          <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">Hidden</span>
+          <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">{text.hidden}</span>
           <div className="mt-1.5 space-y-0.5">
             {hiddenColumns.map(col => (
               <div
@@ -186,7 +206,7 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
               >
                 <span className="material-symbols-outlined text-[14px] text-[var(--nim-text-faint)]">visibility_off</span>
                 <span className="flex-1 text-[var(--nim-text-faint)]">{col.label}</span>
-                <span className="text-[10px] text-[var(--nim-primary)]">Show</span>
+                <span className="text-[10px] text-[var(--nim-primary)]">{text.show}</span>
               </div>
             ))}
           </div>
@@ -202,7 +222,7 @@ export const DisplayOptionsPanel: React.FC<DisplayOptionsPanelProps> = ({
             onConfigChange({ visibleColumns: defaults, columnWidths: {}, groupBy: null });
           }}
         >
-          Reset to defaults
+          {text.reset}
         </button>
       </div>
     </div>

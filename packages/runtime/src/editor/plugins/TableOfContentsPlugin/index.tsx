@@ -17,6 +17,7 @@ import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {TableOfContentsPlugin as LexicalTableOfContentsPlugin} from '@lexical/react/LexicalTableOfContentsPlugin';
 import {useEffect, useState, useCallback} from 'react';
 import DropDown, {DropDownItem} from '../../ui/DropDown';
+import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
 
 function getIndentClass(tagName: HeadingTagType): string {
   if (tagName === 'h2') {
@@ -34,6 +35,7 @@ function TableOfContentsDropdown({
   tableOfContents: Array<TableOfContentsEntry>;
   disabled?: boolean;
 }): JSX.Element {
+  const {t} = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   const [activeHeadingKey, setActiveHeadingKey] = useState<NodeKey | null>(null);
 
@@ -108,7 +110,7 @@ function TableOfContentsDropdown({
       disabled={disabled || !hasHeaders}
         className="table-of-contents"
       buttonIconClassName="icon table-of-contents"
-      buttonAriaLabel="Table of Contents"
+      buttonAriaLabel={t('editor:tooltips.table_of_contents', 'Table of Contents')}
       buttonClassName="toolbar-item spaced">
       {filteredTableOfContents.map(([key, text, tag]) => (
         <DropDownItem
@@ -125,7 +127,7 @@ function TableOfContentsDropdown({
         <DropDownItem
           className="item toc-item-empty"
           onClick={() => {}}>
-          <span className="text">No headers found</span>
+          <span className="text">{t('editor:toc.empty', 'No headings in document')}</span>
         </DropDownItem>
       )}
     </DropDown>

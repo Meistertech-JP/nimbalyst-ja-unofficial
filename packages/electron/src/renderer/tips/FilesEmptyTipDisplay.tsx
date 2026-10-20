@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import type { FeatureUsageRecord } from '../../shared/featureUsage';
@@ -24,6 +25,7 @@ export function FilesEmptyTipDisplay({
   workspacePath,
   onInsertPrompt,
 }: FilesEmptyTipDisplayProps) {
+  const { t } = useTranslation('common');
   const posthog = usePostHog();
   const walkthroughState = useAtomValue(walkthroughStateAtom);
   const setWalkthroughState = useSetAtom(walkthroughStateAtom);
@@ -186,7 +188,7 @@ export function FilesEmptyTipDisplay({
           className="files-empty-tip-next text-[13px] text-nim-faint bg-transparent border-none cursor-pointer font-[inherit] transition-colors duration-150 hover:text-nim-muted hover:underline"
           onClick={handleNext}
         >
-          Next tip
+          {t('tips.next')}
         </button>
       )}
       <button
@@ -200,7 +202,7 @@ export function FilesEmptyTipDisplay({
           setShowAllTipsDialog(true);
         }}
       >
-        All tips
+        {t('tips.all')}
       </button>
     </>
   );

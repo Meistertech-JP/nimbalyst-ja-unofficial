@@ -7,6 +7,9 @@
  */
 
 import type { ColumnRegular, DataType, HyperFunc, VNode, CellTemplateProp } from '@revolist/revogrid';
+import type { TFunction } from 'i18next';
+import { rendererI18n } from '../../../i18n';
+import { trackerRelativeDate } from '../trackerPresentation';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { TrackerColumnDef } from '@nimbalyst/runtime/plugins/TrackerPlugin';
 import {
@@ -15,7 +18,6 @@ import {
   getPriorityColor,
   getTypeColor,
   getFieldForColumn,
-  formatRelativeDate,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin';
 import { resolveRoleFieldName } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import { resolveCellEditor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerCellEditors';
@@ -67,13 +69,14 @@ function badgeNode(createElement: HyperFunc<VNode>, text: string, color: string)
 }
 
 /** Human-readable text for a stored value, by column render type. */
-function formatValue(col: TrackerColumnDef, value: unknown, trackerType: string): string {
+function formatValue(col: TrackerColumnDef, value: unknown, trackerType: string, t: TFunction): string {
   if (value === undefined || value === null || value === '') return '';
 
   switch (col.render) {
     case 'date': {
       const date = value instanceof Date ? value : new Date(String(value));
-      return Number.isNaN(date.getTime()) ? String(value) : formatRelativeDate(date);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return trackerRelativeDate(date, t);
     }
     case 'tags':
       return Array.isArray(value) ? value.join(', ') : String(value);
@@ -118,7 +121,7 @@ function formatValue(col: TrackerColumnDef, value: unknown, trackerType: string)
     case 'progress':
       return typeof value === 'number' ? `${value}%` : String(value);
     default:
-      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (typeof value === 'boolean') return t(value ? 'tracker:grid.boolean_yes' : 'tracker:grid.boolean_no');
       return String(value);
   }
 }
@@ -129,6 +132,7 @@ function favoriteNode(
   itemId: string,
   isFavorite: boolean,
   onToggleFavorite: (itemId: string) => void,
+  t: TFunction,
 ): VNode {
   return createElement(
     'span',
@@ -136,7 +140,7 @@ function favoriteNode(
       class: isFavorite
         ? 'tracker-grid-cell-favorite is-favorite'
         : 'tracker-grid-cell-favorite',
-      title: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+      title: t(isFavorite ? 'tracker:grid.remove_favorite' : 'tracker:grid.add_favorite'),
       // The grid focuses a cell on pointerdown, which would open the detail
       // panel behind the star. Swallow both events so the star is a pure toggle.
       onPointerDown: (e: MouseEvent) => {
@@ -161,12 +165,13 @@ function favoriteNode(
 function buildCellTemplate(
   col: TrackerColumnDef,
   trackerType: string,
+  t: TFunction,
   favorites?: FavoritesOptions,
 ) {
   return (createElement: HyperFunc<VNode>, props: CellTemplateProp): VNode => {
     const value = props.model?.[col.id];
     const rowType = trackerType || String(props.model?.[ROW_ITEM_TYPE] ?? '');
-    const text = formatValue(col, value, rowType);
+    const text = formatValue(col, value, rowType, t);
 
     // The title column carries the favorite star, so it renders even when the
     // title itself is empty.
@@ -178,6 +183,7 @@ function buildCellTemplate(
           itemId,
           favorites.favoriteItemIds.has(itemId),
           favorites.onToggleFavorite,
+          t,
         ),
         textNode(createElement, text),
       ]);
@@ -213,6 +219,8 @@ export interface FavoritesOptions {
 }
 
 export interface BuildGridColumnsOptions {
+  /** Renderer translations; only display strings are localized. */
+  t?: TFunction;
   /** Active tracker type; `'all'` means a mixed-type view. */
   trackerType: string;
   /** Persisted per-column width overrides. */
@@ -239,6 +247,7 @@ export interface BuildGridColumnsOptions {
 function buildColumnTemplate(
   col: TrackerColumnDef,
   isFiltered: boolean,
+  t: TFunction,
   onOpenFilter?: (columnId: string, anchorRect: DOMRect) => void,
 ) {
   return (createElement: HyperFunc<VNode>): VNode => createElement(
@@ -254,7 +263,7 @@ function buildColumnTemplate(
               class: isFiltered
                 ? 'tracker-grid-header-filter is-filtered'
                 : 'tracker-grid-header-filter',
-              title: isFiltered ? 'Column filtered' : `Filter ${col.label}`,
+              title: isFiltered ? t('tracker:grid.column_filtered') : t('tracker:grid.filter_column', { column: col.label }),
               onClick: (e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -283,6 +292,7 @@ function buildColumnTemplate(
 export function buildGridColumns(
   columns: TrackerColumnDef[],
   {
+    t = rendererI18n.t,
     trackerType,
     columnWidths = {},
     isRowEditable,
@@ -323,12 +333,13 @@ export function buildGridColumns(
         }
         return typeof itemId === 'string' ? !isRowEditable(itemId) : true;
       },
-      cellTemplate: buildCellTemplate(col, trackerType, favorites),
+      cellTemplate: buildCellTemplate(col, trackerType, t, favorites),
       ...(onOpenFilter
         ? {
           columnTemplate: buildColumnTemplate(
             col,
             filteredColumnIds?.has(col.id) ?? false,
+            t,
             onOpenFilter,
           ),
         }

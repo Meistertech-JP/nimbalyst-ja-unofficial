@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useFloating, offset, flip, shift, FloatingPortal } from '@floating-ui/react';
 import { MaterialSymbol, TrackerUnreadDot } from '@nimbalyst/runtime';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
@@ -122,6 +123,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   favoriteItemIds = new Set<string>(),
   onToggleFavorite,
 }) => {
+  const { t } = useTranslation(['tracker']);
   // Items always come from the caller (TrackerMainView passes atom-sourced items).
   // KanbanBoard no longer loads its own data -- single source of truth via Jotai atoms.
   const allItems = useMemo(() => {
@@ -544,7 +546,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div className="flex-1 flex items-center justify-center text-nim-muted">
         <div className="text-center">
           <MaterialSymbol icon="view_kanban" size={48} className="opacity-30" />
-          <p className="mt-2 text-sm">No items to display</p>
+          <p className="mt-2 text-sm">{t('tracker:kanban.no_items')}</p>
         </div>
       </div>
     );
@@ -554,7 +556,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     <div className="tracker-kanban-board h-full flex flex-col overflow-hidden relative" data-testid="tracker-kanban-board">
       {/* Sort controls */}
       <div className="flex items-center gap-2 px-3 pt-2 pb-0">
-        <span className="text-[11px] text-nim-faint">Sort:</span>
+        <span className="text-[11px] text-nim-faint">{t('tracker:kanban.sort')}</span>
         {(['manual', 'priority', 'created', 'updated'] as const).map(mode => (
           <button
             key={mode}
@@ -636,7 +638,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       style={{ backgroundColor: PRIORITY_COLORS[getRecordPriority(item) || 'medium'] || '#6b7280' }}
                     />
                     <TrackerUnreadDot itemId={item.id} className="mt-1" />
-                    <TrackerFavoriteStar itemId={item.id} isFavorite={favoriteItemIds.has(item.id)} onToggle={onToggleFavorite} />
+                    <TrackerFavoriteStar itemId={item.id} isFavorite={favoriteItemIds.has(item.id)} ariaLabel={t(favoriteItemIds.has(item.id) ? 'tracker:grid.remove_favorite' : 'tracker:grid.add_favorite')} onToggle={onToggleFavorite} />
                     <div className="flex-1 min-w-0">
                       {(() => {
                         // externalKey role (e.g. a PR number) rides next to the
@@ -728,12 +730,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="px-3 py-1 text-[11px] text-nim-faint font-medium">
-            {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+            {t('tracker:kanban.selected_count', { count: selectedIds.size })}
           </div>
           <div className="border-b border-nim my-1" />
 
           {/* Set Status */}
-          <KanbanContextSubmenu label="Set Status" icon="swap_horiz">
+          <KanbanContextSubmenu label={t('tracker:kanban.set_status')} icon="swap_horiz">
             {columns.map(col => (
               <button
                 key={col.value}
@@ -750,7 +752,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </KanbanContextSubmenu>
 
           {/* Set Priority */}
-          <KanbanContextSubmenu label="Set Priority" icon="flag">
+          <KanbanContextSubmenu label={t('tracker:kanban.set_priority')} icon="flag">
             {(['critical', 'high', 'medium', 'low'] as const).map(p => (
               <button
                 key={p}
@@ -761,7 +763,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: PRIORITY_COLORS[p] || '#6b7280' }}
                 />
-                {p.charAt(0).toUpperCase() + p.slice(1)}
+                {t(`tracker:kanban.priority_${p}`)}
               </button>
             ))}
           </KanbanContextSubmenu>
@@ -778,7 +780,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               }}
             >
               <MaterialSymbol icon="link" size={16} />
-              Copy Link
+              {t('tracker:kanban.copy_link')}
             </button>
           )}
 
@@ -792,7 +794,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               }}
             >
               <MaterialSymbol icon="archive" size={16} />
-              Archive
+              {t('tracker:kanban.archive')}
             </button>
           )}
 
@@ -802,14 +804,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               onClick={() => {
                 closeContextMenu();
                 const ids = Array.from(selectedIds);
-                if (window.confirm(`Delete ${ids.length} item${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) {
+                if (window.confirm(t('tracker:kanban.delete_confirm', { count: ids.length }))) {
                   onDeleteItems(ids);
                   setSelectedIds(new Set());
                 }
               }}
             >
               <MaterialSymbol icon="delete" size={16} />
-              Delete
+              {t('tracker:kanban.delete')}
             </button>
           )}
         </div>

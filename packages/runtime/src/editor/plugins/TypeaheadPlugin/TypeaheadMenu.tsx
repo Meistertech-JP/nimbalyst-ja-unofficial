@@ -39,6 +39,7 @@ import {
   RangeSelection,
   TextNode,
 } from 'lexical';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 // ============================================================================
   // TYPES
@@ -58,6 +59,8 @@ import {
     disabled?: boolean;
     type?: 'option' | 'header';
     section?: string; // New: automatically groups options by section
+    /** Display-only label; section remains the stable grouping/sorting key. */
+    sectionLabel?: string;
     hidden?: boolean; // Hide this option from the menu
     flag?: 'beta' | 'new' | 'experimental' | 'developer'; // Add visual flags to menu items
     /** Optional tooltip text shown on hover */
@@ -226,6 +229,7 @@ import {
     className = '',
     selectedClassName = '',
   }) => {
+    const { t } = useRuntimeTranslation();
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -311,7 +315,10 @@ import {
                   border: `1px solid ${option.flag === 'beta' ? '#ff6b35' : option.flag === 'new' ? '#00c851' : option.flag === 'developer' ? '#6f42c1' : '#ff4444'}`,
                   flexShrink: 0,
                 }}>
-                  {option.flag}
+                  {option.flag === 'beta' ? t('dialogs:blitz.beta', 'Beta')
+                    : option.flag === 'new' ? t('editor:typeahead.new_flag', 'New')
+                    : option.flag === 'experimental' ? t('settings:agent_features.experimental', 'Experimental')
+                    : option.flag === 'developer' ? t('menu:developer', 'Developer') : option.flag}
                 </span>
               )}
             </div>
@@ -427,6 +434,7 @@ import {
     selectedOptionClassName = '',
     anchorElem,
   }) => {
+    const { t } = useRuntimeTranslation();
     const virtualReference = useMemo<VirtualElement>(() => ({
       getBoundingClientRect: resolution.getRect,
       contextElement: anchorElem ?? undefined,
@@ -529,7 +537,7 @@ import {
                   <div key={sectionName} className="typeahead-section">
                     {sectionName !== '_default' && (
                       <div className="typeahead-section-header px-2.5 py-1.5 bg-nim-tertiary text-[0.7rem] font-semibold text-nim-muted uppercase tracking-wide m-0 pointer-events-none">
-                        {sectionName}
+                        {sectionOptions[0]?.sectionLabel ?? sectionName}
                       </div>
                     )}
                     {sectionOptions.map((option) => {
@@ -566,7 +574,7 @@ import {
             )}
             {options.length === 0 && (
               <div className="p-4 text-center text-nim-faint italic">
-                No matches found
+                {t('editor:typeahead.no_matches', 'No matches found')}
               </div>
             )}
           </div>

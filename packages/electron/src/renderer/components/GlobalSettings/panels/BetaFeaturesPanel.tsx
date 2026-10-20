@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import { SettingsToggle } from '../SettingsToggle';
@@ -21,6 +22,7 @@ import {
  * are user-facing and discoverable.
  */
 export function BetaFeaturesPanel() {
+  const { t } = useTranslation(['settings']);
   const posthog = usePostHog();
   const [settings] = useAtom(advancedSettingsAtom);
   const [, updateSettings] = useAtom(setAdvancedSettingsAtom);
@@ -30,10 +32,10 @@ export function BetaFeaturesPanel() {
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">
-          Beta Features
+          {t('settings:beta.title')}
         </h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Try out new features before they are generally available. Beta features may not be fully complete or polished, and may be removed in the future.
+          {t('settings:beta.description')}
         </p>
       </div>
 
@@ -54,8 +56,8 @@ export function BetaFeaturesPanel() {
                   enabled,
                 });
               }}
-              name="Enable All Beta Features"
-              description="Automatically enable all current and future beta features."
+              name={t('settings:beta.enable_all')}
+              description={t('settings:beta.enable_all_desc')}
             />
           </div>
 
@@ -96,7 +98,7 @@ export function BetaFeaturesPanel() {
           ))}
         </div>
         <p className="mt-3 p-2 text-[13px] text-[var(--nim-text-muted)] bg-nim-secondary rounded border border-nim">
-          Some beta features may require restarting Nimbalyst to take effect.
+          {t('settings:beta.restart_required')}
         </p>
       </div>
     </div>

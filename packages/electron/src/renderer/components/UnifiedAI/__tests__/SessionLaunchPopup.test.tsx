@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import i18next from 'i18next';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -24,6 +25,7 @@ vi.mock('../AIInput', () => ({
           ref={input}
           data-testid={props.testId}
           data-session-id={props.sessionId}
+          placeholder={props.placeholder}
           value={props.value}
           onChange={(event) => props.onChange(event.target.value)}
         />
@@ -76,9 +78,26 @@ describe('SessionLaunchPopup', () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
     vi.unstubAllGlobals();
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes the popup and validates /plan without changing the fixed command', async () => {
+    await i18next.changeLanguage('ja');
+    const testStore = createStore();
+    testStore.set(activeWorkspacePathAtom, '/workspace');
+    initWorkstreamState('/workspace');
+    render(<Provider store={testStore}><SessionLaunchPopup workspacePath="/workspace" /></Provider>);
+    act(() => testStore.set(sessionLaunchPopupRequestAtom, 1));
+    expect(await screen.findByRole('dialog', { name: '新しいセッションを開始' })).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText('質問や指示を入力…'), { target: { value: '/plan' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start Session' }));
+    expect(await screen.findByText('セッションを開始する前に、/planの後に指示を入力してください。')).toBeTruthy();
+    expect(invoke.mock.calls.some(([channel]) => channel === 'sessions:create')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'セッション起動ポップアップを閉じる' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('preserves a draft across dismiss/reopen and launches without changing modes', async () => {
@@ -239,7 +258,25 @@ describe('SessionLaunchPopup', () => {
 });
 
 describe('launchSessionPrompt', () => {
-  afterEach(() => cleanup());
+  afterEach(async () => {
+    cleanup();
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes a missing CLI error without attempting prompt submission', async () => {
+    await i18next.changeLanguage('ja');
+    const ensureClaudeCliSession = vi.fn().mockResolvedValue({ success: false, claudeNotInstalled: true });
+    const submitClaudeCliPrompt = vi.fn();
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { terminal: { ensureClaudeCliSession, submitClaudeCliPrompt } },
+    });
+    await expect(launchSessionPrompt({
+      sessionId: 'session-ja', workspacePath: '/workspace', provider: 'claude-code-cli',
+      model: 'claude-code-cli:sonnet', prompt: 'Run the tests', mode: 'agent', attachments: [],
+    })).rejects.toThrow('Claude Code CLIがインストールされていません。');
+    expect(submitClaudeCliPrompt).not.toHaveBeenCalled();
+  });
 
   it('explicitly starts and submits genuine CLI sessions from the user-triggered popup', async () => {
     const ensureClaudeCliSession = vi.fn().mockResolvedValue({ success: true });

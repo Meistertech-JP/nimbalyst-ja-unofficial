@@ -5,13 +5,14 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { registerDialog } from '../contexts/DialogContext';
 import type { DialogConfig } from '../contexts/DialogContext.types';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { DIALOG_IDS } from './registry';
 import { ShareToTeamDialog } from '../components/ShareToTeamDialog';
 import { AlphaBadge } from '../components/common/AlphaBadge';
-import { TEAM_ALPHA_TOOLTIP, TeamAlphaNotice } from '../components/common/TeamAlphaNotice';
+import { TeamAlphaNotice } from '../components/common/TeamAlphaNotice';
 import type { CollaborativeDocumentTypeDescriptor } from '../services/CollaborativeDocumentTypeCatalog';
 import type { EmbeddedDocumentCandidate } from '../services/embeddedDocumentShare';
 
@@ -64,6 +65,7 @@ function CreateTeamDialogWrapper({
   onClose: () => void;
   data: CreateTeamData;
 }) {
+  const { t } = useTranslation(['common', 'project', 'settings']);
   const [teamName, setTeamName] = useState(data.suggestedName);
   const [selectedAccountOrgId, setSelectedAccountOrgId] = useState(
     getDefaultCreateTeamAccountId(data.accounts),
@@ -91,7 +93,7 @@ function CreateTeamDialogWrapper({
 
   return (
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60"
+      className="create-team-dialog fixed inset-0 z-[10000] flex items-center justify-center bg-black/60"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -103,11 +105,11 @@ function CreateTeamDialogWrapper({
         {/* Header */}
         <div className="px-6 pt-5 pb-0">
           <h3 className="flex items-center gap-2 text-lg font-semibold text-[var(--nim-text)] mb-1">
-            Create organization
-            <AlphaBadge size="sm" tooltip={TEAM_ALPHA_TOOLTIP} />
+            {t('settings:project_sharing.create_organization')}
+            <AlphaBadge size="sm" tooltip={t('settings:organization_ui.alpha_tooltip')} />
           </h3>
           <p className="text-[13px] text-[var(--nim-text-faint)] mb-3">
-            Members of an organization can collaborate on shared tracker items and documents.
+            {t('common:team_mode.create_description')}
           </p>
           <TeamAlphaNotice className="mb-5" />
         </div>
@@ -118,7 +120,7 @@ function CreateTeamDialogWrapper({
           {showAccountPicker && (
             <div className="mb-4">
               <label className="block text-[12px] font-medium text-[var(--nim-text-muted)] mb-1.5">
-                Account
+                {t('common:account')}
               </label>
               <div className="create-team-account-picker flex flex-col gap-2">
                 {data.accounts.map((account) => (
@@ -136,12 +138,12 @@ function CreateTeamDialogWrapper({
                     <span className="min-w-0 flex-1 truncate select-text text-[13px] text-[var(--nim-text)]">
                       {account.email || account.personalOrgId}
                     </span>
-                    {account.isSyncAccount && <span className="text-[10px] text-[var(--nim-text-muted)]">Used for sync</span>}
+                    {account.isSyncAccount && <span className="text-[10px] text-[var(--nim-text-muted)]">{t('settings:sync.used_for_sync')}</span>}
                   </label>
                 ))}
               </div>
               <div className="text-[11px] text-[var(--nim-text-disabled)] mt-1">
-                The organization will be created under this account.
+                {t('common:team_mode.create_account_note')}
               </div>
             </div>
           )}
@@ -149,7 +151,7 @@ function CreateTeamDialogWrapper({
           {/* Team Name */}
           <div className="mb-4">
             <label className="block text-[12px] font-medium text-[var(--nim-text-muted)] mb-1.5">
-              Organization name
+              {t('settings:organization_ui.name')}
             </label>
             <input
               type="text"
@@ -160,14 +162,14 @@ function CreateTeamDialogWrapper({
               autoFocus
             />
             <div className="text-[11px] text-[var(--nim-text-disabled)] mt-1">
-              Visible to everyone in the organization.
+              {t('common:team_mode.name_hint')}
             </div>
           </div>
 
           {/* Git Remote */}
           <div className="mb-4">
             <label className="block text-[12px] font-medium text-[var(--nim-text-muted)] mb-1.5">
-              Git Remote
+              {t('project:team.git_remote')}
             </label>
             <div className="w-full px-3 py-2 border border-[var(--nim-bg-tertiary)] rounded-md bg-[var(--nim-bg-secondary)] text-[var(--nim-text-faint)] text-[12px] font-mono">
               {data.gitRemote}
@@ -175,25 +177,25 @@ function CreateTeamDialogWrapper({
             <div className="flex items-center gap-1.5 mt-1">
               <div className="w-1.5 h-1.5 rounded-full bg-[var(--nim-success)]" />
               <span className="text-[11px] text-[var(--nim-success)]">
-                Detected from git remote origin
+                {t('project:team.git_remote_detected')}
               </span>
             </div>
             <div className="text-[11px] text-[var(--nim-text-disabled)] mt-1.5">
-              Any member who opens a clone of this repo will be automatically connected.
+              {t('common:team_mode.remote_hint')}
             </div>
           </div>
 
           {/* Encryption Info */}
           <div className="mb-0">
             <label className="block text-[12px] font-medium text-[var(--nim-text-muted)] mb-1.5">
-              Encryption
+              {t('project:team.encryption')}
             </label>
             <div className="flex items-start gap-2 p-3 bg-[var(--nim-bg-secondary)] rounded-md border border-[var(--nim-bg-tertiary)]">
               <MaterialSymbol icon="lock" size={16} className="text-[var(--nim-success)] shrink-0 mt-0.5" />
               <div>
-                <div className="text-[12px] font-medium text-[var(--nim-text)] mb-0.5">Encrypted at rest</div>
+                <div className="text-[12px] font-medium text-[var(--nim-text)] mb-0.5">{t('common:team_mode.encrypted_at_rest')}</div>
                 <div className="text-[11px] text-[var(--nim-text-faint)] leading-snug">
-                  Organization data is encrypted at rest, with keys managed by the service. Members can access shared content as soon as they join, with no key exchange or need to be online at the same time.
+                  {t('common:team_mode.encryption_description')}
                 </div>
               </div>
             </div>
@@ -206,7 +208,7 @@ function CreateTeamDialogWrapper({
             onClick={onClose}
             className="px-4 py-2 bg-transparent border border-[var(--nim-border)] rounded-md text-[var(--nim-text-muted)] text-[13px] cursor-pointer hover:bg-[var(--nim-bg-hover)]"
           >
-            Cancel
+            {t('common:cancel')}
           </button>
           <button
             onClick={handleCreate}
@@ -217,7 +219,7 @@ function CreateTeamDialogWrapper({
                 : 'cursor-not-allowed opacity-50'
             }`}
           >
-            Create organization
+            {t('settings:project_sharing.create_organization')}
           </button>
         </div>
       </div>

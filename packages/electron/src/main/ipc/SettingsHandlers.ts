@@ -46,6 +46,10 @@ import { logger } from '../utils/logger';
 import { getSettingsService, isSettingKey } from '../services/SettingsService';
 import { SessionNamingService } from '../services/SessionNamingService';
 import { getDialogDefaultPath, rememberDialogSelection } from '../utils/dialogPaths';
+import { handleLanguageChange } from '../i18n';
+import { coordinateUiLanguageChange } from '../i18n/languageChangeCoordinator';
+import { updateApplicationMenu } from '../menu/ApplicationMenu';
+import type { AppLocalePreference } from '../../shared/i18n/types';
 import { SoundNotificationService } from '../services/SoundNotificationService';
 import { autoUpdaterService } from '../services/autoUpdater';
 import type { OnboardingState } from '../utils/store';
@@ -129,25 +133,45 @@ export function registerSettingsHandlers() {
     const settingsService = getSettingsService();
     settingsService.init();
 
+    let uiLanguageSyncQueue = Promise.resolve();
+    const syncUiLanguage = async (key: string, value: unknown): Promise<void> => {
+        if (key !== 'uiLanguage') return;
+
+        const nextSync = uiLanguageSyncQueue.then(() => coordinateUiLanguageChange(
+            key,
+            () => handleLanguageChange(value as AppLocalePreference),
+            updateApplicationMenu,
+        ));
+        uiLanguageSyncQueue = nextSync.catch((error) => {
+            // Persisting the setting remains successful even if applying it to
+            // the current main-process UI fails. Keep the queue usable so a
+            // subsequent language change can recover without restarting.
+            logger.main.error('[i18n] Failed to apply UI language change:', error);
+        });
+        await uiLanguageSyncQueue;
+    };
+
     safeHandle('settings:getAll', () => {
         return settingsService.getAll();
     });
 
-    safeHandle('settings:set', (_event, key: string, value: unknown) => {
+    safeHandle('settings:set', async (_event, key: string, value: unknown) => {
         if (!isSettingKey(key)) {
             // Reject loudly -- a renderer asking for an unknown key is a
             // registry/key mismatch we want to catch in dev, not paper over.
             throw new Error(`[settings:set] Unknown setting key: ${key}`);
         }
         settingsService.set(key, value as any);
+        await syncUiLanguage(key, settingsService.get(key));
         return { ok: true };
     });
 
-    safeHandle('settings:delete', (_event, key: string) => {
+    safeHandle('settings:delete', async (_event, key: string) => {
         if (!isSettingKey(key)) {
             throw new Error(`[settings:delete] Unknown setting key: ${key}`);
         }
         settingsService.delete(key);
+        await syncUiLanguage(key, settingsService.get(key));
         return { ok: true };
     });
 
@@ -156,13 +180,23 @@ export function registerSettingsHandlers() {
         return getAppSetting(key);
     });
 
-    safeHandle('app-settings:set', (event, key: string, value: unknown) => {
-        setAppSetting(key, value);
+    safeHandle('app-settings:set', async (event, key: string, value: unknown) => {
+        let persistedValue = value;
+        if (key === 'uiLanguage') {
+            // Keep legacy callers compatible, but route the language setting
+            // through the flat-key authority so every renderer receives the
+            // same `settings:changed` notification as the Settings UI.
+            settingsService.set('uiLanguage', value as AppLocalePreference);
+            persistedValue = settingsService.get('uiLanguage');
+        } else {
+            setAppSetting(key, value);
+        }
+        await syncUiLanguage(key, persistedValue);
         // Broadcast to every OTHER window so cross-window state (e.g.
         // navigation-gutter customization) stays in lockstep without a reload.
         // Exclude the sender: it already applied the change locally before
         // invoking, and re-applying its own write would be redundant.
-        const payload = { key, value };
+        const payload = { key, value: persistedValue };
         for (const win of BrowserWindow.getAllWindows()) {
             if (win.isDestroyed()) continue;
             if (win.webContents.id === event.sender.id) continue;

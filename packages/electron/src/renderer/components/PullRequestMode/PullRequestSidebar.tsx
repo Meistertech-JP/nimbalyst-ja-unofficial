@@ -12,6 +12,7 @@
 
 import type { JSX } from 'react';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { getRecordStatus, getStatusOptions } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
@@ -27,13 +28,13 @@ interface PullRequestSidebarProps {
   onToggleTrackerStatusFilter: (status: string) => void;
 }
 
-const FILTER_CHIPS: { id: PrFilterChip; label: string; icon: string }[] = [
-  { id: 'open', label: 'Open', icon: 'radio_button_unchecked' },
-  { id: 'closed', label: 'Closed', icon: 'cancel' },
-  { id: 'awaiting-review', label: 'Awaiting my review', icon: 'rate_review' },
-  { id: 'created-by-me', label: 'Created by me', icon: 'person' },
-  { id: 'with-conflicts', label: 'With conflicts', icon: 'merge_type' },
-  { id: 'draft', label: 'Draft', icon: 'edit_note' },
+const FILTER_CHIPS: { id: PrFilterChip; icon: string }[] = [
+  { id: 'open', icon: 'radio_button_unchecked' },
+  { id: 'closed', icon: 'cancel' },
+  { id: 'awaiting-review', icon: 'rate_review' },
+  { id: 'created-by-me', icon: 'person' },
+  { id: 'with-conflicts', icon: 'merge_type' },
+  { id: 'draft', icon: 'edit_note' },
 ];
 
 interface TrackerStatusChip {
@@ -51,6 +52,7 @@ export function PullRequestSidebar({
   activeTrackerStatusFilters,
   onToggleTrackerStatusFilter,
 }: PullRequestSidebarProps): JSX.Element {
+  const { t } = useTranslation(['common']);
   const prList = useAtomValue(prListAtom);
   const trackerReferences = usePrTrackerReferences(remote);
 
@@ -100,7 +102,7 @@ export function PullRequestSidebar({
     >
       <div className="px-3 py-2 border-b border-nim">
         <div className="text-[11px] font-semibold text-nim-muted uppercase tracking-wider">
-          Pull Requests
+          {t('common:pull_request.sidebar_title')}
         </div>
         {remote && (
           <div className="text-[11px] text-nim-faint truncate mt-0.5" title={remote}>
@@ -111,7 +113,7 @@ export function PullRequestSidebar({
 
       <div className="px-2 pt-2 pb-1">
         <div className="text-[10px] font-semibold text-nim-faint uppercase tracking-wider px-1 mb-1.5">
-          Filters
+          {t('common:pull_request.filters')}
         </div>
         <div className="flex flex-wrap gap-1">
           {FILTER_CHIPS.map((chip) => {
@@ -128,7 +130,15 @@ export function PullRequestSidebar({
                 onClick={() => onToggleFilter(chip.id)}
               >
                 <MaterialSymbol icon={chip.icon} size={13} />
-                {chip.label}
+                {t(`common:pull_request.${
+                  chip.id === 'awaiting-review'
+                    ? 'awaiting_review'
+                    : chip.id === 'created-by-me'
+                      ? 'created_by_me'
+                      : chip.id === 'with-conflicts'
+                        ? 'with_conflicts'
+                        : chip.id
+                }`)}
               </button>
             );
           })}
@@ -138,7 +148,7 @@ export function PullRequestSidebar({
       {trackerStatusChips.length > 0 && (
         <div className="px-2 pt-2 pb-1" data-testid="pr-tracker-status-filters">
           <div className="text-[10px] font-semibold text-nim-faint uppercase tracking-wider px-1 mb-1.5">
-            Review Status
+            {t('common:pull_request.review_status')}
           </div>
           <div className="flex flex-wrap gap-1">
             {trackerStatusChips.map((chip) => {

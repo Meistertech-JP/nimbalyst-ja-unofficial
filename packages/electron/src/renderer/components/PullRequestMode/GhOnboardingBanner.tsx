@@ -11,6 +11,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { getGhCliService, type GhCliStatus } from '../../services/RendererGhCliService';
 
@@ -31,6 +32,7 @@ export function GhOnboardingBanner({
   onDismiss,
   visible = true,
 }: GhOnboardingBannerProps): JSX.Element | null {
+  const { t } = useTranslation(['dialogs']);
   const [status, setStatus] = useState<GhCliStatus | null>(initialStatus ?? null);
   const [isRechecking, setIsRechecking] = useState(false);
 
@@ -85,17 +87,16 @@ export function GhOnboardingBanner({
       <div className="flex-1 min-w-0">
         {notInstalled ? (
           <>
-            <div className="font-medium text-nim text-sm">GitHub CLI is required</div>
+            <div className="font-medium text-nim text-sm">{t('dialogs:github.cli_required')}</div>
             <div className="text-nim-muted text-xs mt-1">
-              PR review uses your <code className="font-mono">gh</code> CLI for all GitHub access.
-              Nimbalyst stores no tokens.
+              {t('dialogs:github.cli_description')}
             </div>
           </>
         ) : (
           <>
-            <div className="font-medium text-nim text-sm">Sign in to GitHub</div>
+            <div className="font-medium text-nim text-sm">{t('dialogs:github.sign_in')}</div>
             <div className="text-nim-muted text-xs mt-1 flex items-center gap-2 flex-wrap">
-              Run
+              {t('dialogs:github.run')}
               <code className="font-mono bg-nim px-1.5 py-0.5 rounded text-nim">
                 {GH_LOGIN_COMMAND}
               </code>
@@ -103,11 +104,11 @@ export function GhOnboardingBanner({
                 type="button"
                 className="text-nim-link hover:text-nim-link-hover hover:underline text-xs"
                 onClick={handleCopyCommand}
-                title="Copy command"
+                title={t('dialogs:github.copy_command')}
               >
-                Copy
+                {t('dialogs:github.copy')}
               </button>
-              in your terminal. Nimbalyst will pick up your session automatically.
+              {t('dialogs:github.terminal_hint')}
             </div>
           </>
         )}
@@ -120,7 +121,7 @@ export function GhOnboardingBanner({
             className="nim-button text-xs px-3 py-1.5"
             onClick={handleInstallClick}
           >
-            Install gh
+            {t('dialogs:github.install')}
           </button>
         )}
         <button
@@ -129,15 +130,15 @@ export function GhOnboardingBanner({
           onClick={handleRecheck}
           disabled={isRechecking}
         >
-          {isRechecking ? 'Checking…' : 'Recheck'}
+          {isRechecking ? t('dialogs:github.checking') : t('dialogs:github.recheck')}
         </button>
         {onDismiss && (
           <button
             type="button"
             className="text-nim-muted hover:text-nim p-1"
             onClick={onDismiss}
-            title="Dismiss"
-            aria-label="Dismiss"
+            title={t('dialogs:github.dismiss')}
+            aria-label={t('dialogs:github.dismiss')}
           >
             <MaterialSymbol icon="close" size={16} />
           </button>

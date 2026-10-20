@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { getCursorCoordinates } from './typeaheadUtils';
 
@@ -6,8 +7,10 @@ export interface TypeaheadOption {
   id: string;
   label: string;
   description?: string | React.ReactElement;
+  descriptionTranslation?: { key: string; values?: Record<string, string | number> };
   icon?: string | React.ReactElement;
   section?: string;
+  sectionLabelKey?: string;
   data?: any;
   disabled?: boolean;
 }
@@ -60,6 +63,7 @@ export function GenericTypeahead({
   maxWidth = 600,
   sectionOrder
 }: GenericTypeaheadProps) {
+  const { t } = useTranslation('editor');
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [isPositioned, setIsPositioned] = useState(false);
@@ -273,7 +277,11 @@ export function GenericTypeahead({
         {groupedOptions.map(({ section, options: sectionOptions }, groupIndex) => (
           <div key={section || groupIndex} className="generic-typeahead-section py-0.5 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-nim">
             {section && (
-              <div className="generic-typeahead-section-header px-3 pt-1.5 pb-1 text-[0.6875rem] font-semibold text-nim-faint uppercase tracking-wide">{section}</div>
+              <div className="generic-typeahead-section-header px-3 pt-1.5 pb-1 text-[0.6875rem] font-semibold text-nim-faint uppercase tracking-wide">
+                {sectionOptions[0]?.sectionLabelKey
+                  ? t(sectionOptions[0].sectionLabelKey, { defaultValue: section })
+                  : sectionOptions.every(option => !option.section) ? t('typeahead.other') : section}
+              </div>
             )}
             {sectionOptions.map((option) => {
               // Calculate visual index based on flat ordered list (matches navigation order)
@@ -307,7 +315,9 @@ export function GenericTypeahead({
                     </div>
                     {option.description && (
                       <div className="generic-typeahead-option-description text-xs text-nim-faint break-words leading-snug">
-                        {option.description}
+                        {option.descriptionTranslation && typeof option.description === 'string'
+                          ? t(option.descriptionTranslation.key, { ...option.descriptionTranslation.values, defaultValue: option.description })
+                          : option.description}
                       </div>
                     )}
                   </div>

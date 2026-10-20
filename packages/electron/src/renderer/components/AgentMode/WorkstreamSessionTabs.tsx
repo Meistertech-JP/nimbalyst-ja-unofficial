@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
 import { store } from '@nimbalyst/runtime/store';
@@ -61,6 +62,7 @@ const SessionTab: React.FC<{
   onUnarchive?: () => void;
   onRename?: (newName: string) => void;
 }> = React.memo(({ sessionId, isActive, onClick, onArchive, onUnarchive, onRename }) => {
+  const { t } = useTranslation(['agents']);
   const title = useAtomValue(sessionTitleAtom(sessionId));
   const provider = useAtomValue(sessionProviderAtom(sessionId));
   const isProcessing = useAtomValue(sessionProcessingAtom(sessionId));
@@ -119,7 +121,7 @@ const SessionTab: React.FC<{
         } ${hasUnread ? 'unread' : ''} ${isArchived ? 'opacity-60' : ''}`}
         onClick={onClick}
         onContextMenu={handleContextMenu}
-        title={title || 'Untitled'}
+        title={title || t('agents:session_tabs.untitled')}
       >
         {isProcessing && (
           <span className="session-tab-processing-dot w-1.5 h-1.5 rounded-full bg-[var(--nim-primary)] animate-pulse" />
@@ -142,7 +144,7 @@ const SessionTab: React.FC<{
           />
         ) : (
           <span className={`session-tab-title max-w-[150px] overflow-hidden text-ellipsis ${hasUnread ? 'font-semibold' : ''}`}>
-            {title || 'Untitled'}
+            {title || t('agents:session_tabs.untitled')}
           </span>
         )}
         {hasUnread && !isRenaming && (
@@ -154,7 +156,7 @@ const SessionTab: React.FC<{
       {showContextMenu && (
         <SessionContextMenu
           sessionId={sessionId}
-          title={title || 'Untitled'}
+          title={title || t('agents:session_tabs.untitled')}
           position={contextMenuPosition}
           onClose={() => setShowContextMenu(false)}
           isArchived={isArchived}
@@ -183,6 +185,7 @@ const SessionTabBar: React.FC<{
   onSessionUnarchive?: (sessionId: string) => void;
   onSessionRename?: (sessionId: string, newName: string) => void;
 }> = React.memo(({ sessions, activeSessionId, onSessionSelect, onNewSession, onSessionArchive, onSessionUnarchive, onSessionRename }) => {
+  const { t } = useTranslation(['agents']);
   // Always show the tab bar - even for single sessions, the user should see their session tab
   return (
     <div className="session-tab-bar flex flex-wrap items-center gap-0.5 px-3 pt-1 pb-1.5 bg-[var(--nim-bg-secondary)] border-t-[3px] border-b border-[var(--nim-border)] shrink-0">
@@ -200,7 +203,7 @@ const SessionTabBar: React.FC<{
       <button
         className="session-tab-new nim-btn-icon-sm text-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)] active:bg-[var(--nim-bg-tertiary)]"
         onClick={onNewSession}
-        title="New session in workstream"
+        title={t('agents:session_tabs.new_session')}
       >
         <MaterialSymbol icon="add" size={16} />
       </button>
@@ -230,6 +233,7 @@ export const WorkstreamSessionTabs: React.FC<WorkstreamSessionTabsProps> = React
   getDocumentContext,
   collapseTranscript = false,
 }) => {
+  const { t } = useTranslation(['agents']);
   const hasChildren = useAtomValue(workstreamHasChildrenAtom(workstreamId));
   const createChildSession = useSetAtom(createChildSessionAtom);
   const convertToWorkstream = useSetAtom(convertToWorkstreamAtom);
@@ -269,7 +273,7 @@ export const WorkstreamSessionTabs: React.FC<WorkstreamSessionTabsProps> = React
   if (!activeSessionId) {
     return (
       <div className="workstream-session-tabs-empty flex items-center justify-center h-full text-[var(--nim-text-muted)] text-sm">
-        <p>Loading sessions...</p>
+        <p>{t('agents:session_tabs.loading')}</p>
       </div>
     );
   }

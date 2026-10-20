@@ -15,6 +15,8 @@
  */
 
 import React, { useCallback, useRef, useImperativeHandle, forwardRef, useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { rendererI18n } from '../../i18n';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { store, registerInteractiveWidgetHost, unregisterInteractiveWidgetHost } from '@nimbalyst/runtime/store';
 import type { SessionData, ChatAttachment, TranscriptViewMessage } from '@nimbalyst/runtime/ai/server/types';
@@ -272,16 +274,16 @@ const readFile = async (filePath: string): Promise<{ success: boolean; content?:
   try {
     const result = await window.electronAPI.readFileContent(filePath);
     if (!result) {
-      return { success: false, error: `File not found: ${filePath}` };
+      return { success: false, error: rendererI18n.t('aichat:file_not_found', { path: filePath }) };
     }
     if (!result.success) {
-      return { success: false, error: result.error || 'Failed to read file' };
+      return { success: false, error: result.error || rendererI18n.t('aichat:read_file_failed') };
     }
     return { success: true, content: result.content };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to read file'
+      error: err instanceof Error ? err.message : rendererI18n.t('aichat:read_file_failed')
     };
   }
 };
@@ -410,6 +412,11 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   additionalTeammates,
   waitingForNoun,
 }, ref) => {
+  const { t } = useTranslation(['aichat', 'agents', 'terminal', 'dialogs']);
+  const phaseColumns = useMemo(() => SESSION_PHASE_COLUMNS.map(column => ({
+    ...column,
+    label: t(`agents:status.phase_${column.value}`),
+  })), [t]);
   const posthog = usePostHog();
   const inputRef = useRef<AIInputRef>(null);
   const transcriptPanelRef = useRef<{ scrollToMessage: (index: number) => void; scrollToTop: () => void }>(null);
@@ -878,18 +885,9 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const settingsShortcut = isMac ? 'Cmd+,' : 'Ctrl+,';
         await confirm({
-          title: 'MCP Tool Configuration Required',
-          message: [
-            'Some alternative AI providers don\'t fully support deferred tool loading (tool search).',
-            '',
-            'To fix this:',
-            `1. Open Settings (${settingsShortcut})`,
-            '2. Go to "Claude Code" panel',
-            '3. In the "Environment Variables" section, add:',
-            '   ENABLE_TOOL_SEARCH = false',
-            '4. Save and retry your request'
-          ].join('\n'),
-          confirmLabel: 'OK',
+          title: t('dialogs:mcp_tool_configuration.title'),
+          message: t('dialogs:mcp_tool_configuration.message', { shortcut: settingsShortcut }),
+          confirmLabel: t('dialogs:confirm.ok'),
           cancelLabel: ''
         });
       }
@@ -911,7 +909,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         if (sessionError.isAuthError) extra.isAuthError = true;
         if (sessionError.isCodexAuthRequired) extra.isCodexAuthRequired = true;
         const errorMessage = makeOptimisticError(
-          `Error: ${sessionError.message}`,
+          t('transcript.error_message', { message: sessionError.message }),
           Object.keys(extra).length > 0 ? extra : undefined,
         );
         updateSessionStore({
@@ -928,7 +926,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     };
 
     handleError();
-  }, [sessionError, sessionId, provider, messages, updateSessionStore, setIsProcessing, confirm]);
+  }, [sessionError, sessionId, provider, messages, updateSessionStore, setIsProcessing, confirm, t]);
 
   // Derived values
   const isLoading = isProcessing;
@@ -1205,7 +1203,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         // Revert local state since persistence failed
         setAiMode(aiMode as AIMode);
         // Show error to user
-        const errorMessage = makeOptimisticError('Failed to switch to planning mode. Please try again.');
+        const errorMessage = makeOptimisticError(t('transcript.planning_failed'));
         updateSessionStore({
           sessionId,
           updates: {
@@ -1307,7 +1305,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       console.error('[SessionTranscript] Failed to send message:', error);
       // Show error in transcript so user knows what went wrong
       const errorMessage = makeOptimisticError(
-        `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
+        t('transcript.error_message', { message: error instanceof Error ? error.message : t('transcript.send_failed') }),
       );
       updateSessionStore({
         sessionId,
@@ -1317,7 +1315,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       });
       setIsProcessing(false);
     }
-  }, [sessionId, sessionData, isLoading, getEffectiveDocumentContext, aiMode, workspacePath, setDraftInput, setDraftAttachments, setLastSubmitAt, resetHistory, updateSessionStore, handleQueue, setIsProcessing, messages, sessionHasMessages, startedCliSessionId, mode, onClearSession, onClearAgentSession, clearAIInputHistory, provider, recordClaudeActivity]);
+  }, [sessionId, sessionData, isLoading, getEffectiveDocumentContext, aiMode, workspacePath, setDraftInput, setDraftAttachments, setLastSubmitAt, resetHistory, updateSessionStore, handleQueue, setIsProcessing, messages, sessionHasMessages, startedCliSessionId, mode, onClearSession, onClearAgentSession, clearAIInputHistory, provider, recordClaudeActivity, t]);
 
   // Launch a sibling session from a `launch: new-session` action prompt.
   // Builds the originating-session mention prefix here (in the renderer) so the
@@ -1956,7 +1954,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
           ) as { success: boolean; iteration?: { superLoopId: string } | null };
 
           if (!iterationResult?.success || !iterationResult.iteration) {
-            return { success: false, error: 'Could not find Super Loop for this session' };
+            return { success: false, error: t('transcript.super_loop_not_found') };
           }
 
           const superLoopId = iterationResult.iteration.superLoopId;
@@ -2338,7 +2336,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         }}
         data-session-id={sessionId}
       >
-        {isDataLoading ? 'Loading session...' : 'Session not found'}
+        {isDataLoading ? t('transcript.loading') : t('transcript.not_found')}
       </div>
     );
   }
@@ -2422,7 +2420,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
             renderEmbeddedFile={renderEmbeddedFile}
             canEmbedFile={canEmbedFile}
             currentPhase={currentPhase}
-            phaseColumns={SESSION_PHASE_COLUMNS}
+            phaseColumns={phaseColumns}
             onSetPhase={handleSetPhase}
           />
         </div>
@@ -2511,12 +2509,12 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
               textAlign: 'left',
               flex: '0 0 auto',
             }}
-            title={cliTerminalExpanded ? 'Collapse raw terminal' : 'Expand raw terminal'}
+            title={cliTerminalExpanded ? t('terminal:collapse_raw') : t('terminal:expand_raw')}
           >
             <span style={{ transform: cliTerminalExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.1s' }}>
               ▶
             </span>
-            <span>Raw terminal</span>
+            <span>{t('terminal:raw_terminal')}</span>
           </button>
           {/* Keep the strip mounted always (PTY lifecycle); hide only its body when
               collapsed. The strip observes the always-on-screen drawer root
@@ -2587,10 +2585,10 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         onNavigateHistory={enableHistoryNavigation ? handleNavigateHistory : undefined}
         placeholder={
           mode === 'chat'
-            ? "Ask a question. @ for files, @@ for sessions, / for commands"
+            ? t('transcript.chat_placeholder')
             : enableSlashCommands
-              ? "Type your message... (Enter to send, Shift+Enter for new line, @ for files, @@ for sessions, / for commands)"
-              : "Type your message... (Enter to send, Shift+Enter for new line, @ for files, @@ for sessions, / for commands)"
+              ? t('agents:input.placeholder')
+              : t('agents:input.placeholder')
         }
         mode={aiMode as AIMode}
         onModeChange={handleAIModeChange}
@@ -2607,7 +2605,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         // AIInput.
         onModelChange={handleModelChange}
         readOnlyModel={isClaudeCliTerminalSession(provider) && cliSessionCommitted && isLoading}
-        readOnlyModelTitle="Wait for the current turn to finish before switching models"
+        readOnlyModelTitle={t('terminal:model_switch_wait')}
         sessionHasMessages={sessionHasMessages}
         currentProvider={provider ?? null}
         effortLevel={effortLevel}

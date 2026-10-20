@@ -14,6 +14,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import {
@@ -68,15 +70,16 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-function formatDuration(ms: number): string {
+function formatDuration(ms: number, t: TFunction): string {
   if (ms < 1000) return `${Math.round(ms)} ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
+  if (ms < 60_000) return t('settings:database.duration_seconds', { seconds: (ms / 1000).toFixed(1) });
   const mins = Math.floor(ms / 60_000);
   const secs = ((ms % 60_000) / 1000).toFixed(0);
-  return `${mins} min ${secs} s`;
+  return t('settings:database.duration_minutes_seconds', { minutes: mins, seconds: secs });
 }
 
 export function DatabasePanel(): React.ReactElement {
+  const { t } = useTranslation(['settings']);
   const [status, setStatus] = useState<MigrationStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [dryRunResult, setDryRunResult] = useState<DryRunResult | null>(null);
@@ -180,16 +183,10 @@ export function DatabasePanel(): React.ReactElement {
       ? (Date.now() - new Date(dryRunAvailable.completedAt).getTime()) / 3_600_000
       : 0;
     const ageBlurb = ageHrs < 1
-      ? 'less than an hour'
-      : `about ${Math.round(ageHrs)} hour${ageHrs >= 1.5 ? 's' : ''}`;
+      ? t('settings:database.age_less_than_hour')
+      : t('settings:database.age_about_hours', { count: Math.round(ageHrs) });
     const ok = window.confirm(
-      `Switch to the dry-run SQLite copy?\n\n`
-      + `Nimbalyst will:\n`
-      + `  1. Close the current PGLite database\n`
-      + `  2. Copy anything new since the dry-run (${ageBlurb} ago)\n`
-      + `  3. Make SQLite the active backend\n`
-      + `  4. Preserve the old PGLite for rollback\n\n`
-      + `A relaunch is required after switching.`,
+      t('settings:database.adopt_confirm', { age: ageBlurb }),
     );
     if (!ok) return;
     setAdoptRunning(true);
@@ -217,23 +214,23 @@ export function DatabasePanel(): React.ReactElement {
       setAdoptRunning(false);
       void loadStatus();
     }
-  }, [adoptRunning, dryRunAvailable, loadStatus]);
+  }, [adoptRunning, dryRunAvailable, loadStatus, t]);
 
   const rollback = useCallback(async () => {
     if (!window.electronAPI) return;
-    if (!window.confirm('Restore the preserved PGLite database? You will lose any data created since the migration. Requires a relaunch.')) {
+    if (!window.confirm(t('settings:database.rollback_confirm'))) {
       return;
     }
     const resp = (await window.electronAPI.invoke('db:migration:rollback')) as
       | { success: true; restoredFrom: string }
       | { success: false; error: string };
     if (!resp.success) {
-      window.alert(`Rollback failed: ${resp.error}`);
+      window.alert(t('settings:database.rollback_failed', { error: resp.error }));
     } else {
-      window.alert(`Restored from ${resp.restoredFrom}. Please relaunch Nimbalyst.`);
+      window.alert(t('settings:database.rollback_success', { path: resp.restoredFrom }));
     }
     void loadStatus();
-  }, [loadStatus]);
+  }, [loadStatus, t]);
 
   const openMigrationModal = useCallback(async () => {
     if (!window.electronAPI) return;
@@ -295,30 +292,29 @@ export function DatabasePanel(): React.ReactElement {
   }, [migrationFailure, phase, preflight, progress]);
 
   const backendLabel = useMemo(() => {
-    if (!status) return 'Loading...';
-    return status.activeBackend === 'pglite' ? 'PGLite (current)' : 'SQLite (new)';
-  }, [status]);
+    if (!status) return t('settings:database.loading');
+    return status.activeBackend === 'pglite' ? t('settings:database.backend_pglite') : t('settings:database.backend_sqlite');
+  }, [status, t]);
 
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">
-          Database Storage
+          {t('settings:database.title')}
         </h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Local storage engine for sessions, trackers, and document history.
-          PGLite is the current default; a faster SQLite backend is in alpha.
+          {t('settings:database.description')}
         </p>
       </div>
 
       {/* Current backend section ----------------------------------------- */}
       <div className="provider-panel-section mb-6">
         <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
-          Active backend
+          {t('settings:database.active_backend')}
         </h4>
         {statusError ? (
           <div className="p-3 rounded-md bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.3)] text-sm text-[var(--nim-text)]">
-            Failed to read status: {statusError}
+            {t('settings:database.status_failed', { error: statusError })}
           </div>
         ) : (
           <div className="setting-item py-2 flex items-center justify-between gap-4 nim-database-status">
@@ -328,12 +324,12 @@ export function DatabasePanel(): React.ReactElement {
               </span>
               <span className="setting-description text-xs leading-snug text-[var(--nim-text-muted)]">
                 {status?.pgliteDirExists && status?.sqliteDirExists
-                  ? 'Both pglite-db/ and sqlite-db/ exist on disk.'
+                  ? t('settings:database.status_both')
                   : status?.pgliteDirExists
-                    ? 'pglite-db/ on disk; sqlite-db/ not yet created.'
+                    ? t('settings:database.status_pglite_only')
                     : status?.sqliteDirExists
-                      ? 'sqlite-db/ on disk; legacy pglite-db/ absent.'
-                      : 'No database directory present yet.'}
+                      ? t('settings:database.status_sqlite_only')
+                      : t('settings:database.status_none')}
               </span>
             </div>
           </div>
@@ -343,14 +339,12 @@ export function DatabasePanel(): React.ReactElement {
       {/* Dry run section ------------------------------------------------- */}
       {status?.activeBackend === 'pglite' && (
         <div className="provider-panel-section mb-6">
-          <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
-            Test the SQLite migration (dry run)
-          </h4>
-          <p className="provider-panel-hint text-sm text-[var(--nim-text-muted)] mb-3">
-            Copies your data into a throwaway SQLite database alongside the live one,
-            reports row counts and integrity, then deletes the temporary copy.
-            Your real PGLite database is never touched. Available only while PGLite is active.
-          </p>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
+          {t('settings:database.dry_run_title')}
+        </h4>
+        <p className="provider-panel-hint text-sm text-[var(--nim-text-muted)] mb-3">
+          {t('settings:database.dry_run_description')}
+        </p>
 
           <button
             type="button"
@@ -359,7 +353,7 @@ export function DatabasePanel(): React.ReactElement {
             className="nim-database-dry-run-button setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-white border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)]"
           >
             <MaterialSymbol icon={dryRunRunning ? 'sync' : 'play_arrow'} size={16} />
-            {dryRunRunning ? 'Running dry run...' : 'Run dry-run migration'}
+            {dryRunRunning ? t('settings:database.running_dry_run') : t('settings:database.run_dry_run')}
           </button>
 
           {(dryRunRunning && (phase || progress)) && (
@@ -368,7 +362,7 @@ export function DatabasePanel(): React.ReactElement {
 
           {dryRunError && (
             <div className="mt-3 p-3 rounded-md bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.3)] text-sm text-[var(--nim-text)] nim-database-dry-run-error">
-              Dry run failed: {dryRunError}
+              {t('settings:database.dry_run_failed', { error: dryRunError })}
             </div>
           )}
 
@@ -395,14 +389,14 @@ export function DatabasePanel(): React.ReactElement {
       {/* Migrate (gated) section ----------------------------------------- */}
       {status?.activeBackend === 'pglite' && (
         <div className="provider-panel-section mb-6">
-          <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
-            Migrate to SQLite
-          </h4>
-          <p className="provider-panel-hint text-sm text-[var(--nim-text-muted)] mb-3">
-            Moves all your data from PGLite to SQLite. The original PGLite directory
-            is preserved at <code className="px-1 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-xs">pglite-db.migrated-&lt;timestamp&gt;/</code> and
-            can be restored from this panel.
-          </p>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
+          {t('settings:database.migrate_title')}
+        </h4>
+        <p className="provider-panel-hint text-sm text-[var(--nim-text-muted)] mb-3">
+          {t('settings:database.migrate_description_1')}{' '}
+          <code className="px-1 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-xs">pglite-db.migrated-&lt;timestamp&gt;/</code>{' '}
+          {t('settings:database.migrate_description_2')}
+        </p>
 
           <button
             type="button"
@@ -410,7 +404,7 @@ export function DatabasePanel(): React.ReactElement {
             className="setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-white border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)]"
           >
             <MaterialSymbol icon="upgrade" size={16} />
-            Migrate to SQLite
+            {t('settings:database.migrate_title')}
           </button>
         </div>
       )}
@@ -418,13 +412,12 @@ export function DatabasePanel(): React.ReactElement {
       {status?.activeBackend === 'sqlite' && (
         <div className="provider-panel-section mb-6 nim-database-already-migrated">
           <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
-            Migrated to SQLite
+            {t('settings:database.migrated_title')}
           </h4>
           <p className="provider-panel-hint text-sm text-[var(--nim-text-muted)] flex items-start gap-2">
             <MaterialSymbol icon="check_circle" size={16} />
             <span>
-              Your data is already stored in the faster SQLite backend. No further
-              migration is needed.
+              {t('settings:database.migrated_description')}
             </span>
           </p>
         </div>
@@ -434,11 +427,10 @@ export function DatabasePanel(): React.ReactElement {
       {status && status.migratedDirs.length > 0 && (
         <div className="provider-panel-section mb-6">
           <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
-            Restore previous PGLite database
+            {t('settings:database.restore_title')}
           </h4>
           <p className="provider-panel-hint text-sm text-[var(--nim-text-muted)] mb-3">
-            Preserved snapshots on disk: {status.migratedDirs.length}. The most
-            recent will be used.
+            {t('settings:database.snapshots_hint', { count: status.migratedDirs.length })}
           </p>
           <button
             type="button"
@@ -446,7 +438,7 @@ export function DatabasePanel(): React.ReactElement {
             className="setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] border border-[var(--nim-border)] cursor-pointer hover:bg-[var(--nim-hover)]"
           >
             <MaterialSymbol icon="restore" size={16} />
-            Restore from preserved PGLite
+            {t('settings:database.restore_cta')}
           </button>
         </div>
       )}
@@ -474,6 +466,7 @@ export function DatabasePanel(): React.ReactElement {
 }
 
 function DryRunResultCard({ result }: { result: DryRunResult }): React.ReactElement {
+  const { t } = useTranslation(['settings']);
   const sizeChange = result.sqliteFileBytes - result.pgliteDirBytes;
   const sizeChangePct = result.pgliteDirBytes > 0
     ? ((sizeChange / result.pgliteDirBytes) * 100).toFixed(1)
@@ -481,26 +474,30 @@ function DryRunResultCard({ result }: { result: DryRunResult }): React.ReactElem
   return (
     <div className="p-3 rounded-md bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)]">
       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-        <Stat label="Rows copied" value={result.summary.totalRowsCopied.toLocaleString()} />
-        <Stat label="Tables" value={String(result.summary.tablesCopied.length)} />
-        <Stat label="Duration" value={formatDuration(result.summary.durationMs)} />
-        <Stat label="FK violations" value={String(result.summary.foreignKeyViolations)} ok={result.summary.foreignKeyViolations === 0} />
-        <Stat label="Integrity" value={result.summary.integrityCheck} ok={result.summary.integrityCheck === 'ok'} />
+        <Stat label={t('settings:database.rows_copied')} value={result.summary.totalRowsCopied.toLocaleString()} />
+        <Stat label={t('settings:database.tables')} value={String(result.summary.tablesCopied.length)} />
+        <Stat label={t('settings:database.duration')} value={formatDuration(result.summary.durationMs, t)} />
+        <Stat label={t('settings:database.fk_violations')} value={String(result.summary.foreignKeyViolations)} ok={result.summary.foreignKeyViolations === 0} />
+        <Stat label={t('settings:database.integrity')} value={result.summary.integrityCheck} ok={result.summary.integrityCheck === 'ok'} />
         <Stat
-          label="On-disk"
-          value={`${formatBytes(result.sqliteFileBytes)} vs ${formatBytes(result.pgliteDirBytes)} (${sizeChange >= 0 ? '+' : ''}${sizeChangePct}%)`}
+          label={t('settings:database.on_disk')}
+          value={t('settings:database.size_comparison', {
+            sqlite: formatBytes(result.sqliteFileBytes),
+            pglite: formatBytes(result.pgliteDirBytes),
+            change: `${sizeChange >= 0 ? '+' : ''}${sizeChangePct}`,
+          })}
         />
       </div>
 
       <details className="mt-2 nim-database-dry-run-per-table">
         <summary className="cursor-pointer text-xs text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]">
-          Per-table breakdown ({result.summary.tablesCopied.length} tables)
+          {t('settings:database.per_table_breakdown', { count: result.summary.tablesCopied.length })}
         </summary>
         <table className="w-full mt-2 text-xs">
           <thead>
             <tr className="text-left text-[var(--nim-text-muted)] border-b border-[var(--nim-border)]">
-              <th className="py-1 pr-2">Table</th>
-              <th className="py-1 text-right">Rows copied</th>
+              <th className="py-1 pr-2">{t('settings:database.panel.table_header')}</th>
+              <th className="py-1 text-right">{t('settings:database.panel.rows_copied_header')}</th>
             </tr>
           </thead>
           <tbody>
@@ -539,8 +536,9 @@ function MigrationModal(props: {
   onStart: () => void;
   onCopyDiagnostic: () => void;
 }): React.ReactElement {
+  const { t } = useTranslation(['settings']);
   const { preflight, preflightError, phase, progress, running, summary, failure, onClose, onStart, onCopyDiagnostic } = props;
-  const currentTable = progress?.currentTable ?? progress?.table ?? 'Preparing';
+  const currentTable = progress?.currentTable ?? progress?.table ?? t('settings:database.phase.preparing');
   const isVerifying = phase?.phase?.startsWith('verifying') ?? false;
   const isCutover = phase?.phase === 'finalizing';
 
@@ -549,9 +547,9 @@ function MigrationModal(props: {
       <div className="w-full max-w-2xl rounded-xl border border-[var(--nim-border)] bg-[var(--nim-bg-primary)] p-6 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h4 className="text-lg font-semibold text-[var(--nim-text)]">Migrate to SQLite</h4>
+            <h4 className="text-lg font-semibold text-[var(--nim-text)]">{t('settings:database.panel.migrate_title')}</h4>
             <p className="mt-1 text-sm text-[var(--nim-text-muted)]">
-              This runs in one uninterrupted flow and preserves the original PGLite directory for rollback.
+              {t('settings:database.migration_warning')}
             </p>
           </div>
           <button
@@ -560,29 +558,33 @@ function MigrationModal(props: {
             disabled={running}
             className="rounded-md px-2 py-1 text-sm text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-secondary)] disabled:opacity-40"
           >
-            Close
+            {t('settings:database.close')}
           </button>
         </div>
 
         {preflightError && (
           <div className="rounded-md border border-[rgba(220,38,38,0.3)] bg-[rgba(220,38,38,0.1)] p-3 text-sm text-[var(--nim-text)]">
-            Pre-flight failed: {preflightError}
+            {t('settings:database.panel.preflight_failed_message', { error: preflightError })}
           </div>
         )}
 
         {!running && !summary && !failure && preflight && (
           <div className="space-y-4">
             <div className="rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-4 text-sm">
-              <div className="mb-2 font-medium text-[var(--nim-text)]">Pre-flight</div>
+              <div className="mb-2 font-medium text-[var(--nim-text)]">{t('settings:database.panel.preflight_title')}</div>
               <div className="space-y-2 text-[var(--nim-text-muted)]">
-                <div>Disk space: {formatBytes(preflight.freeBytes)} free / {formatBytes(preflight.requiredBytes)} required {preflight.ok ? 'OK' : 'FAIL'}</div>
-                <div>PGLite size: {formatBytes(preflight.pgliteDirBytes)}</div>
+                <div>{t('settings:database.panel.disk_space', {
+                  free: formatBytes(preflight.freeBytes),
+                  required: formatBytes(preflight.requiredBytes),
+                  status: preflight.ok ? t('settings:database.panel.disk_space_ok') : t('settings:database.panel.disk_space_fail'),
+                })}</div>
+                <div>{t('settings:database.panel.pglite_size', { size: formatBytes(preflight.pgliteDirBytes) })}</div>
                 {!preflight.ok && preflight.reason && <div className="text-[var(--nim-error)]">{preflight.reason}</div>}
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={onClose} className="rounded-md border border-[var(--nim-border)] px-3 py-2 text-sm text-[var(--nim-text)]">
-                Cancel
+                {t('settings:database.cancel')}
               </button>
               <button
                 type="button"
@@ -590,7 +592,7 @@ function MigrationModal(props: {
                 disabled={!preflight.ok}
                 className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                Start migration
+                {t('settings:database.start_migration')}
               </button>
             </div>
           </div>
@@ -600,10 +602,10 @@ function MigrationModal(props: {
           <div className="space-y-4">
             <div>
               <div className="text-sm font-medium text-[var(--nim-text)]">
-                {isCutover ? 'Switching to the new database' : isVerifying ? 'Verifying the migration' : 'Migrating your data'}
+                {isCutover ? t('settings:database.switching_database') : isVerifying ? t('settings:database.verifying_migration') : t('settings:database.migrating_data')}
               </div>
               <div className="mt-1 text-sm text-[var(--nim-text-muted)]">
-                {isCutover ? 'Preserving the previous PGLite directory and flipping the active backend.' : isVerifying ? `Phase: ${phase?.phase}` : `${currentTable}: ${progress?.tableRowsCopied ?? 0} / ${progress?.tableRowsExpected ?? 0}`}
+                {isCutover ? t('settings:database.preserve_and_switch') : isVerifying ? t('settings:database.phase_value', { phase: getPhaseLabel(t, phase?.phase ?? '') }) : t('settings:database.migration_progress_detail', { table: currentTable, copied: progress?.tableRowsCopied ?? 0, expected: progress?.tableRowsExpected ?? 0 })}
               </div>
             </div>
             <div className="space-y-2">
@@ -611,11 +613,14 @@ function MigrationModal(props: {
                 <div className="h-full bg-[var(--nim-primary)]" style={{ width: `${progress?.percentOfTotal ?? 0}%` }} />
               </div>
               <div className="flex justify-between text-xs text-[var(--nim-text-muted)]">
-                <span>Tables {progress?.tablesCompleted ?? 0} / {progress?.tablesTotal ?? 0}</span>
+                <span>{t('settings:database.panel.tables_progress', {
+                  done: progress?.tablesCompleted ?? 0,
+                  total: progress?.tablesTotal ?? 0,
+                })}</span>
                 <span>{Math.round(progress?.percentOfTotal ?? 0)}%</span>
               </div>
               <div className="text-xs text-[var(--nim-text-muted)]">
-                Rows transferred: {(progress?.totalRowsCopied ?? 0).toLocaleString()} · Elapsed: {formatDuration(progress?.elapsedMs ?? 0)}
+                {t('settings:database.rows_elapsed', { rows: (progress?.totalRowsCopied ?? 0).toLocaleString(), elapsed: formatDuration(progress?.elapsedMs ?? 0, t) })}
               </div>
             </div>
           </div>
@@ -624,17 +629,17 @@ function MigrationModal(props: {
         {summary && (
           <div className="space-y-4">
             <div className="rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-4">
-              <div className="text-sm font-medium text-[var(--nim-text)]">Migration complete</div>
+              <div className="text-sm font-medium text-[var(--nim-text)]">{t('settings:database.panel.migration_complete')}</div>
               <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                <Stat label="Rows transferred" value={summary.totalRowsCopied.toLocaleString()} />
-                <Stat label="Tables migrated" value={String(summary.tablesCopied.length)} />
-                <Stat label="Duration" value={formatDuration(summary.durationMs)} />
-                <Stat label="Integrity" value={summary.integrityCheck} ok={summary.integrityCheck === 'ok'} />
+                <Stat label={t('settings:database.rows_transferred')} value={summary.totalRowsCopied.toLocaleString()} />
+                <Stat label={t('settings:database.tables_migrated')} value={String(summary.tablesCopied.length)} />
+                <Stat label={t('settings:database.duration')} value={formatDuration(summary.durationMs, t)} />
+                <Stat label={t('settings:database.integrity')} value={summary.integrityCheck} ok={summary.integrityCheck === 'ok'} />
               </div>
             </div>
             <div className="flex justify-end">
               <button type="button" onClick={onClose} className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-white">
-                Continue
+                {t('settings:database.continue')}
               </button>
             </div>
           </div>
@@ -643,16 +648,16 @@ function MigrationModal(props: {
         {failure && (
           <div className="space-y-4">
             <div className="rounded-md border border-[rgba(220,38,38,0.3)] bg-[rgba(220,38,38,0.1)] p-4 text-sm text-[var(--nim-text)]">
-              <div className="font-medium">Migration didn&apos;t complete</div>
-              <div className="mt-2">Phase: {failure.phase}</div>
+              <div className="font-medium">{t('settings:database.panel.migration_incomplete')}</div>
+              <div className="mt-2">{t('settings:database.panel.failure_phase', { phase: getPhaseLabel(t, failure.phase) })}</div>
               <div className="mt-1">{failure.message}</div>
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={onCopyDiagnostic} className="rounded-md border border-[var(--nim-border)] px-3 py-2 text-sm text-[var(--nim-text)]">
-                Copy diagnostic info
+                {t('settings:database.copy_diagnostic')}
               </button>
               <button type="button" onClick={onClose} className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-white">
-                Continue using PGLite
+                {t('settings:database.continue_pglite')}
               </button>
             </div>
           </div>
@@ -662,26 +667,22 @@ function MigrationModal(props: {
   );
 }
 
-const PHASE_LABELS: Record<string, string> = {
-  preparing: 'Preparing',
-  copying: 'Copying data',
-  'rebuilding-fts': 'Rebuilding full-text search index',
-  'verifying-counts': 'Verifying row counts',
-  'verifying-spot-check': 'Spot-checking copied rows',
-  'verifying-integrity': 'Verifying database integrity',
-  'verifying-foreign-keys': 'Verifying foreign keys',
-  finalizing: 'Finalizing',
-};
+function getPhaseLabel(t: (k: string) => string, phaseKey: string): string {
+  const key = phaseKey.replace(/-/g, '_');
+  const translated = t(`settings:database.phase.${key}`);
+  return translated && translated !== `settings:database.phase.${key}` ? translated : phaseKey;
+}
 
 function DryRunProgress({
   phase,
   progress,
 }: {
-  phase: PhaseEvent | null;
-  progress: ProgressEvent | null;
-}): React.ReactElement {
-  const phaseKey = phase?.phase ?? progress?.phase ?? 'preparing';
-  const phaseLabel = PHASE_LABELS[phaseKey] ?? phaseKey;
+    phase: PhaseEvent | null;
+    progress: ProgressEvent | null;
+  }): React.ReactElement {
+    const { t } = useTranslation(['settings']);
+    const phaseKey = phase?.phase ?? progress?.phase ?? 'preparing';
+  const phaseLabel = getPhaseLabel(t, phaseKey);
   const currentTable = progress?.currentTable ?? phase?.info?.currentTable;
   const tableRowsCopied = progress?.tableRowsCopied ?? 0;
   const tableRowsExpected = progress?.tableRowsExpected ?? 0;
@@ -709,17 +710,18 @@ function DryRunProgress({
       </div>
       <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[var(--nim-text-muted)]">
         <span>
-          Tables {tablesCompleted} / {tablesTotal}
+          {t('settings:database.panel.tables_progress', { done: tablesCompleted, total: tablesTotal })}
         </span>
         <span>
-          Rows {rowsCopied.toLocaleString()}
-          {rowsExpected > 0 && ` / ${rowsExpected.toLocaleString()}`}
+          {rowsExpected > 0
+            ? t('settings:database.panel.rows_with_total', { copied: rowsCopied.toLocaleString(), expected: rowsExpected.toLocaleString() })
+            : t('settings:database.panel.rows_only', { copied: rowsCopied.toLocaleString() })}
         </span>
-        <span>Elapsed {formatDuration(elapsed)}</span>
+        <span>{t('settings:database.panel.elapsed', { duration: formatDuration(elapsed, t) })}</span>
       </div>
       {isCopying && tableRowsExpected > 0 && (
         <div className="text-[var(--nim-text-muted)]">
-          This table: {tableRowsCopied.toLocaleString()} / {tableRowsExpected.toLocaleString()}
+          {t('settings:database.this_table', { copied: tableRowsCopied.toLocaleString(), expected: tableRowsExpected.toLocaleString() })}
         </div>
       )}
     </div>
@@ -741,25 +743,22 @@ function AdoptDryRunSection({
   progress: ProgressEvent | null;
   error: string | null;
   result: { rowsAdded: number; durationMs: number } | null;
-  onAdopt: () => void;
-}): React.ReactElement {
+    onAdopt: () => void;
+  }): React.ReactElement {
+  const { t } = useTranslation(['settings']);
   const ageHrs = (Date.now() - new Date(available.completedAt).getTime()) / 3_600_000;
   const ageBlurb = ageHrs < 1
-    ? 'less than an hour ago'
+    ? t('settings:database.age_less_than_hour_ago')
     : ageHrs < 24
-      ? `${Math.round(ageHrs)} hour${ageHrs >= 1.5 ? 's' : ''} ago`
-      : `${Math.round(ageHrs / 24)} day${ageHrs >= 36 ? 's' : ''} ago`;
+      ? t('settings:database.age_hours_ago', { count: Math.round(ageHrs) })
+      : t('settings:database.age_days_ago', { count: Math.round(ageHrs / 24) });
   return (
     <div className="mt-4 p-4 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] nim-database-adopt-dry-run">
       <div className="text-sm font-medium text-[var(--nim-text)] mb-1">
-        Switch to your dry-run SQLite copy
+        {t('settings:database.adopt_dry_run')}
       </div>
       <p className="text-xs text-[var(--nim-text-muted)] mb-3">
-        A successful dry-run from {ageBlurb} is saved on disk
-        ({available.totalRows.toLocaleString()} rows). Nimbalyst can promote
-        it to be your active database — it&apos;ll copy anything new since the
-        dry-run, then flip the backend flag. The current PGLite directory is
-        preserved for rollback.
+        {t('settings:database.adopt_description', { age: ageBlurb, rows: available.totalRows.toLocaleString() })}
       </p>
       <button
         type="button"
@@ -768,7 +767,7 @@ function AdoptDryRunSection({
         className="setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-white border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)] nim-database-adopt-button"
       >
         <MaterialSymbol icon={running ? 'sync' : 'swap_horiz'} size={16} />
-        {running ? 'Switching...' : 'Switch to this SQLite copy'}
+        {running ? t('settings:database.switching_copy') : t('settings:database.switch_to_copy')}
       </button>
 
       {running && (phase || progress) && (
@@ -776,16 +775,14 @@ function AdoptDryRunSection({
       )}
 
       {error && (
-        <div className="mt-3 p-3 rounded-md bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.3)] text-sm text-[var(--nim-text)]">
-          Switch failed: {error}
+          <div className="mt-3 p-3 rounded-md bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.3)] text-sm text-[var(--nim-text)]">
+          {t('settings:database.switch_failed', { error: error })}
         </div>
       )}
 
       {result && (
-        <div className="mt-3 p-3 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-primary)] text-sm text-[var(--nim-text)]">
-          Switched to SQLite. Caught up {result.rowsAdded.toLocaleString()} new
-          row{result.rowsAdded === 1 ? '' : 's'} in {formatDuration(result.durationMs)}.
-          Please relaunch Nimbalyst for the change to take effect.
+          <div className="mt-3 p-3 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-primary)] text-sm text-[var(--nim-text)]">
+          {t('settings:database.switch_success', { rows: result.rowsAdded.toLocaleString(), duration: formatDuration(result.durationMs, t) })}
         </div>
       )}
     </div>

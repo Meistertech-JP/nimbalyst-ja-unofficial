@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
@@ -112,6 +113,7 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
   activeExtensionBottomPanel,
   onExtensionBottomPanelChange,
 }) => {
+  const { t } = useTranslation(['common', 'voice']);
   const posthog = usePostHog();
   const developerMode = useAtomValue(developerModeAtom);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -325,45 +327,45 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
   // is applied at render time from the saved per-section order.
   const modeItems: GutterItem[] = [
     {
-      id: 'files', section: 'modes', icon: 'account_tree', label: 'Files', hideable: true,
+      id: 'files', section: 'modes', icon: 'account_tree', label: t('common:navigation.files'), hideable: true,
       render: () => renderModeButton({
         icon: 'account_tree',
-        label: `Files (${getShortcutDisplay(KeyboardShortcuts.view.filesMode)})`,
+        label: `${t('common:navigation.files')} (${getShortcutDisplay(KeyboardShortcuts.view.filesMode)})`,
         contentMode: 'files', testId: 'files-mode-button',
         onReclick: () => onToggleFilesCollapsed?.(),
       }),
     },
     {
-      id: 'agent', section: 'modes', icon: 'code', label: 'Agent', hideable: true,
+      id: 'agent', section: 'modes', icon: 'code', label: t('common:navigation.agent'), hideable: true,
       render: () => renderModeButton({
         icon: 'code',
-        label: `Agent (${getShortcutDisplay(KeyboardShortcuts.view.agentMode)})`,
+        label: `${t('common:navigation.agent')} (${getShortcutDisplay(KeyboardShortcuts.view.agentMode)})`,
         contentMode: 'agent', testId: 'agent-mode-button',
         onReclick: () => onToggleAgentCollapsed?.(),
         overlay: <AgentSessionsPopover onOpenAgentMode={() => onContentModeChange('agent')} />,
       }),
     },
     {
-      id: 'tracker', section: 'modes', icon: 'assignment', label: 'Tracker', hideable: true,
+      id: 'tracker', section: 'modes', icon: 'assignment', label: t('common:navigation.tracker'), hideable: true,
       render: () => renderModeButton({
         icon: 'assignment',
-        label: `Tracker (${getShortcutDisplay(KeyboardShortcuts.view.trackerMode)})`,
+        label: `${t('common:navigation.tracker')} (${getShortcutDisplay(KeyboardShortcuts.view.trackerMode)})`,
         contentMode: 'tracker', testId: 'tracker-mode-button',
       }),
     },
     ...(hasPrRemote ? [{
-      id: 'pr-review', section: 'modes' as GutterSection, icon: 'merge', label: 'Pull Requests', hideable: true,
+      id: 'pr-review', section: 'modes' as GutterSection, icon: 'merge', label: t('common:navigation.pull_requests'), hideable: true,
       render: () => renderModeButton({
         icon: 'merge',
-        label: `Pull Requests (${getShortcutDisplay(KeyboardShortcuts.view.prReviewMode)})`,
+        label: `${t('common:navigation.pull_requests')} (${getShortcutDisplay(KeyboardShortcuts.view.prReviewMode)})`,
         contentMode: 'pr-review', testId: 'pr-review-mode-button',
       }),
     }] : []),
     ...(hasTeam ? [{
-      id: 'collab', section: 'modes' as GutterSection, icon: 'cloud_sync', label: 'Shared Docs', hideable: true,
+      id: 'collab', section: 'modes' as GutterSection, icon: 'cloud_sync', label: t('common:navigation.shared_docs'), hideable: true,
       render: () => renderModeButton({
         icon: 'cloud_sync',
-        label: `Shared Docs (${getShortcutDisplay(KeyboardShortcuts.view.collabMode)})`,
+        label: `${t('common:navigation.shared_docs')} (${getShortcutDisplay(KeyboardShortcuts.view.collabMode)})`,
         contentMode: 'collab', testId: 'collab-mode-button',
         onReclick: () => onToggleCollabCollapsed?.(),
         decoration: <AlphaBadge size="dot" className="absolute top-0 right-0.5 pointer-events-none" />,
@@ -386,13 +388,13 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
         render: () => renderExtensionPanelButton(panel),
       })),
     ...(isTerminalAvailable ? [{
-      id: 'terminal', section: 'panels' as GutterSection, icon: 'terminal', label: 'Terminal', hideable: true,
+      id: 'terminal', section: 'panels' as GutterSection, icon: 'terminal', label: t('common:navigation.terminal'), hideable: true,
       render: () => (
         <HelpTooltip testId="terminal-panel-button" placement="right">
           <button
             className={navBtnClass(!!terminalPanelVisible)}
             onClick={() => onToggleTerminalPanel?.()}
-            aria-label="Terminal (Ctrl+`)"
+            aria-label={t('common:navigation.terminal') + ' (Ctrl+`)'}
             data-testid="terminal-panel-button"
           >
             <MaterialSymbol icon="terminal" size={20} fill={!!terminalPanelVisible} />
@@ -408,27 +410,27 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
 
   const indicatorItems: GutterItem[] = [
     {
-      id: 'voice-mode', section: 'indicators', icon: 'mic', label: 'Voice Mode', hideable: true,
+      id: 'voice-mode', section: 'indicators', icon: 'mic', label: t('voice:title'), hideable: true,
       render: () => <VoiceModeButton workspacePath={workspacePath} />,
     },
     {
-      id: 'claude-usage', section: 'indicators', icon: 'speed', label: 'Claude Usage', hideable: true,
+      id: 'claude-usage', section: 'indicators', icon: 'speed', label: t('common:navigation.claude_usage'), hideable: true,
       render: () => <ClaudeUsageIndicator />,
     },
     {
-      id: 'codex-usage', section: 'indicators', icon: 'speed', label: 'Codex Usage', hideable: true,
+      id: 'codex-usage', section: 'indicators', icon: 'speed', label: t('common:navigation.codex_usage'), hideable: true,
       render: () => <CodexUsageIndicator />,
     },
     {
-      id: 'gemini-usage', section: 'indicators', icon: 'gemini', label: 'Gemini Usage', hideable: true,
+      id: 'gemini-usage', section: 'indicators', icon: 'gemini', label: t('common:navigation.gemini_usage'), hideable: true,
       render: () => <GeminiUsageIndicator />,
     },
     {
-      id: 'extension-dev', section: 'indicators', icon: 'extension', label: 'Extension Dev', hideable: true,
+      id: 'extension-dev', section: 'indicators', icon: 'extension', label: t('common:navigation.extension_dev'), hideable: true,
       render: () => <ExtensionDevIndicator onOpenSettings={onOpenSettings} />,
     },
     {
-      id: 'trust-indicator', section: 'indicators', icon: 'verified_user', label: 'Permissions', hideable: true,
+      id: 'trust-indicator', section: 'indicators', icon: 'verified_user', label: t('common:navigation.permissions'), hideable: true,
       render: () => (
         <TrustIndicator
           workspacePath={workspacePath}
@@ -438,23 +440,23 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
       ),
     },
     {
-      id: 'sync-status', section: 'indicators', icon: 'sync', label: 'Sync Status', hideable: true,
+      id: 'sync-status', section: 'indicators', icon: 'sync', label: t('common:navigation.sync_status'), hideable: true,
       render: () => (
         <SyncStatusButton workspacePath={workspacePath || undefined} onOpenSettings={onOpenSettings} />
       ),
     },
     {
-      id: 'theme-toggle', section: 'indicators', icon: 'dark_mode', label: 'Theme Toggle', hideable: true,
+      id: 'theme-toggle', section: 'indicators', icon: 'dark_mode', label: t('common:navigation.theme_toggle'), hideable: true,
       render: () => <ThemeToggleButton />,
     },
     {
-      id: 'feedback', section: 'indicators', icon: 'feedback', label: 'Feedback', hideable: true,
+      id: 'feedback', section: 'indicators', icon: 'feedback', label: t('common:navigation.feedback'), hideable: true,
       render: () => (
         <HelpTooltip testId="gutter-feedback-button" placement="right">
           <button
             className={`nimbalyst-feedback-button ${NAV_BTN_BASE} bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim`}
             onClick={() => onOpenFeedback?.()}
-            aria-label="Send Feedback"
+            aria-label={t('common:navigation.feedback')}
             data-testid="gutter-feedback-button"
           >
             <MaterialSymbol icon="feedback" size={20} />
@@ -569,7 +571,7 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
               ref={userMenuButtonRef}
               className={`account-inspector-trigger nav-button relative w-9 h-9 flex items-center justify-center border-none rounded-md cursor-pointer transition-all duration-150 p-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${userMenuOpen ? 'bg-nim-tertiary text-nim' : needsSignIn ? 'bg-transparent text-nim-warning hover:bg-nim-tertiary' : 'bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim'}`}
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              aria-label={needsSignIn ? 'User menu (signed out -- sync requires sign in)' : 'User menu'}
+              aria-label={needsSignIn ? t('common:navigation.user_menu_signed_out') : t('common:navigation.user_menu')}
               aria-expanded={userMenuOpen}
               data-signed-in={isSignedIn === null ? undefined : isSignedIn}
               data-needs-sign-in={needsSignIn || undefined}

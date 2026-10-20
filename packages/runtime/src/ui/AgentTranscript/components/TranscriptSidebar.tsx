@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { PromptMarker } from '../types';
 import { formatTimeAgo, formatDuration } from '../../../utils/dateUtils';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 interface TranscriptSidebarProps {
   sessionId: string;
@@ -17,6 +18,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
   isCollapsed,
   onToggleCollapse
 }) => {
+  const { t } = useRuntimeTranslation();
   const [selectedPromptId, setSelectedPromptId] = useState<number | null>(null);
 
   const handlePromptClick = (marker: PromptMarker) => {
@@ -50,7 +52,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
               fontSize: '0.875rem',
               margin: 0
             }}>
-              Prompt History
+              {t('aichat:transcript_sidebar.prompt_history', 'Prompt History')}
             </h3>
           </div>
 
@@ -66,7 +68,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
                 color: 'var(--nim-text-faint)',
                 fontSize: '0.875rem'
               }}>
-                No prompts yet. Start by entering a prompt.
+                {t('aichat:transcript_sidebar.no_prompts_hint', 'No prompts yet. Start by entering a prompt.')}
               </div>
             ) : (
               <>
@@ -152,14 +154,14 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
                           fontSize: '0.75rem',
                           color: 'var(--nim-text-faint)'
                         }}>
-                          <span>{formatTimeAgo(marker.timestamp)}</span>
+                          <span>{formatTimeAgo(marker.timestamp, t)}</span>
                           {marker.completionTimestamp && (
                             <>
                               <span>•</span>
                               <span style={{
                                 color: 'var(--nim-text-muted)'
                               }}>
-                                {formatDuration(marker.timestamp, marker.completionTimestamp)}
+                                {formatDuration(marker.timestamp, marker.completionTimestamp, t)}
                               </span>
                             </>
                           )}

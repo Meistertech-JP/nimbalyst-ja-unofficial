@@ -71,3 +71,66 @@ vi.mock('electron', () => ({
     on: vi.fn()
   }
 }));
+
+// jsdom does not provide IntersectionObserver, while transcript views use it
+// to track whether their scroll container is visible. The tests only need the
+// observer lifecycle methods; visibility is not part of these assertions.
+if (typeof globalThis.IntersectionObserver === 'undefined') {
+  globalThis.IntersectionObserver = class {
+    readonly root = null;
+    readonly rootMargin = '';
+    readonly thresholds: readonly number[] = [];
+    disconnect() {}
+    observe(_target: Element) {}
+    takeRecords(): IntersectionObserverEntry[] { return []; }
+    unobserve(_target: Element) {}
+  } as unknown as typeof IntersectionObserver;
+}
+
+// jsdom does not provide matchMedia, while the editor shell uses it to react
+// to responsive layout changes. The i18n tests do not exercise media-query
+// transitions, so a stable no-match implementation is sufficient here.
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  })) as typeof window.matchMedia;
+}
+
+// jsdom does not provide ResizeObserver, while table hover actions use it to
+// keep their controls aligned with resized editor cells.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    constructor(_callback: ResizeObserverCallback) {}
+    disconnect() {}
+    observe(_target: Element) {}
+    unobserve(_target: Element) {}
+  } as unknown as typeof ResizeObserver;
+}
+
+// Initialize react-i18next synchronously with English resources so component
+// tests can assert on translated strings without each test wiring up i18n.
+import { resources } from './src/shared/i18n/resources';
+import { defaultNS, fallbackLng, supportedLngs } from './src/shared/i18n/types';
+import i18next from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+if (!i18next.isInitialized) {
+  void i18next.use(initReactI18next).init({
+    lng: 'en',
+    fallbackLng,
+    ns: Object.keys(resources.en),
+    defaultNS,
+    resources,
+    supportedLngs,
+    returnEmptyString: false,
+    returnNull: false,
+    interpolation: { escapeValue: false },
+  });
+}

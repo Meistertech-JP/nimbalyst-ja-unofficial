@@ -83,6 +83,7 @@ import {
   type TypeaheadMenuOption,
 } from '../TypeaheadPlugin/TypeaheadMenuPlugin';
 import { createBasicTriggerFunction } from '../TypeaheadPlugin/TypeaheadMenu';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../../ui/RuntimeTranslation';
 
 import './CommentPlugin.css';
 
@@ -90,9 +91,9 @@ type MarkNodeMap = Map<string, Set<NodeKey>>;
 
 export { OPEN_COMMENT_COMPOSER_COMMAND } from './commands';
 
-function formatTimestamp(ts: number): string {
+function formatTimestamp(ts: number, locale: string): string {
   try {
-    return new Date(ts).toLocaleString(undefined, {
+    return new Date(ts).toLocaleString(locale, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -114,14 +115,15 @@ function getActorName(comment: Comment): string {
   return actor.kind === 'agent' ? actor.sessionName : actor.displayName;
 }
 
-function getReplyTargetName(thread: Thread, comment: Comment): string {
+function getReplyTargetName(thread: Thread, comment: Comment, t: RuntimeTranslate): string {
   const target = thread.comments.find(
     (candidate) => candidate.id === comment.replyToCommentId,
   );
-  return target ? getActorName(target) : 'an earlier comment';
+  return target ? getActorName(target) : t('editor:comments.earlier_comment', 'an earlier comment');
 }
 
 function CommentActorLabel({ comment }: { comment: Comment }): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const actor = normalizeCommentActor(comment.actor, comment.author);
   if (actor.kind === 'user') {
     return <span className="nim-comment-author">{actor.displayName}</span>;
@@ -130,7 +132,7 @@ function CommentActorLabel({ comment }: { comment: Comment }): JSX.Element {
     <button
       type="button"
       className="nim-comment-agent-author"
-      title={`Open agent session ${actor.sessionName}`}
+      title={t('editor:comments.open_agent', 'Open agent session {{name}}', { name: actor.sessionName })}
       onClick={(event) => {
         event.stopPropagation();
         window.dispatchEvent(
@@ -142,10 +144,10 @@ function CommentActorLabel({ comment }: { comment: Comment }): JSX.Element {
     >
       <span className="material-symbols-outlined">smart_toy</span>
       <span>{actor.sessionName}</span>
-      <span className="nim-comment-agent-badge">Agent</span>
+      <span className="nim-comment-agent-badge">{t('common:navigation.agent', 'Agent')}</span>
       {actor.onBehalfOfDisplayName && (
         <span className="nim-comment-agent-owner">
-          for {actor.onBehalfOfDisplayName}
+          {t('editor:comments.on_behalf_of', 'for {{name}}', { name: actor.onBehalfOfDisplayName })}
         </span>
       )}
     </button>
@@ -175,6 +177,7 @@ function CommentComposerInner({
   placeholder: string;
   autoFocus: boolean;
 }): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   // Snapshot the roster once so the typeahead options stay referentially
   // stable while the user is composing.
@@ -317,7 +320,7 @@ function CommentComposerInner({
           className="nim-comment-btn nim-comment-btn-cancel"
           onClick={onCancel}
         >
-          Cancel
+          {t('common:cancel', 'Cancel')}
         </button>
         <button
           type="button"
@@ -384,19 +387,20 @@ function CommentsPanel({
   onReply: (thread: Thread, text: string, mentionedUserIds: string[]) => void;
   onClose: () => void;
 }): JSX.Element {
+  const { t, locale } = useRuntimeTranslation();
   return (
     <div className="nim-comments-panel" data-testid="comments-panel">
       <div className="nim-comments-panel-header">
           <span className="material-symbols-outlined nim-comments-panel-icon">
             chat_bubble
           </span>
-          <span className="nim-comments-panel-title">Comments</span>
+          <span className="nim-comments-panel-title">{t('tracker:detail.comments', 'Comments')}</span>
           <button
             type="button"
             className="nim-comments-panel-close"
             onClick={onClose}
-            aria-label="Close comments"
-            title="Close"
+            aria-label={t('editor:comments.close', 'Close comments')}
+            title={t('common:close', 'Close')}
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -404,7 +408,7 @@ function CommentsPanel({
         <div className="nim-comments-panel-list">
           {threads.length === 0 ? (
             <div className="nim-comments-empty">
-              No comments yet. Select text in the document and add one.
+              {t('editor:comments.empty', 'No comments yet. Select text in the document and add one.')}
             </div>
           ) : (
             threads.map((thread) => (
@@ -423,14 +427,14 @@ function CommentsPanel({
                   {thread.resolved && (
                     <span
                       className="nim-comment-resolved-badge"
-                      title="Resolved"
+                      title={t('common:pull_request.resolved', 'Resolved')}
                     >
                       <span className="material-symbols-outlined">
                         check_circle
                       </span>
                     </span>
                   )}
-                  {thread.quote || '(no quote)'}
+                  {thread.quote || t('editor:comments.no_quote', '(no quote)')}
                 </div>
                 {thread.resolved ? (
                   // Resolved threads collapse to a dimmed summary with an
@@ -441,9 +445,7 @@ function CommentsPanel({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <span className="nim-comment-resolved-summary">
-                      {thread.comments.length}{' '}
-                      {thread.comments.length === 1 ? 'comment' : 'comments'}
-                      {' · Resolved'}
+                      {t('editor:comments.resolved_summary', thread.comments.length === 1 ? '{{count}} comment · Resolved' : '{{count}} comments · Resolved', { count: thread.comments.length })}
                     </span>
                     <button
                       type="button"
@@ -453,18 +455,18 @@ function CommentsPanel({
                         onSetThreadResolved(thread, false);
                       }}
                     >
-                      Unresolve
+                      {t('editor:comments.unresolve', 'Unresolve')}
                     </button>
                     <button
                       type="button"
                       className="nim-comment-btn nim-comment-btn-delete-thread"
-                      title="Delete thread"
+                      title={t('editor:comments.delete_thread', 'Delete thread')}
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteThread(thread);
                       }}
                     >
-                      Delete
+                      {t('common:delete', 'Delete')}
                     </button>
                   </div>
                 ) : (
@@ -474,13 +476,13 @@ function CommentsPanel({
                         <div className="nim-comment-meta">
                           <CommentActorLabel comment={comment} />
                           <span className="nim-comment-time">
-                            {formatTimestamp(comment.timeStamp)}
+                            {formatTimestamp(comment.timeStamp, locale)}
                           </span>
                           <button
                             type="button"
                             className="nim-comment-delete"
-                            title="Delete comment"
-                            aria-label="Delete comment"
+                            title={t('tracker:ui.delete_comment', 'Delete comment')}
+                            aria-label={t('tracker:ui.delete_comment', 'Delete comment')}
                             onClick={(e) => {
                               e.stopPropagation();
                               onDeleteComment(comment, thread);
@@ -493,11 +495,13 @@ function CommentsPanel({
                         </div>
                         {comment.replyToCommentId && (
                           <div className="nim-comment-reply-target">
-                            Replying to {getReplyTargetName(thread, comment)}
+                            {t('editor:comments.replying_to', 'Replying to {{name}}', { name: getReplyTargetName(thread, comment, t) })}
                           </div>
                         )}
                         <div className="nim-comment-content">
-                          {comment.content}
+                          {comment.deleted && comment.content === '[Deleted Comment]'
+                            ? t('editor:comments.deleted', '[Deleted Comment]')
+                            : comment.content}
                         </div>
                       </div>
                     ))}
@@ -507,8 +511,8 @@ function CommentsPanel({
                     >
                       <CommentComposer
                         getMembers={getMembers}
-                        submitLabel="Reply"
-                        placeholder="Reply..."
+                        submitLabel={t('editor:comments.reply', 'Reply')}
+                        placeholder={t('editor:comments.reply_placeholder', 'Reply...')}
                         autoFocus={false}
                         onSubmit={(text, mentioned) =>
                           onReply(thread, text, mentioned)
@@ -523,18 +527,18 @@ function CommentsPanel({
                           onSetThreadResolved(thread, true);
                         }}
                       >
-                        Resolve
+                        {t('editor:comments.resolve', 'Resolve')}
                       </button>
                       <button
                         type="button"
                         className="nim-comment-btn nim-comment-btn-delete-thread"
-                        title="Delete thread"
+                        title={t('editor:comments.delete_thread', 'Delete thread')}
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteThread(thread);
                         }}
                       >
-                        Delete
+                        {t('common:delete', 'Delete')}
                       </button>
                     </div>
                   </>
@@ -558,6 +562,7 @@ export default function CommentsPlugin({
   config: CommentsConfig;
   anchorElem: HTMLElement;
 }): JSX.Element | null {
+  const { t } = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   // The comments toggle + side panel dock to the right of the editor pane
   // (the `.editor-container`, the anchor's positioned parent) rather than
@@ -998,8 +1003,8 @@ export default function CommentsPlugin({
           >
             <CommentComposer
               getMembers={getMembers}
-              submitLabel="Comment"
-              placeholder="Add a comment... use @ to mention"
+              submitLabel={t('common:pull_request.comment', 'Comment')}
+              placeholder={t('editor:comments.add_placeholder', 'Add a comment... use @ to mention')}
               autoFocus
               onSubmit={handleComposerSubmit}
               onCancel={handleComposerCancel}
@@ -1016,8 +1021,8 @@ export default function CommentsPlugin({
             type="button"
             className="nim-comments-toggle"
             data-testid="comments-toggle"
-            title="Comments"
-            aria-label="Toggle comments"
+            title={t('tracker:detail.comments', 'Comments')}
+            aria-label={t('editor:comments.toggle', 'Toggle comments')}
             onClick={() => setPanelOpen(true)}
           >
             <span className="material-symbols-outlined">chat_bubble</span>

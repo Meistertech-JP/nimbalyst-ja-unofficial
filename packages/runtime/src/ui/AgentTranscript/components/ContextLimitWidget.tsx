@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 // Inject context limit widget styles once (for color-mix patterns)
 const injectContextLimitStyles = () => {
@@ -23,6 +24,7 @@ interface ContextLimitWidgetProps {
 }
 
 export const ContextLimitWidget: React.FC<ContextLimitWidgetProps> = ({ sessionId, isLastMessage = false, onCompact }) => {
+  const { t } = useRuntimeTranslation();
   const [isCompacting, setIsCompacting] = useState(false);
 
   // Inject styles on mount
@@ -39,13 +41,13 @@ export const ContextLimitWidget: React.FC<ContextLimitWidgetProps> = ({ sessionI
     <div className="context-limit-widget my-4 p-4 rounded-lg flex flex-col gap-3">
       <div className="context-limit-header flex items-center gap-2">
         <span className="context-limit-icon flex items-center justify-center w-5 h-5 rounded-full bg-[var(--nim-error)] text-white text-xs font-bold">!</span>
-        <span className="context-limit-title text-[var(--nim-error)] text-sm font-semibold">Context limit exceeded</span>
+        <span className="context-limit-title text-[var(--nim-error)] text-sm font-semibold">{t('errors:context_limit.title', 'Context limit exceeded')}</span>
       </div>
 
       <div className="context-limit-message text-[var(--nim-text-muted)] text-[0.85rem] leading-relaxed">
         {isLastMessage
-          ? 'This conversation has grown too large for the model\'s context window. Compact the conversation history to continue.'
-          : 'This conversation exceeded the model\'s context window at this point.'}
+          ? t('errors:context_limit.current', 'This conversation has grown too large for the model\'s context window. Compact the conversation history to continue.')
+          : t('errors:context_limit.historical', 'This conversation exceeded the model\'s context window at this point.')}
       </div>
 
       {isLastMessage && (
@@ -55,7 +57,7 @@ export const ContextLimitWidget: React.FC<ContextLimitWidgetProps> = ({ sessionI
             disabled={isCompacting}
             className="compact-button py-2.5 px-4 rounded-md text-sm font-semibold cursor-pointer transition-all border-none bg-[var(--nim-primary)] text-white whitespace-nowrap hover:bg-[var(--nim-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--nim-text-faint)] disabled:opacity-60"
           >
-            {isCompacting ? 'Compacting...' : 'Compact'}
+            {isCompacting ? t('errors:context_limit.compacting', 'Compacting...') : t('errors:context_limit.compact', 'Compact')}
           </button>
         </div>
       )}

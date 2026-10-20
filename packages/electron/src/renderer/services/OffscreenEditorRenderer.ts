@@ -16,6 +16,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import type { EditorHost } from '@nimbalyst/runtime';
 import { getExtensionLoader, getBaseThemeColors, hasExtensionEditorAPI, getExtensionEditorAPI, type ExtendedThemeColors } from '@nimbalyst/runtime';
 import { waitForEditorRegistration } from './waitForEditorRegistration';
+import { withRuntimeTranslations } from '../i18n/RuntimeTranslationBridge';
 // Note: Window globals for mockup annotations are declared in @nimbalyst/runtime
 
 /**
@@ -199,9 +200,9 @@ class OffscreenEditorRendererImpl {
     const root = createRoot(container);
 
     const EditorComponent = editorInfo.component as React.ComponentType<{ host: EditorHost }>;
-    root.render(
+    root.render(withRuntimeTranslations(
       React.createElement(EditorComponent, { host })
-    );
+    ));
 
     // Store instance
     this.editors.set(filePath, {

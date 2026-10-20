@@ -10,6 +10,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { rendererI18n } from '../../../i18n';
 import { errorNotificationService } from '../../../services/ErrorNotificationService';
 
 export type MemoryTarget = 'user' | 'project';
@@ -41,6 +43,7 @@ export function MemoryPromptIndicator({
   isSaving,
   workspacePath,
 }: Pick<MemoryPromptProps, 'target' | 'onTargetChange' | 'isSaving' | 'workspacePath'>) {
+  const { t } = useTranslation('agents');
   const toggleTarget = useCallback(() => {
     onTargetChange(target === 'user' ? 'project' : 'user');
   }, [target, onTargetChange]);
@@ -64,16 +67,16 @@ export function MemoryPromptIndicator({
           <MemoryIcon />
         </div>
         <span className="memory-prompt-label text-xs text-[var(--nim-text-muted)]">
-          {isSaving ? 'Saving...' : 'Adding to memory'}
+          {isSaving ? t('input.memory.saving') : t('input.memory.adding')}
         </span>
         <button
           className="memory-prompt-target-button nim-btn-secondary gap-1 px-2 py-1 text-xs font-medium"
           onClick={toggleTarget}
           disabled={isSaving}
-          title="Use arrow keys to switch"
+          title={t('input.memory.switch_target')}
         >
           <span className="memory-target-name text-[var(--nim-primary)]">
-            {target === 'user' ? 'User Memory' : 'Project Memory'}
+            {target === 'user' ? t('input.memory.user') : t('input.memory.project')}
           </span>
           <span className="memory-target-hint flex items-center text-[var(--nim-text-faint)]">
             <ArrowsIcon />
@@ -82,18 +85,18 @@ export function MemoryPromptIndicator({
         <button
           className="memory-prompt-open-button flex items-center justify-center p-1 rounded text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-tertiary)] transition-colors"
           onClick={openMemoryFile}
-          title="Open memory file in editor"
-          aria-label="Open memory file"
+          title={t('input.memory.open_file')}
+          aria-label={t('input.memory.open_file')}
         >
           <OpenFileIcon />
         </button>
       </div>
       <div className="memory-prompt-shortcuts flex items-center gap-1 text-[11px] text-[var(--nim-text-faint)]">
-        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Enter</kbd> to save
+        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Enter</kbd> {t('input.memory.to_save')}
         <span className="memory-shortcut-separator mx-1 text-[var(--nim-text-faint)]">&middot;</span>
-        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&uarr;</kbd><kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&darr;</kbd> to switch target
+        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&uarr;</kbd><kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&darr;</kbd> {t('input.memory.to_switch')}
         <span className="memory-shortcut-separator mx-1 text-[var(--nim-text-faint)]">&middot;</span>
-        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Esc</kbd> to cancel
+        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Esc</kbd> {t('input.memory.to_cancel')}
       </div>
     </div>
   );
@@ -111,13 +114,14 @@ export function MemorySaveButton({
   disabled: boolean;
   isSaving?: boolean;
 }) {
+  const { t } = useTranslation('agents');
   return (
     <button
       className="memory-save-button flex items-center justify-center w-9 h-9 p-0 rounded-md border-none cursor-pointer text-white shrink-0 transition-all duration-150 bg-[var(--nim-primary)] hover:enabled:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
       onClick={onSave}
       disabled={disabled || isSaving}
-      title="Save to memory (Enter)"
-      aria-label="Save to memory"
+      title={t('input.memory.save')}
+      aria-label={t('input.memory.save_aria')}
     >
       {isSaving ? (
         <SpinnerIcon />
@@ -163,25 +167,25 @@ export function useMemoryMode(workspacePath?: string) {
       });
 
       if (result.success) {
-        const targetLabel = memoryTarget === 'user' ? 'User Memory' : 'Project Memory';
+        const targetLabel = rendererI18n.t(memoryTarget === 'user' ? 'agents:input.memory.user' : 'agents:input.memory.project');
         errorNotificationService.showInfo(
-          'Memory Updated',
-          `Added to ${targetLabel}`,
+          rendererI18n.t('agents:input.memory.updated'),
+          rendererI18n.t('agents:input.memory.added', { target: targetLabel }),
           { duration: 2000 }
         );
         exitMemoryMode();
         return true;
       } else {
         errorNotificationService.showError(
-          'Failed to Save Memory',
-          result.error || 'Unknown error'
+          rendererI18n.t('agents:input.memory.failed_save'),
+          result.error || rendererI18n.t('agents:input.memory.unknown_error')
         );
         return false;
       }
     } catch (error) {
       errorNotificationService.showError(
-        'Failed to Save Memory',
-        error instanceof Error ? error.message : 'Unknown error'
+        rendererI18n.t('agents:input.memory.failed_save'),
+        error instanceof Error ? error.message : rendererI18n.t('agents:input.memory.unknown_error')
       );
       return false;
     } finally {

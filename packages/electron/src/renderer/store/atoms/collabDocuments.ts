@@ -15,6 +15,7 @@ import { atomFamily } from '../debug/atomFamilyRegistry';
 import { store } from '@nimbalyst/runtime/store';
 import type { TeamSyncProvider as TeamSyncProviderType, FolderNode } from '@nimbalyst/runtime/sync';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
+import { rendererI18n } from '../../i18n';
 import { collabKeyRotationEpochAtom } from './collabEditor';
 import { activeWorkspacePathAtom } from './openProjects';
 import { pendingDocRegistrations } from './pendingDocRegistrations';
@@ -1256,8 +1257,8 @@ export async function initSharedDocuments(workspacePath: string, retryCount = 0)
         // The org encryption key was rotated. ALL providers holding the old
         // key must be torn down and recreated with the new key.
         errorNotificationService.showInfo(
-          'Team encryption key updated',
-          'Reconnecting with the new key...',
+          rendererI18n.t('common:collab_key_rotation.team_key_updated'),
+          rendererI18n.t('common:collab_key_rotation.reconnecting'),
           { duration: 5000 }
         );
 
@@ -1276,14 +1277,14 @@ export async function initSharedDocuments(workspacePath: string, retryCount = 0)
               store.set(collabKeyRotationEpochAtom, (prev: number) => prev + 1);
 
               errorNotificationService.showInfo(
-                'Encryption key updated',
-                'All sync providers reconnected with the new key.',
+                rendererI18n.t('common:collab_key_rotation.key_updated'),
+                rendererI18n.t('common:collab_key_rotation.reconnected'),
                 { duration: 5000 }
               );
             } else if (result?.success && !result.keyRefreshed) {
               errorNotificationService.showWarning(
-                'Waiting for updated key',
-                'An admin needs to share the updated encryption key with you. Some items may be temporarily unreadable.',
+                rendererI18n.t('common:collab_key_rotation.waiting'),
+                rendererI18n.t('common:collab_key_rotation.waiting_description'),
                 { duration: 10000 }
               );
             }
@@ -1291,8 +1292,8 @@ export async function initSharedDocuments(workspacePath: string, retryCount = 0)
           .catch((err: unknown) => {
             console.error('[collabDocuments] Failed to handle org key rotation:', err);
             errorNotificationService.showWarning(
-              'Key rotation failed',
-              'Failed to fetch the updated encryption key. Try reopening the workspace.',
+              rendererI18n.t('common:collab_key_rotation.failed'),
+              rendererI18n.t('common:collab_key_rotation.failed_description'),
               { duration: 10000 }
             );
           });

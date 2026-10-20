@@ -16,6 +16,7 @@ import {
   MIN_ALLOWED_FONT_SIZE,
 } from '../../context/ToolbarContext';
 import {SHORTCUTS} from '../ShortcutsPlugin/shortcuts';
+import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
 import {
   updateFontSize,
   updateFontSizeInSelection,
@@ -42,6 +43,7 @@ export default function FontSize({
   disabled: boolean;
   editor: LexicalEditor;
 }) {
+  const {t} = useRuntimeTranslation();
   const [inputValue, setInputValue] = React.useState<string>(selectionFontSize);
   const [inputChangeFlag, setInputChangeFlag] = React.useState<boolean>(false);
 
@@ -101,8 +103,8 @@ export default function FontSize({
           updateFontSize(editor, UpdateFontSizeType.decrement, inputValue)
         }
         className="toolbar-item font-decrement p-0 mr-[3px]"
-        aria-label="Decrease font size"
-        title={`Decrease font size (${SHORTCUTS.DECREASE_FONT_SIZE})`}>
+        aria-label={t('dialogs:keyboard_shortcuts.labels.decrease_font', 'Decrease Font Size')}
+        title={`${t('dialogs:keyboard_shortcuts.labels.decrease_font', 'Decrease Font Size')} (${SHORTCUTS.DECREASE_FONT_SIZE})`}>
         <i
           className="format minus-icon bg-no-repeat bg-center"
           style={{ backgroundImage: `url(${minusSignIconUrl})` }}
@@ -111,7 +113,7 @@ export default function FontSize({
 
       <input
         type="number"
-        title="Font size"
+        title={t('editor:formatting.font_size', 'Font size')}
         value={inputValue}
         disabled={disabled}
         className="toolbar-item font-size-input font-bold text-sm text-[var(--nim-text-muted)] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded-[5px] h-[15px] px-1 py-0.5 text-center w-5 self-center disabled:opacity-20 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -133,8 +135,8 @@ export default function FontSize({
           updateFontSize(editor, UpdateFontSizeType.increment, inputValue)
         }
         className="toolbar-item font-increment p-0 ml-[3px]"
-        aria-label="Increase font size"
-        title={`Increase font size (${SHORTCUTS.INCREASE_FONT_SIZE})`}>
+        aria-label={t('dialogs:keyboard_shortcuts.labels.increase_font', 'Increase Font Size')}
+        title={`${t('dialogs:keyboard_shortcuts.labels.increase_font', 'Increase Font Size')} (${SHORTCUTS.INCREASE_FONT_SIZE})`}>
         <i
           className="format add-icon bg-no-repeat bg-center"
           style={{ backgroundImage: `url(${addSignIconUrl})` }}

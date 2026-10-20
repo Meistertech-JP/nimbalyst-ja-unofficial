@@ -2,6 +2,7 @@
  * Shared date utilities for formatting and displaying dates/times consistently
  * across the application with error protection
  */
+import type { RuntimeTranslate } from '../ui/RuntimeTranslation';
 
 /**
  * Safely parse a timestamp value that could be a number, string, or Date
@@ -24,7 +25,7 @@ export function parseTimestamp(value: number | string | Date | undefined | null)
  * Format a timestamp as relative time (e.g., "5m ago", "2h ago", "3d ago")
  * Returns empty string for invalid timestamps
  */
-export function formatTimeAgo(timestamp: number | string | Date | undefined | null): string {
+export function formatTimeAgo(timestamp: number | string | Date | undefined | null, t?: RuntimeTranslate): string {
   const date = parseTimestamp(timestamp);
   if (!date) return '';
 
@@ -33,18 +34,18 @@ export function formatTimeAgo(timestamp: number | string | Date | undefined | nu
     const diffMs = now - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1) return t?.('sessions:relative_time.compact_just_now', 'just now') ?? 'just now';
+    if (diffMins < 60) return t?.('sessions:relative_time.compact_minutes', '{{count}}m ago', { count: diffMins }) ?? `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return t?.('sessions:relative_time.compact_hours', '{{count}}h ago', { count: diffHours }) ?? `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 7) return t?.('sessions:relative_time.compact_days', '{{count}}d ago', { count: diffDays }) ?? `${diffDays}d ago`;
     const diffWeeks = Math.floor(diffDays / 7);
-    if (diffWeeks < 4) return `${diffWeeks}w ago`;
+    if (diffWeeks < 4) return t?.('sessions:relative_time.compact_weeks', '{{count}}w ago', { count: diffWeeks }) ?? `${diffWeeks}w ago`;
     const diffMonths = Math.floor(diffDays / 30);
-    if (diffMonths < 12) return `${diffMonths}mo ago`;
+    if (diffMonths < 12) return t?.('sessions:relative_time.compact_months', '{{count}}mo ago', { count: diffMonths }) ?? `${diffMonths}mo ago`;
     const diffYears = Math.floor(diffDays / 365);
-    return `${diffYears}y ago`;
+    return t?.('sessions:relative_time.compact_years', '{{count}}y ago', { count: diffYears }) ?? `${diffYears}y ago`;
   } catch {
     return '';
   }
@@ -54,7 +55,7 @@ export function formatTimeAgo(timestamp: number | string | Date | undefined | nu
  * Format duration between two timestamps
  * Returns empty string for invalid timestamps
  */
-export function formatDuration(start: number | string | Date | undefined | null, end?: number | string | Date | undefined | null): string {
+export function formatDuration(start: number | string | Date | undefined | null, end?: number | string | Date | undefined | null, t?: RuntimeTranslate): string {
   const startDate = parseTimestamp(start);
   if (!startDate) return '';
 
@@ -63,15 +64,15 @@ export function formatDuration(start: number | string | Date | undefined | null,
     const endTime = end ? (parseTimestamp(end)?.getTime() ?? Date.now()) : Date.now();
     const durationMs = endTime - startTime;
 
-    if (durationMs < 0) return '0ms'; // Handle negative durations
-    if (durationMs < 1000) return `${durationMs}ms`;
-    if (durationMs < 60000) return `${(durationMs / 1000).toFixed(1)}s`;
+    if (durationMs < 0) return t?.('aichat:transcript_sidebar.duration_ms', '{{value}}ms', { value: 0 }) ?? '0ms'; // Handle negative durations
+    if (durationMs < 1000) return t?.('aichat:transcript_sidebar.duration_ms', '{{value}}ms', { value: durationMs }) ?? `${durationMs}ms`;
+    if (durationMs < 60000) return t?.('aichat:transcript_sidebar.duration_seconds', '{{value}}s', { value: (durationMs / 1000).toFixed(1) }) ?? `${(durationMs / 1000).toFixed(1)}s`;
     const minutes = Math.floor(durationMs / 60000);
     const seconds = Math.floor((durationMs % 60000) / 1000);
-    if (minutes < 60) return `${minutes}m ${seconds}s`;
+    if (minutes < 60) return t?.('aichat:transcript_sidebar.duration_minutes_seconds', '{{minutes}}m {{seconds}}s', { minutes, seconds }) ?? `${minutes}m ${seconds}s`;
     const hours = Math.floor(minutes / 60);
     const remainingMins = minutes % 60;
-    return `${hours}h ${remainingMins}m`;
+    return t?.('common:usage_indicator.reset_hours_minutes', '{{hours}}h {{minutes}}m', { hours, minutes: remainingMins }) ?? `${hours}h ${remainingMins}m`;
   } catch {
     return '';
   }
@@ -181,15 +182,15 @@ export function isToday(date: Date, reference: Date = new Date()): boolean {
  * - If not today: shows short date + time (e.g., "Dec 4, 3:45 PM")
  * Returns empty string for invalid timestamps
  */
-export function formatMessageTime(timestamp: number | string | Date | undefined | null): string {
+export function formatMessageTime(timestamp: number | string | Date | undefined | null, locale?: string): string {
   const date = parseTimestamp(timestamp);
   if (!date) return '';
 
   try {
     if (isToday(date)) {
-      return date.toLocaleTimeString();
+      return date.toLocaleTimeString(locale);
     }
-    return date.toLocaleString(undefined, {
+    return date.toLocaleString(locale, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -204,12 +205,12 @@ export function formatMessageTime(timestamp: number | string | Date | undefined 
  * Format a timestamp as short time (HH:MM)
  * Returns empty string for invalid timestamps
  */
-export function formatShortTime(timestamp: number | string | Date | undefined | null): string {
+export function formatShortTime(timestamp: number | string | Date | undefined | null, locale?: string): string {
   const date = parseTimestamp(timestamp);
   if (!date) return '';
 
   try {
-    return date.toLocaleTimeString([], {
+    return date.toLocaleTimeString(locale || [], {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -225,6 +226,8 @@ export function formatShortTime(timestamp: number | string | Date | undefined | 
 export function formatTurnFinishedAt(
   timestamp: number | string | Date | undefined | null,
   reference: number | string | Date | undefined | null = new Date(),
+  locale?: string,
+  t?: RuntimeTranslate,
 ): string {
   const date = parseTimestamp(timestamp);
   const now = parseTimestamp(reference);
@@ -232,6 +235,13 @@ export function formatTurnFinishedAt(
 
   if ((now.getTime() - date.getTime()) <= TURN_FINISHED_AT_THRESHOLD_MS) {
     return '';
+  }
+
+  if (locale?.startsWith('ja')) {
+    const time = isToday(date, now)
+      ? date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })
+      : date.toLocaleString(locale, { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    return t?.('aichat:rich_transcript.finished_at', 'at {{time}}', { time }) ?? time;
   }
 
   const timeLabel = formatLowercaseMeridiemTime(date);

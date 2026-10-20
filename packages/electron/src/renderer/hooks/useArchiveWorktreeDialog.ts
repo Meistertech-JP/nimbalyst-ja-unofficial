@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { errorNotificationService } from '../services/ErrorNotificationService';
 
 export interface ArchiveWorktreeDialogState {
@@ -35,6 +36,7 @@ export interface UseArchiveWorktreeDialogResult {
  * Handles fetching worktree status, auto-archiving when clean, and showing the dialog when needed.
  */
 export function useArchiveWorktreeDialog(): UseArchiveWorktreeDialogResult {
+  const { t } = useTranslation(['agents', 'notifications']);
   const [dialogState, setDialogState] = useState<ArchiveWorktreeDialogState | null>(null);
 
   const showDialog = useCallback(async (params: {
@@ -100,12 +102,12 @@ export function useArchiveWorktreeDialog(): UseArchiveWorktreeDialogResult {
         // Backend rejected the archive (e.g. worktree row missing, filesystem
         // error renaming the worktree dir). Previously logged silently; now
         // surfaced so the user knows why nothing visible happened. See #282.
-        const msg = result.error ? String(result.error) : 'The backend rejected the auto-archive.';
-        errorNotificationService.showError(`Failed to archive "${worktreeName}"`, msg);
+        const msg = result.error ? String(result.error) : t('notifications:archive.auto_rejected');
+        errorNotificationService.showError(t('agents:notifications.archive_failed', { name: worktreeName }), msg);
         console.error('[useArchiveWorktreeDialog] Auto-archive failed:', result.error);
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        errorNotificationService.showError(`Failed to archive "${worktreeName}"`, msg);
+        errorNotificationService.showError(t('agents:notifications.archive_failed', { name: worktreeName }), msg);
         console.error('[useArchiveWorktreeDialog] Auto-archive failed:', error);
       }
       // Fall through to show dialog on archive error
@@ -123,7 +125,7 @@ export function useArchiveWorktreeDialog(): UseArchiveWorktreeDialogResult {
     });
 
     return false;
-  }, []);
+  }, [t]);
 
   const closeDialog = useCallback(() => {
     setDialogState(null);
@@ -142,18 +144,18 @@ export function useArchiveWorktreeDialog(): UseArchiveWorktreeDialogResult {
         // The user clicked Confirm on the dialog. Previously the dialog
         // simply closed with no UI feedback on failure, which reads as
         // "Archive did nothing". Surface the rejection. See #282.
-        const msg = result.error ? String(result.error) : 'The backend rejected the archive.';
-        errorNotificationService.showError(`Failed to archive "${worktreeName}"`, msg);
+        const msg = result.error ? String(result.error) : t('agents:notifications.archive_rejected');
+        errorNotificationService.showError(t('agents:notifications.archive_failed', { name: worktreeName }), msg);
         console.error('[useArchiveWorktreeDialog] Failed to archive worktree:', result.error);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      errorNotificationService.showError(`Failed to archive "${worktreeName}"`, msg);
+      errorNotificationService.showError(t('agents:notifications.archive_failed', { name: worktreeName }), msg);
       console.error('[useArchiveWorktreeDialog] Failed to archive worktree:', error);
     } finally {
       setDialogState(null);
     }
-  }, [dialogState]);
+  }, [dialogState, t]);
 
   return {
     dialogState,

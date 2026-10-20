@@ -64,6 +64,7 @@ import {$isImageNode} from './ImageNode';
 import {getImagePluginCallbacks} from './index';
 import {localAssetUrl} from '../../../utils/localAssetUrl';
 import {copyImageToClipboard} from '../../../utils/clipboard';
+import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
 
 const imageCache = new Map<string, Promise<boolean> | boolean>();
 
@@ -208,6 +209,7 @@ function LazyImage({
 }
 
 function BrokenImage(): JSX.Element {
+  const {t} = useRuntimeTranslation();
   return (
     <div
       className="collab-asset-unavailable-placeholder"
@@ -222,7 +224,7 @@ function BrokenImage(): JSX.Element {
         minWidth: 200,
       }}
       role="img"
-      aria-label="Image unavailable"
+      aria-label={t('editor:shared_ui.image_unavailable', 'Image unavailable')}
     >
       <img
         src={brokenImage}
@@ -230,7 +232,7 @@ function BrokenImage(): JSX.Element {
         draggable="false"
         alt=""
       />
-      <span style={{fontSize: 12}}>Image unavailable</span>
+      <span style={{fontSize: 12}}>{t('editor:shared_ui.image_unavailable', 'Image unavailable')}</span>
     </div>
   );
 }
@@ -257,6 +259,7 @@ export function ImageContextMenu({
   onCopy: () => void;
   onClose: () => void;
 }): JSX.Element {
+  const {t} = useRuntimeTranslation();
   const {refs, floatingStyles, context} = useFloating({
     open: true,
     onOpenChange: (open) => {
@@ -292,7 +295,7 @@ export function ImageContextMenu({
           className="image-context-menu__item"
           onClick={onCopy}
         >
-          Copy image
+          {t('aichat:media.copy_image', 'Copy image')}
         </button>
       </div>
     </FloatingPortal>
@@ -322,6 +325,7 @@ export default function ImageComponent({
   width: 'inherit' | number;
   captionsEnabled: boolean;
 }): JSX.Element {
+  const {t} = useRuntimeTranslation();
   const imageRef = useRef<null | HTMLImageElement>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -711,7 +715,7 @@ export default function ImageComponent({
     <Suspense fallback={null}>
       <div ref={setContainerRef}>
         {!resolvedSrc ? (
-          <div style={{ width, height, minHeight: 100 }}>Loading...</div>
+          <div style={{ width, height, minHeight: 100 }}>{t('common:loading', 'Loading…')}</div>
         ) : (
           <>
             <div draggable={draggable}>
@@ -755,7 +759,7 @@ export default function ImageComponent({
                   <RichTextPlugin
                     contentEditable={
                       <ContentEditable
-                        placeholder="Enter a caption..."
+                        placeholder={t('editor:shared_ui.caption_placeholder', 'Enter a caption...')}
                         placeholderClassName="ImageNode__placeholder"
                         className="ImageNode__contentEditable"
                       />

@@ -12,6 +12,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useAtom, useAtomValue } from 'jotai';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
+import { useRuntimeTranslation } from '../../../RuntimeTranslation';
 import {
   askUserQuestionDraftAtom,
   clearAskUserQuestionDraft,
@@ -213,6 +214,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
   message,
   sessionId,
 }) => {
+  const { t } = useRuntimeTranslation();
   const toolCall = message.toolCall;
   const questionId = toolCall?.providerToolCallId || '';
 
@@ -426,7 +428,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
 
   // Show completed state
   if (displayResult || hasResponded) {
-    const statusText = displayCancelled ? 'Question Cancelled' : 'Questions Answered';
+    const statusText = displayCancelled ? t('aichat:questions.cancelled_title', 'Question Cancelled') : t('aichat:questions.answered_title', 'Questions Answered');
 
     return (
       <div
@@ -453,7 +455,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Submitted
+              {t('aichat:interactive.submitted', 'Submitted')}
             </span>
           )}
           {displayCancelled && (
@@ -464,7 +466,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Cancelled
+              {t('aichat:interactive.cancelled', 'Cancelled')}
             </span>
           )}
         </div>
@@ -478,7 +480,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_12%,transparent)] py-0.5 px-2 rounded-full">{question.header}</span>
                   {question.multiSelect && (
-                    <span className="text-[0.6875rem] text-nim-faint italic">Multiple selection</span>
+                    <span className="text-[0.6875rem] text-nim-faint italic">{t('aichat:questions.multiple_selection', 'Multiple selection')}</span>
                   )}
                 </div>
                 <div className="text-sm text-nim leading-normal mb-3">
@@ -522,7 +524,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
                 </div>
                 {answer && (
                   <div className="mt-2 pt-2 border-t border-nim text-xs text-nim-muted italic">
-                    Selected: {answer}
+                    {t('aichat:questions.selected', 'Selected: {{answer}}', { answer })}
                   </div>
                 )}
               </div>
@@ -555,10 +557,10 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
           </svg>
         </div>
         <span className="text-sm font-semibold text-nim flex-1">
-          Questions from Claude
+          {t('aichat:questions.from_claude', 'Questions from Claude')}
         </span>
         {!host && (
-          <span data-testid="ask-user-question-pending" className="text-xs text-nim-muted">Waiting...</span>
+          <span data-testid="ask-user-question-pending" className="text-xs text-nim-muted">{t('aichat:interactive.waiting', 'Waiting...')}</span>
         )}
       </div>
 
@@ -571,7 +573,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_12%,transparent)] py-0.5 px-2 rounded-full">{question.header}</span>
                 {question.multiSelect && (
-                  <span className="text-[0.6875rem] text-nim-faint italic">Select multiple</span>
+                  <span className="text-[0.6875rem] text-nim-faint italic">{t('aichat:questions.select_multiple', 'Select multiple')}</span>
                 )}
               </div>
               <div className="text-sm text-nim leading-normal mb-3">
@@ -643,7 +645,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
                         </svg>
                       )}
                     </div>
-                    <span className="text-[0.8125rem] font-medium text-nim leading-snug">Other</span>
+                    <span className="text-[0.8125rem] font-medium text-nim leading-snug">{t('aichat:questions.other', 'Other')}</span>
                   </button>
                   {otherSelected[question.question] && (
                     <div className="px-2.5 pb-2">
@@ -658,7 +660,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
                             handleSubmit();
                           }
                         }}
-                        placeholder="Type your answer..."
+                        placeholder={t('aichat:questions.answer_placeholder', 'Type your answer...')}
                         disabled={isSubmitting}
                         rows={2}
                         className="w-full px-2.5 py-2 rounded border border-nim bg-nim text-sm text-nim placeholder-nim-faint resize-y focus:outline-none focus:border-nim-primary disabled:opacity-50"
@@ -680,7 +682,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isSubmitting || !host}
             className="px-3 py-1.5 rounded-md text-[13px] cursor-pointer border border-nim transition-colors duration-150 hover:bg-nim-hover bg-nim-tertiary text-nim-muted disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cancel
+            {t('common:cancel', 'Cancel')}
           </button>
           <button
             type="button"
@@ -689,7 +691,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={!allAnswered || isSubmitting || !host}
             className="px-4 py-1.5 rounded-md text-[13px] font-medium cursor-pointer border-none transition-colors duration-150 hover:opacity-90 bg-nim-primary text-nim-on-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Submitting...' : 'Submit'}
+            {isSubmitting ? t('aichat:interactive.submitting', 'Submitting...') : t('aichat:interactive.submit', 'Submit')}
           </button>
         </div>
       </div>

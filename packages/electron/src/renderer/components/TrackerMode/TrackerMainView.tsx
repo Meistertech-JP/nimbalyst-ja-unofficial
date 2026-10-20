@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { FloatingPortal } from '@floating-ui/react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { TrackerIdentity } from '@nimbalyst/runtime';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
@@ -79,6 +80,8 @@ import {
   type TrackerLaunchContext,
 } from './trackerSessionLaunch';
 import { trackTeamAnalyticsEvent } from '../../utils/teamAnalytics';
+import { localizeTrackerColumns, trackerTypeLabel } from './trackerPresentation';
+import { createTrackerTablePresentation } from './trackerRuntimePresentation';
 
 export type ViewMode = 'list' | 'table' | 'kanban' | 'tag-board' | 'inbox';
 
@@ -148,6 +151,8 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
   onUpdateSavedView,
   onExitSavedView,
 }) => {
+  const { t } = useTranslation(['tracker']);
+  const tablePresentation = useMemo(() => createTrackerTablePresentation(t), [t]);
   const [searchQuery, setSearchQuery] = useState('');
   const [quickAddType, setQuickAddType] = useState<string | null>(null);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
@@ -258,8 +263,8 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
 
   const schemaType = columnConfigKey === 'all' ? '' : columnConfigKey;
   const availableColumns = useMemo(
-    () => resolveColumnsForType(schemaType),
-    [schemaType],
+    () => localizeTrackerColumns(resolveColumnsForType(schemaType), t),
+    [schemaType, t],
   );
 
   const filterFields = useMemo<TrackerFilterField[]>(() => {
@@ -333,7 +338,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           group: 'system',
           options: trackerTypes.map(model => ({
             value: model.type,
-            label: model.displayName,
+            label: trackerTypeLabel(model.type, t, false, model.displayName),
           })),
         };
       }
@@ -360,16 +365,16 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     ))) {
       fields.splice(Math.min(3, fields.length), 0, {
         id: 'owner',
-        label: 'Owner',
+        label: t('tracker:filters.owner'),
         type: 'user',
         group: 'common',
       });
     }
     if (!fields.some(field => field.id === 'favorite')) {
-      fields.push({ id: 'favorite', label: 'Favorite', type: 'boolean', group: 'system' });
+      fields.push({ id: 'favorite', label: t('tracker:filters.favorite'), type: 'boolean', group: 'system' });
     }
     if (!fields.some(field => field.id === 'archived')) {
-      fields.push({ id: 'archived', label: 'Archived', type: 'boolean', group: 'system' });
+      fields.push({ id: 'archived', label: t('tracker:main_extra.filter_archived'), type: 'boolean', group: 'system' });
     }
     const statusOptions = new Map<string, {
       value: string;
@@ -394,14 +399,14 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     const transitionFields: TrackerFilterField[] = [
       {
         id: STATUS_CHANGED_TO_FILTER_FIELD,
-        label: 'Status changed to',
+        label: t('tracker:filters.status_changed_to'),
         type: 'select',
         group: 'common',
         options: Array.from(statusOptions.values()),
       },
       {
         id: STATUS_CHANGED_FROM_FILTER_FIELD,
-        label: 'Status changed from',
+        label: t('tracker:filters.status_changed_from'),
         type: 'select',
         group: 'common',
         options: Array.from(statusOptions.values()),
@@ -412,7 +417,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     ));
     fields.splice(statusIndex >= 0 ? statusIndex + 1 : Math.min(1, fields.length), 0, ...transitionFields);
     return fields;
-  }, [availableColumns, schemaType, trackerTypes]);
+  }, [availableColumns, schemaType, trackerTypes, t]);
 
   const getViewFilterValue = useCallback((item: TrackerRecord, field: string): unknown => {
     const role = availableColumns.find(column => column.id === field)?.role;
@@ -482,7 +487,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           id: sessionId,
           provider,
           model: defaultModel,
-          title: 'New Session',
+          title: t('tracker:detail.new_session'),
         },
         workspaceId: workspacePath,
       });
@@ -509,7 +514,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     } catch (err) {
       console.error('[TrackerMainView] Failed to launch session:', err);
     }
-  }, [workspacePath, refreshSessionList, setSelectedWorkstream, setWindowMode, defaultModel]);
+  }, [workspacePath, refreshSessionList, setSelectedWorkstream, setWindowMode, defaultModel, t]);
 
   /** Launch a new isolated worktree session linked to a tracker item. */
   const handleLaunchWorktree = useCallback((trackerItemId: string) => {
@@ -530,7 +535,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
         ...options,
         initialDraft: pendingWorktreeLaunch.draftInput,
       });
-      if (!sessionId) throw new Error('Worktree session was not created');
+      if (!sessionId) throw new Error(t('tracker:main_extra.worktree_not_created'));
 
       await window.electronAPI.invoke('tracker:link-session', {
         trackerId: pendingWorktreeLaunch.trackerLinkId,
@@ -543,7 +548,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
       console.error('[TrackerMainView] Failed to launch worktree:', err);
       throw err;
     }
-  }, [createNewWorktreeSession, handleSwitchToAgentMode, pendingWorktreeLaunch, refreshSessionList]);
+  }, [createNewWorktreeSession, handleSwitchToAgentMode, pendingWorktreeLaunch, refreshSessionList, t]);
 
   // Base item sets from atoms
   const activeItems = useAtomValue(trackerItemsByTypeAtom(filterType));
@@ -918,18 +923,18 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     try {
       await navigator.clipboard.writeText(url);
       errorNotificationService.showInfo(
-        'Link copied',
-        'Paste it anywhere to open this tracker in Nimbalyst.',
+        t('tracker:main_extra.link_copied'),
+        t('tracker:main_extra.link_copied_message'),
         { duration: 3000 }
       );
     } catch (err) {
       console.error('[TrackerMainView] Failed to copy link:', err);
       errorNotificationService.showError(
-        'Copy failed',
-        'Could not write the link to the clipboard.'
+        t('tracker:main_extra.copy_failed'),
+        t('tracker:main_extra.copy_failed_message')
       );
     }
-  }, [teamOrgId]);
+  }, [teamOrgId, t]);
 
   /** Bulk archive for multi-select context menu */
   const handleArchiveItems = useCallback(async (itemIds: string[], archive: boolean) => {
@@ -1033,7 +1038,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
 
   const handleBulkImport = useCallback(async (directory: string) => {
     setImportMenuOpen(false);
-    setImportStatus('Importing...');
+    setImportStatus(t('tracker:main_extra.importing_status'));
     try {
       const result = await window.electronAPI.documentService.bulkImportTrackerItems({
         directory,
@@ -1042,39 +1047,53 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
       });
       if (result.success) {
         const parts: string[] = [];
-        if (result.imported) parts.push(`${result.imported} imported`);
-        if (result.skipped) parts.push(`${result.skipped} skipped`);
-        if (result.errors?.length) parts.push(`${result.errors.length} errors`);
-        setImportStatus(parts.join(', ') || 'No items found');
+        if (result.imported) {
+          parts.push(t('tracker:main_extra.imported_count', { count: result.imported }));
+        }
+        if (result.skipped) {
+          parts.push(t('tracker:main_extra.skipped_count', { count: result.skipped }));
+        }
+        if (result.errors?.length) {
+          parts.push(t('tracker:main_extra.error_count', { count: result.errors.length }));
+        }
+        setImportStatus(parts.join(', ') || t('tracker:ui.no_items'));
       } else {
-        setImportStatus(`Failed: ${result.error}`);
+        setImportStatus(t('tracker:main_extra.import_failed_detail', { error: result.error }));
       }
     } catch (error) {
-      setImportStatus('Import failed');
+      setImportStatus(t('tracker:main_extra.import_failed'));
       console.error('[TrackerMainView] Bulk import failed:', error);
     }
     // Clear status after 4 seconds
     setTimeout(() => setImportStatus(null), 4000);
-  }, []);
+  }, [t]);
 
   // Build a composite title from the active filters + type selection
   const title = useMemo(() => {
     const activeTracker = filterType !== 'all'
       ? trackerTypes.find(t => t.type === filterType)
       : null;
-    const typeName = activeTracker ? activeTracker.displayNamePlural : 'Items';
+    const typeName = activeTracker
+      ? trackerTypeLabel(activeTracker.type, t, true, activeTracker.displayNamePlural)
+      : t('tracker:main_extra.items');
 
     const parts: string[] = [];
-    if (activeFilters.includes('archived')) parts.push('Archived');
-    if (activeFilters.includes('mine')) parts.push('My');
-    if (activeFilters.includes('high-priority')) parts.push('High Priority');
-    if (activeFilters.includes('recently-updated')) parts.push('Recent');
+    if (activeFilters.includes('archived')) parts.push(t('tracker:main_extra.filter_archived'));
+    if (activeFilters.includes('mine')) parts.push(t('tracker:main_extra.filter_mine'));
+    if (activeFilters.includes('high-priority')) {
+      parts.push(t('tracker:main_extra.filter_high_priority'));
+    }
+    if (activeFilters.includes('recently-updated')) {
+      parts.push(t('tracker:main_extra.filter_recent'));
+    }
 
     if (parts.length === 0) {
-      return activeTracker ? activeTracker.displayNamePlural : 'All Items';
+      return activeTracker
+        ? trackerTypeLabel(activeTracker.type, t, true, activeTracker.displayNamePlural)
+        : t('tracker:main_extra.all_items');
     }
     return `${parts.join(' ')} ${typeName}`;
-  }, [filterType, activeFilters, trackerTypes]);
+  }, [filterType, activeFilters, trackerTypes, t]);
 
   const displayedItemCount = viewMode === 'inbox'
     ? inboxFilteredItems.length
@@ -1110,7 +1129,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           <input
             ref={setSearchInputNode}
             type="text"
-            placeholder="Search or type # to filter by tag..."
+            placeholder={t('tracker:ui.search_tag')}
             value={showTagDropdown
               ? (searchQuery ? searchQuery + ' ' : '') + '#' + tagQuery
               : searchQuery}
@@ -1174,7 +1193,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
               }
             }}
             className="w-full pl-7 pr-7 py-1 text-xs bg-nim-secondary border border-nim rounded text-nim placeholder:text-nim-faint focus:outline-none focus:border-[var(--nim-primary)]"
-            aria-label="Search trackers or filter by tag"
+            aria-label={t('tracker:ui.search_trackers')}
           />
           {(searchQuery || tagFilter.length > 0 || showTagDropdown) && (
             <button
@@ -1229,7 +1248,9 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
                 ))
               ) : (
                 <div className="px-3 py-2 text-[12px] text-[var(--nim-text-faint)] italic">
-                  {tagQuery ? 'No matching tags' : 'No tags in these trackers yet'}
+                  {tagQuery
+                    ? t('tracker:main_extra.no_matching_tags')
+                    : t('tracker:main_extra.no_tags')}
                 </div>
               )}
             </div>
@@ -1244,7 +1265,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
                 type="button"
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border cursor-pointer bg-blue-400/[0.12] border-blue-400/30 text-blue-400 hover:bg-blue-400/[0.18]"
                 onClick={() => removeTagFilter(tag)}
-                title={`Remove #${tag} filter`}
+                title={t('tracker:main_extra.remove_tag_filter', { tag })}
                 data-testid={`tracker-tag-chip-${tag}`}
               >
                 #{tag}
@@ -1262,11 +1283,14 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           <div
             className="flex h-7 shrink-0 items-center overflow-hidden rounded border border-nim bg-nim-secondary"
             role="group"
-            aria-label="Filter by source"
+            aria-label={t('tracker:main_extra.filter_by_source_group')}
             data-testid="tracker-source-filter"
           >
             {sourceOptions.map((key, index) => {
               const active = sourceFilter.includes(key);
+              const sourceLabel = key === 'native'
+                ? t('tracker:main_extra.source_native')
+                : sourceKeyLabel(key);
               return (
                 <button
                   key={key}
@@ -1280,10 +1304,10 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
                       : 'text-nim-muted hover:bg-nim-tertiary hover:text-nim'
                   }`}
                   aria-pressed={active}
-                  title={`Filter by ${sourceKeyLabel(key)}`}
+                  title={t('tracker:main_extra.filter_by_source', { source: sourceLabel })}
                   data-testid={`tracker-source-filter-${key}`}
                 >
-                  {sourceKeyLabel(key)}
+                  {sourceLabel}
                 </button>
               );
             })}
@@ -1297,11 +1321,11 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
             type="button"
             className="inline-flex h-7 items-center gap-1 rounded border border-nim bg-nim-secondary px-2 text-[11px] font-medium text-nim-muted transition-colors hover:bg-nim-tertiary hover:text-nim"
             onClick={clearTableFilters}
-            title="Clear all filters"
+            title={t('tracker:main_extra.clear_all_filters')}
             data-testid="tracker-clear-filters"
           >
             <MaterialSymbol icon="filter_alt_off" size={14} />
-            Clear
+            {t('tracker:main_extra.clear')}
           </button>
         )}
 
@@ -1321,10 +1345,10 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           <button
             className="inline-flex h-7 items-center gap-1 rounded border border-nim px-2 text-[11px] font-medium text-nim-muted transition-colors hover:bg-nim-tertiary hover:text-nim"
             onClick={() => setImportMenuOpen(!importMenuOpen)}
-            title="Import from files"
+            title={t('tracker:ui.import_files')}
           >
             <MaterialSymbol icon="upload_file" size={14} />
-            Import
+            {t('tracker:main.import')}
           </button>
           {importMenuOpen && (
             <div className="absolute right-0 top-full mt-1 w-[220px] bg-nim border border-nim rounded-md shadow-lg z-50 py-1">
@@ -1333,21 +1357,21 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
                 onClick={() => handleBulkImport('nimbalyst-local/plans')}
               >
                 <MaterialSymbol icon="folder_open" size={14} />
-                Import from nimbalyst-local/plans
+                {t('tracker:main.import_local_plans')}
               </button>
               <button
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-nim-muted hover:bg-nim-tertiary hover:text-nim text-left"
                 onClick={() => handleBulkImport('plans')}
               >
                 <MaterialSymbol icon="folder_open" size={14} />
-                Import from plans/
+                {t('tracker:main.import_plans')}
               </button>
               <button
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-nim-muted hover:bg-nim-tertiary hover:text-nim text-left"
                 onClick={() => handleBulkImport('design')}
               >
                 <MaterialSymbol icon="folder_open" size={14} />
-                Import from design/
+                {t('tracker:main.import_design')}
               </button>
               {externalImporters.length > 0 && (
                 <div className="my-1 border-t border-nim" />
@@ -1367,7 +1391,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
                   data-testid={`tracker-import-source-${imp.id}`}
                 >
                   <MaterialSymbol icon={imp.icon || 'cloud_download'} size={14} />
-                  Import from {imp.displayName}
+                  {t('tracker:import.title', { provider: imp.displayName })}
                 </button>
               ))}
             </div>
@@ -1393,7 +1417,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
             data-testid="tracker-toolbar-new-button"
           >
             <MaterialSymbol icon="add" size={14} />
-            New
+            {t('tracker:main.new')}
           </button>
         )}
       </div>
@@ -1404,10 +1428,11 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
         <div className="flex-1 overflow-hidden min-h-0 min-w-0 relative">
           {personalStateRequired && !personalStateHydrated ? (
             <div className="h-full flex items-center justify-center text-sm text-nim-muted" data-testid="tracker-personal-state-loading">
-              Loading personal tracker state...
+              {t('tracker:main_extra.loading_personal_state')}
             </div>
           ) : viewMode === 'list' ? (
             <TrackerTable
+              presentation={tablePresentation}
               filterType={filterType}
               sortBy={sortBy}
               sortDirection={sortDirection}
@@ -1550,7 +1575,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           onClose={() => setSourceDialog(null)}
           onImported={(count) => {
             if (count > 0) {
-              setImportStatus(`Imported ${count} item${count === 1 ? '' : 's'}`);
+            setImportStatus(t('tracker:main_extra.imported_items', { count }));
               setTimeout(() => setImportStatus(null), 4000);
             }
           }}
@@ -1578,6 +1603,7 @@ const DetailPanelResizable: React.FC<{
   onWidthChange: (width: number) => void;
   children: React.ReactNode;
 }> = ({ width, onWidthChange, children }) => {
+  const { t } = useTranslation(['tracker']);
   const [isDragging, setIsDragging] = useState(false);
   const [currentWidth, setCurrentWidth] = useState(width);
   const startXRef = useRef(0);
@@ -1625,7 +1651,7 @@ const DetailPanelResizable: React.FC<{
         onMouseDown={handleMouseDown}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize detail panel"
+        aria-label={t('tracker:ui.resize_detail')}
       />
       <div className="flex-1 overflow-hidden">
         {children}
@@ -1645,6 +1671,7 @@ interface QuickAddOverlayProps {
 }
 
 const QuickAddOverlay: React.FC<QuickAddOverlayProps> = ({ type, tracker, onSubmit, onClose }) => {
+  const { t } = useTranslation(['tracker']);
   const [title, setTitle] = React.useState('');
   const [priority, setPriority] = React.useState('medium');
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -1669,7 +1696,9 @@ const QuickAddOverlay: React.FC<QuickAddOverlayProps> = ({ type, tracker, onSubm
   };
 
   const color = tracker?.color || '#6b7280';
-  const displayName = tracker?.displayName || type.charAt(0).toUpperCase() + type.slice(1);
+  const displayName = tracker
+    ? trackerTypeLabel(tracker.type, t, false, tracker.displayName)
+    : type.charAt(0).toUpperCase() + type.slice(1);
   const icon = tracker?.icon || 'label';
 
   return (
@@ -1688,7 +1717,7 @@ const QuickAddOverlay: React.FC<QuickAddOverlayProps> = ({ type, tracker, onSubm
             // Prevent global keyboard shortcuts from intercepting while typing
             e.stopPropagation();
           }}
-          placeholder={`New ${displayName.toLowerCase()}...`}
+          placeholder={t('tracker:ui.new_item', { type: displayName.toLowerCase() })}
           className="flex-1 min-w-0 px-3 py-1.5 bg-nim border border-nim rounded text-sm text-nim placeholder:text-nim-faint focus:outline-none focus:border-[var(--nim-primary)]"
           data-testid="tracker-quick-add-input"
         />
@@ -1698,10 +1727,10 @@ const QuickAddOverlay: React.FC<QuickAddOverlayProps> = ({ type, tracker, onSubm
           onChange={(e) => setPriority(e.target.value)}
           className="px-2 py-1.5 bg-nim border border-nim rounded text-sm text-nim focus:outline-none focus:border-[var(--nim-primary)] shrink-0"
         >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="critical">Critical</option>
+          <option value="low">{t('tracker:main.low')}</option>
+          <option value="medium">{t('tracker:main.medium')}</option>
+          <option value="high">{t('tracker:main.high')}</option>
+          <option value="critical">{t('tracker:main.critical')}</option>
         </select>
 
         <button
@@ -1710,14 +1739,14 @@ const QuickAddOverlay: React.FC<QuickAddOverlayProps> = ({ type, tracker, onSubm
           className="px-3 py-1.5 rounded text-sm font-medium text-white border-none cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 shrink-0"
           style={{ backgroundColor: color }}
         >
-          Add
+          {t('tracker:main.add')}
         </button>
 
         <button
           type="button"
           onClick={onClose}
           className="p-1 rounded hover:bg-nim-tertiary text-nim-muted shrink-0"
-          title="Cancel (Esc)"
+          title={t('tracker:ui.cancel_esc')}
         >
           <MaterialSymbol icon="close" size={18} />
         </button>

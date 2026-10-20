@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol, TrackerUnreadDot } from '@nimbalyst/runtime';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { TrackerFavoriteStar, type TrackerItemType } from '@nimbalyst/runtime/plugins/TrackerPlugin';
@@ -49,6 +50,7 @@ export const TagBoard: React.FC<TagBoardProps> = ({
   favoriteItemIds = new Set<string>(),
   onToggleFavorite,
 }) => {
+  const { t } = useTranslation(['tracker']);
   const allItems = useMemo(() => {
     const source = overrideItems ?? [];
     if (!searchQuery) return source;
@@ -69,7 +71,7 @@ export const TagBoard: React.FC<TagBoardProps> = ({
       <div className="flex-1 flex items-center justify-center text-nim-muted">
         <div className="text-center">
           <MaterialSymbol icon="sell" size={48} className="opacity-30" />
-          <p className="mt-2 text-sm">No items to display</p>
+          <p className="mt-2 text-sm">{t('tracker:kanban.no_items')}</p>
         </div>
       </div>
     );
@@ -80,8 +82,8 @@ export const TagBoard: React.FC<TagBoardProps> = ({
       <div className="flex-1 flex items-center justify-center text-nim-muted">
         <div className="text-center">
           <MaterialSymbol icon="sell" size={48} className="opacity-30" />
-          <p className="mt-2 text-sm">No tags on these items yet</p>
-          <p className="mt-1 text-xs text-nim-faint">Add tags to group them on the tag board.</p>
+          <p className="mt-2 text-sm">{t('tracker:tag_board.no_tags')}</p>
+          <p className="mt-1 text-xs text-nim-faint">{t('tracker:tag_board.no_tags_desc')}</p>
         </div>
       </div>
     );
@@ -107,7 +109,7 @@ export const TagBoard: React.FC<TagBoardProps> = ({
                   className="text-nim-faint shrink-0"
                 />
                 <span className="text-xs font-semibold text-nim truncate">
-                  {col.tag === null ? 'Untagged' : `#${col.label}`}
+                  {col.tag === null ? t('tracker:tag_board.untagged') : `#${col.label}`}
                 </span>
                 <span className="text-[10px] font-semibold text-nim-faint ml-auto">
                   {col.items.length}
@@ -142,7 +144,7 @@ export const TagBoard: React.FC<TagBoardProps> = ({
                         style={{ backgroundColor: PRIORITY_COLORS[getRecordPriority(item) || 'medium'] || '#6b7280' }}
                       />
                       <TrackerUnreadDot itemId={item.id} className="mt-1" />
-                      <TrackerFavoriteStar itemId={item.id} isFavorite={favoriteItemIds.has(item.id)} onToggle={onToggleFavorite} />
+                      <TrackerFavoriteStar itemId={item.id} isFavorite={favoriteItemIds.has(item.id)} ariaLabel={t(favoriteItemIds.has(item.id) ? 'tracker:grid.remove_favorite' : 'tracker:grid.add_favorite')} onToggle={onToggleFavorite} />
                       <div className="flex-1 min-w-0">
                         {item.issueKey && (
                           <div className="text-[10px] font-mono font-medium uppercase tracking-[0.08em] text-nim-faint mb-0.5">

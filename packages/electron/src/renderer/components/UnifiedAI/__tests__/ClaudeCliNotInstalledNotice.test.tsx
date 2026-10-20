@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import i18next from 'i18next';
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import {
@@ -16,12 +17,22 @@ beforeEach(() => {
   };
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.restoreAllMocks();
+  await i18next.changeLanguage('en');
 });
 
 describe('ClaudeCliNotInstalledNotice', () => {
+  it('renders Japanese installation guidance while preserving the CLI literal', async () => {
+    await i18next.changeLanguage('ja');
+    const { container, getByRole, getByText } = render(<ClaudeCliNotInstalledNotice variant="panel" />);
+    expect(getByText('Claude Code CLIがインストールされていません')).toBeTruthy();
+    expect(container.querySelector('code')?.textContent).toBe('claude');
+    fireEvent.click(getByRole('button', { name: 'Claude Codeをインストール' }));
+    expect(openExternal).toHaveBeenCalledWith(CLAUDE_CODE_INSTALL_URL);
+  });
+
   it('renders the banner variant with the install affordance', () => {
     const { container } = render(<ClaudeCliNotInstalledNotice variant="banner" />);
     expect(

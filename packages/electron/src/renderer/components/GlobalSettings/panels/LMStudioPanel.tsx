@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ProviderConfig, Model } from '../../Settings/SettingsView';
 import { SettingsToggle } from '../SettingsToggle';
 
@@ -27,19 +28,22 @@ export function LMStudioPanel({
   onTestConnection,
   onConfigChange
 }: LMStudioPanelProps) {
+  const { t } = useTranslation(['settings']);
+
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">LM Studio</h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">
+          {t('settings:provider.lm_studio.title')}
+        </h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Connect to local LLMs running in LM Studio on your machine.
-          Start LM Studio and load a model before enabling.
+          {t('settings:provider.lm_studio.description')}
         </p>
       </div>
 
       <SettingsToggle
         variant="enable"
-        name="Enable LM Studio"
+        name={t('settings:provider.lm_studio.enable')}
         checked={config.enabled}
         onChange={onToggle}
       />
@@ -47,7 +51,9 @@ export function LMStudioPanel({
       {config.enabled && (
         <>
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Server Configuration</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">
+              {t('settings:provider.server_config')}
+            </h4>
             <div className="api-key-section mt-4">
               <div className="api-key-row flex gap-2 items-center">
                 <input
@@ -67,9 +73,9 @@ export function LMStudioPanel({
                   onClick={onTestConnection}
                   disabled={config.testStatus === 'testing'}
                 >
-                  {config.testStatus === 'testing' ? 'Testing...' :
-                   config.testStatus === 'success' ? '✓ Connected' :
-                   config.testStatus === 'error' ? '✗ Failed' : 'Test'}
+                  {config.testStatus === 'testing' ? t('settings:provider.testing') :
+                   config.testStatus === 'success' ? t('settings:provider.connected') :
+                   config.testStatus === 'error' ? t('settings:provider.failed') : t('settings:provider.test')}
                 </button>
               </div>
               {config.testMessage && config.testStatus === 'error' && (
@@ -79,27 +85,33 @@ export function LMStudioPanel({
           </div>
 
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Available Models</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">
+              {t('settings:provider.available_models')}
+            </h4>
             {loading && (
-              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">Loading models from LM Studio...</div>
+              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">
+                {t('settings:provider.lm_studio.loading_models')}
+              </div>
             )}
 
             {!loading && availableModels.length > 0 && (
               <div className="models-section">
                 <div className="models-header flex items-center justify-between mb-3">
-                  <span className="text-sm text-[var(--nim-text-muted)]">Detected models:</span>
+                  <span className="text-sm text-[var(--nim-text-muted)]">
+                    {t('settings:provider.lm_studio.detected_models')}
+                  </span>
                   <div className="models-actions flex gap-2">
                     <button
                       className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                       onClick={() => onSelectAllModels(true)}
                     >
-                      Select All
+                      {t('settings:provider.select_all')}
                     </button>
                     <button
                       className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                       onClick={() => onSelectAllModels(false)}
                     >
-                      Deselect All
+                      {t('settings:provider.deselect_all')}
                     </button>
                   </div>
                 </div>
@@ -121,7 +133,7 @@ export function LMStudioPanel({
 
             {!loading && availableModels.length === 0 && (
               <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">
-                No models found. Make sure LM Studio is running with a loaded model.
+                {t('settings:provider.lm_studio.no_models_found')}
               </div>
             )}
 
@@ -131,7 +143,7 @@ export function LMStudioPanel({
                 onClick={() => onTestConnection()}
                 disabled={loading}
               >
-                Refresh Models
+                {t('settings:provider.lm_studio.refresh_models')}
               </button>
             </div>
           </div>

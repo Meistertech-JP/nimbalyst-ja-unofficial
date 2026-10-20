@@ -5,6 +5,8 @@
  * required by OpenAI Realtime API.
  */
 
+import { rendererI18n } from '../i18n';
+
 export class AudioCapture {
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
@@ -170,7 +172,9 @@ export function normalizeAudioCaptureError(error: unknown): Error {
     && error.name === 'NotFoundError'
   ) {
     return new Error(
-      'No usable microphone was found. Connect or enable a microphone, check your system microphone settings, and try again.',
+      rendererI18n.t('errors:microphone_not_found', {
+        defaultValue: 'No usable microphone was found. Connect or enable a microphone, check your system microphone settings, and try again.',
+      }),
     );
   }
 

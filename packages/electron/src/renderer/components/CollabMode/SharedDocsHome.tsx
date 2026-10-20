@@ -8,6 +8,7 @@
  */
 
 import React, { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { SharedDocument } from '../../store/atoms/collabDocuments';
@@ -57,30 +58,34 @@ function docName(doc: SharedDocument): string {
   return getCollabNodeName(doc.title) || doc.title;
 }
 
-const FreshnessBadge: React.FC<{ freshness: DocFreshness }> = ({ freshness }) =>
-  freshness === 'new' ? (
+const FreshnessBadge: React.FC<{ freshness: DocFreshness }> = ({ freshness }) => {
+  const { t } = useTranslation(['common']);
+  return freshness === 'new' ? (
     <span className="shared-docs-badge shared-docs-badge-new text-[10.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full text-[var(--nim-success)] bg-[color-mix(in_srgb,var(--nim-success)_16%,transparent)]">
-      New
+      {t('common:collab.fresh_new')}
     </span>
   ) : (
     <span className="shared-docs-badge shared-docs-badge-updated text-[10.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full text-[var(--nim-warning)] bg-[color-mix(in_srgb,var(--nim-warning)_16%,transparent)]">
-      Updated
+      {t('common:collab.fresh_updated')}
     </span>
   );
+};
 
 /** A star toggle button; filled + amber when favorited. */
 const StarToggle: React.FC<{ documentId: string; favorited: boolean; className?: string }> = ({
   documentId,
   favorited,
   className,
-}) => (
+}) => {
+  const { t } = useTranslation(['common']);
+  return (
   <button
     type="button"
     className={`shared-docs-star shrink-0 flex items-center justify-center bg-transparent border-none cursor-pointer p-0.5 rounded transition-opacity ${
       favorited ? 'text-[var(--nim-warning)] opacity-100' : 'text-[var(--nim-text-faint)] opacity-0 group-hover:opacity-80 hover:!opacity-100'
     } ${className ?? ''}`}
-    title={favorited ? 'Unfavorite' : 'Favorite'}
-    aria-label={favorited ? 'Unfavorite' : 'Favorite'}
+    title={favorited ? t('common:collab.unfavorite') : t('common:collab.favorite')}
+    aria-label={favorited ? t('common:collab.unfavorite') : t('common:collab.favorite')}
     aria-pressed={favorited}
     onClick={(e) => {
       e.stopPropagation();
@@ -89,7 +94,8 @@ const StarToggle: React.FC<{ documentId: string; favorited: boolean; className?:
   >
     <MaterialSymbol icon="star" size={16} fill={favorited} />
   </button>
-);
+  );
+};
 
 /** A compact clickable doc row used by Favorites / Recent / All. */
 const DocRow: React.FC<{
@@ -97,7 +103,9 @@ const DocRow: React.FC<{
   favorited: boolean;
   onOpen: (doc: SharedDocument) => void;
   freshness?: DocFreshness;
-}> = ({ doc, favorited, onOpen, freshness }) => (
+}> = ({ doc, favorited, onOpen, freshness }) => {
+  const { t } = useTranslation(['sessions']);
+  return (
   <button
     type="button"
     className="shared-docs-row group w-full flex items-center gap-3 px-2.5 py-2 rounded-md text-left bg-transparent border-none cursor-pointer hover:bg-[var(--nim-bg-hover)]"
@@ -111,10 +119,11 @@ const DocRow: React.FC<{
     {freshness && <FreshnessBadge freshness={freshness} />}
     <StarToggle documentId={doc.documentId} favorited={favorited} />
     <span className="shrink-0 text-[12px] text-[var(--nim-text-faint)] min-w-[80px] text-right">
-      {getRelativeTimeString(doc.updatedAt ?? doc.createdAt ?? Date.now())}
+      {getRelativeTimeString(doc.updatedAt ?? doc.createdAt ?? Date.now(), t)}
     </span>
   </button>
-);
+  );
+};
 
 /** A card used in the New & Changed grid. */
 const ChangedCard: React.FC<{
@@ -122,7 +131,9 @@ const ChangedCard: React.FC<{
   freshness: DocFreshness;
   favorited: boolean;
   onOpen: (doc: SharedDocument) => void;
-}> = ({ doc, freshness, favorited, onOpen }) => (
+}> = ({ doc, freshness, favorited, onOpen }) => {
+  const { t } = useTranslation(['sessions']);
+  return (
   <button
     type="button"
     className="shared-docs-card group relative text-left w-full rounded-lg p-3.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] cursor-pointer hover:border-[var(--nim-text-faint)] transition-colors"
@@ -142,10 +153,11 @@ const ChangedCard: React.FC<{
       {docName(doc)}
     </p>
     <div className="mt-1.5 text-[12px] text-[var(--nim-text-faint)]">
-      {getRelativeTimeString(doc.updatedAt ?? doc.createdAt ?? Date.now())}
+      {getRelativeTimeString(doc.updatedAt ?? doc.createdAt ?? Date.now(), t)}
     </div>
   </button>
-);
+  );
+};
 
 const SectionHeader: React.FC<{ icon: string; label: string; right?: React.ReactNode }> = ({
   icon,
@@ -162,6 +174,7 @@ const SectionHeader: React.FC<{ icon: string; label: string; right?: React.React
 );
 
 export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, onDocumentSelect }) => {
+  const { t } = useTranslation(['common']);
   const documentTypeCatalog = getCollaborativeDocumentTypeCatalog();
   const catalogRevision = useSyncExternalStore(
     documentTypeCatalog.subscribe,
@@ -213,7 +226,11 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
 
   const cycleSort = () =>
     setAllSort((s) => (s === 'updated' ? 'name' : s === 'name' ? 'type' : 'updated'));
-  const sortLabel = allSort === 'updated' ? 'Last updated' : allSort === 'name' ? 'Name' : 'Type';
+  const sortLabel = allSort === 'updated'
+    ? t('common:collab.last_updated')
+    : allSort === 'name'
+      ? t('common:collab.sort_name')
+      : t('common:collab.sort_type');
 
   const handleCleanup = useCallback(async () => {
     if (teamSyncStatus !== 'connected' || cleanupProgress) return;
@@ -232,18 +249,21 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
     setCleanupProgress(null);
     if (result.failed > 0) {
       errorNotificationService.showWarning(
-        'Cleanup finished with skipped documents',
-        `Moved ${result.moved} empty document${result.moved === 1 ? '' : 's'} to Trash; ${result.failed} could not be verified.`,
+        t('common:collab.cleanup_skipped_title'),
+        t('common:collab.cleanup_skipped_message', {
+          moved: result.moved,
+          failed: result.failed,
+        }),
         { duration: 7000 },
       );
     } else {
       errorNotificationService.showInfo(
-        'Empty-document cleanup finished',
-        `Moved ${result.moved} empty document${result.moved === 1 ? '' : 's'} to Trash.`,
+        t('common:collab.cleanup_finished_title'),
+        t('common:collab.cleanup_finished_message', { moved: result.moved }),
         { duration: 5000 },
       );
     }
-  }, [allDocs, cleanupProgress, teamSyncStatus, workspacePath]);
+  }, [allDocs, cleanupProgress, teamSyncStatus, workspacePath, t]);
 
   if (view === 'trash') {
     return (
@@ -257,11 +277,13 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
                 onClick={() => setView('documents')}
               >
                 <MaterialSymbol icon="arrow_back" size={16} />
-                Shared documents
+                {t('common:collab.home_title')}
               </button>
-              <h1 className="m-0 text-[20px] font-semibold text-[var(--nim-text)]">Trash</h1>
+              <h1 className="m-0 text-[20px] font-semibold text-[var(--nim-text)]">
+                {t('common:collab.trash')}
+              </h1>
               <p className="mt-0.5 mb-0 text-[13px] text-[var(--nim-text-faint)]">
-                Documents are permanently removed after 30 days. Restore returns them to their original folder.
+                {t('common:collab.trash_description')}
               </p>
             </div>
             <button
@@ -269,20 +291,24 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[var(--nim-danger)] bg-transparent text-[12px] text-[var(--nim-danger)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--nim-danger)_10%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={trashedDocs.length === 0 || teamSyncStatus !== 'connected'}
               onClick={() => {
-                if (window.confirm(`Permanently delete ${trashedDocs.length} document${trashedDocs.length === 1 ? '' : 's'}? This cannot be undone.`)) {
+                if (window.confirm(t('common:collab.empty_trash_confirm', {
+                  count: trashedDocs.length,
+                }))) {
                   emptySharedDocumentTrash();
                 }
               }}
             >
               <MaterialSymbol icon="delete_forever" size={17} />
-              Empty Trash
+              {t('common:collab.empty_trash')}
             </button>
           </div>
 
           {trashedDocs.length === 0 ? (
             <div className="rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-5 py-10 text-center">
               <MaterialSymbol icon="delete" size={30} className="text-[var(--nim-text-faint)]" />
-              <p className="mt-2 mb-0 text-[13px] text-[var(--nim-text-muted)]">Trash is empty.</p>
+              <p className="mt-2 mb-0 text-[13px] text-[var(--nim-text-muted)]">
+                {t('common:collab.trash_empty')}
+              </p>
             </div>
           ) : (
             <div className="rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] divide-y divide-[var(--nim-border)]">
@@ -292,7 +318,9 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
                   <div className="flex-1 min-w-0">
                     <div className="truncate text-[13.5px] text-[var(--nim-text)]">{docName(doc)}</div>
                     <div className="text-[11.5px] text-[var(--nim-text-faint)]">
-                      Trashed {getRelativeTimeString(doc.trashedAt ?? Date.now())}
+                      {t('common:collab.trashed_time', {
+                        time: getRelativeTimeString(doc.trashedAt ?? Date.now(), t),
+                      })}
                     </div>
                   </div>
                   <button
@@ -301,16 +329,20 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
                     disabled={teamSyncStatus !== 'connected'}
                     onClick={() => restoreSharedDocument(doc.documentId)}
                   >
-                    Restore
+                    {t('common:collab.restore')}
                   </button>
                   <button
                     type="button"
                     className="p-1 rounded border-none bg-transparent text-[var(--nim-danger)] cursor-pointer hover:bg-[var(--nim-bg-hover)] disabled:opacity-50"
                     disabled={teamSyncStatus !== 'connected'}
-                    title="Delete permanently"
-                    aria-label={`Delete ${docName(doc)} permanently`}
+                    title={t('common:collab.delete_permanently')}
+                    aria-label={t('common:collab.delete_document_permanently', {
+                      name: docName(doc),
+                    })}
                     onClick={() => {
-                      if (window.confirm(`Permanently delete "${docName(doc)}"? This cannot be undone.`)) {
+                      if (window.confirm(t('common:collab.delete_permanently_confirm', {
+                        name: docName(doc),
+                      }))) {
                         removeSharedDocument(doc.documentId);
                       }
                     }}
@@ -331,9 +363,11 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
       <div className="max-w-[860px] mx-auto">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
-            <h1 className="m-0 text-[20px] font-semibold text-[var(--nim-text)]">Shared documents</h1>
+            <h1 className="m-0 text-[20px] font-semibold text-[var(--nim-text)]">
+              {t('common:collab.home_title')}
+            </h1>
             <p className="mt-0.5 mb-0 text-[13px] text-[var(--nim-text-faint)]">
-              Find, revisit, and catch up on what your team has been working on.
+              {t('common:collab.home_description')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -344,7 +378,9 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
               onClick={() => void handleCleanup()}
             >
               <MaterialSymbol icon="cleaning_services" size={17} />
-              {cleanupProgress ? `${cleanupProgress.checked}/${cleanupProgress.total}` : 'Clean up empty docs'}
+              {cleanupProgress
+                ? `${cleanupProgress.checked}/${cleanupProgress.total}`
+                : t('common:collab.cleanup_empty_docs')}
             </button>
             <button
               type="button"
@@ -352,7 +388,8 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
               onClick={() => setView('trash')}
             >
               <MaterialSymbol icon="delete" size={17} />
-              Trash{trashedDocs.length > 0 ? ` (${trashedDocs.length})` : ''}
+              {t('common:collab.trash')}
+              {trashedDocs.length > 0 ? ` (${trashedDocs.length})` : ''}
             </button>
           </div>
         </div>
@@ -363,18 +400,18 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
           <input
             autoFocus
             className="flex-1 bg-transparent border-none outline-none text-[14px] text-[var(--nim-text)] placeholder:text-[var(--nim-text-faint)]"
-            placeholder="Search shared documents"
+            placeholder={t('common:collab.search_placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search shared documents"
+            aria-label={t('common:collab.search_label')}
           />
           {hasQuery && (
             <button
               type="button"
               className="bg-transparent border-none cursor-pointer text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] p-0.5"
               onClick={() => setQuery('')}
-              aria-label="Clear search"
-              title="Clear search"
+              aria-label={t('common:collab.clear_search')}
+              title={t('common:collab.clear_search')}
             >
               <MaterialSymbol icon="close" size={16} />
             </button>
@@ -383,10 +420,13 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
 
         {hasQuery ? (
           <div className="shared-docs-section">
-            <SectionHeader icon="search" label={`Results (${searchResults.length})`} />
+            <SectionHeader
+              icon="search"
+              label={t('common:collab.results_count', { count: searchResults.length })}
+            />
             {searchResults.length === 0 ? (
               <p className="text-[13px] text-[var(--nim-text-faint)] px-2.5 py-3 m-0">
-                No shared documents match “{query.trim()}”.
+                {t('common:collab.no_match_for', { query: query.trim() })}
               </p>
             ) : (
               <div className="flex flex-col">
@@ -405,7 +445,7 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
           <>
             {favoriteDocs.length > 0 && (
               <div className="shared-docs-section mb-7">
-                <SectionHeader icon="star" label="Favorites" />
+                <SectionHeader icon="star" label={t('common:collab.filter_favorites')} />
                 <div className="flex flex-col">
                   {favoriteDocs.map((doc) => (
                     <DocRow
@@ -421,7 +461,7 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
 
             {changedDocs.length > 0 && (
               <div className="shared-docs-section mb-7">
-                <SectionHeader icon="bolt" label="New & changed" />
+                <SectionHeader icon="bolt" label={t('common:collab.new_and_changed')} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {changedDocs.map(({ doc, freshness }) => (
                     <ChangedCard
@@ -438,7 +478,7 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
 
             {recentDocs.length > 0 && (
               <div className="shared-docs-section mb-7">
-                <SectionHeader icon="history" label="Recently opened" />
+                <SectionHeader icon="history" label={t('common:collab.recently_opened')} />
                 <div className="flex flex-col">
                   {recentDocs.map((doc) => (
                     <DocRow
@@ -455,14 +495,14 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
             <div className="shared-docs-section">
               <SectionHeader
                 icon="folder_shared"
-                label="All shared documents"
+                label={t('common:collab.all_shared_documents')}
                 right={
                   sortedAllDocs.length > 0 ? (
                     <button
                       type="button"
                       className="flex items-center gap-1 text-[12px] text-[var(--nim-text-muted)] border border-[var(--nim-border)] rounded px-2 py-1 bg-transparent cursor-pointer hover:text-[var(--nim-text)] hover:border-[var(--nim-text-faint)]"
                       onClick={cycleSort}
-                      title="Change sort order"
+                      title={t('common:collab.change_sort')}
                     >
                       {sortLabel}
                       <MaterialSymbol icon="expand_more" size={16} />
@@ -472,7 +512,7 @@ export const SharedDocsHome: React.FC<SharedDocsHomeProps> = ({ workspacePath, o
               />
               {sortedAllDocs.length === 0 ? (
                 <p className="text-[13px] text-[var(--nim-text-faint)] px-2.5 py-3 m-0">
-                  No shared documents yet. Create one or share a local file to collaborate.
+                  {t('common:collab.no_documents_create')}
                 </p>
               ) : (
                 <div className="flex flex-col">

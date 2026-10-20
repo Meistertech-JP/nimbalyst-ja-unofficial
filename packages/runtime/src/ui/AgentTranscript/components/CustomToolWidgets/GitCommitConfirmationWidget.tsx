@@ -22,6 +22,7 @@ import type { CustomToolWidgetProps } from './index';
 import { buildCodexToolLookupId } from '../../../../ai/server/toolLookupIds';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import { useDiffPeek } from '../../../git/useDiffPeek';
+import { useRuntimeTranslation } from '../../../RuntimeTranslation';
 import {
   buildFileDirectoryTree,
   getFileDirectoryPaths,
@@ -289,27 +290,29 @@ function isToolResultCompleted(rawToolResult: unknown, toolResultText: string, s
 // Widget Component
 // ============================================================
 
-export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
+export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = (props) => {
+  if (!props.message.toolCall?.arguments || !props.message.toolCall.providerToolCallId) {
+    return null;
+  }
+  return <GitCommitConfirmationContent {...props} />;
+};
+
+const GitCommitConfirmationContent: React.FC<CustomToolWidgetProps> = ({
   message,
   workspacePath,
   sessionId,
 }) => {
   const posthog = usePostHog();
+  const { t, locale } = useRuntimeTranslation();
 
   // Get host from atom (set by SessionTranscript or SessionDetailScreen)
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
 
   // Extract data from tool call
-  const toolCall = message.toolCall;
-  if (!toolCall) {
-    return null;
-  }
+  const toolCall = message.toolCall!;
 
   // Get data from arguments (the tool input)
   const args = toolCall.arguments as any;
-  if (!args) {
-    return null;
-  }
 
   // Parse files - can be strings or objects with path and status
   // The model sometimes sends filesToStage as a JSON-encoded string instead of an array
@@ -382,7 +385,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
       if (action === 'error' || action === 'failed') {
         return {
           type: 'error' as const,
-          error: structuredResult.error || toolResult || 'Commit failed',
+          error: structuredResult.error || toolResult || undefined,
         };
       }
     }
@@ -392,13 +395,13 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
     }
 
     if (structuredResult?.success === false) {
-      return { type: 'error' as const, error: toolResult || 'Commit failed' };
+      return { type: 'error' as const, error: toolResult || undefined };
     }
 
     if (structuredResult?.status) {
       const status = structuredResult.status.toLowerCase();
       if (status === 'failed') {
-        return { type: 'error' as const, error: toolResult || structuredResult.error || 'Commit failed' };
+        return { type: 'error' as const, error: toolResult || structuredResult.error || undefined };
       }
       if (status === 'cancelled' || status === 'canceled') {
         return { type: 'cancelled' as const };
@@ -461,11 +464,6 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
     }
     return providerToolCallId;
   }, [message.createdAt, message.id, toolCall.providerToolCallId]);
-
-  // If no proposal ID, cannot proceed
-  if (!proposalId) {
-    return null;
-  }
 
   // Widget is interactive if the tool hasn't completed yet
   const isPending = !isCompleted;
@@ -578,10 +576,10 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
   // Get status label for tooltip
   const getStatusLabel = (status: FileStatus): string => {
     switch (status) {
-      case 'added': return 'New file';
-      case 'modified': return 'Modified';
-      case 'deleted': return 'Deleted';
-      default: return 'Modified';
+      case 'added': return t('files:sidebar.new_file_button', 'New file');
+      case 'modified': return t('files:edits.modified', 'Modified');
+      case 'deleted': return t('files:edits.deleted', 'Deleted');
+      default: return t('files:edits.modified', 'Modified');
     }
   };
 
@@ -648,7 +646,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             className={`git-commit-widget__peek-btn shrink-0 w-5 h-5 flex items-center justify-center rounded text-[var(--nim-text-faint)] hover:text-[var(--nim-primary)] hover:bg-[var(--nim-bg-tertiary)] transition-opacity bg-transparent border-0 cursor-pointer ${
               isPinned ? 'opacity-100 text-[var(--nim-primary)]' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
             }`}
-            title={isPinned ? 'Hide diff' : 'Show diff'}
+            title={isPinned ? t('files:edits.hide_diff', 'Hide diff') : t('files:edits.show_diff', 'Show diff')}
             onClick={(e) => {
               e.stopPropagation();
               togglePeek(filePath);
@@ -829,12 +827,12 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
         >
           <div className="git-commit-widget__header flex items-center gap-2 p-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
             <MaterialSymbol icon="close" size={16} className="text-[var(--nim-text-muted)]" />
-            <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">Commit Proposal</span>
+            <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">{t('aichat:git_commit.proposal', 'Commit Proposal')}</span>
             <span
               data-testid="git-commit-cancelled"
               className="flex items-center gap-1 text-xs font-medium text-[var(--nim-text-muted)] py-1 px-2 bg-[var(--nim-bg-tertiary)] rounded-full"
             >
-              Cancelled
+              {t('aichat:interactive.cancelled', 'Cancelled')}
             </span>
           </div>
         </div>
@@ -843,7 +841,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
 
     // Format the commit timestamp from the actual git commit date - only show if we have real data
     const commitTimestamp = result.commitDate
-      ? new Date(result.commitDate).toLocaleString(undefined, {
+      ? new Date(result.commitDate).toLocaleString(locale, {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
@@ -865,7 +863,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             className={result.success ? 'text-[var(--nim-success)]' : 'text-[var(--nim-error)]'}
           />
           <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">
-            {result.success ? 'Changes Committed' : 'Commit Failed'}
+            {result.success ? t('aichat:git_commit.committed', 'Changes Committed') : t('aichat:git_commit.failed', 'Commit Failed')}
           </span>
           {result.success && result.commitHash && (
             <span
@@ -882,7 +880,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             <div className="text-[0.8125rem] font-medium text-[var(--nim-text)] leading-normal whitespace-pre-wrap font-mono">{commitMessage}</div>
             <div className="mt-1 pt-2 border-t border-[var(--nim-border)]">
               <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)] mb-1.5">
-                {filesToStage.size} file{filesToStage.size !== 1 ? 's' : ''} committed
+                {t('aichat:git_commit.files_committed', filesToStage.size === 1 ? '{{count}} file committed' : '{{count}} files committed', { count: filesToStage.size })}
               </div>
               <div className="flex flex-wrap gap-1">
                 {Array.from(filesToStage).map((filePath) => {
@@ -907,7 +905,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
                     host.trackEvent('auto_commit_disabled', { source: 'commit_success_widget' });
                   }}
                 >
-                  Disable auto-approve
+                  {t('aichat:git_commit.disable_auto_approve', 'Disable auto-approve')}
                 </button>
               </div>
             )}
@@ -917,7 +915,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             data-testid="git-commit-error"
             className="git-commit-widget__error-content p-2 bg-[color-mix(in_srgb,var(--nim-error)_8%,var(--nim-bg))] text-[var(--nim-error)] text-[0.8125rem]"
           >
-            {result.error}
+            {result.error || t('aichat:git_commit.failed', 'Commit Failed')}
           </div>
         )}
       </div>
@@ -945,13 +943,13 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
       >
         <div className="git-commit-widget__header flex items-center gap-2 p-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
           <MaterialSymbol icon="check_circle" size={16} className="text-[var(--nim-success)]" />
-          <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">Changes Committed</span>
+          <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">{t('aichat:git_commit.committed', 'Changes Committed')}</span>
         </div>
         <div className="git-commit-widget__success-content p-2 bg-[color-mix(in_srgb,var(--nim-success)_8%,var(--nim-bg))] flex flex-col gap-2">
           <div className="text-[0.8125rem] font-medium text-[var(--nim-text)] leading-normal whitespace-pre-wrap font-mono">{initialCommitMessage}</div>
           <div className="mt-1 pt-2 border-t border-[var(--nim-border)]">
             <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)] mb-1.5">
-              {initialFilesToStage.length} file{initialFilesToStage.length !== 1 ? 's' : ''} committed
+              {t('aichat:git_commit.files_committed', initialFilesToStage.length === 1 ? '{{count}} file committed' : '{{count}} files committed', { count: initialFilesToStage.length })}
             </div>
             <div className="flex flex-wrap gap-1">
               {initialFilesToStage.map((filePath) => {
@@ -981,7 +979,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
                 }}
                 className="accent-[var(--nim-primary)] w-3.5 h-3.5 cursor-pointer"
               />
-              <span className="text-[0.75rem] text-[var(--nim-text-muted)]">Auto-approve future commits</span>
+              <span className="text-[0.75rem] text-[var(--nim-text-muted)]">{t('aichat:git_commit.auto_approve_future', 'Auto-approve future commits')}</span>
             </label>
           </div>
         </div>
@@ -999,14 +997,14 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
       {/* Header matching FileEditsSidebar controls bar */}
       <div className="git-commit-widget__header flex items-center gap-2 p-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
         <MaterialSymbol icon="commit" size={16} className="text-[var(--nim-primary)]" />
-        <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">Commit Proposal</span>
+        <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">{t('aichat:git_commit.proposal', 'Commit Proposal')}</span>
       </div>
 
       <div className="git-commit-widget__content p-2 flex flex-col gap-3">
         {/* Reasoning */}
         {reasoning && (
           <div className="git-commit-widget__reasoning flex flex-col gap-1.5">
-            <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">Analysis</div>
+            <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">{t('aichat:git_commit.analysis', 'Analysis')}</div>
             <div className="p-2 bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded text-[0.8125rem] text-[var(--nim-text-muted)] leading-normal">{reasoning}</div>
           </div>
         )}
@@ -1014,7 +1012,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
         {/* Files to Stage */}
         <div className="git-commit-widget__files flex flex-col gap-1.5">
           <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">
-            Files to Stage ({filesToStage.size}/{initialFilesToStage.length})
+            {t('aichat:git_commit.files_to_stage', 'Files to Stage ({{selected}}/{{total}})', { selected: filesToStage.size, total: initialFilesToStage.length })}
           </div>
           <div className="git-commit-widget__files-list flex flex-col max-h-[200px] overflow-y-auto p-1">
             {renderDirectoryNode(directoryTree)}
@@ -1023,14 +1021,14 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
 
         {/* Commit Message */}
         <div className="git-commit-widget__message flex flex-col gap-1.5">
-          <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">Commit Message</div>
+          <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">{t('dialogs:squash.commit_message', 'Commit Message')}</div>
           <textarea
             data-testid="git-commit-message-input"
             className="w-full p-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[0.8125rem] font-mono resize-y leading-snug focus:outline-none focus:border-[var(--nim-border-focus)] placeholder:text-[var(--nim-text-faint)]"
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             rows={6}
-            placeholder="Enter commit message..."
+            placeholder={t('git:commit_placeholder', 'Enter commit message...')}
           />
         </div>
 
@@ -1054,7 +1052,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
               }}
               className="accent-[var(--nim-primary)] w-3.5 h-3.5 cursor-pointer"
             />
-            <span className="text-[0.75rem] text-[var(--nim-text-muted)]">Auto-approve commits</span>
+            <span className="text-[0.75rem] text-[var(--nim-text-muted)]">{t('settings:agent_features.auto_commit_name', 'Auto-approve Commits')}</span>
           </label>
           <button
             data-testid="git-commit-cancel"
@@ -1062,7 +1060,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             onClick={handleCancel}
             disabled={isCommitting}
           >
-            Cancel
+            {t('common:cancel', 'Cancel')}
           </button>
           <button
             data-testid="git-commit-confirm"
@@ -1071,7 +1069,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isCommitting || filesToStage.size === 0 || !commitMessage.trim()}
           >
             <MaterialSymbol icon="check" size={14} />
-            {isCommitting ? 'Committing...' : 'Confirm & Commit'}
+            {isCommitting ? t('git:committing', 'Committing...') : t('aichat:git_commit.confirm', 'Confirm & Commit')}
           </button>
         </div>
       </div>

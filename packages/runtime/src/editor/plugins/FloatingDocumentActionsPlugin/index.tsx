@@ -8,6 +8,7 @@ import { $convertFromEnhancedMarkdownString, $convertToEnhancedMarkdownString, g
 import { EditorConfig } from '../../EditorConfig';
 import { copyToClipboard } from '../../../utils/clipboard';
 import { useRuntimeSettings } from '../../context/RuntimeSettingsContext';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 import {
   getBuiltInFullDocumentTrackerTypes,
   getDefaultFrontmatterForType,
@@ -50,6 +51,7 @@ export default function FloatingDocumentActionsPlugin({
   onSwitchToAgentMode,
   onOpenSessionInChat
 }: FloatingDocumentActionsPluginProps): JSX.Element {
+  const { t, locale } = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   const runtimeSettings = useRuntimeSettings();
   const [showTOC, setShowTOC] = useState(false);
@@ -344,11 +346,11 @@ export default function FloatingDocumentActionsPlugin({
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return new Date(timestamp).toLocaleDateString();
+    if (minutes < 1) return t('sessions:relative_time.compact_just_now', 'just now');
+    if (minutes < 60) return t('sessions:relative_time.compact_minutes', '{{count}}m ago', { count: minutes });
+    if (hours < 24) return t('sessions:relative_time.compact_hours', '{{count}}h ago', { count: hours });
+    if (days < 7) return t('sessions:relative_time.compact_days', '{{count}}d ago', { count: days });
+    return new Date(timestamp).toLocaleDateString(locale);
   };
 
   return (
@@ -358,7 +360,7 @@ export default function FloatingDocumentActionsPlugin({
         ref={tocButtonRef}
         className="floating-doc-button"
         onClick={() => setShowTOC(!showTOC)}
-        aria-label="Table of Contents"
+        aria-label={t('editor:tooltips.table_of_contents', 'Table of Contents')}
       >
         <i className="icon table-of-contents" />
       </button>
@@ -378,7 +380,7 @@ export default function FloatingDocumentActionsPlugin({
               ))}
             </ul>
           ) : (
-            <div className="toc-empty">No headings in document</div>
+            <div className="toc-empty">{t('editor:toc.empty', 'No headings in document')}</div>
           )}
         </div>
       )}
@@ -395,7 +397,7 @@ export default function FloatingDocumentActionsPlugin({
                 loadAISessions();
               }
             }}
-            aria-label="AI Sessions"
+            aria-label={t('editor:tooltips.ai_sessions', 'AI Sessions')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               {/* AI Sparkle */}
@@ -417,11 +419,11 @@ export default function FloatingDocumentActionsPlugin({
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM17 13H13V17H11V13H7V11H11V7H13V11H17V13Z" fill="currentColor"/>
                 </svg>
-                Start Agent Session
+                {t('editor:ai_sessions.start_new', 'Start new agent session')}
               </button>
 
               {loadingSessions ? (
-                <div className="ai-sessions-loading">Loading sessions...</div>
+                <div className="ai-sessions-loading">{t('editor:ai_sessions.loading', 'Loading sessions…')}</div>
               ) : aiSessions.length > 0 ? (
                 <>
                   <div className="ai-sessions-divider" />
@@ -435,7 +437,7 @@ export default function FloatingDocumentActionsPlugin({
                         <div className="ai-session-header">
                           <div className="ai-session-title">{session.title}</div>
                           <div className="ai-session-meta">
-                            {session.provider} • {formatRelativeTime(session.updatedAt)} • {session.messageCount} turns
+                            {session.provider} • {formatRelativeTime(session.updatedAt)} • {t('aichat:session_dropdown.turns', '{{count}} turns', { count: session.messageCount })}
                           </div>
                         </div>
                         <div className="ai-session-actions">
@@ -445,12 +447,12 @@ export default function FloatingDocumentActionsPlugin({
                                 e.stopPropagation();
                                 handleLoadSessionInAgentMode(session.id);
                               }}
-                              title="Open in Agent mode"
+                              title={t('aichat:chat_sidebar.open_agent', 'Open in agent mode')}
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                               <path d="M19 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.11 21 21 20.1 21 19V5C21 3.9 20.11 3 19 3ZM19 19H5V5H19V19Z" fill="currentColor"/>
                             </svg>
-                            Agent
+                            {t('common:navigation.agent', 'Agent')}
                           </button>
                           <button
                             className="ai-session-action-button"
@@ -458,12 +460,12 @@ export default function FloatingDocumentActionsPlugin({
                               e.stopPropagation();
                               handleLoadSessionInChat(session.id);
                             }}
-                            title="Open in AI Chat panel"
+                            title={t('editor:tooltips.open_chat', 'Open in Chat panel')}
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                               <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
                             </svg>
-                            Chat
+                            {t('aichat:chat_sidebar.default_title', 'Chat')}
                           </button>
                         </div>
                       </div>
@@ -473,7 +475,7 @@ export default function FloatingDocumentActionsPlugin({
               ) : (
                 <>
                   <div className="ai-sessions-divider" />
-                  <div className="ai-sessions-empty">No AI sessions yet</div>
+                  <div className="ai-sessions-empty">{t('editor:ai_sessions.empty', 'No AI sessions have edited this file yet')}</div>
                 </>
               )}
             </div>
@@ -486,7 +488,7 @@ export default function FloatingDocumentActionsPlugin({
         ref={actionsButtonRef}
         className="floating-doc-button floating-doc-menu-button"
         onClick={() => setShowActionsMenu(!showActionsMenu)}
-        aria-label="Document Actions"
+        aria-label={t('editor:shared_ui.document_actions', 'Document Actions')}
       >
         ⋯
       </button>
@@ -494,23 +496,23 @@ export default function FloatingDocumentActionsPlugin({
       {showActionsMenu && (
         <div className="floating-doc-actions-dropdown">
           <button className="action-menu-item" onClick={handleMarkdownMode}>
-            Toggle Markdown Mode
+            {t('editor:diff.markdown_mode_toggle', 'Toggle Markdown Mode')}
           </button>
           <button className="action-menu-item" onClick={handleViewHistory}>
-            View History
+            {t('editor:diff.view_history', 'View History')}
           </button>
           {/*<button className="action-menu-item" onClick={handleRenameDocument}>*/}
           {/*  Rename Document*/}
           {/*</button>*/}
           <button className="action-menu-item" onClick={handleCopyAsMarkdown}>
-            Copy as Markdown
+            {t('editor:diff.copy_markdown', 'Copy as Markdown')}
           </button>
           <div
             className="action-menu-item action-menu-item-with-submenu"
             onMouseEnter={() => setShowTrackerTypeSubmenu(true)}
             onMouseLeave={() => setShowTrackerTypeSubmenu(false)}
           >
-            <span>Set Document Type</span>
+            <span>{t('editor:document_type.set', 'Set Document Type')}</span>
             <i className="icon chevron-right">›</i>
 
             {showTrackerTypeSubmenu && (
@@ -524,7 +526,11 @@ export default function FloatingDocumentActionsPlugin({
                     <span className="material-symbols-outlined tracker-type-icon" style={{ color: type.color, fontSize: '18px' }}>
                       {type.icon}
                     </span>
-                    <span>{type.displayName}</span>
+                    <span>{type.type === 'plan'
+                      ? t('editor:document_type.plan', 'Plan')
+                      : type.type === 'decision'
+                        ? t('editor:document_type.decision', 'Decision')
+                        : type.displayName}</span>
                     {currentTrackerType === type.type && (
                       <span className="checkmark">✓</span>
                     )}
@@ -540,7 +546,7 @@ export default function FloatingDocumentActionsPlugin({
                       <span className="material-symbols-outlined tracker-type-icon" style={{ fontSize: '18px' }}>
                         close
                       </span>
-                      <span>Remove Type</span>
+                      <span>{t('editor:document_type.remove', 'Remove Type')}</span>
                     </button>
                   </>
                 )}

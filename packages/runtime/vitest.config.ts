@@ -19,6 +19,12 @@ const alias = [
   { find: '@nimbalyst/extension-sdk/file-tree', replacement: path.resolve(__dirname, '../extension-sdk/src/fileDirectoryTree.ts') },
   { find: '@nimbalyst/extension-sdk', replacement: path.resolve(__dirname, '../extension-sdk/src') },
   { find: /^@\//, replacement: `${path.resolve(__dirname, './src/editor')}/` },
+  // Monaco's ESM entry imports raw CSS, which Node cannot load during unit
+  // tests. Reuse the Electron test stub for runtime tests that only need the
+  // editor barrel for type/runtime wiring.
+  { find: /^monaco-editor(?:\/.*)?$/, replacement: path.resolve(__dirname, '../electron/test-stubs/monaco-stub.ts') },
+  { find: '@monaco-editor/react', replacement: path.resolve(__dirname, '../electron/test-stubs/monaco-stub.ts') },
+  { find: 'y-monaco', replacement: path.resolve(__dirname, '../electron/test-stubs/monaco-stub.ts') },
 ];
 
 const setupFiles = ['../../test-utils/setup.ts'];

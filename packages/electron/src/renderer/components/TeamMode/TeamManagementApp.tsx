@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSetAtom } from 'jotai';
 
 import { DialogProvider } from '../../contexts/DialogContext';
@@ -47,6 +48,7 @@ function readTarget(): WindowTarget {
 }
 
 export function TeamManagementApp() {
+  const { t } = useTranslation(['project', 'common']);
   const setSelectedOrgId = useSetAtom(selectedOrgIdAtom);
   const [target, setTarget] = useState(readTarget);
   // Untargeted opens resolve a default org before TeamMode mounts, so the
@@ -85,8 +87,8 @@ export function TeamManagementApp() {
   }, [target.orgId, target.retargetNonce, setSelectedOrgId]);
 
   useEffect(() => {
-    window.electronAPI?.setTitle?.('Organization - Nimbalyst');
-  }, []);
+    window.electronAPI?.setTitle?.(`${t('common:organization')} - Nimbalyst`);
+  }, [t]);
 
   useEffect(() => {
     const off = window.electronAPI?.on?.(
@@ -113,7 +115,7 @@ export function TeamManagementApp() {
           ? <TeamMode workspacePath={target.workspacePath ?? undefined} isActive />
           : (
             <div className="team-management-resolving flex flex-1 items-center justify-center text-sm text-[var(--nim-text-muted)]">
-              Loading organization…
+              {t('org.loading')}
             </div>
           )}
       </div>

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 
 type KeyCustodyMode = 'legacy-e2e' | 'server-managed';
@@ -19,6 +20,7 @@ interface Props {
  * admin-only retry for a stuck background finalizer; custody is never optional.
  */
 export function SecurityEncryptionSection({ orgId, isAdmin }: Props) {
+  const { t } = useTranslation(['project']);
   const [mode, setMode] = useState<KeyCustodyMode | null>(null);
   const [migration, setMigration] = useState<MigrationDiagnostic | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,20 +75,19 @@ export function SecurityEncryptionSection({ orgId, isAdmin }: Props) {
           <MaterialSymbol icon="verified_user" size={22} fill />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 text-[15px] font-semibold text-[var(--nim-text)]">Encrypted by Nimbalyst</h3>
+          <h3 className="m-0 text-[15px] font-semibold text-[var(--nim-text)]">{t('project:team.encrypted_by_nimbalyst')}</h3>
           <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-[var(--nim-text-muted)]">
-            Team data is encrypted in transit and at rest with keys managed by Nimbalyst. This is
-            separate from Personal sync encryption, whose keys remain only on your devices.
+            {t('project:team.server_managed_description')}
           </p>
 
           {loading ? (
-            <p className="m-0 mt-3 text-xs text-[var(--nim-text-faint)]">Checking encryption status…</p>
+            <p className="m-0 mt-3 text-xs text-[var(--nim-text-faint)]">{t('project:team.h2_checking_status')}</p>
           ) : stuck ? (
             <div
               className="organization-encryption-diagnostic mt-3 rounded-md border border-[var(--nim-warning)] bg-[rgba(251,191,36,0.08)] p-3"
               data-testid="organization-encryption-stuck"
             >
-              <p className="m-0 text-xs font-semibold text-[var(--nim-warning)]">Encryption update needs support</p>
+              <p className="m-0 text-xs font-semibold text-[var(--nim-warning)]">{t('project:team.encryption_needs_support')}</p>
               <p className="m-0 mt-1 select-text text-xs text-[var(--nim-text-muted)]">
                 {stuck.message}
               </p>
@@ -97,7 +98,7 @@ export function SecurityEncryptionSection({ orgId, isAdmin }: Props) {
                   disabled={retrying}
                   onClick={() => { void retry(); }}
                 >
-                  {retrying ? 'Retrying…' : 'Retry now'}
+                  {retrying ? t('project:team.retrying') : t('project:team.retry_now')}
                 </button>
               ) : null}
             </div>
@@ -105,13 +106,13 @@ export function SecurityEncryptionSection({ orgId, isAdmin }: Props) {
             <p className="m-0 mt-3 inline-flex items-center gap-1.5 text-xs text-[var(--nim-text-muted)]">
               <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />
               {migration?.status === 'migrating' && migration.phase === 'documents' && migration.documentsTotal
-                ? `Finalizing shared documents (${migration.documentsCompleted ?? 0}/${migration.documentsTotal})`
-                : 'Updating encryption in the background'}
+                ? t('project:team.finalizing_documents', { completed: migration.documentsCompleted ?? 0, total: migration.documentsTotal })
+                : t('project:team.encryption_updating_background')}
             </p>
           ) : (
             <p className="m-0 mt-3 inline-flex items-center gap-1.5 text-xs text-[var(--nim-success)]">
               <MaterialSymbol icon="check_circle" size={14} fill />
-              Encryption active
+              {t('project:team.encryption_active')}
             </p>
           )}
         </div>

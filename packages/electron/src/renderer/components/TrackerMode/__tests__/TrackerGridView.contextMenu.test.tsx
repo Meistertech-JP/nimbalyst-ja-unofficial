@@ -5,8 +5,9 @@
  * cell range, which these cover: a right-click inside the range acts on every
  * row in it, and a right-click outside it acts on the clicked row alone.
  */
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import i18next from 'i18next';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { loadBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 
@@ -14,6 +15,20 @@ const { selectedRange, gridElement } = vi.hoisted(() => ({
   selectedRange: { current: null as { y: number; y1: number } | null },
   gridElement: {} as Record<string, any>,
 }));
+
+// JSDOM has no menu layout; avoid its CSS :has()/arbitrary-class selector bug
+// during Floating UI measurements. Real menu captions and action handlers run.
+vi.mock('@floating-ui/react', async importOriginal => {
+  const actual = await importOriginal<typeof import('@floating-ui/react')>();
+  const React = await import('react');
+  return {
+    ...actual,
+    useFloating: () => ({
+      refs: React.useMemo(() => ({ setReference: vi.fn(), setFloating: vi.fn() }), []),
+      floatingStyles: {},
+    }),
+  };
+});
 
 vi.mock('@revolist/react-datagrid', async () => {
   const React = await import('react');
@@ -42,6 +57,8 @@ vi.mock('@revolist/react-datagrid', async () => {
 });
 
 import { TrackerGridView } from '../TrackerGridView';
+
+afterEach(async () => { cleanup(); vi.restoreAllMocks(); await i18next.changeLanguage('en'); });
 
 function record(id: string): TrackerRecord {
   return {
@@ -117,6 +134,35 @@ describe('TrackerGridView row context menu', () => {
     fireEvent.click(screen.getByTestId('tracker-row-context-delete'));
     expect(onDeleteItems).toHaveBeenCalledWith(['bug-1', 'bug-2']);
     confirmSpy.mockRestore();
+  });
+
+  it('updates an open bulk menu in Japanese while preserving action values, selection and cancellation', async () => {
+    const onDeleteItems = vi.fn();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderGrid({ onDeleteItems });
+    selectedRange.current = { y: 0, y1: 1 };
+    rightClickRow(1);
+    await waitFor(() => expect(screen.getByText('2 items selected')).toBeTruthy());
+    await act(async () => { await i18next.changeLanguage('ja'); });
+    expect(screen.getByText('2件を選択中')).toBeTruthy();
+    fireEvent.mouseEnter(screen.getByText('優先度を設定').parentElement!.parentElement!);
+    fireEvent.click(await screen.findByText('重大'));
+    await waitFor(() => expect(window.electronAPI.documentService.updateTrackerItem).toHaveBeenCalledWith(expect.objectContaining({
+      itemId: 'bug-1', updates: { priority: 'critical' },
+    })));
+    expect(window.electronAPI.documentService.updateTrackerItem).toHaveBeenCalledWith(expect.objectContaining({
+      itemId: 'bug-2', updates: { priority: 'critical' },
+    }));
+    rightClickRow(1);
+    await screen.findByText('2件を選択中');
+    fireEvent.click(screen.getByTestId('tracker-row-context-delete'));
+    expect(confirmSpy).toHaveBeenCalledWith('項目を2件削除しますか？この操作は取り消せません。');
+    expect(onDeleteItems).not.toHaveBeenCalled();
+    confirmSpy.mockReturnValue(true);
+    rightClickRow(1);
+    await screen.findByText('2件を選択中');
+    fireEvent.click(screen.getByTestId('tracker-row-context-delete'));
+    expect(onDeleteItems).toHaveBeenCalledWith(['bug-1', 'bug-2']);
   });
 
   it('offers the deep link only for a single-row selection', async () => {

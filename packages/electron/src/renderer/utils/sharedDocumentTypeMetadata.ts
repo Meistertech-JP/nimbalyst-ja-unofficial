@@ -1,4 +1,5 @@
 import type { SharedDocument } from '../store/atoms/collabDocuments';
+import type { TFunction } from 'i18next';
 import type {
   CollaborativeDocumentTypeCatalog,
   CollaborativeDocumentTypeDescriptor,
@@ -14,13 +15,25 @@ export interface ResolvedSharedDocumentTypeMetadata {
 export interface SharedDocumentTypePresentation {
   state: 'ready' | 'unsupported';
   icon: string;
+  /** Stable catalog label used for filtering, sorting and type colors. */
   typeLabel: string;
+  /** Presentation only: never use the translated label as a filter value. */
+  displayLabelKey?: 'extensions:shared_document_type.locked' | 'extensions:shared_document_type.unsupported';
   metadata: ResolvedSharedDocumentTypeMetadata;
   descriptor?: CollaborativeDocumentTypeDescriptor;
   reason?: string;
 }
 
 export const UNSUPPORTED_SHARED_DOCUMENT_ICON = 'lock';
+
+export function getSharedDocumentTypeDisplayLabel(
+  presentation: SharedDocumentTypePresentation,
+  t: TFunction,
+): string {
+  return presentation.displayLabelKey
+    ? t(presentation.displayLabelKey, { defaultValue: presentation.typeLabel })
+    : presentation.typeLabel;
+}
 
 function normalizeSuffix(value: string | null | undefined): string | undefined {
   const trimmed = value?.trim().toLowerCase();
@@ -90,6 +103,7 @@ export function resolveSharedDocumentTypePresentation(
       state: 'unsupported',
       icon: UNSUPPORTED_SHARED_DOCUMENT_ICON,
       typeLabel: 'Locked document',
+      displayLabelKey: 'extensions:shared_document_type.locked',
       metadata,
       reason: 'The shared document metadata is locked and cannot be resolved.',
     };
@@ -114,6 +128,7 @@ export function resolveSharedDocumentTypePresentation(
     state: 'unsupported',
     icon: UNSUPPORTED_SHARED_DOCUMENT_ICON,
     typeLabel: resolution.descriptor?.displayName ?? 'Unsupported document',
+    displayLabelKey: resolution.descriptor?.displayName == null ? 'extensions:shared_document_type.unsupported' : undefined,
     metadata,
     descriptor: resolution.descriptor,
     reason: resolution.reason,

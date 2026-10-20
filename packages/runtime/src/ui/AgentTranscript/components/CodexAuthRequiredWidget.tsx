@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 /**
  * Custom event name used to ask the renderer to open the OpenAI Codex settings
@@ -28,6 +29,7 @@ const injectCodexAuthRequiredWidgetStyles = () => {
 };
 
 export const CodexAuthRequiredWidget: React.FC<{ fallbackMessage?: string }> = ({ fallbackMessage }) => {
+  const { t } = useRuntimeTranslation();
   React.useEffect(() => {
     injectCodexAuthRequiredWidgetStyles();
   }, []);
@@ -43,10 +45,10 @@ export const CodexAuthRequiredWidget: React.FC<{ fallbackMessage?: string }> = (
       data-testid="codex-auth-required-widget"
     >
       <div className="text-sm font-medium text-[var(--nim-text)]">
-        Sign in to OpenAI Codex to continue
+        {t('aichat:auth.codex_continue', 'Sign in to OpenAI Codex to continue')}
       </div>
       <p className="text-[13px] text-[var(--nim-text-muted)] leading-relaxed">
-        This session needs an OpenAI Codex login. Sign in with ChatGPT or an API key to start the agent.
+        {t('aichat:auth.codex_required', 'This session needs an OpenAI Codex login. Sign in with ChatGPT or an API key to start the agent.')}
       </p>
       {fallbackMessage && (
         <div className="rounded-md border border-[var(--nim-border)] text-[var(--nim-text-muted)] p-3 text-[12px] leading-relaxed">
@@ -60,7 +62,7 @@ export const CodexAuthRequiredWidget: React.FC<{ fallbackMessage?: string }> = (
           className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)]"
           data-testid="codex-auth-required-sign-in"
         >
-          Sign In
+          {t('settings:provider.codex.sign_in', 'Sign In')}
         </button>
       </div>
     </div>

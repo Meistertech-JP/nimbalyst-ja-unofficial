@@ -17,6 +17,7 @@ import { TRACKER_REFERENCE_URN_SCHEME } from '../../../plugins/TrackerLinkPlugin
 import { trackerIssueKeyPrefixesAtom } from '../../../plugins/TrackerPlugin/trackerDataAtoms';
 import { SessionReferenceChip } from '../session/SessionReferenceChip';
 import { sessionRefMapAtom } from '../session/sessionRefAtoms';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 // Inject MarkdownRenderer styles once (for syntax highlighting, scrollbar, and overflow wrapper)
 const injectMarkdownRendererStyles = () => {
@@ -176,6 +177,7 @@ const OverflowWrapper: React.FC<{
    *  from messageId + AST node offset at the call site. */
   persistKey?: string;
 }> = ({ children, persistKey }) => {
+  const { t } = useRuntimeTranslation();
   // Freeze the key once per mount so the same wrap-preference slot is used
   // for the lifetime of this instance. Re-mounts re-evaluate useMemo and
   // pick up the persisted preference (if any) for the resolved key.
@@ -241,7 +243,7 @@ const OverflowWrapper: React.FC<{
             onChange={(e) => setWordWrap(e.target.checked)}
             className="w-3 h-3 m-0 cursor-pointer accent-[var(--nim-primary)]"
           />
-          <span className="leading-none">Wrap</span>
+          <span className="leading-none">{t('aichat:conversation_controls.wrap', 'Wrap')}</span>
         </label>
       )}
     </div>

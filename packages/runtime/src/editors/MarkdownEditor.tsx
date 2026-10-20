@@ -26,6 +26,7 @@ import {
 } from '../editor';
 import type { EditorHost } from '../extensions/editorHost';
 import { $getRoot, $setSelection } from 'lexical';
+import { useRuntimeTranslation } from '../ui/RuntimeTranslation';
 
 export interface MarkdownEditorConfig {
   /**
@@ -138,6 +139,7 @@ export function MarkdownEditor({
   collaborationConfig,
   commentsConfig,
 }: MarkdownEditorProps): React.ReactElement {
+  const { t } = useRuntimeTranslation();
   const isCollabMode = !!collaborationConfig;
   // Personal sync: collab is active but disk operations continue
   const isPersonalSync = collaborationConfig?.personalSync === true;
@@ -363,7 +365,7 @@ export function MarkdownEditor({
   if (isLoading) {
     return (
       <div className="markdown-editor-loading">
-        <span>Loading...</span>
+        <span>{t('editor:loading', 'Loading...')}</span>
       </div>
     );
   }
@@ -372,7 +374,7 @@ export function MarkdownEditor({
   if (loadError) {
     return (
       <div className="markdown-editor-error">
-        <span>Failed to load: {loadError.message}</span>
+        <span>{t('editor:load_failed', 'Failed to load: {{error}}', { error: loadError.message })}</span>
       </div>
     );
   }

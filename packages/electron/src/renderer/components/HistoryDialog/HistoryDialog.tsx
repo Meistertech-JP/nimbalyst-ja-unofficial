@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from 'react-i18next';
 import { ProviderIcon, MarkdownEditor, MonacoEditor } from '@nimbalyst/runtime';
 import { useHistory } from '../../hooks/useHistory';
 import { DiffPreviewEditor, type DiffNavigationState } from './DiffPreviewEditor';
@@ -9,7 +10,6 @@ import { ImageDiffViewer } from './ImageDiffViewer';
 import { createReadOnlyEditorHost } from './createReadOnlyEditorHost';
 import { getFileType, type EditorType } from '../../utils/fileTypeDetector';
 import { getFileName } from '../../utils/pathUtils';
-import { getRelativeTimeString } from '../../utils/dateFormatting';
 import { nimAssetUrl } from '../../utils/assetUrl';
 
 interface HistoryDialogProps {
@@ -35,9 +35,11 @@ const getSnapshotId = (snapshot: { timestamp: string; baseMarkdownHash: string }
 
 export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'light', workspacePath, onOpenSessionInChat }: HistoryDialogProps) {
   const posthog = usePostHog();
+  const { t, i18n } = useTranslation(['dialogs', 'common']);
   const { snapshots, loading, refreshSnapshots, loadSnapshot, deleteSnapshot } = useHistory(filePath);
   const [selectedVersions, setSelectedVersions] = useState<VersionSelection[]>([]);
   const [previewContent, setPreviewContent] = useState<string>('');
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [diffMode, setDiffMode] = useState(false);
   const [richView, setRichView] = useState(true);
@@ -137,7 +139,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
           for (const session of sessions) {
             if (sessionIds.has(session.id)) {
               info[session.id] = {
-                title: session.title || 'Untitled Session',
+                title: session.title || '',
                 provider: session.provider || 'claude'
               };
             }
@@ -159,6 +161,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
     if (!isOpen) {
       setSelectedVersions([]);
       setPreviewContent('');
+      setPreviewLoadFailed(false);
       setDiffMode(false);
       setRichView(true);
       setViewMode('changes');
@@ -204,12 +207,14 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
         setLoadingPreview(true);
         try {
           const content = await loadSnapshot(selection.timestamp);
-          if (content) {
+          if (content != null) {
             setPreviewContent(content);
+            setPreviewLoadFailed(false);
           }
         } catch (error) {
           console.error('Failed to load snapshot:', error);
-          setPreviewContent('Failed to load snapshot');
+          setPreviewContent('');
+          setPreviewLoadFailed(true);
         } finally {
           setLoadingPreview(false);
         }
@@ -244,18 +249,21 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
           setLoadingPreview(true);
           try {
             const content = await loadSnapshot(remainingSelection.timestamp);
-            if (content) {
+            if (content != null) {
               setPreviewContent(content);
+              setPreviewLoadFailed(false);
             }
           } catch (error) {
             console.error('Failed to load snapshot:', error);
-            setPreviewContent('Failed to load snapshot');
+            setPreviewContent('');
+            setPreviewLoadFailed(true);
           } finally {
             setLoadingPreview(false);
           }
         }
       } else {
         setPreviewContent('');
+        setPreviewLoadFailed(false);
       }
       return;
     }
@@ -289,12 +297,14 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
         setLoadingPreview(true);
         try {
           const content = await loadSnapshot(timestamp);
-          if (content) {
+          if (content != null) {
             setPreviewContent(content);
+            setPreviewLoadFailed(false);
           }
         } catch (error) {
           console.error('Failed to load snapshot:', error);
-          setPreviewContent('Failed to load snapshot');
+          setPreviewContent('');
+          setPreviewLoadFailed(true);
         } finally {
           setLoadingPreview(false);
         }
@@ -305,12 +315,14 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
       setLoadingPreview(true);
       try {
         const content = await loadSnapshot(timestamp);
-        if (content) {
+        if (content != null) {
           setPreviewContent(content);
+          setPreviewLoadFailed(false);
         }
       } catch (error) {
         console.error('Failed to load snapshot:', error);
-        setPreviewContent('Failed to load snapshot');
+        setPreviewContent('');
+        setPreviewLoadFailed(true);
       } finally {
         setLoadingPreview(false);
       }
@@ -349,6 +361,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
         setVersionBMeta({ type: snapshotB.type, timestamp: snapshotB.timestamp });
         // Set preview content to the newer version for restore functionality
         setPreviewContent(contentB);
+        setPreviewLoadFailed(false);
         setDiffMode(true);
       } else {
         console.warn('[HistoryDialog] Diff load skipped: missing content or metadata', {
@@ -387,13 +400,14 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
   };
 
   const handleDelete = async (snapshotId: string, timestamp: string) => {
-    if (window.confirm('Are you sure you want to delete this snapshot?')) {
+    if (window.confirm(t('dialogs:history.delete_confirm'))) {
       await deleteSnapshot(timestamp);
       // Remove from selections if selected
       const newSelections = selectedVersions.filter(v => v.snapshotId !== snapshotId);
       if (newSelections.length !== selectedVersions.length) {
         setSelectedVersions(newSelections);
         setPreviewContent('');
+        setPreviewLoadFailed(false);
         setDiffMode(false);
       }
     }
@@ -407,35 +421,53 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
     // Less than 1 hour
     if (diff < 3600000) {
       const minutes = Math.floor(diff / 60000);
-      return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+      return t('dialogs:history.minutes_ago', { count: minutes });
     }
 
     // Less than 24 hours
     if (diff < 86400000) {
       const hours = Math.floor(diff / 3600000);
-      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+      return t('dialogs:history.hours_ago', { count: hours });
     }
 
     // Less than 7 days
     if (diff < 604800000) {
       const days = Math.floor(diff / 86400000);
-      return `${days} day${days !== 1 ? 's' : ''} ago`;
+      return t('dialogs:history.days_ago', { count: days });
     }
 
     // Show full date
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    return new Intl.DateTimeFormat(i18n.resolvedLanguage ?? 'en', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(date);
+  };
+
+  const getVersionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'ai-diff':
+      case 'ai-edit':
+        return t('dialogs:history.version_ai_edit');
+      case 'pre-apply':
+        return t('dialogs:history.version_pre_edit');
+      case 'pre-edit':
+        return t('dialogs:history.version_session_start');
+      case 'incremental-approval':
+        return t('dialogs:history.version_partial_review');
+      case 'manual':
+        return t('dialogs:history.version_manual_save');
+      case 'auto':
+      case 'auto-save':
+        return t('dialogs:history.version_auto_save');
+      case 'external-change':
+        return t('dialogs:history.version_external_change');
+      default:
+        return type;
+    }
   };
 
   const formatVersionLabel = (type: string, timestamp: string) => {
-    const typeLabel = type === 'ai-diff' ? 'AI Edit'
-      : type === 'pre-apply' ? 'Pre-edit'
-      : type === 'pre-edit' ? 'AI Session Start'
-      : type === 'incremental-approval' ? 'Partial Review'
-      : type === 'manual' ? 'Manual Save'
-      : type === 'auto-save' ? 'Auto-save'
-      : type === 'external-change' ? 'External Change'
-      : type;
-
+    const typeLabel = getVersionTypeLabel(type);
     const timeLabel = formatTimestamp(timestamp);
     return `${typeLabel} ${timeLabel}`;
   };
@@ -447,6 +479,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
       case 'manual':
         return 'push_pin';
       case 'ai-diff':
+      case 'ai-edit':
         return 'smart_toy';
       case 'pre-apply':
         return 'bolt';
@@ -491,7 +524,9 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
       <div className="history-dialog flex flex-col overflow-hidden rounded-xl bg-[var(--nim-bg)] border border-[var(--nim-border)] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-[90vw] max-w-[1200px] h-[80vh] max-h-[800px]" onClick={(e) => e.stopPropagation()}>
         <div className="history-dialog-header flex items-center justify-between py-3 px-4 border-b border-[var(--nim-border)]">
           <div className="history-dialog-title flex flex-col gap-0.5 min-w-0 flex-1">
-            <h2 className="m-0 text-base font-semibold text-[var(--nim-text)] whitespace-nowrap overflow-hidden text-ellipsis">{filePath ? getFileName(filePath) : 'Document History'}</h2>
+            <h2 className="m-0 text-base font-semibold text-[var(--nim-text)] whitespace-nowrap overflow-hidden text-ellipsis">
+              {filePath ? getFileName(filePath) : t('dialogs:history.document_title')}
+            </h2>
             {filePath && <span className="history-dialog-path text-[11px] text-[var(--nim-text-muted)] whitespace-nowrap overflow-hidden text-ellipsis">{filePath}</span>}
           </div>
           <div className="history-dialog-header-right flex items-center gap-3">
@@ -500,16 +535,16 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                 <button
                   className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${richView ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setRichView(true)}
-                  title="Rendered view"
+                  title={t('dialogs:history.rendered_view')}
                 >
-                  Rich
+                  {t('dialogs:history.rich')}
                 </button>
                 <button
                   className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${!richView ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setRichView(false)}
-                  title="Raw source"
+                  title={t('dialogs:history.raw_source')}
                 >
-                  Raw
+                  {t('dialogs:history.text')}
                 </button>
               </div>
             )}
@@ -517,19 +552,23 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
               <button
                 className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${viewMode === 'changes' ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                 onClick={() => setViewMode('changes')}
-                title="Show diff with previous version"
+                title={t('dialogs:history.show_diff_previous')}
               >
-                Diff
+                {t('dialogs:history.diff')}
               </button>
               <button
                 className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${viewMode === 'version' ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                 onClick={() => setViewMode('version')}
-                title="View full content"
+                title={t('dialogs:history.view_full_content')}
               >
-                Full
+                {t('dialogs:history.full')}
               </button>
             </div>
-            <button className="history-dialog-close nim-btn-icon" onClick={onClose}>
+            <button
+              className="history-dialog-close nim-btn-icon"
+              onClick={onClose}
+              aria-label={t('common:close')}
+            >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
           </div>
@@ -539,14 +578,30 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
           <div className="history-list w-[350px] border-r border-[var(--nim-border)] flex flex-col">
             <div className="history-list-header py-2 px-3 border-b border-[var(--nim-border)] flex items-center justify-between bg-[var(--nim-bg-secondary)]">
               <div className="history-list-header-left flex items-center gap-2">
-                <h3 className="m-0 text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">Snapshots ({displayedSnapshots.length}{compactView && snapshots.length !== displayedSnapshots.length ? ` of ${snapshots.length}` : ''})</h3>
-                {loading && <span className="history-loading text-xs text-[var(--nim-text-muted)]">Loading...</span>}
+                <h3 className="m-0 text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">
+                  {t('dialogs:history.snapshots_header', {
+                    displayed: displayedSnapshots.length,
+                    total:
+                      compactView && snapshots.length !== displayedSnapshots.length
+                        ? ` / ${snapshots.length}`
+                        : '',
+                  })}
+                </h3>
+                {loading && (
+                  <span className="history-loading text-xs text-[var(--nim-text-muted)]">
+                    {t('dialogs:history.loading')}
+                  </span>
+                )}
               </div>
               {snapshots.length > 5 && (
                 <button
                   className="history-compact-toggle nim-btn-icon"
                   onClick={() => setCompactView(!compactView)}
-                  title={compactView ? 'Show all versions' : 'Hide minor auto-saves'}
+                  title={
+                    compactView
+                      ? t('dialogs:history.show_all_versions')
+                      : t('dialogs:history.hide_minor_autosaves')
+                  }
                 >
                   <span className="material-symbols-outlined text-lg">
                     {compactView ? 'unfold_more' : 'unfold_less'}
@@ -557,7 +612,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
 
             {displayedSnapshots.length === 0 ? (
               <div className="history-empty py-10 px-5 text-center text-[var(--nim-text-muted)] text-sm">
-                No history available for this document
+                {t('dialogs:history.no_history_document')}
               </div>
             ) : (
               <div className="history-items nim-scrollbar flex-1 overflow-y-auto p-1">
@@ -567,7 +622,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                   const sessionId = snapshot.metadata?.sessionId;
                   const session = sessionId ? sessionInfo[sessionId] : null;
                   const isAIEdit = ['pre-edit', 'ai-diff', 'ai-edit', 'incremental-approval'].includes(snapshot.type);
-                  const relativeTime = getRelativeTimeString(new Date(snapshot.timestamp).getTime());
+                  const relativeTime = formatTimestamp(snapshot.timestamp);
 
                   const handleSessionClick = (e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -592,7 +647,9 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                         <span className={`history-item-icon material-symbols-outlined text-lg shrink-0 ${isSelected ? 'text-white' : 'text-[var(--nim-text-muted)]'}`}>{getSnapshotIcon(snapshot.type)}</span>
                         <div className="history-item-info flex flex-col gap-0.5 min-w-0 flex-1">
                           <div className="history-item-type-row flex items-center justify-between gap-2">
-                            <span className={`history-item-type text-xs font-medium capitalize whitespace-nowrap ${isSelected ? 'text-white' : 'text-[var(--nim-text)]'}`}>{snapshot.type.replace('-', ' ')}</span>
+                            <span className={`history-item-type text-xs font-medium whitespace-nowrap ${isSelected ? 'text-white' : 'text-[var(--nim-text)]'}`}>
+                              {getVersionTypeLabel(snapshot.type)}
+                            </span>
                             <span className={`history-item-time text-[11px] whitespace-nowrap shrink-0 ${isSelected ? 'text-white' : 'text-[var(--nim-text-faint)]'}`}>{relativeTime}</span>
                           </div>
                           {isAIEdit && session && (
@@ -600,9 +657,11 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                               className={`history-item-session-link flex items-center gap-1 text-[11px] cursor-pointer transition-colors duration-150 max-w-full overflow-hidden no-underline ${isSelected ? 'text-white/80 hover:text-white' : 'text-[var(--nim-link)] hover:text-[var(--nim-link-hover)]'}`}
                             >
                               <ProviderIcon provider={session.provider} size={11} />
-                              <a title="Open AI session in chat"
+                              <a title={t('dialogs:history.open_ai_session')}
                                   onClick={handleSessionClick}
-                                  className="history-item-session-name whitespace-nowrap overflow-hidden text-ellipsis hover:underline">{session.title}</a>
+                                  className="history-item-session-name whitespace-nowrap overflow-hidden text-ellipsis hover:underline">
+                                {session.title || t('common:agent_sessions.untitled')}
+                              </a>
                             </span>
                           )}
                         </div>
@@ -615,7 +674,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                             e.stopPropagation();
                             handleDelete(snapshotId, snapshot.timestamp);
                           }}
-                          title="Delete snapshot"
+                          title={t('dialogs:history.delete_snapshot')}
                         >
                           <span className={`material-symbols-outlined text-base ${isSelected ? 'text-white' : 'text-[var(--nim-text-muted)]'} [.history-item-delete:hover_&]:text-[var(--nim-error)]`}>delete</span>
                         </button>
@@ -631,13 +690,19 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
           <div className="history-preview flex-1 flex flex-col relative min-w-0 overflow-hidden">
             <div className="history-preview-header py-2 px-3 border-b border-[var(--nim-border)] flex items-center justify-between bg-[var(--nim-bg-secondary)] gap-3">
               <div className="history-preview-header-left flex items-center gap-3 min-w-0 flex-1 overflow-hidden flex-wrap">
-                <h3 className="m-0 text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">{diffMode ? 'Diff Preview' : 'Preview'}</h3>
+                <h3 className="m-0 text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">
+                  {diffMode
+                    ? t('dialogs:history.diff_preview')
+                    : t('dialogs:history.preview')}
+                </h3>
                 {diffMode && versionAMeta && versionBMeta && (
                   <div className="diff-version-labels flex items-center gap-2 text-[11px] text-[var(--nim-text-muted)]">
                     <span className="diff-version-label diff-version-old py-0.5 px-2 rounded bg-[var(--nim-bg-tertiary)] font-medium text-[var(--nim-error)]">
                       {formatVersionLabel(versionAMeta.type, versionAMeta.timestamp)}
                     </span>
-                    <span className="diff-version-separator font-semibold text-[var(--nim-text-faint)]">vs</span>
+                    <span className="diff-version-separator font-semibold text-[var(--nim-text-faint)]">
+                      {t('dialogs:history.vs')}
+                    </span>
                     <span className="diff-version-label diff-version-new py-0.5 px-2 rounded bg-[var(--nim-bg-tertiary)] font-medium text-[var(--nim-success)]">
                       {formatVersionLabel(versionBMeta.type, versionBMeta.timestamp)}
                     </span>
@@ -651,7 +716,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                           className="diff-nav-button w-6 h-6 p-0 border border-[var(--nim-border)] bg-[var(--nim-bg)] rounded cursor-pointer flex items-center justify-center text-[var(--nim-text-muted)] transition-all duration-200 hover:not-disabled:bg-[var(--nim-bg-hover)] hover:not-disabled:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed"
                           onClick={handleNavigatePrevious}
                           disabled={!navigationState.canGoPrevious}
-                          title="Previous change"
+                          title={t('dialogs:history.previous_change')}
                         >
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                             <path d="M6 9L3 6L6 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -664,7 +729,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                           className="diff-nav-button w-6 h-6 p-0 border border-[var(--nim-border)] bg-[var(--nim-bg)] rounded cursor-pointer flex items-center justify-center text-[var(--nim-text-muted)] transition-all duration-200 hover:not-disabled:bg-[var(--nim-bg-hover)] hover:not-disabled:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed"
                           onClick={handleNavigateNext}
                           disabled={!navigationState.canGoNext}
-                          title="Next change"
+                          title={t('dialogs:history.next_change')}
                         >
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                             <path d="M6 3L9 6L6 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -687,7 +752,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                   onClick={handleRestore}
                   disabled={!previewContent}
                 >
-                  Restore This Version
+                  {t('dialogs:history.restore_version')}
                 </button>
               )}
             </div>
@@ -735,11 +800,18 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                   />
                 )}
               </div>
+            ) : previewLoadFailed ? (
+              <div className="history-preview-empty flex-1 flex items-center justify-center text-[var(--nim-error)] text-sm">
+                {t('dialogs:history.load_snapshot_failed')}
+              </div>
             ) : selectedVersions.length === 1 ? (
               <div className="history-preview-content nim-scrollbar flex-1 overflow-auto [&:has(.monaco-editor)]:overflow-hidden [&:has(.nimbalyst-editor-root)]:overflow-hidden">
                 {fileType === 'image' ? (
                   <div className="image-preview flex items-center justify-center w-full h-full bg-[var(--nim-bg-tertiary)] p-4 [&_img]:max-w-full [&_img]:max-h-full [&_img]:object-contain">
-                    <img src={nimAssetUrl(filePath || '')} alt="Preview" />
+                    <img
+                      src={nimAssetUrl(filePath || '')}
+                      alt={t('dialogs:history.preview')}
+                    />
                   </div>
                 ) : fileType === 'markdown' && richView ? (
                   <div className="markdown-preview h-full">
@@ -776,8 +848,8 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
             ) : (
               <div className="history-preview-empty flex-1 flex items-center justify-center text-[var(--nim-text-muted)] text-sm">
                 {viewMode === 'changes'
-                  ? 'Select a snapshot to see diff, or Cmd+Click two to compare'
-                  : 'Select a snapshot to view'}
+                  ? t('dialogs:history.select_snapshot_diff')
+                  : t('dialogs:history.select_snapshot_view')}
               </div>
             )}
 
@@ -785,7 +857,9 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
               <div className="history-preview-loading absolute inset-0 flex flex-col items-center justify-center bg-[var(--nim-bg)] z-10 gap-3">
                 <div className="history-preview-loading-spinner w-10 h-10 border-[3px] border-[var(--nim-border)] border-t-[var(--nim-primary)] rounded-full animate-spin" />
                 <div className="history-preview-loading-text text-[var(--nim-text-muted)] text-sm">
-                  {selectedVersions.length === 2 ? 'Loading diff...' : 'Loading preview...'}
+                  {selectedVersions.length === 2
+                    ? t('dialogs:history.loading_diff')
+                    : t('dialogs:history.loading_preview')}
                 </div>
               </div>
             )}

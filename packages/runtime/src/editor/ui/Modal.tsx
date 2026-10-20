@@ -11,6 +11,7 @@ import type {JSX} from 'react';
 import {isDOMNode} from 'lexical';
 import {ReactNode, useCallback, useEffect, useRef} from 'react';
 import {createPortal} from 'react-dom';
+import {useRuntimeTranslation} from '../../ui/RuntimeTranslation';
 
 function PortalImpl({
   onClose,
@@ -21,8 +22,9 @@ function PortalImpl({
   children: ReactNode;
   closeOnClickOutside: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
 }) {
+  const {t} = useRuntimeTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,7 +82,7 @@ function PortalImpl({
         </h2>
         <button
           className="Modal__closeButton border-0 absolute right-5 rounded-[20px] flex justify-center items-center w-[30px] h-[30px] text-center cursor-pointer bg-nim-tertiary text-nim hover:bg-nim-hover"
-          aria-label="Close modal"
+          aria-label={t('editor:shared_ui.close_modal', 'Close modal')}
           type="button"
           onClick={onClose}>
           X
@@ -100,7 +102,7 @@ export default function Modal({
   children: ReactNode;
   closeOnClickOutside?: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
 }): JSX.Element {
   const getPortalContainer = useCallback(() => {
     // Try to find the nearest .nimbalyst-editor container

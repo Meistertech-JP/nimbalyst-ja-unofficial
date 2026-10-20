@@ -8,6 +8,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FloatingPortal,
   autoUpdate,
@@ -33,6 +34,7 @@ export function OrgWindowSwitcher({
   selectedOrgId: string | null;
   onSelect: (orgId: string) => void;
 }) {
+  const { t } = useTranslation(['project', 'common']);
   const [open, setOpen] = useState(false);
   const choices = activeOrganizations(organizations);
   const selected = choices.find((organization) => organization.orgId === selectedOrgId);
@@ -66,7 +68,7 @@ export function OrgWindowSwitcher({
         data-testid="org-window-switcher-button"
       >
         <span className="min-w-0 flex-1 truncate text-[var(--nim-text)]">
-          {selected?.name ?? 'Select organization'}
+          {selected?.name ?? t('team.select_organization')}
         </span>
         <MaterialSymbol icon="unfold_more" size={16} className="shrink-0 text-[var(--nim-text-muted)]" />
       </button>
@@ -97,7 +99,7 @@ export function OrgWindowSwitcher({
                 <span className="min-w-0 flex-1 truncate text-[var(--nim-text)]">{organization.name}</span>
                 {organization.role && (
                   <span className="shrink-0 rounded-full bg-[var(--nim-bg-tertiary)] px-1.5 py-0.5 text-[10px] font-semibold capitalize text-[var(--nim-text-muted)]">
-                    {organization.role}
+                    {t(`common:organization_switcher.roles.${organization.role}`, { defaultValue: organization.role })}
                   </span>
                 )}
                 {organization.orgId === selectedOrgId && (

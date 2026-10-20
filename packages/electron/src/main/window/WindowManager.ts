@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog, app, nativeImage, ipcMain, screen, nativeTheme, Menu, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { safeHandle, safeOn } from '../utils/ipcRegistry';
+import { t } from '../i18n';
 import { join, basename } from 'path';
 import { existsSync } from 'fs';
 import { WindowState, FileTreeItem } from '../types';
@@ -633,10 +634,10 @@ export function createWindow(
             console.warn('[MAIN] Window became unresponsive');
             const choice = dialog.showMessageBoxSync(window, {
                 type: 'warning',
-                buttons: ['Reload', 'Keep Waiting'],
+                buttons: [t('common:reload'), t('errors:native_dialogs.keep_waiting')],
                 defaultId: 0,
-                message: 'The window is not responding',
-                detail: 'Would you like to reload the window?'
+                message: t('errors:native_dialogs.window_not_responding'),
+                detail: t('errors:native_dialogs.reload_window_prompt')
             });
 
             if (choice === 0 && !window.isDestroyed()) {
@@ -666,7 +667,7 @@ export function createWindow(
                     }
                 } else {
                     menuTemplate.push({
-                        label: 'No suggestions',
+                        label: t('errors:native_dialogs.no_spelling_suggestions'),
                         enabled: false
                     });
                 }
@@ -674,7 +675,7 @@ export function createWindow(
                 menuTemplate.push({ type: 'separator' });
 
                 menuTemplate.push({
-                    label: 'Add to Dictionary',
+                    label: t('errors:native_dialogs.add_to_dictionary'),
                     click: () => {
                         window.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord);
                     }
@@ -686,21 +687,21 @@ export function createWindow(
             // Standard edit operations when there's editable content
             if (params.isEditable) {
                 menuTemplate.push(
-                    { label: 'Cut', role: 'cut', enabled: params.editFlags.canCut },
-                    { label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy },
-                    { label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste }
+                    { label: t('menu:cut'), role: 'cut', enabled: params.editFlags.canCut },
+                    { label: t('menu:copy'), role: 'copy', enabled: params.editFlags.canCopy },
+                    { label: t('menu:paste'), role: 'paste', enabled: params.editFlags.canPaste }
                 );
 
                 if (params.selectionText) {
                     menuTemplate.push(
                         { type: 'separator' },
-                        { label: 'Select All', role: 'selectAll' }
+                        { label: t('menu:select_all'), role: 'selectAll' }
                     );
                 }
             } else if (params.selectionText) {
                 // Non-editable but has selection - just show copy
                 menuTemplate.push(
-                    { label: 'Copy', role: 'copy' }
+                    { label: t('menu:copy'), role: 'copy' }
                 );
             }
 

@@ -17,6 +17,7 @@ import {
   type CollabDocumentConfig,
 } from '../utils/collabDocumentOpener';
 import { ElectronLocalReplicaStore } from './ElectronLocalReplicaStore';
+import { rendererI18n } from '../i18n';
 
 export interface CollaborativeEmbedReference {
   orgId: string;
@@ -118,11 +119,11 @@ export async function createDefaultResource(
     { metadata: request.metadata, cache: false },
   );
   if (!config) {
-    throw new Error(`Could not open shared document ${request.documentId}.`);
+    throw new Error(rendererI18n.t('errors:shared_document.open_failed', { documentId: request.documentId }));
   }
   if (config.orgId !== request.orgId) {
     await window.electronAPI?.documentSync?.closeDoc?.(request.documentId).catch(() => undefined);
-    throw new Error('The embedded document belongs to a different team.');
+    throw new Error(rendererI18n.t('errors:shared_document.embedded_team_mismatch'));
   }
 
   let syncProvider: DocumentSyncProvider | null = null;

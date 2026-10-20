@@ -23,6 +23,7 @@ import * as ReactDOM from 'react-dom';
 import useModal from '../../hooks/useModal';
 import Button from '../../ui/Button';
 import {DialogActions} from '../../ui/Dialog';
+import {useRuntimeTranslation, type RuntimeTranslate} from '../../../ui/RuntimeTranslation';
 
 interface PlaygroundEmbedConfig extends EmbedConfig {
   // Human readable name of the embedded content e.g. Tweet or Google Map.
@@ -157,6 +158,19 @@ export const EmbedConfigs = [
   FigmaEmbedConfig,
 ];
 
+function embedContentName(config: PlaygroundEmbedConfig, t: RuntimeTranslate): string {
+  switch (config.contentName) {
+    case 'Youtube Video': return t('editor:embed.youtube_video', 'Youtube Video');
+    case 'Figma Document': return t('editor:embed.figma_document', 'Figma Document');
+    default: return config.contentName;
+  }
+}
+
+function EmbedTitle({config}: {config: PlaygroundEmbedConfig}) {
+  const {t} = useRuntimeTranslation();
+  return <>{t('editor:embed.title', 'Embed {{name}}', {name: embedContentName(config, t)})}</>;
+}
+
 function AutoEmbedMenuItem({
   index,
   isSelected,
@@ -236,6 +250,7 @@ export function AutoEmbedDialog({
   embedConfig: PlaygroundEmbedConfig;
   onClose: () => void;
 }): JSX.Element {
+  const {t} = useRuntimeTranslation();
   const [text, setText] = useState('');
   const [editor] = useLexicalComposerContext();
   const [embedResult, setEmbedResult] = useState<EmbedMatchResult | null>(null);
@@ -285,7 +300,7 @@ export function AutoEmbedDialog({
           disabled={!embedResult}
           onClick={onClick}
           data-test-id={`${embedConfig.type}-embed-modal-submit-btn`}>
-          Embed
+          {t('editor:embed.insert', 'Embed')}
         </Button>
       </DialogActions>
     </div>
@@ -293,10 +308,11 @@ export function AutoEmbedDialog({
 }
 
 export default function AutoEmbedPlugin(): JSX.Element {
+  const {t} = useRuntimeTranslation();
   const [modal, showModal] = useModal();
 
   const openEmbedModal = (embedConfig: PlaygroundEmbedConfig) => {
-    showModal(`Embed ${embedConfig.contentName}`, (onClose) => (
+    showModal(<EmbedTitle config={embedConfig} />, (onClose) => (
       <AutoEmbedDialog embedConfig={embedConfig} onClose={onClose} />
     ));
   };
@@ -306,14 +322,13 @@ export default function AutoEmbedPlugin(): JSX.Element {
     embedFn: () => void,
     dismissFn: () => void,
   ) => {
-    return [
-      new AutoEmbedOption('Dismiss', {
-        onSelect: dismissFn,
-      }),
-      new AutoEmbedOption(`Embed ${activeEmbedConfig.contentName}`, {
-        onSelect: embedFn,
-      }),
-    ];
+    // AutoEmbedOption derives its reconciliation key from the constructor title.
+    // Keep those keys stable while translating only the visible title.
+    const dismissOption = new AutoEmbedOption('Dismiss', {onSelect: dismissFn});
+    dismissOption.title = t('common:dismiss', 'Dismiss');
+    const embedOption = new AutoEmbedOption(`Embed ${activeEmbedConfig.contentName}`, {onSelect: embedFn});
+    embedOption.title = t('editor:embed.title', 'Embed {{name}}', {name: embedContentName(activeEmbedConfig, t)});
+    return [dismissOption, embedOption];
   };
 
   return (

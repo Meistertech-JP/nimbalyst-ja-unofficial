@@ -19,6 +19,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { trackerSyncRejectionAtom } from '../../store/atoms/trackerSync';
@@ -28,6 +29,7 @@ interface TrackerSyncRejectionBannerProps {
 }
 
 export const TrackerSyncRejectionBanner: React.FC<TrackerSyncRejectionBannerProps> = ({ workspacePath }) => {
+  const { t } = useTranslation(['tracker']);
   const state = useAtomValue(trackerSyncRejectionAtom);
   const setRejection = useSetAtom(trackerSyncRejectionAtom);
 
@@ -78,23 +80,19 @@ export const TrackerSyncRejectionBanner: React.FC<TrackerSyncRejectionBannerProp
       {isRotation ? (
         <>
           <MaterialSymbol icon="sync" size={16} className="text-nim-faint animate-spin" />
-          <span className="flex-1">
-            Team key rotation in progress. Your changes will resume in a moment.
-          </span>
+          <span className="flex-1">{t('tracker:sync.key_rotation')}</span>
         </>
       ) : (
         <>
           <MaterialSymbol icon="key_off" size={16} className="text-nim-warning" />
-          <span className="flex-1">
-            Your team's encryption key changed. Ask your team admin to share the new key envelope with you.
-          </span>
+          <span className="flex-1">{t('tracker:sync.key_changed')}</span>
           <button
             type="button"
             className="px-2 py-0.5 rounded border border-nim text-nim-muted hover:bg-nim hover:text-nim transition-colors"
             onClick={handleRetry}
             data-testid="tracker-sync-rejection-retry"
           >
-            Check again
+            {t('tracker:sync.check_again')}
           </button>
         </>
       )}
@@ -102,7 +100,7 @@ export const TrackerSyncRejectionBanner: React.FC<TrackerSyncRejectionBannerProp
         type="button"
         className="text-nim-faint hover:text-nim p-0.5"
         onClick={handleDismiss}
-        aria-label="Dismiss"
+        aria-label={t('tracker:detail.dismiss')}
         data-testid="tracker-sync-rejection-dismiss"
       >
         <MaterialSymbol icon="close" size={14} />

@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { store } from '@nimbalyst/runtime/store';
@@ -59,6 +60,7 @@ export function FlatFileTree({
   onFolderSelect,
   extensionFileTypes = [],
 }: FlatFileTreeProps) {
+  const { t } = useTranslation(['files']);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   // Atoms
@@ -429,12 +431,14 @@ export function FlatFileTree({
       // trash" when the trash folder is unwritable, common on Linux). See #195.
       console.error('Failed to delete file:', result.error);
       dialogRef.current?.open(DIALOG_IDS.ERROR, {
-        title: 'Delete failed',
-        message: `Could not delete ${filePath.split(/[/\\]/).pop() || filePath}.`,
-        details: result.error || 'The OS did not provide a reason. Check that the file still exists and that the trash folder is writable.',
+        title: t('files:operations.delete_failed'),
+        message: t('files:operations.delete_failed_message', {
+          name: filePath.split(/[/\\]/).pop() || filePath,
+        }),
+        details: result.error || t('files:operations.os_reason_unknown'),
       });
     }
-  }, []);
+  }, [t]);
 
   const handleDeleteMultiple = useCallback(async (filePaths: string[]) => {
     const failures: Array<{ path: string; error?: string }> = [];
@@ -450,15 +454,26 @@ export function FlatFileTree({
       // Same silent-failure concern as handleDelete, but rolled up into a
       // single summary dialog rather than one per failed file. See #195.
       const failureSummary = failures
-        .map(f => `- ${f.path.split(/[/\\]/).pop() || f.path}: ${f.error || 'unknown error'}`)
+        .map(
+          (failure) =>
+            `- ${failure.path.split(/[/\\]/).pop() || failure.path}: ${
+              failure.error || t('files:operations.unknown_error')
+            }`
+        )
         .join('\n');
       dialogRef.current?.open(DIALOG_IDS.ERROR, {
-        title: failures.length === filePaths.length ? 'Delete failed' : 'Some files could not be deleted',
-        message: `${failures.length} of ${filePaths.length} file${filePaths.length === 1 ? '' : 's'} could not be deleted.`,
+        title:
+          failures.length === filePaths.length
+            ? t('files:operations.delete_failed')
+            : t('files:operations.some_delete_failed'),
+        message: t('files:operations.delete_multiple_message', {
+          failed: failures.length,
+          total: filePaths.length,
+        }),
         details: failureSummary,
       });
     }
-  }, [setSelectedPaths]);
+  }, [setSelectedPaths, t]);
 
   // == Drag and drop ==
   const handleDragStart = useCallback((e: React.DragEvent, node: FlatTreeNode) => {
@@ -491,7 +506,7 @@ export function FlatFileTree({
     // Custom drag image
     const dragImage = document.createElement('div');
     dragImage.textContent = sourcePaths.length > 1
-      ? `${sourcePaths.length} items`
+      ? t('files:operations.drag_items', { count: sourcePaths.length })
       : node.name;
     dragImage.style.position = 'absolute';
     dragImage.style.top = '-1000px';
@@ -514,7 +529,7 @@ export function FlatFileTree({
         document.body.removeChild(dragImage);
       }
     }, 0);
-  }, [setDragState]);
+  }, [setDragState, t]);
 
   const handleDragEnd = useCallback(() => {
     setDragState(null);
@@ -603,7 +618,10 @@ export function FlatFileTree({
         for (const file of externalFiles) {
           const sourcePath = window.electronAPI.getPathForFile(file);
           if (!sourcePath) {
-            externalFailures.push({ name: file.name, error: 'No filesystem path' });
+            externalFailures.push({
+              name: file.name,
+              error: t('files:operations.no_filesystem_path'),
+            });
             continue;
           }
           const result = await window.electronAPI.copyFile(sourcePath, node.path);
@@ -619,11 +637,23 @@ export function FlatFileTree({
         }
         if (externalFailures.length > 0) {
           const failureSummary = externalFailures
-            .map((f) => `- ${f.name}: ${f.error || 'unknown error'}`)
+            .map(
+              (failure) =>
+                `- ${failure.name}: ${
+                  failure.error || t('files:operations.unknown_error')
+                }`
+            )
             .join('\n');
           dialogRef.current?.open(DIALOG_IDS.ERROR, {
-            title: externalFailures.length === externalFiles.length ? 'Copy failed' : 'Some files could not be copied',
-            message: `${externalFailures.length} of ${externalFiles.length} item${externalFiles.length === 1 ? '' : 's'} could not be copied into ${node.name}.`,
+            title:
+              externalFailures.length === externalFiles.length
+                ? t('files:operations.copy_failed')
+                : t('files:operations.some_copy_failed'),
+            message: t('files:operations.copy_multiple_message', {
+              failed: externalFailures.length,
+              total: externalFiles.length,
+              name: node.name,
+            }),
             details: failureSummary,
           });
         }
@@ -678,20 +708,32 @@ export function FlatFileTree({
         // Same single-summary-dialog pattern as handleDeleteMultiple (#216)
         // so users do not get one error dialog per failed file.
         const failureSummary = failures
-          .map((f) => `- ${f.path.split(/[/\\]/).pop() || f.path}: ${f.error || 'unknown error'}`)
+          .map(
+            (failure) =>
+              `- ${failure.path.split(/[/\\]/).pop() || failure.path}: ${
+                failure.error || t('files:operations.unknown_error')
+              }`
+          )
           .join('\n');
-        const verb = isCopy ? 'copied' : 'moved';
-        const verbCap = isCopy ? 'Copy' : 'Move';
+        const verb = t(isCopy ? 'files:operations.copied' : 'files:operations.moved');
         dialogRef.current?.open(DIALOG_IDS.ERROR, {
-          title: failures.length === sourcePaths.length ? `${verbCap} failed` : `Some files could not be ${verb}`,
-          message: `${failures.length} of ${sourcePaths.length} item${sourcePaths.length === 1 ? '' : 's'} could not be ${verb} into ${node.name}.`,
+          title:
+            failures.length === sourcePaths.length
+              ? t(isCopy ? 'files:operations.copy_failed' : 'files:operations.move_failed')
+              : t('files:operations.some_move_copy_failed', { verb }),
+          message: t('files:operations.move_copy_multiple_message', {
+            failed: failures.length,
+            total: sourcePaths.length,
+            verb,
+            name: node.name,
+          }),
           details: failureSummary,
         });
       }
     } finally {
       setDragState(null);
     }
-  }, [dragState, setDragState, onRefreshFileTree]);
+  }, [dragState, setDragState, onRefreshFileTree, t]);
 
   // Update drag copy state based on keyboard modifiers
   useEffect(() => {
@@ -854,8 +896,10 @@ export function FlatFileTree({
 
         // Show confirmation before deleting (matches context menu behavior)
         const confirmMessage = paths.length > 1
-          ? `Are you sure you want to delete ${paths.length} items?`
-          : `Are you sure you want to delete "${paths[paths.length - 1].split('/').pop()}"?`;
+          ? t('files:operations.confirm_delete_multiple', { count: paths.length })
+          : t('files:operations.confirm_delete_one', {
+              name: paths[paths.length - 1].split('/').pop(),
+            });
 
         if (!window.confirm(confirmMessage)) return;
 
@@ -894,7 +938,7 @@ export function FlatFileTree({
     setFocusedIndex, setExpandedDirs, toggleDirectory, onFileSelect,
     onFolderSelect, onFolderContentsLoaded, onRefreshFileTree,
     handleStartRename, handleTypeAhead, getViewportRowCount,
-    setSelectedPaths,
+    setSelectedPaths, t,
   ]);
 
   // == Auto-scroll during drag (rAF loop) ==
@@ -985,7 +1029,7 @@ export function FlatFileTree({
         ref={containerRef}
         className="file-tree-container"
         role="tree"
-        aria-label="File Explorer"
+        aria-label={t('files:operations.file_explorer')}
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onClick={handleContainerInteraction}

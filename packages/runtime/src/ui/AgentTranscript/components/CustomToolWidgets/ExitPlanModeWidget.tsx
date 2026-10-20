@@ -12,6 +12,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useAtomValue } from 'jotai';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
+import { useRuntimeTranslation } from '../../../RuntimeTranslation';
 
 // ============================================================
 // Types
@@ -31,6 +32,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
   workspacePath,
   sessionId,
 }) => {
+  const { t } = useRuntimeTranslation();
   const toolCall = message.toolCall;
   if (!toolCall) {
     return null;
@@ -252,7 +254,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
             )}
           </div>
           <span className="text-sm font-semibold text-nim flex-1">
-            {approved ? 'Exited Planning Mode' : 'Continued Planning'}
+            {approved ? t('aichat:plan_approval.exited', 'Exited Planning Mode') : t('aichat:plan_approval.continued', 'Continued Planning')}
           </span>
           <span
             data-testid={approved ? 'exit-plan-mode-approved' : 'exit-plan-mode-denied'}
@@ -260,12 +262,12 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
               approved ? 'text-nim-success bg-[color-mix(in_srgb,var(--nim-success)_12%,transparent)]' : 'text-nim-muted bg-nim-tertiary'
             }`}
           >
-            {approved ? 'Approved' : 'Denied'}
+            {approved ? t('common:pull_request.approved', 'Approved') : t('aichat:plan_approval.denied', 'Denied')}
           </span>
         </div>
         {planFilePath && (
           <div className="px-4 py-2 text-[13px] text-nim-muted">
-            Plan: <button
+            {t('aichat:plan_approval.plan', 'Plan:')}{' '}<button
               onClick={handleOpenPlanFile}
               className="text-nim-link hover:text-nim-link-hover hover:underline cursor-pointer bg-transparent border-none p-0 font-mono text-[13px]"
             >
@@ -298,9 +300,9 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
             </svg>
           </div>
           <span className="text-sm font-semibold text-nim flex-1">
-            Ready to exit planning mode?
+            {t('aichat:plan_approval.ready', 'Ready to exit planning mode?')}
           </span>
-          <span data-testid="exit-plan-mode-pending" className="text-xs text-nim-muted">Waiting...</span>
+          <span data-testid="exit-plan-mode-pending" className="text-xs text-nim-muted">{t('aichat:interactive.waiting', 'Waiting...')}</span>
         </div>
       </div>
     );
@@ -321,14 +323,14 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
           </svg>
         </div>
         <span className="text-sm font-semibold text-nim flex-1">
-          Ready to exit planning mode?
+          {t('aichat:plan_approval.ready', 'Ready to exit planning mode?')}
         </span>
       </div>
 
       <div className="p-4">
         {planFilePath && (
           <div className="mb-3 p-2 bg-nim-tertiary rounded-md text-[13px]">
-            <span className="text-nim-muted">Plan file: </span>
+            <span className="text-nim-muted">{t('aichat:plan_approval.plan_file', 'Plan file:')}{' '}</span>
             <button
               onClick={handleOpenPlanFile}
               className="text-nim-link hover:text-nim-link-hover hover:underline cursor-pointer bg-transparent border-none p-0 font-mono text-[13px]"
@@ -339,7 +341,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
         )}
 
         <div className="mb-3 text-[13px] text-nim">
-          Would you like to proceed?
+          {t('aichat:plan_approval.proceed_question', 'Would you like to proceed?')}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -350,7 +352,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isSubmitting}
           >
             <span className="text-nim-muted mr-2">1.</span>
-            Yes, start new session and implement (clean context window)
+            {t('aichat:plan_approval.new_session', 'Yes, start new session and implement (clean context window)')}
           </button>
           <button
             data-testid="exit-plan-mode-approve"
@@ -359,7 +361,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isSubmitting}
           >
             <span className="text-nim-muted mr-2">2.</span>
-            Yes, proceed in this same session
+            {t('aichat:plan_approval.same_session', 'Yes, proceed in this same session')}
           </button>
           {!showFeedbackInput ? (
             <button
@@ -369,7 +371,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
               disabled={isSubmitting}
             >
               <span className="text-nim-muted mr-2">3.</span>
-              Type here to tell Claude what to change
+              {t('aichat:plan_approval.request_changes', 'Type here to tell Claude what to change')}
             </button>
           ) : (
             <div className="flex flex-col gap-2">
@@ -379,7 +381,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 onKeyDown={handleFeedbackKeyDown}
-                placeholder="Tell Claude what to change in the plan..."
+                placeholder={t('aichat:plan_approval.feedback_placeholder', 'Tell Claude what to change in the plan...')}
                 className="w-full px-3 py-2 rounded-md text-[13px] border border-nim bg-nim-tertiary text-nim placeholder:text-nim-muted resize-none focus:outline-none focus:border-nim-focus"
                 rows={3}
                 disabled={isSubmitting}
@@ -393,7 +395,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
                   }}
                   disabled={isSubmitting}
                 >
-                  Cancel
+                  {t('common:cancel', 'Cancel')}
                 </button>
                 <button
                   data-testid="exit-plan-mode-send-feedback"
@@ -401,7 +403,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
                   onClick={handleSubmitFeedback}
                   disabled={!feedback.trim() || isSubmitting}
                 >
-                  Send Feedback
+                  {t('aichat:plan_approval.send_feedback', 'Send Feedback')}
                 </button>
               </div>
             </div>
@@ -413,7 +415,7 @@ export const ExitPlanModeWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isSubmitting}
           >
             <span className="text-nim-muted mr-2">4.</span>
-            Stop for now
+            {t('aichat:plan_approval.stop', 'Stop for now')}
           </button>
         </div>
       </div>

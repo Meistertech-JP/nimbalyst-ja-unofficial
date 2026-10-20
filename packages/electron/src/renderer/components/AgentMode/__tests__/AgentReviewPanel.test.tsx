@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -9,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentReviewPanel } from "../AgentReviewPanel";
+import i18next from 'i18next';
 
 const testState = vi.hoisted(() => ({
   visibleItemCount: 1,
@@ -165,12 +167,24 @@ beforeEach(() => {
   };
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.restoreAllMocks();
+  await i18next.changeLanguage('en');
 });
 
 describe("AgentReviewPanel diff loading", () => {
+  it('updates review labels in Japanese without translating file names or refetching diffs', async () => {
+    render(<AgentReviewPanel {...defaultProps} />);
+    await screen.findByText(/diff:src\/a\.ts:/);
+    const requestCount = vi.mocked(window.electronAPI.invoke).mock.calls.length;
+    await act(async () => { await i18next.changeLanguage('ja'); });
+    expect(screen.getByText('ワークストリームレビュー')).toBeTruthy();
+    expect(screen.getByText('4ファイル')).toBeTruthy();
+    expect(screen.getByTitle('src/a.ts')).toBeTruthy();
+    expect(window.electronAPI.invoke).toHaveBeenCalledTimes(requestCount);
+  });
+
   it("loads only rendered virtual rows and reuses cached diffs", async () => {
     testState.uncommittedFiles = ["/workspace/src/unrelated.ts"];
     const { rerender } = render(<AgentReviewPanel {...defaultProps} />);

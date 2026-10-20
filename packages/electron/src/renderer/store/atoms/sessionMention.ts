@@ -15,6 +15,7 @@ import { ProviderIcon } from '@nimbalyst/runtime';
 import { atomFamily } from '../debug/atomFamilyRegistry';
 import type { TypeaheadOption } from '../../components/Typeahead/GenericTypeahead';
 import { sessionRegistryAtom } from './sessions';
+import { rendererI18n } from '../../i18n';
 
 // ============================================================
 // Base Atoms
@@ -41,11 +42,11 @@ function relativeTime(timestamp: number): string {
   const diffHr = Math.floor(diffMs / 3_600_000);
   const diffDay = Math.floor(diffMs / 86_400_000);
 
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHr < 24) return `${diffHr}h ago`;
-  if (diffDay < 30) return `${diffDay}d ago`;
-  return `${Math.floor(diffDay / 30)}mo ago`;
+  if (diffMin < 1) return rendererI18n.t('sessions:relative_time.compact_just_now');
+  if (diffMin < 60) return rendererI18n.t('sessions:relative_time.compact_minutes', { count: diffMin });
+  if (diffHr < 24) return rendererI18n.t('sessions:relative_time.compact_hours', { count: diffHr });
+  if (diffDay < 30) return rendererI18n.t('sessions:relative_time.compact_days', { count: diffDay });
+  return rendererI18n.t('sessions:relative_time.compact_months', { count: Math.floor(diffDay / 30) });
 }
 
 /**
@@ -72,12 +73,12 @@ const WORKTREE_ICON = React.createElement(
  * Phase styles matching SessionListItem.tsx so the typeahead is visually
  * consistent with the main session list.
  */
-const PHASE_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  backlog: { label: 'Backlog', color: 'var(--nim-text-faint)', bg: 'rgba(128,128,128,0.12)' },
-  planning: { label: 'Planning', color: 'var(--nim-primary)', bg: 'rgba(96,165,250,0.12)' },
-  implementing: { label: 'Implementing', color: 'var(--nim-warning)', bg: 'rgba(251,191,36,0.12)' },
-  validating: { label: 'Validating', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
-  complete: { label: 'Complete', color: 'var(--nim-success)', bg: 'rgba(74,222,128,0.12)' },
+const PHASE_STYLES: Record<string, { labelKey: string; color: string; bg: string }> = {
+  backlog: { labelKey: 'agents:status.phase_backlog', color: 'var(--nim-text-faint)', bg: 'rgba(128,128,128,0.12)' },
+  planning: { labelKey: 'agents:status.phase_planning', color: 'var(--nim-primary)', bg: 'rgba(96,165,250,0.12)' },
+  implementing: { labelKey: 'agents:status.phase_implementing', color: 'var(--nim-warning)', bg: 'rgba(251,191,36,0.12)' },
+  validating: { labelKey: 'agents:status.phase_validating', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+  complete: { labelKey: 'agents:status.phase_complete', color: 'var(--nim-success)', bg: 'rgba(74,222,128,0.12)' },
 };
 
 function buildDescription(updatedAt: number, phase?: string): React.ReactElement {
@@ -95,7 +96,7 @@ function buildDescription(updatedAt: number, phase?: string): React.ReactElement
           className: 'text-[0.5625rem] leading-tight px-1 py-px rounded font-medium whitespace-nowrap',
           style: { color: style.color, backgroundColor: style.bg },
         },
-        style.label
+        rendererI18n.t(style.labelKey)
       )
     : null;
 
@@ -146,7 +147,7 @@ export const searchSessionMentionAtom = atom(
 
       return {
         id: s.id,
-        label: s.title || 'Untitled',
+        label: s.title || rendererI18n.t('agents:session_tabs.untitled'),
         description: buildDescription(s.updatedAt, s.phase),
         icon,
         data: {

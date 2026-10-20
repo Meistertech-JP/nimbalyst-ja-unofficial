@@ -9,6 +9,7 @@
  */
 
 import React, { memo, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
 import {
@@ -46,26 +47,27 @@ interface MetaAgentGroupProps {
  * Aggregate status indicator for the meta-agent group header.
  */
 const MetaAgentGroupStatus: React.FC<{ sessionIds: string[] }> = memo(({ sessionIds }) => {
+  const { t } = useTranslation(['agents']);
   const sessionIdsKey = useMemo(() => JSON.stringify([...sessionIds].sort()), [sessionIds]);
   const groupStatus = useAtomValue(groupSessionStatusAtom(sessionIdsKey));
 
   if (groupStatus.hasProcessing) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-primary)]" title="Processing">
+      <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('agents:status.processing')}>
         <MaterialSymbol icon="progress_activity" size={12} className="animate-spin" />
       </div>
     );
   }
   if (groupStatus.hasPendingPrompt) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title={t('agents:status.waiting')}>
         <MaterialSymbol icon="help" size={12} />
       </div>
     );
   }
   if (groupStatus.hasUnread) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-primary)]" title="Unread response">
+      <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('agents:status.unread')}>
         <MaterialSymbol icon="circle" size={6} fill />
       </div>
     );
@@ -77,27 +79,28 @@ const MetaAgentGroupStatus: React.FC<{ sessionIds: string[] }> = memo(({ session
  * Per-session status indicator for child session rows.
  */
 const ChildSessionStatus: React.FC<{ sessionId: string }> = memo(({ sessionId }) => {
+  const { t } = useTranslation(['agents']);
   const isProcessing = useAtomValue(sessionProcessingAtom(sessionId));
   const hasPendingPrompt = useAtomValue(sessionPendingPromptAtom(sessionId));
   const hasUnread = useAtomValue(sessionUnreadAtom(sessionId));
 
   if (isProcessing) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-primary)] animate-spin" title="Processing...">
+      <div className="flex items-center justify-center text-[var(--nim-primary)] animate-spin" title={t('agents:status.processing_ellipsis')}>
         <MaterialSymbol icon="progress_activity" size={12} />
       </div>
     );
   }
   if (hasPendingPrompt) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-warning)]" title="Waiting for your response">
+      <div className="flex items-center justify-center text-[var(--nim-warning)]" title={t('agents:status.waiting')}>
         <MaterialSymbol icon="help" size={12} />
       </div>
     );
   }
   if (hasUnread) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-primary)]" title="Unread response">
+      <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('agents:status.unread')}>
         <MaterialSymbol icon="circle" size={6} fill />
       </div>
     );
@@ -113,8 +116,11 @@ const MetaAgentChildRow: React.FC<{
   isActive: boolean;
   onSelect: (e: Pick<React.MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>) => void;
   onContextMenu: (e: React.MouseEvent) => void;
-}> = memo(({ session, isActive, onSelect, onContextMenu }) => (
-  <div
+}> = memo(({ session, isActive, onSelect, onContextMenu }) => {
+  const { t } = useTranslation(['agents']);
+  const displayTitle = session.title || t('agents:status.untitled_session');
+  return (
+    <div
     className={`meta-agent-child-item flex items-center gap-2 py-1.5 px-3 mr-2 mb-0.5 cursor-pointer rounded transition-colors duration-150 select-none ${
       isActive ? 'bg-[var(--nim-bg-selected)]' : 'hover:bg-[var(--nim-bg-hover)]'
     } focus:outline-2 focus:outline-[var(--nim-border-focus)] focus:outline-offset-[-2px]`}
@@ -123,7 +129,7 @@ const MetaAgentChildRow: React.FC<{
     role="button"
     tabIndex={0}
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(e); } }}
-    aria-label={session.title}
+    aria-label={t('agents:context.session_label', { title: displayTitle })}
     aria-current={isActive ? 'page' : undefined}
   >
     <div className={`shrink-0 flex items-center justify-center ${
@@ -134,7 +140,7 @@ const MetaAgentChildRow: React.FC<{
     <span className={`flex-1 text-xs text-[var(--nim-text)] whitespace-nowrap overflow-hidden text-ellipsis ${
       isActive ? 'font-medium' : ''
     }`}>
-      {session.title || 'Untitled Session'}
+      {displayTitle}
     </span>
     <span className="shrink-0 text-[0.6875rem] text-[var(--nim-text-faint)] ml-2">
       <SessionRelativeTime sessionId={session.id} fallbackTimestamp={session.updatedAt || session.createdAt} />
@@ -142,8 +148,9 @@ const MetaAgentChildRow: React.FC<{
     <div className="shrink-0 flex items-center">
       <ChildSessionStatus sessionId={session.id} />
     </div>
-  </div>
-));
+    </div>
+  );
+});
 
 export const MetaAgentGroup: React.FC<MetaAgentGroupProps> = memo(({
   metaSession,
@@ -165,6 +172,7 @@ export const MetaAgentGroup: React.FC<MetaAgentGroupProps> = memo(({
   onSessionBranch,
   onWorktreeArchive,
 }) => {
+  const { t } = useTranslation(['agents']);
   const [contextMenuSession, setContextMenuSession] = useState<SessionMeta | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
 
@@ -245,7 +253,7 @@ export const MetaAgentGroup: React.FC<MetaAgentGroupProps> = memo(({
             e.stopPropagation();
             onToggle();
           }}
-          aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          aria-label={t(isExpanded ? 'agents:context.collapse' : 'agents:context.expand')}
         >
           <MaterialSymbol
             icon="chevron_right"
@@ -265,7 +273,7 @@ export const MetaAgentGroup: React.FC<MetaAgentGroupProps> = memo(({
         <span className={`flex-1 text-xs whitespace-nowrap overflow-hidden text-ellipsis ${
           isActive ? 'font-medium text-[var(--nim-text)]' : 'text-[var(--nim-text)]'
         }`}>
-          {metaSession.title || 'Meta Agent'}
+          {metaSession.title || t('agents:meta.title')}
         </span>
 
         {/* Child count badge */}
@@ -304,7 +312,7 @@ export const MetaAgentGroup: React.FC<MetaAgentGroupProps> = memo(({
       {contextMenuSession && (
         <SessionContextMenu
           sessionId={contextMenuSession.id}
-          title={contextMenuSession.title || 'Untitled Session'}
+          title={contextMenuSession.title || t('agents:status.untitled_session')}
           position={contextMenuPosition}
           onClose={closeContextMenu}
           isArchived={contextMenuSession.isArchived}

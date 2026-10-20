@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
 
 const mocks = vi.hoisted(() => ({
   browserWindows: [] as Array<{
@@ -95,6 +96,12 @@ vi.mock('../../window/WindowManager', () => ({
 }));
 
 import { notificationService } from '../NotificationService';
+import type { BlockingType } from '../NotificationService';
+
+afterEach(async () => {
+  notificationService.clearAllNotifications();
+  await i18next.changeLanguage('en');
+});
 
 describe('NotificationService agent notifications', () => {
   beforeEach(() => {
@@ -230,5 +237,32 @@ describe('NotificationService agent notifications', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('shows the Japanese test notification without altering its delivery settings', async () => {
+    await i18next.changeLanguage('ja');
+    await notificationService.showTestNotification();
+    expect(mocks.notificationConstructor).toHaveBeenCalledWith(expect.objectContaining({
+      title: '通知が有効になりました', body: 'AIの応答が準備できたらNimbalystから通知します。',
+      silent: true, urgency: 'normal', timeoutType: 'default',
+    }));
+  });
+
+  it.each([
+    ['permission', '許可が必要です', '「User title」の承認が必要です'],
+    ['question', '質問への回答待ち', '「User title」から質問があります'],
+    ['plan_approval', 'プランのレビュー準備ができました', '「User title」のプランが準備できました'],
+    ['git_commit', 'コミットの準備ができました', '「User title」からコミットの提案があります'],
+    ['future-type', 'セッションへの対応が必要です', '「User title」への入力が必要です'],
+  ])('translates the %s notification while preserving the supplied session name', async (type, title, body) => {
+    await i18next.changeLanguage('ja');
+    await notificationService.showBlockedNotification('session-ja', 'User title', type as BlockingType, '/workspace');
+    expect(mocks.notificationConstructor).toHaveBeenCalledWith(expect.objectContaining({ title, body }));
+  });
+
+  it('leaves caller-supplied notification content unchanged in Japanese', async () => {
+    await i18next.changeLanguage('ja');
+    await notificationService.showNotification({ title: 'External title', body: 'AI generated content', workspacePath: '/workspace' });
+    expect(mocks.notificationConstructor).toHaveBeenCalledWith(expect.objectContaining({ title: 'External title', body: 'AI generated content' }));
   });
 });

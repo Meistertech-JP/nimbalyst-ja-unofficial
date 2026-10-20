@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { store } from '@nimbalyst/runtime/store';
@@ -78,6 +79,7 @@ export const TerminalBottomPanel: React.FC<TerminalBottomPanelProps> = ({
   minHeight = 150,
   maxHeight = 600,
 }) => {
+  const { t } = useTranslation(['terminal']);
   // Panel state from Jotai atoms
   const visible = useAtomValue(terminalPanelVisibleAtom);
   const height = useAtomValue(terminalPanelHeightAtom);
@@ -150,7 +152,7 @@ export const TerminalBottomPanel: React.FC<TerminalBottomPanelProps> = ({
     try {
       const result = await window.electronAPI.terminal.create(workspacePath, {
         cwd: workspacePath,
-        title: `Terminal ${terminals.length + 1}`,
+        title: t('terminal:default_title', { count: terminals.length + 1 }),
         source: 'panel',
       });
 
@@ -161,7 +163,7 @@ export const TerminalBottomPanel: React.FC<TerminalBottomPanelProps> = ({
     } catch (error: unknown) {
       console.error('[TerminalBottomPanel] Failed to create terminal:', error);
     }
-  }, [workspacePath, terminals.length]);
+  }, [workspacePath, terminals.length, t]);
 
   // Switch to terminal tab
   const handleSelectTerminal = useCallback(async (terminalId: string) => {
@@ -336,7 +338,8 @@ export const TerminalBottomPanel: React.FC<TerminalBottomPanelProps> = ({
             <button
               className="terminal-bottom-panel-new-tab flex items-center justify-center w-6 h-6 p-0 bg-transparent border-none text-[var(--nim-text-muted)] cursor-pointer rounded shrink-0 transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
               onClick={handleCreateTerminal}
-              title="New Terminal"
+              title={t('terminal:tooltips.new_terminal')}
+              aria-label={t('terminal:tooltips.new_terminal')}
             >
               <MaterialSymbol icon="add" size={16} />
             </button>
@@ -344,7 +347,8 @@ export const TerminalBottomPanel: React.FC<TerminalBottomPanelProps> = ({
           <button
             className="terminal-bottom-panel-close flex items-center justify-center w-6 h-6 p-0 bg-transparent border-none text-[var(--nim-text-muted)] cursor-pointer rounded ml-2 shrink-0 transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
             onClick={handleClose}
-            title="Close panel"
+            title={t('terminal:tooltips.close_panel')}
+            aria-label={t('terminal:tooltips.close_panel')}
           >
             <MaterialSymbol icon="close" size={18} />
           </button>
@@ -367,13 +371,14 @@ export const TerminalBottomPanel: React.FC<TerminalBottomPanelProps> = ({
           ))}
           {terminals.length === 0 && (
             <div className="terminal-bottom-panel-empty flex-1 flex flex-col items-center justify-center gap-3 text-[var(--nim-text-muted)] text-sm">
-              <p>No terminals open</p>
+              <p>{t('terminal:tooltips.empty')}</p>
               <button
                 className="flex items-center gap-1.5 px-4 py-2 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text)] text-[13px] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-tertiary)] hover:border-[var(--nim-primary)]"
                 onClick={handleCreateTerminal}
+                aria-label={t('terminal:tooltips.new_terminal')}
               >
                 <MaterialSymbol icon="terminal" size={16} />
-                New Terminal
+                {t('terminal:tooltips.new_terminal')}
               </button>
             </div>
           )}

@@ -1,5 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
+import { getCollabStatusPresentation } from '../../utils/collabStatusPresentation';
 import {
   collabAwarenessAtom,
   collabProductStatusAtom,
@@ -57,11 +59,13 @@ export const CollabDocumentHeaderMeta: React.FC<{
   filePath: string;
   displayPath: string;
 }> = ({ filePath, displayPath }) => {
+  const { t } = useTranslation('editor');
   const status = useCollabStatus(filePath);
+  const presentation = getCollabStatusPresentation(status, t);
   const segments = displayPath.split('/').filter(Boolean);
-  const statusDescription = status.detail
-    ? `${status.label}: ${status.detail}`
-    : status.label;
+  const statusDescription = presentation.detail
+    ? `${presentation.label}: ${presentation.detail}`
+    : presentation.label;
 
   return (
     <div className="collab-header-meta flex min-w-0 items-center gap-2">
@@ -100,7 +104,7 @@ export const CollabDocumentHeaderMeta: React.FC<{
         data-testid="collab-sync-dot"
         data-status-kind={status.kind}
         role="status"
-        aria-label={`Sync status: ${statusDescription}`}
+        aria-label={t('collab.sync_status', { status: statusDescription })}
         title={statusDescription}
       />
       <CollabAvatars filePath={filePath} />
@@ -113,7 +117,9 @@ export const CollabRecoveryBanner: React.FC<{
   onCopyCurrentDocument: () => Promise<void>;
   onDiscardLocalCopy: () => Promise<void>;
 }> = ({ filePath, onCopyCurrentDocument, onDiscardLocalCopy }) => {
+  const { t } = useTranslation('editor');
   const status = useCollabStatus(filePath);
+  const presentation = getCollabStatusPresentation(status, t);
   if (!status.showRejectedActions) return null;
 
   return (
@@ -122,21 +128,21 @@ export const CollabRecoveryBanner: React.FC<{
       data-testid="collab-recovery-banner"
     >
       <span className="min-w-0 flex-1 text-[var(--nim-error)]">
-        {status.label}{status.detail ? ` — ${status.detail}` : ''}
+        {presentation.label}{presentation.detail ? ` — ${presentation.detail}` : ''}
       </span>
       <button
         type="button"
         className="collab-copy-unsent-edits rounded border border-[var(--nim-border)] px-2 py-1 text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
         onClick={() => { void onCopyCurrentDocument(); }}
       >
-        Copy current document
+        {t('collab.copy_current_document')}
       </button>
       <button
         type="button"
         className="collab-discard-local-copy rounded border border-[var(--nim-error)] px-2 py-1 text-[var(--nim-error)] hover:bg-[var(--nim-bg-hover)]"
         onClick={() => { void onDiscardLocalCopy(); }}
       >
-        Discard local copy
+        {t('collab.discard_local_copy')}
       </button>
     </div>
   );

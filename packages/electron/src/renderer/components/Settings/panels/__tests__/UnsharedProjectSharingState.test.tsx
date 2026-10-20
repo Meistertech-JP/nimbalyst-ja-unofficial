@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import i18next from 'i18next';
 
 vi.mock('@nimbalyst/runtime', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
@@ -36,7 +37,37 @@ function renderFlow(overrides: Partial<React.ComponentProps<typeof UnsharedProje
 }
 
 describe('UnsharedProjectSharingState', () => {
-  afterEach(() => cleanup());
+  afterEach(async () => {
+    cleanup();
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes confirmation without changing the selected organization or git remote', async () => {
+    await i18next.changeLanguage('ja');
+    const { onAddToOrg } = renderFlow();
+
+    expect(screen.getByText('このプロジェクトを組織に接続')).toBeTruthy();
+    fireEvent.change(screen.getByTestId('project-sharing-org-picker'), { target: { value: 'org-1' } });
+    fireEvent.click(screen.getByTestId('project-sharing-choose-existing'));
+
+    expect(screen.getByTestId('project-sharing-confirm').textContent).toContain('acme-appをAcmeに追加');
+    expect(screen.getByTestId('project-sharing-confirm').textContent).toContain(remote);
+    expect(screen.getByText('ディスク上のファイルは移動も変更もされません。')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('project-sharing-confirm-action'));
+    expect(onAddToOrg).toHaveBeenCalledWith('org-1');
+  });
+
+  it('keeps the git command literal and blocked action in Japanese', async () => {
+    await i18next.changeLanguage('ja');
+    const { onAddToOrg } = renderFlow({ gitRemote: '' });
+    fireEvent.change(screen.getByTestId('project-sharing-org-picker'), { target: { value: 'org-1' } });
+    fireEvent.click(screen.getByTestId('project-sharing-choose-existing'));
+
+    expect(screen.getByTestId('project-sharing-blocked').textContent).toContain('git remote add origin …');
+    expect(screen.getByTestId('project-sharing-confirm-action').hasAttribute('disabled')).toBe(true);
+    fireEvent.click(screen.getByTestId('project-sharing-confirm-action'));
+    expect(onAddToOrg).not.toHaveBeenCalled();
+  });
 
   it('asks one question first and only acts after the confirm step', () => {
     const { onAddToOrg } = renderFlow();

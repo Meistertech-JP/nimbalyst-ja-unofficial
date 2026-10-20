@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import { MaterialSymbol } from '@nimbalyst/runtime';
@@ -32,6 +33,17 @@ import {
   activeWorkspacePathAtom,
   restorePreviousProjectsAtom,
 } from '../../../store/atoms/openProjects';
+
+const DEVELOPER_FEATURE_I18N = {
+  worktrees: {
+    name: 'settings:advanced.features.worktrees.name',
+    description: 'settings:advanced.features.worktrees.description',
+  },
+  terminal: {
+    name: 'settings:advanced.features.terminal.name',
+    description: 'settings:advanced.features.terminal.description',
+  },
+} as const;
 
 /** Reusable compact dropdown row */
 function DropdownRow({
@@ -77,6 +89,7 @@ function DropdownRow({
  * Developer mode is a global app setting.
  */
 export function AdvancedPanel() {
+  const { t } = useTranslation(['settings']);
   const posthog = usePostHog();
   // App-level advanced settings from Jotai atoms
   const [settings] = useAtom(advancedSettingsAtom);
@@ -170,7 +183,7 @@ export function AdvancedPanel() {
   }, []);
 
   const terminalShellOptions: Array<{ value: PreferredTerminalShell; label: string }> = [
-    { value: 'auto', label: 'Auto (Recommended)' },
+    { value: 'auto', label: t('settings:advanced.terminal_shell_auto') },
   ];
   const seenShellProviders = new Set<PreferredTerminalShell>();
   for (const shell of availableTerminalShells) {
@@ -195,18 +208,18 @@ export function AdvancedPanel() {
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">
-          Advanced Settings
+          {t('settings:advanced.title')}
         </h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Advanced configuration options for AI features.
+          {t('settings:advanced.description')}
         </p>
       </div>
 
       {/* Application Mode - Always shown at the top */}
       <div className="provider-panel-section">
-          <h4 className="provider-panel-section-title" onClick={handleModeClick}>Application Mode</h4>
+          <h4 className="provider-panel-section-title" onClick={handleModeClick}>{t('settings:advanced.application_mode')}</h4>
           <p className="provider-panel-hint">
-            Choose between a simplified experience or full developer features for this project.
+            {t('settings:advanced.application_mode_desc')}
           </p>
 
           <div className="mode-selection flex flex-row gap-4 mt-3">
@@ -230,10 +243,10 @@ export function AdvancedPanel() {
                   <span className="material-symbols-outlined text-nim-primary text-[32px]">
                     edit_note
                   </span>
-                  <span className="text-base font-semibold text-nim">Standard Mode</span>
+                  <span className="text-base font-semibold text-nim">{t('settings:advanced.standard_mode')}</span>
                 </div>
                 <p className="m-0 text-[13px] leading-snug text-nim-muted">
-                  Simplified interface focused on writing, editing, and AI assistance
+                  {t('settings:advanced.standard_mode_desc')}
                 </p>
               </div>
             </label>
@@ -258,10 +271,10 @@ export function AdvancedPanel() {
                   <span className="material-symbols-outlined text-nim-primary text-[32px]">
                     terminal
                   </span>
-                  <span className="text-base font-semibold text-nim">Developer Mode</span>
+                  <span className="text-base font-semibold text-nim">{t('settings:advanced.developer_mode')}</span>
                 </div>
                 <p className="m-0 text-[13px] leading-snug text-nim-muted">
-                  Full development environment with git worktrees, terminal access, development specific features
+                  {t('settings:advanced.developer_mode_desc')}
                 </p>
               </div>
             </label>
@@ -272,10 +285,10 @@ export function AdvancedPanel() {
       {showFeaturesMenu && (
         <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
           <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">
-            Feature Availability
+            {t('settings:advanced.feature_availability')}
           </h4>
           <p className="text-sm leading-relaxed text-[var(--nim-text-muted)] mb-4">
-            See which features are available based on your current mode settings.
+            {t('settings:advanced.feature_availability_desc')}
           </p>
 
           {/* Developer Features */}
@@ -294,9 +307,9 @@ export function AdvancedPanel() {
                   className="setting-checkbox"
                 />
                 <div className="setting-text">
-                  <span className="setting-name">All Developer Features</span>
+                  <span className="setting-name">{t('settings:advanced.all_developer_features')}</span>
                   <span className="setting-description">
-                    Enable or disable all developer features at once
+                    {t('settings:advanced.all_developer_features_desc')}
                   </span>
                 </div>
               </label>
@@ -305,6 +318,9 @@ export function AdvancedPanel() {
             {/* Individual developer feature toggles */}
             {DEVELOPER_FEATURES.map((feature) => {
               const isAvailable = developerMode && developerFeatures[feature.tag];
+              const featureI18n = DEVELOPER_FEATURE_I18N[
+                feature.tag as keyof typeof DEVELOPER_FEATURE_I18N
+              ];
               return (
                 <div key={feature.tag} className="setting-item py-2">
                   <label className="setting-label">
@@ -327,7 +343,7 @@ export function AdvancedPanel() {
                         {feature.icon && (
                           <span className="material-symbols-outlined text-sm">{feature.icon}</span>
                         )}
-                        {feature.name}
+                        {featureI18n ? t(featureI18n.name) : feature.name}
                         <span
                           className={`text-xs px-2 py-0.5 rounded ${
                             isAvailable
@@ -335,10 +351,12 @@ export function AdvancedPanel() {
                               : 'bg-red-500/20 text-red-400'
                           }`}
                         >
-                          {isAvailable ? 'Available' : 'Hidden'}
+                          {isAvailable ? t('settings:advanced.available') : t('settings:advanced.hidden')}
                         </span>
                       </span>
-                      <span className="setting-description">{feature.description}</span>
+                      <span className="setting-description">
+                        {featureI18n ? t(featureI18n.description) : feature.description}
+                      </span>
                     </div>
                   </label>
                 </div>
@@ -347,24 +365,26 @@ export function AdvancedPanel() {
           </div>
 
           <p className="text-xs text-[var(--nim-text-faint)] mt-3">
-            Developer mode: {developerMode ? 'ON' : 'OFF'}
+            {t('settings:advanced.developer_mode_status', {
+              status: developerMode ? t('settings:advanced.on') : t('settings:advanced.off'),
+            })}
           </p>
         </div>
       )}
 
       {/* ── Release Channel ── */}
       <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Release Channel</h4>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('settings:advanced.release_channel')}</h4>
         <p className="text-sm leading-relaxed text-[var(--nim-text-muted)] mb-4">
-          Choose which release stream Nimbalyst pulls auto-updates from. Alpha and beta features are configured separately on each feature&apos;s settings page.
+          {t('settings:advanced.release_channel_desc')}
         </p>
 
         <div className="setting-item py-3">
           <div className="setting-text flex flex-col gap-0.5">
-            <span className="setting-name text-sm font-medium text-[var(--nim-text)]">Update Channel</span>
+            <span className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('settings:advanced.update_channel')}</span>
             <span className="setting-description text-xs leading-relaxed text-[var(--nim-text-muted)]">
-              <strong>Stable:</strong> Production-ready releases (recommended for most users).<br/>
-              <strong>Alpha:</strong> Frequent, rough developer releases. Expect bugs and breaking changes between updates.
+              <strong>{t('settings:advanced.stable_label')}</strong> {t('settings:advanced.stable_desc')}<br/>
+              <strong>{t('settings:advanced.alpha_label')}</strong> {t('settings:advanced.alpha_desc')}
             </span>
           </div>
           <select
@@ -378,8 +398,8 @@ export function AdvancedPanel() {
             }}
             className="setting-select mt-2 w-full py-2 px-3 pr-9 rounded-md text-sm bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M3%204.5L6%207.5L9%204.5%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_12px_center] focus:border-[var(--nim-primary)]"
           >
-            <option value="stable">Stable</option>
-            <option value="alpha">Alpha (Developer Releases)</option>
+            <option value="stable">{t('settings:advanced.stable')}</option>
+            <option value="alpha">{t('settings:advanced.alpha_option')}</option>
           </select>
         </div>
 
@@ -387,7 +407,7 @@ export function AdvancedPanel() {
           <div className="mt-3 flex items-start gap-2 p-3 rounded border border-[var(--nim-warning)]/30 bg-[var(--nim-warning)]/10">
             <MaterialSymbol icon="warning" size={16} className="text-[var(--nim-warning)] shrink-0 mt-0.5" />
             <p className="m-0 text-[13px] text-[var(--nim-text)] leading-snug">
-              The alpha channel ships rough developer releases that may be unstable or contain unfinished work. Switch back to Stable if you encounter problems.
+              {t('settings:advanced.alpha_warning')}
             </p>
           </div>
         )}
@@ -395,7 +415,7 @@ export function AdvancedPanel() {
 
       {/* ── General ── */}
       <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-        <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">General</h4>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">{t('settings:advanced.general')}</h4>
 
         <MultiProjectModeToggle />
 
@@ -404,35 +424,40 @@ export function AdvancedPanel() {
         <SettingsToggle
           checked={analyticsEnabled}
           onChange={(checked) => updateSettings({ analyticsEnabled: checked })}
-          name="Send Anonymous Usage Data"
-          description="Help improve Nimbalyst by sending anonymous usage data. No prompts or personal info collected."
+          name={t('settings:advanced.analytics_name')}
+          description={t('settings:advanced.analytics_desc')}
         />
 
         <SettingsToggle
           checked={spellcheckEnabled}
           onChange={(checked) => updateSettings({ spellcheckEnabled: checked })}
-          name="Spellcheck"
-          description="Enable the system spellchecker in editors and text inputs."
+          name={t('settings:advanced.spellcheck_name')}
+          description={t('settings:advanced.spellcheck_desc')}
         />
 
         <SettingsToggle
           checked={showDirectChatProviders}
           onChange={(checked) => updateSettings({ showDirectChatProviders: checked })}
-          name="Show Chat Providers"
-          description="Show Claude Chat, OpenAI, and LM Studio in provider settings and new-session model selection."
+          name={t('settings:advanced.show_chat_providers_name')}
+          description={t('settings:advanced.show_chat_providers_desc')}
         />
 
         <SettingsToggle
           checked={walkthroughsEnabled}
           onChange={(checked) => updateSettings({ walkthroughsEnabled: checked })}
-          name="Show Feature Guides"
-          description={`Walkthrough guides for new features and tips.${walkthroughsTotalCount > 0 ? ` (${walkthroughsViewedCount}/${walkthroughsTotalCount} viewed)` : ''}`}
+          name={t('settings:advanced.guides_name')}
+          description={walkthroughsTotalCount > 0
+            ? t('settings:advanced.guides_desc_count', {
+                viewed: walkthroughsViewedCount,
+                total: walkthroughsTotalCount,
+              })
+            : t('settings:advanced.guides_desc')}
         />
 
         {walkthroughsViewedCount > 0 && (
           <div className="py-1 pl-7">
             <button onClick={() => resetWalkthroughs()} className="nim-btn-secondary text-xs">
-              Reset All Guides
+              {t('settings:advanced.reset_all_guides')}
             </button>
           </div>
         )}
@@ -441,44 +466,44 @@ export function AdvancedPanel() {
       {/* ── Tracker Automation ── */}
       <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0" data-testid="tracker-automation-section">
         <HelpTooltip testId="tracker-automation-section">
-          <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)] inline-block">Tracker Automation</h4>
+          <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)] inline-block">{t('settings:advanced.tracker_automation')}</h4>
         </HelpTooltip>
 
         <SettingsToggle
           checked={trackerAutomation.enabled}
           onChange={(checked) => setTrackerAutomation({ enabled: checked })}
-          name="Link Commits to Tracker Items"
-          description="Link git commits to tracker items via session relationships and issue key parsing (e.g. NIM-123 in commit messages)."
+          name={t('settings:advanced.link_commits_name')}
+          description={t('settings:advanced.link_commits_desc')}
         />
 
         {trackerAutomation.enabled && (
           <SettingsToggle
             checked={trackerAutomation.autoCloseOnCommit}
             onChange={(checked) => setTrackerAutomation({ autoCloseOnCommit: checked })}
-            name="Close Items on Fixes/Closes/Resolves"
-            description="Change tracker item status to done when a commit message uses a closing keyword."
+            name={t('settings:advanced.auto_close_name')}
+            description={t('settings:advanced.auto_close_desc')}
           />
         )}
       </div>
 
       {/* ── Tools & Environment ── */}
       <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-        <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">Tools & Environment</h4>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">{t('settings:advanced.tools_environment')}</h4>
 
         <DropdownRow
           value={externalEditorType}
           onChange={(val) => updateExternalEditorSettings({ editorType: val as ExternalEditorType })}
-          name="External Editor"
-          description="Editor for the 'Open in...' context menu option."
+          name={t('settings:advanced.external_editor_name')}
+          description={t('settings:advanced.external_editor_desc')}
           options={[
-            { value: 'none', label: 'None' },
+            { value: 'none', label: t('settings:advanced.editor_none') },
             { value: 'vscode', label: 'VS Code' },
             { value: 'cursor', label: 'Cursor' },
             { value: 'webstorm', label: 'WebStorm' },
             { value: 'sublime', label: 'Sublime Text' },
-            { value: 'vim', label: 'Vim (Terminal)' },
-            { value: 'nvim', label: 'Neovim (Terminal)' },
-            { value: 'custom', label: 'Custom...' },
+            { value: 'vim', label: t('settings:advanced.editor_vim_terminal') },
+            { value: 'nvim', label: t('settings:advanced.editor_neovim_terminal') },
+            { value: 'custom', label: t('settings:advanced.editor_custom') },
           ]}
         />
 
@@ -497,18 +522,18 @@ export function AdvancedPanel() {
         <SettingsToggle
           checked={extensionDevToolsEnabled}
           onChange={(checked) => updateSettings({ extensionDevToolsEnabled: checked })}
-          name="Extension Dev Tools"
-          description="Enable MCP tools for building, installing, and hot-reloading extensions."
+          name={t('settings:advanced.extension_tools_name')}
+          description={t('settings:advanced.extension_tools_desc')}
         />
 
         <DropdownRow
           value={maxHeapSizeMB}
           onChange={(val) => updateSettings({ maxHeapSizeMB: parseInt(val, 10) })}
-          name="Max Heap Size"
-          description="V8 memory limit. Increase if you get out-of-memory crashes. Requires restart."
+          name={t('settings:advanced.heap_name')}
+          description={t('settings:advanced.heap_desc')}
           options={[
             { value: 2048, label: '2 GB' },
-            { value: 4096, label: '4 GB (Default)' },
+            { value: 4096, label: t('settings:advanced.heap_default', { size: 4 }) },
             { value: 6144, label: '6 GB' },
             { value: 8192, label: '8 GB' },
             { value: 12288, label: '12 GB' },
@@ -521,22 +546,22 @@ export function AdvancedPanel() {
             <DropdownRow
               value={preferredTerminalShell}
               onChange={(val) => updateSettings({ preferredTerminalShell: val as PreferredTerminalShell })}
-              name="Preferred Terminal Shell"
-              description="Choose which detected Windows shell new terminals should open with. Auto follows the built-in priority."
+              name={t('settings:advanced.terminal_shell_name')}
+              description={t('settings:advanced.terminal_shell_desc')}
               options={terminalShellOptions}
             />
 
             <div className="setting-item py-2">
               <div className="setting-text flex flex-col gap-0 mb-2">
-                <span className="setting-name text-sm font-medium text-[var(--nim-text)]">Detected Terminal Shells</span>
+                <span className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('settings:advanced.detected_terminal_shells')}</span>
                 <span className="setting-description text-xs leading-snug text-[var(--nim-text-muted)]">
-                  Current Windows shell discovery results used for terminal selection and restore.
+                  {t('settings:advanced.detected_terminal_shells_desc')}
                 </span>
               </div>
 
               <div className="select-text p-2 rounded-md text-xs bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] font-mono">
                 {availableTerminalShells.length === 0 ? (
-                  <div>No supported terminal shells detected.</div>
+                  <div>{t('settings:advanced.no_terminal_shells')}</div>
                 ) : (
                   availableTerminalShells.map((shell) => (
                     <div key={`${shell.provider || shell.name}-${shell.path}`} className="py-0.5 break-all">
@@ -552,28 +577,28 @@ export function AdvancedPanel() {
         <DropdownRow
           value={historyMaxAgeDays}
           onChange={(val) => updateSettings({ historyMaxAgeDays: parseInt(val, 10) })}
-          name="History Retention"
-          description="Max age of file history snapshots before automatic cleanup."
+          name={t('settings:advanced.history_age_name')}
+          description={t('settings:advanced.history_age_desc')}
           options={[
-            { value: 7, label: '7 days' },
-            { value: 14, label: '14 days' },
-            { value: 30, label: '30 days (Default)' },
-            { value: 60, label: '60 days' },
-            { value: 90, label: '90 days' },
-            { value: 180, label: '180 days' },
-            { value: 365, label: '1 year' },
+            { value: 7, label: t('settings:advanced.days', { count: 7 }) },
+            { value: 14, label: t('settings:advanced.days', { count: 14 }) },
+            { value: 30, label: t('settings:advanced.days_default', { count: 30 }) },
+            { value: 60, label: t('settings:advanced.days', { count: 60 }) },
+            { value: 90, label: t('settings:advanced.days', { count: 90 }) },
+            { value: 180, label: t('settings:advanced.days', { count: 180 }) },
+            { value: 365, label: t('settings:advanced.one_year') },
           ]}
         />
 
         <DropdownRow
           value={historyMaxSnapshots}
           onChange={(val) => updateSettings({ historyMaxSnapshots: parseInt(val, 10) })}
-          name="Max Snapshots Per File"
-          description="Oldest snapshots beyond this limit are deleted."
+          name={t('settings:advanced.history_snapshots_name')}
+          description={t('settings:advanced.history_snapshots_desc')}
           options={[
             { value: 50, label: '50' },
             { value: 100, label: '100' },
-            { value: 250, label: '250 (Default)' },
+            { value: 250, label: t('settings:advanced.count_default', { count: 250 }) },
             { value: 500, label: '500' },
             { value: 1000, label: '1,000' },
           ]}
@@ -582,9 +607,9 @@ export function AdvancedPanel() {
         {/* Custom PATH */}
         <div className="setting-item py-2">
           <div className="setting-text flex flex-col gap-0 mb-2">
-            <span className="setting-name text-sm font-medium text-[var(--nim-text)]">Custom PATH Directories</span>
+            <span className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('settings:advanced.custom_path_dirs')}</span>
             <span className="setting-description text-xs leading-snug text-[var(--nim-text-muted)]">
-              Additional directories for MCP server installation, CLI tool detection, and agent SDK operations.
+              {t('settings:advanced.custom_path_dirs_desc')}
             </span>
           </div>
           <textarea
@@ -601,7 +626,7 @@ export function AdvancedPanel() {
               onClick={() => setShowEnhancedPath(!showEnhancedPath)}
               className="text-xs text-[var(--nim-link)] hover:text-[var(--nim-link-hover)] cursor-pointer"
             >
-              {showEnhancedPath ? 'Hide current PATH' : 'Show current PATH'}
+              {showEnhancedPath ? t('settings:advanced.hide_current_path') : t('settings:advanced.show_current_path')}
             </button>
 
             {showEnhancedPath && enhancedPath && (
@@ -638,6 +663,7 @@ export function AdvancedPanel() {
  * project so state stays consistent.
  */
 function MultiProjectModeToggle() {
+  const { t } = useTranslation(['settings']);
   const [enabled, setEnabled] = useAtom(multiProjectModeAtom);
   const [openProjects, setOpenProjects] = useAtom(openProjectsAtom);
   const activePath = useAtomValue(activeWorkspacePathAtom);
@@ -645,7 +671,7 @@ function MultiProjectModeToggle() {
   const handleChange = async (next: boolean) => {
     if (!next && openProjects.length > 1) {
       const proceed = window.confirm(
-        `${openProjects.length} projects are open in the rail. Disable multi-project mode? The other projects will be closed (their unsaved work stays on disk).`
+        t('settings:advanced.multi_project_disable_confirm', { count: openProjects.length })
       );
       if (!proceed) return;
 
@@ -674,8 +700,8 @@ function MultiProjectModeToggle() {
     <SettingsToggle
       checked={enabled}
       onChange={handleChange}
-      name="Multi-project Mode"
-      description="Open multiple projects in a single window via a project rail. When off, each project opens in its own window."
+      name={t('settings:advanced.multi_project_mode')}
+      description={t('settings:advanced.multi_project_mode_desc')}
     />
   );
 }
@@ -687,6 +713,7 @@ function MultiProjectModeToggle() {
  * `+` button.
  */
 function RestorePreviousProjectsToggle() {
+  const { t } = useTranslation(['settings']);
   const [enabled, setEnabled] = useAtom(restorePreviousProjectsAtom);
   const isMultiProject = useAtomValue(multiProjectModeAtom);
 
@@ -694,11 +721,11 @@ function RestorePreviousProjectsToggle() {
     <SettingsToggle
       checked={enabled}
       onChange={setEnabled}
-      name="Restore last session's projects on launch"
+      name={t('settings:advanced.restore_projects')}
       description={
         isMultiProject
-          ? 'When on, the project rail rehydrates with every project that was open at last close. When off, only the project you pick from the launch screen opens.'
-          : 'Only takes effect when Multi-project Mode is enabled.'
+          ? t('settings:advanced.restore_projects_desc')
+          : t('settings:advanced.restore_projects_requires_multi')
       }
     />
   );

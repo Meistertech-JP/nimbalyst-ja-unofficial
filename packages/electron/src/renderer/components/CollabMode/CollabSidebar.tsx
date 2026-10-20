@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtom, useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { InputModal } from '../InputModal';
@@ -80,20 +81,21 @@ import {
 
 type TeamSyncStatus = 'disconnected' | 'connecting' | 'syncing' | 'connected' | 'error';
 
-const STATUS_CONFIG: Record<TeamSyncStatus, { label: string; dotClass: string }> = {
-  connected:    { label: 'Team synced',   dotClass: 'bg-green-500' },
-  syncing:      { label: 'Syncing...',    dotClass: 'bg-blue-500 animate-pulse' },
-  connecting:   { label: 'Connecting...', dotClass: 'bg-yellow-500 animate-pulse' },
-  disconnected: { label: 'Disconnected',  dotClass: 'bg-gray-500' },
-  error:        { label: 'Sync error',    dotClass: 'bg-red-500' },
+const STATUS_CONFIG: Record<TeamSyncStatus, { dotClass: string }> = {
+  connected:    { dotClass: 'bg-green-500' },
+  syncing:      { dotClass: 'bg-blue-500 animate-pulse' },
+  connecting:   { dotClass: 'bg-yellow-500 animate-pulse' },
+  disconnected: { dotClass: 'bg-gray-500' },
+  error:        { dotClass: 'bg-red-500' },
 };
 
 const TeamSyncStatusLabel: React.FC<{ status: TeamSyncStatus }> = ({ status }) => {
-  const { label, dotClass } = STATUS_CONFIG[status];
+  const { t } = useTranslation(['common']);
+  const { dotClass } = STATUS_CONFIG[status];
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} />
-      <span>{label}</span>
+      <span>{t(`common:collab.sync_${status}`)}</span>
     </span>
   );
 };
@@ -115,6 +117,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
   onShowHome,
   homeActive,
 }) => {
+  const { t } = useTranslation(['common']);
   const documentTypeCatalog = getCollaborativeDocumentTypeCatalog();
   const catalogRevision = useSyncExternalStore(
     documentTypeCatalog.subscribe,
@@ -263,10 +266,13 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     }
 
     window.alert(
-      `Cannot ${actionLabel} while shared document sync is ${teamSyncStatus}. Reconnect to the team before changing shared document metadata.`
+      t('common:collab.cannot_mutate_metadata', {
+        action: actionLabel,
+        status: t(`common:collab.sync_${teamSyncStatus}`),
+      })
     );
     return false;
-  }, [teamSyncStatus]);
+  }, [teamSyncStatus, t]);
 
   const contextMenuReference = useMemo(
     () => (contextMenu ? virtualElement(contextMenu.x, contextMenu.y) : null),
@@ -423,8 +429,8 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
   const handleCopyLink = useCallback(async (document: SharedDocument) => {
     if (!teamOrgId) {
       errorNotificationService.showWarning(
-        'No team configured',
-        'This workspace is not connected to a team, so no shareable link is available.',
+        t('common:collab.no_team_title'),
+        t('common:collab.no_team_message'),
         { duration: 4000 }
       );
       return;
@@ -439,24 +445,24 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
         entryPoint: 'sidebar',
       });
       errorNotificationService.showInfo(
-        'Link copied',
-        'Paste it anywhere to open this document in Nimbalyst.',
+        t('common:collab.link_copied_title'),
+        t('common:collab.link_copied_message'),
         { duration: 3000 }
       );
     } catch (err) {
       console.error('[CollabSidebar] Failed to copy link:', err);
       errorNotificationService.showError(
-        'Copy failed',
-        'Could not write the link to the clipboard.'
+        t('common:collab.copy_failed_title'),
+        t('common:collab.copy_failed_message')
       );
     }
-  }, [teamOrgId]);
+  }, [teamOrgId, t]);
 
   const handleDelete = useCallback(() => {
     if (!contextMenu) return;
 
     if (contextMenu.node.type === 'document') {
-      if (!canMutateMetadata('move this document to Trash')) return;
+      if (!canMutateMetadata(t('common:collab.actions.trash_document'))) return;
       const { document } = contextMenu.node;
       trashSharedDocument(document.documentId);
       trackDocumentAction({
@@ -472,7 +478,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     // Folder: recursive delete with a descendant-count confirmation.
     const folderId = contextMenu.node.folderId;
     if (!folderId) { setContextMenu(null); return; }
-    if (!canMutateMetadata('delete this folder')) return;
+    if (!canMutateMetadata(t('common:collab.actions.delete_folder'))) return;
 
     const subtreeFolderIds = new Set(collectFolderSubtree(sharedFolders, folderId));
     const folderCount = subtreeFolderIds.size - 1; // exclude the folder itself
@@ -480,11 +486,11 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       d => d.parentFolderId && subtreeFolderIds.has(d.parentFolderId)
     ).length;
 
-    const parts: string[] = [];
-    if (docCount > 0) parts.push(`${docCount} document${docCount === 1 ? '' : 's'}`);
-    if (folderCount > 0) parts.push(`${folderCount} subfolder${folderCount === 1 ? '' : 's'}`);
-    const detail = parts.length > 0 ? ` and its ${parts.join(' and ')}` : '';
-    if (window.confirm(`Delete shared folder "${contextMenu.node.name}"${detail}? This cannot be undone.`)) {
+    if (window.confirm(t('common:collab.delete_folder_confirm', {
+      name: contextMenu.node.name,
+      documentCount: docCount,
+      folderCount,
+    }))) {
       removeSharedFolder(folderId);
       trackFolderDeleted({
         actorType: 'user',
@@ -498,13 +504,13 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       }
     }
     setContextMenu(null);
-  }, [canMutateMetadata, contextMenu, sharedFolders, allSharedDocuments, selectedFolderId]);
+  }, [canMutateMetadata, contextMenu, sharedFolders, allSharedDocuments, selectedFolderId, t]);
 
   const handleCopyFolderLink = useCallback(async (folderId: string) => {
     if (!teamOrgId) {
       errorNotificationService.showWarning(
-        'No team configured',
-        'This workspace is not connected to a team, so no shareable link is available.',
+        t('common:collab.no_team_title'),
+        t('common:collab.no_team_message'),
         { duration: 4000 }
       );
       return;
@@ -517,19 +523,22 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
         entryPoint: 'sidebar',
       });
       errorNotificationService.showInfo(
-        'Folder link copied',
-        'Paste it anywhere to open this folder in Nimbalyst.',
+        t('common:collab.folder_link_copied_title'),
+        t('common:collab.folder_link_copied_message'),
         { duration: 3000 }
       );
     } catch (err) {
       console.error('[CollabSidebar] Failed to copy folder link:', err);
-      errorNotificationService.showError('Copy failed', 'Could not write the link to the clipboard.');
+      errorNotificationService.showError(
+        t('common:collab.copy_failed_title'),
+        t('common:collab.copy_failed_message'),
+      );
     }
-  }, [teamOrgId]);
+  }, [teamOrgId, t]);
 
   const handleRenameFolder = useCallback(async (nextName: string) => {
     if (!folderToRename) return;
-    if (!canMutateMetadata('rename this folder')) return;
+    if (!canMutateMetadata(t('common:collab.actions.rename_folder'))) return;
     const name = nextName.trim();
     if (!name || name === folderToRename.name) {
       setFolderToRename(null);
@@ -543,11 +552,11 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     });
     setFolderToRename(null);
     setContextMenu(null);
-  }, [canMutateMetadata, folderToRename]);
+  }, [canMutateMetadata, folderToRename, t]);
 
   const handleRenameLegacyFolder = useCallback(async (nextName: string) => {
     if (!legacyFolderToRename) return;
-    if (!canMutateMetadata('rename this folder')) return;
+    if (!canMutateMetadata(t('common:collab.actions.rename_folder'))) return;
     const name = nextName.trim();
     if (!name || name === legacyFolderToRename.name) {
       setLegacyFolderToRename(null);
@@ -561,7 +570,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     });
     setLegacyFolderToRename(null);
     setContextMenu(null);
-  }, [canMutateMetadata, legacyFolderToRename]);
+  }, [canMutateMetadata, legacyFolderToRename, t]);
 
   const toggleFolder = useCallback((folderPath: string) => {
     setUserTouchedExpansion(true);
@@ -667,7 +676,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
   }, [newDocumentMenu.setIsOpen]);
 
   const handleCreateFolder = useCallback(async (folderName: string) => {
-    if (!canMutateMetadata('create folders')) return;
+    if (!canMutateMetadata(t('common:collab.actions.create_folders'))) return;
     const name = folderName.trim();
     if (!name) return;
 
@@ -675,7 +684,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     const parentPath = parentId ? (folderPathById.get(parentId) ?? '') : '';
     const nextPath = joinCollabPath(parentPath, name);
     if (existingPaths.has(nextPath)) {
-      window.alert(`A document or folder named "${nextPath}" already exists.`);
+      window.alert(t('common:collab.path_exists', { path: nextPath }));
       return;
     }
 
@@ -695,10 +704,10 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     setSelectedFolderId(folderId);
     setIsCreateFolderOpen(false);
     setContextMenu(null);
-  }, [canMutateMetadata, createTargetFolderId, existingPaths, folderPathById]);
+  }, [canMutateMetadata, createTargetFolderId, existingPaths, folderPathById, t]);
 
   const handleCreateDocument = useCallback(async (documentName: string) => {
-    if (!canMutateMetadata('create documents')) return;
+    if (!canMutateMetadata(t('common:collab.actions.create_documents'))) return;
     const descriptor = createDocumentDescriptor;
     if (!descriptor) return;
     const parentId = createTargetFolderId;
@@ -714,7 +723,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       });
     } catch (error) {
       errorNotificationService.showError(
-        'Could not create shared document',
+        t('common:collab.create_document_failed'),
         error instanceof Error ? error.message : String(error),
       );
       return;
@@ -732,11 +741,11 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     setSelectedFolderId(parentId);
     setCreateDocumentDescriptor(null);
     setContextMenu(null);
-  }, [canMutateMetadata, createDocumentDescriptor, createTargetFolderId, folderPathById]);
+  }, [canMutateMetadata, createDocumentDescriptor, createTargetFolderId, folderPathById, t]);
 
   const handleRenameDocument = useCallback(async (documentName: string) => {
     if (!documentToRename) return;
-    if (!canMutateMetadata('rename this document')) return;
+    if (!canMutateMetadata(t('common:collab.actions.rename_document'))) return;
 
     const name = getCollabNodeName(documentName.trim()) || documentName.trim();
     if (!name) { setDocumentToRename(null); setContextMenu(null); return; }
@@ -753,7 +762,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       return;
     }
     if (existingPaths.has(nextPath)) {
-      window.alert(`A document or folder named "${nextPath}" already exists.`);
+      window.alert(t('common:collab.path_exists', { path: nextPath }));
       return;
     }
 
@@ -766,11 +775,11 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     });
     setDocumentToRename(null);
     setContextMenu(null);
-  }, [canMutateMetadata, documentToRename, existingPaths, folderPathById]);
+  }, [canMutateMetadata, documentToRename, existingPaths, folderPathById, t]);
 
   const moveDraggedDocument = useCallback(async (targetFolderId: string | null, targetFolderPath: string | null) => {
     if (!draggedDocument) return;
-    if (!canMutateMetadata('move this document')) {
+    if (!canMutateMetadata(t('common:collab.actions.move_document'))) {
       setDropTargetPath(null);
       setDraggedDocument(null);
       return;
@@ -783,7 +792,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       return;
     }
     if (existingPaths.has(nextPath) && nextPath !== draggedDocument.sourcePath) {
-      window.alert(`A document or folder named "${nextPath}" already exists.`);
+      window.alert(t('common:collab.path_exists', { path: nextPath }));
       setDropTargetPath(null);
       setDraggedDocument(null);
       return;
@@ -815,7 +824,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
 
     setDropTargetPath(null);
     setDraggedDocument(null);
-  }, [canMutateMetadata, draggedDocument, existingPaths]);
+  }, [canMutateMetadata, draggedDocument, existingPaths, t]);
 
   const canDropDocument = useCallback((targetFolderPath: string | null) => {
     if (!draggedDocument) return false;
@@ -849,7 +858,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       setDraggedFolder(null);
       return;
     }
-    if (!canMutateMetadata('move this folder')) {
+    if (!canMutateMetadata(t('common:collab.actions.move_folder'))) {
       setDropTargetPath(null);
       setDraggedFolder(null);
       return;
@@ -865,7 +874,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     }
     setDropTargetPath(null);
     setDraggedFolder(null);
-  }, [draggedFolder, canDropFolder, canMutateMetadata]);
+  }, [draggedFolder, canDropFolder, canMutateMetadata, t]);
 
   const renderTree = useCallback((nodes: CollabTreeNode[], depth = 0): React.ReactNode => {
     return nodes.map((node) => {
@@ -958,9 +967,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       const isLocked = node.document.decryptFailed === true;
 
       if (isLocked) {
-        const lockedTitle =
-          'This document\'s title is encrypted with a key your account does not currently have. ' +
-          'Ask a team admin to refresh / rewrap your key envelope, then reopen the workspace.';
+        const lockedTitle = t('common:collab.locked_document_hint');
         return (
           <button
             key={node.id}
@@ -976,7 +983,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               <MaterialSymbol icon="lock" size={16} />
             </span>
             <span className="file-tree-name italic text-[var(--nim-text-faint)]">
-              Encrypted document (key unavailable)
+                    {t('common:collab.encrypted_key_unavailable')}
             </span>
           </button>
         );
@@ -1022,9 +1029,9 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
           <span
             role="button"
             tabIndex={-1}
-            aria-label={isFavorite ? 'Unfavorite' : 'Favorite'}
+                    aria-label={isFavorite ? t('common:collab.unfavorite') : t('common:collab.favorite')}
             aria-pressed={isFavorite}
-            title={isFavorite ? 'Unfavorite' : 'Favorite'}
+                    title={isFavorite ? t('common:collab.unfavorite') : t('common:collab.favorite')}
             className={`collab-fav-star ml-auto mr-0.5 flex items-center justify-center cursor-pointer transition-opacity ${
               isFavorite
                 ? 'text-[var(--nim-warning)] opacity-100'
@@ -1061,9 +1068,10 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     showUnreadBubbles,
     catalogRevision,
     documentTypeCatalog,
+    t,
   ]);
 
-  const selectedFolderLabel = selectedFolderPath ? getCollabNodeName(selectedFolderPath) : 'Shared Docs';
+  const selectedFolderLabel = selectedFolderPath ? getCollabNodeName(selectedFolderPath) : t('common:collab.shared_docs');
   const contextDocument = contextMenu?.node.type === 'document' ? contextMenu.node.document : null;
   const contextLocalOrigin = useCollabLocalOrigin(
     workspacePath,
@@ -1089,8 +1097,8 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 className={`workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] ${
                   homeActive ? 'text-[var(--nim-primary)]' : 'text-[var(--nim-text-faint)]'
                 }`}
-                title="Discovery home"
-                aria-label="Discovery home"
+                title={t('common:collab.discovery_home')}
+                aria-label={t('common:collab.discovery_home')}
                 onClick={() => {
                   onShowHome();
                   setContextMenu(null);
@@ -1104,7 +1112,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               {...newDocumentMenu.getReferenceProps()}
               type="button"
               className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-              title="New document"
+              title={t('common:collab.new_document')}
               onClick={event => openCreateDocumentMenu(event.currentTarget)}
             >
               <MaterialSymbol icon="note_add" size={16} />
@@ -1112,7 +1120,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
             <button
               type="button"
               className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-              title="New folder"
+              title={t('common:collab.new_folder')}
               onClick={openCreateFolderDialog}
             >
               <MaterialSymbol icon="create_new_folder" size={16} />
@@ -1122,8 +1130,8 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               {...overflowMenu.getReferenceProps()}
               type="button"
               className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-              title="Shared document options"
-              aria-label="Shared document options"
+              title={t('common:collab.document_options')}
+              aria-label={t('common:collab.document_options')}
               onClick={() => {
                 setOverflowOpen((open) => !open);
                 setContextMenu(null);
@@ -1139,9 +1147,9 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       <div className="collab-tree-filter px-3 py-2 border-b border-[var(--nim-border)] shrink-0">
         <div className="flex bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md p-0.5">
           {([
-            { key: 'all', label: 'All', icon: null },
-            { key: 'favorites', label: 'Favorites', icon: 'star' },
-            { key: 'updated', label: 'Updated', icon: 'circle' },
+            { key: 'all', label: t('common:collab.filter_all'), icon: null },
+            { key: 'favorites', label: t('common:collab.filter_favorites'), icon: 'star' },
+            { key: 'updated', label: t('common:collab.filter_updated'), icon: 'circle' },
           ] as { key: CollabTreeFilter; label: string; icon: string | null }[]).map((seg) => {
             const active = treeFilter === seg.key;
             return (
@@ -1175,18 +1183,18 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
           <input
             type="text"
             className="session-history-search-input nim-input w-full pl-3 pr-9 py-2 text-[13px] text-[var(--nim-text)] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded outline-none transition-colors duration-150 placeholder:text-[var(--nim-text-faint)] focus:border-[var(--nim-primary)] focus:bg-[var(--nim-bg)]"
-            placeholder="Search shared documents..."
+            placeholder={t('common:collab.search_placeholder')}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            aria-label="Search shared documents"
+            aria-label={t('common:collab.search_label')}
           />
           {hasActiveSearch && (
             <button
               type="button"
               className="session-history-search-clear absolute right-5 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded text-[var(--nim-text-muted)] bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
               onClick={() => setSearchQuery('')}
-              aria-label="Clear shared document search"
-              title="Clear search"
+              aria-label={t('common:collab.clear_search')}
+              title={t('common:collab.clear_search')}
             >
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -1249,7 +1257,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                   className="text-nim-faint mb-2 animate-pulse"
                 />
                 <p className="text-xs text-nim-faint m-0">
-                  Loading shared documents...
+                  {t('common:collab.loading_documents')}
                 </p>
               </div>
             );
@@ -1260,12 +1268,12 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 <MaterialSymbol icon="cloud_sync" size={32} className="text-nim-faint mb-2" />
                 <p className="text-xs text-nim-faint m-0">
                   {workspaceHasTeam
-                    ? 'No shared documents yet.'
-                    : 'No team connected to this workspace.'}
+                    ? t('common:collab.no_documents')
+                    : t('common:collab.no_team_workspace')}
                 </p>
                 {workspaceHasTeam && (
                   <p className="text-xs text-nim-faint mt-1 m-0">
-                    Create one here or share a local file to collaborate.
+                    {t('common:collab.create_or_share')}
                   </p>
                 )}
               </div>
@@ -1276,10 +1284,10 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               <div className="px-2 py-4 text-center">
                 <MaterialSymbol icon="search_off" size={32} className="text-nim-faint mb-2" />
                 <p className="text-xs text-nim-faint m-0">
-                  No shared documents match "{trimmedSearchQuery}".
+                  {t('common:collab.search_no_match', { query: trimmedSearchQuery })}
                 </p>
                 <p className="text-xs text-nim-faint mt-1 m-0">
-                  Try a different file name or folder path.
+                  {t('common:collab.search_try_again')}
                 </p>
               </div>
             );
@@ -1288,9 +1296,9 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
             return (
               <div className="px-2 py-4 text-center">
                 <MaterialSymbol icon="star" size={32} className="text-nim-faint mb-2" />
-                <p className="text-xs text-nim-faint m-0">No favorites yet.</p>
+                <p className="text-xs text-nim-faint m-0">{t('common:collab.no_favorites')}</p>
                 <p className="text-xs text-nim-faint mt-1 m-0">
-                  Star a document to pin it here.
+                  {t('common:collab.star_to_pin')}
                 </p>
               </div>
             );
@@ -1299,9 +1307,9 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
             return (
               <div className="px-2 py-4 text-center">
                 <MaterialSymbol icon="mark_email_read" size={32} className="text-nim-faint mb-2" />
-                <p className="text-xs text-nim-faint m-0">You're all caught up.</p>
+                <p className="text-xs text-nim-faint m-0">{t('common:collab.all_caught_up')}</p>
                 <p className="text-xs text-nim-faint mt-1 m-0">
-                  No documents changed since you last viewed them.
+                  {t('common:collab.no_recent_changes')}
                 </p>
               </div>
             );
@@ -1325,7 +1333,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               onClick={() => setShowUnreadBubbles(!showUnreadBubbles)}
             >
               <MaterialSymbol icon="notifications" size={18} />
-              <span className="flex-1">Show unread bubbles</span>
+              <span className="flex-1">{t('common:collab.show_unread')}</span>
               <MaterialSymbol
                 icon={showUnreadBubbles ? 'toggle_on' : 'toggle_off'}
                 size={20}
@@ -1339,7 +1347,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               onClick={handleMarkAllRead}
             >
               <MaterialSymbol icon="done_all" size={18} />
-              <span>Mark all as read</span>
+              <span>{t('common:collab.mark_all_read')}</span>
             </button>
           </div>
         </FloatingPortal>
@@ -1378,7 +1386,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 onClick={event => openCreateDocumentMenu(event.currentTarget)}
               >
                 <MaterialSymbol icon="note_add" size={18} />
-                <span>New Document</span>
+                <span>{t('common:collab.new_document')}</span>
               </button>
               <button
                 type="button"
@@ -1386,7 +1394,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 onClick={openCreateFolderDialog}
               >
                 <MaterialSymbol icon="create_new_folder" size={18} />
-                <span>New Folder</span>
+                <span>{t('common:collab.new_folder')}</span>
               </button>
               <button
                 type="button"
@@ -1407,13 +1415,13 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="edit" size={18} />
-                <span>Rename</span>
+                <span>{t('common:rename')}</span>
               </button>
               <button
                 type="button"
                 className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded border-none bg-transparent cursor-pointer transition-colors text-left text-nim hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!teamOrgId || !contextMenu.node.folderId}
-                title={teamOrgId ? undefined : 'No team is connected to this workspace'}
+                title={teamOrgId ? undefined : t('common:collab.no_team_workspace')}
                 onClick={() => {
                   const folderId = contextMenu.node.type === 'folder' ? contextMenu.node.folderId : undefined;
                   setContextMenu(null);
@@ -1421,7 +1429,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="link" size={18} />
-                <span>Copy Link</span>
+                <span>{t('common:collab.copy_link')}</span>
               </button>
               <div className="my-1 border-t border-[var(--nim-border)]" />
               <button
@@ -1431,7 +1439,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 onClick={handleDelete}
               >
                 <MaterialSymbol icon="delete" size={18} />
-                <span>Delete</span>
+                <span>{t('common:delete')}</span>
               </button>
             </>
           ) : (
@@ -1446,7 +1454,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="open_in_new" size={18} />
-                <span>Open</span>
+                <span>{t('common:open')}</span>
               </button>
               <button
                 type="button"
@@ -1464,8 +1472,8 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 />
                 <span>
                   {contextDocument && favoriteSet.has(contextDocument.documentId)
-                    ? 'Unfavorite'
-                    : 'Favorite'}
+                    ? t('common:collab.unfavorite')
+                    : t('common:collab.favorite')}
                 </span>
               </button>
               <button
@@ -1483,13 +1491,13 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="mark_email_read" size={18} />
-                <span>Mark as read</span>
+                <span>{t('common:collab.mark_read')}</span>
               </button>
               <button
                 type="button"
                 className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded border-none bg-transparent cursor-pointer transition-colors text-left text-nim hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!teamOrgId}
-                title={teamOrgId ? undefined : 'No team is connected to this workspace'}
+                title={teamOrgId ? undefined : t('common:collab.no_team_workspace')}
                 onClick={() => {
                   if (!contextDocument) return;
                   setContextMenu(null);
@@ -1497,13 +1505,13 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="link" size={18} />
-                <span>Copy Link</span>
+                <span>{t('common:collab.copy_link')}</span>
               </button>
               <button
                 type="button"
                 className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded border-none bg-transparent cursor-pointer transition-colors text-left text-nim hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!teamOrgId}
-                title={teamOrgId ? undefined : 'No team is connected to this workspace'}
+                title={teamOrgId ? undefined : t('common:collab.no_team_workspace')}
                 onClick={() => {
                   if (!contextDocument || !teamOrgId) return;
                   setContextMenu(null);
@@ -1515,7 +1523,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="history" size={18} />
-                <span>View History</span>
+                <span>{t('common:collab.view_history')}</span>
               </button>
               <button
                 type="button"
@@ -1527,7 +1535,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="edit" size={18} />
-                <span>Rename</span>
+                <span>{t('common:rename')}</span>
               </button>
               <button
                 type="button"
@@ -1539,7 +1547,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="draft" size={18} />
-                <span>Open Local Source</span>
+                <span>{t('common:collab.open_local_source')}</span>
               </button>
               <button
                 type="button"
@@ -1551,7 +1559,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="upload" size={18} />
-                <span>Re-upload From Local</span>
+                <span>{t('common:collab.reupload_local_source')}</span>
               </button>
               <button
                 type="button"
@@ -1563,7 +1571,11 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 }}
               >
                 <MaterialSymbol icon="link" size={18} />
-                <span>{contextLocalOrigin.binding ? 'Relink Local Source...' : 'Link Local Source...'}</span>
+                <span>
+                  {contextLocalOrigin.binding
+                    ? t('common:collab.relink_local_source')
+                    : t('common:collab.link_local_source')}
+                </span>
               </button>
               {contextLocalOrigin.binding && (
                 <button
@@ -1576,7 +1588,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                   }}
                 >
                   <MaterialSymbol icon="link_off" size={18} />
-                  <span>Clear Local Source</span>
+                  <span>{t('common:collab.clear_local_source')}</span>
                 </button>
               )}
               <button
@@ -1585,7 +1597,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
                 onClick={handleDelete}
               >
                 <MaterialSymbol icon="delete" size={18} />
-                <span>Move to Trash</span>
+                <span>{t('common:collab.move_to_trash')}</span>
               </button>
             </>
           )}
@@ -1622,10 +1634,10 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
 
       <InputModal
         isOpen={documentToRename !== null}
-        title="Rename Shared Document"
-        placeholder="Document name"
+        title={t('common:collab.rename_shared_document')}
+        placeholder={t('common:collab.document_name', { type: t('common:collab.document') })}
         defaultValue={documentToRename ? getCollabNodeName(getCollabDocumentPath(documentToRename)) : ''}
-        confirmLabel="Rename"
+        confirmLabel={t('common:rename')}
         onConfirm={handleRenameDocument}
         onCancel={() => {
           setDocumentToRename(null);
@@ -1635,10 +1647,10 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
 
       <InputModal
         isOpen={folderToRename !== null}
-        title="Rename Shared Folder"
-        placeholder="Folder name"
+        title={t('common:collab.rename_shared_folder')}
+        placeholder={t('common:collab.folder_name')}
         defaultValue={folderToRename?.name ?? ''}
-        confirmLabel="Rename"
+        confirmLabel={t('common:rename')}
         onConfirm={handleRenameFolder}
         onCancel={() => {
           setFolderToRename(null);
@@ -1648,10 +1660,10 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
 
       <InputModal
         isOpen={legacyFolderToRename !== null}
-        title="Rename Shared Folder"
-        placeholder="Folder name"
+        title={t('common:collab.rename_shared_folder')}
+        placeholder={t('common:collab.folder_name')}
         defaultValue={legacyFolderToRename?.name ?? ''}
-        confirmLabel="Rename"
+        confirmLabel={t('common:rename')}
         onConfirm={handleRenameLegacyFolder}
         onCancel={() => {
           setLegacyFolderToRename(null);

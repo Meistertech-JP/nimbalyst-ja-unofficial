@@ -1,168 +1,60 @@
-# Nimbalyst is the visual workspace for building with Codex and Claude Code
+# Nimbalyst 日本語版（非公式）
 
-[Nimbalyst](https://nimbalyst.com) is a free, open-source, local, interactive visual editor & session/task manager for developers, product managers, designers, builders. 
-- Maximize speed, bandwidth, and context with Codex, Claude Code, Opencode (alpha), Copilot (alpha) by collaborating visually on integrated files, sessions, and tasks
-- Iterate visually with coding agents in your markdown, mockups, diagrams, csv, Excalidraw, data models, and code. Approve the coding agent's changes in red/green WYSIWYG, edit, annotate.
-- Manage multiple sessions in parallel and in kanban. Search, resume, link sessions to files and files to sessions. For developers we include git management, AI commit, workstreams, worktrees, and terminal.
-- Manage tasks. Keep track of your plans, bugs, todos, etc. Have the agent edit tasks and items, add them, move them, and execute them. Humans see and edit this as well.
-- Extend Nimbalyst. Build your own custom editors and visual interfaces integrated with the rest of Nimbalyst and your agents.
-- Mobile app. Start, manage, and respond to your Codex and Claude Code sessions while on the go.
+[English](./README.en.md)
 
-![Version](https://img.shields.io/github/v/release/nimbalyst/nimbalyst)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
+Nimbalyst v0.71.2をベースに、デスクトップアプリのユーザーインターフェースを日本語化した非公式版です。
 
-https://github.com/user-attachments/assets/bfd89552-61f4-4db1-8301-cc2495423b89
+メニュー、設定、ファイル管理、AIセッション、トラッカー、ダイアログなどに日本語表示を追加しています。表示言語は日本語と英語から選択できます。
 
-## Features
-**Visual Editors:** Built-in WYSIWYG editors where you and your coding agents collaborate visually. Approve agent changes as red/green diffs, edit, annotate, and iterate.
-- Markdown
-- Mockups with annotations
-- Mermaid
-- Excalidraw
-- CSV
-- Data Models
-- Code with Monaco
+本プロジェクトはNimbalyst, Inc.の公式製品ではなく、同社による開発・サポート・承認を受けたものではありません。
 
-![Nimbalyst files and editors](./.github/assets/nimbalyst-hero-files-dev-dark.png)
+## ダウンロード
 
-**Session Management:** Manage coding agents' work across parallel sessions in a UI
-- Link sessions to files and files to sessions
-- Open files in your sessions. Group files touched by a session
-- Run parallel sessions
-- Search and resume sessions
-- Manage in a Kanban board
+このプレビューリリースでは、検証済みのWindowsバイナリを配布していません。GitHub Releasesからソースコードを取得できます。認証用URLプロトコルの競合を解消し、Windows配布物の実起動とログインを検証するまで、Windowsバイナリの公開は保留しています。
 
-![Nimbalyst session kanban](./.github/assets/sessions-kanban-dark.webp)
+## 動作環境
 
-**Task Tracking:** Keep track of your plans, bugs, features, todos etc.
-- Have the agent edit tasks, add them, move them, and execute them
-- Humans view and edit them too
+- Windows 10またはWindows 11、x64
+- AIプロバイダーや同期機能など、接続する機能に応じたインターネット接続
 
-**For Developers**
-- Manage git state
-- Use AI to git commit
-- Use the embedded ghostty terminal
-- Leverage worktrees
+## 言語の切替
 
-![Nimbalyst developer view](./.github/assets/developers-dark.webp)
+アプリの設定を開き、表示言語から「日本語」または「English」を選択します。表示言語は再起動後も保持されます。
 
-**Mobile App**
-- Session dashboard: see which agents need you and which are still working
-- Reply to questions via text or voice, agents resume immediately
-- Visual diff review: swipe through changes, tap to approve
-- Queue next tasks: keep the pipeline full, don't let agents sit idle
-- Push notifications: agents tell you when they need you
+## バージョンと更新
 
-**Open** storage of content and status in markdown, workflow in slash commands, and plain files on disk or in git.
+この版は公式Nimbalyst v0.71.2（commit `59ab7eaf8c995840a37766c65a09307506b87a2b`）をベースにしています。公式最新版に含まれる機能や修正は反映されていない場合があります。
 
-**Extension System**
-- Pluggable editors for any file type. Every editor (including built-ins) goes through the same `EditorHost` contract, so custom editors are first-class.
-- Current extensions include an Astro website editor, visual git log, mindmap, slides, and a 3D object editor.
+公式版のGitHub Releasesを使用したアプリ自動更新とアプリ内更新確認は無効です。新しい版は本リポジトリのGitHub Releasesから取得してください。
 
-![Nimbalyst extension marketplace](./.github/assets/extension-marketplace-dark.png)
+## 既知の制限
 
-**Supported Coding Agents**
-- Codex
-- Claude Code
-- Opencode (alpha)
-- Copilot (alpha)
+- 本版は公式Nimbalystとの同時利用をサポートしていません。両バージョンは認証用URLプロトコル（`nimbalyst://`）を使用するため、同じWindows環境にインストールするとログイン時の認証リンクが意図しないアプリケーションで開かれる場合があります。
+- 認証リンクが正しいアプリケーションで開かない場合があります。Windows配布物の認証動作は未検証です。
+- 日本語化の対象外となる技術用語、モデル名、外部サービス由来の表示があります。
+- Windows版は未署名です。
+- このプレビュー版では独自の更新機構を提供しません。
 
-## Download
+## ソースからのビルド
 
-Download the latest version for your platform:
+Node.jsとnpmを用意し、リポジトリのルートで依存関係をインストールします。
 
-| Platform | Download | Requirements |
-| --- | --- | --- |
-| macOS Apple Silicon | [Download .dmg](https://github.com/Nimbalyst/nimbalyst/releases/latest/download/Nimbalyst-macOS-arm64.dmg) | macOS Apple Silicon 12+ |
-| macOS Intel | [Download .dmg](https://github.com/Nimbalyst/nimbalyst/releases/latest/download/Nimbalyst-macOS-x64.dmg) | macOS Intel 12+ |
-| Windows | [Download .exe](https://github.com/Nimbalyst/nimbalyst/releases/latest/download/Nimbalyst-Windows.exe) | Windows 10+ |
-| Linux | [Download AppImage](https://github.com/Nimbalyst/nimbalyst/releases/latest/download/Nimbalyst-Linux.AppImage) | Linux |
-
-## Getting Started
-
-1. **Create or open a document** — click "New" or press `Cmd/Ctrl+N`
-2. **Write in markdown** — write/edit in the WYSIWYG editor
-3. **Use the AI assistant** — ask AI to research, edit the document, work across your files
-4. **Accept/reject AI changes** — step through suggested AI edits and accept or reject
-5. **Work in Agent Manager** — switch to the agent manager view and run multiple agent sessions in parallel
-6. **Search/resume sessions** — search and resume sessions, manage your work
-
-## Auto-Updates
-
-Nimbalyst automatically checks for updates and notifies you when a new version is available. You can also manually check via Help → Check for Updates.
-
-By default, fresh installs are on the **stable** release channel and only receive promoted releases. If you want early-access builds, switch to the **alpha** channel under **Settings → Advanced → Release Channel**. Alpha builds are rougher and may break; revert to stable any time.
-
-## Telemetry
-
-Nimbalyst sends **anonymous usage analytics** to PostHog so we can understand how the app is used and prioritize improvements. We never collect:
-
-- Usernames, emails, or IP addresses (no PII)
-- File contents or file paths (categorized buckets only)
-- API keys or authentication tokens
-- Document, session, or chat content
-
-A randomly-generated anonymous ID is used to correlate events from the same install. You can opt out at any time in **Settings → Advanced → Analytics**.
-
-For the complete list of every event we send and its properties, see [POSTHOG_EVENTS.md](./docs/POSTHOG_EVENTS.md). For the privacy rules our analytics code follows, see [ANALYTICS_GUIDE.md](./docs/ANALYTICS_GUIDE.md).
-
-## Building from Source
-
-Nimbalyst is a TypeScript / Electron monorepo using npm workspaces.
-
-```bash
-# Install dependencies (npm 7+ required)
+```powershell
 npm install
-
-# Start the Electron app in dev mode
-cd packages/electron && npm run dev
-
-# Build a local Mac binary
-cd packages/electron && npm run build:mac:local
+npm run typecheck
+npm run build
+cd packages/electron
+npm run build:win
 ```
 
-Major workspaces:
+`packages/electron/package.json` の `build:win` はWindows x64向けNSISインストーラーとZIPを生成します。ただし、認証用URLプロトコルの競合が未解決のため、現時点では生成した配布物を公開・配布しないでください。ビルド前にRuntime/Electron typecheckおよびi18nテストを実行してください。
 
-- `packages/ios` — Native iOS app (SwiftUI)
-- `packages/electron` — Desktop application (Electron)
-- `packages/runtime` — Cross-platform runtime services (AI, sync, Lexical editor)
-- `packages/collab-protocol` — Wire-format types for the collaboration sync protocol (shared with the sync server)
-- `packages/extension-sdk` — Extension development kit
-- `packages/extensions` — Built-in extensions
+## 公式プロジェクト
 
-The collaboration sync server (talked to at `wss://sync.nimbalyst.com`) is a separate project.
+ベースとなったNimbalystの公式リポジトリ: [nimbalyst/nimbalyst](https://github.com/nimbalyst/nimbalyst)
 
-For deeper architecture and contributor guidance, see [CLAUDE.md](./CLAUDE.md) and the docs under [`docs/`](./docs). For contribution rules and the DCO sign-off requirement, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+## ライセンス
 
-## Community
+本家ソースはMIT Licenseです。著作権表示およびライセンス本文は [LICENSE](./LICENSE) を参照してください。アプリに含まれる第三者ライブラリのライセンス・通知は、配布物内の `resources/legal` を参照してください。
 
-- [Documentation](https://docs.nimbalyst.com/) — watch videos and read the docs
-- [Discord](https://discord.gg/FgD9S2MCYB) — join the discussion
-- [Website](https://nimbalyst.com) — learn more about Nimbalyst
-
-## License
-
-- This repository is licensed under the **MIT License** — see [LICENSE](./LICENSE).
-- The collaboration sync server (the Cloudflare Worker that powers `wss://sync.nimbalyst.com`) is a separate project. Clients in this repo talk to it over the wire protocol defined in [`packages/collab-protocol/`](./packages/collab-protocol/).
-- For licensing context and contact information, see [LICENSING.md](./LICENSING.md).
-
-## Contributing
-
-- 💡 **Have a vague idea or question?** → [Join the discussion](https://github.com/Nimbalyst/nimbalyst/discussions)
-- 🐛 **Found a bug?** → Report it in-app with **Send Feedback** (left rail or Help menu). Your agent helps draft the report, and you approve everything before it goes to GitHub.
-- 🗺️ **Curious what we're building?** → [See the roadmap](https://github.com/orgs/Nimbalyst/projects/4/views/1)
-- 🤝 **Want to help with roadmap work?** → [Community view](https://github.com/orgs/Nimbalyst/projects/4/views/2)
-- ✨ **Have a concrete feature request?** → Send it in-app with **Send Feedback** (left rail or Help menu) and your agent will help draft it.
-- 🌱 **Looking for a smaller place to start?** → [Good first issues](https://github.com/orgs/Nimbalyst/projects/4/views/4)
-
-We rank features and bugs by 👍 reactions. Don't comment "+1" — react with 👍 instead.
-[Sort issues by reactions →](https://github.com/Nimbalyst/nimbalyst/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc)
-
-## Acknowledgments
-
-Built with:
-- [Electron](https://electronjs.org/)
-- [Lexical](https://lexical.dev/) by Meta
-- [React](https://reactjs.org/)
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/)
-- [Excalidraw](https://excalidraw.com/)
+このソフトウェアは現状のまま提供されます。利用にあたっては、ベースとなる本家ソフトウェアおよび各第三者ライブラリのライセンス条件を確認してください。

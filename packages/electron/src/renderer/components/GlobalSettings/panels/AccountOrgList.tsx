@@ -10,10 +10,10 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 
 import { AlphaBadge } from '../../common/AlphaBadge';
-import { TEAM_ALPHA_TOOLTIP } from '../../common/TeamAlphaNotice';
 import type { AccountOrganizationEntry, AccountOrganizationGroup } from './accountOrganizations';
 
 function openOrgWindow(orgId?: string) {
@@ -26,6 +26,7 @@ function announceOrganizationsChanged() {
 }
 
 function RoleBadge({ role }: { role: string }) {
+  const { t } = useTranslation('common');
   const normalized = (role || 'member').toLowerCase();
   const isPrivileged = normalized === 'owner' || normalized === 'admin';
   return (
@@ -37,12 +38,13 @@ function RoleBadge({ role }: { role: string }) {
       }`}
       data-testid="account-org-role-badge"
     >
-      {normalized}
+      {t(`organization_switcher.roles.${normalized}`, { defaultValue: normalized })}
     </span>
   );
 }
 
 function AccountOrgRow({ organization }: { organization: AccountOrganizationEntry }) {
+  const { t } = useTranslation(['settings', 'common', 'project']);
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +56,7 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
       if (result?.success) {
         announceOrganizationsChanged();
       } else {
-        setError(result?.error || 'Could not accept the invitation');
+        setError(result?.error || t('settings:organization_ui.accept_failed'));
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -79,17 +81,17 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
               className="account-org-pending-badge rounded-full bg-[color-mix(in_srgb,var(--nim-warning)_16%,transparent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--nim-warning)]"
               data-testid="account-org-pending-badge"
             >
-              Invite pending
+              {t('settings:account_org.invite_pending')}
             </span>
           )}
         </div>
         <div className="mt-0.5 truncate text-[11px] text-[var(--nim-text-muted)]">
           {organization.isPending
-            ? 'Accept to join this organization'
+            ? t('settings:account_org.accept_to_join')
             : organization.projectCount === undefined
-              ? 'Active member'
-              : `${organization.projectCount} ${organization.projectCount === 1 ? 'project' : 'projects'}`}
-          {organization.alsoReachableBy.length > 0 && ` · also signed in as ${organization.alsoReachableBy.join(', ')}`}
+              ? t('settings:account_org.active_member')
+              : t('settings:account_org.project', { count: organization.projectCount })}
+          {organization.alsoReachableBy.length > 0 && ` · ${t('common:account_ui.also_signed_in', { emails: organization.alsoReachableBy.join(', ') })}`}
         </div>
         {error && <div className="mt-0.5 text-[11px] text-[var(--nim-error)]">{error}</div>}
       </div>
@@ -107,7 +109,7 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
             className="rounded border border-[var(--nim-primary)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-primary)] hover:bg-[var(--nim-bg-hover)] disabled:opacity-60"
             data-testid="account-org-accept-invite"
           >
-            {accepting ? 'Accepting…' : 'Accept'}
+            {accepting ? t('common:account_ui.accepting') : t('settings:organization_ui.accept')}
           </button>
         ) : (
           <button
@@ -116,7 +118,7 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
             className="rounded border border-[var(--nim-border)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
             data-testid="account-org-manage"
           >
-            Manage
+            {t('project:tools.manage')}
           </button>
         )}
       </div>
@@ -125,6 +127,7 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
 }
 
 export function AccountOrgList({ group }: { group: AccountOrganizationGroup }) {
+  const { t } = useTranslation(['settings']);
   return (
     <div className="account-org-list mt-2 flex flex-col gap-1.5 pl-3" data-testid="account-org-list">
       {group.organizations.map((organization) => (
@@ -132,7 +135,7 @@ export function AccountOrgList({ group }: { group: AccountOrganizationGroup }) {
       ))}
       {group.organizations.length === 0 && (
         <p className="account-org-empty m-0 text-[11px] text-[var(--nim-text-muted)]" data-testid="account-org-empty">
-          No organizations
+          {t('settings:account_org.no_organizations')}
         </p>
       )}
       <div className="account-org-new-row flex items-center gap-1.5">
@@ -142,9 +145,9 @@ export function AccountOrgList({ group }: { group: AccountOrganizationGroup }) {
           className="account-org-new self-start rounded border border-dashed border-[var(--nim-border)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
           data-testid="account-org-new"
         >
-          New organization
+          {t('settings:account_org.new_organization')}
         </button>
-        <AlphaBadge size="xs" tooltip={TEAM_ALPHA_TOOLTIP} />
+        <AlphaBadge size="xs" tooltip={t('settings:organization_ui.alpha_tooltip')} />
       </div>
     </div>
   );

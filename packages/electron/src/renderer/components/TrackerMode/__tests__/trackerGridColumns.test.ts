@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import i18next from 'i18next';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { resolveColumnsForType } from '@nimbalyst/runtime/plugins/TrackerPlugin';
@@ -99,10 +100,41 @@ describe('buildGridSource', () => {
 });
 
 describe('buildGridColumns', () => {
-  afterEach(() => globalRegistry.unregister(gridType));
+  afterEach(() => { globalRegistry.unregister(gridType); vi.restoreAllMocks(); });
 
   const build = (ids: string[], isRowEditable: (id: string) => boolean = () => true) =>
     buildGridColumns(columnsFor(ids), { trackerType: gridType, isRowEditable });
+
+  it('localizes grid tooltips, boolean and date cells while preserving schema labels and raw source values', () => {
+    registerType();
+    const now = new Date('2026-09-18T12:00:00Z').getTime();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const definitions = columnsFor(['title', 'state', 'updated']);
+    const h = (tag: string, props: Record<string, unknown>, children: unknown) => ({ tag, props, children });
+    const onToggleFavorite = vi.fn();
+    const [title, state, updated] = buildGridColumns(definitions, {
+      t: i18next.getFixedT('ja'), trackerType: gridType, isRowEditable: () => true,
+      onOpenFilter: vi.fn(), favorites: { favoriteItemIds: new Set(['1']), onToggleFavorite },
+    });
+    const titleNode = (title.cellTemplate as any)(h, { model: { title: 'User title', [ROW_ITEM_ID]: '1' } });
+    const star = titleNode.children[0];
+    expect(star.props.title).toBe('お気に入りから削除');
+    star.props.onClick({ preventDefault: vi.fn(), stopPropagation: vi.fn() });
+    expect(onToggleFavorite).toHaveBeenCalledWith('1');
+    expect(titleNode.children[1].children).toBe('User title');
+    const header = (title.columnTemplate as any)(h);
+    expect(header.children[1].children[0].props.title).toBe(`${definitions[0].label}でフィルター`);
+    expect((state.cellTemplate as any)(h, { model: { state: 'open' } }).children).toBe('Open');
+    const source = buildGridSource([record('1', { title: 'User title', state: 'open' })], definitions);
+    expect(source[0].state).toBe('open');
+    expect((title.cellTemplate as any)(h, { model: { title: true } }).children[1].children).toBe('はい');
+    const cases: [number, string][] = [[0, 'たった今'], [60_000, '1分前'], [3_600_000, '1時間前'],
+      [86_400_000, '昨日'], [2 * 86_400_000, '2日前'], [7 * 86_400_000, '1週前']];
+    for (const [elapsed, expected] of cases) {
+      expect((updated.cellTemplate as any)(h, { model: { updated: new Date(now - elapsed) } }).children).toBe(expected);
+    }
+    expect((updated.cellTemplate as any)(h, { model: { updated: new Date(0) } }).children).toBe('');
+  });
 
   it('attaches an editor to schema-backed columns', () => {
     registerType();

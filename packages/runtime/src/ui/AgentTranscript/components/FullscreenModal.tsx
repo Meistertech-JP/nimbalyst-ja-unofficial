@@ -9,6 +9,7 @@
 
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 interface FullscreenModalProps {
   /** Whether the modal is visible */
@@ -32,8 +33,9 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
   onClose,
   children,
   contentClassName = '',
-  ariaLabel = 'Modal'
+  ariaLabel
 }) => {
+  const { t } = useRuntimeTranslation();
   // Handle Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -56,7 +58,7 @@ export const FullscreenModal: React.FC<FullscreenModalProps> = ({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? t('aichat:message_segment.modal', 'Modal')}
     >
       <div
         className={`relative cursor-default ${contentClassName}`}

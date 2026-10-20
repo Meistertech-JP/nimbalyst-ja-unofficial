@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { rendererI18n } from '../i18n';
 import { logger } from '../utils/logger';
 import { store, editorDirtyAtom, makeEditorKey } from '@nimbalyst/runtime/store';
 import { isCollabUri } from '../utils/collabUri';
@@ -67,7 +68,9 @@ export function useWindowLifecycle({
         // console.log('[WINDOW CLOSE] Has unsaved changes');
         // This will show a dialog in Electron
         e.preventDefault();
-        e.returnValue = 'You have unsaved changes. Are you sure you want to quit?';
+        e.returnValue = rendererI18n.t('notifications:window.unsaved_quit', {
+          defaultValue: 'You have unsaved changes. Are you sure you want to quit?',
+        });
 
         // Try to save current file quickly
         const currentFilePath = currentFilePathRef.current;

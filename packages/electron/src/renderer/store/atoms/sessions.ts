@@ -22,6 +22,7 @@ import type { SessionMeta } from '@nimbalyst/runtime';
 import deepEqual from 'fast-deep-equal';
 import { workstreamStateAtom, setWorkstreamActiveChildAtom } from './workstreamState';
 import { aiInputHistoryAtom } from './aiInputUndo';
+import { rendererI18n } from '../../i18n';
 
 // SessionMeta is imported from @nimbalyst/runtime (canonical type).
 // Re-export for consumers that import from the store.
@@ -823,7 +824,7 @@ export const sessionTitleAtom = atomFamily((sessionId: string) =>
     // Fall back to registry for sessions that haven't been fully loaded yet
     const registry = get(sessionRegistryAtom);
     const meta = registry.get(sessionId);
-    return meta?.title || 'Untitled';
+    return meta?.title || rendererI18n.t('sessions:history.untitled_session');
   })
 );
 
@@ -1118,7 +1119,7 @@ export const loadSessionChildrenAtom = atom(
           if (!registry.has(child.id)) {
             registry.set(child.id, {
               id: child.id,
-              title: child.title || 'Untitled Session',
+              title: child.title || rendererI18n.t('sessions:history.untitled_session'),
               createdAt: child.createdAt,
               updatedAt: child.updatedAt,
               provider: child.provider,
@@ -1242,7 +1243,7 @@ export const createChildSessionAtom = atom(
         // This prevents showing default values before loadSessionDataAtom runs
         set(sessionStoreAtom(result.sessionId), {
           id: result.sessionId,
-          title: 'New Session',
+          title: rendererI18n.t('sessions:new_session'),
           provider: resolvedProvider,
           model: model || 'claude-code:sonnet',
           mode: 'agent',
@@ -1472,7 +1473,7 @@ export const convertToWorkstreamAtom = atom(
           id: parentId,
           provider: sessionData.provider || 'claude-code',
           model: sessionData.model,
-          title: sessionData.title || 'Workstream',
+          title: sessionData.title || rendererI18n.t('sessions:history.untitled_workstream'),
           sessionType: 'workstream',
           metadata: {
             isWorkstreamRoot: true,
@@ -1582,7 +1583,7 @@ export const convertToWorkstreamAtom = atom(
         // This prevents showing default values before loadSessionDataAtom runs
         set(sessionStoreAtom(siblingResult.sessionId), {
           id: siblingResult.sessionId,
-          title: 'New Session',
+          title: rendererI18n.t('sessions:new_session'),
           provider: sessionData.provider || 'claude-code',
           model: model || sessionData.model || 'claude-code:sonnet',
           mode: 'agent',
@@ -1625,7 +1626,7 @@ export const convertToWorkstreamAtom = atom(
       const now = Date.now();
       set(addSessionFullAtom, {
         id: parentSessionId,
-        title: sessionData.title || 'Workstream',
+        title: sessionData.title || rendererI18n.t('sessions:history.untitled_workstream'),
         provider: sessionData.provider || 'claude-code',
         model: sessionData.model,
         sessionType: 'workstream',
@@ -2168,7 +2169,7 @@ export const refreshSessionListAtom = atom(
         for (const s of result.sessions) {
           registry.set(s.id, {
             id: s.id,
-            title: s.title || 'Untitled Session',
+            title: s.title || rendererI18n.t('sessions:history.untitled_session'),
             createdAt: s.createdAt,
             updatedAt: s.updatedAt,
             provider: s.provider || 'claude',
@@ -2284,7 +2285,7 @@ export const addSessionFullAtom = atom(
     if (!existingStore) {
       set(sessionStoreAtom(session.id), {
         id: session.id,
-        title: session.title || 'Untitled Session',
+        title: session.title || rendererI18n.t('sessions:history.untitled_session'),
         provider: session.provider || 'claude-code',
         model: session.model || 'claude-code:sonnet',
         mode: 'agent',
@@ -2598,6 +2599,6 @@ export const workstreamTitleAtom = atomFamily((workstreamId: string) =>
     // Fallback to registry if session data not loaded yet
     const registry = get(sessionRegistryAtom);
     const meta = registry.get(workstreamId);
-    return meta?.title || 'Untitled';
+    return meta?.title || rendererI18n.t('sessions:history.untitled_workstream');
   })
 );

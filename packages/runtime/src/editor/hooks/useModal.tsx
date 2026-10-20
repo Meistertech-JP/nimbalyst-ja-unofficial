@@ -6,7 +6,7 @@
  *
  */
 
-import type {JSX} from 'react';
+import type {JSX, ReactNode} from 'react';
 
 import {useCallback, useMemo, useState} from 'react';
 
@@ -14,12 +14,12 @@ import Modal from '../ui/Modal';
 
 function useModal(): [
   JSX.Element | null,
-  (title: string, showModal: (onClose: () => void) => JSX.Element) => void,
+  (title: ReactNode, showModal: (onClose: () => void) => JSX.Element) => void,
 ] {
   const [modalContent, setModalContent] = useState<null | {
     closeOnClickOutside: boolean;
     content: JSX.Element;
-    title: string;
+    title: ReactNode;
   }>(null);
 
   const onClose = useCallback(() => {
@@ -43,7 +43,7 @@ function useModal(): [
 
   const showModal = useCallback(
     (
-      title: string,
+      title: ReactNode,
       // eslint-disable-next-line no-shadow
       getContent: (onClose: () => void) => JSX.Element,
       closeOnClickOutside = false,

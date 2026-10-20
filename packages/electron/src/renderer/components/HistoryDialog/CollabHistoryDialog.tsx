@@ -18,26 +18,18 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import type { DocRevisionMetadata } from '@nimbalyst/collab-protocol';
 import {
   CollabHistoryError,
   type CollabHistoryClient,
 } from '@nimbalyst/runtime/sync';
 import { collabHistoryControllerAtom } from '../../store/atoms/collabHistoryControllers';
-import { getRelativeTimeString } from '../../utils/dateFormatting';
 
 interface CollabHistoryDialogProps {
   collabUri: string;
   onClose: () => void;
 }
-
-const REVISION_LABELS: Record<string, string> = {
-  manual: 'Saved version',
-  auto: 'Auto snapshot',
-  bootstrap: 'First version',
-  'restore-pre': 'Before restore',
-  'restore-head': 'Restored version',
-};
 
 const REVISION_ICONS: Record<string, string> = {
   manual: 'push_pin',
@@ -58,6 +50,7 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
   collabUri,
   onClose,
 }) => {
+  const { t, i18n } = useTranslation(['common']);
   const getController = useAtomValue(collabHistoryControllerAtom);
   const controller = getController(collabUri);
   const supportsRestore = !!controller?.exportSnapshot && !!controller?.applySnapshot;
@@ -124,7 +117,7 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
         if (!controller.waitForPendingWrites) return;
         const settled = await controller.waitForPendingWrites(5_000);
         if (!settled || !isRestoreSafe(controller.getStatus())) {
-          throw new Error('This document still has unsynced local changes. Wait for "Connected" before restoring.');
+          throw new Error(t('common:collab_history.unsynced_error'));
         }
       }
 
@@ -164,7 +157,49 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
     } finally {
       setRestoring(false);
     }
-  }, [controller, selectedRevision, onClose]);
+  }, [controller, selectedRevision, onClose, t]);
+
+  const getRevisionLabel = (kind: string) => {
+    switch (kind) {
+      case 'manual':
+        return t('common:collab_history.saved_version');
+      case 'auto':
+        return t('common:collab_history.auto_snapshot');
+      case 'bootstrap':
+        return t('common:collab_history.first_version');
+      case 'restore-pre':
+        return t('common:collab_history.before_restore');
+      case 'restore-head':
+        return t('common:collab_history.restored_version');
+      default:
+        return kind;
+    }
+  };
+
+  const formatRevisionTime = (createdAt: number) => {
+    const elapsed = Date.now() - createdAt;
+    const formatter = new Intl.RelativeTimeFormat(i18n.resolvedLanguage ?? 'en', {
+      numeric: 'auto',
+    });
+
+    if (elapsed < 60_000) {
+      return formatter.format(0, 'second');
+    }
+    if (elapsed < 3_600_000) {
+      return formatter.format(-Math.floor(elapsed / 60_000), 'minute');
+    }
+    if (elapsed < 86_400_000) {
+      return formatter.format(-Math.floor(elapsed / 3_600_000), 'hour');
+    }
+    if (elapsed < 604_800_000) {
+      return formatter.format(-Math.floor(elapsed / 86_400_000), 'day');
+    }
+
+    return new Intl.DateTimeFormat(i18n.resolvedLanguage ?? 'en', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(createdAt));
+  };
 
   if (!controller) {
     return (
@@ -172,21 +207,27 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
         <div className="collab-history-empty bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-xl p-6 max-w-md text-sm text-[var(--nim-text)]" onClick={(e) => e.stopPropagation()}>
           {graceExpired ? (
             <>
-              <div className="font-semibold mb-1">Open the document first</div>
+              <div className="font-semibold mb-1">
+                {t('common:collab_history.open_first')}
+              </div>
               <div className="text-[var(--nim-text-muted)]">
-                Shared-document history is only available while the document tab is open. Open the document and try again.
+                {t('common:collab_history.open_first_desc')}
               </div>
             </>
           ) : (
             <>
-              <div className="font-semibold mb-1">Loading history</div>
+              <div className="font-semibold mb-1">
+                {t('common:collab_history.loading_history')}
+              </div>
               <div className="text-[var(--nim-text-muted)]">
-                Waiting for the document to connect...
+                {t('common:collab_history.waiting_connect')}
               </div>
             </>
           )}
           <div className="mt-4 text-right">
-            <button className="nim-btn" onClick={onClose}>Close</button>
+            <button className="nim-btn" onClick={onClose}>
+              {t('common:collab_history.close_dialog')}
+            </button>
           </div>
         </div>
       </div>
@@ -198,10 +239,18 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
       <div className="collab-history-dialog flex flex-col overflow-hidden rounded-xl bg-[var(--nim-bg)] border border-[var(--nim-border)] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-[80vw] max-w-[900px] h-[70vh] max-h-[700px]" onClick={(e) => e.stopPropagation()}>
         <div className="collab-history-header flex items-center justify-between py-3 px-4 border-b border-[var(--nim-border)]">
           <div>
-            <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">Document History</h2>
-            <div className="text-[11px] text-[var(--nim-text-muted)]">Shared revisions for this document</div>
+            <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">
+              {t('common:collab_history.document_history')}
+            </h2>
+            <div className="text-[11px] text-[var(--nim-text-muted)]">
+              {t('common:collab_history.shared_revisions')}
+            </div>
           </div>
-          <button className="nim-btn-icon" onClick={onClose} aria-label="Close history dialog">
+          <button
+            className="nim-btn-icon"
+            onClick={onClose}
+            aria-label={t('common:collab_history.close_history_aria')}
+          >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
@@ -209,12 +258,16 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
         <div className="collab-history-content flex-1 flex overflow-hidden">
           <div className="collab-history-list w-[320px] border-r border-[var(--nim-border)] flex flex-col">
             <div className="py-2 px-3 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">
-              Revisions ({revisions.length})
-              {loading && <span className="ml-2 normal-case text-[var(--nim-text-muted)]">Loading...</span>}
+              {t('common:collab_history.revisions', { count: revisions.length })}
+              {loading && (
+                <span className="ml-2 normal-case text-[var(--nim-text-muted)]">
+                  {t('common:collab_history.loading_short')}
+                </span>
+              )}
             </div>
             {revisions.length === 0 && !loading ? (
               <div className="p-6 text-center text-sm text-[var(--nim-text-muted)]">
-                No revisions yet. Press Cmd/Ctrl+S to save a version or wait for an auto snapshot.
+                {t('common:collab_history.no_revisions')}
               </div>
             ) : (
               <div className="nim-scrollbar flex-1 overflow-y-auto p-1">
@@ -232,10 +285,10 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-medium truncate">
-                          {REVISION_LABELS[rev.revisionKind] ?? rev.revisionKind}
+                          {getRevisionLabel(rev.revisionKind)}
                         </div>
                         <div className={`text-[11px] truncate ${isSelected ? 'text-white/80' : 'text-[var(--nim-text-faint)]'}`}>
-                          {getRelativeTimeString(rev.createdAt)}
+                          {formatRevisionTime(rev.createdAt)}
                         </div>
                       </div>
                     </div>
@@ -248,7 +301,7 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
           <div className="collab-history-detail flex-1 flex flex-col">
             <div className="py-2 px-3 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] flex items-center justify-between">
               <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wider">
-                Details
+                {t('common:collab_history.details')}
               </div>
               <button
                 className="history-restore-button py-1.5 px-4 bg-[var(--nim-primary)] text-white border-none rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 hover:not-disabled:bg-[var(--nim-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -256,13 +309,15 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
                 disabled={!selectedRevision || restoring || !restoreSafe || !supportsRestore}
                 title={
                   !supportsRestore
-                    ? 'This editor exposes revision metadata, but has not registered snapshot restore support yet.'
+                    ? t('common:collab_history.restore_unsupported_title')
                     : !restoreSafe
-                    ? 'Restore is blocked while the document is offline or replaying local changes.'
-                    : 'Apply this revision as the new current version.'
+                    ? t('common:collab_history.restore_blocked_title')
+                    : t('common:collab_history.apply_title')
                 }
               >
-                {restoring ? 'Restoring...' : 'Restore as Current Version'}
+                {restoring
+                  ? t('common:collab_history.restoring')
+                  : t('common:collab_history.restore_current')}
               </button>
             </div>
 
@@ -274,32 +329,58 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
               )}
               {!supportsRestore && (
                 <div className="mb-3 p-2 border border-[var(--nim-border)] rounded text-[var(--nim-text-muted)] bg-[var(--nim-bg-secondary)] text-xs">
-                  This editor has not opted into snapshot export and restore yet. You can still inspect revision metadata from this document.
+                  {t('common:collab_history.restore_unsupported')}
                 </div>
               )}
               {!restoreSafe && supportsRestore && (
                 <div className="mb-3 p-2 border border-[var(--nim-warning)] rounded text-[var(--nim-warning)] bg-[var(--nim-warning-light)] text-xs">
-                  This document still has unsynced local changes. Wait for the connection to reach "Connected" before restoring.
+                  {t('common:collab_history.restore_unsynced')}
                 </div>
               )}
               {selectedRevision ? (
                 <div className="space-y-2">
-                  <DetailRow label="Created" value={new Date(selectedRevision.createdAt).toLocaleString()} />
-                  <DetailRow label="Author" value={selectedRevision.createdBy} />
-                  <DetailRow label="Kind" value={REVISION_LABELS[selectedRevision.revisionKind] ?? selectedRevision.revisionKind} />
-                  <DetailRow label="Editor" value={selectedRevision.editorType} />
-                  <DetailRow label="Format" value={selectedRevision.contentFormat} />
-                  <DetailRow label="Size" value={`${selectedRevision.payloadBytes} bytes (encrypted)`} />
-                  <DetailRow label="Hash" value={selectedRevision.contentHash.slice(0, 16) + '...'} />
+                  <DetailRow
+                    label={t('common:collab_history.created')}
+                    value={new Intl.DateTimeFormat(i18n.resolvedLanguage ?? 'en', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    }).format(new Date(selectedRevision.createdAt))}
+                  />
+                  <DetailRow
+                    label={t('common:collab_history.author')}
+                    value={selectedRevision.createdBy}
+                  />
+                  <DetailRow
+                    label={t('common:collab_history.kind')}
+                    value={getRevisionLabel(selectedRevision.revisionKind)}
+                  />
+                  <DetailRow
+                    label={t('common:collab_history.editor')}
+                    value={selectedRevision.editorType}
+                  />
+                  <DetailRow
+                    label={t('common:collab_history.format')}
+                    value={selectedRevision.contentFormat}
+                  />
+                  <DetailRow
+                    label={t('common:collab_history.size')}
+                    value={t('common:collab_history.encrypted_bytes', {
+                      bytes: selectedRevision.payloadBytes,
+                    })}
+                  />
+                  <DetailRow
+                    label={t('common:collab_history.hash')}
+                    value={selectedRevision.contentHash.slice(0, 16) + '...'}
+                  />
                   <div className="pt-3 text-xs text-[var(--nim-text-muted)]">
                     {supportsRestore
-                      ? 'Restoring creates a new current version. Earlier history is preserved.'
-                      : 'Snapshot content is not available for preview or restore until this editor registers a revision adapter.'}
+                      ? t('common:collab_history.restoring_preserved')
+                      : t('common:collab_history.preview_unavailable')}
                   </div>
                 </div>
               ) : (
                 <div className="text-[var(--nim-text-muted)] text-sm">
-                  Select a revision to see details.
+                  {t('common:collab_history.select_revision')}
                 </div>
               )}
             </div>

@@ -10,6 +10,11 @@
  */
 
 /**
+ * This unofficial build intentionally ships without an update feed.
+ */
+export const AUTOMATIC_UPDATES_ENABLED = false;
+
+/**
  * Categorize update download duration for analytics.
  */
 export function categorizeDownloadDuration(durationMs: number): 'fast' | 'medium' | 'slow' {

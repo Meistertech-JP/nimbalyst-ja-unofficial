@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import {
   FloatingPortal,
@@ -30,9 +31,9 @@ interface SettingsSidebarProps {
   extensionRoutes?: readonly ExtensionSettingsRoute[];
 }
 
-const GROUP_DESCRIPTIONS: Record<string, string> = {
-  'Agent Providers': 'Agents can use tools and project files for multi-step work.',
-  'Chat Providers': 'Chat providers make direct model calls for focused conversations.',
+const GROUP_DESCRIPTION_KEYS: Record<string, string> = {
+  'Agent Providers': 'settings:sidebar.desc_agent_providers',
+  'Chat Providers': 'settings:sidebar.desc_chat_providers',
 };
 
 function routeIcon(route: SettingsRoute): React.ReactNode {
@@ -70,9 +71,10 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       .then((res: { success?: boolean; data?: Array<{ id: string; name: string; icon?: string; status: string }> }) => {
         if (!cancelled && res?.success && Array.isArray(res.data)) setExtAgentProviders(res.data);
       })
-      .catch(() => undefined);
+        .catch(() => undefined);
+
     return () => { cancelled = true; };
-  }, []);
+    }, []);
 
   const groups = useMemo(() => {
     const grouped = new Map<string, Array<SettingsRoute | { id: string; label: string; icon?: string; status: string }>>();
@@ -93,6 +95,9 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
     return [...grouped.entries()];
   }, [developerMode, extAgentProviders, extensionRoutes, scope, showDirectChatProviders]);
 
+  const { t } = useTranslation(['settings']);
+  const getGroupLabel = (group: string) => t(`settings:sidebar.group_${group.toLowerCase().replace(/ /g, '_')}`, { defaultValue: group });
+
   return (
     <aside
       className="settings-sidebar w-[240px] shrink-0 border-r border-[var(--nim-border)] bg-[var(--nim-bg)] overflow-y-auto"
@@ -103,20 +108,20 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
         {groups.map(([group, routes]) => (
           <section key={group} className="settings-sidebar-group mb-4" data-testid={`settings-group-${group.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
             <div className="settings-sidebar-group-title flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--nim-text-muted)]">
-              {group}
-              {GROUP_DESCRIPTIONS[group] && (
+              {getGroupLabel(group)}
+              {GROUP_DESCRIPTION_KEYS[group] && (
                 <button
                   type="button"
                   className="settings-sidebar-group-info inline-flex border-0 bg-transparent p-0 text-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)]"
-                  aria-label={`About ${group}`}
+                  aria-label={t('settings:sidebar.about_group', { group: getGroupLabel(group) })}
                   onMouseEnter={(event) => {
                     refs.setReference(event.currentTarget);
-                    setTooltipText(GROUP_DESCRIPTIONS[group]);
+                    setTooltipText(GROUP_DESCRIPTION_KEYS[group] ? t(GROUP_DESCRIPTION_KEYS[group]) : null);
                   }}
                   onMouseLeave={() => setTooltipText(null)}
                   onFocus={(event) => {
                     refs.setReference(event.currentTarget);
-                    setTooltipText(GROUP_DESCRIPTIONS[group]);
+                    setTooltipText(GROUP_DESCRIPTION_KEYS[group] ? t(GROUP_DESCRIPTION_KEYS[group]) : null);
                   }}
                   onBlur={() => setTooltipText(null)}
                 >
@@ -148,13 +153,15 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                       ? routeIcon(route)
                       : route.icon ? <MaterialSymbol icon={route.icon} size={16} /> : getProviderIcon(id, { size: 16 })}
                   </span>
-                  <span className="settings-sidebar-item-name flex-1 truncate">{route.label}</span>
+                  <span className="settings-sidebar-item-name flex-1 truncate">{t(`settings:sidebar.item_${route.id.replace(/-/g, "_")}`, { defaultValue: route.label })}</span>
                   {isSettingsRoute && route.source === 'builtin' && route.isAlpha && (
                     <AlphaBadge
                       size="xs"
                       // Sharing is the org/Teams entry point, so it gets the
                       // Teams-specific alpha + pricing disclosure.
-                      tooltip={route.id === 'project-sharing' ? TEAM_ALPHA_TOOLTIP : SETTINGS_ALPHA_TOOLTIP}
+                      tooltip={route.id === 'project-sharing'
+                        ? t('settings:organization_ui.alpha_tooltip', { defaultValue: TEAM_ALPHA_TOOLTIP })
+                        : t('settings:provider.alpha_tooltip', { defaultValue: SETTINGS_ALPHA_TOOLTIP })}
                     />
                   )}
                   {(status === 'success' || status === 'active' || status === 'error' || status === 'denied') && (

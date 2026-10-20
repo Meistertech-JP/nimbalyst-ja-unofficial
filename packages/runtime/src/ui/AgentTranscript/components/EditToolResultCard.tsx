@@ -5,6 +5,7 @@ import { NewFilePreview } from './NewFilePreview';
 import { toProjectRelative, shortenPath } from '../utils/pathResolver';
 import { formatToolDisplayName } from '../utils/toolNameFormatter';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 /** Returns true if the edit represents a new file creation (content only, no diff) */
 const isNewFileEdit = (edit: any): boolean => {
@@ -65,6 +66,7 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
   renderEmbeddedFile,
   canEmbedFile,
 }) => {
+  const { t } = useRuntimeTranslation();
   const isEmbeddable = (filePath?: string) =>
     typeof filePath === 'string' && !!canEmbedFile?.(filePath);
   const tool = toolMessage.toolCall;
@@ -76,7 +78,7 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
   const primarySupportsEmbeddedPreview = isEmbeddable(firstEditPath);
   const displayPath = firstEditPath ? toProjectRelative(firstEditPath, workspacePath) : '';
   const prettyPath = displayPath ? shortenPath(displayPath, 64) : '';
-  const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || 'Edit';
+  const toolDisplayName = formatToolDisplayName(tool.toolName || '', t) || tool.toolName || t('common:database.edit', 'Edit');
 
   const instruction = truncateInstruction(getInstructionText(toolMessage));
   const allNewFiles = edits.every(isNewFileEdit);
@@ -90,14 +92,14 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
   const rawResult = toolMessage.toolCall?.result;
   const hasResult = rawResult !== undefined && rawResult !== null && rawResult !== '';
   const statusLabel = toolMessage.isError
-    ? 'Failed'
+    ? t('aichat:message_segment.failed', 'Failed')
     : !hasResult
-      ? 'Pending'
-      : allNewFiles ? 'Created' : 'Applied';
+      ? t('dialogs:superloop.status_pending', 'Pending')
+      : allNewFiles ? t('files:edits.created', 'Created') : t('aichat:edit_preview.applied', 'Applied');
   const statusClass = toolMessage.isError ? 'error' : !hasResult ? 'pending' : 'success';
   const editCountLabel = allNewFiles
-    ? `${edits[0].content.split('\n').length} lines`
-    : edits.length === 1 ? '1 edit' : `${edits.length} edits`;
+    ? t('aichat:edit_preview.lines', edits[0].content.split('\n').length === 1 ? '{{count}} line' : '{{count}} lines', { count: edits[0].content.split('\n').length })
+    : t('aichat:message_segment.edits', edits.length === 1 ? '{{count}} edit' : '{{count}} edits', { count: edits.length });
   const previewFilePaths = Array.from(new Set(
     edits
       .map((edit) => resolveEditFilePath(edit, toolMessage))
@@ -130,7 +132,7 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
                   <button
                     className="rich-transcript-edit-card__file-link bg-transparent border-none p-0 m-0 font-[inherit] text-nim-link cursor-pointer no-underline hover:underline"
                     onClick={handleOpenFile}
-                    title={`Open ${firstEditPath}`}
+                    title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: firstEditPath })}
                   >
                     {prettyPath}
                   </button>
@@ -143,15 +145,15 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
           <div className="rich-transcript-edit-card__meta flex items-center gap-1 text-xs text-nim-faint">
             <span>{editCountLabel}</span>
             {instruction && <span className="rich-transcript-edit-card__meta-divider text-nim-faint">•</span>}
-            {instruction && <span>Instruction</span>}
+            {instruction && <span>{t('aichat:edit_preview.instruction', 'Instruction')}</span>}
           </div>
         </div>
         {firstEditPath && onOpenFile && (
           <button
             className="rich-transcript-edit-card__open-button flex items-center justify-center w-5 h-5 p-0 border-none rounded bg-transparent text-nim-faint cursor-pointer shrink-0 transition-colors duration-150 hover:bg-nim-hover hover:text-nim"
             onClick={handleOpenFile}
-            title="Open file"
-            aria-label="Open file"
+            title={t('common:open_file', 'Open file')}
+            aria-label={t('common:open_file', 'Open file')}
           >
             <MaterialSymbol icon="open_in_new" size={14} />
           </button>

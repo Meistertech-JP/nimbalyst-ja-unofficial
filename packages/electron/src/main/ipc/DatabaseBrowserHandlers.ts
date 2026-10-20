@@ -214,6 +214,7 @@ export function registerDatabaseBrowserHandlers() {
             // the current size (and the min/max bounds) here makes it possible to spot
             // when the maintenance loop has fallen behind.
             let walStats: {
+                backend: 'pglite';
                 fileCount: number;
                 totalBytes: number;
                 totalSize: string;
@@ -242,6 +243,7 @@ export function registerDatabaseBrowserHandlers() {
                 const row = walResult.rows[0];
                 if (row) {
                     walStats = {
+                        backend: 'pglite',
                         fileCount: parseInt(row.file_count) || 0,
                         totalBytes: parseInt(row.total_bytes) || 0,
                         totalSize: row.total_size || '0 bytes',

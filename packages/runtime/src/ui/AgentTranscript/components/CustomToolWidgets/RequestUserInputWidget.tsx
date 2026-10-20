@@ -64,6 +64,7 @@ import {
 } from 'lexical';
 
 import type { CustomToolWidgetProps } from './index';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../../RuntimeTranslation';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import {
   clearRequestUserInputDraft,
@@ -344,19 +345,19 @@ interface VoiceHint {
   reason: string;
 }
 
-function computeVoiceHint(args: RequestUserInputArgs): VoiceHint {
+function computeVoiceHint(args: RequestUserInputArgs, t: RuntimeTranslate): VoiceHint {
   for (const field of args.fields) {
     if (field.type === 'reorder' && field.items.length > 6) {
-      return { friendly: false, reason: `Voice will defer — too many items to reorder verbally (${field.items.length})` };
+      return { friendly: false, reason: t('aichat:user_input.voice_reorder', 'Voice will defer — too many items to reorder verbally ({{count}})', { count: field.items.length }) };
     }
     if (field.type === 'editText') {
       const len = (field.initialText ?? '').length;
       if (len > 240) {
-        return { friendly: false, reason: 'Voice will defer — text too long to dictate' };
+        return { friendly: false, reason: t('aichat:user_input.voice_long_text', 'Voice will defer — text too long to dictate') };
       }
     }
   }
-  return { friendly: true, reason: 'Voice can read this aloud' };
+  return { friendly: true, reason: t('aichat:user_input.voice_available', 'Voice can read this aloud') };
 }
 
 // ============================================================
@@ -448,6 +449,7 @@ function SingleSelectRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputSingleSelectField>) {
+  const { t } = useRuntimeTranslation();
   if (draft.type !== 'singleSelect') return null;
   const otherInputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -536,7 +538,7 @@ function SingleSelectRenderer({
             >
               {draft.state.otherSelected && <span className="w-2 h-2 rounded-full bg-white" />}
             </span>
-            <span className="text-[0.8125rem] font-medium text-nim leading-snug">Other</span>
+            <span className="text-[0.8125rem] font-medium text-nim leading-snug">{t('aichat:questions.other', 'Other')}</span>
           </button>
           {draft.state.otherSelected && (
             <div className="px-2.5 pb-2">
@@ -545,7 +547,7 @@ function SingleSelectRenderer({
                 data-testid="request-user-input-singleselect-other-input"
                 value={draft.state.otherText}
                 onChange={(e) => setOtherText(e.target.value)}
-                placeholder="Type your answer..."
+                placeholder={t('aichat:questions.answer_placeholder', 'Type your answer...')}
                 disabled={disabled}
                 rows={2}
                 className="w-full px-2.5 py-2 rounded border border-nim bg-nim text-sm text-nim placeholder-nim-faint resize-y focus:outline-none focus:border-nim-primary disabled:opacity-50"
@@ -570,6 +572,7 @@ interface ReorderRowProps {
 }
 
 function ReorderRow({ itemId, index, title, subtitle, removable, canRemove, onRemove, disabled }: ReorderRowProps) {
+  const { t } = useRuntimeTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: itemId });
 
   const style = {
@@ -604,7 +607,8 @@ function ReorderRow({ itemId, index, title, subtitle, removable, canRemove, onRe
         {...attributes}
         {...listeners}
         disabled={disabled}
-        aria-label="Drag to reorder"
+        aria-label={t('aichat:user_input.drag_reorder', 'Drag to reorder')}
+        aria-roledescription={t('aichat:user_input.sortable', 'sortable')}
         // touch-action: none on the handle -- once the TouchSensor fires
         // (after the activation delay) the browser must NOT also try to
         // pan/scroll. Without this, iOS routes the gesture to scroll and
@@ -633,7 +637,7 @@ function ReorderRow({ itemId, index, title, subtitle, removable, canRemove, onRe
           data-testid="request-user-input-reorder-remove"
           onClick={onRemove}
           disabled={disabled || !canRemove}
-          aria-label="Remove item"
+          aria-label={t('aichat:user_input.remove_item', 'Remove item')}
           className="w-6 h-6 shrink-0 rounded text-nim-faint hover:text-nim-error hover:bg-[color-mix(in_srgb,var(--nim-error)_12%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -651,6 +655,7 @@ function ReorderRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputReorderField>) {
+  const { t } = useRuntimeTranslation();
   if (draft.type !== 'reorder') return null;
 
   // Three sensors for cross-platform support:
@@ -706,7 +711,20 @@ function ReorderRenderer({
 
   return (
     <div data-testid={`request-user-input-reorder-${field.id}`} className="flex flex-col gap-1.5">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}
+        accessibility={{
+          screenReaderInstructions: { draggable: t('aichat:user_input.drag_instructions', 'To pick up a draggable item, press the space bar. While dragging, use the arrow keys to move the item. Press space again to drop the item in its new position, or press escape to cancel.') },
+          announcements: {
+            onDragStart: ({ active }) => t('aichat:user_input.drag_start', 'Picked up draggable item {{id}}.', { id: active.id }),
+            onDragOver: ({ active, over }) => over
+              ? t('aichat:user_input.drag_over', 'Draggable item {{id}} was moved over droppable area {{target}}.', { id: active.id, target: over.id })
+              : t('aichat:user_input.drag_outside', 'Draggable item {{id}} is no longer over a droppable area.', { id: active.id }),
+            onDragEnd: ({ active, over }) => over
+              ? t('aichat:user_input.drag_end_over', 'Draggable item {{id}} was dropped over droppable area {{target}}.', { id: active.id, target: over.id })
+              : t('aichat:user_input.drag_end', 'Draggable item {{id}} was dropped.', { id: active.id }),
+            onDragCancel: ({ active }) => t('aichat:user_input.drag_cancel', 'Dragging was cancelled. Draggable item {{id}} was dropped.', { id: active.id }),
+          },
+        }}>
         <SortableContext items={draft.state.orderedIds} strategy={verticalListSortingStrategy}>
           {draft.state.orderedIds.map((id, index) => {
             const item = itemsById.get(id);
@@ -729,7 +747,7 @@ function ReorderRenderer({
       </DndContext>
       {draft.state.removedIds.length > 0 && (
         <div className="text-[0.6875rem] text-nim-faint italic px-1">
-          Removed: {draft.state.removedIds.length} item{draft.state.removedIds.length === 1 ? '' : 's'}
+          {t('aichat:user_input.removed', draft.state.removedIds.length === 1 ? 'Removed: {{count}} item' : 'Removed: {{count}} items', { count: draft.state.removedIds.length })}
         </div>
       )}
     </div>
@@ -780,6 +798,7 @@ interface FormatToolbarState {
 }
 
 function FormatToolbar({ disabled }: { disabled: boolean }) {
+  const { t } = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   const [state, setState] = useState<FormatToolbarState>({ bold: false, italic: false, underline: false, code: false });
 
@@ -821,7 +840,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('bold')}
         disabled={disabled}
         className={`${baseBtn} ${state.bold ? activeBtn : ''}`}
-        aria-label="Bold"
+        aria-label={t('dialogs:keyboard_shortcuts.labels.bold', 'Bold')}
       >
         <strong>B</strong>
       </button>
@@ -831,7 +850,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('italic')}
         disabled={disabled}
         className={`${baseBtn} ${state.italic ? activeBtn : ''}`}
-        aria-label="Italic"
+        aria-label={t('dialogs:keyboard_shortcuts.labels.italic', 'Italic')}
       >
         <em>I</em>
       </button>
@@ -841,7 +860,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('underline')}
         disabled={disabled}
         className={`${baseBtn} ${state.underline ? activeBtn : 'underline'}`}
-        aria-label="Underline"
+        aria-label={t('dialogs:keyboard_shortcuts.labels.underline', 'Underline')}
       >
         <span style={{ textDecoration: 'underline' }}>U</span>
       </button>
@@ -852,7 +871,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('code')}
         disabled={disabled}
         className={`${baseBtn} ${state.code ? activeBtn : ''}`}
-        aria-label="Code"
+        aria-label={t('aichat:user_input.code', 'Code')}
       >
         {'<>'}
       </button>
@@ -861,6 +880,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
 }
 
 function InlineLexicalEditor({ initialText, format, placeholder, onChange, disabled }: InlineLexicalEditorProps) {
+  const { t } = useRuntimeTranslation();
   // Capture the initial text so we don't reseed the editor when the parent
   // re-renders. The editor owns its content state thereafter; the draft atom
   // mirrors it via OnChangePlugin.
@@ -923,7 +943,7 @@ function InlineLexicalEditor({ initialText, format, placeholder, onChange, disab
               <ContentEditable
                 data-testid="request-user-input-edittext-content"
                 className="rui-lexical-content px-3.5 py-3 min-h-[6rem] text-sm text-nim leading-relaxed outline-none"
-                aria-label="Edit text"
+                aria-label={t('aichat:user_input.edit_text', 'Edit text')}
               />
             }
             placeholder={
@@ -949,6 +969,7 @@ function EditTextRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputEditTextField>) {
+  const { t } = useRuntimeTranslation();
   if (draft.type !== 'editText') return null;
   const format = field.format ?? 'markdown';
   const initial = field.initialText ?? '';
@@ -972,10 +993,10 @@ function EditTextRenderer({
         disabled={disabled}
       />
       <div className="flex items-center justify-between mt-1.5 text-[0.6875rem] text-nim-faint">
-        <span className={edited ? 'text-nim-warning' : ''}>{edited ? '• edited from draft' : '• unchanged'}</span>
+        <span className={edited ? 'text-nim-warning' : ''}>{'• '}{edited ? t('aichat:user_input.edited', 'edited from draft') : t('aichat:user_input.unchanged', 'unchanged')}</span>
         <span>
-          {charCount} chars · {format}
-          {field.maxLength ? ` · max ${field.maxLength}` : ''}
+          {t('aichat:user_input.char_count', '{{count}} chars', { count: charCount })}{' · '}{format === 'plain' ? t('aichat:user_input.plain', 'plain') : format}
+          {field.maxLength ? ` · ${t('aichat:user_input.max_length', 'max {{count}}', { count: field.maxLength })}` : ''}
         </span>
       </div>
     </div>
@@ -988,6 +1009,7 @@ function ConfirmRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputConfirmField>) {
+  const { t } = useRuntimeTranslation();
   if (draft.type !== 'confirm') return null;
   const value = draft.state.value;
 
@@ -1020,7 +1042,7 @@ function ConfirmRenderer({
           </svg>
         )}
       </span>
-      <span className="text-[0.8125rem] font-medium text-nim leading-snug">{value ? 'Yes' : 'No'}</span>
+      <span className="text-[0.8125rem] font-medium text-nim leading-snug">{value ? t('tracker:grid.boolean_yes', 'Yes') : t('tracker:grid.boolean_no', 'No')}</span>
     </button>
   );
 }
@@ -1040,24 +1062,25 @@ function FieldCard({
   setDraft: (next: RequestUserInputFieldDraft) => void;
   disabled: boolean;
 }) {
+  const { t } = useRuntimeTranslation();
   const helper = (() => {
     switch (field.type) {
       case 'multiSelect': {
         const min = field.minSelected ?? 0;
         const max = field.maxSelected ?? field.items.length;
-        if (min > 0 && max < field.items.length) return `Pick ${min}-${max}`;
-        if (min > 0) return `Pick at least ${min}`;
-        if (max < field.items.length) return `Pick up to ${max}`;
-        return 'Pick any subset';
+        if (min > 0 && max < field.items.length) return t('aichat:user_input.pick_range', 'Pick {{min}}-{{max}}', { min, max });
+        if (min > 0) return t('aichat:user_input.pick_min', 'Pick at least {{count}}', { count: min });
+        if (max < field.items.length) return t('aichat:user_input.pick_max', 'Pick up to {{count}}', { count: max });
+        return t('aichat:user_input.pick_any', 'Pick any subset');
       }
       case 'singleSelect':
-        return field.allowOther ? 'Pick one or write your own' : 'Pick one';
+        return field.allowOther ? t('aichat:user_input.pick_or_write', 'Pick one or write your own') : t('aichat:user_input.pick_one', 'Pick one');
       case 'reorder':
         return field.minItems
-          ? `${field.items.length} items · minimum ${field.minItems}`
-          : `${field.items.length} items`;
+          ? t('aichat:user_input.item_minimum', '{{count}} items · minimum {{min}}', { count: field.items.length, min: field.minItems })
+          : t('aichat:user_input.items', '{{count}} items', { count: field.items.length });
       case 'editText':
-        return field.format === 'plain' ? 'Plain text' : 'Markdown supported';
+        return field.format === 'plain' ? t('aichat:user_input.plain_text', 'Plain text') : t('aichat:user_input.markdown_supported', 'Markdown supported');
       case 'confirm':
         return undefined;
     }
@@ -1096,6 +1119,7 @@ function FieldCard({
 // ============================================================
 
 export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ message, sessionId }) => {
+  const { t } = useRuntimeTranslation();
   const toolCall = message.toolCall;
   const promptId = toolCall?.providerToolCallId || '';
 
@@ -1188,11 +1212,11 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
   const displayResult = localResult || (isCompleted && parsedResult ? parsedResult : null);
   const displayCancelled = displayResult?.cancelled === true;
 
-  const voiceHint = computeVoiceHint(args);
+  const voiceHint = computeVoiceHint(args, t);
 
   // ---- Completed state ----
   if (displayResult || hasResponded) {
-    const statusText = displayCancelled ? 'Input Cancelled' : 'Input Submitted';
+    const statusText = displayCancelled ? t('aichat:user_input.cancelled', 'Input Cancelled') : t('aichat:user_input.submitted', 'Input Submitted');
 
     return (
       <div
@@ -1211,7 +1235,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Submitted
+              {t('aichat:interactive.submitted', 'Submitted')}
             </span>
           )}
           {displayCancelled && (
@@ -1222,7 +1246,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Cancelled
+              {t('aichat:interactive.cancelled', 'Cancelled')}
             </span>
           )}
         </div>
@@ -1244,9 +1268,9 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
       >
         <div className="flex items-center gap-2 py-3 px-4 bg-nim-tertiary">
           <RequestUserInputIcon />
-          <span className="text-sm font-semibold text-nim flex-1">{args.title || 'Input requested'}</span>
+          <span className="text-sm font-semibold text-nim flex-1">{args.title || t('aichat:user_input.requested', 'Input requested')}</span>
           <span data-testid="request-user-input-pending" className="text-xs text-nim-muted">
-            Waiting...
+            {t('aichat:interactive.waiting', 'Waiting...')}
           </span>
         </div>
       </div>
@@ -1262,9 +1286,9 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
     >
       <div className="flex items-center gap-2 py-3 px-4 border-b border-nim bg-nim-tertiary">
         <RequestUserInputIcon />
-        <span className="text-sm font-semibold text-nim flex-1">{args.title || 'Input requested'}</span>
+        <span className="text-sm font-semibold text-nim flex-1">{args.title || t('aichat:user_input.requested', 'Input requested')}</span>
         <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_14%,transparent)] py-0.5 px-2 rounded-full">
-          Input requested
+          {t('aichat:user_input.requested', 'Input requested')}
         </span>
       </div>
 
@@ -1304,7 +1328,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               disabled={isSubmitting}
               className="px-3 py-1.5 rounded-md text-[13px] cursor-pointer border border-nim transition-colors duration-150 hover:bg-nim-hover bg-nim-tertiary text-nim-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {args.cancelLabel ?? 'Cancel'}
+              {args.cancelLabel ?? t('common:cancel', 'Cancel')}
             </button>
             <button
               type="button"
@@ -1313,7 +1337,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               disabled={!allValid || isSubmitting}
               className="px-4 py-1.5 rounded-md text-[13px] font-medium cursor-pointer border-none transition-colors duration-150 hover:opacity-90 bg-nim-primary text-nim-on-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Submitting...' : args.submitLabel ?? 'Confirm'}
+              {isSubmitting ? t('aichat:interactive.submitting', 'Submitting...') : args.submitLabel ?? t('common:pull_request.confirm', 'Confirm')}
             </button>
           </div>
         </div>
@@ -1341,8 +1365,9 @@ function CompletedSummary({
   answers: Record<string, RequestUserInputAnswer>;
   cancelled: boolean;
 }) {
+  const { t } = useRuntimeTranslation();
   if (cancelled) {
-    return <div className="text-xs text-nim-muted italic">User cancelled the request.</div>;
+    return <div className="text-xs text-nim-muted italic">{t('aichat:user_input.user_cancelled', 'User cancelled the request.')}</div>;
   }
   return (
     <div className="flex flex-col gap-2">
@@ -1362,8 +1387,9 @@ function CompletedSummary({
 }
 
 function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer: RequestUserInputAnswer | undefined }) {
+  const { t } = useRuntimeTranslation();
   if (!answer) {
-    return <div className="text-xs text-nim-faint italic">No answer recorded</div>;
+    return <div className="text-xs text-nim-faint italic">{t('aichat:user_input.no_answer', 'No answer recorded')}</div>;
   }
 
   switch (field.type) {
@@ -1372,12 +1398,12 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
       const titles = answer.selectedIds
         .map((id) => field.items.find((i) => i.id === id)?.title ?? id)
         .join(', ');
-      return <div className="text-xs text-nim">{titles || '(none selected)'}</div>;
+      return <div className="text-xs text-nim">{titles || t('aichat:user_input.none_selected', '(none selected)')}</div>;
     }
     case 'singleSelect': {
       if (answer.type !== 'singleSelect') return null;
       if (answer.selectedId === '__other__') {
-        return <div className="text-xs text-nim italic">{answer.otherText || '(empty)'}</div>;
+        return <div className="text-xs text-nim italic">{answer.otherText || t('aichat:user_input.empty', '(empty)')}</div>;
       }
       const opt = field.options.find((o) => o.id === answer.selectedId);
       return <div className="text-xs text-nim">{opt?.label ?? answer.selectedId}</div>;
@@ -1408,7 +1434,7 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
           </ol>
           {answer.removedIds.length > 0 && (
             <div className="text-[0.6875rem] text-nim-faint italic">
-              Removed: {answer.removedIds.length} item{answer.removedIds.length === 1 ? '' : 's'}
+              {t('aichat:user_input.removed', answer.removedIds.length === 1 ? 'Removed: {{count}} item' : 'Removed: {{count}} items', { count: answer.removedIds.length })}
             </div>
           )}
         </div>
@@ -1421,13 +1447,13 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
           <pre className="text-xs text-nim font-mono whitespace-pre-wrap break-words">
             {answer.text}
           </pre>
-          {answer.edited && <div className="text-[0.6875rem] text-nim-warning italic">edited from draft</div>}
+          {answer.edited && <div className="text-[0.6875rem] text-nim-warning italic">{t('aichat:user_input.edited', 'edited from draft')}</div>}
         </div>
       );
     }
     case 'confirm': {
       if (answer.type !== 'confirm') return null;
-      return <div className="text-xs text-nim">{answer.value ? 'Yes' : 'No'}</div>;
+      return <div className="text-xs text-nim">{answer.value ? t('tracker:grid.boolean_yes', 'Yes') : t('tracker:grid.boolean_no', 'No')}</div>;
     }
   }
 }

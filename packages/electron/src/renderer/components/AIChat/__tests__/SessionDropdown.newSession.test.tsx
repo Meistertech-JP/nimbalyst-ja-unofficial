@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import i18next from 'i18next';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionDropdown } from '../SessionDropdown';
@@ -53,9 +54,22 @@ const baseProps = {
   onDeleteSession: vi.fn(),
 };
 
-afterEach(cleanup);
+afterEach(async () => {
+  cleanup();
+  await i18next.changeLanguage('en');
+});
 
 describe('SessionDropdown new-session affordance', () => {
+  it('localizes menu controls while preserving the current session title', async () => {
+    await i18next.changeLanguage('ja');
+    const onNewSession = vi.fn();
+    render(<SessionDropdown {...baseProps} onNewSession={onNewSession} />);
+    expect(screen.getByText('Agent trust popup review')).toBeTruthy();
+    fireEvent.click(screen.getByTitle('セッション履歴'));
+    fireEvent.click(screen.getByText('新しいセッション'));
+    expect(onNewSession).toHaveBeenCalledTimes(1);
+  });
+
   it('shows the current session name in the trigger', () => {
     render(<SessionDropdown {...baseProps} onNewSession={vi.fn()} />);
     expect(screen.getByText('Agent trust popup review')).toBeTruthy();

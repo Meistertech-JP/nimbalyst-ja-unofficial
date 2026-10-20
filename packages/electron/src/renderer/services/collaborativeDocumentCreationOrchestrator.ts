@@ -1,4 +1,5 @@
 import { store } from '@nimbalyst/runtime/store';
+import { rendererI18n } from '../i18n';
 import type { CollabDocumentConfig } from '../utils/collabDocumentOpener';
 import {
   removeCollabConfigsForDocument,
@@ -74,15 +75,19 @@ export type CollaborativeDocumentCreationErrorCode =
   | 'operation-conflict';
 
 export class CollaborativeDocumentCreationError extends Error {
+  /** Keep language-independent diagnostics for the existing analytics classifier. */
+  readonly diagnosticMessage: string;
+
   constructor(
     public readonly code: CollaborativeDocumentCreationErrorCode,
     message: string,
     public readonly operationId: string,
     public readonly documentId: string,
     public readonly announced: boolean,
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; diagnosticMessage?: string },
   ) {
     super(message);
+    this.diagnosticMessage = options?.diagnosticMessage ?? message;
     if (options && 'cause' in options) {
       (this as Error & { cause?: unknown }).cause = options.cause;
     }
@@ -270,7 +275,7 @@ function defaultDependencies(): CollaborativeDocumentCreationDependencies {
     register: registerDocumentInIndex,
     saveLocalOrigin: async payload => {
       const save = window.electronAPI?.documentSync?.saveLocalOrigin;
-      if (!save) return { success: false, error: 'Local-origin persistence is unavailable.' };
+      if (!save) return { success: false, error: rendererI18n.t('errors:shared_document.local_origin_unavailable') };
       return save(payload);
     },
     publishPending: (document, initialContent, source) => {
@@ -352,7 +357,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!normalized) {
           throw new CollaborativeDocumentCreationError(
             'invalid-name',
-            'A shared document needs a valid name and catalog suffix.',
+            rendererI18n.t('errors:shared_document.invalid_name'),
             operationId,
             documentId,
             false,
@@ -391,7 +396,7 @@ export class CollaborativeDocumentCreationOrchestrator {
       if (!workspacePath) {
         throw new CollaborativeDocumentCreationError(
           'workspace-unavailable',
-          'No active workspace is available for shared-document creation.',
+          rendererI18n.t('errors:shared_document.workspace_unavailable'),
           operationId,
           documentId,
           false,
@@ -404,7 +409,7 @@ export class CollaborativeDocumentCreationOrchestrator {
       if (parentPath === null) {
         throw new CollaborativeDocumentCreationError(
           'invalid-parent-folder',
-          'The selected shared folder no longer exists.',
+          rendererI18n.t('errors:shared_document.parent_folder_missing'),
           operationId,
           documentId,
           false,
@@ -441,7 +446,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (documentCollision || folderCollision) {
           throw new CollaborativeDocumentCreationError(
             'name-collision',
-            `A shared document or folder named "${title}" already exists.`,
+            rendererI18n.t('errors:shared_document.name_collision', { title }),
             operationId,
             documentId,
             false,
@@ -462,7 +467,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!config) {
           throw new CollaborativeDocumentCreationError(
             'config-unavailable',
-            'Could not resolve team collaboration credentials for the new document.',
+            rendererI18n.t('errors:shared_document.credentials_unavailable'),
             operationId,
             documentId,
             false,
@@ -483,10 +488,11 @@ export class CollaborativeDocumentCreationOrchestrator {
           if (!seed.ok) {
             throw new CollaborativeDocumentCreationError(
               'seed-failed',
-              seed.error || 'The initial shared content was not acknowledged by the server.',
+              seed.error || rendererI18n.t('errors:shared_document.seed_not_acknowledged'),
               operationId,
               documentId,
               false,
+              { diagnosticMessage: seed.error || rendererI18n.getFixedT('en')('errors:shared_document.seed_not_acknowledged') },
             );
           }
         }
@@ -503,11 +509,16 @@ export class CollaborativeDocumentCreationOrchestrator {
         } catch (cause) {
           throw new CollaborativeDocumentCreationError(
             'register-failed',
-            cause instanceof Error ? cause.message : 'Failed to register the shared document.',
+            cause instanceof Error ? cause.message : rendererI18n.t('errors:shared_document.register_failed'),
             operationId,
             documentId,
             false,
-            { cause },
+            {
+              cause,
+              diagnosticMessage: cause instanceof Error
+                ? cause.message
+                : rendererI18n.getFixedT('en')('errors:shared_document.register_failed'),
+            },
           );
         }
       }
@@ -532,7 +543,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!save) {
           throw new CollaborativeDocumentCreationError(
             'local-origin-failed',
-            'Local-origin persistence is unavailable.',
+            rendererI18n.t('errors:shared_document.local_origin_unavailable'),
             operationId,
             documentId,
             true,
@@ -550,7 +561,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!result.success) {
           throw new CollaborativeDocumentCreationError(
             'local-origin-failed',
-            result.error || 'Failed to save the local-origin binding.',
+            result.error || rendererI18n.t('errors:shared_document.local_origin_save_failed'),
             operationId,
             documentId,
             true,
@@ -620,7 +631,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         source: input.analyticsSource ?? 'new_document',
         actorType: input.analyticsActorType ?? 'user',
         documentType: toStableAnalyticsCategory(input.descriptor.documentType),
-        errorCategory: categorizeTeamAnalyticsError('document', normalized),
+        errorCategory: categorizeTeamAnalyticsError('document', normalized.diagnosticMessage),
       });
       throw normalized;
     }

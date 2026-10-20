@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 const COMMIT_REQUEST_PREFIX = 'Use the developer_git_commit_proposal tool to create a commit.';
 
@@ -63,12 +64,13 @@ interface CommitRequestCardProps {
 }
 
 export const CommitRequestCard: React.FC<CommitRequestCardProps> = ({ request }) => {
+  const { t } = useRuntimeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const { files, scenario, sessionCount, isWorktree } = request;
 
   const scopeLabel = scenario === 'workstream'
-    ? `${files.length} file${files.length !== 1 ? 's' : ''} across ${sessionCount ?? '?'} sessions`
-    : `${files.length} file${files.length !== 1 ? 's' : ''}`;
+    ? t('aichat:commit_request.scope', files.length === 1 ? '{{count}} file across {{sessions}} sessions' : '{{count}} files across {{sessions}} sessions', { count: files.length, sessions: sessionCount ?? '?' })
+    : t('aichat:rich_transcript.files', files.length === 1 ? '{{count}} file' : '{{count}} files', { count: files.length });
 
   return (
     <div className="rounded-lg bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] overflow-hidden">
@@ -78,7 +80,7 @@ export const CommitRequestCard: React.FC<CommitRequestCardProps> = ({ request })
       >
         <MaterialSymbol icon="commit" size={16} className="text-[var(--nim-primary)] shrink-0" />
         <span className="text-sm font-medium text-[var(--nim-text)] flex-1">
-          Requesting commit proposal
+          {t('aichat:commit_request.requesting', 'Requesting commit proposal')}
         </span>
         <span className="text-xs text-[var(--nim-text-faint)]">
           {scopeLabel}

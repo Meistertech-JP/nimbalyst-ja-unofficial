@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
@@ -231,73 +232,73 @@ const CATEGORY_LABELS: Record<TemplateCategory, string> = {
 const CATEGORY_ORDER: TemplateCategory[] = ['development', 'productivity', 'automation', 'ai', 'commerce', 'data', 'search', 'files'];
 
 // Help text for common env vars
-const ENV_VAR_HELP: Record<string, { label: string; help: string; link?: string }> = {
+const ENV_VAR_HELP: Record<string, { labelKey: string; helpKey: string; link?: string }> = {
   GITHUB_PERSONAL_ACCESS_TOKEN: {
-    label: 'GitHub Personal Access Token',
-    help: 'Create a PAT with repo scope',
+    labelKey: 'settings:mcp.env_help.github_pat_label',
+    helpKey: 'settings:mcp.env_help.github_pat_help',
     link: 'https://github.com/settings/tokens/new?scopes=repo'
   },
   BRAVE_API_KEY: {
-    label: 'Brave Search API Key',
-    help: 'Get from Brave Search API dashboard',
+    labelKey: 'settings:mcp.env_help.brave_api_label',
+    helpKey: 'settings:mcp.env_help.brave_api_help',
     link: 'https://brave.com/search/api/'
   },
   POSTHOG_PERSONAL_API_KEY: {
-    label: 'PostHog Personal API Key',
-    help: 'Get from PostHog > Settings > Personal API Keys',
+    labelKey: 'settings:mcp.env_help.posthog_api_label',
+    helpKey: 'settings:mcp.env_help.posthog_api_help',
     link: 'https://app.posthog.com/settings/user-api-keys'
   },
   CORRIDOR_API_KEY: {
-    label: 'Corridor API Key',
-    help: 'Get from Corridor dashboard',
+    labelKey: 'settings:mcp.env_help.corridor_api_label',
+    helpKey: 'settings:mcp.env_help.corridor_api_help',
     link: 'https://app.corridor.dev'
   },
   AWS_ACCESS_KEY_ID: {
-    label: 'AWS Access Key ID',
-    help: 'Get from AWS IAM console',
+    labelKey: 'settings:mcp.env_help.aws_access_key_label',
+    helpKey: 'settings:mcp.env_help.aws_access_key_help',
     link: 'https://console.aws.amazon.com/iam/'
   },
   AWS_SECRET_ACCESS_KEY: {
-    label: 'AWS Secret Access Key',
-    help: 'Get from AWS IAM console when creating access key'
+    labelKey: 'settings:mcp.env_help.aws_secret_key_label',
+    helpKey: 'settings:mcp.env_help.aws_secret_key_help'
   },
   AWS_REGION: {
-    label: 'AWS Region',
-    help: 'AWS region (default: us-east-1)'
+    labelKey: 'settings:mcp.env_help.aws_region_label',
+    helpKey: 'settings:mcp.env_help.aws_region_help'
   },
   STRIPE_SECRET_KEY: {
-    label: 'Stripe Secret Key',
-    help: 'Get from Stripe Dashboard > Developers > API keys',
+    labelKey: 'settings:mcp.env_help.stripe_secret_label',
+    helpKey: 'settings:mcp.env_help.stripe_secret_help',
     link: 'https://dashboard.stripe.com/apikeys'
   },
   SNOWFLAKE_ACCOUNT: {
-    label: 'Snowflake Account',
-    help: 'Your Snowflake account identifier'
+    labelKey: 'settings:mcp.env_help.snowflake_account_label',
+    helpKey: 'settings:mcp.env_help.snowflake_account_help'
   },
   SNOWFLAKE_USER: {
-    label: 'Snowflake Username',
-    help: 'Your Snowflake username'
+    labelKey: 'settings:mcp.env_help.snowflake_user_label',
+    helpKey: 'settings:mcp.env_help.snowflake_user_help'
   },
   SNOWFLAKE_PASSWORD: {
-    label: 'Snowflake Password',
-    help: 'Your Snowflake password'
+    labelKey: 'settings:mcp.env_help.snowflake_password_label',
+    helpKey: 'settings:mcp.env_help.snowflake_password_help'
   },
   SNOWFLAKE_WAREHOUSE: {
-    label: 'Snowflake Warehouse',
-    help: 'The warehouse to use for queries'
+    labelKey: 'settings:mcp.env_help.snowflake_warehouse_label',
+    helpKey: 'settings:mcp.env_help.snowflake_warehouse_help'
   },
   ZAPIER_MCP_URL: {
-    label: 'Zapier MCP URL',
-    help: 'Get your personal MCP URL from Zapier MCP dashboard',
+    labelKey: 'settings:mcp.env_help.zapier_url_label',
+    helpKey: 'settings:mcp.env_help.zapier_url_help',
     link: 'https://zapier.com/mcp'
   },
   FILESYSTEM_ALLOWED_DIR: {
-    label: 'Allowed Directory',
-    help: 'Directory path the server is allowed to access (e.g., /Users/you/projects)'
+    labelKey: 'settings:mcp.env_help.filesystem_dir_label',
+    helpKey: 'settings:mcp.env_help.filesystem_dir_help'
   },
   FIGMA_API_KEY: {
-    label: 'Figma Personal Access Token',
-    help: 'Create a personal access token in Figma account settings',
+    labelKey: 'settings:mcp.env_help.figma_pat_label',
+    helpKey: 'settings:mcp.env_help.figma_pat_help',
     link: 'https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens'
   }
 };
@@ -646,6 +647,7 @@ interface MCPServersPanelProps {
 }
 
 function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanelProps = {}) {
+  const { t } = useTranslation(['settings']);
   const posthog = usePostHog();
   const { theme } = useTheme();
   const isDark = theme === 'dark' || theme === 'crystal-dark';
@@ -688,8 +690,14 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
   const mcpTestProgress = useAtomValue(mcpTestProgressAtom);
   useEffect(() => {
     if (testStatus !== 'testing' || !mcpTestProgress?.message) return;
-    setTestMessage(mcpTestProgress.message);
-  }, [mcpTestProgress, testStatus]);
+    const progressKeyByStatus: Record<string, string> = {
+      connecting: 'settings:mcp.starting_server',
+      testing: 'settings:mcp.testing_server',
+      downloading: 'settings:mcp.downloading_packages',
+    };
+    const progressKey = progressKeyByStatus[mcpTestProgress.status];
+    setTestMessage(progressKey ? t(progressKey) : mcpTestProgress.message);
+  }, [mcpTestProgress, t, testStatus]);
 
   // OAuth state
   const [oauthStatus, setOauthStatus] = useState<OAuthStatus>('unknown');
@@ -740,12 +748,12 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     } catch (err: unknown) {
       const loadDuration = performance.now() - loadStart;
       console.error(`Failed to load MCP servers after ${loadDuration.toFixed(0)}ms:`, err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load MCP servers';
+      const errorMessage = err instanceof Error ? err.message : t('settings:mcp.error_load_servers');
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [scope, workspacePath]);
+  }, [scope, workspacePath, t]);
 
   // Reload servers when scope or workspace path changes
   useEffect(() => {
@@ -1093,7 +1101,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     if (usesNativeOAuth(config)) {
       setOauthStatus('unknown');
       setTestStatus('error');
-      setTestMessage('This server uses native MCP OAuth. Start a Claude or Codex session and authorize it there instead of using this button.');
+      setTestMessage(t('settings:mcp.native_oauth_session_hint'));
       return;
     }
 
@@ -1112,10 +1120,10 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         setTestStatus('idle');
         setTestMessage('');
       } else {
-        const errorMsg = result.error || 'Authorization failed';
+        const errorMsg = result.error || t('settings:mcp.authorization_failed');
         console.error('OAuth authorization failed:', errorMsg);
         setTestStatus('error');
-        setTestMessage(`Authorization failed: ${errorMsg}`);
+        setTestMessage(t('settings:mcp.authorization_failed_detail', { error: errorMsg }));
         setCanRetryAfterCacheClear(
           result.canRetryAfterCacheClear === true || result.isStalePortError === true
         );
@@ -1123,10 +1131,10 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
       }
       captureOAuthResult(result);
     } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMsg = error instanceof Error ? error.message : t('settings:mcp.unknown_error');
       console.error('Failed to trigger OAuth:', errorMsg);
       setTestStatus('error');
-      setTestMessage(`Authorization error: ${errorMsg}`);
+      setTestMessage(t('settings:mcp.authorization_error', { error: errorMsg }));
       setOauthStatus('not-authorized');
       captureOAuthResult({
         success: false,
@@ -1147,14 +1155,14 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     if (usesNativeOAuth(config)) {
       setOauthStatus('unknown');
       setTestStatus('error');
-      setTestMessage('Native MCP OAuth tokens are managed by the MCP client. Remove the server from Claude or Codex if you need to re-authorize it.');
+      setTestMessage(t('settings:mcp.native_oauth_tokens'));
       return;
     }
 
     const serverUrl = getOAuthServerUrl(config);
     if (!serverUrl) return;
 
-    if (!confirm('Revoke authorization? You will need to re-authorize to use this server.')) {
+    if (!confirm(t('settings:mcp.confirm_revoke'))) {
       return;
     }
 
@@ -1163,18 +1171,18 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
       const result = await window.electronAPI.invoke('mcp-config:revoke-oauth', config);
       if (result.success) {
         setOauthStatus('not-authorized');
-        setTestMessage('Authorization revoked successfully');
+        setTestMessage(t('settings:mcp.authorization_revoked'));
       } else {
-        const errorMsg = result.error || 'Failed to revoke authorization';
+        const errorMsg = result.error || t('settings:mcp.revoke_authorization_failed');
         console.error('Failed to revoke OAuth:', errorMsg);
         setTestStatus('error');
         setTestMessage(errorMsg);
       }
     } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMsg = error instanceof Error ? error.message : t('settings:mcp.unknown_error');
       console.error('Failed to revoke OAuth:', errorMsg);
       setTestStatus('error');
-      setTestMessage(`Revocation error: ${errorMsg}`);
+      setTestMessage(t('settings:mcp.revocation_error', { error: errorMsg }));
     } finally {
       setOauthAction('idle');
     }
@@ -1190,7 +1198,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     if (usesNativeOAuth(config)) {
       setOauthStatus('unknown');
       setTestStatus('error');
-      setTestMessage('This server uses native MCP OAuth. The auth cache tools only apply to mcp-remote-based servers.');
+      setTestMessage(t('settings:mcp.native_oauth_cache_not_applicable'));
       return;
     }
 
@@ -1202,7 +1210,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     try {
       // First, revoke/clear any existing auth files (including lock files)
       await window.electronAPI.invoke('mcp-config:revoke-oauth', config);
-      setTestMessage('Auth cache cleared. Retrying authorization...');
+      setTestMessage(t('settings:mcp.auth_cache_cleared'));
       setTestStatus('idle');
 
       // Wait a moment for any port to be released
@@ -1218,10 +1226,10 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         setTestStatus('idle');
         setTestMessage('');
       } else {
-        const errorMsg = result.error || 'Authorization failed';
+        const errorMsg = result.error || t('settings:mcp.authorization_failed');
         console.error('OAuth authorization failed after cache clear:', errorMsg);
         setTestStatus('error');
-        setTestMessage(`Authorization failed: ${errorMsg}`);
+        setTestMessage(t('settings:mcp.authorization_failed_detail', { error: errorMsg }));
         setCanRetryAfterCacheClear(
           result.canRetryAfterCacheClear === true || result.isStalePortError === true
         );
@@ -1229,10 +1237,10 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
       }
       captureOAuthResult(result, true);
     } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMsg = error instanceof Error ? error.message : t('settings:mcp.unknown_error');
       console.error('Failed to clear cache and retry OAuth:', errorMsg);
       setTestStatus('error');
-      setTestMessage(`Error: ${errorMsg}`);
+      setTestMessage(t('settings:mcp.error_generic', { error: errorMsg }));
       captureOAuthResult({
         success: false,
         outcome: 'failed',
@@ -1364,11 +1372,11 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
       }, 2000);
     } catch (err: unknown) {
       const saveDuration = performance.now() - saveStart;
-      const errorMsg = err instanceof Error ? err.message : 'Failed to save server';
+      const errorMsg = err instanceof Error ? err.message : t('settings:mcp.save_failed');
       console.error(`Failed to save server after ${saveDuration.toFixed(0)}ms:`, errorMsg);
       setSaveStatus('error');
       setTestStatus('error');
-      setTestMessage(`Save error: ${errorMsg}`);
+      setTestMessage(t('settings:mcp.save_error', { error: errorMsg }));
       isLocalChangeRef.current = false;
     }
   };
@@ -1376,7 +1384,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
   const handleDelete = async () => {
     if (!selectedServer) return;
 
-    if (!confirm(`Delete MCP server "${selectedServer.name}"?`)) {
+    if (!confirm(t('settings:mcp.confirm_delete', { name: selectedServer.name }))) {
       return;
     }
 
@@ -1399,7 +1407,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         : await window.electronAPI.invoke('mcp-config:write-user', config);
 
       if (!result.success) {
-        alert(`Failed to delete: ${result.error}`);
+        alert(t('settings:mcp.delete_failed_detail', { error: result.error || t('settings:mcp.delete_failed') }));
         isLocalChangeRef.current = false;
         return;
       }
@@ -1416,9 +1424,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         isLocalChangeRef.current = false;
       }, 2000);
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to delete server';
+      const errorMsg = err instanceof Error ? err.message : t('settings:mcp.delete_failed');
       console.error('Failed to delete server:', errorMsg);
-      alert(`Error: ${errorMsg}`);
+      alert(t('settings:mcp.delete_error', { error: errorMsg }));
       isLocalChangeRef.current = false;
     }
   };
@@ -1466,9 +1474,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         isLocalChangeRef.current = false;
       }, 2000);
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to toggle server providers';
+      const errorMsg = err instanceof Error ? err.message : t('settings:mcp.toggle_failed');
       console.error('Failed to toggle server providers:', errorMsg);
-      alert(`Error: ${errorMsg}`);
+      alert(t('settings:mcp.error_generic', { error: errorMsg }));
       isLocalChangeRef.current = false;
     }
   };
@@ -1531,23 +1539,23 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
   const handleTestConnection = async () => {
     if (formType === 'stdio' && !formCommand.trim()) {
       setTestStatus('error');
-      setTestMessage('Command is required');
+      setTestMessage(t('settings:mcp.command_required'));
       return;
     }
     if ((formType === 'sse' || formType === 'http') && !formUrl.trim()) {
       setTestStatus('error');
-      setTestMessage('URL is required');
+      setTestMessage(t('settings:mcp.url_required'));
       return;
     }
 
     if (usesNativeOAuth(getCurrentOAuthServerConfig())) {
       setTestStatus('error');
-      setTestMessage('Connection testing is not available for native MCP OAuth servers. Open a Claude or Codex session and use the server there to authorize it.');
+      setTestMessage(t('settings:mcp.native_oauth_test_unavailable'));
       return;
     }
 
     setTestStatus('testing');
-    setTestMessage('Starting...');
+    setTestMessage(t('settings:mcp.starting'));
 
     try {
       const testConfig: MCPServerConfig = {
@@ -1577,7 +1585,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
 
       if (result.success) {
         setTestStatus('success');
-        setTestMessage('Connection successful');
+        setTestMessage(t('settings:mcp.connection_success'));
         setTestHelpUrl(null);
         // Track successful test
         posthog?.capture('mcp_server_test_result', {
@@ -1591,9 +1599,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         const isFigmaOAuth = formArgs.some(arg => arg.includes('mcp.figma.com'))
           || ((formType === 'sse' || formType === 'http') && formUrl.includes('mcp.figma.com'));
         if (isFigmaOAuth) {
-          setTestMessage('Figma does not allow OAuth based MCP in certain apps. Please use the Figma template from the MCP server list instead, which uses a Personal Access Token.');
+          setTestMessage(t('settings:mcp.figma_oauth_notice'));
         } else {
-          setTestMessage(result.error || 'Connection failed');
+          setTestMessage(result.error || t('settings:mcp.connection_failed'));
         }
         setTestHelpUrl(result.helpUrl || null);
         // Track failed test
@@ -1605,7 +1613,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         });
       }
     } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : 'Test failed';
+      const errorMsg = error instanceof Error ? error.message : t('settings:mcp.test_failed');
       setTestStatus('error');
       setTestMessage(errorMsg);
       setTestHelpUrl(null);
@@ -1632,7 +1640,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
   if (loading) {
     return (
       <div className="provider-panel flex flex-col">
-        <div className="mcp-loading p-8 text-center text-[var(--nim-text-muted)]">Loading MCP servers...</div>
+        <div className="mcp-loading p-8 text-center text-[var(--nim-text-muted)]">{t('settings:mcp.loading')}</div>
       </div>
     );
   }
@@ -1641,12 +1649,15 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     return (
       <div className="provider-panel flex flex-col">
         <div className="mcp-error p-8 text-center text-[#e74c3c]">
-          Error: {error}
-          <button onClick={loadServers} className="mcp-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer">Retry</button>
+          {t('settings:mcp.error', { error })}
+          <button onClick={loadServers} className="mcp-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer">{t('settings:mcp.retry')}</button>
         </div>
       </div>
     );
   }
+
+  const getTemplateDescription = (template: MCPServerTemplate) =>
+    t(`settings:mcp.templates.${template.id}`, { defaultValue: template.description });
 
   // Template Selection View
   const renderTemplateSelection = () => {
@@ -1656,7 +1667,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     const filteredTemplates = searchLower
       ? MCP_SERVER_TEMPLATES.filter(t =>
           t.name.toLowerCase().includes(searchLower) ||
-          t.description.toLowerCase().includes(searchLower)
+          getTemplateDescription(t).toLowerCase().includes(searchLower)
         )
       : MCP_SERVER_TEMPLATES;
 
@@ -1679,24 +1690,24 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
 
     const getAuthBadge = (authType: string | undefined) => {
       if (authType === 'oauth') return { className: 'oauth', label: 'OAuth' };
-      if (authType === 'api-key') return { className: 'api-key', label: 'API Key' };
-      return { className: 'no-auth', label: 'No Auth' };
+      if (authType === 'api-key') return { className: 'api-key', label: t('settings:mcp.api_key') };
+      return { className: 'no-auth', label: t('settings:mcp.no_auth') };
     };
 
     return (
-      <div className="mcp-template-selection p-6 h-full overflow-y-auto" role="main" aria-label="Template selection">
+      <div className="mcp-template-selection p-6 h-full overflow-y-auto" role="main" aria-label={t('settings:mcp.template_selection_aria')}>
         <button
           onClick={handleBackToList}
           className="mcp-back-button inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg)] text-[var(--nim-text)] text-[0.8125rem] cursor-pointer transition-all duration-150 mb-4 hover:bg-[var(--nim-bg-hover)]"
-          aria-label="Back to server list"
+          aria-label={t('settings:mcp.back_to_list')}
         >
-          ← Back to servers
+          {t('settings:mcp.back_to_servers')}
         </button>
 
         <div className="mcp-template-selection-header mb-6">
-          <h3 className="mcp-template-selection-title text-lg font-semibold text-[var(--nim-text)] m-0 mb-2">Add MCP Server</h3>
+          <h3 className="mcp-template-selection-title text-lg font-semibold text-[var(--nim-text)] m-0 mb-2">{t('settings:mcp.add_server')}</h3>
           <p className="mcp-template-selection-description text-sm text-[var(--nim-text-muted)] m-0">
-            Choose a template to get started quickly, or create a custom configuration.
+            {t('settings:mcp.choose_template')}
           </p>
         </div>
 
@@ -1706,17 +1717,17 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
             type="text"
             value={templateSearch}
             onChange={(e) => setTemplateSearch(e.target.value)}
-            placeholder="Search templates..."
+            placeholder={t('settings:mcp.search_templates')}
             className="mcp-template-search-input w-full py-3 pl-4 pr-10 border border-[var(--nim-border)] rounded-lg bg-[var(--nim-bg)] text-[var(--nim-text)] text-[0.9375rem] placeholder:text-[var(--nim-text-faint)] focus:border-[var(--nim-primary)] focus:outline-none"
-            aria-label="Search MCP server templates"
+            aria-label={t('settings:mcp.search_templates_aria')}
             autoFocus
           />
           {templateSearch && (
             <button
               className="mcp-template-search-clear absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-none rounded-full bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] text-xs cursor-pointer flex items-center justify-center hover:bg-[var(--nim-text-faint)] hover:text-[var(--nim-bg)]"
               onClick={() => setTemplateSearch('')}
-              aria-label="Clear search"
-              title="Clear search"
+              aria-label={t('settings:mcp.clear_search')}
+              title={t('settings:mcp.clear_search')}
             >
               x
             </button>
@@ -1726,7 +1737,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         {/* Custom/Scratch - always show unless searching */}
         {!templateSearch && (
           <div className="mcp-template-category mb-6">
-            <h4 className="mcp-template-category-title text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">Custom Configuration</h4>
+            <h4 className="mcp-template-category-title text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">{t('settings:mcp.custom_configuration')}</h4>
             <div className="mcp-template-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
               <div
                 className="mcp-template-card mcp-template-scratch-card flex flex-col items-center justify-center min-h-[100px] p-4 border-2 border-dashed border-[var(--nim-border)] rounded-lg bg-transparent cursor-pointer transition-all duration-150 hover:border-[var(--nim-primary)] hover:bg-[color-mix(in_srgb,var(--nim-primary)_5%,transparent)]"
@@ -1739,11 +1750,11 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                 }}
                 role="button"
                 tabIndex={0}
-                aria-label="Start from scratch - Configure all settings manually"
+                aria-label={t('settings:mcp.start_from_scratch')}
               >
                 <div className="mcp-template-scratch-text text-sm text-[var(--nim-text-muted)] text-center">
-                  + Start from scratch<br />
-                  <small>Configure all settings manually</small>
+                  {t('settings:mcp.start_from_scratch_label')}<br />
+                  <small>{t('settings:mcp.custom_configuration_hint')}</small>
                 </div>
               </div>
             </div>
@@ -1754,11 +1765,14 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         {CATEGORY_ORDER.map(category => {
           const templates = templatesByCategory[category];
           if (templates.length === 0) return null;
+          const categoryLabel = t(`settings:mcp.category_${category}`, {
+            defaultValue: CATEGORY_LABELS[category],
+          });
 
           return (
             <div key={category} className="mcp-template-category mb-6">
-              <h4 className="mcp-template-category-title text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">{CATEGORY_LABELS[category]}</h4>
-              <div className="mcp-template-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3" role="list" aria-label={CATEGORY_LABELS[category]}>
+              <h4 className="mcp-template-category-title text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">{categoryLabel}</h4>
+              <div className="mcp-template-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3" role="list" aria-label={categoryLabel}>
                 {templates.map((template) => {
                   const badge = getAuthBadge(template.authType);
                   return (
@@ -1774,7 +1788,11 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                       }}
                       role="button"
                       tabIndex={0}
-                      aria-label={`${template.name} - ${template.description} - ${badge.label} authentication`}
+                      aria-label={t('settings:accessibility.mcp_template_auth', {
+                        name: template.name,
+                        description: getTemplateDescription(template),
+                        auth: badge.label,
+                      })}
                     >
                       <div className="mcp-template-card-header flex items-center gap-3 mb-2">
                         <div className="mcp-template-card-icon w-8 h-8 rounded-md bg-[var(--nim-bg-tertiary)] flex items-center justify-center text-base shrink-0 overflow-hidden" aria-hidden="true">
@@ -1783,8 +1801,8 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                         </div>
                         <div className="mcp-template-card-name font-semibold text-[0.9375rem] text-[var(--nim-text)]">{template.name}</div>
                       </div>
-                      <div className="mcp-template-card-description text-[0.8125rem] text-[var(--nim-text-muted)] leading-snug mb-3 flex-1">{template.description}</div>
-                      <div className={`mcp-template-card-badge inline-flex items-center gap-1 px-2 py-1 rounded text-[0.6875rem] font-semibold uppercase tracking-tight self-start ${badge.className === 'oauth' ? 'bg-[rgba(52,152,219,0.15)] text-[#3498db]' : badge.className === 'api-key' ? 'bg-[rgba(243,156,18,0.15)] text-[#f39c12]' : 'bg-[rgba(39,174,96,0.15)] text-[#27ae60]'}`} aria-label={`Authentication type: ${badge.label}`}>
+                      <div className="mcp-template-card-description text-[0.8125rem] text-[var(--nim-text-muted)] leading-snug mb-3 flex-1">{getTemplateDescription(template)}</div>
+                      <div className={`mcp-template-card-badge inline-flex items-center gap-1 px-2 py-1 rounded text-[0.6875rem] font-semibold uppercase tracking-tight self-start ${badge.className === 'oauth' ? 'bg-[rgba(52,152,219,0.15)] text-[#3498db]' : badge.className === 'api-key' ? 'bg-[rgba(243,156,18,0.15)] text-[#f39c12]' : 'bg-[rgba(39,174,96,0.15)] text-[#27ae60]'}`} aria-label={t('settings:mcp.authentication_type', { label: badge.label })}>
                         {badge.label}
                       </div>
                     </div>
@@ -1798,7 +1816,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         {/* No results */}
         {filteredTemplates.length === 0 && templateSearch && (
           <div className="mcp-template-no-results p-8 text-center text-[var(--nim-text-faint)] text-[0.9375rem]" role="status" aria-live="polite">
-            No templates match "{templateSearch}"
+            {t('settings:mcp.no_templates_match', { query: templateSearch })}
           </div>
         )}
       </div>
@@ -1815,14 +1833,14 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     const isMcpRemoteOAuthConfig = usesMcpRemoteOAuth(currentConfig);
 
     return (
-      <div className="mcp-server-form p-6" role="form" aria-label="MCP Server Configuration">
+      <div className="mcp-server-form p-6" role="form" aria-label={t('settings:mcp.server_configuration_aria')}>
         {isNewConfig && (
           <button
             onClick={handleBackToTemplates}
             className="mcp-back-button inline-flex items-center gap-1.5 px-3 py-2 border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg)] text-[var(--nim-text)] text-[0.8125rem] cursor-pointer transition-all duration-150 mb-4 hover:bg-[var(--nim-bg-hover)]"
-            aria-label="Back to template selection"
+            aria-label={t('settings:mcp.back_to_template')}
           >
-            ← Back to templates
+            {t('settings:mcp.back_to_template')}
           </button>
         )}
 
@@ -1835,7 +1853,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
               </div>
               <div className="mcp-config-title-text">
                 <h4 className="m-0 text-base font-semibold text-[var(--nim-text)]">{selectedTemplate.name}</h4>
-                <p className="m-0 mt-0.5 text-xs text-[var(--nim-text-faint)]">{selectedTemplate.description}</p>
+                <p className="m-0 mt-0.5 text-xs text-[var(--nim-text-faint)]">{getTemplateDescription(selectedTemplate)}</p>
               </div>
             </div>
             {selectedTemplate.docsUrl && (
@@ -1844,9 +1862,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mcp-docs-link-button inline-flex items-center gap-1 px-3 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg-secondary)] text-[var(--nim-primary)] text-sm no-underline transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
-                aria-label={`View documentation for ${selectedTemplate.name}`}
+                aria-label={t('settings:mcp.view_docs_for', { name: selectedTemplate.name })}
               >
-                View Docs
+                {t('settings:mcp.view_docs')}
               </a>
             )}
           </div>
@@ -1854,7 +1872,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
 
         {/* Server Name */}
         <div className="mcp-form-group mb-6">
-          <label htmlFor="server-name" className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Server Name</label>
+          <label htmlFor="server-name" className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.server_name')}</label>
           <input
             id="server-name"
             type="text"
@@ -1869,28 +1887,28 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
 
         {/* OAuth Section */}
         {isOAuth && (
-          <div className="mcp-oauth-section p-4 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md mb-4" role="group" aria-label="OAuth Authorization">
+          <div className="mcp-oauth-section p-4 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md mb-4" role="group" aria-label={t('settings:mcp.oauth_authorization')}>
             <div className="mcp-oauth-status flex items-center gap-3 mb-3">
-              <span className="mcp-oauth-label text-sm font-medium text-[var(--nim-text)]">Authorization:</span>
+              <span className="mcp-oauth-label text-sm font-medium text-[var(--nim-text)]">{t('settings:mcp.authorization')}</span>
               {isNativeOAuthConfig && (
                 <span className="mcp-oauth-badge unknown inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]" role="status">
-                  Managed by Claude/Codex
+                  {t('settings:mcp.managed_by_claude_codex')}
                 </span>
               )}
               {!isNativeOAuthConfig && oauthStatus === 'checking' && (
-                <span className="mcp-oauth-badge checking inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(52,152,219,0.15)] text-[#3498db]" role="status" aria-live="polite">Checking...</span>
+                <span className="mcp-oauth-badge checking inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(52,152,219,0.15)] text-[#3498db]" role="status" aria-live="polite">{t('settings:mcp.checking')}</span>
               )}
               {!isNativeOAuthConfig && oauthStatus === 'authorized' && (
-                <span className="mcp-oauth-badge authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(39,174,96,0.15)] text-[#27ae60]" role="status" aria-live="polite">Authorized</span>
+                <span className="mcp-oauth-badge authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(39,174,96,0.15)] text-[#27ae60]" role="status" aria-live="polite">{t('settings:mcp.authorized')}</span>
               )}
               {!isNativeOAuthConfig && oauthStatus === 'not-authorized' && (
-                <span className="mcp-oauth-badge not-authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(243,156,18,0.15)] text-[#f39c12]" role="status" aria-live="polite">Not authorized</span>
+                <span className="mcp-oauth-badge not-authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(243,156,18,0.15)] text-[#f39c12]" role="status" aria-live="polite">{t('settings:mcp.not_authorized')}</span>
               )}
               {!isNativeOAuthConfig && oauthStatus === 'not-required' && (
-                <span className="mcp-oauth-badge not-required inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]" role="status" aria-live="polite">Not required</span>
+                <span className="mcp-oauth-badge not-required inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]" role="status" aria-live="polite">{t('settings:mcp.not_required')}</span>
               )}
               {!isNativeOAuthConfig && oauthStatus === 'unknown' && (
-                <span className="mcp-oauth-badge unknown inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]" role="status">Unknown</span>
+                <span className="mcp-oauth-badge unknown inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]" role="status">{t('settings:mcp.unknown')}</span>
               )}
             </div>
             {isMcpRemoteOAuthConfig && oauthStatus !== 'not-required' && (
@@ -1900,10 +1918,10 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   onClick={handleAuthorize}
                   disabled={oauthAction !== 'idle'}
                   className="mcp-oauth-button authorize px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-[var(--nim-primary)] text-white border-none disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:opacity-90"
-                  aria-label="Authorize OAuth connection"
+                  aria-label={t('settings:mcp.authorize_oauth')}
                   aria-busy={oauthAction === 'authorizing'}
                 >
-                  {oauthAction === 'authorizing' ? 'Authorizing...' : 'Authorize'}
+                  {oauthAction === 'authorizing' ? t('settings:mcp.authorizing') : t('settings:mcp.authorize')}
                 </button>
               )}
               {oauthStatus === 'authorized' && (
@@ -1911,22 +1929,22 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   onClick={handleRevoke}
                   disabled={oauthAction !== 'idle'}
                   className="mcp-oauth-button revoke px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-transparent text-[#e74c3c] border border-[#e74c3c] disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:bg-[#e74c3c] hover:enabled:text-white"
-                  aria-label="Revoke OAuth authorization"
+                  aria-label={t('settings:mcp.revoke_oauth')}
                   aria-busy={oauthAction === 'revoking'}
                 >
-                  {oauthAction === 'revoking' ? 'Revoking...' : 'Revoke'}
+                  {oauthAction === 'revoking' ? t('settings:mcp.revoking') : t('settings:mcp.revoke')}
                 </button>
               )}
               </div>
             )}
             <div className="mcp-oauth-hint text-xs text-[var(--nim-text-faint)] leading-snug" role="note">
               {isNativeOAuthConfig
-                ? 'This server uses native MCP OAuth. Start a Claude or Codex session and let the client open the browser authorization flow.'
+                ? t('settings:mcp.native_oauth_hint')
                 : oauthStatus === 'authorized'
-                ? 'You are authorized to use this server.'
+                ? t('settings:mcp.authorized_hint')
                 : oauthStatus === 'not-required'
-                ? 'This endpoint did not advertise OAuth. Use headers or environment variables if the server requires another auth method.'
-                : 'Click Authorize to open a browser window and log in.'}
+                ? t('settings:mcp.not_required_hint')
+                : t('settings:mcp.authorize_hint')}
             </div>
             {!isNativeOAuthConfig && testStatus === 'error' && testMessage && (
               <div className="mcp-oauth-error mt-3 p-3 bg-[color-mix(in_srgb,var(--nim-error)_10%,transparent)] border border-[color-mix(in_srgb,var(--nim-error)_30%,transparent)] rounded-md text-[var(--nim-error)] text-[0.8125rem] leading-snug" role="alert" aria-live="assertive">
@@ -1937,9 +1955,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                     className="mcp-clear-cache-button block mt-3 px-3 py-1.5 text-[0.8125rem] font-medium text-white bg-[var(--nim-warning)] border-none rounded cursor-pointer transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:brightness-90"
                     onClick={handleClearAuthCacheAndRetry}
                     disabled={oauthAction !== 'idle'}
-                    aria-label="Clear auth cache and retry authorization"
+                    aria-label={t('settings:mcp.clear_auth_retry')}
                   >
-                    {oauthAction === 'clearing-cache' ? 'Clearing...' : 'Clear Auth Cache & Retry'}
+                    {oauthAction === 'clearing-cache' ? t('settings:mcp.clearing') : t('settings:mcp.clear_auth_retry_button')}
                   </button>
                 )}
                 {testHelpUrl && (
@@ -1948,7 +1966,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                     className="mcp-help-link-button block mt-2 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
                     onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                   >
-                    Install Instructions
+                    {t('settings:mcp.install_instructions')}
                   </button>
                 )}
               </div>
@@ -1961,18 +1979,19 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
           <div className="mcp-required-section p-5 bg-[color-mix(in_srgb,var(--nim-warning)_8%,transparent)] border border-[color-mix(in_srgb,var(--nim-warning)_30%,transparent)] rounded-lg mb-6">
             <div className="mcp-required-section-header flex items-center gap-2 mb-2">
               <span className="mcp-required-icon flex items-center justify-center w-5 h-5 bg-[var(--nim-warning)] text-white rounded-full text-xs font-bold shrink-0">!</span>
-              <h4 className="mcp-required-section-title text-[0.9375rem] font-semibold text-[var(--nim-text)] m-0">Required: Enter Your Credentials</h4>
+              <h4 className="mcp-required-section-title text-[0.9375rem] font-semibold text-[var(--nim-text)] m-0">{t('settings:mcp.required_credentials')}</h4>
             </div>
             <p className="mcp-required-section-hint text-[0.8125rem] text-[var(--nim-text-muted)] m-0 mb-4">
-              These values are required for the server to connect.
+              {t('settings:mcp.credentials_required')}
             </p>
 
             {requiredEnvVars.map(({ key, index }) => {
               const help = ENV_VAR_HELP[key];
+              const helpLabel = help ? t(help.labelKey) : key;
               return (
                 <div key={key} className="mcp-required-field mb-4 last:mb-0">
                   <label className="flex items-center gap-1 mb-1.5 font-medium text-sm text-[var(--nim-text)]">
-                    {help?.label || key}
+                    {helpLabel}
                     <span className="required-asterisk text-[var(--nim-warning)]">*</span>
                   </label>
                   <input
@@ -1980,17 +1999,17 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                     value={formEnv[index].value}
                     onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
                     onBlur={!isNewConfig ? autoSave : undefined}
-                    placeholder={`Enter your ${help?.label || key}`}
+                    placeholder={t('settings:accessibility.mcp_enter_value', { label: helpLabel })}
                     className="w-full px-3 py-2.5 border-2 border-[color-mix(in_srgb,var(--nim-warning)_50%,transparent)] rounded-md bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm placeholder:text-[var(--nim-text-faint)] focus:border-[var(--nim-primary)] focus:outline-none"
                   />
                   {help && (
                     <span className="mcp-field-help block mt-1 text-xs text-[var(--nim-text-faint)]">
-                      {help.help}
+                      {t(help.helpKey)}
                       {help.link && (
                         <>
                           {' - '}
                           <a href={help.link} target="_blank" rel="noopener noreferrer" className="text-[var(--nim-primary)] no-underline hover:underline">
-                            Get one here
+                            {t('settings:mcp.get_one_here')}
                           </a>
                         </>
                       )}
@@ -2005,19 +2024,19 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         {/* Test Connection Button (visible for templates, outside Advanced section) */}
         {selectedTemplate && !isNativeOAuthConfig && (
           <div className="mcp-form-group mb-6">
-            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Test Connection</label>
+            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.test_connection')}</label>
             <div className="mcp-test-standalone flex flex-col gap-2">
               <button
                 onClick={handleTestConnection}
                 disabled={testStatus === 'testing'}
                 className={`mcp-test-button self-start px-4 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm cursor-pointer whitespace-nowrap min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${testStatus === 'testing' ? 'bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)]' : ''} ${testStatus === 'success' ? 'bg-[#27ae60] text-white border-[#27ae60]' : ''}`}
-                aria-label="Test server connection"
+                aria-label={t('settings:mcp.test_server_connection')}
                 aria-busy={testStatus === 'testing'}
               >
-                {testStatus === 'testing' ? 'Testing...' :
-                 testStatus === 'success' ? 'Connected' : 'Test Connection'}
+                {testStatus === 'testing' ? t('settings:mcp.testing') :
+                 testStatus === 'success' ? t('settings:mcp.connected') : t('settings:mcp.test_connection')}
               </button>
-              {testStatus === 'error' && <span className="mcp-test-failed-label text-[#e74c3c] font-medium text-sm ml-2">Failed</span>}
+              {testStatus === 'error' && <span className="mcp-test-failed-label text-[#e74c3c] font-medium text-sm ml-2">{t('settings:mcp.failed')}</span>}
               {testMessage && (
                 <div
                   className={`mcp-test-message mt-2 p-2 rounded text-sm flex items-center gap-2 ${testStatus === 'testing' ? 'bg-[rgba(52,152,219,0.1)] text-[var(--nim-text-muted)] border border-[rgba(52,152,219,0.3)]' : ''} ${testStatus === 'success' ? 'bg-[rgba(39,174,96,0.1)] text-[#27ae60] border border-[rgba(39,174,96,0.3)]' : ''} ${testStatus === 'error' ? 'bg-[rgba(231,76,60,0.1)] text-[#e74c3c] border border-[rgba(231,76,60,0.3)]' : ''}`}
@@ -2032,7 +2051,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                       className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
                       onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                     >
-                      Install Instructions
+                      {t('settings:mcp.install_instructions')}
                     </button>
                   )}
                 </div>
@@ -2043,10 +2062,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
 
         {selectedTemplate && isNativeOAuthConfig && (
           <div className="mcp-form-group mb-6">
-            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Next Step</label>
+            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.next_step')}</label>
             <div className="p-4 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-sm text-[var(--nim-text)] leading-snug">
-              This settings panel only saves the server configuration.
-              Open a Claude or Codex session and use this server there to trigger browser authorization.
+              {t('settings:mcp.next_step_description')}
             </div>
           </div>
         )}
@@ -2055,8 +2073,8 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         {selectedTemplate ? (
           <details className="mcp-advanced-section mt-6 border border-[var(--nim-border)] rounded-lg overflow-hidden [&[open]>summary::after]:rotate-45">
             <summary className="p-4 cursor-pointer flex items-center justify-between font-medium text-sm bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] list-none [&::-webkit-details-marker]:hidden after:content-[''] after:w-1.5 after:h-1.5 after:border-r-2 after:border-b-2 after:border-[var(--nim-text-faint)] after:-rotate-45 after:transition-transform after:duration-200">
-              Advanced Configuration
-              <span className="mcp-advanced-hint text-xs text-[var(--nim-text-faint)] font-normal mr-2">Pre-configured, typically no changes needed</span>
+              {t('settings:mcp.advanced_configuration')}
+              <span className="mcp-advanced-hint text-xs text-[var(--nim-text-faint)] font-normal mr-2">{t('settings:mcp.preconfigured_hint')}</span>
             </summary>
             <div className="mcp-advanced-content p-4 border-t border-[var(--nim-border)]">
               {renderAdvancedFields(true)}
@@ -2073,9 +2091,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
             <button
               onClick={handleDelete}
               className="mcp-delete-button px-4 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[#e74c3c] text-sm cursor-pointer hover:bg-[#e74c3c] hover:text-white hover:border-[#e74c3c]"
-              aria-label={`Delete ${selectedServer.name} server`}
+              aria-label={t('settings:accessibility.mcp_delete_server', { name: selectedServer.name })}
             >
-              Delete
+              {t('settings:mcp.delete')}
             </button>
           )}
           {isNewConfig && formName.trim() && (formCommand.trim() || formUrl.trim()) && (
@@ -2083,10 +2101,10 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
               onClick={autoSave}
               className="mcp-save-button ml-auto px-4 py-2 border-none rounded bg-[var(--nim-primary)] text-white text-sm cursor-pointer hover:opacity-90"
               disabled={saveStatus === 'saving'}
-              aria-label="Add new MCP server"
+              aria-label={t('settings:mcp.add_new_server')}
               aria-busy={saveStatus === 'saving'}
             >
-              {saveStatus === 'saving' ? 'Saving...' : 'Add Server'}
+              {saveStatus === 'saving' ? t('settings:mcp.saving') : t('settings:mcp.add_server_action')}
             </button>
           )}
           <span
@@ -2095,9 +2113,9 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
             aria-live="polite"
             aria-atomic="true"
           >
-            {saveStatus === 'saving' && !isNewConfig && 'Saving...'}
-            {saveStatus === 'saved' && 'Saved'}
-            {saveStatus === 'error' && 'Error saving'}
+            {saveStatus === 'saving' && !isNewConfig && t('settings:mcp.saving')}
+            {saveStatus === 'saved' && t('settings:mcp.saved')}
+            {saveStatus === 'error' && t('settings:mcp.error_saving')}
           </span>
         </div>
       </div>
@@ -2114,7 +2132,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     return (
       <>
         <div className={`mcp-form-group mb-6 ${readonly ? 'mcp-readonly-group' : ''}`}>
-          <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Transport Type</label>
+          <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.transport_type')}</label>
           <select
             value={formType}
             onChange={(e) => {
@@ -2124,30 +2142,30 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
             className={`mcp-type-select w-full px-3 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm cursor-pointer ${readonly ? 'opacity-60 cursor-not-allowed bg-[var(--nim-bg-tertiary)]' : ''}`}
             disabled={readonly}
           >
-            <option value="stdio">stdio (Local executable)</option>
-            <option value="http">HTTP (Remote server - Streamable HTTP)</option>
-            <option value="sse">SSE (Remote server - Legacy)</option>
+            <option value="stdio">{t('settings:mcp.stdio_local')}</option>
+            <option value="http">{t('settings:mcp.http_remote')}</option>
+            <option value="sse">{t('settings:mcp.sse_legacy')}</option>
           </select>
           <div className="mcp-form-hint mt-1 text-xs text-[var(--nim-text-faint)]">
             {formType === 'stdio'
-              ? 'Runs a local executable that communicates via stdin/stdout'
+              ? t('settings:mcp.run_stdio_hint')
               : formType === 'http'
-              ? 'Connects to a remote server using Streamable HTTP (recommended for remote servers)'
-              : 'Connects to a remote server via Server-Sent Events (legacy)'}
+              ? t('settings:mcp.run_http_hint')
+              : t('settings:mcp.run_sse_hint')}
           </div>
         </div>
 
         {formType === 'stdio' ? (
           <>
             <div className={`mcp-form-group mb-6 ${readonly ? 'mcp-readonly-group' : ''}`}>
-              <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Command</label>
+              <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.command')}</label>
               <div className="mcp-command-row flex gap-2 items-center">
                 <input
                   type="text"
                   value={formCommand}
                   onChange={(e) => setFormCommand(e.target.value)}
                   onBlur={isExistingServer ? autoSave : undefined}
-                  placeholder="/path/to/server or npx @modelcontextprotocol/server-name"
+                  placeholder={t('settings:mcp.command_placeholder')}
                   className={`mcp-command-input flex-1 px-3 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm ${readonly ? 'opacity-60 cursor-not-allowed' : ''}`}
                   disabled={readonly}
                 />
@@ -2155,13 +2173,13 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   onClick={handleTestConnection}
                   disabled={testStatus === 'testing' || !formCommand.trim()}
                   className={`mcp-test-button px-4 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm cursor-pointer whitespace-nowrap min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${testStatus === 'testing' ? 'bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)]' : ''} ${testStatus === 'success' ? 'bg-[#27ae60] text-white border-[#27ae60]' : ''}`}
-                  aria-label="Test server connection"
+                  aria-label={t('settings:mcp.test_server_connection')}
                   aria-busy={testStatus === 'testing'}
                 >
-                  {testStatus === 'testing' ? 'Testing...' :
-                   testStatus === 'success' ? 'Connected' : 'Test'}
+                  {testStatus === 'testing' ? t('settings:mcp.testing') :
+                   testStatus === 'success' ? t('settings:mcp.connected') : t('settings:mcp.test')}
                 </button>
-                {testStatus === 'error' && <span className="mcp-test-failed-label text-[#e74c3c] font-medium text-sm ml-2">Failed</span>}
+                {testStatus === 'error' && <span className="mcp-test-failed-label text-[#e74c3c] font-medium text-sm ml-2">{t('settings:mcp.failed')}</span>}
               </div>
               {testMessage && (
                 <div
@@ -2177,7 +2195,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                       className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
                       onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                     >
-                      Install Instructions
+                      {t('settings:mcp.install_instructions')}
                     </button>
                   )}
                 </div>
@@ -2185,7 +2203,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
             </div>
 
             <div className={`mcp-form-group mb-6 ${readonly ? 'mcp-readonly-group' : ''}`}>
-              <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Arguments</label>
+              <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.arguments')}</label>
               {formArgs.map((arg, index) => (
                 <div key={index} className="mcp-array-item flex gap-2 mb-2">
                   <input
@@ -2193,7 +2211,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                     value={arg}
                     onChange={(e) => updateArg(index, e.target.value)}
                     onBlur={isExistingServer ? autoSave : undefined}
-                    placeholder="argument"
+                    placeholder={t('settings:mcp.argument_placeholder')}
                     disabled={readonly}
                     className={`flex-1 px-3 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm ${readonly ? 'opacity-70 cursor-not-allowed bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]' : ''}`}
                   />
@@ -2203,13 +2221,13 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                 </div>
               ))}
               {!readonly && (
-                <button onClick={addArg} className="mcp-add-button w-full px-4 py-2 border border-dashed border-[var(--nim-border)] rounded bg-transparent text-[var(--nim-primary)] text-sm cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]">+ Add Argument</button>
+                <button onClick={addArg} className="mcp-add-button w-full px-4 py-2 border border-dashed border-[var(--nim-border)] rounded bg-transparent text-[var(--nim-primary)] text-sm cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]">{t('settings:mcp.add_argument')}</button>
               )}
             </div>
           </>
         ) : (
           <div className={`mcp-form-group mb-6 ${readonly ? 'mcp-readonly-group' : ''}`}>
-            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Server URL</label>
+            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.server_url')}</label>
             <div className="mcp-command-row flex gap-2 items-center">
               <input
                 type="url"
@@ -2225,18 +2243,18 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   onClick={handleTestConnection}
                   disabled={testStatus === 'testing' || !formUrl.trim()}
                   className={`mcp-test-button px-4 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm cursor-pointer whitespace-nowrap min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${testStatus === 'testing' ? 'bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)]' : ''} ${testStatus === 'success' ? 'bg-[#27ae60] text-white border-[#27ae60]' : ''}`}
-                  aria-label="Test server connection"
+                  aria-label={t('settings:mcp.test_server_connection')}
                   aria-busy={testStatus === 'testing'}
                 >
-                  {testStatus === 'testing' ? 'Testing...' :
-                   testStatus === 'success' ? 'Connected' : 'Test'}
+                  {testStatus === 'testing' ? t('settings:mcp.testing') :
+                   testStatus === 'success' ? t('settings:mcp.connected') : t('settings:mcp.test')}
                 </button>
               )}
-              {!isNativeOAuthConfig && testStatus === 'error' && <span className="mcp-test-failed-label text-[#e74c3c] font-medium text-sm ml-2">Failed</span>}
+              {!isNativeOAuthConfig && testStatus === 'error' && <span className="mcp-test-failed-label text-[#e74c3c] font-medium text-sm ml-2">{t('settings:mcp.failed')}</span>}
             </div>
             {isNativeOAuthConfig && (
               <div className="mt-2 text-xs text-[var(--nim-text-faint)] leading-snug">
-                Connection testing is disabled for native MCP OAuth servers. Save the config, then open a Claude or Codex session and use the server there to authorize it.
+                {t('settings:mcp.native_oauth_disabled')}
               </div>
             )}
             {!isNativeOAuthConfig && testMessage && (
@@ -2253,7 +2271,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                     className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
                     onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                   >
-                    Install Instructions
+                    {t('settings:mcp.install_instructions')}
                   </button>
                 )}
               </div>
@@ -2264,7 +2282,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         {/* HTTP Headers (HTTP only) */}
         {formType === 'http' && !readonly && (
           <div className="mcp-form-group mb-6">
-            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">HTTP Headers</label>
+            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.http_headers')}</label>
             {formHeaders.map((header, index) => (
               <div key={index} className="mcp-env-item flex gap-2 mb-2">
                 <input
@@ -2280,20 +2298,20 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   value={header.value}
                   onChange={(e) => updateHeader(index, 'value', e.target.value)}
                   onBlur={isExistingServer ? autoSave : undefined}
-                  placeholder="value"
+                  placeholder={t('settings:mcp.value_placeholder')}
                   className="mcp-env-value flex-1 px-3 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm"
                 />
                 <button onClick={() => { removeHeader(index); if (isExistingServer) setTimeout(autoSave, 0); }} className="mcp-remove-button w-7 h-7 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-faint)] text-lg leading-none cursor-pointer hover:bg-[#e74c3c] hover:text-white hover:border-[#e74c3c]">x</button>
               </div>
             ))}
-            <button onClick={addHeader} className="mcp-add-button w-full px-4 py-2 border border-dashed border-[var(--nim-border)] rounded bg-transparent text-[var(--nim-primary)] text-sm cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]">+ Add HTTP Header</button>
+            <button onClick={addHeader} className="mcp-add-button w-full px-4 py-2 border border-dashed border-[var(--nim-border)] rounded bg-transparent text-[var(--nim-primary)] text-sm cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]">{t('settings:mcp.add_http_header')}</button>
           </div>
         )}
 
         {/* Additional env vars (not in required section) */}
         {!readonly && (
           <div className="mcp-form-group mb-6">
-            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">Environment Variables</label>
+            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.environment_variables')}</label>
             {formEnv.map((envVar, index) => (
               <div key={index} className="mcp-env-item flex gap-2 mb-2">
                 <input
@@ -2309,40 +2327,40 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   value={envVar.value}
                   onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
                   onBlur={isExistingServer ? autoSave : undefined}
-                  placeholder="value"
+                  placeholder={t('settings:mcp.value_placeholder')}
                   className="mcp-env-value flex-1 px-3 py-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm"
                 />
                 <button onClick={() => { removeEnvVar(index); if (isExistingServer) setTimeout(autoSave, 0); }} className="mcp-remove-button w-7 h-7 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-faint)] text-lg leading-none cursor-pointer hover:bg-[#e74c3c] hover:text-white hover:border-[#e74c3c]">x</button>
               </div>
             ))}
-            <button onClick={addEnvVar} className="mcp-add-button w-full px-4 py-2 border border-dashed border-[var(--nim-border)] rounded bg-transparent text-[var(--nim-primary)] text-sm cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]">+ Add Environment Variable</button>
+            <button onClick={addEnvVar} className="mcp-add-button w-full px-4 py-2 border border-dashed border-[var(--nim-border)] rounded bg-transparent text-[var(--nim-primary)] text-sm cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]">{t('settings:mcp.add_environment_variable')}</button>
           </div>
         )}
 
         {/* OAuth section for existing mcp-remote servers and HTTP transport */}
         {isExistingServer && isOAuthServer(currentConfig) && (
           <div className="mcp-form-group mb-6">
-            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">OAuth Authorization</label>
+            <label className="block mb-2 font-medium text-sm text-[var(--nim-text)]">{t('settings:mcp.oauth_authorization')}</label>
             <div className="mcp-oauth-section p-4 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md">
               <div className="mcp-oauth-status flex items-center gap-3 mb-3">
-                <span className="mcp-oauth-label text-sm font-medium text-[var(--nim-text)]">Status:</span>
+                <span className="mcp-oauth-label text-sm font-medium text-[var(--nim-text)]">{t('settings:mcp.status')}</span>
                 {isNativeOAuthConfig && (
-                  <span className="mcp-oauth-badge unknown inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]">Managed by Claude/Codex</span>
+                  <span className="mcp-oauth-badge unknown inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]">{t('settings:mcp.managed_by_claude_codex')}</span>
                 )}
                 {!isNativeOAuthConfig && oauthStatus === 'checking' && (
-                  <span className="mcp-oauth-badge checking inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(52,152,219,0.15)] text-[#3498db]">Checking...</span>
+                  <span className="mcp-oauth-badge checking inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(52,152,219,0.15)] text-[#3498db]">{t('settings:mcp.checking')}</span>
                 )}
                 {!isNativeOAuthConfig && oauthStatus === 'authorized' && (
-                  <span className="mcp-oauth-badge authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(39,174,96,0.15)] text-[#27ae60]">Authorized</span>
+                  <span className="mcp-oauth-badge authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(39,174,96,0.15)] text-[#27ae60]">{t('settings:mcp.authorized')}</span>
                 )}
                 {!isNativeOAuthConfig && oauthStatus === 'not-authorized' && (
-                  <span className="mcp-oauth-badge not-authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(243,156,18,0.15)] text-[#f39c12]">Not authorized</span>
+                  <span className="mcp-oauth-badge not-authorized inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(243,156,18,0.15)] text-[#f39c12]">{t('settings:mcp.not_authorized')}</span>
                 )}
                 {!isNativeOAuthConfig && oauthStatus === 'not-required' && (
-                  <span className="mcp-oauth-badge not-required inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]">Not required</span>
+                  <span className="mcp-oauth-badge not-required inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]">{t('settings:mcp.not_required')}</span>
                 )}
                 {!isNativeOAuthConfig && oauthStatus === 'unknown' && (
-                  <span className="mcp-oauth-badge unknown inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]">Unknown</span>
+                  <span className="mcp-oauth-badge unknown inline-flex items-center px-3 py-1 rounded-xl text-xs font-medium bg-[rgba(149,165,166,0.15)] text-[#95a5a6]">{t('settings:mcp.unknown')}</span>
                 )}
               </div>
               {isMcpRemoteOAuthConfig && oauthStatus !== 'not-required' && (
@@ -2353,7 +2371,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                     disabled={oauthAction !== 'idle'}
                     className="mcp-oauth-button authorize px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-[var(--nim-primary)] text-white border-none disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:opacity-90"
                   >
-                    {oauthAction === 'authorizing' ? 'Authorizing...' : 'Authorize'}
+                    {oauthAction === 'authorizing' ? t('settings:mcp.authorizing') : t('settings:mcp.authorize')}
                   </button>
                 )}
                 {oauthStatus === 'authorized' && (
@@ -2362,19 +2380,19 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                     disabled={oauthAction !== 'idle'}
                     className="mcp-oauth-button revoke px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-transparent text-[#e74c3c] border border-[#e74c3c] disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:bg-[#e74c3c] hover:enabled:text-white"
                   >
-                    {oauthAction === 'revoking' ? 'Revoking...' : 'Revoke'}
+                    {oauthAction === 'revoking' ? t('settings:mcp.revoking') : t('settings:mcp.revoke')}
                   </button>
                 )}
                 </div>
               )}
               {isNativeOAuthConfig && (
                 <div className="text-xs text-[var(--nim-text-faint)] leading-snug mt-2">
-                  Native MCP OAuth is completed by Claude or Codex when the server is first used.
+                  {t('settings:mcp.native_oauth_note')}
                 </div>
               )}
               {!isNativeOAuthConfig && oauthStatus === 'not-required' && (
                 <div className="text-xs text-[var(--nim-text-faint)] leading-snug mt-2">
-                  This endpoint did not advertise OAuth. Use headers or environment variables if the server requires another auth method.
+                  {t('settings:mcp.oauth_not_advertised')}
                 </div>
               )}
             </div>
@@ -2388,27 +2406,27 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">MCP Servers</h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('settings:mcp.title')}</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
           {scope === 'user'
-            ? 'Configure global MCP servers available in all projects.'
-            : 'Configure project-specific MCP servers (saved to .mcp.json).'}
+            ? t('settings:mcp.description_global')
+            : t('settings:mcp.description_project')}
         </p>
       </div>
 
       <div className="mcp-servers-container [container-type:inline-size] [container-name:mcp-servers] flex gap-6 flex-1 min-h-[400px] max-h-[calc(100vh-250px)] mt-4">
         {/* Sidebar - always visible in list view */}
         {viewState === 'list' && (
-          <aside className="mcp-servers-sidebar flex-[0_0_280px] min-w-[220px] max-w-[350px] flex flex-col border border-[var(--nim-border)] rounded-md overflow-hidden @[max-width:600px]:flex-[0_0_100%] @[max-width:600px]:max-w-full" aria-label="MCP servers list">
+          <aside className="mcp-servers-sidebar flex-[0_0_280px] min-w-[220px] max-w-[350px] flex flex-col border border-[var(--nim-border)] rounded-md overflow-hidden @[max-width:600px]:flex-[0_0_100%] @[max-width:600px]:max-w-full" aria-label={t('settings:mcp.servers_list')}>
             <div className="mcp-servers-header flex justify-between items-center px-4 py-3 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
-              <h4 className="m-0 text-sm font-semibold text-[var(--nim-text)]">Servers</h4>
+              <h4 className="m-0 text-sm font-semibold text-[var(--nim-text)]">{t('settings:mcp.servers')}</h4>
               <button
                 onClick={handleNewServer}
                 className="mcp-add-server-button flex items-center gap-1.5 px-3 py-1.5 rounded-md border-none bg-[var(--nim-primary)] text-white text-[0.8125rem] font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
-                aria-label="Add new MCP server"
+                aria-label={t('settings:mcp.add_new_server')}
               >
                 <span className="mcp-add-icon text-base leading-none" aria-hidden="true">+</span>
-                <span>Add</span>
+                <span>{t('settings:mcp.add')}</span>
               </button>
             </div>
 
@@ -2416,7 +2434,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
               <div className="mcp-provider-columns flex items-center px-4 py-1.5 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
                 <div className="shrink-0 flex">
                   {visibleMcpProviders.length > 1 && (
-                    <span className="w-9 text-center text-[10px] font-medium text-[var(--nim-text-faint)]">All</span>
+                    <span className="w-9 text-center text-[10px] font-medium text-[var(--nim-text-faint)]">{t('settings:mcp.all_providers')}</span>
                   )}
                   {visibleMcpProviders.map((id) => (
                     <span key={id} className="w-9 text-center text-[10px] font-medium text-[var(--nim-text-faint)]">{PROVIDER_LABELS[id]}</span>
@@ -2428,13 +2446,13 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
             <div className="mcp-servers-list flex-1 overflow-y-auto" role="list">
               {servers.length === 0 ? (
                 <div className="mcp-empty-state px-4 py-8 text-center text-[var(--nim-text-faint)] text-sm flex flex-col items-center gap-4" role="status">
-                  <span className="mcp-empty-state-text text-[var(--nim-text-muted)]">No MCP servers configured</span>
+                  <span className="mcp-empty-state-text text-[var(--nim-text-muted)]">{t('settings:mcp.none_configured')}</span>
                   <button
                     onClick={handleNewServer}
                     className="mcp-empty-state-cta px-5 py-2.5 rounded-md border-2 border-dashed border-[var(--nim-primary)] bg-transparent text-[var(--nim-primary)] text-sm font-medium cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)]"
-                    aria-label="Add your first MCP server"
+                    aria-label={t('settings:mcp.add_first_server')}
                   >
-                    + Add Your First Server
+                    + {t('settings:mcp.add_first')}
                   </button>
                 </div>
               ) : (
@@ -2460,7 +2478,13 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                       }}
                       role="listitem button"
                       tabIndex={0}
-                      aria-label={`${server.name} server - ${isDisabled ? 'disabled' : 'enabled'} - ${server.command || server.url}`}
+                      aria-label={t('settings:accessibility.mcp_server_status', {
+                        name: server.name,
+                        status: isDisabled
+                          ? t('settings:accessibility.disabled')
+                          : t('settings:accessibility.enabled'),
+                        endpoint: server.command || server.url,
+                      })}
                       aria-current={selectedServer?.name === server.name ? 'true' : undefined}
                     >
                       {visibleMcpProviders.length > 0 && (
@@ -2469,7 +2493,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                           onClick={(e) => e.stopPropagation()}
                         >
                           {visibleMcpProviders.length > 1 && (
-                            <div className="w-9 flex justify-center" title="All providers">
+                            <div className="w-9 flex justify-center" title={t('settings:mcp.all_providers')}>
                               <input
                                 type="checkbox"
                                 checked={allChecked}
@@ -2509,7 +2533,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                       </div>
                       {isOAuthServer(server) && serverOAuthStatuses[server.name] === 'not-authorized' && (
                         <div className={`mcp-server-status-icon mcp-server-status-not-authorized flex items-center justify-center shrink-0 ${isActive ? 'text-[#fbbf24]' : 'text-[#f39c12]'}`}>
-                          <MaterialSymbol icon="error" size={16} title="Not authorized" />
+                          <MaterialSymbol icon="error" size={16} title={t('settings:mcp.mcp_server_not_authorized')} />
                         </div>
                       )}
                     </div>
@@ -2528,7 +2552,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
 
           {viewState === 'list' && !selectedServer && (
             <div className="mcp-no-selection flex items-center justify-center h-full text-[var(--nim-text-faint)] text-sm">
-              Select a server or click "Add" to create a new one
+              {t('settings:mcp.select_or_add')}
             </div>
           )}
 
@@ -2540,21 +2564,21 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
 }
 
 export function MCPServersPanel(props: MCPServersPanelProps) {
+  const { t } = useTranslation(['settings']);
   return (
     <ErrorBoundary
       fallback={
         <div className="provider-panel flex flex-col" role="alert" aria-live="assertive">
           <div className="mcp-error p-8 text-center text-[#e74c3c]">
-            <h3 className="mt-0 mb-4">Unable to load MCP Servers</h3>
+            <h3 className="mt-0 mb-4">{t('settings:mcp.load_error_title')}</h3>
             <p className="mb-6 text-[var(--nim-text-muted)]">
-              An unexpected error occurred while loading the MCP servers panel.
-              Please try refreshing the application.
+              {t('settings:mcp.load_error_body')}
             </p>
             <button
               onClick={() => window.location.reload()}
               className="mcp-retry-button px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded-md cursor-pointer"
             >
-              Reload Application
+              {t('settings:mcp.reload_application')}
             </button>
           </div>
         </div>

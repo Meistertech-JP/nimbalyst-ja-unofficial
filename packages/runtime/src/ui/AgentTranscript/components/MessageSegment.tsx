@@ -14,6 +14,10 @@ import { MaterialSymbol } from '../../icons/MaterialSymbol';
 import { formatToolDisplayName } from '../utils/toolNameFormatter';
 import { isCommitRequestMessage, parseCommitRequest, CommitRequestCard } from './CommitRequestCard';
 import { localAssetUrl } from '../../../utils/localAssetUrl';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
+
+type TextPreviewContent = { kind: 'binary' } | { kind: 'text'; content: string };
+type TextPreviewError = { kind: 'detail'; message: string } | { kind: 'missing' | 'failed' | 'unavailable' };
 
 interface MessageSegmentProps {
   message: TranscriptViewMessage;
@@ -57,11 +61,19 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
   provider,
   workspacePath
 }) => {
+  const { t } = useRuntimeTranslation();
   const [isDiffExpanded, setDiffExpanded] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<ChatAttachment | null>(null);
   const [enlargedText, setEnlargedText] = useState<ChatAttachment | null>(null);
-  const [textContent, setTextContent] = useState<string | null>(null);
-  const [textLoadError, setTextLoadError] = useState<string | null>(null);
+  const [textContent, setTextContent] = useState<TextPreviewContent | null>(null);
+  const [textLoadError, setTextLoadError] = useState<TextPreviewError | null>(null);
+  const textLoadErrorMessage = textLoadError?.kind === 'detail'
+    ? textLoadError.message
+    : textLoadError?.kind === 'missing'
+      ? t('aichat:message_segment.file_missing', 'File not found')
+      : textLoadError?.kind === 'unavailable'
+        ? t('aichat:message_segment.read_unavailable', 'File reading not available')
+        : t('aichat:read_file_failed', 'Failed to read file');
 
 
   // Load text content when a text attachment is selected
@@ -80,24 +92,24 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
           if (result?.success) {
             // Handle binary files (e.g., PDFs) - for now just show a message
             if (result.isBinary) {
-              setTextContent('[Binary file - preview not available]');
+              setTextContent({ kind: 'binary' });
             } else {
-              setTextContent(result.content);
+              setTextContent({ kind: 'text', content: result.content });
             }
             setTextLoadError(null);
           } else if (result === null) {
-            setTextLoadError('File not found');
+            setTextLoadError({ kind: 'missing' });
             setTextContent(null);
           } else {
-            setTextLoadError('Failed to read file');
+            setTextLoadError({ kind: 'failed' });
             setTextContent(null);
           }
         } else {
-          setTextLoadError('File reading not available');
+          setTextLoadError({ kind: 'unavailable' });
           setTextContent(null);
         }
       } catch (error) {
-        setTextLoadError(error instanceof Error ? error.message : 'Failed to read file');
+        setTextLoadError(error instanceof Error ? { kind: 'detail', message: error.message } : { kind: 'failed' });
         setTextContent(null);
       }
     };
@@ -166,7 +178,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
       <details className="rich-transcript-thinking rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
         <summary className="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--nim-text-muted)] cursor-pointer select-none">
           <MaterialSymbol icon="psychology" size={14} />
-          <span>Thinking</span>
+          <span>{t('aichat:message_segment.thinking', 'Thinking')}</span>
         </summary>
         <div className="px-2 pb-2 pt-1 text-xs text-[var(--nim-text-muted)] whitespace-pre-wrap">
           {thinking}
@@ -266,11 +278,11 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
     const explicitSuccess = resultDetails && 'success' in resultDetails ? resultDetails.success !== false : undefined;
     const derivedErrorMessage = (message.isError && message.text) || (resultDetails && typeof resultDetails.error === 'string' ? (resultDetails.error as string) : undefined);
     const didFail = message.isError || tool.isError || explicitSuccess === false || !!derivedErrorMessage;
-    const statusLabel = didFail ? 'Failed' : 'Succeeded';
+    const statusLabel = didFail ? t('aichat:message_segment.failed', 'Failed') : t('aichat:message_segment.succeeded', 'Succeeded');
     const statusColor = didFail ? 'var(--nim-error)' : 'var(--nim-success)';
     const statusBackground = didFail ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
     const hasResult = toolResult !== undefined && toolResult !== null && (typeof toolResult !== 'string' || toolResult.trim().length > 0);
-    const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || 'Tool Call';
+    const toolDisplayName = formatToolDisplayName(tool.toolName || '', t) || tool.toolName || t('aichat:message_segment.tool_call', 'Tool Call');
 
     return (
       <div className="rounded-md bg-nim-tertiary overflow-hidden border border-nim my-2">
@@ -305,14 +317,14 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
           <div className="py-2 px-3 text-xs">
             {typeof tool.arguments === 'object' && tool.arguments !== null && Object.keys(tool.arguments).length > 0 && (
               <div className="mb-2">
-                <div className="text-nim-faint mb-1">Parameters:</div>
+                <div className="text-nim-faint mb-1">{t('aichat:message_segment.parameters', 'Parameters:')}</div>
                 <JSONViewer data={tool.arguments} maxHeight="16rem" />
               </div>
             )}
 
 
             <div className="mt-2">
-              <div className="text-nim-faint mb-1">Result:</div>
+              <div className="text-nim-faint mb-1">{t('agents:meta.result', 'Result:')}</div>
               {hasResult ? (
                 typeof toolResult === 'string' ? (
                   <pre className="text-xs text-nim font-mono overflow-x-auto bg-nim-secondary p-2 rounded max-h-64 overflow-y-auto">
@@ -323,7 +335,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
                 )
               ) : (
                 <div className="text-xs text-nim-faint italic">
-                  Tool did not return a result.
+                  {t('aichat:message_segment.no_result', 'Tool did not return a result.')}
                 </div>
               )}
               {derivedErrorMessage && (
@@ -342,7 +354,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
   const renderError = () => {
     if (!message.isError || message.type === 'tool_call') return null;
 
-    const errorMessage = message.text || 'Error';
+    const errorMessage = message.text || t('menu:generic_error_title', 'Error');
 
     // Pre-flight Codex app-server auth failure -- prefer the structured CTA
     // over the generic OpenAIAuthWidget so the user gets a one-click jump to
@@ -441,7 +453,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
             key={attachment.id}
             className="message-attachment-item flex items-center gap-2 px-2.5 py-1.5 border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg-secondary)] cursor-pointer transition-colors duration-150 max-w-[200px] hover:bg-[var(--nim-bg-hover)]"
             onClick={() => handleAttachmentClick(attachment as ChatAttachment)}
-            title="Click to preview"
+            title={t('aichat:message_segment.preview', 'Click to preview')}
           >
             {attachment.type === 'image' ? (
               <img
@@ -489,13 +501,13 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
       <FullscreenModal
         isOpen={!!enlargedImage}
         onClose={() => setEnlargedImage(null)}
-        ariaLabel="Image preview"
+        ariaLabel={t('aichat:message_segment.image_preview', 'Image preview')}
         contentClassName="max-w-[90vw] max-h-[90vh] flex flex-col items-center"
       >
         <button
           className="message-attachment-modal-close absolute -top-8 -right-8 w-7 h-7 p-0 border-none bg-[var(--nim-bg-secondary)] rounded-full cursor-pointer flex items-center justify-center text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
           onClick={() => setEnlargedImage(null)}
-          aria-label="Close"
+          aria-label={t('common:close', 'Close')}
         >
           <MaterialSymbol icon="close" size={20} />
         </button>
@@ -527,7 +539,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
       <FullscreenModal
         isOpen={!!enlargedText}
         onClose={handleClose}
-        ariaLabel="Text file preview"
+        ariaLabel={t('aichat:message_segment.text_preview', 'Text file preview')}
         contentClassName="w-[80vw] max-w-[900px] max-h-[80vh] flex flex-col bg-[var(--nim-bg)] rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.3)] overflow-hidden"
       >
         {enlargedText && (
@@ -543,7 +555,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
               <button
                 className="message-attachment-modal-close static ml-auto w-6 h-6 p-0 border-none bg-[var(--nim-bg-secondary)] rounded-full cursor-pointer flex items-center justify-center text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                 onClick={handleClose}
-                aria-label="Close"
+                aria-label={t('common:close', 'Close')}
               >
                 <MaterialSymbol icon="close" size={18} />
               </button>
@@ -552,15 +564,15 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
               {textLoadError ? (
                 <div className="message-attachment-text-modal-error flex flex-col items-center justify-center gap-2 p-8 text-[var(--nim-error)] text-sm">
                   <MaterialSymbol icon="error" size={24} />
-                  <span>{textLoadError}</span>
+                  <span>{textLoadErrorMessage}</span>
                 </div>
               ) : textContent === null ? (
                 <div className="message-attachment-text-modal-loading flex flex-col items-center justify-center gap-2 p-8 text-[var(--nim-text-faint)] text-sm">
-                  <span>Loading...</span>
+                  <span>{t('common:loading', 'Loading…')}</span>
                 </div>
               ) : (
                 <pre className="message-attachment-text-modal-pre m-0 font-mono text-[13px] leading-normal text-[var(--nim-text)] whitespace-pre-wrap break-words tab-4">
-                  {textContent}
+                  {textContent.kind === 'binary' ? t('aichat:message_segment.binary_preview', '[Binary file - preview not available]') : textContent.content}
                 </pre>
               )}
             </div>
@@ -585,7 +597,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
             {isDiffExpanded ? '\u25BC' : '\u25B6'}
           </span>
           <span className="text-nim-muted font-medium">
-            {message.toolCall?.changes?.length ?? 0} edit{(message.toolCall?.changes?.length ?? 0) !== 1 ? 's' : ''}
+            {t('aichat:message_segment.edits', changes.length === 1 ? '{{count}} edit' : '{{count}} edits', { count: changes.length })}
           </span>
         </button>
 

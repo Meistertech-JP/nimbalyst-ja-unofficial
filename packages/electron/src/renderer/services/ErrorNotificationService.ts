@@ -5,6 +5,10 @@
  */
 
 import posthog from 'posthog-js';
+import { rendererI18n } from '../i18n';
+
+const notificationT = (key: string, fallback: string): string =>
+  rendererI18n.isInitialized ? rendererI18n.t(key) : fallback;
 
 export type ErrorSeverity = 'error' | 'warning' | 'info';
 
@@ -112,10 +116,10 @@ class ErrorNotificationService {
    */
   showFromError(
     error: Error,
-    title: string = 'An error occurred',
+    title?: string,
     context?: Record<string, any>
   ): string {
-    return this.showError(title, error.message, {
+    return this.showError(title ?? notificationT('dialogs:error.generic_title', 'An error occurred'), error.message, {
       stack: error.stack,
       context
     });
@@ -263,7 +267,7 @@ if (typeof window !== 'undefined') {
     });
 
     errorNotificationService.showError(
-      'Uncaught Error',
+      notificationT('dialogs:error.uncaught_title', 'Uncaught Error'),
       message,
       {
         stack: event.error?.stack,
@@ -296,7 +300,7 @@ if (typeof window !== 'undefined') {
     });
 
     errorNotificationService.showError(
-      'Unhandled Promise Rejection',
+      notificationT('dialogs:error.unhandled_rejection_title', 'Unhandled Promise Rejection'),
       message,
       {
         stack: reason?.stack

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol, copyToClipboard } from '@nimbalyst/runtime';
 import { buildShareUrl } from '../../../store/atoms/sessionShares';
 import { useAtomValue } from 'jotai';
@@ -23,11 +24,12 @@ type PanelState = 'loading' | 'loaded' | 'unauthenticated' | 'error';
  * Self-contained - fetches data via IPC, no props needed.
  */
 export const SharedLinksPanel: React.FC = () => {
+  const { t, i18n } = useTranslation(['settings']);
   const accounts = useAtomValue(personalAccountsAtom);
   const [shares, setShares] = useState<SharedLink[]>([]);
   const [shareKeys, setShareKeys] = useState<Record<string, string>>({});
   const [state, setState] = useState<PanelState>('loading');
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -47,7 +49,7 @@ export const SharedLinksPanel: React.FC = () => {
       } else if (result?.error?.includes('Not signed in')) {
         setState('unauthenticated');
       } else {
-        setErrorMessage(result?.error || 'Failed to load shares');
+        setErrorMessage(result?.error || null);
         setState('error');
       }
     } catch (error) {
@@ -88,7 +90,7 @@ export const SharedLinksPanel: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, {
+    return date.toLocaleDateString(i18n.resolvedLanguage, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -102,26 +104,26 @@ export const SharedLinksPanel: React.FC = () => {
   };
 
   const formatExpiry = (expiresAt: string | null) => {
-    if (!expiresAt) return 'No expiration';
+    if (!expiresAt) return t('settings:shared_links.no_expiration');
     const expires = new Date(expiresAt);
     const now = new Date();
     const diffMs = expires.getTime() - now.getTime();
-    if (diffMs <= 0) return 'Expired';
+    if (diffMs <= 0) return t('settings:shared_links.expired');
     const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (days === 1) return 'Expires tomorrow';
-    return `Expires in ${days}d`;
+    if (days === 1) return t('settings:shared_links.expires_tomorrow');
+    return t('settings:shared_links.expires_in_days', { count: days });
   };
 
   const getShareKindLabel = (share: SharedLink) =>
-    typeof share.sessionId === 'string' && share.sessionId.startsWith('file:') ? 'File' : 'Session';
+    typeof share.sessionId === 'string' && share.sessionId.startsWith('file:') ? t('settings:shared_links.file') : t('settings:shared_links.session');
 
   return (
     <div className="provider-panel max-w-2xl">
       <div className="provider-panel-header flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--nim-text)] m-0">Shared Links</h3>
+          <h3 className="text-lg font-semibold text-[var(--nim-text)] m-0">{t('settings:shared_links.title')}</h3>
           <p className="text-[0.8125rem] text-[var(--nim-text-muted)] mt-1 mb-0">
-            Manage links you've shared for files and sessions. Anyone with a link can view the content.
+            {t('settings:shared_links.description')}
           </p>
         </div>
         {state === 'loaded' && shares.length > 0 && (
@@ -130,7 +132,7 @@ export const SharedLinksPanel: React.FC = () => {
             onClick={fetchShares}
           >
             <MaterialSymbol icon="refresh" size={14} />
-            Refresh
+            {t('settings:shared_links.refresh')}
           </button>
         )}
       </div>
@@ -139,7 +141,7 @@ export const SharedLinksPanel: React.FC = () => {
       {state === 'loading' && (
         <div className="flex items-center justify-center py-12 text-[var(--nim-text-muted)]">
           <MaterialSymbol icon="progress_activity" size={20} className="animate-spin mr-2" />
-          Loading shared links...
+          {t('settings:shared_links.loading')}
         </div>
       )}
 
@@ -148,10 +150,10 @@ export const SharedLinksPanel: React.FC = () => {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <MaterialSymbol icon="account_circle" size={32} className="text-[var(--nim-text-faint)] mb-3" />
           <p className="text-[0.8125rem] text-[var(--nim-text-muted)] mb-2">
-            Sign in to share files and sessions.
+          {t('settings:shared_links.sign_in_required')}
           </p>
           <p className="text-[0.75rem] text-[var(--nim-text-faint)]">
-            Go to Account & Sync to set up your account.
+          {t('settings:shared_links.go_to_account')}
           </p>
         </div>
       )}
@@ -161,14 +163,14 @@ export const SharedLinksPanel: React.FC = () => {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <MaterialSymbol icon="error" size={32} className="text-[var(--nim-error)] mb-3" />
           <p className="text-[0.8125rem] text-[var(--nim-text-muted)] mb-2">
-            {errorMessage}
+            {errorMessage || t('settings:shared_links.load_failed')}
           </p>
           <button
             className="flex items-center gap-1.5 px-3 py-1.5 text-[0.8125rem] text-[var(--nim-text)] bg-transparent border border-[var(--nim-border)] rounded-md cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
             onClick={fetchShares}
           >
             <MaterialSymbol icon="refresh" size={14} />
-            Retry
+            {t('settings:shared_links.retry')}
           </button>
         </div>
       )}
@@ -178,10 +180,10 @@ export const SharedLinksPanel: React.FC = () => {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <MaterialSymbol icon="link" size={32} className="text-[var(--nim-text-faint)] mb-3" />
           <p className="text-[0.8125rem] text-[var(--nim-text-muted)] mb-1">
-            No shared links yet.
+          {t('settings:shared_links.no_links')}
           </p>
           <p className="text-[0.75rem] text-[var(--nim-text-faint)]">
-            Right-click a file or session and select "Share link" to create one.
+          {t('settings:shared_links.create_instruction')}
           </p>
         </div>
       )}
@@ -197,24 +199,26 @@ export const SharedLinksPanel: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[0.8125rem] font-medium text-[var(--nim-text)] truncate">
-                    {share.title || 'Untitled'}
+                    {share.title || t('settings:shared_links.untitled')}
                   </span>
                   <span className="shrink-0 px-1.5 py-0.5 rounded bg-[var(--nim-bg-hover)] text-[0.625rem] uppercase tracking-[0.04em] text-[var(--nim-text-faint)]">
                     {getShareKindLabel(share)}
                   </span>
                   <span className="shrink-0 text-[0.6875rem] text-[var(--nim-text-faint)]">
-                    {share.viewCount} {share.viewCount === 1 ? 'view' : 'views'}
+                    {t('settings:shared_links.views', { count: share.viewCount })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-[0.6875rem] text-[var(--nim-text-faint)]">
                   <span className="select-text">
-                    Created by {accounts.find((account) => account.personalOrgId === share.owningPersonalOrgId)?.email ?? 'unknown account'}
+                    {t('settings:shared_links.created_by', {
+                      email: accounts.find((account) => account.personalOrgId === share.owningPersonalOrgId)?.email ?? t('settings:shared_links.unknown_account'),
+                    })}
                   </span>
                   <span className="truncate">share.nimbalyst.com/share/{share.shareId.slice(0, 8)}...</span>
                   <span>{formatDate(share.createdAt)}</span>
                   <span>{formatSize(share.sizeBytes)}</span>
                   {formatExpiry(share.expiresAt) && (
-                    <span className={formatExpiry(share.expiresAt) === 'Expired' ? 'text-[var(--nim-error)]' : ''}>
+                    <span className={share.expiresAt && new Date(share.expiresAt).getTime() <= Date.now() ? 'text-[var(--nim-error)]' : ''}>
                       {formatExpiry(share.expiresAt)}
                     </span>
                   )}
@@ -223,14 +227,14 @@ export const SharedLinksPanel: React.FC = () => {
               <div className="shrink-0 flex items-center gap-1">
                 <button
                   className="flex items-center justify-center w-7 h-7 rounded-md bg-transparent border-none text-[var(--nim-text-faint)] cursor-pointer transition-colors duration-150 hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
-                  title="Copy link"
+                title={t('settings:shared_links.copy_link')}
                   onClick={() => handleCopyLink(share)}
                 >
                   <MaterialSymbol icon={copiedId === share.shareId ? 'check' : 'content_copy'} size={14} />
                 </button>
                 <button
                   className="flex items-center justify-center w-7 h-7 rounded-md bg-transparent border-none text-[var(--nim-text-faint)] cursor-pointer transition-colors duration-150 hover:text-[var(--nim-error)] hover:bg-[var(--nim-bg-hover)] disabled:opacity-50 disabled:cursor-default"
-                  title="Delete shared link"
+                title={t('settings:shared_links.delete_link')}
                   onClick={() => handleDelete(share)}
                   disabled={deletingId === share.shareId}
                 >

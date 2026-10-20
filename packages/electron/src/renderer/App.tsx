@@ -6,6 +6,7 @@ import './hooks/useExtensionInputGuard';
 import './store/debug/atomFamilyRegistry';
 
 import React, { Activity, useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import { logger } from './utils/logger';
@@ -279,6 +280,7 @@ if (!pluginsRegistered) {
 }
 
 export default function App() {
+  const { t } = useTranslation(['dialogs', 'project', 'menu', 'common', 'settings']);
   // if (import.meta.env.DEV) console.log('[App] render');
 
    // IMPORTANT: This state must be declared before the useEffect that uses it
@@ -454,9 +456,9 @@ export default function App() {
     // Set window title for Workspace Manager
     React.useEffect(() => {
       if (window.electronAPI) {
-        window.electronAPI.setTitle('Project Manager - Nimbalyst');
+        window.electronAPI.setTitle(t('project:workspace.window_title'));
       }
-    }, []);
+    }, [t]);
     return <WorkspaceManager />;
   }
 
@@ -464,9 +466,9 @@ export default function App() {
     // Set window title for AI Usage Report
     React.useEffect(() => {
       if (window.electronAPI) {
-        window.electronAPI.setTitle('AI Usage Report - Nimbalyst');
+        window.electronAPI.setTitle(`${t('menu:ai_usage_report')} - Nimbalyst`);
       }
-    }, []);
+    }, [t]);
     return <AIUsageReport onClose={() => window.close()} />;
   }
 
@@ -474,18 +476,18 @@ export default function App() {
     // Set window title for Database Browser
     React.useEffect(() => {
       if (window.electronAPI) {
-        window.electronAPI.setTitle('Database Browser - Nimbalyst');
+        window.electronAPI.setTitle(`${t('menu:database_browser')} - Nimbalyst`);
       }
-    }, []);
+    }, [t]);
     return <DatabaseBrowser />;
   }
 
   if (windowMode === 'developer-dashboard') {
     React.useEffect(() => {
       if (window.electronAPI) {
-        window.electronAPI.setTitle('Developer Dashboard - Nimbalyst');
+        window.electronAPI.setTitle(`${t('menu:developer_dashboard')} - Nimbalyst`);
       }
-    }, []);
+    }, [t]);
     return <DeveloperDashboard />;
   }
 
@@ -999,12 +1001,12 @@ export default function App() {
     if (activeMode === 'files') {
       return {
         left: {
-          label: 'Files sidebar',
+          label: t('menu:top_bar.files_sidebar'),
           collapsed: filesSidebarCollapsed,
           onToggle: toggleActiveLeftPane,
         },
         right: {
-          label: 'AI chat',
+          label: t('menu:top_bar.ai_chat'),
           collapsed: filesAIChatCollapsed,
           onToggle: toggleActiveRightPane,
         },
@@ -1013,18 +1015,18 @@ export default function App() {
     if (activeMode === 'agent') {
       return {
         left: {
-          label: 'Session history',
+          label: t('menu:top_bar.session_history'),
           collapsed: agentHistoryCollapsed,
           onToggle: toggleActiveLeftPane,
         },
         right: agentPanelState.available ? {
-          label: 'Agent right panel',
+          label: t('menu:top_bar.agent_panel'),
           collapsed: !agentPanelState.visible,
           onToggle: toggleActiveRightPane,
           options: [
             {
               id: 'hidden',
-              label: 'Hidden',
+              label: t('menu:top_bar.hidden'),
               icon: 'dock_to_left',
               selected: !agentPanelState.visible,
               onSelect: () => {
@@ -1035,7 +1037,7 @@ export default function App() {
             },
             {
               id: 'edited-files',
-              label: 'Edited Files',
+              label: t('menu:top_bar.edited_files'),
               icon: 'description',
               selected: agentPanelState.visible && agentPanelState.mode === 'edited-files',
               onSelect: () => {
@@ -1044,7 +1046,7 @@ export default function App() {
             },
             {
               id: 'review',
-              label: 'Review',
+              label: t('menu:top_bar.review'),
               icon: 'rate_review',
               selected: agentPanelState.visible && agentPanelState.mode === 'review',
               onSelect: () => {
@@ -1053,7 +1055,7 @@ export default function App() {
             },
             {
               id: 'session-chat',
-              label: 'Chat with Session',
+              label: t('menu:top_bar.session_chat'),
               icon: 'forum',
               selected: agentPanelState.visible && agentPanelState.mode === 'session-chat',
               onSelect: () => {
@@ -1067,12 +1069,12 @@ export default function App() {
     if (activeMode === 'collab') {
       return {
         left: {
-          label: 'Shared documents sidebar',
+          label: t('menu:top_bar.shared_docs_sidebar'),
           collapsed: collabPanelState.sidebarCollapsed,
           onToggle: toggleActiveLeftPane,
         },
         right: {
-          label: 'Shared documents chat',
+          label: t('menu:top_bar.shared_docs_chat'),
           collapsed: collabPanelState.chatCollapsed,
           onToggle: toggleActiveRightPane,
         },
@@ -1083,7 +1085,7 @@ export default function App() {
       // persisted right-side AI pane through the title-bar controls.
       return {
         right: {
-          label: 'Pull request chat',
+          label: t('menu:top_bar.pull_request_chat'),
           collapsed: prPanelState.chatCollapsed,
           onToggle: toggleActiveRightPane,
         },
@@ -1101,12 +1103,13 @@ export default function App() {
     prPanelState,
     toggleActiveLeftPane,
     toggleActiveRightPane,
+    t,
   ]);
 
   const windowTopBarNewSessionControl = useMemo(() => {
     if (isFullscreenPanelActive && activeFullscreenPanel?.aiSupported) {
       return {
-        label: 'New AI session',
+        label: t('menu:top_bar.new_ai_session'),
         onCreate: () => {
           void chatSidebarRef.current?.createNewSession();
         },
@@ -1114,7 +1117,7 @@ export default function App() {
     }
     if (activeMode === 'files') {
       return {
-        label: 'New AI session',
+        label: t('menu:top_bar.new_ai_session'),
         onCreate: () => {
           void editorModeRef.current?.createNewChatSession();
         },
@@ -1122,7 +1125,7 @@ export default function App() {
     }
     if (activeMode === 'collab') {
       return {
-        label: 'New AI session',
+        label: t('menu:top_bar.new_ai_session'),
         onCreate: () => {
           void collabModeRef.current?.createNewChatSession();
         },
@@ -1130,26 +1133,26 @@ export default function App() {
     }
     if (activeMode === 'pr-review') {
       return {
-        label: 'New AI session',
+        label: t('menu:top_bar.new_ai_session'),
         onCreate: () => {
           void pullRequestModeRef.current?.createNewChatSession();
         },
       };
     }
     return undefined;
-  }, [activeFullscreenPanel?.aiSupported, activeMode, isFullscreenPanelActive]);
+  }, [activeFullscreenPanel?.aiSupported, activeMode, isFullscreenPanelActive, t]);
 
   const activeModeLabel = useMemo(() => {
     const labels: Record<ContentMode, string> = {
-      files: 'Files',
-      agent: 'Agent',
-      tracker: 'Tracker',
-      collab: 'Shared Docs',
-      'pr-review': 'PR Review',
-      settings: 'Settings',
+      files: t('common:navigation.files'),
+      agent: t('common:navigation.agent'),
+      tracker: t('common:navigation.tracker'),
+      collab: t('common:navigation.shared_docs'),
+      'pr-review': t('menu:top_bar.pr_review'),
+      settings: t('settings:title'),
     };
     return labels[activeMode];
-  }, [activeMode]);
+  }, [activeMode, t]);
 
   const runTitleBarGitAction = useCallback(async (action: 'pull' | 'push') => {
     if (!workspacePath || gitActionState.busyAction) return;
@@ -1157,7 +1160,7 @@ export default function App() {
     try {
       const result = await window.electronAPI.invoke(`git:${action}`, workspacePath);
       if (!result?.success) {
-        throw new Error(result?.error || `Git ${action} failed`);
+        throw new Error(result?.error || t(action === 'pull' ? 'menu:top_bar.pull_failed' : 'menu:top_bar.push_failed'));
       }
       const refreshedStatus = await window.electronAPI.invoke('git:status', workspacePath);
       if (store.get(activeWorkspacePathAtom) === workspacePath) {
@@ -1167,7 +1170,7 @@ export default function App() {
         busyAction: null,
         feedback: {
           kind: 'success',
-          message: action === 'pull' ? 'Pull completed' : 'Push completed',
+          message: t(action === 'pull' ? 'menu:top_bar.pull_completed' : 'menu:top_bar.push_completed'),
         },
       });
     } catch (error) {
@@ -1179,7 +1182,7 @@ export default function App() {
         },
       });
     }
-  }, [gitActionState.busyAction, setGitStatus, workspacePath]);
+  }, [gitActionState.busyAction, setGitStatus, workspacePath, t]);
 
   const handleOpenGitLog = useCallback(() => {
     const panelId = 'com.nimbalyst.git.git-log';
@@ -1189,14 +1192,14 @@ export default function App() {
         busyAction: null,
         feedback: {
           kind: 'error',
-          message: 'Git Log is not available. Enable the Git extension to open it.',
+          message: t('menu:top_bar.git_log_unavailable'),
         },
       });
       return;
     }
     setActiveExtensionBottomPanel(panelId);
     closeTerminalPanel();
-  }, [closeTerminalPanel]);
+  }, [closeTerminalPanel, t]);
 
   const handleOpenGitExtensionSettings = useCallback(() => {
     setGitActionState({ busyAction: null, feedback: null });
@@ -1735,12 +1738,12 @@ export default function App() {
   const showFigmaMcpMigrationToast = useCallback((force = false) => {
     const show = () => {
       errorNotificationService.showWarning(
-        'Figma MCP Server Needs Reconfiguration',
-        'Your current Figma MCP configuration will not work in Nimbalyst. Figma does not allow OAuth based MCP in certain apps.\n\nTo fix it, open the MCP settings and do the following:\n\n1. Remove the existing OAuth Figma MCP configuration.\n2. Add a new Figma MCP config from the Nimbalyst MCP template.\n3. Add your Personal Access Token to the MCP config.',
+        t('dialogs:figma_mcp.title'),
+        t('dialogs:figma_mcp.message'),
         {
           duration: 0,
           action: {
-            label: 'Open MCP Settings',
+            label: t('dialogs:figma_mcp.open_settings'),
             onClick: () => {
               store.set(openSettingsCommandAtom, { category: 'mcp-servers', timestamp: Date.now() });
             },
@@ -1767,7 +1770,7 @@ export default function App() {
     }).catch(() => {
       // Silently ignore - not critical
     });
-  }, []);
+  }, [t]);
 
   // Check on startup
   useEffect(() => {
@@ -1930,7 +1933,7 @@ export default function App() {
         const result = await window.electronAPI.documentService.createTrackerItem({
           id,
           type: item.type,
-          title: item.title || `New ${item.type}`,
+          title: item.title || t('files:create.new_type', { type: item.type }),
           status: item.status || 'to-do',
           priority: item.priority || 'medium',
           description: item.description,
@@ -1948,7 +1951,7 @@ export default function App() {
     return () => {
       delete (window as any).__nimbalystCreateTrackerItem;
     };
-  }, [workspacePath]);
+  }, [workspacePath, t]);
 
   // Listen for open-ai-session events (from rebase/merge conflict resolution)
   useEffect(() => {
@@ -2266,12 +2269,12 @@ export default function App() {
 
       if (activeCollabUnsynced) {
         const confirmed = await confirmDialog.confirm({
-          title: 'Unsynced Collaborative Changes',
+          title: t('dialogs:close_unsaved.unsynced_title'),
           message: activeCollabStatus === 'replaying'
-            ? 'This collaborative document is still replaying local changes to the server. Closing now may delay recovery until you reopen it.'
-            : 'This collaborative document has local changes that have not been confirmed by the server yet. Closing now will keep them queued locally, but they will not sync until you reopen the document and reconnect.',
-          confirmLabel: 'Close Anyway',
-          cancelLabel: 'Keep Editing',
+            ? t('dialogs:close_unsaved.replaying_message')
+            : t('dialogs:close_unsaved.unsynced_message'),
+          confirmLabel: t('dialogs:close_unsaved.close_anyway'),
+          cancelLabel: t('dialogs:close_unsaved.keep_editing'),
           destructive: true
         });
 
@@ -2282,10 +2285,10 @@ export default function App() {
       }
 
       const confirmed = await confirmDialog.confirm({
-        title: 'Unsaved Changes',
-        message: 'Do you want to save the changes you made? Your changes will be lost if you don\'t save them.',
-        confirmLabel: 'Save',
-        cancelLabel: 'Don\'t Save',
+        title: t('dialogs:close_unsaved.title'),
+        message: t('dialogs:close_unsaved.message'),
+        confirmLabel: t('dialogs:close_unsaved.save'),
+        cancelLabel: t('dialogs:close_unsaved.dont_save'),
         destructive: false
       });
 
@@ -2302,7 +2305,7 @@ export default function App() {
     };
 
     void handleConfirmClose();
-  }, [confirmCloseUnsavedVersion, confirmDialog]);
+  }, [confirmCloseUnsavedVersion, confirmDialog, t]);
 
   // React to close-active-tab from the menu. IPC subscription lives in
   // store/listeners/appCommandListeners.ts.
@@ -2598,7 +2601,7 @@ export default function App() {
                 </TabsProvider>
               ) : (
                 <WorkspaceWelcome
-                  workspaceName="Open a workspace to get started"
+                  workspaceName={t('dialogs:workspace_welcome.open_to_start')}
                   hasWorkspace={false}
                 />
               )}
@@ -2637,8 +2640,8 @@ export default function App() {
               ) : (
                 <div className="flex-1 flex items-center justify-center text-nim-muted">
                   <div className="text-center">
-                    <p>Agent mode requires a workspace</p>
-                    <p className="mt-2 text-sm">Open a workspace to use agent features</p>
+                    <p>{t('dialogs:workspace_required.title')}</p>
+                    <p className="mt-2 text-sm">{t('dialogs:workspace_required.message')}</p>
                   </div>
                 </div>
               )}

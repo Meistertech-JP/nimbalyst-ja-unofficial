@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ApiKeyDialogProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface ApiKeyDialogProps {
 }
 
 export function ApiKeyDialog({ isOpen, onClose, onOpenPreferences }: ApiKeyDialogProps) {
+  const { t } = useTranslation(['dialogs']);
   if (!isOpen) return null;
 
   const handleOpenPreferences = () => {
@@ -22,11 +24,12 @@ export function ApiKeyDialog({ isOpen, onClose, onOpenPreferences }: ApiKeyDialo
       >
         <div className="api-key-dialog-header nim-modal-header">
           <h2 className="m-0 text-xl font-semibold text-[var(--nim-text)]">
-            API Key Required
+            {t('dialogs:api_key.title')}
           </h2>
           <button
             className="api-key-dialog-close nim-btn-icon text-2xl"
             onClick={onClose}
+            aria-label={t('dialogs:api_key.close')}
           >
             ×
           </button>
@@ -36,16 +39,16 @@ export function ApiKeyDialog({ isOpen, onClose, onOpenPreferences }: ApiKeyDialo
           <div className="api-key-dialog-icon text-5xl text-center mb-4">🔑</div>
 
           <p className="api-key-dialog-message text-base text-[var(--nim-text-muted)] mb-6 text-center leading-relaxed">
-            To use the AI chat features, you need to configure your AI provider.
+            {t('dialogs:api_key.description')}
           </p>
 
           <div className="api-key-dialog-steps rounded-lg p-4 mb-2 bg-[var(--nim-bg-secondary)]">
             <h3 className="text-sm font-semibold text-[var(--nim-text)] m-0 mb-3">
-              How to get started:
+              {t('dialogs:api_key.how_to_start')}
             </h3>
             <ol className="m-0 pl-5 text-[var(--nim-text-muted)] text-sm leading-7">
               <li className="mb-2">
-                Choose your AI provider:
+                {t('dialogs:api_key.choose_provider')}
                 <ul className="mt-1 mb-1 pl-5">
                   <li>
                     <a
@@ -78,26 +81,26 @@ export function ApiKeyDialog({ isOpen, onClose, onOpenPreferences }: ApiKeyDialo
                     >
                       LM Studio
                     </a>{' '}
-                    (Local)
+                    ({t('dialogs:api_key.local')})
                   </li>
                 </ul>
               </li>
-              <li className="mb-2">Get your API key (or start LM Studio)</li>
-              <li className="mb-2">Click "Open AI Settings" below</li>
-              <li className="mb-2">Enter your API key and save</li>
+              <li className="mb-2">{t('dialogs:api_key.get_key')}</li>
+              <li className="mb-2">{t('dialogs:api_key.open_settings')}</li>
+              <li className="mb-2">{t('dialogs:api_key.enter_save')}</li>
             </ol>
           </div>
         </div>
 
         <div className="api-key-dialog-footer nim-modal-footer">
           <button className="api-key-dialog-button nim-btn-secondary" onClick={onClose}>
-            Cancel
+            {t('dialogs:api_key.cancel')}
           </button>
           <button
             className="api-key-dialog-button nim-btn-primary"
             onClick={handleOpenPreferences}
           >
-            Open AI Settings
+            {t('dialogs:api_key.open_ai_settings')}
           </button>
         </div>
       </div>

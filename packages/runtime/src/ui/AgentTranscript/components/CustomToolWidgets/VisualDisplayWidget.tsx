@@ -37,6 +37,7 @@ type ToolCall = NonNullable<TranscriptViewMessage['toolCall']>;
 import { isDarkThemeAtom } from '../../../../store/atoms/theme';
 import { GifPlayer } from './GifPlayer';
 import { localAssetUrl } from '../../../../utils/localAssetUrl';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../../RuntimeTranslation';
 
 // Theme-aware color palettes
 const LIGHT_COLORS = [
@@ -220,12 +221,12 @@ function isToolError(result: unknown, message: { isError?: boolean }): boolean {
  * Make technical error messages more user-friendly
  * Handles various error formats from MCP server and Claude Code SDK
  */
-function formatErrorMessage(rawMessage: string): string {
+function formatErrorMessage(rawMessage: string, t: RuntimeTranslate): string {
   // Handle "items[N].image.path file does not exist: /path" format (from Claude Code SDK)
   const fileNotExistMatch = rawMessage.match(/items\[\d+\]\.image\.path file does not exist:\s*"?([^"]+)"?/);
   if (fileNotExistMatch) {
     const filePath = fileNotExistMatch[1];
-    return `File not found at "${filePath}". Please verify the file exists and the path is correct.`;
+    return t('aichat:visual.file_not_found', 'File not found at "{{path}}". Please verify the file exists and the path is correct.', { path: filePath });
   }
 
   // Handle "items[N].image.path must be..." format
@@ -248,7 +249,7 @@ function formatErrorMessage(rawMessage: string): string {
  * Server returns errors in format: { content: [{ type: 'text', text: 'Error: ...' }], isError: true }
  * Claude Code SDK may also return errors as plain strings
  */
-function extractErrorMessage(result: unknown): string | null {
+function extractErrorMessage(result: unknown, t: RuntimeTranslate): string | null {
   let rawMessage: string | null = null;
 
   if (!result || typeof result !== 'object') {
@@ -303,7 +304,7 @@ function extractErrorMessage(result: unknown): string | null {
   }
 
   // Format the message to be more user-friendly
-  return formatErrorMessage(rawMessage);
+  return formatErrorMessage(rawMessage, t);
 }
 
 /**
@@ -525,9 +526,10 @@ const ImageDisplay: React.FC<{
   readFile?: (path: string) => Promise<{ success: boolean; content?: string; error?: string }>;
   className?: string;
 }> = ({ image, description, readFile, className }) => {
+  const { t } = useRuntimeTranslation();
   const [imageData, setImageData] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ kind: 'load'; detail?: string } | { kind: 'render'; path: string } | null>(null);
 
   useEffect(() => {
     const loadImage = async () => {
@@ -563,7 +565,7 @@ const ImageDisplay: React.FC<{
               path: image.path,
               error: result.error
             });
-            setError(`Failed to load image: ${result.error}`);
+            setError({ kind: 'load', detail: result.error });
             setLoading(false);
             return;
           }
@@ -581,7 +583,7 @@ const ImageDisplay: React.FC<{
           path: image.path,
           error: errorMessage
         });
-        setError(`Failed to load image: ${errorMessage}`);
+        setError({ kind: 'load', detail: err instanceof Error ? err.message : undefined });
         setLoading(false);
       }
     };
@@ -592,7 +594,7 @@ const ImageDisplay: React.FC<{
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4 bg-nim-secondary rounded-md border border-nim">
-        <span className="text-nim-muted text-sm">Loading...</span>
+        <span className="text-nim-muted text-sm">{t('common:image_viewer.loading', 'Loading...')}</span>
       </div>
     );
   }
@@ -600,7 +602,9 @@ const ImageDisplay: React.FC<{
   if (error) {
     return (
       <div className="flex flex-col items-center gap-2 p-4 bg-nim-secondary rounded-md border border-nim">
-        <span className="text-nim-error text-sm">{error}</span>
+        <span className="text-nim-error text-sm">{error.kind === 'render'
+          ? t('aichat:visual.image_render_failed', 'Failed to render image from: {{path}}', { path: error.path })
+          : t('aichat:visual.image_load_failed', 'Failed to load image: {{error}}', { error: error.detail ?? t('dialogs:error.unknown', 'Unknown error') })}</span>
         <span className="font-mono text-xs text-nim-faint break-all">{image.path}</span>
       </div>
     );
@@ -613,20 +617,20 @@ const ImageDisplay: React.FC<{
       {isGif && imageData ? (
         <GifPlayer
           src={imageData}
-          alt={description || 'Animated GIF'}
+          alt={description || t('aichat:media.animated_gif', 'Animated GIF')}
           className="max-w-full"
         />
       ) : (
         <img
           src={imageData || ''}
-          alt={description || 'Image'}
+          alt={description || t('aichat:visual.image', 'Image')}
           className={`max-w-full h-auto block ${className || ''}`.trim()}
           onError={(e) => {
             console.error('[VisualDisplayWidget] Image element failed to load:', {
               path: image.path,
               src: imageData?.substring(0, 100) + (imageData && imageData.length > 100 ? '...' : '')
             });
-            setError(`Failed to render image from: ${image.path}`);
+            setError({ kind: 'render', path: image.path });
           }}
         />
       )}
@@ -641,6 +645,7 @@ const ChartItemRenderer: React.FC<{
   item: DisplayItem;
   isDark: boolean;
 }> = ({ item, isDark }) => {
+  const { t } = useRuntimeTranslation();
   if (!item.chart) return null;
 
   const chartConfig: ChartConfig = {
@@ -654,6 +659,16 @@ const ChartItemRenderer: React.FC<{
 
   const colors = chartConfig.colors || getThemeColors(isDark);
   const height = 300;
+  const chartLabel = (() => {
+    switch (chartConfig.chartType) {
+      case 'bar': return t('aichat:visual.chart_bar', 'bar chart');
+      case 'line': return t('aichat:visual.chart_line', 'line chart');
+      case 'pie': return t('aichat:visual.chart_pie', 'pie chart');
+      case 'area': return t('aichat:visual.chart_area', 'area chart');
+      case 'scatter': return t('aichat:visual.chart_scatter', 'scatter chart');
+      default: return t('aichat:visual.chart_custom', '{{type}} chart', { type: chartConfig.chartType });
+    }
+  })();
 
   const renderChart = () => {
     switch (chartConfig.chartType) {
@@ -676,14 +691,14 @@ const ChartItemRenderer: React.FC<{
     <div className="p-3 rounded-md border border-nim-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))]">
       <p className="text-nim-muted text-sm mb-2">{item.description}</p>
       <p className="text-nim-error text-sm">
-        Failed to render {chartConfig.chartType} chart. Check that data contains valid "{chartConfig.xAxisKey}" and "{Array.isArray(chartConfig.yAxisKey) ? chartConfig.yAxisKey.join(', ') : chartConfig.yAxisKey}" fields.
+        {t('aichat:visual.chart_render_failed', 'Failed to render {{chart}}. Check that data contains valid "{{x}}" and "{{y}}" fields.', { chart: chartLabel, x: chartConfig.xAxisKey, y: Array.isArray(chartConfig.yAxisKey) ? chartConfig.yAxisKey.join(', ') : chartConfig.yAxisKey })}
       </p>
     </div>
   );
 
   return (
     <VisualErrorBoundary fallback={errorFallback} context={`${chartConfig.chartType} chart`}>
-      <div className="rounded-md overflow-hidden border border-nim bg-nim p-3" role="img" aria-label={`${chartConfig.chartType} chart: ${item.description}`}>
+      <div className="rounded-md overflow-hidden border border-nim bg-nim p-3" role="img" aria-label={t('aichat:visual.chart_description', '{{chart}}: {{description}}', { chart: chartLabel, description: item.description })}>
         <p className="text-nim text-sm font-medium mb-3">{item.description}</p>
         <div style={{ height }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -705,11 +720,12 @@ const Lightbox: React.FC<{
   onNavigate: (index: number) => void;
   readFile?: (path: string) => Promise<{ success: boolean; content?: string; error?: string }>;
 }> = ({ images, selectedIndex, onClose, onNavigate, readFile }) => {
+  const { t } = useRuntimeTranslation();
   return (
     <FullscreenModal
       isOpen={true}
       onClose={onClose}
-      ariaLabel="Image lightbox"
+      ariaLabel={t('aichat:visual.lightbox', 'Image lightbox')}
       contentClassName="h-[92vh] w-[96vw] max-w-[1400px] overflow-hidden rounded-lg border border-nim bg-nim"
     >
       <ZoomableImageSurface
@@ -729,9 +745,9 @@ const Lightbox: React.FC<{
                   type="button"
                   className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                   onClick={() => onNavigate((selectedIndex - 1 + images.length) % images.length)}
-                  aria-label="Previous image"
+                  aria-label={t('aichat:visual.previous_image', 'Previous image')}
                 >
-                  Prev
+                  {t('aichat:visual.previous', 'Prev')}
                 </button>
                 <div className="min-w-[3.5rem] text-center font-mono text-xs text-[var(--nim-text-muted)]">
                   {selectedIndex + 1} / {images.length}
@@ -740,9 +756,9 @@ const Lightbox: React.FC<{
                   type="button"
                   className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                   onClick={() => onNavigate((selectedIndex + 1) % images.length)}
-                  aria-label="Next image"
+                  aria-label={t('aichat:visual.next_image', 'Next image')}
                 >
-                  Next
+                  {t('common:next', 'Next')}
                 </button>
               </div>
             ) : null}
@@ -750,9 +766,9 @@ const Lightbox: React.FC<{
               type="button"
               className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common:close', 'Close')}
             >
-              Close
+              {t('common:close', 'Close')}
             </button>
           </>
         )}
@@ -768,16 +784,17 @@ const ImageGallery: React.FC<{
   images: DisplayItem[];
   readFile?: (path: string) => Promise<{ success: boolean; content?: string; error?: string }>;
 }> = ({ images, readFile }) => {
+  const { t } = useRuntimeTranslation();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const imagePaths = images.map(img => img.image?.path).filter(Boolean);
   const errorFallback = (
     <div className="p-3 rounded-md border border-nim-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))]">
       <p className="text-nim-error text-sm">
-        Failed to render image gallery ({images.length} image{images.length !== 1 ? 's' : ''}).
+        {t('aichat:visual.gallery_failed', images.length === 1 ? 'Failed to render image gallery ({{count}} image).' : 'Failed to render image gallery ({{count}} images).', { count: images.length })}
         {imagePaths.length > 0 && (
           <span className="block mt-1 text-nim-faint text-xs">
-            Paths: {imagePaths.slice(0, 3).join(', ')}{imagePaths.length > 3 ? `, ...and ${imagePaths.length - 3} more` : ''}
+            {t('aichat:visual.paths', 'Paths: {{paths}}', { paths: imagePaths.slice(0, 3).join(', ') })}{imagePaths.length > 3 ? t('aichat:visual.more_paths', ', ...and {{count}} more', { count: imagePaths.length - 3 }) : ''}
           </span>
         )}
       </p>
@@ -857,6 +874,7 @@ function groupItemsIntoSegments(items: DisplayItem[]): ItemSegment[] {
 }
 
 export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, readFile }) => {
+  const { t } = useRuntimeTranslation();
   const tool = message.toolCall;
   const isDark = useAtomValue(isDarkThemeAtom);
 
@@ -873,7 +891,7 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
     const hasError = isToolError(tool.result, message);
 
     // Extract detailed error message from server response
-    const serverErrorMessage = extractErrorMessage(tool.result);
+    const serverErrorMessage = extractErrorMessage(tool.result, t);
 
     // Try to extract path information from tool arguments for better error context
     const args = tool.arguments as unknown as DisplayArgs | undefined;
@@ -890,9 +908,9 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
       displayErrorMessage = serverErrorMessage;
     } else if (hasError) {
       // Server indicated error but no message extracted - show what we can
-      displayErrorMessage = 'Server rejected the request';
+      displayErrorMessage = t('aichat:visual.server_rejected', 'Server rejected the request');
       if (pathInfo) {
-        displayErrorMessage += `\n\nProvided paths: ${pathInfo}`;
+        displayErrorMessage += '\n\n' + t('aichat:visual.provided_paths', 'Provided paths: {{paths}}', { paths: pathInfo });
       }
       // Also include raw result for debugging
       if (tool.result) {
@@ -901,7 +919,7 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
             ? tool.result
             : JSON.stringify(tool.result);
           if (resultStr && resultStr !== '{}' && resultStr !== 'null') {
-            displayErrorMessage += `\n\nRaw result: ${resultStr.substring(0, 500)}`;
+            displayErrorMessage += '\n\n' + t('aichat:visual.raw_result', 'Raw result: {{result}}', { result: resultStr.substring(0, 500) });
           }
         } catch {
           // Ignore stringify errors
@@ -909,9 +927,9 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
       }
     } else {
       // No server error but couldn't parse items
-      displayErrorMessage = 'Invalid visual configuration: items array is missing or malformed';
+      displayErrorMessage = t('aichat:visual.invalid_config', 'Invalid visual configuration: items array is missing or malformed');
       if (pathInfo) {
-        displayErrorMessage += `\n\nProvided paths: ${pathInfo}`;
+        displayErrorMessage += '\n\n' + t('aichat:visual.provided_paths', 'Provided paths: {{paths}}', { paths: pathInfo });
       }
     }
 
@@ -935,11 +953,11 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
     }
 
     return (
-      <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label="Visual content error">
+      <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label={t('aichat:visual.error', 'Visual content error')}>
         <div className="flex items-center gap-2 py-2 px-3 border-b border-nim bg-nim-tertiary">
-          <span className="text-sm font-medium text-nim">Visual</span>
+          <span className="text-sm font-medium text-nim">{t('aichat:visual.title', 'Visual')}</span>
           <span className="text-xs font-semibold text-nim-error py-0.5 px-2 rounded-full bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]">
-            Error
+            {t('menu:generic_error_title', 'Error')}
           </span>
         </div>
         <div className="p-3 text-sm text-nim-error whitespace-pre-wrap">
@@ -957,28 +975,29 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
   // Summarize content for error message
   const chartCount = items.filter(i => i.chart).length;
   const imageCount = items.filter(i => i.image).length;
-  const contentSummary = [
-    chartCount > 0 ? `${chartCount} chart${chartCount !== 1 ? 's' : ''}` : null,
-    imageCount > 0 ? `${imageCount} image${imageCount !== 1 ? 's' : ''}` : null
-  ].filter(Boolean).join(' and ');
+  const chartsSummary = chartCount > 0 ? t('aichat:visual.charts', chartCount === 1 ? '{{count}} chart' : '{{count}} charts', { count: chartCount }) : '';
+  const imagesSummary = imageCount > 0 ? t('aichat:visual.images', imageCount === 1 ? '{{count}} image' : '{{count}} images', { count: imageCount }) : '';
+  const contentSummary = chartsSummary && imagesSummary
+    ? t('aichat:visual.combined_summary', '{{charts}} and {{images}}', { charts: chartsSummary, images: imagesSummary })
+    : chartsSummary || imagesSummary || t('aichat:visual.unknown_content', 'unknown content');
 
   const errorFallback = (
-    <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label="Visual content error">
+    <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label={t('aichat:visual.error', 'Visual content error')}>
       <div className="flex items-center gap-2 py-2 px-3 border-b border-nim bg-nim-tertiary">
-        <span className="text-sm font-medium text-nim">Visual</span>
+        <span className="text-sm font-medium text-nim">{t('aichat:visual.title', 'Visual')}</span>
         <span className="text-xs font-semibold text-nim-error py-0.5 px-2 rounded-full bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]">
-          Error
+          {t('menu:generic_error_title', 'Error')}
         </span>
       </div>
       <div className="p-3 text-sm text-nim-error">
-        Failed to render visual content ({contentSummary || 'unknown content'}).
+        {t('aichat:visual.render_failed', 'Failed to render visual content ({{summary}}).', { summary: contentSummary })}
       </div>
     </div>
   );
 
   return (
     <VisualErrorBoundary fallback={errorFallback} context="main widget">
-      <div className="visual-display-widget flex flex-col gap-3" role="img" aria-label={`${items.length} visual item(s)`}>
+      <div className="visual-display-widget flex flex-col gap-3" role="img" aria-label={t('aichat:visual.items', '{{count}} visual item(s)', { count: items.length })}>
         {segments.map((segment, index) => {
           if (segment.type === 'chart') {
             return (

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSetAtom, useAtomValue, useAtom } from 'jotai';
 import type { ConfigTheme } from '@nimbalyst/runtime';
 import { useTabsActions, useTabNavigationShortcuts, type TabData } from '../../contexts/TabsContext';
@@ -25,7 +26,10 @@ import { TabContent } from '../TabContent/TabContent';
 import { ChatSidebar, type ChatSidebarRef } from '../ChatSidebar';
 import { NewFileDialog } from '../NewFileDialog';
 import type { NewFileType, ExtensionFileType } from '../NewFileMenu';
-import { contributionToExtensionFileType } from '../NewFileMenu';
+import {
+  contributionToExtensionFileType,
+  getExtensionFileTypeDisplayName,
+} from '../NewFileMenu';
 import { WorkspaceHistoryDialog } from '../WorkspaceHistoryDialog';
 import { getTextSelection } from '../UnifiedAI/TextSelectionIndicator';
 import { getActiveEditorContextItems } from '../../stores/editorContextStore';
@@ -88,6 +92,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
   onOpenQuickSearch,
   onSwitchToAgentMode
 }, ref) {
+  const { t, i18n } = useTranslation(['common', 'editor', 'files']);
   // Sidebar state — kept in per-workspace atom families so each open
   // project preserves its own width / collapse state when the project rail
   // hides and re-shows it.
@@ -370,8 +375,8 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
     if (isCollabUri(tab.filePath) && hasCollabUnsyncedChanges(collabStatus)) {
       const confirmed = window.confirm(
         collabStatus === 'replaying'
-          ? 'This collaborative document is still replaying local changes to the server. Close it anyway?'
-          : 'This collaborative document still has local changes that have not been confirmed by the server. Close it anyway?'
+          ? t('common:collab.close_replaying_confirm')
+          : t('common:collab.close_unsynced_confirm')
       );
       if (!confirmed) {
         return;
@@ -382,7 +387,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
       await saveTabByIdRef.current(tabId);
     }
     currentTabs.removeTab(tabId);
-  }, []); // No dependencies - uses refs for all mutable state
+  }, [t]); // Mutable tab state is read through refs.
 
 
   // Get current file info imperatively from tabsActions
@@ -1145,7 +1150,9 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
 
     const updateExtensionFileTypes = () => {
       const contributions = loader.getNewFileMenuContributions();
-      const fileTypes = contributions.map(c => contributionToExtensionFileType(c.contribution));
+      const fileTypes = contributions.map((c) =>
+        contributionToExtensionFileType(c.extensionId, c.contribution),
+      );
       setExtensionFileTypes(fileTypes);
     };
 
@@ -1205,35 +1212,12 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
         const directory = selectedFolderPath || workspacePath;
         const filePath = `${directory}/${fileName}`;
 
-        // Create basic mockup HTML content
-        const content = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mockup</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #333;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>New Mockup</h1>
-        <p>Edit this mockup using the AI chat or edit the HTML directly.</p>
-    </div>
-</body>
-</html>`;
+        const content = createMockupContent({
+          language: i18n.resolvedLanguage ?? 'en',
+          title: t('editor:mockup.template_title'),
+          heading: t('editor:mockup.new_title'),
+          description: t('editor:mockup.edit_instruction'),
+        });
 
         await window.electronAPI.createFile(filePath, content);
 
@@ -1245,7 +1229,14 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
     };
 
     void handleNewMockup();
-  }, [newMockupVersion, workspacePath, selectedFolderPath, handleWorkspaceFileSelect]);
+  }, [
+    newMockupVersion,
+    workspacePath,
+    selectedFolderPath,
+    handleWorkspaceFileSelect,
+    i18n.resolvedLanguage,
+    t,
+  ]);
 
   // React to the "New Browser Tab" command (Cmd+Shift+B) from the menu. The IPC
   // subscription lives in store/listeners/appCommandListeners.ts; here we watch
@@ -1267,9 +1258,9 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
     if (!browserTabType?.virtualScheme) return;
 
     const id = `tab-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
-    const title = encodeURIComponent(browserTabType.displayName);
+    const title = encodeURIComponent(getExtensionFileTypeDisplayName(t, browserTabType));
     void handleWorkspaceFileSelect(`${browserTabType.virtualScheme}${id}?title=${title}`);
-  }, [newBrowserTabVersion, extensionFileTypes, handleWorkspaceFileSelect]);
+  }, [newBrowserTabVersion, extensionFileTypes, handleWorkspaceFileSelect, t]);
 
   // Handle new file creation with file type support
   const handleNewFile = useCallback(async (fileName: string, fileType: NewFileType) => {
@@ -1289,7 +1280,12 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
       } else if (fileType === 'mockup') {
         // Add .mockup.html extension if not present
         fullFileName = fileName.endsWith('.mockup.html') ? fileName : `${fileName}.mockup.html`;
-        content = createMockupContent();
+        content = createMockupContent({
+          language: i18n.resolvedLanguage ?? 'en',
+          title: t('files:mockup.template_title'),
+          heading: t('files:mockup.new_title'),
+          description: t('files:mockup.start_designing'),
+        });
       } else if (fileType?.startsWith('ext:')) {
         // Extension-provided file type
         const extName = fileType.slice(4); // Remove 'ext:' prefix
@@ -1311,7 +1307,12 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
       const filePath = `${directory}/${fullFileName}`;
       const result = await window.electronAPI.createFile(filePath, content);
       if (!result?.success) {
-        throw new Error(result?.error || 'Failed to create file');
+        throw new Error(
+          result?.error ||
+            t('files:create.file_failed', {
+              error: t('files:create.unknown_error'),
+            }),
+        );
       }
 
       await refreshFileTree(workspacePath);
@@ -1325,7 +1326,14 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
     } catch (error) {
       console.error('Error creating new file:', error);
     }
-  }, [workspacePath, newFileDirectory, handleWorkspaceFileSelect, extensionFileTypes]);
+  }, [
+    workspacePath,
+    newFileDirectory,
+    handleWorkspaceFileSelect,
+    extensionFileTypes,
+    i18n.resolvedLanguage,
+    t,
+  ]);
 
   return (
     <>
@@ -1358,7 +1366,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
               className="editor-mode-sidebar-resize-handle w-1 cursor-col-resize shrink-0 relative z-10 bg-nim-secondary"
               data-testid="editor-mode-sidebar-resize-handle"
               role="separator"
-              aria-label="Resize file sidebar"
+              aria-label={t('editor:tooltips.resize_sidebar')}
               aria-orientation="vertical"
             >
               <div
@@ -1432,7 +1440,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
             style={{ display: 'flex', flex: 1 }}
           >
             <WorkspaceWelcome
-              workspaceName={workspaceName || 'Open a file to get started'}
+              workspaceName={workspaceName || t('files:welcome.open_file_to_start')}
               workspacePath={workspacePath}
               hasWorkspace={true}
               onNewFile={handleWelcomeNewFile}

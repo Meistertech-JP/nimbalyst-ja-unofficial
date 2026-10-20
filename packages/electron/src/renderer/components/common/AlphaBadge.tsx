@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FloatingPortal,
   flip,
@@ -20,7 +21,6 @@ interface AlphaBadgeProps {
   tooltip?: string;
 }
 
-const DEFAULT_TOOLTIP = 'Alpha feature — may change or be removed.';
 export const SETTINGS_ALPHA_TOOLTIP =
   'Alpha features may be incomplete, and shared data may be lost.\n\nTeam features are free during alpha and will be part of a Nimbalyst Team subscription in the future.';
 
@@ -35,8 +35,10 @@ const SIZE_CLASSES: Record<NonNullable<AlphaBadgeProps['size']>, string> = {
 export const AlphaBadge: React.FC<AlphaBadgeProps> = ({
   size = 'xs',
   className = '',
-  tooltip = DEFAULT_TOOLTIP,
+  tooltip,
 }) => {
+  const { t } = useTranslation(['common']);
+  const tooltipText = tooltip ?? t('common:alpha.tooltip');
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open: tooltipOpen,
@@ -53,13 +55,13 @@ export const AlphaBadge: React.FC<AlphaBadgeProps> = ({
       <span
         ref={refs.setReference}
         data-testid="alpha-badge"
-        aria-label="Alpha feature"
+        aria-label={t('common:alpha.label')}
         className={`${SIZE_CLASSES[size]} ${className}`.trim()}
         {...getReferenceProps()}
       >
-        {size === 'dot' ? 'α' : 'alpha'}
+        {size === 'dot' ? 'α' : t('common:alpha.badge')}
       </span>
-      {tooltipOpen && tooltip && (
+      {tooltipOpen && tooltipText && (
         <FloatingPortal>
           <div
             ref={refs.setFloating}
@@ -67,8 +69,8 @@ export const AlphaBadge: React.FC<AlphaBadgeProps> = ({
             style={floatingStyles}
             {...getFloatingProps()}
           >
-            <div className="mb-1 text-[13px] font-semibold text-[var(--nim-text)]">Alpha</div>
-            {tooltip}
+            <div className="mb-1 text-[13px] font-semibold text-[var(--nim-text)]">{t('common:alpha.heading')}</div>
+            {tooltipText}
           </div>
         </FloatingPortal>
       )}

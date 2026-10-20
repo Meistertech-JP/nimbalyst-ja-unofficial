@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol, ProviderIcon, type SessionMeta } from '@nimbalyst/runtime';
 import {
@@ -20,19 +21,22 @@ interface AgentSessionsPopoverProps {
 
 type AttentionState = 'awaiting' | 'running' | 'unread';
 
-const STATE_STYLES: Record<AttentionState, { label: string; colorClass: string; dotClass: string }> = {
+const STATE_LABEL_KEYS: Record<AttentionState, 'sessions:state.awaiting_input' | 'sessions:state.running' | 'sessions:state.unread'> = {
+  awaiting: 'sessions:state.awaiting_input',
+  running: 'sessions:state.running',
+  unread: 'sessions:state.unread',
+};
+
+const STATE_STYLES: Record<AttentionState, { colorClass: string; dotClass: string }> = {
   awaiting: {
-    label: 'Awaiting input',
     colorClass: 'text-nim-warning',
     dotClass: 'bg-[var(--nim-warning)]',
   },
   running: {
-    label: 'Running',
     colorClass: 'text-nim-success',
     dotClass: 'bg-[var(--nim-success)]',
   },
   unread: {
-    label: 'Unread',
     colorClass: 'text-nim-primary',
     dotClass: 'bg-[var(--nim-primary)]',
   },
@@ -53,6 +57,7 @@ function AgentSessionAttentionRow({
   onPeekOpen: (sessionId: string, reference: HTMLElement) => void;
   onPeekToggle: (sessionId: string, reference: HTMLElement) => void;
 }) {
+  const { t } = useTranslation(['sessions', 'common']);
   const liveActivity = useAtomValue(sessionLastActivityAtom(session.id));
   const updatedAt = liveActivity > 0 ? liveActivity : session.updatedAt;
   const model = session.model?.includes(':') ? session.model.split(':')[1] : session.model;
@@ -103,14 +108,14 @@ function AgentSessionAttentionRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-medium text-nim">
-            {session.title || 'Untitled Session'}
+            {session.title || t('sessions:untitled')}
           </span>
           <span className="block truncate text-[11px] text-nim-muted">
             {model || session.provider}
           </span>
         </span>
         <span className="shrink-0 text-[10px] text-nim-faint">
-          {getRelativeTimeString(updatedAt)}
+          {getRelativeTimeString(updatedAt, t)}
         </span>
         <SessionStatusIndicator sessionId={session.id} />
       </button>
@@ -121,8 +126,8 @@ function AgentSessionAttentionRow({
             ? 'bg-nim-tertiary text-nim'
             : 'text-nim-disabled hover:bg-nim-tertiary hover:text-nim-muted'
         }`}
-        title="Preview transcript"
-        aria-label={`Preview transcript for ${session.title || 'Untitled Session'}`}
+        title={t('sessions:preview_transcript')}
+        aria-label={t('sessions:preview_transcript_for', { title: session.title || t('sessions:untitled') })}
         aria-pressed={isPeekOpen}
         data-testid={`agent-sessions-peek-${session.id}`}
         onMouseEnter={handlePeekEnter}
@@ -140,7 +145,10 @@ function AgentSessionAttentionRow({
   );
 }
 
-export function AgentSessionsPopover({ onOpenAgentMode }: AgentSessionsPopoverProps) {
+export function AgentSessionsPopover({
+  onOpenAgentMode,
+}: AgentSessionsPopoverProps) {
+  const { t } = useTranslation(['sessions', 'common']);
   const bubble = useAtomValue(agentBubbleStateAtom);
   const groups = useAtomValue(agentSessionAttentionAtom);
   const selectSession = useSetAtom(selectSessionActionAtom);
@@ -237,7 +245,7 @@ export function AgentSessionsPopover({ onOpenAgentMode }: AgentSessionsPopoverPr
             event.stopPropagation();
             menu.setIsOpen(!menu.isOpen);
           }}
-          aria-label={`${bubble.count} ${STATE_STYLES[bubble.color === 'orange' ? 'awaiting' : bubble.color === 'green' ? 'running' : 'unread'].label.toLowerCase()} session${bubble.count === 1 ? '' : 's'}`}
+              aria-label={t('sessions:bubble_summary', { count: bubble.count, state: bubble.color === 'orange' ? t(STATE_LABEL_KEYS.awaiting) : bubble.color === 'green' ? t(STATE_LABEL_KEYS.running) : t(STATE_LABEL_KEYS.unread) })}
           aria-expanded={menu.isOpen}
           aria-haspopup="menu"
           data-state={bubble.color}
@@ -258,8 +266,8 @@ export function AgentSessionsPopover({ onOpenAgentMode }: AgentSessionsPopoverPr
             data-component="AgentSessionsPopover"
           >
             <div className="flex items-center justify-between border-b border-nim px-3.5 py-2.5">
-              <span className="text-[13px] font-semibold text-nim">Sessions</span>
-              <span className="text-[11px] text-nim-muted">{total} need attention</span>
+              <span className="text-[13px] font-semibold text-nim">{t('sessions:title')}</span>
+              <span className="text-[11px] text-nim-muted">{t('sessions:need_attention', { count: total })}</span>
             </div>
 
             <div className="pb-1">
@@ -270,7 +278,7 @@ export function AgentSessionsPopover({ onOpenAgentMode }: AgentSessionsPopoverPr
                     <div className={`flex items-center justify-between gap-2 px-3.5 pb-1 pt-2.5 text-[10.5px] font-semibold uppercase tracking-wide ${style.colorClass}`}>
                       <span className="flex items-center gap-1.5">
                         <span className={`h-1.5 w-1.5 rounded-full ${style.dotClass}`} />
-                        <span>{style.label}</span>
+                        <span>{t(STATE_LABEL_KEYS[state])}</span>
                         <span aria-hidden>·</span>
                         <span>{sessions.length}</span>
                       </span>
@@ -281,7 +289,7 @@ export function AgentSessionsPopover({ onOpenAgentMode }: AgentSessionsPopoverPr
                           onClick={() => groups.unread.forEach((session) => markSessionRead(session.id))}
                           data-testid="agent-sessions-mark-all-read"
                         >
-                          Mark all as read
+                          {t('sessions:mark_all_read')}
                         </button>
                       )}
                     </div>

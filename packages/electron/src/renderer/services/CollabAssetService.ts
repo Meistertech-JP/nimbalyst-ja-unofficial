@@ -14,6 +14,7 @@
  */
 import type { UploadedEditorAsset } from '@nimbalyst/runtime';
 import type { CollabDocumentConfig } from '../utils/collabDocumentOpener';
+import { rendererI18n } from '../i18n';
 
 export class CollabAssetService {
   constructor(private readonly config: CollabDocumentConfig) {}
@@ -31,7 +32,9 @@ export class CollabAssetService {
     });
 
     if (!result.success || !result.uri) {
-      throw new Error(result.error || 'Attachment upload failed');
+      throw new Error(result.error || rendererI18n.t('errors:attachment_upload_failed', {
+        defaultValue: 'Attachment upload failed',
+      }));
     }
 
     return {

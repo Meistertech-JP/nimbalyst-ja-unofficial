@@ -12,6 +12,7 @@
 
 import type { JSX } from 'react';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Diff, Hunk, parseDiff, tokenize, type HunkData } from 'react-diff-view';
 import refractor from 'refractor';
 import type { PullRequestFileRow } from '../../services/RendererPullRequestService';
@@ -171,6 +172,7 @@ export function InlineFileDiff({
   unifiedDiff,
   viewType = 'unified',
 }: InlineFileDiffProps): JSX.Element {
+  const { t } = useTranslation(['common']);
   const file = useMemo<InlineDiffFile>(
     () => ({
       path: filePath,
@@ -195,10 +197,10 @@ export function InlineFileDiff({
       return {
         hunks: null,
         diffType: 'modify' as const,
-        error: err instanceof Error ? err.message : 'Failed to parse diff',
+        error: err instanceof Error ? err.message : t('common:diff.failed_parse'),
       };
     }
-  }, [file]);
+  }, [file, t]);
 
   const tokens = useMemo(() => {
     if (!parsed.hunks) return undefined;
@@ -214,14 +216,16 @@ export function InlineFileDiff({
 
   if (parsed.error) {
     return (
-      <div className="px-4 py-6 text-sm text-nim-error">Unable to render diff: {parsed.error}</div>
+      <div className="px-4 py-6 text-sm text-nim-error">
+        {t('common:diff.unable_render', { error: parsed.error })}
+      </div>
     );
   }
 
   if (!parsed.hunks || parsed.hunks.length === 0) {
     return (
       <div className="px-4 py-6 text-sm text-nim-faint">
-        No textual changes to display for this file.
+        {t('common:diff.no_textual_changes')}
       </div>
     );
   }

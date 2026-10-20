@@ -7,6 +7,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Translation } from 'react-i18next';
 import { logger } from '../../utils/logger';
 
 interface Props {
@@ -56,6 +57,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.hasError) {
       return (
+        <Translation ns={['errors', 'menu']}>{(t) => (
         <div
           className="tab-editor-error-fallback"
           style={{
@@ -78,7 +80,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
               color: 'var(--nim-text)',
               fontSize: '18px',
             }}>
-              Unable to Load Editor
+              {t('errors:tab_editor.title')}
             </h3>
 
             <p style={{
@@ -86,7 +88,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
               color: 'var(--nim-text-muted)',
               fontSize: '14px',
             }}>
-              An error occurred while loading "{this.props.fileName}".
+              {t('errors:tab_editor.loading_error', { fileName: this.props.fileName })}
             </p>
 
             <p style={{
@@ -94,7 +96,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
               color: 'var(--nim-text-faint)',
               fontSize: '13px',
             }}>
-              Other tabs should continue to work normally.
+              {t('errors:tab_editor.other_tabs')}
             </p>
 
             {this.state.error && (
@@ -133,7 +135,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
                   fontSize: '14px',
                 }}
               >
-                Try Again
+                {t('errors:retry')}
               </button>
 
               {this.props.onClose && (
@@ -149,12 +151,13 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
                     fontSize: '14px',
                   }}
                 >
-                  Close Tab
+                  {t('menu:close_tab')}
                 </button>
               )}
             </div>
           </div>
         </div>
+        )}</Translation>
       );
     }
 

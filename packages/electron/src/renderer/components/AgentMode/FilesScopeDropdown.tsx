@@ -9,6 +9,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { AgentFileScopeMode } from '../../store/atoms/projectState';
 import { useFloatingMenu, FloatingPortal } from '../../hooks/useFloatingMenu';
@@ -38,48 +39,6 @@ interface FilesScopeDropdownProps {
   worktreeName?: string;
 }
 
-/** Label mapping for scope modes */
-const SCOPE_MODE_LABELS: Record<AgentFileScopeMode, { title: string; description: string }> = {
-  'current-changes': {
-    title: 'Uncommitted Session Edits',
-    description: 'Files edited by AI with uncommitted changes'
-  },
-  'session-files': {
-    title: 'All Session Edits',
-    description: 'All files touched by AI'
-  },
-  'all-changes': {
-    title: 'All Uncommitted Files',
-    description: 'All uncommitted files in repository'
-  }
-};
-
-/** Get context subtitle based on current state */
-function getScopeContext(
-  mode: AgentFileScopeMode,
-  isWorktree: boolean,
-  sessionCount: number,
-  filterToCurrentSession: boolean,
-  worktreeName?: string
-): string {
-  if (mode === 'all-changes') {
-    if (isWorktree && worktreeName) {
-      return `in worktree ${worktreeName}`;
-    }
-    return isWorktree ? 'in this Worktree' : 'in this Workspace';
-  }
-
-  if (filterToCurrentSession) {
-    return 'in current Session';
-  }
-
-  if (sessionCount > 1) {
-    return `in this Workstream (${sessionCount} sessions)`;
-  }
-
-  return 'in this Session';
-}
-
 export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
   fileScopeMode,
   onFileScopeModeChange,
@@ -93,10 +52,33 @@ export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
   workstreamSessionCount,
   worktreeName,
 }) => {
+  const { t } = useTranslation(['files', 'aichat']);
   const menu = useFloatingMenu({ placement: 'bottom-start' });
 
-  const currentLabel = SCOPE_MODE_LABELS[fileScopeMode];
-  const contextSubtitle = getScopeContext(fileScopeMode, isWorktree, workstreamSessionCount, filterToCurrentSession, worktreeName);
+  const scopeLabels: Record<AgentFileScopeMode, { title: string; description: string }> = {
+    'current-changes': {
+      title: t('files:scope.current_title'),
+      description: t('files:scope.current_description'),
+    },
+    'session-files': {
+      title: t('files:scope.session_title'),
+      description: t('files:scope.session_description'),
+    },
+    'all-changes': {
+      title: t('files:scope.all_title'),
+      description: t('files:scope.all_description'),
+    },
+  };
+  const currentLabel = scopeLabels[fileScopeMode];
+  const contextSubtitle = fileScopeMode === 'all-changes'
+    ? isWorktree && worktreeName
+      ? t('files:scope.in_worktree', { name: worktreeName })
+      : t(isWorktree ? 'files:scope.in_this_worktree' : 'files:scope.in_this_workspace')
+    : filterToCurrentSession
+      ? t('files:scope.in_current_session')
+      : workstreamSessionCount > 1
+        ? t('files:scope.in_workstream', { count: workstreamSessionCount })
+        : t('files:scope.in_session');
 
   return (
     <div className="files-scope-dropdown min-w-60">
@@ -140,13 +122,13 @@ export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
             {/* Show Files section */}
             <div className="files-scope-dropdown__section px-3 py-2 border-b border-[var(--nim-border)]">
               <div className="files-scope-dropdown__section-header text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wide mb-1.5">
-                Show Files
+                {t('files:filter.show_files')}
               </div>
-              {(Object.entries(SCOPE_MODE_LABELS) as [AgentFileScopeMode, { title: string; description: string }][]).map(
+              {(Object.entries(scopeLabels) as [AgentFileScopeMode, { title: string; description: string }][]).map(
                 ([mode, { title, description }]) => {
                   // Customize description for all-changes mode when in a worktree
                   const displayDescription = mode === 'all-changes' && isWorktree && worktreeName
-                    ? `All uncommitted files in worktree ${worktreeName}`
+                    ? t('files:scope.all_worktree_description', { name: worktreeName })
                     : description;
 
                   return (
@@ -181,7 +163,7 @@ export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
             {hasMultipleSessions && fileScopeMode !== 'all-changes' && (
               <div className="files-scope-dropdown__section px-3 py-2 border-b border-[var(--nim-border)]">
                 <div className="files-scope-dropdown__section-header text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wide mb-1.5">
-                  Scope
+                  {t('files:scope.scope')}
                 </div>
                 <label className="files-scope-dropdown__option flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-[var(--nim-bg-hover)]">
                   <input
@@ -192,7 +174,7 @@ export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
                     className="cursor-pointer"
                   />
                   <span className="text-xs text-[var(--nim-text)]">
-                    All sessions ({workstreamSessionCount})
+                    {t('files:scope.all_sessions', { count: workstreamSessionCount })}
                   </span>
                 </label>
                 <label className="files-scope-dropdown__option flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-[var(--nim-bg-hover)]">
@@ -204,7 +186,7 @@ export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
                     className="cursor-pointer"
                   />
                   <span className="text-xs text-[var(--nim-text)]">
-                    Current session only
+                    {t('files:scope.current_session_only')}
                   </span>
                 </label>
               </div>
@@ -213,7 +195,7 @@ export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
             {/* Display section */}
             <div className="files-scope-dropdown__section px-3 py-2">
               <div className="files-scope-dropdown__section-header text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wide mb-1.5">
-                Display
+                {t('files:scope.display')}
               </div>
               <label className="files-scope-dropdown__option flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-[var(--nim-bg-hover)]">
                 <input
@@ -222,7 +204,7 @@ export const FilesScopeDropdown: React.FC<FilesScopeDropdownProps> = ({
                   onChange={(e) => onGroupByDirectoryChange(e.target.checked)}
                   className="cursor-pointer"
                 />
-                <span className="text-xs text-[var(--nim-text)]">Group by directory</span>
+                <span className="text-xs text-[var(--nim-text)]">{t('aichat:file_gutter.group_by_directory')}</span>
               </label>
             </div>
           </div>

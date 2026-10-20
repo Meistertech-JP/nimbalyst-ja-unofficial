@@ -14,6 +14,7 @@
 import type { JSX, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RevoGrid, type RevoGridCustomEvent } from '@revolist/react-datagrid';
+import { expandSvgIconVNode, type GroupingOptions } from '@revolist/revogrid';
 import type {
   AfterEditEvent,
   BeforeSaveDataDetails,
@@ -22,6 +23,7 @@ import type {
   SortingConfig,
 } from '@revolist/revogrid';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import type { TrackerItemType } from '@nimbalyst/runtime/core/DocumentService';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import {
@@ -34,6 +36,7 @@ import {
   withEffectiveUpdated,
   filterTrackerRecords,
   getTrackerGroupLabel,
+  groupTrackerRecords,
   getTypeColor,
   sortTrackerRecords,
   globalRegistry,
@@ -67,6 +70,8 @@ import {
 } from './TrackerFilterValueMenu';
 import type { TrackerFilterField } from './TrackerViewHeaderControls';
 import './grid/trackerGrid.css';
+import { localizeTrackerColumns, trackerGroupLabel } from './trackerPresentation';
+import { createTrackerContextMenuPresentation } from './trackerRuntimePresentation';
 
 const ROW_GROUP_LABEL = '__trackerGroupLabel';
 
@@ -139,6 +144,8 @@ export function TrackerGridView({
   favoriteItemIds,
   onToggleFavorite,
 }: TrackerGridViewProps): JSX.Element {
+  const { t } = useTranslation(['tracker']);
+  const contextMenuPresentation = useMemo(() => createTrackerContextMenuPresentation(t), [t]);
   const [filterTarget, setFilterTarget] = useState<{ columnId: string; rect: DOMRect } | null>(null);
   const activeTypeFilter = filterType;
   const schemaType = activeTypeFilter === 'all' ? '' : activeTypeFilter;
@@ -166,8 +173,8 @@ export function TrackerGridView({
   );
 
   const allColumnDefs = useMemo(
-    () => resolveColumnsForType(schemaType),
-    [schemaType],
+    () => localizeTrackerColumns(resolveColumnsForType(schemaType), t),
+    [schemaType, t],
   );
 
   const getGridFilterValue = useCallback((item: TrackerRecord, field: string): unknown => {
@@ -285,10 +292,11 @@ export function TrackerGridView({
   );
   const gridColumns = useMemo(
     () => buildGridColumns(visibleColumnDefs, {
+      t,
       trackerType: schemaType,
       columnWidths: effectiveColumnConfig.columnWidths,
       isRowEditable,
-      editorContext: { relationshipCandidates },
+      editorContext: { relationshipCandidates, t },
       filteredColumnIds,
       onOpenFilter: onColumnFiltersChange
         ? (columnId, rect) => setFilterTarget({ columnId, rect })
@@ -299,7 +307,7 @@ export function TrackerGridView({
     [
       visibleColumnDefs, schemaType, effectiveColumnConfig.columnWidths,
       isRowEditable, relationshipCandidates, filteredColumnIds, onColumnFiltersChange,
-      sortingEnabled, favorites,
+      sortingEnabled, favorites, t,
     ],
   );
   const gridSorting = useMemo<SortingConfig | undefined>(() => {
@@ -325,12 +333,26 @@ export function TrackerGridView({
     })),
     [effectiveColumnConfig.groupBy, sortedItems, visibleColumnDefs],
   );
-  const gridGrouping = useMemo(
-    () => effectiveColumnConfig.groupBy
-      ? { props: [ROW_GROUP_LABEL], expandedAll: true }
-      : undefined,
-    [effectiveColumnConfig.groupBy],
-  );
+  const gridGrouping = useMemo<GroupingOptions | undefined>(() => {
+    const groupBy = effectiveColumnConfig.groupBy;
+    if (!groupBy) return undefined;
+    const labels = new Map(groupTrackerRecords(sortedItems, groupBy).map(group => [
+      group.key, trackerGroupLabel(group, groupBy, t) ?? group.key,
+    ]));
+    if (![...labels].some(([key, label]) => key !== label)) {
+      return { props: [ROW_GROUP_LABEL], expandedAll: true };
+    }
+    return {
+      props: [ROW_GROUP_LABEL],
+      expandedAll: true,
+      // The source still carries the original group key, including None and
+      // Unassigned. Only the group header template receives a localized label.
+      groupLabelTemplate: (createElement, props) => props.hasExpand ? [
+        createElement('button', { class: 'group-expand' }, expandSvgIconVNode(props.expanded)),
+        createElement('span', { onClick: (event: MouseEvent) => event.stopPropagation() }, labels.get(props.name) ?? props.name),
+      ] : null,
+    };
+  }, [effectiveColumnConfig.groupBy, sortedItems, t]);
 
   const resolveGridRowItem = useCallback(async (rowIndex: number): Promise<TrackerRecord | null> => {
     const grid = gridRef.current;
@@ -662,7 +684,7 @@ export function TrackerGridView({
   if (loading) {
     return (
       <div className="tracker-grid-view h-full flex items-center justify-center text-sm text-nim-muted" data-testid="tracker-grid-loading">
-        Loading tracker items...
+        {t('tracker:grid.loading')}
       </div>
     );
   }
@@ -690,11 +712,15 @@ export function TrackerGridView({
       >
         {sortedItems.length === 0 && !columnFiltersActive ? (
           <div className="tracker-grid-empty flex h-full flex-col items-center justify-center gap-2 text-sm text-nim-muted" data-testid="tracker-grid-empty">
-            <span>{hasAnyFilters ? 'No items match these filters.' : 'No tracker items yet.'}</span>
+            <span>
+              {hasAnyFilters
+                ? t('tracker:grid.no_items_match_filters')
+                : t('tracker:grid.no_items_yet')}
+            </span>
             <div className="flex items-center gap-2">
               {hasAnyFilters && onClearFilters && (
                 <button className="text-xs underline hover:text-nim" onClick={onClearFilters}>
-                  Clear filters
+                  {t('tracker:grid.clear_filters')}
                 </button>
               )}
               {activeTypeFilter !== 'all'
@@ -706,7 +732,7 @@ export function TrackerGridView({
                   data-testid="tracker-grid-new-item"
                   onClick={() => onNewItem(activeTypeFilter as TrackerItemType)}
                 >
-                  New {activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1)}
+              {t('tracker:grid.new_item', { type: activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1) })}
                 </button>
               )}
             </div>
@@ -732,12 +758,12 @@ export function TrackerGridView({
           className="absolute inset-x-0 top-10 flex flex-col items-center gap-2 pt-6 text-sm text-nim-muted"
           data-testid="tracker-grid-filtered-empty"
         >
-          <span>No items match these column filters.</span>
+          <span>{t('tracker:grid.no_items_match_column_filters')}</span>
           <button
             className="text-xs underline hover:text-nim"
             onClick={() => onColumnFiltersChange?.({ combinator: 'and', clauses: [] })}
           >
-            Clear column filters
+            {t('tracker:grid.clear_column_filters')}
           </button>
         </div>
         )}
@@ -790,6 +816,7 @@ export function TrackerGridView({
       )}
 
       <TrackerRowContextMenu
+        presentation={contextMenuPresentation}
         anchor={contextAnchor}
         refs={contextRefs}
         floatingStyles={contextFloatingStyles}

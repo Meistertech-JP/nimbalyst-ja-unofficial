@@ -12,6 +12,13 @@ import { activeTipIdAtom, emptyTranscriptVisibleCountAtom } from '../atoms';
 import { TipProvider } from '../TipProvider';
 import { InlineTipDisplay } from '../InlineTipDisplay';
 import { FEATURE_USAGE_KEYS } from '../../../shared/featureUsage';
+import i18next from 'i18next';
+import { tipTriggerCommandAtom, tipResetCommandAtom } from '../../store/atoms/walkthroughCommands';
+import { errorNotificationService } from '../../services/ErrorNotificationService';
+
+vi.mock('../../services/ErrorNotificationService', () => ({
+  errorNotificationService: { showInfo: vi.fn() },
+}));
 
 vi.mock('posthog-js/react', () => ({
   usePostHog: () => ({
@@ -48,6 +55,9 @@ describe('TipProvider', () => {
     store.set(hasActiveDialogsAtom, false);
     store.set(activeTipIdAtom, null);
     store.set(emptyTranscriptVisibleCountAtom, 0);
+    store.set(tipTriggerCommandAtom, null);
+    store.set(tipResetCommandAtom, 0);
+    vi.mocked(errorNotificationService.showInfo).mockClear();
     store.set(syncConfigAtom, {
       ...store.get(syncConfigAtom),
       enabled: true,
@@ -59,10 +69,35 @@ describe('TipProvider', () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
     vi.useRealTimers();
     delete (window as any).electronAPI;
+    await i18next.changeLanguage('en');
+  });
+
+  it('translates unknown-tip commands at event time without repeating them on language change', async () => {
+    render(<JotaiProvider store={store as any}><TipProvider currentMode="files"><div /></TipProvider></JotaiProvider>);
+    await act(async () => {
+      await i18next.changeLanguage('ja');
+      store.set(tipTriggerCommandAtom, { tipId: 'custom-tip-id', timestamp: 1 });
+    });
+    expect(errorNotificationService.showInfo).toHaveBeenCalledWith('ヒントが見つかりません', 'ヒント「custom-tip-id」が見つかりません。', { duration: 3000 });
+    await act(() => i18next.changeLanguage('en'));
+    expect(errorNotificationService.showInfo).toHaveBeenCalledTimes(1);
+    expect(store.get(activeTipIdAtom)).toBeNull();
+  });
+
+  it('resets tips once and keeps the persistence channel unchanged in Japanese', async () => {
+    render(<JotaiProvider store={store as any}><TipProvider currentMode="files"><div /></TipProvider></JotaiProvider>);
+    await act(async () => {
+      await i18next.changeLanguage('ja');
+      store.set(tipResetCommandAtom, 1);
+    });
+    expect(errorNotificationService.showInfo).toHaveBeenCalledWith('ヒントをリセットしました', 'すべてのヒントが再び表示されます。', { duration: 3000 });
+    await act(() => i18next.changeLanguage('en'));
+    expect((window as any).electronAPI.invoke.mock.calls.filter(([channel]: [string]) => channel === 'tips:reset')).toHaveLength(1);
+    expect(errorNotificationService.showInfo).toHaveBeenCalledTimes(1);
   });
 
   it('shows the mobile keep-awake tip inline when an empty transcript is visible', async () => {

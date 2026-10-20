@@ -8,6 +8,8 @@
  */
 
 import { atom } from 'jotai';
+import type { InstallProgressEvent } from '../../../shared/types/extensionInstallProgress';
+export type { InstallProgressStage } from '../../../shared/types/extensionInstallProgress';
 
 export const newMockupRequestAtom = atom(0);
 export const newBrowserTabRequestAtom = atom(0);
@@ -46,17 +48,8 @@ export const extensionMarketplaceInstallRequestAtom = atom<ExtensionMarketplaceI
  * panel can update its status toast as the install advances through stages
  * (checking release, downloading, cloning, installing).
  */
-export type InstallProgressStage =
-  | 'checking-release'
-  | 'downloading-release'
-  | 'cloning'
-  | 'installing'
-  | 'done';
-
-export interface MarketplaceInstallProgress {
+export interface MarketplaceInstallProgress extends InstallProgressEvent {
   version: number;
-  stage: InstallProgressStage;
-  message: string;
 }
 export const marketplaceInstallProgressAtom = atom<MarketplaceInstallProgress | null>(null);
 

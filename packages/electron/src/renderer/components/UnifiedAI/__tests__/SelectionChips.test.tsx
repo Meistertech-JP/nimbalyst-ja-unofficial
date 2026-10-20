@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import i18next from 'i18next';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SelectionChips } from '../SelectionChips';
@@ -13,7 +14,7 @@ const FILE = '/test/diagram.excalidraw';
 const OTHER_FILE = '/test/other.excalidraw';
 const COLLAB_FILE = 'collab://org:o:doc:shared.md';
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   clearTextSelection();
   clearEditorContext(FILE);
@@ -23,9 +24,27 @@ afterEach(() => {
   delete (window as any).__mockupSelectedElement;
   delete (window as any).__mockupDrawing;
   delete (window as any).__mockupAnnotationTimestamp;
+  await i18next.changeLanguage('en');
 });
 
 describe('SelectionChips', () => {
+  it('localizes selection controls without rewriting extension-authored labels', async () => {
+    await i18next.changeLanguage('ja');
+    act(() => {
+      setEditorContextItems(FILE, [{ id: 'a', label: 'Rectangle A', description: 'Authored description' }]);
+      setTextSelection('Keep this text', FILE);
+    });
+    render(<SelectionChips currentFilePath={FILE} />);
+    expect(screen.getByText('選択範囲')).toBeTruthy();
+    expect(screen.getByText('Rectangle A')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Rectangle Aをコンテキストから除外'));
+    expect(getActiveEditorContextItems(FILE)).toBeUndefined();
+    fireEvent.click(screen.getByText('1件を非表示中 — 再表示'));
+    expect(getActiveEditorContextItems(FILE)?.[0]).toMatchObject({ id: 'a', label: 'Rectangle A' });
+    fireEvent.click(screen.getByLabelText('選択範囲をコンテキストから除外'));
+    expect(screen.queryByText('選択範囲')).toBeNull();
+  });
+
   it('reacts to text-selection events and removes the selection immediately', () => {
     render(<SelectionChips currentFilePath={FILE} />);
     expect(screen.queryByText('Selection')).toBeNull();

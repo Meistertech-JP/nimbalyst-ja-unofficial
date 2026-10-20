@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
 import type { ConfigTheme } from '@nimbalyst/runtime';
 import { DocumentPathProvider, MarkdownEditor, MonacoEditor, MonacoCodeEditor } from '@nimbalyst/runtime';
@@ -135,6 +136,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
                                                       onOpenSessionInChat,
                                                       workspaceId,
                                                     }) => {
+  const { t } = useTranslation(['common']);
   // Use theme hook directly so we get live updates when theme changes
   // (TabContent creates each TabEditor in a separate React root, so prop updates don't work)
   const { theme, themeId } = useTheme();
@@ -867,11 +869,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
 
           // Manual save path: prompt the user as before.
           logger.ui.info('[TabEditor] Save conflict detected, prompting user');
-          const shouldOverwrite = window.confirm(
-              'The file has been modified externally since you opened it.\n\n' +
-              'Do you want to overwrite the external changes with your edits?\n\n' +
-              'Click OK to overwrite, or Cancel to reload the file from disk.'
-          );
+          const shouldOverwrite = window.confirm(t('common:file_save_conflict_confirm'));
 
           if (shouldOverwrite) {
             // Retry save without conflict checking (force overwrite)
@@ -2623,7 +2621,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             data-testid="autosave-conflict-banner"
           >
             <span className="flex-1">
-              File changed on disk. Reload to see new content (your unsaved edits are preserved).
+              {t('common:autosave_conflict_banner')}
             </span>
             <button
               type="button"
@@ -2659,7 +2657,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
               className="px-2 py-1 rounded border border-nim text-nim hover:bg-nim-active"
               data-testid="autosave-conflict-banner-reload"
             >
-              Reload
+        {t('common:reload')}
             </button>
             <button
               type="button"
@@ -2667,7 +2665,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
               className="px-2 py-1 rounded border border-nim text-nim hover:bg-nim-active"
               data-testid="autosave-conflict-banner-dismiss"
             >
-              Dismiss
+        {t('common:dismiss')}
             </button>
           </div>
         )}
@@ -2678,13 +2676,13 @@ export const TabEditor: React.FC<TabEditorProps> = ({
                 <>
                   <div className="custom-editor-source-toolbar py-2 px-4 border-b border-nim flex justify-end items-center gap-2 bg-nim-secondary">
                     <span className="mr-auto text-[13px] text-nim-muted">
-                      Source Mode
+                      {t('common:source_mode')}
                     </span>
                     <button
                       onClick={() => editorHost.toggleSourceMode?.()}
                       className="py-1 px-3 text-[13px] cursor-pointer bg-nim border border-nim rounded text-nim"
                     >
-                      Editor
+                      {t('common:source_editor')}
                     </button>
                   </div>
                   <MonacoEditor
@@ -2803,7 +2801,7 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             const fileExt = filePath.substring(filePath.lastIndexOf('.'));
             return (
               <div className="p-5 text-nim">
-                <p>No custom editor found for file type: {fileExt}</p>
+          <p>{t('common:no_custom_editor', { extension: fileExt })}</p>
               </div>
             );
           })() : isImage ? (
@@ -2874,13 +2872,13 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             <>
               <div className="monaco-markdown-toolbar py-2 px-4 border-b border-nim flex justify-end items-center gap-2 bg-nim-secondary">
                 <span className="mr-auto text-[13px] text-nim-muted">
-                  Source Mode
+            {t('common:source_mode')}
                 </span>
                 <button
                   onClick={() => editorHost.toggleSourceMode?.()}
                   className="py-1 px-3 text-[13px] cursor-pointer bg-nim border border-nim rounded text-nim"
                 >
-                  Rich Text
+                  {t('common:rich_text')}
                 </button>
               </div>
               <MonacoEditor
@@ -2982,25 +2980,21 @@ export const TabEditor: React.FC<TabEditorProps> = ({
             <div
               className="file-conflict-dialog bg-nim border border-nim rounded-lg p-6 max-w-[500px] shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
             >
-              <h3 className="mt-0 text-nim">File Changed on Disk</h3>
-              <p className="text-nim-muted">
-                The file "{fileName}" has been changed on disk but you have unsaved changes.
-              </p>
-              <p className="text-nim-muted">
-                Do you want to reload the file from disk and lose your changes?
-              </p>
+              <h3 className="mt-0 text-nim">{t('common:file_conflict_title')}</h3>
+              <p className="text-nim-muted">{t('common:file_conflict_changed', { file: fileName })}</p>
+              <p className="text-nim-muted">{t('common:file_conflict_reload_prompt')}</p>
               <div className="flex gap-3 mt-6 justify-end">
                 <button
                   onClick={handleKeepLocalChanges}
                   className="py-2 px-4 bg-nim-secondary border border-nim rounded text-nim cursor-pointer"
                 >
-                  Keep My Changes
+                  {t('common:file_conflict_keep')}
                 </button>
                 <button
                   onClick={handleReloadFromDisk}
                   className="py-2 px-4 bg-nim-primary border-none rounded text-nim-on-primary cursor-pointer"
                 >
-                  Reload from Disk
+                  {t('common:file_conflict_reload')}
                 </button>
               </div>
             </div>

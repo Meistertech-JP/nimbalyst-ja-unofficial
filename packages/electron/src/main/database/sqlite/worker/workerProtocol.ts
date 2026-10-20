@@ -263,6 +263,9 @@ export interface DashboardTableStatsResult {
   totalSize: string;
   totalSizeBytes: number;
   walStats: {
+    backend?: 'sqlite';
+    autoCheckpointPages?: number;
+    pageSizeBytes?: number;
     fileCount: number;
     totalBytes: number;
     totalSize: string;

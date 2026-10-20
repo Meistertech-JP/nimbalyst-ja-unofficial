@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAtom } from 'jotai';
 import { SettingsToggle } from '../SettingsToggle';
 import {
@@ -8,18 +10,18 @@ import {
 } from '../../../store/atoms/appSettings';
 import { getSoundPlayer } from '../../../services/SoundPlayer';
 
-function customSoundErrorMessage(error: string, maxBytes?: number): string {
+function customSoundErrorMessage(error: string, maxBytes: number | undefined, t: TFunction): string {
   switch (error) {
     case 'too-large':
-      return `That file is too large (max ${Math.round((maxBytes ?? 0) / 1024 / 1024)} MB).`;
+      return t('settings:notifications.custom_too_large', { size: Math.round((maxBytes ?? 0) / 1024 / 1024) });
     case 'invalid':
-      return 'That file does not look like a supported audio file.';
+      return t('settings:notifications.custom_invalid');
     case 'copy-failed':
-      return 'Could not save that file. Please try another.';
+      return t('settings:notifications.custom_copy_failed');
     case 'unreadable':
-      return 'That file could not be read.';
+      return t('settings:notifications.custom_unreadable');
     default:
-      return 'Could not use that file.';
+      return t('settings:notifications.custom_unusable');
   }
 }
 
@@ -30,6 +32,7 @@ function customSoundErrorMessage(error: string, maxBytes?: number): string {
  * Changes are automatically persisted via the setter atom.
  */
 export function NotificationsPanel() {
+  const { t } = useTranslation(['settings']);
   const [settings] = useAtom(notificationSettingsAtom);
   const [, updateSettings] = useAtom(setNotificationSettingsAtom);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
@@ -62,7 +65,7 @@ export function NotificationsPanel() {
       const result = await window.electronAPI.invoke('completion-sound:choose-custom');
       if (!result) return; // user cancelled the dialog
       if (result.error) {
-        setCustomSoundError(customSoundErrorMessage(result.error, result.maxBytes));
+        setCustomSoundError(customSoundErrorMessage(result.error, result.maxBytes, t));
         return;
       }
       if (result.fileName) {
@@ -70,14 +73,14 @@ export function NotificationsPanel() {
         const decodable = await getSoundPlayer().validateCustomSound();
         if (!decodable) {
           await window.electronAPI.invoke('completion-sound:clear-custom');
-          setCustomSoundError('That audio file could not be decoded. Please choose a different file.');
+          setCustomSoundError(t('settings:notifications.custom_decode_failed'));
           return;
         }
         updateSettings({ completionSoundType: 'custom', completionSoundCustomName: result.fileName });
       }
     } catch (error) {
       console.error('Failed to choose custom sound:', error);
-      setCustomSoundError('Could not use that file.');
+      setCustomSoundError(t('settings:notifications.custom_unusable'));
     }
   };
 
@@ -97,9 +100,9 @@ export function NotificationsPanel() {
 
     const result = await window.electronAPI.invoke('notifications:show-test');
     if (result?.success) {
-      setNotificationHelp('A test notification was sent. If you do not see it, open your OS notification settings and allow Nimbalyst notifications.');
+      setNotificationHelp(t('settings:notifications.test_sent'));
     } else {
-      setNotificationHelp(result?.error || 'Failed to show a test notification.');
+      setNotificationHelp(result?.error || t('settings:notifications.test_failed'));
     }
   };
 
@@ -108,38 +111,38 @@ export function NotificationsPanel() {
 
     const result = await window.electronAPI.invoke('notifications:open-system-settings');
     if (!result?.success) {
-      setNotificationHelp(result?.error || 'Failed to open system notification settings.');
+      setNotificationHelp(result?.error || t('settings:notifications.settings_failed'));
     }
   };
 
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">Notifications</h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('settings:notifications.title')}</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Configure audio and visual notifications for AI interactions.
+          {t('settings:notifications.description')}
         </p>
       </div>
 
       <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Completion Sounds</h4>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('settings:notifications.completion_title')}</h4>
         <p className="text-sm leading-relaxed text-[var(--nim-text-muted)] mb-4">
-          Play a sound when the AI or agent completes a turn and is ready for more input.
+          {t('settings:notifications.completion_description')}
         </p>
 
         <SettingsToggle
           checked={completionSoundEnabled}
           onChange={(checked) => updateSettings({ completionSoundEnabled: checked })}
-          name="Enable Completion Sounds"
-          description="Play an audio notification when AI chat or agent completes a response."
+          name={t('settings:notifications.enable_completion')}
+          description={t('settings:notifications.enable_completion_desc')}
         />
 
         {completionSoundEnabled && (
           <div className="setting-item py-3 mt-4">
             <div className="setting-text flex flex-col gap-0.5">
-              <span className="setting-name text-sm font-medium text-[var(--nim-text)]">Sound Type</span>
+              <span className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('settings:notifications.sound_type')}</span>
               <span className="setting-description text-xs leading-relaxed text-[var(--nim-text-muted)]">
-                Choose the sound to play when a response completes.
+                {t('settings:notifications.sound_type_desc')}
               </span>
             </div>
             <div className="mt-3 flex flex-col gap-2">
@@ -153,7 +156,7 @@ export function NotificationsPanel() {
                     onChange={(e) => updateSettings({ completionSoundType: e.target.value as CompletionSoundType })}
                     className="setting-radio w-4 h-4 cursor-pointer shrink-0 accent-[var(--nim-primary)]"
                   />
-                  <span className="capitalize">{sound}</span>
+                  <span>{t(`settings:notifications.sound_${sound}`)}</span>
                 </label>
               ))}
             </div>
@@ -162,21 +165,21 @@ export function NotificationsPanel() {
               <div className="completion-sound-custom mt-3 flex flex-col gap-2">
                 <span className="text-xs leading-relaxed text-[var(--nim-text-muted)]">
                   {completionSoundCustomName
-                    ? `Selected: ${completionSoundCustomName}`
-                    : 'No custom sound selected yet.'}
+                    ? t('settings:notifications.selected_sound', { name: completionSoundCustomName })
+                    : t('settings:notifications.no_custom_sound')}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={handleChooseCustomSound} className="nim-btn-secondary text-sm">
-                    {completionSoundCustomName ? 'Change File...' : 'Choose File...'}
+                    {completionSoundCustomName ? t('settings:notifications.change_file') : t('settings:notifications.choose_file')}
                   </button>
                   {completionSoundCustomName && (
                     <button onClick={handleClearCustomSound} className="nim-btn-secondary text-sm">
-                      Remove
+                      {t('settings:notifications.remove')}
                     </button>
                   )}
                 </div>
                 <span className="text-xs leading-relaxed text-[var(--nim-text-muted)]">
-                  Supports MP3, WAV, OGG, M4A, AAC, and FLAC.
+                  {t('settings:notifications.supported_formats')}
                 </span>
                 {customSoundError && (
                   <span className="completion-sound-custom-error text-xs leading-relaxed text-[var(--nim-error)]">
@@ -188,13 +191,13 @@ export function NotificationsPanel() {
 
             <div className="setting-text flex flex-col gap-0.5 mt-4">
               <div className="flex items-center justify-between">
-                <span className="setting-name text-sm font-medium text-[var(--nim-text)]">Volume</span>
+                <span className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('settings:notifications.volume')}</span>
                 <span className="setting-value text-xs font-medium tabular-nums text-[var(--nim-text-muted)]">
                   {completionSoundVolume}%
                 </span>
               </div>
               <span className="setting-description text-xs leading-relaxed text-[var(--nim-text-muted)]">
-                Playback volume as a percentage of your system volume.
+                {t('settings:notifications.volume_desc')}
               </span>
             </div>
             <input
@@ -204,7 +207,7 @@ export function NotificationsPanel() {
               step={1}
               value={completionSoundVolume}
               onChange={(e) => updateSettings({ completionSoundVolume: Number(e.target.value) })}
-              aria-label="Completion sound volume"
+              aria-label={t('settings:notifications.volume_aria')}
               className="w-full mt-2 cursor-pointer accent-[var(--nim-primary)]"
             />
 
@@ -213,16 +216,16 @@ export function NotificationsPanel() {
               disabled={isTestPlaying || (completionSoundType === 'custom' && !completionSoundCustomName)}
               className="nim-btn-secondary text-sm mt-3"
             >
-              {isTestPlaying ? 'Playing...' : 'Test Sound'}
+              {isTestPlaying ? t('settings:notifications.playing') : t('settings:notifications.test_sound')}
             </button>
           </div>
         )}
       </div>
 
       <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">OS Notifications</h4>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('settings:notifications.os_title')}</h4>
         <p className="text-sm leading-relaxed text-[var(--nim-text-muted)] mb-4">
-          Show system notifications when AI responses complete while the app is in the background.
+          {t('settings:notifications.os_description')}
         </p>
 
         <SettingsToggle
@@ -235,8 +238,8 @@ export function NotificationsPanel() {
               setNotificationHelp(null);
             }
           }}
-          name="Enable OS Notifications"
-          description="Native system notifications when AI completes a response. Respects Do Not Disturb."
+          name={t('settings:notifications.enable_os')}
+          description={t('settings:notifications.enable_os_desc')}
         />
 
         {osNotificationsEnabled && (
@@ -244,22 +247,21 @@ export function NotificationsPanel() {
             <SettingsToggle
               checked={notifyWhenFocused}
               onChange={(checked) => updateSettings({ notifyWhenFocused: checked })}
-              name="Notify Even When Focused"
-              description="Show notifications even when the app is focused, unless viewing that session."
+              name={t('settings:notifications.focused')}
+              description={t('settings:notifications.focused_desc')}
             />
 
             <div className="setting-item py-3">
               <div className="setting-text flex flex-col gap-2">
                 <span className="setting-description text-xs leading-relaxed text-[var(--nim-text-muted)]">
-                  Electron does not expose a reliable cross-platform notification permission state here.
-                  Use a test notification to trigger the OS prompt or verify delivery.
+                  {t('settings:notifications.permission_help')}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={handleTestNotification} className="nim-btn-secondary text-sm">
-                    Send Test Notification
+                    {t('settings:notifications.send_test')}
                   </button>
                   <button onClick={handleOpenNotificationSettings} className="nim-btn-secondary text-sm">
-                    Open System Notification Settings
+                    {t('settings:notifications.open_settings')}
                   </button>
                 </div>
                 {notificationHelp && (
@@ -272,16 +274,16 @@ export function NotificationsPanel() {
       </div>
 
       <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Session Blocked Notifications</h4>
+        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('settings:notifications.blocked_title')}</h4>
         <p className="text-sm leading-relaxed text-[var(--nim-text-muted)] mb-4">
-          Show system notifications when an AI session needs your input.
+          {t('settings:notifications.blocked_description')}
         </p>
 
         <SettingsToggle
           checked={settings.sessionBlockedNotificationsEnabled}
           onChange={(checked) => updateSettings({ sessionBlockedNotificationsEnabled: checked })}
-          name="Notify When Session Needs Attention"
-          description="Notify when a session is waiting for input (permissions, questions, plan reviews, commits)."
+          name={t('settings:notifications.blocked_enable')}
+          description={t('settings:notifications.blocked_enable_desc')}
         />
       </div>
     </div>

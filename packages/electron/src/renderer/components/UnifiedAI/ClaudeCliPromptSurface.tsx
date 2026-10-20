@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { rendererI18n } from '../../i18n';
 import { useAtomValue } from 'jotai';
 import { sessionMessagesAtom, isInteractivePromptTool } from '../../store/atoms/sessions';
 import {
@@ -33,11 +34,11 @@ const readFile = async (
 ): Promise<{ success: boolean; content?: string; error?: string }> => {
   try {
     const result = await window.electronAPI.readFileContent(filePath);
-    if (!result) return { success: false, error: `File not found: ${filePath}` };
-    if (!result.success) return { success: false, error: result.error || 'Failed to read file' };
+    if (!result) return { success: false, error: rendererI18n.t('aichat:file_not_found', { path: filePath }) };
+    if (!result.success) return { success: false, error: result.error || rendererI18n.t('aichat:read_file_failed') };
     return { success: true, content: result.content };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to read file' };
+    return { success: false, error: err instanceof Error ? err.message : rendererI18n.t('aichat:read_file_failed') };
   }
 };
 

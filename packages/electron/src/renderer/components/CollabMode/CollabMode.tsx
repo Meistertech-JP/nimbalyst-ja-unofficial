@@ -9,6 +9,7 @@
  */
 
 import React, { useCallback, useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { store } from '@nimbalyst/runtime/store';
 import { CollabSidebar } from './CollabSidebar';
@@ -170,6 +171,7 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeProps>(functi
   onFileOpen,
   onPanelStateChange,
 }, ref) {
+  const { t } = useTranslation(['common']);
   const tabsActions = useTabsActions();
   const { tabs, activeTabId } = useTabs();
   useTabNavigationShortcuts(isActive);
@@ -469,12 +471,12 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeProps>(functi
         error,
       });
       errorNotificationService.showError(
-        'Failed to open shared document',
+        t('common:collab.open_shared_failed'),
         message,
         { details: doc.title || doc.documentId }
       );
     }
-  }, [workspacePath, tabs, tabsActions, sharedFolders, unreadDocumentIds]);
+  }, [workspacePath, tabs, tabsActions, sharedFolders, unreadDocumentIds, t]);
 
   const activeCollabDocumentId = useMemo(() => {
     if (!activeTabId) return null;
@@ -737,7 +739,7 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeProps>(functi
             className="collab-mode-sidebar-resize-handle w-1 cursor-col-resize shrink-0 relative z-10 bg-nim-secondary"
             data-testid="collab-mode-sidebar-resize-handle"
             role="separator"
-            aria-label="Resize shared documents sidebar"
+            aria-label={t('common:collab.resize_sidebar')}
             aria-orientation="vertical"
           >
             <div className="w-0.5 h-full mx-auto bg-nim-border transition-colors duration-200 hover:bg-nim-accent" />

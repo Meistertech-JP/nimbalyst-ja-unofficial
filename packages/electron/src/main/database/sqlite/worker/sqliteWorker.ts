@@ -642,6 +642,9 @@ async function buildDashboardTableStats() {
     /* ignore */
   }
   const walStats = {
+    backend: 'sqlite',
+    autoCheckpointPages: autocheckpointPages,
+    pageSizeBytes: pageSize,
     fileCount: walSize > 0 ? 1 : 0,
     totalBytes: walSize,
     totalSize: humanBytes(walSize),

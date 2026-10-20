@@ -8,6 +8,8 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { NimbalystEditor, MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
 import type { EditorConfig } from '@nimbalyst/runtime/editor';
@@ -125,11 +127,25 @@ function isEditable(record: TrackerRecord): boolean {
 }
 
 /** Source label for the metadata footer */
-function getSourceLabel(record: TrackerRecord): string | null {
-  if (!record.source || record.source === 'native') return 'Database (no file backing)';
-  if (record.source === 'inline') return `Inline marker${record.sourceRef ? ` in ${record.sourceRef}` : ''}`;
-  if (record.source === 'frontmatter') return `Frontmatter${record.sourceRef ? ` in ${record.sourceRef}` : ''}`;
-  if (record.source === 'import') return `Imported${record.sourceRef ? ` from ${record.sourceRef}` : ''}`;
+function getSourceLabel(record: TrackerRecord, t: TFunction): string | null {
+  if (!record.source || record.source === 'native') {
+    return t('tracker:detail_extra.source_database');
+  }
+  if (record.source === 'inline') {
+    return record.sourceRef
+      ? t('tracker:detail_extra.source_inline_ref', { ref: record.sourceRef })
+      : t('tracker:detail_extra.source_inline');
+  }
+  if (record.source === 'frontmatter') {
+    return record.sourceRef
+      ? t('tracker:detail_extra.source_frontmatter_ref', { ref: record.sourceRef })
+      : t('tracker:detail_extra.source_frontmatter');
+  }
+  if (record.source === 'import') {
+    return record.sourceRef
+      ? t('tracker:detail_extra.source_import_ref', { ref: record.sourceRef })
+      : t('tracker:detail_extra.source_import');
+  }
   return null;
 }
 
@@ -139,6 +155,7 @@ const TypeTagsEditor: React.FC<{
   primaryType: string;
   onUpdate: (tags: string[]) => void;
 }> = ({ typeTags, primaryType, onUpdate }) => {
+  const { t } = useTranslation(['tracker']);
   const [isOpen, setIsOpen] = useState(false);
   const allModels = globalRegistry.getAll().filter(m => m.primaryCapable !== false && m.creatable !== false);
   const secondaryTags = typeTags.filter(t => t !== primaryType);
@@ -147,12 +164,14 @@ const TypeTagsEditor: React.FC<{
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-nim-faint font-medium uppercase tracking-wider">Type Tags</span>
+        <span className="text-[10px] text-nim-faint font-medium uppercase tracking-wider">
+          {t('tracker:detail.type_tags')}
+        </span>
         <button
           className="text-[10px] text-nim-muted hover:text-nim px-1 py-0.5 rounded hover:bg-nim-tertiary"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? 'Done' : '+ Add'}
+          {isOpen ? t('tracker:detail_extra.done') : t('tracker:detail_extra.add')}
         </button>
       </div>
       {secondaryTags.length > 0 && (
@@ -166,7 +185,7 @@ const TypeTagsEditor: React.FC<{
                 className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded cursor-pointer group"
                 style={{ color: tagColor, backgroundColor: `${tagColor}15`, border: `1px solid ${tagColor}30` }}
                 onClick={() => onUpdate(typeTags.filter(t => t !== tag))}
-                title={`Remove ${tagModel?.displayName || tag} tag`}
+                title={t('tracker:remove_tag', { tag: tagModel?.displayName || tag })}
               >
                 {tagModel?.displayName || tag}
                 <span className="opacity-0 group-hover:opacity-100 text-[9px]">&times;</span>
@@ -213,6 +232,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
   contentFocus: controlledContentFocus,
   onContentFocusChange,
 }) => {
+  const { t } = useTranslation(['tracker']);
   // Content-focus layout: collapse metadata sections and let the collaborative
   // body fill the surface. Toggling this does NOT remount the editor (same
   // NimbalystEditor key), so the Y.Doc/provider is preserved. Controlled by the
@@ -264,18 +284,18 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
     try {
       await navigator.clipboard.writeText(url);
       errorNotificationService.showInfo(
-        'Link copied',
-        'Paste it anywhere to open this tracker in Nimbalyst.',
+        t('tracker:main_extra.link_copied'),
+        t('tracker:main_extra.link_copied_message'),
         { duration: 3000 }
       );
     } catch (err) {
       console.error('[TrackerItemDetail] Failed to copy link:', err);
       errorNotificationService.showError(
-        'Copy failed',
-        'Could not write the link to the clipboard.'
+        t('tracker:main_extra.copy_failed'),
+        t('tracker:main_extra.copy_failed_message')
       );
     }
-  }, [item, teamOrgId]);
+  }, [item, teamOrgId, t]);
 
   useEffect(() => {
     if (!workspacePath) {
@@ -358,13 +378,13 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
       });
     } catch (e) {
       errorNotificationService.showError(
-        'Re-snapshot failed',
+        t('tracker:detail_extra.resnapshot_failed'),
         e instanceof Error ? e.message : String(e)
       );
     } finally {
       setResnapshotting(false);
     }
-  }, [externalOrigin, workspacePath, resnapshotting]);
+  }, [externalOrigin, workspacePath, resnapshotting, t]);
   const handleBodyAction = useCallback(
     async (action: 'applyBody' | 'dismissBody') => {
       if (!externalOrigin || !workspacePath || bodyBusy) return;
@@ -376,14 +396,14 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         });
       } catch (e) {
         errorNotificationService.showError(
-          'Update failed',
+          t('tracker:detail_extra.update_failed'),
           e instanceof Error ? e.message : String(e)
         );
       } finally {
         setBodyBusy(false);
       }
     },
-    [externalOrigin, workspacePath, bodyBusy]
+    [externalOrigin, workspacePath, bodyBusy, t]
   );
   useEffect(() => {
     if (!externalOrigin || !workspacePath) return;
@@ -680,24 +700,28 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         itemId: item.id,
         shared: next,
       });
-      if (!res?.success) throw new Error(res?.error || 'Share toggle failed');
+      if (!res?.success) {
+        throw new Error(res?.error || t('tracker:detail_extra.share_toggle_failed'));
+      }
       errorNotificationService.showInfo(
-        next ? 'Shared with team' : 'Made local',
         next
-          ? 'This item is now in your team’s shared tracker.'
-          : 'This item is now local-only and was removed from the team tracker.',
+          ? t('tracker:detail_extra.shared_with_team')
+          : t('tracker:detail_extra.made_local'),
+        next
+          ? t('tracker:detail_extra.shared_with_team_message')
+          : t('tracker:detail_extra.made_local_message'),
         { duration: 3000 }
       );
     } catch (err) {
       console.error('[TrackerItemDetail] Failed to toggle share:', err);
       errorNotificationService.showError(
-        'Share failed',
+        t('tracker:detail_extra.share_failed'),
         err instanceof Error ? err.message : String(err)
       );
     } finally {
       setSharePending(false);
     }
-  }, [item, isItemShared, sharePending]);
+  }, [item, isItemShared, sharePending, t]);
 
   // Collaborative content editing for team-synced items. Dormant unless the
   // workspace actually has a team -- see useTrackerContentCollab for the
@@ -970,17 +994,19 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         sessionId,
       });
       if (!result?.success) {
-        throw new Error(result?.error || 'Failed to link session');
+        throw new Error(result?.error || t('tracker:detail_extra.link_session_failed'));
       }
       await refreshSessionList();
       setIsLinkingExistingSession(false);
       setSessionSearchQuery('');
     } catch (err) {
-      setLinkSessionError(err instanceof Error ? err.message : 'Failed to link session');
+      setLinkSessionError(
+        err instanceof Error ? err.message : t('tracker:detail_extra.link_session_failed'),
+      );
     } finally {
       setLinkingSessionId(null);
     }
-  }, [item, refreshSessionList]);
+  }, [item, refreshSessionList, t]);
 
   // Separate fields into categories for layout
   const { primaryFields, customFields } = useMemo(() => {
@@ -1156,12 +1182,14 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         className="tracker-item-detail flex flex-col h-full bg-nim overflow-hidden items-center justify-center text-nim-faint text-sm"
         data-testid="tracker-item-detail"
       >
-        {trackerDataLoaded ? 'This tracker item is no longer available' : 'Loading…'}
+        {trackerDataLoaded
+          ? t('tracker:detail_extra.item_unavailable')
+          : t('tracker:detail_extra.loading_item')}
       </div>
     );
   }
 
-  const sourceLabel = getSourceLabel(item);
+  const sourceLabel = getSourceLabel(item, t);
 
   return (
     <div
@@ -1189,7 +1217,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                 }
               }}
               className="w-full bg-transparent border-none outline-none text-base font-semibold text-nim placeholder:text-nim-faint p-0 m-0 resize-none overflow-hidden leading-snug break-words"
-              placeholder="Item title..."
+              placeholder={t('tracker:ui.item_title')}
               data-testid="tracker-detail-title"
             />
           ) : (
@@ -1228,11 +1256,11 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             {isNativeItem(item) && (
               <span
                 className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-0.5 bg-gray-500/[0.125] text-gray-400"
-                title="Stored in database — not backed by a file"
+                title={t('tracker:ui.stored_database')}
                 data-testid="tracker-source-db-badge"
               >
                 <MaterialSymbol icon="storage" size={11} />
-                Database
+                {t('tracker:detail.database')}
               </span>
             )}
             {(item.issueKey || item.id) && (
@@ -1240,7 +1268,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             )}
             {item.archived && (
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#6b728020] text-nim-faint">
-                Archived
+                {t('tracker:detail.archived')}
               </span>
             )}
           </div>
@@ -1254,13 +1282,15 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
               <div
                 className="flex items-center gap-1.5 mt-1.5 text-[11px]"
                 data-testid="tracker-source-chip"
-                title={installed ? undefined : 'Install the importer to refresh this item'}
+                title={installed ? undefined : t('tracker:ui.install_importer')}
               >
                 <span className={installed ? 'text-nim-muted' : 'text-nim-faint'}>
                   <MaterialSymbol icon={summary?.icon || 'cloud_download'} size={13} />
                 </span>
                 <span className={installed ? 'text-nim-muted' : 'text-nim-faint'}>
-                  From {summary?.displayName || externalOrigin.providerId}
+                  {t('tracker:detail_extra.from_provider', {
+                    provider: summary?.displayName || externalOrigin.providerId,
+                  })}
                 </span>
                 <span className="text-nim-faint">·</span>
                 <span className="font-mono text-nim-faint truncate max-w-[180px]">{ref}</span>
@@ -1268,7 +1298,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                   <button
                     type="button"
                     className="ml-1 inline-flex items-center text-nim-muted hover:text-nim-accent disabled:opacity-50"
-                    title="Pull latest from source"
+                    title={t('tracker:ui.pull_latest')}
                     data-testid="tracker-source-resnapshot"
                     disabled={resnapshotting}
                     onClick={handleResnapshot}
@@ -1279,7 +1309,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                 <button
                   type="button"
                   className="ml-1 inline-flex items-center gap-0.5 text-nim-muted hover:text-nim-accent"
-                  title="Open original"
+                  title={t('tracker:ui.open_original')}
                   data-testid="tracker-source-open"
                   onClick={() => {
                     window.electronAPI
@@ -1294,7 +1324,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                       });
                   }}
                 >
-                  Open
+                  {t('tracker:detail.open')}
                   <MaterialSymbol icon="open_in_new" size={11} />
                 </button>
               </div>
@@ -1306,7 +1336,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             <button
               className="flex items-center gap-1 px-2 py-1 rounded text-[12px] font-medium text-nim-muted hover:bg-nim-tertiary"
               onClick={() => navigateToPullRequest(prReference.remote, prReference.number)}
-              title={`Open #${prReference.number} in the PRs view`}
+              title={t('tracker:ui.open_pr', { number: prReference.number })}
               data-testid="tracker-open-pr-view"
             >
               <MaterialSymbol icon="merge" size={16} />
@@ -1324,10 +1354,10 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
               disabled={sharePending || unshareLocked}
               title={
                 unshareLocked
-                  ? 'Shared with your team. Unsharing native items from the UI isn’t supported yet.'
+                  ? t('tracker:ui.shared_unshare_unsupported')
                   : isItemShared
-                    ? 'Shared with your team — click to make this item local-only'
-                    : 'Share this item with your team so they can review it'
+                    ? t('tracker:ui.shared_make_local')
+                    : t('tracker:ui.share_with_team')
               }
               data-testid="tracker-share-toggle"
               aria-pressed={isItemShared}
@@ -1336,14 +1366,14 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                 icon={sharePending ? 'hourglass_empty' : isItemShared ? 'group' : 'group_add'}
                 size={16}
               />
-              <span>{isItemShared ? 'Shared' : 'Share'}</span>
+              <span>{isItemShared ? t('tracker:ui.shared') : t('tracker:ui.share')}</span>
             </button>
           )}
           {teamOrgId && (
             <button
               className="p-1 rounded hover:bg-nim-tertiary text-nim-muted"
               onClick={handleCopyLink}
-              title="Copy shareable link"
+              title={t('tracker:ui.copy_link')}
               data-testid="tracker-copy-link"
             >
               <MaterialSymbol icon="link" size={18} />
@@ -1353,7 +1383,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             <button
               className="p-1 rounded hover:bg-nim-tertiary text-nim-muted"
               onClick={() => onArchive(item.id, !item.archived)}
-              title={item.archived ? 'Unarchive' : 'Archive'}
+              title={item.archived ? t('tracker:ui.unarchive') : t('tracker:ui.archive')}
             >
               <MaterialSymbol icon={item.archived ? 'unarchive' : 'archive'} size={18} />
 
@@ -1363,11 +1393,13 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             <button
               className="p-1 rounded hover:bg-nim-tertiary text-nim-muted hover:text-[#ef4444]"
               onClick={() => {
-                if (window.confirm(`Delete "${getRecordTitle(item)}"? This cannot be undone.`)) {
+                if (window.confirm(t('tracker:ui.delete_item_confirm', {
+                  name: getRecordTitle(item),
+                }))) {
                   onDelete(item.id);
                 }
               }}
-              title="Delete permanently"
+              title={t('tracker:ui.delete_permanently')}
             >
               <MaterialSymbol icon="delete" size={18} />
             </button>
@@ -1376,7 +1408,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             <button
               className={`p-1 rounded hover:bg-nim-tertiary ${focusActive ? 'text-[var(--nim-primary)]' : 'text-nim-muted'}`}
               onClick={() => setContentFocus(!focusActive)}
-              title={focusActive ? 'Exit content focus' : 'Focus content'}
+              title={focusActive ? t('tracker:ui.exit_focus') : t('tracker:ui.focus_content')}
               data-testid="tracker-content-focus-toggle"
               aria-pressed={focusActive}
             >
@@ -1386,7 +1418,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
           <button
             className="p-1 rounded hover:bg-nim-tertiary text-nim-muted"
             onClick={onClose}
-            title="Close (Esc)"
+            title={t('tracker:ui.cancel_esc')}
           >
             <MaterialSymbol icon="close" size={18} />
           </button>
@@ -1400,14 +1432,14 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
           data-testid="tracker-upstream-body-banner"
         >
           <MaterialSymbol icon="sync_problem" size={14} className="text-nim-warning" />
-          <span className="flex-1">The source body changed upstream. Update to overwrite the local body, or dismiss to keep yours.</span>
+          <span className="flex-1">{t('tracker:detail.upstream_changed')}</span>
           <button
             type="button"
             className="px-2 py-0.5 rounded text-white bg-[var(--nim-primary)] hover:opacity-90 disabled:opacity-50"
             disabled={bodyBusy}
             onClick={() => handleBodyAction('applyBody')}
           >
-            Update body
+            {t('tracker:detail.update_body')}
           </button>
           <button
             type="button"
@@ -1415,7 +1447,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             disabled={bodyBusy}
             onClick={() => handleBodyAction('dismissBody')}
           >
-            Dismiss
+            {t('tracker:detail.dismiss')}
           </button>
         </div>
       )}
@@ -1435,7 +1467,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
           <div className="tracker-sessions-section">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-[11px] font-medium text-nim-muted uppercase tracking-[0.5px]">
-                Sessions{linkedSessions.length > 0 ? ` (${linkedSessions.length})` : ''}
+                {t('tracker:detail_extra.sessions_count', { count: linkedSessions.length })}
               </label>
               <div className="flex items-center gap-1">
                 {canLinkExistingSession && (
@@ -1447,30 +1479,32 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                       void refreshSessionList();
                       setIsLinkingExistingSession((prev) => !prev);
                     }}
-                    title="Link an existing AI session to this item"
+                    title={t('tracker:ui.link_session')}
                   >
                     <MaterialSymbol icon="link" size={14} />
-                    {isLinkingExistingSession ? 'Cancel' : 'Link Existing'}
+                    {isLinkingExistingSession
+                      ? t('tracker:detail.cancel')
+                      : t('tracker:detail_extra.link_existing')}
                   </button>
                 )}
                 {onLaunchSession && (
                   <button
                     className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-nim-muted hover:text-nim hover:bg-nim-tertiary transition-colors"
                     onClick={() => onLaunchSession(item.id)}
-                    title="Launch a new AI session for this item"
+                    title={t('tracker:ui.launch_session')}
                   >
                     <MaterialSymbol icon="add" size={14} />
-                    Launch Session
+                    {t('tracker:detail.launch_session')}
                   </button>
                 )}
                 {onLaunchWorktree && (
                   <button
                     className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-nim-muted hover:text-nim hover:bg-nim-tertiary transition-colors"
                     onClick={() => onLaunchWorktree(item.id)}
-                    title="Launch a new isolated worktree session for this item"
+                    title={t('tracker:detail_extra.launch_worktree_title')}
                   >
                     <MaterialSymbol icon="account_tree" size={14} />
-                    Launch Worktree
+                    {t('tracker:detail_extra.launch_worktree')}
                   </button>
                 )}
               </div>
@@ -1482,7 +1516,9 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                   type="text"
                   value={sessionSearchQuery}
                   onChange={(e) => setSessionSearchQuery(e.target.value)}
-                  placeholder={`Search ${availableSessions.length} existing session${availableSessions.length === 1 ? '' : 's'}`}
+                  placeholder={t('tracker:ui.search_sessions', {
+                    count: availableSessions.length,
+                  })}
                 />
                 <div className="mt-2 space-y-1">
                   {filteredAvailableSessions.length > 0 ? (
@@ -1492,15 +1528,19 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                         className="tracker-session-linker-option w-full rounded px-2 py-1.5 text-left hover:bg-nim-hover transition-colors disabled:opacity-60"
                         onClick={() => handleLinkExistingSession(session.id)}
                         disabled={linkingSessionId !== null}
-                        title={`Link session: ${session.title || 'Untitled session'}`}
+                        title={t('tracker:detail_extra.link_session_title', {
+                          title: session.title || t('tracker:detail_extra.untitled_session'),
+                        })}
                       >
                         <div className="flex items-center gap-2">
                           <ProviderIcon provider={session.provider || 'claude'} size={14} />
                           <span className="flex-1 truncate text-xs text-nim">
-                            {session.title || 'Untitled session'}
+                            {session.title || t('tracker:detail_extra.untitled_session')}
                           </span>
                           <span className="shrink-0 text-[10px] text-nim-faint">
-                            {linkingSessionId === session.id ? 'Linking...' : getRelativeTimeString(session.updatedAt)}
+                            {linkingSessionId === session.id
+                              ? t('tracker:detail_extra.linking')
+                            : getRelativeTimeString(session.updatedAt, t)}
                           </span>
                         </div>
                       </button>
@@ -1508,8 +1548,8 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                   ) : (
                     <p className="m-0 text-[11px] text-nim-faint">
                       {availableSessions.length === 0
-                        ? 'No unlinked sessions available.'
-                        : 'No sessions match that search.'}
+                        ? t('tracker:detail_extra.no_unlinked_sessions')
+                        : t('tracker:detail_extra.no_sessions_match')}
                     </p>
                   )}
                 </div>
@@ -1525,20 +1565,24 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                     key={session.id}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-nim-tertiary transition-colors group"
                     onClick={() => onSwitchToAgentMode?.(session.id)}
-                    title={`Open session: ${session.title}`}
+                    title={t('tracker:detail_extra.open_session_title', {
+                      title: session.title || t('tracker:detail_extra.untitled_session'),
+                    })}
                   >
                     <ProviderIcon provider={session.provider || 'claude'} size={14} />
                     <span className="flex-1 text-xs text-nim truncate">
-                      {session.title || 'Untitled session'}
+                      {session.title || t('tracker:detail_extra.untitled_session')}
                     </span>
                     <span className="text-[10px] text-nim-faint shrink-0">
-                      {getRelativeTimeString(session.updatedAt)}
+                      {getRelativeTimeString(session.updatedAt, t)}
                     </span>
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-nim-faint m-0">No linked sessions</p>
+              <p className="text-[11px] text-nim-faint m-0">
+                {t('tracker:detail.no_linked_sessions')}
+              </p>
             )}
           </div>
         )}
@@ -1616,7 +1660,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         <div className={focusActive ? 'flex-1 min-h-0 flex flex-col' : 'pt-1 border-t border-nim'}>
           {!focusActive && (
           <label className="text-[11px] font-medium text-nim-muted uppercase tracking-[0.5px] block mb-1">
-            Content
+            {t('tracker:detail.content')}
           </label>
           )}
           {contentMode === 'local-pglite' && localEditorConfig ? (
@@ -1636,7 +1680,9 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                   className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none bg-nim"
                   data-testid="tracker-content-loading"
                 >
-                  <span className="text-sm text-nim-muted">Loading content...</span>
+                  <span className="text-sm text-nim-muted">
+                    {t('tracker:detail.loading_content')}
+                  </span>
                 </div>
               )}
               {reviewState?.hasUnreviewed && (
@@ -1646,31 +1692,37 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                 >
                   <MaterialSymbol icon="rate_review" size={14} className="text-nim-warning" />
                   <span className="flex-1 text-nim-muted">
-                    {reviewState.unreviewedCount} pending change{reviewState.unreviewedCount !== 1 ? 's' : ''} from{' '}
-                    {reviewState.unreviewedAuthors.length > 0
-                      ? reviewState.unreviewedAuthors.join(', ')
-                      : 'collaborators'}
+                    {t('tracker:detail_extra.pending_changes', {
+                      count: reviewState.unreviewedCount,
+                      authors: reviewState.unreviewedAuthors.length > 0
+                        ? reviewState.unreviewedAuthors.join(', ')
+                        : t('tracker:detail_extra.collaborators'),
+                    })}
                   </span>
                   <button
                     className="px-2 py-0.5 rounded text-[11px] font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
                     onClick={acceptRemoteChanges}
                   >
-                    Accept
+                    {t('tracker:detail.accept')}
                   </button>
                   <button
                     className="px-2 py-0.5 rounded text-[11px] font-medium text-nim-muted hover:text-nim hover:bg-nim-tertiary border border-nim transition-colors"
                     onClick={rejectRemoteChanges}
                   >
-                    Reject
+                    {t('tracker:detail.reject')}
                   </button>
                 </div>
               )}
               <NimbalystEditor key={`collab-${item.id}-${providerEpoch}`} config={collabEditorConfig} />
             </div>
           ) : (contentMode === 'local-pglite' || contentMode === 'collaborative') && !contentLoaded ? (
-            <div className="text-sm text-nim-faint py-4 text-center">Loading...</div>
+            <div className="text-sm text-nim-faint py-4 text-center">
+              {t('tracker:detail.loading')}
+            </div>
           ) : contentMode === 'collaborative' && collabLoading ? (
-            <div className="text-sm text-nim-faint py-4 text-center">Connecting...</div>
+            <div className="text-sm text-nim-faint py-4 text-center">
+              {t('tracker:detail.connecting')}
+            </div>
           ) : item.system.documentPath ? (
             <div className="flex items-center gap-2 py-2">
               <span className="text-sm text-nim-muted flex-1 truncate font-mono">
@@ -1681,11 +1733,11 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                 onClick={handleOpenDocument}
               >
                 <MaterialSymbol icon="open_in_new" size={14} />
-                Open in Editor
+                {t('tracker:detail.open_in_editor')}
               </button>
             </div>
           ) : (
-            <p className="text-sm text-nim-faint m-0">No content</p>
+            <p className="text-sm text-nim-faint m-0">{t('tracker:detail.no_content')}</p>
           )}
         </div>
 
@@ -1693,7 +1745,9 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         {!focusActive && item.system.linkedCommits && item.system.linkedCommits.length > 0 && (
           <div className="pt-1 border-t border-nim">
             <label className="text-[11px] font-medium text-nim-muted uppercase tracking-[0.5px] mb-1.5 block">
-              Commits ({item.system.linkedCommits.length})
+              {t('tracker:detail_extra.commits_count', {
+                count: item.system.linkedCommits.length,
+              })}
             </label>
             <div className="space-y-1">
               {item.system.linkedCommits.slice().reverse().map((commit: { sha: string; message: string; sessionId?: string; timestamp: string }) => (
@@ -1706,7 +1760,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                     onClick={() => {
                       navigator.clipboard.writeText(commit.sha);
                     }}
-                    title={`Copy full SHA: ${commit.sha}`}
+                    title={t('tracker:copy_full_sha', { sha: commit.sha })}
                   >
                     {commit.sha.slice(0, 7)}
                   </button>
@@ -1717,13 +1771,13 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                     <button
                       className="opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => onSwitchToAgentMode?.(commit.sessionId!)}
-                      title="Open linked session"
+                      title={t('tracker:ui.open_linked_session')}
                     >
                       <MaterialSymbol icon="smart_toy" size={14} className="text-nim-faint" />
                     </button>
                   )}
                   <span className="text-[10px] text-nim-faint shrink-0">
-                    {getRelativeTimeString(new Date(commit.timestamp).getTime())}
+                    {getRelativeTimeString(new Date(commit.timestamp).getTime(), t)}
                   </span>
                 </div>
               ))}
@@ -1738,7 +1792,9 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         {!focusActive && item.source !== 'inline' && item.source !== 'frontmatter' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">Comments</h4>
+              <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">
+                {t('tracker:detail.comments')}
+              </h4>
             </div>
             <CommentsSection itemId={item.id} comments={item.system.comments} />
           </div>
@@ -1747,15 +1803,19 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         {/* Activity log */}
         {!focusActive && item.system.activity && item.system.activity.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">Activity</h4>
+            <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">
+              {t('tracker:detail.activity')}
+            </h4>
             <div className="space-y-1">
               {item.system.activity.slice(-10).reverse().map((entry: any) => (
                 <div key={entry.id} className="flex items-start gap-2 text-[11px]">
-                  <span className="text-nim-muted shrink-0">{entry.authorIdentity?.displayName || 'Unknown'}</span>
-                  <span className="text-nim-faint">
-                    {formatTrackerActivity(entry)}
+                  <span className="text-nim-muted shrink-0">
+                    {entry.authorIdentity?.displayName || t('tracker:detail_extra.unknown')}
                   </span>
-                  <span className="text-nim-faint ml-auto shrink-0">{getRelativeTimeString(entry.timestamp)}</span>
+                  <span className="text-nim-faint">
+                    {formatTrackerActivity(entry, t)}
+                  </span>
+                  <span className="text-nim-faint ml-auto shrink-0">{getRelativeTimeString(entry.timestamp, t)}</span>
                 </div>
               ))}
             </div>
@@ -1769,37 +1829,39 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             {/* Author identity */}
             {item.system.authorIdentity && (
               <div className="col-span-2 flex items-center gap-1.5">
-                <span className="text-nim-faint shrink-0">Created by</span>
+                <span className="text-nim-faint shrink-0">{t('tracker:detail.created_by')}</span>
                 <UserAvatar identity={item.system.authorIdentity} showName size={16} />
                 {item.system.createdByAgent && (
-                  <span className="text-[10px] text-nim-faint bg-nim-tertiary px-1 py-0.5 rounded">via AI</span>
+                  <span className="text-[10px] text-nim-faint bg-nim-tertiary px-1 py-0.5 rounded">
+                    {t('tracker:detail.via_ai')}
+                  </span>
                 )}
               </div>
             )}
             {/* Last modifier */}
             {item.system.lastModifiedBy && item.system.lastModifiedBy.displayName !== item.system.authorIdentity?.displayName && (
               <div className="col-span-2 flex items-center gap-1.5">
-                <span className="text-nim-faint shrink-0">Modified by</span>
+                <span className="text-nim-faint shrink-0">{t('tracker:ui.modified_by')}</span>
                 <UserAvatar identity={item.system.lastModifiedBy} showName size={16} />
               </div>
             )}
             <div>
-              <span className="text-nim-faint">Created</span>
+              <span className="text-nim-faint">{t('tracker:detail.created')}</span>
               <div className="text-nim-muted">{formatTimestamp(item.system.createdAt)}</div>
             </div>
             <div>
-              <span className="text-nim-faint">Updated</span>
+              <span className="text-nim-faint">{t('tracker:detail.updated')}</span>
               <div className="text-nim-muted">{formatTimestamp(item.system.updatedAt || item.system.lastIndexed)}</div>
             </div>
             {item.issueKey && (
               <div>
-                <span className="text-nim-faint">Key</span>
+                <span className="text-nim-faint">{t('tracker:detail.key')}</span>
                 <div className="text-nim-muted font-mono">{item.issueKey}</div>
               </div>
             )}
             {item.syncStatus && (
               <div>
-                <span className="text-nim-faint">Sync</span>
+                <span className="text-nim-faint">{t('tracker:detail.sync')}</span>
                 <div className="text-nim-muted">
                   <span
                     className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
@@ -1815,13 +1877,13 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             )}
             {sourceLabel && (
               <div className="col-span-2">
-                <span className="text-nim-faint">Source</span>
+                <span className="text-nim-faint">{t('tracker:detail.source')}</span>
                 <div className="text-nim-muted truncate">{sourceLabel}</div>
               </div>
             )}
             {item.system.documentPath && !sourceLabel && (
               <div className="col-span-2">
-                <span className="text-nim-faint">Source</span>
+                <span className="text-nim-faint">{t('tracker:detail.source')}</span>
                 <div className="text-nim-muted font-mono truncate">{item.system.documentPath}</div>
               </div>
             )}
@@ -1895,6 +1957,7 @@ const ReadOnlyField: React.FC<{ field: FieldDefinition; value: any }> = ({ field
 interface Backlink { sourceItemId: string; sourceFieldId: string; relationshipTypeKey?: string | null }
 
 const BacklinksSection: React.FC<{ itemId: string; onOpenItem?: (itemId: string) => void }> = ({ itemId, onOpenItem }) => {
+  const { t } = useTranslation(['tracker']);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const itemsMap = useAtomValue(trackerItemsMapAtom);
 
@@ -1914,7 +1977,9 @@ const BacklinksSection: React.FC<{ itemId: string; onOpenItem?: (itemId: string)
 
   return (
     <div className="space-y-2 tracker-backlinks">
-      <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">Linked from</h4>
+      <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">
+        {t('tracker:detail.linked_from')}
+      </h4>
       <div className="flex flex-wrap gap-1">
         {backlinks.map((b) => {
           const src = itemsMap.get(b.sourceItemId);
@@ -1922,7 +1987,10 @@ const BacklinksSection: React.FC<{ itemId: string; onOpenItem?: (itemId: string)
           // Show the inverse direction: if the source links to us via "depends-on",
           // we are what it "blocks". Falls back to the forward label.
           const rel = resolveRelationshipType(b.relationshipTypeKey ?? undefined);
-          const relLabel = rel?.inverseDisplayName ?? rel?.displayName ?? b.relationshipTypeKey ?? 'links to';
+          const relLabel = rel?.inverseDisplayName
+            ?? rel?.displayName
+            ?? b.relationshipTypeKey
+            ?? t('tracker:detail_extra.links_to');
           return (
             <button
               key={`${b.sourceItemId}:${b.sourceFieldId}`}
@@ -1944,6 +2012,7 @@ const BacklinksSection: React.FC<{ itemId: string; onOpenItem?: (itemId: string)
 
 /** Inline comments section for tracker items */
 const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemId, comments }) => {
+  const { t } = useTranslation(['tracker']);
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   // Optimistic comments shown immediately on submit, before the atom round-trips
@@ -1975,13 +2044,13 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
         itemId,
         commentId,
         body,
-      });
+      }, t);
       setEditingId(null);
     } catch (err) {
       console.error('Failed to edit comment:', err);
       setCommentError(err instanceof Error ? err.message : String(err));
     }
-  }, [itemId, editBody]);
+  }, [itemId, editBody, t]);
 
   const handleDelete = useCallback(async (commentId: string) => {
     setCommentError(null);
@@ -1990,12 +2059,12 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
         itemId,
         commentId,
         deleted: true,
-      });
+      }, t);
     } catch (err) {
       console.error('Failed to delete comment:', err);
       setCommentError(err instanceof Error ? err.message : String(err));
     }
-  }, [itemId]);
+  }, [itemId, t]);
 
   // When server-side comments arrive (atom update), clear optimistic entries
   // that are now present in the real data.
@@ -2033,7 +2102,7 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
       await invokeTrackerCommentMutation(window.electronAPI.invoke, 'document-service:tracker-item-add-comment', {
         itemId,
         body,
-      });
+      }, t);
     } catch (err) {
       console.error('Failed to add comment:', err);
       // Remove the optimistic comment on failure
@@ -2043,7 +2112,7 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
     } finally {
       setSubmitting(false);
     }
-  }, [itemId, newComment, submitting]);
+  }, [itemId, newComment, submitting, t]);
 
   return (
     <div className="space-y-2">
@@ -2054,21 +2123,25 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
         return (
           <div key={comment.id} className={`tracker-comment group rounded bg-nim-tertiary p-2 space-y-1${comment._optimistic ? ' opacity-70' : ''}`}>
             <div className="flex items-center gap-2 text-[11px]">
-              <span className="font-medium text-nim-muted">{comment.authorIdentity?.displayName || 'You'}</span>
-              <span className="text-nim-faint">{getRelativeTimeString(comment.createdAt)}</span>
-              {comment.updatedAt && <span className="text-nim-faint">(edited)</span>}
+              <span className="font-medium text-nim-muted">
+                {comment.authorIdentity?.displayName || t('tracker:detail_extra.you')}
+              </span>
+              <span className="text-nim-faint">{getRelativeTimeString(comment.createdAt, t)}</span>
+              {comment.updatedAt && (
+                <span className="text-nim-faint">{t('tracker:detail.edited')}</span>
+              )}
               {isAuthor && !isEditing && (
                 <span className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     className="tracker-comment-edit text-nim-faint hover:text-nim"
-                    title="Edit comment"
+                    title={t('tracker:ui.edit_comment')}
                     onClick={() => { setEditingId(comment.id); setEditBody(comment.body); }}
                   >
                     <MaterialSymbol icon="edit" size={13} />
                   </button>
                   <button
                     className="tracker-comment-delete text-nim-faint hover:text-nim-error"
-                    title="Delete comment"
+                    title={t('tracker:ui.delete_comment')}
                     onClick={() => handleDelete(comment.id)}
                   >
                     <MaterialSymbol icon="delete" size={13} />
@@ -2094,13 +2167,13 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
                   disabled={!editBody.trim()}
                   className="px-2 py-1 rounded text-xs bg-nim-primary text-nim-on-primary disabled:opacity-40"
                 >
-                  Save
+                  {t('tracker:detail.save')}
                 </button>
                 <button
                   onClick={() => setEditingId(null)}
                   className="px-2 py-1 rounded text-xs text-nim-muted hover:text-nim"
                 >
-                  Cancel
+                  {t('tracker:detail.cancel')}
                 </button>
               </div>
             ) : (
@@ -2115,7 +2188,7 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
           value={newComment}
           onChange={e => setNewComment(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-          placeholder="Add a comment..."
+          placeholder={t('tracker:ui.add_comment')}
           className="flex-1 bg-nim-secondary border border-nim rounded px-2 py-1 text-xs text-nim placeholder:text-nim-faint outline-none focus:border-nim-primary"
         />
         <button
@@ -2123,7 +2196,7 @@ const CommentsSection: React.FC<{ itemId: string; comments?: any[] }> = ({ itemI
           disabled={!newComment.trim() || submitting}
           className="px-2 py-1 rounded text-xs bg-nim-primary text-nim-on-primary disabled:opacity-40 hover:opacity-90 transition-opacity"
         >
-          Post
+          {t('tracker:detail.post')}
         </button>
       </div>
       {commentError && (

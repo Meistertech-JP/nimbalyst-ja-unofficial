@@ -20,6 +20,8 @@ import type {
   AskUserQuestionResponseContent,
 } from '../../../ai/server/types';
 import { unwrapShellCommand } from '../utils/unwrapShellCommand';
+import { useRuntimeTranslation } from '../../RuntimeTranslation';
+import { getPermissionCaption, getPermissionWarningText } from './CustomToolWidgets/ToolPermissionWidget';
 
 // Inject interactive prompt styles once (for animations and color-mix patterns)
 const injectInteractivePromptStyles = () => {
@@ -86,6 +88,8 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
   onSubmit,
   isSubmitting,
 }) => {
+  const { t } = useRuntimeTranslation();
+  const patternDisplayName = getPermissionCaption(content.pattern, content.patternDisplayName, t);
   const [showDetails, setShowDetails] = useState(false);
 
   if (content.status !== 'pending') {
@@ -97,7 +101,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
               <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">Permission Resolved</span>
+          <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('aichat:permission.resolved', 'Permission Resolved')}</span>
         </div>
         <div className="interactive-prompt__command bg-[var(--nim-bg-tertiary)] rounded p-2 px-3 mb-3 overflow-x-auto">
           <code className="font-mono text-xs text-[var(--nim-text)] whitespace-pre-wrap break-all">{unwrapShellCommand(content.rawCommand || content.toolName)}</code>
@@ -124,12 +128,12 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
             </svg>
           )}
         </span>
-        <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">Allow this tool?</span>
+        <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('aichat:permission.allow_question', 'Allow this tool?')}</span>
         <button
           className="interactive-prompt__details-toggle ml-auto text-xs text-[var(--nim-text-faint)] bg-transparent border-none cursor-pointer py-0.5 px-1.5 rounded hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)]"
           onClick={() => setShowDetails(!showDetails)}
         >
-          {showDetails ? 'Hide details' : 'Show details'}
+          {showDetails ? t('settings:sync.hide_details', 'Hide details') : t('aichat:interactive.show_details', 'Show details')}
         </button>
       </div>
 
@@ -142,7 +146,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
                 <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M8 5.5v3M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
-              <span>{warning}</span>
+              <span>{getPermissionWarningText(warning, t)}</span>
             </div>
           ))}
         </div>
@@ -157,12 +161,12 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
       {showDetails && (
         <div className="interactive-prompt__details bg-[var(--nim-bg-tertiary)] rounded p-2 px-3 mb-3">
           <div className="interactive-prompt__detail-row flex gap-2 text-xs py-0.5">
-            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">Tool:</span>
+            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('aichat:permission.tool', 'Tool:')}</span>
             <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{content.toolName}</span>
           </div>
           <div className="interactive-prompt__detail-row flex gap-2 text-xs py-0.5">
-            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">Pattern:</span>
-            <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{content.patternDisplayName}</span>
+            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('aichat:permission.pattern', 'Pattern:')}</span>
+            <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{patternDisplayName}</span>
           </div>
         </div>
       )}
@@ -174,37 +178,37 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
           onClick={() => onSubmit('deny', 'once')}
           disabled={isSubmitting}
         >
-          Deny
+          {t('aichat:permission.deny', 'Deny')}
         </button>
         <button
           className="interactive-prompt__button interactive-prompt__button--allow px-3 py-1.5 text-xs font-medium rounded-md border border-transparent cursor-pointer transition-all bg-[var(--nim-primary)] text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'once')}
           disabled={isSubmitting}
         >
-          Allow Once
+          {t('aichat:permission.allow_once', 'Allow Once')}
         </button>
         <div className="interactive-prompt__separator w-px bg-[var(--nim-border)] mx-1" />
         <button
           className="interactive-prompt__button interactive-prompt__button--session px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'session')}
           disabled={isSubmitting}
-          title={`Allow ${content.patternDisplayName} for this session`}
+          title={t('aichat:permission.session_title', 'Allow {{pattern}} for this session', { pattern: patternDisplayName })}
         >
-          Session
+          {t('aichat:permission.session', 'Session')}
         </button>
         <button
           className="interactive-prompt__button interactive-prompt__button--always px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'always')}
           disabled={isSubmitting}
-          title={`Save ${content.patternDisplayName} to settings`}
+          title={t('aichat:permission.save_settings', 'Save {{pattern}} to settings', { pattern: patternDisplayName })}
         >
-          Always
+          {t('aichat:permission.always', 'Always')}
         </button>
       </div>
 
       {/* Pattern info */}
       <div className="interactive-prompt__pattern-info text-[11px] text-[var(--nim-text-faint)]">
-        Session/Always will allow: <span className="interactive-prompt__pattern-badge inline-block px-1.5 py-0.5 bg-[var(--nim-bg-tertiary)] rounded font-mono text-[10px]">{content.patternDisplayName}</span>
+        {t('aichat:permission.allowed_pattern', 'Session/Always will allow:')}{' '}<span className="interactive-prompt__pattern-badge inline-block px-1.5 py-0.5 bg-[var(--nim-bg-tertiary)] rounded font-mono text-[10px]">{patternDisplayName}</span>
       </div>
     </div>
   );
@@ -227,6 +231,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
   onCancel,
   isSubmitting,
 }) => {
+  const { t } = useRuntimeTranslation();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({});
   const [otherText, setOtherText] = useState<Record<string, string>>({});
@@ -296,7 +301,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
               <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className="interactive-prompt__title">Questions Answered</span>
+          <span className="interactive-prompt__title">{t('aichat:questions.answered_title', 'Questions Answered')}</span>
         </div>
       </div>
     );
@@ -312,7 +317,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             <path d="M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </span>
-        <span className="interactive-prompt__title">Claude has questions for you</span>
+        <span className="interactive-prompt__title">{t('aichat:questions.claude_has_questions', 'Claude has questions for you')}</span>
       </div>
 
       <div className="interactive-prompt__questions">
@@ -321,7 +326,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             <div className="interactive-prompt__question-header">
               <span className="interactive-prompt__question-chip">{question.header}</span>
               {question.multiSelect && (
-                <span className="interactive-prompt__multi-hint">Select multiple</span>
+                <span className="interactive-prompt__multi-hint">{t('aichat:questions.select_multiple', 'Select multiple')}</span>
               )}
             </div>
             <div className="interactive-prompt__question-text">
@@ -373,7 +378,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
                       </svg>
                     )}
                   </div>
-                  <span className="interactive-prompt__option-label">Other</span>
+                  <span className="interactive-prompt__option-label">{t('aichat:questions.other', 'Other')}</span>
                 </button>
                 {otherSelected[question.question] && (
                   <textarea
@@ -386,7 +391,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
                         handleSubmit();
                       }
                     }}
-                    placeholder="Type your answer..."
+                    placeholder={t('aichat:questions.answer_placeholder', 'Type your answer...')}
                     disabled={isSubmitting}
                     rows={2}
                     style={{
@@ -414,7 +419,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
           onClick={handleSubmit}
           disabled={isSubmitting || !allAnswered}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Answers'}
+          {isSubmitting ? t('aichat:interactive.submitting', 'Submitting...') : t('aichat:questions.submit_answers', 'Submit Answers')}
         </button>
         {onCancel && (
           <button
@@ -422,7 +427,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('common:cancel', 'Cancel')}
           </button>
         )}
       </div>

@@ -31,6 +31,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MarkdownEditor, MonacoEditor, DocumentPathProvider } from '@nimbalyst/runtime';
 import { $convertFromEnhancedMarkdownString, getEditorTransformers, type CommentsConfig } from '@nimbalyst/runtime/editor';
@@ -120,6 +121,7 @@ import {
   toStableAnalyticsCategory,
 } from '../../../shared/analytics/teamAnalytics';
 import { trackTeamAnalyticsEvent } from '../../utils/teamAnalytics';
+import { getCollabStatusPresentation } from '../../utils/collabStatusPresentation';
 
 interface CollaborativeTabEditorProps {
   /** The collab:// URI for this document */
@@ -174,7 +176,9 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
 // ---------------------------------------------------------------------------
 
 const CollabHydrationOverlay: React.FC<{ filePath: string }> = ({ filePath }) => {
+  const { t } = useTranslation('editor');
   const status = useAtomValue(collabProductStatusAtom(filePath));
+  const presentation = getCollabStatusPresentation(status, t);
   return (
     <div
       className="collab-hydration-overlay absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 text-nim-muted"
@@ -185,10 +189,10 @@ const CollabHydrationOverlay: React.FC<{ filePath: string }> = ({ filePath }) =>
       <span className="material-symbols-outlined animate-spin" style={{ fontSize: '20px' }}>progress_activity</span>
       <span className="text-sm">
         {status.kind === 'local-copy-damaged'
-          ? status.label
+          ? presentation.label
           : status.kind === 'local-saving-unavailable'
-            ? status.label
-            : 'Loading from server…'}
+            ? presentation.label
+            : t('collab.loading_from_server')}
       </span>
     </div>
   );
@@ -207,6 +211,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
   onGetContentReady,
   onManualSaveReady,
 }) => {
+  const { t } = useTranslation(['editor', 'common']);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [activeConfig, setActiveConfig] = useState(initialCollabConfig);
   const activeConfigRef = useRef(initialCollabConfig);
@@ -1288,14 +1293,14 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
             );
             if (!acked) {
               errorNotificationService.showError(
-                'Re-upload not confirmed',
-                'The push was sent but the server did not confirm persisting it. Check your connection and retry.',
+                t('collab.reupload_not_confirmed'),
+                t('collab.reupload_not_confirmed_message'),
               );
               return;
             }
             errorNotificationService.showInfo(
-              'Shared document updated',
-              'Pushed the current local file into the shared document.',
+              t('common:collab_local_origin.updated_title'),
+              t('common:collab_local_origin.updated_message'),
               { duration: 4000 },
             );
             await localOrigin.refresh();
@@ -1308,15 +1313,15 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
     }
     // Doc not open / not a custom editor -> main-process re-upload.
     void localOrigin.reuploadFromLocalSource();
-  }, [documentType, activeConfig, localOrigin]);
+  }, [documentType, activeConfig, localOrigin, t]);
 
   const handleSaveCodeCopy = useCallback(async (): Promise<void> => {
     const provider = syncProviderRef.current;
     const adapter = getCollabContentAdapter('code');
     if (!provider || !adapter) {
       errorNotificationService.showError(
-        'Could not save a copy',
-        'The collaborative code exporter is unavailable.',
+        t('collab.save_copy_failed'),
+        t('collab.code_exporter_unavailable'),
       );
       return;
     }
@@ -1337,17 +1342,17 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
 
     if (!result.success && !result.cancelled) {
       errorNotificationService.showError(
-        'Could not save a copy',
-        result.error ?? 'The file could not be exported.',
+        t('collab.save_copy_failed'),
+        result.error ?? t('collab.export_failed'),
       );
     }
-  }, [activeConfig.fileExtension, activeConfig.title, fileName]);
+  }, [activeConfig.fileExtension, activeConfig.title, fileName, t]);
 
   const collabActionItems = useMemo(() => {
     const actionDisabled = localOrigin.busyAction !== null;
     return [
       ...(documentType === 'code' ? [{
-        label: 'Save a Copy',
+        label: t('collab.save_copy'),
         icon: 'download',
         disabled: !hasHydrated,
         onClick: () => {
@@ -1355,7 +1360,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         },
       }] : []),
       {
-        label: 'Open Local',
+        label: t('common:collab.open_local_source'),
         icon: 'folder_open',
         disabled: !localOrigin.hasResolvedBinding || actionDisabled,
         onClick: () => {
@@ -1363,7 +1368,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         },
       },
       {
-        label: 'Re-upload to Shared Doc',
+        label: t('tooltips.reupload_shared'),
         icon: 'upload',
         disabled: !localOrigin.binding || actionDisabled,
         onClick: () => {
@@ -1371,7 +1376,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         },
       },
       {
-        label: localOrigin.binding ? 'Relink Local Source' : 'Link Local Source',
+        label: localOrigin.binding ? t('common:collab.relink_local_source') : t('common:collab.link_local_source'),
         icon: 'link',
         disabled: actionDisabled,
         onClick: () => {
@@ -1379,7 +1384,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         },
       },
       {
-        label: 'Clear Local Source',
+        label: t('common:collab.clear_local_source'),
         icon: 'link_off',
         disabled: !localOrigin.binding || actionDisabled,
         onClick: () => {
@@ -1387,7 +1392,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         },
       },
     ];
-  }, [documentType, handleSaveCodeCopy, hasHydrated, localOrigin, handleReuploadFromLocal]);
+  }, [documentType, handleSaveCodeCopy, hasHydrated, localOrigin, handleReuploadFromLocal, t]);
   const handleLexicalEditorReady = useCallback((editor: any) => {
     setLexicalEditor((prev: any) => (prev === editor ? prev : editor));
     lexicalEditorRef.current = editor ?? null;
@@ -1407,23 +1412,23 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
       if (plaintext === null) {
         const replica = replicaRef.current;
         const adapter = getCollabContentAdapter(activeConfig.documentType ?? 'markdown');
-        if (!replica || !adapter) throw new Error('No plaintext exporter is available');
+        if (!replica || !adapter) throw new Error(t('collab.plaintext_exporter_unavailable'));
         plaintext = exportCollabRecoveryPlaintext(adapter, replica.getYDoc());
       }
-      if (plaintext === null) throw new Error('This editor cannot export UTF-8 text');
+      if (plaintext === null) throw new Error(t('collab.utf8_export_unavailable'));
       await window.electronAPI.copyToClipboard(plaintext);
       errorNotificationService.showInfo(
-        'Current document copied',
-        'The complete current document was copied so the unsent edits can be preserved.',
+        t('collab.document_copied'),
+        t('collab.document_copied_message'),
         { duration: 4000 },
       );
     } catch (error) {
       errorNotificationService.showError(
-        'Could not copy current document',
+        t('collab.copy_failed'),
         error instanceof Error ? error.message : String(error),
       );
     }
-  }, [activeConfig.documentType]);
+  }, [activeConfig.documentType, t]);
 
   const handleDiscardLocalCopy = useCallback(async (): Promise<void> => {
     const confirm = dialogRef.current?.confirm;
@@ -1432,24 +1437,35 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
       return;
     }
     const confirmed = await confirm({
-      title: 'Discard local copy?',
-      message: 'This permanently deletes the local replica and its unuploaded edits, then closes the document. This cannot be undone.',
-      confirmLabel: 'Discard and close',
-      cancelLabel: 'Keep local copy',
+      title: t('collab.discard_confirm_title'),
+      message: t('collab.discard_confirm_message'),
+      confirmLabel: t('collab.discard_and_close'),
+      cancelLabel: t('collab.keep_local_copy'),
       destructive: true,
     });
     if (!confirmed) return;
     try {
       const acquisition = replicaAcquisitionRef.current;
-      if (!acquisition) throw new Error('The local replica is no longer attached');
+      if (!acquisition) throw new Error(t('collab.replica_detached'));
       await acquisition.discardLocalCopy();
       store.set(closeActiveTabRequestAtom, (value) => value + 1);
     } catch (error) {
       errorNotificationService.showError(
-        'Could not discard local copy',
+        t('collab.discard_failed'),
         error instanceof Error ? error.message : String(error),
       );
     }
+  }, [t]);
+
+  // Keep history and editor-host identities stable when only UI language changes.
+  const handleHistoryControllerChange = useCallback((controller: CollabHistoryController | null) => {
+    historyControllerRef.current = controller;
+    if (controller?.exportSnapshot) {
+      void ensureBootstrapRevision();
+    }
+  }, [ensureBootstrapRevision]);
+  const handleMonacoEditorReady = useCallback((editor: unknown) => {
+    monacoEditorRef.current = editor;
   }, []);
 
   // Publish a per-tab history controller so the CollabHistoryDialog can
@@ -1544,7 +1560,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         )}
         {providerEpoch === 0 ? (
           <div className="flex items-center justify-center h-full text-nim-muted">
-            Connecting to document...
+            {t('collab.connecting_document')}
           </div>
         ) : documentType === 'markdown' ? (
           // Keyed by providerEpoch: a re-acquisition (HMR, key rotation) must
@@ -1583,15 +1599,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
             isActive={isActive}
             activeConfig={activeConfig}
             createHistoryClient={createHistoryClient}
-            onHistoryControllerChange={(controller) => {
-              historyControllerRef.current = controller;
-              if (controller?.exportSnapshot) {
-                void ensureBootstrapRevision();
-              }
-            }}
-            onEditorReady={(editor) => {
-              monacoEditorRef.current = editor;
-            }}
+            onHistoryControllerChange={handleHistoryControllerChange}
+            onEditorReady={handleMonacoEditorReady}
             onDirtyChange={onDirtyChange}
           />
         ) : extensionRegistration && syncProviderRef.current ? (
@@ -1604,17 +1613,12 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
             isActive={isActive}
             activeConfig={activeConfig}
             createHistoryClient={createHistoryClient}
-            onHistoryControllerChange={(controller) => {
-              historyControllerRef.current = controller;
-              if (controller?.exportSnapshot) {
-                void ensureBootstrapRevision();
-              }
-            }}
+            onHistoryControllerChange={handleHistoryControllerChange}
             onDirtyChange={onDirtyChange}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-nim-muted">
-            No editor available for document type: {documentType}
+            {t('collab.no_editor', { type: documentType })}
           </div>
         )}
       </div>

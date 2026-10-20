@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { getFileName } from '../utils/pathUtils';
 
 export function generateWorkspaceAccentColor(path: string): string {
@@ -31,7 +32,8 @@ export function WorkspaceSummaryHeader({
   headerClassName = '',
   actionsClassName = '',
 }: WorkspaceSummaryHeaderProps) {
-  const displayName = workspaceName || getFileName(workspacePath) || 'Workspace';
+  const { t } = useTranslation(['common']);
+  const displayName = workspaceName || getFileName(workspacePath) || t('common:workspace');
 
   return (
     <>

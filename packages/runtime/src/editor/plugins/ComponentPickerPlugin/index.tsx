@@ -48,6 +48,8 @@ import {
 import {
   createBasicTriggerFunction,
 } from '../TypeaheadPlugin/TypeaheadMenu';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../../ui/RuntimeTranslation';
+import { getUserCommandTitle } from './userCommandPresentation';
 
 // ============================================================================
 // MATERIAL SYMBOLS ICON SUPPORT
@@ -104,7 +106,7 @@ export function ensureMaterialSymbolsLoaded() {
 
 type ShowModal = ReturnType<typeof useModal>[1];
 
-function getDynamicOptions(editor: LexicalEditor, queryString: string): TypeaheadMenuOption[] {
+function getDynamicOptions(editor: LexicalEditor, queryString: string, t: RuntimeTranslate): TypeaheadMenuOption[] {
   const options: TypeaheadMenuOption[] = [];
 
   if (queryString == null) {
@@ -123,10 +125,11 @@ function getDynamicOptions(editor: LexicalEditor, queryString: string): Typeahea
       ...colOptions.map(
         (columns) => ({
           id: `table-${rows}x${columns}`,
-          label: `${rows}x${columns} Table`,
+          label: t('editor:typeahead.dimension_table', '{{rows}}x{{columns}} Table', { rows, columns }),
           icon: <MaterialIcon name="table" />,
           keywords: ['table'],
           section: 'Tables',
+          sectionLabel: t('common:database.tables', 'Tables'),
           onSelect: () =>
             editor.dispatchCommand(INSERT_TABLE_COMMAND, {columns, rows}),
         }),
@@ -137,7 +140,19 @@ function getDynamicOptions(editor: LexicalEditor, queryString: string): Typeahea
   return options;
 }
 
-function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadMenuOption[] {
+function PickerModalTitle({ kind }: { kind: 'table' | 'layout' }) {
+  const { t } = useRuntimeTranslation();
+  return <>{kind === 'table' ? t('editor:formatting.insert_table', 'Insert Table') : t('editor:formatting.insert_layout', 'Insert Columns Layout')}</>;
+}
+
+function getBaseOptions(editor: LexicalEditor, showModal: ShowModal, t: RuntimeTranslate): TypeaheadMenuOption[] {
+  const sectionLabels: Record<string, string> = {
+    'Basic blocks': t('editor:typeahead.basic_blocks', 'Basic blocks'),
+    Tables: t('common:database.tables', 'Tables'),
+    Lists: t('editor:typeahead.lists', 'Lists'),
+    Layout: t('editor:typeahead.layout', 'Layout'),
+    Plugins: t('editor:typeahead.plugins', 'Plugins'),
+  };
   return [
     // {
     //   id: 'paragraph',
@@ -155,7 +170,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     // },
     {
       id: 'heading-1',
-      label: 'Heading 1',
+      label: t('dialogs:keyboard_shortcuts.labels.heading_1', 'Heading 1'),
       icon: <MaterialIcon name="title" />,
       keywords: ['heading', 'header', 'h1'],
       section: 'Basic blocks',
@@ -169,7 +184,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'heading-2',
-      label: 'Heading 2',
+      label: t('dialogs:keyboard_shortcuts.labels.heading_2', 'Heading 2'),
       icon: <MaterialIcon name="title" />,
       keywords: ['heading', 'header', 'h2'],
       section: 'Basic blocks',
@@ -183,7 +198,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'heading-3',
-      label: 'Heading 3',
+      label: t('dialogs:keyboard_shortcuts.labels.heading_3', 'Heading 3'),
       icon: <MaterialIcon name="title" />,
       keywords: ['heading', 'header', 'h3'],
       section: 'Basic blocks',
@@ -197,18 +212,18 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'table',
-      label: 'Table',
+      label: t('settings:database.table', 'Table'),
       icon: <MaterialIcon name="table" />,
       keywords: ['table', 'grid', 'spreadsheet', 'rows', 'columns'],
       section: 'Tables',
       onSelect: () =>
-        showModal('Insert Table', (onClose) => (
+        showModal(<PickerModalTitle kind="table" />, (onClose) => (
           <InsertTableDialog activeEditor={editor} onClose={onClose} />
         )),
     },
     {
       id: 'numbered-list',
-      label: 'Numbered List',
+      label: t('dialogs:keyboard_shortcuts.labels.numbered_list', 'Numbered List'),
       icon: <MaterialIcon name="format_list_numbered" />,
       keywords: ['numbered list', 'ordered list', 'ol'],
       section: 'Lists',
@@ -217,7 +232,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'bulleted-list',
-      label: 'Bulleted List',
+      label: t('editor:typeahead.bulleted_list', 'Bulleted List'),
       icon: <MaterialIcon name="format_list_bulleted" />,
       keywords: ['bulleted list', 'unordered list', 'ul'],
       section: 'Lists',
@@ -226,7 +241,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'check-list',
-      label: 'Check List',
+      label: t('dialogs:keyboard_shortcuts.labels.check_list', 'Check List'),
       icon: <MaterialIcon name="checklist" />,
       keywords: ['check list', 'todo list'],
       section: 'Lists',
@@ -235,7 +250,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'quote',
-      label: 'Quote',
+      label: t('dialogs:keyboard_shortcuts.labels.quote', 'Quote'),
       icon: <MaterialIcon name="format_quote" />,
       keywords: ['block quote', 'quotation'],
       section: 'Basic blocks',
@@ -249,7 +264,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'code',
-      label: 'Code Block',
+      label: t('dialogs:keyboard_shortcuts.labels.code_block', 'Code Block'),
       icon: <MaterialIcon name="code" />,
       keywords: ['javascript', 'python', 'js', 'codeblock'],
       section: 'Basic blocks',
@@ -271,7 +286,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'divider',
-      label: 'Divider',
+      label: t('editor:typeahead.divider', 'Divider'),
       icon: <MaterialIcon name="horizontal_rule" />,
       keywords: ['horizontal rule', 'divider', 'hr'],
       section: 'Layout',
@@ -280,7 +295,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'page-break',
-      label: 'Page Break',
+      label: t('editor:formatting.page_break', 'Page Break'),
       icon: <MaterialIcon name="insert_page_break" />,
       keywords: ['page break', 'divider'],
       section: 'Layout',
@@ -300,7 +315,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     // ),
     {
       id: 'collapsible',
-      label: 'Collapsible',
+      label: t('editor:typeahead.collapsible', 'Collapsible'),
       icon: <MaterialIcon name="expand_more" />,
       keywords: ['collapse', 'collapsible', 'toggle'],
       section: 'Layout',
@@ -309,12 +324,12 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     },
     {
       id: 'columns-layout',
-      label: 'Columns Layout',
+      label: t('editor:formatting.columns_layout', 'Columns Layout'),
       icon: <MaterialIcon name="view_column" />,
       keywords: ['columns', 'layout', 'grid'],
       section: 'Layout',
       onSelect: () =>
-        showModal('Insert Columns Layout', (onClose) => (
+        showModal(<PickerModalTitle kind="layout" />, (onClose) => (
           <InsertLayoutDialog activeEditor={editor} onClose={onClose} />
         )),
     },
@@ -369,7 +384,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
     ...getAllExtensionUserCommands().map(
       (userCommand) => ({
         id: `plugin-${userCommand.title.toLowerCase().replace(/\s+/g, '-')}`,
-        label: userCommand.title,
+        label: getUserCommandTitle(userCommand, t),
         icon: userCommand.icon ? <MaterialIcon name={userCommand.icon} /> : undefined,
         keywords: userCommand.keywords || [],
         section: 'Plugins',
@@ -377,7 +392,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal): TypeaheadM
           editor.dispatchCommand(userCommand.command, userCommand.payload),
       }),
     ),
-  ];
+  ].map(option => ({ ...option, sectionLabel: sectionLabels[option.section] }));
 }
 
 // ============================================================================
@@ -389,6 +404,7 @@ export default function ComponentPickerMenuPlugin({
 }: {
   anchorElem?: HTMLElement;
 }): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   const [modal, showModal] = useModal();
   const [queryString, setQueryString] = useState<string | null>(null);
@@ -446,7 +462,7 @@ export default function ComponentPickerMenuPlugin({
   }, [queryString]);
 
   const options = useMemo(() => {
-    const baseOptions = getBaseOptions(editor, showModal);
+    const baseOptions = getBaseOptions(editor, showModal, t);
 
     if (!queryString) {
       return baseOptions;
@@ -455,15 +471,15 @@ export default function ComponentPickerMenuPlugin({
     const regex = new RegExp(queryString, 'i');
 
     return [
-      ...getDynamicOptions(editor, queryString),
-      ...pluginDynamicOptions,
+      ...getDynamicOptions(editor, queryString, t),
+      ...pluginDynamicOptions.map(option => ({ ...option, sectionLabel: t('editor:typeahead.plugins', 'Plugins') })),
       ...baseOptions.filter(
         (option) =>
           regex.test(option.label) ||
           (option.keywords && option.keywords.some((keyword) => regex.test(keyword))),
       ),
     ];
-  }, [editor, queryString, showModal, pluginDynamicOptions, registryVersion]);
+  }, [editor, queryString, showModal, pluginDynamicOptions, registryVersion, t]);
 
   const triggerFn = useMemo(
     () => createBasicTriggerFunction('/', {minLength: 0}),

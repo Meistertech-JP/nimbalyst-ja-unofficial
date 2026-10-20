@@ -8,6 +8,7 @@ import { Notification, BrowserWindow, app, ipcMain, shell } from 'electron';
 import { logger } from '../utils/logger';
 import { isOSNotificationsEnabled, isNotifyWhenFocusedEnabled, isSessionBlockedNotificationsEnabled } from '../utils/store';
 import { findWindowByWorkspace } from '../window/WindowManager';
+import { t } from '../i18n';
 
 const NOTIFICATION_OUTCOME_TIMEOUT_MS = 2_000;
 
@@ -277,8 +278,8 @@ class NotificationService {
     }
 
     const notification = new Notification({
-      title: 'Notifications Enabled',
-      body: 'Nimbalyst will notify you when AI responses are ready.',
+      title: t('errors:notifications.enabled'),
+      body: t('errors:notifications.enabled_description'),
       icon: this.getAppIcon(),
       silent: true,
       urgency: 'normal',
@@ -402,15 +403,15 @@ class NotificationService {
   private getBlockedTitle(blockingType: BlockingType): string {
     switch (blockingType) {
       case 'permission':
-        return 'Permission Required';
+        return t('errors:notifications.permission_required');
       case 'question':
-        return 'Question Waiting';
+        return t('errors:notifications.question_waiting');
       case 'plan_approval':
-        return 'Plan Ready for Review';
+        return t('errors:notifications.plan_ready');
       case 'git_commit':
-        return 'Commit Ready';
+        return t('errors:notifications.commit_ready');
       default:
-        return 'Session Needs Attention';
+        return t('errors:notifications.session_needs_attention');
     }
   }
 
@@ -420,15 +421,15 @@ class NotificationService {
   private getBlockedBody(blockingType: BlockingType, sessionName: string): string {
     switch (blockingType) {
       case 'permission':
-        return `"${sessionName}" needs approval`;
+        return t('errors:notifications.needs_approval', { sessionName });
       case 'question':
-        return `"${sessionName}" has a question`;
+        return t('errors:notifications.has_question', { sessionName });
       case 'plan_approval':
-        return `"${sessionName}" plan is ready`;
+        return t('errors:notifications.plan_ready_description', { sessionName });
       case 'git_commit':
-        return `"${sessionName}" has a commit proposal`;
+        return t('errors:notifications.has_commit_proposal', { sessionName });
       default:
-        return `"${sessionName}" needs your input`;
+        return t('errors:notifications.needs_input', { sessionName });
     }
   }
 

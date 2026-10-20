@@ -10,6 +10,7 @@ import {
   setExtensionProjectIntroShown,
 } from '../utils/store';
 import { getDialogDefaultPath, rememberDialogSelection } from '../utils/dialogPaths';
+import { t } from '../i18n';
 
 const DEFAULT_EXTENSION_TEMPLATE = 'starter';
 
@@ -73,10 +74,10 @@ async function showExtensionProjectIntroFallbackDialog(
 ): Promise<ExtensionProjectIntroDialogResult> {
   const dialogOptions = {
     type: 'info' as const,
-    title: 'Build With Extensions',
-    message: 'Extensions can add custom editors, AI tools, panels, commands, and other workspace features.',
-    detail: 'Nimbalyst can load your extension project while you build it, so you can test changes inside the app without leaving your development flow.\n\nDescribe what you want to the agent, and watch it build, install, and test the extension right before your eyes.',
-    buttons: ['Cancel', "Don't Show Again", 'Continue'],
+    title: t('onboarding:extension_intro.title'),
+    message: t('errors:native_dialogs.extension_intro_message'),
+    detail: t('errors:native_dialogs.extension_intro_detail'),
+    buttons: [t('common:cancel'), t('onboarding:extension_intro.dont_show_again'), t('common:continue')],
     defaultId: 2,
     cancelId: 0,
     noLink: true,
@@ -164,15 +165,15 @@ export async function showNewExtensionProjectDialog(sourceWindow?: BrowserWindow
   });
   const projectResult = sourceWindow
     ? await dialog.showSaveDialog(sourceWindow, {
-      title: 'Create New Extension Project',
+      title: t('errors:native_dialogs.extension_create_title'),
       defaultPath,
-      buttonLabel: 'Create Project',
+      buttonLabel: t('errors:native_dialogs.extension_create_button'),
       properties: ['createDirectory', 'showOverwriteConfirmation'],
     })
     : await dialog.showSaveDialog({
-      title: 'Create New Extension Project',
+      title: t('errors:native_dialogs.extension_create_title'),
       defaultPath,
-      buttonLabel: 'Create Project',
+      buttonLabel: t('errors:native_dialogs.extension_create_button'),
       properties: ['createDirectory', 'showOverwriteConfirmation'],
     });
 
@@ -188,18 +189,18 @@ export async function showNewExtensionProjectDialog(sourceWindow?: BrowserWindow
     if (sourceWindow) {
       await dialog.showMessageBox(sourceWindow, {
         type: 'warning',
-        title: 'Folder Not Empty',
-        message: 'Choose an empty folder for the new extension project.',
-        detail: `The selected folder already contains files:\n${projectPath}`,
-        buttons: ['OK'],
+        title: t('errors:native_dialogs.extension_folder_not_empty'),
+        message: t('errors:native_dialogs.extension_empty_folder'),
+        detail: t('errors:native_dialogs.extension_folder_contents', { path: projectPath }),
+        buttons: [t('dialogs:confirm.ok')],
       });
     } else {
       await dialog.showMessageBox({
         type: 'warning',
-        title: 'Folder Not Empty',
-        message: 'Choose an empty folder for the new extension project.',
-        detail: `The selected folder already contains files:\n${projectPath}`,
-        buttons: ['OK'],
+        title: t('errors:native_dialogs.extension_folder_not_empty'),
+        message: t('errors:native_dialogs.extension_empty_folder'),
+        detail: t('errors:native_dialogs.extension_folder_contents', { path: projectPath }),
+        buttons: [t('dialogs:confirm.ok')],
       });
     }
     return;

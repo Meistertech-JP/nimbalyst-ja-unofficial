@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, nativeImage, nativeTheme, session } from 'electron';
+import { app, BrowserWindow, dialog, nativeImage, nativeTheme, session, shell } from 'electron';
 import { safeHandle, safeOn } from './utils/ipcRegistry';
 import { installMicrophoneGate } from './mediaPermissionGate';
 import { markBootComplete } from './utils/bootState';
@@ -12,6 +12,7 @@ import { appendFileSync, existsSync, renameSync, unlinkSync, writeFileSync } fro
 import { createWindow, findWindowByFilePath, findWindowByWorkspace, getMostRecentlyFocusedWorkspaceWindow } from './window/WindowManager';
 import { loadFileIntoWindow } from './file/FileOperations';
 import { createApplicationMenu } from './menu/ApplicationMenu';
+import { initI18n, t } from './i18n';
 import { updateNativeTheme, updateWindowTitleBars } from './theme/ThemeManager';
 import { restoreSessionState, saveSessionState } from './session/SessionState';
 import { getRestartSignalPath } from './utils/appPaths';
@@ -228,8 +229,9 @@ if (process.env.ELECTRON_RUN_AS_NODE === '1' && process.platform === 'darwin') {
 
 // Windows notifications require a stable AppUserModelID.
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.nimbalyst.electron');
+  app.setAppUserModelId('jp.meistertech.nimbalyst.ja-unofficial');
 }
+app.setName('Nimbalyst 日本語版（非公式）');
 
 // Issue #146: register the `nim-asset://` scheme as standard/secure BEFORE
 // `app.whenReady` resolves. Per Electron docs, schemes must be marked as
@@ -418,7 +420,14 @@ export { getMcpConfigService } from './mcpConfigServiceRef';
 // Set custom userData path if RUN_ONE_DEV_MODE environment variable is set
 // This allows running a dev instance alongside a production build without conflicts
 // This must be done before app is ready and before any calls to app.getPath('userData')
-if (process.env.RUN_ONE_DEV_MODE === 'true') {
+const hasExplicitUserDataPath = Boolean(process.env.NIMBALYST_USER_DATA_DIR)
+    || process.argv.some((arg) => arg.startsWith('--user-data-dir='));
+
+if (app.isPackaged && !hasExplicitUserDataPath) {
+    const unofficialUserData = path.join(app.getPath('appData'), 'Nimbalyst 日本語版（非公式）');
+    app.setPath('userData', unofficialUserData);
+    console.log(`Unofficial edition: Using isolated userData path: ${unofficialUserData}`);
+} else if (process.env.RUN_ONE_DEV_MODE === 'true') {
     const defaultUserData = app.getPath('userData');
     const devUserData = path.join(path.dirname(defaultUserData), 'Nimbalyst-Dev');
     app.setPath('userData', devUserData);
@@ -551,18 +560,19 @@ function initializeLogging() {
 }
 
 // Register custom URL protocol handler (nimbalyst://)
-// Must be done before app is ready on macOS
+// The upstream authentication service requires this scheme. Do not remove or
+// replace another app's registration at startup; let the installer register
+// this executable and preserve the user's default-app choice.
 if (process.defaultApp) {
-    if (process.argv.length >= 2) {
-        // Remove any stale registration first (e.g. from packaged builds or Electron Fiddle)
-        app.removeAsDefaultProtocolClient('nimbalyst', process.execPath, [path.resolve(process.argv[1])]);
-        app.setAsDefaultProtocolClient('nimbalyst', process.execPath, [path.resolve(process.argv[1])]);
-        logger.main.info(`[DeepLink] Registered nimbalyst:// protocol for dev mode (exec: ${process.execPath}, arg: ${path.resolve(process.argv[1])})`);
-        logger.main.info(`[DeepLink] isDefaultProtocolClient: ${app.isDefaultProtocolClient('nimbalyst', process.execPath, [path.resolve(process.argv[1])])}`);
+    if (process.argv.length >= 2 && app.isDefaultProtocolClient('nimbalyst', process.execPath, [path.resolve(process.argv[1])])) {
+        logger.main.info('[DeepLink] nimbalyst:// is already registered to this development app');
+    } else {
+        logger.main.info('[DeepLink] Skipping development registration of nimbalyst:// to preserve the existing default handler');
     }
+} else if (app.isDefaultProtocolClient('nimbalyst')) {
+    logger.main.info('[DeepLink] nimbalyst:// is already registered to this application');
 } else {
-    app.removeAsDefaultProtocolClient('nimbalyst');
-    app.setAsDefaultProtocolClient('nimbalyst');
+    logger.main.warn('[DeepLink] nimbalyst:// is registered to another or no application; not changing the existing default handler');
 }
 
 registerLinuxAppImageProtocolHandler();
@@ -1344,10 +1354,28 @@ BrowserWindow.prototype.focus = function(this: BrowserWindow) {
 // --- END ACTIVATION DEBUGGING ---
 
 // App ready handler
-app.whenReady().then(async () => {
-    checkpoint('app-ready');
+  app.whenReady().then(async () => {
+      checkpoint('app-ready');
+      await initI18n();
 
-    // The default renderer session may use the microphone after Voice Mode has
+      if (process.platform === 'win32' && app.isPackaged && !app.isDefaultProtocolClient('nimbalyst')
+          && !getAppSetting<boolean>('unofficialProtocolConflictNoticeShown')) {
+          store.set('unofficialProtocolConflictNoticeShown', true);
+          const result = await dialog.showMessageBox({
+              type: 'warning',
+              title: t('menu:protocol_conflict_title'),
+              message: t('menu:protocol_conflict_message'),
+              detail: t('menu:protocol_conflict_detail'),
+              buttons: [t('menu:protocol_conflict_open_settings'), t('menu:protocol_conflict_dismiss')],
+              defaultId: 1,
+              cancelId: 1,
+          });
+          if (result.response === 0) {
+              await shell.openExternal('ms-settings:defaultapps');
+          }
+      }
+
+      // The default renderer session may use the microphone after Voice Mode has
     // explicitly obtained the OS grant. Non-default sessions are deny-always.
     installMicrophoneGate(session.defaultSession, {
         allowWhenGranted: true,
@@ -1504,23 +1532,13 @@ app.whenReady().then(async () => {
             const dbPath = join(app.getPath('userData'), 'pglite-db');
 
             dialog.showErrorBox(
-                'Nimbalyst - Database Initialization Failed',
-                `The database system failed to start.\n\n` +
-                `This usually indicates:\n` +
-                `1. Another process has the database locked\n` +
-                `2. Database files are corrupted\n` +
-                `3. Insufficient file system permissions\n\n` +
-                `To fix this:\n` +
-                `1. Close any other Nimbalyst windows\n` +
-                `2. Restart your computer (clears stale locks)\n` +
-                `3. If the problem persists, delete the database folder:\n` +
-                `   ${dbPath}\n\n` +
-                `Nimbalyst will now close.`
+                t('errors:database.startup_failed_title'),
+                t('errors:database.startup_wasm_failed', { path: dbPath })
             );
         } else {
             dialog.showErrorBox(
-                'Nimbalyst - Database Initialization Failed',
-                `Failed to initialize the database system.\n\nError: ${errorMessage}\n\nNimbalyst cannot continue without the database.`
+                t('errors:database.startup_failed_title'),
+                t('errors:database.startup_failed', { error: errorMessage })
             );
         }
 
@@ -2790,10 +2808,10 @@ app.on('before-quit', async (event) => {
 
         const response = await dialog.showMessageBox({
             type: 'warning',
-            title: 'AI Session in Progress',
-            message: 'An AI session is currently running.',
-            detail: 'If you quit now, the current AI response will be lost. Are you sure you want to quit?',
-            buttons: ['Quit Anyway', 'Cancel'],
+            title: t('errors:native_dialogs.quit_active_title'),
+            message: t('errors:native_dialogs.quit_active_message'),
+            detail: t('errors:native_dialogs.quit_active_detail'),
+            buttons: [t('errors:native_dialogs.quit_anyway'), t('common:cancel')],
             defaultId: 1,
             cancelId: 1
         });

@@ -20,6 +20,7 @@ import { useTranscriptToolWidgetRegistryVersion } from '../contributions';
 import { ToolCallChanges } from './ToolCallChanges';
 import { setSessionIsAtBottom, getSessionIsAtBottom } from '../../../store/atoms/transcriptScroll';
 import { isAppleMobileWebKit } from '../../../utils/platform';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../RuntimeTranslation';
 
 // Per-session VList cache - survives component remounts so returning to a session
 // doesn't re-measure all items from scratch
@@ -222,6 +223,7 @@ const PromptAdditionsInline: React.FC<{
   attachments?: Array<{ type: string; filename: string; mimeType?: string; filepath?: string }>;
   timestamp: number;
 }> = ({ systemPromptAddition, userMessageAddition, attachments, timestamp }) => {
+  const { t } = useRuntimeTranslation();
   const [isSystemExpanded, setIsSystemExpanded] = useState(false);
   const [isUserExpanded, setIsUserExpanded] = useState(false);
   const [isAttachmentsExpanded, setIsAttachmentsExpanded] = useState(false);
@@ -288,9 +290,11 @@ const PromptAdditionsInline: React.FC<{
             color: 'var(--nim-bg)',
           }}
         >
-          Dev
+          {t('aichat:rich_transcript.developer_label', 'Dev')}
         </span>
-        <span className="text-[var(--nim-text-muted)]">Prompt Additions</span>
+        <span className="text-[var(--nim-text-muted)]">
+          {t('aichat:rich_transcript.prompt_additions', 'Prompt Additions')}
+        </span>
         <span className="ml-auto text-[11px] text-[var(--nim-text-faint)]">
           {formatTimestamp(timestamp)}
         </span>
@@ -299,10 +303,12 @@ const PromptAdditionsInline: React.FC<{
       <div className="p-2">
         {/* Attachments Section */}
         {hasAttachments && renderExpandableSection(
-          'Attachments',
+          t('aichat:rich_transcript.attachments', 'Attachments'),
           isAttachmentsExpanded,
           setIsAttachmentsExpanded,
-          `${attachments!.length} file${attachments!.length > 1 ? 's' : ''}`,
+          attachments!.length === 1
+            ? t('aichat:rich_transcript.files_one', '{{count}} file', { count: attachments!.length })
+            : t('aichat:rich_transcript.files_other', '{{count}} files', { count: attachments!.length }),
           <div className="space-y-1">
             {attachments!.map((att, idx) => (
               <div
@@ -330,10 +336,10 @@ const PromptAdditionsInline: React.FC<{
 
         {/* System Prompt Section */}
         {hasSystemPrompt && renderExpandableSection(
-          'System Prompt Addition',
+          t('aichat:rich_transcript.system_prompt_addition', 'System Prompt Addition'),
           isSystemExpanded,
           setIsSystemExpanded,
-          `${systemPromptAddition!.length} chars`,
+          t('aichat:user_input.char_count', '{{count}} chars', { count: systemPromptAddition!.length }),
           <pre
             className="m-0 p-2 bg-[var(--nim-bg)] rounded border border-[var(--nim-border)] text-[11px] leading-relaxed text-[var(--nim-text-muted)] overflow-auto"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '150px' }}
@@ -345,10 +351,10 @@ const PromptAdditionsInline: React.FC<{
 
         {/* User Message Addition Section */}
         {hasUserMessage && renderExpandableSection(
-          'User Message Addition',
+          t('aichat:rich_transcript.user_message_addition', 'User Message Addition'),
           isUserExpanded,
           setIsUserExpanded,
-          `${userMessageAddition!.length} chars`,
+          t('aichat:user_input.char_count', '{{count}} chars', { count: userMessageAddition!.length }),
           <pre
             className="m-0 p-2 bg-[var(--nim-bg)] rounded border border-[var(--nim-border)] text-[11px] leading-relaxed text-[var(--nim-text-muted)] overflow-auto"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '150px' }}
@@ -362,29 +368,24 @@ const PromptAdditionsInline: React.FC<{
   );
 };
 
-const REMINDER_KIND_LABELS: Record<string, string> = {
-  session_naming: 'Session metadata reminder',
-  wakeup_resume: 'Resumed from scheduled wakeup',
-};
-
 // Keyed by the known PermissionDeniedReasonType values from the SDK. Typed
 // here as a partial record so an unknown value (forward-compatible SDK
 // addition) falls back to the raw string or "SDK" in the renderer.
-const REASON_TYPE_LABELS: Partial<Record<string, string>> = {
-  classifier: 'Auto-mode classifier',
-  mode: 'Permission mode',
-  rule: 'Permission rule',
-  asyncAgent: 'Async agent',
-};
-
 const PermissionDeniedCard: React.FC<{
   message: TranscriptViewMessage;
 }> = ({ message }) => {
+  const { t, locale } = useRuntimeTranslation();
+  const reasonLabels: Partial<Record<string, string>> = {
+    classifier: t('aichat:rich_transcript.reason_classifier', 'Auto-mode classifier'),
+    mode: t('aichat:rich_transcript.reason_mode', 'Permission mode'),
+    rule: t('aichat:rich_transcript.reason_rule', 'Permission rule'),
+    asyncAgent: t('aichat:rich_transcript.reason_async', 'Async agent'),
+  };
   const payload = message.systemMessage;
-  const toolName = payload?.deniedToolName ?? 'unknown tool';
+  const toolName = payload?.deniedToolName ?? t('aichat:rich_transcript.unknown_tool', 'unknown tool');
   const reason = payload?.deniedReason;
   const reasonType = payload?.deniedReasonType;
-  const reasonLabel = (reasonType && REASON_TYPE_LABELS[reasonType]) ?? reasonType ?? 'SDK';
+  const reasonLabel = (reasonType && reasonLabels[reasonType]) ?? reasonType ?? 'SDK';
 
   return (
     <div
@@ -393,11 +394,11 @@ const PermissionDeniedCard: React.FC<{
     >
       <div className="flex items-center gap-2 text-xs text-[var(--nim-error)]">
         <MaterialSymbol icon="block" size={14} />
-        <span className="font-semibold uppercase tracking-[0.08em]">Tool denied</span>
+        <span className="font-semibold uppercase tracking-[0.08em]">{t('aichat:rich_transcript.tool_denied', 'Tool denied')}</span>
         <span className="text-[var(--nim-text-muted)]">·</span>
         <code className="text-[11px] font-mono text-[var(--nim-text)]">{toolName}</code>
         <span className="ml-auto text-[10px] text-[var(--nim-text-faint)]">
-          {formatMessageTime(message.createdAt?.getTime() ?? 0)}
+          {formatMessageTime(message.createdAt?.getTime() ?? 0, locale)}
         </span>
       </div>
       {reason && (
@@ -406,7 +407,7 @@ const PermissionDeniedCard: React.FC<{
         </p>
       )}
       <p className="m-0 mt-1 text-[10px] uppercase tracking-wide text-[var(--nim-text-faint)]">
-        Source: {reasonLabel}
+        {t('aichat:rich_transcript.source', 'Source: {{source}}', { source: reasonLabel })}
       </p>
     </div>
   );
@@ -415,6 +416,7 @@ const PermissionDeniedCard: React.FC<{
 const SystemReminderCard: React.FC<{
   message: TranscriptViewMessage;
 }> = ({ message }) => {
+  const { t, locale } = useRuntimeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const content = (message.text ?? '')
@@ -432,8 +434,11 @@ const SystemReminderCard: React.FC<{
     (typeof message.metadata?.reminderKind === 'string'
       ? (message.metadata.reminderKind as string)
       : undefined);
-  const label =
-    (reminderKind && REMINDER_KIND_LABELS[reminderKind]) ?? 'System Reminder';
+  const label = reminderKind === 'session_naming'
+    ? t('aichat:rich_transcript.session_reminder', 'Session metadata reminder')
+    : reminderKind === 'wakeup_resume'
+      ? t('aichat:rich_transcript.wakeup_reminder', 'Resumed from scheduled wakeup')
+      : t('aichat:rich_transcript.system_reminder', 'System Reminder');
 
   return (
     <div className="rich-transcript-system-reminder ml-6 mb-2 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-3 py-2">
@@ -451,7 +456,7 @@ const SystemReminderCard: React.FC<{
         <MaterialSymbol icon="notification_important" size={14} />
         <span className="font-medium uppercase tracking-[0.08em]">{label}</span>
         <span className="ml-auto text-[10px] text-[var(--nim-text-faint)]">
-          {formatMessageTime(message.createdAt?.getTime() ?? 0)}
+          {formatMessageTime(message.createdAt?.getTime() ?? 0, locale)}
         </span>
       </button>
       {isExpanded && (
@@ -620,10 +625,11 @@ export function isInteractiveWidgetTool(toolName: string | null | undefined): bo
 export function formatSubagentAuditLabel(
   model: string | null | undefined,
   reasoningEffort: string | null | undefined,
+  t?: RuntimeTranslate,
 ): string | null {
   const parts: string[] = [];
-  if (model) parts.push(`Model: ${model}`);
-  if (reasoningEffort) parts.push(`Reasoning effort: ${reasoningEffort}`);
+  if (model) parts.push(t?.('aichat:rich_transcript.model', 'Model: {{model}}', { model }) ?? `Model: ${model}`);
+  if (reasoningEffort) parts.push(t?.('aichat:rich_transcript.reasoning', 'Reasoning effort: {{effort}}', { effort: reasoningEffort }) ?? `Reasoning effort: ${reasoningEffort}`);
   return parts.length > 0 ? parts.join('; ') : null;
 }
 
@@ -1106,6 +1112,7 @@ export const RichTranscriptView = React.forwardRef<
   { scrollToMessage: (index: number) => void; scrollToTop: () => void },
   RichTranscriptViewProps
 >(({ sessionId, sessionStatus, isProcessing, hasPendingInteractivePrompt, messages, provider, settings: propsSettings, onSettingsChange, showSettings, documentContext, workspacePath, renderEmptyExtra, hideEmptyHelp, readFile, onOpenFile, onOpenSession, onCompact, promptAdditions, currentTeammates, waitingForNoun, appStartTime, renderEmbeddedFile, canEmbedFile, onSearchBarVisibilityChange, persistScrollState = true }, ref) => {
+  const { t, locale } = useRuntimeTranslation();
   const [collapsedMessages, setCollapsedMessages] = useState<Set<number>>(new Set());
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const scrollButtonRef = useRef<HTMLDivElement>(null);
@@ -1294,12 +1301,18 @@ export const RichTranscriptView = React.forwardRef<
     if (!isWaitingForResponse) return '';
     if (runningTeammates.length > 0 && !isProcessing && sessionStatus !== 'running') {
       const singular = waitingForNoun || 'agent';
+      if (singular === 'agent') {
+        return t('aichat:rich_transcript.waiting_agents', runningTeammates.length === 1 ? 'Waiting for {{count}} agent to complete...' : 'Waiting for {{count}} agents to complete...', { count: runningTeammates.length });
+      }
+      if (singular === 'session') {
+        return t('aichat:rich_transcript.waiting_sessions', runningTeammates.length === 1 ? 'Waiting for {{count}} session to complete...' : 'Waiting for {{count}} sessions to complete...', { count: runningTeammates.length });
+      }
       const plural = singular.endsWith('s') ? singular : `${singular}s`;
       const label = runningTeammates.length === 1 ? singular : plural;
-      return `Waiting for ${runningTeammates.length} ${label} to complete...`;
+      return t('aichat:rich_transcript.waiting_custom', 'Waiting for {{count}} {{label}} to complete...', { count: runningTeammates.length, label: locale === 'ja' ? singular : label });
     }
-    return 'Thinking...';
-  }, [isProcessing, isWaitingForResponse, runningTeammates, sessionStatus, waitingForNoun]);
+    return t('aichat:rich_transcript.thinking', 'Thinking...');
+  }, [isProcessing, isWaitingForResponse, runningTeammates, sessionStatus, waitingForNoun, t, locale]);
 
   // Compute effective target index for prompt additions display
   // Use the stored messageIndex if valid, otherwise find the last user message
@@ -1650,7 +1663,7 @@ export const RichTranscriptView = React.forwardRef<
       case 'lmstudio':
         return 'LM Studio';
       default:
-        return 'Agent';
+        return t('aichat:mode.agent', 'Agent');
     }
   };
 
@@ -1744,7 +1757,7 @@ export const RichTranscriptView = React.forwardRef<
 
     const editTool = isEditToolName(tool.toolName);
     const editEntries = editTool ? extractEditsFromToolMessage(toolMsg) : [];
-    const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || 'Tool';
+    const toolDisplayName = formatToolDisplayName(tool.toolName || '', t) || tool.toolName || t('aichat:rich_transcript.tool', 'Tool');
 
     if (editTool && editEntries.length > 0) {
       return (
@@ -1770,7 +1783,7 @@ export const RichTranscriptView = React.forwardRef<
     const description = (isSubAgent && toolArgs?.description ? toolArgs.description : null) as string | null;
     const prompt = (isSubAgent && toolArgs?.prompt ? toolArgs.prompt : null) as string | null;
     const subagentAuditLabel = isSubAgent
-      ? formatSubagentAuditLabel(toolMsg.subagent?.model, toolMsg.subagent?.reasoningEffort)
+      ? formatSubagentAuditLabel(toolMsg.subagent?.model, toolMsg.subagent?.reasoningEffort, t)
       : null;
 
     // Extract result text
@@ -1804,9 +1817,9 @@ export const RichTranscriptView = React.forwardRef<
             )}
             <span className="rich-transcript-tool-name font-mono text-sm text-[var(--nim-text)] font-medium" title={tool.toolName || undefined}>
               {isTeammate
-                ? (toolMsg.subagent?.teammateName || 'Teammate')
+                ? (toolMsg.subagent?.teammateName || t('aichat:rich_transcript.teammate', 'Teammate'))
                 : isSubAgent
-                  ? (toolArgs?.run_in_background ? 'Background Agent' : 'Sub-Agent')
+                  ? (toolArgs?.run_in_background ? t('aichat:rich_transcript.background_agent', 'Background Agent') : t('aichat:rich_transcript.subagent', 'Sub-Agent'))
                   : toolDisplayName}
               {isTeammate && toolMsg.subagent?.teammateMode && (
                 <span className="rich-transcript-tool-subagent-type text-[var(--nim-text-muted)] font-normal text-xs ml-1">({toolMsg.subagent?.teammateMode})</span>
@@ -1825,7 +1838,7 @@ export const RichTranscriptView = React.forwardRef<
               </span>
             )}
             {!isSubAgent && tool.arguments && (() => {
-              const argStr = formatToolArguments(tool.toolName, tool.arguments, workspacePath);
+              const argStr = formatToolArguments(tool.toolName, tool.arguments, workspacePath, t);
               if (!argStr) return null;
 
               // Check if there's a clickable file path (only for tools that reference actual files)
@@ -1849,7 +1862,7 @@ export const RichTranscriptView = React.forwardRef<
                         onOpenFile(filePath);
                       }
                     }}
-                    title={`Open ${filePath}`}
+                    title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: filePath })}
                   >
                     {argStr}
                   </span>
@@ -1873,7 +1886,7 @@ export const RichTranscriptView = React.forwardRef<
                 return (
                   <span className="flex items-center gap-1 shrink-0">
                     <span className="inline-block w-3 h-3 border-2 border-[var(--nim-bg-tertiary)] border-t-[var(--nim-primary)] rounded-full animate-spin" />
-                    <span className="text-[11px] text-[var(--nim-text-muted)]">Running</span>
+                    <span className="text-[11px] text-[var(--nim-text-muted)]">{t('common:agent_sessions.running', 'Running')}</span>
                   </span>
                 );
               }
@@ -1881,7 +1894,7 @@ export const RichTranscriptView = React.forwardRef<
                 return (
                   <span className="flex items-center gap-1 shrink-0">
                     <span className="text-[var(--nim-primary)] text-[10px]">&#9675;</span>
-                    <span className="text-[11px] text-[var(--nim-text-muted)]">Idle</span>
+                    <span className="text-[11px] text-[var(--nim-text-muted)]">{t('extensions:backend.idle', 'Idle')}</span>
                   </span>
                 );
               }
@@ -1889,7 +1902,7 @@ export const RichTranscriptView = React.forwardRef<
                 return (
                   <span className="flex items-center gap-1 shrink-0">
                     <MaterialSymbol icon="check_circle" size={14} className="text-[var(--nim-success)]" />
-                    <span className="text-[11px] text-[var(--nim-text-muted)]">Done</span>
+                    <span className="text-[11px] text-[var(--nim-text-muted)]">{t('aichat:rich_transcript.done', 'Done')}</span>
                   </span>
                 );
               }
@@ -1897,7 +1910,7 @@ export const RichTranscriptView = React.forwardRef<
                 return (
                   <span className="flex items-center gap-1 shrink-0">
                     <MaterialSymbol icon="cancel" size={14} className="text-[var(--nim-error)]" />
-                    <span className="text-[11px] text-[var(--nim-text-muted)]">Errored</span>
+                    <span className="text-[11px] text-[var(--nim-text-muted)]">{t('aichat:rich_transcript.errored', 'Errored')}</span>
                   </span>
                 );
               }
@@ -1906,7 +1919,7 @@ export const RichTranscriptView = React.forwardRef<
                 return (
                   <span className="flex items-center gap-1 shrink-0">
                     <span className="inline-block w-3 h-3 border-2 border-[var(--nim-primary)] border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[11px] text-[var(--nim-text-muted)]">Running</span>
+                    <span className="text-[11px] text-[var(--nim-text-muted)]">{t('common:agent_sessions.running', 'Running')}</span>
                   </span>
                 );
               }
@@ -1936,7 +1949,7 @@ export const RichTranscriptView = React.forwardRef<
               {/* Show prompt for sub-agents (collapsable) */}
               {isSubAgent && prompt && (
                 <details className="rich-transcript-tool-details my-2">
-                  <summary className="rich-transcript-tool-details-summary text-xs text-[var(--nim-text-faint)] cursor-pointer py-1 select-none hover:text-[var(--nim-text-muted)]">View full prompt</summary>
+                  <summary className="rich-transcript-tool-details-summary text-xs text-[var(--nim-text-faint)] cursor-pointer py-1 select-none hover:text-[var(--nim-text-muted)]">{t('aichat:rich_transcript.full_prompt', 'View full prompt')}</summary>
                   <div className="rich-transcript-tool-details-content mt-1 text-sm">
                     <MarkdownRenderer content={prompt} isUser={false} onOpenFile={onOpenFile} onOpenSession={onOpenSession} />
                   </div>
@@ -1946,7 +1959,7 @@ export const RichTranscriptView = React.forwardRef<
               {/* Show regular tool arguments (not for sub-agents) */}
               {!isSubAgent && tool.arguments && Object.keys(tool.arguments).length > 0 && (
                 <div className="rich-transcript-tool-section mb-1.5">
-                  <div className="rich-transcript-tool-section-label text-[var(--nim-text-faint)] mb-0.5 text-xs">Arguments:</div>
+                  <div className="rich-transcript-tool-section-label text-[var(--nim-text-faint)] mb-0.5 text-xs">{t('aichat:rich_transcript.arguments', 'Arguments:')}</div>
                   <JSONViewer data={tool.arguments} maxHeight="16rem" />
                 </div>
               )}
@@ -1955,7 +1968,9 @@ export const RichTranscriptView = React.forwardRef<
               {hasChildren && (
                 <div className="rich-transcript-tool-section mb-1.5">
                   <div className="rich-transcript-tool-section-label text-[var(--nim-text-faint)] mb-0.5 text-xs">
-                    {isTeammate ? 'Teammate' : 'Sub-agent'} Actions ({(toolMsg.subagent?.childEvents ?? []).length}):
+                    {isTeammate
+                      ? t('aichat:rich_transcript.teammate_actions', 'Teammate Actions ({{count}}):', { count: (toolMsg.subagent?.childEvents ?? []).length })
+                      : t('aichat:rich_transcript.subagent_actions', 'Sub-agent Actions ({{count}}):', { count: (toolMsg.subagent?.childEvents ?? []).length })}
                   </div>
                   <div className="rich-transcript-subagent-children flex flex-col gap-1 mt-2">
                     {(toolMsg.subagent?.childEvents ?? []).map((childMsg: TranscriptViewMessage, childIdx: number) =>
@@ -1969,8 +1984,8 @@ export const RichTranscriptView = React.forwardRef<
               {isSubAgent && !tool.result && tool.progress.length > 0 && (
                 <div className="rich-transcript-tool-section mb-1.5 flex items-center gap-2 text-xs text-[var(--nim-text-muted)]">
                   <span className="inline-block w-3 h-3 border-2 border-[var(--nim-primary)] border-t-transparent rounded-full animate-spin" />
-                  <span>Running <span className="font-mono text-[var(--nim-text)]">{tool.progress[tool.progress.length - 1]?.progressContent}</span></span>
-                  <span>({Math.round(tool.progress[tool.progress.length - 1]?.elapsedSeconds ?? 0)}s)</span>
+                  <span>{t('common:agent_sessions.running', 'Running')}{' '}<span className="font-mono text-[var(--nim-text)]">{tool.progress[tool.progress.length - 1]?.progressContent}</span></span>
+                  <span>({t('aichat:transcript_sidebar.duration_seconds', '{{value}}s', { value: Math.round(tool.progress[tool.progress.length - 1]?.elapsedSeconds ?? 0) })})</span>
                 </div>
               )}
 
@@ -1978,7 +1993,7 @@ export const RichTranscriptView = React.forwardRef<
               {tool.result && (
                 <details className="rich-transcript-tool-details my-2" open={!isSubAgent}>
                   <summary className="rich-transcript-tool-details-summary text-xs text-[var(--nim-text-faint)] cursor-pointer py-1 select-none hover:text-[var(--nim-text-muted)]">
-                    {isSubAgent ? 'View result' : 'Result'}
+                    {isSubAgent ? t('aichat:rich_transcript.view_result', 'View result') : t('aichat:rich_transcript.result', 'Result')}
                   </summary>
                   <div className="rich-transcript-tool-details-content mt-1 text-sm">
                     {resultText ? (
@@ -2112,8 +2127,8 @@ export const RichTranscriptView = React.forwardRef<
 
     // Render teammate/sub-agent messages as compact inline notifications
     if (isUser && message.metadata?.isTeammateMessage) {
-      const teammateName = (message.metadata?.teammateName as string) || 'agent';
-      const label = `Received message from agent ${teammateName}`;
+      const teammateName = (message.metadata?.teammateName as string) || t('aichat:rich_transcript.agent_name', 'agent');
+      const label = t('aichat:rich_transcript.received_message', 'Received message from agent {{name}}', { name: teammateName });
       const content = message.text?.trim();
       // Show first line as preview (truncated)
       const firstLine = content?.split('\n')[0] || '';
@@ -2137,7 +2152,7 @@ export const RichTranscriptView = React.forwardRef<
               <summary className="flex items-center gap-1.5 py-0.5 text-xs text-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)]">
                 <MaterialSymbol icon="chevron_right" size={14} className="teammate-chevron transition-transform shrink-0 w-3.5" />
                 <span className="flex-1 truncate">{label}: {preview}</span>
-                <span className="text-[10px] shrink-0">{formatMessageTime(message.createdAt?.getTime() ?? 0)}</span>
+                <span className="text-[10px] shrink-0">{formatMessageTime(message.createdAt?.getTime() ?? 0, locale)}</span>
               </summary>
               <div className="teammate-content ml-5 mt-1 mb-0.5">
                 <MarkdownRenderer content={content} isUser={false} onOpenFile={onOpenFile} onOpenSession={onOpenSession} />
@@ -2147,7 +2162,7 @@ export const RichTranscriptView = React.forwardRef<
             <div className="flex items-center gap-1.5 py-0.5 text-xs text-[var(--nim-text-faint)]">
               <MaterialSymbol icon="chevron_right" size={14} className="shrink-0 w-3.5 invisible" />
               <span className="flex-1 truncate">{label}: {content}</span>
-              <span className="text-[10px] shrink-0">{formatMessageTime(message.createdAt?.getTime() ?? 0)}</span>
+              <span className="text-[10px] shrink-0">{formatMessageTime(message.createdAt?.getTime() ?? 0, locale)}</span>
             </div>
           )}
         </div>
@@ -2215,7 +2230,7 @@ export const RichTranscriptView = React.forwardRef<
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 h-px bg-[var(--nim-error)]" />
             <span className="text-[11px] font-medium text-[var(--nim-error)] whitespace-nowrap">
-              Nimbalyst restarted {formatMessageTime(appStartTime!)}
+              {t('aichat:rich_transcript.restarted', 'Nimbalyst restarted {{time}}', { time: formatMessageTime(appStartTime!, locale) })}
             </span>
             <div className="flex-1 h-px bg-[var(--nim-error)]" />
           </div>
@@ -2231,18 +2246,18 @@ export const RichTranscriptView = React.forwardRef<
             </div>
             <div className="rich-transcript-message-meta flex-1 flex items-baseline gap-2">
               <span className="rich-transcript-message-sender font-medium text-[var(--nim-text)] text-sm">
-                {isUser ? 'You' : getProviderDisplayName(provider)}
+                {isUser ? t('aichat:rich_transcript.you', 'You') : getProviderDisplayName(provider)}
               </span>
               {isUser && message.mode === 'planning' && (
                 <span
                   className="text-[10px] rounded-full font-medium"
                   style={{ backgroundColor: '#3b82f6', color: 'white', padding: '2px 6px' }}
                 >
-                  Plan
+                  {t('aichat:mode.plan', 'Plan')}
                 </span>
               )}
               <span className="rich-transcript-message-time text-xs text-[var(--nim-text-faint)]">
-                {formatMessageTime(message.createdAt?.getTime() ?? 0)}
+                {formatMessageTime(message.createdAt?.getTime() ?? 0, locale)}
               </span>
             </div>
             <div className="rich-transcript-message-actions flex items-center gap-1">
@@ -2250,7 +2265,7 @@ export const RichTranscriptView = React.forwardRef<
                 <button
                   onClick={() => toggleMessageCollapse(index)}
                   className="rich-transcript-collapse-button p-1 rounded-md bg-transparent border-none text-[var(--nim-text-faint)] cursor-pointer transition-colors hover:bg-[var(--nim-bg-secondary)] hover:text-[var(--nim-text-muted)]"
-                  title={isCollapsed ? "Show full message" : "Collapse message"}
+                  title={isCollapsed ? t('aichat:rich_transcript.full_message', 'Show full message') : t('aichat:rich_transcript.collapse_message', 'Collapse message')}
                 >
                   {isCollapsed ? (
                     <MaterialSymbol icon="visibility" size={16} />
@@ -2287,7 +2302,7 @@ export const RichTranscriptView = React.forwardRef<
             <button
               onClick={() => copyTranscriptViewMessageContent(message, index)}
               className={`rich-transcript-copy-button p-1.5 rounded-md bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] ${copiedMessageIndex === index ? 'copied' : ''}`}
-              title="Copy as Markdown"
+              title={t('menu:copy_as_markdown', 'Copy as Markdown')}
             >
               {copiedMessageIndex === index ? (
                 <MaterialSymbol icon="check" size={16} className="text-[var(--nim-success)]" />
@@ -2336,17 +2351,17 @@ export const RichTranscriptView = React.forwardRef<
           if (startIdx < 0) return null; // No preceding user input message
           const startTimestamp = messages[startIdx].createdAt?.getTime() ?? 0;
           const endTimestamp = message.createdAt?.getTime() ?? 0;
-          const duration = formatDuration(startTimestamp, endTimestamp);
-          if (!duration || duration === '0ms') return null;
-          const finishedAt = formatTurnFinishedAt(endTimestamp);
+          const duration = formatDuration(startTimestamp, endTimestamp, t);
+          if (!duration || duration === t('aichat:transcript_sidebar.duration_ms', '{{value}}ms', { value: 0 })) return null;
+          const finishedAt = formatTurnFinishedAt(endTimestamp, undefined, locale, t);
           const fileStats = computeTurnFileStats(messages, startIdx, index);
           return (
             <div className="rich-transcript-turn-elapsed text-xs text-[var(--nim-text-faint)] mt-2 ml-6">
-              Finished in {duration}
+              {t('aichat:rich_transcript.finished_in', 'Finished in {{duration}}', { duration })}
               {finishedAt && <span> {finishedAt}</span>}
               {fileStats && (
                 <span>
-                  {' · '}{fileStats.filesModified} file{fileStats.filesModified !== 1 ? 's' : ''}
+                  {' · '}{t('aichat:rich_transcript.files', fileStats.filesModified === 1 ? '{{count}} file' : '{{count}} files', { count: fileStats.filesModified })}
                   {fileStats.linesAdded > 0 && <span className="text-[var(--nim-success)] opacity-60"> +{fileStats.linesAdded}</span>}
                   {fileStats.linesRemoved > 0 && <span className="text-[var(--nim-error)] opacity-60"> -{fileStats.linesRemoved}</span>}
                 </span>
@@ -2383,7 +2398,7 @@ export const RichTranscriptView = React.forwardRef<
                 onChange={(e) => onSettingsChange({ ...settings, showToolCalls: e.target.checked })}
                 className="rich-transcript-settings-checkbox rounded border border-[var(--nim-border)]"
               />
-              <span>Show Tool Calls</span>
+              <span>{t('aichat:rich_transcript.show_tools', 'Show Tool Calls')}</span>
             </label>
             <label className="rich-transcript-settings-label flex items-center gap-2">
               <input
@@ -2392,7 +2407,7 @@ export const RichTranscriptView = React.forwardRef<
                 onChange={(e) => onSettingsChange({ ...settings, compactMode: e.target.checked })}
                 className="rich-transcript-settings-checkbox rounded border border-[var(--nim-border)]"
               />
-              <span>Compact Mode</span>
+              <span>{t('aichat:rich_transcript.compact', 'Compact Mode')}</span>
             </label>
             <label className="rich-transcript-settings-label flex items-center gap-2">
               <input
@@ -2401,7 +2416,7 @@ export const RichTranscriptView = React.forwardRef<
                 onChange={(e) => onSettingsChange({ ...settings, showThinking: e.target.checked })}
                 className="rich-transcript-settings-checkbox rounded border border-[var(--nim-border)]"
               />
-              <span>Show Thinking</span>
+              <span>{t('aichat:rich_transcript.show_thinking', 'Show Thinking')}</span>
             </label>
           </div>
         </div>
@@ -2479,7 +2494,7 @@ export const RichTranscriptView = React.forwardRef<
                     <div key="restart-bottom" className="flex items-center gap-3 my-2 px-3">
                       <div className="flex-1 h-px bg-[var(--nim-error)]" />
                       <span className="text-[11px] font-medium text-[var(--nim-error)] whitespace-nowrap">
-                        Nimbalyst restarted {formatMessageTime(appStartTime!)}
+                        {t('aichat:rich_transcript.restarted', 'Nimbalyst restarted {{time}}', { time: formatMessageTime(appStartTime!, locale) })}
                       </span>
                       <div className="flex-1 h-px bg-[var(--nim-error)]" />
                     </div>
@@ -2510,7 +2525,7 @@ export const RichTranscriptView = React.forwardRef<
               className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--nim-primary)] text-white rounded-full shadow-lg text-sm font-medium cursor-pointer border-none transition-all hover:brightness-110"
             >
               <MaterialSymbol icon="shield" size={16} />
-              {pendingPermissionIndices.length} pending permission{pendingPermissionIndices.length > 1 ? 's' : ''} — click to review
+              {t('aichat:rich_transcript.pending_permissions', pendingPermissionIndices.length === 1 ? '{{count}} pending permission — click to review' : '{{count}} pending permissions — click to review', { count: pendingPermissionIndices.length })}
             </button>
           </div>
         )}
@@ -2523,7 +2538,7 @@ export const RichTranscriptView = React.forwardRef<
             ref={scrollButtonElementRef}
             onClick={scrollToBottom}
             className="rich-transcript-scroll-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] text-white rounded-full border-none shadow-lg cursor-pointer transition-all hover:bg-[var(--nim-primary-hover)] hover:scale-110"
-            title="Scroll to bottom"
+            title={t('aichat:rich_transcript.scroll_bottom', 'Scroll to bottom')}
           >
             <MaterialSymbol icon="arrow_downward" size={20} />
           </button>

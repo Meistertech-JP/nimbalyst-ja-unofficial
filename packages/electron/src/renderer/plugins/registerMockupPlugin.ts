@@ -28,6 +28,7 @@ export function registerMockupPlugin(): void {
     userCommands: [
       {
         title: 'Mockup',
+        titleTranslationKey: 'editor:mockup.template_title',
         description: 'Insert a mockup',
         icon: 'design_services',
         keywords: ['mockup', 'design', 'prototype', 'ui', 'layout'],

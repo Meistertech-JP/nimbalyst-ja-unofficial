@@ -10,6 +10,7 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
 import {
@@ -31,11 +32,6 @@ interface PullRequestActionsProps {
 }
 
 const METHOD_ORDER: MergeMethod[] = ['squash', 'merge', 'rebase'];
-const METHOD_LABEL: Record<MergeMethod, string> = {
-  squash: 'Squash and merge',
-  merge: 'Create a merge commit',
-  rebase: 'Rebase and merge',
-};
 
 export function PullRequestActions({
   workspaceId,
@@ -44,6 +40,13 @@ export function PullRequestActions({
   refreshToken,
   onActed,
 }: PullRequestActionsProps): JSX.Element | null {
+  const { t } = useTranslation(['common']);
+  const methodLabel = useCallback((method: MergeMethod): string =>
+    method === 'squash'
+      ? t('common:pull_request.squash_merge')
+      : method === 'merge'
+        ? t('common:pull_request.create_merge_commit')
+        : t('common:pull_request.rebase_merge'), [t]);
   const [perms, setPerms] = useState<PullRequestPermissions | null>(null);
   const [busy, setBusy] = useState<'approve' | 'merge' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,14 +97,14 @@ export function PullRequestActions({
     setNotice(null);
     try {
       await getPullRequestService().approve(workspaceId, remote, pr.number);
-      setNotice('Approved');
+      setNotice(t('common:pull_request.approved'));
       onActed();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Approve failed');
+      setError(err instanceof Error ? err.message : t('common:pull_request.approve_failed'));
     } finally {
       setBusy(null);
     }
-  }, [workspaceId, remote, pr.number, onActed]);
+  }, [workspaceId, remote, pr.number, onActed, t]);
 
   const handleMerge = useCallback(
     async (method: MergeMethod, commitTitle?: string, commitMessage?: string) => {
@@ -118,15 +121,17 @@ export function PullRequestActions({
           commitTitle,
           commitMessage,
         );
-        setNotice(res.merged ? `Merged (${METHOD_LABEL[method].toLowerCase()})` : 'Merge requested');
+        setNotice(res.merged
+          ? `${t('common:pull_request.merged')} (${methodLabel(method).toLowerCase()})`
+          : t('common:pull_request.merge_requested'));
         onActed();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Merge failed');
+        setError(err instanceof Error ? err.message : t('common:pull_request.merge_failed'));
       } finally {
         setBusy(null);
       }
     },
-    [workspaceId, remote, pr.number, onActed],
+    [workspaceId, remote, pr.number, onActed, methodLabel, t],
   );
 
   if (!perms) return null;
@@ -139,7 +144,7 @@ export function PullRequestActions({
         data-testid="pr-merged-badge"
       >
         <MaterialSymbol icon="merge" size={14} />
-        {notice ?? 'Merged'}
+        {notice ?? t('common:pull_request.merged')}
       </span>
     );
   }
@@ -155,10 +160,10 @@ export function PullRequestActions({
 
   const mergeBlocked = perms.mergeable === false;
   const mergeTitle = mergeBlocked
-    ? 'Resolve conflicts before merging'
+    ? t('common:pull_request.resolve_conflicts')
     : perms.mergeableState === 'blocked'
-      ? 'Branch protection may block this merge'
-      : `Merge #${pr.number} into ${pr.baseRef}`;
+      ? t('common:pull_request.branch_protection')
+      : t('common:pull_request.merge_title', { number: pr.number, branch: pr.baseRef });
 
   return (
     <div className="pr-actions flex items-center gap-2" data-testid="pr-actions">
@@ -176,10 +181,10 @@ export function PullRequestActions({
           onClick={handleApprove}
           disabled={busy !== null}
           data-testid="pr-approve-button"
-          title={`Approve #${pr.number}`}
+          title={t('common:pull_request.approve_title', { number: pr.number })}
         >
           <MaterialSymbol icon={busy === 'approve' ? 'hourglass_empty' : 'check_circle'} size={14} />
-          Approve
+          {t('common:pull_request.approve')}
         </button>
       )}
 
@@ -194,7 +199,7 @@ export function PullRequestActions({
             title={mergeTitle}
           >
             <MaterialSymbol icon={busy === 'merge' ? 'hourglass_empty' : 'merge'} size={14} />
-            {METHOD_LABEL[defaultMethod]}
+            {methodLabel(defaultMethod)}
           </button>
           <button
             ref={methodMenu.refs.setReference}
@@ -203,7 +208,7 @@ export function PullRequestActions({
             disabled={busy !== null || mergeBlocked}
             className="flex items-center px-1 bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover rounded-r border-l border-[var(--nim-on-primary)]/20 transition-colors disabled:opacity-50"
             data-testid="pr-merge-method-button"
-            title="More merge options"
+            title={t('common:pull_request.more_merge_options')}
           >
             <MaterialSymbol icon="expand_more" size={14} />
           </button>
@@ -225,7 +230,7 @@ export function PullRequestActions({
                         setPendingMethod(m);
                       }}
                     >
-                      {METHOD_LABEL[m]}
+                      {methodLabel(m)}
                     </button>
                   ))}
                 {editableMethods.length > 0 && (
@@ -237,7 +242,7 @@ export function PullRequestActions({
                       data-testid="pr-merge-edit-message"
                     >
                       <MaterialSymbol icon="edit" size={13} />
-                      Edit commit message…
+                      {t('common:pull_request.edit_commit_message')}…
                     </button>
                   </>
                 )}
@@ -254,7 +259,7 @@ export function PullRequestActions({
                 data-testid="pr-merge-edit-popover"
               >
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-nim-faint">
-                  Edit commit message
+                  {t('common:pull_request.edit_commit_message')}
                 </div>
                 {editableMethods.length > 1 && (
                   <div className="flex gap-1">
@@ -268,7 +273,7 @@ export function PullRequestActions({
                             : 'border-nim text-nim-muted hover:text-nim'
                         }`}
                       >
-                        {METHOD_LABEL[m]}
+                        {methodLabel(m)}
                       </button>
                     ))}
                   </div>
@@ -277,14 +282,14 @@ export function PullRequestActions({
                   className="nim-input text-sm"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="Commit title"
+                  placeholder={t('common:pull_request.commit_title')}
                   data-testid="pr-merge-edit-title"
                 />
                 <textarea
                   className="nim-input text-sm font-mono min-h-[120px] resize-y"
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value)}
-                  placeholder="Commit message (optional)"
+                  placeholder={t('common:pull_request.commit_message_optional')}
                   data-testid="pr-merge-edit-body"
                 />
                 <div className="flex items-center justify-end gap-2">
@@ -292,7 +297,7 @@ export function PullRequestActions({
                     className="px-2 py-1 text-xs text-nim-muted hover:text-nim border border-nim rounded transition-colors"
                     onClick={() => editMenu.setIsOpen(false)}
                   >
-                    Cancel
+                    {t('common:pull_request.cancel')}
                   </button>
                   <button
                     className="flex items-center gap-1 px-2 py-1 text-xs bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover rounded transition-colors disabled:opacity-50"
@@ -304,7 +309,7 @@ export function PullRequestActions({
                     data-testid="pr-merge-edit-confirm"
                   >
                     <MaterialSymbol icon="merge" size={14} />
-                    {METHOD_LABEL[editMethod]}
+                    {methodLabel(editMethod)}
                   </button>
                 </div>
               </div>
@@ -316,7 +321,10 @@ export function PullRequestActions({
       {showMerge && pendingMethod !== null && (
         <div className="flex items-center gap-1.5" data-testid="pr-merge-confirm">
           <span className="text-[11px] text-nim-muted">
-            {METHOD_LABEL[pendingMethod]} into <span className="font-mono text-nim">{pr.baseRef}</span>?
+            {t('common:pull_request.merge_into', {
+              method: methodLabel(pendingMethod),
+              branch: pr.baseRef,
+            })}
           </span>
           <button
             className="flex items-center gap-1 px-2 py-1 text-xs bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover rounded transition-colors disabled:opacity-50"
@@ -325,7 +333,7 @@ export function PullRequestActions({
             data-testid="pr-merge-confirm-button"
           >
             <MaterialSymbol icon={busy === 'merge' ? 'hourglass_empty' : 'check'} size={14} />
-            Confirm
+            {t('common:pull_request.confirm')}
           </button>
           <button
             className="px-2 py-1 text-xs text-nim-muted hover:text-nim border border-nim rounded transition-colors"
@@ -333,7 +341,7 @@ export function PullRequestActions({
             disabled={busy !== null}
             data-testid="pr-merge-cancel-button"
           >
-            Cancel
+            {t('common:pull_request.cancel')}
           </button>
         </div>
       )}

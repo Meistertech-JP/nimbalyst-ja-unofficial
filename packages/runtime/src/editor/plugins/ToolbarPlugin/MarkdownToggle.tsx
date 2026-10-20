@@ -3,8 +3,10 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { $createTextNode, $getRoot } from 'lexical';
 import { $isCodeNode, CodeNode } from '@lexical/code';
 import { $convertFromEnhancedMarkdownString, $convertToEnhancedMarkdownString, getEditorTransformers } from '../../markdown';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 const MarkdownToggle = () => {
+    const { t } = useRuntimeTranslation();
     const [editor] = useLexicalComposerContext();
     const shouldPreserveNewLinesInMarkdown = true;
 
@@ -36,8 +38,8 @@ const MarkdownToggle = () => {
         <button
             onClick={handleMarkdownToggle}
             className="toolbar-item spaced"
-            title="Convert From/To Markdown"
-            aria-label="Convert from/to markdown">
+            title={t('editor:diff.markdown_mode_toggle', 'Toggle Markdown Mode')}
+            aria-label={t('editor:diff.markdown_mode_toggle', 'Toggle Markdown Mode')}>
             <i className="format bug" />
         </button>
     );

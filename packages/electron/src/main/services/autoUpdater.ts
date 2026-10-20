@@ -10,16 +10,11 @@ import { hasActiveStreamingSessions } from '../ipc/SessionStateHandlers';
 import { getSessionStateManager } from '@nimbalyst/runtime/ai/server/SessionStateManager';
 import { getDatabase } from '../database/initialize';
 import {
+  AUTOMATIC_UPDATES_ENABLED,
   categorizeDownloadDuration,
   classifyUpdateError,
   isWindowsRenameLockError,
 } from './autoUpdaterUtils';
-import { installAtomFeedFilter } from './electronUpdaterPatch';
-
-// Install the atom-feed filter before any AutoUpdaterService is constructed
-// (which is the first thing that triggers electron-updater to read the feed).
-installAtomFeedFilter();
-
 // Re-export the pure utilities so callers that already pulled them from this
 // module keep working. Unit tests should import from `autoUpdaterUtils`
 // directly to avoid the Electron app-global load chain.
@@ -27,12 +22,6 @@ export { classifyUpdateError, categorizeDownloadDuration, isWindowsRenameLockErr
 
 // Reminder suppression duration: 24 hours
 const REMINDER_SUPPRESSION_DURATION_MS = 24 * 60 * 60 * 1000;
-const GITHUB_UPDATE_PROVIDER = {
-  provider: 'github' as const,
-  owner: 'nimbalyst',
-  repo: 'nimbalyst'
-};
-
 // classifyUpdateError, categorizeDownloadDuration, isWindowsRenameLockError
 // moved to ./autoUpdaterUtils so unit tests can import them without pulling
 // in this module's Electron-app-global load chain (see #245). Alias keeps
@@ -58,36 +47,24 @@ export class AutoUpdaterService {
     log.transports.file.level = 'info';
     autoUpdater.logger = log;
 
+    if (!AUTOMATIC_UPDATES_ENABLED) {
+      autoUpdater.autoDownload = false;
+      autoUpdater.autoInstallOnAppQuit = false;
+      log.info('Automatic updates are disabled for the unofficial Japanese edition');
+      return;
+    }
+
     // Configure auto-updater. autoDownload=true: both background polls and the
     // manual "Check for Updates" trigger download immediately, then surface a
     // single "Ready to install" toast. Per maintainer direction on #327.
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
 
-    // Configure feed URL based on release channel
-    this.configureFeedURL();
-
     // Set up event handlers
     this.setupEventHandlers();
 
     // Set up IPC handlers for renderer communication
     this.setupIpcHandlers();
-  }
-
-  private configureFeedURL() {
-    const channel = getReleaseChannel();
-
-    if (channel === 'alpha') {
-      log.info('Configuring alpha channel updates from GitHub prereleases');
-      autoUpdater.allowPrerelease = true;
-      autoUpdater.channel = 'alpha';
-      autoUpdater.setFeedURL(GITHUB_UPDATE_PROVIDER);
-    } else {
-      log.info('Configuring stable channel updates from GitHub releases');
-      autoUpdater.allowPrerelease = false;
-      autoUpdater.channel = 'latest';
-      autoUpdater.setFeedURL(GITHUB_UPDATE_PROVIDER);
-    }
   }
 
   private setupEventHandlers() {
@@ -394,10 +371,16 @@ export class AutoUpdaterService {
   }
 
   public reconfigureFeedURL() {
-    this.configureFeedURL();
+    // This build intentionally has no update feed.
+  }
+
+  public isEnabled() {
+    return AUTOMATIC_UPDATES_ENABLED;
   }
 
   private setupIpcHandlers() {
+    if (!AUTOMATIC_UPDATES_ENABLED) return;
+
     safeHandle('check-for-updates', async () => {
       if (this.isCheckingForUpdate) {
         return { checking: true };
@@ -555,6 +538,7 @@ export class AutoUpdaterService {
   }
 
   public startAutoUpdateCheck(intervalMinutes = 60) {
+    if (!AUTOMATIC_UPDATES_ENABLED) return;
     // Initial check after 30 seconds
     setTimeout(() => {
       this.checkForUpdates();
@@ -578,6 +562,7 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdates() {
+    if (!AUTOMATIC_UPDATES_ENABLED) return;
     if (this.isCheckingForUpdate) {
       log.info('Already checking for updates, skipping...');
       return;
@@ -592,6 +577,7 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdatesWithUI() {
+    if (!AUTOMATIC_UPDATES_ENABLED) return;
     if (this.isCheckingForUpdate) {
       // Already checking, don't show anything - the checking toast is already visible
       return;

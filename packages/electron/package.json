@@ -1,10 +1,10 @@
 {
   "name": "@nimbalyst/electron",
-  "version": "0.71.2",
+  "version": "0.71.2-ja.1",
   "private": true,
   "license": "MIT",
-  "author": "Nimbalyst Team",
-  "description": "Electron app for Nimbalyst",
+  "author": "Nimbalyst, Inc.",
+  "description": "Nimbalyst 日本語版（非公式）",
   "main": "out/main/index.js",
   "bin": {
     "nimbalyst": "./bin/nimbalyst"
@@ -33,10 +33,9 @@
     "build:mac:release": "npm run build && npm run build:extensions && node -r dotenv/config build/configure-build.js && REQUIRE_NOTARIZE=true node build/build-with-env.js --mac --publish always",
     "validate:extra-resources": "node build/normalize-extra-resources.js && node build/validate-extra-resources.js",
     "verify:native-runtime": "node build/verify-native-runtime.js",
-    "validate:win-updater-config": "node build/validate-windows-updater-config.js",
-    "build:win": "npm run build && npm run build:extensions && npm run validate:win-updater-config && npm run validate:extra-resources && electron-builder --win --x64",
-    "build:win:arm64": "npm run build && npm run build:extensions && npm run validate:win-updater-config && npm run validate:extra-resources && electron-builder --win --arm64",
-    "build:win:all": "npm run build && npm run build:extensions && npm run validate:win-updater-config && npm run validate:extra-resources && electron-builder --win --x64 --arm64",
+    "build:win": "npm run build && npm run build:extensions && npm run validate:extra-resources && electron-builder --win --x64 --publish never",
+    "build:win:arm64": "npm run build && npm run build:extensions && npm run validate:extra-resources && electron-builder --win --arm64 --publish never",
+    "build:win:all": "npm run build && npm run build:extensions && npm run validate:extra-resources && electron-builder --win --x64 --arm64 --publish never",
     "build:linux": "npm run build && npm run build:extensions && npm run validate:extra-resources && electron-builder --linux",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -92,8 +91,9 @@
     "glob": "^11.0.3",
     "heic-decode": "^2.1.0",
     "highlight.js": "11.11.1",
-    "html2canvas": "^1.4.1",
-    "ignore": "^7.0.5",
+   "html2canvas": "^1.4.1",
+    "i18next": "^26.3.6",
+   "ignore": "^7.0.5",
     "jimp": "^1.6.0",
     "jotai": "^2.16.1",
     "js-yaml": "^4.1.0",
@@ -113,9 +113,10 @@
     "posthog-node": "^5.10.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.7",
-    "react-diff-view": "^3.3.3",
-    "react-dom": "^19.2.7",
-    "react-is": "^19.2.4",
+   "react-diff-view": "^3.3.3",
+   "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.9",
+   "react-is": "^19.2.4",
     "react-virtuoso": "^4.18.11",
     "recharts": "^3.5.0",
     "refractor": "^3.6.0",
@@ -164,8 +165,8 @@
     "vitest": "4.1.8"
   },
   "build": {
-    "appId": "com.nimbalyst.electron",
-    "productName": "Nimbalyst",
+    "appId": "jp.meistertech.nimbalyst.ja-unofficial",
+    "productName": "Nimbalyst 日本語版（非公式）",
     "electronVersion": "43.2.0",
     "nodeGypRebuild": false,
     "buildDependenciesFromSource": false,
@@ -181,15 +182,8 @@
     "directories": {
       "output": "release"
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "nimbalyst",
-        "repo": "nimbalyst",
-        "releaseType": "release"
-      }
-    ],
-    "generateUpdatesFilesForAllChannels": true,
+    "publish": [],
+    "generateUpdatesFilesForAllChannels": false,
     "asar": true,
     "asarUnpack": [
       "node_modules/**/*.node",
@@ -439,24 +433,24 @@
     },
     "win": {
       "target": [
-        {
-          "target": "nsis"
-        }
+        { "target": "nsis" },
+        { "target": "zip" }
       ],
-      "artifactName": "${productName}-Windows-${arch}.${ext}",
-      "signtoolOptions": {
-        "publisherName": "NIMBALYST, INC."
-      }
+      "artifactName": "${productName}-${version}-Windows-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "packElevateHelper": false,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "Nimbalyst 日本語版（非公式）",
+      "uninstallDisplayName": "Nimbalyst 日本語版（非公式）"
     },
     "linux": {
       "target": "AppImage",
       "artifactName": "${productName}-Linux.${ext}"
     },
-    "buildVersion": "0.36.5"
+    "buildVersion": "0.71.2"
   }
 }

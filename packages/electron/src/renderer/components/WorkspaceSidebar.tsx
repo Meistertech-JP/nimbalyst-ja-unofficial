@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { FlatFileTree } from './FlatFileTree';
 import type { RendererFileTreeItem } from '../store';
@@ -7,7 +8,13 @@ import { NewFileDialog } from './NewFileDialog';
 import { PlansPanel } from './PlansPanel/PlansPanel';
 import { canPersistWorkspaceHydratedState } from '../utils/workspaceHydration';
 import { FileTreeFilterMenu, FileTreeFilter } from './FileTreeFilterMenu';
-import { NewFileMenu, NewFileType, ExtensionFileType, contributionToExtensionFileType } from './NewFileMenu';
+import {
+  NewFileMenu,
+  type NewFileType,
+  type ExtensionFileType,
+  contributionToExtensionFileType,
+  getExtensionFileTypeDisplayName,
+} from './NewFileMenu';
 import { createInitialFileContent, createMockupContent } from '../utils/fileUtils';
 import { getFileName } from '../utils/pathUtils';
 import { getExtensionLoader } from '@nimbalyst/runtime';
@@ -133,6 +140,7 @@ export function WorkspaceSidebar({
   onSelectedFolderChange,
   currentAISessionId
 }: WorkspaceSidebarProps) {
+  const { t, i18n } = useTranslation(['files']);
   // Subscribe to TabsContext to get reactive updates when active tab changes
   // This enables auto-scroll functionality after the Jotai refactor that
   // made EditorMode stop re-rendering on tab switches
@@ -187,7 +195,9 @@ export function WorkspaceSidebar({
 
     const updateExtensionFileTypes = () => {
       const contributions = loader.getNewFileMenuContributions();
-      const fileTypes = contributions.map(c => contributionToExtensionFileType(c.contribution));
+      const fileTypes = contributions.map((c) =>
+        contributionToExtensionFileType(c.extensionId, c.contribution),
+      );
       setExtensionFileTypes(fileTypes);
     };
 
@@ -300,7 +310,7 @@ export function WorkspaceSidebar({
       const extType = extensionFileTypes.find(e => e.extension === fileType.slice(4));
       if (extType?.action === 'openVirtualTab' && extType.virtualScheme) {
         const id = `tab-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
-        const title = encodeURIComponent(extType.displayName);
+        const title = encodeURIComponent(getExtensionFileTypeDisplayName(t, extType));
         onFileSelect(`${extType.virtualScheme}${id}?title=${title}`);
         return;
       }
@@ -317,35 +327,6 @@ export function WorkspaceSidebar({
     setPendingFileType(fileType);
     setIsFileModalOpen(true);
   };
-
-  const createMockupContent = () => `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mockup</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #333;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>New Mockup</h1>
-        <p>Start designing your mockup here.</p>
-    </div>
-</body>
-</html>`;
 
   const handleNewFolder = () => {
     // Priority: selected folder > parent of current file > workspace root
@@ -376,7 +357,12 @@ export function WorkspaceSidebar({
     } else if (fileType === 'mockup') {
       // Add .mockup.html extension if not present
       fullFileName = fileName.endsWith('.mockup.html') ? fileName : `${fileName}.mockup.html`;
-      content = createMockupContent();
+      content = createMockupContent({
+        language: i18n.resolvedLanguage ?? 'en',
+        title: t('files:mockup.template_title'),
+        heading: t('files:mockup.new_title'),
+        description: t('files:mockup.start_designing'),
+      });
     } else if (fileType?.startsWith('ext:')) {
       // Extension-provided file type
       const extName = fileType.slice(4); // Remove 'ext:' prefix
@@ -405,11 +391,11 @@ export function WorkspaceSidebar({
         handleRefreshFileTree();
         onFileSelect(filePath);
       } else {
-        alert('Failed to create file: ' + (result?.error || 'Unknown error'));
+        alert(t('files:create.file_failed', { error: result?.error || t('files:create.unknown_error') }));
       }
     } catch (error) {
       console.error('Failed to create file:', error);
-      alert('Failed to create file: ' + error);
+      alert(t('files:create.file_failed', { error: String(error) }));
     } finally {
       setTargetFolder(null);
     }
@@ -427,11 +413,11 @@ export function WorkspaceSidebar({
         // Refresh file tree
         handleRefreshFileTree();
       } else {
-        alert('Failed to create folder: ' + (result?.error || 'Unknown error'));
+        alert(t('files:create.folder_failed', { error: result?.error || t('files:create.unknown_error') }));
       }
     } catch (error) {
       console.error('Failed to create folder:', error);
-      alert('Failed to create folder: ' + error);
+      alert(t('files:create.folder_failed', { error: String(error) }));
     } finally {
       setTargetFolder(null);
     }
@@ -464,7 +450,12 @@ export function WorkspaceSidebar({
         content = createInitialFileContent(fullFileName);
       } else if (fileType === 'mockup') {
         fullFileName = fileName.endsWith('.mockup.html') ? fileName : `${fileName}.mockup.html`;
-        content = createMockupContent();
+        content = createMockupContent({
+          language: i18n.resolvedLanguage ?? 'en',
+          title: t('files:mockup.template_title'),
+          heading: t('files:mockup.new_title'),
+          description: t('files:mockup.start_designing'),
+        });
       } else if (fileType?.startsWith('ext:')) {
         const extName = fileType.slice(4);
         const extType = extensionFileTypes.find(e => e.extension === extName);
@@ -487,11 +478,11 @@ export function WorkspaceSidebar({
         handleRefreshFileTree();
         onFileSelect(filePath);
       } else {
-        alert('Failed to create file: ' + (result?.error || 'Unknown error'));
+        alert(t('files:create.file_failed', { error: result?.error || t('files:create.unknown_error') }));
       }
     } catch (error) {
       console.error('Failed to create file:', error);
-      alert('Failed to create file: ' + error);
+      alert(t('files:create.file_failed', { error: String(error) }));
     } finally {
       setIsNewFileDialogOpen(false);
       setNewFileDialogDirectory(null);
@@ -948,10 +939,10 @@ export function WorkspaceSidebar({
       : 0;
   const shouldShowFilterHint = isAISessionFilter && (!hasActiveClaudeSession || activeClaudeFilterCount === 0);
   const aiFilterHintText = !hasActiveClaudeSession
-    ? 'Open a Claude Agent session to see which files the agent reads or writes.'
+    ? t('files:filter_hint.open_session')
     : fileTreeFilter === 'ai-read'
-      ? 'No files have been read by this Claude Agent session yet.'
-      : 'No files have been written by this Claude Agent session yet.';
+      ? t('files:filter_hint.none_read')
+      : t('files:filter_hint.none_written');
 
   // Check if filtered tree is empty
   const isFilteredTreeEmpty = filteredFileTree.length === 0;
@@ -961,46 +952,46 @@ export function WorkspaceSidebar({
     switch (fileTreeFilter) {
       case 'markdown':
         return {
-          title: 'No Markdown Files',
-          description: 'No .md or .markdown files found in this workspace.'
+          title: t('files:empty.markdown_title'),
+          description: t('files:empty.markdown_description')
         };
       case 'known':
         return {
-          title: 'No Known File Types',
-          description: 'No files with recognized extensions found. Showing files with extensions like .md, .txt, .json, .js, .ts, etc.'
+          title: t('files:empty.known_title'),
+          description: t('files:empty.known_description')
         };
       case 'git-uncommitted':
         return {
-          title: 'No Uncommitted Changes',
+          title: t('files:empty.uncommitted_title'),
           description: isGitRepo
-            ? 'No uncommitted files found in this git repository.'
-            : 'This workspace is not a git repository.'
+            ? t('files:empty.uncommitted_description')
+            : t('files:empty.not_git')
         };
       case 'git-worktree':
         return {
-          title: 'No Worktree Changes',
+          title: t('files:empty.worktree_title'),
           description: isGitWorktree
-            ? 'No files modified in this git worktree.'
-            : 'This workspace is not a git worktree.'
+            ? t('files:empty.worktree_description')
+            : t('files:empty.not_worktree')
         };
       case 'ai-read':
         return {
-          title: 'No Files Read',
+          title: t('files:empty.read_title'),
           description: hasActiveClaudeSession
-            ? 'No files have been read by this Claude Agent session yet.'
-            : 'Open a Claude Agent session to see which files the agent reads.'
+            ? t('files:filter_hint.none_read')
+            : t('files:empty.open_session_read')
         };
       case 'ai-written':
         return {
-          title: 'No Files Written',
+          title: t('files:empty.written_title'),
           description: hasActiveClaudeSession
-            ? 'No files have been written by this Claude Agent session yet.'
-            : 'Open a Claude Agent session to see which files the agent writes.'
+            ? t('files:filter_hint.none_written')
+            : t('files:empty.open_session_written')
         };
       default:
         return {
-          title: 'No Files',
-          description: 'No files match the current filter.'
+          title: t('files:empty.default_title'),
+          description: t('files:empty.default_description')
         };
     }
   };
@@ -1128,10 +1119,11 @@ export function WorkspaceSidebar({
               <>
                 <button
                   ref={newFileButtonRef}
+                  data-testid="file-tree-new-file-button"
                   className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                   onClick={handleNewFileButtonClick}
-                  title="New file"
-                  aria-label="New file"
+                  title={t('files:sidebar.new_file_button')}
+                  aria-label={t('files:sidebar.new_file_button')}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                     edit_square
@@ -1142,8 +1134,8 @@ export function WorkspaceSidebar({
                     data-testid="file-tree-refresh-button"
                     className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                     onClick={handleRefreshFileTree}
-                    title="Refresh file tree"
-                    aria-label="Refresh file tree"
+                    title={t('files:sidebar.refresh')}
+                    aria-label={t('files:sidebar.refresh')}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                       refresh
@@ -1153,8 +1145,8 @@ export function WorkspaceSidebar({
                 <button
                   className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                   onClick={handleNewFolder}
-                  title="New folder"
-                  aria-label="New folder"
+                  title={t('files:sidebar.new_folder_button')}
+                  aria-label={t('files:sidebar.new_folder_button')}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                     create_new_folder
@@ -1166,7 +1158,7 @@ export function WorkspaceSidebar({
                       data-testid="file-tree-quick-open-button"
                       className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                       onClick={onOpenQuickSearch}
-                      aria-label="Search files"
+                      aria-label={t('files:sidebar.search')}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                         search
@@ -1180,13 +1172,13 @@ export function WorkspaceSidebar({
                     data-testid="file-tree-filter-button"
                     className="workspace-action-button bg-transparent border-none p-1.5 cursor-pointer rounded text-[var(--nim-text-faint)] flex items-center justify-center transition-all duration-200 relative hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                     onClick={handleFilterButtonClick}
-                    aria-label="Filter files"
+                    aria-label={t('files:sidebar.filter')}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
                       filter_alt
                     </span>
                     {fileTreeFilter !== 'all' && (
-                      <span className="filter-active-indicator text-[var(--nim-primary)] font-bold text-base leading-none absolute top-0.5 right-0.5" title="Filter active">•</span>
+                      <span className="filter-active-indicator text-[var(--nim-primary)] font-bold text-base leading-none absolute top-0.5 right-0.5" title={t('files:sidebar.filter_active')}>•</span>
                     )}
                   </button>
                 </HelpTooltip>
@@ -1198,7 +1190,7 @@ export function WorkspaceSidebar({
 
       {currentView === 'files' ? (
         <>
-          <div className="workspace-section-label nim-section-label py-1.5 px-3 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">Files</div>
+          <div className="workspace-section-label nim-section-label py-1.5 px-3 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] shrink-0">{t('files:sidebar.title')}</div>
           <div className={`workspace-file-tree nim-scrollbar flex-1 overflow-y-auto overflow-x-hidden py-2 relative transition-colors duration-200 ${isDragOverRoot ? 'drag-over-root bg-[var(--nim-accent-subtle)] border-2 border-dashed border-[var(--nim-primary)] !py-1.5' : ''}`}>
             {shouldShowFilterHint && (
               <div className="file-tree-filter-hint py-2 px-3 text-xs text-[var(--nim-text-faint)] leading-relaxed border-b border-[var(--nim-border)] mb-1">
@@ -1208,7 +1200,7 @@ export function WorkspaceSidebar({
             {isFilteredTreeEmpty && fileTreeFilter === 'all' && !fileTreeLoaded ? (
               <div className="flex items-center gap-2 px-4 py-3 text-[13px] text-[var(--nim-text-muted)]">
                 <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                Loading files...
+                {t('files:sidebar.loading')}
               </div>
             ) : isFilteredTreeEmpty && fileTreeFilter !== 'all' ? (
               <div className="file-tree-empty-state flex flex-col items-center justify-center py-12 px-6 text-center min-h-[300px]">
@@ -1221,7 +1213,7 @@ export function WorkspaceSidebar({
                   className="file-tree-clear-filter-btn nim-btn-primary px-4 py-2 rounded-md text-[13px] font-medium hover:opacity-90 hover:-translate-y-px active:translate-y-0 transition-all duration-200"
                   onClick={() => handleFilterChange('all')}
                 >
-                  Clear Filter
+                  {t('files:sidebar.clear_filter')}
                 </button>
               </div>
             ) : (
@@ -1242,7 +1234,7 @@ export function WorkspaceSidebar({
             )}
             {isDragOverRoot && (
               <div className="root-drop-indicator sticky top-0 bg-gradient-to-b from-[var(--nim-accent-subtle)] to-transparent text-center text-[13px] font-medium text-[var(--nim-primary)] z-10 mb-2 rounded">
-                Drop here to move to workspace root
+                {t('files:sidebar.drop_to_root')}
               </div>
             )}
           </div>
@@ -1291,23 +1283,33 @@ export function WorkspaceSidebar({
         isOpen={isFileModalOpen}
         title={(() => {
           if (pendingFileType === 'markdown') {
-            return targetFolder ? `New Markdown File in ${getFileName(targetFolder)}` : "New Markdown File";
+            return targetFolder
+              ? t('files:create.new_markdown_in_folder', { folder: getFileName(targetFolder) })
+              : t('files:create.new_markdown');
           }
           if (pendingFileType === 'mockup') {
-            return targetFolder ? `New Mockup in ${getFileName(targetFolder)}` : "New Mockup";
+            return targetFolder
+              ? t('files:mockup.new_in_folder', { folder: getFileName(targetFolder) })
+              : t('files:mockup.new_title');
           }
           if (pendingFileType?.startsWith('ext:')) {
             const extName = pendingFileType.slice(4);
             const extType = extensionFileTypes.find(e => e.extension === extName);
-            const displayName = extType?.displayName || 'File';
-            return targetFolder ? `New ${displayName} in ${getFileName(targetFolder)}` : `New ${displayName}`;
+            const displayName = extType
+              ? getExtensionFileTypeDisplayName(t, extType)
+              : t('files:create.default_type');
+            return targetFolder
+              ? t('files:create.new_type_in_folder', { type: displayName, folder: getFileName(targetFolder) })
+              : t('files:create.new_type', { type: displayName });
           }
-          return targetFolder ? `New File in ${getFileName(targetFolder)}` : "New File";
+          return targetFolder
+            ? t('files:create.new_file_in_folder', { folder: getFileName(targetFolder) })
+            : t('files:create.new_file');
         })()}
         placeholder={
           pendingFileType === 'markdown' || pendingFileType === 'mockup' || pendingFileType?.startsWith('ext:')
-            ? "Enter name"
-            : "Enter file name with extension"
+            ? t('files:create.enter_name')
+            : t('files:create.enter_filename_with_extension')
         }
         suffix={(() => {
           if (pendingFileType === 'markdown') return ".md";
@@ -1329,8 +1331,10 @@ export function WorkspaceSidebar({
 
       <InputModal
         isOpen={isFolderModalOpen}
-        title={targetFolder ? `New Folder in ${getFileName(targetFolder)}` : "New Folder"}
-        placeholder="Enter folder name"
+        title={targetFolder
+          ? t('files:create.new_folder_in_folder', { folder: getFileName(targetFolder) })
+          : t('files:create.new_folder')}
+        placeholder={t('files:create.enter_folder_name')}
         defaultValue=""
         onConfirm={handleCreateFolder}
         onCancel={() => {

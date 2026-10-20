@@ -35,8 +35,10 @@ export const PLAYWRIGHT_TEST_SELECTORS = {
 
   // Workspace and file tree
   workspaceSidebar: '.workspace-sidebar',
+  workspaceSectionLabel: '.workspace-section-label',
   fileTreeContainer: '.workspace-file-tree',
   fileTreeItem: '.file-tree-name',
+  fileTreeNewFileButton: '[data-testid="file-tree-new-file-button"]',
   fileTreeFilterButton: '.workspace-action-button[aria-label="Filter files"]',
   fileTreeFilterMenu: '.file-tree-filter-menu',
   filterMenuAllFiles: '.filter-menu-item:has-text("All Files")',
@@ -158,6 +160,13 @@ export const PLAYWRIGHT_TEST_SELECTORS = {
   fileContextMenu: '[data-testid="file-context-menu"]',
   fileContextMenuItem: '.file-context-menu-item',
   fileContextMenuDelete: '[data-testid="context-menu-delete"]',
+
+  // New file menu and dialog
+  newFileMenu: '.new-file-menu',
+  newFileMenuItem: '.new-file-menu-item',
+  newFileDialog: '.new-file-dialog',
+  newFileTypeSelect: '#new-file-type',
+  newFileTypeOption: '#new-file-type option',
 
   // Search/Replace bar
   searchReplaceBar: '[data-testid="search-replace-bar"]',

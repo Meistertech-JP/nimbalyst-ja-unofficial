@@ -70,13 +70,26 @@ export function createInitialFileContent(fileName: string): string {
  *
  * @returns Basic HTML mockup template
  */
-export function createMockupContent(): string {
+export interface MockupContentOptions {
+  language?: string;
+  title?: string;
+  heading?: string;
+  description?: string;
+}
+
+export function createMockupContent(options: MockupContentOptions = {}): string {
+  const {
+    language = 'en',
+    title = 'Mockup',
+    heading = 'New Mockup',
+    description = 'Edit this mockup using the AI chat or edit the HTML directly.',
+  } = options;
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mockup</title>
+    <title>${title}</title>
     <style>
         body {
             margin: 0;
@@ -94,8 +107,8 @@ export function createMockupContent(): string {
 </head>
 <body>
     <div class="container">
-        <h1>New Mockup</h1>
-        <p>Edit this mockup using the AI chat or edit the HTML directly.</p>
+        <h1>${heading}</h1>
+        <p>${description}</p>
     </div>
 </body>
 </html>`;

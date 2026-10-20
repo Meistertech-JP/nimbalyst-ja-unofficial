@@ -11,7 +11,7 @@ import type {
 } from '../../../core/DocumentService';
 import type { TrackerRecord } from '../../../core/TrackerRecord';
 import { trackerItemsByTypeAtom, trackerDataLoadedAtom } from '../trackerDataAtoms';
-import { TrackerRowContextMenu } from './TrackerRowContextMenu';
+import { TrackerRowContextMenu, type TrackerRowContextMenuProps } from './TrackerRowContextMenu';
 import {
   EXTENSION_OWNED_KEYS,
   LEGACY_KEY_TO_TYPE,
@@ -38,12 +38,59 @@ import { TrackerUnreadDot } from '../../../readReceipts/TrackerUnreadDot';
 import { DisplayOptionsPanel } from './DisplayOptionsPanel';
 import { useTrackerRows } from './useTrackerRows';
 import { TrackerFavoriteStar } from './TrackerFavoriteStar';
-import { groupTrackerRecords } from './trackerRowData';
+import { groupTrackerRecords, type TrackerRecordGroup } from './trackerRowData';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 export type SortColumn = 'title' | 'type' | 'status' | 'priority' | 'progress' | 'module' | 'lastIndexed' | (string & {});
 export type SortDirection = 'asc' | 'desc';
 
+interface TrackerCellPresentation {
+  database?: string;
+  storedInDatabase?: string;
+  shared?: string;
+  local?: string;
+  sharedTitle?: string;
+  localTitle?: string;
+  priorityLabel?: (priority: string) => string;
+  statusOptionLabel?: (status: string) => string;
+}
+
+interface TrackerTablePresentation {
+  allLabel?: string;
+  selectedLabel?: (count: number) => string;
+  clearAllLabel?: string;
+  emptyValueLabel?: string;
+  filterLabel?: string;
+  statusLabel?: string;
+  priorityLabel?: string;
+  clearAllFiltersLabel?: string;
+  displayOptionsLabel?: string;
+  itemCountLabel?: (count: number) => string;
+  typeLabel?: (type: string) => string;
+  statusOptionLabel?: (status: string) => string;
+}
+
 interface TrackerTableProps {
+  /** Host-localized display only; row values, grouping keys and saved config stay unchanged. */
+  presentation?: {
+    columnLabel?: (column: TrackerColumnDef) => string;
+    groupLabel?: (group: TrackerRecordGroup, groupBy: string | null) => string | null;
+    relativeDate?: (date: Date) => string;
+    cell?: TrackerCellPresentation;
+    favoriteLabel?: (isFavorite: boolean) => string;
+    contextMenu?: TrackerRowContextMenuProps['presentation'];
+    loading?: string;
+    loadingShort?: string;
+    warning?: (message: string) => string;
+    noMatches?: string;
+    clearFilters?: string;
+    newItem?: (type: string) => string;
+    typeDescription?: (type: string) => string;
+    typeHint?: (type: string) => React.ReactNode;
+    noItems?: string;
+    creationHint?: string;
+    table?: TrackerTablePresentation;
+  };
   filterType?: TrackerItemType | 'all';
   sortBy?: SortColumn;
   sortDirection?: SortDirection;
@@ -178,7 +225,8 @@ const MultiSelectFilter: React.FC<{
   values: string[];
   selected: Set<string>;
   onChange: (selected: Set<string>) => void;
-}> = ({ values, selected, onChange }) => {
+  presentation?: TrackerTablePresentation;
+}> = ({ values, selected, onChange, presentation }) => {
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
@@ -208,7 +256,7 @@ const MultiSelectFilter: React.FC<{
         }`}
         onClick={() => setOpen(!open)}
       >
-        {activeCount > 0 ? `${activeCount} selected` : 'All'}
+        {activeCount > 0 ? presentation?.selectedLabel?.(activeCount) : presentation?.allLabel}
       </button>
       {open && (
         <div className="absolute top-full left-0 mt-0.5 w-40 max-h-48 overflow-auto bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded shadow-lg z-30">
@@ -217,7 +265,7 @@ const MultiSelectFilter: React.FC<{
               className="w-full px-2 py-1 text-xs text-[var(--nim-primary)] hover:bg-[var(--nim-bg-hover)] text-left border-b border-[var(--nim-border)]"
               onClick={() => onChange(new Set())}
             >
-              Clear all
+              {presentation?.clearAllLabel}
             </button>
           )}
           {values.map(val => (
@@ -231,7 +279,7 @@ const MultiSelectFilter: React.FC<{
                 checked={selected.has(val)}
                 onChange={() => toggle(val)}
               />
-              <span className="truncate">{val || '(empty)'}</span>
+              <span className="truncate">{val || presentation?.emptyValueLabel}</span>
             </label>
           ))}
         </div>
@@ -483,6 +531,8 @@ export function renderCell(
   setEditingTitle: (title: string) => void,
   titleInputRef: React.RefObject<HTMLInputElement | null>,
   handleFieldUpdate: (item: TrackerRecord, field: string, value: string) => void,
+  formatDateValue: (date: Date) => string = formatRelativeDate,
+  presentation?: TrackerCellPresentation,
 ): React.ReactNode {
   // Resolve field values via schema roles (generic for any schema)
   const title = getRecordTitle(item);
@@ -549,7 +599,9 @@ export function renderCell(
           >
             {rawOptions.map(opt => {
               const val = typeof opt === 'string' ? opt : opt.value;
-              const lbl = typeof opt === 'string' ? opt.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : opt.label;
+            const lbl = typeof opt === 'string'
+              ? presentation?.statusOptionLabel?.(opt)
+              : opt.label;
               return <option key={val} value={val}>{lbl}</option>;
             })}
           </select>
@@ -562,7 +614,7 @@ export function renderCell(
           style={{ backgroundColor: `${statusColor}20`, color: statusColor, borderColor: statusColor }}
           onClick={(e) => { if (isItemEditable(item)) { e.stopPropagation(); setEditingCell({ itemId: item.id, field: 'status' }); } }}
         >
-          {status.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+          {presentation?.statusOptionLabel?.(status)}
         </span>
       );
     }
@@ -579,7 +631,7 @@ export function renderCell(
             className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-primary)] rounded text-xs text-[var(--nim-text)] px-1 py-0.5 outline-none"
           >
             {['low', 'medium', 'high', 'critical'].map(p => (
-              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              <option key={p} value={p}>{presentation?.priorityLabel?.(p)}</option>
             ))}
           </select>
         );
@@ -590,7 +642,7 @@ export function renderCell(
           style={{ color: getPriorityColor(priority || 'medium') }}
           onClick={(e) => { if (isItemEditable(item)) { e.stopPropagation(); setEditingCell({ itemId: item.id, field: 'priority' }); } }}
         >
-          {(priority || 'medium').charAt(0).toUpperCase() + (priority || 'medium').slice(1)}
+          {presentation?.priorityLabel?.(priority || 'medium')}
         </span>
       );
     }
@@ -600,24 +652,24 @@ export function renderCell(
         return <span className="text-[var(--nim-text-muted)] text-xs font-mono whitespace-nowrap overflow-hidden text-ellipsis block">{module}</span>;
       }
       return (
-        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: '#6b728015', color: '#9ca3af' }} title="Stored in database" data-testid="tracker-source-db-badge">
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: '#6b728015', color: '#9ca3af' }} title={presentation?.storedInDatabase} data-testid="tracker-source-db-badge">
           <span className="material-symbols-outlined text-[11px]">storage</span>
-          Database
+          {presentation?.database}
         </span>
       );
 
     case 'updated': {
       const lastIndexed = item.system.lastIndexed ? new Date(item.system.lastIndexed) : new Date(0);
-      return <span className="text-[var(--nim-text-faint)] text-xs">{formatRelativeDate(lastIndexed)}</span>;
+      return <span className="text-[var(--nim-text-faint)] text-xs">{formatDateValue(lastIndexed)}</span>;
     }
 
     case 'created':
       if (!value) return null;
       if (typeof value === 'string') {
         const d = new Date(value);
-        return <span className="text-[var(--nim-text-faint)] text-xs">{isNaN(d.getTime()) ? value : formatRelativeDate(d)}</span>;
+        return <span className="text-[var(--nim-text-faint)] text-xs">{isNaN(d.getTime()) ? value : formatDateValue(d)}</span>;
       }
-      return <span className="text-[var(--nim-text-faint)] text-xs">{formatRelativeDate(value as Date)}</span>;
+      return <span className="text-[var(--nim-text-faint)] text-xs">{formatDateValue(value as Date)}</span>;
 
     case 'shared': {
       // Read-only share indicator. `n/a` (sync mode `local`) renders nothing.
@@ -630,10 +682,10 @@ export function renderCell(
           className="shared-badge inline-flex items-center gap-1 py-0.5 px-2 rounded-[10px] text-[11px] font-medium border"
           style={{ backgroundColor: `${shareColor}20`, color: shareColor, borderColor: shareColor }}
           data-testid="tracker-shared-badge"
-          title={shared ? 'Shared with the team' : 'Local to this device'}
+          title={shared ? presentation?.sharedTitle : presentation?.localTitle}
         >
           <span className="material-symbols-outlined text-[13px]">{shared ? 'group' : 'person'}</span>
-          {shared ? 'Shared' : 'Local'}
+          {shared ? presentation?.shared : presentation?.local}
         </span>
       );
     }
@@ -669,10 +721,10 @@ export function renderCell(
           );
 
         case 'date':
-          if (value instanceof Date) return <span className="text-[var(--nim-text-faint)] text-xs">{formatRelativeDate(value)}</span>;
+          if (value instanceof Date) return <span className="text-[var(--nim-text-faint)] text-xs">{formatDateValue(value)}</span>;
           if (typeof value === 'string') {
             const d = new Date(value);
-            return <span className="text-[var(--nim-text-faint)] text-xs">{isNaN(d.getTime()) ? value : formatRelativeDate(d)}</span>;
+            return <span className="text-[var(--nim-text-faint)] text-xs">{isNaN(d.getTime()) ? value : formatDateValue(d)}</span>;
           }
           return null;
 
@@ -745,6 +797,7 @@ export function renderCell(
 }
 
 export function TrackerTable({
+  presentation: inputPresentation,
   filterType = 'all',
   sortBy = 'lastIndexed',
   sortDirection = 'desc',
@@ -768,6 +821,78 @@ export function TrackerTable({
   preserveItemOrder = false,
   hideToolbar = false,
 }: TrackerTableProps): JSX.Element {
+  const { t: runtimeT } = useRuntimeTranslation();
+  const presentation = useMemo<NonNullable<TrackerTableProps['presentation']>>(() => {
+    const typeName = (type: string) => runtimeT(
+      `tracker:table.types.${type}`,
+      type.charAt(0).toUpperCase() + type.slice(1),
+    );
+    const typeDescription = (type: string) => runtimeT(
+      `tracker:table.descriptions.${type}`,
+      getTypeDescription(type as TrackerItemType).description,
+    );
+    const typeHint = (type: string) => {
+      const marker = `#${type}`;
+      const command = type === 'plan' ? '/plan' : `/track ${type}`;
+      const key = type === 'plan' ? 'tracker:table.plan_hint' : 'tracker:table.type_hint';
+      const fallback = type === 'plan'
+        ? `Use ${command} in chat to create a new plan`
+        : `Type ${marker} in markdown or use ${command} in chat`;
+      // Runtime hosts provide plain text; strip the optional markup used by the
+      // Electron Trans-based adapter while retaining the translated wording.
+      return runtimeT(key, fallback, { marker, command }).replace(/<\/?(?:marker|command)>/g, '');
+    };
+
+    return {
+      ...inputPresentation,
+      cell: {
+        database: runtimeT('tracker:detail.database', 'Database'),
+        storedInDatabase: runtimeT('tracker:table.stored_in_database', 'Stored in database'),
+        shared: runtimeT('tracker:config.shared', 'Shared'),
+        local: runtimeT('tracker:config.local', 'Local'),
+        sharedTitle: runtimeT('tracker:table.shared_title', 'Shared with the team'),
+        localTitle: runtimeT('tracker:table.local_title', 'Local to this device'),
+        ...inputPresentation?.cell,
+      },
+      table: {
+        allLabel: runtimeT('tracker:sidebar.all', 'All'),
+        selectedLabel: count => runtimeT(
+          count === 1 ? 'tracker:filters.item_count_one' : 'tracker:filters.item_count_other',
+          `${count} selected`,
+          { count },
+        ),
+        clearAllLabel: runtimeT('tracker:filters.clear_all', 'Clear all'),
+        emptyValueLabel: runtimeT('tracker:filters.no_value', '(empty)'),
+        filterLabel: runtimeT('tracker:filters.filter', 'Filter'),
+        statusLabel: runtimeT('tracker:columns.status', 'Status'),
+        priorityLabel: runtimeT('tracker:columns.priority', 'Priority'),
+        clearAllFiltersLabel: runtimeT('tracker:filters.clear_all', 'Clear all filters'),
+        displayOptionsLabel: runtimeT('tracker:filters.display_options', 'Display options'),
+        itemCountLabel: count => runtimeT(
+          count === 1 ? 'tracker:filters.item_count_one' : 'tracker:filters.item_count_other',
+          `${count} item${count !== 1 ? 's' : ''}`,
+          { count },
+        ),
+        typeLabel: typeName,
+        statusOptionLabel: status => runtimeT(
+          `tracker:plans.status_${status}`,
+          status.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        ),
+        ...inputPresentation?.table,
+      },
+      loading: inputPresentation?.loading ?? runtimeT('tracker:grid.loading', 'Loading tracker items...'),
+      loadingShort: inputPresentation?.loadingShort ?? runtimeT('tracker:detail.loading', 'Loading...'),
+      warning: inputPresentation?.warning ?? (message => runtimeT('tracker:table.warning', `Warning: ${message}`, { message })),
+      noMatches: inputPresentation?.noMatches ?? runtimeT('tracker:table.no_matches', 'No tracker items match your filters'),
+      clearFilters: inputPresentation?.clearFilters ?? runtimeT('tracker:grid.clear_filters', 'Clear filters'),
+      newItem: inputPresentation?.newItem ?? (type => runtimeT('tracker:grid.new_item', `New ${typeName(type)}`, { type: typeName(type) })),
+      typeDescription: inputPresentation?.typeDescription ?? typeDescription,
+      typeHint: inputPresentation?.typeHint ?? typeHint,
+      noItems: inputPresentation?.noItems ?? runtimeT('tracker:table.no_items', 'No tracker items found'),
+      creationHint: inputPresentation?.creationHint ?? runtimeT('tracker:table.creation_hint', 'Create items using #bug, #task, #plan, or #idea in any markdown file'),
+    };
+  }, [inputPresentation, runtimeT]);
+
   // Type filter: use prop filterType when hideTypeTabs is true, otherwise use internal state
   const [internalTypeFilter, setInternalTypeFilter] = useState<TrackerItemType | 'all'>('all');
   const activeTypeFilter = hideTypeTabs ? filterType : internalTypeFilter;
@@ -783,8 +908,12 @@ export function TrackerTable({
 
   // Resolve all available columns for the current type
   const allColumns = useMemo(() => {
-    return resolveColumnsForType(activeTypeFilter === 'all' ? '' : activeTypeFilter);
-  }, [activeTypeFilter]);
+    const columns = resolveColumnsForType(activeTypeFilter === 'all' ? '' : activeTypeFilter);
+    const columnLabel = presentation?.columnLabel;
+    return columnLabel
+      ? columns.map(column => ({ ...column, label: columnLabel(column) }))
+      : columns;
+  }, [activeTypeFilter, presentation?.columnLabel]);
 
   // Get the visible column defs in order
   const visibleColumnDefs = useMemo(() => {
@@ -963,10 +1092,11 @@ export function TrackerTable({
     const headers = new Map<string, { label: string; count: number }>();
     for (const group of groupedRecords) {
       const first = group.items[0];
-      if (group.label && first) headers.set(first.id, { label: group.label, count: group.items.length });
+      const label = presentation?.groupLabel ? presentation.groupLabel(group, effectiveColumnConfig.groupBy) : group.label;
+      if (label && first) headers.set(first.id, { label, count: group.items.length });
     }
     return headers;
-  }, [groupedRecords]);
+  }, [groupedRecords, effectiveColumnConfig.groupBy, presentation?.groupLabel]);
 
   // Row interaction model -- shared with TrackerGridView via useTrackerRows.
   const rows = useTrackerRows({
@@ -1106,7 +1236,7 @@ export function TrackerTable({
     return (
       <div className="tracker-table-loading flex flex-col items-center justify-center py-[60px] px-5 text-[var(--nim-text-muted)] text-center gap-3">
         <div className="spinner w-8 h-8 border-[3px] border-[var(--nim-border)] border-t-[var(--nim-primary)] rounded-full animate-spin"></div>
-        <span>Loading tracker items...</span>
+        <span>{presentation?.loading}</span>
       </div>
     );
   }
@@ -1114,26 +1244,26 @@ export function TrackerTable({
   if (error) {
     return (
       <div className="tracker-table-error flex flex-col items-center justify-center py-[60px] px-5 text-[#ef4444] text-center gap-3">
-        <span>Warning: {error}</span>
+        <span>{presentation?.warning?.(error)}</span>
       </div>
     );
   }
 
   const priorityOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'critical', label: 'Critical' },
-    { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'low', label: 'Low' },
+    { value: 'all', label: presentation?.table?.allLabel },
+    { value: 'critical', label: presentation?.cell?.priorityLabel?.('critical') },
+    { value: 'high', label: presentation?.cell?.priorityLabel?.('high') },
+    { value: 'medium', label: presentation?.cell?.priorityLabel?.('medium') },
+    { value: 'low', label: presentation?.cell?.priorityLabel?.('low') },
   ];
 
   const typeOptions = [
-    { value: 'all', label: 'All', icon: 'list' },
-    { value: 'bug', label: 'Bugs', icon: 'bug_report' },
-    { value: 'task', label: 'Tasks', icon: 'check_box' },
-    { value: 'plan', label: 'Plans', icon: 'assignment' },
-    { value: 'idea', label: 'Ideas', icon: 'lightbulb' },
-    { value: 'decision', label: 'Decisions', icon: 'gavel' },
+    { value: 'all', label: presentation?.table?.allLabel, icon: 'list' },
+    { value: 'bug', label: presentation?.table?.typeLabel?.('bug'), icon: 'bug_report' },
+    { value: 'task', label: presentation?.table?.typeLabel?.('task'), icon: 'check_box' },
+    { value: 'plan', label: presentation?.table?.typeLabel?.('plan'), icon: 'assignment' },
+    { value: 'idea', label: presentation?.table?.typeLabel?.('idea'), icon: 'lightbulb' },
+    { value: 'decision', label: presentation?.table?.typeLabel?.('decision'), icon: 'gavel' },
   ];
 
   return (
@@ -1184,7 +1314,7 @@ export function TrackerTable({
               onClick={() => setShowFilterMenu(!showFilterMenu)}
             >
               <span className="material-symbols-outlined text-xs">filter_list</span>
-              Filter
+              {presentation?.table?.filterLabel}
               {hasActiveFilters && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--nim-primary)]" />
               )}
@@ -1192,7 +1322,7 @@ export function TrackerTable({
             {showFilterMenu && (
               <div className="absolute left-0 top-full mt-1 w-[200px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md shadow-lg z-50 py-1 text-[12px]">
                 {/* Status section */}
-                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">Status</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">{presentation?.table?.statusLabel}</div>
                 {statusOptions.map(option => (
                   <button
                     key={option.value}
@@ -1207,7 +1337,7 @@ export function TrackerTable({
                 ))}
                 <div className="border-t border-[var(--nim-border)] my-1" />
                 {/* Priority section */}
-                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">Priority</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">{presentation?.table?.priorityLabel}</div>
                 {priorityOptions.map(option => (
                   <button
                     key={option.value}
@@ -1227,7 +1357,7 @@ export function TrackerTable({
                       className="w-full text-left px-3 py-1 text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
                       onClick={clearAllFilters}
                     >
-                      Clear all filters
+                      {presentation?.table?.clearAllFiltersLabel}
                     </button>
                   </>
                 )}
@@ -1256,13 +1386,13 @@ export function TrackerTable({
             <button
               className="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] transition-colors"
               onClick={() => setShowDisplayOptions(!showDisplayOptions)}
-              title="Display options"
+              title={presentation?.table?.displayOptionsLabel}
             >
               <span className="material-symbols-outlined text-sm">tune</span>
             </button>
           )}
 
-          <span className="text-[11px] text-[var(--nim-text-faint)]">{sortedItems.length} item{sortedItems.length !== 1 ? 's' : ''}</span>
+          <span className="text-[11px] text-[var(--nim-text-faint)]">{presentation?.table?.itemCountLabel?.(sortedItems.length)}</span>
         </div>
       )}
 
@@ -1273,31 +1403,30 @@ export function TrackerTable({
             {loading ? (
               <div className="tracker-table-loading flex items-center justify-center gap-3 py-6 px-6 text-[var(--nim-text-muted)]">
                 <div className="w-5 h-5 border-2 border-[var(--nim-border)] border-t-[var(--nim-primary)] rounded-full animate-spin"></div>
-                <span className="text-sm">Loading...</span>
+                <span className="text-sm">{presentation?.loadingShort}</span>
               </div>
             ) : hasAnyFilters ? (
               <div className="tracker-table-empty tracker-table-filtered-empty flex flex-col items-center justify-center gap-2 py-6 px-6 text-center">
-                <p className="text-sm text-[var(--nim-text-muted)] m-0">No tracker items match your filters</p>
+                <p className="text-sm text-[var(--nim-text-muted)] m-0">{presentation?.noMatches}</p>
                 <div className="flex items-center gap-2">
                   <button
                     className="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-[var(--nim-primary)] border-none cursor-pointer transition-colors hover:bg-[var(--nim-primary-hover)]"
                     onClick={clearAllFilters}
                   >
-                    Clear filters
+                    {presentation?.clearFilters}
                   </button>
                   {activeTypeFilter !== 'all' && onNewItem && globalRegistry.get(activeTypeFilter)?.creatable !== false && (
                     <button
                       className="px-3 py-1.5 rounded-md text-xs font-medium text-[var(--nim-text)] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] cursor-pointer transition-colors hover:bg-[var(--nim-bg-hover)]"
                       onClick={() => onNewItem(activeTypeFilter as TrackerItemType)}
                     >
-                      New {activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1)}
+                      {presentation?.newItem?.(activeTypeFilter)}
                     </button>
                   )}
                 </div>
               </div>
             ) : activeTypeFilter !== 'all' ? (
               (() => {
-                const typeInfo = getTypeDescription(activeTypeFilter as TrackerItemType);
                 const typeColor = getTypeColor(activeTypeFilter as TrackerItemType);
                 const typeIcon = getTypeIcon(activeTypeFilter as TrackerItemType);
                 return (
@@ -1306,13 +1435,9 @@ export function TrackerTable({
                       <span className="material-symbols-outlined text-lg" style={{ color: typeColor }}>{typeIcon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[var(--nim-text-muted)] m-0">{typeInfo.description}</p>
+                      <p className="text-sm text-[var(--nim-text-muted)] m-0">{presentation?.typeDescription?.(activeTypeFilter)}</p>
                       <p className="text-xs text-[var(--nim-text-faint)] m-0 mt-1">
-                        {activeTypeFilter === 'plan' ? (
-                          <>Use <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]">/plan</code> in chat to create a new plan</>
-                        ) : (
-                          <>Type <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]">#{activeTypeFilter}</code> in markdown or use <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]">/track {activeTypeFilter}</code> in chat</>
-                        )}
+                        {presentation?.typeHint?.(activeTypeFilter)}
                       </p>
                     </div>
                     {onNewItem && globalRegistry.get(activeTypeFilter)?.creatable !== false && (
@@ -1323,7 +1448,7 @@ export function TrackerTable({
                       >
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">add</span>
-                          New {activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1)}
+                          {presentation?.newItem?.(activeTypeFilter)}
                         </span>
                       </button>
                     )}
@@ -1332,8 +1457,8 @@ export function TrackerTable({
               })()
             ) : (
               <div className="tracker-table-empty flex items-center justify-center gap-2 py-4 px-6">
-                <p className="text-sm text-[var(--nim-text-muted)] m-0">No tracker items found</p>
-                <p className="text-xs text-[var(--nim-text-faint)] m-0">Create items using #bug, #task, #plan, or #idea in any markdown file</p>
+                <p className="text-sm text-[var(--nim-text-muted)] m-0">{presentation?.noItems}</p>
+                <p className="text-xs text-[var(--nim-text-faint)] m-0">{presentation?.creationHint}</p>
               </div>
             )}
           </div>
@@ -1378,6 +1503,7 @@ export function TrackerTable({
                 <TrackerFavoriteStar
                   itemId={item.id}
                   isFavorite={favoriteItemIds.has(item.id)}
+                  ariaLabel={presentation?.favoriteLabel?.(favoriteItemIds.has(item.id))}
                   onToggle={onToggleFavorite}
                 />
 
@@ -1421,7 +1547,7 @@ export function TrackerTable({
                     const value = getCellValue(item, col.id);
                     return (
                       <div key={col.id} className={`tracker-table-cell ${col.id}`}>
-                        {renderCell(col, item, value, editingCell, isItemEditable, setEditingCell, editingTitle, setEditingTitle, titleInputRef, handleFieldUpdate)}
+                        {renderCell(col, item, value, editingCell, isItemEditable, setEditingCell, editingTitle, setEditingTitle, titleInputRef, handleFieldUpdate, presentation?.relativeDate, presentation?.cell)}
                       </div>
                     );
                   })}
@@ -1435,6 +1561,7 @@ export function TrackerTable({
 
       {/* Context menu -- shared with the RevoGrid table view */}
       <TrackerRowContextMenu
+        presentation={presentation?.contextMenu}
         anchor={contextAnchor}
         refs={contextRefs}
         floatingStyles={contextFloatingStyles}

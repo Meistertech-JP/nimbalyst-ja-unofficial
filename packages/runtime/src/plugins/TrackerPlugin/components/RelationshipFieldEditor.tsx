@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 import type { FieldDefinition, TrackerRelationshipValue } from '../models/TrackerDataModel';
 import {
   normalizeRelationshipValue,
@@ -56,6 +57,7 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
   onOpenItem,
   readOnly,
 }) => {
+  const { t } = useRuntimeTranslation();
   const [draft, setDraft] = useState('');
   // The add control is collapsed to a "+" until the user opens it.
   const [adding, setAdding] = useState(false);
@@ -69,6 +71,9 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
   // the field semantics and tint the pills. Schema-driven via relationshipTypeKey.
   const relType = useMemo(() => resolveRelationshipType(field.relationshipTypeKey), [field.relationshipTypeKey]);
   const pillColor = relType?.color;
+  const relTypeLabel = relType
+    ? t(`tracker:relationship.${relType.key.replace(/-/g, '_')}`, relType.displayName)
+    : '';
 
   const datalistId = `rel-cand-${field.name}`;
 
@@ -121,16 +126,16 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
       {relType && (
         <span
           className="relationship-type-badge inline-flex w-fit items-center gap-1 text-[10px] uppercase tracking-[0.5px] text-[var(--nim-text-faint)]"
-          title={relType.description || relType.displayName}
+          title={relType.description || relTypeLabel}
         >
           {relType.icon && <span className="material-symbols-outlined text-[12px]">{relType.icon}</span>}
-          {relType.displayName}
-          {relType.symmetric && <span className="normal-case tracking-normal">(both ways)</span>}
+          {relTypeLabel}
+          {relType.symmetric && <span className="normal-case tracking-normal">{t('tracker:relationship.both_ways', '(both ways)')}</span>}
         </span>
       )}
       <div className="flex flex-wrap gap-1">
         {current.length === 0 && (
-          <span className="text-[12px] text-[var(--nim-text-faint)] italic">No links</span>
+          <span className="text-[12px] text-[var(--nim-text-faint)] italic">{t('tracker:relationship.no_links', 'No links')}</span>
         )}
         {current.map((v) => {
           const cand = candidateById.get(v.itemId);
@@ -153,8 +158,8 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
               <button
                 type="button"
                 className="relationship-pill-remove text-[var(--nim-text-faint)] hover:text-[var(--nim-error)]"
-                title="Remove link"
-                aria-label={`Remove ${label}`}
+                title={t('tracker:relationship.remove_link', 'Remove link')}
+                aria-label={t('tracker:relationship.remove_label', 'Remove {{label}}', { label })}
                 onClick={() => handleRemove(v.itemId)}
               >
                 ×
@@ -169,8 +174,8 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
         <button
           type="button"
           className="relationship-add-toggle inline-flex w-fit items-center text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]"
-          title="Add link"
-          aria-label="Add link"
+          title={t('tracker:relationship.add_link', 'Add link')}
+          aria-label={t('tracker:relationship.add_link', 'Add link')}
           onClick={() => setAdding(true)}
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
@@ -184,7 +189,7 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
             type="text"
             list={datalistId}
             value={draft}
-            placeholder="Link an item…"
+            placeholder={t('tracker:relationship.link_item_placeholder', 'Link an item…')}
             className="flex-1 py-1 px-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[12px] focus:outline-none focus:border-[var(--nim-primary)]"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -207,13 +212,13 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
             disabled={!draft.trim()}
             onClick={handleAdd}
           >
-            Add
+            {t('tracker:main.add', 'Add')}
           </button>
           <button
             type="button"
             className="relationship-add-cancel px-1.5 py-1 rounded text-[12px] text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]"
-            title="Cancel"
-            aria-label="Cancel adding link"
+            title={t('common:cancel', 'Cancel')}
+            aria-label={t('tracker:relationship.cancel_adding_link', 'Cancel adding link')}
             onClick={closeAdd}
           >
             ×

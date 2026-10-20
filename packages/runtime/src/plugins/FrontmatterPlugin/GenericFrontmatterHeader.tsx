@@ -14,12 +14,14 @@ import {
   type InferredField,
 } from './fieldUtils';
 import { MaterialSymbol } from '../../ui/icons/MaterialSymbol';
+import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
 
 export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = ({
   getContent,
   contentVersion,
   onContentChange,
 }) => {
+  const { t } = useRuntimeTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [localFields, setLocalFields] = useState<InferredField[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
                 <button
                   className="frontmatter-tag-remove flex items-center justify-center bg-transparent border-none p-0.5 cursor-pointer text-[var(--nim-text-muted)] rounded-full transition-all duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                   onClick={() => handleRemoveTag(index)}
-                  aria-label={`Remove ${tag}`}
+                  aria-label={t('tracker:relationship.remove_label', 'Remove {{label}}', { label: String(tag) })}
                 >
                   <MaterialSymbol icon="close" size={12} />
                 </button>
@@ -88,14 +90,14 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
             <input
               type="text"
               className="frontmatter-tag-input border-none bg-transparent px-1 py-0.5 text-xs min-w-20 flex-1 shadow-none outline-none placeholder:text-[var(--nim-text-faint)] placeholder:text-xs"
-              placeholder="Add tag..."
+              placeholder={t('tracker:fields.add_tag', 'Add tag...')}
               onKeyDown={handleAddTag}
             />
           </div>
         </div>
       );
     },
-    [handleFieldChange]
+    [handleFieldChange, t]
   );
 
   // Common input styles for frontmatter fields
@@ -224,7 +226,7 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
                     target="_blank"
                     rel="noopener noreferrer"
                     className="frontmatter-link-open flex items-center justify-center p-1.5 text-[var(--nim-text-muted)] rounded transition-all duration-200 hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-primary)]"
-                    aria-label="Open link"
+                    aria-label={t('tracker:fields.open_link', 'Open link')}
                   >
                     <MaterialSymbol icon="open_in_new" size={14} />
                   </a>
@@ -251,7 +253,7 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
                     .filter((v) => v.length > 0);
                   handleFieldChange(field.key, newValue);
                 }}
-                placeholder="Comma-separated values"
+                placeholder={t('tracker:frontmatter.comma_separated_values', 'Comma-separated values')}
               />
             </div>
           );
@@ -272,7 +274,7 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
           );
       }
     },
-    [handleFieldChange, renderTagsField]
+    [handleFieldChange, renderTagsField, t]
   );
 
   // Show error banner if frontmatter exists but failed to parse
@@ -282,7 +284,7 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
         <div className="frontmatter-error-banner flex items-start gap-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-md text-[var(--nim-text)]">
           <MaterialSymbol icon="error" size={20} className="text-red-500 shrink-0" />
           <div className="frontmatter-error-content flex flex-col gap-1 min-w-0">
-            <span className="frontmatter-error-title font-semibold text-[13px] text-red-500">Invalid Frontmatter</span>
+            <span className="frontmatter-error-title font-semibold text-[13px] text-red-500">{t('tracker:frontmatter.invalid', 'Invalid Frontmatter')}</span>
             <span className="frontmatter-error-message text-xs text-[var(--nim-text-muted)] font-mono whitespace-pre-wrap break-words">{parseError}</span>
           </div>
         </div>
@@ -300,11 +302,11 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
         <button
           className="frontmatter-toggle bg-transparent border-none px-3 py-1.5 cursor-pointer rounded text-[var(--nim-text-muted)] flex items-center gap-2 transition-all duration-200 text-[13px] w-full hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
           onClick={() => setIsCollapsed(false)}
-          aria-label="Expand metadata"
+          aria-label={t('tracker:frontmatter.expand_metadata', 'Expand metadata')}
         >
           <MaterialSymbol icon="data_object" size={18} />
-          <span>Document Metadata</span>
-          <span className="frontmatter-field-count ml-auto text-[11px] opacity-70">{localFields.length} fields</span>
+          <span>{t('tracker:frontmatter.document_metadata', 'Document Metadata')}</span>
+          <span className="frontmatter-field-count ml-auto text-[11px] opacity-70">{t(localFields.length === 1 ? 'tracker:frontmatter.field_count_one' : 'tracker:frontmatter.field_count_other', `${localFields.length} field${localFields.length === 1 ? '' : 's'}`, { count: localFields.length })}</span>
         </button>
       </div>
     );
@@ -318,7 +320,7 @@ export const GenericFrontmatterHeader: React.FC<DocumentHeaderComponentProps> = 
       >
         <div className="frontmatter-title-left flex items-center gap-2 font-semibold text-[var(--nim-text)] text-sm">
           <MaterialSymbol icon="data_object" size={20} />
-          <span>Document Metadata</span>
+          <span>{t('tracker:frontmatter.document_metadata', 'Document Metadata')}</span>
         </div>
         <MaterialSymbol icon="expand_less" size={18} className="frontmatter-collapse-icon text-[var(--nim-text-muted)]" />
       </div>

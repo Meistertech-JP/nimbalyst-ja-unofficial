@@ -1,15 +1,18 @@
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
-import {INSERT_BOARD_COMMAND, INSERT_CONFIGURED_BOARD_COMMAND} from './BoardCommands';
+import {INSERT_BOARD_COMMAND, INSERT_CONFIGURED_BOARD_COMMAND, bindKanbanTranslation} from './BoardCommands';
 import { BoardConfigDialog, BoardConfig } from './BoardConfigDialog';
+import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 // import { Button } from 'primereact/button';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faColumns, faCog } from '@fortawesome/pro-light-svg-icons';
 
 export function BoardToolbar(): JSX.Element {
+  const { t } = useRuntimeTranslation();
   const [editor] = useLexicalComposerContext();
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  useEffect(() => bindKanbanTranslation(editor, t), [editor, t]);
 
   const insertKanbanBoard = () => {
     editor.dispatchCommand(INSERT_BOARD_COMMAND, undefined);
@@ -31,14 +34,14 @@ export function BoardToolbar(): JSX.Element {
           onClick={insertKanbanBoard}
           className="flex align-items-center gap-2 p-button-secondary p-button-outlined p-button-sm"
         >
-          Insert Basic Board
+          {t('editor:kanban.insert_basic', 'Insert Basic Board')}
         </button>
         
         <button
           onClick={insertEntityBoard}
           className="flex align-items-center gap-2 p-button-primary p-button-sm"
         >
-          Insert Entity Board
+          {t('editor:kanban.insert_entity', 'Insert Entity Board')}
         </button>
       </div>
 

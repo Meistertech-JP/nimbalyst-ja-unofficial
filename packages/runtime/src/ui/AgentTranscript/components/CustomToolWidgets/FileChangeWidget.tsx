@@ -13,6 +13,7 @@ import { useAtomValue } from 'jotai';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import { useElapsedTimeRef } from './useElapsedTime';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../../RuntimeTranslation';
 
 /**
  * Maximum number of lines to show before adding "show more"
@@ -76,12 +77,12 @@ function getRelativePath(filePath: string, workspacePath?: string): string {
   return filePath;
 }
 
-function getKindLabel(kind: string): string {
+function getKindLabel(kind: string, t: RuntimeTranslate): string {
   switch (kind) {
-    case 'create': return 'Created';
-    case 'delete': return 'Deleted';
+    case 'create': return t('files:edits.created', 'Created');
+    case 'delete': return t('files:edits.deleted', 'Deleted');
     case 'update':
-    default: return 'Updated';
+    default: return t('common:collab.filter_updated', 'Updated');
   }
 }
 
@@ -103,19 +104,19 @@ function getKindBgClass(kind: string): string {
   }
 }
 
-function getSummary(changes: FileChange[]): string {
-  if (changes.length === 0) return 'No file changes';
+function getSummary(changes: FileChange[], t: RuntimeTranslate): string {
+  if (changes.length === 0) return t('aichat:file_change.none', 'No file changes');
   if (changes.length === 1) {
     const c = changes[0];
-    return `${getKindLabel(c.kind)} ${getBasename(c.path)}`;
+    return t('aichat:file_change.single', '{{action}} {{name}}', { action: getKindLabel(c.kind, t), name: getBasename(c.path) });
   }
   // Check if all same kind
   const kinds = new Set(changes.map(c => c.kind));
   if (kinds.size === 1) {
     const kind = changes[0].kind;
-    return `${getKindLabel(kind)} ${changes.length} files`;
+    return t('aichat:file_change.same_kind', '{{action}} {{count}} files', { action: getKindLabel(kind, t), count: changes.length });
   }
-  return `Changed ${changes.length} files`;
+  return t('aichat:file_change.mixed', 'Changed {{count}} files', { count: changes.length });
 }
 
 function countLines(text: string): number {
@@ -138,21 +139,20 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
   readFile,
   sessionId,
 }) => {
+  const { t } = useRuntimeTranslation();
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [contentExpanded, setContentExpanded] = useState(false);
-  const [liveContent, setLiveContent] = useState<Record<string, { content: string | null; error?: string }>>({});
+  const [liveContent, setLiveContent] = useState<Record<string, { content: string | null; error?: string; readFailed?: boolean }>>({});
   const [loadingLive, setLoadingLive] = useState<Set<string>>(new Set());
 
   const tool = message.toolCall;
   const running = tool ? isToolRunning(tool) : false;
-  const elapsedRef = useElapsedTimeRef(running ? message.createdAt.getTime() : undefined);
-
-  if (!tool) return null;
+  const elapsedRef = useElapsedTimeRef(running ? message.createdAt.getTime() : undefined, t);
 
   const changes = extractChanges(tool);
   const snapshots = extractSnapshots(tool);
-  const hasError = isToolError(tool.result, message);
+  const hasError = isToolError(tool?.result, message);
 
   const handleFileClick = useCallback(async (filePath: string) => {
     if (selectedFile === filePath) {
@@ -176,7 +176,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
           [filePath]: { content: result.success ? result.content ?? null : null, error: result.success ? undefined : result.error },
         }));
       } catch {
-        setLiveContent(prev => ({ ...prev, [filePath]: { content: null, error: 'Failed to read file' } }));
+        setLiveContent(prev => ({ ...prev, [filePath]: { content: null, readFailed: true } }));
       } finally {
         setLoadingLive(prev => {
           const next = new Set(prev);
@@ -194,6 +194,8 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
     }
   }, [host]);
 
+  if (!tool) return null;
+
   const getBorderClass = () => {
     if (hasError) return 'border-[color-mix(in_srgb,var(--nim-error)_40%,var(--nim-border))]';
     if (running) return 'border-[color-mix(in_srgb,var(--nim-primary)_40%,var(--nim-border))]';
@@ -202,7 +204,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
 
   // --- Collapsed view ---
   if (!isExpanded) {
-    const summary = getSummary(changes);
+    const summary = getSummary(changes, t);
     return (
       <button
         className={`file-change-widget rounded-md bg-nim-tertiary ${getBorderClass()} border overflow-hidden flex items-center justify-between w-full py-1.5 px-2 cursor-pointer transition-colors duration-150 text-left hover:bg-nim-hover`}
@@ -276,7 +278,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
       selectedError = snapshot.error;
     } else if (liveContent[selectedFile]) {
       selectedContent = liveContent[selectedFile].content;
-      selectedError = liveContent[selectedFile].error;
+      selectedError = liveContent[selectedFile].readFailed ? t('aichat:read_file_failed', 'Failed to read file') : liveContent[selectedFile].error;
       selectedIsLive = true;
     }
     selectedIsLoading = loadingLive.has(selectedFile);
@@ -307,13 +309,13 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
               <line x1="9" y1="15" x2="15" y2="15"></line>
             </svg>
           </div>
-          <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">File Changes</span>
+          <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">{t('aichat:file_change.title', 'File Changes')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {running && (
             <span className="flex items-center gap-1 text-[0.7rem] font-medium font-sans text-nim-primary">
               <span className="w-2.5 h-2.5 border-[1.5px] border-[color-mix(in_srgb,var(--nim-primary)_30%,transparent)] border-t-nim-primary rounded-full animate-spin" />
-              Running <span ref={elapsedRef} className="tabular-nums" />
+              {t('common:agent_sessions.running', 'Running')} <span ref={elapsedRef} className="tabular-nums" />
             </span>
           )}
           {!running && !hasError && (
@@ -360,13 +362,13 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
               <code
                 className="text-[0.75rem] text-nim-muted flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap hover:text-nim-primary hover:underline cursor-pointer"
                 onClick={(e) => handlePathClick(e, change.path)}
-                title={`Open ${relPath}`}
+                title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: relPath })}
               >
                 {relPath}
               </code>
               {/* Kind badge */}
               <span className={`text-[0.65rem] font-medium py-0.5 px-1.5 rounded-full ${getKindColorClass(change.kind)} ${getKindBgClass(change.kind)}`}>
-                {getKindLabel(change.kind)}
+                {getKindLabel(change.kind, t)}
               </span>
               {/* Expand indicator */}
               <svg
@@ -397,14 +399,14 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
           {/* Binary file */}
           {!selectedIsLoading && selectedIsBinary && (
             <div className="py-2 px-3 text-xs text-nim-faint font-sans italic bg-nim">
-              Binary file - content cannot be displayed
+              {t('aichat:file_change.binary', 'Binary file - content cannot be displayed')}
             </div>
           )}
 
           {/* Deleted file */}
           {!selectedIsLoading && !selectedIsBinary && selectedChange?.kind === 'delete' && !selectedContent && (
             <div className="py-2 px-3 text-xs text-nim-faint font-sans italic bg-nim">
-              File was deleted
+              {t('aichat:file_change.deleted', 'File was deleted')}
             </div>
           )}
 
@@ -418,7 +420,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
           {/* No snapshot, no live content, not loading */}
           {!selectedIsLoading && !selectedContent && !selectedIsBinary && !selectedError && selectedChange?.kind !== 'delete' && (
             <div className="py-2 px-3 text-xs text-nim-faint font-sans italic bg-nim">
-              Snapshot unavailable
+              {t('aichat:file_change.no_snapshot', 'Snapshot unavailable')}
             </div>
           )}
 
@@ -427,12 +429,12 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
             <div className="relative">
               {selectedIsLive && (
                 <div className="py-1 px-3 text-[0.65rem] text-nim-faint font-sans bg-nim-secondary border-b border-nim">
-                  Showing current file (no snapshot available)
+                  {t('aichat:file_change.live', 'Showing current file (no snapshot available)')}
                 </div>
               )}
               {selectedTruncated && (
                 <div className="py-1 px-3 text-[0.65rem] text-nim-faint font-sans bg-nim-secondary border-b border-nim">
-                  File truncated at 100KB
+                  {t('aichat:file_change.truncated', 'File truncated at 100KB')}
                 </div>
               )}
               <pre className="m-0 p-2 text-xs leading-normal text-nim-muted bg-nim overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono">
@@ -445,8 +447,8 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
                   type="button"
                 >
                   {contentExpanded
-                    ? 'Show less'
-                    : `Show ${hiddenLineCount} more line${hiddenLineCount === 1 ? '' : 's'}`
+                    ? t('aichat:tool_output.less', 'Show less')
+                    : t('aichat:tool_output.more_lines', hiddenLineCount === 1 ? 'Show {{count}} more line' : 'Show {{count}} more lines', { count: hiddenLineCount })
                   }
                 </button>
               )}

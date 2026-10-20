@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { MaterialSymbol, type NewFileMenuContribution } from '@nimbalyst/runtime';
 import { useFloatingMenu, FloatingPortal, virtualElement } from '../hooks/useFloatingMenu';
 
@@ -9,6 +11,7 @@ export type BuiltInFileType = 'markdown' | 'mockup' | 'any';
 export type NewFileType = BuiltInFileType | string;
 
 export interface ExtensionFileType {
+  extensionId: string;
   extension: string;
   displayName: string;
   icon: string;
@@ -17,6 +20,44 @@ export interface ExtensionFileType {
   action?: 'createFile' | 'openVirtualTab';
   /** For 'openVirtualTab': the virtual:// prefix to open. */
   virtualScheme?: string;
+}
+
+export function getExtensionFileTypeDisplayName(
+  t: TFunction,
+  fileType: ExtensionFileType,
+): string {
+  switch (`${fileType.extensionId}:${fileType.extension}`) {
+    case 'com.nimbalyst.browser:browser-tab':
+      return t('files:new_file_menu.extension_types.browser_tab');
+    case 'com.nimbalyst.calc-sheets:.calc.md':
+      return t('files:new_file_menu.extension_types.calc_sheet');
+    case 'com.nimbalyst.csv-spreadsheet:.csv':
+      return t('files:new_file_menu.extension_types.csv_spreadsheet');
+    case 'com.nimbalyst.datamodellm:.prisma':
+      return t('files:new_file_menu.extension_types.data_model');
+    case 'com.nimbalyst.excalidraw:.excalidraw':
+      return t('files:new_file_menu.extension_types.excalidraw_diagram');
+    case 'com.nimbalyst.image-generation:.imgproj':
+      return t('files:new_file_menu.extension_types.image_generation_project');
+    case 'com.nimbalyst.ios-dev:.swift':
+      return t('files:new_file_menu.extension_types.swift_file');
+    case 'com.nimbalyst.mockuplm:.mockup.html':
+      return t('files:new_file_menu.extension_types.mockup');
+    case 'com.nimbalyst.mockuplm:.mockupproject':
+      return t('files:new_file_menu.extension_types.mockup_project');
+    default:
+      return fileType.displayName;
+  }
+}
+
+export function getExtensionNewFileType(fileType: ExtensionFileType): NewFileType {
+  if (
+    fileType.extensionId === 'com.nimbalyst.mockuplm' &&
+    fileType.extension === '.mockup.html'
+  ) {
+    return 'mockup';
+  }
+  return `ext:${fileType.extension}`;
 }
 
 interface NewFileMenuProps {
@@ -35,6 +76,7 @@ export function NewFileMenu({
   onClose,
   extensionFileTypes = []
 }: NewFileMenuProps) {
+  const { t } = useTranslation(['files']);
   const reference = useMemo(() => virtualElement(x, y), [x, y]);
   const menu = useFloatingMenu({
     placement: 'right-start',
@@ -58,17 +100,22 @@ export function NewFileMenu({
       // here would duplicate it.
       ...extensionFileTypes.map((extType) => ({
         key: `ext:${extType.extension}`,
-        label: extType.displayName,
+        label: getExtensionFileTypeDisplayName(t, extType),
         icon: extType.icon,
-        fileType: `ext:${extType.extension}` as NewFileType,
+        fileType: getExtensionNewFileType(extType),
       })),
     ];
     rest.sort((a, b) => a.label.localeCompare(b.label));
     return [
-      { key: 'markdown', label: 'Markdown File', icon: 'description', fileType: 'markdown' as NewFileType },
+      {
+        key: 'markdown',
+        label: t('files:new_file_menu.markdown_file'),
+        icon: 'description',
+        fileType: 'markdown' as NewFileType,
+      },
       ...rest,
     ];
-  }, [extensionFileTypes]);
+  }, [extensionFileTypes, t]);
 
   return (
     <FloatingPortal>
@@ -96,7 +143,7 @@ export function NewFileMenu({
           onClick={() => handleSelect('any')}
         >
           <MaterialSymbol icon="note_add" size={18} />
-          <span>New File...</span>
+          <span>{t('files:context.new_file')}</span>
         </div>
       </div>
     </FloatingPortal>
@@ -107,9 +154,11 @@ export function NewFileMenu({
  * Convert NewFileMenuContribution from extension to ExtensionFileType
  */
 export function contributionToExtensionFileType(
+  extensionId: string,
   contribution: NewFileMenuContribution
 ): ExtensionFileType {
   return {
+    extensionId,
     extension: contribution.extension,
     displayName: contribution.displayName,
     icon: contribution.icon,

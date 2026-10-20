@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 
 interface Snapshot {
@@ -10,12 +11,14 @@ interface Snapshot {
 }
 
 export function HistoryWindow() {
+  const { t, i18n } = useTranslation(['common', 'dialogs']);
   const [filePath, setFilePath] = useState<string>('');
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedSnapshot, setSelectedSnapshot] = useState<Snapshot | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ key: string } | { message: string } | null>(null);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -28,7 +31,8 @@ export function HistoryWindow() {
         const path = params.get('filePath');
 
         if (!path) {
-          throw new Error('No file path provided');
+          setError({ key: 'dialogs:history.no_file_path' });
+          return;
         }
 
         setFilePath(path);
@@ -43,7 +47,7 @@ export function HistoryWindow() {
           loadSnapshot(path, snapshotList[0].timestamp);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load history');
+        setError(err instanceof Error ? { message: err.message } : { key: 'history_window.load_failed' });
       } finally {
         setLoading(false);
       }
@@ -56,9 +60,11 @@ export function HistoryWindow() {
     try {
       const content = await window.electronAPI.history.loadSnapshot(path, timestamp);
       setPreviewContent(content);
+      setPreviewLoadFailed(false);
     } catch (err) {
       console.error('Failed to load snapshot:', err);
-      setPreviewContent('Failed to load snapshot content');
+      setPreviewContent('');
+      setPreviewLoadFailed(true);
     }
   };
 
@@ -71,7 +77,7 @@ export function HistoryWindow() {
     if (!selectedSnapshot || !previewContent) return;
 
     const confirmed = window.confirm(
-      `Are you sure you want to restore this version from ${formatDate(selectedSnapshot.timestamp)}? This will replace the current file content.`
+      t('dialogs:history.restore_confirm', { date: formatDate(selectedSnapshot.timestamp) })
     );
 
     if (confirmed) {
@@ -87,14 +93,14 @@ export function HistoryWindow() {
         }
         window.close();
       } catch (err) {
-        alert('Failed to restore snapshot');
+        alert(t('history_window.restore_failed'));
       }
     }
   };
 
   const handleDelete = async (snapshot: Snapshot) => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete this snapshot from ${formatDate(snapshot.timestamp)}?`
+      t('dialogs:history.delete_snapshot_confirm', { date: formatDate(snapshot.timestamp) })
     );
 
     if (confirmed) {
@@ -109,16 +115,17 @@ export function HistoryWindow() {
         if (selectedSnapshot?.timestamp === snapshot.timestamp) {
           setSelectedSnapshot(null);
           setPreviewContent('');
+          setPreviewLoadFailed(false);
         }
       } catch (err) {
-        alert('Failed to delete snapshot');
+        alert(t('dialogs:history.delete_failed'));
       }
     }
   };
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleString();
+    return date.toLocaleString(i18n.resolvedLanguage ?? i18n.language);
   };
 
   const formatSize = (bytes: number) => {
@@ -149,17 +156,17 @@ export function HistoryWindow() {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'auto-save':
-        return 'Auto-save';
+        return t('dialogs:history.version_auto_save');
       case 'manual':
-        return 'Manual';
+        return t('history_window.type_manual');
       case 'ai-diff':
-        return 'AI Diff';
+        return t('history_window.type_ai_diff');
       case 'ai-edit':
-        return 'AI Edit';
+        return t('dialogs:history.version_ai_edit');
       case 'pre-apply':
-        return 'Pre-apply';
+        return t('history_window.type_pre_apply');
       case 'external-change':
-        return 'External Change';
+        return t('dialogs:history.version_external_change');
       default:
         return type;
     }
@@ -169,7 +176,7 @@ export function HistoryWindow() {
     return (
       <div className="history-window flex flex-col items-center justify-center h-screen bg-[var(--nim-bg)] font-sans text-[var(--nim-text-muted)]">
         <MaterialSymbol icon="hourglass_empty" size={48} />
-        <p className="mt-3 text-sm">Loading history...</p>
+        <p className="mt-3 text-sm">{t('history_window.loading')}</p>
       </div>
     );
   }
@@ -178,7 +185,7 @@ export function HistoryWindow() {
     return (
       <div className="history-window flex flex-col items-center justify-center h-screen bg-[var(--nim-bg)] font-sans text-[var(--nim-error)]">
         <MaterialSymbol icon="error" size={48} />
-        <p className="mt-3 text-sm">{error}</p>
+        <p className="mt-3 text-sm">{'key' in error ? t(error.key) : error.message}</p>
       </div>
     );
   }
@@ -186,20 +193,20 @@ export function HistoryWindow() {
   return (
     <div className="history-window flex flex-col h-screen bg-[var(--nim-bg)] font-sans">
       <div className="history-header p-5 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
-        <h1 className="m-0 text-2xl font-semibold text-[var(--nim-text)]">File History</h1>
+        <h1 className="m-0 text-2xl font-semibold text-[var(--nim-text)]">{t('history_window.title')}</h1>
         <p className="file-path mt-2 text-[13px] text-[var(--nim-text-muted)] font-mono">{filePath}</p>
       </div>
 
       <div className="history-content flex flex-1 overflow-hidden">
         <div className="snapshots-list w-80 border-r border-[var(--nim-border)] flex flex-col">
           <div className="snapshots-header px-5 py-4 border-b border-[var(--nim-border)]">
-            <h2 className="m-0 text-sm font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide">Snapshots ({snapshots.length})</h2>
+            <h2 className="m-0 text-sm font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide">{t('dialogs:history.snapshots_header', { displayed: snapshots.length, total: '' })}</h2>
           </div>
 
           {snapshots.length === 0 ? (
             <div className="no-snapshots flex flex-col items-center justify-center p-10 text-[var(--nim-text-faint)]">
               <MaterialSymbol icon="history_toggle_off" size={48} />
-              <p className="mt-3 text-sm">No snapshots available</p>
+              <p className="mt-3 text-sm">{t('dialogs:history.no_snapshots')}</p>
             </div>
           ) : (
             <div className="snapshots flex-1 overflow-y-auto">
@@ -237,7 +244,7 @@ export function HistoryWindow() {
                       e.stopPropagation();
                       handleDelete(snapshot);
                     }}
-                    title="Delete snapshot"
+                    title={t('dialogs:history.delete_snapshot')}
                   >
                     <MaterialSymbol icon="delete" size={18} />
                   </button>
@@ -249,12 +256,12 @@ export function HistoryWindow() {
 
         <div className="snapshot-preview flex-1 flex flex-col overflow-hidden">
           <div className="preview-header flex items-center justify-between px-5 py-4 border-b border-[var(--nim-border)]">
-            <h2 className="m-0 text-sm font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide">Preview</h2>
+            <h2 className="m-0 text-sm font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide">{t('dialogs:history.preview')}</h2>
             {selectedSnapshot && (
               <div className="preview-actions flex gap-2">
-                <button className="btn-restore nim-btn-primary flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md" onClick={handleRestore}>
+                <button className="btn-restore nim-btn-primary flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-md" onClick={handleRestore} disabled={previewLoadFailed}>
                   <MaterialSymbol icon="restore" size={18} />
-                  Restore This Version
+                  {t('dialogs:history.restore_version')}
                 </button>
               </div>
             )}
@@ -262,12 +269,12 @@ export function HistoryWindow() {
 
           {selectedSnapshot ? (
             <div className="preview-content flex-1 overflow-auto p-5 bg-[var(--nim-bg-secondary)]">
-              <pre className="m-0 font-mono text-[13px] leading-relaxed text-[var(--nim-text)] whitespace-pre-wrap break-words">{previewContent}</pre>
+              <pre className="m-0 font-mono text-[13px] leading-relaxed text-[var(--nim-text)] whitespace-pre-wrap break-words">{previewLoadFailed ? t('dialogs:history.load_snapshot_content_failed') : previewContent}</pre>
             </div>
           ) : (
             <div className="no-preview flex-1 flex flex-col items-center justify-center text-[var(--nim-text-faint)]">
               <MaterialSymbol icon="preview_off" size={48} />
-              <p className="mt-3 text-sm">Select a snapshot to preview</p>
+              <p className="mt-3 text-sm">{t('dialogs:history.select_snapshot')}</p>
             </div>
           )}
         </div>

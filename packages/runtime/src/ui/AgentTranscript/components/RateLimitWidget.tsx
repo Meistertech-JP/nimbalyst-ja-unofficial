@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useRuntimeTranslation, type RuntimeTranslate } from '../../RuntimeTranslation';
 
 // Inject rate limit widget styles once (for color-mix patterns)
 const injectRateLimitStyles = () => {
@@ -52,22 +53,23 @@ function parseRateLimitInfo(content: string): {
   };
 }
 
-function formatResetTime(resetsAtMs: number): string {
+function formatResetTime(resetsAtMs: number, t: RuntimeTranslate): string {
   const diffMs = resetsAtMs - Date.now();
 
-  if (diffMs <= 0) return 'any moment now';
+  if (diffMs <= 0) return t('errors:rate_limit.any_moment', 'any moment now');
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMinutes / 60);
   const remainingMinutes = diffMinutes % 60;
 
   if (diffHours > 0) {
-    return `${diffHours}h ${remainingMinutes}m`;
+    return t('errors:rate_limit.hours_minutes', '{{hours}}h {{minutes}}m', { hours: diffHours, minutes: remainingMinutes });
   }
-  return `${diffMinutes}m`;
+  return t('errors:rate_limit.minutes', '{{minutes}}m', { minutes: diffMinutes });
 }
 
 export const RateLimitWidget: React.FC<RateLimitWidgetProps> = ({ content }) => {
+  const { t } = useRuntimeTranslation();
   useEffect(() => {
     injectRateLimitStyles();
   }, []);
@@ -75,6 +77,12 @@ export const RateLimitWidget: React.FC<RateLimitWidgetProps> = ({ content }) => 
   const { isWarning, limitType, resetsAtMs, utilization, model } = parseRateLimitInfo(content);
   const accentVar = isWarning ? '--nim-warning' : '--nim-error';
   const is1mModel = model != null && model.includes('-1m');
+  const limitLabels: Record<string, string> = {
+    '5-hour session': t('errors:rate_limit.five_hour', '5-hour session'),
+    usage: t('errors:rate_limit.usage', 'usage'),
+    unknown: t('errors:rate_limit.unknown', 'unknown'),
+  };
+  const limitLabel = limitLabels[limitType] ?? limitType;
 
   return (
     <div className={isWarning ? 'rate-limit-widget my-4 p-4 rounded-lg flex flex-col gap-2' : 'rate-limit-widget-blocked my-4 p-4 rounded-lg flex flex-col gap-2'}>
@@ -86,15 +94,15 @@ export const RateLimitWidget: React.FC<RateLimitWidgetProps> = ({ content }) => 
           !
         </span>
         <span className="text-sm font-semibold" style={{ color: `var(${accentVar})` }}>
-          {isWarning ? 'Approaching rate limit' : 'Rate limit reached'}
+          {isWarning ? t('errors:rate_limit.warning', 'Approaching rate limit') : t('errors:rate_limit.reached', 'Rate limit reached')}
         </span>
       </div>
       <div className="text-[var(--nim-text-muted)] text-[0.85rem] leading-relaxed">
         {isWarning
-          ? `You're at ${utilization != null ? `${utilization}%` : 'near'} of your ${limitType} limit.`
-          : `You've hit your ${limitType} rate limit.`}
-        {resetsAtMs && ` Resets in ${formatResetTime(resetsAtMs)}.`}
-        {!isWarning && is1mModel && ' This 1M context model may not be available on your plan.'}
+          ? t('errors:rate_limit.warning_detail', "You're at {{usage}} of your {{limitType}} limit.", { usage: utilization != null ? `${utilization}%` : t('errors:rate_limit.near', 'near'), limitType: limitLabel })
+          : t('errors:rate_limit.reached_detail', "You've hit your {{limitType}} rate limit.", { limitType: limitLabel })}
+        {resetsAtMs && t('errors:rate_limit.resets_in', ' Resets in {{time}}.', { time: formatResetTime(resetsAtMs, t) })}
+        {!isWarning && is1mModel && t('errors:rate_limit.model_plan', ' This 1M context model may not be available on your plan.')}
       </div>
     </div>
   );

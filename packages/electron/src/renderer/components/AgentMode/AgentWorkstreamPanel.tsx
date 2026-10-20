@@ -17,6 +17,7 @@
  */
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useImperativeHandle, type KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getWorktreeNameFromPath } from '../../utils/pathUtils';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
@@ -182,6 +183,7 @@ const TAG_PILL_CLASS = "group flex items-center gap-0.5 text-[10px] font-medium 
 const TAG_OVERFLOW_PILL_CLASS = "flex items-center gap-0.5 text-[10px] font-medium leading-none px-1.5 py-0.5 rounded-full whitespace-nowrap cursor-pointer text-nim-faint bg-[color-mix(in_srgb,var(--nim-text)_8%,transparent)] hover:bg-[color-mix(in_srgb,var(--nim-text)_14%,transparent)] border-none";
 
 const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstreamId }) => {
+  const { t } = useTranslation(['agents']);
   const tags = useAtomValue(workstreamTagsAtom(workstreamId));
   const allTags = useAtomValue(sessionKanbanTagsAtom);
   const registry = useAtomValue(sessionRegistryAtom);
@@ -326,7 +328,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
           ref={tagInputRef}
           type="text"
           className="text-[10px] leading-none py-0.5 px-1.5 rounded-full border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] outline-none w-[80px]"
-          placeholder="add tag..."
+          placeholder={t('agents:context.tag_input_placeholder')}
           value={tagInput}
           onChange={(e) => setTagInput(e.target.value)}
           onKeyDown={handleTagInputKeyDown}
@@ -358,7 +360,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
       <button
         className="flex items-center justify-center w-4 h-4 rounded-full border border-dashed border-[var(--nim-border)] bg-transparent cursor-pointer text-[var(--nim-text-faint)] hover:border-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)] transition-colors duration-100"
         onClick={() => setIsEditingTags(true)}
-        title="Add tag"
+        title={t('agents:context.add_tag')}
       >
         <MaterialSymbol icon="add" size={10} />
       </button>
@@ -406,7 +408,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
           <button
             className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-3 h-3 rounded-full border-none bg-transparent cursor-pointer text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] transition-opacity duration-100"
             onClick={() => handleRemoveTag(tag)}
-            title={`Remove tag "${tag}"`}
+            title={t('agents:context.remove_tag', { tag })}
           >
             <MaterialSymbol icon="close" size={10} />
           </button>
@@ -419,7 +421,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
             ref={overflowRefs.setReference}
             {...getOverflowReferenceProps()}
             className={TAG_OVERFLOW_PILL_CLASS}
-            title={`Show ${hiddenTags.length} more tag${hiddenTags.length === 1 ? '' : 's'}`}
+            title={t('agents:context.show_more_tags', { count: hiddenTags.length })}
           >
             +{hiddenTags.length}
           </button>
@@ -440,7 +442,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
                     <button
                       className="flex items-center justify-center w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] bg-transparent border-none cursor-pointer"
                       onClick={() => handleRemoveTag(tag)}
-                      title={`Remove tag "${tag}"`}
+            title={t('agents:context.remove_tag', { tag })}
                     >
                       <MaterialSymbol icon="close" size={10} />
                     </button>
@@ -471,6 +473,7 @@ const WorkstreamHeader: React.FC<{
   onCreateNewTerminal?: () => void;
   onShowArchiveDialog?: () => void;
 }> = React.memo(({ workstreamId, workspacePath, worktreeId, worktreePath, onArchiveStatusChange, onOpenTerminal, onCreateNewTerminal, onShowArchiveDialog }) => {
+  const { t } = useTranslation(['agents']);
   const title = useAtomValue(workstreamTitleAtom(workstreamId));
   const isProcessing = useAtomValue(workstreamProcessingAtom(workstreamId));
   const sessionData = useAtomValue(sessionStoreAtom(workstreamId));
@@ -645,7 +648,7 @@ const WorkstreamHeader: React.FC<{
             <h2
               className="workstream-header-title max-w-full m-0 text-sm font-semibold text-[var(--nim-text)] whitespace-nowrap overflow-hidden text-ellipsis leading-tight cursor-pointer py-0.5 px-1 rounded transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               onClick={handleTitleClick}
-              title="Click to rename"
+              title={t('agents:context.click_to_rename')}
             >
               {title}
             </h2>
@@ -665,7 +668,7 @@ const WorkstreamHeader: React.FC<{
             className="workstream-terminal-btn w-8 h-8 flex items-center justify-center rounded text-[var(--nim-text-faint)] cursor-pointer border-none bg-transparent hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)] mr-2"
             onClick={onOpenTerminal}
             onContextMenu={handleTerminalContextMenu}
-            title="Open terminal in worktree"
+            title={t('agents:context.open_terminal')}
           >
             <MaterialSymbol icon="terminal" size={20} />
           </button>
@@ -688,7 +691,7 @@ const WorkstreamHeader: React.FC<{
               onClick={handleNewTerminalClick}
             >
               <MaterialSymbol icon="add" size={18} />
-              <span>New Terminal</span>
+              <span>{t('agents:context.add_terminal')}</span>
             </div>
           </div>
         )}
@@ -704,10 +707,10 @@ const WorkstreamHeader: React.FC<{
         <button
           className="workstream-archive-button flex items-center gap-1.5 h-8 px-2 rounded text-[var(--nim-text-faint)] text-[11px] font-medium cursor-pointer border-none bg-transparent hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)]"
           onClick={isArchived ? handleUnarchive : handleArchive}
-          title={isArchived ? `Unarchive ${getSessionTypeLabel().toLowerCase()}` : `Archive ${getSessionTypeLabel().toLowerCase()}`}
+          title={t(isArchived ? 'agents:context.unarchive_item' : 'agents:context.archive_item', { type: t(`agents:context.${getSessionTypeLabel().toLowerCase()}`) })}
         >
           <MaterialSymbol icon={isArchived ? 'unarchive' : 'archive'} size={18} />
-          <span>{isArchived ? `Unarchive ${getSessionTypeLabel()}` : `Archive ${getSessionTypeLabel()}`}</span>
+          <span>{t(isArchived ? 'agents:context.unarchive_item' : 'agents:context.archive_item', { type: t(`agents:context.${getSessionTypeLabel().toLowerCase()}`) })}</span>
         </button>
 
       </div>
@@ -735,6 +738,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
   onSwitchToAgentMode,
   onOpenSessionInChat,
 }, ref) => {
+  const { t } = useTranslation(['agents']);
   // Ref to the workstream editor tabs for opening files
   const editorTabsRef = useRef<WorkstreamEditorTabsRef>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -824,7 +828,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
       .then((createdSessionId) => {
         if (!createdSessionId) {
           if (!cancelled) {
-            setChatCreationError('Could not open a chat for this session.');
+            setChatCreationError('agents:panels.chat_failed');
           }
           return;
         }
@@ -840,7 +844,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
       .catch((error) => {
         console.error('[AgentWorkstreamPanel] Failed to create paired chat:', error);
         if (!cancelled) {
-          setChatCreationError('Could not open a chat for this session.');
+          setChatCreationError('agents:panels.chat_failed');
         }
       });
 
@@ -1186,7 +1190,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
       const result = await window.electronAPI.terminal.create(workspacePath, {
         cwd: worktreePath,
         worktreeId: sessionWorktreeId,
-        title: `Terminal (${getWorktreeNameFromPath(worktreePath)})`,
+        title: t('agents:panels.terminal_worktree', { name: getWorktreeNameFromPath(worktreePath) }),
         source: 'worktree',
       });
 
@@ -1201,7 +1205,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
     } catch (error) {
       console.error('[AgentWorkstreamPanel] Failed to create terminal:', error);
     }
-  }, [workspacePath, sessionWorktreeId, worktreePath, terminals]);
+  }, [workspacePath, sessionWorktreeId, worktreePath, terminals, t]);
 
   // Create a new terminal (for right-click context menu)
   const handleCreateNewTerminal = useCallback(async () => {
@@ -1211,7 +1215,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
       const result = await window.electronAPI.terminal.create(workspacePath, {
         cwd: worktreePath,
         worktreeId: sessionWorktreeId,
-        title: `Terminal (${getWorktreeNameFromPath(worktreePath)})`,
+        title: t('agents:panels.terminal_worktree', { name: getWorktreeNameFromPath(worktreePath) }),
         source: 'worktree',
       });
 
@@ -1224,7 +1228,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
     } catch (error) {
       console.error('[AgentWorkstreamPanel] Failed to create terminal:', error);
     }
-  }, [workspacePath, sessionWorktreeId, worktreePath]);
+  }, [workspacePath, sessionWorktreeId, worktreePath, t]);
 
   // Determine what to show based on layout mode
   // Editor tabs are shown in editor and split modes, but wait for worktree path to resolve
@@ -1492,7 +1496,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
               data-testid="agent-workstream-vertical-resize-handle"
               onPointerDown={handleVerticalResizeStart}
               role="separator"
-              aria-label="Resize workstream editor area"
+              aria-label={t('agents:accessibility.resize_workstream_editor')}
               aria-orientation="horizontal"
             />
           )}
@@ -1529,7 +1533,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
           data-testid="agent-files-sidebar-resize-handle"
           onPointerDown={handleSidebarResizeStart}
           role="separator"
-          aria-label="Resize Agent right panel"
+          aria-label={t('agents:accessibility.resize_files_sidebar')}
           aria-orientation="vertical"
         />
       )}
@@ -1576,7 +1580,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
                 sessionId={chatSessionId}
                 onSessionIdChange={handleChatSessionChange}
                 autoInitializeSession={false}
-                newSessionTitle={`Chat with ${chatTargetTitle}`.slice(0, 120)}
+                newSessionTitle={t('agents:panels.chat_with', { title: chatTargetTitle }).slice(0, 120)}
                 newSessionDraft={sessionMentionDraft(chatTargetId, chatTargetTitle)}
                 linkedSession={{ id: chatTargetId, title: chatTargetTitle }}
                 onFileOpen={handleFileClick}
@@ -1586,19 +1590,19 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
                 {chatCreationError ? (
                   <>
                     <MaterialSymbol icon="error" size={28} className="text-nim-error" />
-                    <span>{chatCreationError}</span>
+                    <span>{t(chatCreationError)}</span>
                     <button
                       type="button"
                       onClick={() => setChatCreationAttempt((attempt) => attempt + 1)}
                       className="px-3 py-1.5 rounded border border-nim bg-nim-secondary text-xs text-nim cursor-pointer hover:bg-nim-hover"
                     >
-                      Try again
+                      {t('agents:panels.try_again')}
                     </button>
                   </>
                 ) : (
                   <>
                     <span className="w-5 h-5 border-2 border-nim border-t-nim-primary rounded-full animate-spin" />
-                    <span>{chatTargetId ? 'Opening chat…' : 'Select a session to start chatting.'}</span>
+                    <span>{t(chatTargetId ? 'agents:panels.opening_chat' : 'agents:panels.select_chat')}</span>
                   </>
                 )}
               </div>

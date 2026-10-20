@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import i18next from 'i18next';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,7 +13,23 @@ function anchor(): HTMLElement {
 }
 
 describe('AccountInspectorPopover', () => {
-  afterEach(() => cleanup());
+  afterEach(async () => {
+    cleanup();
+    await i18next.changeLanguage('en');
+  });
+
+  it('localizes signed-out navigation while preserving callbacks', async () => {
+    await i18next.changeLanguage('ja');
+    const onOpenAccount = vi.fn();
+    const anchorEl = anchor();
+    render(<AccountInspectorPopover accounts={[]} projectOrg={null} anchorEl={anchorEl} onClose={vi.fn()} onOpenAccount={onOpenAccount} onManageOrganization={vi.fn()} onOpenApplicationSettings={vi.fn()} onOpenProjectSettings={vi.fn()} />);
+    expect(screen.getByText('アプリ設定')).toBeTruthy();
+    expect(screen.getByText('組織なし')).toBeTruthy();
+    expect(screen.getByText('サインインして同期・共同作業')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('account-inspector-account-row'));
+    expect(onOpenAccount).toHaveBeenCalledTimes(1);
+    anchorEl.remove();
+  });
 
   it('shows one Account row (email → account screen) and one Organization row (project org → org screen)', () => {
     const onOpenAccount = vi.fn();

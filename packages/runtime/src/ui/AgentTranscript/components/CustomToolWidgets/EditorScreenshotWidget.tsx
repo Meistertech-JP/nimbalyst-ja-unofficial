@@ -15,20 +15,23 @@ import React, { useState, useEffect } from 'react';
 import type { CustomToolWidgetProps } from './index';
 import { parseToolResult } from '../../../../ai/server/transcript/toolResultParser';
 import { ZoomableImageSurface } from '../ZoomableImageSurface';
+import { useRuntimeTranslation } from '../../../RuntimeTranslation';
+
+type PersistedLoadError = { kind: 'unavailable' | 'read' | 'parse' | 'load' } | { kind: 'detail'; message: string };
 
 /**
  * Extract a display name from a file path
  * e.g., "/path/to/my_mockup.mockup.html" -> "my_mockup.mockup.html"
  *       "/path/to/diagram.excalidraw" -> "diagram.excalidraw"
  */
-function extractFileName(filePath: string): string {
-  if (!filePath) return 'screenshot';
+function extractFileName(filePath: string, fallback: string): string {
+  if (!filePath) return fallback;
 
   // Get the filename from the path
   const parts = filePath.split('/');
   const filename = parts[parts.length - 1] || '';
 
-  return filename || 'screenshot';
+  return filename || fallback;
 }
 
 /**
@@ -250,10 +253,22 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
   workspacePath,
   readFile
 }) => {
+  const { t } = useRuntimeTranslation();
   const [showLightbox, setShowLightbox] = useState(false);
   const [loadingPersistedFile, setLoadingPersistedFile] = useState(false);
   const [persistedImageData, setPersistedImageData] = useState<{ imageBase64: string; mimeType: string } | null>(null);
-  const [persistedLoadError, setPersistedLoadError] = useState<string | null>(null);
+  const [persistedLoadError, setPersistedLoadError] = useState<PersistedLoadError | null>(null);
+  const persistedErrorMessage = persistedLoadError?.kind === 'detail'
+    ? persistedLoadError.message
+    : persistedLoadError?.kind === 'unavailable'
+      ? t('aichat:message_segment.read_unavailable', 'File reading not available')
+      : persistedLoadError?.kind === 'read'
+        ? t('aichat:read_file_failed', 'Failed to read file')
+        : persistedLoadError?.kind === 'parse'
+          ? t('aichat:media.parse_failed', 'Could not parse image data from file')
+          : persistedLoadError?.kind === 'load'
+            ? t('common:image_viewer.load_failed', 'Failed to load image')
+            : null;
 
   const tool = message.toolCall;
 
@@ -270,7 +285,7 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
   useEffect(() => {
     if (!persistedFilePath) return;
     if (!readFile) {
-      setPersistedLoadError('File reading not available');
+      setPersistedLoadError({ kind: 'unavailable' });
       return;
     }
 
@@ -281,17 +296,19 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
       try {
         const result = await readFile(persistedFilePath);
         if (!result.success || !result.content) {
-          throw new Error(result.error || 'Failed to read file');
+          setPersistedLoadError(result.error ? { kind: 'detail', message: result.error } : { kind: 'read' });
+          return;
         }
 
         const imageData = parsePersistedImageData(result.content);
         if (!imageData) {
-          throw new Error('Could not parse image data from file');
+          setPersistedLoadError({ kind: 'parse' });
+          return;
         }
 
         setPersistedImageData(imageData);
       } catch (err) {
-        setPersistedLoadError(err instanceof Error ? err.message : 'Failed to load image');
+        setPersistedLoadError(err instanceof Error ? { kind: 'detail', message: err.message } : { kind: 'load' });
       } finally {
         setLoadingPersistedFile(false);
       }
@@ -300,12 +317,10 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
     loadPersistedFile();
   }, [persistedFilePath, readFile]);
 
-  if (!tool) return null;
-
   // Extract file path from arguments and get display name
-  const args = tool.arguments as Record<string, any> | undefined;
+  const args = tool?.arguments as Record<string, any> | undefined;
   const filePath = (args?.file_path || args?.filePath || '') as string;
-  const fileName = extractFileName(filePath);
+  const fileName = extractFileName(filePath, t('aichat:media.screenshot', 'screenshot'));
 
   // Extract image data from result (either inline or from persisted file)
   const inlineImageData = extractImageData(parsedResult);
@@ -320,7 +335,7 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
   }
 
   const hasError = isToolError(parsedResult, message);
-  const errorMessage = extractErrorMessage(parsedResult, message) || persistedLoadError;
+  const errorMessage = extractErrorMessage(parsedResult, message) || persistedErrorMessage;
 
   // Build image source URL
   const imageSrc = imageData
@@ -341,25 +356,27 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showLightbox]);
 
+  if (!tool) return null;
+
   return (
     <div className="editor-screenshot-widget rounded bg-nim-secondary border border-nim overflow-hidden">
       <div className="flex items-center gap-2 p-2">
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span className="text-xs text-nim-faint font-medium">Editor Screenshot</span>
+          <span className="text-xs text-nim-faint font-medium">{t('aichat:media.editor_screenshot', 'Editor Screenshot')}</span>
           <span className="font-mono text-sm text-nim font-semibold overflow-hidden text-ellipsis whitespace-nowrap" title={filePath}>
             {fileName}
           </span>
         </div>
         {/* Loading spinner when loading from persisted file */}
         {loadingPersistedFile && (
-          <div className="w-5 h-5 shrink-0 flex items-center justify-center" title="Loading image...">
+          <div className="w-5 h-5 shrink-0 flex items-center justify-center" title={t('aichat:media.loading_image', 'Loading image...')}>
             <div className="w-4 h-4 border-2 border-nim border-t-nim-primary rounded-full animate-spin" />
           </div>
         )}
         {/* Show error badge if there was an error */}
         {hasError && !loadingPersistedFile && (
           <span className="text-[0.7rem] font-semibold py-0.5 px-2 rounded-full uppercase tracking-wide shrink-0 text-nim-error bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]">
-            Failed
+            {t('aichat:message_segment.failed', 'Failed')}
           </span>
         )}
       </div>
@@ -369,7 +386,7 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
         <button
           className="w-full p-0 m-0 border-0 border-t border-nim bg-nim-tertiary cursor-pointer overflow-hidden block transition-opacity duration-200 hover:opacity-90"
           onClick={() => setShowLightbox(true)}
-          title="Click to enlarge"
+          title={t('aichat:attachments.enlarge', 'Click to enlarge')}
         >
           <img
             src={imageSrc}
@@ -392,7 +409,7 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
           onClick={() => setShowLightbox(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Image preview"
+          aria-label={t('aichat:message_segment.image_preview', 'Image preview')}
         >
           <div
             className="h-[92vh] w-[96vw] max-w-[1400px] overflow-hidden rounded-lg border border-nim bg-nim shadow-2xl"
@@ -411,10 +428,10 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
                   type="button"
                   className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                   onClick={() => setShowLightbox(false)}
-                  aria-label="Close (Escape)"
-                  title="Close (Escape)"
+                  aria-label={t('aichat:media.close_escape', 'Close (Escape)')}
+                  title={t('aichat:media.close_escape', 'Close (Escape)')}
                 >
-                  Close
+                  {t('common:close', 'Close')}
                 </button>
               )}
             />

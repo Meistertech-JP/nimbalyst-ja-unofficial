@@ -6,6 +6,7 @@ import { RecentItem, SessionState, SessionWindow } from '../types';
 import { logger } from './logger';
 import { type EffortLevel, type ThinkingMode, parseEffortLevel, parseThinkingMode } from '@nimbalyst/runtime/ai/server/effortLevels';
 import type { OnboardingConfig } from '../../shared/types/workspace';
+import type { AppLocalePreference } from '../../shared/i18n/types';
 import { DEFAULT_ONBOARDING_CONFIG } from '../../shared/types/workspace';
 import { AlphaFeatureTag, getDefaultAlphaFeatures, ALPHA_FEATURES } from '../../shared/alphaFeatures';
 import { DeveloperFeatureTag, getDefaultDeveloperFeatures, DEVELOPER_FEATURES } from '../../shared/developerFeatures';
@@ -44,6 +45,7 @@ export interface ExtensionSettings {
 
 interface AppStoreSchema {
   theme: AppTheme;
+  uiLanguage?: AppLocalePreference;
   themeIsDark?: boolean; // Whether the current theme is dark (used for extension themes)
   // Set when the active theme disappeared (extension uninstalled/disabled or
   // file removed) and the runtime fell back to a base theme. Cleared when the

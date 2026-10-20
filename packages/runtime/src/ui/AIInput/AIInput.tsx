@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, KeyboardEvent, useState, useCallback } from 'react';
 import type { ChatAttachment } from '../../ai/server/types';
+import { useRuntimeTranslation } from '../RuntimeTranslation';
 import './AIInput.css';
 
 export interface AIInputProps {
@@ -36,13 +37,14 @@ export function AIInput({
   onSend,
   disabled,
   isLoading,
-  placeholder = "Type your message... (Enter to send, Shift+Enter for new line)",
+  placeholder,
   onCancel,
   attachments = [],
   onAttachmentAdd,
   onAttachmentRemove,
   simpleMode = false
 }: AIInputProps) {
+  const { t } = useRuntimeTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -150,7 +152,7 @@ export function AIInput({
               <button
                 className="ai-input-attachment-remove"
                 onClick={() => handleRemoveAttachment(attachment.id)}
-                aria-label="Remove attachment"
+                aria-label={t('aichat:attachments.remove', 'Remove attachment')}
               >
                 ×
               </button>
@@ -173,7 +175,7 @@ export function AIInput({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('aichat:conversation_controls.input_placeholder', 'Type your message... (Enter to send, Shift+Enter for new line)')}
           disabled={disabled}
           rows={1}
         />
@@ -181,8 +183,8 @@ export function AIInput({
           <button
             className="ai-input-cancel-button"
             onClick={onCancel}
-            title="Cancel request"
-            aria-label="Cancel request"
+            title={t('agents:input.cancel_request_aria', 'Cancel request')}
+            aria-label={t('agents:input.cancel_request_aria', 'Cancel request')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -193,8 +195,8 @@ export function AIInput({
             className="ai-input-send-button"
             onClick={handleSend}
             disabled={disabled || !value.trim()}
-            title="Send message (Enter)"
-            aria-label="Send message"
+            title={t('agents:input.send_message', 'Send message (Enter)')}
+            aria-label={t('agents:input.send_message_aria', 'Send message')}
           >
             {isLoading ? (
               <svg className="ai-input-spinner" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
