@@ -4,8 +4,9 @@
  * it leaves out, and that links point where a reader can follow them.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import * as fsPromises from 'node:fs/promises';
 import * as path from 'node:path';
 import { initWiki, openWiki, type LocalWiki, type ReadBodyResult, type StaticSiteLink, type StaticSiteManifest } from '@nimbalyst/local-wiki';
 import { exportStaticSite, type CarriedTrackerItem } from '../exportSite.js';
@@ -13,12 +14,20 @@ import { gatewayTrackerSource, runWikiExport } from '../../commands/wikiExport.j
 import { parseArgs } from '../../cli/parse.js';
 import { createStaticExportI18n } from '../i18n.js';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
-import { renderBodyHtml } from '../prerender.js';
+import { renderBodyHtml, renderShell } from '../prerender.js';
 import type { TrackerGateway } from '../../gateway/types.js';
+
+// Real filesystem operations remain the default; only swap/copy fault tests override these calls.
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return { ...actual, cp: vi.fn(actual.cp), rename: vi.fn(actual.rename) };
+});
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.mocked(fsPromises.cp).mockReset();
+  vi.mocked(fsPromises.rename).mockReset();
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
 });
 
@@ -57,6 +66,7 @@ const EXPORT_TRANSLATION_KEYS = [
   'wiki_export.callout.caution',
   'wiki_export.error.target_file',
   'wiki_export.error.target_not_empty',
+  'wiki_export.error.previous_collision',
   'wiki_export.error.assets_unbuilt',
   'wiki_export.error.unknown_type',
   'wiki_export.error.unknown_page',
@@ -358,6 +368,226 @@ describe('exportStaticSite', () => {
     expect(read(path.join(empty, 'index.html'))).toContain('<p>このWikiにはページがありません。</p>');
   });
 
+  it('refuses an existing file and invalid output path without changing surrounding files', async () => {
+    const { root, wiki, assets } = await fixture();
+    const occupied = path.join(root, 'existing-file');
+    const sentinel = path.join(root, 'outside-sentinel.txt');
+    writeFileSync(occupied, 'existing target');
+    writeFileSync(sentinel, 'outside stays unchanged');
+    await expect(exportStaticSite({ wiki, assetsDir: assets, outDir: occupied, nimVersion: '9.9.9', uiLanguage: 'ja' })).rejects.toThrow('ファイルです');
+    const invalid = path.join(root, 'invalid\u0000-output');
+    await expect(exportStaticSite({ wiki, assetsDir: assets, outDir: invalid, nimVersion: '9.9.9', uiLanguage: 'en' })).rejects.toThrow();
+    expect(read(occupied)).toBe('existing target');
+    expect(read(sentinel)).toBe('outside stays unchanged');
+    expect(existsSync(invalid)).toBe(false);
+    expect(readdirSync(root).filter((name) => name.includes('.export-'))).toEqual([]);
+  });
+
+  it('keeps hostile tracker identifiers, type paths and attachment traversal inside the output boundary', async () => {
+    const { root, wiki, assets } = await fixture();
+    const sentinel = path.join(root, 'outside-sentinel.txt');
+    writeFileSync(sentinel, 'outside stays unchanged');
+    await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: '[Question](nimbalyst://USR.64)\n\n[Outside](../outside-sentinel.txt)\n\n![Outside](%2e%2e/outside-sentinel.txt)' });
+    const item: CarriedTrackerItem = {
+      id: '../../escaped-item', issueKey: 'USR.64', type: '../../escaped-type', title: 'Original user title',
+      fields: {}, body: 'Original user body.', createdAt: 1, updatedAt: 2,
+    };
+    const before = readdirSync(root).sort();
+    const out = path.join(root, 'safe-site');
+    const report = await exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9', trackerItems: { find: async () => item } });
+    const manifest = json<StaticSiteManifest>(path.join(out, '_wiki', 'manifest.json'));
+    expect(manifest.pages[item.id]).toBe('items/escaped-item');
+    expect(manifest.types[item.type]).toBe('types/escaped-type');
+    expect(read(path.join(out, '_wiki', 'bodies', `${encodeURIComponent(item.id)}.json`))).toContain('Original user body.');
+    for (const sitePath of [...Object.values(manifest.pages), ...Object.values(manifest.types)]) {
+      expect(path.resolve(out, sitePath, 'index.html').startsWith(out + path.sep)).toBe(true);
+      expect(existsSync(path.join(out, sitePath, 'index.html'))).toBe(true);
+    }
+    expect(report.files).toBe(0);
+    expect(read(sentinel)).toBe('outside stays unchanged');
+    expect(readdirSync(root).sort()).toEqual([...before, 'safe-site'].sort());
+    expect(existsSync(path.join(out, '_wiki', 'files', 'outside-sentinel.txt'))).toBe(false);
+    expect(report.links.some((issue) => issue.kind === 'missing-file')).toBe(true);
+  });
+
+  it('escapes user-provided titles, fields and script-closing config values in exported HTML', async () => {
+    const { root, wiki, assets } = await fixture();
+    await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: '[Question](nimbalyst://USR.64)\n\n<script>unsafeBody()</script>\n\n[Unsafe](javascript:alert%281%29)' });
+    const hostile = '</title><script>unsafeTitle()</script>&"\'';
+    const item: CarriedTrackerItem = {
+      id: 'question-id', issueKey: 'USR.64', type: 'question', title: hostile,
+      fields: { '<field>': '<img src=x onerror=unsafeField()>' }, body: 'Unchanged body.', createdAt: 1, updatedAt: 2,
+    };
+    const out = path.join(root, 'escaped-site');
+    await exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9', title: hostile, uiLanguage: 'ja', trackerItems: { find: async () => item } });
+    const home = read(path.join(out, 'index.html'));
+    const question = read(path.join(out, 'items', 'question-id', 'index.html'));
+    expect(home).not.toContain('<script>unsafeBody()</script>');
+    expect(home).not.toContain('href="javascript:');
+    expect(home).toContain('Unsafe');
+    expect(question).toContain('&lt;/title&gt;&lt;script&gt;unsafeTitle()&lt;/script&gt;&amp;&quot;&#39;');
+    expect(question).toContain('<th>&lt;field&gt;</th><td>&lt;img src=x onerror=unsafeField()&gt;</td>');
+    expect(question).not.toContain('<script>unsafeTitle()');
+    expect(question).not.toContain('<img src=x');
+    const config = { format: 1, custom: '</script><script>unsafeConfig()</script>' };
+    const shell = renderShell(read(path.join(assets, 'index.html')), 'Wiki', { sitePath: '', title: 'Page', description: hostile, content: '' }, config, 'ja');
+    const encoded = /window\.__NIMBALYST_WIKI_STATIC__=(.*?)<\/script>/.exec(shell)![1];
+    expect(JSON.parse(encoded)).toEqual(config);
+    expect(encoded).not.toContain('<');
+    expect(shell).not.toContain('<script>unsafeConfig()');
+  });
+
+  it('refuses a re-export collision with an unrelated previous directory without deleting it', async () => {
+    const { root, wiki, assets } = await fixture();
+    await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: 'Current exported content.' });
+    const out = path.join(root, 'site');
+    await exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' });
+    const current = read(path.join(out, 'index.html'));
+    const previous = `${out}.previous`;
+    mkdirSync(previous);
+    writeFileSync(path.join(previous, 'unrelated-notes.txt'), 'keep this unrelated file');
+
+    let failure: unknown;
+    try { await exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' }); }
+    catch (error) { failure = error; }
+    expect(existsSync(path.join(previous, 'unrelated-notes.txt')), 'an unrelated sibling backup must not be deleted').toBe(true);
+    expect(failure).toBeInstanceOf(Error);
+    expect(read(path.join(previous, 'unrelated-notes.txt'))).toBe('keep this unrelated file');
+    expect(read(path.join(out, 'index.html'))).toBe(current);
+    expect(readdirSync(root).filter((name) => name.includes('.export-'))).toEqual([]);
+  });
+
+  it.each(['file', 'empty'] as const)('refuses an existing %s backup before modifying the current export', async (kind) => {
+    const { root, wiki, assets } = await fixture();
+    await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: 'Current exported content.' });
+    const out = path.join(root, 'site');
+    await exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' });
+    const current = read(path.join(out, 'index.html'));
+    const previous = `${out}.previous`;
+    if (kind === 'file') writeFileSync(previous, 'unrelated backup file');
+    else mkdirSync(previous);
+    await expect(exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' })).rejects.toThrow('is not a previous wiki export');
+    expect(read(path.join(out, 'index.html'))).toBe(current);
+    if (kind === 'file') expect(read(previous)).toBe('unrelated backup file');
+    else expect(readdirSync(previous)).toEqual([]);
+    expect(readdirSync(root).filter((name) => name.includes('.export-'))).toEqual([]);
+  });
+
+  it('retains earlier backups on third and later exports while reporting the newly displaced export', async () => {
+    const { root, wiki, assets } = await fixture();
+    const home = await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: 'First version.' });
+    const out = path.join(root, 'site');
+    const options = { wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' };
+    const bodyAt = (dir: string) => json<ReadBodyResult>(path.join(dir, '_wiki', 'bodies', `${home.id}.json`)).markdown;
+    expect((await exportStaticSite(options)).previous).toBeNull();
+    await wiki.writeBody(home.id!, 'Second version.', null);
+    expect((await exportStaticSite(options)).previous).toBe(`${out}.previous`);
+    await wiki.writeBody(home.id!, 'Third version.', null);
+    expect((await exportStaticSite(options)).previous).toBe(`${out}.previous.1`);
+    expect(bodyAt(out)).toBe('Third version.');
+    expect(bodyAt(`${out}.previous`)).toBe('First version.');
+    expect(bodyAt(`${out}.previous.1`)).toBe('Second version.');
+
+    writeFileSync(`${out}.previous.2`, 'unrelated numbered backup');
+    await wiki.writeBody(home.id!, 'Fourth version.', null);
+    expect((await exportStaticSite(options)).previous).toBe(`${out}.previous.3`);
+    expect(bodyAt(out)).toBe('Fourth version.');
+    expect(bodyAt(`${out}.previous`)).toBe('First version.');
+    expect(bodyAt(`${out}.previous.1`)).toBe('Second version.');
+    expect(read(`${out}.previous.2`)).toBe('unrelated numbered backup');
+    expect(bodyAt(`${out}.previous.3`)).toBe('Third version.');
+  });
+
+  it('rechecks a backup collision introduced during staging before moving the output', async () => {
+    const { root, wiki, assets } = await fixture();
+    await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: 'Current exported content.' });
+    const out = path.join(root, 'site');
+    const options = { wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' };
+    await exportStaticSite(options);
+    const current = read(path.join(out, 'index.html'));
+    const previous = `${out}.previous`;
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+    vi.mocked(fsPromises.cp).mockImplementation(async (source, destination, options) => {
+      await actual.cp(source, destination, options);
+      if (String(source) === assets) {
+        mkdirSync(previous);
+        writeFileSync(path.join(previous, 'intervening.txt'), 'created during staging');
+      }
+    });
+    await expect(exportStaticSite(options)).rejects.toThrow('is not a previous wiki export');
+    expect(read(path.join(previous, 'intervening.txt'))).toBe('created during staging');
+    expect(read(path.join(out, 'index.html'))).toBe(current);
+    expect(readdirSync(root).filter((name) => name.includes('.export-'))).toEqual([]);
+  });
+
+  it('preserves an intervening nonempty backup when the filesystem rename reports a collision', async () => {
+    const { root, wiki, assets } = await fixture();
+    await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: 'Current exported content.' });
+    const out = path.join(root, 'site');
+    const options = { wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' };
+    await exportStaticSite(options);
+    const current = read(path.join(out, 'index.html'));
+    const previous = `${out}.previous`;
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+    vi.mocked(fsPromises.rename).mockImplementation(async (source, destination) => {
+      if (String(source) === out && String(destination) === previous) {
+        mkdirSync(previous);
+        writeFileSync(path.join(previous, 'intervening.txt'), 'created at rename');
+      }
+      await actual.rename(source, destination);
+    });
+    await expect(exportStaticSite(options)).rejects.toThrow();
+    expect(read(path.join(previous, 'intervening.txt'))).toBe('created at rename');
+    expect(read(path.join(out, 'index.html'))).toBe(current);
+    expect(readdirSync(root).filter((name) => name.includes('.export-'))).toEqual([]);
+  });
+
+  it('restores the original output if publishing the completed stage fails', async () => {
+    const { root, wiki, assets } = await fixture();
+    const home = await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: 'Original exported version.' });
+    const out = path.join(root, 'site');
+    const options = { wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' };
+    await exportStaticSite(options);
+    const current = read(path.join(out, 'index.html'));
+    await wiki.writeBody(home.id!, 'New version.', null);
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+    vi.mocked(fsPromises.rename).mockImplementation(async (source, destination) => {
+      if (String(source).startsWith(`${out}.export-`) && String(destination) === out) throw Object.assign(new Error('publish denied'), { code: 'EACCES' });
+      await actual.rename(source, destination);
+    });
+    await expect(exportStaticSite(options)).rejects.toMatchObject({ code: 'EACCES' });
+    expect(read(path.join(out, 'index.html'))).toBe(current);
+    expect(existsSync(`${out}.previous`)).toBe(false);
+    expect(readdirSync(root).filter((name) => name.includes('.export-'))).toEqual([]);
+  });
+
+  it('keeps the old backup and complete stage if an intervening output blocks rollback', async () => {
+    const { root, wiki, assets } = await fixture();
+    const home = await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, body: 'Original exported version.' });
+    const out = path.join(root, 'site');
+    const options = { wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9' };
+    await exportStaticSite(options);
+    await wiki.writeBody(home.id!, 'New staged version.', null);
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+    const diagnostic = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(fsPromises.rename).mockImplementation(async (source, destination) => {
+      if (String(source).startsWith(`${out}.export-`) && String(destination) === out) {
+        mkdirSync(out);
+        writeFileSync(path.join(out, 'intervening.txt'), 'unrelated output');
+        throw Object.assign(new Error('output occupied'), { code: 'EEXIST' });
+      }
+      await actual.rename(source, destination);
+    });
+    await expect(exportStaticSite(options)).rejects.toMatchObject({ code: 'EEXIST' });
+    const stages = readdirSync(root).filter((name) => name.startsWith('site.export-'));
+    expect(stages).toHaveLength(1);
+    const bodyAt = (dir: string) => json<ReadBodyResult>(path.join(dir, '_wiki', 'bodies', `${home.id}.json`)).markdown;
+    expect(read(path.join(out, 'intervening.txt'))).toBe('unrelated output');
+    expect(bodyAt(`${out}.previous`)).toBe('Original exported version.');
+    expect(bodyAt(path.join(root, stages[0]))).toBe('New staged version.');
+    expect(diagnostic).toHaveBeenCalledWith(expect.stringContaining('backup and staged export retained'), expect.objectContaining({ outDir: out, previous: `${out}.previous`, stage: path.join(root, stages[0]) }));
+  });
+
   it('resolves every finite translator candidate from its own locale without fallback or leftover interpolation', async () => {
     const values = {
       path: '/export/site', type: 'custom_type', id: 'page-id',
@@ -365,7 +595,7 @@ describe('exportStaticSite', () => {
       entries: 'Hidden (export-false)', count: 8, reason: 'technical-reason',
       handling: 'handling-value', package: '@nimbalyst/wiki-web', actual: 1, expected: 2,
     };
-    expect(new Set(EXPORT_TRANSLATION_KEYS).size).toBe(47);
+    expect(new Set(EXPORT_TRANSLATION_KEYS).size).toBe(48);
     for (const locale of ['en', 'ja'] as const) {
       const ownResources = await createI18nInstance(locale);
       const { language, t } = await createStaticExportI18n(locale);

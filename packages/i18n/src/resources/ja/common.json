@@ -1945,6 +1945,7 @@
     "error": {
       "target_file": "{{path}} はフォルダーではなくファイルです。",
       "target_not_empty": "{{path}} は空ではなく、以前のWikiエクスポートでもありません。空のフォルダーか新しいフォルダーを指定してください。",
+      "previous_collision": "バックアップ先の {{path}} は既に存在し、以前のWikiエクスポートではありません。変更せずにエクスポートを中止しました。このパスを移動するか、別の出力フォルダーを指定してください。",
       "assets_unbuilt": "{{path}} に index.html がありません。ブラウザーアプリがビルドされていません。",
       "unknown_type": ".nimbalyst/trackers に型 {{type}} はありません。",
       "unknown_page": "Wikiにページ {{id}} はありません。",

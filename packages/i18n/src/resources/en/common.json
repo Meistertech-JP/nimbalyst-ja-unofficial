@@ -1945,6 +1945,7 @@
     "error": {
       "target_file": "{{path}} is a file, not a folder.",
       "target_not_empty": "{{path}} is not empty and is not an earlier wiki export. Pick an empty or new folder.",
+      "previous_collision": "The backup path {{path}} already exists and is not a previous wiki export. Export stopped without changing it. Move that path or choose a different output folder.",
       "assets_unbuilt": "{{path}} has no index.html; the browser app is not built.",
       "unknown_type": "No type {{type}} in .nimbalyst/trackers.",
       "unknown_page": "No page {{id}} in the wiki.",

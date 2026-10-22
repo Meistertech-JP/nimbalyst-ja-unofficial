@@ -19,10 +19,11 @@
  *
  * The site is built in a sibling folder and swapped in at the end, so a failed
  * export never leaves half a site. An earlier export in the target is kept as
- * `<dir>.previous`; a target that holds anything else is refused.
+ * `<dir>.previous` (or an unused numbered sibling when that backup exists);
+ * an unrecognized target or backup is refused without deleting it.
  */
 import { existsSync, statSync } from 'node:fs';
-import { cp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { cp, lstat, mkdir, mkdtemp, readdir, readFile, rename, rm, rmdir, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { HTML_EMBED_SHELL_CSP, HTML_EMBED_SHELL_HTML } from '@nimbalyst/collab-protocol';
 import {
@@ -164,6 +165,43 @@ async function checkTarget(outDir: string, t: ExportTranslator): Promise<'absent
   throw new StaticExportError(t('wiki_export.error.target_not_empty', { path: outDir }));
 }
 
+/** Unlike existsSync, a dangling symlink still occupies a name we must not replace. */
+async function existingEntry(file: string) {
+  try { return await lstat(file); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+/** A backup is recognized by its manifest, not merely by a file with that name. */
+async function isExportDirectory(dir: string): Promise<boolean> {
+  const entry = await existingEntry(dir);
+  if (!entry?.isDirectory() || entry.isSymbolicLink()) return false;
+  const manifestFile = path.join(dir, MANIFEST);
+  const manifestEntry = await existingEntry(manifestFile);
+  if (!manifestEntry?.isFile() || manifestEntry.isSymbolicLink()) return false;
+  try {
+    const manifest = JSON.parse(await readFile(manifestFile, 'utf8')) as Partial<StaticSiteManifest> | null;
+    return manifest?.format === STATIC_SITE_FORMAT
+      && typeof manifest.generatedAt === 'string' && typeof manifest.nimVersion === 'string'
+      && typeof manifest.title === 'string'
+      && manifest.pages !== null && typeof manifest.pages === 'object' && !Array.isArray(manifest.pages)
+      && manifest.types !== null && typeof manifest.types === 'object' && !Array.isArray(manifest.types);
+  } catch { return false; }
+}
+
+/** Never remove a backup: keep known exports and choose an unoccupied sibling. */
+async function previousExportPath(outDir: string, t: ExportTranslator): Promise<string> {
+  const previous = `${outDir}.previous`;
+  if (!await existingEntry(previous)) return previous;
+  if (!await isExportDirectory(previous)) throw new StaticExportError(t('wiki_export.error.previous_collision', { path: previous }));
+  for (let number = 1; ; number++) {
+    const candidate = `${previous}.${number}`;
+    if (!await existingEntry(candidate)) return candidate;
+  }
+}
+
 /** A file name for the file the type of `typeId` writes; type ids are tokens, but a path never trusts that. */
 function dataName(id: string): string {
   return encodeURIComponent(id);
@@ -176,6 +214,8 @@ export async function exportStaticSite(options: StaticExportOptions): Promise<St
   const outsideRefs = options.outsideRefs ?? 'text';
   const keepIdentity = options.keepIdentity ?? false;
   const target = await checkTarget(outDir, t);
+  const targetEntry = target === 'absent' ? null : await existingEntry(outDir);
+  const previous = target === 'export' ? await previousExportPath(outDir, t) : null;
   if (!existsSync(path.join(options.assetsDir, 'index.html'))) throw new StaticExportError(t('wiki_export.error.assets_unbuilt', { path: options.assetsDir }));
   const template = await readFile(path.join(options.assetsDir, 'index.html'), 'utf8');
 
@@ -385,9 +425,9 @@ export async function exportStaticSite(options: StaticExportOptions): Promise<St
   const exportedCarried = carriedRows.map((row) => ({ ...row, fields: strip(row.fields, row.type) }));
 
   // ---------------------------------------------------------------- write
-  const stage = `${outDir}.export-${process.pid}-${Date.now()}`;
-  await rm(stage, { recursive: true, force: true });
-  await mkdir(stage, { recursive: true });
+  await mkdir(path.dirname(outDir), { recursive: true });
+  const stage = await mkdtemp(`${outDir}.export-`);
+  let preserveStage = false;
   try {
     const data = (rel: string) => path.join(stage, STATIC_SITE_DATA_DIR, rel);
 
@@ -523,15 +563,37 @@ export async function exportStaticSite(options: StaticExportOptions): Promise<St
     await writeText(path.join(stage, '404.html'), renderShell(template, title, { sitePath: '', title: t('wiki_export.not_found'), description: '', content: '' }, config, language));
 
     // ---------------------------------------------------------------- swap in
-    let previous: string | null = null;
-    if (target === 'export') {
-      previous = `${outDir}.previous`;
-      await rm(previous, { recursive: true, force: true });
-      await rename(outDir, previous);
-    } else if (target === 'empty') {
-      await rm(outDir, { recursive: true, force: true });
+    // Recheck after rendering: a destination that changed while we worked is not ours to replace.
+    const currentTarget = await checkTarget(outDir, t);
+    const currentEntry = await existingEntry(outDir);
+    if (currentTarget !== target || currentEntry?.dev !== targetEntry?.dev || currentEntry?.ino !== targetEntry?.ino) {
+      throw new StaticExportError(t('wiki_export.error.target_not_empty', { path: outDir }));
     }
-    await rename(stage, outDir);
+    if (target === 'export') {
+      if (await previousExportPath(outDir, t) !== previous || await existingEntry(previous!)) {
+        throw new StaticExportError(t('wiki_export.error.previous_collision', { path: previous! }));
+      }
+      await rename(outDir, previous!);
+    } else if (target === 'empty') {
+      // Nonrecursive removal fails if another writer added anything after the check.
+      await rmdir(outDir);
+    }
+    try {
+      if (await existingEntry(outDir)) throw new StaticExportError(t('wiki_export.error.target_not_empty', { path: outDir }));
+      await rename(stage, outDir);
+    } catch (error) {
+      if (previous) {
+        try {
+          if (await existingEntry(outDir)) throw new Error('The output path was occupied before rollback');
+          await rename(previous, outDir);
+        } catch (rollbackError) {
+          // Keep both complete exports if rollback is blocked; never remove the intervening output.
+          preserveStage = true;
+          console.error('[WIKI-EXPORT] Could not restore the earlier export; backup and staged export retained', { outDir, previous, stage, rollbackError });
+        }
+      }
+      throw error;
+    }
 
     return {
       outDir,
@@ -547,7 +609,7 @@ export async function exportStaticSite(options: StaticExportOptions): Promise<St
       links: linkIssues,
     };
   } catch (error) {
-    await rm(stage, { recursive: true, force: true });
+    if (!preserveStage) await rm(stage, { recursive: true, force: true });
     throw error;
   }
 }

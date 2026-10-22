@@ -238,7 +238,7 @@ describe('UI language preference', () => {
     expect(resources.ja.settings.sidebar.item_cursor_agent).toBe('Cursorエージェント');
     expect(resources.en.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
     expect(resources.ja.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
-    expect(totalKeys).toBe(14400);
+    expect(totalKeys).toBe(14401);
   });
 
   it('creates isolated translator instances with English fallback', async () => {

@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.81.7-ja.2] — Source preview candidate
+
+- Incorporated 24 upstream commits affecting 121 files through `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`, retaining the unofficial edition's separate identity and disabled official updates.
+- Extended Japanese display to session context usage, GitHub search, document outlines, local Wiki views, and static exports with `--ui-language system|en|ja`.
+- Added 111 UI-localization keys and one backup-collision error message per language, bringing English and Japanese resources to 14,401 keys across 26 namespaces.
+- Wiki re-export now retains existing backups, refuses unrelated backup collisions, and keeps repeated exports in unused numbered backup directories.
+- Windows Markdown file associations now use an edition-specific file class instead of sharing the official application's class; installed behavior remains unverified.
+- Startup and authentication diagnostics omit arbitrary argument, callback, identity, and error contents.
+- Fixed the worktree introduction description appearing as a translation key in English and Japanese.
+- Kept this candidate source-only, with full-suite, packaged Windows, authentication, and other verification limits documented in the [bilingual candidate notes](RELEASE_NOTES_v0.81.7-ja.2.md).
+
 ## [0.81.7-ja.1] — Source preview preparation
 
 - Added Japanese and English UI selection for the unofficial desktop edition based on Nimbalyst v0.81.7.
@@ -20,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
-- Japanese display now covers session context usage, GitHub author search, document outlines, and local Wiki static exports with `--ui-language system|en|ja`.
 - Agents can propose a commit into another worktree of the session's repository; the commit card shows its branch and path and always asks for approval on desktop
 - In the iOS and Android apps, a synced Markdown file now shows an embedded `.html` diagram live instead of as a link; document sync now carries `.html` files so the phone has them
 - The Project Graph timeline has a "24 hours" time range with an hourly ruler and times in its tooltips

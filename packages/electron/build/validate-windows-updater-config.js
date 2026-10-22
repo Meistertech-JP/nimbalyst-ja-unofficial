@@ -23,6 +23,17 @@ function validateWindowsUpdaterConfig() {
       );
     }
 
+    // NSIS concatenates global and Windows associations, and unregisters by
+    // this file-class name. A separate appId alone does not isolate a ProgID.
+    const associations = [
+      ...asArray(packageJson.build?.fileAssociations),
+      ...asArray(packageJson.build?.win?.fileAssociations),
+    ];
+    const classPrefix = `${packageJson.build.appId}.`;
+    if (associations.some((entry) => typeof entry?.name !== 'string' || !entry.name.startsWith(classPrefix))) {
+      throw new Error('Unofficial Windows file associations must use appId-scoped ProgIDs so uninstall cannot remove the official file class.');
+    }
+
     console.log('Unofficial Windows build verified: auto-update feed generation is disabled');
     return;
   }

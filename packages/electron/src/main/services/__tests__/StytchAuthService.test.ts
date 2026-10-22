@@ -47,6 +47,7 @@ import {
   getPersonalSessionJwt,
   getSyncAccount,
   handleAuthCallback,
+  handleAuthCallbackUrl,
   initializeStytchAuth,
   isAuthenticated,
   onAuthStateChange,
@@ -64,6 +65,8 @@ import {
   signOut,
 } from '../StytchAuthService';
 import { getSessionSyncConfig } from '../../utils/store';
+import { logger } from '../../utils/logger';
+import { formatLogArgs } from '../../utils/formatLogArgs';
 
 function createJwt(payload: Record<string, unknown>): string {
   return [
@@ -771,6 +774,70 @@ describe('StytchAuthService outgoing auth flow URLs', () => {
  * Every completed callback used to fire it, so adding a second account tore down
  * a healthy personal sync session that the callback never touched.
  */
+describe('StytchAuthService credential-free diagnostics', () => {
+  const bait = 'synthetic-auth-bait-secret';
+  beforeEach(async () => {
+    await signOut();
+    files.clear();
+    fetchMock.mockReset();
+    openExternalMock.mockReset();
+    initializeStytchAuth({ projectId: 'test', publicToken: 'test', apiBase: 'https://test.invalid' });
+    vi.mocked(logger.main.info).mockClear();
+    vi.mocked(logger.main.warn).mockClear();
+    vi.mocked(logger.main.error).mockClear();
+  });
+  afterEach(async () => { await signOut(); });
+
+  function renderedLogs(): string {
+    return [logger.main.info, logger.main.warn, logger.main.error].flatMap((method) =>
+      vi.mocked(method).mock.calls.map((args) => formatLogArgs(args)),
+    ).join('\n');
+  }
+
+  async function seedAccount(): Promise<void> {
+    await handleAuthCallback({
+      intent: 'sign-in', sessionToken: 'fixture-session',
+      sessionJwt: createJwt({ sub: 'fixture-member', exp: Math.floor(Date.now() / 1000) - 60 }),
+      userId: 'fixture-member', orgId: 'fixture-org',
+    });
+  }
+
+  it('omits OAuth launch errors from logs without changing the returned failure', async () => {
+    openExternalMock.mockRejectedValueOnce(Object.assign(new Error(bait), { input: `nimbalyst://auth/callback?code=${bait}` }));
+    await expect(signInWithGoogle('https://sync.example')).resolves.toEqual({ success: false, error: `Error: ${bait}` });
+    expect(renderedLogs()).not.toContain(bait);
+  });
+
+  it('omits callback error descriptions while keeping server-error rejection', async () => {
+    await signInWithGoogle('https://sync.example');
+    const opened = new URL(String(openExternalMock.mock.calls.at(-1)![0]));
+    const callback = new URL(opened.searchParams.get('client_redirect')!);
+    callback.searchParams.set('state', opened.searchParams.get('state')!);
+    callback.searchParams.set('error_description', bait);
+    await expect(handleAuthCallbackUrl(callback.toString())).resolves.toEqual({ success: false, affectsSyncIdentity: false });
+    expect(renderedLogs()).toContain('server-error');
+    expect(renderedLogs()).not.toContain(bait);
+  });
+
+  it('omits transport error details from logs without changing the network outcome or credentials', async () => {
+    await seedAccount();
+    const before = getAuthState();
+    fetchMock.mockRejectedValue(Object.assign(new TypeError(bait), { cause: Object.assign(new Error(bait), { code: 'ECONNREFUSED' }) }));
+    await expect(refreshPersonalSessionDetailed('https://sync.example')).resolves.toMatchObject({ ok: false, reason: 'network' });
+    expect(getAuthState()).toEqual(before);
+    expect(renderedLogs()).not.toContain(bait);
+  });
+
+  it('omits server response errors from logs without changing refusal or credentials', async () => {
+    await seedAccount();
+    const before = getAuthState();
+    fetchMock.mockResolvedValue({ ok: false, status: 401, json: async () => ({ error: bait }) });
+    await expect(refreshSession('https://sync.example')).resolves.toBe(false);
+    expect(getAuthState()).toEqual(before);
+    expect(renderedLogs()).not.toContain(bait);
+  });
+});
+
 describe('StytchAuthService sync reinitialization gating', () => {
   beforeEach(async () => {
     await signOut();

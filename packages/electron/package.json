@@ -1,6 +1,6 @@
 {
   "name": "@nimbalyst/electron",
-  "version": "0.81.7-ja.1",
+  "version": "0.81.7-ja.2",
   "private": true,
   "license": "MIT",
   "author": "Meistertech-JP",
@@ -423,22 +423,6 @@
     "afterSign": "build/afterSign.js",
     "afterPack": "build/afterPack.js",
     "afterAllArtifactBuild": "build/afterAllArtifactBuild.js",
-    "fileAssociations": [
-      {
-        "ext": "md",
-        "name": "Markdown Document",
-        "description": "Markdown Document",
-        "mimeType": "text/markdown",
-        "role": "Editor"
-      },
-      {
-        "ext": "markdown",
-        "name": "Markdown Document",
-        "description": "Markdown Document",
-        "mimeType": "text/markdown",
-        "role": "Editor"
-      }
-    ],
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "icon.icns",
@@ -509,6 +493,22 @@
       ]
     },
     "win": {
+      "fileAssociations": [
+        {
+          "ext": "md",
+          "name": "jp.meistertech.nimbalyst.ja.unofficial.Markdown",
+          "description": "Markdown Document",
+          "mimeType": "text/markdown",
+          "role": "Editor"
+        },
+        {
+          "ext": "markdown",
+          "name": "jp.meistertech.nimbalyst.ja.unofficial.Markdown",
+          "description": "Markdown Document",
+          "mimeType": "text/markdown",
+          "role": "Editor"
+        }
+      ],
       "target": [
         {
           "target": "nsis"
@@ -532,6 +532,22 @@
       "runAfterFinish": true
     },
     "linux": {
+      "fileAssociations": [
+        {
+          "ext": "md",
+          "name": "Markdown Document",
+          "description": "Markdown Document",
+          "mimeType": "text/markdown",
+          "role": "Editor"
+        },
+        {
+          "ext": "markdown",
+          "name": "Markdown Document",
+          "description": "Markdown Document",
+          "mimeType": "text/markdown",
+          "role": "Editor"
+        }
+      ],
       "target": [
         "AppImage",
         "deb"
@@ -541,6 +557,6 @@
       "category": "Development",
       "maintainer": "Nimbalyst Team <support@nimbalyst.com>"
     },
-    "buildVersion": "0.81.7.1"
+    "buildVersion": "0.81.7.2"
   }
 }

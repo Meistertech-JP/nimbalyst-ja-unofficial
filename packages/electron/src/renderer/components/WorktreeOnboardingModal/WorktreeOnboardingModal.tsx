@@ -33,7 +33,7 @@ export const WorktreeOnboardingModal: React.FC<WorktreeOnboardingModalProps> = (
 
         <div className="worktree-onboarding-content px-7 py-6">
           <p className="worktree-onboarding-description m-0 mb-6 text-[15px] leading-relaxed text-nim-muted text-center [&_strong]:text-nim">
-            <Trans i18nKey="worktree_description" components={{ strong: <strong /> }} />
+            <Trans ns="onboarding" i18nKey="worktree_description" components={{ strong: <strong /> }} />
           </p>
 
           <div className="worktree-onboarding-benefits flex flex-col gap-4">

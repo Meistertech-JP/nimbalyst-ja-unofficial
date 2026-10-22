@@ -34,6 +34,7 @@ import { setSafeModeSessionStateProtection } from './session/safeModeSessionStat
 import { isSafeModeArgument } from './session/startupSafeMode';
 import { getRestartSignalPath } from './utils/appPaths';
 import { planProtocolRegistration } from './utils/protocolRegistration';
+import { summarizeAuthDiagnostic, summarizeDeepLink, summarizeStartupArguments } from './utils/authDiagnosticSummary';
 import {
     dispatchAppActionLink,
     type AppAction,
@@ -355,7 +356,7 @@ setAuthCallbackSuccessHandler(async () => {
     await repositoryManager.reinitializeSyncWithNewConfig();
     logger.main.info('[AuthCallback] Sync reinitialized after auth');
   } catch (error) {
-    logger.main.error('[AuthCallback] Failed to reinitialize sync after auth:', error);
+    logger.main.error('[AuthCallback] Failed to reinitialize sync after auth:', summarizeAuthDiagnostic(error));
   }
 });
 
@@ -726,7 +727,7 @@ if (protocolPlan.action === 'register-packaged') {
     // Remove any stale registration first (e.g. from packaged builds or Electron Fiddle)
     app.removeAsDefaultProtocolClient('nimbalyst', protocolPlan.execPath, protocolPlan.args);
     app.setAsDefaultProtocolClient('nimbalyst', protocolPlan.execPath, protocolPlan.args);
-    logger.main.info(`[DeepLink] Registered nimbalyst:// protocol for dev mode (exec: ${protocolPlan.execPath}, arg: ${protocolPlan.args.join(' ')})`);
+    logger.main.info('[DeepLink] Registered nimbalyst:// protocol for dev mode:', summarizeAuthDiagnostic(protocolPlan.execPath, protocolPlan.args));
     logger.main.info(`[DeepLink] isDefaultProtocolClient: ${app.isDefaultProtocolClient('nimbalyst', protocolPlan.execPath, protocolPlan.args)}`);
 } else {
     logger.main.info(`[DeepLink] Not claiming nimbalyst:// scheme: ${protocolPlan.reason}`);
@@ -752,7 +753,7 @@ if (!allowMultipleInstances) {
         // path via a signal file, then exit.
         const pendingOpenFilePath = path.join(app.getPath('userData'), '.pending-open-file');
 
-        logger.main.info(`[SingleInstance] Second instance launched, waiting for open-file. argv=${JSON.stringify(process.argv)}`);
+        logger.main.info(`[SingleInstance] Second instance launched, waiting for open-file. argv=${JSON.stringify(summarizeStartupArguments(process.argv))}`);
 
         // Also check argv for file paths (Windows/Linux, or CLI open --args)
         const fileArg = process.argv.find(arg =>
@@ -761,7 +762,7 @@ if (!allowMultipleInstances) {
             path.isAbsolute(arg)
         );
         if (fileArg) {
-            logger.main.info(`[SingleInstance] Found file in argv: ${fileArg}`);
+            logger.main.info('[SingleInstance] Found file in argv:', summarizeAuthDiagnostic(fileArg));
             try { writeFileSync(pendingOpenFilePath, fileArg, 'utf-8'); } catch (_) {}
             app.quit();
         } else if (process.argv.find(arg => arg.startsWith('nimbalyst://'))) {
@@ -774,12 +775,12 @@ if (!allowMultipleInstances) {
             app.on('open-file', (event, filePath) => {
                 event.preventDefault();
                 gotFile = true;
-                logger.main.info(`[SingleInstance] Second instance received open-file: ${filePath}`);
+                logger.main.info('[SingleInstance] Second instance received open-file:', summarizeAuthDiagnostic(filePath));
                 try {
                     writeFileSync(pendingOpenFilePath, filePath, 'utf-8');
-                    logger.main.info(`[SingleInstance] Wrote signal file: ${pendingOpenFilePath}`);
+                    logger.main.info('[SingleInstance] Wrote signal file:', summarizeAuthDiagnostic(pendingOpenFilePath));
                 } catch (err) {
-                    logger.main.error('[SingleInstance] Failed to write signal file:', err);
+                    logger.main.error('[SingleInstance] Failed to write signal file:', summarizeAuthDiagnostic(err));
                 }
                 app.quit();
             });
@@ -796,7 +797,7 @@ if (!allowMultipleInstances) {
         // We are the primary instance. When a second instance tries to launch,
         // extract any deep link URL or file path and handle it here.
         app.on('second-instance', (_event, argv, _workingDirectory) => {
-            logger.main.info('[SingleInstance] second-instance event, argv:', argv);
+            logger.main.info('[SingleInstance] second-instance event, argv:', summarizeStartupArguments(argv));
 
             // On Windows the protocol URL is passed as the last argument
             const deepLinkUrl = argv.find(arg => arg.startsWith('nimbalyst://'));
@@ -815,7 +816,7 @@ if (!allowMultipleInstances) {
                 fs.statSync(arg).isFile()
             );
             if (fileArg) {
-                logger.main.info(`[SingleInstance] Opening file from argv: ${fileArg}`);
+                logger.main.info('[SingleInstance] Opening file from argv:', summarizeAuthDiagnostic(fileArg));
                 openFileWithWorkspaceDetection(fileArg);
             }
 
@@ -851,7 +852,7 @@ if (!allowMultipleInstances) {
                 const filePath = fs.readFileSync(pendingOpenFilePath, 'utf-8').trim();
                 unlinkSync(pendingOpenFilePath);
                 if (filePath && existsSync(filePath)) {
-                    logger.main.info(`[SingleInstance] Opening file from signal: ${filePath}`);
+                    logger.main.info('[SingleInstance] Opening file from signal:', summarizeAuthDiagnostic(filePath));
                     if (app.isReady()) {
                         openFileWithWorkspaceDetection(filePath);
                     } else {
@@ -877,10 +878,10 @@ if (!allowMultipleInstances) {
         // Without a listener an async watch error (EMFILE once the process
         // is out of descriptors) is an uncaught exception (#1779).
         signalWatcher.on('error', (err) => {
-            logger.main.warn('[SingleInstance] Open-file signal watcher error:', err);
+            logger.main.warn('[SingleInstance] Open-file signal watcher error:', summarizeAuthDiagnostic(err));
         });
     } catch (err) {
-        logger.main.warn('[SingleInstance] Failed to watch for open-file signals:', err);
+        logger.main.warn('[SingleInstance] Failed to watch for open-file signals:', summarizeAuthDiagnostic(err));
     }
 }
 
@@ -967,36 +968,6 @@ safeHandle('deep-link:open-inbox-source', async (_event, rawUrl: string) => {
     return openInboxSourceFromDeepLink(rawUrl);
 });
 
-// Sensitive query params that must not be logged verbatim. Anything not in
-// this set is logged as-is so worker-supplied error codes/messages are visible.
-const SENSITIVE_DEEP_LINK_PARAMS = new Set([
-    'session_token',
-    'session_jwt',
-    'token',
-    'stytch_token',
-    'oauth_state',
-    'state',
-]);
-
-/**
- * Summarize a deep-link URL for logging. Keeps host/pathname intact, replaces
- * any sensitive param value with `[redacted:N]` (length only), and passes
- * everything else through. Worker error codes (`error`, `error_description`,
- * `stytch_error_type`) end up logged verbatim so a failed sign-in is diagnosable.
- */
-function summarizeDeepLink(url: string): { host: string; pathname: string; params: Record<string, string> } | { rawUrl: string; parseError: string } {
-    try {
-        const parsed = new URL(url);
-        const params: Record<string, string> = {};
-        for (const [key, value] of parsed.searchParams.entries()) {
-            params[key] = SENSITIVE_DEEP_LINK_PARAMS.has(key) ? `[redacted:${value.length}]` : value;
-        }
-        return { host: parsed.host, pathname: parsed.pathname, params };
-    } catch (err) {
-        return { rawUrl: url, parseError: String(err) };
-    }
-}
-
 // Handle deep link URLs (nimbalyst://...)
 app.on('open-url', (event, url) => {
     event.preventDefault();
@@ -1030,7 +1001,7 @@ function handleAppActionLink(
             targetWindow.webContents.send('open-keyboard-shortcuts');
         },
         recognizedNoop: (recognizedAction) => {
-            logger.main.info('[AppAction] Recognized action is not implemented yet:', recognizedAction);
+            logger.main.info('[AppAction] Recognized action is not implemented yet:', summarizeAuthDiagnostic(recognizedAction));
         },
         unknownAction: (unknownUrl) => {
             logger.main.warn('[AppAction] Unknown action link ignored:', summarizeDeepLink(unknownUrl));
@@ -1059,7 +1030,7 @@ async function handleDeepLink(url: string): Promise<void> {
                 : parsed.pathname?.replace('/install/', '');
 
             if (extensionId) {
-                logger.main.info(`[DeepLink] Extension install request: ${extensionId}`);
+                logger.main.info('[DeepLink] Extension install request:', summarizeAuthDiagnostic(extensionId));
                 queueMarketplaceInstallRequest(extensionId);
             } else {
                 logger.main.warn('[DeepLink] Extension install missing extension ID');
@@ -1099,7 +1070,7 @@ async function handleDeepLink(url: string): Promise<void> {
             } catch (error) {
                 logger.main.warn('[DeepLink] Invalid invite link:', {
                     link: summarizeDeepLink(url),
-                    error: error instanceof Error ? error.message : String(error),
+                    error: summarizeAuthDiagnostic(error),
                 });
                 return;
             }
@@ -1116,7 +1087,7 @@ async function handleDeepLink(url: string): Promise<void> {
             } catch (error) {
                 logger.main.warn('[DeepLink] Invalid tracker link:', {
                     link: summarizeDeepLink(url),
-                    error: error instanceof Error ? error.message : String(error),
+                    error: summarizeAuthDiagnostic(error),
                 });
                 return;
             }
@@ -1130,7 +1101,7 @@ async function handleDeepLink(url: string): Promise<void> {
             logger.main.warn('[DeepLink] Unknown deep link:', summarizeDeepLink(url));
         }
     } catch (error) {
-        logger.main.error('[DeepLink] Failed to handle deep link:', error);
+        logger.main.error('[DeepLink] Failed to handle deep link:', summarizeAuthDiagnostic(error));
     }
 }
 
@@ -1224,11 +1195,11 @@ function collectOpenWorkspaces(): EndpointWorkspace[] {
  */
 async function openTeamInviteFromDeepLink(orgId: string, email?: string): Promise<void> {
     const outcome = await resolveInviteDeepLink(orgId, email);
-    logger.main.info('[DeepLink] Team invite outcome:', {
+    logger.main.info('[DeepLink] Team invite outcome:', summarizeAuthDiagnostic({
         status: outcome.status,
         orgId,
         hasEmail: !!email,
-    });
+    }));
 
     // The outcome is only ever read through `consume-pending-team-invite`,
     // which clears it. The event below is a bare nudge carrying no payload, so
@@ -1269,7 +1240,7 @@ async function openTrackerFromDeepLink(
     const workspacePath = isAuthenticated() ? await findWorkspaceForOrgId(orgId) : null;
 
     if (!workspacePath) {
-        logger.main.warn('[DeepLink] Cannot route tracker:', { reason, ...trackerLink });
+        logger.main.warn('[DeepLink] Cannot route tracker:', summarizeAuthDiagnostic({ reason, ...trackerLink }));
         const fallback = getMostRecentlyFocusedWorkspaceWindow();
         if (fallback) {
             if (fallback.isMinimized()) fallback.restore();
@@ -1288,7 +1259,7 @@ async function openTrackerFromDeepLink(
     // renderer only ever receives an id it can actually select.
     trackerLink.trackerId = await resolveTrackerDeepLinkId(database, workspacePath, trackerId);
     if (trackerLink.trackerId !== trackerId) {
-        logger.main.info('[DeepLink] Resolved tracker id:', { from: trackerId, to: trackerLink.trackerId });
+        logger.main.info('[DeepLink] Resolved tracker id:', summarizeAuthDiagnostic({ from: trackerId, to: trackerLink.trackerId }));
     }
 
     pendingTrackerLinks.set(workspacePath, trackerLink);
@@ -1301,19 +1272,19 @@ async function openTrackerFromDeepLink(
             ...trackerLink,
             workspacePath,
         });
-        logger.main.info('[DeepLink] Routed tracker to existing window:', {
+        logger.main.info('[DeepLink] Routed tracker to existing window:', summarizeAuthDiagnostic({
             workspacePath,
             trackerId,
             view,
-        });
+        }));
         return true;
     }
 
-    logger.main.info('[DeepLink] Opening new window for tracker workspace:', {
+    logger.main.info('[DeepLink] Opening new window for tracker workspace:', summarizeAuthDiagnostic({
         workspacePath,
         trackerId,
         view,
-    });
+    }));
     createWindow(false, true, workspacePath);
     return true;
 }
@@ -1321,7 +1292,7 @@ async function openTrackerFromDeepLink(
 // Handle file open from OS (macOS)
 app.on('open-file', (event, path) => {
     event.preventDefault();
-    logger.main.info(`open-file event received: ${path}`);
+    logger.main.info('open-file event received:', summarizeAuthDiagnostic(path));
 
     if (app.isReady()) {
         openFileWithWorkspaceDetection(path);
@@ -1345,7 +1316,7 @@ async function openFileWithWorkspaceDetection(filePath: string): Promise<void> {
 
     if (workspacePath) {
         // File belongs to a known workspace
-        logger.main.info(`File belongs to workspace: ${workspacePath}`);
+        logger.main.info('File belongs to workspace:', summarizeAuthDiagnostic(workspacePath));
 
         // Find or create workspace window
         let workspaceWindow = findWindowByWorkspace(workspacePath);
@@ -1379,7 +1350,7 @@ async function openFileWithWorkspaceDetection(filePath: string): Promise<void> {
             // No workspace windows open - try to detect a project root and open it
             const suggestedWorkspace = suggestWorkspaceForFile(filePath);
             if (suggestedWorkspace && suggestedWorkspace !== path.dirname(filePath)) {
-                logger.main.info(`Opening suggested workspace: ${suggestedWorkspace}`);
+                logger.main.info('Opening suggested workspace:', summarizeAuthDiagnostic(suggestedWorkspace));
                 addToRecentItems('workspaces', suggestedWorkspace, path.basename(suggestedWorkspace));
                 const newWindow = createWindow(false, true, suggestedWorkspace, undefined, {
                     startupReveal: true,
@@ -1392,7 +1363,7 @@ async function openFileWithWorkspaceDetection(filePath: string): Promise<void> {
             } else {
                 // No project root detected - use the file's directory as workspace
                 const fileDir = path.dirname(filePath);
-                logger.main.info(`Using file directory as workspace: ${fileDir}`);
+                logger.main.info('Using file directory as workspace:', summarizeAuthDiagnostic(fileDir));
                 addToRecentItems('workspaces', fileDir, path.basename(fileDir));
                 const newWindow = createWindow(false, true, fileDir, undefined, {
                     startupReveal: true,
@@ -1409,29 +1380,29 @@ async function openFileWithWorkspaceDetection(filePath: string): Promise<void> {
 
 // Parse command line arguments
 function parseCommandLineArgs() {
-    logger.main.info(`Full process.argv:`, process.argv);
+    logger.main.info('Full process.argv:', summarizeStartupArguments(process.argv));
     const args = process.argv.slice(app.isPackaged ? 1 : 2);
-    logger.main.info(`Parsing command line args (after slice):`, args);
+    logger.main.info('Parsing command line args (after slice):', summarizeStartupArguments(args));
 
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
-        logger.main.info(`Checking arg[${i}]: "${arg}"`);
+        logger.main.info(`Checking arg[${i}]:`, summarizeAuthDiagnostic(arg));
 
         if (isSafeModeArgument(arg)) {
             safeModeRequested = true;
             logger.main.warn('[SAFE MODE] Session restoration will be skipped');
         } else if (arg === '--workspace' && i + 1 < args.length) {
             pendingWorkspacePath = args[i + 1];
-            logger.main.info(`✓ Workspace path from CLI: ${pendingWorkspacePath}`);
+            logger.main.info('Workspace path from CLI:', summarizeAuthDiagnostic(pendingWorkspacePath));
         } else if (arg === '--file' && i + 1 < args.length) {
             pendingCliFilePath = args[i + 1];
-            logger.main.info(`✓ File path from CLI (--file): ${pendingCliFilePath}`);
+            logger.main.info('File path from CLI (--file):', summarizeAuthDiagnostic(pendingCliFilePath));
         } else if (arg === '--filter' && i + 1 < args.length) {
             pendingFilter = args[i + 1];
-            logger.main.info(`✓ Filter from CLI: ${pendingFilter}`);
+            logger.main.info('Filter from CLI:', summarizeAuthDiagnostic(pendingFilter));
         } else if (arg.startsWith('nimbalyst://')) {
             pendingDeepLinkUrl = arg;
-            logger.main.info(`[SingleInstance] Found deep link in argv: ${arg.substring(0, 60)}...`);
+            logger.main.info('[SingleInstance] Found deep link in argv:', summarizeDeepLink(arg));
         } else if (!arg.startsWith('--') && !arg.startsWith('-')) {
             // Handle plain file path argument (e.g., "preditor file.md")
             const argExists = existsSync(arg);
@@ -1440,7 +1411,7 @@ function parseCommandLineArgs() {
 
             if (argExists && argIsMarkdown) {
                 pendingFilePath = arg;
-                logger.main.info(`✓ File path from CLI: ${pendingFilePath}`);
+                logger.main.info('File path from CLI:', summarizeAuthDiagnostic(pendingFilePath));
             }
         }
     }
@@ -1451,7 +1422,7 @@ function parseCommandLineArgs() {
         pendingCliFilePath = null;
     }
 
-    logger.main.info(`FINAL: pendingFilePath=${pendingFilePath}, pendingWorkspacePath=${pendingWorkspacePath}, pendingFilter=${pendingFilter}, pendingCliFilePath=${pendingCliFilePath}`);
+    logger.main.info('FINAL: parsed startup paths and filter:', summarizeAuthDiagnostic(pendingFilePath, pendingWorkspacePath, pendingFilter, pendingCliFilePath));
 }
 
 
@@ -1945,7 +1916,7 @@ app.whenReady().then(async () => {
                 );
                 const isAuthorized = await mcpConfigService.isOAuthAuthorized(config as MCPServerConfig, claudeHttp);
                 if (!isAuthorized) {
-                    logger.mcp.info(`[MCP] Skipping unauthorized OAuth server for Claude Agent: ${name}`);
+                    logger.mcp.info('[MCP] Skipping unauthorized OAuth server for Claude Agent:', summarizeAuthDiagnostic(name));
                     withheldServers.push(name);
                     continue;
                 }
@@ -1984,7 +1955,7 @@ app.whenReady().then(async () => {
                     useMcpRemoteForNativeOAuth: true,
                 });
                 if (!isAuthorized) {
-                    logger.mcp.info(`[MCP] Skipping unauthorized OAuth server for Codex: ${name}`);
+                    logger.mcp.info('[MCP] Skipping unauthorized OAuth server for Codex:', summarizeAuthDiagnostic(name));
                     continue;
                 }
                 enabledServers[name] = mcpConfigService.processServerConfigForRuntime(
@@ -2011,7 +1982,7 @@ app.whenReady().then(async () => {
                     useMcpRemoteForNativeOAuth: true,
                 });
                 if (!isAuthorized) {
-                    logger.mcp.info(`[MCP] Skipping unauthorized OAuth server for Codex ACP: ${name}`);
+                    logger.mcp.info('[MCP] Skipping unauthorized OAuth server for Codex ACP:', summarizeAuthDiagnostic(name));
                     continue;
                 }
                 enabledServers[name] = mcpConfigService.processServerConfigForRuntime(config as any);
@@ -2067,7 +2038,7 @@ app.whenReady().then(async () => {
                     useMcpRemoteForNativeOAuth: true,
                 });
                 if (!isAuthorized) {
-                    logger.mcp.info(`[MCP] Skipping unauthorized OAuth server for Copilot: ${name}`);
+                    logger.mcp.info('[MCP] Skipping unauthorized OAuth server for Copilot:', summarizeAuthDiagnostic(name));
                     continue;
                 }
                 enabledServers[name] = mcpConfigService.processServerConfigForRuntime(config as any);
@@ -2143,7 +2114,7 @@ app.whenReady().then(async () => {
                 );
                 const isAuthorized = await mcpConfigService.isOAuthAuthorized(config as MCPServerConfig, claudeHttp);
                 if (!isAuthorized) {
-                    logger.mcp.info(`[MCP] Skipping unauthorized OAuth server for Claude CLI: ${name}`);
+                    logger.mcp.info('[MCP] Skipping unauthorized OAuth server for Claude CLI:', summarizeAuthDiagnostic(name));
                     continue;
                 }
                 enabledServers[name] = mcpConfigService.processServerConfigForRuntime(config as any, claudeHttp);
@@ -2454,7 +2425,7 @@ app.whenReady().then(async () => {
         const status = await codexAuthService.getStatus(true);
         return { requiresOpenaiAuth: status.account === null };
       } catch (err) {
-        console.warn('[CODEX] codexAuthService.getStatus() failed in auth gate:', err);
+        console.warn('[CODEX] codexAuthService.getStatus() failed in auth gate:', summarizeAuthDiagnostic(err));
         return { requiresOpenaiAuth: false };
       }
     });
@@ -3467,7 +3438,7 @@ app.on('before-quit', async (event) => {
     try {
         await shutdownStytchAuth();
     } catch (error) {
-        console.error('[QUIT] Error shutting down Stytch auth:', error);
+        console.error('[QUIT] Error shutting down Stytch auth:', summarizeAuthDiagnostic(error));
     }
 
     try {
@@ -3602,7 +3573,7 @@ app.on('before-quit', async (event) => {
         try {
             codexAuthService.shutdown();
         } catch (e) {
-            console.warn('[QUIT] codexAuthService shutdown failed:', e);
+        console.warn('[QUIT] codexAuthService shutdown failed:', summarizeAuthDiagnostic(e));
         }
     } catch (error) {
         console.error('[QUIT] Error shutting down session state manager:', error);

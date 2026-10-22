@@ -5,7 +5,43 @@ import { createRequire } from "module";
 const require_ = createRequire(import.meta.url);
 const packageJson = require_("../../package.json");
 const { shouldSign } = require_("../sign-windows.js");
+const { validateWindowsUpdaterConfig } = require_("../validate-windows-updater-config.js");
+// Initialize builder exports first, matching its CLI and avoiding a cold circular require.
+require_("app-builder-lib");
+const { PlatformPackager } = require_("app-builder-lib/out/platformPackager.js");
 const productName = packageJson.build.productName;
+
+function effectiveAssociations(platform: string) {
+  const getter = Object.getOwnPropertyDescriptor(PlatformPackager.prototype, 'fileAssociations')!.get!;
+  return getter.call({ config: packageJson.build, platformSpecificBuildOptions: packageJson.build[platform] ?? {} }) as Array<{ ext: string; name: string }>;
+}
+
+describe('Unofficial Windows file-class isolation', () => {
+  it('gives NSIS independent ProgIDs while preserving Markdown on every configured platform', () => {
+    const windows = effectiveAssociations('win');
+    expect(windows.map(item => item.ext).sort()).toEqual(['markdown', 'md']);
+    expect(windows.map(item => item.name)).toEqual([
+      `${packageJson.build.appId}.Markdown`,
+      `${packageJson.build.appId}.Markdown`,
+    ]);
+    for (const platform of ['mac', 'linux']) {
+      expect(new Set(effectiveAssociations(platform).map(item => item.ext))).toEqual(new Set(['md', 'markdown']));
+    }
+    expect(() => validateWindowsUpdaterConfig()).not.toThrow();
+  });
+
+  it.each(['global', 'win'])('refuses a shared file class inherited from the %s scope', (scope) => {
+    const container = scope === 'global' ? packageJson.build : packageJson.build.win;
+    const original = container.fileAssociations;
+    try {
+      container.fileAssociations = [{ ext: 'md', name: 'Markdown Document' }];
+      expect(() => validateWindowsUpdaterConfig()).toThrow(/file associations.*appId-scoped/i);
+    } finally {
+      if (original === undefined) delete container.fileAssociations;
+      else container.fileAssociations = original;
+    }
+  });
+});
 
 // PR #854 added build.win.signExts, which makes electron-builder run the
 // DigiCert signer once per matching file in the staged payload: 59 KeyLocker
