@@ -6,8 +6,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useFloatingMenu, FloatingPortal, virtualElement } from '../../hooks/useFloatingMenu';
 
 interface TerminalTabContextMenuProps {
@@ -35,7 +35,7 @@ export function TerminalTabContextMenu({
   onCloseAll,
   onCloseToRight,
 }: TerminalTabContextMenuProps) {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common', { keyPrefix: 'terminal' });
   const reference = useMemo(() => virtualElement(x, y), [x, y]);
   const menu = useFloatingMenu({
     placement: 'right-start',
@@ -76,7 +76,7 @@ export function TerminalTabContextMenu({
           onClick={() => handleAction(onCloseTab)}
         >
           <MaterialSymbol icon="close" size={18} />
-        <span>{t('common:terminal.close')}</span>
+          <span>{t('close')}</span>
         </div>
 
         <div
@@ -84,7 +84,7 @@ export function TerminalTabContextMenu({
           onClick={hasOtherTabs ? () => handleAction(onCloseOthers) : undefined}
         >
           <MaterialSymbol icon="tab_close" size={18} />
-        <span>{t('common:terminal.close_others')}</span>
+          <span>{t('close_others')}</span>
         </div>
 
         <div
@@ -92,7 +92,7 @@ export function TerminalTabContextMenu({
           onClick={tabsToRight > 0 ? () => handleAction(onCloseToRight) : undefined}
         >
           <MaterialSymbol icon="tab_close_right" size={18} />
-        <span>{t('common:terminal.close_to_right')}</span>
+          <span>{t('close_to_right')}</span>
         </div>
 
         <div className="h-px my-1 bg-[var(--nim-border)]" />
@@ -102,7 +102,7 @@ export function TerminalTabContextMenu({
           onClick={() => handleAction(onCloseAll)}
         >
           <MaterialSymbol icon="cancel" size={18} />
-        <span>{t('common:terminal.close_all')}</span>
+          <span>{t('close_all')}</span>
         </div>
       </div>
     </FloatingPortal>

@@ -9,7 +9,6 @@
 
 import React, { Component, useRef, useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import type { EditorHost } from '@nimbalyst/runtime';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { CustomEditorComponent } from './types';
@@ -36,10 +35,10 @@ const RENDER_LOOP_THRESHOLD = MAX_RENDERS_PER_SECOND * 2; // Give some buffer
  * Error Boundary component that catches render errors
  */
 class CustomEditorErrorBoundary extends Component<
-  { children: React.ReactNode; extensionId?: string; componentName?: string; onReset: () => void; t: TFunction },
+  { children: React.ReactNode; extensionId?: string; componentName?: string; onReset: () => void },
   ErrorBoundaryState
 > {
-  constructor(props: { children: React.ReactNode; extensionId?: string; componentName?: string; onReset: () => void; t: TFunction }) {
+  constructor(props: { children: React.ReactNode; extensionId?: string; componentName?: string; onReset: () => void }) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
@@ -74,7 +73,6 @@ class CustomEditorErrorBoundary extends Component<
           extensionId={this.props.extensionId}
           componentName={this.props.componentName}
           onRetry={this.handleRetry}
-          t={this.props.t}
         />
       );
     }
@@ -93,8 +91,8 @@ const ErrorFallback: React.FC<{
   componentName?: string;
   onRetry: () => void;
   isRenderLoop?: boolean;
-  t: TFunction;
-}> = ({ error, errorInfo, extensionId, componentName, onRetry, isRenderLoop, t }) => {
+}> = ({ error, errorInfo, extensionId, componentName, onRetry, isRenderLoop }) => {
+  const { t } = useTranslation('extensions');
   return (
     <div className="custom-editor-error flex items-center justify-center h-full p-10 bg-[var(--nim-bg)]">
       <div className="custom-editor-error-content max-w-[500px] text-center">
@@ -104,18 +102,18 @@ const ErrorFallback: React.FC<{
           <MaterialSymbol icon={isRenderLoop ? 'loop' : 'error'} size={48} />
         </div>
         <h2 className="m-0 mb-2 text-xl font-semibold text-[var(--nim-text)]">
-          {isRenderLoop ? t('common:custom_editor.render_loop_title') : t('common:custom_editor.error_title')}
+          {isRenderLoop ? t('custom_editor.render_loop_detected') : t('custom_editor.error_title')}
         </h2>
         {extensionId && (
           <p className="custom-editor-error-extension m-0 mb-4 text-[13px] text-[var(--nim-text-muted)]">
-            {t('common:custom_editor.extension')}{' '}
+            {t('custom_editor.extension')}:{' '}
             <code className="px-1.5 py-0.5 bg-[var(--nim-bg-secondary)] rounded font-mono text-xs">
               {extensionId}
             </code>
             {componentName && (
               <>
                 {' '}
-                / {t('common:custom_editor.component')}:{' '}
+                / {t('custom_editor.component')}:{' '}
                 <code className="px-1.5 py-0.5 bg-[var(--nim-bg-secondary)] rounded font-mono text-xs">
                   {componentName}
                 </code>
@@ -125,13 +123,13 @@ const ErrorFallback: React.FC<{
         )}
         <p className="custom-editor-error-message m-0 mb-5 text-sm text-[var(--nim-text-muted)] leading-normal">
           {isRenderLoop
-            ? t('common:custom_editor.render_loop_message')
-            : error?.message || t('common:custom_editor.unexpected_error')}
+            ? t('custom_editor.render_loop_description')
+            : error?.message || t('custom_editor.unexpected_error')}
         </p>
         {error?.stack && !isRenderLoop && (
           <details className="custom-editor-error-details m-0 mb-5 text-left">
             <summary className="cursor-pointer text-[13px] text-[var(--nim-text-muted)] py-2 hover:text-[var(--nim-text)]">
-              {t('common:custom_editor.error_details')}
+              {t('custom_editor.error_details')}
             </summary>
             <pre className="mt-2 p-3 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md text-[11px] font-mono text-[var(--nim-text-muted)] overflow-x-auto whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto">
               {error.stack}
@@ -141,19 +139,19 @@ const ErrorFallback: React.FC<{
         {isRenderLoop && (
           <div className="custom-editor-error-hint m-0 mb-5 px-4 py-3 bg-[color-mix(in_srgb,var(--nim-warning)_10%,transparent)] border border-[color-mix(in_srgb,var(--nim-warning)_30%,transparent)] rounded-lg text-left">
             <strong className="block mb-2 text-[13px] text-[var(--nim-text)]">
-              {t('common:custom_editor.common_causes')}
+              {t('custom_editor.common_causes')}
             </strong>
             <ul className="m-0 pl-5 text-xs text-[var(--nim-text-muted)] leading-relaxed">
-              <li>{t('common:custom_editor.cause_effect')}</li>
-              <li>{t('common:custom_editor.cause_callback')}</li>
-              <li>{t('common:custom_editor.cause_reference')}</li>
+              <li>{t('custom_editor.cause_effect_dependencies')}</li>
+              <li>{t('custom_editor.cause_callback_props')}</li>
+              <li>{t('custom_editor.cause_object_references')}</li>
             </ul>
           </div>
         )}
         <div className="custom-editor-error-actions flex justify-center gap-3">
           <button className="custom-editor-error-retry nim-btn-primary" onClick={onRetry}>
             <MaterialSymbol icon="refresh" size={18} />
-            {t('common:custom_editor.try_again')}
+            {t('custom_editor.try_again')}
           </button>
         </div>
       </div>
@@ -221,7 +219,6 @@ export const CustomEditorWrapper: React.FC<CustomEditorWrapperProps> = ({
   extensionId,
   componentName,
 }) => {
-  const { t } = useTranslation(['common']);
   const [resetKey, setResetKey] = useState(0);
   const { isLooping, resetLoopDetection } = useRenderLoopDetection(extensionId, componentName);
 
@@ -239,7 +236,6 @@ export const CustomEditorWrapper: React.FC<CustomEditorWrapperProps> = ({
         componentName={componentName}
         onRetry={handleReset}
         isRenderLoop
-        t={t}
       />
     );
   }
@@ -251,7 +247,6 @@ export const CustomEditorWrapper: React.FC<CustomEditorWrapperProps> = ({
         extensionId={extensionId}
         componentName={componentName}
         onReset={handleReset}
-        t={t}
       >
         <CustomEditorComponent host={host} />
       </CustomEditorErrorBoundary>

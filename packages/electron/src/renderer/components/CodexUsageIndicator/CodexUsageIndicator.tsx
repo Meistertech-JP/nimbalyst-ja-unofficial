@@ -7,18 +7,17 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import {
   codexUsageAtom,
   codexUsageAvailableAtom,
   codexUsageIndicatorColorAtom,
   codexUsageMostConstrainedWindowAtom,
-  formatResetTime,
+  formatCodexWindowLabel,
 } from '../../store/atoms/codexUsageAtoms';
 import { CodexUsagePopover } from './CodexUsagePopover';
 import { refreshCodexUsage } from '../../store/listeners/codexUsageListeners';
-import { localizeCodexWindowLabel, localizeUsageResetTime } from '../ClaudeUsageIndicator/usagePresentation';
 
 const RING_RADIUS = 12;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -28,7 +27,7 @@ interface CodexUsageIndicatorProps {
 }
 
 export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ className }) => {
-  const { t } = useTranslation(['aichat', 'common']);
+  const { t } = useTranslation('common');
   const usage = useAtomValue(codexUsageAtom);
   const isAvailable = useAtomValue(codexUsageAvailableAtom);
   const indicatorColor = useAtomValue(codexUsageIndicatorColorAtom);
@@ -65,18 +64,22 @@ export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ classN
   const strokeColor = colorClasses[effectiveIndicatorColor] || colorClasses.muted;
 
   const constrainedLabel = mostConstrained
-    ? [mostConstrained.limit.name, localizeCodexWindowLabel(mostConstrained.window, t)]
+    ? [mostConstrained.limit.name, localizeWindowLabel(formatCodexWindowLabel(mostConstrained.window), t)]
         .filter(Boolean)
         .join(' · ')
     : null;
 
   const tooltipContent = usage?.error
-    ? t('aichat:usage.indicator_error', { error: usage.error })
+    ? t('usage_indicator.error_unavailable', { provider: 'Codex', error: usage.error })
     : usage
       ? limitsAvailable
-        ? t('common:usage_indicator.codex_limit_tooltip', { limit: constrainedLabel, percent: Math.round(utilization), time: localizeUsageResetTime(formatResetTime(mostConstrained?.window.resetsAt ?? null), t) })
-        : t('aichat:usage.indicator_limits_unavailable')
-      : t('aichat:usage.indicator_unavailable');
+        ? t('usage_indicator.codex_limit_tooltip', {
+          limit: constrainedLabel,
+          percent: Math.round(utilization),
+          time: formatReset(mostConstrained?.window.resetsAt ?? null, t),
+        })
+        : t('usage_indicator.unavailable', { provider: t('usage_indicator.codex_limits') })
+      : t('usage_indicator.unavailable', { provider: 'Codex' });
 
   return (
     <div className={`relative ${className || ''}`}>
@@ -85,7 +88,7 @@ export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ classN
         onClick={handleClick}
         title={tooltipContent}
         className="relative w-9 h-9 flex items-center justify-center bg-transparent border-none rounded-md cursor-pointer transition-all duration-150 p-0 hover:bg-nim-tertiary active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2"
-        aria-label={t('aichat:usage.codex_usage')}
+        aria-label={t('navigation.codex_usage')}
         data-testid="codex-usage-indicator"
       >
         <svg
@@ -133,3 +136,24 @@ export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ classN
     </div>
   );
 };
+
+function localizeWindowLabel(label: string, t: (key: string) => string): string {
+  const keys: Record<string, string> = {
+    Session: 'session', Daily: 'daily', Weekly: 'weekly', Monthly: 'monthly', Annual: 'annual',
+    'Secondary usage': 'secondary_usage', Usage: 'usage',
+  };
+  return t(`usage_indicator.${keys[label] ?? 'usage'}`);
+}
+
+function formatReset(resetsAt: string | null, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (!resetsAt) return t('usage_indicator.reset_unknown');
+  const diffMs = new Date(resetsAt).getTime() - Date.now();
+  if (diffMs <= 0) return t('usage_indicator.reset_now');
+  const totalMinutes = Math.floor(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return t('usage_indicator.reset_days_hours', { days, hours });
+  if (hours > 0) return t('usage_indicator.reset_hours_minutes', { hours, minutes });
+  return t('usage_indicator.reset_minutes', { minutes });
+}

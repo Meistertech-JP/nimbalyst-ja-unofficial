@@ -3,9 +3,10 @@
 /**
  * Normalizes extraResources sources before electron-builder packs.
  *
- * npm's hoisting behavior across workspaces is not always stable: the
- * same lockfile can place a dependency in packages/electron/node_modules/
- * on one machine and in the repo-root node_modules/ on another. The
+ * Hoisting is not guaranteed to be stable: a lockfile change can move a
+ * dependency between packages/electron/node_modules/ and the repo-root
+ * node_modules/ (pnpm's hoisted linker nests a copy under the workspace when
+ * another version already owns the root slot). The
  * electron-builder `extraResources` entries use literal paths, so if a
  * package lands at the other location, packaging silently ships a broken
  * build (or validate-extra-resources refuses to continue).
@@ -13,7 +14,7 @@
  * For any extraResources entry that is missing at its expected location
  * but exists at an alternate location (the paired root vs packages/electron
  * node_modules), this script creates a symlink at the expected location
- * pointing back to wherever npm actually put the package.
+ * pointing back to wherever the package manager actually put the package.
  *
  * Handles both top-level `build.extraResources` and platform-specific
  * `build.{mac,win,linux}.extraResources`. The `${arch}` macro in
@@ -96,7 +97,14 @@ for (const from of fromPaths) {
   const parent = path.dirname(paired.expected);
   fs.mkdirSync(parent, { recursive: true });
   const target = path.relative(parent, paired.alternate);
-  fs.symlinkSync(target, paired.expected);
+  if (process.platform === 'win32' && fs.statSync(paired.alternate).isDirectory()) {
+    // Directory symlinks require elevated privileges or Developer Mode on
+    // Windows. Junctions provide the same package-directory link without
+    // changing machine-level settings; Node resolves their target absolutely.
+    fs.symlinkSync(paired.alternate, paired.expected, 'junction');
+  } else {
+    fs.symlinkSync(target, paired.expected);
+  }
   linked++;
   console.log(`[normalize-extra-resources] Linked ${from} -> ${target}`);
 }

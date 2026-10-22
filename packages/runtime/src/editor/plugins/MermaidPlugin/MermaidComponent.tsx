@@ -8,7 +8,9 @@ import { $getNodeByKey, NodeKey } from 'lexical';
 import { $isMermaidNode } from './MermaidNode';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTheme } from '../../context/ThemeContext';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
+import { renderMermaid } from './mermaidRender';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import './mermaidGantt.css';
 
 interface MermaidComponentProps {
   content: string;
@@ -16,51 +18,9 @@ interface MermaidComponentProps {
   className?: string;
 }
 
-// Dynamic import to avoid bundling mermaid when not needed
-let mermaidModule: any = null;
-let mermaidLoadPromise: Promise<any> | null = null;
-let lastInitTheme: string | null = null;
-
-class MermaidModuleLoadError extends Error {}
-type DiagramError =
-  | { kind: 'render' | 'load' }
-  | { kind: 'parse'; text: string }
-  | { kind: 'raw'; message: string | undefined };
-
-async function loadMermaid(isDarkTheme: boolean): Promise<any> {
-  const themeKey = isDarkTheme ? 'dark' : 'light';
-
-  if (!mermaidLoadPromise) {
-    mermaidLoadPromise = (async () => {
-      const module = await import('mermaid');
-      const mermaid = module.default || (module as any).mermaid || module;
-      if (typeof mermaid.initialize !== 'function') {
-        console.error('Invalid mermaid instance:', mermaid);
-        throw new MermaidModuleLoadError('Failed to load mermaid module');
-      }
-      mermaidModule = mermaid;
-      return mermaid;
-    })();
-  }
-
-  await mermaidLoadPromise;
-
-  if (lastInitTheme !== themeKey) {
-    lastInitTheme = themeKey;
-    mermaidModule.initialize({
-      startOnLoad: false,
-      theme: isDarkTheme ? 'dark' : 'default',
-      securityLevel: 'antiscript',
-      fontFamily: 'monospace',
-    });
-  }
-
-  return mermaidModule;
-}
-
 function MermaidDiagram({ content, id, renderKey }: { content: string; id: string; renderKey: number }) {
-  const { t } = useRuntimeTranslation();
-  const [error, setError] = useState<DiagramError | null>(null);
+  const { t } = useTranslation('editor');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -78,14 +38,10 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
     // Debounce the render by 500ms
     renderTimeoutRef.current = setTimeout(async () => {
       try {
-        const mermaid = await loadMermaid(isDarkTheme);
-
-        if (!mounted) return;
-
         // Use mermaid.render() for more control - it returns SVG directly
         // Use a unique ID with renderKey to avoid mermaid's internal caching issues
         const elementId = `mermaid_${id}_${renderKey}_${Date.now()}`;
-        const { svg, bindFunctions } = await mermaid.render(elementId, content);
+        const { svg, bindFunctions } = await renderMermaid(elementId, content, isDarkTheme, containerRef.current);
 
         if (!mounted) return;
 
@@ -102,31 +58,29 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
         if (mounted) {
           console.error('Mermaid render error:', err);
           // Extract error message - mermaid errors can have various structures
-          let diagramError: DiagramError = { kind: 'render' };
-          if (err instanceof MermaidModuleLoadError) {
-            diagramError = { kind: 'load' };
-          } else if (typeof err === 'string') {
-            diagramError = { kind: 'raw', message: err };
+          let errorMessage = t('mermaid.render_failed');
+          if (typeof err === 'string') {
+            errorMessage = err;
           } else if (err?.message) {
-            diagramError = { kind: 'raw', message: err.message };
+            errorMessage = err.message;
           } else if (err?.str) {
             // Mermaid parser errors often have a 'str' property
-            diagramError = { kind: 'raw', message: err.str };
+            errorMessage = err.str;
           } else if (err?.hash?.text) {
             // Some mermaid errors have hash.text
-            diagramError = { kind: 'parse', text: String(err.hash.text) };
+            errorMessage = t('mermaid.parse_error', { text: err.hash.text });
           } else if (typeof err === 'object') {
             // Last resort: try to stringify the object for debugging
             try {
               const jsonStr = JSON.stringify(err, null, 2);
               if (jsonStr !== '{}') {
-                diagramError = { kind: 'raw', message: jsonStr };
+                errorMessage = jsonStr;
               }
             } catch {
               // If JSON.stringify fails, keep default message
             }
           }
-          setError(diagramError);
+          setError(errorMessage);
         }
       } finally {
         if (mounted) {
@@ -141,24 +95,16 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
         clearTimeout(renderTimeoutRef.current);
       }
     };
-  }, [content, id, isDarkTheme, renderKey]);
-
-  const errorMessage = error?.kind === 'render'
-    ? t('editor:mermaid.render_failed', 'Failed to render diagram')
-    : error?.kind === 'load'
-      ? t('editor:mermaid.load_failed', 'Failed to load mermaid module')
-      : error?.kind === 'parse'
-        ? t('editor:mermaid.parse_error', 'Parse error near: {{text}}', { text: error.text })
-        : error?.kind === 'raw' ? error.message : null;
+  }, [content, id, isDarkTheme, renderKey, t]);
 
   return (
     <div className="mermaid-diagram p-6 min-h-[200px] flex flex-col items-center justify-center">
-      {loading && !errorMessage && <div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">{t('editor:mermaid.loading', 'Loading diagram...')}</div>}
+      {loading && !error && <div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">{t('mermaid.loading')}</div>}
       <div ref={containerRef} className="mermaid-render-container w-full overflow-x-auto" />
-      {errorMessage && (
+      {error && (
         <div className="mermaid-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))] border border-[color-mix(in_srgb,var(--nim-error)_30%,transparent)] rounded p-4 m-4 text-[var(--nim-error)]">
-          <strong className="block mb-2">{t('editor:mermaid.error_title', 'Diagram Error:')}</strong>
-          <pre className="m-0 font-mono text-xs whitespace-pre-wrap break-words">{errorMessage}</pre>
+          <strong className="block mb-2">{t('mermaid.error_title')}</strong>
+          <pre className="m-0 font-mono text-xs whitespace-pre-wrap break-words">{error}</pre>
         </div>
       )}
     </div>
@@ -166,7 +112,7 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
 }
 
 function MermaidComponent({ content: initialContent, nodeKey, className }: MermaidComponentProps) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(initialContent);
@@ -231,14 +177,14 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
   return (
     <div className={`mermaid-block my-4 border border-[var(--nim-border)] rounded-lg bg-[var(--nim-bg)] overflow-hidden ${className || ''}`}>
       <div className="mermaid-header flex items-center justify-between px-4 py-2 bg-[var(--nim-bg-secondary)] border-b border-[var(--nim-border)]">
-        <span className="mermaid-label font-medium text-[var(--nim-text)] text-sm flex items-center gap-2">{t('editor:mermaid.label', 'Mermaid Diagram')}</span>
+        <span className="mermaid-label font-medium text-[var(--nim-text)] text-sm flex items-center gap-2">{t('mermaid.label')}</span>
         <div className="mermaid-header-buttons flex gap-2">
           <button
             className="mermaid-redraw-button py-1 px-3 text-xs border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-colors hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
             onClick={handleRedraw}
-            title={t('editor:mermaid.redraw_title', 'Redraw diagram')}
+            title={t('mermaid.redraw_title')}
           >
-            {t('editor:mermaid.redraw', 'Redraw')}
+            {t('mermaid.redraw')}
           </button>
           <button
             className={`mermaid-edit-button py-1 px-3 text-xs border rounded cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -248,7 +194,7 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
             }`}
             onClick={handleToggleEdit}
           >
-            {isEditing ? t('common:walkthrough.done', 'Done') : t('common:database.edit', 'Edit')}
+            {isEditing ? t('mermaid.done') : t('mermaid.edit')}
           </button>
         </div>
       </div>
@@ -267,7 +213,7 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
               // Save when textarea loses focus
               saveToNode(editedContent);
             }}
-            placeholder={t('editor:mermaid.placeholder', 'Enter Mermaid diagram code...')}
+            placeholder={t('mermaid.placeholder')}
             autoFocus
           />
         </div>
@@ -276,11 +222,11 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
       <ErrorBoundary
         fallback={
           <div className="mermaid-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))] border border-[color-mix(in_srgb,var(--nim-error)_30%,transparent)] rounded p-4 m-4 text-[var(--nim-error)]">
-            {t('editor:mermaid.boundary_failed', 'Failed to render Mermaid diagram')}
+            {t('mermaid.boundary_failed')}
           </div>
         }
       >
-        <React.Suspense fallback={<div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">{t('common:loading', 'Loading…')}</div>}>
+        <React.Suspense fallback={<div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">{t('mermaid.loading')}</div>}>
           <MermaidDiagram content={content} id={nodeKey} renderKey={renderKey} />
         </React.Suspense>
       </ErrorBoundary>

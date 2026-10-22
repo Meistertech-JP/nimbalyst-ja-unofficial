@@ -1,3 +1,4 @@
+import Store from '../utils/privateSettingsStore';
 /**
  * IPC handlers for the extension marketplace.
  *
@@ -17,6 +18,7 @@ import * as crypto from 'crypto';
 import { spawn } from 'child_process';
 import AdmZip from 'adm-zip';
 import { BrowserWindow, net } from 'electron';
+import { AI_PROVIDER_TYPES } from '@nimbalyst/runtime/ai/server/types';
 import { logger } from '../utils/logger';
 import { safeHandle } from '../utils/ipcRegistry';
 import { getUserExtensionsDirectory, initializeExtensionFileTypes } from './ExtensionHandlers';
@@ -33,8 +35,6 @@ import {
   type GitHubReleaseAsset,
 } from './extensionReleaseAsset';
 import { getAgentProviderRegistry } from '../extensions/AgentProviderRegistry';
-import type { InstallProgressEvent } from '../../shared/types/extensionInstallProgress';
-export type { InstallProgressStage, InstallProgressEvent } from '../../shared/types/extensionInstallProgress';
 
 // Import mock registry data (used as fallback when live registry is unreachable)
 import mockRegistry from '../data/extensionRegistry.json';
@@ -100,8 +100,11 @@ let pendingMarketplaceInstallRequest: PendingMarketplaceInstallRequest | null = 
 /**
  * Fetch registry data from the live Cloudflare Worker.
  * Falls back to mock data if the live registry is unreachable.
+ *
+ * Exported so the `extensions_list` MCP tool shares this one URL, cache, and
+ * fallback rather than opening a second path to the same endpoint.
  */
-async function fetchRegistry(): Promise<RegistryData> {
+export async function fetchRegistry(): Promise<RegistryData> {
   const now = Date.now();
   if (registryCache && (now - registryCacheTimestamp) < REGISTRY_CACHE_TTL_MS) {
     return registryCache;
@@ -246,6 +249,18 @@ async function fetchLatestRelease(owner: string, repo: string): Promise<GitHubRe
 // Install progress reporting
 // ---------------------------------------------------------------------------
 
+export type InstallProgressStage =
+  | 'checking-release'
+  | 'downloading-release'
+  | 'cloning'
+  | 'installing'
+  | 'done';
+
+export interface InstallProgressEvent {
+  stage: InstallProgressStage;
+  message: string;
+}
+
 type ProgressReporter = (event: InstallProgressEvent) => void;
 
 const noopProgress: ProgressReporter = () => {};
@@ -386,7 +401,7 @@ async function installFromPackageUrl(opts: InstallFromPackageUrlOptions): Promis
     const finalInstallPath = path.join(extensionsDir, extensionId);
 
     // 5. Replace any existing installation by moving staging to final
-    progress({ stage: 'installing', message: `Installing ${extensionId}...`, messageKey: 'installing', messageParams: { extensionId } });
+    progress({ stage: 'installing', message: `Installing ${extensionId}...` });
     await fs.rm(finalInstallPath, { recursive: true, force: true });
     await fs.rename(stagingPath, finalInstallPath);
     stagingPath = null; // Moved successfully; do not clean up in finally
@@ -467,7 +482,7 @@ async function installFromGitHub(
   const [owner, repoName] = repo.split('/');
 
   logger.main.info(`[ExtMarketplace] GitHub install: ${githubUrl} -- trying release asset`);
-  progress({ stage: 'checking-release', message: 'Checking for release artifact...', messageKey: 'checking_release' });
+  progress({ stage: 'checking-release', message: 'Checking for release artifact...' });
 
   // ---- Path 1: release asset ----------------------------------------------
   let release: GitHubRelease | null = null;
@@ -484,7 +499,7 @@ async function installFromGitHub(
     const asset = selectReleaseAsset(release.assets, { repoName, subdir });
     if (asset) {
       logger.main.info(`[ExtMarketplace] GitHub install: ${githubUrl} -- using release asset ${asset.name} (tag ${release.tag_name})`);
-      progress({ stage: 'downloading-release', message: `Downloading ${asset.name} (${release.tag_name})...`, messageKey: 'downloading_release', messageParams: { assetName: asset.name, releaseTag: release.tag_name } });
+      progress({ stage: 'downloading-release', message: `Downloading ${asset.name} (${release.tag_name})...` });
 
       const releaseTag = release.tag_name;
       const releaseResult = await installFromPackageUrl({
@@ -510,8 +525,6 @@ async function installFromGitHub(
         progress({
           stage: 'done',
           message: `Installed ${releaseResult.extensionId} from release ${releaseTag}`,
-          messageKey: 'installed_release',
-          messageParams: { extensionId: releaseResult.extensionId ?? '', releaseTag },
         });
       }
       // Hard fail: do not fall through if the release asset was present but broken.
@@ -523,7 +536,7 @@ async function installFromGitHub(
   }
 
   // ---- Path 2: clone-source fallback -------------------------------------
-  progress({ stage: 'cloning', message: 'No release artifact found, cloning source...', messageKey: 'cloning' });
+  progress({ stage: 'cloning', message: 'No release artifact found, cloning source...' });
   return installFromGitHubCloneSource(githubUrl, repo, subdir, progress);
 }
 
@@ -605,7 +618,7 @@ async function installFromGitHubCloneSource(
     }
 
     // Validation passed -- safe to replace any existing installation.
-    progress({ stage: 'installing', message: `Installing ${extensionId}...`, messageKey: 'installing', messageParams: { extensionId } });
+    progress({ stage: 'installing', message: `Installing ${extensionId}...` });
     await fs.rm(installPath, { recursive: true, force: true });
     await copyDirectory(sourceDir, installPath);
 
@@ -627,7 +640,7 @@ async function installFromGitHubCloneSource(
     notifyExtensionsChanged(extensionId, installPath);
 
     logger.main.info(`[ExtMarketplace] [github-clone] installed ${extensionId} v${manifest.version ?? '0.0.0'}`);
-    progress({ stage: 'done', message: `Installed ${extensionId} from source`, messageKey: 'installed_source', messageParams: { extensionId } });
+    progress({ stage: 'done', message: `Installed ${extensionId} from source` });
     return { success: true, extensionId };
 
   } catch (err) {
@@ -653,7 +666,6 @@ async function installFromGitHubCloneSource(
  */
 async function pruneAiSettingsProviders(providerIds: string[]): Promise<void> {
   if (providerIds.length === 0) return;
-  const { default: Store } = await import('electron-store');
   const aiStore = new Store<Record<string, unknown>>({ name: 'ai-settings' });
   const providerSettings = (aiStore.get('providerSettings', {}) as Record<string, unknown>) ?? {};
   const removed: string[] = [];
@@ -723,7 +735,16 @@ async function uninstallExtension(extensionId: string): Promise<InstallResult> {
       ];
       contributedAiProviderIds = collected
         .map((p) => p?.id)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        // Never prune a BUILT-IN provider's settings, whatever a manifest
+        // claims. `antigravity-gemini-agent` is the live case: it shipped as an
+        // extension contribution before becoming a built-in provider, so
+        // uninstalling a leftover copy of that extension would otherwise delete
+        // the built-in provider's enabled/models entry and silently reset a
+        // user's choice. The registry refuses to register such a contribution
+        // in the first place (see AgentProviderRegistry.register); this is the
+        // same rule on the teardown side.
+        .filter((id) => !(AI_PROVIDER_TYPES as readonly string[]).includes(id));
     } catch (err) {
       logger.main.warn(
         `[ExtMarketplace] Could not read manifest for ${extensionId} ` +

@@ -7,27 +7,25 @@
  */
 
 import type {JSX} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import {useTheme} from '../context/ThemeContext';
-import {useRuntimeTranslation} from '../../ui/RuntimeTranslation';
 
 interface ThemeToggleProps {
   className?: string;
 }
 
 export default function ThemeToggle({className = ''}: ThemeToggleProps): JSX.Element {
-  const {t} = useRuntimeTranslation();
+  const {t} = useTranslation('editor');
   const {theme, toggleTheme} = useTheme();
-  const label = theme === 'light'
-    ? t('editor:shared_ui.switch_dark', 'Switch to dark mode')
-    : t('editor:shared_ui.switch_light', 'Switch to light mode');
+  const nextTheme = theme === 'light' ? 'dark' : 'light';
 
   return (
     <button
       className={`theme-toggle flex items-center justify-center border-none bg-none rounded-[10px] p-2 cursor-pointer transition-colors duration-200 min-w-[36px] h-9 hover:bg-black/5 dark:hover:bg-white/10 ${className}`}
       onClick={toggleTheme}
-      title={label}
-      aria-label={label}
+      title={t('theme_toggle.switch_to_mode', {mode: t(`theme_toggle.${nextTheme}`)})}
+      aria-label={t('theme_toggle.switch_to_mode', {mode: t(`theme_toggle.${nextTheme}`)})}
     >
       <span className={`theme-toggle-icon text-base flex items-center justify-center transition-transform duration-200 hover:scale-110 ${theme}`}>
         {theme === 'light' ? '🌙' : '☀️'}

@@ -4,7 +4,7 @@
 
 import type { JSX } from 'react';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { PlanListItem, type PlanData } from './PlanListItem';
 import { PlanFilters } from './PlanFilters';
 import { getFileName } from '../../utils/pathUtils';
@@ -15,11 +15,13 @@ interface PlansPanelProps {
   onPlanSelect: (planPath: string) => void;
 }
 
+type PlansPanelError = 'service_unavailable' | 'metadata_unsupported' | 'load_failed';
+
 export function PlansPanel({ currentFilePath, onPlanSelect }: PlansPanelProps): JSX.Element {
   const { t } = useTranslation('tracker');
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<PlansPanelError | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -36,13 +38,13 @@ export function PlansPanel({ currentFilePath, onPlanSelect }: PlansPanelProps): 
 
         if (!documentService) {
           console.log('[PlansPanel] Document service not available yet');
-          setError('plans.service_unavailable');
+          setError('service_unavailable');
           setLoading(false);
           return;
         }
 
         if (!documentService.listDocumentMetadata) {
-          setError('plans.metadata_unsupported');
+          setError('metadata_unsupported');
           setLoading(false);
           return;
         }
@@ -73,7 +75,7 @@ export function PlansPanel({ currentFilePath, onPlanSelect }: PlansPanelProps): 
       } catch (err) {
         if (cancelled) return;
         console.error('Failed to load plan documents:', err);
-        setError('plans.load_failed');
+        setError('load_failed');
         setLoading(false);
       }
     }
@@ -103,12 +105,10 @@ export function PlansPanel({ currentFilePath, onPlanSelect }: PlansPanelProps): 
       .map(doc => {
         const planStatus = doc.frontmatter.planStatus as any || {};
         const frontmatter = doc.frontmatter;
-        const title = planStatus.title || frontmatter.title || getFileName(doc.path).replace('.md', '');
 
         return {
           id: planStatus.planId || doc.id,
-          title: title || 'Untitled',
-          isTitleFallback: !title,
+        title: planStatus.title || frontmatter.title || getFileName(doc.path).replace('.md', '') || t('inline.untitled'),
           status: planStatus.status || frontmatter.status || 'draft',
           owner: planStatus.owner || frontmatter.owner || 'unassigned',
           priority: planStatus.priority || frontmatter.priority || 'medium',
@@ -177,7 +177,7 @@ export function PlansPanel({ currentFilePath, onPlanSelect }: PlansPanelProps): 
       <div className="plans-panel flex flex-col h-full bg-nim">
         <div className="plans-loading flex flex-col items-center justify-center py-10 px-5 text-nim-muted gap-3">
           <div className="spinner w-6 h-6 border-[3px] border-nim-secondary border-t-nim-accent rounded-full animate-spin"></div>
-          <span>{t('plans.loading')}</span>
+            <span>{t('plans.loading')}</span>
         </div>
       </div>
     );
@@ -187,7 +187,7 @@ export function PlansPanel({ currentFilePath, onPlanSelect }: PlansPanelProps): 
     return (
       <div className="plans-panel flex flex-col h-full bg-nim">
         <div className="plans-error flex flex-col items-center justify-center py-10 px-5 text-nim-error gap-3">
-          <span>{t(error)}</span>
+            <span>{t(`plans.${error}`)}</span>
         </div>
       </div>
     );

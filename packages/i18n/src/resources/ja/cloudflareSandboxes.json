@@ -1,0 +1,147 @@
+{
+  "title": "Cloudflare サンドボックス",
+  "description": "Wranglerの認証情報を使って、分離されたサンドボックスを設定・デプロイします。",
+  "actions": {
+    "checking": "確認中…",
+    "recheck": "再確認",
+    "retrying": "再試行中…",
+    "retry": "再試行"
+  },
+  "errors": {
+    "selection_save": "選択したCloudflareプロファイルとアカウントを保存できませんでした。",
+    "selection_load": "保存済みのCloudflareプロファイルとアカウントを読み込めませんでした。",
+    "codes": {
+      "wrangler_missing": "Wranglerが見つかりません。Cloudflare Wrangler CLIをインストールし、PATHから実行できるようにしてください。",
+      "wrangler_unsupported": "このバージョンのWranglerは名前付き認証プロファイルに対応していません。Wrangler 4.125.0以降に更新してください。",
+      "not_authenticated": "このWranglerプロファイルはサインインしていません。続行するには再度サインインしてください。",
+      "profile_exists": "同じ名前のWranglerプロファイルが既にあります。新規作成ではなく、再認証してください。",
+      "login_cancelled": "サインインが完了する前にキャンセルされました。",
+      "account_required": "使用するCloudflareアカウントを選択してください。Nimbalystが自動選択することはありません。",
+      "plan_stale": "デプロイプランが古くなっています。デプロイ前にプランをもう一度確認してください。",
+      "deploy_failed": "Wranglerがデプロイを完了できませんでした。Cloudflareアカウントに一部のリソースが作成済みの場合があります。再試行または削除できるよう、このサンドボックスは一覧に残しています。",
+      "deployment_stale": "このサンドボックスは読み込み後に変更されました。続行する前に再読み込みしてください。",
+      "worker_missing": "このサンドボックスのWorkerはCloudflareアカウントに存在しません。",
+      "confirmation_required": "この操作を実行するには明示的な確認が必要です。",
+      "container_unavailable": "サンドボックスはデプロイされていますが、コンテナに接続できませんでした。",
+      "node_not_provisioned": "このサンドボックスにエージェントノードはありません。ノードを再接続してください。コンテナはスリープ時にファイルを破棄します。",
+      "node_provision_failed": "Nimbalystがサンドボックスエージェントを準備できませんでした。再接続する前にサンドボックスの状態を確認してください。",
+      "node_start_failed": "このサンドボックスでエージェントノードを起動できませんでした。直近の出力を確認して、再接続してください。",
+      "grant_failed": "Nimbalystが同期サーバーでこのサンドボックスを認証できなかったため、ノードは起動されませんでした。",
+      "unknown": "Wranglerとの通信中に問題が発生しました。"
+    }
+  },
+  "profile_errors": {
+    "reserved": "「{{profileName}}」はWranglerで予約されています。別のプロファイル名を指定してください。",
+    "invalid_characters": "プロファイル名には英字、数字、ハイフン、アンダースコアのみ使用できます。"
+  },
+  "prerequisites": {
+    "title": "事前準備",
+    "wrangler_missing": "Wranglerがインストールされていません。",
+    "wrangler_unsupported": "Wrangler {{version}}はプロファイルに対応していません。続行するにはWranglerを更新してください。",
+    "install_wrangler_hint": "Wranglerをインストールし、PATHから実行できることを確認してください。",
+    "checking_machine": "このマシンを確認しています…"
+  },
+  "profile": {
+    "title": "Wranglerプロファイル",
+    "description": "認証済みのWranglerプロファイルを選択するか、Cloudflareへのサインインで新規作成します。認証はWranglerが管理し、この画面でAPIトークンを収集することはありません。",
+    "loading": "プロファイルを読み込み中…",
+    "aria_label": "Wranglerプロファイル",
+    "signed_out": "サインアウト済み",
+    "empty": "Wranglerプロファイルが見つかりません。サインインするか、下からプロファイルを作成してください。",
+    "waiting_for_browser": "ブラウザーでの操作を待っています…",
+    "sign_in_again": "{{profile}}に再度サインイン",
+    "new_name_placeholder": "新しいプロファイル名",
+    "sign_in_cloudflare": "Cloudflareにサインイン"
+  },
+  "account": {
+    "title": "Cloudflareアカウント",
+    "description": "サンドボックスのデプロイ先アカウントを選択してください。アカウントが自動選択されることはありません。",
+    "select_profile_first": "先に認証済みのWranglerプロファイルを選択してください。",
+    "loading": "アカウントを読み込み中…",
+    "aria_label": "Cloudflareアカウント",
+    "select": "アカウントを選択…"
+  },
+  "deploy": {
+    "title": "確認してデプロイ",
+    "description": "デプロイ前にリソースと発生する可能性のある費用を確認してください。プランを確定するまでリソースは作成されません。",
+    "preparing_review": "確認内容を準備中…",
+    "review": "デプロイプランを確認",
+    "deploying_to": "デプロイ先：",
+    "using_profile": "、使用プロファイル：",
+    "resource_create": "作成",
+    "resource_update": "更新",
+    "resource_reuse": "再利用",
+    "container": "コンテナ",
+    "at_most": "最大",
+    "instance_count_one": "インスタンス",
+    "instance_count_other": "インスタンス",
+    "sleeping_after": "アイドル状態で",
+    "minutes_idle": "分後にスリープ",
+    "paid_plan_required": "{{account}}アカウントでは有料プランが必要です。",
+    "cost_note_paid": "コンテナの利用にはWorkers Paidプラン（月額5ドル）が必要です。無料アカウントでデプロイすると失敗します。",
+    "cost_note_runtime": "{{instanceType}}コンテナは稼働中、10ミリ秒単位で課金されます。CPUは使用中に課金され、メモリとディスクはインスタンスタイプに応じて確保したリソースに課金されるため、処理負荷がない間もコンテナ稼働中は料金が発生します。",
+    "cost_note_resources": "リクエストはWorker経由でサンドボックスに届き、各コンテナには専用のDurable Objectがあるため、WorkerとDurable Objectsはコンテナとは別に課金されます。",
+    "cost_note_limits": "Nimbalystはコンテナインスタンスを{{maxInstances}}個に制限し、{{sleepAfterMinutes}}分アイドル状態が続くとスリープさせます。これは課金の増加を抑えるためのもので、支出上限ではありません。Cloudflareの請求額を確認してください。",
+    "acknowledgement": "デプロイプランを確認し、Cloudflareからこれらのリソースに料金が請求される場合があることを理解しました。",
+    "deploying": "デプロイ中…",
+    "deploy_sandbox": "サンドボックスをデプロイ"
+  },
+  "deployment": {
+    "refresh_failed": "デプロイ済みサンドボックスを更新できませんでした。最後に確認した状態を表示しています。（{{error}}）",
+    "read_failed": "デプロイ済みサンドボックスを読み込めませんでした。（{{error}}）"
+  },
+  "status_card": {
+    "title": "デプロイ済みサンドボックス",
+    "labels": { "deployment": "デプロイ", "container": "コンテナ", "access": "アクセス" },
+    "profile": "プロファイル",
+    "as_of": "確認時刻：{{time}}",
+    "deployment_status": {
+      "not-deployed": "未デプロイ", "deploying": "デプロイ中…", "deployed": "デプロイ済み",
+      "error": "デプロイに失敗", "deleting": "削除中…"
+    },
+    "container_status": {
+      "unknown": "未確認", "stopped": "停止中", "starting": "起動中…",
+      "running": "実行中", "stopping": "停止中…"
+    },
+    "private_access": "非公開 — Workerバインディング経由で接続され、公開エンドポイントはありません。",
+    "refresh": "更新",
+    "waking": "起動中…",
+    "wake": "サンドボックスを起動",
+    "stop": "サンドボックスを停止",
+    "delete": "サンドボックスを削除",
+    "stop_warning": "コンテナを停止すると、実行中のすべてのプロセスが終了し、コンテナ内に書き込まれたファイルが破棄されます。サンドボックス内のデータは保持されません。",
+    "stopping": "停止中…",
+    "stop_and_discard": "停止して破棄",
+    "cancel": "キャンセル",
+    "delete_warning": "{{account}}アカウントのプロファイル{{profile}}を使って、このサンドボックスを削除しますか？デプロイ済みのWorkerとコンテナ、およびコンテナ内のデータも削除されます。",
+    "deleting": "削除中…",
+    "delete_from": "{{account}}から削除"
+  },
+  "node": {
+    "title": "エージェントノード",
+    "description": "接続すると、Nimbalystエージェントをサンドボックスにインストールし、お使いのデバイスの1つとしてサインインします。エージェントが利用できるよう、Claude Codeのサブスクリプションログイン情報をサンドボックスにコピーします。サンドボックスはスリープするたびに内部のデータを破棄するため、エージェントがGitにプッシュしていない内容は失われ、ノードを再接続する必要があります。",
+    "labels": { "node": "ノード", "working_in": "作業場所" },
+    "status": {
+      "not_connected": "未接続",
+      "running_since": "{{time}}から実行中",
+      "running": "実行中",
+      "stopped_exit_code": "停止（終了コード {{exitCode}}）",
+      "stopped": "停止"
+    },
+    "workspace": "{{project}}（ブランチ {{branch}}）",
+    "no_workspace": "先にワークスペースを開いてください。ノードはそのワークスペースのリポジトリとブランチを複製します。",
+    "disconnect_warning": "切断するとエージェントに停止を要求し、実行中のセッションを終了して、同期用認証情報を無効にします。再接続時には新しい認証情報が発行されます。エージェントが書き込んだ未プッシュの内容は、サンドボックスが次にスリープするまで残り、その後失われます。",
+    "actions": {
+      "connecting": "接続中…", "connect": "ノードを接続", "checking": "確認中…", "check": "ノードを確認",
+      "disconnect": "ノードを切断", "disconnecting": "切断中…", "disconnect_discard": "切断して破棄", "cancel": "キャンセル"
+    },
+    "errors": { "refresh_failed": "{{message}} サンドボックスの状態を更新できませんでした。再試行する前にサンドボックスを更新してください。" },
+    "session": {
+      "title": "サンドボックスでセッションを開始",
+      "description": "エージェントはサンドボックス内で、{{project}}の{{branch}}ブランチ上で動作します。セッション一覧から進行状況を確認し、追加の指示を送信できます。",
+      "description_connected_workspace": "エージェントは接続済みのワークスペース上でサンドボックス内で動作します。セッション一覧から進行状況を確認し、追加の指示を送信できます。",
+      "prompt_placeholder": "サンドボックスのエージェントに何を依頼しますか？",
+      "starting": "開始中…", "start": "リモートセッションを開始", "started": "サンドボックスでセッション {{sessionId}} を開始しました。", "open": "セッションを開く"
+    }
+  }
+}

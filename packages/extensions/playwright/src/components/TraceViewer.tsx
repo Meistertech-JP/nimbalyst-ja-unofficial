@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import type { TraceData, TraceAction, TestNode } from '../types';
 import { parseTrace, revokeTraceUrls } from '../traceParser';
@@ -17,6 +18,7 @@ interface TraceEntry {
 }
 
 export function TraceViewer({ host, tracePath }: TraceViewerProps) {
+  const { t } = useTranslation('extensions');
   const [traceData, setTraceData] = useState<TraceData | null>(null);
   const [selectedAction, setSelectedAction] = useState<TraceAction | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,7 +115,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
       const fullPath = path.startsWith('/') ? path : `${host.workspacePath}/${path}`;
       const result = await host.exec(`base64 < "${fullPath}"`, { timeout: 30000 });
       if (!result.success || !result.stdout) {
-        throw new Error(result.stderr || 'Failed to read trace file');
+        throw new Error(result.stderr || t('playwright.trace.read_failed'));
       }
 
       // Decode base64 to ArrayBuffer
@@ -130,7 +132,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
         setSelectedAction(data.actions[0]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to parse trace');
+      setError(e instanceof Error ? e.message : t('playwright.trace.parse_failed'));
       setTraceData(null);
     } finally {
       setLoading(false);
@@ -164,7 +166,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
         >
           progress_activity
         </span>
-        <p>Loading trace...</p>
+        <p>{t('playwright.trace.loading')}</p>
       </div>
     );
   }
@@ -177,7 +179,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
             <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#666' }}>
               timeline
             </span>
-            <p>Select a trace file</p>
+            <p>{t('playwright.trace.select_file')}</p>
             <div className="pw-trace-file-list">
               {availableTraces.map((entry) => (
                 <button
@@ -203,15 +205,16 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
             <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#666' }}>
               timeline
             </span>
-            <p>No trace files found</p>
+            <p>{t('playwright.trace.none_found')}</p>
             <p className="pw-hint">
-              Traces are generated when tests fail with tracing enabled.
+              {t('playwright.trace.hint_intro')}
               <br />
-              Check your playwright.config.ts: <code>trace: 'on-first-retry'</code> or <code>'retain-on-failure'</code>
+              {t('playwright.trace.hint_config', { config: 'playwright.config.ts' })}{' '}
+              <code>trace: 'on-first-retry'</code> {t('playwright.trace.or')} <code>'retain-on-failure'</code>
             </p>
             <button className="pw-trace-file-btn" style={{ marginTop: 12, maxWidth: 200 }} onClick={handleRefresh}>
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>refresh</span>
-              <span>Refresh</span>
+              <span>{t('playwright.trace.refresh')}</span>
             </button>
           </>
         )}
@@ -228,7 +231,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
         <p>{error}</p>
         <button className="pw-trace-file-btn" style={{ marginTop: 8, maxWidth: 200 }} onClick={handleRefresh}>
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>refresh</span>
-          <span>Try again</span>
+          <span>{t('playwright.trace.try_again')}</span>
         </button>
       </div>
     );
@@ -259,14 +262,14 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
             </option>
           ))}
         </select>
-        <button className="pw-icon-btn" onClick={handleRefresh} title="Refresh trace list">
+        <button className="pw-icon-btn" onClick={handleRefresh} title={t('playwright.trace.refresh_title')}>
           <span className="material-symbols-outlined" style={{ fontSize: 18 }}>refresh</span>
         </button>
         <span className="pw-trace-test-name">{traceData!.testName}</span>
         {traceData!.error && (
           <span className="pw-trace-error-badge">
             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>error</span>
-            Failed
+            {t('playwright.trace.failed')}
           </span>
         )}
         {traceData!.isElectron && (
@@ -278,7 +281,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
       {traceData!.isElectron && traceData!.snapshots.length > 0 && (
         <div className="pw-trace-electron-warning">
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>warning</span>
-          DOM snapshots may appear garbled for Electron apps (known Playwright limitation)
+          {t('playwright.trace.electron_warning')}
         </div>
       )}
 
@@ -291,7 +294,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
               <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#666' }}>
                 info
               </span>
-              <p>No actions found in this trace</p>
+              <p>{t('playwright.trace.no_actions')}</p>
             </div>
           )}
           {traceData!.actions.map((action) => (
@@ -359,7 +362,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
               {/* Error message */}
               {selectedAction.error && (
                 <div className="pw-trace-detail-error">
-                  <div className="pw-section-label">Error</div>
+                  <div className="pw-section-label">{t('playwright.trace.error')}</div>
                   <pre className="pw-trace-error-text">{selectedAction.error}</pre>
                 </div>
               )}
@@ -367,10 +370,10 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
               {/* Screenshot */}
               {selectedScreenshot && (
                 <div className="pw-trace-detail-screenshot">
-                  <div className="pw-section-label">Screenshot</div>
+                  <div className="pw-section-label">{t('playwright.trace.screenshot')}</div>
                   <img
                     src={selectedScreenshot.blobUrl}
-                    alt="Action screenshot"
+                    alt={t('playwright.trace.action_screenshot_alt')}
                     className="pw-trace-screenshot-img"
                   />
                 </div>
@@ -380,9 +383,9 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
               {selectedSnapshot && (
                 <div className="pw-trace-detail-snapshot">
                   <div className="pw-section-label">
-                    DOM Snapshot
+                    {t('playwright.trace.dom_snapshot')}
                     {traceData!.isElectron && (
-                      <span className="pw-trace-snapshot-warning"> (may be garbled)</span>
+                      <span className="pw-trace-snapshot-warning"> {t('playwright.trace.may_be_garbled')}</span>
                     )}
                   </div>
                   <iframe
@@ -390,7 +393,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
                     srcDoc={selectedSnapshot.html}
                     className="pw-trace-snapshot-frame"
                     sandbox="allow-same-origin"
-                    title="DOM Snapshot"
+                    title={t('playwright.trace.dom_snapshot')}
                   />
                 </div>
               )}
@@ -401,7 +404,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
                   <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#666' }}>
                     info
                   </span>
-                  <p>No screenshots or snapshots for this action</p>
+                  <p>{t('playwright.trace.no_visuals')}</p>
                 </div>
               )}
             </div>
@@ -410,7 +413,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
               <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#4a4a4a' }}>
                 timeline
               </span>
-              <p>Select an action to view details</p>
+              <p>{t('playwright.trace.select_action')}</p>
             </div>
           )}
         </div>
@@ -423,7 +426,7 @@ export function TraceViewer({ host, tracePath }: TraceViewerProps) {
             <img
               key={i}
               src={screenshot.blobUrl}
-              alt={`Screenshot ${i + 1}`}
+              alt={t('playwright.trace.filmstrip_alt', { count: i + 1 })}
               className={`pw-trace-filmstrip-thumb ${
                 selectedScreenshot?.blobUrl === screenshot.blobUrl
                   ? 'pw-trace-filmstrip-active'

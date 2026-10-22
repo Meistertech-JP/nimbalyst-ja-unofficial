@@ -8,17 +8,15 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import {
   geminiUsageAtom,
   geminiUsageAvailableAtom,
   geminiUsageSessionColorAtom,
-  formatResetTime,
 } from '../../store/atoms/geminiUsageAtoms';
 import { GeminiUsagePopover } from './GeminiUsagePopover';
 import { refreshGeminiUsage } from '../../store/listeners/geminiUsageListeners';
-import { localizeUsageResetTime } from '../ClaudeUsageIndicator/usagePresentation';
 
 const RING_RADIUS = 12;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -28,7 +26,7 @@ interface GeminiUsageIndicatorProps {
 }
 
 export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ className }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
   const usage = useAtomValue(geminiUsageAtom);
   const isAvailable = useAtomValue(geminiUsageAvailableAtom);
   const sessionColor = useAtomValue(geminiUsageSessionColorAtom);
@@ -64,14 +62,17 @@ export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ clas
   const strokeColor = colorClasses[effectiveSessionColor] || colorClasses.muted;
 
   const tooltipContent = usage?.notStarted
-    ? usage.error || t('common:usage_indicator.gemini_not_started_short')
+    ? usage.error || t('usage_indicator.gemini_not_started_short')
     : usage?.error
-      ? t('common:usage_indicator.error_unavailable', { provider: 'Gemini', error: usage.error })
+    ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.gemini_name'), error: usage.error })
       : usage
         ? limitsAvailable
-          ? t('common:usage_indicator.gemini_tooltip', { percent: Math.round(utilization), time: localizeUsageResetTime(formatResetTime(usage.fiveHour.resetsAt), t) })
-          : t('common:usage_indicator.gemini_limits_unavailable_short')
-        : t('common:usage_indicator.unavailable', { provider: 'Gemini' });
+          ? t('usage_indicator.gemini_tooltip', {
+            percent: Math.round(utilization),
+            time: formatReset(usage.fiveHour.resetsAt, t),
+          })
+          : t('usage_indicator.gemini_limits_unavailable_short')
+        : t('usage_indicator.unavailable', { provider: t('usage_indicator.gemini_name') });
 
   return (
     <div className={`relative ${className || ''}`}>
@@ -80,7 +81,7 @@ export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ clas
         onClick={handleClick}
         title={tooltipContent}
         className="relative w-9 h-9 flex items-center justify-center bg-transparent border-none rounded-md cursor-pointer transition-all duration-150 p-0 hover:bg-nim-tertiary active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2"
-        aria-label={t('common:usage_indicator.gemini_title')}
+        aria-label={t('usage_indicator.gemini_title')}
         data-testid="gemini-usage-indicator"
       >
         <svg
@@ -128,3 +129,16 @@ export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ clas
     </div>
   );
 };
+
+function formatReset(resetsAt: string | null, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (!resetsAt) return t('usage_indicator.reset_unknown');
+  const diffMs = new Date(resetsAt).getTime() - Date.now();
+  if (diffMs <= 0) return t('usage_indicator.reset_now');
+  const totalMinutes = Math.floor(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return t('usage_indicator.reset_days_hours', { days, hours });
+  if (hours > 0) return t('usage_indicator.reset_hours_minutes', { hours, minutes });
+  return t('usage_indicator.reset_minutes', { minutes });
+}

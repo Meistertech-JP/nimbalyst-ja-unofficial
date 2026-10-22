@@ -7,9 +7,9 @@
  * modules have actually done.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { extensionPermissionHostStateVersionAtom } from '../../../store/atoms/extensionPermissions';
 
 interface PrivilegedExtensionsPanelProps {
@@ -30,21 +30,11 @@ interface EnabledModuleRow {
 }
 
 const TIMELINE_LIMIT = 25;
-const STATUS_KEYS: Record<string, string> = {
-  idle: 'idle',
-  starting: 'starting',
-  'awaiting-consent': 'awaiting_consent',
-  'awaiting-trust': 'workspace_not_trusted',
-  running: 'running',
-  crashed: 'crashed',
-  denied: 'denied',
-  stopped: 'stopped',
-};
 
 export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps> = ({
   workspacePath,
 }) => {
-  const { t } = useTranslation(['settings', 'extensions']);
+  const { t } = useTranslation('settings');
   const [enabledModules, setEnabledModules] = useState<EnabledModuleRow[]>([]);
   const [hostState, setHostState] = useState<ModuleHandleRow[]>([]);
   const [usageSummary, setUsageSummary] = useState<UsageSummaryRow[]>([]);
@@ -72,10 +62,10 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
       setRecent(events.slice(-TIMELINE_LIMIT).reverse());
       setDescriptors(descs);
       setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings:privileged_extensions.load_failed'));
+    } catch {
+      setError(t('privileged_extensions.load_failed'));
     }
-  }, [api, workspacePath, t]);
+  }, [api, t, workspacePath]);
 
   useEffect(() => {
     if (!api) return;
@@ -115,7 +105,7 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
     return (
       <div className="privileged-extensions-panel max-w-4xl">
         <div className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] p-4 text-sm text-[var(--nim-text-muted)]">
-          {t('settings:privileged_extensions.api_unavailable')}
+          {t('privileged_extensions.api_unavailable')}
         </div>
       </div>
     );
@@ -125,10 +115,10 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
     <div className="privileged-extensions-panel max-w-4xl">
       <div className="mb-5">
         <h2 className="text-base font-semibold text-[var(--nim-text)] m-0">
-          {t('settings:privileged_extensions.title')}
+          {t('privileged_extensions.title')}
         </h2>
         <p className="m-0 mt-1 text-xs text-[var(--nim-text-muted)] leading-relaxed">
-          {t('settings:privileged_extensions.description')}
+          {t('privileged_extensions.description')}
         </p>
       </div>
 
@@ -140,7 +130,7 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
 
       {enabledModules.length === 0 ? (
         <div className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] p-4 text-sm text-[var(--nim-text-muted)]">
-          {t('settings:privileged_extensions.no_grants')}
+          {t('privileged_extensions.no_grants')}
         </div>
       ) : (
         <div className="flex flex-col gap-3 mb-6">
@@ -172,16 +162,16 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
                   </div>
                   {status && (
                     <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
-                      {t(`extensions:backend.${STATUS_KEYS[status] ?? status}`, { defaultValue: status })}
+                      {status}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mb-2 text-xs text-[var(--nim-text-muted)]">
                   <span>
-                    {t('settings:privileged_extensions.calls')}: <span className="text-[var(--nim-text)]">{totalCalls}</span>
+                    {t('privileged_extensions.calls')}: <span className="text-[var(--nim-text)]">{totalCalls}</span>
                   </span>
                   {totalDenied > 0 && (
-                    <span className="text-[var(--nim-error)]">{t('settings:privileged_extensions.denied')}: {totalDenied}</span>
+                    <span className="text-[var(--nim-error)]">{t('privileged_extensions.denied')}: {totalDenied}</span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -195,7 +185,7 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
                       }
                       onClick={() => handleRevoke(row.extensionId, row.moduleId, 'workspace')}
                     >
-                      {t('settings:privileged_extensions.revoke_workspace')}
+                      {t('privileged_extensions.revoke_workspace')}
                     </button>
                   )}
                   {row.scopes.includes('global') && (
@@ -205,7 +195,7 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
                       disabled={busy === `${row.extensionId}::${row.moduleId}::global`}
                       onClick={() => handleRevoke(row.extensionId, row.moduleId, 'global')}
                     >
-                      {t('settings:privileged_extensions.revoke_global')}
+                      {t('privileged_extensions.revoke_global')}
                     </button>
                   )}
                 </div>
@@ -218,10 +208,13 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
                         <span
                           key={s.permissionId}
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded border border-[var(--nim-border)] text-[var(--nim-text-muted)]"
-                          title={t('settings:privileged_extensions.usage_title', { allowed: s.allowed, denied: s.denied })}
+                          title={t('privileged_extensions.usage_title', {
+                            allowed: s.allowed,
+                            denied: s.denied,
+                          })}
                         >
                           <MaterialSymbol icon="shield" size={10} />
-                          {d ? t(`extensions:permission_catalog.${d.id}.label`, { defaultValue: d.label }) : s.permissionId}
+                          {d?.label ?? s.permissionId}
                           <span className="font-mono">{s.total}</span>
                         </span>
                       );
@@ -235,11 +228,11 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
       )}
 
       <div className="mb-2 text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide">
-        {t('settings:privileged_extensions.recent_activity')}
+        {t('privileged_extensions.recent_activity')}
       </div>
       {recent.length === 0 ? (
         <div className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] p-3 text-xs text-[var(--nim-text-muted)]">
-          {t('settings:privileged_extensions.no_activity')}
+          {t('privileged_extensions.no_activity')}
         </div>
       ) : (
         <div className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] divide-y divide-[var(--nim-border)]">
@@ -265,7 +258,7 @@ export const PrivilegedExtensionsPanel: React.FC<PrivilegedExtensionsPanelProps>
                   {evt.extensionId}/{evt.moduleId}
                 </span>
                 <span className="text-[var(--nim-text)] truncate">
-                  {d ? t(`extensions:permission_catalog.${d.id}.label`, { defaultValue: d.label }) : evt.permissionId}
+                  {d?.label ?? evt.permissionId}
                 </span>
                 {evt.method && (
                   <span className="ml-auto text-[var(--nim-text-faint)] font-mono truncate">

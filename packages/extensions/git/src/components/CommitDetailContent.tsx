@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   buildFileDirectoryTree,
   getFilePathBasename,
@@ -30,6 +31,13 @@ interface CommitDetailContentProps {
    */
   workspacePath?: string;
   commitHash?: string;
+  /**
+   * The AI session that produced this commit, when one is recorded. Absent for
+   * commits made outside a session (bash, release scripts) — the vertical
+   * layout simply omits the row rather than showing "unknown".
+   */
+  sessionLink?: { sessionId: string; title: string | null; provider: string | null } | null;
+  onOpenSession?: (sessionId: string) => void;
 }
 
 // --- Directory tree (matches FileEditsSidebar's collapsing algorithm) ---
@@ -99,19 +107,22 @@ function renderDirNode(node: DirectoryNode, depth: number, opts?: FileRowRenderO
   );
 }
 
-export function formatRelative(dateStr: string): string {
+export function formatRelative(
+  dateStr: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const date = new Date(dateStr);
   const diffMs = Date.now() - date.getTime();
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
-  if (diffSecs < 60) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
+  if (diffSecs < 60) return t('log_panel.relative_time.just_now');
+  if (diffMins < 60) return t('log_panel.relative_time.minutes_ago', { count: diffMins });
+  if (diffHours < 24) return t('log_panel.relative_time.hours_ago', { count: diffHours });
+  if (diffDays < 7) return t('log_panel.relative_time.days_ago', { count: diffDays });
+  if (diffDays < 30) return t('log_panel.relative_time.weeks_ago', { count: Math.floor(diffDays / 7) });
+  return t('log_panel.relative_time.months_ago', { count: Math.floor(diffDays / 30) });
 }
 
 export function formatAbsolute(dateStr: string): string {
@@ -121,15 +132,16 @@ export function formatAbsolute(dateStr: string): string {
 }
 
 function SummaryBar({ detail, author, date }: { detail: CommitDetail; author: string; date: string }) {
+  const { t } = useTranslation('git');
   return (
     <div className="git-hover-summary">
       <span className="git-hover-summary-author">{author}</span>
       <span className="git-hover-summary-sep">·</span>
-      <span className="git-hover-summary-date" title={formatAbsolute(date)}>{formatRelative(date)}</span>
+      <span className="git-hover-summary-date" title={formatAbsolute(date)}>{formatRelative(date, t)}</span>
       <span className="git-hover-summary-date git-hover-summary-date--abs">{formatAbsolute(date)}</span>
       <span className="git-hover-summary-sep">·</span>
       <span className="git-hover-summary-files">
-        {detail.summary.filesChanged} file{detail.summary.filesChanged !== 1 ? 's' : ''} changed
+        {t('supplemental.commit_detail.files_changed', { count: detail.summary.filesChanged })}
       </span>
       {detail.summary.insertions > 0 && <span className="git-hover-stat-added">+{detail.summary.insertions}</span>}
       {detail.summary.deletions > 0 && <span className="git-hover-stat-deleted">-{detail.summary.deletions}</span>}
@@ -273,7 +285,10 @@ export function CommitDetailContent({
   layout,
   workspacePath,
   commitHash,
+  sessionLink,
+  onOpenSession,
 }: CommitDetailContentProps) {
+  const { t } = useTranslation('git');
   // Persisted popover size (shared with the git changes panel & commit proposal widget).
   const [diffPeekSize, setDiffPeekSize] = useState<{ width: number; height: number } | null>(null);
   useEffect(() => {
@@ -345,7 +360,7 @@ export function CommitDetailContent({
     };
   }, [interactive, peek.pinnedPath, peek.registerRowEl, peek.onRowClick]);
 
-  if (loading) return <div className="git-hover-loading">Loading...</div>;
+  if (loading) return <div className="git-hover-loading">{t('supplemental.commit_detail.loading')}</div>;
   if (!detail || !tree) return null;
 
   if (layout === 'horizontal') {
@@ -365,6 +380,22 @@ export function CommitDetailContent({
     /* eslint-disable-next-line jsx-a11y/no-static-element-interactions */
     <div className="git-detail-vertical" onKeyDown={handleKeyDown}>
       <pre className="git-detail-message">{detail.body}</pre>
+      {sessionLink && (
+        <div className="git-detail-session">
+          <span className="git-detail-session-label">{t('log_panel.columns.session')}</span>
+          <button
+            type="button"
+            className="git-detail-session-link"
+            title={t('log_panel.open_session_title', { title: sessionLink.title || t('log_panel.untitled_session') })}
+            onClick={() => onOpenSession?.(sessionLink.sessionId)}
+          >
+            {sessionLink.title || t('log_panel.untitled_session')}
+          </button>
+          {sessionLink.provider && (
+            <span className="git-detail-session-provider">{sessionLink.provider}</span>
+          )}
+        </div>
+      )}
       <div className="git-detail-files">{renderDirNode(tree, 0, rowOptions)}</div>
       <SummaryBar detail={detail} author={author} date={date} />
 

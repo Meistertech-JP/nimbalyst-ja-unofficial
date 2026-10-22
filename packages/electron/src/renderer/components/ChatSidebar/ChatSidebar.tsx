@@ -9,10 +9,11 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { ModelIdentifier } from '@nimbalyst/runtime/ai/server/types';
 import { SessionTranscript, SessionTranscriptRef } from '../UnifiedAI/SessionTranscript';
 import { SessionDropdown } from '../AIChat/SessionDropdown';
+import type { EditorRevealPosition } from '../TabEditor/editorRevealCommand';
 import {
   sessionListChatAtom,
   refreshSessionListAtom,
@@ -39,6 +40,8 @@ export interface ChatSidebarProps {
   onSessionIdChange?: (sessionId: string | null) => void;
   /** Whether to select/create a session automatically on mount. */
   autoInitializeSession?: boolean;
+  /** Content for an intentionally empty sidebar, instead of the load-error message. */
+  emptyState?: React.ReactNode;
   /** Title used when this sidebar creates a new standard chat session. */
   newSessionTitle?: string;
   /** Optional initial draft for newly-created standard chat sessions. */
@@ -48,7 +51,8 @@ export interface ChatSidebarProps {
   documentContext?: SerializableDocumentContext;
   /** Getter function for document context - async, reads from disk */
   getDocumentContext?: () => Promise<SerializableDocumentContext>;
-  onFileOpen?: (filePath: string) => Promise<void> | void;
+  /** `location` scrolls the opened file to a line. */
+  onFileOpen?: (filePath: string, location?: EditorRevealPosition) => Promise<void> | void;
   /** Whether the sidebar is collapsed */
   isCollapsed?: boolean;
   /** Callback when collapse state should toggle */
@@ -67,6 +71,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   sessionId: controlledSessionId,
   onSessionIdChange,
   autoInitializeSession = true,
+  emptyState,
   newSessionTitle,
   newSessionDraft,
   linkedSession,
@@ -79,7 +84,9 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   onWidthChange,
   onSwitchToAgentMode,
 }, ref) => {
-  const { t } = useTranslation(['aichat']);
+  const { t } = useTranslation('aichat');
+  const { t: tSessions } = useTranslation('sessions');
+  const resolvedNewSessionTitle = newSessionTitle ?? t('chat_sidebar.default_title');
   const transcriptRef = useRef<SessionTranscriptRef>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pendingFocusRef = useRef(false);
@@ -93,7 +100,6 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   const isSessionControlled = controlledSessionId !== undefined;
   const sessionId = isSessionControlled ? controlledSessionId : internalSessionId;
   const [isLoading, setIsLoading] = useState(autoInitializeSession);
-  const resolvedNewSessionTitle = newSessionTitle ?? t('aichat:chat_sidebar.default_title');
 
   const selectSession = useCallback((nextSessionId: string | null) => {
     if (!isSessionControlled) {
@@ -153,8 +159,8 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   }, [
     defaultModel,
     newSessionDraft,
-    refreshSessions,
     resolvedNewSessionTitle,
+    refreshSessions,
     selectSession,
     workspacePath,
   ]);
@@ -277,7 +283,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
               id: newSessionId,
               provider,
               model: defaultModel,
-              title: t('aichat:session_dropdown.new_session'),
+              title: tSessions('new_session'),
             },
             workspaceId: workspacePath,
           }
@@ -302,13 +308,13 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
     isActive,
     refreshSessions,
     selectSession,
-    t,
+    tSessions,
     workspacePath,
   ]);
 
-  const handleFileClick = useCallback(async (filePath: string) => {
+  const handleFileClick = useCallback(async (filePath: string, location?: EditorRevealPosition) => {
     if (onFileOpen) {
-      await onFileOpen(filePath);
+      await onFileOpen(filePath, location);
     }
   }, [onFileOpen]);
 
@@ -367,11 +373,11 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   if (!sessionId) {
     return (
       <div
-        className="chat-sidebar chat-sidebar-error flex flex-col h-full overflow-hidden bg-nim border-l border-nim relative items-center justify-center text-nim-muted"
+        className={`chat-sidebar ${emptyState ? 'chat-sidebar-empty' : 'chat-sidebar-error'} flex flex-col h-full overflow-hidden bg-nim border-l border-nim relative items-center justify-center text-nim-muted`}
         style={{ width: onWidthChange ? width : undefined }}
         data-session-id={sessionId}
       >
-        <p>{t('aichat:chat_sidebar.failed_load')}</p>
+        {emptyState ?? <p>{t('chat_sidebar.failed_load')}</p>}
       </div>
     );
   }
@@ -390,7 +396,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
           data-testid="chat-sidebar-resize-handle"
           onPointerDown={startResize}
           role="separator"
-          aria-label={t('aichat:chat_sidebar.resize')}
+          aria-label={t('chat_sidebar.resize')}
           aria-orientation="vertical"
         />
       )}
@@ -411,7 +417,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
           <button
             className="chat-sidebar-maximize-button flex items-center justify-center w-7 h-7 shrink-0 rounded-md text-nim-muted border-none cursor-pointer transition-colors duration-150 hover:bg-nim-bg-active hover:text-nim bg-transparent"
             onClick={() => onSwitchToAgentMode(sessionId ?? undefined)}
-            title={t('aichat:chat_sidebar.open_agent')}
+            title={t('chat_sidebar.open_agent')}
           >
             <MaterialSymbol icon="zoom_out_map" size={16} />
           </button>
@@ -425,7 +431,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
           data-linked-session-id={linkedSession.id}
         >
           <MaterialSymbol icon="link" size={15} className="text-nim-primary shrink-0" />
-          <span className="shrink-0">{t('aichat:chat_sidebar.connected_to')}</span>
+          <span className="shrink-0">{t('chat_sidebar.connected_to')}</span>
           <span className="truncate text-nim" title={linkedSession.title}>
             {linkedSession.title}
           </span>

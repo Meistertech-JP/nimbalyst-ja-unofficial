@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState, forwardRef } from 'react';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 import { useEditorLifecycle, type EditorHostProps } from '@nimbalyst/extension-sdk';
 import type {
   ImageProject,
@@ -74,7 +75,7 @@ function ApiKeyMissingBanner({ theme }: { theme: 'light' | 'dark' }) {
   return (
     <div className="px-4 py-3 bg-[rgba(245,158,11,0.1)] border-b border-nim-warning text-nim-warning flex items-center gap-2 text-[13px]">
       <span className="flex-1">
-        Google AI API key not configured. Go to <strong>Settings &gt; Extensions &gt; Image Generation</strong> to add your API key.
+        <Trans ns="extensions" i18nKey="image_generation_ui.api_key_missing_banner"><strong>Settings &gt; Extensions &gt; Image Generation</strong></Trans>
       </span>
     </div>
   );
@@ -82,6 +83,7 @@ function ApiKeyMissingBanner({ theme }: { theme: 'light' | 'dark' }) {
 
 export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
   function ImageProjectEditor({ host }, _ref) {
+    const { t } = useTranslation('extensions');
     const { filePath } = host;
 
     // Project state - always stored as v2 internally
@@ -341,7 +343,7 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
         // Check if API key is configured
         if (!nanoBananaProvider.isConfigured()) {
           setGenerationError(
-            'Google AI API key not configured. Please set your API key in the extension settings.'
+            t('image_generation_ui.api_key_not_configured')
           );
           return;
         }
@@ -455,12 +457,12 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
           console.log('[ImageGen] Complete:', savedImages.length, 'images,', result.description ? 'with text' : 'no text');
         } catch (error) {
           console.error('[ImageGen] Generation failed:', error);
-          setGenerationError(error instanceof Error ? error.message : 'Generation failed');
+          setGenerationError(error instanceof Error ? error.message : t('image_generation_ui.generation_failed'));
         } finally {
           setIsGenerating(false);
         }
       },
-      [project, activeSession, isGenerating, updateActiveSession, saveImageToDisk, buildConversationHistory]
+      [project, activeSession, isGenerating, updateActiveSession, saveImageToDisk, buildConversationHistory, t]
     );
 
     // Handle edit & retry from gallery
@@ -495,7 +497,7 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
           className="image-project-editor w-full h-full flex items-center justify-center"
           data-theme={theme}
         >
-          <div className="text-nim-muted">Loading project...</div>
+          <div className="text-nim-muted">{t('image_generation_ui.loading_project')}</div>
         </div>
       );
     }
@@ -507,7 +509,7 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
           className="image-project-editor w-full h-full flex items-center justify-center"
           data-theme={theme}
         >
-          <div className="text-nim-error">Failed to load: {loadError.message}</div>
+          <div className="text-nim-error">{t('image_generation_ui.load_failed', { error: loadError.message })}</div>
         </div>
       );
     }
@@ -537,7 +539,7 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
               onClick={() => setGenerationError(null)}
               className="bg-transparent border-none text-nim-error cursor-pointer px-2 py-1"
             >
-              Dismiss
+              {t('image_generation_ui.dismiss')}
             </button>
           </div>
         )}
@@ -545,7 +547,7 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
         {/* Session header with session selector */}
         {project.sessions.length > 1 && (
           <div className="flex items-center gap-2 px-4 py-2 bg-nim-secondary border-b border-nim text-sm">
-            <span className="text-nim-muted">Session:</span>
+            <span className="text-nim-muted">{t('image_generation_ui.session')}:</span>
             <select
               value={activeSession?.id || ''}
               onChange={(e) => switchSession(e.target.value)}
@@ -553,7 +555,7 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
             >
               {project.sessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  {session.name || 'Untitled Session'}
+                  {session.name || t('image_generation_ui.untitled_session')}
                 </option>
               ))}
             </select>
@@ -561,7 +563,7 @@ export const ImageProjectEditor = forwardRef<unknown, EditorHostProps>(
               onClick={() => createNewSession()}
               className="ml-2 px-2 py-1 bg-nim-hover border border-nim rounded text-nim text-xs cursor-pointer"
             >
-              + New Session
+              + {t('image_generation_ui.new_session')}
             </button>
           </div>
         )}

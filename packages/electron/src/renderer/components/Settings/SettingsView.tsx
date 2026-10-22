@@ -1,7 +1,10 @@
+import { ProjectAppearancePanel } from './panels/ProjectAppearancePanel';
+import { SAVED_CREDENTIAL } from '../../../shared/providerCredentials';
+import { ProviderCredentialsPanel } from '../GlobalSettings/panels/ProviderCredentialsPanel';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { getExtensionLoader } from '@nimbalyst/runtime';
 import { store } from '@nimbalyst/runtime/store';
@@ -28,6 +31,10 @@ import { OpenAIPanel } from '../GlobalSettings/panels/OpenAIPanel';
 import { OpenAICodexPanel } from '../GlobalSettings/panels/OpenAICodexPanel';
 import { OpenCodePanel } from '../GlobalSettings/panels/OpenCodePanel';
 import { CopilotCLIPanel } from '../GlobalSettings/panels/CopilotCLIPanel';
+
+import { GrokBuildPanel } from '../GlobalSettings/panels/GrokBuildPanel';
+import { CursorAgentPanel } from '../GlobalSettings/panels/CursorAgentPanel';
+import { GeminiPanel } from '../GlobalSettings/panels/GeminiPanel';
 import { LMStudioPanel } from '../GlobalSettings/panels/LMStudioPanel';
 import { AdvancedPanel } from '../GlobalSettings/panels/AdvancedPanel';
 import { DatabasePanel } from '../GlobalSettings/panels/DatabasePanel';
@@ -37,6 +44,7 @@ import { NotificationsPanel } from '../GlobalSettings/panels/NotificationsPanel'
 import { VoiceModePanel } from './VoiceModePanel';
 import { MCPServersPanel } from '../GlobalSettings/panels/MCPServersPanel';
 import { ToolsMcpPanel } from './panels/ToolsMcpPanel';
+import { CloudflareSandboxesPanel } from './panels/CloudflareSandboxesPanel';
 import { ClaudeCodePluginsPanel } from '../GlobalSettings/panels/ClaudeCodePluginsPanel';
 import { ProjectPermissionsPanel } from './panels/ProjectPermissionsPanel';
 import { ProviderOverrideWrapper } from './panels/ProviderOverrideWrapper';
@@ -60,6 +68,7 @@ import {
   type AIModel,
 } from '../../store/atoms/appSettings';
 import { shouldShowDirectChatProviderSettings } from '../../utils/chatProviderVisibility';
+import { teamsConfiguredAtom } from '../../store/atoms/settingsDomains';
 import { omitModelsField } from '@nimbalyst/runtime/ai/server/utils/modelConfigUtils';
 import {
   AccountDevicesSettingsPanel,
@@ -69,6 +78,20 @@ import {
 } from './panels/AccountSettingsPanel';
 import { ProjectSharingPanel, type ProjectSettingsTarget } from './panels/ProjectSharingPanel';
 import { ProjectAIProvidersPanel } from './panels/ProjectAIProvidersPanel';
+
+/**
+ * Providers whose model catalog comes from their own CLI rather than from a
+ * keyed API call. Their panels have no API-key field and no model list of
+ * their own, so the connection test and the model-count display both take a
+ * different branch.
+ */
+const CLI_CATALOG_PROVIDERS = new Set<string>([
+  'openai-codex',
+  'opencode',
+  'copilot-cli',
+  'grok-build',
+  'cursor-agent',
+]);
 
 // Re-export ProviderConfig for backward compatibility
 export type { ProviderConfig } from '../../store/atoms/appSettings';
@@ -124,7 +147,7 @@ const ExtensionAgentSettingsPanel: React.FC<{
   scope: SettingsScope;
   onOpenInstalledExtensions: () => void;
 }> = ({ extEntry, commonProps, workspacePath, scope, onOpenInstalledExtensions }) => {
-  const { t } = useTranslation(['settings']);
+  const { t } = useTranslation('settings');
   const loadedExt = getExtensionLoader().getExtension(extEntry.extensionId);
   const contributions = (loadedExt?.manifest?.contributions ?? {}) as Record<string, unknown>;
   const aiProviders = contributions.aiAgentProviders as
@@ -195,14 +218,14 @@ const ExtensionAgentSettingsPanel: React.FC<{
       <div className="settings-extension-provider-panel">
         <h2 className="text-lg font-semibold text-[var(--nim-text)] mb-2">{extEntry.name || extEntry.id}</h2>
         <p className="text-sm text-[var(--nim-text-muted)] mb-4 max-w-[60ch]">
-          {t('settings:sidebar.groups.ext_agent_fallback')}
+          {t('view.extension_provider_description')}
         </p>
         <button
           type="button"
           className="px-3 py-1.5 rounded text-xs bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] border border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]"
           onClick={onOpenInstalledExtensions}
         >
-          {t('settings:open_installed_extensions')}
+          {t('open_installed_extensions')}
         </button>
       </div>
     );
@@ -219,8 +242,8 @@ const ExtensionAgentSettingsPanel: React.FC<{
         if (!perms || !moduleId) {
           throw new Error(
             !perms
-              ? t('settings:view.permissions_bridge_unavailable')
-              : t('settings:view.backend_module_missing')
+              ? 'Permissions bridge unavailable in this host.'
+              : 'Backend module id missing from the extension manifest.'
           );
         }
         try {
@@ -252,9 +275,10 @@ export function SettingsView({
   marketplaceInstallRequest = null,
   onMarketplaceInstallRequestHandled,
 }: SettingsViewProps) {
+  const { t } = useTranslation('settings');
   const posthog = usePostHog();
-  const { t } = useTranslation(['settings', 'common']);
   const developerMode = useAtomValue(developerModeAtom);
+  const teamsConfigured = useAtomValue(teamsConfiguredAtom);
 
   const normalizedInitialScope: SettingsScope = initialScope === 'user'
     ? 'application'
@@ -305,7 +329,8 @@ export function SettingsView({
   const [, updateAvailableModels] = useAtom(setAvailableModelsAtom);
 
   // Destructure for easier access (these update when atom updates)
-  const { providers, apiKeys, availableModels } = aiProviderSettings;
+  const { providers, availableModels } = aiProviderSettings;
+  const apiKeys = Object.fromEntries(Object.entries(aiProviderSettings.apiKeys).map(([name, value]) => [name, value === SAVED_CREDENTIAL ? '' : value]));
   const showDirectChatProviders = shouldShowDirectChatProviderSettings(
     advancedSettings.showDirectChatProviders,
     aiProviderSettings,
@@ -374,36 +399,38 @@ export function SettingsView({
   // Push navigation entry when settings category/scope changes (unified cross-mode navigation)
   const pushNavigationEntry = useSetAtom(pushNavigationEntryAtom);
   const isRestoringNavigation = useAtomValue(isRestoringNavigationAtom);
-  const lastNavigationRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Don't push while restoring (going back/forward)
     if (isRestoringNavigation) return;
 
-    const navKey = `${selectedCategory}:${scope}`;
-    if (navKey !== lastNavigationRef.current) {
-      lastNavigationRef.current = navKey;
-      pushNavigationEntry({
-        mode: 'settings',
-        settings: {
-          category: selectedCategory,
-          scope: scope as any,
-        },
-      });
-    }
-  }, [selectedCategory, scope, pushNavigationEntry, isRestoringNavigation]);
+    pushNavigationEntry({
+      mode: 'settings',
+      settings: {
+        category: selectedCategory,
+        scope,
+        target: scope === 'project' ? projectTarget : undefined,
+      },
+    });
+  }, [selectedCategory, scope, projectTarget, pushNavigationEntry, isRestoringNavigation]);
 
   // When scope changes, ensure selected category is valid for that scope
   useEffect(() => {
     const validCategories = getSettingsRoutesForScope(scope, {
       developerMode,
       showDirectChatProviders,
+      teamsConfigured,
     }, extensionSettingsRoutes).map((route) => route.id);
     // Extension-contributed agent providers (e.g. antigravity-gemini-agent) are
     // valid selectable categories too; don't bounce the user off them.
     const isExtensionProvider = scope === 'application' && extAgentProviders.some((pr) => pr.id === selectedCategory);
     if (!isExtensionProvider && !validCategories.includes(selectedCategory as typeof validCategories[number])) {
-      setSelectedCategory(getDefaultSettingsCategory(scope));
+      // The scope's static default can itself be unavailable (project-sharing
+      // hides without a team) — land on the first visible route instead.
+      const fallback = getDefaultSettingsCategory(scope);
+      setSelectedCategory(
+        validCategories.includes(fallback) ? fallback : (validCategories[0] ?? fallback),
+      );
     }
   }, [
     scope,
@@ -412,6 +439,7 @@ export function SettingsView({
     extAgentProviders,
     extensionSettingsRoutes,
     showDirectChatProviders,
+    teamsConfigured,
   ]);
 
   useEffect(() => {
@@ -497,7 +525,7 @@ export function SettingsView({
   };
 
   const handleProviderToggle = async (provider: string, enabled: boolean) => {
-    if (enabled && (provider === 'claude-code' || provider === 'openai-codex' || provider === 'opencode' || provider === 'copilot-cli')) {
+    if (enabled && (provider === 'claude-code' || CLI_CATALOG_PROVIDERS.has(provider))) {
       await fetchModels(provider);
     }
 
@@ -513,12 +541,12 @@ export function SettingsView({
 
       posthog?.capture('ai_provider_configured', {
         provider,
-        modelCount: (provider === 'openai-codex' || provider === 'opencode' || provider === 'copilot-cli') ? 0 : models.length,
+        modelCount: CLI_CATALOG_PROVIDERS.has(provider) ? 0 : models.length,
         action: enabled ? 'enabled' : 'disabled'
       });
 
       // OpenAI Codex and OpenCode use dynamic model discovery, not user selection
-      if (provider === 'openai-codex' || provider === 'opencode' || provider === 'copilot-cli') {
+      if (CLI_CATALOG_PROVIDERS.has(provider)) {
         const currentProvider = prev[provider] || { enabled: false };
         return {
           ...prev,
@@ -540,7 +568,7 @@ export function SettingsView({
     });
     debouncedSave();
 
-    if (enabled && provider !== 'claude-code' && provider !== 'openai-codex' && provider !== 'opencode' && provider !== 'copilot-cli') {
+    if (enabled && provider !== 'claude-code' && !CLI_CATALOG_PROVIDERS.has(provider)) {
       fetchModels(provider);
     }
   };
@@ -643,13 +671,22 @@ export function SettingsView({
     ])
   );
 
+  const panelWorkspacePath = scope === 'project'
+    ? (projectTarget?.kind === 'workspace' ? projectTarget.workspacePath : undefined)
+    : workspacePath;
+  const panelWorkspaceName = panelWorkspacePath === workspacePath
+    ? workspaceName : panelWorkspacePath?.split(/[\\/]/).filter(Boolean).pop();
+
   const renderPanel = () => {
+    // An explicit project destination must also govern subsequent sidebar pages.
+    const workspacePath = panelWorkspacePath;
+    const workspaceName = panelWorkspaceName;
     // Project panels
     if ((selectedCategory === 'agent-permissions' || selectedCategory === 'project-agent-permissions') && workspacePath) {
       return (
         <ProjectPermissionsPanel
           workspacePath={workspacePath}
-          workspaceName={workspaceName || t('common:project')}
+          workspaceName={workspaceName || 'Project'}
         />
       );
     }
@@ -664,7 +701,7 @@ export function SettingsView({
       onApiKeyChange: handleApiKeyChange,
       onModelToggle: (modelId: string, enabled: boolean) => {
         // OpenAI Codex, OpenCode, and Copilot don't support user model selection - models are discovered dynamically
-        if (selectedCategory === 'openai-codex' || selectedCategory === 'opencode' || selectedCategory === 'copilot-cli') {
+        if (CLI_CATALOG_PROVIDERS.has(selectedCategory)) {
           return;
         }
 
@@ -691,7 +728,7 @@ export function SettingsView({
       },
       onSelectAllModels: (selectAll: boolean) => {
         // OpenAI Codex, OpenCode, and Copilot don't support user model selection - models are discovered dynamically
-        if (selectedCategory === 'openai-codex' || selectedCategory === 'opencode' || selectedCategory === 'copilot-cli') {
+        if (CLI_CATALOG_PROVIDERS.has(selectedCategory)) {
           return;
         }
 
@@ -732,7 +769,7 @@ export function SettingsView({
             [selectedCategory]: {
               ...prev[selectedCategory],
               testStatus: result.success ? 'success' : 'error',
-              testMessage: result.success ? t('settings:provider.opencode.connected') : result.error
+              testMessage: result.success ? 'Connected' : result.error
             }
           }));
 
@@ -746,7 +783,7 @@ export function SettingsView({
             [selectedCategory]: {
               ...prev[selectedCategory],
               testStatus: 'error',
-              testMessage: t('settings:mcp.connection_failed')
+              testMessage: 'Connection failed'
             }
           }));
         }
@@ -761,7 +798,7 @@ export function SettingsView({
     };
 
     // Hidden-set (denylist) handlers, parameterized by provider id so the Claude
-    // panel can drive both `claude-code` (SDK) and `claude-code-cli` (subscription)
+    // panel can drive both `claude-code` (SDK) and `claude-code-cli` (terminal CLI)
     // from one place. A model is "visible" when it is NOT in `hiddenModels`.
     const makeVisibilityHandlers = (providerId: string) => ({
       onModelVisibilityToggle: (modelId: string, visible: boolean) => {
@@ -789,6 +826,23 @@ export function SettingsView({
         });
         debouncedSave();
       },
+      // Bulk toggle over an explicit subset, so a panel showing a filtered or
+      // dynamically discovered list can act on exactly what the user sees
+      // without a state update per row.
+      onSetVisibilityForModels: (modelIds: string[], visible: boolean) => {
+        setProviders(prev => {
+          const hidden = new Set(prev[providerId]?.hiddenModels || []);
+          for (const modelId of modelIds) {
+            if (visible) hidden.delete(modelId);
+            else hidden.add(modelId);
+          }
+          return {
+            ...prev,
+            [providerId]: { ...prev[providerId], hiddenModels: Array.from(hidden) },
+          };
+        });
+        debouncedSave();
+      },
     });
 
     // Helper to wrap provider panels with override wrapper when in project scope
@@ -799,7 +853,7 @@ export function SettingsView({
             providerId={providerId}
             providerName={providerName}
             workspacePath={workspacePath}
-            workspaceName={workspaceName || t('common:project')}
+            workspaceName={workspaceName || 'Project'}
             globalEnabled={providers[providerId]?.enabled ?? false}
             onOverrideChange={() => loadSettings()}
           >
@@ -818,7 +872,7 @@ export function SettingsView({
       if (!extensionRoute) {
         return (
           <p className="settings-extension-route-unavailable text-sm text-[var(--nim-text-muted)]">
-            {t('settings:view.extension_route_unavailable')}
+            {t('view.extension_route_unavailable')}
           </p>
         );
       }
@@ -836,6 +890,8 @@ export function SettingsView({
     }
 
     switch (selectedCategory) {
+      case 'provider-credentials':
+        return <ProviderCredentialsPanel />;
       case 'claude':
         return wrapWithOverride('claude', 'Claude', <ClaudePanel {...commonProps} />);
       case 'claude-code':
@@ -846,7 +902,7 @@ export function SettingsView({
             {...commonProps}
             {...makeVisibilityHandlers('claude-code')}
             cli={{
-              config: providers['claude-code-cli'] || { enabled: true, testStatus: 'idle' },
+              config: providers['claude-code-cli'] || { enabled: false, testStatus: 'idle' },
               availableModels: availableModels['claude-code-cli'] || [],
               loading: loading['claude-code-cli'] || false,
               onToggle: (enabled: boolean) => handleProviderToggle('claude-code-cli', enabled),
@@ -861,9 +917,35 @@ export function SettingsView({
       case 'openai-codex':
         return wrapWithOverride('openai-codex', 'OpenAI Codex', <OpenAICodexPanel {...commonProps} />);
       case 'opencode':
-        return wrapWithOverride('opencode', 'OpenCode', <OpenCodePanel {...commonProps} />);
+        return wrapWithOverride(
+          'opencode',
+          'OpenCode',
+          <OpenCodePanel
+            {...commonProps}
+            {...makeVisibilityHandlers('opencode')}
+            workspacePath={workspacePath ?? undefined}
+          />,
+        );
       case 'copilot-cli':
         return wrapWithOverride('copilot-cli', 'GitHub Copilot', <CopilotCLIPanel {...commonProps} />);
+      case 'grok-build':
+        return wrapWithOverride(
+          'grok-build',
+          'Grok Build',
+          <GrokBuildPanel config={commonProps.config} onToggle={commonProps.onToggle} />,
+        );
+      case 'cursor-agent':
+        return wrapWithOverride(
+          'cursor-agent',
+          'Cursor Agent',
+          <CursorAgentPanel config={commonProps.config} onToggle={commonProps.onToggle} />,
+        );
+      case 'antigravity-gemini-agent':
+        return wrapWithOverride(
+          'antigravity-gemini-agent',
+          'Gemini',
+          <GeminiPanel config={commonProps.config} onToggle={commonProps.onToggle} />,
+        );
       case 'lmstudio':
         return wrapWithOverride('lmstudio', 'LM Studio', <LMStudioPanel {...commonProps} />);
       case 'advanced':
@@ -876,6 +958,9 @@ export function SettingsView({
         return <DatabasePanel />;
       case 'agent-features':
         return <AgentFeaturesPanel />;
+      case 'cloudflare-sandboxes':
+        // Self-contained; talks to the `cloudflare-sandbox:*` handlers directly.
+        return <CloudflareSandboxesPanel workspacePath={workspacePath ?? undefined} />;
       case 'beta-features':
         return <BetaFeaturesPanel />;
       case 'notifications':
@@ -896,7 +981,7 @@ export function SettingsView({
       case 'project-mcp-servers':
         return workspacePath
           ? <MCPServersPanel scope="workspace" workspacePath={workspacePath} />
-          : <p className="text-sm text-[var(--nim-text-muted)]">{t('settings:project_required.mcp_servers')}</p>;
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.mcp_servers')}</p>;
       case 'mcp-servers':
         return (
           <>
@@ -905,9 +990,9 @@ export function SettingsView({
                 <MaterialSymbol icon="info" size={20} />
                 <div className="settings-project-indicator-text flex flex-col gap-1">
                   <strong className="text-sm font-semibold text-[var(--nim-text)]">
-                    {t('settings:mcp.project_additional_servers', { count: workspaceMcpServerCount })}
+                    {t(workspaceMcpServerCount === 1 ? 'mcp.project_additional_servers_one' : 'mcp.project_additional_servers_other', { count: workspaceMcpServerCount })}
                   </strong>
-                  <span className="text-[13px] text-[var(--nim-text-muted)] leading-[1.4]">{t('settings:project_required.switch_to_project_mcp')}</span>
+                  <span className="text-[13px] text-[var(--nim-text-muted)] leading-[1.4]">{t('project_required.switch_to_project_mcp')}</span>
                 </div>
               </div>
             )}
@@ -953,20 +1038,24 @@ export function SettingsView({
             workspacePath={workspacePath ?? undefined}
           />
         );
+      case 'project-appearance':
+        return projectTarget?.kind === 'workspace'
+          ? <ProjectAppearancePanel key={projectTarget.workspacePath} workspacePath={projectTarget.workspacePath} />
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.project_appearance')}</p>;
       case 'project-sharing':
       case 'team':
         return <ProjectSharingPanel target={projectTarget} />;
       case 'project-agent-permissions':
         return workspacePath
-          ? <ProjectPermissionsPanel workspacePath={workspacePath} workspaceName={workspaceName ?? t('settings:view.this_project')} />
-          : <p className="text-sm text-[var(--nim-text-muted)]">{t('settings:project_required.agent_permissions')}</p>;
+          ? <ProjectPermissionsPanel workspacePath={workspacePath} workspaceName={workspaceName ?? 'this project'} />
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.agent_permissions')}</p>;
       case 'project-trackers':
       case 'tracker-config':
         return <TrackerConfigPanel workspacePath={workspacePath ?? undefined} />;
       case 'project-ai-providers':
         return workspacePath
-          ? <ProjectAIProvidersPanel workspacePath={workspacePath} workspaceName={workspaceName ?? t('settings:view.this_project')} />
-          : <p className="text-sm text-[var(--nim-text-muted)]">{t('settings:project_required.provider_overrides')}</p>;
+          ? <ProjectAIProvidersPanel workspacePath={workspacePath} workspaceName={workspaceName ?? 'this project'} />
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.provider_overrides')}</p>;
       case 'project-extensions':
         return <InstalledExtensionsPanel scope="project" workspacePath={workspacePath ?? undefined} />;
       case 'project-github':
@@ -1017,14 +1106,14 @@ export function SettingsView({
           <div className="settings-extension-provider-panel">
             <h2 className="text-lg font-semibold text-[var(--nim-text)] mb-2">{label}</h2>
             <p className="text-sm text-[var(--nim-text-muted)] mb-4 max-w-[60ch]">
-              {t('settings:sidebar.groups.ext_agent_fallback')}
+              {t('view.extension_provider_description')}
             </p>
             <button
               type="button"
               className="px-3 py-1.5 rounded text-xs bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] border border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]"
               onClick={() => setSelectedCategory('installed-extensions')}
             >
-              {t('settings:open_installed_extensions')}
+              {t('open_installed_extensions')}
             </button>
           </div>
         );
@@ -1043,7 +1132,7 @@ export function SettingsView({
     <div className="settings-view flex flex-col h-full bg-[var(--nim-bg)] text-[var(--nim-text)]">
       {/* Settings Header */}
       <header className="settings-view-header h-[52px] bg-[var(--nim-bg-secondary)] border-b border-[var(--nim-border)] flex items-center px-5 gap-4 shrink-0">
-        <h1 className="settings-view-title text-base font-semibold text-[var(--nim-text)] m-0">{t('settings:title')}</h1>
+        <h1 className="settings-view-title text-base font-semibold text-[var(--nim-text)] m-0">{t('title')}</h1>
 
         <div className="settings-scope-container flex items-center gap-3">
           <div className="settings-scope-tabs flex bg-[var(--nim-bg-tertiary)] p-1 rounded-lg">
@@ -1056,7 +1145,7 @@ export function SettingsView({
               onClick={() => handleScopeChange('application')}
               data-testid="settings-scope-application"
             >
-              {t('settings:scope.application')}
+              {t('scope.application')}
             </button>
             <button
               className={`settings-scope-tab settings-scope-tab-account py-1.5 px-4 rounded-md text-xs font-medium cursor-pointer transition-all duration-150 border-none ${
@@ -1067,7 +1156,7 @@ export function SettingsView({
               onClick={() => handleScopeChange('account')}
               data-testid="settings-scope-account"
             >
-              {t('settings:sidebar.group_account')}
+              {t('scope.account')}
             </button>
             <button
               className={`settings-scope-tab py-1.5 px-4 rounded-md text-xs font-medium cursor-pointer transition-all duration-150 border-none disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -1077,18 +1166,18 @@ export function SettingsView({
               }`}
               onClick={() => handleScopeChange('project')}
               disabled={!workspacePath && !projectTarget}
-              title={!workspacePath && !projectTarget ? t('settings:project_required.open_project_title') : undefined}
+              title={!workspacePath && !projectTarget ? t('project_required.open_project_title') : undefined}
               data-testid="settings-scope-project"
             >
-              {t('settings:scope.project')}
+              {t('scope.project')}
             </button>
           </div>
           <span className="settings-scope-hint text-[13px] text-[var(--nim-text-muted)]">
             {scope === 'application'
-              ? t('settings:view.application_hint')
+              ? t('view.application_hint')
               : scope === 'account'
-                ? t('settings:view.account_hint')
-                : t('settings:view.project_hint', { project: workspaceName || t('settings:view.this_project') })}
+                ? t('view.account_hint')
+                : t('view.project_hint', { project: panelWorkspaceName || t('view.this_project') })}
           </span>
         </div>
 
@@ -1099,9 +1188,9 @@ export function SettingsView({
           saveStatus === 'error' ? 'text-[var(--nim-error)]' :
           'text-[var(--nim-text-faint)]'
         }`}>
-          {saveStatus === 'saving' && t('settings:mcp.saving')}
-          {saveStatus === 'saved' && t('settings:mcp.saved')}
-          {saveStatus === 'error' && t('settings:mcp.error_saving')}
+          {saveStatus === 'saving' && t('mcp.saving')}
+          {saveStatus === 'saved' && t('mcp.saved')}
+          {saveStatus === 'error' && t('mcp.error_saving')}
         </span>
       </header>
 
@@ -1118,6 +1207,7 @@ export function SettingsView({
 
         <main className="settings-view-main flex-1 overflow-y-auto p-6 bg-[var(--nim-bg)] relative z-0">
           <div className="settings-panel-container max-w-[800px]">
+            {scope === 'application' && ['claude', 'claude-code', 'openai', 'openai-codex', 'opencode'].includes(selectedCategory) && <ProviderCredentialsPanel compact name={selectedCategory === 'claude' ? 'anthropic' : selectedCategory} />}
             {renderPanel()}
           </div>
         </main>

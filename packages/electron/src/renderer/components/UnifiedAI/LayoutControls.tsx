@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { SessionLayoutMode } from '../../store';
 import { HelpTooltip } from '../../help';
 
@@ -47,6 +47,7 @@ interface LayoutControlsProps {
 
 export function LayoutControls({ mode, hasTabs, onModeChange }: LayoutControlsProps) {
   const { t } = useTranslation('common');
+
   return (
     <HelpTooltip testId="layout-controls">
       <div className="layout-controls flex items-center gap-0.5 p-1 bg-nim-tertiary rounded-md" data-testid="layout-controls">

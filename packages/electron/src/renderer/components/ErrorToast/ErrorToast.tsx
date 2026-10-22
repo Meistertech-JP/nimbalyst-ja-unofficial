@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { copyToClipboard } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { errorNotificationService, type ErrorNotification } from '../../services/ErrorNotificationService';
 
 const severityStyles = {
@@ -10,7 +10,7 @@ const severityStyles = {
 };
 
 export function ErrorToastContainer() {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('dialogs');
   const [notifications, setNotifications] = useState<ErrorNotification[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -71,26 +71,26 @@ export function ErrorToastContainer() {
     const details = `
 # ${notification.title}
 
-**${t('dialogs:error.severity_label')}** ${notification.severity}
-**${t('dialogs:error.time_label')}** ${new Date(notification.timestamp).toLocaleString()}
+**Severity:** ${notification.severity}
+**Time:** ${new Date(notification.timestamp).toLocaleString()}
 
-## ${t('dialogs:error.message_section')}
+## Message
 ${notification.message}
 
 ${notification.details ? `
-## ${t('dialogs:error.details')}
+## Details
 ${notification.details}
 ` : ''}
 
 ${notification.stack ? `
-## ${t('dialogs:error.stack_trace')}
+## Stack Trace
 \`\`\`
 ${notification.stack}
 \`\`\`
 ` : ''}
 
 ${notification.context ? `
-## ${t('dialogs:error.context')}
+## Context
 \`\`\`json
 ${JSON.stringify(notification.context, null, 2)}
 \`\`\`
@@ -98,7 +98,7 @@ ${JSON.stringify(notification.context, null, 2)}
 `.trim();
 
     copyToClipboard(details);
-  }, [t]);
+  }, []);
 
   const handleActionClick = useCallback((notification: ErrorNotification) => {
     if (notification.action) {
@@ -133,7 +133,7 @@ ${JSON.stringify(notification.context, null, 2)}
                   e.stopPropagation();
                   handleDismiss(notification.id);
                 }}
-                aria-label={t('dialogs:error.dismiss')}
+                aria-label={t('error.dismiss')}
                 type="button"
               >
                 x
@@ -158,7 +158,7 @@ ${JSON.stringify(notification.context, null, 2)}
                   className="error-toast-copy-btn bg-[var(--nim-primary)] text-white border-none px-3 py-1.5 rounded text-xs cursor-pointer transition-colors duration-200 hover:bg-[var(--nim-primary-hover)]"
                   onClick={() => handleCopyDetails(notification)}
                 >
-                  {t('dialogs:error.copy_details')}
+                  {t('error.copy_details')}
                 </button>
               )}
             </div>

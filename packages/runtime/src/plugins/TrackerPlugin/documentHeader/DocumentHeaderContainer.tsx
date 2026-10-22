@@ -9,7 +9,7 @@
 
 import React, { useMemo, useEffect, useCallback } from 'react';
 import { DocumentHeaderRegistry } from './DocumentHeaderRegistry';
-import type { DocumentHeaderComponentProps } from './DocumentHeaderRegistry';
+import type { DocumentHeaderComponentProps, DocumentHeaderProvider } from './DocumentHeaderRegistry';
 
 interface DocumentHeaderContainerProps {
   filePath: string;
@@ -20,6 +20,10 @@ interface DocumentHeaderContainerProps {
   contentVersion?: number;
   onContentChange?: (newContent: string) => void;
   editor?: any;
+  /** Matching providers omitted because an ancestor already presents them. */
+  excludedProviderIds?: readonly string[];
+  /** Host capabilities needed by tracker field editors without runtime/Electron coupling. */
+  trackerFieldCapabilities?: DocumentHeaderComponentProps['trackerFieldCapabilities'];
 }
 
 export const DocumentHeaderContainer: React.FC<DocumentHeaderContainerProps> = ({
@@ -29,6 +33,8 @@ export const DocumentHeaderContainer: React.FC<DocumentHeaderContainerProps> = (
   contentVersion = 0,
   onContentChange,
   editor,
+  excludedProviderIds = [],
+  trackerFieldCapabilities,
 }) => {
   // Track content only for provider matching - components get fresh content via getContent
   const [contentForMatching, setContentForMatching] = React.useState(() => getContent());
@@ -69,8 +75,10 @@ export const DocumentHeaderContainer: React.FC<DocumentHeaderContainerProps> = (
 
   // Get matching providers based on content structure (frontmatter detection) and file path
   const providers = useMemo(() => {
-    return DocumentHeaderRegistry.getProviders(contentForMatching, filePath);
-  }, [contentForMatching, filePath]);
+    const excluded = new Set(excludedProviderIds);
+    return DocumentHeaderRegistry.getProviders(contentForMatching, filePath)
+      .filter((provider) => !excluded.has(provider.id));
+  }, [contentForMatching, excludedProviderIds, filePath]);
 
   // Wrap onContentChange to also bump localVersion so child headers
   // re-parse their state after making changes via the header controls
@@ -103,14 +111,24 @@ export const DocumentHeaderContainer: React.FC<DocumentHeaderContainerProps> = (
     contentVersion: effectiveVersion,
     onContentChange: handleContentChange,
     editor,
+    trackerFieldCapabilities,
   };
 
+  const render = (provider: DocumentHeaderProvider) => {
+    const Component = provider.component;
+    return <Component key={provider.id} {...componentProps} />;
+  };
+  const barProviders = providers.filter((provider) => !provider.inline);
+  const inlineProviders = providers.filter((provider) => provider.inline);
+
   return (
-    <div className="document-header-container w-full bg-[var(--nim-bg)] border-b border-[var(--nim-border)]">
-      {providers.map(provider => {
-        const Component = provider.component;
-        return <Component key={provider.id} {...componentProps} />;
-      })}
-    </div>
+    <>
+      {barProviders.length > 0 && (
+        <div className="document-header-container w-full bg-[var(--nim-bg)] border-b border-[var(--nim-border)]">
+          {barProviders.map(render)}
+        </div>
+      )}
+      {inlineProviders.map(render)}
+    </>
   );
 };

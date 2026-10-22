@@ -1,3 +1,4 @@
+import { RemoteSessionTranscript } from './RemoteSessionTranscript';
 /**
  * SessionTranscript - Encapsulated transcript + input for a single session
  *
@@ -15,21 +16,28 @@
  */
 
 import React, { useCallback, useRef, useImperativeHandle, forwardRef, useEffect, useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { rendererI18n } from '../../i18n';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { store, registerInteractiveWidgetHost, unregisterInteractiveWidgetHost } from '@nimbalyst/runtime/store';
 import type { SessionData, ChatAttachment, TranscriptViewMessage } from '@nimbalyst/runtime/ai/server/types';
+import { agentCapabilitiesForProviderType } from '@nimbalyst/runtime/ai/server/agentCapabilities';
+import type { ToolCallDiffLoadResult } from '@nimbalyst/runtime/ai/server/transcript';
 import { AgentTranscriptPanel } from '@nimbalyst/runtime/ui/AgentTranscript/components/AgentTranscriptPanel';
+import type { TranscriptFileLocation } from '@nimbalyst/runtime/ui/AgentTranscript/components/MarkdownRenderer';
 import { ClaudeCliTerminalStrip } from './ClaudeCliTerminalStrip';
 import { ClaudeCliNotInstalledNotice } from './ClaudeCliNotInstalledNotice';
-import type { InteractiveWidgetHost, PermissionScope } from '@nimbalyst/runtime/ui/AgentTranscript/components/CustomToolWidgets/InteractiveWidgetHost';
+import type { HunkSelection, InteractiveWidgetHost, PermissionScope } from '@nimbalyst/runtime/ui/AgentTranscript/components/CustomToolWidgets/InteractiveWidgetHost';
 import type { TodoItem } from '@nimbalyst/runtime/ui/AgentTranscript/types';
 import { isToolLikeMessage } from '@nimbalyst/runtime/ui/AgentTranscript/utils/messageTypeHelpers';
-import { AIInput, AIInputRef } from './AIInput';
+import type { AIInputRef } from './AIInput';
+import { SessionAIInput } from './SessionAIInput';
 import { PromptQueueList } from './PromptQueueList';
 import { TranscriptEmbeddedFileCard } from './TranscriptEmbeddedFileCard';
 import { getDiffPeekSizeForInteractiveWidgetHost } from './interactiveWidgetHostProxy';
+import { createFeedbackComposeHost } from '../FeedbackRequest/createFeedbackComposeHost';
+import { askFeedbackDestination } from '../FeedbackRequest/askFeedbackDestination';
+import { renderComposeArtifactPreview } from '../FeedbackRequest/lazyFeedbackOptionPreview';
+import { renderComposeArtifactPopover } from '../FeedbackRequest/composeArtifactPopover';
 import { customEditorRegistry } from '../CustomEditors/registry';
 import { useDialog } from '../../contexts/DialogContext';
 import { FileGutter } from '../AIChat/FileGutter';
@@ -37,6 +45,7 @@ import { recordClaudeActivity } from '../../store/listeners/claudeUsageListeners
 import { recordCodexActivity } from '../../store/listeners/codexUsageListeners';
 import { PendingReviewBanner } from '../AIChat/PendingReviewBanner';
 import { WakeupBanner } from '../AIChat/WakeupBanner';
+import { McpLockdownBanner } from '../AIChat/McpLockdownBanner';
 import type { AIMode } from './ModeTag';
 // Note: ExitPlanMode, AskUserQuestion, and ToolPermission use inline widgets via InteractiveWidgetHost (in runtime package)
 import { SlashCommandSuggestions } from './SlashCommandSuggestions';
@@ -49,11 +58,12 @@ import { serializeEditorContextItemsForIpc } from './editorContextSerialization'
 import { isClaudeCliTerminalSession } from './claudeCliInputRouting';
 import { expandSessionMentions } from './sessionMentions';
 import { diffTreeGroupByDirectoryAtom, setDiffTreeGroupByDirectoryAtom } from '../../store/atoms/projectState';
+import { openSettingsCommandAtom } from '../../store/atoms/settingsNavigation';
 import {
   sessionDraftInputAtom,
-  sessionDraftHydratedAtom,
   sessionDraftAttachmentsAtom,
   sessionStoreAtom,
+  sessionRemoteHostAtom,
   sessionLoadedAtom,
   sessionMessagesAtom,
   sessionProviderAtom,
@@ -65,6 +75,7 @@ import {
   sessionDocumentContextAtom,
   sessionEffortLevelRawAtom,
   sessionThinkingModeRawAtom,
+  sessionOpenCodeRoleAtom,
   sessionLoadingAtom,
   sessionModeAtom,
   sessionModelAtom,
@@ -95,7 +106,9 @@ import {
   loadInitialQueuedPrompts,
 } from '../../store';
 import { streamCompletionSignalAtom } from '../../store/atoms/sessionTranscript';
-import { canPersistSessionDraft, convertToWorkstreamAtom, sessionPromptAdditionsAtom, sessionLastSubmitAtAtom, sessionDraftLocalModifiedAtAtom, nextOptimisticId } from '../../store/atoms/sessions';
+import { sessionBackgroundTasksAtom } from '../../store/atoms/sessionBackgroundTasks';
+import { sessionPromptAdditionsAtom, sessionLastSubmitAtAtom, sessionDraftLocalModifiedAtAtom, nextOptimisticId } from '../../store/atoms/sessions';
+import { sessionViewRetention } from '../../store/sessionViewRetention';
 import { clearAIInputHistoryAtom } from '../../store/atoms/aiInputUndo';
 import {
   cliTerminalExpandedAtom,
@@ -109,15 +122,26 @@ import {
 } from '../../store/atoms/terminals';
 import { scrollToTeammateAtom, scrollToMessageAtom, requestOpenSessionAtom } from '../../store/atoms/agentMode';
 import { usePostHog } from 'posthog-js/react';
+import { trackSendWallEvent } from '../../utils/sendWallAnalytics';
+import {
+  bucketPromptLength,
+  toStableAnalyticsCategory,
+  type ComposerDisabledReason,
+  type SendBlockedReason,
+} from '../../../shared/analytics/sendOutcomes';
 import { setAgentModeSettingsAtom, showPromptAdditionsAtom, hasExternalEditorAtom, externalEditorNameAtom, openInExternalEditorAtom, defaultAgentModelAtom, defaultEffortLevelAtom, defaultThinkingModeAtom, chatShowToolCallsAtom, developerModeAtom } from '../../store/atoms/appSettings';
 import { supportsEffortLevel, supportsThinkingToggle, parseEffortLevel, resolveThinkingMode, type EffortLevel, type ThinkingMode } from '../../utils/modelUtils';
 import { buildPlanImplementationPrompt, resolvePlanFilePath } from '../../utils/pathUtils';
 import { resolveTranscriptClickPath } from '../../utils/resolveTranscriptClickPath';
+import { openAgentEditedPage } from '../../utils/agentEditedPage';
+import { saveSessionArchived } from '../../utils/saveSessionArchived';
 import { autoCommitEnabledAtom, setAutoCommitEnabledAtom } from '../../store/atoms/autoCommitAtoms';
+import { settingAtom } from '../../store/atoms/settingAtomFamily';
 import { diffPeekSizeAtom, setDiffPeekSizeAtom } from '../../store/atoms/diffPeekSizeAtoms';
 import { registerSessionWorkspace, loadInitialSessionFileState } from '../../store/listeners/fileStateListeners';
 import { sessionFileEditsAtom } from '../../store/atoms/sessionFiles';
 import { SESSION_PHASE_COLUMNS, setSessionPhaseAtom, type SessionPhase } from '../../store/atoms/sessionKanban';
+import { mergeRestoredPromptIntoDraft } from '../../../shared/restoredDraft';
 
 /**
  * Detect a metadata value that's the artifact of `{...stringValue, ...}` -
@@ -187,6 +211,7 @@ function makeOptimisticUserMessage(
     subagentId: null,
     mode,
     attachments,
+    optimistic: true,
   };
 }
 
@@ -216,7 +241,8 @@ export interface SessionTranscriptProps {
   collapseTranscript?: boolean;
 
   // Click handlers
-  onFileClick?: (filePath: string) => void;
+  /** `location` is set when the clicked link carried a `:line[:col]` suffix. */
+  onFileClick?: (filePath: string, location?: TranscriptFileLocation) => void;
   onTodoClick?: (todo: TodoItem) => void;
 
   // Archive callbacks
@@ -270,20 +296,23 @@ function serializeDocumentContext(
 
 // Read transcript-linked files through the main process so file widgets can
 // open persisted outputs and generated artifacts consistently.
-const readFile = async (filePath: string): Promise<{ success: boolean; content?: string; error?: string }> => {
+const readFile = async (
+  filePath: string,
+  messages: { notFound: string; failed: string },
+): Promise<{ success: boolean; content?: string; error?: string }> => {
   try {
     const result = await window.electronAPI.readFileContent(filePath);
     if (!result) {
-      return { success: false, error: rendererI18n.t('aichat:file_not_found', { path: filePath }) };
+      return { success: false, error: messages.notFound };
     }
     if (!result.success) {
-      return { success: false, error: result.error || rendererI18n.t('aichat:read_file_failed') };
+      return { success: false, error: result.error || messages.failed };
     }
     return { success: true, content: result.content };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : rendererI18n.t('aichat:read_file_failed')
+      error: err instanceof Error ? err.message : messages.failed
     };
   }
 };
@@ -326,75 +355,11 @@ async function updateSessionMetadataField<T>(
   }
 }
 
-// Props for the input wrapper — same as AIInput minus the value/onChange
-// pair (which the wrapper owns) and attachments handling (we wire it up
-// directly so the attachments subscription is isolated too).
-type SessionAIInputProps = Omit<
-  React.ComponentProps<typeof AIInput>,
-  'value' | 'onChange' | 'attachments' | 'onAttachmentAdd' | 'onAttachmentRemove'
-> & {
-  sessionId: string;
-  workspacePath: string;
-  enableAttachments: boolean;
-  onAttachmentAdd?: (attachment: ChatAttachment) => void;
-  onAttachmentRemove?: (attachmentId: string) => void;
-};
-
-/**
- * Thin wrapper that owns the draft-input and draft-attachments
- * subscriptions for one session. Extracted from SessionTranscript so that
- * each keystroke re-renders only this component (and the textarea inside
- * AIInput) instead of cascading through the entire transcript / banners /
- * queue list — which used to break text selection in the messages area.
- *
- * Also owns the debounced persistence of the draft to PGLite (formerly in
- * SessionTranscript), since that effect needs to fire on every draftInput
- * change.
- */
-const SessionAIInput = forwardRef<AIInputRef, SessionAIInputProps>(function SessionAIInput(
-  { sessionId, workspacePath, enableAttachments, onAttachmentAdd, onAttachmentRemove, ...rest },
-  ref,
-) {
-  const [draftInput, setDraftInputRaw] = useAtom(sessionDraftInputAtom(sessionId));
-  const draftHydrated = useAtomValue(sessionDraftHydratedAtom(sessionId));
-  const draftAttachments = useAtomValue(sessionDraftAttachmentsAtom(sessionId));
-  const [draftLocalModifiedAt, setDraftLocalModifiedAt] = useAtom(sessionDraftLocalModifiedAtAtom(sessionId));
-
-  const handleChange = useCallback((value: string) => {
-    setDraftInputRaw(value);
-    setDraftLocalModifiedAt(Date.now());
-  }, [setDraftInputRaw, setDraftLocalModifiedAt]);
-
-  // Debounced persistence of draft input to database — survives restarts.
-  useEffect(() => {
-    if (!workspacePath) return;
-    if (!canPersistSessionDraft(draftHydrated, draftLocalModifiedAt)) return;
-    const timeoutId = setTimeout(() => {
-      window.electronAPI.invoke('ai:saveDraftInput', sessionId, draftInput, workspacePath)
-        .catch(err => console.error('[SessionAIInput] Failed to persist draft input:', err));
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [sessionId, draftInput, draftHydrated, draftLocalModifiedAt, workspacePath]);
-
-  return (
-    <AIInput
-      ref={ref}
-      value={draftInput}
-      onChange={handleChange}
-      workspacePath={workspacePath}
-      sessionId={sessionId}
-      attachments={enableAttachments ? draftAttachments : undefined}
-      onAttachmentAdd={enableAttachments ? onAttachmentAdd : undefined}
-      onAttachmentRemove={enableAttachments ? onAttachmentRemove : undefined}
-      {...rest}
-    />
-  );
-});
 
 /**
  * SessionTranscript - Fully encapsulated transcript + input for one session
  */
-export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscriptProps>(({
+const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscriptProps>(({
   sessionId,
   workspacePath,
   mode,
@@ -412,14 +377,27 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   additionalTeammates,
   waitingForNoun,
 }, ref) => {
-  const { t } = useTranslation(['aichat', 'agents', 'terminal', 'dialogs']);
-  const phaseColumns = useMemo(() => SESSION_PHASE_COLUMNS.map(column => ({
-    ...column,
-    label: t(`agents:status.phase_${column.value}`),
-  })), [t]);
+  const { t: tTerminal } = useTranslation('terminal');
+  const { t: tAIChat } = useTranslation('aichat');
+  const { t: tAgents } = useTranslation('agents');
+  const { t: tDialogs } = useTranslation('dialogs');
+  const { t: tCommon } = useTranslation('common');
   const posthog = usePostHog();
   const inputRef = useRef<AIInputRef>(null);
+  // Guards the await between Enter and the composer clearing against a second send.
+  const submittingRef = useRef(false);
   const transcriptPanelRef = useRef<{ scrollToMessage: (index: number) => void; scrollToTop: () => void }>(null);
+  const loadToolCallDiffs = useCallback(
+    (toolCallItemId: string, toolCallTimestamp?: number): Promise<ToolCallDiffLoadResult> =>
+      window.electronAPI.invoke(
+        'session-files:get-tool-call-diffs',
+        workspacePath,
+        sessionId,
+        toolCallItemId,
+        toolCallTimestamp,
+      ),
+    [sessionId, workspacePath],
+  );
 
   // Get effective document context - prefer getter for fresh data (reads from disk at call time)
   const getEffectiveDocumentContext = useCallback(async () => {
@@ -436,6 +414,9 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   // ============================================================
   const messages = useAtomValue(sessionMessagesAtom(sessionId));
   const provider = useAtomValue(sessionProviderAtom(sessionId));
+  // Declared, not guessed: 'unsupported' hides the Compact affordance instead
+  // of offering a button that silently does nothing (#1252).
+  const compactionSupport = agentCapabilitiesForProviderType(provider).compaction;
   const tokenUsage = useAtomValue(sessionTokenUsageAtom(sessionId));
   const isDataLoading = useAtomValue(sessionLoadingAtom(sessionId));
   const chatShowToolCalls = useAtomValue(chatShowToolCallsAtom);
@@ -444,6 +425,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   const [isArchived, setIsArchived] = useAtom(sessionArchivedAtom(sessionId));
   const [isProcessing, setIsProcessing] = useAtom(sessionProcessingAtom(sessionId));
   const hasPendingInteractivePrompt = useAtomValue(sessionHasPendingInteractivePromptAtom(sessionId));
+  const backgroundTasks = useAtomValue(sessionBackgroundTasksAtom(sessionId));
   const worktreeId = useAtomValue(sessionWorktreeIdAtom(sessionId));
   const hasSessionData = useAtomValue(sessionLoadedAtom(sessionId));
   // NOTE: deliberately NOT subscribing to sessionUpdatedAtAtom. updatedAt churns
@@ -458,13 +440,13 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   const sessionDocumentContext = useAtomValue(sessionDocumentContextAtom(sessionId));
   const rawEffortLevel = useAtomValue(sessionEffortLevelRawAtom(sessionId));
   const rawThinkingMode = useAtomValue(sessionThinkingModeRawAtom(sessionId));
+  const openCodeRole = useAtomValue(sessionOpenCodeRoleAtom(sessionId));
   const loadSessionData = useSetAtom(loadSessionDataAtom);
   const reloadSessionData = useSetAtom(reloadSessionDataAtom);
   const updateSessionStore = useSetAtom(updateSessionStoreAtom);
 
   // Child session creation for "start new session" option
   const createChildSession = useSetAtom(createChildSessionAtom);
-  const convertToWorkstream = useSetAtom(convertToWorkstreamAtom);
   const sessionChildren = useAtomValue(sessionChildrenAtom(sessionId));
   const sessionParentId = useAtomValue(sessionParentIdAtom(sessionId));
   const defaultModel = useAtomValue(defaultAgentModelAtom);
@@ -780,6 +762,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   // Auto-commit setting
   const autoCommitEnabled = useAtomValue(autoCommitEnabledAtom);
   const setAutoCommitEnabled = useSetAtom(setAutoCommitEnabledAtom);
+  const usageLimitAutoResumeEnabled = useAtomValue(settingAtom('ai.usageLimitAutoResumeEnabled'));
 
   // Diff peek popover size (shared with git extension)
   const diffPeekSize = useAtomValue(diffPeekSizeAtom);
@@ -801,6 +784,9 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   // ============================================================
   // Load session data on mount
   // ============================================================
+  // Keep this session's messages resident while it is shown.
+  useEffect(() => (sessionId ? sessionViewRetention.acquire(sessionId) : undefined), [sessionId]);
+
   useEffect(() => {
     if (!sessionId || !workspacePath) return;
     if (!hasSessionData) {
@@ -885,9 +871,9 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const settingsShortcut = isMac ? 'Cmd+,' : 'Ctrl+,';
         await confirm({
-          title: t('dialogs:mcp_tool_configuration.title'),
-          message: t('dialogs:mcp_tool_configuration.message', { shortcut: settingsShortcut }),
-          confirmLabel: t('dialogs:confirm.ok'),
+          title: tDialogs('mcp_tool_configuration.title'),
+          message: tDialogs('mcp_tool_configuration.message', { shortcut: settingsShortcut }),
+          confirmLabel: tDialogs('confirm.ok'),
           cancelLabel: ''
         });
       }
@@ -900,7 +886,9 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         (sessionError.message.toLowerCase().includes('401 unauthorized') ||
          (sessionError.message.toLowerCase().includes('401') && sessionError.message.toLowerCase().includes('authentication')));
 
-      if (!isCodexOpenAIAuthError) {
+      // A usage-limit block is already saved as the rate-limit card, which
+      // carries the auto-resume switch; a local copy would show it twice.
+      if (!isCodexOpenAIAuthError && !sessionError.isUsageLimit) {
         // Add error as an assistant message so user can see what went wrong.
         // isCodexAuthRequired short-circuits the rendered text to a CTA widget
         // that opens the Codex auth section in settings; the raw error string
@@ -909,7 +897,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         if (sessionError.isAuthError) extra.isAuthError = true;
         if (sessionError.isCodexAuthRequired) extra.isCodexAuthRequired = true;
         const errorMessage = makeOptimisticError(
-          t('transcript.error_message', { message: sessionError.message }),
+          `Error: ${sessionError.message}`,
           Object.keys(extra).length > 0 ? extra : undefined,
         );
         updateSessionStore({
@@ -926,7 +914,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     };
 
     handleError();
-  }, [sessionError, sessionId, provider, messages, updateSessionStore, setIsProcessing, confirm, t]);
+  }, [sessionError, sessionId, provider, messages, updateSessionStore, setIsProcessing, confirm, tDialogs, tCommon]);
 
   // Derived values
   const isLoading = isProcessing;
@@ -1067,40 +1055,21 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       // from re-rendering the entire transcript.
       const currentAttachments = store.get(sessionDraftAttachmentsAtom(sessionId)) ?? [];
 
-      // If there's already a pending queued prompt, append to it instead of
-      // creating a separate entry. This bundles multiple queued messages into
-      // one prompt, matching how Claude Code handles stacked queries.
-      const lastQueued = queuedPrompts[queuedPrompts.length - 1];
-      let combinedPrompt = message.trim();
-      let combinedAttachments = currentAttachments;
-
-      if (lastQueued) {
-        // Delete the existing queued prompt so we can replace it
-        await window.electronAPI.invoke('ai:deleteQueuedPrompt', lastQueued.id);
-        combinedPrompt = lastQueued.prompt + '\n\n' + message.trim();
-        // Merge attachments from both prompts
-        combinedAttachments = [...(lastQueued.attachments || []), ...currentAttachments];
-      }
-
+      // Keep each submission's authorship/context and stable queue position.
+      // Delete-and-recreate merging can race a claim or absorb an agent report.
       const result = await window.electronAPI.invoke(
         'ai:createQueuedPrompt',
         sessionId,
-        combinedPrompt,
-        combinedAttachments,
+        message.trim(),
+        currentAttachments,
         serializableContext
       ) as { id: string; prompt: string; timestamp: number };
 
-      setQueuedPrompts(prev => {
-        // Remove the old queued prompt (if we merged into it) and add the new combined one
-        const filtered = lastQueued ? prev.filter(p => p.id !== lastQueued.id) : prev;
-        return [...filtered, {
-          id: result.id,
-          prompt: combinedPrompt,
-          timestamp: result.timestamp,
-          documentContext: serializableContext,
-          attachments: combinedAttachments
-        }];
-      });
+      setQueuedPrompts(prev => [...prev.filter(p => p.id !== result.id), {
+        ...result,
+        documentContext: serializableContext,
+        attachments: currentAttachments
+      }]);
 
       setLastSubmitAt(Date.now());
       setDraftInput('');
@@ -1111,13 +1080,65 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     } finally {
       setIsQueueing(false);
     }
-  }, [sessionId, getEffectiveDocumentContext, setDraftInput, setDraftAttachments, setLastSubmitAt, isQueueing, queuedPrompts, clearAIInputHistory]);
+  }, [sessionId, getEffectiveDocumentContext, setDraftInput, setDraftAttachments, setLastSubmitAt, isQueueing, clearAIInputHistory]);
+
+  // What the composer looked like when this session opened. Once per session,
+  // not per render: we are trying to explain why people do not act on a screen,
+  // and today we do not record what the screen offered them.
+  const composerStateReportedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (composerStateReportedFor.current === sessionId) return;
+    composerStateReportedFor.current = sessionId;
+    const providerSelected = !!provider;
+    const modelSelected = !!currentModel;
+    const disabledReason: ComposerDisabledReason = !providerSelected
+      ? 'no_provider_selected'
+      : !modelSelected
+        ? 'no_models_available'
+        : 'none';
+    trackSendWallEvent('composer_state_reported', {
+      surface: 'transcript',
+      sendEnabled: disabledReason === 'none',
+      disabledReason,
+      providerSelected,
+      modelSelected,
+      provider: toStableAnalyticsCategory(provider),
+    });
+  }, [sessionId, provider, currentModel]);
 
   const handleSend = useCallback(async () => {
     // Read draft state imperatively — we deliberately don't subscribe to
     // these atoms in SessionTranscript (see SessionAIInput).
     const currentDraftInput = store.get(sessionDraftInputAtom(sessionId)) ?? '';
-    if (!currentDraftInput.trim() || !sessionData) return;
+
+    // The send wall: this event is the denominator, so it fires before every
+    // guard below, including the CLI branch that returns without ever reaching
+    // `ai:sendMessage`. Every path out of this function that is not a send must
+    // emit `ai_send_blocked` with a reason, or the funnel silently loses the
+    // attempt — which is the exact ambiguity this instrumentation removes.
+    const blocked = (reason: SendBlockedReason) =>
+      trackSendWallEvent('ai_send_blocked', {
+        surface: 'transcript',
+        reason,
+        provider: toStableAnalyticsCategory(provider),
+      });
+
+    trackSendWallEvent('ai_message_submit_attempted', {
+      surface: 'transcript',
+      provider: toStableAnalyticsCategory(provider),
+      promptLengthBucket: bucketPromptLength(currentDraftInput.trim().length),
+      isFirstMessageInSession: !sessionHasMessages,
+      sessionMode: toStableAnalyticsCategory(aiMode),
+    });
+
+    if (!currentDraftInput.trim()) {
+      blocked('empty_draft');
+      return;
+    }
+    if (!sessionData) {
+      blocked('no_session_data');
+      return;
+    }
 
     // claude-code-cli (subscription, NIM-806): the genuine `claude` CLI runs in
     // the terminal strip and is driven by its PTY, not the Agent SDK loop. The
@@ -1142,6 +1163,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       // that already has a prior turn writes keystrokes directly.
       if (!sessionHasMessages || isLoading) {
         handleQueue(cliMessage);
+        blocked('queued_cli_not_ready');
         return;
       }
       const attachments = store.get(sessionDraftAttachmentsAtom(sessionId)) ?? [];
@@ -1172,12 +1194,14 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         recordClaudeActivity();
       } catch (error) {
         console.error('[SessionTranscript] Failed to submit claude-cli prompt:', error);
+        blocked('cli_submit_failed');
       }
       return;
     }
 
     if (isLoading) {
       handleQueue(currentDraftInput.trim());
+      blocked('queued_while_loading');
       return;
     }
 
@@ -1203,13 +1227,14 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         // Revert local state since persistence failed
         setAiMode(aiMode as AIMode);
         // Show error to user
-        const errorMessage = makeOptimisticError(t('transcript.planning_failed'));
+        const errorMessage = makeOptimisticError(tAIChat('transcript.planning_failed'));
         updateSessionStore({
           sessionId,
           updates: {
             messages: [...messages, errorMessage],
           },
         });
+        blocked('mode_switch_failed');
         return;
       }
 
@@ -1218,6 +1243,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         setDraftInput('');
         setDraftAttachments([]);
         clearAIInputHistory(sessionId);
+        blocked('slash_command_only');
         return;
       }
     }
@@ -1254,12 +1280,37 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         // (handles worktree sessions, workstreams, and single sessions properly)
         onClearAgentSession?.();
       }
+      blocked('slash_command_clear');
       return; // Don't send the /clear message to the AI
     }
 
     // Expand @@[name](shortId) -> @@[name](fullUuid) for agent consumption
     const sessionRegistry = store.get(sessionRegistryAtom);
     message = expandSessionMentions(message, sessionRegistry);
+
+    // Record the prompt durably before the composer and its persisted draft
+    // are cleared. Setup before the provider logs the prompt can stall, and a
+    // quit during that stall used to lose the text. If this write fails, the
+    // draft is left alone and nothing is sent.
+    if (submittingRef.current) {
+      blocked('duplicate_prompt');
+      return;
+    }
+    submittingRef.current = true;
+    let submissionId: string;
+    try {
+      ({ submissionId } = await window.electronAPI.invoke('ai:recordPendingSubmission', sessionId, message) as { submissionId: string });
+    } catch (error) {
+      console.error('[SessionTranscript] Failed to record submission:', error);
+      updateSessionStore({
+        sessionId,
+        updates: { messages: [...messages, makeOptimisticError(tAIChat('transcript.submission_record_failed'))] },
+      });
+      blocked('submission_record_failed');
+      return;
+    } finally {
+      submittingRef.current = false;
+    }
 
     setLastSubmitAt(Date.now());
     setDraftInput('');
@@ -1291,6 +1342,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         attachments: attachments.length > 0 ? attachments : undefined,
         mode: overrideMode,
         inputType: 'user' as const,
+        submissionId,
       };
 
       await window.electronAPI.invoke('ai:sendMessage', message, docContext, sessionId, workspacePath);
@@ -1305,7 +1357,9 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       console.error('[SessionTranscript] Failed to send message:', error);
       // Show error in transcript so user knows what went wrong
       const errorMessage = makeOptimisticError(
-        t('transcript.error_message', { message: error instanceof Error ? error.message : t('transcript.send_failed') }),
+        tAIChat('transcript.error_message', {
+          message: error instanceof Error ? error.message : tAIChat('transcript.send_failed'),
+        }),
       );
       updateSessionStore({
         sessionId,
@@ -1313,9 +1367,15 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
           messages: [...messages, userMessage, errorMessage],
         },
       });
+      // Give the text back so a failed send can be retried, keeping anything
+      // typed since. The `prev` form reads the live draft, not the one above.
+      setDraftInput(prev => mergeRestoredPromptIntoDraft(prev, message));
+      if (attachments.length > 0) {
+        setDraftAttachments(prev => (prev && prev.length > 0 ? prev : attachments));
+      }
       setIsProcessing(false);
     }
-  }, [sessionId, sessionData, isLoading, getEffectiveDocumentContext, aiMode, workspacePath, setDraftInput, setDraftAttachments, setLastSubmitAt, resetHistory, updateSessionStore, handleQueue, setIsProcessing, messages, sessionHasMessages, startedCliSessionId, mode, onClearSession, onClearAgentSession, clearAIInputHistory, provider, recordClaudeActivity, t]);
+  }, [sessionId, sessionData, isLoading, getEffectiveDocumentContext, aiMode, workspacePath, setDraftInput, setDraftAttachments, setLastSubmitAt, resetHistory, updateSessionStore, handleQueue, setIsProcessing, messages, sessionHasMessages, startedCliSessionId, mode, onClearSession, onClearAgentSession, clearAIInputHistory, provider, recordClaudeActivity]);
 
   // Launch a sibling session from a `launch: new-session` action prompt.
   // Builds the originating-session mention prefix here (in the renderer) so the
@@ -1353,6 +1413,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
           actionLabel: action.label,
           config: {
             model: action.config.model,
+            effort: action.config.effort,
             foreground: action.config.foreground,
             autoSubmit: action.config.autoSubmit,
             worktree: action.config.worktree,
@@ -1386,9 +1447,9 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     }
   }, [provider, sessionId, setIsProcessing, recordClaudeActivity]);
 
-  const handleFileClick = useCallback((filePath: string) => {
+  const handleFileClick = useCallback((filePath: string, location?: TranscriptFileLocation) => {
     const baseDir = sessionWorktreePath ?? workspacePath;
-    onFileClick?.(resolveTranscriptClickPath(filePath, baseDir));
+    onFileClick?.(resolveTranscriptClickPath(filePath, baseDir), location);
   }, [onFileClick, sessionWorktreePath, workspacePath]);
 
   const setRequestOpenSession = useSetAtom(requestOpenSessionAtom);
@@ -1415,9 +1476,36 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     return !!registration?.supportsTranscriptEmbed;
   }, []);
 
+  // Read through a ref so handleCompact keeps its identity across message
+  // updates; it is threaded down to every transcript row, and a new identity
+  // per streamed frame would defeat the row memoization.
+  const compactStateRef = useRef({ sessionData, messages });
+  compactStateRef.current = { sessionData, messages };
+
   const handleCompact = useCallback(async () => {
+    const { sessionData, messages } = compactStateRef.current;
     if (!sessionData) return;
 
+    // Phase 4: the provider's declared capability chooses the mechanism. This
+    // used to read `provider === 'openai-codex'`, which is fine until the next
+    // provider grows a compaction RPC and nobody remembers this line exists.
+    if (compactionSupport === 'rpc') {
+      try {
+        const result = await window.electronAPI.invoke('ai:compactSession', sessionId) as
+          { success: boolean; error?: string };
+        if (!result?.success) {
+          console.error('[SessionTranscript] Compaction failed:', result?.error);
+        }
+      } catch (error) {
+        console.error('[SessionTranscript] Compaction failed:', error);
+      }
+      return;
+    }
+
+    // #1252: sending "/compact" as a user turn only compacts anything when the
+    // agent itself interprets slash commands. For every other provider it
+    // reaches the model as literal prompt text and does nothing, which is why
+    // the affordance is hidden entirely rather than offered as a no-op.
     const message = '/compact';
     const userMessage = makeOptimisticUserMessage(
       message,
@@ -1443,7 +1531,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     } catch (error) {
       console.error('[SessionTranscript] Failed to send /compact command:', error);
     }
-  }, [sessionId, sessionData, messages, getEffectiveDocumentContext, aiMode, workspacePath, updateSessionStore]);
+  }, [sessionId, getEffectiveDocumentContext, aiMode, workspacePath, updateSessionStore, compactionSupport]);
 
   const handleTodoClick = useCallback((todo: TodoItem) => {
     onTodoClick?.(todo);
@@ -1487,7 +1575,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       // may race or, in some edge cases, may not fire cleanly after abort.
       await window.electronAPI.invoke('ai:interruptCurrentTurn', sessionId);
       if (workspacePath) {
-        await window.electronAPI.invoke('ai:triggerQueueProcessing', sessionId, workspacePath);
+        await window.electronAPI.invoke('ai:triggerQueueProcessing', sessionId, workspacePath, 'send-now');
       }
     } catch (error) {
       console.error('[SessionTranscript] Failed to interrupt for send-now:', error);
@@ -1495,22 +1583,16 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   }, [sessionId, workspacePath]);
 
   const handleCloseAndArchive = useCallback(async () => {
-    try {
-      await window.electronAPI.invoke('sessions:update-metadata', sessionId, { isArchived: true });
-      setIsArchived(true);
-      onCloseAndArchive?.(sessionId);
-    } catch (error) {
-      console.error('[SessionTranscript] Failed to archive session:', error);
-    }
+    // The helper shows an error message itself if the save fails. Stop here so the screen never says "archived" when it was not saved.
+    if (!(await saveSessionArchived(sessionId, true))) return;
+    setIsArchived(true);
+    onCloseAndArchive?.(sessionId);
   }, [sessionId, setIsArchived, onCloseAndArchive]);
 
   const handleUnarchive = useCallback(async () => {
-    try {
-      await window.electronAPI.invoke('sessions:update-metadata', sessionId, { isArchived: false });
-      setIsArchived(false);
-    } catch (error) {
-      console.error('[SessionTranscript] Failed to unarchive session:', error);
-    }
+    // Same rule as above: if the save fails, the helper shows the error and we change nothing on screen.
+    if (!(await saveSessionArchived(sessionId, false))) return;
+    setIsArchived(false);
   }, [sessionId, setIsArchived]);
 
   const handleAIModeChange = useCallback(async (newMode: AIMode) => {
@@ -1566,6 +1648,12 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       model: currentModel,
     });
   }, [sessionId, updateSessionStore, thinkingMode, currentModel, posthog]);
+
+  // OpenCode session role. Persisted per session under the metadata key PR #624
+  // introduced, so a session that already carries one keeps it.
+  const handleOpenCodeRoleChange = useCallback(async (role: string | null) => {
+    await updateSessionMetadataField(sessionId, 'opencodeAgent', role, null, updateSessionStore);
+  }, [sessionId, updateSessionStore]);
 
   const handleCommandSelect = useCallback((command: string) => {
     setDraftInput(command);
@@ -1646,45 +1734,15 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
 
   // Handler for "Start new session to implement" option
   // Creates a new session and opens it with a populated draft before stopping the current plan session.
-  // For worktree sessions: creates a new session in the same worktree (no parent-child hierarchy)
-  // For regular sessions: creates a workstream hierarchy (converts to workstream if needed)
+  // The implementation session stays under the planning session in the same container.
   const handleExitPlanModeStartNewSession = useCallback(async (requestId: string, confirmSessionId: string, planFilePath: string) => {
     try {
-      let newSessionId: string | null = null;
-
-      // Check if we're in a worktree session
-      if (worktreeId && onCreateWorktreeSession) {
-        // Worktree sessions: create a new session in the same worktree (NOT a workstream)
-        // This avoids creating workstreams-within-worktrees which is not supported
-        console.log('[SessionTranscript] Creating new session in worktree:', worktreeId);
-        newSessionId = await onCreateWorktreeSession(worktreeId);
-      } else {
-        // Regular sessions: use workstream hierarchy logic
-        const hasChildren = sessionChildren.length > 0;
-
-        if (hasChildren || sessionParentId) {
-          // Already part of a workstream hierarchy - create a child of the appropriate parent
-          // If sessionParentId exists, we're a child session - create sibling under the same parent
-          // If hasChildren, we're the root - create child under us
-          const parentId = sessionParentId || confirmSessionId;
-          newSessionId = await createChildSession({
-            parentSessionId: parentId,
-            workspacePath: workspacePath || '',
-            provider: 'claude-code',
-            model: defaultModel,
-          });
-        } else {
-          // Single session - convert to workstream first, which creates a sibling session
-          const result = await convertToWorkstream({
-            sessionId: confirmSessionId,
-            workspacePath: workspacePath || '',
-            model: defaultModel,
-          });
-          if (result?.siblingId) {
-            newSessionId = result.siblingId;
-          }
-        }
-      }
+      const newSessionId = await createChildSession({
+        parentSessionId: confirmSessionId,
+        workspacePath: workspacePath || '',
+        provider: 'claude-code',
+        model: defaultModel,
+      });
 
       if (!newSessionId) {
         console.error('[SessionTranscript] Failed to create new implementation session');
@@ -1714,7 +1772,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     } catch (error) {
       console.error('[SessionTranscript] Failed to start new session for implementation:', error);
     }
-  }, [sessionChildren, sessionParentId, workspacePath, worktreeId, onCreateWorktreeSession, createChildSession, convertToWorkstream, sessionWorktreePath, posthog, defaultModel, openSessionWithDraft, stopExitPlanModeSession]);
+  }, [sessionChildren, sessionParentId, workspacePath, worktreeId, onCreateWorktreeSession, createChildSession, sessionWorktreePath, posthog, defaultModel, openSessionWithDraft, stopExitPlanModeSession]);
 
   const handleExitPlanModeCancel = useCallback(async (requestId: string, confirmSessionId: string) => {
     try {
@@ -1848,14 +1906,53 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         refreshPendingPrompts(sessionId);
       },
 
+      // Feedback request operations. Fire-and-forget: send publishes the
+      // subjects the author confirmed, creates the request, and returns. The
+      // turn does not wait for a recipient.
+      feedbackRequestSend: async (payload) =>
+        createFeedbackComposeHost({
+          workspacePath: workspacePath || '',
+          sessionId,
+        }).send(payload),
+      feedbackRequestCancel: async (draftId: string) =>
+        createFeedbackComposeHost({
+          workspacePath: workspacePath || '',
+          sessionId,
+        }).cancel(draftId),
+
+      // The folder every confirmed file subject lands in, chosen before the
+      // author commits to sending rather than in a modal afterwards.
+      pickFeedbackDestination: (current) => askFeedbackDestination(current),
+
+      // Lets the author see the mockups they are about to send. A draft's
+      // artifacts are always unpublished `file` refs -- nothing leaves the
+      // machine before approval -- so this is the local-file path, not the
+      // collaborative one.
+      renderFeedbackArtifactPreview: (entry, artifact) =>
+        renderComposeArtifactPreview(entry, artifact, workspacePath || null),
+      renderFeedbackArtifactPopover: (popoverProps) =>
+        renderComposeArtifactPopover(popoverProps, workspacePath || null),
+
       // Auto-commit
       autoCommitEnabled,
       setAutoCommitEnabled: (enabled: boolean) => {
         setAutoCommitEnabled(enabled);
       },
 
+      // Usage-limit auto-resume (the rate-limit card's switch)
+      usageLimitAutoResumeEnabled,
+      setUsageLimitAutoResume: async (enabled: boolean, resetsAtMs: number | null) => {
+        const current = workspacePath && resetsAtMs != null ? { sessionId, workspacePath, resetsAtMs } : undefined;
+        await window.electronAPI.invoke('wakeup:set-usage-limit-auto-resume', enabled, current);
+      },
+
       // Git commit operations
-      gitCommit: async (proposalId: string, files: string[], message: string) => {
+      gitCommit: async (
+        proposalId: string,
+        files: string[],
+        message: string,
+        hunkSelections?: HunkSelection[]
+      ) => {
         try {
           // Execute the git commit via IPC
           // Use worktree path for git operations when in a worktree session
@@ -1864,8 +1961,20 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
             'git:commit',
             gitWorkspacePath,
             message,
-            files
-          ) as { success: boolean; commitHash?: string; commitDate?: string; error?: string };
+            files,
+            sessionId,
+            hunkSelections,
+            undefined,
+            proposalId
+          ) as {
+            success: boolean;
+            commitHash?: string;
+            commitDate?: string;
+            error?: string;
+            committedFiles?: string[];
+            uncommittableFiles?: string[];
+            repoResults?: Array<{ repoPath: string; success: boolean; commitHash?: string; error?: string }>;
+          };
 
           // Send response via unified IPC channel for the durable prompt.
           // A real failure (success=false with an error) maps to action='error',
@@ -1881,7 +1990,15 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
               commitHash: result.commitHash,
               commitDate: result.commitDate,
               error: result.error,
-              filesCommitted: result.success ? files : undefined,
+              // `committedFiles` is what actually landed. Reporting the full
+              // input instead tells the agent that a file belonging to no repo
+              // -- never staged anywhere -- is committed.
+              filesCommitted: result.success ? (result.committedFiles ?? files) : undefined,
+              uncommittableFiles: result.uncommittableFiles,
+              // A selection spanning repos makes one commit per repo, and
+              // `commitHash` is only the first. Without this the rest are
+              // invisible to both the widget and the agent.
+              repoResults: result.repoResults,
               commitMessage: result.success ? message : undefined,
             },
             respondedBy: 'desktop' as const,
@@ -1938,6 +2055,24 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         }
       },
 
+      sessionFileDiff: async (filePath: string) => {
+        try {
+          const gitWorkspacePath = sessionWorktreePath || workspacePath;
+          const result = await window.electronAPI.invoke(
+            'session:file-diff',
+            gitWorkspacePath,
+            sessionId,
+            filePath
+          ) as { unifiedDiff: string; source: string };
+          // `source: 'none'` means no pre-edit baseline for this session, so
+          // there is nothing to attribute and every hunk stays checked.
+          return result?.unifiedDiff ? { unifiedDiff: result.unifiedDiff } : null;
+        } catch (err) {
+          console.error('[SessionTranscript] sessionFileDiff failed:', err);
+          return null;
+        }
+      },
+
       // Diff peek popover size (persisted via AI settings)
       diffPeekSize,
       setDiffPeekSize: (size: { width: number; height: number }) => {
@@ -1954,7 +2089,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
           ) as { success: boolean; iteration?: { superLoopId: string } | null };
 
           if (!iterationResult?.success || !iterationResult.iteration) {
-            return { success: false, error: t('transcript.super_loop_not_found') };
+            return { success: false, error: tAgents('super_loop_progress.session_not_found') };
           }
 
           const superLoopId = iterationResult.iteration.superLoopId;
@@ -2012,6 +2147,42 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         }
       },
 
+      getAttachmentStagingGitignoreStatus: async () => {
+        return window.electronAPI.invoke(
+          'attachment:workspace-staging-status',
+          workspacePath,
+        );
+      },
+      retryAttachmentStaging: async (prompt, blockedAttachments, addGitignore) => {
+        try {
+          const result = await window.electronAPI.invoke('attachment:retry-in-workspace', {
+            workspacePath,
+            sessionId,
+            attachments: blockedAttachments,
+            addGitignore,
+          }) as { success: boolean; attachments?: ChatAttachment[]; error?: string };
+          if (!result.success || !result.attachments) {
+            return { success: false, error: result.error ?? tAIChat('attachment_staging_denied.retry_failed') };
+          }
+
+          setDraftInput(prompt);
+          setDraftAttachments(result.attachments);
+          await Promise.resolve();
+          await handleSend();
+          return { success: true };
+        } catch (error) {
+          return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+      },
+      openAttachmentSettings: () => {
+        store.set(openSettingsCommandAtom, {
+          category: 'agent-features',
+          scope: 'application',
+          anchor: 'attachment-staging-settings',
+          timestamp: Date.now(),
+        });
+      },
+
       // Common operations
       openFile: async (filePath: string) => {
         if (onFileClick) {
@@ -2020,6 +2191,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
           await window.electronAPI.invoke('workspace:open-file', { workspacePath, filePath });
         }
       },
+      openPage: (uri: string) => openAgentEditedPage(uri, workspacePath || ''),
       trackEvent: (eventName: string, properties?: Record<string, unknown>) => {
         posthog?.capture(eventName, properties);
       },
@@ -2035,6 +2207,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       get workspacePath() { return liveHostRef.current?.workspacePath ?? (workspacePath || ''); },
       get worktreeId() { return liveHostRef.current?.worktreeId ?? worktreeId; },
       get autoCommitEnabled() { return liveHostRef.current?.autoCommitEnabled ?? false; },
+      get usageLimitAutoResumeEnabled() { return liveHostRef.current?.usageLimitAutoResumeEnabled ?? false; },
       get diffPeekSize() { return getDiffPeekSizeForInteractiveWidgetHost(liveHostRef.current); },
       askUserQuestionSubmit: (...args) => liveHostRef.current!.askUserQuestionSubmit(...args),
       askUserQuestionCancel: (...args) => liveHostRef.current!.askUserQuestionCancel(...args),
@@ -2046,13 +2219,23 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       exitPlanModeCancel: (...args) => liveHostRef.current!.exitPlanModeCancel(...args),
       toolPermissionSubmit: (...args) => liveHostRef.current!.toolPermissionSubmit(...args),
       toolPermissionCancel: (...args) => liveHostRef.current!.toolPermissionCancel(...args),
+      feedbackRequestSend: (...args) => liveHostRef.current!.feedbackRequestSend!(...args),
+      feedbackRequestCancel: (...args) => liveHostRef.current!.feedbackRequestCancel!(...args),
+      pickFeedbackDestination: (...args) => liveHostRef.current!.pickFeedbackDestination!(...args),
+      renderFeedbackArtifactPreview: (...args) => liveHostRef.current!.renderFeedbackArtifactPreview!(...args),
+      renderFeedbackArtifactPopover: (...args) => liveHostRef.current!.renderFeedbackArtifactPopover!(...args),
       setAutoCommitEnabled: (...args) => liveHostRef.current!.setAutoCommitEnabled(...args),
+      setUsageLimitAutoResume: (...args) => liveHostRef.current!.setUsageLimitAutoResume!(...args),
       gitCommit: (...args) => liveHostRef.current!.gitCommit(...args),
       gitCommitCancel: (...args) => liveHostRef.current!.gitCommitCancel(...args),
       gitFileDiff: (...args) => liveHostRef.current!.gitFileDiff!(...args),
       setDiffPeekSize: (...args) => liveHostRef.current!.setDiffPeekSize!(...args),
       superLoopBlockedFeedback: (...args) => liveHostRef.current!.superLoopBlockedFeedback(...args),
+      getAttachmentStagingGitignoreStatus: (...args) => liveHostRef.current!.getAttachmentStagingGitignoreStatus!(...args),
+      retryAttachmentStaging: (...args) => liveHostRef.current!.retryAttachmentStaging!(...args),
+      openAttachmentSettings: (...args) => liveHostRef.current!.openAttachmentSettings!(...args),
       openFile: (...args) => liveHostRef.current!.openFile(...args),
+      openPage: (...args) => liveHostRef.current!.openPage!(...args),
       trackEvent: (...args) => liveHostRef.current!.trackEvent(...args),
     };
 
@@ -2336,7 +2519,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         }}
         data-session-id={sessionId}
       >
-        {isDataLoading ? t('transcript.loading') : t('transcript.not_found')}
+        {isDataLoading ? tAIChat('transcript.loading') : tAIChat('transcript.not_found')}
       </div>
     );
   }
@@ -2399,7 +2582,10 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
             isArchived={isArchived}
             onCloseAndArchive={handleCloseAndArchive}
             onUnarchive={handleUnarchive}
-            readFile={readFile}
+                readFile={(path) => readFile(path, {
+                  notFound: tAIChat('read_file_failed_path', { path }),
+                  failed: tAIChat('read_file_failed'),
+                })}
             fileEdits={sessionFileEdits}
             renderFilesHeader={mode === 'agent' ? () => (
               <>
@@ -2412,15 +2598,17 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
             onGroupByDirectoryChange={setGroupByDirectory}
             onOpenInExternalEditor={hasExternalEditor ? handleOpenInExternalEditor : undefined}
             externalEditorName={externalEditorName}
-            onCompact={handleCompact}
+            onCompact={compactionSupport === 'unsupported' ? undefined : handleCompact}
             promptAdditions={showPromptAdditions ? promptAdditions : null}
             currentTeammates={transcriptTeammates}
             waitingForNoun={waitingForNoun}
+            backgroundTasks={isProcessing && backgroundTasks?.length ? backgroundTasks : undefined}
             appStartTime={appStartTime ?? undefined}
             renderEmbeddedFile={renderEmbeddedFile}
             canEmbedFile={canEmbedFile}
+            loadToolCallDiffs={loadToolCallDiffs}
             currentPhase={currentPhase}
-            phaseColumns={phaseColumns}
+            phaseColumns={SESSION_PHASE_COLUMNS}
             onSetPhase={handleSetPhase}
           />
         </div>
@@ -2509,12 +2697,12 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
               textAlign: 'left',
               flex: '0 0 auto',
             }}
-            title={cliTerminalExpanded ? t('terminal:collapse_raw') : t('terminal:expand_raw')}
+            title={cliTerminalExpanded ? tTerminal('collapse_raw') : tTerminal('expand_raw')}
           >
             <span style={{ transform: cliTerminalExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.1s' }}>
               ▶
             </span>
-            <span>{t('terminal:raw_terminal')}</span>
+            <span>{tTerminal('raw_terminal')}</span>
           </button>
           {/* Keep the strip mounted always (PTY lifecycle); hide only its body when
               collapsed. The strip observes the always-on-screen drawer root
@@ -2542,6 +2730,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       {/* Wakeup + pending review banners - only in chat mode, hidden when collapsed */}
       {mode === 'chat' && !collapseTranscript && (
         <>
+          <McpLockdownBanner provider={typeof provider === 'string' ? provider : undefined} />
           <WakeupBanner sessionId={sessionId} />
           <PendingReviewBanner workspacePath={workspacePath} sessionId={sessionId} />
         </>
@@ -2585,10 +2774,8 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         onNavigateHistory={enableHistoryNavigation ? handleNavigateHistory : undefined}
         placeholder={
           mode === 'chat'
-            ? t('transcript.chat_placeholder')
-            : enableSlashCommands
-              ? t('agents:input.placeholder')
-              : t('agents:input.placeholder')
+            ? tAIChat('transcript.chat_placeholder')
+            : tAgents('input.placeholder')
         }
         mode={aiMode as AIMode}
         onModeChange={handleAIModeChange}
@@ -2605,7 +2792,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         // AIInput.
         onModelChange={handleModelChange}
         readOnlyModel={isClaudeCliTerminalSession(provider) && cliSessionCommitted && isLoading}
-        readOnlyModelTitle={t('terminal:model_switch_wait')}
+        readOnlyModelTitle={tAIChat('transcript.read_only_model_title')}
         sessionHasMessages={sessionHasMessages}
         currentProvider={provider ?? null}
         effortLevel={effortLevel}
@@ -2614,6 +2801,8 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
         thinkingMode={thinkingMode}
         onThinkingModeChange={handleThinkingModeChange}
         showThinkingToggle={isClaudeCliTerminalSession(provider) && cliSessionCommitted ? false : showThinkingToggle}
+        openCodeRole={openCodeRole}
+        onOpenCodeRoleChange={provider === 'opencode' ? handleOpenCodeRoleChange : undefined}
         tokenUsage={tokenUsage}
         provider={provider}
         onQueue={handleQueue}
@@ -2625,4 +2814,12 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
   );
 });
 
+LocalSessionTranscript.displayName = 'LocalSessionTranscript';
+
+export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscriptProps>((props, ref) => {
+  const remoteHost = useAtomValue(sessionRemoteHostAtom(props.sessionId));
+  return remoteHost
+    ? <RemoteSessionTranscript key={props.sessionId} {...props} ref={ref} />
+    : <LocalSessionTranscript {...props} ref={ref} />;
+});
 SessionTranscript.displayName = 'SessionTranscript';

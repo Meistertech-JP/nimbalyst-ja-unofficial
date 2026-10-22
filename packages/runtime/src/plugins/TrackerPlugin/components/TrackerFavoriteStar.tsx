@@ -1,20 +1,21 @@
 import React, { type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface TrackerFavoriteStarProps {
   itemId: string;
   isFavorite: boolean;
   onToggle?: (itemId: string) => void;
   className?: string;
-  ariaLabel?: string;
 }
 
 /** Non-row-owning action; aggressively isolates every row/card interaction. */
-export function TrackerFavoriteStar({ itemId, isFavorite, onToggle, className = '', ariaLabel }: TrackerFavoriteStarProps): JSX.Element {
+export function TrackerFavoriteStar({ itemId, isFavorite, onToggle, className = '' }: TrackerFavoriteStarProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   return (
     <button
       type="button"
       draggable={false}
-      aria-label={ariaLabel ?? (isFavorite ? 'Remove from favorites' : 'Add to favorites')}
+      aria-label={t(isFavorite ? 'grid.remove_favorite' : 'grid.add_favorite')}
       aria-pressed={isFavorite}
       data-testid="tracker-favorite-star"
       className={`tracker-favorite-star shrink-0 inline-flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--nim-bg-hover)] ${isFavorite ? 'text-amber-500' : 'text-[var(--nim-text-faint)] opacity-60 hover:opacity-100'} ${className}`}

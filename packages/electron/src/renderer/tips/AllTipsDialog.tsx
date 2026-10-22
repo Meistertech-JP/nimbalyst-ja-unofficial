@@ -7,12 +7,12 @@
  */
 
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { useSetAtom } from 'jotai';
 import { activeTipIdAtom } from './atoms';
 import { recordTipShown } from './TipService';
 import { tips } from './definitions';
 import type { TipDefinition } from './types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface AllTipsDialogProps {
   isOpen: boolean;
@@ -27,8 +27,8 @@ export function AllTipsDialog({
   tipDefinitions = tips,
   onShowTip,
 }: AllTipsDialogProps): React.ReactElement | null {
-  const { t } = useTranslation('common');
   const setActiveTipId = useSetAtom(activeTipIdAtom);
+  const { t } = useTranslation('common');
 
   if (!isOpen) return null;
 
@@ -46,6 +46,14 @@ export function AllTipsDialog({
     onClose();
   };
 
+  const getTipContent = (tip: TipDefinition) => {
+    const contentKey = tip.id.replace(/^tip-/, '').replace(/-/g, '_');
+    return {
+      title: t(`tip_content.${contentKey}.title`, { defaultValue: tip.content.title }),
+      body: t(`tip_content.${contentKey}.body`, { defaultValue: tip.content.body }),
+    };
+  };
+
   return (
     <div
       className="all-tips-overlay nim-overlay z-[10001] backdrop-blur-[4px]"
@@ -60,39 +68,42 @@ export function AllTipsDialog({
           <button
             className="all-tips-close nim-btn-icon w-8 h-8 text-[28px] leading-none rounded transition-all duration-200"
             onClick={onClose}
-            aria-label={t('close')}
+            aria-label={t('close', { defaultValue: 'Close' })}
           >
             &times;
           </button>
         </div>
 
         <div className="all-tips-content overflow-y-auto p-6 flex flex-col gap-3">
-          {sorted.map((tip) => (
-            <div
-              key={tip.id}
-              className="all-tips-item flex items-start gap-3 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg px-4 py-3"
-            >
-              {tip.content.icon && (
-                <div className="w-9 h-9 rounded-lg bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--nim-primary)_20%,transparent)] flex items-center justify-center shrink-0 text-[var(--nim-primary)]">
-                  {tip.content.icon}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-semibold text-[var(--nim-text)] leading-snug">
-                  {t(`tip_content.${tip.id.replace(/^tip-/, '').replace(/-/g, '_')}.title`, { defaultValue: tip.content.title })}
-                </div>
-                <div className="text-[12.5px] text-[var(--nim-text-muted)] mt-1 leading-relaxed line-clamp-3">
-                  {t(`tip_content.${tip.id.replace(/^tip-/, '').replace(/-/g, '_')}.body`, { defaultValue: tip.content.body }).replace(/\*\*/g, '')}
-                </div>
-              </div>
-              <button
-                className="shrink-0 px-3 py-1.5 bg-[var(--nim-bg)] border border-[var(--nim-border)] text-[var(--nim-text)] rounded-md text-[12.5px] font-medium cursor-pointer hover:bg-[var(--nim-bg-hover)] transition-colors"
-                onClick={() => handleShow(tip)}
+          {sorted.map((tip) => {
+            const content = getTipContent(tip);
+            return (
+              <div
+                key={tip.id}
+                className="all-tips-item flex items-start gap-3 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg px-4 py-3"
               >
-                {t('tips.show')}
-              </button>
-            </div>
-          ))}
+                {tip.content.icon && (
+                  <div className="w-9 h-9 rounded-lg bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--nim-primary)_20%,transparent)] flex items-center justify-center shrink-0 text-[var(--nim-primary)]">
+                    {tip.content.icon}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-semibold text-[var(--nim-text)] leading-snug">
+                    {content.title}
+                  </div>
+                  <div className="text-[12.5px] text-[var(--nim-text-muted)] mt-1 leading-relaxed line-clamp-3">
+                    {content.body.replace(/\*\*/g, '')}
+                  </div>
+                </div>
+                <button
+                  className="shrink-0 px-3 py-1.5 bg-[var(--nim-bg)] border border-[var(--nim-border)] text-[var(--nim-text)] rounded-md text-[12.5px] font-medium cursor-pointer hover:bg-[var(--nim-bg-hover)] transition-colors"
+                  onClick={() => handleShow(tip)}
+                >
+                  {t('tips.show')}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

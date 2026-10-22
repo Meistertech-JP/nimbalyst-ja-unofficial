@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { StorageRetentionCard } from './StorageRetentionCard';
 
 interface TableStat {
   name: string;
@@ -25,9 +25,6 @@ interface BackupStatus {
 }
 
 interface WalStats {
-  backend?: 'pglite' | 'sqlite';
-  autoCheckpointPages?: number;
-  pageSizeBytes?: number;
   fileCount: number;
   totalBytes: number;
   totalSize: string;
@@ -56,9 +53,9 @@ interface Props {
   onTableSelect: (tableName: string) => void;
 }
 
-function formatBytes(bytes: number | null | undefined, t: TFunction): string {
+function formatBytes(bytes: number | null | undefined, t: (key: string) => string): string {
   if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) {
-    return t('common:database.unknown');
+    return t('database.unknown');
   }
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -89,7 +86,7 @@ function parsePostgresSize(s: string | undefined): number {
   return value * (multipliers[unit] ?? 1);
 }
 
-function formatRelativeTime(timestamp: string, t: TFunction): string {
+function formatRelativeTime(timestamp: string, t: (key: string, options?: Record<string, unknown>) => string): string {
   // Handle timestamps that were sanitized for file paths (dashes instead of colons)
   // e.g., "2024-01-15T10-30-45-123Z" -> "2024-01-15T10:30:45.123Z"
   let normalized = timestamp;
@@ -100,7 +97,7 @@ function formatRelativeTime(timestamp: string, t: TFunction): string {
 
   const date = new Date(normalized);
   if (isNaN(date.getTime())) {
-    return t('common:database.unknown');
+    return t('database.unknown');
   }
 
   const now = new Date();
@@ -109,10 +106,10 @@ function formatRelativeTime(timestamp: string, t: TFunction): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return t('common:database.just_now');
-  if (diffMins < 60) return t(`common:database.minutes_ago_${diffMins === 1 ? 'one' : 'other'}`, { count: diffMins });
-  if (diffHours < 24) return t(`common:database.hours_ago_${diffHours === 1 ? 'one' : 'other'}`, { count: diffHours });
-  return t(`common:database.days_ago_${diffDays === 1 ? 'one' : 'other'}`, { count: diffDays });
+  if (diffMins < 1) return t('database.just_now');
+  if (diffMins < 60) return t('database.minutes_ago', { count: diffMins });
+  if (diffHours < 24) return t('database.hours_ago', { count: diffHours });
+  return t('database.days_ago', { count: diffDays });
 }
 
 interface ReclaimResult {
@@ -130,7 +127,7 @@ interface ReclaimResult {
  * reads) and optionally VACUUM to return the space to disk.
  */
 function RawLogMaintenanceCard() {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
   const [candidateRows, setCandidateRows] = useState<number | null>(null);
   const [vacuum, setVacuum] = useState(true);
   const [running, setRunning] = useState(false);
@@ -142,7 +139,7 @@ function RawLogMaintenanceCard() {
     setResult(null);
     const res = await window.electronAPI.invoke('database:reclaimRawLog:preview');
     if (res.success) setCandidateRows(res.candidateRows);
-    else setError(res.error || t('common:database.preview_failed'));
+    else setError(res.error || t('database.preview_failed'));
   };
 
   const run = async () => {
@@ -151,7 +148,7 @@ function RawLogMaintenanceCard() {
     try {
       const res = await window.electronAPI.invoke('database:reclaimRawLog:run', { vacuum });
       if (res.success) setResult(res.result);
-      else setError(res.error || t('common:database.reclaim_failed'));
+      else setError(res.error || t('database.reclaim_failed'));
     } catch (err) {
       setError(String(err));
     } finally {
@@ -161,20 +158,20 @@ function RawLogMaintenanceCard() {
 
   return (
     <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary database-raw-log-maintenance">
-      <div className="text-sm font-semibold mb-1">{t('common:database.reclaim_title')}</div>
+      <div className="text-sm font-semibold mb-1">{t('database.reclaim_title')}</div>
       <div className="text-xs text-[var(--nim-text-muted)] mb-3">
-        {t('common:database.reclaim_description')}
+        {t('database.reclaim_description')}
       </div>
 
       {candidateRows !== null && (
         <div className="text-xs text-[var(--nim-text-muted)] mb-2">
-          {t('common:database.rows_trimmed', { count: candidateRows.toLocaleString() })}
+          {t('database.rows_trimmed', { count: candidateRows })}
         </div>
       )}
 
       <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer">
         <input type="checkbox" checked={vacuum} onChange={(e) => setVacuum(e.target.checked)} />
-        {t('common:database.vacuum_after_rewrite')}
+        {t('database.vacuum_after_rewrite')}
       </label>
 
       <div className="flex items-center gap-2">
@@ -183,24 +180,24 @@ function RawLogMaintenanceCard() {
           disabled={running}
           className="py-1 px-3 rounded text-sm border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] disabled:opacity-50"
         >
-          {t('common:database.preview')}
+          {t('database.preview')}
         </button>
         <button
           onClick={run}
           disabled={running}
           className="py-1 px-3 rounded text-sm border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] disabled:opacity-50"
         >
-          {running ? t('common:database.running') : t('common:database.reclaim_space')}
+          {running ? t('database.running') : t('database.reclaim_space')}
         </button>
       </div>
 
       {error && <div className="text-xs text-[var(--nim-error)] mt-2">{error}</div>}
       {result && (
         <div className="text-xs text-[var(--nim-text-muted)] mt-2">
-          {t('common:database.reclaim_result_prefix', { rewritten: result.rewritten.toLocaleString(), scanned: result.scanned.toLocaleString() })}
-          {t('common:database.reclaim_saved', { bytes: formatBytes(result.bytesSaved, t) })}{' '}
-          {result.vacuumed ? t('common:database.vacuum_complete') : result.vacuumError ? t('common:database.vacuum_failed', { error: result.vacuumError }) : ''}
-          {' '}({(result.durationMs / 1000).toFixed(1)}s).
+          {t('database.reclaim_result_prefix', { rewritten: result.rewritten.toLocaleString(), scanned: result.scanned.toLocaleString() })}
+          {t('database.reclaim_saved', { bytes: formatBytes(result.bytesSaved, t) })}
+          {result.vacuumed ? t('database.vacuum_complete') : result.vacuumError ? t('database.vacuum_failed', { error: result.vacuumError }) : ''}
+          {' '}({t('database.duration_seconds', { seconds: (result.durationMs / 1000).toFixed(1) })}).
         </div>
       )}
     </div>
@@ -208,7 +205,7 @@ function RawLogMaintenanceCard() {
 }
 
 export function DatabaseDashboard({ onTableSelect }: Props) {
-  const { t, i18n } = useTranslation(['common']);
+  const { t } = useTranslation('common');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,7 +223,7 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
       if (result.success) {
         setStats(result);
       } else {
-        setError(result.error || t('common:database.load_failed'));
+        setError(result.error || t('database.load_failed'));
       }
     } catch (err) {
       setError(String(err));
@@ -238,7 +235,7 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-[var(--nim-text-muted)]">
-        {t('common:database.loading_dashboard')}
+        {t('database.loading_dashboard')}
       </div>
     );
   }
@@ -251,7 +248,7 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
           onClick={loadStats}
           className="py-1.5 px-4 rounded text-sm border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
         >
-          {t('common:database.retry')}
+          {t('database.retry')}
         </button>
       </div>
     );
@@ -269,27 +266,27 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">{t('common:database.overview')}</h2>
+          <h2 className="text-xl font-semibold">{t('database.overview')}</h2>
           <button
             onClick={loadStats}
             className="py-1 px-3 rounded text-sm border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
           >
-            {t('common:database.refresh')}
+            {t('database.refresh')}
           </button>
         </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary">
-            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('common:database.total_size')}</div>
+            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('database.total_size')}</div>
             <div className="text-2xl font-semibold">{stats.totalSize}</div>
           </div>
           <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary">
-            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('common:database.tables')}</div>
+            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('database.tables')}</div>
             <div className="text-2xl font-semibold">{stats.tableStats.length}</div>
           </div>
           <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary">
-            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('common:database.total_rows')}</div>
+            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('database.total_rows')}</div>
             <div className="text-2xl font-semibold">{totalRows.toLocaleString()}</div>
           </div>
         </div>
@@ -297,27 +294,27 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
         {/* Backup Status */}
         {stats.backupStatus && (
           <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary">
-            <h3 className="text-sm font-semibold mb-3">{t('common:database.backup_status')}</h3>
+            <h3 className="text-sm font-semibold mb-3">{t('database.backup_status')}</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--nim-text-muted)]">{t('common:database.available_backups')}</span>
-                <span>{t('common:database.backup_count', { count: backupCount, total: 3 })}</span>
+                <span className="text-[var(--nim-text-muted)]">{t('database.available_backups')}</span>
+                <span>{t('database.backup_count', { count: backupCount, total: 3 })}</span>
               </div>
               {stats.backupStatus.lastSuccessfulBackup && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-[var(--nim-text-muted)]">{t('common:database.last_successful_backup')}</span>
+                  <span className="text-[var(--nim-text-muted)]">{t('database.last_successful_backup')}</span>
                   <span>{formatRelativeTime(stats.backupStatus.lastSuccessfulBackup, t)}</span>
                 </div>
               )}
               {stats.backupStatus.currentBackup && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-[var(--nim-text-muted)]">{t('common:database.current_backup_size')}</span>
+                  <span className="text-[var(--nim-text-muted)]">{t('database.current_backup_size')}</span>
                   <span>{formatBytes(getBackupSizeBytes(stats.backupStatus.currentBackup), t)}</span>
                 </div>
               )}
               {backupCount === 0 && (
                 <div className="text-sm text-[var(--nim-text-faint)]">
-                  {t('common:database.no_backups')}
+                  {t('database.no_backups')}
                 </div>
               )}
             </div>
@@ -326,22 +323,6 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
 
         {/* WAL (Write-Ahead Log) */}
         {stats.walStats && (() => {
-          const wal = stats.walStats;
-          const checkpointPages = typeof wal.autoCheckpointPages === 'number'
-            ? wal.autoCheckpointPages.toLocaleString(i18n.resolvedLanguage)
-            : undefined;
-          const checkpointTimeout = wal.backend === 'sqlite' && checkpointPages !== undefined
-            ? t('common:database.auto_checkpoint_pages', { pages: checkpointPages })
-            : wal.checkpointTimeout;
-          const description = wal.backend === 'pglite'
-            ? t('common:database.wal_pglite_description')
-            : wal.backend === 'sqlite' && checkpointPages !== undefined && typeof wal.pageSizeBytes === 'number'
-              ? t('common:database.wal_sqlite_description', {
-                pages: checkpointPages,
-                maxSize: wal.maxWalSize,
-                pageSize: formatBytes(wal.pageSizeBytes, t),
-              })
-              : wal.description;
           const minBytes = parsePostgresSize(stats.walStats.minWalSize);
           const maxBytes = parsePostgresSize(stats.walStats.maxWalSize);
           const cur = stats.walStats.totalBytes;
@@ -352,12 +333,12 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
           const overFloor = cur > minBytes * 1.05;
           return (
             <div className="database-dashboard-wal p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary">
-              <h3 className="text-sm font-semibold mb-3">{t('common:database.wal')}</h3>
+              <h3 className="text-sm font-semibold mb-3">{t('database.wal')}</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--nim-text-muted)]">{t('common:database.current_size')}</span>
+                  <span className="text-[var(--nim-text-muted)]">{t('database.current_size')}</span>
                   <span data-testid="wal-current-size">
-                    {stats.walStats.totalSize} ({t(`common:database.segments_${stats.walStats.fileCount === 1 ? 'one' : 'other'}`, { count: stats.walStats.fileCount })})
+                    {stats.walStats.totalSize} ({t('database.segments', { count: stats.walStats.fileCount })})
                   </span>
                 </div>
                 <div className="h-1.5 bg-[var(--nim-bg-tertiary)] rounded-full overflow-hidden">
@@ -367,16 +348,20 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
                   />
                 </div>
                 <div className="flex items-center justify-between text-xs text-[var(--nim-text-faint)]">
-                  <span>{t('common:database.min', { value: stats.walStats.minWalSize })}</span>
-                  <span>{t('common:database.max', { value: stats.walStats.maxWalSize })}</span>
+                  <span>{t('database.min', { value: stats.walStats.minWalSize })}</span>
+                  <span>{t('database.max', { value: stats.walStats.maxWalSize })}</span>
                 </div>
                 <div className="flex items-center justify-between pt-2">
-                  <span className="text-[var(--nim-text-muted)]">{t('common:database.checkpoint_timeout')}</span>
-                  <span>{checkpointTimeout}</span>
+                  <span className="text-[var(--nim-text-muted)]">{t('database.checkpoint_timeout')}</span>
+                  <span>{stats.walStats.checkpointTimeout}</span>
                 </div>
-                {description && (
+                {stats.walStats.description && (
                   <div className="text-xs text-[var(--nim-text-faint)] pt-1">
-                    {description}
+                    {stats.walStats.description.startsWith('PGLite has no background checkpointer')
+                      ? t('database.wal_pglite_description')
+                      : stats.walStats.description.startsWith('SQLite auto-checkpoints')
+                        ? t('database.wal_sqlite_description')
+                        : stats.walStats.description}
                   </div>
                 )}
               </div>
@@ -387,11 +372,11 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
         {/* Table Statistics */}
         <div className="rounded-lg border border-[var(--nim-border)] bg-nim-secondary overflow-hidden">
           <div className="p-4 border-b border-[var(--nim-border)]">
-            <h3 className="text-sm font-semibold">{t('common:database.tables_by_size')}</h3>
+            <h3 className="text-sm font-semibold">{t('database.tables_by_size')}</h3>
           </div>
           <div className="divide-y divide-[var(--nim-border)]">
             {stats.tableStats.length === 0 ? (
-              <div className="p-4 text-sm text-[var(--nim-text-muted)]">{t('common:database.no_tables')}</div>
+              <div className="p-4 text-sm text-[var(--nim-text-muted)]">{t('database.no_tables')}</div>
             ) : (
               stats.tableStats.map((table) => {
                 const percentage = stats.totalSizeBytes > 0
@@ -407,7 +392,7 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-sm">{table.name}</span>
                       <div className="flex items-center gap-4 text-sm text-[var(--nim-text-muted)]">
-                        <span>{t(`common:database.rows_${table.rowCount === 1 ? 'one' : 'other'}`, { count: table.rowCount.toLocaleString() })}</span>
+                        <span>{t('database.rows', { count: table.rowCount })}</span>
                         <span className="w-20 text-right">{table.size}</span>
                       </div>
                     </div>
@@ -427,13 +412,13 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
           <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary">
-            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('common:database.ai_sessions')}</div>
+            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('database.ai_sessions')}</div>
             <div className="text-xl font-semibold">
               {parseInt(stats.basicStats?.ai_sessions_count || '0').toLocaleString()}
             </div>
           </div>
           <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary">
-            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('common:database.history_entries')}</div>
+            <div className="text-sm text-[var(--nim-text-muted)] mb-1">{t('database.history_entries')}</div>
             <div className="text-xl font-semibold">
               {parseInt(stats.basicStats?.history_count || '0').toLocaleString()}
             </div>
@@ -441,6 +426,7 @@ export function DatabaseDashboard({ onTableSelect }: Props) {
         </div>
 
         {/* Maintenance */}
+        <StorageRetentionCard />
         <RawLogMaintenanceCard />
       </div>
     </div>

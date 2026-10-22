@@ -22,9 +22,9 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtom, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { TipCard } from './TipCard';
 import { tips } from './definitions';
 import { markTipCompleted, recordTipShown } from './TipService';
@@ -161,7 +161,7 @@ export function InlineTipDisplay({ onInsertPrompt }: InlineTipDisplayProps = {})
           aria-label={t('tips.next')}
           title={t('tips.next')}
         >
-          {t('walkthrough.next')}
+          {t('tips.next')}
           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 6l6 6-6 6" />
           </svg>

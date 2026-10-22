@@ -31,7 +31,8 @@ export const WindowsClaudeCodeWarning: React.FC<WindowsClaudeCodeWarningProps> =
   onDismiss,
   onOpenSettings
 }) => {
-  const { t } = useTranslation(['dialogs', 'common']);
+  const { t } = useTranslation('dialogs');
+  const { t: tCommon } = useTranslation('common');
   if (!isOpen) return null;
 
   const handleOpenSettings = () => {
@@ -60,7 +61,7 @@ export const WindowsClaudeCodeWarning: React.FC<WindowsClaudeCodeWarningProps> =
         <button
           className="windows-warning-close absolute top-4 right-4 bg-transparent border-none text-[28px] cursor-pointer p-0 w-8 h-8 flex items-center justify-center leading-none z-[1] rounded-md transition-all duration-200 hover:scale-110 text-nim-muted hover:text-nim hover:bg-nim-hover"
           onClick={handleRemindLater}
-          aria-label={t('common:close')}
+          aria-label={tCommon('close')}
         >
           &times;
         </button>
@@ -75,13 +76,13 @@ export const WindowsClaudeCodeWarning: React.FC<WindowsClaudeCodeWarningProps> =
           <h2
             className="windows-warning-title m-0 mb-3 text-2xl font-bold tracking-tight text-nim"
           >
-            {t('dialogs:platform_warning.windows_title')}
+            {t('platform_warning.windows_title')}
           </h2>
 
           <p
             className="windows-warning-message mb-8 text-[15px] leading-relaxed max-w-[380px] mx-auto text-nim-muted"
           >
-            {t('dialogs:platform_warning.windows_message')}
+            {t('platform_warning.windows_message')}
           </p>
 
           <div className="windows-warning-buttons flex justify-center mb-6">
@@ -89,7 +90,7 @@ export const WindowsClaudeCodeWarning: React.FC<WindowsClaudeCodeWarningProps> =
               className="windows-warning-button windows-warning-button-primary py-3.5 px-8 rounded-lg border-none text-base font-semibold cursor-pointer whitespace-nowrap flex items-center gap-2.5 text-white transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 bg-gradient-to-br from-amber-500 to-amber-600 shadow-[0_4px_12px_rgba(245,158,11,0.4)] hover:shadow-[0_6px_16px_rgba(245,158,11,0.5)]"
               onClick={handleOpenSettings}
             >
-              {t('dialogs:platform_warning.install_instructions')}
+              {t('platform_warning.install_instructions')}
             </button>
           </div>
 
@@ -100,7 +101,7 @@ export const WindowsClaudeCodeWarning: React.FC<WindowsClaudeCodeWarningProps> =
               className="windows-warning-link bg-transparent border-none text-[13px] cursor-pointer py-1 px-2 no-underline transition-colors duration-200 hover:underline text-nim-muted hover:text-nim"
               onClick={handleRemindLater}
             >
-              {t('dialogs:platform_warning.remind_later')}
+              {t('platform_warning.remind_later')}
             </button>
             <span
               className="windows-warning-separator text-[13px] select-none text-nim-faint"
@@ -111,7 +112,7 @@ export const WindowsClaudeCodeWarning: React.FC<WindowsClaudeCodeWarningProps> =
               className="windows-warning-link bg-transparent border-none text-[13px] cursor-pointer py-1 px-2 no-underline transition-colors duration-200 hover:underline text-nim-muted hover:text-nim"
               onClick={handleDontRemind}
             >
-              {t('dialogs:platform_warning.dont_show_again')}
+              {t('platform_warning.dont_show_again')}
             </button>
           </div>
         </div>

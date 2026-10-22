@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 import React from 'react';
-import i18next from 'i18next';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { SessionDropdown } from '../SessionDropdown';
+import { requestConfirmation } from '../../../dialogs/requestConfirmation';
+
+vi.mock('../../../dialogs/requestConfirmation', () => ({ requestConfirmation: vi.fn() }));
 
 vi.mock('@nimbalyst/runtime', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
@@ -19,9 +23,10 @@ vi.mock('../../../utils/modelUtils', () => ({
 vi.mock('../../../store', async () => {
   const { atom } = await import('jotai');
   const off = atom(false);
+  const unread = atom(true);
   return {
     sessionProcessingAtom: () => off,
-    sessionUnreadAtom: () => off,
+    sessionUnreadAtom: () => unread,
   };
 });
 
@@ -47,37 +52,43 @@ vi.mock('../../../hooks/useFloatingMenu', async () => {
 const baseProps = {
   currentSessionId: 's1',
   sessions: [
-    { id: 's1', createdAt: 1, title: 'Agent trust popup review', provider: 'claude-code' },
+    { id: 's1', createdAt: 1, title: 'Agent trust popup review', provider: 'claude-code', messageCount: 3 },
     { id: 's2', createdAt: 2, title: 'Draft release notes', provider: 'claude-code' },
   ],
   onSessionSelect: vi.fn(),
   onDeleteSession: vi.fn(),
 };
 
-afterEach(async () => {
-  cleanup();
-  await i18next.changeLanguage('en');
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
 });
 
-describe('SessionDropdown new-session affordance', () => {
-  it('localizes menu controls while preserving the current session title', async () => {
-    await i18next.changeLanguage('ja');
-    const onNewSession = vi.fn();
-    render(<SessionDropdown {...baseProps} onNewSession={onNewSession} />);
-    expect(screen.getByText('Agent trust popup review')).toBeTruthy();
-    fireEvent.click(screen.getByTitle('セッション履歴'));
-    fireEvent.click(screen.getByText('新しいセッション'));
-    expect(onNewSession).toHaveBeenCalledTimes(1);
-  });
+function renderWithLanguage(node: React.ReactNode, language: 'en' | 'ja') {
+  const i18n = language === 'ja' ? japaneseI18n : englishI18n;
+  return render(
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale={language === 'ja' ? 'ja-JP' : 'en-US'}>
+      {node}
+    </UiLanguageProvider>,
+  );
+}
 
+afterEach(cleanup);
+
+describe('SessionDropdown new-session affordance', () => {
   it('shows the current session name in the trigger', () => {
-    render(<SessionDropdown {...baseProps} onNewSession={vi.fn()} />);
-    expect(screen.getByText('Agent trust popup review')).toBeTruthy();
+    renderWithLanguage(<SessionDropdown {...baseProps} onNewSession={vi.fn()} />, 'en');
+    screen.getByText('Agent trust popup review');
   });
 
   it('creates a new session from the menu row and closes the menu', () => {
     const onNewSession = vi.fn();
-    render(<SessionDropdown {...baseProps} onNewSession={onNewSession} />);
+    renderWithLanguage(<SessionDropdown {...baseProps} onNewSession={onNewSession} />, 'en');
 
     // Open the dropdown.
     fireEvent.click(screen.getByTitle('Session History'));
@@ -88,5 +99,58 @@ describe('SessionDropdown new-session affordance', () => {
     expect(onNewSession).toHaveBeenCalledTimes(1);
     // Menu closed → row is gone.
     expect(screen.queryByText('New session')).toBeNull();
+  });
+});
+
+describe('SessionDropdown delete', () => {
+  it('deletes only after the in-app confirmation is accepted', async () => {
+    const onDeleteSession = vi.fn();
+    const confirmMock = vi.mocked(requestConfirmation);
+    renderWithLanguage(<SessionDropdown {...baseProps} onNewSession={vi.fn()} onDeleteSession={onDeleteSession} />, 'en');
+    fireEvent.click(screen.getByTitle('Session History'));
+
+    confirmMock.mockResolvedValueOnce(false);
+    fireEvent.click(screen.getAllByTitle('Delete')[0]);
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(onDeleteSession).not.toHaveBeenCalled();
+
+    confirmMock.mockResolvedValueOnce(true);
+    fireEvent.click(screen.getAllByTitle('Delete')[0]);
+    await waitFor(() => expect(onDeleteSession).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('SessionDropdown localization', () => {
+  it('localizes menu labels while preserving user-provided session data', () => {
+    renderWithLanguage(
+      <SessionDropdown {...baseProps} onNewSession={vi.fn()} onOpenSessionManager={vi.fn()} />,
+      'ja',
+    );
+
+    fireEvent.click(screen.getByTitle('セッション履歴'));
+    expect(screen.getAllByTitle('未読の応答')).toHaveLength(3);
+    screen.getByText('新しいセッション');
+    screen.getByText('すべてのセッション');
+    expect(screen.getAllByText('Agent trust popup review')).toHaveLength(2);
+    screen.getByText('3ターン');
+  });
+
+  it('shows the English labels and empty state when English is selected', () => {
+    renderWithLanguage(
+      <SessionDropdown
+        currentSessionId={null}
+        sessions={[]}
+        onSessionSelect={vi.fn()}
+        onNewSession={vi.fn()}
+        onDeleteSession={vi.fn()}
+      />,
+      'en',
+    );
+
+    screen.getByText('New Session');
+    fireEvent.click(screen.getByTitle('Session History'));
+    screen.getByText('New session');
+    screen.getByText('No sessions yet');
   });
 });

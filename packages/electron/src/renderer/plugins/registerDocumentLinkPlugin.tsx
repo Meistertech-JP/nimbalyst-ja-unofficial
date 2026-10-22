@@ -3,51 +3,62 @@
  * service and publish it as a renderer-contributed Lexical UI plugin.
  *
  * The plugin's headless concerns (markdown transformers, the
- * `DocumentReferenceNode` registration) flow through the extension
- * contributions stores instead of the deleted `pluginRegistry`.
+ * `DocumentReferenceNode` registration) come from
+ * `registerDocumentReferenceContributions`, shared with every other host that
+ * opens a document — a host missing the node class cannot decode a Y.Doc that
+ * contains one.
  */
 
 import React, { useMemo } from 'react';
-import { defineExtension } from 'lexical';
-import { useAtomValue } from 'jotai';
+import { isAbsolute, join } from 'pathe';
 import {
   TypeaheadMenuPlugin,
   registerExtensionEditorComponent,
-  setExtensionContributions,
-  setExtensionLexicalExtension,
   setWorkspaceFileLinkOpener,
   useAnchorElem,
   useDocumentPath,
 } from '@nimbalyst/runtime';
 import {
+  DOCUMENT_LINK_SOURCE,
+  registerDocumentReferenceContributions,
+} from '@nimbalyst/runtime/plugins/referenceNodeContributions';
+import {
   DocumentLinkPlugin,
+  type CollabReferenceOption,
   type CollabReferenceSource,
 } from '@nimbalyst/runtime/plugins/DocumentLinkPlugin';
 import {
-  resolveDocumentLinkLookupPath,
+  resolveDocumentLinkLookupPaths,
   parseCollabReferenceDocumentId,
 } from '@nimbalyst/runtime/plugins/DocumentLinkPlugin/documentLinkPaths';
-import {
-  DocumentReferenceNode,
-  DocumentReferenceTransformer,
-  CollabDocumentReferenceTransformer,
-  LegacyDocumentReferenceTransformer,
-} from '@nimbalyst/runtime/plugins/DocumentLinkPlugin/DocumentLinkNode';
 import { ElectronRendererDocumentService } from '../services/ElectronDocumentService';
-import { isCollabUri, parseCollabUri } from '../utils/collabUri';
+import { parseCollabUri } from '@nimbalyst/collab-protocol';
 import {
   sharedDocumentsAtom,
   sharedFoldersAtom,
-  activeTeamOrgIdAtom,
+  activeCollabScopeAtom,
   buildSharedDocumentDeepLink,
   pendingCollabDocumentAtom,
-  type SharedFolder,
+  personalPagesDocumentsAtomFamily,
+  getTeamSyncProvider,
+  getPersonalCollabHost,
 } from '../store/atoms/collabDocuments';
+import type { MentionMember } from '@nimbalyst/runtime/editor/plugins/MentionPlugin/mentionTypeahead';
+import { teamMemberDisplayName } from '../utils/teamMemberDisplayName';
 import { activeWorkspacePathAtom } from '../store/atoms/openProjects';
-import { setWindowModeAtom } from '../store/atoms/windowMode';
+import { setWindowModeAtom, windowModeAtom } from '../store/atoms/windowMode';
+import { openConsoleLinkInWindow } from '../utils/openConsoleLink';
+import {
+  isPersonalPageLink,
+  localFileReferenceSource,
+  personalPageIdOf,
+  personalPageReferenceOptions,
+  referenceContextOf,
+  teamPageReferenceOptions,
+} from './pageReferenceSources';
 import { store } from '../store';
 
-const SOURCE = 'document-link';
+const SOURCE = DOCUMENT_LINK_SOURCE;
 const documentService = new ElectronRendererDocumentService();
 
 // Custom trigger function that allows dots and hyphens in filenames so
@@ -87,29 +98,108 @@ function createDocumentLinkTrigger(trigger: string, { minLength = 0, maxLength =
   };
 }
 
+function listTeamPages(options: { currentDocumentId?: string; pathPrefix?: string } = {}): CollabReferenceOption[] {
+  const scope = store.get(activeCollabScopeAtom);
+  if (!scope) return [];
+  return teamPageReferenceOptions({
+    documents: store.get(sharedDocumentsAtom),
+    folders: store.get(sharedFoldersAtom),
+    deepLink: (documentId) => buildSharedDocumentDeepLink(documentId, scope.orgId),
+    ...options,
+  });
+}
+
+function listPersonalPages(options: { currentDocumentId?: string | null; pathPrefix?: string } = {}): CollabReferenceOption[] {
+  const workspacePath = store.get(activeWorkspacePathAtom);
+  if (!workspacePath) return [];
+  return personalPageReferenceOptions({ documents: store.get(personalPagesDocumentsAtomFamily(workspacePath)), ...options });
+}
+
+export function openTeamPage(target: string, options?: { newTab: boolean }): void {
+  const scope = store.get(activeCollabScopeAtom);
+  const targetDocumentId = parseCollabReferenceDocumentId(target);
+  if (!scope || !targetDocumentId) return;
+
+  // The Lexical plugin renders outside any TabsProvider, so it can't add
+  // a tab directly. Route through the same shared-document open flow the
+  // deep-link handler uses: switch to collab mode and hand the doc id to
+  // the pending atom. CollabMode consumes it, opening (or focusing) the
+  // shared doc with its own tab context + dedup.
+  store.set(setWindowModeAtom, 'collab');
+  store.set(pendingCollabDocumentAtom, {
+    documentId: targetDocumentId,
+    scopeKey: scope.scopeKey,
+    orgId: scope.orgId,
+    analyticsSource: 'deep_link',
+    // A reference in a page navigates like any page link in Pages.
+    openOptions: options ?? { newTab: false },
+  });
+}
+
+function openPersonalPage(target: string, options?: { newTab: boolean }): void {
+  openConsoleLinkInWindow(target, options);
+}
+
 /**
- * Resolve each folderId to its full breadcrumb ("Design/Specs") from the
- * first-class folder tree, so shared-doc suggestions can show where the doc
- * lives. Guards against cycles.
+ * The active team's members, for `@` person mentions. Mentions are keyed by
+ * email, so any document in a team workspace can mention a teammate; outside
+ * a team there is no roster and `@` offers only pages and dates.
  */
-function buildFolderBreadcrumbs(folders: SharedFolder[]): Map<string, string> {
-  const byId = new Map(folders.map((f) => [f.folderId, f]));
-  const cache = new Map<string, string>();
-  const resolve = (id: string, seen: Set<string>): string => {
-    const cached = cache.get(id);
-    if (cached !== undefined) return cached;
-    const folder = byId.get(id);
-    if (!folder || seen.has(id)) return '';
-    seen.add(id);
-    const parent = folder.parentFolderId ? resolve(folder.parentFolderId, seen) : '';
-    const path = parent ? `${parent}/${folder.name}` : folder.name;
-    cache.set(id, path);
-    return path;
-  };
-  for (const folder of folders) {
-    resolve(folder.folderId, new Set());
+function listMentionMembers(): MentionMember[] {
+  const scope = store.get(activeCollabScopeAtom);
+  const members = scope ? getTeamSyncProvider(scope)?.getTeamState()?.members ?? [] : [];
+  return members
+    .filter((member) => !!member.email)
+    .map((member) => ({ name: teamMemberDisplayName(member), email: member.email! }));
+}
+
+/**
+ * The Local wiki page a link in a wiki page points at, while Pages is shown.
+ * The same file open in Files keeps opening its links as files.
+ */
+function localWikiPageFor(target: string, documentPath: string): string | null {
+  const workspacePath = store.get(activeWorkspacePathAtom);
+  if (!workspacePath || store.get(windowModeAtom) !== 'collab') return null;
+  const wiki = getPersonalCollabHost(workspacePath).source();
+  if (!wiki.documentIdForFile(documentPath)) return null;
+  for (const candidate of resolveDocumentLinkLookupPaths(target, documentPath, workspacePath)) {
+    const absolute = isAbsolute(candidate) ? candidate : join(workspacePath, candidate);
+    const pageId = wiki.documentIdForFile(absolute);
+    if (pageId) return pageId;
   }
-  return cache;
+  return null;
+}
+
+function referenceSourceFor(documentPath: string | null): CollabReferenceSource | null {
+  switch (referenceContextOf(documentPath)) {
+    case 'team': {
+      let currentDocumentId: string | undefined;
+      try {
+        currentDocumentId = parseCollabUri(documentPath!).documentId;
+      } catch {
+        currentDocumentId = undefined;
+      }
+      return { listOptions: () => listTeamPages({ currentDocumentId }), openReference: openTeamPage };
+    }
+    case 'personal': {
+      const currentDocumentId = personalPageIdOf(documentPath!);
+      return {
+        listOptions: () => listPersonalPages({ currentDocumentId }),
+        openReference: openPersonalPage,
+        ownsTarget: isPersonalPageLink,
+      };
+    }
+    case 'local':
+      return localFileReferenceSource({
+        listTeam: () => listTeamPages({ pathPrefix: 'Team' }),
+        listPersonal: () => listPersonalPages({ pathPrefix: 'Personal' }),
+        openTeam: openTeamPage,
+        openPersonal: openPersonalPage,
+        wikiPageFor: (target) => localWikiPageFor(target, documentPath!),
+      });
+    case 'other':
+      return null;
+  }
 }
 
 function DocumentLinkPluginWrapper() {
@@ -119,55 +209,11 @@ function DocumentLinkPluginWrapper() {
   );
   const anchorElem = useAnchorElem();
 
-  // Collaborative-document awareness: when the active editor is a collab doc,
-  // `@` should suggest shared documents rather than local workspace files.
+  // A page offers pages of its own section; a local file offers its files and
+  // both sections' pages (pageReferenceSources.ts). Lists are read when the
+  // menu opens, so no editor re-renders as pages change.
   const { documentPath } = useDocumentPath();
-  const isCollab = documentPath ? isCollabUri(documentPath) : false;
-  const sharedDocuments = useAtomValue(sharedDocumentsAtom);
-  const sharedFolders = useAtomValue(sharedFoldersAtom);
-  const orgId = useAtomValue(activeTeamOrgIdAtom);
-  const workspacePath = useAtomValue(activeWorkspacePathAtom);
-
-  const collabReferenceSource = useMemo<CollabReferenceSource | null>(() => {
-    if (!isCollab || !orgId || !workspacePath || !documentPath) {
-      return null;
-    }
-
-    let currentDocumentId: string | undefined;
-    try {
-      currentDocumentId = parseCollabUri(documentPath).documentId;
-    } catch {
-      currentDocumentId = undefined;
-    }
-
-    const breadcrumbs = buildFolderBreadcrumbs(sharedFolders);
-
-    return {
-      listOptions: () =>
-        sharedDocuments
-          .filter((doc) => !doc.decryptFailed && doc.documentId !== currentDocumentId)
-          .map((doc) => ({
-            documentId: doc.documentId,
-            title: doc.title || 'Untitled',
-            target: buildSharedDocumentDeepLink(doc.documentId, orgId),
-            folderPath: doc.parentFolderId
-              ? breadcrumbs.get(doc.parentFolderId) || undefined
-              : undefined,
-          })),
-      openReference: (target: string) => {
-        const targetDocumentId = parseCollabReferenceDocumentId(target);
-        if (!targetDocumentId) return;
-
-        // The Lexical plugin renders outside any TabsProvider, so it can't add
-        // a tab directly. Route through the same shared-document open flow the
-        // deep-link handler uses: switch to collab mode and hand the doc id to
-        // the pending atom. CollabMode consumes it, opening (or focusing) the
-        // shared doc with its own tab context + dedup.
-        store.set(setWindowModeAtom, 'collab');
-        store.set(pendingCollabDocumentAtom, { documentId: targetDocumentId, analyticsSource: 'deep_link' });
-      },
-    };
-  }, [isCollab, orgId, workspacePath, documentPath, sharedDocuments, sharedFolders]);
+  const collabReferenceSource = useMemo(() => referenceSourceFor(documentPath), [documentPath]);
 
   return (
     <DocumentLinkPlugin
@@ -176,6 +222,7 @@ function DocumentLinkPluginWrapper() {
       triggerFn={triggerFn}
       anchorElem={anchorElem || undefined}
       collabReferenceSource={collabReferenceSource}
+      getMentionMembers={listMentionMembers}
     />
   );
 }
@@ -187,43 +234,27 @@ export function registerDocumentLinkPlugin(): void {
   setWorkspaceFileLinkOpener((rawHref, currentDocumentPath) => {
     const workspacePath =
       (window as unknown as { __workspacePath?: string }).__workspacePath ?? null;
-    const resolvedPath = resolveDocumentLinkLookupPath(
+    const candidatePaths = resolveDocumentLinkLookupPaths(
       rawHref,
       currentDocumentPath,
       workspacePath,
     );
     void (async () => {
-      const resolvedDoc = resolvedPath
-        ? await documentService.getDocumentByPath(resolvedPath)
-        : null;
-      if (resolvedDoc) {
-        await documentService.openDocument(resolvedDoc.id, { path: resolvedDoc.path });
-        return;
+      for (const candidate of candidatePaths) {
+        const resolvedDoc = await documentService.getDocumentByPath(candidate);
+        if (resolvedDoc) {
+          await documentService.openDocument(resolvedDoc.id, { path: resolvedDoc.path });
+          return;
+        }
       }
-      await documentService.openDocument('', { path: resolvedPath || rawHref });
+      const fallbackPath = candidatePaths[candidatePaths.length - 1];
+      await documentService.openDocument('', { path: fallbackPath || rawHref });
     })().catch((error) => {
       console.error('Failed to open workspace file link', rawHref, error);
     });
   });
 
-  setExtensionLexicalExtension(
-    SOURCE,
-    defineExtension({
-      name: '@nimbalyst/document-link',
-      nodes: [DocumentReferenceNode],
-    }),
-  );
-  setExtensionContributions(SOURCE, {
-    markdownTransformers: [
-      // Main transformer exports as markdown links; the collab transformer
-      // imports shared-doc references (`nimbalyst://doc/...` / `collab://...`);
-      // the legacy transformer imports the old `[[wikilink]]`-style format
-      // produced before the CommonMark migration.
-      DocumentReferenceTransformer,
-      CollabDocumentReferenceTransformer,
-      LegacyDocumentReferenceTransformer,
-    ],
-  });
+  registerDocumentReferenceContributions();
   registerExtensionEditorComponent({
     name: SOURCE,
     Component: DocumentLinkPluginWrapper as React.ComponentType<unknown>,

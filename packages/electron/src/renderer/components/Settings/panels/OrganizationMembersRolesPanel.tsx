@@ -1,14 +1,22 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useAtomValue } from 'jotai';
 import { ActionGuard } from './ActionGuard';
+import { OrganizationOnboardingChoices } from './OrganizationOnboardingChoices';
 import { AlphaBadge } from '../../common/AlphaBadge';
-import { TEAM_ALPHA_TOOLTIP, TeamAlphaNotice } from '../../common/TeamAlphaNotice';
 import {
   bucketMemberCount,
   categorizeTeamAnalyticsError,
+  normalizeTeamAnalyticsCallerRole,
 } from '../../../../shared/analytics/teamAnalytics';
 import { trackTeamAnalyticsEvent } from '../../../utils/teamAnalytics';
+import { organizationCreationEnabled } from '../../../store/atoms/settingsDomains';
+import { teamPresenceAtomFamily } from '../../../store/atoms/teamPresence';
+import { activeWorkspacePathAtom } from '../../../store/atoms/openProjects';
+import { requestConfirmation } from '../../../dialogs/requestConfirmation';
+import { InviteToTeamDialog } from '../../InviteToTeamDialog/InviteToTeamDialog';
+import type { InviteProjectOption } from '../../InviteToTeamDialog/inviteToTeamModel';
 
 interface Member {
   memberId: string;
@@ -26,38 +34,28 @@ interface OrganizationSummary {
   sourceEmail?: string | null;
 }
 
-interface PersonalAccount {
-  personalOrgId: string;
-  email: string | null;
-}
-
 export function OrganizationMembersRolesPanel({
   orgId,
   readOnlyRoles = false,
-  allowOrganizationCreation = true,
+  // Invite-only beta: the create-org card only renders in dev builds.
+  allowOrganizationCreation = organizationCreationEnabled,
 }: {
   orgId?: string;
   readOnlyRoles?: boolean;
   allowOrganizationCreation?: boolean;
 }) {
-  const { t } = useTranslation(['settings', 'project', 'common']);
+  const { t } = useTranslation('settings');
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [callerRole, setCallerRole] = useState('member');
-  const [inviteEmail, setInviteEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<PersonalAccount[]>([]);
-  const [newOrganizationName, setNewOrganizationName] = useState('');
-  const [sourcePersonalOrgId, setSourcePersonalOrgId] = useState('');
-
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteProjects, setInviteProjects] = useState<InviteProjectOption[]>([]);
+  const workspacePath = useAtomValue(activeWorkspacePathAtom);
   const refresh = useCallback(async () => {
     const directory = await window.electronAPI.organization.list();
     const teams = directory?.success && Array.isArray(directory.teams) ? directory.teams : [];
     setOrganizations(teams);
-    const accountResult = await window.electronAPI.stytch.getAccounts();
-    const accountRows = Array.isArray(accountResult) ? accountResult : [];
-    setAccounts(accountRows);
-    setSourcePersonalOrgId((current) => current || accountRows[0]?.personalOrgId || '');
     if (!orgId) return;
     const roster = await window.electronAPI.organization.listMembers(orgId);
     if (roster?.success) {
@@ -66,124 +64,105 @@ export function OrganizationMembersRolesPanel({
     }
   }, [orgId]);
 
+  // The invite dialog needs the org's projects to offer any beyond the primary
+  // one. A failure here leaves the dialog offering only the automatic grant,
+  // which is the correct degraded state rather than a blocked invitation.
+  useEffect(() => {
+    if (!orgId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const listing = await window.electronAPI.organization.listProjects(orgId);
+        const projects = listing?.success && Array.isArray(listing.projects) ? listing.projects : [];
+        if (!active) return;
+        setInviteProjects(projects.map((project: {
+          teamProjectId: string; name?: string | null; isPrimary?: boolean; primary?: boolean;
+        }, index: number) => ({
+          teamProjectId: project.teamProjectId,
+          name: project.name ?? null,
+          isPrimary: project.isPrimary ?? project.primary ?? index === 0,
+        })));
+      } catch (reason) {
+        console.warn('[OrganizationMembersRolesPanel] could not list projects for the invite dialog', reason);
+      }
+    })();
+    return () => { active = false; };
+  }, [orgId]);
+
   useEffect(() => { void refresh().catch((reason) => setError(String(reason))); }, [refresh]);
   const canAdminister = callerRole === 'owner' || callerRole === 'admin';
-  const analyticsCallerRole = callerRole === 'owner' || callerRole === 'admin' || callerRole === 'member'
-    ? callerRole
-    : 'unknown';
+  const analyticsCallerRole = normalizeTeamAnalyticsCallerRole(callerRole);
+
+  const removeMember = useCallback(async (member: Member) => {
+    if (!orgId) return;
+    const label = member.name || member.email || t('organization_ui.this_member');
+    const isPending = member.status === 'pending';
+    const confirmed = await requestConfirmation({
+      title: isPending ? t('organization_ui.revoke_invitation') : t('organization_ui.remove_member'),
+      message: isPending
+        ? t('organization_ui.revoke_invitation_confirmation', { member: label })
+        : t('organization_ui.remove_member_confirmation', { member: label }),
+      confirmLabel: isPending ? t('organization_ui.revoke') : t('organization_ui.remove'),
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    setError(null);
+    try {
+      const result = await window.electronAPI.organization.removeMember(orgId, member.memberId);
+      if (result?.success === false) throw new Error(result.error ?? t('organization_ui.remove_member_failed'));
+      trackTeamAnalyticsEvent('team_member_removed', {
+        surface: 'desktop',
+        callerRole: analyticsCallerRole,
+        memberState: isPending ? 'pending' : 'active',
+      });
+      await refresh();
+    } catch (reason) {
+      trackTeamAnalyticsEvent('team_operation_failed', {
+        surface: 'desktop',
+        operation: 'remove_member',
+        entryPoint: 'organization_manager',
+        callerRole: analyticsCallerRole,
+        errorCategory: categorizeTeamAnalyticsError('organization', reason),
+      });
+      setError(String(reason));
+    }
+  }, [orgId, analyticsCallerRole, refresh, t]);
+
   const selected = organizations.find((organization) => organization.orgId === orgId);
-  const pending = organizations.filter((organization) => organization.membershipType && organization.membershipType !== 'active_member');
 
   return (
     <section className="organization-members-roles-panel" data-testid="organization-members-roles-panel" data-component="OrganizationMembersRolesPanel">
       <header className="mb-5 border-b border-[var(--nim-border)] pb-4">
         <h2 className="m-0 flex items-center gap-2 text-xl font-semibold">
-          {t('settings:organization_ui.members_roles')}
-          <AlphaBadge size="sm" tooltip={t('settings:organization_ui.alpha_tooltip', { defaultValue: TEAM_ALPHA_TOOLTIP })} />
+          {t('organization_ui.members_roles')}
+          <AlphaBadge size="sm" stage="beta" tooltip={t('organization_ui.alpha_tooltip')} />
         </h2>
         <p className="m-0 mt-1 text-sm text-[var(--nim-text-muted)]">
-          {selected ? `${selected.name} · ${t(`project:org.role_${callerRole}`, { defaultValue: callerRole })}${selected.sourceEmail ? ` · ${selected.sourceEmail}` : ''}` : t('settings:organization_ui.choose')}
+          {selected ? `${selected.name} · ${t(`organization_ui.role_${callerRole}`, { defaultValue: callerRole })}${selected.sourceEmail ? ` · ${selected.sourceEmail}` : ''}` : t('organization_ui.choose')}
         </p>
       </header>
 
-      {pending.length > 0 && (
-        <div className="organization-invitation-inbox mb-5" data-testid="organization-invitation-inbox">
-          <h3 className="m-0 mb-2 text-sm font-semibold">{t('settings:organization_ui.pending_invitations')}</h3>
-          <div className="flex flex-col gap-2">
-            {pending.map((invitation) => (
-              <article key={`${invitation.orgId}:${invitation.sourceEmail ?? ''}`} className="pending-invitation-card flex items-center gap-3 rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3" data-testid="pending-invitation-card">
-                <MaterialSymbol icon="mail" size={18} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{invitation.name}</div>
-                  <div className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.invited_account', { account: invitation.sourceEmail ?? t('settings:organization_ui.signed_in_account') })}</div>
-                </div>
-                <button
-                  type="button"
-                  className="pending-invitation-accept rounded-md bg-[var(--nim-primary)] px-3 py-1.5 text-xs font-semibold text-white"
-                  data-testid="pending-invitation-accept"
-                  onClick={() => void window.electronAPI.organization.acceptInvitation(invitation.orgId)
-                    .then((result) => {
-                      if (result?.success === false) throw new Error(result.error ?? t('settings:organization_ui.accept_failed'));
-                      trackTeamAnalyticsEvent('team_invitation_accepted', {
-                        surface: 'desktop',
-                        entryPoint: 'organization_manager',
-                        projectMatched: false,
-                      });
-                      return refresh();
-                    })
-                    .catch((reason) => {
-                      trackTeamAnalyticsEvent('team_operation_failed', {
-                        surface: 'desktop',
-                        operation: 'accept_invitation',
-                        entryPoint: 'organization_manager',
-                        callerRole: analyticsCallerRole,
-                        errorCategory: categorizeTeamAnalyticsError('organization', reason),
-                      });
-                      setError(String(reason));
-                    })}
-                >
-                  {t('settings:organization_ui.accept')}
-                </button>
-              </article>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {allowOrganizationCreation && <details className="new-organization-card mb-5 rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3" data-testid="new-organization-card">
-        <summary className="cursor-pointer text-sm font-semibold">{t('settings:organization_ui.new')}</summary>
-        <TeamAlphaNotice className="mt-3" />
-        <form
-          className="mt-3 flex flex-col gap-2"
-          data-testid="new-organization-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!newOrganizationName.trim()) return;
-            void window.electronAPI.organization.create({
-              name: newOrganizationName.trim(),
-              sourcePersonalOrgId: sourcePersonalOrgId || undefined,
-            }).then((result) => {
-              if (!result?.success) throw new Error(result?.error ?? t('settings:organization_ui.create_failed'));
-              trackTeamAnalyticsEvent('team_organization_created', {
-                surface: 'desktop',
-                entryPoint: 'organization_manager',
-                projectAttached: false,
-                encryptionMode: 'server_managed',
-                memberCountBucket: bucketMemberCount(1),
-              });
-              setNewOrganizationName('');
-              return refresh();
-            }).catch((reason) => {
-              trackTeamAnalyticsEvent('team_operation_failed', {
-                surface: 'desktop',
-                operation: 'create_organization',
-                entryPoint: 'organization_manager',
-                callerRole: analyticsCallerRole,
-                errorCategory: categorizeTeamAnalyticsError('organization', reason),
-              });
-              setError(String(reason));
-            });
-          }}
-        >
-          {accounts.length > 1 && (
-            <label className="text-xs text-[var(--nim-text-muted)]">{t('settings:organization_ui.owning_account')}<select className="mt-1 block w-full rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-2 text-sm text-[var(--nim-text)]" value={sourcePersonalOrgId} onChange={(event) => setSourcePersonalOrgId(event.target.value)}>{accounts.map((account) => <option key={account.personalOrgId} value={account.personalOrgId}>{account.email ?? account.personalOrgId}</option>)}</select></label>
-          )}
-          <div className="flex gap-2"><input className="min-w-0 flex-1 rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-2 text-sm" value={newOrganizationName} onChange={(event) => setNewOrganizationName(event.target.value)} placeholder={t('settings:organization_ui.name')} /><button className="rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-white" type="submit">{t('common:create')}</button></div>
-        </form>
-      </details>}
+      <OrganizationOnboardingChoices
+        organizations={organizations}
+        onChanged={() => { void refresh(); }}
+        onError={setError}
+        allowOrganizationCreation={allowOrganizationCreation}
+      />
 
       {orgId && (
         <>
           <div className="organization-roster flex flex-col gap-2" data-testid="organization-roster">
             {members.map((member) => (
               <div key={member.memberId} className="member-row flex items-center gap-3 rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3" data-testid="organization-member-row">
+                <MemberPresenceDot orgId={orgId} memberId={member.memberId} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{member.name || member.email}</div>
                   <div className="truncate text-xs text-[var(--nim-text-muted)]">{member.email}</div>
                 </div>
                 {readOnlyRoles ? (
                   <span className="member-role-badge rounded-full bg-[var(--nim-bg-tertiary)] px-2.5 py-1 text-xs capitalize text-[var(--nim-text-muted)]">
-                    {t(`project:org.role_${member.role}`, { defaultValue: member.role })}
+                    {t(`organization_ui.role_${member.role}`, { defaultValue: member.role })}
                   </span>
                 ) : <select
                   value={member.role}
@@ -194,12 +173,12 @@ export function OrganizationMembersRolesPanel({
                     const nextRole = event.target.value;
                     void window.electronAPI.organization.updateMemberRole(orgId, member.memberId, nextRole)
                       .then((result) => {
-                        if (result?.success === false) throw new Error(result.error ?? t('settings:organization_ui.role_failed'));
+                        if (result?.success === false) throw new Error(result.error ?? 'Could not update member role');
                         trackTeamAnalyticsEvent('team_member_role_changed', {
                           surface: 'desktop',
                           callerRole: analyticsCallerRole,
-                          fromRole: member.role === 'owner' || member.role === 'admin' || member.role === 'member' ? member.role : 'unknown',
-                          toRole: nextRole === 'owner' || nextRole === 'admin' || nextRole === 'member' ? nextRole : 'unknown',
+                          fromRole: normalizeTeamAnalyticsCallerRole(member.role),
+                          toRole: normalizeTeamAnalyticsCallerRole(nextRole),
                         });
                         return refresh();
                       })
@@ -215,52 +194,105 @@ export function OrganizationMembersRolesPanel({
                       });
                   }}
                 >
-                  <option value="member">{t('project:org.role_member')}</option>
-                  <option value="admin">{t('project:org.role_admin')}</option>
-                  <option value="owner">{t('project:org.role_owner')}</option>
+                  <option value="viewer">{t('organization_ui.role_viewer')}</option>
+                  <option value="member">{t('organization_ui.role_member')}</option>
+                  <option value="admin">{t('organization_ui.role_admin')}</option>
+                  <option value="owner">{t('organization_ui.role_owner')}</option>
                 </select>}
+                {canAdminister && (
+                  <button
+                    type="button"
+                    className="member-remove-button rounded border border-[var(--nim-border)] bg-transparent p-1.5 text-[var(--nim-text-muted)] hover:border-[var(--nim-error)] hover:text-[var(--nim-error)]"
+                    data-testid="organization-member-remove"
+                    title={member.status === 'pending' ? t('organization_ui.revoke_invitation') : t('organization_ui.remove_from_organization')}
+                    aria-label={member.status === 'pending'
+                      ? t('organization_ui.revoke_invitation_for', { member: member.name || member.email })
+                      : t('organization_ui.remove_member_from_organization', { member: member.name || member.email })}
+                    onClick={() => { void removeMember(member); }}
+                  >
+                    <MaterialSymbol icon="person_remove" size={16} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
 
-          <ActionGuard allowed={canAdminister} reason={t('settings:organization_ui.invite_requires_admin')}>
-            <form
-              className="organization-invite-form mt-4 flex gap-2"
-              data-testid="organization-invite-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!inviteEmail.trim()) return;
-                void window.electronAPI.organization.inviteMember(orgId, inviteEmail.trim())
-                  .then((result) => {
-                    if (result?.success === false) throw new Error(result.error ?? t('settings:organization_ui.invite_failed'));
-                    trackTeamAnalyticsEvent('team_invitation_sent', {
-                      surface: 'desktop',
-                      entryPoint: 'organization_manager',
-                      callerRole: analyticsCallerRole,
-                      memberCountBucket: bucketMemberCount(members.length + 1),
-                    });
-                    setInviteEmail('');
-                    return refresh();
-                  })
-                  .catch((reason) => {
-                    trackTeamAnalyticsEvent('team_operation_failed', {
-                      surface: 'desktop',
-                      operation: 'send_invitation',
-                      entryPoint: 'organization_manager',
-                      callerRole: analyticsCallerRole,
-                      errorCategory: categorizeTeamAnalyticsError('organization', reason),
-                    });
-                    setError(String(reason));
-                  });
-              }}
+          <ActionGuard allowed={canAdminister} reason={t('organization_ui.invite_requires_admin')}>
+            <button
+              className="organization-invite-open mt-4 rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-[var(--nim-on-primary)]"
+              data-testid="organization-invite-open"
+              type="button"
+              onClick={() => setInviteOpen(true)}
             >
-              <input className="min-w-0 flex-1 rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-2 text-sm" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="teammate@example.com" />
-              <button className="rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-white" type="submit">{t('project:team.invite')}</button>
-            </form>
+              {t('organization_ui.invite_people')}
+            </button>
           </ActionGuard>
         </>
       )}
-      {error && <p className="select-text text-sm text-[var(--nim-error)]">{error}</p>}
+      {orgId && (
+        <InviteToTeamDialog
+          isOpen={inviteOpen}
+          orgId={orgId}
+          orgName={organizations.find(team => team.orgId === orgId)?.name ?? t('organization_ui.your_team')}
+          projects={inviteProjects}
+          workspacePath={workspacePath}
+          onClose={() => setInviteOpen(false)}
+          onInvited={(result) => {
+            trackTeamAnalyticsEvent('team_invitation_sent', {
+              surface: 'desktop',
+              entryPoint: 'organization_manager',
+              callerRole: analyticsCallerRole,
+              memberCountBucket: bucketMemberCount(members.length + result.invited.length),
+            });
+            // Partial outcomes are surfaced rather than folded into success:
+            // an inviter who is told nothing believes every address went out
+            // and every folder landed.
+            const problems = [
+              ...result.failed.map(failure => `${failure.email}: ${failure.error}`),
+              ...result.projectGrantsFailed.map(id => t('organization_ui.project_access_failed', { project: id })),
+              ...result.folderFailures,
+            ];
+            setError(problems.length > 0 ? problems.join('\n') : null);
+            if (result.failed.length > 0) {
+              trackTeamAnalyticsEvent('team_operation_failed', {
+                surface: 'desktop',
+                operation: 'send_invitation',
+                entryPoint: 'organization_manager',
+                callerRole: analyticsCallerRole,
+                errorCategory: categorizeTeamAnalyticsError('organization', result.failed[0]?.error),
+              });
+            }
+            void refresh();
+          }}
+        />
+      )}
+      {error && <p className="select-text whitespace-pre-line text-sm text-[var(--nim-error)]">{error}</p>}
     </section>
+  );
+}
+
+function MemberPresenceDot({
+  orgId,
+  memberId,
+}: {
+  orgId: string;
+  memberId: string;
+}) {
+  const { t } = useTranslation('settings');
+  const presence = useAtomValue(teamPresenceAtomFamily({
+    orgId,
+    teamMemberId: memberId,
+  }));
+  const status = presence?.status ?? 'offline';
+  const color = status === 'online'
+    ? 'bg-[var(--nim-success)]'
+    : status === 'away'
+      ? 'bg-[var(--nim-warning)]'
+      : 'bg-[var(--nim-text-disabled)]';
+  return (
+    <span
+      className={`member-presence-dot size-2.5 shrink-0 rounded-full ${color}`}
+      aria-label={t(`organization_ui.presence_${status}`, { defaultValue: status })}
+    />
   );
 }

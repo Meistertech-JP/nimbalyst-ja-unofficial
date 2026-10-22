@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating,
   offset,
@@ -10,8 +11,8 @@ import {
   useRole,
   useInteractions,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '../floating/windowControlsClearance';
 import { UnifiedDiffView, diffStats } from './UnifiedDiffView';
-import { useRuntimeTranslation } from '../RuntimeTranslation';
 
 export type PopoverMode = 'peek' | 'pinned';
 
@@ -57,7 +58,7 @@ export function DiffPeekPopover({
   height,
   onResize,
 }: DiffPeekPopoverProps) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('files');
   const virtualRef = useMemo(() => ({
     getBoundingClientRect: () => anchorRect,
   }), [anchorRect]);
@@ -74,6 +75,7 @@ export function DiffPeekPopover({
       offset(8),
       flip({ fallbackPlacements: ['left-start', 'top-start', 'bottom-start'], padding: 8 }),
       shift({ padding: 8 }),
+      windowControlsClearance(),
     ],
   });
 
@@ -141,7 +143,7 @@ export function DiffPeekPopover({
     height: height ?? DEFAULT_HEIGHT,
   };
 
-  const containerClass = `diff-peek-popover flex flex-col overflow-hidden outline-none z-[1000] bg-[var(--nim-bg-secondary)] rounded-lg shadow-[0_12px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.2)] resize min-w-[320px] min-h-[160px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] border ${
+  const containerClass = `flex flex-col overflow-hidden outline-none z-[1000] bg-[var(--nim-bg-secondary)] rounded-lg shadow-[0_12px_32px_rgba(0,0,0,0.4),0_2px_8px_rgba(0,0,0,0.2)] resize min-w-[320px] min-h-[160px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] border ${
     mode === 'peek'
       ? 'border-dashed border-[var(--nim-primary)]'
       : 'border-[var(--nim-primary)]'
@@ -169,12 +171,12 @@ export function DiffPeekPopover({
           </span>
           {mode === 'peek' && (
             <span className="text-[10px] tracking-[0.06em] uppercase py-0.5 px-1.5 rounded-sm bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-faint)]">
-              {t('files:diff_peek.peeking', 'Peeking')}
+              {t('diff_peek.peeking')}
             </span>
           )}
           {mode === 'pinned' && (
             <span className="text-[10px] tracking-[0.06em] uppercase py-0.5 px-1.5 rounded-sm bg-[color-mix(in_srgb,var(--nim-primary)_25%,transparent)] text-[var(--nim-primary)]">
-              {t('sessions:history.pinned', 'Pinned')}
+              {t('diff_peek.pinned')}
             </span>
           )}
           {onOpenInEditor && (
@@ -183,7 +185,7 @@ export function DiffPeekPopover({
               className="bg-transparent border-0 cursor-pointer text-[var(--nim-primary)] text-[11px] py-0.5 px-1 hover:underline"
               onClick={(e) => { e.stopPropagation(); onOpenInEditor(); }}
             >
-              {t('files:diff_peek.open_in_editor', 'Open in editor')}
+              {t('diff_peek.open_in_editor')}
             </button>
           )}
         </div>
@@ -193,8 +195,8 @@ export function DiffPeekPopover({
         </div>
 
         <div className="flex gap-3 py-1.5 px-3 border-t border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[10px] text-[var(--nim-text-faint)]">
-          <span><kbd className={KBD_CLASS}>Esc</kbd> {t('files:diff_peek.close', 'close')}</span>
-          {mode === 'peek' && <span><kbd className={KBD_CLASS}>Enter</kbd> {t('files:diff_peek.pin', 'pin')}</span>}
+          <span><kbd className={KBD_CLASS}>Esc</kbd> {t('diff_peek.close')}</span>
+          {mode === 'peek' && <span><kbd className={KBD_CLASS}>Enter</kbd> {t('diff_peek.pin')}</span>}
         </div>
       </div>
     </FloatingPortal>

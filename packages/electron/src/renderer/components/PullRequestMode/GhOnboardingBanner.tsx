@@ -11,8 +11,8 @@
 
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { getGhCliService, type GhCliStatus } from '../../services/RendererGhCliService';
 
 interface GhOnboardingBannerProps {
@@ -32,7 +32,7 @@ export function GhOnboardingBanner({
   onDismiss,
   visible = true,
 }: GhOnboardingBannerProps): JSX.Element | null {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('git');
   const [status, setStatus] = useState<GhCliStatus | null>(initialStatus ?? null);
   const [isRechecking, setIsRechecking] = useState(false);
 
@@ -87,16 +87,17 @@ export function GhOnboardingBanner({
       <div className="flex-1 min-w-0">
         {notInstalled ? (
           <>
-            <div className="font-medium text-nim text-sm">{t('dialogs:github.cli_required')}</div>
+            <div className="font-medium text-nim text-sm">{t('pull_request.onboarding.cli_required')}</div>
             <div className="text-nim-muted text-xs mt-1">
-              {t('dialogs:github.cli_description')}
+              {t('pull_request.onboarding.cli_description_before')} <code className="font-mono">gh</code>{' '}
+              {t('pull_request.onboarding.cli_description_after')}
             </div>
           </>
         ) : (
           <>
-            <div className="font-medium text-nim text-sm">{t('dialogs:github.sign_in')}</div>
+            <div className="font-medium text-nim text-sm">{t('pull_request.onboarding.sign_in')}</div>
             <div className="text-nim-muted text-xs mt-1 flex items-center gap-2 flex-wrap">
-              {t('dialogs:github.run')}
+              {t('pull_request.onboarding.run')}
               <code className="font-mono bg-nim px-1.5 py-0.5 rounded text-nim">
                 {GH_LOGIN_COMMAND}
               </code>
@@ -104,11 +105,11 @@ export function GhOnboardingBanner({
                 type="button"
                 className="text-nim-link hover:text-nim-link-hover hover:underline text-xs"
                 onClick={handleCopyCommand}
-                title={t('dialogs:github.copy_command')}
+                title={t('pull_request.onboarding.copy_command')}
               >
-                {t('dialogs:github.copy')}
+                {t('pull_request.onboarding.copy')}
               </button>
-              {t('dialogs:github.terminal_hint')}
+              {t('pull_request.onboarding.terminal_description')}
             </div>
           </>
         )}
@@ -121,7 +122,7 @@ export function GhOnboardingBanner({
             className="nim-button text-xs px-3 py-1.5"
             onClick={handleInstallClick}
           >
-            {t('dialogs:github.install')}
+            {t('pull_request.onboarding.install_cli')}
           </button>
         )}
         <button
@@ -130,15 +131,15 @@ export function GhOnboardingBanner({
           onClick={handleRecheck}
           disabled={isRechecking}
         >
-          {isRechecking ? t('dialogs:github.checking') : t('dialogs:github.recheck')}
+          {isRechecking ? t('pull_request.onboarding.checking') : t('pull_request.onboarding.recheck')}
         </button>
         {onDismiss && (
           <button
             type="button"
             className="text-nim-muted hover:text-nim p-1"
             onClick={onDismiss}
-            title={t('dialogs:github.dismiss')}
-            aria-label={t('dialogs:github.dismiss')}
+            title={t('pull_request.onboarding.dismiss')}
+            aria-label={t('pull_request.onboarding.dismiss')}
           >
             <MaterialSymbol icon="close" size={16} />
           </button>

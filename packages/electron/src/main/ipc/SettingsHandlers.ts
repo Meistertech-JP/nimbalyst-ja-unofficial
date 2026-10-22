@@ -1,13 +1,17 @@
+import { registerProviderCredentialHandlers } from './ProviderCredentialHandlers';
+import { registerCloudflareSandboxHandlers } from './CloudflareSandboxHandlers';
 import { BrowserWindow, safeStorage, session, dialog } from 'electron';
+import { getWindowIdForWindow, windowStates } from '../window/windowState';
 import { applyAnalyticsEnabled } from '../services/analytics/applyAnalyticsEnabled';
 import { safeHandle, safeOn } from '../utils/ipcRegistry';
+import { deleteSecretFile, readSecretFile, writeSecretFile } from '../utils/fileUtils';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
 import {
     getWorkspaceState, updateWorkspaceState,
-    getTheme, getThemeSync, getResolvedThemeSync,
+    getTheme, getThemeSync, getResolvedThemeSync, getThemeBackgroundColor,
     isCompletionSoundEnabled, setCompletionSoundEnabled,
     getCompletionSoundType, setCompletionSoundType, CompletionSoundType,
     getCompletionSoundCustomPath, setCompletionSoundCustomPath,
@@ -36,20 +40,18 @@ import {
     isFeatureWalkthroughCompleted, setFeatureWalkthroughCompleted,
     isWorktreeOnboardingShown, setWorktreeOnboardingShown,
     getClaudeCodeSettings,
+    getAttachmentStagingConfig,
+    setAttachmentStagingConfig,
     setClaudeCodeProjectCommandsEnabled, setClaudeCodeUserCommandsEnabled,
     setClaudeCodeApiUpstreamUrl,
     getAgentWorkflowSourceSettings, getAgentWorkflowExportSettings,
     setAgentWorkflowSourceSettings, setAgentWorkflowExportSettings,
 } from '../utils/store';
-import { getEnhancedPath } from '../services/CLIManager';
+import { getEnhancedPath } from '../services/shellEnvironment';
 import { logger } from '../utils/logger';
 import { getSettingsService, isSettingKey } from '../services/SettingsService';
 import { SessionNamingService } from '../services/SessionNamingService';
 import { getDialogDefaultPath, rememberDialogSelection } from '../utils/dialogPaths';
-import { handleLanguageChange } from '../i18n';
-import { coordinateUiLanguageChange } from '../i18n/languageChangeCoordinator';
-import { updateApplicationMenu } from '../menu/ApplicationMenu';
-import type { AppLocalePreference } from '../../shared/i18n/types';
 import { SoundNotificationService } from '../services/SoundNotificationService';
 import { autoUpdaterService } from '../services/autoUpdater';
 import type { OnboardingState } from '../utils/store';
@@ -57,10 +59,11 @@ import { getCredentials, resetCredentials, generateQRPairingPayload, isUsingSecu
 import {
     isSyncProviderReady,
     onSyncStatusChange,
-    triggerIncrementalSync,
+    triggerIncrementalSync, projectConfigSync,
     updateSleepPrevention,
 } from '../services/SyncManager';
 import { getDocSyncStatusForWorkspace } from '../file/WorkspaceWatcher';
+import { transcriptBackfill } from '../services/sync/transcriptBackfill';
 import * as StytchAuth from '../services/StytchAuthService';
 import { getRestartSignalPath } from '../utils/appPaths';
 import { TrayManager } from '../tray/TrayManager';
@@ -73,7 +76,8 @@ import {
     switchPersonalSyncProfile,
 } from '../services/PersonalSyncProfiles';
 import { purgeOfflineCollabAccounts } from '../services/CollabOfflineAccountLifecycle';
-import { listPersonalSyncDevices } from '../services/PersonalSyncDevicesService';
+import { listPersonalSyncDevices, updatePersonalSyncDevices } from '../services/PersonalSyncDevicesService';
+import { recordProjectWalkOriginator } from '../services/ProjectWalkClaim';
 
 // Track if we've subscribed to sync status changes
 let syncStatusListenerSetup = false;
@@ -102,6 +106,43 @@ function ensureStytchInitialized(): void {
 }
 
 /**
+ * Note the window a sign-in was started from, so the post-sign-in project walk
+ * comes back to it. Sign-in finishes in an external browser, so by the time the
+ * auth broadcast lands there is no focused window to infer this from.
+ */
+function rememberSignInWindow(event: Electron.IpcMainInvokeEvent): void {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) recordProjectWalkOriginator(window.id, Date.now());
+}
+
+function parseAuthFlowOptions(
+    value: unknown,
+    fallbackIntent: StytchAuth.AuthIntent,
+): StytchAuth.AuthFlowOptions {
+    if (value === undefined) return { intent: fallbackIntent };
+    if (!value || typeof value !== 'object') {
+        throw new Error('Auth flow options must be an object');
+    }
+    const options = value as { intent?: unknown; targetPersonalOrgId?: unknown };
+    if (!['sign-in', 'add-account', 'reauth'].includes(String(options.intent))) {
+        throw new Error('Auth flow intent must be sign-in, add-account, or reauth');
+    }
+    if (options.targetPersonalOrgId !== undefined && typeof options.targetPersonalOrgId !== 'string') {
+        throw new Error('targetPersonalOrgId must be a string');
+    }
+    if (options.intent === 'reauth' && !options.targetPersonalOrgId) {
+        throw new Error('Reauth requires targetPersonalOrgId');
+    }
+    if (options.intent !== 'reauth' && options.targetPersonalOrgId) {
+        throw new Error('targetPersonalOrgId is only valid for reauth');
+    }
+    return {
+        intent: options.intent as StytchAuth.AuthIntent,
+        targetPersonalOrgId: options.targetPersonalOrgId as string | undefined,
+    };
+}
+
+/**
  * Get the local network IP address (for LAN access from mobile devices)
  */
 function getLocalNetworkIP(): string | null {
@@ -120,6 +161,8 @@ function getLocalNetworkIP(): string | null {
 }
 
 export function registerSettingsHandlers() {
+    registerProviderCredentialHandlers();
+    registerCloudflareSandboxHandlers();
     // ============================================================
     // Flat-key SettingsService (per-key reads/writes + broadcast)
     //
@@ -133,45 +176,25 @@ export function registerSettingsHandlers() {
     const settingsService = getSettingsService();
     settingsService.init();
 
-    let uiLanguageSyncQueue = Promise.resolve();
-    const syncUiLanguage = async (key: string, value: unknown): Promise<void> => {
-        if (key !== 'uiLanguage') return;
-
-        const nextSync = uiLanguageSyncQueue.then(() => coordinateUiLanguageChange(
-            key,
-            () => handleLanguageChange(value as AppLocalePreference),
-            updateApplicationMenu,
-        ));
-        uiLanguageSyncQueue = nextSync.catch((error) => {
-            // Persisting the setting remains successful even if applying it to
-            // the current main-process UI fails. Keep the queue usable so a
-            // subsequent language change can recover without restarting.
-            logger.main.error('[i18n] Failed to apply UI language change:', error);
-        });
-        await uiLanguageSyncQueue;
-    };
-
     safeHandle('settings:getAll', () => {
         return settingsService.getAll();
     });
 
-    safeHandle('settings:set', async (_event, key: string, value: unknown) => {
+    safeHandle('settings:set', (_event, key: string, value: unknown) => {
         if (!isSettingKey(key)) {
             // Reject loudly -- a renderer asking for an unknown key is a
             // registry/key mismatch we want to catch in dev, not paper over.
             throw new Error(`[settings:set] Unknown setting key: ${key}`);
         }
         settingsService.set(key, value as any);
-        await syncUiLanguage(key, settingsService.get(key));
         return { ok: true };
     });
 
-    safeHandle('settings:delete', async (_event, key: string) => {
+    safeHandle('settings:delete', (_event, key: string) => {
         if (!isSettingKey(key)) {
             throw new Error(`[settings:delete] Unknown setting key: ${key}`);
         }
         settingsService.delete(key);
-        await syncUiLanguage(key, settingsService.get(key));
         return { ok: true };
     });
 
@@ -180,23 +203,13 @@ export function registerSettingsHandlers() {
         return getAppSetting(key);
     });
 
-    safeHandle('app-settings:set', async (event, key: string, value: unknown) => {
-        let persistedValue = value;
-        if (key === 'uiLanguage') {
-            // Keep legacy callers compatible, but route the language setting
-            // through the flat-key authority so every renderer receives the
-            // same `settings:changed` notification as the Settings UI.
-            settingsService.set('uiLanguage', value as AppLocalePreference);
-            persistedValue = settingsService.get('uiLanguage');
-        } else {
-            setAppSetting(key, value);
-        }
-        await syncUiLanguage(key, persistedValue);
+    safeHandle('app-settings:set', (event, key: string, value: unknown) => {
+        setAppSetting(key, value);
         // Broadcast to every OTHER window so cross-window state (e.g.
         // navigation-gutter customization) stays in lockstep without a reload.
         // Exclude the sender: it already applied the change locally before
         // invoking, and re-applying its own write would be redundant.
-        const payload = { key, value: persistedValue };
+        const payload = { key, value };
         for (const win of BrowserWindow.getAllWindows()) {
             if (win.isDestroyed()) continue;
             if (win.webContents.id === event.sender.id) continue;
@@ -244,34 +257,24 @@ export function registerSettingsHandlers() {
         return secretsDir;
     }
 
-    function getSecretFilePath(key: string): string {
-        // Sanitize key to be filesystem-safe
-        const safeKey = key.replace(/[^a-zA-Z0-9_:-]/g, '_');
-        return path.join(getSecretsDir(), `${safeKey}.enc`);
-    }
-
     safeHandle('secrets:get', async (_event, key: string) => {
         if (!key) {
             throw new Error('Key is required for secrets:get');
         }
 
-        const filePath = getSecretFilePath(key);
-
-        if (!fs.existsSync(filePath)) {
-            return null;
-        }
+        const decrypt = (data: Buffer) =>
+            safeStorage.isEncryptionAvailable()
+                ? safeStorage.decryptString(data)
+                : data.toString('utf8');
 
         try {
-            const fileData = fs.readFileSync(filePath);
-
-            if (safeStorage.isEncryptionAvailable()) {
-                return safeStorage.decryptString(fileData);
-            } else {
-                // Fallback: read as plain text
-                return fileData.toString('utf8');
-            }
+            return readSecretFile(getSecretsDir(), key, decrypt);
         } catch (error) {
-            logger.main.error(`[secrets:get] Failed to read secret for key ${key}:`, error);
+            // A file exists but will not read back, which is a different
+            // situation from "no secret stored" - that path returns null
+            // without ever reaching here. Log it so a corrupt or undecryptable
+            // secret is greppable rather than silently indistinguishable.
+            logger.main.error(`[secrets:get] Failed to read existing secret for key ${key}:`, error);
             return null;
         }
     });
@@ -284,16 +287,13 @@ export function registerSettingsHandlers() {
             throw new Error('Value is required for secrets:set');
         }
 
-        const filePath = getSecretFilePath(key);
-
         try {
             if (safeStorage.isEncryptionAvailable()) {
-                const encrypted = safeStorage.encryptString(value);
-                fs.writeFileSync(filePath, encrypted);
+                writeSecretFile(getSecretsDir(), key, safeStorage.encryptString(value));
             } else {
                 // Fallback: save as plain text (with warning)
                 logger.main.warn(`[secrets:set] safeStorage not available - saving secret without encryption`);
-                fs.writeFileSync(filePath, value, 'utf8');
+                writeSecretFile(getSecretsDir(), key, value);
             }
             logger.main.info(`[secrets:set] Secret saved for key: ${key}`);
         } catch (error) {
@@ -307,13 +307,9 @@ export function registerSettingsHandlers() {
             throw new Error('Key is required for secrets:delete');
         }
 
-        const filePath = getSecretFilePath(key);
-
         try {
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-                logger.main.info(`[secrets:delete] Secret deleted for key: ${key}`);
-            }
+            deleteSecretFile(getSecretsDir(), key);
+            logger.main.info(`[secrets:delete] Secret deleted for key: ${key}`);
         } catch (error) {
             logger.main.error(`[secrets:delete] Failed to delete secret for key ${key}:`, error);
             throw error;
@@ -359,6 +355,14 @@ export function registerSettingsHandlers() {
     safeOn('get-resolved-theme-sync', (event) => {
         const theme = getResolvedThemeSync();
         event.returnValue = theme;
+    });
+
+    // The active theme's resolved --nim-bg, for the same flash-prevention
+    // script. The base theme classes only carry base colours, so an extension
+    // or file-based theme would still paint light/dark white until React
+    // resolves it; this seeds the variable before the first stylesheet applies.
+    safeOn('get-theme-background-color-sync', (event) => {
+        event.returnValue = getThemeBackgroundColor() ?? null;
     });
 
     // Get app version (from app.getVersion)
@@ -629,8 +633,12 @@ export function registerSettingsHandlers() {
         return getOpenProjectPaths();
     });
 
-    safeHandle('app:set-open-projects', async (_event, paths: string[]) => {
-        setOpenProjectPaths(Array.isArray(paths) ? paths : []);
+    safeHandle('app:set-open-projects', async (event, paths: string[]) => {
+        const order = Array.isArray(paths) ? paths.filter(path => typeof path === 'string') : [];
+        const windowId = getWindowIdForWindow(BrowserWindow.fromWebContents(event.sender));
+        const state = windowId === null ? undefined : windowStates.get(windowId);
+        if (state) state.projectRailOrder = order;
+        setOpenProjectPaths(order);
     });
 
     safeHandle('app:get-active-project-path', async () => {
@@ -681,11 +689,28 @@ export function registerSettingsHandlers() {
 
     // Developer mode (global app setting)
     safeHandle('developer-mode:get', async () => {
-        return isDeveloperMode();
+        const enabled = isDeveloperMode();
+        // A `false` here hydrates a window into Standard Mode. Log it so a
+        // spurious flip (NIM-3963) can be told apart from a real setting.
+        if (!enabled) {
+            logger.main.info(`[SettingsHandlers] developer-mode:get -> false (stored key present: ${getAppSetting('developerMode') !== undefined})`);
+        }
+        return enabled;
     });
 
-    safeHandle('developer-mode:set', async (_event, enabled: boolean) => {
+    safeHandle('developer-mode:set', async (event, enabled: boolean) => {
+        // Logged because this write was previously silent, which left no way to
+        // tell a spurious flip back to Standard Mode from a deliberate one.
+        const before = isDeveloperMode();
+        if (before !== enabled) {
+            logger.main.info(`[SettingsHandlers] developer-mode:set ${before} -> ${enabled}`);
+        }
         setDeveloperMode(enabled);
+        // Main is the source of truth; keep every other window in step.
+        for (const win of BrowserWindow.getAllWindows()) {
+            if (win.isDestroyed() || win.webContents.id === event.sender.id) continue;
+            win.webContents.send('app-settings:changed', { key: 'developerMode', value: enabled });
+        }
     });
 
     // Feature walkthrough state (shown on first launch)
@@ -747,6 +772,18 @@ export function registerSettingsHandlers() {
     // Claude Code settings
     safeHandle('claudeCode:get-settings', async () => {
         return getClaudeCodeSettings();
+    });
+
+    safeHandle('attachment-staging:get-settings', async () => {
+        return getAttachmentStagingConfig();
+    });
+
+    safeHandle('attachment-staging:set-settings', async (_event, config: {
+        mode: 'temp' | 'workspace' | 'custom';
+        customPath?: string;
+    }) => {
+        setAttachmentStagingConfig(config);
+        return getAttachmentStagingConfig();
     });
 
     safeHandle('agentWorkflows:get-settings', async () => {
@@ -1023,6 +1060,7 @@ export function registerSettingsHandlers() {
     // URL and personal-org JWT. The stored config intentionally omits serverUrl
     // when production is selected, and a team JWT targets a different member.
     safeHandle('sync:get-devices', listPersonalSyncDevices);
+    safeHandle('sync:update-devices', (_event, update) => updatePersonalSyncDevices(update));
 
     // Get sync status for the navigation gutter button
     safeHandle('sync:get-status', async (_event, workspacePath?: string) => {
@@ -1053,15 +1091,13 @@ export function registerSettingsHandlers() {
         const isProjectEnabled = workspacePath ? enabledProjects.includes(workspacePath) : false;
 
         // Get sync provider status from SyncManager
-        const { isSyncEnabled, getSyncProvider } = await import('../services/SyncManager');
-        const provider = getSyncProvider();
-        const syncActive = isSyncEnabled();
+        const { getSyncStatusSnapshot, isSyncEnabled } = await import('../services/SyncManager');
 
         // Get session count for this workspace using a simple, fast query
         let sessionCount = 0;
         let lastSyncedAt: number | null = null;
 
-        if (workspacePath && syncActive) {
+        if (workspacePath && isSyncEnabled()) {
             try {
                 // Get session count for status display (only called on mount, not polled)
                 const { database } = await import('../database/PGLiteDatabaseWorker');
@@ -1084,10 +1120,6 @@ export function registerSettingsHandlers() {
             }
         }
 
-        // Check connection status
-        // The provider doesn't expose a direct "isConnected" status, but we can infer from syncActive
-        const connected = syncActive && provider !== null;
-
         // Get doc sync stats from ProjectFileSyncService
         let docSyncStats = { projectCount: 0, fileCount: 0, connected: false };
         try {
@@ -1100,9 +1132,7 @@ export function registerSettingsHandlers() {
         return {
             appConfigured: true,
             projectEnabled: isProjectEnabled,
-            connected,
-            syncing: false, // We don't have real-time syncing status yet
-            error: null,
+            ...getSyncStatusSnapshot(),
             stats: {
                 sessionCount,
                 lastSyncedAt,
@@ -1142,9 +1172,13 @@ export function registerSettingsHandlers() {
         const docSyncEnabledProjects = [...new Set(selection?.docSyncEnabledProjects ?? [])];
 
         const addedProjects = enabledProjects.filter((path) => !previousEnabled.includes(path));
+        const removedProjects = previousEnabled.filter((path) => !enabledProjects.includes(path));
         const docSyncChanged = docSyncEnabledProjects.length !== previousDocSync.length
             || docSyncEnabledProjects.some((path) => !previousDocSync.includes(path));
 
+        // Before the write: newly enabled projects keep their sessions marked
+        // until the next reconcile queues the transcripts they withheld.
+        transcriptBackfill.holdProjects(addedProjects);
         // One write for the whole selection.
         setSessionSyncConfig(persistActivePersonalSyncProfile({
             ...config,
@@ -1152,19 +1186,20 @@ export function registerSettingsHandlers() {
             docSyncEnabledProjects,
             enabled: enabledProjects.length > 0,
         }));
+        void projectConfigSync.refresh().catch(err => logger.main.warn('[sync:set-project-selection] Failed to refresh project config', err));
         logger.store.info(
             `[sync:set-project-selection] ${enabledProjects.length} project(s) enabled, `
             + `${docSyncEnabledProjects.length} with document sync`,
         );
 
         // ...and one sync trigger. Doc-sync membership is applied during
-        // reinitialization; a project that only gained session sync just needs
-        // its sessions pushed.
+        // reinitialization; a project that gained or lost session sync needs
+        // its sessions republished (transcripts uploaded, or marked withheld).
         try {
             if (docSyncChanged || !isSyncProviderReady()) {
                 await repositoryManager.reinitializeSyncWithNewConfig();
-            } else if (addedProjects.length > 0) {
-                triggerIncrementalSync().catch(err => {
+            } else if (addedProjects.length > 0 || removedProjects.length > 0) {
+                triggerIncrementalSync({ force: true }).catch(err => {
                     logger.store.error('[sync:set-project-selection] Failed to trigger sync:', err);
                 });
             }
@@ -1195,6 +1230,7 @@ export function registerSettingsHandlers() {
             // Add project to enabled list if not already present
             if (!enabledProjects.includes(workspacePath)) {
                 enabledProjects = [...enabledProjects, workspacePath];
+                transcriptBackfill.holdProjects([workspacePath]);
             }
         } else {
             // Remove project from enabled list
@@ -1209,13 +1245,15 @@ export function registerSettingsHandlers() {
         });
 
         logger.store.info(`[sync:toggle-project] Project sync ${enabled ? 'enabled' : 'disabled'} for: ${workspacePath}`);
+        void projectConfigSync.refresh(workspacePath).catch(err => logger.main.warn(`[sync:toggle-project] Failed to refresh config for ${workspacePath}`, err));
 
-        // If a project was enabled, trigger sync to push its sessions immediately
-        if (enabled) {
+        // Republish the project's sessions now: enabled uploads their
+        // transcripts, disabled marks them as withheld on the phone.
+        if (enabled || isSyncProviderReady()) {
             try {
                 if (isSyncProviderReady()) {
                     // Provider exists - trigger incremental sync directly
-                    triggerIncrementalSync().catch(err => {
+                    triggerIncrementalSync({ force: true }).catch(err => {
                         logger.store.error('[sync:toggle-project] Failed to trigger sync:', err);
                     });
                 } else {
@@ -1352,8 +1390,10 @@ export function registerSettingsHandlers() {
     });
 
     // Sign in with Google OAuth
-    safeHandle('stytch:sign-in-google', async () => {
+    safeHandle('stytch:sign-in-google', async (event, rawOptions?: unknown) => {
         ensureStytchInitialized();
+        rememberSignInWindow(event);
+        const options = parseAuthFlowOptions(rawOptions, 'sign-in');
         // Get the sync server URL from settings
         const syncConfig = getSessionSyncConfig();
         const isDev = process.env.NODE_ENV !== 'production';
@@ -1373,15 +1413,17 @@ export function registerSettingsHandlers() {
         // Convert WebSocket URLs to HTTP: wss:// -> https://, ws:// -> http://
         const httpUrl = serverUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
         logger.main.info('[stytch:sign-in-google] Auth URL:', httpUrl, 'effectiveEnvironment:', effectiveEnvironment);
-        return StytchAuth.signInWithGoogle(httpUrl);
+        return StytchAuth.signInWithGoogle(httpUrl, options);
     });
 
     // Send magic link for passwordless authentication
-    safeHandle('stytch:send-magic-link', async (_event, email: string) => {
+    safeHandle('stytch:send-magic-link', async (event, email: string, rawOptions?: unknown) => {
         ensureStytchInitialized();
         if (!email) {
             return { success: false, error: 'Email is required' };
         }
+        rememberSignInWindow(event);
+        const options = parseAuthFlowOptions(rawOptions, 'sign-in');
         // Get the sync server URL from settings
         const syncConfig = getSessionSyncConfig();
         const isDev = process.env.NODE_ENV !== 'production';
@@ -1401,7 +1443,7 @@ export function registerSettingsHandlers() {
         // Convert WebSocket URLs to HTTP: wss:// -> https://, ws:// -> http://
         const httpUrl = serverUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
         logger.main.info('[stytch:send-magic-link] Sending to:', httpUrl, 'effectiveEnvironment:', effectiveEnvironment);
-        return StytchAuth.sendMagicLink(email, httpUrl);
+        return StytchAuth.sendMagicLink(email, httpUrl, options);
     });
 
     // Sign out (all accounts)
@@ -1428,23 +1470,6 @@ export function registerSettingsHandlers() {
         }
         await StytchAuth.signOut();
         return { success: true };
-    });
-
-    // Add a new account (opens OAuth flow)
-    safeHandle('stytch:add-account', async () => {
-        ensureStytchInitialized();
-        const syncConfig = getSessionSyncConfig();
-        const isDev = process.env.NODE_ENV !== 'production';
-        const effectiveEnvironment = isDev ? syncConfig?.environment : undefined;
-        let serverUrl: string;
-        if (effectiveEnvironment === 'development') {
-            serverUrl = 'http://localhost:8790';
-        } else if (syncConfig?.serverUrl) {
-            serverUrl = syncConfig.serverUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
-        } else {
-            serverUrl = 'https://sync.nimbalyst.com';
-        }
-        return StytchAuth.addAccount(serverUrl);
     });
 
     // Remove a specific account by personalOrgId

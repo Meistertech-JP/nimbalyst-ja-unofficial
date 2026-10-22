@@ -6,7 +6,7 @@
  * itself is platform-neutral and lives in
  * `@nimbalyst/runtime/sync/TrackerSyncEngine`; this file is the Electron
  * host: it wires PGLite (`TrackerPGLiteStore`), team metadata
- * (`TeamService`), the org encryption key (`OrgKeyService`), and the
+ * (`TeamService`) and the
  * Stytch JWT into a `TrackerSyncEngineConfig`.
  *
  * Lifecycle:
@@ -14,49 +14,49 @@
  *     engine. Called from `RepositoryManager` per open workspace and
  *     from `WorkspaceManagerWindow`.
  *   - `shutdownTrackerSync(workspacePath?)` tears down one or all engines.
- *   - `reinitializeTrackerSync(workspacePath)` is the rotation handler:
- *     destroys + rebuilds the engine with fresh key material.
+ *   - `reinitializeTrackerSync(workspacePath)` destroys + rebuilds the engine
+ *     against freshly resolved routing. Triggered when the project's tracker
+ *     room moves to another org (`onRoomMoved`, Epic H3 P1) and by the
+ *     `tracker-sync:restart-for-workspace` IPC. It is no longer a key-rotation
+ *     handler: the team DEK is server-held and the client carries no key
+ *     material to refresh.
  *
  * Renderer bridge:
- *   The 7 `tracker-sync:*` IPC handlers preserved here keep the existing
+ *   The `tracker-sync:*` IPC handlers preserved here keep the existing
  *   atoms in `store/listeners/trackerSyncListeners.ts` and
  *   `store/atoms/trackerSync.ts` functional without renderer changes.
- *   The legacy `tracker-sync:connect-test` channel is intentionally
- *   removed (per phase-3 plan question 5; nothing in the current
- *   Playwright suite calls it).
+ *   `tracker-sync:connect-test` is also registered here; the collab E2E
+ *   specs drive tracker sync through it.
  */
 
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, dialog } from 'electron';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import {
   TrackerSyncEngine,
-  fingerprintTrackerKey,
   applyLabelDiff,
   type TrackerSyncEngineConfig,
   type TrackerSyncStatus,
   type AppliedTrackerItem,
   type RejectedTrackerMutation,
-  type TrackerKeyMaterial,
   type TrackerItemPayload,
   type TrackerRoomConfig,
+  type TrackerPresenceParticipant,
   type LabelsMap,
-} from '@nimbalyst/runtime/sync';
-import type { TrackerItem } from '@nimbalyst/runtime';
+} from '@nimbalyst/tracker-engine';
+import { asTeamJwt, asTeamMemberId, type TrackerItem } from '@nimbalyst/runtime';
 import { trackerItemToRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import WebSocket from 'ws';
 
 import { safeHandle } from '../utils/ipcRegistry';
 import { logger } from '../utils/logger';
 import { isAuthenticated } from './StytchAuthService';
-import { findTeamForWorkspace, getOrgScopedJwt } from './TeamService';
-import { getOrgKey, getOrgKeyFingerprint, fetchAndUnwrapOrgKey, fetchTeamKeyStatus, getLastKnownTeamKeyStatus, setTeamKeyCustodyMode } from './OrgKeyService';
+import { getOrgScopedIdentity, getOrgScopedJwt, listMembers, resolveTeamForWorkspace } from './TeamService';
 import { getCollabSyncWsUrl } from '../utils/collabSyncUrl';
 import { getDatabase } from '../database/initialize';
 import { TrackerPGLiteStore } from './tracker/TrackerPGLiteStore';
-import {
-  getMaxTrackerSchemaSyncId,
-  listUnsyncedTrackerSchemaDefs,
-} from './tracker/trackerTypeDefStore';
-import { applyRemoteWorkspaceTrackerSchemaDef } from './TrackerSchemaService';
+import { createDesktopTrackerSchemaSyncHooks } from './tracker/desktopTrackerSchemaSyncHooks';
+import { registerTrackerSchemaFlushHandler } from './tracker/trackerSchemaFlush';
+import { refreshWorkspaceSchemaLayer } from './TrackerSchemaService';
 import {
   applyRemoteWorkspaceTrackerNavigationEntry,
   registerTrackerNavigationFlushHandler,
@@ -64,30 +64,28 @@ import {
 import {
   getMaxTrackerNavigationSyncId,
   listUnsyncedTrackerNavigationEntries,
+  markTrackerNavigationEntryRejected,
 } from './tracker/trackerNavigationStore';
 import {
   getMaxSharedSavedViewSyncId,
   listUnsyncedSharedSavedViews,
+  markSharedSavedViewRejected,
 } from './tracker/trackerSavedViewStore';
 import {
   applyRemoteWorkspaceSharedSavedView,
   registerTrackerSavedViewFlushHandler,
 } from './TrackerSavedViewService';
 import { windows, windowStates } from '../window/windowState';
-import { getEffectiveTrackerSyncPolicy, decideBackfillAction } from './TrackerPolicyService';
+import { getEffectiveTrackerSharingPolicy, resolveTrackerSharingPolicy } from './TrackerPolicyService';
+import { drainPendingTrackerItems, type TrackerDrainAbort } from './tracker/trackerItemBackfill';
 import { rowToTrackerItem } from '../mcp/tools/trackerToolHandlers';
-import { getWorkspaceState } from '../utils/store';
-import {
-  backupCollabOrganization,
-  finalizeCollabDocumentMigration,
-  finalizeCollabTitleMigration,
-  verifyOrMarkCollabBackups,
-} from './CollabBackupCoordinator';
-import { getCollabBackupService } from './CollabBackupService';
+import { getWorkspaceState, updateWorkspaceState } from '../utils/store';
 import { AnalyticsService } from './analytics/AnalyticsService';
 import { sendTeamAnalyticsEvent } from './analytics/TeamAnalytics';
 import { CollaborationHealthAttemptTracker } from '../../shared/analytics/collaborationHealth';
-import { categorizeTeamAnalyticsError, toStableAnalyticsCategory } from '../../shared/analytics/teamAnalytics';
+import { bucketItemCount, categorizeTeamAnalyticsError, toStableAnalyticsCategory } from '../../shared/analytics/teamAnalytics';
+import { setBodyLinkHomeScope } from './tracker/trackerBodyLinks';
+import { refuseLocalWikiItem } from './localWiki/localWikiItemIds';
 
 // ============================================================================
 // Engine registry (per workspace)
@@ -100,6 +98,8 @@ interface EngineEntry {
   status: TrackerSyncStatus;
   /** Last known room config; renderer queries this via `tracker-sync:get-status`. */
   config: TrackerRoomConfig | null;
+  /** Remote room viewers only; local member is filtered by the engine. */
+  presence: TrackerPresenceParticipant[];
   /** Back-reference to the persistence store so `emitItemApplied` can read
    * the just-written row back as a `TrackerItem`. */
   store: TrackerPGLiteStore;
@@ -142,6 +142,10 @@ registerTrackerSavedViewFlushHandler((workspacePath) =>
   engines.get(workspacePath)?.engine.flushSavedViews(),
 );
 
+registerTrackerSchemaFlushHandler((workspacePath) =>
+  engines.get(workspacePath)?.engine.flushSchemas(),
+);
+
 /**
  * In-flight `initializeTrackerSync` promises, keyed by workspace path.
  * Prevents two near-simultaneous callers (e.g. RepositoryManager +
@@ -157,6 +161,12 @@ const inflightInits = new Map<string, Promise<void>>();
 
 type StatusListener = (status: TrackerSyncStatus) => void;
 const statusListeners = new Set<StatusListener>();
+
+type AppliedItemListener = (workspacePath: string, applied: AppliedTrackerItem) => void;
+const appliedItemListeners = new Set<AppliedItemListener>();
+
+type ConnectedListener = (workspacePath: string) => void;
+const connectedListeners = new Set<ConnectedListener>();
 
 function notifyStatus(status: TrackerSyncStatus): void {
   for (const cb of statusListeners) {
@@ -207,6 +217,36 @@ export function getTrackerSyncStatus(): TrackerSyncStatus {
   return currentAggregateStatus();
 }
 
+/**
+ * Observe items as the room acks them, from inside the main process.
+ *
+ * `emitItemApplied` already has the server-assigned `issueKey` in hand but only
+ * fans it out over IPC, which is useless to a main-process caller. The MCP
+ * publish/create path needs it: a published item has no key until the room
+ * assigns one, and main-process callers need to report that assignment without
+ * inventing a client-side placeholder.
+ */
+export function onTrackerItemApplied(listener: AppliedItemListener): () => void {
+  appliedItemListeners.add(listener);
+  return () => appliedItemListeners.delete(listener);
+}
+
+/**
+ * Observe a workspace's engine reaching `connected`, on every connect. Main-process
+ * work that must resume after an offline gap (creation-body publication) hangs
+ * off this rather than the aggregate status, which cannot say which workspace.
+ */
+export function onTrackerSyncWorkspaceConnected(listener: ConnectedListener): () => void {
+  connectedListeners.add(listener);
+  return () => connectedListeners.delete(listener);
+}
+
+/** Read an item through the workspace's sync store; null when the workspace has no engine. */
+export async function getTrackerItemForSync(workspacePath: string, itemId: string): Promise<TrackerItem | null> {
+  const entry = engines.get(workspacePath);
+  return entry ? entry.store.getTrackerItem(itemId) : null;
+}
+
 function currentAggregateStatus(): TrackerSyncStatus {
   if (engines.size === 0) return 'disconnected';
   // Pick the "happiest" status: prefer connected > syncing > connecting > error > disconnected.
@@ -219,24 +259,15 @@ function currentAggregateStatus(): TrackerSyncStatus {
   return 'disconnected';
 }
 
-/**
- * Legacy hook. The v1 implementation returned a `TrackerSyncProvider`
- * instance; phase 3 no longer exposes that surface (renderer reads PGLite
- * via existing IPC and observes engine events via `tracker-sync:*`).
- * Kept as `null` so callers that don't actually use the return type
- * still link.
- */
-export function getTrackerSyncProvider(_workspacePath?: string): null {
-  return null;
-}
-
 export function reconnectAllTrackerSyncs(): void {
   for (const entry of engines.values()) {
     void entry.engine.connect();
   }
 }
 
-/** Whether a connected engine exists for the workspace. */
+/** Whether a connected engine exists for the workspace. Ask this before doing
+ * anything that needs the socket right now: pushing a mutation, or waiting on
+ * an ack. */
 export function isTrackerSyncActive(workspacePath?: string): boolean {
   if (!workspacePath) {
     for (const entry of engines.values()) {
@@ -246,6 +277,20 @@ export function isTrackerSyncActive(workspacePath?: string): boolean {
   }
   const entry = engines.get(workspacePath);
   return !!entry && entry.status === 'connected';
+}
+
+/**
+ * Whether a tracker room exists for this workspace at all, connected or not.
+ *
+ * The distinction from `isTrackerSyncActive` is the difference between "not
+ * right now" and "not ever", and it is the only honest basis for telling a
+ * reader whether an issue key is coming. Answering that question with the
+ * connected predicate reported "this workspace has no team" during an ordinary
+ * disconnection (NIM-3659) -- the inverse of #1346, and just as misleading.
+ */
+export function isTrackerSyncConfigured(workspacePath?: string): boolean {
+  if (!workspacePath) return engines.size > 0;
+  return engines.has(workspacePath);
 }
 
 /**
@@ -274,8 +319,9 @@ export async function initializeTrackerSync(workspacePath: string): Promise<void
 }
 
 async function doInitializeTrackerSync(workspacePath: string): Promise<void> {
-  // TEMP DIAGNOSTIC: bump all bails to info so we can see why the engine
-  // never starts after the autoMatchTeamForWorkspace race fix.
+  // Bails log at info deliberately: every "the engine never started" report so
+  // far has been diagnosed from exactly these lines, and they are one line per
+  // workspace per launch.
   logger.main.info('[TrackerSyncManager] doInitializeTrackerSync entered for', workspacePath);
 
   if (engines.has(workspacePath)) {
@@ -288,9 +334,17 @@ async function doInitializeTrackerSync(workspacePath: string): Promise<void> {
     return;
   }
 
-  const team = await findTeamForWorkspace(workspacePath);
+  // An inconclusive lookup is not "no team". Recovery is autoMatchTeamForWorkspace's
+  // retry, which calls ensureTrackerSyncForWorkspace once the directory answers --
+  // keeping the backoff in one place rather than racing two of them.
+  const { team, complete } = await resolveTeamForWorkspace(workspacePath);
   if (!team) {
-    logger.main.info('[TrackerSyncManager] no team for workspace, skipping init:', workspacePath);
+    logger.main.info(
+      complete
+        ? '[TrackerSyncManager] no team for workspace, skipping init:'
+        : '[TrackerSyncManager] team lookup incomplete, deferring init for:',
+      workspacePath,
+    );
     return;
   }
 
@@ -304,57 +358,9 @@ async function doInitializeTrackerSync(workspacePath: string): Promise<void> {
     return;
   }
 
-  // Epic H2: decide the key-custody lane BEFORE touching the ECDH envelope
-  // path. In server-managed mode the server holds the per-team DEK and the
-  // engine syncs PLAINTEXT, so no org key is fetched or required.
-  let keyStatusMode: 'legacy-e2e' | 'server-managed' = 'legacy-e2e';
-  try {
-    const orgJwt = await getOrgScopedJwt(team.orgId);
-    keyStatusMode = (await fetchTeamKeyStatus(team.orgId, orgJwt)).mode;
-  } catch (err) {
-    // Offline JWT mint failure (NIM-1778): fall back to the last-known mode
-    // instead of assuming legacy-e2e, which poisons the tracker sync lane.
-    keyStatusMode = getLastKnownTeamKeyStatus(team.orgId)?.mode ?? 'legacy-e2e';
-    logger.main.warn('[TrackerSyncManager] key-status resolve failed; using last-known mode', keyStatusMode, ':', err);
-  }
-  const serverManaged = keyStatusMode === 'server-managed';
-  const healthAttempt = new CollaborationHealthAttemptTracker(
-    'tracker',
-    serverManaged ? 'server_managed' : 'legacy_e2e',
-  );
+  const healthAttempt = new CollaborationHealthAttemptTracker('tracker', 'server_managed');
   healthAttempt.start(initializedTrackerSyncWorkspaces.has(workspacePath) ? 'reconnect' : 'initial');
   initializedTrackerSyncWorkspaces.add(workspacePath);
-
-  // Resolve org encryption key (legacy mode only). If the envelope hasn't been
-  // shared with us yet, surface a status update but don't crash; the user can
-  // ask an admin to share, then we'll reinitialize.
-  let encryptionKey: CryptoKey | null = null;
-  if (!serverManaged) {
-    encryptionKey = await getOrgKey(team.orgId);
-    if (!encryptionKey) {
-      try {
-        const orgJwt = await getOrgScopedJwt(team.orgId);
-        encryptionKey = await fetchAndUnwrapOrgKey(team.orgId, orgJwt);
-      } catch (err) {
-        logger.main.warn('[TrackerSyncManager] failed to fetch org key envelope:', err);
-      }
-      if (!encryptionKey) {
-        logger.main.warn(
-          '[TrackerSyncManager] no encryption key for', team.orgId,
-          '-- engine not started until admin shares envelope.',
-        );
-        const healthProperties = healthAttempt.observe('error', new Error('Encryption key unavailable'));
-        if (healthProperties) {
-          sendTeamAnalyticsEvent(trackerSyncAnalytics, 'collab_sync_attempt_completed', healthProperties);
-        }
-        return;
-      }
-    }
-  } else {
-    logger.main.info('[TrackerSyncManager] team', team.orgId, 'is server-managed; skipping ECDH org-key unwrap');
-  }
-
-  const orgKeyFingerprint = serverManaged ? null : getOrgKeyFingerprint(team.orgId);
 
   const db = getDatabase();
   if (!db) {
@@ -367,36 +373,51 @@ async function doInitializeTrackerSync(workspacePath: string): Promise<void> {
   }
 
   const persistence = new TrackerPGLiteStore(db, workspacePath);
+  const { teamMemberId } = await getOrgScopedIdentity(team.orgId);
+  const presenceIdentity = await listMembers(team.orgId)
+    .then(({ members }) => ({
+      displayName: members.find(member => member.memberId === teamMemberId)?.name?.trim()
+        || teamMemberId,
+      avatarUrl: null,
+    }))
+    .catch((error) => {
+      logger.main.warn('[TrackerSyncManager] member name unavailable for presence:', error);
+      return { displayName: teamMemberId, avatarUrl: null };
+    });
 
   const config: TrackerSyncEngineConfig = {
     serverUrl: getCollabSyncWsUrl(),
     orgId: team.orgId,
     teamProjectId: team.teamProjectId,
-    userId: '',  // informational only; the JWT carries the authoritative sub
-    keyCustody: serverManaged ? 'server-managed' : 'legacy-e2e',
-    encryptionKey: encryptionKey ?? undefined,
-    orgKeyFingerprint,
+    teamMemberId,
+    presenceIdentity,
     persistence,
     initializeIssueKeyPrefix: getWorkspaceState(workspacePath).issueKeyPrefix,
-    schemaSync: {
-      getMaxSyncId: () => getMaxTrackerSchemaSyncId(workspacePath),
-      listUnsynced: () => listUnsyncedTrackerSchemaDefs(workspacePath),
-      applyRemote: (def) => applyRemoteWorkspaceTrackerSchemaDef(workspacePath, def),
+    identityRecovery: {
+      getFacts: async () => ({
+        ...(await persistence.getStrandedIdentityFacts()),
+        alreadyAttempted: getWorkspaceState(workspacePath).trackerIdentityRecoveryAttempted === true,
+      }),
+      markAttempted: async () => {
+        updateWorkspaceState(workspacePath, (state) => {
+          state.trackerIdentityRecoveryAttempted = true;
+        });
+      },
     },
+    schemaSync: createDesktopTrackerSchemaSyncHooks(workspacePath),
     navigationSync: {
       getMaxSyncId: () => getMaxTrackerNavigationSyncId(workspacePath),
       listUnsynced: () => listUnsyncedTrackerNavigationEntries(workspacePath),
       applyRemote: (def) => applyRemoteWorkspaceTrackerNavigationEntry(workspacePath, def),
+      markRejected: (entryId) => markTrackerNavigationEntryRejected(workspacePath, entryId),
     },
     savedViewSync: {
       getMaxSyncId: () => getMaxSharedSavedViewSyncId(workspacePath),
       listUnsynced: () => listUnsyncedSharedSavedViews(workspacePath),
       applyRemote: (def) => applyRemoteWorkspaceSharedSavedView(workspacePath, def),
+      markRejected: (viewId) => markSharedSavedViewRejected(workspacePath, viewId),
     },
     getJwt: () => getOrgScopedJwt(team.orgId),
-    // Legacy-only: server-managed mode never hits staleKeyEpoch (server owns
-    // the epoch), so a key-refresh callback would be dead weight.
-    refreshKey: serverManaged ? undefined : () => refreshKeyForOrg(team.orgId),
     // Node.js 22+ ships a global WebSocket, but Electron's main process
     // historically pinned a Chromium-era version; use `ws` from the same
     // import DocumentSyncHandlers does for reliability across Electron
@@ -416,18 +437,26 @@ async function doInitializeTrackerSync(workspacePath: string): Promise<void> {
       }
       notifyStatus(status);
       broadcastToAllWindows('tracker-sync:status-changed', { workspacePath, status, shared: true });
-      // First successful connect to this room: catch up the server with
-      // any items that were created locally before the engine existed (or
-      // before the team's TrackerRoom DO was minted). Without this, a user
-      // who has 163 local bugs and flips a tracker to "Shared" never sees
-      // those bugs on their other devices -- the new engine only knows
-      // what was queued through it. Gated on `sync_id IS NULL` so we don't
-      // re-push items the server already confirmed.
+      // Every connect drains the items the room has not confirmed: ones
+      // created before the engine existed (a user with 163 local bugs who
+      // flips a tracker to "Shared"), and ones an offline write left at
+      // `sync_status='pending'`. This must fire on reconnects too, not just
+      // the first connect -- that was NIM-3657.
       if (status === 'connected') {
         void backfillSharedLocalItems(workspacePath).catch(err => {
           logger.main.warn('[TrackerSyncManager] backfillSharedLocalItems failed for', workspacePath, err);
         });
+        for (const cb of connectedListeners) {
+          try { cb(workspacePath); } catch (err) {
+            logger.main.warn('[TrackerSyncManager] connected listener threw:', err);
+          }
+        }
       }
+    },
+    onPresenceChange: (members) => {
+      const entry = engines.get(workspacePath);
+      if (entry) entry.presence = [...members];
+      broadcastToAllWindows('tracker-sync:presence-changed', { workspacePath, members });
     },
     onItemApplied: (applied) => {
       // logger.main.info('[TrackerSyncManager] onItemApplied for', workspacePath, 'itemId:', applied.itemId, 'tombstone:', applied.isTombstone);
@@ -439,13 +468,29 @@ async function doInitializeTrackerSync(workspacePath: string): Promise<void> {
       if (entry) {
         entry.config = roomConfig;
       }
+      updateWorkspaceState(workspacePath, state => {
+        state.issueKeyPrefix = roomConfig.issueKeyPrefix;
+      });
       broadcastToAllWindows('tracker-sync:config-changed', { workspacePath, config: roomConfig });
     },
+    onServerError: (error) => {
+      logger.main.warn('[TrackerSyncManager] server diagnostic for', workspacePath, 'code:', error.code, 'message:', error.message);
+      broadcastToAllWindows('tracker-sync:config-error', { workspacePath, error });
+    },
     onRejection: (rejection) => {
-      logger.main.warn('[TrackerSyncManager] onRejection for', workspacePath, 'itemId:', rejection.itemId, 'code:', rejection.rejection.code, 'message:', rejection.rejection.message);
+      logger.main.warn('[TrackerSyncManager] onRejection for', workspacePath, 'lane:', rejection.lane ?? 'item', 'itemId:', rejection.itemId, 'code:', rejection.rejection.code, 'message:', rejection.rejection.message);
       // Resolve the tracker type so the rejection dashboards can break down by
       // type; the lookup is local-only and only the type name is reported.
-      void resolveTrackerTypeForItem(rejection.itemId).then((trackerType) => {
+      //
+      // Only the item lane names an item. On the saved-view, navigation and
+      // schema lanes `itemId` is a view/entry/schema id, which would never
+      // match an item row -- looking it up would spend a query to report a
+      // `trackerType` of "unknown" and blur the breakdown.
+      const laneIsItem = (rejection.lane ?? 'item') === 'item';
+      const resolveType = laneIsItem
+        ? resolveTrackerTypeForItem(rejection.itemId)
+        : Promise.resolve(undefined);
+      void resolveType.then((trackerType) => {
         const errorCategory = categorizeTeamAnalyticsError(
           'sync',
           `${rejection.rejection.code} ${rejection.rejection.message}`,
@@ -493,12 +538,15 @@ async function doInitializeTrackerSync(workspacePath: string): Promise<void> {
   logger.main.info('[TrackerSyncManager] creating engine for', workspacePath, 'roomId:', `org:${team.orgId}:tracker:${team.teamProjectId}`);
 
   const engine = new TrackerSyncEngine(config);
+  // Body links to another team project are not this workspace's relations.
+  setBodyLinkHomeScope(workspacePath, { orgId: team.orgId, projectId: team.teamProjectId });
   engines.set(workspacePath, {
     workspacePath,
     orgId: team.orgId,
     engine,
     status: 'disconnected',
     config: null,
+    presence: [],
     store: persistence,
   });
 
@@ -536,324 +584,94 @@ export async function reinitializeTrackerSync(workspacePath: string): Promise<vo
 }
 
 /**
- * Epic H2 client-assisted migration cutover (admin action).
+ * Run the item drain now, if an engine is connected. Called when a tracker
+ * becomes team-shared -- without this hook the items they already have locally
+ * would wait for the next reconnect to reach the room.
  *
- * Flips a team from legacy-e2e (client-side zero-knowledge) to server-managed,
- * then re-uploads the team's locally-decrypted tracker data as PLAINTEXT so the
- * server can re-encrypt it at rest with the team DEK. The legacy ciphertext rows
- * (written under the old org key, undecryptable to keyless clients) are thereby
- * replaced.
- *
- * Steps:
- *   1. POST set-key-custody-mode=server-managed (admin-gated server-side).
- *   2. Mark every shared local tracker item AND schema def for re-push
- *      (`sync_id = NULL`, `sync_status = 'pending'`).
- *   3. Reinitialize the engine — it fetches key-status (now server-managed),
- *      runs in plaintext pass-through, and the on-connect backfill re-uploads
- *      the marked items; `pushPendingSchemas` re-uploads the marked schemas.
- *
- * NOTE (documents): the background encryption finalizer now enumerates every
- * indexed room after cutover, explicitly re-registers recovered legacy titles,
- * and compacts fully decoded bodies before the server records completion.
- * The migrating caller must hold the legacy org key (enforced below) so that
- * finalization can actually happen.
- *
- * Returns the orgId and how many items were marked for re-push. Requires the
- * caller to be a team admin (enforced by the server REST gate).
- */
-export async function migrateTeamToServerManaged(
-  orgId: string,
-  workspacePath?: string,
-): Promise<{ orgId: string; itemsMarked: number; schemasMarked: number; workspacesMarked: string[] }> {
-  if (!orgId) throw new Error('orgId required');
-
-  if (workspacePath) {
-    const team = await findTeamForWorkspace(workspacePath);
-    if (!team) throw new Error('No team found for this workspace');
-    if (team.orgId !== orgId) {
-      throw new Error('Selected organization does not match the active workspace.');
-    }
-  }
-
-  const db = getDatabase();
-  if (!db) throw new Error('Database not available');
-
-  const orgJwt = await getOrgScopedJwt(orgId);
-  if ((await fetchTeamKeyStatus(orgId, orgJwt)).mode === 'server-managed') {
-    return { orgId, itemsMarked: 0, schemasMarked: 0, workspacesMarked: [] };
-  }
-
-  // NIM-906: doc-index TITLES and document BODIES written before the flip stay
-  // AES-ciphertext on the server (it never held the zero-knowledge org key, so
-  // it cannot re-key them). Only a client that still holds the legacy org key
-  // can recover the plaintext and re-register it (the background finalizer
-  // explicitly heals titles and compacts bodies). So the precondition for a
-  // CLEAN cutover is that THIS migrating client holds the legacy org key —
-  // not that no docs are linked (the old guard blocked on linked docs yet did
-  // nothing to guarantee the data could actually be healed, and silently left
-  // the index as ciphertext when an admin migrated from a device that had no
-  // local bindings).
-  let legacyKey = await getOrgKey(orgId);
-  if (!legacyKey) {
-    try {
-      legacyKey = await fetchAndUnwrapOrgKey(orgId, await getOrgScopedJwt(orgId));
-    } catch {
-      // fall through to the guard below
-    }
-  }
-  if (!legacyKey) {
-    throw new Error(
-      'Cannot update encryption: this device does not have the team’s current encryption key, ' +
-      'so existing shared documents could not be re-encrypted. Migrate from a device that has ' +
-      'been an active member of this team (or ask an admin to re-share keys), then retry.',
-    );
-  }
-
-  const workspaceRows = await db.query<{ workspace: string }>(
-    `
-      SELECT DISTINCT workspace FROM tracker_items WHERE workspace IS NOT NULL
-      UNION
-      SELECT DISTINCT workspace FROM tracker_type_defs WHERE workspace IS NOT NULL
-    `,
-  );
-  const workspacesForOrg: string[] = [];
-  const unresolvedWorkspaces: Array<{ workspace: string; error: string }> = [];
-  for (const row of workspaceRows.rows) {
-    if (!row.workspace) continue;
-    try {
-      const team = await findTeamForWorkspace(row.workspace);
-      if (team?.orgId === orgId) {
-        workspacesForOrg.push(row.workspace);
-      }
-    } catch (err) {
-      // A THROW (not a null return) means we could not even resolve this
-      // workspace's org -- e.g. its git remote is gone. We cannot classify it,
-      // so it is neither swept nor excluded with confidence. Do NOT silently
-      // drop it: if it holds shared tracker bodies for THIS org, they would go
-      // uncaptured and the gate would pass without them (backup review 3a).
-      unresolvedWorkspaces.push({
-        workspace: row.workspace,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-  if (unresolvedWorkspaces.length > 0) {
-    logger.main.warn(
-      '[TeamMigration] Pre-migration sweep could not resolve some local workspaces; ' +
-      'any shared tracker bodies they hold for this org were not backed up',
-      { orgId, unresolvedWorkspaces },
-    );
-  }
-  if (workspacePath && !workspacesForOrg.includes(workspacePath)) {
-    workspacesForOrg.push(workspacePath);
-  }
-  // Gating safety precondition: capture every locally-known shared document
-  // and tracker body while the legacy key is still usable. The custody flip
-  // must not happen unless each sweep confirms a fresh plaintext backup.
-  const backupSummaries = await backupCollabOrganization(orgId, workspacesForOrg);
-  const backupProjectIds = await verifyOrMarkCollabBackups(
-    backupSummaries,
-    (projectIds, reason) => getCollabBackupService().markNeedsRecovery(orgId, projectIds, reason),
-  );
-
-  let cutoverComplete = false;
-  try {
-    // 1. Server cutover (admin-gated; throws on non-admin / failure).
-    await setTeamKeyCustodyMode(orgId, 'server-managed', orgJwt);
-    cutoverComplete = true;
-
-    // 2. Mark shared local items + schema defs for re-push as plaintext. Count
-    // first (cross-backend: the query seam doesn't expose an affected-row count).
-    const countRows = async (table: string, workspace: string): Promise<number> => {
-      const res = await db.query(
-        `SELECT COUNT(*) AS n FROM ${table} WHERE workspace = $1 AND deleted_at IS NULL`,
-        [workspace],
-      );
-      return Number((res.rows[0] as { n: number | string } | undefined)?.n ?? 0);
-    };
-    let itemsMarked = 0;
-    let schemasMarked = 0;
-    for (const workspace of workspacesForOrg) {
-      itemsMarked += await countRows('tracker_items', workspace);
-      schemasMarked += await countRows('tracker_type_defs', workspace);
-      await db.query(
-        `UPDATE tracker_items
-            SET sync_id = NULL, sync_status = 'pending'
-          WHERE workspace = $1 AND deleted_at IS NULL`,
-        [workspace],
-      );
-      await db.query(
-        `UPDATE tracker_type_defs
-            SET sync_id = NULL, sync_status = 'pending'
-          WHERE workspace = $1 AND deleted_at IS NULL`,
-        [workspace],
-      );
-    }
-    logger.main.info(
-      '[TrackerSyncManager] migrate-to-server-managed for', orgId,
-      '-- marked', itemsMarked, 'items and', schemasMarked, 'schemas across', workspacesForOrg.length, 'workspaces for plaintext re-push',
-    );
-
-    // 3. Reconnect in server-managed mode; on-connect backfill re-uploads.
-    for (const workspace of workspacesForOrg) {
-      backfilledWorkspaces.delete(workspace);
-      await reinitializeTrackerSync(workspace);
-    }
-
-    return { orgId, itemsMarked, schemasMarked, workspacesMarked: workspacesForOrg };
-  } catch (error) {
-    if (!cutoverComplete) throw error;
-    const reason = error instanceof Error ? error.message : String(error);
-    try {
-      await getCollabBackupService().markNeedsRecovery(orgId, backupProjectIds, reason);
-    } catch (markerError) {
-      logger.main.error('[TrackerSyncManager] Could not persist needs-recovery marker', {
-        orgId,
-        markerError,
-      });
-    }
-    logger.main.error('[TrackerSyncManager] Migration failed after custody cutover; org needs recovery', {
-      orgId,
-      reason,
-    });
-    throw new Error(
-      'Encryption migration failed after the server cutover. This organization needs recovery ' +
-      'from its local plaintext collaboration backup; no rollback was attempted. Cause: ' + reason,
-    );
-  }
-}
-
-export async function finalizeTeamEncryptionDocument(
-  orgId: string,
-  documentId: string,
-): Promise<void> {
-  await finalizeCollabDocumentMigration(orgId, documentId);
-}
-
-export async function finalizeTeamEncryptionTitles(orgId: string): Promise<void> {
-  await finalizeCollabTitleMigration(orgId);
-}
-
-/**
- * Per-workspace guard so we only run the historical backfill once per engine
- * lifecycle. Idempotent within an engine but prevents redundant scans on
- * reconnect / status flapping.
- */
-const backfilledWorkspaces = new Set<string>();
-
-/**
- * Drop the once-per-engine backfill guard for a workspace and re-run the
- * scan immediately if an engine is connected. Called when the user flips
- * a tracker type's sync policy to `shared`/`hybrid` -- without this hook
- * the items they already have locally would never make it to the room.
- *
- * Safe to call when no engine exists; it's a no-op until the engine
- * connects (the on-connect path will run backfill anyway).
+ * Safe to call when no engine exists; it's a no-op until the engine connects
+ * (the on-connect path drains anyway).
  */
 export async function requestTrackerBackfillForWorkspace(workspacePath: string): Promise<void> {
-  backfilledWorkspaces.delete(workspacePath);
   const entry = engines.get(workspacePath);
   if (!entry || entry.status !== 'connected') return;
   await backfillSharedLocalItems(workspacePath);
 }
 
 /**
- * Push every workspace-local tracker item that should be shared but has
- * never been confirmed by the new TrackerSyncEngine (`sync_id IS NULL`)
- * up to the room.
+ * Push workspace-local tracker items the room has not confirmed: rows that
+ * never went through `syncTrackerItem` at all (`sync_id IS NULL`, e.g. created
+ * before the team's TrackerRoom existed) and rows an offline write left at
+ * `sync_status='pending'`.
  *
- * Why this exists: items created before the engine was running -- or
- * before the team's TrackerRoom DO was minted -- never went through
- * `syncTrackerItem`, so the server room is empty and other devices see
- * nothing. The historical `sync_status='synced'` flag was set by the
- * previous sync system and means nothing to the new engine.
- *
- * We only push items whose effective policy is shared/hybrid (per the
- * workspace's per-type sync policy). Local-only items stay local.
- * Idempotent: the engine's `engines.has()` guard prevents repeats, and
- * once an item's `sync_id` is populated by `applyRemoteItem` (on
- * server-confirmed apply) it falls out of the candidate set.
+ * Runs on EVERY connect, not once per process. The decision and the loop live
+ * in `trackerItemBackfill.ts`; this is the port that binds them to the engine
+ * registry and the database. See that module's header for why the old
+ * once-per-process guard lost offline edits (NIM-3657).
  */
 async function backfillSharedLocalItems(workspacePath: string): Promise<void> {
-  if (backfilledWorkspaces.has(workspacePath)) return;
-  backfilledWorkspaces.add(workspacePath);
-
   const entry = engines.get(workspacePath);
-  if (!entry) {
-    backfilledWorkspaces.delete(workspacePath);
-    return;
-  }
+  if (!entry) return;
   const db = getDatabase();
-  if (!db) {
-    backfilledWorkspaces.delete(workspacePath);
-    return;
-  }
+  if (!db) return;
 
-  // Candidates: never-synced items (`sync_id IS NULL`) plus items left
-  // `sync_status='pending'` by an offline mutation -- including the `nim` CLI
-  // writing directly to SQLite while the app was closed. Re-pushing an
-  // already-synced item is idempotent: `applyRemoteItem` flips it back to
-  // 'synced' on ack, so it falls out of this set on the next launch.
-  const candidates = await db.query(
-    `SELECT * FROM tracker_items
-     WHERE workspace = $1
-       AND (sync_id IS NULL OR sync_status = 'pending')
-       AND deleted_at IS NULL
-     ORDER BY created ASC`,
-    [workspacePath],
-  );
+  const result = await drainPendingTrackerItems(workspacePath, {
+    query: (sql, params) => db.query(sql, params),
+    upsertItem: async (item) => { await entry.engine.upsertItem(trackerItemToPayload(item)); },
+    deleteItem: async (itemId) => { await entry.engine.deleteItem(itemId); },
+    // resolveTrackerSharingPolicy, NOT getEffectiveTrackerSharingPolicy: this
+    // decides whether to delete from the team room, and the display-only read
+    // answers `personal` for a schema it merely failed to load (NIM-2968).
+    resolvePolicy: (path, type) => resolveTrackerSharingPolicy(path, type),
+    countSyncedRows: async (path) => {
+      const result = await db.query(
+        `SELECT COUNT(*)::int AS count FROM tracker_items
+         WHERE workspace = $1 AND sync_id IS NOT NULL AND deleted_at IS NULL`,
+        [path],
+      );
+      return Number(result.rows?.[0]?.count ?? 0);
+    },
+    emitEvent: (event) => { emitTrackerDrainAbort(event); },
+    reloadSchemas: (path) => refreshWorkspaceSchemaLayer(path),
+    toItem: (row) => rowToTrackerItem(row) as TrackerItem,
+    log: {
+      info: (...args) => logger.main.info(...(args as [string, ...unknown[]])),
+      warn: (...args) => logger.main.warn(...(args as [string, ...unknown[]])),
+    },
+  });
 
-  if (candidates.rows.length === 0) {
-    logger.main.info('[TrackerSyncManager] backfill: no candidate items for', workspacePath);
-    return;
-  }
+  // A pass that ran to completion clears any earlier degraded state, so a
+  // transient resolution failure does not leave a stuck banner. `skippedRun`
+  // means another pass owns this workspace right now and decided nothing.
+  if (!result.aborted && !result.skippedRun) clearTrackerDrainAbort(workspacePath);
+}
 
-  let queued = 0;
-  let skipped = 0;
-  let deleted = 0;
-  for (const row of candidates.rows) {
-    const policy = getEffectiveTrackerSyncPolicy(workspacePath, row.type as string);
-    const item = rowToTrackerItem(row) as TrackerItem;
-    // Per-item gate (NIM-876 / NIM-880): hybrid types sync ONLY flagged items.
-    //   - flagged/shared            -> upsert
-    //   - previously shared (sync_id set) but now UNFLAGGED -> delete from the
-    //       room (propagates an offline unshare; previously this re-uploaded the
-    //       item or left a stale copy behind)
-    //   - never shared + unflagged  -> skip (local-only, no leak)
-    const previouslyShared = row.sync_id != null;
-    const action = decideBackfillAction(policy, item, previouslyShared);
-    if (action === 'skip') {
-      skipped++;
-      continue;
-    }
-    if (action === 'delete') {
-      try {
-        await entry.engine.deleteItem(row.id as string);
-        // Reset the local row so it isn't re-processed (or re-deleted) on the
-        // next reconnect.
-        await db.query(
-          `UPDATE tracker_items SET sync_status = 'local', sync_id = NULL WHERE id = $1`,
-          [row.id],
-        );
-        deleted++;
-      } catch (err) {
-        logger.main.warn('[TrackerSyncManager] backfill deleteItem failed for item', row.id, err);
-      }
-      continue;
-    }
-    try {
-      const payload = trackerItemToPayload(item);
-      await entry.engine.upsertItem(payload);
-      queued++;
-    } catch (err) {
-      logger.main.warn('[TrackerSyncManager] backfill upsertItem failed for item', row.id, err);
-    }
-  }
+/**
+ * An aborted drain means team items are silently not syncing -- the exact
+ * symptom users report as "my teammate can't see this". Surface it rather than
+ * leaving it in the log, and record it for analytics so the abort rate is
+ * observable once this ships.
+ */
+function emitTrackerDrainAbort(event: TrackerDrainAbort): void {
+  lastDrainAbortByWorkspace.set(event.workspacePath, event);
+  broadcastToAllWindows('tracker-sync:drain-aborted', event);
+  sendTeamAnalyticsEvent(trackerSyncAnalytics, 'tracker_drain_aborted', {
+    reason: event.reason,
+    trackerTypeCount: bucketItemCount(event.trackerTypes.length),
+    rowsHeldBack: bucketItemCount(event.heldBack),
+  });
+}
 
-  logger.main.info(
-    '[TrackerSyncManager] backfill complete for', workspacePath,
-    'queued:', queued, 'deleted:', deleted, 'skipped-local-only:', skipped, 'total-candidates:', candidates.rows.length,
-  );
+/** Cleared on the next successful drain, so a transient failure self-heals. */
+const lastDrainAbortByWorkspace = new Map<string, TrackerDrainAbort>();
+
+/** The current degraded-sync state for a workspace, or null when healthy. */
+export function getTrackerDrainAbort(workspacePath: string): TrackerDrainAbort | null {
+  return lastDrainAbortByWorkspace.get(workspacePath) ?? null;
+}
+
+export function clearTrackerDrainAbort(workspacePath: string): void {
+  if (!lastDrainAbortByWorkspace.delete(workspacePath)) return;
+  broadcastToAllWindows('tracker-sync:drain-recovered', { workspacePath });
 }
 
 /**
@@ -885,6 +703,8 @@ export async function ensureTrackerSyncForWorkspace(workspacePath: string): Prom
  * caller is expected to consult `isTrackerSyncActive` first).
  */
 export async function syncTrackerItem(item: TrackerItem): Promise<void> {
+  // A Local wiki item is a file, never a room item.
+  refuseLocalWikiItem(item?.id, 'team sync');
   const workspacePath = item.workspace;
   const entry = workspacePath ? engines.get(workspacePath) : undefined;
   if (!entry) return;
@@ -894,6 +714,7 @@ export async function syncTrackerItem(item: TrackerItem): Promise<void> {
 }
 
 export async function unsyncTrackerItem(itemId: string, workspacePath?: string): Promise<void> {
+  refuseLocalWikiItem(itemId, 'team sync');
   if (!workspacePath) {
     // Best-effort: try every engine. v1 callers occasionally omit the
     // workspace path; we want them to keep working without surprises.
@@ -912,6 +733,14 @@ export async function unsyncTrackerItem(itemId: string, workspacePath?: string):
 // ============================================================================
 
 function emitItemApplied(workspacePath: string, applied: AppliedTrackerItem): void {
+  // Main-process subscribers first: they are waiting on this synchronously
+  // (see `awaitServerIssueKey`) and must not be gated behind the tombstone
+  // early-return or the async row read-back below.
+  for (const cb of appliedItemListeners) {
+    try { cb(workspacePath, applied); } catch (err) {
+      logger.main.warn('[TrackerSyncManager] applied-item listener threw:', err);
+    }
+  }
   if (applied.isTombstone) {
     broadcastToAllWindows('tracker-sync:item-deleted', {
       workspacePath,
@@ -972,25 +801,44 @@ function emitRejection(workspacePath: string, rejection: RejectedTrackerMutation
 }
 
 // ============================================================================
-// Key rotation refresh path
+// IPC surface
 // ============================================================================
 
-async function refreshKeyForOrg(orgId: string): Promise<TrackerKeyMaterial | null> {
-  try {
-    const orgJwt = await getOrgScopedJwt(orgId);
-    const fresh = await fetchAndUnwrapOrgKey(orgId, orgJwt);
-    if (!fresh) return null;
-    const fingerprint = await fingerprintTrackerKey(fresh);
-    return { encryptionKey: fresh, orgKeyFingerprint: fingerprint };
-  } catch (err) {
-    logger.main.warn('[TrackerSyncManager] refreshKey failed for', orgId, ':', err);
-    return null;
+export async function setTrackerIssueKeyPrefix(
+  workspacePath: string,
+  prefix: string,
+): Promise<{
+  success: boolean;
+  error?: string;
+  code?: string;
+  suggestedPrefix?: string;
+  conflictingProjectName?: string;
+}> {
+  const entry = engines.get(workspacePath);
+  if (!entry || entry.status !== 'connected') {
+    return { success: false, error: 'Tracker sync must be connected before changing the team project prefix.' };
   }
+  const result = await entry.engine.setIssueKeyPrefix(prefix, 'explicit');
+  if (!result.success) {
+    if (entry.config) {
+      updateWorkspaceState(workspacePath, state => {
+        state.issueKeyPrefix = entry.config?.issueKeyPrefix;
+      });
+      broadcastToAllWindows('tracker-sync:config-changed', { workspacePath, config: entry.config });
+    }
+    return {
+      success: false,
+      error: result.message ?? 'The server rejected the issue-key prefix.',
+      code: result.code,
+      suggestedPrefix: result.suggestedPrefix,
+      conflictingProjectName: result.conflictingProjectName,
+    };
+  }
+  updateWorkspaceState(workspacePath, state => {
+    state.issueKeyPrefix = result.config?.issueKeyPrefix ?? prefix;
+  });
+  return { success: true };
 }
-
-// ============================================================================
-// IPC surface (7 channels; connect-test deleted per phase-3 plan Q5)
-// ============================================================================
 
 export function registerTrackerSyncHandlers(): void {
   safeHandle('tracker-sync:get-status', async (_event, payload?: { workspacePath?: string }) => {
@@ -1009,6 +857,11 @@ export function registerTrackerSyncHandlers(): void {
       projectId: null,
       active: currentAggregateStatus() === 'connected',
     };
+  });
+
+  safeHandle('tracker-sync:get-presence', async (_event, payload?: { workspacePath?: string }) => {
+    if (!payload?.workspacePath) return [];
+    return engines.get(payload.workspacePath)?.presence ?? [];
   });
 
   safeHandle('tracker-sync:connect', async (_event, payload: { workspacePath: string }) => {
@@ -1046,22 +899,6 @@ export function registerTrackerSyncHandlers(): void {
     }
   });
 
-  // Epic H2 admin action: migrate this workspace's team from legacy-e2e to
-  // server-managed key custody, then re-push local tracker data as plaintext.
-  safeHandle('tracker-sync:migrate-to-server-managed', async (_event, payload: string | { orgId?: string; workspacePath?: string }) => {
-    const orgId = typeof payload === 'string' ? undefined : payload?.orgId;
-    const wp = typeof payload === 'string' ? payload : payload?.workspacePath;
-    if (!orgId) {
-      return { success: false, error: 'orgId required' };
-    }
-    try {
-      const result = await migrateTeamToServerManaged(orgId, wp);
-      return { success: true, ...result };
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
   safeHandle('tracker-sync:upsert-item', async (_event, payload: { item: TrackerItem }) => {
     if (!payload?.item) {
       return { success: false, error: 'item required' };
@@ -1086,7 +923,7 @@ export function registerTrackerSyncHandlers(): void {
     }
   });
 
-  safeHandle('tracker-sync:set-config', async (_event, payload: {
+  safeHandle('tracker-sync:set-config', async (event, payload: {
     workspacePath: string;
     key: 'issueKeyPrefix';
     value: string;
@@ -1094,12 +931,36 @@ export function registerTrackerSyncHandlers(): void {
     if (!payload?.workspacePath || payload.key !== 'issueKeyPrefix') {
       return { success: false, error: 'workspacePath and issueKeyPrefix required' };
     }
-    const entry = engines.get(payload.workspacePath);
-    if (!entry) {
-      return { success: false, error: 'No active tracker sync for workspace' };
+    const result = await setTrackerIssueKeyPrefix(payload.workspacePath, payload.value);
+    if (!result.success) {
+      const fixedError = result.error
+        ?? translateMainDialogLabel(
+          result.suggestedPrefix
+            ? 'main_process.tracker_prefix_unavailable'
+            : 'main_process.tracker_prefix_rejected',
+          result.suggestedPrefix ? 'That prefix is unavailable' : 'The server rejected that prefix.',
+        );
+      const detail = result.suggestedPrefix
+        ? `${fixedError} ${translateMainDialogLabel(
+          'main_process.tracker_prefix_suggested',
+          'Suggested prefix: {{prefix}}.',
+          { prefix: result.suggestedPrefix },
+        )}`
+        : fixedError;
+      const parent = BrowserWindow.fromWebContents(event.sender);
+      const options = {
+        type: 'warning',
+        title: translateMainDialogLabel('main_process.tracker_prefix_title', 'Issue Key Prefix Unavailable'),
+        message: translateMainDialogLabel(
+          'main_process.tracker_prefix_message',
+          'That issue-key prefix could not be assigned.',
+        ),
+        detail,
+      } as const;
+      if (parent) await dialog.showMessageBox(parent, options);
+      else await dialog.showMessageBox(options);
     }
-    entry.engine.setIssueKeyPrefix(payload.value);
-    return { success: true };
+    return result;
   });
 
   // Test-only: bypass Stytch / TeamService / org-key-envelope unwrap and
@@ -1115,8 +976,10 @@ export function registerTrackerSyncHandlers(): void {
       serverUrl: string;
       teamProjectId: string;
       orgId: string;
-      userId: string;
-      encryptionKeyJwk: JsonWebKey;
+      // identity-scope-allow: Playwright IPC payload is branded at the test-only handler boundary
+      teamMemberId: string;
+      displayName?: string;
+      avatarUrl?: string | null;
     }) => {
       try {
         if (!payload?.workspacePath || !payload?.teamProjectId || !payload?.orgId) {
@@ -1135,14 +998,6 @@ export function registerTrackerSyncHandlers(): void {
           engines.delete(payload.workspacePath);
         }
 
-        const encryptionKey = await crypto.subtle.importKey(
-          'jwk',
-          payload.encryptionKeyJwk,
-          { name: 'AES-GCM', length: 256 },
-          true,
-          ['encrypt', 'decrypt'],
-        );
-        const orgKeyFingerprint = await fingerprintTrackerKey(encryptionKey);
         const persistence = new TrackerPGLiteStore(db, payload.workspacePath);
 
         const workspacePath = payload.workspacePath;
@@ -1150,27 +1005,25 @@ export function registerTrackerSyncHandlers(): void {
           serverUrl: payload.serverUrl,
           orgId: payload.orgId,
           teamProjectId: payload.teamProjectId,
-          userId: payload.userId,
-          encryptionKey,
-          orgKeyFingerprint,
-          persistence,
-          schemaSync: {
-            getMaxSyncId: () => getMaxTrackerSchemaSyncId(workspacePath),
-            listUnsynced: () => listUnsyncedTrackerSchemaDefs(workspacePath),
-            applyRemote: (def) => applyRemoteWorkspaceTrackerSchemaDef(workspacePath, def),
+          teamMemberId: asTeamMemberId(payload.teamMemberId),
+          presenceIdentity: {
+            displayName: payload.displayName?.trim() || payload.teamMemberId,
+            avatarUrl: payload.avatarUrl ?? null,
           },
+          persistence,
+          schemaSync: createDesktopTrackerSchemaSyncHooks(workspacePath),
           navigationSync: {
             getMaxSyncId: () => getMaxTrackerNavigationSyncId(workspacePath),
             listUnsynced: () => listUnsyncedTrackerNavigationEntries(workspacePath),
             applyRemote: (def) => applyRemoteWorkspaceTrackerNavigationEntry(workspacePath, def),
           },
-          getJwt: async () => 'test-jwt',
+          getJwt: async () => asTeamJwt('test-jwt'),
           buildUrl: (roomId) => {
             const wsBase = payload.serverUrl
               .replace(/^http:/, 'ws:')
               .replace(/^https:/, 'wss:')
               .replace(/\/$/, '');
-            return `${wsBase}/sync/${roomId}?test_user_id=${encodeURIComponent(payload.userId)}&test_org_id=${encodeURIComponent(payload.orgId)}`;
+            return `${wsBase}/sync/${roomId}?test_user_id=${encodeURIComponent(payload.teamMemberId)}&test_org_id=${encodeURIComponent(payload.orgId)}`;
           },
           createWebSocket: ((url: string) => new WebSocket(url)) as unknown as TrackerSyncEngineConfig['createWebSocket'],
           onStatusChange: (status) => {
@@ -1181,6 +1034,11 @@ export function registerTrackerSyncHandlers(): void {
           onItemApplied: (applied) => {
             emitItemApplied(workspacePath, applied);
           },
+          onPresenceChange: (members) => {
+            const entry = engines.get(workspacePath);
+            if (entry) entry.presence = [...members];
+            broadcastToAllWindows('tracker-sync:presence-changed', { workspacePath, members });
+          },
           onConfigChange: (roomConfig) => {
             const entry = engines.get(workspacePath);
             if (entry) entry.config = roomConfig;
@@ -1190,12 +1048,14 @@ export function registerTrackerSyncHandlers(): void {
         };
 
         const engine = new TrackerSyncEngine(config);
+        setBodyLinkHomeScope(workspacePath, { orgId: payload.orgId, projectId: payload.teamProjectId });
         engines.set(workspacePath, {
           workspacePath,
           orgId: payload.orgId,
           engine,
           status: 'disconnected',
           config: null,
+          presence: [],
           store: persistence,
         });
         await engine.connect();

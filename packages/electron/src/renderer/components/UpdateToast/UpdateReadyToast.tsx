@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface UpdateReadyToastProps {
   version: string;
@@ -18,7 +18,7 @@ export function UpdateReadyToast({
   onDoItLater,
   onDismiss,
 }: UpdateReadyToastProps): React.ReactElement {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('dialogs');
   if (waitingForSessions) {
     return (
       <div
@@ -29,8 +29,8 @@ export function UpdateReadyToast({
         <button
           className="update-toast-dismiss absolute top-3 right-3 w-6 h-6 border-none bg-transparent cursor-pointer rounded flex items-center justify-center p-0 text-[var(--nim-text-faint)] transition-colors duration-200 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)] [&>svg]:w-3.5 [&>svg]:h-3.5"
           onClick={onDismiss}
-          title={t('dialogs:update.dismiss')}
-          aria-label={t('dialogs:update.dismiss')}
+          title={t('update.dismiss')}
+          aria-label={t('update.dismiss')}
           data-testid="update-toast-dismiss"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -40,12 +40,12 @@ export function UpdateReadyToast({
 
         {/* Header */}
         <div className="update-toast-title text-sm font-semibold text-[var(--nim-text)] mb-1 pr-7">
-          {t('dialogs:update.ready')}
+          {t('update.ready')}
         </div>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-4 h-4 border-2 border-[var(--nim-bg-tertiary)] border-t-[var(--nim-primary)] rounded-full animate-spin shrink-0" />
           <div className="update-toast-subtitle text-xs text-[var(--nim-text-muted)] leading-normal">
-            {t('dialogs:update.waiting_sessions')}
+            {t('update.waiting_sessions')}
           </div>
         </div>
 
@@ -56,14 +56,14 @@ export function UpdateReadyToast({
             onClick={onForceRestart}
             data-testid="force-restart-btn"
           >
-            {t('dialogs:update.restart_now')}
+            {t('update.restart_now')}
           </button>
           <button
             className="update-toast-btn update-toast-btn-secondary py-2 px-3.5 border border-[var(--nim-border)] rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 font-[inherit] whitespace-nowrap bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
             onClick={onDoItLater}
             data-testid="do-it-later-btn"
           >
-            {t('dialogs:update.later')}
+            {t('update.later')}
           </button>
         </div>
       </div>
@@ -79,8 +79,8 @@ export function UpdateReadyToast({
       <button
         className="update-toast-dismiss absolute top-3 right-3 w-6 h-6 border-none bg-transparent cursor-pointer rounded flex items-center justify-center p-0 text-[var(--nim-text-faint)] transition-colors duration-200 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)] [&>svg]:w-3.5 [&>svg]:h-3.5"
         onClick={onDismiss}
-        title={t('dialogs:update.dismiss')}
-        aria-label={t('dialogs:update.dismiss')}
+        title={t('update.dismiss')}
+        aria-label={t('update.dismiss')}
         data-testid="update-toast-dismiss"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -90,10 +90,10 @@ export function UpdateReadyToast({
 
       {/* Header */}
       <div className="update-toast-title text-sm font-semibold text-[var(--nim-text)] mb-1 pr-7">
-        {t('dialogs:update.nimbalyst_ready')}
+        {t('update.nimbalyst_ready')}
       </div>
       <div className="update-toast-subtitle text-xs text-[var(--nim-text-muted)] leading-normal mb-4">
-        {t('dialogs:update.restart_description')}
+        {t('update.restart_description')}
       </div>
 
       {/* Action buttons */}
@@ -103,14 +103,14 @@ export function UpdateReadyToast({
           onClick={onRelaunch}
           data-testid="relaunch-btn"
         >
-          {t('dialogs:update.relaunch')}
+          {t('update.relaunch')}
         </button>
         <button
           className="update-toast-btn update-toast-btn-secondary py-2 px-3.5 border border-[var(--nim-border)] rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 font-[inherit] whitespace-nowrap bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
           onClick={onDoItLater}
           data-testid="do-it-later-btn"
         >
-          {t('dialogs:update.later')}
+          {t('update.later')}
         </button>
       </div>
     </div>

@@ -1,0 +1,31 @@
+{
+  "tooltips": {
+    "new_terminal": "New Terminal",
+    "close_panel": "Close panel",
+    "empty": "No terminals open"
+  },
+  "default_title": "Terminal {{count}}",
+  "context": {
+    "clear": "Clear"
+  },
+  "initializing": "Initializing terminal...",
+  "display_rebuilt": "The terminal display hit an internal error and was rebuilt. Saved history was not restored.",
+  "display_failed": "The terminal display failed and could not be rebuilt.",
+  "unknown_error": "Unknown error",
+  "dismiss_warning": "Dismiss warning",
+  "restart_failed": "Failed to restart terminal",
+  "init_timeout": "Terminal initialization timed out after {{seconds}} seconds",
+  "pty_init_failed": "Failed to initialize PTY",
+  "restore_failed": "Saved terminal history could not be restored cleanly. Live terminal output continues.",
+  "restore_partial": "Saved terminal history restored partially. Live terminal output continues.",
+  "restore_timeout": "Saved terminal history restored partially because replay took too long.",
+  "init_failed": "Failed to initialize terminal: {{error}}",
+  "process_exited": "Process exited with code {{code}}.",
+  "restart_action": "Restart",
+  "retry": "Retry",
+  "restart": "Restart terminal",
+  "raw_terminal": "Raw terminal",
+  "collapse_raw": "Collapse raw terminal",
+  "expand_raw": "Expand raw terminal",
+  "model_switch_wait": "Wait for the current turn to finish before switching models"
+}

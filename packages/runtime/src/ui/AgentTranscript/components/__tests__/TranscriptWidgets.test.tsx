@@ -19,11 +19,60 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import * as rtl from '@testing-library/react';
+import type { RenderOptions } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { createStore, Provider as JotaiProvider } from 'jotai';
 import type { TranscriptViewMessage } from '../../../../ai/server/transcript/TranscriptProjector';
+import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
+import { ApiServiceErrorWidget } from '../ApiServiceErrorWidget';
+import { CodexAuthRequiredWidget } from '../CodexAuthRequiredWidget';
+import { SuperLoopProgressWidget } from '../CustomToolWidgets/SuperLoopProgressWidget';
 import type { CustomToolWidgetProps } from '../CustomToolWidgets/index';
 
-const { render, screen, fireEvent } = rtl;
+const { screen, fireEvent, waitFor } = rtl;
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+const render = (ui: React.ReactElement, options?: RenderOptions) =>
+  rtl.render(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>, options);
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
+
+describe('Super Loop blocked feedback', () => {
+  it('displays a localized host error when feedback cannot be submitted', async () => {
+    await testI18n.changeLanguage('ja');
+    const sessionId = 'super-loop-error-session';
+    const error = testI18n.t('super_loop_progress.session_not_found', { ns: 'agents' });
+    const host = {
+      superLoopBlockedFeedback: vi.fn().mockResolvedValue({ success: false, error }),
+    };
+    const store = createStore();
+    store.set(interactiveWidgetHostAtom(sessionId), host as never);
+    const message = makeToolMessage('super_loop_progress_update', {
+      phase: 'building',
+      status: 'blocked',
+      completionSignal: false,
+      learnings: [],
+      blockers: ['Waiting for feedback'],
+      currentIteration: 1,
+    });
+
+    render(
+      <JotaiProvider store={store}>
+        <SuperLoopProgressWidget message={message} sessionId={sessionId} isExpanded={false} onToggle={() => {}} />
+      </JotaiProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('ブロッカーの解消に役立つ案内を入力してください...'), {
+      target: { value: '続行してください' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'フィードバックを送信' }));
+
+    expect(await screen.findByText('このセッションのSuper Loopが見つかりません')).toBeTruthy();
+    expect(host.superLoopBlockedFeedback).toHaveBeenCalledWith('続行してください');
+  });
+});
 
 // Mock clipboard
 vi.mock('../../../../utils/clipboard', () => ({
@@ -210,6 +259,15 @@ describe('MessageSegment', () => {
     expect(events).toEqual([{ anchor: 'codex-auth-section' }]);
   });
 
+  it('renders the Codex authentication prompt in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    render(<CodexAuthRequiredWidget />);
+
+    expect(screen.getByText('続行するにはOpenAI Codexにログインしてください')).toBeDefined();
+    expect(screen.getByText(/このセッションにはOpenAI Codexへのログインが必要です/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'ログイン' })).toBeDefined();
+  });
+
   it('suppresses the Codex auth CTA when shouldShowLoginWidget is false', () => {
     const message = makeMessage({
       type: 'system_message',
@@ -248,6 +306,34 @@ describe('MessageSegment', () => {
       />
     );
     expect(container.querySelector('.context-limit-widget')).not.toBeNull();
+  });
+
+  it('offers auto-resume only on the latest blocked usage-limit card and passes its reset', async () => {
+    const { interactiveWidgetHostAtom } = await import('../../../../store/atoms/interactiveWidgetHost');
+    const testStore = createStore();
+    const setUsageLimitAutoResume = vi.fn().mockResolvedValue(undefined);
+    testStore.set(interactiveWidgetHostAtom('limited'), { usageLimitAutoResumeEnabled: false, setUsageLimitAutoResume } as never);
+    const blocked = makeMessage({
+      type: 'system_message',
+      isError: true,
+      text: "<!-- [RATE_LIMIT] limitType=5-hour session resetsAtUnix=1772233200 -->\n\nYou've hit your session limit",
+    });
+    const segment = (isLastMessage: boolean) => (
+      <JotaiProvider store={testStore}>
+        <MessageSegment message={blocked} isUser={false} showToolCalls={false} showThinking={false}
+          expandedTools={new Set()} onToggleToolExpand={() => {}} sessionId="limited" isLastMessage={isLastMessage} />
+      </JotaiProvider>
+    );
+
+    const older = render(segment(false));
+    expect(older.container.querySelector('.rate-limit-widget-blocked')).not.toBeNull();
+    expect(older.container.querySelector('.rate-limit-auto-resume-on')).toBeNull();
+    older.unmount();
+
+    render(segment(true));
+    fireEvent.click(screen.getByText('Resume automatically when the limit resets'));
+    await waitFor(() => screen.getByText('Turn off'));
+    expect(setUsageLimitAutoResume).toHaveBeenCalledWith(true, 1772233200000);
   });
 
   it('renders tool call card with expand/collapse', () => {
@@ -1227,6 +1313,33 @@ describe('GitCommitConfirmationWidget', () => {
     expect(screen.getByTestId('git-commit-error').textContent).toContain('HOOK_DETAIL: lint failed');
   });
 
+  it('localizes the extracted error prefix in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('git_commit_proposal', {
+      commitMessage: 'feat: failing commit',
+      filesToStage: ['src/file.ts'],
+    });
+    if (!message.toolCall) throw new Error('Expected a tool call in the test message');
+    const runtimeToolCall = message.toolCall as unknown as { result: unknown };
+    runtimeToolCall.result = [{ error: 'HOOK_DETAIL: lint failed' }];
+
+    render(
+      <Wrapper>
+        <GitCommitConfirmationWidget
+          message={message}
+          isExpanded={false}
+          onToggle={() => {}}
+          sessionId="error-commit-ja"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('コミットに失敗しました')).toBeDefined();
+    const errorText = screen.getByTestId('git-commit-error').textContent ?? '';
+    expect(errorText).toContain('コミットに失敗しました: HOOK_DETAIL: lint failed');
+    expect(errorText).not.toContain('Error:');
+  });
+
   it('sends cancel through the interactive host', async () => {
     const { interactiveWidgetHostAtom } = await import('../../../../store/atoms/interactiveWidgetHost');
 
@@ -1289,6 +1402,143 @@ describe('GitCommitConfirmationWidget', () => {
       </Wrapper>
     );
     expect(container.innerHTML).toBe('');
+  });
+
+  // The scenario the feature exists for: two sessions edited one file, and the
+  // user commits only their own hunk. Covers the full widget contract --
+  // pre-selection, banner, tri-state, and the payload handed to the host.
+  describe('hunk-level staging', () => {
+    const TWO_SESSION_DIFF = [
+      'diff --git a/shared.txt b/shared.txt',
+      'index 1111111..2222222 100644',
+      '--- a/shared.txt',
+      '+++ b/shared.txt',
+      '@@ -2,5 +2,5 @@',
+      ' line2',
+      ' line3',
+      ' line4',
+      '-line5',
+      '+SESSION-A-EDIT',
+      ' line6',
+      '@@ -22,5 +22,5 @@',
+      ' line22',
+      ' line23',
+      ' line24',
+      '-line25',
+      '+SESSION-B-EDIT',
+      ' line26',
+    ].join('\n') + '\n';
+
+    /** What this session alone changed: only the first hunk. */
+    const SESSION_OWN_DIFF = [
+      'Index: shared.txt',
+      '--- shared.txt',
+      '+++ shared.txt',
+      '@@ -2,5 +2,5 @@',
+      ' line2',
+      ' line3',
+      ' line4',
+      '-line5',
+      '+SESSION-A-EDIT',
+      ' line6',
+    ].join('\n') + '\n';
+
+    async function renderWithDiffs(overrides: Record<string, unknown> = {}) {
+      const { interactiveWidgetHostAtom } = await import('../../../../store/atoms/interactiveWidgetHost');
+      const message = makeToolMessage('git_commit_proposal', {
+        commitMessage: 'perf: only my hunk',
+        filesToStage: [{ path: 'shared.txt', status: 'modified' }],
+      });
+      const gitCommit = vi.fn().mockResolvedValue({ success: true, commitHash: 'abc1234' });
+      const testStore = createStore();
+      testStore.set(interactiveWidgetHostAtom('hunk-session'), {
+        sessionId: 'hunk-session',
+        workspacePath: '/',
+        worktreeId: null,
+        askUserQuestionSubmit: vi.fn(),
+        askUserQuestionCancel: vi.fn(),
+        requestUserInputSubmit: vi.fn(),
+        requestUserInputCancel: vi.fn(),
+        exitPlanModeApprove: vi.fn(),
+        exitPlanModeStartNewSession: vi.fn(),
+        exitPlanModeDeny: vi.fn(),
+        exitPlanModeCancel: vi.fn(),
+        toolPermissionSubmit: vi.fn(),
+        toolPermissionCancel: vi.fn(),
+        autoCommitEnabled: false,
+        setAutoCommitEnabled: vi.fn(),
+        gitCommit,
+        gitCommitCancel: vi.fn(),
+        gitFileDiff: vi.fn().mockResolvedValue({ unifiedDiff: TWO_SESSION_DIFF, isBinary: false }),
+        sessionFileDiff: vi.fn().mockResolvedValue({ unifiedDiff: SESSION_OWN_DIFF }),
+        superLoopBlockedFeedback: vi.fn(),
+        openFile: vi.fn(),
+        trackEvent: vi.fn(),
+        ...overrides,
+      });
+
+      render(
+        <JotaiProvider store={testStore}>
+          <GitCommitConfirmationWidget
+            message={message}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="hunk-session"
+          />
+        </JotaiProvider>
+      );
+      return { gitCommit };
+    }
+
+    it('pre-selects the session\'s own hunk and says how many it excluded', async () => {
+      await renderWithDiffs();
+
+      const banner = await screen.findByTestId('git-commit-hunk-exclusion-banner');
+      expect(banner.textContent).toContain('1 hunk excluded');
+
+      // The file reads as partially staged, not fully.
+      expect(screen.getByTestId('git-commit-file-checkbox').dataset.checkState).toBe('partial');
+    });
+
+    it('sends only the selected hunk\'s ref to the host', async () => {
+      const { gitCommit } = await renderWithDiffs();
+      await screen.findByTestId('git-commit-hunk-exclusion-banner');
+
+      fireEvent.click(screen.getByTestId('git-commit-confirm'));
+
+      await waitFor(() => expect(gitCommit).toHaveBeenCalled());
+      const [, files, , hunkSelections] = gitCommit.mock.calls[0];
+      expect(files).toEqual(['shared.txt']);
+      expect(hunkSelections).toEqual([
+        { path: 'shared.txt', hunks: [{ oldStart: 2, oldLines: 5, newStart: 2, newLines: 5 }] },
+      ]);
+    });
+
+    it('restores the whole file via Select all hunks, dropping the refs', async () => {
+      const { gitCommit } = await renderWithDiffs();
+      await screen.findByTestId('git-commit-hunk-exclusion-banner');
+
+      fireEvent.click(screen.getByTestId('git-commit-select-all-hunks'));
+      await waitFor(() =>
+        expect(screen.getByTestId('git-commit-file-checkbox').dataset.checkState).toBe('all')
+      );
+
+      fireEvent.click(screen.getByTestId('git-commit-confirm'));
+      await waitFor(() => expect(gitCommit).toHaveBeenCalled());
+      // Whole file again, so no hunk refs are sent at all.
+      expect(gitCommit.mock.calls[0][3]).toBeUndefined();
+    });
+
+    it('stages the whole file when the session cannot be attributed', async () => {
+      const { gitCommit } = await renderWithDiffs({
+        sessionFileDiff: vi.fn().mockResolvedValue(null),
+      });
+
+      fireEvent.click(screen.getByTestId('git-commit-confirm'));
+      await waitFor(() => expect(gitCommit).toHaveBeenCalled());
+      expect(gitCommit.mock.calls[0][3]).toBeUndefined();
+      expect(screen.queryByTestId('git-commit-hunk-exclusion-banner')).toBeNull();
+    });
   });
 });
 
@@ -1407,7 +1657,7 @@ describe('ContextLimitWidget', () => {
   });
 
   it('shows compact button only on last message', () => {
-    const onCompact = vi.fn();
+    const onCompact = vi.fn(() => new Promise<void>(() => {}));
     render(<ContextLimitWidget isLastMessage={true} onCompact={onCompact} />);
     const compactButton = screen.getByText('Compact');
     expect(compactButton).toBeDefined();
@@ -1421,10 +1671,137 @@ describe('ContextLimitWidget', () => {
   });
 
   it('shows "Compacting..." after clicking compact', () => {
-    const onCompact = vi.fn();
+    const onCompact = vi.fn(() => new Promise<void>(() => {}));
     render(<ContextLimitWidget isLastMessage={true} onCompact={onCompact} />);
     fireEvent.click(screen.getByText('Compact'));
     expect(screen.getByText('Compacting...')).toBeDefined();
+  });
+
+  // #1414: the button used to latch on "Compacting..." forever, so the one
+  // recovery affordance disappeared in exactly the case that needs it -- a
+  // compaction the model refused. SessionTranscript's handler swallows its own
+  // errors and resolves, so the failure looks like a completed call here.
+  it('hands the button back once a failed compaction settles', async () => {
+    let settle!: () => void;
+    const onCompact = vi.fn(() => new Promise<void>((resolve) => { settle = resolve; }));
+    render(
+      <ContextLimitWidget isLastMessage={true} variant="compaction-failed" onCompact={onCompact} />
+    );
+
+    fireEvent.click(screen.getByText('Try again'));
+    expect(screen.getByText('Retrying...')).toBeDefined();
+
+    settle();
+    await waitFor(() => expect(screen.getByText('Try again')).toBeDefined());
+    expect((screen.getByText('Try again') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // The widget renders INSTEAD of the message it matched, so for a failed
+  // compaction it has to carry the detail forward -- that string is the only
+  // thing naming who refused (a router, in #1414). A plain context-limit error
+  // says nothing the widget's own copy doesn't, so it stays suppressed.
+  it('surfaces the failure detail only for a failed compaction', () => {
+    const detail = 'Error during compaction: API Error: 400 All target providers failed.';
+    const { rerender } = render(
+      <ContextLimitWidget isLastMessage={true} variant="compaction-failed" detail={detail} />
+    );
+    expect(screen.getByText(detail)).toBeDefined();
+
+    rerender(<ContextLimitWidget isLastMessage={true} variant="context-limit" detail={detail} />);
+    expect(screen.queryByText(detail)).toBeNull();
+  });
+
+  it('renders localized context-limit and compaction copy', async () => {
+    await testI18n.changeLanguage('ja');
+    const { rerender } = render(<ContextLimitWidget isLastMessage={true} />);
+
+    expect(screen.getByText('コンテキストの上限に達しました')).toBeDefined();
+    expect(screen.getByText('このプロバイダーではNimbalystから会話を要約できません。続行するには新しいセッションを開始してください。')).toBeDefined();
+
+    rerender(
+      <I18nextProvider i18n={testI18n}>
+        <ContextLimitWidget isLastMessage={true} variant="compaction-failed" onCompact={() => {}} />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('会話の要約に失敗しました')).toBeDefined();
+    expect(screen.getByRole('button', { name: '再試行' })).toBeDefined();
+  });
+});
+
+describe('OpenAIAuthWidget', () => {
+  it('renders localized authentication guidance and actions', async () => {
+    await testI18n.changeLanguage('ja');
+    const { OpenAIAuthWidget } = await import('../OpenAIAuthWidget');
+    render(<OpenAIAuthWidget />);
+
+    expect(screen.getByText('OpenAI Codexの認証が必要です')).toBeDefined();
+    expect(screen.getByText(/初回ログイン前に~\/\.codex\/auth\.jsonが存在しないのは正常です/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'ログイン' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '状態を確認' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'セットアップ手順を開く' })).toBeDefined();
+    expect(await screen.findByText('Electron APIにアクセスできません。アプリケーションを再起動してください。')).toBeDefined();
+  });
+
+  it('localizes fixed authentication status returned by the host', async () => {
+    await testI18n.changeLanguage('ja');
+    const previousDescriptor = Object.getOwnPropertyDescriptor(window, 'electronAPI');
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        invoke: vi.fn().mockResolvedValue({
+          installed: true,
+          isLoggedIn: true,
+          authMethod: 'chatgpt',
+          message: 'Signed in with ChatGPT (Pro).',
+        }),
+      },
+    });
+
+    try {
+      const { OpenAIAuthWidget } = await import('../OpenAIAuthWidget');
+      render(<OpenAIAuthWidget />);
+      expect(await screen.findByText('ChatGPTでログインしています（Pro）。')).toBeDefined();
+    } finally {
+      if (previousDescriptor) {
+        Object.defineProperty(window, 'electronAPI', previousDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'electronAPI');
+      }
+    }
+  });
+});
+
+// ============================================================================
+// Context failure classification
+// ============================================================================
+
+describe('classifyContextFailure', () => {
+  let classifyContextFailure: (text: string) => string | null;
+  let isCompactionFailureText: (text: string) => boolean;
+
+  beforeEach(async () => {
+    const mod = await import('../contextFailureDetection');
+    classifyContextFailure = mod.classifyContextFailure;
+    isCompactionFailureText = mod.isCompactionFailureText;
+  });
+
+  // The CLI prefixes its automatic-compaction failure with "Prompt is too
+  // long", so a context-limit-first check routes it to the "just compact"
+  // copy -- advice the user has already taken and watched fail.
+  it('prefers the compaction verdict over the context-limit phrase it embeds', () => {
+    expect(classifyContextFailure('Prompt is too long · automatic compaction failed: API Error: 400'))
+      .toBe('compaction-failed');
+    expect(classifyContextFailure('Error during compaction: API Error: 400 All target providers failed.'))
+      .toBe('compaction-failed');
+    expect(classifyContextFailure('Prompt is too long')).toBe('context-limit');
+    expect(classifyContextFailure('the build succeeded')).toBeNull();
+  });
+
+  // The unflagged-text path renders this widget INSTEAD of the message, so a
+  // loose match would hide an agent's own prose behind an error card.
+  it('only matches the CLI framing on unflagged text', () => {
+    expect(isCompactionFailureText('Error during compaction: API Error: 400')).toBe(true);
+    expect(isCompactionFailureText('I checked the logs and compaction failed twice')).toBe(false);
   });
 });
 
@@ -1506,6 +1883,55 @@ describe('FileChangeWidget', () => {
     // Should show dot pulse animation
     expect(container.querySelector('.animate-bash-dot-pulse')).not.toBeNull();
   });
+
+  it('renders fixed file-change labels in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('file_change', {
+      changes: [
+        { path: '/workspace/src/new-file.ts', kind: 'create' },
+        { path: '/workspace/src/deleted.ts', kind: 'delete' },
+      ],
+    }, { status: 'completed' });
+    render(
+      <Wrapper>
+        <FileChangeWidget
+          message={message}
+          isExpanded={true}
+          onToggle={() => {}}
+          sessionId="fc-ja"
+          workspacePath="/workspace"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('ファイルの変更')).toBeDefined();
+    expect(screen.getByText('作成')).toBeDefined();
+    expect(screen.getByText('削除')).toBeDefined();
+    expect(screen.getByTitle('src/new-file.tsを開く')).toBeDefined();
+  });
+
+  it('renders the collapsed summary in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('file_change', {
+      changes: [
+        { path: '/workspace/src/app.ts', kind: 'update' },
+        { path: '/workspace/src/utils.ts', kind: 'update' },
+      ],
+    }, { status: 'completed' });
+    render(
+      <Wrapper>
+        <FileChangeWidget
+          message={message}
+          isExpanded={false}
+          onToggle={() => {}}
+          sessionId="fc-ja-summary"
+          workspacePath="/workspace"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('ファイル2件を更新')).toBeDefined();
+  });
 });
 
 // ============================================================================
@@ -1514,15 +1940,21 @@ describe('FileChangeWidget', () => {
 
 describe('InteractivePromptWidget', () => {
   let InteractivePromptWidget: React.FC<any>;
+  let promptI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+  const renderPrompt = (ui: React.ReactElement) => render(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={promptI18n}>{children}</I18nextProvider>,
+  });
 
   beforeEach(async () => {
+    promptI18n = await createI18nInstance('en');
     const mod = await import('../InteractivePromptWidget');
     InteractivePromptWidget = mod.InteractivePromptWidget;
   });
 
   it('renders permission request in pending state with action buttons', () => {
     const onSubmit = vi.fn();
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -1548,7 +1980,7 @@ describe('InteractivePromptWidget', () => {
   });
 
   it('renders resolved permission state', () => {
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -1569,7 +2001,7 @@ describe('InteractivePromptWidget', () => {
   });
 
   it('renders destructive permission with warning icon', () => {
-    const { container } = render(
+    const { container } = renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -1593,7 +2025,7 @@ describe('InteractivePromptWidget', () => {
   });
 
   it('renders ask_user_question prompt with options', () => {
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="ask_user_question_request"
         content={{
@@ -1623,9 +2055,67 @@ describe('InteractivePromptWidget', () => {
     expect(screen.getByText('Cool')).toBeDefined();
   });
 
+  // Regression test for GitHub issue #1418. The transcript is virtualized, so
+  // scrolling a pending question out of view unmounts this widget. Its answers,
+  // "Other" toggle and "Other" text used to live in component state and were
+  // discarded with it, unrecoverably. They now live in a draft atom keyed by
+  // questionId, so all three survive the remount.
+  it('keeps selections, the Other toggle and the Other text across unmount/remount', () => {
+    const questionContent = {
+      type: 'ask_user_question_request' as const,
+      questionId: 'q-draft-1418',
+      questions: [
+        {
+          question: 'Which areas?',
+          header: 'Areas',
+          options: [
+            { label: 'Editor', description: 'Editing surface' },
+            { label: 'Sync', description: 'Collaboration' },
+          ],
+          multiSelect: true,
+        },
+      ],
+      status: 'pending' as const,
+    };
+    const typed = 'Ten minutes of carefully written user input.';
+
+    const first = renderPrompt(
+      <InteractivePromptWidget
+        promptType="ask_user_question_request"
+        content={questionContent}
+        onSubmitResponse={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Editor'));
+    fireEvent.click(screen.getByText('Other'));
+    fireEvent.change(first.container.querySelector('textarea')!, {
+      target: { value: typed },
+    });
+    expect(first.container.querySelector('textarea')!.value).toBe(typed);
+
+    // Scrolled out of view, then back.
+    first.unmount();
+    const second = renderPrompt(
+      <InteractivePromptWidget
+        promptType="ask_user_question_request"
+        content={questionContent}
+        onSubmitResponse={() => {}}
+      />
+    );
+
+    expect(second.container.querySelector('textarea')!.value).toBe(typed);
+    expect(
+      screen.getByText('Editor').closest('.interactive-prompt__option')!.className
+    ).toContain('interactive-prompt__option--selected');
+    expect(
+      screen.getByText('Other').closest('.interactive-prompt__option')!.className
+    ).toContain('interactive-prompt__option--selected');
+  });
+
   it('calls onSubmitResponse with correct permission response', () => {
     const onSubmit = vi.fn();
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -1753,7 +2243,7 @@ describe('UpdateSessionMetaWidget', () => {
     expect(screen.getByText('Dark mode implementation')).toBeDefined();
     expect(screen.getByText('set')).toBeDefined();
     // Phase badge
-    expect(screen.getByText('Implementing')).toBeDefined();
+    expect(screen.getByText('implementing')).toBeDefined();
     // Tags with added prefix
     expect(screen.getByText(/feature/)).toBeDefined();
     expect(screen.getByText(/ui/)).toBeDefined();
@@ -1784,8 +2274,8 @@ describe('UpdateSessionMetaWidget', () => {
       </Wrapper>
     );
     // Both phases should appear
-    expect(screen.getByText('Planning')).toBeDefined();
-    expect(screen.getByText('Implementing')).toBeDefined();
+    expect(screen.getByText('planning')).toBeDefined();
+    expect(screen.getByText('implementing')).toBeDefined();
     // Arrow between them
     expect(container.textContent).toContain('\u2192');
   });
@@ -1949,9 +2439,65 @@ describe('UpdateSessionMetaWidget', () => {
     );
     expect(screen.getByText('Bug fix')).toBeDefined();
     expect(screen.getByText('#bug-fix')).toBeDefined();
-    expect(screen.getByText('Implementing')).toBeDefined();
+    expect(screen.getByText('implementing')).toBeDefined();
     // Should show the "set" badge since name changed from null
     expect(container.textContent).toContain('set');
+  });
+
+  it('renders translated labels in Japanese without translating metadata values or states', async () => {
+    await testI18n.changeLanguage('ja');
+    const unchangedNameResult: StructuredSessionMetaResult = {
+      summary: 'Name already set and phase removed',
+      before: { name: '既存のセッション名', tags: ['既存タグ'], phase: 'planning' },
+      after: { name: '既存のセッション名', tags: ['既存タグ', 'new-tag'], phase: null },
+    };
+    const setNameResult: StructuredSessionMetaResult = {
+      summary: 'Set name',
+      before: { name: null, tags: [], phase: null },
+      after: { name: '新しいセッション名', tags: [], phase: null },
+    };
+    const emptyResult: StructuredSessionMetaResult = {
+      summary: 'No changes',
+      before: { name: null, tags: [], phase: null },
+      after: { name: null, tags: [], phase: null },
+    };
+
+    render(
+      <Wrapper>
+        <>
+          <UpdateSessionMetaWidget
+            message={makeToolMessage('update_session_meta', { name: '別の名前' }, JSON.stringify(unchangedNameResult))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="meta-ja-already-set"
+          />
+          <UpdateSessionMetaWidget
+            message={makeToolMessage('update_session_meta', { name: '新しいセッション名' }, JSON.stringify(setNameResult))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="meta-ja-set"
+          />
+          <UpdateSessionMetaWidget
+            message={makeToolMessage('update_session_meta', {}, JSON.stringify(emptyResult))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="meta-ja-empty"
+          />
+        </>
+      </Wrapper>
+    );
+
+    expect(screen.getAllByText('セッション情報')).toHaveLength(3);
+    expect(screen.getAllByText('名前')).toHaveLength(2);
+    expect(screen.getByText('フェーズ')).toBeDefined();
+    expect(screen.getByText('タグ')).toBeDefined();
+    expect(screen.getByText('（設定済みのため変更なし）')).toBeDefined();
+    expect(screen.getByText('設定済み')).toBeDefined();
+    expect(screen.getByText('なし')).toBeDefined();
+    expect(screen.getByText('情報は設定されていません')).toBeDefined();
+    expect(screen.getByText('既存のセッション名')).toBeDefined();
+    expect(screen.getByText('planning')).toBeDefined();
+    expect(screen.getByText('#new-tag')).toBeDefined();
   });
 });
 
@@ -1997,6 +2543,61 @@ describe('TrackerToolWidget', () => {
     expect(screen.getByText('#beta')).toBeDefined();
     expect(screen.getByText('#gamma')).toBeDefined();
   });
+
+  it('renders built-in tracker field labels in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const created = {
+      summary: 'Created tracker item',
+      structured: {
+        action: 'created',
+        item: {
+          id: 'bug_ja_1',
+          type: 'bug',
+          title: '日本語ラベルの確認',
+          status: 'open',
+          priority: 'high',
+          tags: ['確認'],
+        },
+      },
+    };
+    const updated = {
+      summary: 'Updated tracker item',
+      structured: {
+        action: 'updated',
+        id: 'bug_ja_1',
+        type: 'bug',
+        title: '日本語ラベルの確認',
+        changes: {
+          owner: { from: 'alice', to: 'bob' },
+          archived: { from: false, to: true },
+          progress: { from: 10, to: 50 },
+        },
+      },
+    };
+
+    render(
+      <Wrapper>
+        <>
+          <TrackerToolWidget
+            message={makeToolMessage('tracker_create', {}, JSON.stringify(created))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="tracker-fields-ja-created"
+          />
+          <TrackerToolWidget
+            message={makeToolMessage('tracker_update', { id: 'bug_ja_1' }, JSON.stringify(updated))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="tracker-fields-ja-updated"
+          />
+        </>
+      </Wrapper>
+    );
+
+    for (const label of ['タイプ', 'タイトル', 'ステータス', '優先度', 'タグ', '担当者', 'アーカイブ済み', '進捗']) {
+      expect(screen.getByText(label)).toBeDefined();
+    }
+  });
 });
 
 describe('EditorScreenshotWidget', () => {
@@ -2039,5 +2640,80 @@ describe('EditorScreenshotWidget', () => {
     const img = container.querySelector('img');
     expect(img).not.toBeNull();
     expect(img?.getAttribute('src')).toContain('data:image/png;base64,');
+
+    // The lightbox must portal out of the transcript, otherwise a transformed
+    // transcript ancestor confines the fixed overlay to the transcript pane.
+    fireEvent.click(screen.getByTitle('Click to enlarge'));
+    const dialog = screen.getByRole('dialog', { name: 'Image preview' });
+    expect(container.contains(dialog)).toBe(false);
+    expect(dialog.parentElement).toBe(document.body);
+  });
+});
+
+describe('VisualDisplayWidget', () => {
+  it('enlarges an image from outside the workspace using the bytes the thumbnail loaded', async () => {
+    const { VisualDisplayWidget } = await import('../CustomToolWidgets/VisualDisplayWidget');
+    const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    // nim-asset:// only serves workspace roots, so a /tmp path must not be
+    // handed to the lightbox as a URL; readFile can reach it.
+    const readFile = vi.fn(async () => ({ success: true, content: pixel }));
+    const message = makeToolMessage(
+      'mcp__nimbalyst__display_to_user',
+      { items: [
+        { description: 'Mockup A', image: { path: '/tmp/arch-mock/a.png' } },
+        { description: 'Mockup B', image: { path: '/tmp/arch-mock/b.png' } },
+      ] },
+      'ok',
+    );
+    render(
+      <Wrapper>
+        <VisualDisplayWidget message={message} isExpanded={false} onToggle={() => {}} sessionId="visual-lightbox" readFile={readFile} />
+      </Wrapper>
+    );
+
+    fireEvent.click(await screen.findByAltText('Mockup B'));
+    const enlarged = await screen.findByTestId('zoomable-image');
+    await waitFor(() => expect(enlarged.getAttribute('src')).toBe(`data:image/png;base64,${pixel}`));
+    expect(readFile).toHaveBeenCalledWith('/tmp/arch-mock/b.png');
+  });
+});
+
+describe('ApiServiceErrorWidget', () => {
+  it('renders the fixed service-error guidance in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    render(
+      <ApiServiceErrorWidget
+        content={'API Error: 529 {"type":"error","error":{"type":"overloaded_error","message":"busy"},"request_id":"req_1234567890"}'}
+      />
+    );
+
+    expect(screen.getByText('Claude APIが一時的に混雑しています').textContent).toBe('Claude APIが一時的に混雑しています');
+    expect(screen.getByText('エラーの原文を表示').textContent).toBe('エラーの原文を表示');
+    expect(screen.getByRole('button', { name: 'コピー' }).textContent).toBe('コピー');
+  });
+});
+
+describe('MemoryToolWidget', () => {
+  it('renders fixed memory labels in Japanese', async () => {
+    const { MemoryToolWidget } = await import('../CustomToolWidgets/MemoryToolWidget');
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('memory_recall', { query: '設計方針' }, '{"chunks":[]}');
+
+    render(
+      <Wrapper>
+        <MemoryToolWidget
+          message={message}
+          isExpanded={false}
+          onToggle={() => {}}
+          sessionId="memory-widget-ja"
+          workspacePath="/workspace"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('メモリーの参照').textContent).toBe('メモリーの参照');
+    expect(screen.getByTestId('memory-tool-query').textContent).toContain('検索文:');
+    expect(screen.getByText('この検索文に一致するメモリーは見つかりませんでした。').textContent)
+      .toBe('この検索文に一致するメモリーは見つかりませんでした。');
   });
 });

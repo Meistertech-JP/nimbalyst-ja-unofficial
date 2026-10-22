@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { AutomationStatus, AutomationSchedule, DayOfWeek, ScheduleType, ExecutionRecord } from '../frontmatter/types';
 
 interface AIModel {
@@ -11,7 +12,7 @@ interface AIModel {
   provider: string;
 }
 
-import { ALL_DAYS, DAY_LABELS } from '../frontmatter/types';
+import { ALL_DAYS } from '../frontmatter/types';
 import { parseAutomationStatus, updateAutomationStatus } from '../frontmatter/parser';
 import { formatRelativeTime, calculateNextRun } from '../scheduler/scheduleUtils';
 
@@ -92,6 +93,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
   contentVersion,
   onContentChange,
 }) => {
+  const { t } = useTranslation('extensions');
   const [status, setStatus] = useState<AutomationStatus | null>(null);
   const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -247,20 +249,20 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
         <button
           className={`automation-header__toggle ${status.enabled ? 'automation-header__toggle--active' : ''}`}
           onClick={handleToggleEnabled}
-          aria-label={status.enabled ? 'Disable automation' : 'Enable automation'}
+          aria-label={status.enabled ? t('automations.accessibility.disable') : t('automations.accessibility.enable')}
         >
           <span className="automation-header__toggle-knob" />
         </button>
 
         {/* Schedule type */}
         <div className="automation-header__segmented">
-          {(['daily', 'weekly', 'interval'] as ScheduleType[]).map((t) => (
+          {(['daily', 'weekly', 'interval'] as ScheduleType[]).map((scheduleType) => (
             <button
-              key={t}
-              className={`automation-header__seg-btn ${status.schedule.type === t ? 'automation-header__seg-btn--active' : ''}`}
-              onClick={() => handleScheduleTypeChange(t)}
+              key={scheduleType}
+              className={`automation-header__seg-btn ${status.schedule.type === scheduleType ? 'automation-header__seg-btn--active' : ''}`}
+              onClick={() => handleScheduleTypeChange(scheduleType)}
             >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+              {t(`automations.schedule.${scheduleType}`)}
             </button>
           ))}
         </div>
@@ -274,7 +276,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
                 className={`automation-header__day-chip ${status.schedule.type === 'weekly' && status.schedule.days.includes(day) ? 'automation-header__day-chip--active' : ''}`}
                 onClick={() => handleDayToggle(day)}
               >
-                {DAY_LABELS[day]}
+                {t(`automations.day.${day}_short`)}
               </button>
             ))}
           </div>
@@ -293,7 +295,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
         {/* Interval input */}
         {status.schedule.type === 'interval' && (
           <div className="automation-header__interval">
-            <span className="automation-header__dim">every</span>
+            <span className="automation-header__dim">{t('automations.interval.every')}</span>
             <input
               type="number"
               className="automation-header__interval-input"
@@ -306,7 +308,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
                 }
               }}
             />
-            <span className="automation-header__dim">min</span>
+            <span className="automation-header__dim">{t('automations.interval.minutes')}</span>
           </div>
         )}
 
@@ -318,7 +320,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
           value={status.model || ''}
           onChange={(e) => handleModelChange(e.target.value)}
         >
-          <option value="">Default model</option>
+          <option value="">{t('automations.model.default')}</option>
           {availableModels.length > 0 && (
             Object.entries(
               availableModels.reduce<Record<string, AIModel[]>>((acc, m) => {
@@ -328,8 +330,8 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
               }, {})
             ).map(([provider, models]) => (
               <optgroup key={provider} label={
-                provider === 'claude-code' ? 'Agent' :
-                provider === 'claude' ? 'Chat' :
+                provider === 'claude-code' ? t('automations.model.agent') :
+                provider === 'claude' ? t('automations.model.chat') :
                 provider === 'openai' ? 'OpenAI' : provider
               }>
                 {models.map((m) => (
@@ -351,7 +353,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
             }}>
               {status.lastRunStatus === 'success' ? 'check_circle' : status.lastRunStatus === 'error' ? 'error' : 'schedule'}
             </span>
-            {formatRelativeTime(status.lastRun)}
+            {formatRelativeTime(status.lastRun, new Date(), (key, count) => t(`automations.relative.${key}`, count === undefined ? {} : { count }))}
           </span>
         )}
 
@@ -360,7 +362,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
           <div className="automation-header__outputs" ref={historyRef}>
             <button className="automation-header__outputs-btn" onClick={handleToggleHistory}>
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>history</span>
-              {historyRecords.length > 0 ? `${historyRecords.length} runs` : `${status.runCount} runs`}
+              {t('automations.run_count', { count: historyRecords.length > 0 ? historyRecords.length : status.runCount })}
               <span className="material-symbols-outlined" style={{ fontSize: 12 }}>
                 {showHistory ? 'expand_less' : 'expand_more'}
               </span>
@@ -388,7 +390,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
                       {r.status === 'success' ? 'check_circle' : 'error'}
                     </span>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {formatRelativeTime(r.timestamp)}
+                      {formatRelativeTime(r.timestamp, new Date(), (key, count) => t(`automations.relative.${key}`, count === undefined ? {} : { count }))}
                     </span>
                     <span style={{ fontSize: 10, color: 'var(--nim-text-disabled, #666666)', flexShrink: 0 }}>
                       {formatDuration(r.durationMs)}
@@ -406,8 +408,8 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
               <div className="automation-header__outputs-dropdown">
                 <div className="automation-header__output-empty">
                   {status.runCount > 0
-                    ? 'History tracking starts from next run'
-                    : 'No runs yet'}
+                    ? t('automations.history.tracking_starts_next_run')
+                    : t('automations.history.empty')}
                 </div>
               </div>
             )}
@@ -423,7 +425,7 @@ export const AutomationDocumentHeader: React.FC<DocumentHeaderComponentProps> = 
           <span className="material-symbols-outlined" style={{ fontSize: 15 }}>
             {isRunning ? 'hourglass_top' : 'play_arrow'}
           </span>
-          {isRunning ? 'Running...' : 'Run'}
+          {isRunning ? t('automations.run.running') : t('automations.run.action')}
         </button>
       </div>
     </div>

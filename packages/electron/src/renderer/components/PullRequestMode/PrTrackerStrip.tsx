@@ -10,7 +10,7 @@
 
 import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol, ProviderIcon, SessionReferenceChip } from '@nimbalyst/runtime';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
@@ -61,17 +61,17 @@ function navigateToTrackerItem(itemId: string): void {
 
 async function updateItemFields(record: TrackerRecord, updates: Record<string, unknown>): Promise<void> {
   const tracker = globalRegistry.get(record.primaryType);
-  const syncMode = tracker?.sync?.mode || 'local';
   await window.electronAPI.documentService.updateTrackerItem({
     itemId: record.id,
     updates,
-    syncMode,
+    sharing: tracker?.sharing ?? 'personal',
+    draftByDefault: tracker?.draftByDefault ?? false,
   });
 }
 
 /** Editable status pill: the item's own workflowStatus options in a menu. */
 function StatusPill({ record }: { record: TrackerRecord }): JSX.Element | null {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('git');
   const menu = useFloatingMenu({ placement: 'bottom-start' });
   const [busy, setBusy] = useState(false);
   const option = statusOptionFor(record);
@@ -104,7 +104,7 @@ function StatusPill({ record }: { record: TrackerRecord }): JSX.Element | null {
         onClick={() => menu.setIsOpen(!menu.isOpen)}
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium transition-[filter] hover:brightness-125 disabled:opacity-60"
         style={style}
-        title={t('common:pull_request.change_review_status')}
+        title={t('pull_request.tracker.change_status')}
       >
         {option.icon && <MaterialSymbol icon={option.icon} size={12} />}
         {option.label}
@@ -155,7 +155,7 @@ function LinkedSessions({
   sessions: SessionMeta[];
   onOpen: (sessionId: string) => void;
 }): JSX.Element | null {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('git');
   const menu = useFloatingMenu({ placement: 'bottom-start' });
   if (sessions.length === 0) return null;
 
@@ -181,9 +181,7 @@ function LinkedSessions({
             data-testid="pr-open-session"
             className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-nim-muted hover:text-nim border border-nim rounded transition-colors"
             onClick={() => menu.setIsOpen(!menu.isOpen)}
-            title={t('common:pull_request.more_linked_sessions', {
-              count: overflow.length,
-            })}
+            title={t('pull_request.tracker.more_sessions', { count: overflow.length })}
           >
             +{overflow.length}
             <MaterialSymbol icon="arrow_drop_down" size={14} />
@@ -228,7 +226,7 @@ function LinkTrackerItemButton({
   prNumber: number;
   alreadyLinkedIds: Set<string>;
 }): JSX.Element {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('git');
   const menu = useFloatingMenu({ placement: 'bottom-end' });
   const [query, setQuery] = useState('');
   const [linkingId, setLinkingId] = useState<string | null>(null);
@@ -278,10 +276,10 @@ function LinkTrackerItemButton({
         data-testid="pr-link-tracker-item"
         className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-nim-faint hover:text-nim rounded transition-colors"
         onClick={() => menu.setIsOpen(!menu.isOpen)}
-        title={t('common:pull_request.link_tracker_title')}
+        title={t('pull_request.tracker.link_item_title')}
       >
         <MaterialSymbol icon="add_link" size={13} />
-        {t('common:pull_request.link_tracker')}
+        {t('pull_request.tracker.link_item')}
       </button>
       {menu.isOpen && (
         <FloatingPortal>
@@ -296,14 +294,12 @@ function LinkTrackerItemButton({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('common:pull_request.search_items')}
+              placeholder={t('pull_request.tracker.search_items')}
               className="nim-input w-full h-7 text-xs mb-1"
               data-testid="pr-link-tracker-search"
             />
             {candidates.length === 0 ? (
-              <div className="px-2 py-2 text-xs text-nim-faint">
-                {t('common:pull_request.no_matching_items')}
-              </div>
+              <div className="px-2 py-2 text-xs text-nim-faint">{t('pull_request.tracker.no_matching_items')}</div>
             ) : (
               candidates.map((item) => (
                 <button
@@ -333,7 +329,7 @@ function LinkTrackerItemButton({
  * action. Types without the role show nothing — no semantics invented.
  */
 function StaleItemHint({ record }: { record: TrackerRecord }): JSX.Element | null {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('git');
   const [busy, setBusy] = useState(false);
   const model = globalRegistry.get(record.primaryType);
   const mergedStatus = model ? getRoleField(model, 'prMergedStatus') : undefined;
@@ -360,16 +356,10 @@ function StaleItemHint({ record }: { record: TrackerRecord }): JSX.Element | nul
       disabled={busy}
       onClick={() => void apply()}
       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-nim-warning bg-nim-warning/10 hover:bg-nim-warning/20 transition-colors disabled:opacity-60"
-      title={t('common:pull_request.stale_pr_title', {
-        item: record.issueKey ?? t('common:pull_request.tracker_item'),
-        status: getRecordStatus(record),
-        target: option?.label ?? mergedStatus,
-      })}
+      title={t('pull_request.tracker.stale_item_title', { item: record.issueKey ?? t('pull_request.tracker.item'), status: getRecordStatus(record), target: option?.label ?? mergedStatus })}
     >
       <MaterialSymbol icon="warning" size={12} />
-      {t('common:pull_request.stale_pr_action', {
-        target: option?.label ?? mergedStatus,
-      })}
+      {t('pull_request.tracker.pr_merged_set_status', { status: option?.label ?? mergedStatus })}
     </button>
   );
 }
@@ -381,7 +371,7 @@ export function PrTrackerStrip({
   prState,
   onOpenSession,
 }: PrTrackerStripProps): JSX.Element {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('git');
   const { items, primary, sessions } = context;
   const alreadyLinkedIds = useMemo(() => new Set(items.map((i) => i.id)), [items]);
   const setWindowMode = useSetAtom(setWindowModeAtom);
@@ -407,9 +397,7 @@ export function PrTrackerStrip({
                 data-testid="pr-tracker-chip"
                 className="font-mono text-[11px] text-nim-muted hover:text-nim hover:underline transition-colors"
                 onClick={() => navigateToTrackerItem(item.id)}
-                title={t('common:pull_request.open_tracker_item', {
-                  issueKey: item.issueKey,
-                })}
+                title={t('pull_request.tracker.open_item', { key: item.issueKey })}
               >
                 {item.issueKey}
               </button>

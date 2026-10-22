@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ModelComparisonProps {
@@ -16,7 +16,7 @@ interface ProviderUsageStats {
 }
 
 export const ModelComparison: React.FC<ModelComparisonProps> = ({ workspaceId }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
   const [data, setData] = useState<ProviderUsageStats[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,20 +38,20 @@ export const ModelComparison: React.FC<ModelComparisonProps> = ({ workspaceId })
   if (loading) {
     return (
       <div className="model-comparison-loading flex items-center justify-center min-h-[400px] text-base text-nim-muted">
-        {t('common:usage_report.loading')}
+        {t('usage_report.loading')}
       </div>
     );
   }
 
   const chartData = data.map((item) => ({
     name: `${item.provider}${item.model ? ` (${item.model})` : ''}`,
-    'Total Tokens': item.totalTokens,
-    Sessions: item.sessionCount,
+    totalTokens: item.totalTokens,
+    sessions: item.sessionCount,
   }));
 
   return (
     <div className="model-comparison flex flex-col gap-6">
-      <h3 className="m-0 text-lg font-semibold text-nim">{t('common:usage_report.usage_by_model')}</h3>
+      <h3 className="m-0 text-lg font-semibold text-nim">{t('usage_report.usage_by_model')}</h3>
 
       {chartData.length > 0 ? (
         <ResponsiveContainer width="100%" height={400}>
@@ -68,12 +68,12 @@ export const ModelComparison: React.FC<ModelComparisonProps> = ({ workspaceId })
               }}
             />
             <Legend />
-            <Bar dataKey="Total Tokens" name={t('common:usage_report.total_tokens')} fill="var(--nim-primary)" />
+            <Bar dataKey="totalTokens" name={t('usage_report.total_tokens')} fill="var(--nim-primary)" />
           </BarChart>
         </ResponsiveContainer>
       ) : (
         <div className="no-data flex items-center justify-center min-h-[400px] text-base text-nim-muted">
-          {t('common:usage_report.no_model_data')}
+          {t('usage_report.no_model_data')}
         </div>
       )}
     </div>

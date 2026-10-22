@@ -43,21 +43,26 @@ import {
   type AgentPermissionMode,
   type AppTheme,
   type SessionSyncConfig,
-  type TrackerSyncModeSetting,
 } from '../utils/store';
 import * as StytchAuth from './StytchAuthService';
 import { logger } from '../utils/logger';
+import { resolveSpellCheckerLanguages } from '../utils/spellcheckLanguages';
 import {
   startExtensionBackendModules,
   stopExtensionBackendModules,
   getDefaultBackendModuleLifecycleDeps,
 } from '../extensions/backendModuleLifecycle';
+import { ALPHA_FEATURES } from '../../shared/alphaFeatures';
+import { BETA_FEATURES } from '../../shared/betaFeatures';
+import { DEVELOPER_FEATURES } from '../../shared/developerFeatures';
 import { FeatureUsageService, FEATURES } from './FeatureUsageService';
 import { SessionNamingService } from './SessionNamingService';
+import { setTrackerIssueKeyPrefix } from './TrackerSyncManager';
 import { updateNativeTheme, updateWindowTitleBars } from '../theme/ThemeManager';
 import { createWindow, findWindowByWorkspace } from '../window/WindowManager';
 import { getWorkspaceWindowState } from '../utils/store';
-import { requestTrackerBackfillForWorkspace } from './TrackerSyncManager';
+import { getWorkspaceSettingsOverview } from './workspaceSettingsOverview';
+import { transcriptBackfill } from './sync/transcriptBackfill';
 
 // ─── Allow / deny lists ─────────────────────────────────────────────
 
@@ -70,6 +75,7 @@ export const ALLOWED_APP_KEYS = [
   'completionSoundEnabled',
   'osNotificationsEnabled',
   'spellcheckEnabled',
+  'spellcheckLanguages',
   'analyticsEnabled',
   'defaultAIModel',
   'preferredAgentLanguage',
@@ -99,7 +105,6 @@ export const DENIED_APP_KEYS = [
  * Workspace-scoped keys writable through this service.
  */
 export const ALLOWED_WORKSPACE_KEYS = [
-  'trackerSyncPolicies',
   'issueKeyPrefix',
   'agentPermissions',
 ] as const satisfies readonly string[];
@@ -128,6 +133,23 @@ function rateLimit(sessionId: string): void {
     );
   }
 }
+
+// ─── Feature buckets ────────────────────────────────────────────────
+
+/**
+ * The three feature buckets: which app-store key each one writes, and the
+ * registry that decides which tags exist in this build. Keeping the key and
+ * the registry together is what stops an unknown bucket from falling through
+ * into `developerFeatures`.
+ */
+const FEATURE_BUCKETS = {
+  alpha: { key: 'alphaFeatures', registry: ALPHA_FEATURES },
+  beta: { key: 'betaFeatures', registry: BETA_FEATURES },
+  developer: { key: 'developerFeatures', registry: DEVELOPER_FEATURES },
+} as const satisfies Record<
+  string,
+  { key: (typeof ALLOWED_APP_KEYS)[number]; registry: readonly { tag: string }[] }
+>;
 
 // ─── Result type ─────────────────────────────────────────────────────
 
@@ -166,6 +188,7 @@ export class SettingsControlService {
       analyticsEnabled: storeIsAnalyticsEnabled(),
       completionSoundEnabled: getAppSetting<boolean>('completionSoundEnabled') ?? false,
       spellcheckEnabled: getAppSetting<boolean>('spellcheckEnabled') ?? true,
+      spellcheckLanguages: getAppSetting<string[]>('spellcheckLanguages') ?? [],
       preferredAgentLanguage: getAppSetting<string>('preferredAgentLanguage') ?? '',
       voiceMode: getAppSetting<unknown>('voiceMode') ?? null,
       sessionSync: sync
@@ -188,16 +211,7 @@ export class SettingsControlService {
       settingsAgentToolsDisabled: isSettingsAgentToolsDisabled(),
     };
     if (workspacePath) {
-      const ws = getWorkspaceState(workspacePath);
-      overview.workspace = {
-        path: workspacePath,
-        accountId: ws.accountId ?? null,
-        trackerSyncPolicies: ws.trackerSyncPolicies ?? {},
-        issueKeyPrefix: ws.issueKeyPrefix ?? null,
-        sessionSyncEnabled: (sync?.enabledProjects ?? []).includes(workspacePath),
-        docSyncEnabled: (sync?.docSyncEnabledProjects ?? []).includes(workspacePath),
-        agentPermissionMode: ws.agentPermissions?.permissionMode ?? null,
-      };
+      overview.workspace = getWorkspaceSettingsOverview(workspacePath, getWorkspaceState(workspacePath), sync);
     }
     return overview;
   }
@@ -302,6 +316,8 @@ export class SettingsControlService {
     const docEnabled = new Set(base.docSyncEnabledProjects ?? []);
 
     if (enableSessionSync === true) {
+      // Keep the project's sessions marked until the reinit's reconcile queues their withheld transcripts.
+      if (!enabledProjects.has(workspacePath)) transcriptBackfill.holdProjects([workspacePath]);
       enabledProjects.add(workspacePath);
     } else if (enableSessionSync === false) {
       enabledProjects.delete(workspacePath);
@@ -411,6 +427,36 @@ export class SettingsControlService {
     return { ok: true, before, after: args.enabled };
   }
 
+  /**
+   * Set the spellchecker language(s) as Chromium BCP-47 codes (e.g. ["en-CA"]).
+   * An empty list clears the override, so launch derives the language from the
+   * OS locale again. Applied live where possible; the persisted value governs
+   * the next launch regardless. No-op on macOS (system spellchecker).
+   */
+  async setSpellcheckLanguages(
+    sessionId: string,
+    args: { languages: string[] },
+  ): Promise<SettingsToolResult<string[], string[]>> {
+    rateLimit(sessionId);
+    const before = getAppSetting<string[]>('spellcheckLanguages') ?? [];
+    const after = Array.isArray(args.languages) ? args.languages : [];
+    setAppSetting('spellcheckLanguages', after);
+    try {
+      const { session } = await import('electron');
+      if (process.platform !== 'darwin') {
+        const available = session.defaultSession.availableSpellCheckerLanguages ?? [];
+        const langs = resolveSpellCheckerLanguages(undefined, available, after);
+        if (langs.length > 0) {
+          session.defaultSession.setSpellCheckerLanguages(langs);
+        }
+      }
+    } catch {
+      // Non-fatal: the persisted setting still applies on next launch.
+    }
+    this.audit('appearance_set_spellcheck_languages', sessionId, { before, after });
+    return { ok: true, before, after };
+  }
+
   async setAnalytics(
     sessionId: string,
     args: { enabled: boolean },
@@ -466,12 +512,38 @@ export class SettingsControlService {
   ): Promise<SettingsToolResult<boolean | undefined, boolean>> {
     rateLimit(sessionId);
     const { bucket, tag, enabled } = args;
-    const key =
-      bucket === 'alpha'
-        ? 'alphaFeatures'
-        : bucket === 'beta'
-          ? 'betaFeatures'
-          : 'developerFeatures';
+    // `tag` arrives as a free-form string from the MCP tool schema, and a flag
+    // only does anything if this build registers it. Writing an unregistered
+    // tag used to succeed: the key was persisted, Settings showed the feature
+    // as enabled, and nothing ever read it -- indistinguishable from a feature
+    // that is broken (#1501). `bucket` is unvalidated too, and every value
+    // other than 'alpha'/'beta' silently landed in `developerFeatures`.
+    // Own-property check: a plain index would resolve `constructor`,
+    // `__proto__`, etc. from Object.prototype. (`Object.hasOwn` is ES2022;
+    // this package's lib is ES2020.)
+    const definition = Object.prototype.hasOwnProperty.call(FEATURE_BUCKETS, bucket)
+      ? FEATURE_BUCKETS[bucket]
+      : undefined;
+    if (!definition) {
+      return {
+        ok: false,
+        message: `Unknown feature bucket "${bucket}". Use alpha, beta, or developer.`,
+      };
+    }
+    const { key, registry } = definition;
+    // Checked before the Developer Mode gate on purpose: an unregistered tag
+    // can never be toggled, so answering requiresUserAction first would ask
+    // the user to turn on Developer Mode for a flag that does not exist.
+    if (!registry.some((feature) => feature.tag === tag)) {
+      const known = registry.map((feature) => feature.tag);
+      return {
+        ok: false,
+        message:
+          known.length > 0
+            ? `Unknown ${bucket} feature "${tag}". This build registers: ${known.join(', ')}.`
+            : `Unknown ${bucket} feature "${tag}". This build registers no ${bucket} features.`,
+      };
+    }
 
     if (bucket !== 'beta') {
       const devMode = getAppSetting<boolean>('developerMode') ?? false;
@@ -537,55 +609,6 @@ export class SettingsControlService {
     return { ok: true, before, after: enabled };
   }
 
-  // ── Trackers (workspace-scoped) ──────────────────────────────────
-
-  async setTrackerSyncPolicy(
-    sessionId: string,
-    args: {
-      workspacePath: string;
-      trackerType: string;
-      mode: TrackerSyncModeSetting;
-    },
-  ): Promise<
-    SettingsToolResult<TrackerSyncModeSetting | undefined, TrackerSyncModeSetting>
-  > {
-    rateLimit(sessionId);
-    const { workspacePath, trackerType, mode } = args;
-    if (!workspacePath || !trackerType) {
-      return { ok: false, message: 'workspacePath and trackerType are required.' };
-    }
-    if (!['local', 'shared', 'hybrid'].includes(mode)) {
-      return { ok: false, message: `mode must be one of local, shared, hybrid. Got "${mode}".` };
-    }
-    let before: TrackerSyncModeSetting | undefined;
-    updateWorkspaceState(workspacePath, (state) => {
-      const existing = state.trackerSyncPolicies?.[trackerType];
-      before = typeof existing === 'string' ? existing : existing?.mode;
-      const policies = { ...(state.trackerSyncPolicies ?? {}) };
-      policies[trackerType] = mode;
-      state.trackerSyncPolicies = policies;
-    });
-    this.audit('tracker_set_sync_policy', sessionId, {
-      workspacePath,
-      trackerType,
-      before,
-      after: mode,
-    });
-    // Why: flipping from `local` to `shared`/`hybrid` for a workspace that
-    // already has items means the user expects those items to start
-    // appearing on their other devices. The tracker engine only knows what
-    // was queued through it; nothing else triggers historical items to be
-    // uploaded. Asking it to backfill here matches user expectation.
-    if ((mode === 'shared' || mode === 'hybrid') && before !== mode) {
-      requestTrackerBackfillForWorkspace(workspacePath).catch(err => {
-        // Non-fatal: the engine's on-connect backfill will retry on next
-        // restart. We log so a stuck setting is visible in main.log.
-        logger.main.warn('[SettingsControlService] tracker backfill request failed for', workspacePath, err);
-      });
-    }
-    return { ok: true, before, after: mode };
-  }
-
   // ── Agent trust / permissions (workspace-scoped) ─────────────────
 
   async setWorkspaceTrust(
@@ -625,18 +648,20 @@ export class SettingsControlService {
     if (!workspacePath) {
       return { ok: false, message: 'workspacePath is required.' };
     }
-    if (!/^[A-Z][A-Z0-9_-]{0,15}$/.test(prefix)) {
+    if (!/^[A-Z]{2,5}$/.test(prefix)) {
       return {
         ok: false,
-        message:
-          'prefix must be 1-16 chars, start with an uppercase letter, and use only A-Z, 0-9, _, -.',
+        message: 'prefix must be 2-5 uppercase letters.',
       };
     }
-    let before: string | undefined;
-    updateWorkspaceState(workspacePath, (state) => {
-      before = state.issueKeyPrefix;
-      state.issueKeyPrefix = prefix;
-    });
+    const before = getWorkspaceState(workspacePath).issueKeyPrefix;
+    const result = await setTrackerIssueKeyPrefix(workspacePath, prefix);
+    if (!result.success) {
+      return {
+        ok: false,
+        message: result.error ?? 'The server rejected the issue-key prefix.',
+      };
+    }
     this.audit('tracker_set_issue_key_prefix', sessionId, { workspacePath, before, after: prefix });
     return { ok: true, before, after: prefix };
   }

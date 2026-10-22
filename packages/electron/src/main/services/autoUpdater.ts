@@ -10,11 +10,22 @@ import { hasActiveStreamingSessions } from '../ipc/SessionStateHandlers';
 import { getSessionStateManager } from '@nimbalyst/runtime/ai/server/SessionStateManager';
 import { getDatabase } from '../database/initialize';
 import {
-  AUTOMATIC_UPDATES_ENABLED,
   categorizeDownloadDuration,
   classifyUpdateError,
   isWindowsRenameLockError,
+  planDownloadCompletedEmit,
+  planUpdateErrorEmit,
+  EMPTY_UPDATE_ANALYTICS_STATE,
+  type UpdateAnalyticsState,
 } from './autoUpdaterUtils';
+import { installAtomFeedFilter } from './electronUpdaterPatch';
+import { createWindowsSignatureVerifier } from './windowsSignatureVerifier';
+import type { NsisUpdater } from 'electron-updater';
+
+// Install the atom-feed filter before any AutoUpdaterService is constructed
+// (which is the first thing that triggers electron-updater to read the feed).
+installAtomFeedFilter();
+
 // Re-export the pure utilities so callers that already pulled them from this
 // module keep working. Unit tests should import from `autoUpdaterUtils`
 // directly to avoid the Electron app-global load chain.
@@ -22,6 +33,12 @@ export { classifyUpdateError, categorizeDownloadDuration, isWindowsRenameLockErr
 
 // Reminder suppression duration: 24 hours
 const REMINDER_SUPPRESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+const GITHUB_UPDATE_PROVIDER = {
+  provider: 'github' as const,
+  owner: 'nimbalyst',
+  repo: 'nimbalyst'
+};
+
 // classifyUpdateError, categorizeDownloadDuration, isWindowsRenameLockError
 // moved to ./autoUpdaterUtils so unit tests can import them without pulling
 // in this module's Electron-app-global load chain (see #245). Alias keeps
@@ -29,6 +46,7 @@ const REMINDER_SUPPRESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const getDurationCategory = categorizeDownloadDuration;
 
 export class AutoUpdaterService {
+  public readonly updatesEnabled: boolean;
   private updateCheckInterval: NodeJS.Timeout | null = null;
   private isCheckingForUpdate = false;
   private isManualCheck = false; // Track if this is a user-initiated check (for showing up-to-date toast)
@@ -36,21 +54,29 @@ export class AutoUpdaterService {
   private pendingUpdateInfo: { version: string; releaseNotes?: string; releaseDate?: string } | null = null;
   private downloadStartTime: number | null = null; // Track download start time for duration analytics
   private downloadRetryAttempted = false; // Windows EPERM rename retry guard (one retry per user-initiated download)
-  // Dedup `update_error` analytics: the hourly background check produces a
-  // fresh `error` event every poll on networks that can't reach the update
-  // endpoint, which buries any real signal. Only emit when the
-  // (stage, error_type) tuple changes within a process lifetime.
-  private lastUpdateErrorKey: string | null = null;
+  // Dedup for the two analytics events driven by the hourly poll rather than by
+  // a user action -- `update_error` and `update_download_completed`. Both fired
+  // once per poll before this: a flapping network re-emitted every hour, and a
+  // pending-but-uninstalled update re-emitted `update-downloaded` from cache
+  // every hour. Transitions are pure and live in autoUpdaterUtils so they can be
+  // tested without an Electron app global.
+  private updateAnalytics: UpdateAnalyticsState = EMPTY_UPDATE_ANALYTICS_STATE;
 
-  constructor() {
+  // This distribution must never inherit the official GitHub update feed from
+  // an environment variable. Explicit true is retained for updater policy tests.
+  constructor(updatesEnabled = false) {
+    this.updatesEnabled = updatesEnabled;
+
     // Configure electron-updater logger
     log.transports.file.level = 'info';
     autoUpdater.logger = log;
 
-    if (!AUTOMATIC_UPDATES_ENABLED) {
+    if (!this.updatesEnabled) {
+      // Unofficial builds must never contact or install from the official feed.
       autoUpdater.autoDownload = false;
       autoUpdater.autoInstallOnAppQuit = false;
-      log.info('Automatic updates are disabled for the unofficial Japanese edition');
+      log.info('Automatic updates are disabled for this build');
+      this.setupIpcHandlers();
       return;
     }
 
@@ -60,11 +86,34 @@ export class AutoUpdaterService {
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
 
+    // electron-updater's stock Authenticode check times out at 20s, which a
+    // freshly downloaded installer can exceed while Defender scans it.
+    if (process.platform === 'win32') {
+      (autoUpdater as NsisUpdater).verifyUpdateCodeSignature = createWindowsSignatureVerifier(log);
+    }
+
+    // Configure feed URL based on release channel
+    this.configureFeedURL();
+
     // Set up event handlers
     this.setupEventHandlers();
 
     // Set up IPC handlers for renderer communication
     this.setupIpcHandlers();
+  }
+
+  private configureFeedURL() {
+    if (!this.updatesEnabled) return;
+
+    const channel = getReleaseChannel();
+
+    log.info(`Configuring ${channel} channel updates from GitHub`);
+    autoUpdater.allowPrerelease = channel === 'alpha';
+    autoUpdater.channel = channel === 'alpha' ? 'alpha' : 'latest';
+    // electron-updater's channel setter enables downgrades. Reset AFTER the
+    // assignment on every launch and channel change (the policy from PR #811).
+    autoUpdater.allowDowngrade = false;
+    autoUpdater.setFeedURL(GITHUB_UPDATE_PROVIDER);
   }
 
   private setupEventHandlers() {
@@ -77,7 +126,9 @@ export class AutoUpdaterService {
     autoUpdater.on('update-available', async (info) => {
       log.info('Update available:', info);
       this.isCheckingForUpdate = false;
-      this.lastUpdateErrorKey = null;
+      // Deliberately does NOT clear the error dedup key. Clearing it here is
+      // what let a flapping network re-emit `update_error` on every hourly
+      // poll (error -> success -> error -> ...), for 182,624 events in 30 days.
       this.isManualCheck = false;
 
       let releaseNotes = info.releaseNotes as string | undefined;
@@ -104,7 +155,8 @@ export class AutoUpdaterService {
     autoUpdater.on('update-not-available', (info) => {
       log.info('Update not available:', info);
       this.isCheckingForUpdate = false;
-      this.lastUpdateErrorKey = null;
+      // See the note in `update-available`: a successful check must not re-arm
+      // the `update_error` dedup key.
       // Only show up-to-date toast for manual (user-initiated) checks
       if (this.isManualCheck) {
         this.sendToFrontmostWindow('update-toast:up-to-date');
@@ -141,9 +193,9 @@ export class AutoUpdaterService {
       // If downloadStartTime is set, we were downloading; otherwise it was a check error
       const stage = wasDownloading ? 'download' : 'check';
       const errorType = classifyUpdateError(err);
-      const errorKey = `${stage}:${errorType}`;
-      if (this.lastUpdateErrorKey !== errorKey) {
-        this.lastUpdateErrorKey = errorKey;
+      const errorPlan = planUpdateErrorEmit(this.updateAnalytics, stage, errorType);
+      this.updateAnalytics = errorPlan.next;
+      if (errorPlan.emit) {
         AnalyticsService.getInstance().sendEvent('update_error', {
           stage,
           error_type: errorType,
@@ -205,13 +257,20 @@ export class AutoUpdaterService {
     autoUpdater.on('update-downloaded', (info) => {
       log.info('Update downloaded:', info);
 
-      // Track download completed with duration
+      // Track download completed with duration. Deduped per version: once a
+      // download is pending, electron-updater re-emits this event from cache on
+      // every hourly poll until the user restarts to install, so an undeduped
+      // emit is one event per hour of uptime rather than one per download.
       const downloadDuration = this.downloadStartTime ? Date.now() - this.downloadStartTime : 0;
-      AnalyticsService.getInstance().sendEvent('update_download_completed', {
-        release_channel: getReleaseChannel(),
-        new_version: info.version,
-        duration_category: getDurationCategory(downloadDuration)
-      });
+      const downloadPlan = planDownloadCompletedEmit(this.updateAnalytics, info.version);
+      this.updateAnalytics = downloadPlan.next;
+      if (downloadPlan.emit) {
+        AnalyticsService.getInstance().sendEvent('update_download_completed', {
+          release_channel: getReleaseChannel(),
+          new_version: info.version,
+          duration_category: getDurationCategory(downloadDuration)
+        });
+      }
       this.downloadStartTime = null;
 
       // Reset retry guard now that we have a successful download in pending
@@ -329,6 +388,8 @@ export class AutoUpdaterService {
   }
 
   private performQuitAndInstall() {
+    if (!this.updatesEnabled) return;
+
     setImmediate(async () => {
       try {
         log.info('Performing quit and install...');
@@ -371,17 +432,13 @@ export class AutoUpdaterService {
   }
 
   public reconfigureFeedURL() {
-    // This build intentionally has no update feed.
-  }
-
-  public isEnabled() {
-    return AUTOMATIC_UPDATES_ENABLED;
+    if (!this.updatesEnabled) return;
+    this.configureFeedURL();
   }
 
   private setupIpcHandlers() {
-    if (!AUTOMATIC_UPDATES_ENABLED) return;
-
     safeHandle('check-for-updates', async () => {
+      if (!this.updatesEnabled) return { checking: false, disabled: true };
       if (this.isCheckingForUpdate) {
         return { checking: true };
       }
@@ -396,6 +453,7 @@ export class AutoUpdaterService {
     });
 
     safeHandle('download-update', async () => {
+      if (!this.updatesEnabled) return { success: false, disabled: true };
       try {
         await autoUpdater.downloadUpdate();
         return { success: true };
@@ -416,6 +474,7 @@ export class AutoUpdaterService {
 
     // Toast-based update IPC handlers
     safeOn('update-toast:download', async () => {
+      if (!this.updatesEnabled) return;
       try {
         log.info('Update toast: Starting download...');
 
@@ -442,12 +501,19 @@ export class AutoUpdaterService {
       } catch (error) {
         log.error('Failed to download update from toast:', error);
 
-        // Track download error
-        AnalyticsService.getInstance().sendEvent('update_error', {
-          stage: 'download',
-          error_type: classifyUpdateError(error instanceof Error ? error : new Error(String(error))),
-          release_channel: getReleaseChannel()
-        });
+        // Track download error. Shares the dedup state with the `error` handler
+        // above -- this path had none, so a user retrying a failing download
+        // from the toast emitted one event per click.
+        const errorType = classifyUpdateError(error instanceof Error ? error : new Error(String(error)));
+        const errorPlan = planUpdateErrorEmit(this.updateAnalytics, 'download', errorType);
+        this.updateAnalytics = errorPlan.next;
+        if (errorPlan.emit) {
+          AnalyticsService.getInstance().sendEvent('update_error', {
+            stage: 'download',
+            error_type: errorType,
+            release_channel: getReleaseChannel()
+          });
+        }
 
         this.sendToFrontmostWindow('update-toast:error', {
           message: error instanceof Error ? error.message : 'Unknown error'
@@ -456,6 +522,7 @@ export class AutoUpdaterService {
     });
 
     safeOn('update-toast:install', () => {
+      if (!this.updatesEnabled) return;
       log.info('Update toast: Installing update...');
 
       // Track install initiated
@@ -473,6 +540,7 @@ export class AutoUpdaterService {
 
     // Deferred install: wait for all AI sessions to finish, then install
     safeOn('update-toast:install-when-idle', () => {
+      if (!this.updatesEnabled) return;
       log.info('Update toast: Deferring install until AI sessions finish...');
 
       AnalyticsService.getInstance().sendEvent('update_install_deferred', {
@@ -538,7 +606,8 @@ export class AutoUpdaterService {
   }
 
   public startAutoUpdateCheck(intervalMinutes = 60) {
-    if (!AUTOMATIC_UPDATES_ENABLED) return;
+    if (!this.updatesEnabled) return;
+
     // Initial check after 30 seconds
     setTimeout(() => {
       this.checkForUpdates();
@@ -562,7 +631,8 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdates() {
-    if (!AUTOMATIC_UPDATES_ENABLED) return;
+    if (!this.updatesEnabled) return;
+
     if (this.isCheckingForUpdate) {
       log.info('Already checking for updates, skipping...');
       return;
@@ -577,7 +647,8 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdatesWithUI() {
-    if (!AUTOMATIC_UPDATES_ENABLED) return;
+    if (!this.updatesEnabled) return;
+
     if (this.isCheckingForUpdate) {
       // Already checking, don't show anything - the checking toast is already visible
       return;
@@ -617,6 +688,8 @@ export class AutoUpdaterService {
   }
 
   private async checkAndDownloadLatest() {
+    if (!this.updatesEnabled) return;
+
     try {
       // Previously this method called `autoUpdater.checkForUpdates()` immediately
       // before `downloadUpdate()` to "get the absolute latest version" - but on

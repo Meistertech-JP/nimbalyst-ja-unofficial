@@ -1,5 +1,5 @@
 import React, { useSyncExternalStore, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * Represents a text selection from the editor
@@ -179,7 +179,7 @@ export const TextSelectionIndicator: React.FC<TextSelectionIndicatorProps> = ({
         gap: '4px'
       }}
     >
-      <span>{t('context_indicators.selection')}</span>
+        <span>{t('context_indicators.selection')}</span>
     </div>
   );
 };

@@ -7,7 +7,6 @@ const outputDir = path.join(electronRoot, 'resources', 'generated');
 const noticesPath = path.join(outputDir, 'THIRD_PARTY_NOTICES.txt');
 const inventoryPath = path.join(outputDir, 'THIRD_PARTY_LICENSES.json');
 const auditPath = path.join(outputDir, 'THIRD_PARTY_LICENSE_AUDIT.md');
-const lockfilePath = path.join(repoRoot, 'package-lock.json');
 const approvalsPath = path.join(electronRoot, 'build', 'license-approvals.json');
 
 const reviewMode = process.argv.includes('--check');
@@ -35,15 +34,14 @@ const REVIEW_LICENSE_PATTERNS = [
 ];
 
 function main() {
-  const lockfile = JSON.parse(fs.readFileSync(lockfilePath, 'utf8'));
   const approvals = loadApprovals();
   const workspaceRoots = getWorkspaceRoots();
-  const packages = lockfile.packages || {};
+  const packages = loadInstalledPackages(workspaceRoots);
   const visited = new Set();
   const collected = new Map();
 
   for (const rootKey of workspaceRoots) {
-    walkDependencyTree(rootKey, packages, visited, collected);
+    walkDependencyTree(rootKey, packages, visited, collected, true);
   }
 
   const records = [...collected.values()].sort((a, b) =>
@@ -126,7 +124,110 @@ function getWorkspaceRoots() {
   return roots;
 }
 
-function walkDependencyTree(key, packages, visited, collected) {
+// Builds a map shaped like npm's lockfile `packages` section (repo-relative
+// install path -> manifest fields) from the installed tree. The hoisted
+// node_modules layout means dependency lookup walks up directories exactly as
+// Node resolves them at runtime. Workspace symlinks are recorded without
+// descending because each workspace is scanned from its own root. Symlinks to
+// installed node_modules packages retain their alias but resolve children from
+// the canonical target, with each target's nested node_modules scanned once.
+function loadInstalledPackages(workspaceRoots, rootDirectory = repoRoot) {
+  const packages = {};
+  const scannedPackageDirectories = new Set();
+
+  function readManifest(dir) {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    } catch {
+      return null;
+    }
+  }
+
+  function addEntry(key, manifest, linkTargetKey) {
+    packages[key] = {
+      version: manifest.version,
+      license: typeof manifest.license === 'string' ? manifest.license : undefined,
+      dependencies: manifest.dependencies,
+      optionalDependencies: manifest.optionalDependencies,
+      ...(linkTargetKey ? { linkTargetKey } : {}),
+    };
+  }
+
+  function scanPackageDependencies(key) {
+    if (scannedPackageDirectories.has(key)) return;
+    scannedPackageDirectories.add(key);
+    scanNodeModules(key);
+  }
+
+  function scanNodeModules(ownerKey) {
+    const nodeModulesKey = ownerKey ? `${ownerKey}/node_modules` : 'node_modules';
+    const nodeModulesDir = path.join(rootDirectory, nodeModulesKey);
+    if (!fs.existsSync(nodeModulesDir)) return;
+    for (const entry of fs.readdirSync(nodeModulesDir, { withFileTypes: true })) {
+      if (entry.name.startsWith('.')) continue;
+      if (entry.name.startsWith('@') && entry.isDirectory()) {
+        for (const scoped of fs.readdirSync(path.join(nodeModulesDir, entry.name), { withFileTypes: true })) {
+          scanPackage(`${nodeModulesKey}/${entry.name}/${scoped.name}`, scoped);
+        }
+      } else {
+        scanPackage(`${nodeModulesKey}/${entry.name}`, entry);
+      }
+    }
+  }
+
+  function scanPackage(key, dirent) {
+    if (dirent.isSymbolicLink()) {
+      // pnpm links workspace packages, and also links duplicate nested copies
+      // to another install location. Keep the alias entry for the consumer, but
+      // resolve its dependencies from the real install path, as Node does.
+      const realDir = fs.realpathSync(path.join(rootDirectory, key));
+      const manifest = realDir.includes(`${path.sep}node_modules${path.sep}`) ? readManifest(realDir) : null;
+      if (manifest) {
+        const relativeTarget = path.relative(rootDirectory, realDir);
+        const isInsideRoot = relativeTarget !== ''
+          && relativeTarget !== '..'
+          && !relativeTarget.startsWith(`..${path.sep}`)
+          && !path.isAbsolute(relativeTarget);
+        const targetKey = isInsideRoot ? relativeTarget.split(path.sep).join('/') : null;
+        addEntry(key, manifest, targetKey && targetKey !== key ? targetKey : undefined);
+        if (targetKey && targetKey !== key) {
+          // pnpm virtual-store targets may not have been found by the top-level
+          // node_modules scan; registering the canonical path makes both the
+          // manifest and its nested install paths resolvable without rescanning
+          // a canonical directory already visited through another alias.
+          addEntry(targetKey, manifest);
+          scanPackageDependencies(targetKey);
+        }
+      } else {
+        packages[key] = { link: true };
+      }
+      return;
+    }
+    if (!dirent.isDirectory()) return;
+    const manifest = readManifest(path.join(rootDirectory, key));
+    if (!manifest) return;
+    addEntry(key, manifest);
+    scanPackageDependencies(key);
+  }
+
+  scanNodeModules('');
+  for (const rootKey of workspaceRoots) {
+    const manifest = readManifest(path.join(rootDirectory, rootKey));
+    if (!manifest) continue;
+    addEntry(rootKey, manifest);
+    scanNodeModules(rootKey);
+  }
+
+  return packages;
+}
+
+function walkDependencyTree(
+  key,
+  packages,
+  visited,
+  collected,
+  includeOptionalDependencies = false,
+) {
   if (!key || visited.has(key)) return;
 
   const info = packages[key];
@@ -151,7 +252,14 @@ function walkDependencyTree(key, packages, visited, collected) {
     }
   }
 
-  for (const dependencyName of Object.keys(info.dependencies || {}).sort()) {
+  const dependencyNames = new Set([
+    ...Object.keys(info.dependencies || {}),
+    ...(includeOptionalDependencies
+      ? Object.keys(info.optionalDependencies || {})
+      : []),
+  ]);
+
+  for (const dependencyName of [...dependencyNames].sort()) {
     const dependencyKey = resolveDependencyKey(key, dependencyName, packages);
     if (dependencyKey) {
       walkDependencyTree(dependencyKey, packages, visited, collected);
@@ -161,6 +269,11 @@ function walkDependencyTree(key, packages, visited, collected) {
 
 function resolveDependencyKey(fromKey, dependencyName, packages) {
   let current = fromKey;
+  const followedLinks = new Set();
+  while (packages[current]?.linkTargetKey && !followedLinks.has(current)) {
+    followedLinks.add(current);
+    current = packages[current].linkTargetKey;
+  }
   while (true) {
     const candidate = `${current ? `${current}/` : ''}node_modules/${dependencyName}`;
     if (packages[candidate]) return candidate;
@@ -219,7 +332,6 @@ function buildPackageRecord(key, info) {
     approvalLicense: null,
     issues,
     installPaths: [key],
-    resolved: info.resolved || null,
     licenseFiles: licenseArtifacts,
     noticeFiles: noticeArtifacts,
   };
@@ -464,7 +576,7 @@ function renderAudit(records, summary) {
   const lines = [
     '# Third-Party License Audit',
     '',
-    `Generated from \`package-lock.json\` and installed package legal files.`,
+    `Generated from the installed dependency tree and its package legal files.`,
     '',
     `- Packages scanned: ${summary.packageCount}`,
     `- Review required: ${summary.reviewRequiredCount}`,
@@ -530,4 +642,8 @@ function dedupeArtifacts(values) {
   return deduped;
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { loadInstalledPackages, walkDependencyTree };

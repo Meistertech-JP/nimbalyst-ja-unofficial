@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import i18next from 'i18next';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { UnifiedOnboarding } from '../UnifiedOnboarding';
 
 const NEW_REFERRAL_OPTIONS = [
@@ -15,29 +16,26 @@ const NEW_REFERRAL_OPTIONS = [
 ];
 
 describe('UnifiedOnboarding referral options', () => {
-  beforeEach(async () => {
-    await i18next.changeLanguage('en');
-  });
-
-  afterEach(async () => {
-    cleanup();
-    await i18next.changeLanguage('en');
+  afterEach(() => {
     delete (window as any).electronAPI;
   });
 
-  it('shows and submits each discovery source', () => {
+  it('shows and submits each discovery source', async () => {
     (window as any).electronAPI = {
       invoke: vi.fn().mockResolvedValue({}),
     };
     const onComplete = vi.fn();
+    const i18n = await createI18nInstance('en');
 
     render(
-      <UnifiedOnboarding
-        isOpen={true}
-        onComplete={onComplete}
-        onSkip={() => {}}
-        forcedMode="new"
-      />,
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+        <UnifiedOnboarding
+          isOpen={true}
+          onComplete={onComplete}
+          onSkip={() => {}}
+          forcedMode="new"
+        />
+      </UiLanguageProvider>,
     );
 
     fireEvent.click(screen.getByText('Standard Mode'));
@@ -47,26 +45,30 @@ describe('UnifiedOnboarding referral options', () => {
       const renderedOption = within(referralSelect).getByRole('option', { name: option.label });
       expect((renderedOption as HTMLOptionElement).value).toBe(option.value);
       fireEvent.change(referralSelect, { target: { value: option.value } });
-      fireEvent.click(screen.getByRole('button', { name: 'Get Started' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Get started…' }));
       expect(onComplete).toHaveBeenLastCalledWith(
         expect.objectContaining({ referralSource: option.value }),
+        'get-started',
       );
     }
   });
 
-  it('asks what the user searched for and submits the detail', () => {
+  it('asks what the user searched for and submits the detail', async () => {
     (window as any).electronAPI = {
       invoke: vi.fn().mockResolvedValue({}),
     };
     const onComplete = vi.fn();
+    const i18n = await createI18nInstance('en');
 
     render(
-      <UnifiedOnboarding
-        isOpen={true}
-        onComplete={onComplete}
-        onSkip={() => {}}
-        forcedMode="new"
-      />,
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+        <UnifiedOnboarding
+          isOpen={true}
+          onComplete={onComplete}
+          onSkip={() => {}}
+          forcedMode="new"
+        />
+      </UiLanguageProvider>,
     );
 
     fireEvent.click(screen.getByText('Standard Mode'));
@@ -76,44 +78,11 @@ describe('UnifiedOnboarding referral options', () => {
     fireEvent.change(screen.getByLabelText('What did you search for?'), {
       target: { value: 'AI code editor' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Started' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Get started…' }));
 
     expect(onComplete).toHaveBeenCalledWith(
       expect.objectContaining({ referralSource: 'search:AI code editor' }),
+      'get-started',
     );
-  });
-
-  it('localizes discovery labels and validation without changing stored values', async () => {
-    (window as any).electronAPI = { invoke: vi.fn().mockResolvedValue({}) };
-    const onComplete = vi.fn();
-
-    render(<UnifiedOnboarding isOpen onComplete={onComplete} onSkip={() => {}} forcedMode="new" />);
-    fireEvent.click(screen.getByText('Standard Mode'));
-    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'invalid' } });
-    expect(screen.getByText('Please enter a valid email address')).toBeTruthy();
-
-    await act(async () => { await i18next.changeLanguage('ja'); });
-
-    expect(screen.getByText('標準モード')).toBeTruthy();
-    expect(screen.getByText('有効なメールアドレスを入力してください')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('メールアドレス'), { target: { value: '' } });
-    const referralSelect = screen.getByLabelText('Nimbalystをどこで知りましたか？');
-    expect((within(referralSelect).getByRole('option', { name: '講座・研修' }) as HTMLOptionElement).value)
-      .toBe('course_training');
-    fireEvent.change(referralSelect, { target: { value: 'course_training' } });
-    fireEvent.click(screen.getByRole('button', { name: '始める' }));
-    expect(onComplete).toHaveBeenLastCalledWith(expect.objectContaining({ referralSource: 'course_training' }));
-
-    fireEvent.change(referralSelect, { target: { value: 'search' } });
-    fireEvent.change(screen.getByLabelText('何を検索しましたか？'), { target: { value: 'AIエディター' } });
-    fireEvent.click(screen.getByRole('button', { name: '始める' }));
-    expect(onComplete).toHaveBeenLastCalledWith(expect.objectContaining({ referralSource: 'search:AIエディター' }));
-
-    fireEvent.change(referralSelect, { target: { value: 'social' } });
-    const platformSelect = screen.getByLabelText('どのプラットフォームですか？');
-    expect((within(platformSelect).getByRole('option', { name: 'その他' }) as HTMLOptionElement).value).toBe('Other');
-    fireEvent.change(platformSelect, { target: { value: 'Other' } });
-    fireEvent.click(screen.getByRole('button', { name: '始める' }));
-    expect(onComplete).toHaveBeenLastCalledWith(expect.objectContaining({ referralSource: 'social:Other' }));
   });
 });

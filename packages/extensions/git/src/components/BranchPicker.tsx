@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating, offset, flip, shift, FloatingPortal,
   useDismiss, useRole, useInteractions, autoUpdate,
@@ -160,6 +161,7 @@ function renderTreeItems(
 // ---- Main picker ----
 
 export function BranchPicker({ branches, current, onChange }: BranchPickerProps) {
+  const { t } = useTranslation('git');
   const [isOpen, setIsOpen] = useState(false);
 
   const { refs, floatingStyles, context } = useFloating({
@@ -209,7 +211,7 @@ export function BranchPicker({ branches, current, onChange }: BranchPickerProps)
   const hasLocal = localTree.leaves.length > 0 || Object.keys(localTree.folders).length > 0;
   const hasRemotes = remoteEntries.length > 0;
   const displayLabel = current === 'HEAD'
-    ? 'Detached HEAD'
+    ? t('log_panel.detached_head_label')
     : current.startsWith('remotes/')
       ? current.slice('remotes/'.length)
       : current;
@@ -220,10 +222,10 @@ export function BranchPicker({ branches, current, onChange }: BranchPickerProps)
         ref={refs.setReference}
         className="git-log-select git-branch-picker-trigger"
         onClick={() => setIsOpen(v => !v)}
-        title="Branch"
+        title={t('supplemental.branch_picker.title')}
         {...getReferenceProps()}
       >
-        {displayLabel || 'Loading...'}
+        {displayLabel || t('supplemental.branch_picker.loading')}
         <span className="git-branch-picker-chevron">{isOpen ? '▲' : '▼'}</span>
       </button>
 
@@ -238,7 +240,7 @@ export function BranchPicker({ branches, current, onChange }: BranchPickerProps)
             {/* Local branches */}
             {hasLocal && (
               <>
-                <div className="git-branch-menu-section">Local</div>
+                <div className="git-branch-menu-section">{t('supplemental.branch_picker.local')}</div>
                 {renderTreeItems(localTree, current, handleSelect)}
               </>
             )}
@@ -247,7 +249,7 @@ export function BranchPicker({ branches, current, onChange }: BranchPickerProps)
             {hasRemotes && (
               <>
                 {hasLocal && <div className="git-branch-menu-sep" />}
-                <div className="git-branch-menu-section">Remotes</div>
+                <div className="git-branch-menu-section">{t('supplemental.branch_picker.remotes')}</div>
                 {remoteEntries.map(({ name, tree }) => (
                   <FolderSubmenu
                     key={name}
@@ -261,7 +263,7 @@ export function BranchPicker({ branches, current, onChange }: BranchPickerProps)
             )}
 
             {branches.length === 0 && (
-              <div className="git-branch-menu-empty">No branches</div>
+              <div className="git-branch-menu-empty">{t('supplemental.branch_picker.no_branches')}</div>
             )}
           </div>
         </FloatingPortal>

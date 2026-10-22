@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
 import type { TranscriptViewMessage } from '../../../ai/server/transcript/TranscriptProjector';
 
 // Augment the HighlightRegistry interface to add Map-like methods
@@ -72,7 +72,7 @@ export const TranscriptSearchBar: React.FC<TranscriptSearchBarProps> = ({
   onClose,
   onScrollToMessage,
 }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matches, setMatches] = useState<SearchMatch[]>([]);
@@ -382,21 +382,21 @@ export const TranscriptSearchBar: React.FC<TranscriptSearchBarProps> = ({
           ref={inputRef}
           type="text"
           className="transcript-search-input flex-1 min-w-0 px-2.5 py-1.5 text-sm bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text)] outline-none transition-colors focus:border-[var(--nim-primary)] placeholder:text-[var(--nim-text-faint)]"
-          placeholder={t('editor:search.transcript_placeholder', 'Find in transcript...')}
+          placeholder={t('transcript_search.placeholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={handleKeyDown}
         />
 
         <div className="transcript-search-match-counter text-xs text-[var(--nim-text-muted)] whitespace-nowrap min-w-20 text-center">
-          {matchCount > 0 ? t('editor:search.match_position', '{{current}} of {{total}}', { current: displayIndex, total: matchCount }) : t('editor:search.no_matches', 'No matches')}
+          {matchCount > 0 ? t('transcript_search.match_count', { current: displayIndex, total: matchCount }) : t('transcript_search.no_matches')}
         </div>
 
         <button
           className="transcript-search-button p-1.5 bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text-muted)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={goToPrevMatch}
           disabled={matchCount === 0}
-          title={t('editor:search.previous_shortcuts', 'Previous match ({{first}} or {{second}})', { first: 'Shift+Enter', second: 'Cmd+Shift+G' })}
+          title={t('transcript_search.previous_match')}
         >
           <MaterialSymbol icon="keyboard_arrow_up" size={18} />
         </button>
@@ -405,7 +405,7 @@ export const TranscriptSearchBar: React.FC<TranscriptSearchBarProps> = ({
           className="transcript-search-button p-1.5 bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text-muted)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={goToNextMatch}
           disabled={matchCount === 0}
-          title={t('editor:search.next_shortcuts', 'Next match ({{first}} or {{second}})', { first: 'Enter', second: 'Cmd+G' })}
+          title={t('transcript_search.next_match')}
         >
           <MaterialSymbol icon="keyboard_arrow_down" size={18} />
         </button>
@@ -413,7 +413,7 @@ export const TranscriptSearchBar: React.FC<TranscriptSearchBarProps> = ({
         <button
           className={`transcript-search-button transcript-search-case-button p-1.5 text-xs font-semibold font-mono bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text-muted)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] ${caseSensitive ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white' : ''}`}
           onClick={() => setCaseSensitive(!caseSensitive)}
-          title={caseSensitive ? t('editor:search.case_sensitive', 'Case sensitive') : t('editor:search.case_insensitive', 'Case insensitive')}
+          title={caseSensitive ? t('transcript_search.case_sensitive') : t('transcript_search.case_insensitive')}
           data-active={caseSensitive}
         >
           Aa
@@ -422,7 +422,7 @@ export const TranscriptSearchBar: React.FC<TranscriptSearchBarProps> = ({
         <button
           className="transcript-search-button transcript-search-close-button ml-1 p-1.5 bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text-muted)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)]"
           onClick={onClose}
-          title={t('editor:search.close_shortcut', 'Close ({{shortcut}})', { shortcut: 'Escape' })}
+          title={t('transcript_search.close')}
         >
           <MaterialSymbol icon="close" size={18} />
         </button>

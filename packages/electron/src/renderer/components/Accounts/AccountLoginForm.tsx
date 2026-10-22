@@ -1,87 +1,163 @@
 import React, { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import type { PersonalAccountSummary } from '../../store/atoms/settingsDomains';
 
-export type AccountLoginMode = 'first-sign-in' | 'add-account' | 'reauth';
+export type AccountLoginMode =
+  | 'first-sign-in'
+  | 'org-onboarding'
+  | 'add-account'
+  | 'reauth';
+
+interface SignInAttempt {
+  method: 'google' | 'magicLink';
+  /** Known for a magic link; empty for OAuth, where the browser collects it. */
+  email: string;
+}
 
 export interface AccountLoginFormProps {
   mode: AccountLoginMode;
   account?: PersonalAccountSummary;
 }
 
-const COPY: Record<AccountLoginMode, { title: string; description: string }> = {
-  'first-sign-in': {
-    title: 'account_ui.first_sign_in_title',
-    description: 'account_ui.first_sign_in_description',
-  },
-  'add-account': {
-    title: 'account_ui.add_account_title',
-    description: 'account_ui.add_account_description',
-  },
-  reauth: {
-    title: 'account_ui.reauth_title',
-    description: 'account_ui.reauth_description',
-  },
+type AuthFlowOptions = {
+  intent: 'sign-in' | 'add-account' | 'reauth';
+  targetPersonalOrgId?: string;
 };
 
+/**
+ * Main validates intent strictly — `sign-in` throws once any account is stored,
+ * `add-account` throws when none is, `reauth` needs its target — so the intent
+ * is resolved at click time against the live accounts list rather than guessed
+ * from the mode alone. The primary modes render whenever the *singleton* auth
+ * state is signed out, which is also true when the sync account's session has
+ * merely expired; those users are adding/refreshing an account, not signing in
+ * for the first time.
+ */
+async function resolveFlowOptions(
+  mode: AccountLoginMode,
+  account: PersonalAccountSummary | undefined,
+): Promise<AuthFlowOptions> {
+  if (mode === 'add-account') return { intent: 'add-account' };
+  if (mode === 'reauth') {
+    if (!account?.personalOrgId) {
+      throw new Error('Reconnecting an account requires the account to reconnect.');
+    }
+    return { intent: 'reauth', targetPersonalOrgId: account.personalOrgId };
+  }
+  const accounts = await window.electronAPI.stytch.getAccounts();
+  return { intent: accounts?.length ? 'add-account' : 'sign-in' };
+}
+
 export function AccountLoginForm({ mode, account }: AccountLoginFormProps) {
-  const { t } = useTranslation(['common', 'settings', 'dialogs']);
+  const { t } = useTranslation('common');
+  /**
+   * The org wizard renders this inside its own dialog, which already carries the
+   * card, the product identity and its own scale. Standing alone the form is the
+   * whole surface — nested in the wizard the same chrome reads as a box in a box,
+   * and panel-width controls balloon at dialog width.
+   */
+  const embedded = mode === 'org-onboarding';
   const scopedEmail = mode === 'reauth' ? account?.email ?? '' : '';
   const [email, setEmail] = useState(scopedEmail);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  /**
+   * Set once a method has been handed off to the browser or a mail client.
+   * Both round trips leave the app; embedded mode shows an explicit waiting
+   * state with a way back, so a lost email is not a dead end.
+   */
+  const [attempt, setAttempt] = useState<SignInAttempt | null>(null);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setEmail(scopedEmail);
     setError(null);
-    setMagicLinkSent(false);
+    setAttempt(null);
+    setResendNotice(null);
   }, [scopedEmail]);
 
-  const handleGoogle = async () => {
+  const beginSignIn = async (
+    method: SignInAttempt['method'],
+    targetEmail: string,
+  ): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
-      const result = mode === 'first-sign-in'
-        ? await window.electronAPI.stytch.signInWithGoogle()
-        : await window.electronAPI.stytch.addAccount();
-      if (!result?.success) setError(result?.error ?? t('account_ui.sign_in_failed'));
+      const options = await resolveFlowOptions(mode, account);
+      const result = method === 'google'
+        ? await window.electronAPI.stytch.signInWithGoogle(options)
+        : await window.electronAPI.stytch.sendMagicLink(targetEmail, options);
+      if (!result?.success) {
+        setError(result?.error ?? (
+          method === 'google' ? t('account_ui.sign_in_failed') : t('account_ui.magic_link_failed')
+        ));
+        return false;
+      }
+      return true;
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(reason instanceof Error && reason.message === 'Reconnecting an account requires the account to reconnect.'
+        ? t('account_ui.reconnect_required')
+        : reason instanceof Error ? reason.message : String(reason));
+      return false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogle = async () => {
+    const started = await beginSignIn('google', '');
+    // Non-embedded surfaces keep the picker visible during the OAuth round
+    // trip, matching their pre-waiting-state behavior.
+    if (started && embedded) setAttempt({ method: 'google', email: '' });
   };
 
   const handleMagicLink = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!email.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await window.electronAPI.stytch.sendMagicLink(email.trim());
-      if (!result?.success) setError(result?.error ?? t('account_ui.magic_link_failed'));
-      else setMagicLinkSent(true);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
-    } finally {
-      setLoading(false);
+    const target = email.trim();
+    if (!target) return;
+    if (await beginSignIn('magicLink', target)) {
+      setAttempt({ method: 'magicLink', email: target });
     }
   };
 
-  const copy = COPY[mode];
+  const handleResend = async () => {
+    if (!attempt || loading) return;
+    setResendNotice(null);
+    if (await beginSignIn(attempt.method, attempt.email)) {
+      setResendNotice(
+        attempt.method === 'magicLink'
+          ? t('account_ui.another_link_sent', { email: attempt.email })
+          : t('account_ui.sign_in_reopened'),
+      );
+    }
+  };
+
+  const handleRestart = () => {
+    setAttempt(null);
+    setError(null);
+    setResendNotice(null);
+  };
+
+  const waiting = embedded && attempt !== null;
   return (
     <section
-      className="account-login-form w-full rounded-xl border border-[var(--nim-border)] bg-[var(--nim-bg)] p-6 text-[var(--nim-text)] shadow-2xl"
+      className={`account-login-form w-full text-[var(--nim-text)] ${
+        embedded
+          ? 'account-login-form-embedded'
+          : 'rounded-xl border border-[var(--nim-border)] bg-[var(--nim-bg)] p-6 shadow-2xl'
+      }`}
       data-component="AccountLoginForm"
       data-testid={`account-login-${mode}`}
+      data-waiting={waiting}
     >
-      <div className="account-login-brand mb-5 flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--nim-primary)] text-sm font-bold text-white">N</span>
-        <span className="text-sm font-semibold">Nimbalyst</span>
-      </div>
+      {!embedded && (
+        <div className="account-login-brand mb-5 flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--nim-primary)] text-sm font-bold text-white">N</span>
+          <span className="text-sm font-semibold">Nimbalyst</span>
+        </div>
+      )}
 
       {mode === 'reauth' && account && (
         <div className="account-login-context mb-4 flex items-center gap-3 rounded-md border border-[var(--nim-warning)] bg-[color-mix(in_srgb,var(--nim-warning)_8%,transparent)] p-3">
@@ -89,59 +165,188 @@ export function AccountLoginForm({ mode, account }: AccountLoginFormProps) {
             {(account.email?.[0] ?? '?').toUpperCase()}
           </span>
           <p className="m-0 select-text text-xs text-[var(--nim-text-muted)]">
-            <Trans t={t} i18nKey="account_ui.signing_back" values={{ email: account.email }} components={{ account: <strong className="text-[var(--nim-warning)]" /> }} />
+            <Trans
+              t={t}
+              i18nKey="account_ui.signing_back"
+              values={{ email: account.email }}
+              components={{ account: <strong className="text-[var(--nim-warning)]" /> }}
+            />
           </p>
         </div>
       )}
 
-      <h2 className="m-0 text-lg font-semibold">{t(copy.title)}</h2>
-      <p className="mb-5 mt-1 text-xs leading-relaxed text-[var(--nim-text-muted)]">{t(copy.description)}</p>
-
-      {!magicLinkSent ? (
-        <>
-          <button
-            type="button"
-            className="account-login-oauth mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-[var(--nim-border)] bg-white px-4 py-2.5 text-sm font-semibold text-neutral-900 disabled:opacity-60"
-            disabled={loading}
-            onClick={() => void handleGoogle()}
-          >
-            <MaterialSymbol icon="login" size={18} />
-            {mode === 'reauth' && account?.email ? t('account_ui.continue_as', { email: account.email }) : t('settings:sync.continue_google')}
-          </button>
-
-          <div className="account-login-divider mb-4 flex items-center gap-3 text-[10px] uppercase tracking-wide text-[var(--nim-text-faint)] before:h-px before:flex-1 before:bg-[var(--nim-border)] after:h-px after:flex-1 after:bg-[var(--nim-border)]">{t('settings:sync.or')}</div>
-          <form className="account-login-magic-link" onSubmit={handleMagicLink}>
-            <label className="mb-1.5 block text-xs font-semibold text-[var(--nim-text-muted)]" htmlFor="account-login-email">{t('account_ui.email')}</label>
-            <input
-              id="account-login-email"
-              className="mb-3 w-full rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3 py-2.5 text-sm text-[var(--nim-text)] disabled:opacity-70"
-              type="email"
-              value={email}
-              disabled={loading || mode === 'reauth'}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
+      {waiting && attempt ? (
+        <div
+          className="account-login-waiting"
+          data-testid="account-login-waiting"
+        >
+          <div className="account-login-waiting-callout flex items-start gap-2 rounded-md border border-[var(--nim-success)] bg-[color-mix(in_srgb,var(--nim-success)_8%,transparent)] p-3">
+            <MaterialSymbol
+              icon={attempt.method === 'magicLink' ? 'mark_email_read' : 'open_in_new'}
+              size={16}
+              className="mt-0.5 shrink-0 text-[var(--nim-success)]"
             />
-            <button
-              type="submit"
-              className="w-full rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-4 py-2.5 text-sm font-medium text-[var(--nim-text)] disabled:opacity-50"
-              disabled={loading || !email.trim()}
+            <p className="m-0 select-text text-[12px] leading-relaxed text-[var(--nim-text)]">
+              {attempt.method === 'magicLink' ? (
+                <>
+                  <Trans
+                    t={t}
+                    i18nKey="account_ui.check_email_link"
+                    values={{ email: attempt.email }}
+                    components={{ strong: <strong /> }}
+                  />
+                </>
+              ) : (
+                <>{t('account_ui.finish_google_sign_in')}</>
+              )}
+            </p>
+          </div>
+
+          <div className="account-login-waiting-status mt-3 flex items-center gap-3">
+            <span
+              className="account-login-waiting-spinner h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--nim-border)] border-t-[var(--nim-primary)]"
+              aria-hidden="true"
+            />
+            <span>
+              <span className="block text-[13px] font-medium text-[var(--nim-text)]">
+                {t('account_ui.waiting_for_completion')}
+              </span>
+              <span className="block text-[11px] text-[var(--nim-text-muted)]">
+                {t('account_ui.continues_automatically')}
+              </span>
+            </span>
+          </div>
+
+          {resendNotice && (
+            <p
+              className="m-0 mt-3 select-text text-[11px] text-[var(--nim-success)]"
+              data-testid="account-login-resend-notice"
             >
-              {loading ? t('dialogs:share.sending') : mode === 'reauth' ? t('account_ui.send_magic_link_to', { email: account?.email }) : t('account_ui.send_magic_link')}
+              {resendNotice}
+            </p>
+          )}
+
+          <div className="account-login-waiting-actions mt-4 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="account-login-restart rounded-md px-3 py-1.5 text-[12px] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
+              data-testid="account-login-restart"
+              onClick={handleRestart}
+            >
+              {t('account_ui.use_different_method')}
             </button>
-          </form>
-        </>
-      ) : (
-        <div className="account-login-sent rounded-md border border-[var(--nim-success)] bg-[color-mix(in_srgb,var(--nim-success)_8%,transparent)] p-4 text-center">
-          <MaterialSymbol icon="mark_email_read" size={24} className="mx-auto text-[var(--nim-success)]" />
-          <p className="mb-0 mt-2 select-text text-sm">{t('account_ui.check_link', { email })}</p>
+            <button
+              type="button"
+              disabled={loading}
+              className="account-login-resend rounded-md border border-[var(--nim-border)] px-3 py-1.5 text-[12px] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] disabled:opacity-50"
+              data-testid="account-login-resend"
+              onClick={() => void handleResend()}
+            >
+              {attempt.method === 'magicLink' ? t('account_ui.resend_link') : t('account_ui.open_sign_in_again')}
+            </button>
+          </div>
         </div>
+      ) : (
+        <>
+          <h2 className={`m-0 font-semibold ${embedded ? 'text-base' : 'text-lg'}`}>
+            {mode === 'first-sign-in' ? t('account_ui.first_sign_in_title')
+              : mode === 'org-onboarding' ? t('account_ui.org_onboarding_title')
+                : mode === 'add-account' ? t('account_ui.add_account_title')
+                  : t('account_ui.reauth_title')}
+          </h2>
+          <p
+            className={`mt-1 leading-relaxed text-[var(--nim-text-muted)] ${
+              embedded ? 'mb-4 text-[12px]' : 'mb-5 text-xs'
+            }`}
+          >
+            {mode === 'first-sign-in' ? t('account_ui.first_sign_in_description')
+              : mode === 'org-onboarding' ? t('account_ui.org_onboarding_description')
+                : mode === 'add-account' ? t('account_ui.add_account_description')
+                  : t('account_ui.reauth_description')}
+          </p>
+
+          <div className={`account-login-methods ${embedded ? 'max-w-[320px]' : ''}`}>
+            {attempt?.method !== 'magicLink' ? (
+              <>
+                <button
+                  type="button"
+                  className={`account-login-oauth flex w-full items-center justify-center gap-2 rounded-md font-semibold disabled:opacity-60 ${
+                    embedded
+                      ? 'mb-3 bg-[var(--nim-primary)] px-4 py-2 text-[13px] text-[var(--nim-on-primary)]'
+                      : 'mb-4 border border-[var(--nim-border)] bg-white px-4 py-2.5 text-sm text-neutral-900'
+                  }`}
+                  disabled={loading}
+                  onClick={() => void handleGoogle()}
+                >
+                  <MaterialSymbol icon="login" size={embedded ? 16 : 18} />
+                  {mode === 'reauth' && account?.email
+                    ? t('account_ui.continue_as', { email: account.email })
+                    : t('account_ui.continue_google')}
+                </button>
+
+                <div
+                  className={`account-login-divider flex items-center gap-3 text-[10px] uppercase tracking-wide text-[var(--nim-text-faint)] before:h-px before:flex-1 before:bg-[var(--nim-border)] after:h-px after:flex-1 after:bg-[var(--nim-border)] ${
+                    embedded ? 'mb-3' : 'mb-4'
+                  }`}
+                >
+                  {t('account_ui.or')}
+                </div>
+                <form className="account-login-magic-link" onSubmit={handleMagicLink}>
+                  <label
+                    className={`block text-[var(--nim-text-muted)] ${
+                      embedded ? 'mb-1 text-[11px] font-medium' : 'mb-1.5 text-xs font-semibold'
+                    }`}
+                    htmlFor="account-login-email"
+                  >
+                    {t('account_ui.email')}
+                  </label>
+                  <input
+                    id="account-login-email"
+                    className={`w-full rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] disabled:opacity-70 ${
+                      embedded
+                        ? 'mb-2 px-3 py-2 text-[13px] outline-none focus:border-[var(--nim-primary)]'
+                        : 'mb-3 px-3 py-2.5 text-sm'
+                    }`}
+                    type="email"
+                    value={email}
+                    disabled={loading || mode === 'reauth'}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder={t('account_ui.email_placeholder')}
+                  />
+                  <button
+                    type="submit"
+                    className={`w-full rounded-md border border-[var(--nim-border)] font-medium text-[var(--nim-text)] disabled:opacity-50 ${
+                      embedded
+                        ? 'bg-[var(--nim-bg-secondary)] px-4 py-1.5 text-[12px] hover:bg-[var(--nim-bg-hover)]'
+                        : 'bg-[var(--nim-bg-tertiary)] px-4 py-2.5 text-sm'
+                    }`}
+                    disabled={loading || !email.trim()}
+                  >
+                    {loading ? t('account_ui.sending')
+                      : mode === 'reauth' ? t('account_ui.send_magic_link_to', { email: account?.email })
+                        : t('account_ui.send_magic_link')}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="account-login-sent rounded-md border border-[var(--nim-success)] bg-[color-mix(in_srgb,var(--nim-success)_8%,transparent)] p-4 text-center">
+                <MaterialSymbol icon="mark_email_read" size={24} className="mx-auto text-[var(--nim-success)]" />
+                <p className="mb-0 mt-2 select-text text-sm">{t('account_ui.check_link', { email: attempt.email })}</p>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {error && <p className="mb-0 mt-3 select-text text-xs text-[var(--nim-error)]">{error}</p>}
-      <div className="account-login-security mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-[var(--nim-text-faint)]">
-        <MaterialSymbol icon="lock" size={14} className="shrink-0 text-[var(--nim-success)]" />
-        {t('account_ui.personal_sync')}
-      </div>
+      {/* Account & Sync copy: inside the org wizard the user is not choosing a
+          sync posture, so the note is noise there. */}
+      {!embedded && (
+        <div className="account-login-security mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-[var(--nim-text-faint)]">
+          <MaterialSymbol icon="lock" size={14} className="shrink-0 text-[var(--nim-success)]" />
+          {t('account_ui.personal_sync')}
+        </div>
+      )}
     </section>
   );
 }

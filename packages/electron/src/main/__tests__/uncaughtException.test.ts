@@ -1,5 +1,5 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import i18next from 'i18next';
 
 const showErrorBox = vi.fn();
 vi.mock('electron', () => ({
@@ -18,10 +18,9 @@ describe('createUncaughtExceptionHandler', () => {
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     errorSpy.mockRestore();
     warnSpy.mockRestore();
-    await i18next.changeLanguage('en');
   });
 
   it('drops EPIPE errors without touching the console (breaks the #502 feedback loop)', () => {
@@ -47,6 +46,35 @@ describe('createUncaughtExceptionHandler', () => {
     expect(showErrorBox).toHaveBeenCalledTimes(1);
   });
 
+  // #1779: an fs.watch handle that hits the descriptor limit emits 'error' from
+  // FSWatcher._handle.onchange; with no listener that lands here. A modal error
+  // box per watcher blocked startup with many restored projects. Watching is a
+  // degraded feature, not a crash: log it, never block on a dialog.
+  it('logs watcher resource-exhaustion errors without a blocking dialog', () => {
+    const handle = createUncaughtExceptionHandler();
+    const emfile = Object.assign(new Error('EMFILE: too many open files, watch'), {
+      code: 'EMFILE',
+      syscall: 'watch',
+    });
+
+    handle(emfile);
+    handle(Object.assign(new Error('ENOSPC: System limit for number of file watchers reached, watch'), {
+      code: 'ENOSPC',
+      syscall: 'watch',
+    }));
+
+    expect(showErrorBox).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('watcher'), emfile);
+  });
+
+  it('still shows a dialog for EMFILE outside a watcher', () => {
+    const handle = createUncaughtExceptionHandler();
+
+    handle(Object.assign(new Error('EMFILE: too many open files, open'), { code: 'EMFILE', syscall: 'open' }));
+
+    expect(showErrorBox).toHaveBeenCalledTimes(1);
+  });
+
   it('suppresses a duplicate error dialog within the throttle window', () => {
     const handle = createUncaughtExceptionHandler();
     const err = Object.assign(new Error('dup'), { name: 'Error' });
@@ -56,23 +84,5 @@ describe('createUncaughtExceptionHandler', () => {
 
     expect(showErrorBox).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledWith('[Bootstrap] Suppressed duplicate error dialog:', 'Error:dup');
-  });
-
-  it('translates the title while keeping error names, messages, and stacks exact', async () => {
-    await i18next.changeLanguage('ja');
-    const err = Object.assign(new Error('External error text'), { name: 'TypeError', stack: 'Original stack at C:\\source.ts:1' });
-    createUncaughtExceptionHandler()(err);
-    expect(showErrorBox).toHaveBeenCalledWith('Nimbalyst - 未捕捉の例外', 'TypeError: External error text\n\nOriginal stack at C:\\source.ts:1');
-  });
-
-  it('keeps the bootstrap fallback usable before i18n has initialized', () => {
-    const initialized = i18next.isInitialized;
-    try {
-      i18next.isInitialized = false;
-      createUncaughtExceptionHandler()(new Error('early startup error'));
-      expect(showErrorBox).toHaveBeenCalledWith('Nimbalyst - Uncaught Exception', expect.stringContaining('early startup error'));
-    } finally {
-      i18next.isInitialized = initialized;
-    }
   });
 });

@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useId, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { Database } from 'sql.js';
 import { registerDatabase, unregisterDatabase, setDisplayCallback, type DisplayQueryResult } from './databaseRegistry';
 import { getQueryHistory, addQueryToHistory, type QueryHistoryEntry } from './queryHistory';
@@ -98,6 +99,7 @@ export function SQLiteBrowserCore({
   storage,
   readOnly = false,
 }: SQLiteBrowserCoreProps) {
+  const { t, i18n } = useTranslation('sqliteBrowser');
   // Unique ID for this component instance (for AI tool registration)
   const instanceId = useId();
 
@@ -237,9 +239,9 @@ export function SQLiteBrowserCore({
       });
     } catch (err) {
       console.error('Failed to load table:', err);
-      setQueryError(err instanceof Error ? err.message : 'Failed to load table');
+      setQueryError(err instanceof Error ? err.message : t('load_table_failed'));
     }
-  }, [db, database, onAIContextChange]);
+  }, [db, database, onAIContextChange, t]);
 
   // Handler for selecting a query from history
   const handleSelectHistoryQuery = useCallback((entry: QueryHistoryEntry) => {
@@ -255,11 +257,11 @@ export function SQLiteBrowserCore({
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return new Date(timestamp).toLocaleDateString();
+    if (minutes < 1) return t('just_now');
+    if (minutes < 60) return t('minutes_ago', { count: minutes });
+    if (hours < 24) return t('hours_ago', { count: hours });
+    if (days < 7) return t('days_ago', { count: days });
+    return new Date(timestamp).toLocaleDateString(i18n.language);
   };
 
   const handleRunQuery = useCallback(() => {
@@ -298,14 +300,14 @@ export function SQLiteBrowserCore({
       }
     } catch (err) {
       console.error('Query error:', err);
-      setQueryError(err instanceof Error ? err.message : 'Query failed');
+      setQueryError(err instanceof Error ? err.message : t('query_failed'));
       setQueryTime(null);
     }
-  }, [db, query, database?.path, storage]);
+  }, [db, query, database?.path, storage, t]);
 
   const renderDataTable = (result: QueryResult) => {
     if (result.columns.length === 0) {
-      return <p className="text-nim-muted m-0 p-4">Query executed successfully (no rows returned)</p>;
+      return <p className="text-nim-muted m-0 p-4">{t('query_no_rows')}</p>;
     }
 
     return (
@@ -344,7 +346,7 @@ export function SQLiteBrowserCore({
     <div className="flex flex-col h-full bg-nim text-nim">
       {showHeader && (
         <div className="flex items-center justify-between p-3 border-b border-nim shrink-0">
-          <h3 className="m-0 text-sm font-semibold">SQLite Browser</h3>
+          <h3 className="m-0 text-sm font-semibold">{t('title')}</h3>
           <div className="flex gap-2">
             {onOpenClick && (
               <button
@@ -352,7 +354,7 @@ export function SQLiteBrowserCore({
                 onClick={onOpenClick}
                 disabled={loading}
               >
-                {loading ? 'Loading...' : 'Open Database'}
+                {loading ? t('loading') : t('open_database')}
               </button>
             )}
             {database && onClose && (
@@ -360,7 +362,7 @@ export function SQLiteBrowserCore({
                 className="px-3 py-1.5 text-xs font-medium border border-nim rounded cursor-pointer bg-nim-tertiary text-nim transition-all hover:bg-[var(--nim-bg-hover)]"
                 onClick={onClose}
               >
-                Close
+                {t('close')}
               </button>
             )}
           </div>
@@ -376,7 +378,7 @@ export function SQLiteBrowserCore({
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-nim-muted">
-            <p>Loading database...</p>
+            <p>{t('loading_database')}</p>
           </div>
         ) : !database ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
@@ -387,18 +389,18 @@ export function SQLiteBrowserCore({
                 <path d="M21 12c0 1.65-4.03 3-9 3s-9-1.35-9-3" />
               </svg>
             </div>
-            <p className="m-0 mb-2 text-base font-medium text-nim">No database selected</p>
+            <p className="m-0 mb-2 text-base font-medium text-nim">{t('no_database_selected')}</p>
             <p className="m-0 mb-6 text-[13px] text-nim-muted max-w-[300px]">
               {onOpenClick
-                ? 'Click "Open Database" to browse a SQLite database file'
-                : 'Open a .db or .sqlite file to browse its contents'}
+                ? t('open_database_help')
+                : t('open_file_help')}
             </p>
             {onOpenClick && (
               <button
                 className="px-5 py-2.5 text-[13px] font-medium border-none rounded cursor-pointer bg-[var(--nim-primary)] text-white transition-all hover:opacity-90"
                 onClick={onOpenClick}
               >
-                Open Database
+                {t('open_database')}
               </button>
             )}
             {emptyStateExtra}
@@ -409,7 +411,7 @@ export function SQLiteBrowserCore({
             <div className="w-[220px] min-w-[180px] border-r border-nim flex flex-col overflow-hidden bg-nim-secondary">
               <div className="p-3 border-b border-nim">
                 <h4 className="m-0 mb-1 text-[13px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis" title={database.path}>{database.name}</h4>
-                <span className="text-[11px] text-nim-muted">{database.tables.length} table(s)</span>
+                <span className="text-[11px] text-nim-muted">{t('table_count', { count: database.tables.length })}</span>
               </div>
 
               {/* Query section. Hidden in read-only mode so the browser
@@ -427,14 +429,14 @@ export function SQLiteBrowserCore({
                       <polyline points="4 17 10 11 4 5" />
                       <line x1="12" y1="19" x2="20" y2="19" />
                     </svg>
-                    Query
+                    {t('query')}
                   </button>
                 </div>
               )}
 
               {/* Tables section */}
               <div className="border-b border-nim last:border-b-0 flex-1 flex flex-col overflow-hidden">
-                <div className="px-3 py-1 pb-2 text-[10px] font-semibold uppercase tracking-wider text-nim-faint">Tables</div>
+                <div className="px-3 py-1 pb-2 text-[10px] font-semibold uppercase tracking-wider text-nim-faint">{t('tables')}</div>
                 <div className="flex-1 overflow-y-auto">
                   {database.tables.map((table) => (
                     <button
@@ -459,12 +461,12 @@ export function SQLiteBrowserCore({
                   {selectedTable ? (
                     <>
                       <div className="shrink-0">
-                        <h5 className="m-0 mb-2 text-xs font-semibold text-nim-muted">Schema: {selectedTable}</h5>
+                        <h5 className="m-0 mb-2 text-xs font-semibold text-nim-muted">{t('schema', { table: selectedTable })}</h5>
                         <div className="flex flex-wrap gap-2">
                           {tableSchema.map((col) => (
                             <div key={col.name} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-nim-secondary rounded text-xs">
                               <span className="font-mono font-medium">
-                                {col.pk && <span className="inline-block px-1 py-0.5 mr-1 text-[9px] font-semibold bg-[var(--nim-primary)] text-white rounded-sm">PK</span>}
+                                {col.pk && <span className="inline-block px-1 py-0.5 mr-1 text-[9px] font-semibold bg-[var(--nim-primary)] text-white rounded-sm" title={t('primary_key')}>PK</span>}
                                 {col.name}
                               </span>
                               <span className="text-nim-muted text-[11px]">{col.type}</span>
@@ -474,13 +476,13 @@ export function SQLiteBrowserCore({
                         </div>
                       </div>
                       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-                        <h5 className="m-0 mb-2 text-xs font-semibold text-nim-muted">Data (showing up to 100 rows)</h5>
+                        <h5 className="m-0 mb-2 text-xs font-semibold text-nim-muted">{t('data_preview')}</h5>
                         {tableData && renderDataTable(tableData)}
                       </div>
                     </>
                   ) : (
                     <div className="flex-1 flex items-center justify-center text-nim-muted">
-                      <p>Select a table or Query from the sidebar</p>
+                      <p>{t('select_table_or_query')}</p>
                     </div>
                   )}
                 </div>
@@ -493,9 +495,9 @@ export function SQLiteBrowserCore({
                           className="px-3 py-1.5 text-xs font-medium border border-nim rounded cursor-pointer bg-nim-secondary text-nim transition-all hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={() => setShowHistory(!showHistory)}
                           disabled={queryHistory.length === 0}
-                          title={queryHistory.length === 0 ? 'No query history' : `${queryHistory.length} recent queries`}
+                          title={queryHistory.length === 0 ? t('no_query_history') : t('recent_queries', { count: queryHistory.length })}
                         >
-                          History ({queryHistory.length})
+                          {t('query_history', { count: queryHistory.length })}
                         </button>
                         {showHistory && queryHistory.length > 0 && (
                           <div className="absolute top-full right-0 z-[100] w-[400px] max-h-[300px] overflow-y-auto mt-1 bg-nim border border-nim rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.15)]">
@@ -520,7 +522,7 @@ export function SQLiteBrowserCore({
                     <textarea
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Enter SQL query..."
+                      placeholder={t('enter_sql_query')}
                       spellCheck={false}
                       onFocus={() => setShowHistory(false)}
                       className="w-full min-h-[100px] p-3 text-[13px] font-mono bg-nim-secondary border border-nim rounded text-nim resize-y focus:outline-none focus:border-[var(--nim-border-focus)]"
@@ -530,7 +532,7 @@ export function SQLiteBrowserCore({
                       onClick={handleRunQuery}
                       disabled={!query.trim()}
                     >
-                      Run Query
+                      {t('run_query')}
                     </button>
                   </div>
                   {queryError && (
@@ -541,8 +543,8 @@ export function SQLiteBrowserCore({
                   {queryResult && (
                     <div className="flex-1 flex flex-col overflow-hidden min-h-0">
                       <div className="text-xs text-nim-muted mb-2 shrink-0">
-                        {queryResult.rowCount} row(s) returned
-                        {queryTime !== null && ` in ${queryTime.toFixed(1)}ms`}
+                        {t('rows_returned', { count: queryResult.rowCount })}
+                        {queryTime !== null && t('query_time', { time: queryTime.toFixed(1) })}
                       </div>
                       {renderDataTable(queryResult)}
                     </div>

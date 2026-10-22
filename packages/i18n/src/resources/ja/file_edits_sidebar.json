@@ -1,0 +1,54 @@
+{
+  "context": {
+    "menu_label": "ファイル操作",
+    "open_in_files": "ファイル画面で開く",
+    "view_diff": "差分を表示",
+    "open_in_external_editor": "{{editor}}で開く",
+    "copy_path": "パスをコピー",
+    "show_in_finder": "Finderで表示",
+    "show_in_explorer": "エクスプローラーで表示",
+    "show_in_folder": "フォルダーで表示"
+  },
+  "status": {
+    "deleted_and_committed": "{{path}} - 削除・コミット済み",
+    "committed": "{{path}} - コミット済み",
+    "operation": "{{path}} - {{operation}}{{gitStatus}}",
+    "created": "作成",
+    "edited": "編集",
+    "deleted": "削除済み",
+    "deleted_suffix": "（削除済み）",
+    "renamed": "名前変更",
+    "modified": "変更",
+    "pending_review": "レビュー待ち - 変更は未コミットです"
+  },
+  "shell_tracking_notice": {
+    "unavailable": "ファイル追跡の状態を確認できません",
+    "interrupted": "ファイル追跡が中断されました",
+    "earlier_gaps": "以前のファイル追跡に抜けがあります",
+    "incomplete": "ファイル追跡が不完全です",
+    "resumed_with_gaps": "追跡は再開されました。この一覧に以前の編集が含まれていない場合があります。",
+    "missing_edits": "この一覧に一部の編集が含まれていない場合があります。",
+    "review_before_commit": "コミットする前に変更内容を確認してください。"
+  },
+  "diff": {
+    "show": "差分を表示",
+    "hide": "差分を隠す"
+  },
+  "controls": {
+    "group_by_directory": "フォルダー別にグループ化",
+    "expand_all": "すべて展開",
+    "collapse_all": "すべて折りたたむ"
+  },
+  "selection": {
+    "select_all_uncommitted": "すべて選択（未コミット{{count}}件）"
+  },
+  "empty": {
+    "no_uncommitted_changes": "未コミットの変更はありません",
+    "show_all_session_edits": "セッション内のすべての編集を表示（{{count}}件）",
+    "show_all_uncommitted_files": "未コミットのファイルをすべて表示（{{count}}件）",
+    "no_files_edited_yet": "まだ編集されたファイルはありません",
+    "no_files_edited_this_session": "このセッションで編集されたファイルはありません",
+    "no_uncommitted_files": "未コミットのファイルはありません",
+    "show_session_edits": "セッションの編集を表示（{{count}}件）"
+  }
+}

@@ -4,13 +4,11 @@
 
 import type { JSX } from 'react';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface PlanData {
   id: string;
   title: string;
-  isTitleFallback?: boolean;
   status: string;
   owner: string;
   priority: string;
@@ -64,43 +62,45 @@ function getPlanTypeIcon(planType?: string): string {
   return icons[planType?.toLowerCase() || ''] || 'description';
 }
 
-function formatDate(date: Date, t: TFunction, language: string): string {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-
-  if (hours < 1) return t('tracker:plans.now');
-  if (hours < 24) return t('tracker:plans.hours_ago', { count: hours });
-  if (days === 1) return t('tracker:plans.yesterday');
-  if (days < 7) return t('tracker:plans.days_ago', { count: days });
-  if (days < 30) return t('tracker:plans.weeks_ago', { count: Math.floor(days / 7) });
-  return date.toLocaleDateString(language, { month: 'short', day: 'numeric' });
-}
-
 export function PlanListItem({ plan, isActive, onClick }: PlanListItemProps): JSX.Element {
-  const { t, i18n } = useTranslation(['tracker', 'common']);
-  const statusKeys: Record<string, string> = {
-    draft: 'status_draft',
-    'ready-for-development': 'status_ready',
-    'in-development': 'status_in_dev',
-    'in-review': 'status_review',
-    completed: 'status_done',
-    blocked: 'status_blocked',
-    rejected: 'status_rejected',
-    'in-progress': 'status_in_progress',
-    active: 'status_active',
-    cancelled: 'status_cancelled',
-  };
-  const statusKey = statusKeys[plan.status.toLowerCase()];
-  const statusLabel = statusKey ? t(`plans.${statusKey}`) : plan.status.replace('-', ' ');
-  const priorityLabel = t(`plans.priority_${plan.priority.toLowerCase()}`, { defaultValue: plan.priority });
-  const planTypeLabel = plan.planType
-    ? t(`common:plan_types.${plan.planType.toLowerCase()}`, { defaultValue: plan.planType })
-    : t('plans.plan_type');
+  const { t, i18n } = useTranslation('tracker');
   const statusColor = getStatusColor(plan.status);
   const priorityColor = getPriorityColor(plan.priority);
   const planTypeIcon = getPlanTypeIcon(plan.planType);
+  const priority = plan.priority.toLowerCase();
+  const status = plan.status.toLowerCase();
+  const priorityLabel =
+    priority === 'critical' ? t('plans.priority_critical')
+      : priority === 'high' ? t('plans.priority_high')
+        : priority === 'medium' ? t('plans.priority_medium')
+          : priority === 'low' ? t('plans.priority_low')
+            : plan.priority;
+  const statusLabel =
+    status === 'draft' ? t('plans.status_draft')
+      : status === 'ready-for-development' ? t('plans.status_ready')
+        : status === 'in-development' ? t('plans.status_in_dev')
+          : status === 'in-progress' ? t('plans.status_in_progress')
+            : status === 'in-review' ? t('plans.status_review')
+              : status === 'completed' ? t('plans.status_done')
+                : status === 'blocked' ? t('plans.status_blocked')
+                  : status === 'rejected' ? t('plans.status_rejected')
+                    : status === 'active' ? t('plans.status_active')
+                      : status === 'cancelled' ? t('plans.status_cancelled')
+                        : plan.status.replace(/-/g, ' ');
+
+  const formatDate = (date: Date): string => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    if (hours < 1) return t('plans.now');
+    if (hours < 24) return t('plans.hours_ago', { count: hours });
+    if (days === 1) return t('plans.yesterday');
+    if (days < 7) return t('plans.days_ago', { count: days });
+    if (days < 30) return t('plans.weeks_ago', { count: Math.floor(days / 7) });
+    return date.toLocaleDateString(i18n.resolvedLanguage || 'en', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <div
@@ -117,10 +117,10 @@ export function PlanListItem({ plan, isActive, onClick }: PlanListItemProps): JS
           {plan.priority === 'high' && '!!'}
           {plan.priority === 'medium' && '!'}
         </span>
-        <span className="material-symbols-outlined plan-type-icon text-base text-nim-faint shrink-0 mt-px" title={planTypeLabel}>
+        <span className="material-symbols-outlined plan-type-icon text-base text-nim-faint shrink-0 mt-px" title={plan.planType || t('plans.plan_type')}>
           {planTypeIcon}
         </span>
-        <div className="plan-list-item-title flex-1 text-[13px] font-medium text-nim-primary leading-snug overflow-hidden text-ellipsis line-clamp-2">{plan.isTitleFallback ? t('common:collab.untitled') : plan.title}</div>
+        <div className="plan-list-item-title flex-1 text-[13px] font-medium text-nim-primary leading-snug overflow-hidden text-ellipsis line-clamp-2">{plan.title}</div>
       </div>
 
       {plan.progress > 0 && (
@@ -136,7 +136,7 @@ export function PlanListItem({ plan, isActive, onClick }: PlanListItemProps): JS
       )}
 
       <div className="plan-list-item-footer flex items-center justify-between gap-2">
-        <span className="plan-updated-time text-[11px] text-nim-faint">{formatDate(plan.lastUpdated, t, i18n.resolvedLanguage ?? i18n.language)}</span>
+        <span className="plan-updated-time text-[11px] text-nim-faint">{formatDate(plan.lastUpdated)}</span>
         <span
           className="plan-status-badge text-[10px] px-1.5 py-0.5 rounded-sm border capitalize font-medium whitespace-nowrap"
           style={{

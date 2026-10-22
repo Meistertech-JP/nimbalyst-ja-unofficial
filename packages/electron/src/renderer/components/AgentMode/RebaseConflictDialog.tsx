@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { getWorktreeNameFromPath } from '../../utils/pathUtils';
 import { AgentModelPicker, type AgentModelOption } from './AgentModelPicker';
 
@@ -29,8 +29,9 @@ export function RebaseConflictDialog({
   resolveDisabled = false,
   onCancel,
 }: RebaseConflictDialogProps) {
+  const { t } = useTranslation('dialogs');
+  const { t: tAgents } = useTranslation('agents');
   const dialogRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation(['dialogs']);
 
   // Close on escape key
   useEffect(() => {
@@ -48,7 +49,7 @@ export function RebaseConflictDialog({
     dialogRef.current?.focus();
   }, []);
 
-  const worktreeName = getWorktreeNameFromPath(worktreePath, 'worktree');
+  const worktreeName = getWorktreeNameFromPath(worktreePath, tAgents('context.worktree'));
 
   // Limit commits to show (max 5 each)
   const ourCommits = conflictingCommits?.ours?.slice(0, 5) || [];
@@ -66,18 +67,18 @@ export function RebaseConflictDialog({
       >
         <div className="merge-conflict-dialog-header shrink-0 flex items-center gap-3 px-6 pt-5 pb-4 text-[var(--nim-text)]">
           <MaterialSymbol icon="warning" size={24} className="merge-conflict-dialog-icon-warning text-[var(--nim-warning)]" />
-          <h2 className="m-0 text-lg font-semibold">{t('dialogs:conflicts.rebase_title')}</h2>
+          <h2 className="m-0 text-lg font-semibold">{t('conflicts.rebase_title')}</h2>
         </div>
 
         <div className="merge-conflict-dialog-body flex-1 min-h-0 overflow-y-auto px-6 pb-5">
           <p className="m-0 mb-4 text-sm leading-relaxed text-[var(--nim-text-muted)]">
-            {t('dialogs:conflicts.rebase_cannot_rebase', { worktree: worktreeName })}
+            {t('conflicts.rebase_cannot_rebase', { worktree: worktreeName })}
           </p>
 
           <div className="merge-conflict-dialog-files mb-4 p-3 rounded-lg bg-[var(--nim-bg-secondary)]">
             <div className="merge-conflict-dialog-files-header flex items-center gap-2 mb-2.5 text-[13px] font-medium text-[var(--nim-text)]">
               <MaterialSymbol icon="description" size={16} />
-              <span>{t('dialogs:conflicts.conflicted_files')}</span>
+              <span>{t('conflicts.conflicted_files')}</span>
             </div>
             <ul className="merge-conflict-dialog-files-list list-none m-0 p-0 flex flex-col gap-1.5">
               {conflictedFiles.map((file) => (
@@ -95,7 +96,7 @@ export function RebaseConflictDialog({
                 <div className="merge-conflict-dialog-files p-3 rounded-lg bg-[var(--nim-bg-secondary)]">
                   <div className="merge-conflict-dialog-files-header flex items-center gap-2 mb-2.5 text-[13px] font-medium text-[var(--nim-primary)]">
                     <MaterialSymbol icon="commit" size={16} />
-                    <span>{t('dialogs:conflicts.your_conflicting_commits')}</span>
+                    <span>{t('conflicts.your_conflicting_commits')}</span>
                   </div>
                   <ul className="merge-conflict-dialog-files-list list-none m-0 p-0 flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
                     {ourCommits.map((commit, idx) => (
@@ -108,7 +109,7 @@ export function RebaseConflictDialog({
                       <li className="merge-conflict-dialog-file flex items-center gap-2 text-[var(--nim-text-muted)] italic opacity-70">
                         <MaterialSymbol icon="more_horiz" size={14} />
                         <span className="text-xs">
-                          {t('dialogs:conflicts.more_commits', { count: (conflictingCommits?.ours?.length || 0) - 5 })}
+                          {t('conflicts.more_commits', { count: (conflictingCommits?.ours?.length || 0) - 5 })}
                         </span>
                       </li>
                     )}
@@ -120,7 +121,7 @@ export function RebaseConflictDialog({
                 <div className="merge-conflict-dialog-files p-3 rounded-lg bg-[var(--nim-bg-secondary)]">
                   <div className="merge-conflict-dialog-files-header flex items-center gap-2 mb-2.5 text-[13px] font-medium text-[var(--nim-success)]">
                     <MaterialSymbol icon="commit" size={16} />
-                    <span>{t('dialogs:conflicts.incoming_conflicting_commits')}</span>
+                    <span>{t('conflicts.incoming_conflicting_commits')}</span>
                   </div>
                   <ul className="merge-conflict-dialog-files-list list-none m-0 p-0 flex flex-col gap-1.5 max-h-[150px] overflow-y-auto">
                     {theirCommits.map((commit, idx) => (
@@ -133,7 +134,7 @@ export function RebaseConflictDialog({
                       <li className="merge-conflict-dialog-file flex items-center gap-2 text-[var(--nim-text-muted)] italic opacity-70">
                         <MaterialSymbol icon="more_horiz" size={14} />
                         <span className="text-xs">
-                          {t('dialogs:conflicts.more_commits', { count: (conflictingCommits?.theirs?.length || 0) - 5 })}
+                          {t('conflicts.more_commits', { count: (conflictingCommits?.theirs?.length || 0) - 5 })}
                         </span>
                       </li>
                     )}
@@ -146,14 +147,14 @@ export function RebaseConflictDialog({
           <div className="merge-conflict-dialog-info flex items-start gap-2.5 p-3 mb-4 rounded-lg bg-[var(--nim-info-light)] text-[var(--nim-info)] text-[13px] leading-snug">
             <MaterialSymbol icon="info" size={16} />
             <p className="m-0 text-[var(--nim-info)]">
-              {t('dialogs:conflicts.rebase_description')}
+              {t('conflicts.rebase_description')}
             </p>
           </div>
 
           <div className="merge-conflict-dialog-suggestion flex items-start gap-2.5 p-3 mb-4 rounded-lg bg-[var(--nim-success-light)] text-[var(--nim-success)] text-[13px] leading-snug">
             <MaterialSymbol icon="smart_toy" size={16} />
             <p className="m-0 text-[var(--nim-success)]">
-              {t('dialogs:conflicts.agent_help_rebase')}
+              {t('conflicts.agent_help_rebase')}
             </p>
           </div>
 
@@ -167,7 +168,7 @@ export function RebaseConflictDialog({
           <div className="merge-conflict-dialog-manual flex flex-col gap-2 p-3 rounded-lg bg-[var(--nim-bg-secondary)] text-[13px]">
             <p className="m-0 flex items-center gap-2 text-[var(--nim-text-muted)]">
               <MaterialSymbol icon="terminal" size={16} />
-              {t('dialogs:conflicts.worktree_location')}
+              {t('conflicts.worktree_location')}
             </p>
             <code className="merge-conflict-dialog-path block font-[var(--nim-font-mono)] text-xs text-[var(--nim-text)] bg-[var(--nim-bg-tertiary)] px-2 py-1.5 rounded break-all">{worktreePath}</code>
           </div>
@@ -179,7 +180,7 @@ export function RebaseConflictDialog({
             className="merge-conflict-dialog-button merge-conflict-dialog-button--secondary nim-btn-secondary"
             onClick={onCancel}
           >
-            {t('dialogs:conflicts.close')}
+            {t('conflicts.close')}
           </button>
           <button
             type="button"
@@ -188,7 +189,7 @@ export function RebaseConflictDialog({
             disabled={resolveDisabled}
           >
             <MaterialSymbol icon="smart_toy" size={16} />
-            <span>{t('dialogs:conflicts.resolve_agent')}</span>
+            <span>{t('conflicts.resolve_agent')}</span>
           </button>
         </div>
       </div>

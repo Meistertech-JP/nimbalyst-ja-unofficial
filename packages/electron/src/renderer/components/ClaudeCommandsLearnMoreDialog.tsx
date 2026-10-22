@@ -9,55 +9,55 @@ interface ClaudeCommandsLearnMoreDialogProps {
 
 interface CommandInfo {
   name: string;
-  descriptionKey: string;
+  description: string;
 }
 
 interface CommandGroup {
-  titleKey: string;
-  packageKey: string;
+  titleKey: 'core' | 'developer' | 'product_manager';
+  subtitleKey: 'core' | 'developer' | 'product_manager';
   commands: CommandInfo[];
 }
 
 const COMMAND_GROUPS: CommandGroup[] = [
   {
-    titleKey: 'dialogs:claude_commands.groups.core',
-    packageKey: 'dialogs:claude_commands.subtitles.core',
+    titleKey: 'core',
+    subtitleKey: 'core',
     commands: [
       {
         name: '/track',
-        descriptionKey: 'dialogs:claude_commands.commands.track',
+        description: 'track',
       },
       {
         name: '/mockup',
-        descriptionKey: 'dialogs:claude_commands.commands.mockup',
+        description: 'mockup',
       },
     ],
   },
   {
-    titleKey: 'dialogs:claude_commands.groups.developer',
-    packageKey: 'dialogs:claude_commands.subtitles.developer',
+    titleKey: 'developer',
+    subtitleKey: 'developer',
     commands: [
       {
         name: '/analyze-code',
-        descriptionKey: 'dialogs:claude_commands.commands.analyze_code',
+        description: 'analyze_code',
       },
       {
         name: '/write-tests',
-        descriptionKey: 'dialogs:claude_commands.commands.write_tests',
+        description: 'write_tests',
       },
     ],
   },
   {
-    titleKey: 'dialogs:claude_commands.groups.product_manager',
-    packageKey: 'dialogs:claude_commands.subtitles.product_manager',
+    titleKey: 'product_manager',
+    subtitleKey: 'product_manager',
     commands: [
       {
         name: '/roadmap',
-        descriptionKey: 'dialogs:claude_commands.commands.roadmap',
+        description: 'roadmap',
       },
       {
         name: '/user-research',
-        descriptionKey: 'dialogs:claude_commands.commands.user_research',
+        description: 'user_research',
       },
     ],
   },
@@ -68,7 +68,7 @@ export function ClaudeCommandsLearnMoreDialog({
   onClose,
   onOpenSettings,
 }: ClaudeCommandsLearnMoreDialogProps): React.ReactElement | null {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('dialogs');
   if (!isOpen) return null;
 
   return (
@@ -82,12 +82,12 @@ export function ClaudeCommandsLearnMoreDialog({
       >
         <div className="claude-commands-learn-more-header flex items-center justify-between px-6 py-5 border-b border-[var(--nim-border)]">
           <h2 className="m-0 text-lg font-semibold text-[var(--nim-text)]">
-            {t('dialogs:claude_commands.title')}
+            {t('claude_commands.title')}
           </h2>
           <button
             className="claude-commands-learn-more-close nim-btn-icon w-8 h-8 text-[28px] leading-none rounded transition-all duration-200"
             onClick={onClose}
-            aria-label={t('dialogs:claude_commands.close')}
+            aria-label={t('claude_commands.close')}
           >
             &times;
           </button>
@@ -97,29 +97,41 @@ export function ClaudeCommandsLearnMoreDialog({
           {/* Introduction */}
           <section className="claude-commands-learn-more-section">
             <p className="claude-commands-learn-more-intro m-0 text-sm text-[var(--nim-text)]">
-              {t('dialogs:claude_commands.intro')}
+              {t('claude_commands.intro')}
             </p>
           </section>
 
           {/* nimbalyst-local folder */}
           <section className="claude-commands-learn-more-section">
             <h3 className="m-0 mb-1 text-sm font-semibold text-[var(--nim-text)]">
-              {t('dialogs:claude_commands.folder_title')}
+              {t('claude_commands.folder_title')}
             </h3>
             <p className="m-0 mb-3 text-[13px] leading-relaxed text-[var(--nim-text-muted)]">
-              <Trans t={t} i18nKey="dialogs:claude_commands.folder_description" components={{ code: <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]" /> }} />
+              <Trans
+                i18nKey="claude_commands.folder_description"
+                ns="dialogs"
+                components={{
+                  code: <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]" />,
+                }}
+              />
             </p>
             <div className="claude-commands-folder-structure bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg px-4 py-3 my-3">
               <pre className="m-0 font-mono text-xs leading-relaxed text-[var(--nim-text-muted)] whitespace-pre">
                 {`nimbalyst-local/
-├── plans/        # ${t('dialogs:claude_commands.folder_entries.plans')} (.md)
-├── tracker/      # ${t('dialogs:claude_commands.folder_entries.tracker')} (.md)
-├── mockups/      # ${t('dialogs:claude_commands.folder_entries.mockups')} (.mockup.html)
-└── existing-screens/  # ${t('dialogs:claude_commands.folder_entries.references')}`}
+├── plans/        # ${t('claude_commands.folder_entries.plans')} (.md)
+├── tracker/      # ${t('claude_commands.folder_entries.tracker')} (.md)
+├── mockups/      # ${t('claude_commands.folder_entries.mockups')} (.mockup.html)
+└── existing-screens/  # ${t('claude_commands.folder_entries.references')}`}
               </pre>
             </div>
             <p className="claude-commands-learn-more-note m-0 text-xs italic text-[var(--nim-text-faint)]">
-              <Trans t={t} i18nKey="dialogs:claude_commands.folder_note" components={{ code: <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]" /> }} />
+              <Trans
+                i18nKey="claude_commands.folder_note"
+                ns="dialogs"
+                components={{
+                  code: <code className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 font-mono text-xs text-[var(--nim-text)]" />,
+                }}
+              />
             </p>
           </section>
 
@@ -130,10 +142,10 @@ export function ClaudeCommandsLearnMoreDialog({
               className="claude-commands-learn-more-section"
             >
               <h3 className="m-0 mb-1 text-sm font-semibold text-[var(--nim-text)]">
-                {t(group.titleKey)}
+                {t(`claude_commands.groups.${group.titleKey}`)}
               </h3>
               <p className="claude-commands-group-subtitle m-0 mb-3 text-xs text-[var(--nim-text-faint)]">
-                {t(group.packageKey)}
+                {t(`claude_commands.subtitles.${group.subtitleKey}`)}
               </p>
               <div className="claude-commands-list flex flex-col gap-3">
                 {group.commands.map((cmd) => (
@@ -147,7 +159,7 @@ export function ClaudeCommandsLearnMoreDialog({
                       </code>
                     </div>
                     <p className="claude-commands-item-description m-0 text-xs text-[var(--nim-text-muted)]">
-                      {t(cmd.descriptionKey)}
+                      {t(`claude_commands.commands.${cmd.description}`)}
                     </p>
                   </div>
                 ))}
@@ -158,7 +170,7 @@ export function ClaudeCommandsLearnMoreDialog({
           {/* Additional info */}
           <section className="claude-commands-learn-more-section">
             <p className="claude-commands-learn-more-note m-0 text-xs italic text-[var(--nim-text-faint)]">
-              {t('dialogs:claude_commands.additional_prefix')}{' '}
+              {t('claude_commands.additional_prefix')}{' '}
               <button
                 className="claude-commands-learn-more-link bg-transparent border-none p-0 text-inherit font-inherit italic text-[var(--nim-primary)] cursor-pointer underline transition-colors duration-200 hover:text-[var(--nim-primary-hover)]"
                 onClick={() => {
@@ -166,9 +178,9 @@ export function ClaudeCommandsLearnMoreDialog({
                   onOpenSettings();
                 }}
               >
-                {t('dialogs:claude_commands.project_settings')}
+                {t('claude_commands.project_settings')}
               </button>
-              {t('dialogs:claude_commands.additional_suffix')}
+              {t('claude_commands.additional_suffix')}
             </p>
           </section>
         </div>
@@ -178,7 +190,7 @@ export function ClaudeCommandsLearnMoreDialog({
             className="claude-commands-learn-more-btn nim-btn-primary px-5 py-2.5 rounded-md text-sm font-medium"
             onClick={onClose}
           >
-            {t('dialogs:claude_commands.got_it')}
+            {t('claude_commands.got_it')}
           </button>
         </div>
       </div>

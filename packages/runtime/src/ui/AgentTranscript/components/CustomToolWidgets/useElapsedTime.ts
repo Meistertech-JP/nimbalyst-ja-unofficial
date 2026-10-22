@@ -17,7 +17,6 @@
  */
 
 import { useRef, useCallback } from 'react';
-import type { RuntimeTranslate } from '../../../RuntimeTranslation';
 
 /**
  * Format milliseconds into a human-readable elapsed time string.
@@ -25,15 +24,15 @@ import type { RuntimeTranslate } from '../../../RuntimeTranslation';
  * - Under 60m: "2m 15s"
  * - 60m+: "1h 5m"
  */
-function formatElapsed(ms: number, t?: RuntimeTranslate): string {
+function formatElapsed(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
-  if (totalSeconds < 60) return t?.('aichat:transcript_sidebar.duration_seconds', '{{value}}s', { value: totalSeconds }) ?? `${totalSeconds}s`;
+  if (totalSeconds < 60) return `${totalSeconds}s`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  if (minutes < 60) return t?.('aichat:transcript_sidebar.duration_minutes_seconds', '{{minutes}}m {{seconds}}s', { minutes, seconds }) ?? `${minutes}m ${seconds}s`;
+  if (minutes < 60) return `${minutes}m ${seconds}s`;
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return t?.('common:usage_indicator.reset_hours_minutes', '{{hours}}h {{minutes}}m', { hours, minutes: remainingMinutes }) ?? `${hours}h ${remainingMinutes}m`;
+  return `${hours}h ${remainingMinutes}m`;
 }
 
 /**
@@ -46,7 +45,7 @@ function formatElapsed(ms: number, t?: RuntimeTranslate): string {
  * @param startTimestamp - Epoch ms when the tool started (e.g., `message.timestamp`).
  *                         Pass `undefined` to disable.
  */
-export function useElapsedTimeRef(startTimestamp: number | undefined, t?: RuntimeTranslate): (node: HTMLElement | null) => void {
+export function useElapsedTimeRef(startTimestamp: number | undefined): (node: HTMLElement | null) => void {
   const rafRef = useRef<number | null>(null);
   const lastTextRef = useRef('');
 
@@ -68,7 +67,7 @@ export function useElapsedTimeRef(startTimestamp: number | undefined, t?: Runtim
       // Only touch the DOM when the displayed second changes
       if (sec !== lastSecond && ms >= 0) {
         lastSecond = sec;
-        const text = formatElapsed(ms, t);
+        const text = formatElapsed(ms);
         if (text !== lastTextRef.current) {
           lastTextRef.current = text;
           node.textContent = text;
@@ -80,11 +79,11 @@ export function useElapsedTimeRef(startTimestamp: number | undefined, t?: Runtim
     // Set initial text immediately
     const ms = Date.now() - startTimestamp;
     if (ms >= 0) {
-      const text = formatElapsed(ms, t);
+      const text = formatElapsed(ms);
       lastTextRef.current = text;
       node.textContent = text;
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [startTimestamp, t]);
+  }, [startTimestamp]);
 }

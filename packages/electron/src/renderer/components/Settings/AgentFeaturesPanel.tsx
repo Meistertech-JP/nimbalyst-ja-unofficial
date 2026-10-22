@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   advancedSettingsAtom,
   setAdvancedSettingsAtom,
@@ -10,8 +10,9 @@ import {
   setAIDebugSettingsAtom,
 } from '../../store/atoms/appSettings';
 import { autoCommitEnabledAtom, setAutoCommitEnabledAtom } from '../../store/atoms/autoCommitAtoms';
+import { settingAtom } from '../../store/atoms/settingAtomFamily';
 import { ALPHA_FEATURES, type AlphaFeatureTag } from '../../../shared/alphaFeatures';
-import { AlphaBadge, SETTINGS_ALPHA_TOOLTIP } from '../common/AlphaBadge';
+import { AlphaBadge } from '../common/AlphaBadge';
 import { SettingsToggle } from '../GlobalSettings/SettingsToggle';
 
 const AGENT_FEATURE_TAGS: AlphaFeatureTag[] = [
@@ -32,15 +33,27 @@ interface WorkflowExportSettings {
   claudeGeneratedExtensionWorkflowsEnabled: boolean;
 }
 
+type AttachmentStagingMode = 'temp' | 'workspace' | 'custom';
+
 export function AgentFeaturesPanel() {
-  const { t } = useTranslation(['settings']);
+  const { t } = useTranslation('settings');
   const posthog = usePostHog();
+  const [externalSessionFollowEnabled, setExternalSessionFollowEnabled] = useAtom(settingAtom('app.externalSessionFollowEnabled'));
   const [settings] = useAtom(advancedSettingsAtom);
   const [, updateSettings] = useAtom(setAdvancedSettingsAtom);
   const { alphaFeatures } = settings;
 
   const autoCommitEnabled = useAtomValue(autoCommitEnabledAtom);
   const setAutoCommitEnabled = useSetAtom(setAutoCommitEnabledAtom);
+  const usageLimitAutoResumeEnabled = useAtomValue(settingAtom('ai.usageLimitAutoResumeEnabled'));
+
+  const [showMcpSessionStatus, setShowMcpSessionStatus] = useAtom(
+    settingAtom('ai.showMcpSessionStatus'),
+  ) as [boolean, (value: boolean) => void];
+
+  const [promptSuggestionsEnabled, setPromptSuggestionsEnabled] = useAtom(
+    settingAtom('ai.promptSuggestionsEnabled'),
+  ) as [boolean, (value: boolean) => void];
 
   const [aiDebugSettings] = useAtom(aiDebugSettingsAtom);
   const [, updateAIDebugSettings] = useAtom(setAIDebugSettingsAtom);
@@ -49,6 +62,13 @@ export function AgentFeaturesPanel() {
   const [preferredAgentLanguage, setPreferredAgentLanguage] = useState<string>('');
   const [apiUpstreamUrl, setApiUpstreamUrl] = useState<string>('');
   const [apiUpstreamError, setApiUpstreamError] = useState<string | null>(null);
+  const [attachmentStagingMode, setAttachmentStagingMode] = useState<AttachmentStagingMode>('temp');
+  const [persistedAttachmentStagingMode, setPersistedAttachmentStagingMode] = useState<AttachmentStagingMode>('temp');
+  const [attachmentCustomPath, setAttachmentCustomPath] = useState('');
+  const [attachmentStagingError, setAttachmentStagingError] = useState<string | null>(null);
+  const [currentWorkspacePath, setCurrentWorkspacePath] = useState<string | null>(null);
+  const [offerAttachmentGitignore, setOfferAttachmentGitignore] = useState(false);
+  const [addAttachmentGitignore, setAddAttachmentGitignore] = useState(true);
   const [workflowSourceSettings, setWorkflowSourceSettings] = useState<WorkflowSourceSettings>({
     workspaceClaudeCompatibilityEnabled: false,
     includeProjectClaudeSources: false,
@@ -99,6 +119,57 @@ export function AgentFeaturesPanel() {
   }, []);
 
   useEffect(() => {
+    const loadAttachmentSettings = async () => {
+      try {
+        const [config, workspace] = await Promise.all([
+          window.electronAPI.invoke('attachment-staging:get-settings'),
+          window.electronAPI.invoke('workspace:get-current'),
+        ]) as [
+          { mode: AttachmentStagingMode; customPath?: string },
+          { path?: string } | null,
+        ];
+        setAttachmentStagingMode(config.mode);
+        setPersistedAttachmentStagingMode(config.mode);
+        setAttachmentCustomPath(config.customPath ?? '');
+        const workspacePath = workspace?.path ?? null;
+        setCurrentWorkspacePath(workspacePath);
+        if (workspacePath) {
+          const status = await window.electronAPI.invoke(
+            'attachment:workspace-staging-status',
+            workspacePath,
+          ) as { shouldOffer: boolean };
+          setOfferAttachmentGitignore(status.shouldOffer);
+        }
+      } catch (err) {
+        console.error('Failed to load attachment staging settings:', err);
+      }
+    };
+    void loadAttachmentSettings();
+  }, []);
+
+  const saveAttachmentStaging = useCallback(async (
+    mode: AttachmentStagingMode,
+    customPath = attachmentCustomPath,
+  ) => {
+    setAttachmentStagingError(null);
+    try {
+      const saved = await window.electronAPI.invoke('attachment-staging:set-settings', {
+        mode,
+        ...(mode === 'custom' ? { customPath } : {}),
+      }) as { mode: AttachmentStagingMode; customPath?: string };
+      setAttachmentStagingMode(saved.mode);
+      setPersistedAttachmentStagingMode(saved.mode);
+      setAttachmentCustomPath(saved.customPath ?? customPath);
+      if (mode === 'workspace' && addAttachmentGitignore && offerAttachmentGitignore && currentWorkspacePath) {
+        await window.electronAPI.invoke('attachment:append-workspace-gitignore', currentWorkspacePath);
+        setOfferAttachmentGitignore(false);
+      }
+    } catch (err) {
+      setAttachmentStagingError(err instanceof Error ? err.message : String(err));
+    }
+  }, [addAttachmentGitignore, attachmentCustomPath, currentWorkspacePath, offerAttachmentGitignore]);
+
+  useEffect(() => {
     const loadPreferredAgentLanguage = async () => {
       try {
         const language = await window.electronAPI.invoke('preferred-agent-language:get');
@@ -131,7 +202,7 @@ export function AgentFeaturesPanel() {
         setApiUpstreamError(result.error);
       }
     } catch (err) {
-      setApiUpstreamError(err instanceof Error ? err.message : t('settings:agent_features.errors.save_upstream'));
+      setApiUpstreamError(err instanceof Error ? err.message : t('agent_features.errors.save_upstream'));
     }
   }, [apiUpstreamUrl, t]);
 
@@ -169,10 +240,10 @@ export function AgentFeaturesPanel() {
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">
-          {t('settings:agent_features.title')}
+          {t('agent_features.title')}
         </h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          {t('settings:agent_features.description')}
+          {t('agent_features.description')}
         </p>
       </div>
 
@@ -183,55 +254,162 @@ export function AgentFeaturesPanel() {
             setAutoCommitEnabled(checked);
             posthog?.capture('auto_commit_toggled', { enabled: checked });
           }}
-          name={t('settings:agent_features.auto_commit_name')}
-          description={t('settings:agent_features.auto_commit_desc')}
+          name={t('agent_features.auto_commit_name')}
+          description={t('agent_features.auto_commit_desc')}
+        />
+
+        <SettingsToggle
+          checked={usageLimitAutoResumeEnabled}
+          onChange={(checked) => {
+            // Through main, not the atom: turning it off also cancels pending resumes.
+            window.electronAPI.invoke('wakeup:set-usage-limit-auto-resume', checked).catch((error: unknown) => {
+              console.error('[AgentFeaturesPanel] Failed to set usage-limit auto-resume:', error);
+            });
+          }}
+          name={t('agent_features.resume_usage_name')}
+          description={t('agent_features.resume_usage_desc')}
+          testId="usage-limit-auto-resume-toggle"
+        />
+
+        <SettingsToggle
+          checked={externalSessionFollowEnabled}
+          onChange={setExternalSessionFollowEnabled}
+          name={t('agent_features.external_sessions_name')}
+          description={t('agent_features.external_sessions_desc')}
+          testId="external-session-follow-setting"
+        />
+
+        <SettingsToggle
+          checked={showMcpSessionStatus}
+          onChange={(checked) => setShowMcpSessionStatus(checked)}
+          name={t('agent_features.mcp_status_name')}
+          description={t('agent_features.mcp_status_desc')}
+          testId="show-mcp-session-status-toggle"
+        />
+
+        <SettingsToggle
+          checked={promptSuggestionsEnabled}
+          onChange={(checked) => setPromptSuggestionsEnabled(checked)}
+          name={t('agent_features.prompt_suggestions_name')}
+          description={t('agent_features.prompt_suggestions_desc')}
+          testId="prompt-suggestions-toggle"
         />
 
         <div className="agent-preferred-language flex items-start justify-between gap-4 py-3">
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-[var(--nim-text)] leading-tight">
-              {t('settings:agent_features.preferred_language_name')}
+              {t('agent_features.preferred_language_name')}
             </div>
             <div className="text-xs text-[var(--nim-text-muted)] leading-snug mt-0.5">
-              {t('settings:agent_features.preferred_language_desc')}
+              {t('agent_features.preferred_language_desc')}
             </div>
           </div>
           <input
             type="text"
             value={preferredAgentLanguage}
             onChange={(e) => handlePreferredAgentLanguageChange(e.target.value)}
-            placeholder={t('settings:agent_features.preferred_language_placeholder')}
+            placeholder={t('agent_features.preferred_language_placeholder')}
             className="w-40 py-1.5 px-3 rounded-md text-sm bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] outline-none focus:border-[var(--nim-primary)]"
             data-testid="preferred-agent-language-input"
           />
+        </div>
+
+        <div
+          className="attachment-staging-settings mt-3 rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3"
+          data-testid="attachment-staging-settings"
+        >
+          <div className="text-sm font-semibold text-[var(--nim-text)]">{t('agent_features.attachment_staging_title')}</div>
+          <p className="mb-3 mt-1 text-xs leading-relaxed text-[var(--nim-text-muted)]">
+            {t('agent_features.attachment_staging_desc')}
+          </p>
+          <div className="flex flex-col gap-2">
+            {([
+              ['temp', 'agent_features.attachment_staging_temp'],
+              ['workspace', 'agent_features.attachment_staging_workspace'],
+              ['custom', 'agent_features.attachment_staging_custom'],
+            ] as Array<[AttachmentStagingMode, string]>).map(([mode, labelKey]) => (
+              <label key={mode} className="flex cursor-pointer items-center gap-2 text-sm text-[var(--nim-text)]">
+                <input
+                  type="radio"
+                  name="attachment-staging-mode"
+                  checked={attachmentStagingMode === mode}
+                  onChange={() => {
+                    setAttachmentStagingMode(mode);
+                    if (mode === 'temp') {
+                      void saveAttachmentStaging(mode);
+                    } else if (mode === 'custom' && attachmentCustomPath.trim()) {
+                      void saveAttachmentStaging(mode);
+                    } else if (mode === 'workspace' && !offerAttachmentGitignore) {
+                      void saveAttachmentStaging(mode);
+                    }
+                  }}
+                />
+                {t(labelKey)}
+              </label>
+            ))}
+          </div>
+          {attachmentStagingMode === 'custom' && (
+            <input
+              type="text"
+              value={attachmentCustomPath}
+              onChange={(event) => setAttachmentCustomPath(event.target.value)}
+              onBlur={() => { if (attachmentCustomPath.trim()) void saveAttachmentStaging('custom', attachmentCustomPath); }}
+              placeholder="C:\\Nimbalyst\\attachments or /path/to/attachments"
+              spellCheck={false}
+              className="mt-3 w-full rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-1.5 text-sm text-[var(--nim-text)] outline-none focus:border-[var(--nim-primary)]"
+            />
+          )}
+          {attachmentStagingMode === 'workspace' && offerAttachmentGitignore && currentWorkspacePath && (
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-[var(--nim-text-muted)]">
+              <input
+                type="checkbox"
+                checked={addAttachmentGitignore}
+                onChange={(event) => setAddAttachmentGitignore(event.target.checked)}
+              />
+              {t('agent_features.attachment_gitignore')}
+            </label>
+          )}
+          {attachmentStagingMode === 'workspace' &&
+            (persistedAttachmentStagingMode !== 'workspace' || offerAttachmentGitignore) && (
+              <button
+                type="button"
+                className="nim-btn-primary mt-3"
+                onClick={() => void saveAttachmentStaging('workspace')}
+              >
+                {t('agent_features.attachment_apply_workspace')}
+              </button>
+            )}
+          {attachmentStagingError && (
+            <p className="select-text mb-0 mt-2 text-xs text-[var(--nim-error)]">{attachmentStagingError}</p>
+          )}
         </div>
       </div>
 
       <div className="provider-panel-section">
         <div className="flex items-center gap-2 mb-2">
-          <h4 className="provider-panel-section-title text-base font-semibold text-[var(--nim-text)] m-0">{t('settings:agent_features.experimental')}</h4>
-          <AlphaBadge size="sm" tooltip={t('settings:provider.alpha_tooltip', { defaultValue: SETTINGS_ALPHA_TOOLTIP })} />
+          <h4 className="provider-panel-section-title text-base font-semibold text-[var(--nim-text)] m-0">{t('agent_features.experimental')}</h4>
+          <AlphaBadge size="sm" tooltip={t('agent_features.alpha_tooltip')} />
         </div>
 
         <div className="flex items-start gap-2 p-3 mb-3 rounded border border-[var(--nim-warning)]/30 bg-[var(--nim-warning)]/10">
           <MaterialSymbol icon="science" size={16} className="text-[var(--nim-warning)] shrink-0 mt-0.5" />
           <p className="m-0 text-[13px] text-[var(--nim-text)] leading-snug">
-            {t('settings:agent_features.experimental_warning')}
+            {t('agent_features.experimental_warning')}
           </p>
         </div>
 
         <div className="claude-api-upstream mb-4 rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3">
           <h5 className="text-sm font-semibold mb-1.5 text-[var(--nim-text)]">
-            {t('settings:agent_features.custom_api_title')}
+            {t('agent_features.custom_api_title')}
           </h5>
           <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-2">
-            {t('settings:agent_features.custom_api_desc')}{' '}
-            <code>http://127.0.0.1:8787/anthropic</code>
+            {t('agent_features.custom_api_desc')} {t('agent_features.custom_api_example_prefix')}
+            <code>http://127.0.0.1:8787/anthropic</code>.
           </p>
           <div className="flex items-start gap-2 p-2 mb-2 rounded border border-[var(--nim-warning)]/30 bg-[var(--nim-warning)]/10">
             <MaterialSymbol icon="lock" size={14} className="text-[var(--nim-warning)] shrink-0 mt-0.5" />
             <p className="m-0 text-[12px] text-[var(--nim-text)] leading-snug">
-              {t('settings:agent_features.custom_api_security')}
+              {t('agent_features.custom_api_security')}
             </p>
           </div>
           <input
@@ -256,10 +434,10 @@ export function AgentFeaturesPanel() {
 
         <div className="mb-4 rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3">
           <h5 className="text-sm font-semibold mb-1.5 text-[var(--nim-text)]">
-            {t('settings:agent_features.workflow_title')}
+            {t('agent_features.workflow_title')}
           </h5>
           <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-2">
-            {t('settings:agent_features.workflow_desc')}
+            {t('agent_features.workflow_desc')}
           </p>
 
           <div className="border-b border-[var(--nim-border)] mb-2">
@@ -267,29 +445,29 @@ export function AgentFeaturesPanel() {
               checked={workflowSourceSettings.workspaceClaudeCompatibilityEnabled}
               onChange={(checked) => handleWorkflowSourceToggle('workspaceClaudeCompatibilityEnabled', checked)}
               disabled={workflowSettingsLoading}
-              name={t('settings:agent_features.workspace_compat_name')}
-              description={t('settings:agent_features.workspace_compat_desc')}
+              name={t('agent_features.workspace_compat_name')}
+              description={t('agent_features.workspace_compat_desc')}
             />
             <SettingsToggle
               checked={workflowSourceSettings.includeProjectClaudeSources}
               onChange={(checked) => handleWorkflowSourceToggle('includeProjectClaudeSources', checked)}
               disabled={workflowSettingsLoading || !workflowSourceSettings.workspaceClaudeCompatibilityEnabled}
-              name={t('settings:agent_features.project_sources_name')}
-              description={t('settings:agent_features.project_sources_desc')}
+              name={t('agent_features.project_sources_name')}
+              description={t('agent_features.project_sources_desc')}
             />
             <SettingsToggle
               checked={workflowSourceSettings.includeUserClaudeSources}
               onChange={(checked) => handleWorkflowSourceToggle('includeUserClaudeSources', checked)}
               disabled={workflowSettingsLoading || !workflowSourceSettings.workspaceClaudeCompatibilityEnabled}
-              name={t('settings:agent_features.user_sources_name')}
-              description={t('settings:agent_features.user_sources_desc')}
+              name={t('agent_features.user_sources_name')}
+              description={t('agent_features.user_sources_desc')}
             />
             <SettingsToggle
               checked={workflowSourceSettings.extensionWorkflowsEnabled}
               onChange={(checked) => handleWorkflowSourceToggle('extensionWorkflowsEnabled', checked)}
               disabled={workflowSettingsLoading}
-              name={t('settings:agent_features.extension_workflows_name')}
-              description={t('settings:agent_features.extension_workflows_desc')}
+              name={t('agent_features.extension_workflows_name')}
+              description={t('agent_features.extension_workflows_desc')}
             />
           </div>
 
@@ -298,15 +476,15 @@ export function AgentFeaturesPanel() {
               checked={workflowExportSettings.codexEnabled}
               onChange={(checked) => handleWorkflowExportToggle('codexEnabled', checked)}
               disabled={workflowSettingsLoading}
-              name={t('settings:agent_features.codex_skills_name')}
-              description={t('settings:agent_features.codex_skills_desc')}
+              name={t('agent_features.codex_skills_name')}
+              description={t('agent_features.codex_skills_desc')}
             />
             <SettingsToggle
               checked={workflowExportSettings.claudeGeneratedExtensionWorkflowsEnabled}
               onChange={(checked) => handleWorkflowExportToggle('claudeGeneratedExtensionWorkflowsEnabled', checked)}
               disabled={workflowSettingsLoading}
-              name={t('settings:agent_features.claude_workflows_name')}
-              description={t('settings:agent_features.claude_workflows_desc')}
+              name={t('agent_features.claude_workflows_name')}
+              description={t('agent_features.claude_workflows_desc')}
             />
           </div>
         </div>
@@ -316,45 +494,45 @@ export function AgentFeaturesPanel() {
             key={feature.tag}
             checked={alphaFeatures[feature.tag] ?? false}
             onChange={(checked) => handleAlphaToggle(feature.tag, checked)}
-            name={t(`settings:agent_features.features.${feature.tag}.name`, { defaultValue: feature.name })}
-            description={t(`settings:agent_features.features.${feature.tag}.description`, { defaultValue: feature.description })}
+            name={t(`agent_features.features.${feature.tag}.name`)}
+            description={t(`agent_features.features.${feature.tag}.description`)}
           />
         ))}
 
         <SettingsToggle
           checked={chatShowToolCalls}
           onChange={(checked) => updateAIDebugSettings({ chatShowToolCalls: checked })}
-          name={t('settings:agent_features.show_chat_tools_name')}
-          description={t('settings:agent_features.show_chat_tools_desc')}
+          name={t('agent_features.show_chat_tools_name')}
+          description={t('agent_features.show_chat_tools_desc')}
         />
       </div>
 
       {isDevelopment && (
         <div className="provider-panel-section py-4 mt-4 border-t border-[var(--nim-border)]">
-          <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">{t('settings:agent_features.developer_options')}</h4>
+          <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">{t('agent_features.developer_options')}</h4>
           <p className="text-sm leading-relaxed text-[var(--nim-text-muted)] mb-2">
-            {t('settings:agent_features.developer_only')}
+            {t('agent_features.developer_only')}
           </p>
 
           <SettingsToggle
             checked={showToolCalls}
             onChange={(checked) => updateAIDebugSettings({ showToolCalls: checked })}
-            name={t('settings:agent_features.show_all_tools_name')}
-            description={t('settings:agent_features.show_all_tools_desc')}
+            name={t('agent_features.show_all_tools_name')}
+            description={t('agent_features.show_all_tools_desc')}
           />
 
           <SettingsToggle
             checked={aiDebugLogging}
             onChange={(checked) => updateAIDebugSettings({ aiDebugLogging: checked })}
-            name={t('settings:agent_features.debug_logging_name')}
-            description={t('settings:agent_features.debug_logging_desc')}
+            name={t('agent_features.debug_logging_name')}
+            description={t('agent_features.debug_logging_desc')}
           />
 
           <SettingsToggle
             checked={showPromptAdditions}
             onChange={(checked) => updateAIDebugSettings({ showPromptAdditions: checked })}
-            name={t('settings:agent_features.prompt_additions_name')}
-            description={t('settings:agent_features.prompt_additions_desc')}
+            name={t('agent_features.prompt_additions_name')}
+            description={t('agent_features.prompt_additions_desc')}
           />
         </div>
       )}

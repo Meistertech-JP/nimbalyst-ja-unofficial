@@ -8,8 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface ImporterBinding {
   id: string;
@@ -45,7 +45,7 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
   onClose,
   onImported,
 }) => {
-  const { t } = useTranslation(['tracker']);
+  const { t } = useTranslation('tracker');
   const [bindings, setBindings] = useState<ImporterBinding[] | null>(null);
   const [bindingId, setBindingId] = useState<string | null>(null);
   const [primaryType, setPrimaryType] = useState<string>(importsAs?.[0] ?? 'bug');
@@ -74,13 +74,13 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
       .catch((e: unknown) => {
         if (!cancelled) {
           setBindings([]);
-          setError(e instanceof Error ? e.message : t('tracker:import.load_failed'));
+          setError(e instanceof Error ? e.message : String(e));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [providerId, workspacePath, t]);
+  }, [providerId, workspacePath]);
 
   const loadItems = useCallback(
     async (binding: string, state: StateFilter, searchText: string) => {
@@ -96,12 +96,12 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
         setItems(Array.isArray(page?.items) ? page.items : []);
       } catch (e) {
         setItems([]);
-        setError(e instanceof Error ? e.message : t('tracker:import.load_items_failed'));
+        setError(e instanceof Error ? e.message : String(e));
       } finally {
         setLoading(false);
       }
     },
-    [providerId, workspacePath, t]
+    [providerId, workspacePath]
   );
 
   // Reload items when binding or state changes.
@@ -187,12 +187,12 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-nim shrink-0">
           <MaterialSymbol icon="cloud_download" size={18} className="text-nim-muted" />
-          <span className="text-sm font-semibold text-nim">{t('tracker:import.title', { provider: providerLabel })}</span>
+          <span className="text-sm font-semibold text-nim">{t('import.title', { provider: providerLabel })}</span>
           <div className="flex-1" />
           <button
             className="p-1 rounded hover:bg-nim-tertiary text-nim-muted"
             onClick={onClose}
-            title={t('tracker:ui.close')}
+            title={t('ui.close')}
           >
             <MaterialSymbol icon="close" size={18} />
           </button>
@@ -221,9 +221,9 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value as StateFilter)}
           >
-            <option value="open">{t('tracker:detail.open')}</option>
-            <option value="closed">{t('tracker:ui.closed')}</option>
-            <option value="all">{t('tracker:sidebar.all')}</option>
+            <option value="open">{t('detail.open')}</option>
+            <option value="closed">{t('ui.closed')}</option>
+            <option value="all">{t('sidebar.all')}</option>
           </select>
           <div className="relative flex-1 min-w-[140px]">
             <MaterialSymbol
@@ -235,20 +235,20 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t('tracker:ui.search')}
+              placeholder={t('ui.search')}
               className="w-full pl-7 pr-2 py-1 text-xs bg-nim-secondary border border-nim rounded text-nim placeholder:text-nim-faint focus:outline-none focus:border-[var(--nim-primary)]"
             />
           </div>
           <label className="flex items-center gap-1 text-xs text-nim-muted">
-            {t('tracker:import.import_as')}
+            {t('import.import_as')}
             <select
               className="text-xs bg-nim-secondary border border-nim rounded px-2 py-1 text-nim"
               value={primaryType}
               onChange={(e) => setPrimaryType(e.target.value)}
             >
-              {typeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {type}
+              {typeOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
                 </option>
               ))}
             </select>
@@ -262,24 +262,24 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
           )}
           {bindings && bindings.length === 0 && !loading && (
             <div className="px-4 py-8 text-center text-sm text-nim-faint">
-              {t('tracker:import.no_repositories', { provider: providerLabel })}
+              {t('import.no_repositories', { provider: providerLabel })}
               <div className="text-xs mt-1">
-                {t('tracker:import.no_repositories_hint')}{' '}
+                {t('import.no_repositories_hint')}{' '}
                 <span className="font-mono">gh auth login</span>.
               </div>
             </div>
           )}
           {loading && (
-            <div className="px-4 py-8 text-center text-sm text-nim-faint">{t('tracker:detail.loading')}</div>
+            <div className="px-4 py-8 text-center text-sm text-nim-faint">{t('detail.loading')}</div>
           )}
           {!loading && bindings && bindings.length > 0 && items.length === 0 && !error && (
-            <div className="px-4 py-8 text-center text-sm text-nim-faint">{t('tracker:ui.no_items')}</div>
+            <div className="px-4 py-8 text-center text-sm text-nim-faint">{t('ui.no_items')}</div>
           )}
           {items.length > 0 && (
             <>
               <label className="flex items-center gap-2 px-4 py-1.5 border-b border-nim text-xs text-nim-muted sticky top-0 bg-nim">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-                {t('tracker:import.select_all', { count: items.length })}
+                {t('import.select_all', { count: items.length })}
               </label>
               {items.map((item) => (
                 <label
@@ -307,8 +307,8 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
         {/* Footer */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-nim shrink-0">
           <span className="text-xs text-nim-faint">
-            {selected.size > 0 ? t('tracker:import.selected', { count: selected.size }) : ''}
-            {progress ? t('tracker:import.progress', { done: progress.done, total: progress.total }) : ''}
+            {selected.size > 0 ? t('import.selected', { count: selected.size }) : ''}
+            {progress ? t('import.progress', { done: progress.done, total: progress.total }) : ''}
           </span>
           <div className="flex-1" />
           <button
@@ -316,7 +316,7 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
             onClick={onClose}
             disabled={importing}
           >
-            {t('tracker:detail.cancel')}
+            {t('detail.cancel')}
           </button>
           <button
             className="px-3 py-1 text-xs font-medium text-white bg-[var(--nim-primary)] rounded hover:opacity-90 disabled:opacity-50"
@@ -324,7 +324,7 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
             disabled={importing || selected.size === 0}
             data-testid="import-from-source-confirm"
           >
-            {importing ? t('tracker:import.importing') : t('tracker:import.confirm', { count: selected.size || '' })}
+            {importing ? t('import.importing') : t('import.confirm', { count: selected.size })}
           </button>
         </div>
       </div>

@@ -11,13 +11,14 @@ import {
   notifyCollabStatus,
 } from '../components/TabEditor/collabExtensionHost';
 import { documentSyncRegistry } from '../store/atoms/documentSyncRegistry';
-import { buildCollabUri } from '../utils/collabUri';
+import { buildCollabUri } from '@nimbalyst/collab-protocol';
 import {
-  resolveCollabConfigForUri,
+  resolveDesktopCollabConfigForUri,
   type CollabDocumentConfig,
 } from '../utils/collabDocumentOpener';
+import { collabPresenceIdentity } from '../utils/collabPresenceName';
+import { UNNAMED_COLLABORATOR_LABEL } from '@nimbalyst/runtime/sync/collaboratorDisplayName';
 import { ElectronLocalReplicaStore } from './ElectronLocalReplicaStore';
-import { rendererI18n } from '../i18n';
 
 export interface CollaborativeEmbedReference {
   orgId: string;
@@ -41,6 +42,7 @@ export interface CollaborativeEmbedProviderResource {
   replica: LocalDocumentReplica;
   syncProvider: DocumentSyncProvider;
   collaboration: CollaborationContext;
+  setUnnamedCollaboratorLabel?(label: string): void;
   destroy(): void;
 }
 
@@ -58,6 +60,7 @@ interface CacheEntry {
 interface CollaborativeEmbedProviderCacheDependencies {
   createResource(
     request: CollaborativeEmbedProviderRequest,
+    getUnnamedCollaboratorLabel: () => string,
   ): Promise<CollaborativeEmbedProviderResource>;
   close(workspacePath: string, documentId: string): Promise<void>;
 }
@@ -108,9 +111,10 @@ function cacheKey(request: CollaborativeEmbedProviderRequest): string {
 
 export async function createDefaultResource(
   request: CollaborativeEmbedProviderRequest,
+  getUnnamedCollaboratorLabel: () => string = () => UNNAMED_COLLABORATOR_LABEL,
 ): Promise<CollaborativeEmbedProviderResource> {
   const uri = buildCollabUri(request.orgId, request.documentId);
-  const config = await resolveCollabConfigForUri(
+  const config = await resolveDesktopCollabConfigForUri(
     request.workspacePath,
     uri,
     request.documentId,
@@ -119,15 +123,16 @@ export async function createDefaultResource(
     { metadata: request.metadata, cache: false },
   );
   if (!config) {
-    throw new Error(rendererI18n.t('errors:shared_document.open_failed', { documentId: request.documentId }));
+    throw new Error(`Could not open shared document ${request.documentId}.`);
   }
   if (config.orgId !== request.orgId) {
     await window.electronAPI?.documentSync?.closeDoc?.(request.documentId).catch(() => undefined);
-    throw new Error(rendererI18n.t('errors:shared_document.embedded_team_mismatch'));
+    throw new Error('The embedded document belongs to a different team.');
   }
 
   let syncProvider: DocumentSyncProvider | null = null;
   let bridge: ReturnType<typeof createExtensionAwarenessBridge> | null = null;
+  let unnamedCollaboratorLabel = getUnnamedCollaboratorLabel();
   let replica: LocalDocumentReplica | null = null;
   const replicaIdentity = {
     accountId: config.accountId,
@@ -141,7 +146,7 @@ export async function createDefaultResource(
     replica = new LocalDocumentReplica({
       identity: replicaIdentity,
       documentType: config.documentType ?? request.documentType,
-      store: new ElectronLocalReplicaStore(config.workspacePath),
+      store: new ElectronLocalReplicaStore(config.scope.scopeKey),
     });
     const attachReplica = window.electronAPI.documentSync.setReplicaProviderAttached(
       replicaIdentity,
@@ -159,12 +164,7 @@ export async function createDefaultResource(
       serverUrl: config.serverUrl,
       getJwt: config.getJwt,
       orgId: config.orgId,
-      keyCustody: config.keyCustody,
-      documentKey: config.documentKey,
-      legacyDocumentKey: config.legacyDocumentKey,
-      legacyDocumentKeys: config.legacyDocumentKeys,
-      orgKeyFingerprint: config.orgKeyFingerprint,
-      userId: config.userId,
+      teamMemberId: config.teamMemberId,
       documentId: config.documentId,
       createWebSocket: config.createWebSocket,
       initialPendingUpdateBase64: config.pendingUpdateBase64,
@@ -173,22 +173,22 @@ export async function createDefaultResource(
       },
       onPendingUpdateChange: async pendingUpdateBase64 => {
         await window.electronAPI?.documentSync?.setPendingUpdate?.(
-          config.workspacePath,
+          config.scope.scopeKey,
           config.orgId,
           config.documentId,
           pendingUpdateBase64,
         );
       },
-      reviewGateEnabled: false,
     });
     bridge = createExtensionAwarenessBridge({
       syncProvider,
       yDoc: syncProvider.getYDoc(),
       user: {
-        id: config.userId,
-        name: config.userName ?? config.userId,
+        id: config.teamMemberId,
+        ...collabPresenceIdentity(config),
         color: '#3A8FD6',
       },
+      getUnnamedCollaboratorLabel: () => unnamedCollaboratorLabel,
     });
     const collaboration = createCollaborationContext({
       syncProvider,
@@ -206,6 +206,11 @@ export async function createDefaultResource(
       replica: connectedReplica,
       syncProvider: connectedProvider,
       collaboration,
+      setUnnamedCollaboratorLabel(label) {
+        if (!label || label === unnamedCollaboratorLabel) return;
+        unnamedCollaboratorLabel = label;
+        connectedBridge.refreshRemoteDisplayNames();
+      },
       destroy() {
         documentSyncRegistry.unregister(connectedProvider);
         connectedBridge.destroy();
@@ -238,7 +243,8 @@ export async function createDefaultResource(
 }
 
 const defaultDependencies: CollaborativeEmbedProviderCacheDependencies = {
-  createResource: createDefaultResource,
+  createResource: (request, getUnnamedCollaboratorLabel) =>
+    createDefaultResource(request, getUnnamedCollaboratorLabel),
   close: async (_workspacePath, documentId) => {
     await window.electronAPI?.documentSync?.closeDoc?.(documentId);
   },
@@ -258,13 +264,14 @@ export class CollaborativeEmbedProviderCache {
 
   async acquire(
     request: CollaborativeEmbedProviderRequest,
+    getUnnamedCollaboratorLabel: () => string = () => UNNAMED_COLLABORATOR_LABEL,
   ): Promise<CollaborativeEmbedProviderAcquisition> {
     const key = cacheKey(request);
     let entry = this.entries.get(key);
     if (!entry) {
       let resourcePromise = this.pending.get(key);
       if (!resourcePromise) {
-        resourcePromise = this.dependencies.createResource(request);
+        resourcePromise = this.dependencies.createResource(request, getUnnamedCollaboratorLabel);
         this.pending.set(key, resourcePromise);
       }
       const resource = await resourcePromise.finally(() => {
@@ -280,6 +287,7 @@ export class CollaborativeEmbedProviderCache {
       }
     }
 
+    entry.resource.setUnnamedCollaboratorLabel?.(getUnnamedCollaboratorLabel());
     entry.refCount += 1;
     let released = false;
     return {
@@ -293,6 +301,29 @@ export class CollaborativeEmbedProviderCache {
         void this.destroyEntry(entry!);
       },
     };
+  }
+
+  /**
+   * The resource for a document that is *already* open, without acquiring one.
+   *
+   * Deliberately does not refcount and deliberately cannot open a room: this is
+   * for read-only observers -- the canvas's in-document comment counts -- that
+   * want to report on a room somebody else is holding and must not extend its
+   * life or start a socket of their own. A caller that needs the room to exist
+   * uses `acquire` and holds the lease.
+   */
+  peek(
+    reference: CollaborativeEmbedReference,
+  ): CollaborativeEmbedProviderResource | null {
+    for (const entry of this.entries.values()) {
+      if (
+        entry.request.orgId === reference.orgId &&
+        entry.request.documentId === reference.documentId
+      ) {
+        return entry.resource;
+      }
+    }
+    return null;
   }
 
   private async destroyEntry(entry: CacheEntry): Promise<void> {

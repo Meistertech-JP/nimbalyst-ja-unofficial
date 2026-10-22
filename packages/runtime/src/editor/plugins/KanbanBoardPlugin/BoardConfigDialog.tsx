@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface BoardConfig {
   entityTypeId?: string;
@@ -23,7 +23,7 @@ interface BoardConfigDialogProps {
 }
 
 export function BoardConfigDialog({ visible, onHide, onSelect, initialConfig }: BoardConfigDialogProps) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [visibleFields, setVisibleFields] = useState({
     owner: initialConfig?.visibleFields?.owner ?? true,
     dueDate: initialConfig?.visibleFields?.dueDate ?? true,
@@ -64,19 +64,19 @@ export function BoardConfigDialog({ visible, onHide, onSelect, initialConfig }: 
   return (
     <div className="board-config-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]">
       <div className="board-config-dialog bg-[var(--nim-bg-secondary)] p-6 rounded-lg min-w-[400px] max-w-[500px] shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
-        <h3 className="board-config-title m-0 mb-5 text-lg font-semibold text-[var(--nim-text)]">{t('editor:kanban.configuration', 'Board Configuration')}</h3>
+        <h3 className="board-config-title m-0 mb-5 text-lg font-semibold text-[var(--nim-text)]">{t('kanban.configuration')}</h3>
 
         <div className="board-config-section mb-5">
           <label className="board-config-label block mb-2 font-medium text-sm text-[var(--nim-text)]">
-            {t('editor:kanban.visible_fields', 'Visible Card Fields:')}
+            {t('kanban.visible_fields')}
           </label>
 
           <div className="board-config-fields flex flex-col gap-2">
             {[
-              { key: 'owner', icon: 'person', label: t('tracker:columns.owner', 'Owner'), desc: t('editor:kanban.show_owner', 'Show card owner') },
-              { key: 'dueDate', icon: 'calendar_today', label: t('tracker:columns.dueDate', 'Due Date'), desc: t('editor:kanban.show_due_dates', 'Show due dates') },
-              { key: 'priority', icon: 'priority_high', label: t('tracker:columns.priority', 'Priority'), desc: t('editor:kanban.show_priority', 'Show priority indicators') },
-              { key: 'description', icon: 'description', label: t('aichat:tracker_tool.description', 'Description'), desc: t('editor:kanban.show_description', 'Show description field') }
+              { key: 'owner', icon: 'person', label: t('kanban.owner'), desc: t('kanban.show_owner') },
+              { key: 'dueDate', icon: 'calendar_today', label: t('kanban.due_date'), desc: t('kanban.show_due_dates') },
+              { key: 'priority', icon: 'priority_high', label: t('kanban.priority'), desc: t('kanban.show_priority') },
+              { key: 'description', icon: 'description', label: t('kanban.description'), desc: t('kanban.show_description') }
             ].map(({ key, icon, label, desc }) => (
               <label
                 key={key}
@@ -109,13 +109,13 @@ export function BoardConfigDialog({ visible, onHide, onSelect, initialConfig }: 
             onClick={onHide}
             className="board-config-button board-config-button-cancel py-2 px-4 rounded cursor-pointer text-sm transition-all font-inherit border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
           >
-            {t('common:cancel', 'Cancel')}
+            {t('kanban.cancel')}
           </button>
           <button
             onClick={handleSave}
             className="board-config-button board-config-button-save py-2 px-4 rounded cursor-pointer text-sm transition-all font-inherit border border-[var(--nim-primary)] bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)]"
           >
-            {t('editor:kanban.save_configuration', 'Save Configuration')}
+            {t('kanban.save_configuration')}
           </button>
         </div>
       </div>

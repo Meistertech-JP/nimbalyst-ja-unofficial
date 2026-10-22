@@ -1,12 +1,12 @@
 import { useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $createTextNode, $getRoot } from 'lexical';
 import { $isCodeNode, CodeNode } from '@lexical/code';
 import { $convertFromEnhancedMarkdownString, $convertToEnhancedMarkdownString, getEditorTransformers } from '../../markdown';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 const MarkdownToggle = () => {
-    const { t } = useRuntimeTranslation();
+    const { t } = useTranslation('editor');
     const [editor] = useLexicalComposerContext();
     const shouldPreserveNewLinesInMarkdown = true;
 
@@ -38,8 +38,8 @@ const MarkdownToggle = () => {
         <button
             onClick={handleMarkdownToggle}
             className="toolbar-item spaced"
-            title={t('editor:diff.markdown_mode_toggle', 'Toggle Markdown Mode')}
-            aria-label={t('editor:diff.markdown_mode_toggle', 'Toggle Markdown Mode')}>
+            title={t('formatting.convert_markdown')}
+            aria-label={t('formatting.convert_markdown')}>
             <i className="format bug" />
         </button>
     );

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useRuntimeTranslation } from '../RuntimeTranslation';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { parseUnifiedDiffToHunks, toDisplayLines } from './unifiedDiffModel';
 
 interface UnifiedDiffViewProps {
   diff: string;
@@ -8,76 +9,24 @@ interface UnifiedDiffViewProps {
   error?: string | null;
 }
 
-type LineKind = 'add' | 'del' | 'ctx' | 'hunk' | 'meta';
-
-interface DiffLine {
-  kind: LineKind;
-  text: string;
-  oldLine?: number;
-  newLine?: number;
-}
-
-const HUNK_RE = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
-
-function parseUnifiedDiff(diff: string): DiffLine[] {
-  const out: DiffLine[] = [];
-  let oldLine = 0;
-  let newLine = 0;
-  let inHunk = false;
-
-  for (const raw of diff.split('\n')) {
-    if (raw.startsWith('@@')) {
-      const match = raw.match(HUNK_RE);
-      if (match) {
-        oldLine = parseInt(match[1], 10);
-        newLine = parseInt(match[3], 10);
-        inHunk = true;
-      }
-      out.push({ kind: 'hunk', text: raw });
-      continue;
-    }
-
-    if (!inHunk) {
-      if (raw === '') continue;
-      out.push({ kind: 'meta', text: raw });
-      continue;
-    }
-
-    if (raw.startsWith('+') && !raw.startsWith('+++')) {
-      out.push({ kind: 'add', text: raw.slice(1), newLine });
-      newLine++;
-    } else if (raw.startsWith('-') && !raw.startsWith('---')) {
-      out.push({ kind: 'del', text: raw.slice(1), oldLine });
-      oldLine++;
-    } else if (raw.startsWith(' ')) {
-      out.push({ kind: 'ctx', text: raw.slice(1), oldLine, newLine });
-      oldLine++;
-      newLine++;
-    } else if (raw.startsWith('\\')) {
-      out.push({ kind: 'meta', text: raw });
-    }
-  }
-
-  return out;
-}
-
 const PLACEHOLDER_BASE = 'p-4 text-center text-xs italic text-[var(--nim-text-faint)]';
 
 export function UnifiedDiffView({ diff, isBinary, loading, error }: UnifiedDiffViewProps) {
-  const { t } = useRuntimeTranslation();
-  const lines = useMemo(() => (diff ? parseUnifiedDiff(diff) : []), [diff]);
+  const { t: tAgents } = useTranslation('agents');
+  const { t: tCommon } = useTranslation('common');
+  const lines = useMemo(() => (diff ? toDisplayLines(parseUnifiedDiffToHunks(diff)) : []), [diff]);
 
   if (loading) {
-    return <div className={PLACEHOLDER_BASE}>{t('dialogs:history.loading_diff', 'Loading diff...')}</div>;
+    return <div className={PLACEHOLDER_BASE}>{tAgents('review.loading_diff')}</div>;
   }
   if (error) {
     return <div className="p-4 text-center text-xs not-italic text-[var(--nim-error)]">{error}</div>;
   }
   if (isBinary) {
-    return <div className={PLACEHOLDER_BASE}>{t('files:diff_peek.binary', 'Binary file')}</div>;
+    return <div className={PLACEHOLDER_BASE}>{tAgents('review.binary_file')}</div>;
   }
   if (!diff || lines.length === 0) {
-    return <div className={PLACEHOLDER_BASE}>{t('files:diff_peek.no_text_changes', 'No textual changes')}</div>;
+    return <div className={PLACEHOLDER_BASE}>{tCommon('diff.no_textual_changes')}</div>;
   }
 
   return (

@@ -1,0 +1,163 @@
+{
+  "ask_hint": {
+    "pick_one": "pick one",
+    "pick_any": "pick any",
+    "drag_to_rank": "drag to rank — top is first",
+    "free_text": "free text",
+    "yes_or_no": "yes or no",
+    "rating": "rating"
+  },
+  "deadline": {
+    "past_due": "Past due",
+    "due": "Due {{date}}"
+  },
+  "status": {
+    "answers_submitted": "Answers submitted",
+    "one_ask_for_you": "1 ask for you",
+    "asks_for_you": "{{count}} asks for you",
+    "nothing_for_you": "Nothing for you"
+  },
+  "artifact_subjects": {
+    "document": "Document",
+    "tracker": "Tracker item",
+    "file": "File",
+    "session": "Session",
+    "commit": "Commit",
+    "pull_request": "Pull request",
+    "conversation": "Conversation",
+    "feedback_request": "Feedback request",
+    "open": "Open",
+    "open_subject": "Open {{label}}"
+  },
+  "request": {
+    "title": "Feedback request",
+    "question_tag": "Q{{number}} · {{label}}",
+    "loading": "Loading this request…",
+    "submit_error": "Your answers could not be sent.",
+    "unavailable": "Answering is not available in this session yet.",
+    "answers_sent": "Your answers are in. Change one to send an update.",
+    "recipient_note": "Your answers go to the person who asked, not the whole room.",
+    "observer_note": "Nothing on this request is assigned to you. You can still follow the discussion.",
+    "hidden_answers_note": "Other people’s answers stay hidden until you submit yours.",
+    "add_comment": "Add a comment",
+    "sending": "Sending…",
+    "update_answers": "Update answers",
+    "submit_answers": "Submit answers",
+    "discussion": "Discussion",
+    "commenting_unavailable": "Commenting on this request is not available here yet.",
+    "blocked": {
+      "not_a_recipient": "Nothing on this request is assigned to you.",
+      "request_not_open": "This request is closed and no longer takes answers.",
+      "incomplete": "Answer every question before submitting.",
+      "rejected": "These answers were rejected before sending."
+    }
+  },
+  "detail": {
+    "unavailable": "This artifact cannot be shown here.",
+    "unavailableOpenHint": "Open it to take a closer look.",
+    "previousOption": "Previous option",
+    "nextOption": "Next option",
+    "position": "{{current}} of {{total}}",
+    "openToComment": "Open to comment",
+    "picked": "Picked",
+    "pickThis": "Pick this"
+  },
+  "response": {
+    "something_else": "Something else…",
+    "open_artifact": "Open {{label}}",
+    "open": "Open",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "list": {
+    "title": "Feedback",
+    "searchPlaceholder": "Search requests…",
+    "searchLabel": "Search feedback requests",
+    "filtersLabel": "Feedback filters",
+    "filters": {
+      "needsMyResponse": "Needs my response",
+      "sentByMe": "Sent by me",
+      "open": "Open",
+      "answered": "Answered",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "documentQuestionsUnsupported": "Document questions require an updated collaboration server.",
+    "documentQuestionsRetrying": "Some document questions could not be loaded. Retrying…",
+    "documentQuestionsReconnect": "Reconnect to load document questions.",
+    "documentQuestionsLoading": "Loading document questions…",
+    "connectingWorkspace": "Connecting to this project's shared area. Feedback requests appear once it resolves.",
+    "waitingForSync": "No feedback requests have reached this device yet. They appear once your team connection is signed in and synced.",
+    "noRequests": "No feedback requests yet. When someone asks you for feedback — or you ask your team — the request lands here and stays after it is answered.",
+    "documentQuestionsUnavailable": "Document questions will appear once the inventory is available.",
+    "noMatches": "No requests match this filter.",
+    "clearFilters": "Clear filters",
+    "allRequests": "All requests",
+    "selectRequest": "Select a request to answer it, or to read the answers it already has.",
+      "openQuestionError": "This question could not be opened.",
+      "justNow": "just now",
+      "yourAnswer": "Your answer",
+      "progress": "{{answered}}/{{total}} responded",
+      "status": {
+        "open": "Open",
+        "answered": "Answered",
+        "closed": "Closed",
+        "expired": "Expired",
+        "cancelled": "Cancelled"
+      }
+  },
+  "results_tab": {
+    "invalid": "This tab does not point at a feedback request any more."
+  },
+  "compose": {
+    "summary": {
+      "direct_message": "sent as a direct message",
+      "visibility_open": "answers visible to everyone asked",
+      "visibility_after_each_reply": "answers visible after each person responds",
+      "no_deadline": "no deadline",
+      "due": "due {{date}}",
+      "wake_one_named": "this session resumes when {{name}} replies",
+      "wake_one": "this session resumes on the reply",
+      "wake_first_or_close": "this session resumes on the first reply, or when you close the request",
+      "wake_all_or_close": "this session resumes when everyone replies, or when you close the request"
+    },
+    "delivery": {
+      "send_via": "Send via",
+      "direct_message": "Direct message",
+      "answers_visible": "Answers visible",
+      "choose_visibility": "Choose when answers become visible",
+      "after_each_reply": "After each person responds",
+      "to_everyone_asked": "To everyone asked",
+      "due": "Due",
+      "choose_deadline": "Choose a deadline",
+      "no_deadline": "No deadline",
+      "today_5pm": "Today, 5:00 PM",
+      "tomorrow_5pm": "Tomorrow, 5:00 PM",
+      "in_3_days": "In 3 days",
+      "in_a_week": "In a week",
+      "wake_session": "Wake this session",
+      "choose_wake": "Choose when this session wakes",
+      "first_reply": "On the first reply",
+      "everyone_replies": "When everyone replies",
+      "on_reply": "On the reply"
+    }
+  },
+  "composer": {
+    "message_aria": "Message for {{surfaceLabel}}",
+    "message_placeholder": "Message {{surfaceLabel}}. Type @ to mention someone or an agent.",
+    "remove_attachment": "Remove {{label}}",
+    "agent_label": "Agent",
+    "attaching": "Attaching…",
+    "failed": "Failed"
+  },
+  "backlinks": {
+    "title": "Feedback",
+    "document_title": "Feedback about this document ({{count}})",
+    "asked_by_you": "Asked by you",
+    "asked_by_name": "Asked by {{name}}"
+  },
+  "results": {
+    "leading": "Leading",
+    "rank_position": "{{count}} responses ranked it {{position}} of {{total}}"
+  }
+}

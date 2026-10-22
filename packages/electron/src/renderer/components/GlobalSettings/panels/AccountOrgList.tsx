@@ -1,8 +1,10 @@
 /**
  * The organizations a single signed-in login belongs to, rendered inline under
  * its account row in Account settings. This is the one place that answers
- * "which organizations am I in, and under which login?" — and the universal
- * entry point into the org management window for any of them.
+ * "which organizations am I in, and under which login?" — the universal entry
+ * point into administering any of them, and the one surface that lists every
+ * membership, so it is also where a member with several picks which one to go
+ * and work in.
  *
  * Data comes from `groupOrganizationsByAccount`; this component only renders and
  * dispatches actions (no IPC subscriptions — the central Stytch listener owns
@@ -10,14 +12,45 @@
  */
 
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
-import { AlphaBadge } from '../../common/AlphaBadge';
+import { TeamBetaBadge } from '../../common/TeamBetaNotice';
+import { organizationDirectoryStateAtom, organizationCreationEnabled } from '../../../store/atoms/settingsDomains';
+// Imported from the registry/context directly rather than the `dialogs` barrel,
+// which pulls every dialog component (and the extension SDK) into this panel.
+import { DIALOG_IDS } from '../../../dialogs/registry';
+import { dialogRef } from '../../../contexts/DialogContext';
+import {
+  queueOrgWindowGeneralRoute,
+  readOrgWelcomeDismissed,
+} from '../../TeamMode/onboarding/orgOnboardingStorage';
+import { openOrgProjectWalkFor } from '../../../store/listeners/orgProjectWalkListeners';
+import { useProjectOrg } from '../../../hooks/useProjectOrg';
+import { setWindowModeAtom } from '../../../store/atoms/windowMode';
+import { resolveOrgMessagingDestination } from '../../../../shared/orgMessagingRouting';
 import type { AccountOrganizationEntry, AccountOrganizationGroup } from './accountOrganizations';
 
-function openOrgWindow(orgId?: string) {
-  void window.electronAPI?.team?.openManagementWindow(orgId ? { orgId } : undefined);
+/**
+ * The organization's messages, which is all the organization window is now
+ * (NIM-2322). Administration is the dialog below, in whichever window the user
+ * already has open.
+ */
+function openOrgMessages(
+  orgId: string,
+  projectOrgId: string | null | undefined,
+  openProjectOrgMode: () => void,
+) {
+  if (resolveOrgMessagingDestination(projectOrgId, orgId) === 'project-mode') {
+    openProjectOrgMode();
+    return;
+  }
+  void window.electronAPI?.team?.openManagementWindow({ orgId });
+}
+
+function openOrgManagement(orgId: string) {
+  dialogRef.current?.open(DIALOG_IDS.ORG_MANAGEMENT, { orgId });
 }
 
 /** Tell the app the directory changed so the central listener re-runs team:list. */
@@ -26,9 +59,12 @@ function announceOrganizationsChanged() {
 }
 
 function RoleBadge({ role }: { role: string }) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('settings', { keyPrefix: 'account_org' });
   const normalized = (role || 'member').toLowerCase();
   const isPrivileged = normalized === 'owner' || normalized === 'admin';
+  const label = normalized === 'owner' || normalized === 'admin' || normalized === 'member'
+    ? t(`role_${normalized}`)
+    : normalized;
   return (
     <span
       className={`account-org-role-badge rounded-full px-1.5 py-0.5 text-[10px] font-semibold capitalize ${
@@ -38,15 +74,39 @@ function RoleBadge({ role }: { role: string }) {
       }`}
       data-testid="account-org-role-badge"
     >
-      {t(`organization_switcher.roles.${normalized}`, { defaultValue: normalized })}
+      {label}
     </span>
   );
 }
 
-function AccountOrgRow({ organization }: { organization: AccountOrganizationEntry }) {
-  const { t } = useTranslation(['settings', 'common', 'project']);
+function AccountOrgRow({
+  organization,
+  projectOrgId,
+  openProjectOrgMode,
+}: {
+  organization: AccountOrganizationEntry;
+  projectOrgId: string | null | undefined;
+  openProjectOrgMode: () => void;
+}) {
+  const { t } = useTranslation('settings', { keyPrefix: 'account_org' });
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleOpen = async () => {
+    setError(null);
+    // Manage now opens administration here rather than starting a window, but
+    // following the provider's invite link can activate a membership before the
+    // desktop sees it — there is no Accept button in that path. An undismissed
+    // org is still first-open onboarding, so the durable #general destination is
+    // queued for whenever they do open the organization's messages. A failed
+    // write only costs that landing, so it does not block administration.
+    if (!(await readOrgWelcomeDismissed(organization.orgId))) {
+      if (!(await queueOrgWindowGeneralRoute(organization.orgId))) {
+        setError(t('destination_save_failed'));
+      }
+    }
+    openOrgManagement(organization.orgId);
+  };
 
   const handleAccept = async () => {
     setAccepting(true);
@@ -54,9 +114,20 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
     try {
       const result = await window.electronAPI?.team?.acceptInvite(organization.orgId);
       if (result?.success) {
+        const queued = await queueOrgWindowGeneralRoute(organization.orgId);
+        if (!queued) {
+          throw new Error(
+            t('accepted_destination_save_failed'),
+          );
+        }
         announceOrganizationsChanged();
+        // Accepting used to end here, in a settings list. The new member still
+        // lands in the organization's messages on #general. If this project is
+        // already bound to that org, its mode owns the landing; otherwise the
+        // retargetable organization window does.
+        openOrgMessages(organization.orgId, projectOrgId, openProjectOrgMode);
       } else {
-        setError(result?.error || t('settings:organization_ui.accept_failed'));
+        setError(result?.error || t('accept_failed'));
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -81,17 +152,17 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
               className="account-org-pending-badge rounded-full bg-[color-mix(in_srgb,var(--nim-warning)_16%,transparent)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--nim-warning)]"
               data-testid="account-org-pending-badge"
             >
-              {t('settings:account_org.invite_pending')}
+              {t('invite_pending')}
             </span>
           )}
         </div>
         <div className="mt-0.5 truncate text-[11px] text-[var(--nim-text-muted)]">
           {organization.isPending
-            ? t('settings:account_org.accept_to_join')
+            ? t('accept_to_join')
             : organization.projectCount === undefined
-              ? t('settings:account_org.active_member')
-              : t('settings:account_org.project', { count: organization.projectCount })}
-          {organization.alsoReachableBy.length > 0 && ` · ${t('common:account_ui.also_signed_in', { emails: organization.alsoReachableBy.join(', ') })}`}
+              ? t('active_member')
+              : t('project', { count: organization.projectCount })}
+          {organization.alsoReachableBy.length > 0 && ` · ${t('also_reachable', { accounts: organization.alsoReachableBy.join(', ') })}`}
         </div>
         {error && <div className="mt-0.5 text-[11px] text-[var(--nim-error)]">{error}</div>}
       </div>
@@ -109,46 +180,103 @@ function AccountOrgRow({ organization }: { organization: AccountOrganizationEntr
             className="rounded border border-[var(--nim-primary)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-primary)] hover:bg-[var(--nim-bg-hover)] disabled:opacity-60"
             data-testid="account-org-accept-invite"
           >
-            {accepting ? t('common:account_ui.accepting') : t('settings:organization_ui.accept')}
+            {accepting ? t('accepting') : t('accept')}
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => openOrgWindow(organization.orgId)}
-            className="rounded border border-[var(--nim-border)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
-            data-testid="account-org-manage"
-          >
-            {t('project:tools.manage')}
-          </button>
+          <>
+            {/*
+              Membership used to be a dead end here: the list named every
+              organization and offered only administration, so a member with no
+              matching folder had nowhere to go and every org surface told them
+              they had no organization. Open is that missing step -- it runs the
+              existing project walk for this row's org, which finds a folder for
+              one of its projects and opens it.
+            */}
+            <button
+              type="button"
+              onClick={() => openOrgProjectWalkFor({
+                orgId: organization.orgId,
+                name: organization.name,
+              })}
+              className="rounded border border-[var(--nim-primary)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-primary)] hover:bg-[var(--nim-bg-hover)]"
+              data-testid="account-org-open-project"
+            >
+              {t('open')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { void handleOpen(); }}
+              className="rounded border border-[var(--nim-border)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
+              data-testid="account-org-manage"
+            >
+              {t('manage')}
+            </button>
+          </>
         )}
       </div>
     </article>
   );
 }
 
-export function AccountOrgList({ group }: { group: AccountOrganizationGroup }) {
-  const { t } = useTranslation(['settings']);
+/**
+ * `indented` marks the list as belonging to one login among several. With a
+ * single stored account there is nothing to attribute, so the caller turns the
+ * indent off and the organizations read as the app's organizations.
+ */
+export function AccountOrgList({
+  group,
+  indented = true,
+}: {
+  group: AccountOrganizationGroup;
+  indented?: boolean;
+}) {
+  const { t } = useTranslation('settings', { keyPrefix: 'account_org' });
+  const directory = useAtomValue(organizationDirectoryStateAtom);
+  const { org: projectOrg } = useProjectOrg();
+  const setWindowMode = useSetAtom(setWindowModeAtom);
+  // Organization creation is disabled while Teams is finished: with no
+  // memberships and no creation affordance there is nothing actionable here, so
+  // the section disappears entirely.
+  if (group.organizations.length === 0 && !organizationCreationEnabled) return null;
+
   return (
-    <div className="account-org-list mt-2 flex flex-col gap-1.5 pl-3" data-testid="account-org-list">
+    <div
+      className={`account-org-list mt-2 flex flex-col gap-1.5 ${indented ? 'pl-3' : ''}`}
+      data-testid="account-org-list"
+    >
       {group.organizations.map((organization) => (
-        <AccountOrgRow key={organization.orgId} organization={organization} />
+        <AccountOrgRow
+          key={organization.orgId}
+          organization={organization}
+          projectOrgId={projectOrg?.orgId}
+          openProjectOrgMode={() => setWindowMode('org')}
+        />
       ))}
-      {group.organizations.length === 0 && (
+      {group.organizations.length === 0 && directory.complete && (
         <p className="account-org-empty m-0 text-[11px] text-[var(--nim-text-muted)]" data-testid="account-org-empty">
-          {t('settings:account_org.no_organizations')}
+          {t('no_organizations')}
         </p>
       )}
-      <div className="account-org-new-row flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => openOrgWindow()}
-          className="account-org-new self-start rounded border border-dashed border-[var(--nim-border)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-          data-testid="account-org-new"
-        >
-          {t('settings:account_org.new_organization')}
-        </button>
-        <AlphaBadge size="xs" tooltip={t('settings:organization_ui.alpha_tooltip')} />
-      </div>
+      {!directory.complete && directory.status !== 'signed-out' && (
+        <p className="account-org-status m-0 text-[11px] text-[var(--nim-text-muted)]" role="status">
+          {directory.status === 'error' ? directory.error : t('loading')}
+        </p>
+      )}
+      {organizationCreationEnabled && (
+        <div className="account-org-new-row flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => dialogRef.current?.open(DIALOG_IDS.ORG_CREATION_WIZARD, {
+              onOrganizationCreated: () => announceOrganizationsChanged(),
+            })}
+            className="account-org-new self-start rounded border border-dashed border-[var(--nim-border)] bg-transparent px-2.5 py-1 text-[11px] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
+            data-testid="account-org-new"
+          >
+            {t('new_organization')}
+          </button>
+          <TeamBetaBadge size="xs" />
+        </div>
+      )}
     </div>
   );
 }

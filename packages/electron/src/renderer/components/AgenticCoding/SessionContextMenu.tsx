@@ -8,11 +8,11 @@
  * Internal actions (copy ID, export, share, set phase) are always available.
  */
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol, copyToClipboard } from '@nimbalyst/runtime';
 import { sessionShareAtom, shareKeysAtom, removeSessionShareAtom, buildShareUrl } from '../../store';
-import { setSessionPhaseAtom, SESSION_PHASE_COLUMNS } from '../../store/atoms/sessionKanban';
+import { setSessionPhaseAtom, SESSION_PHASE_COLUMNS, SESSION_PHASE_LABEL_KEYS } from '../../store/atoms/sessionKanban';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
 import { dialogRef, DIALOG_IDS } from '../../dialogs';
 import type { ShareDialogData } from '../../dialogs';
@@ -36,6 +36,7 @@ export interface SessionContextMenuProps {
   onRename?: () => void;
   onPinToggle?: (isPinned: boolean) => void;
   onBranch?: () => void;
+  onMoveUnder?: () => void;
   onRemoveFromWorkstream?: () => void;
   onArchive?: () => void;
   onUnarchive?: () => void;
@@ -59,12 +60,13 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
   onPinToggle,
   onBranch,
   onRemoveFromWorkstream,
+  onMoveUnder,
   onArchive,
   onUnarchive,
   onDelete,
   selectedCount = 1,
 }) => {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   const [showPhaseSubmenu, setShowPhaseSubmenu] = useState(false);
   const [submenuFlipped, setSubmenuFlipped] = useState(false);
   const submenuParentRef = useRef<HTMLDivElement>(null);
@@ -123,7 +125,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
       if (shareInfo) {
         const url = buildShareUrl(shareInfo.shareId, shareKeys.get(sessionId));
         copyToClipboard(url);
-        errorNotificationService.showInfo(t('agents:context.share_copied_title'), t('agents:context.share_copied_message'), { duration: 3000 });
+        errorNotificationService.showInfo(t('context.share_copied_title'), t('context.share_copied_message'), { duration: 3000 });
       }
     });
   }, [handleAction, shareInfo, shareKeys, sessionId, t]);
@@ -140,12 +142,12 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
       });
       if (result?.success) {
         removeShare(sessionId);
-        errorNotificationService.showInfo(t('agents:context.unshared_title'), t('agents:context.unshared_message'), { duration: 3000 });
+        errorNotificationService.showInfo(t('context.unshared_title'), t('context.unshared_message'), { duration: 3000 });
       } else if (result?.error) {
-        errorNotificationService.showError(t('agents:context.unshare_failed'), result.error);
+        errorNotificationService.showError(t('context.unshare_failed'), result.error);
       }
     } catch (error) {
-      errorNotificationService.showError(t('agents:context.unshare_failed'), error instanceof Error ? error.message : t('agents:context.unexpected'));
+      errorNotificationService.showError(t('context.unshare_failed'), error instanceof Error ? error.message : t('context.unexpected'));
     }
   }, [onClose, shareInfo, sessionId, removeShare, t]);
 
@@ -157,20 +159,20 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
       const result = await window.electronAPI.invoke('transcript:force-reparse-session', sessionId);
       if (result?.success) {
         errorNotificationService.showInfo(
-          t('agents:context.reprocessed_title'),
-          t('agents:context.reprocessed_message'),
+          t('context.reprocessed_title'),
+          t('context.reprocessed_message'),
           { duration: 3000 },
         );
       } else {
         errorNotificationService.showError(
-          t('agents:context.reprocess_failed'),
-          result?.error || t('agents:context.unexpected'),
+          t('context.reprocess_failed'),
+          result?.error || t('context.unexpected'),
         );
       }
     } catch (error) {
       errorNotificationService.showError(
-        t('agents:context.reprocess_failed'),
-        error instanceof Error ? error.message : t('agents:context.unexpected'),
+        t('context.reprocess_failed'),
+        error instanceof Error ? error.message : t('context.unexpected'),
       );
     }
   }, [onClose, sessionId, t]);
@@ -189,13 +191,13 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
         {onRename && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, onRename)}>
             <MaterialSymbol icon="edit" size={14} />
-            {t('agents:context.rename')}
+            {t('context.rename')}
           </button>
         )}
         {onPinToggle && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, () => onPinToggle(!isPinned))}>
             <MaterialSymbol icon="push_pin" size={14} />
-            {isPinned ? t('agents:context.unpin') : t('agents:context.pin')}
+            {isPinned ? t('context.unpin') : t('context.pin')}
           </button>
         )}
         {/* Set Phase submenu */}
@@ -218,9 +220,13 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             onClick={(e) => { e.stopPropagation(); setShowPhaseSubmenu(!showPhaseSubmenu); }}
           >
             <MaterialSymbol icon="view_kanban" size={14} />
-            <span className="flex-1">{t('agents:context.set_phase')}</span>
+            <span className="flex-1">{t('context.set_phase')}</span>
             {phase && (
-              <span className="text-[10px] text-[var(--nim-text-faint)] ml-1">{t(`agents:status.phase_${phase}`, { defaultValue: phase })}</span>
+              <span className="text-[10px] text-[var(--nim-text-faint)] ml-1">
+                {SESSION_PHASE_COLUMNS.find((col) => col.value === phase)
+                  ? t(SESSION_PHASE_LABEL_KEYS[phase as keyof typeof SESSION_PHASE_LABEL_KEYS])
+                  : phase}
+              </span>
             )}
             <MaterialSymbol icon="chevron_right" size={12} />
           </button>
@@ -237,7 +243,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
                   }}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.color }} />
-                  {t(`agents:status.phase_${col.value}`, { defaultValue: col.label })}
+                  {t(SESSION_PHASE_LABEL_KEYS[col.value])}
                   {phase === col.value && <MaterialSymbol icon="check" size={14} className="ml-auto" />}
                 </button>
               ))}
@@ -253,7 +259,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
                     }}
                   >
                     <MaterialSymbol icon="close" size={14} />
-                    {t('agents:context.remove_board')}
+                    {t('context.remove_board')}
                   </button>
                 </>
               )}
@@ -262,31 +268,33 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
         </div>
 
         {/* Group 2: Branch / workstream actions */}
-        {(onBranch || (onRemoveFromWorkstream && parentSessionId && !isWorktreeSession)) && (
+        {(onBranch || (onRemoveFromWorkstream && parentSessionId)) && (
           <div className="h-px bg-[var(--nim-border)] my-1" />
         )}
         {onBranch && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, onBranch)}>
             <MaterialSymbol icon="fork_right" size={14} />
-            {t('agents:context.branch')}
+            {t('context.branch')}
           </button>
         )}
-        {onRemoveFromWorkstream && parentSessionId && !isWorktreeSession && (
+        {onRemoveFromWorkstream && parentSessionId && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, onRemoveFromWorkstream)}>
             <MaterialSymbol icon="drive_file_move_rtl" size={14} />
-            {t('agents:context.remove_workstream')}
+            {t('context.move_to_top_level')}
           </button>
         )}
+
+        {onMoveUnder && <button className={menuItemClass} onClick={(e) => handleAction(e, onMoveUnder)}><MaterialSymbol icon="drive_file_move" size={14} />{t('context.move_under')}</button>}
 
         {/* Group 3: Copy to clipboard */}
         <div className="h-px bg-[var(--nim-border)] my-1" />
         <button className={menuItemClass} onClick={handleCopyTranscript}>
           <MaterialSymbol icon="assignment" size={14} />
-          {t('agents:context.copy_transcript')}
+          {t('context.copy_transcript')}
         </button>
         <button className={menuItemClass} onClick={handleCopySessionId}>
           <MaterialSymbol icon="content_copy" size={14} />
-          {t('agents:context.copy_session_id')}
+          {t('context.copy_session_id')}
         </button>
 
         {/* Group 4: Share / export */}
@@ -295,22 +303,22 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
           <>
             <button className={menuItemClass} onClick={handleCopyShareLink}>
               <MaterialSymbol icon="content_copy" size={14} />
-              {t('agents:context.copy_share_link')}
+              {t('context.copy_share_link')}
             </button>
             <button className={menuItemClass} onClick={handleUnshare}>
               <MaterialSymbol icon="link_off" size={14} />
-              {t('agents:context.unshare')}
+              {t('context.unshare')}
             </button>
           </>
         ) : (
           <button className={menuItemClass} onClick={handleShareLink}>
             <MaterialSymbol icon="link" size={14} />
-            {t('agents:context.share_link')}
+            {t('context.share_link')}
           </button>
         )}
         <button className={menuItemClass} onClick={handleExportHtml}>
           <MaterialSymbol icon="download" size={14} />
-          {t('agents:context.export_html')}
+          {t('context.export_html')}
         </button>
 
         {isDevMode && (
@@ -318,7 +326,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             <div className="h-px bg-[var(--nim-border)] my-1" />
             <button className={menuItemClass} onClick={handleForceReparseSession}>
               <MaterialSymbol icon="sync" size={14} />
-              {t('agents:context.reprocess')}
+              {t('context.reprocess')}
             </button>
           </>
         )}
@@ -338,12 +346,16 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             {isArchived ? (
               <>
                 <MaterialSymbol icon="unarchive" size={14} />
-                {selectedCount > 1 ? t('agents:context.unarchive_sessions', { count: selectedCount }) : t('agents:context.unarchive_item', { type: t(`agents:context.${isWorkstream ? 'workstream' : isWorktreeSession ? 'worktree' : 'session'}`) })}
+                {selectedCount > 1
+                  ? t('context.unarchive_sessions', { count: selectedCount })
+                  : t('context.unarchive_item', { type: t(isWorkstream ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
               </>
             ) : (
               <>
                 <MaterialSymbol icon="archive" size={14} />
-                {selectedCount > 1 ? t('agents:context.archive_sessions', { count: selectedCount }) : t('agents:context.archive_item', { type: t(`agents:context.${isWorkstream ? 'workstream' : isWorktreeSession ? 'worktree' : 'session'}`) })}
+                {selectedCount > 1
+                  ? t('context.archive_sessions', { count: selectedCount })
+                  : t('context.archive_item', { type: t(isWorkstream ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
               </>
             )}
           </button>
@@ -354,7 +366,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             onClick={(e) => handleAction(e, onDelete)}
           >
             <MaterialSymbol icon="delete" size={14} />
-            {t('agents:context.delete')}
+            {t('context.delete')}
           </button>
         )}
       </div>

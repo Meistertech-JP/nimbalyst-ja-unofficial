@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 // Inject api-service-error widget styles once. Color treatment matches
 // the rate-limit widget's "warning" variant (not "blocked") because these
@@ -153,15 +153,15 @@ interface ApiServiceErrorWidgetProps {
  * widget is intended to neutralise.
  */
 export const ApiServiceErrorWidget: React.FC<ApiServiceErrorWidgetProps> = ({ content }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('errors');
   useEffect(() => { injectApiServiceErrorStyles(); }, []);
   const [copied, setCopied] = useState(false);
   const info = parseApiServiceError(content);
 
   const isOverloaded = info.errorType === 'overloaded_error';
   const title = isOverloaded
-    ? t('errors:api_service.overloaded_title', 'The Claude API is temporarily overloaded')
-    : t('errors:api_service.error_title', 'The Claude API returned a temporary error');
+    ? t('api_service.overloaded_title')
+    : t('api_service.error_title');
 
   const copyRequestId = async () => {
     if (!info.requestId) return;
@@ -196,13 +196,13 @@ export const ApiServiceErrorWidget: React.FC<ApiServiceErrorWidgetProps> = ({ co
 
       <div className="text-[var(--nim-text-muted)] text-[0.85rem] leading-relaxed">
         {isOverloaded
-          ? t('errors:api_service.overloaded_detail', 'This is an upstream capacity error on the API side, not a bug in Nimbalyst. The API will accept new requests once load eases. Retrying in a minute usually works; switching to a less-loaded model also helps.')
-          : t('errors:api_service.error_detail', 'This is a transient upstream error on the API side, not a bug in Nimbalyst. Most cases clear within a few minutes.')}
+          ? t('api_service.overloaded_detail')
+          : t('api_service.error_detail')}
       </div>
 
       <ul className="text-[var(--nim-text-muted)] text-[0.8rem] leading-relaxed list-disc pl-5 m-0">
         <li>
-          {t('errors:api_service.status_before', 'Check the status page at')}{' '}
+          {t('api_service.status_before')}{' '}
           <a
             href="https://status.claude.com"
             target="_blank"
@@ -211,27 +211,27 @@ export const ApiServiceErrorWidget: React.FC<ApiServiceErrorWidgetProps> = ({ co
           >
             status.claude.com
           </a>{' '}
-          {t('errors:api_service.status_after', 'for an active incident on your model.')}
+          {t('api_service.status_after')}
         </li>
-        <li>{t('errors:api_service.retry_detail', 'Retry the request. Transient {{errorType}} responses usually clear on the next attempt.', { errorType: info.errorType || 'api_error' })}</li>
-        <li>{t('errors:api_service.switch_model', 'If your model is listed as degraded, try a different one from Settings until the incident resolves.')}</li>
+        <li>{t('api_service.retry_detail', { errorType: info.errorType || 'api_error' })}</li>
+        <li>{t('api_service.switch_model')}</li>
         {info.requestId && (
           <li>
-            {t('errors:api_service.support', 'If the error keeps firing for more than a few minutes on the same prompt and model, include the request id when contacting support:')}{' '}
+            {t('api_service.support')}{' '}
             <code className="req-id">{info.requestId}</code>{' '}
             <button
               type="button"
               onClick={copyRequestId}
               className="ml-1 text-[0.7rem] text-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)] underline-offset-2 hover:underline"
             >
-              {copied ? t('errors:api_service.copied', 'copied') : t('errors:api_service.copy', 'copy')}
+              {copied ? t('api_service.copied') : t('api_service.copy')}
             </button>
           </li>
         )}
       </ul>
 
       <details>
-        <summary>{t('errors:api_service.raw_payload', 'Show raw error payload')}</summary>
+        <summary>{t('api_service.raw_payload')}</summary>
         <pre>{info.raw}</pre>
       </details>
     </div>

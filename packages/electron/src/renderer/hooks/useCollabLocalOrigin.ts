@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { rendererI18n } from '../i18n';
+import type { TFunction } from 'i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { requestConfirmation } from '../dialogs/requestConfirmation';
 import { errorNotificationService } from '../services/ErrorNotificationService';
-import { getTeamSyncProvider } from '../store/atoms/collabDocuments';
+import { DocumentModelRegistry } from '../services/document-model/DocumentModelRegistry';
+import { getTeamSyncProviderForScopeKey } from '../store/atoms/collabDocuments';
+import { teamMemberDisplayName } from '../utils/teamMemberDisplayName';
 
 export type CollabLocalOriginBinding = NonNullable<
   Awaited<ReturnType<typeof window.electronAPI.documentSync.getLocalOrigin>>['binding']
@@ -10,6 +14,11 @@ export type CollabLocalOriginBinding = NonNullable<
 type ReuploadResult = Awaited<
   ReturnType<typeof window.electronAPI.documentSync.reuploadLocalOrigin>
 >;
+
+type PullResult = Awaited<
+  ReturnType<typeof window.electronAPI.documentSync.pullLocalOrigin>
+>;
+type CommonTranslator = TFunction<'common'>;
 
 type RendererReuploadResult =
   | { status: 'uploaded'; binding: CollabLocalOriginBinding | null }
@@ -24,30 +33,30 @@ async function hashText(value: string): Promise<string> {
     .join('');
 }
 
-function formatRelativeTime(ms: number): string {
+function formatRelativeTime(ms: number, t: CommonTranslator): string {
   const diff = Date.now() - ms;
-  if (diff < 0) return rendererI18n.t('common:collab_local_origin.just_now');
+  if (diff < 0) return t('collab_local_origin.just_now');
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  if (minutes < 1) return rendererI18n.t('common:collab_local_origin.just_now');
-  if (minutes < 60) return rendererI18n.t('common:collab_local_origin.minutes_ago', { count: minutes });
-  if (hours < 24) return rendererI18n.t('common:collab_local_origin.hours_ago', { count: hours });
-  if (days < 7) return rendererI18n.t('common:collab_local_origin.days_ago', { count: days });
-  return new Date(ms).toLocaleDateString(rendererI18n.resolvedLanguage ?? rendererI18n.language);
+  if (minutes < 1) return t('collab_local_origin.just_now');
+  if (minutes < 60) return t('collab_local_origin.minutes_ago', { count: minutes });
+  if (hours < 24) return t('collab_local_origin.hours_ago', { count: hours });
+  if (days < 7) return t('collab_local_origin.days_ago', { count: days });
+  return new Date(ms).toLocaleDateString();
 }
 
 /**
- * Resolve a room-authed userId to a human label. The team member list carries
- * email (no separate display name), so email is the best "who" we have; falls
- * back to null when the editor isn't in the roster (e.g. it was the local user
- * on another device, or a since-removed member).
+ * Resolve a room-authed userId to a human label. Falls back to null when the
+ * editor isn't in the roster (e.g. it was the local user on another device,
+ * or a since-removed member).
  */
 function resolveEditorLabel(workspacePath: string, userId: string | null | undefined): string | null {
   if (!userId) return null;
   try {
-    const members = getTeamSyncProvider(workspacePath)?.getTeamState()?.members ?? [];
-    return members.find((m) => m.userId === userId)?.email || null;
+    const members = getTeamSyncProviderForScopeKey(workspacePath)?.getTeamState()?.members ?? [];
+    const member = members.find((candidate) => candidate.userId === userId);
+    return member ? teamMemberDisplayName(member) : null;
   } catch {
     return null;
   }
@@ -59,34 +68,68 @@ function resolveEditorLabel(workspacePath: string, userId: string | null | undef
  * DocumentRoom's last *content* update (NIM-953 / NIM-955), delivered on the
  * conflict result. Returns null when neither who nor when is known.
  */
-function describeSharedChange(result: ReuploadResult, workspacePath: string): string | null {
+function describeSharedChange(
+  result: { lastEditedAt?: number | null; lastEditorId?: string | null },
+  workspacePath: string,
+  t: CommonTranslator,
+): string | null {
   const at = result.lastEditedAt ?? null;
   const who = resolveEditorLabel(workspacePath, result.lastEditorId);
-  const when = at ? `${formatRelativeTime(at)} (${new Date(at).toLocaleString(rendererI18n.resolvedLanguage ?? rendererI18n.language)})` : null;
-  if (who && when) return rendererI18n.t('common:collab_local_origin.shared_last_edited_by_when', { who, when });
-  if (who) return rendererI18n.t('common:collab_local_origin.shared_last_edited_by', { who });
-  if (when) return rendererI18n.t('common:collab_local_origin.shared_last_edited_when', { when });
+  const when = at ? `${formatRelativeTime(at, t)} (${new Date(at).toLocaleString()})` : null;
+  if (who && when) return t('collab_local_origin.shared_last_edited_by_when', { who, when });
+  if (who) return t('collab_local_origin.shared_last_edited_by', { who });
+  if (when) return t('collab_local_origin.shared_last_edited_when', { when });
   return null;
 }
 
-function buildConflictPrompt(result: ReuploadResult, workspacePath: string): string {
+function buildConflictPrompt(result: ReuploadResult, workspacePath: string, t: CommonTranslator): string {
   let kind: string;
   switch (result.conflictKind) {
     case 'missing-baseline':
-      kind = rendererI18n.t('common:collab_local_origin.conflict_missing_baseline');
+      kind = t('collab_local_origin.conflict_missing_baseline');
       break;
     case 'shared-ahead':
-      kind = rendererI18n.t('common:collab_local_origin.conflict_shared_ahead');
+      kind = t('collab_local_origin.conflict_shared_ahead');
       break;
     case 'diverged':
-      kind = rendererI18n.t('common:collab_local_origin.conflict_diverged');
+      kind = t('collab_local_origin.conflict_diverged');
       break;
     default:
       kind = '';
       break;
   }
-  const context = describeSharedChange(result, workspacePath);
-  const action = rendererI18n.t('common:collab_local_origin.conflict_action');
+  const context = describeSharedChange(result, workspacePath, t);
+  const action = t('collab_local_origin.conflict_action');
+  return [context, kind, action].filter(Boolean).join(' ');
+}
+
+function confirmOverwriteShared(message: string, t: CommonTranslator): Promise<boolean> {
+  return requestConfirmation({
+    title: t('collab_local_origin.overwrite_shared_title'),
+    message,
+    confirmLabel: t('collab_local_origin.overwrite_action'),
+    destructive: true,
+  });
+}
+
+function buildPullConflictPrompt(result: PullResult, workspacePath: string, t: CommonTranslator): string {
+  let kind: string;
+  switch (result.conflictKind) {
+    case 'missing-baseline':
+      kind = t('collab_local_origin.pull_conflict_missing_baseline');
+      break;
+    case 'local-ahead':
+      kind = t('collab_local_origin.pull_conflict_local_ahead');
+      break;
+    case 'diverged':
+      kind = t('collab_local_origin.conflict_diverged');
+      break;
+    default:
+      kind = '';
+      break;
+  }
+  const context = describeSharedChange(result, workspacePath, t);
+  const action = t('collab_local_origin.pull_conflict_action');
   return [context, kind, action].filter(Boolean).join(' ');
 }
 
@@ -102,20 +145,21 @@ export async function tryRendererHeadlessReupload(
   workspacePath: string,
   documentId: string,
   result: ReuploadResult,
+  t: CommonTranslator,
   forceOverwriteShared = false,
 ): Promise<RendererReuploadResult> {
   const resolvedPath = result.binding?.resolvedPath;
   const documentType = result.binding?.documentType;
   if (!resolvedPath || !documentType || !window.electronAPI?.readFileContent) {
-    return { status: 'error', message: result.message || rendererI18n.t('common:collab_local_origin.linked_source_unavailable') };
+    return { status: 'error', message: result.message || t('collab_local_origin.linked_source_unavailable') };
   }
   try {
     const fileRes = await window.electronAPI.readFileContent(resolvedPath);
     if (!fileRes?.success) {
-      return { status: 'error', message: fileRes?.error || rendererI18n.t('common:collab_local_origin.read_source_failed') };
+      return { status: 'error', message: fileRes?.error || t('collab_local_origin.read_source_failed') };
     }
     if (typeof fileRes.content !== 'string') {
-      return { status: 'error', message: rendererI18n.t('common:collab_local_origin.source_not_text') };
+      return { status: 'error', message: t('collab_local_origin.source_not_text') };
     }
 
     const sourceHash = await hashText(fileRes.content);
@@ -131,7 +175,7 @@ export async function tryRendererHeadlessReupload(
       console.warn('[useCollabLocalOrigin] renderer-headless shared export failed:', sharedRead.error);
       return {
         status: 'error',
-        message: sharedRead.error || rendererI18n.t('common:collab_local_origin.read_shared_failed'),
+        message: sharedRead.error || t('collab_local_origin.read_shared_failed'),
       };
     }
 
@@ -170,7 +214,7 @@ export async function tryRendererHeadlessReupload(
       console.warn('[useCollabLocalOrigin] renderer-headless reupload failed:', headless.error);
       return {
         status: 'error',
-        message: headless.error || rendererI18n.t('common:collab_local_origin.write_shared_failed'),
+        message: headless.error || t('collab_local_origin.write_shared_failed'),
       };
     }
 
@@ -201,6 +245,7 @@ export function useCollabLocalOrigin(
   documentId: string | null | undefined,
   documentType?: string,
 ) {
+  const { t } = useTranslation('common');
   const [binding, setBinding] = useState<CollabLocalOriginBinding | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -245,9 +290,9 @@ export function useCollabLocalOrigin(
     }
 
     const result = await window.electronAPI.openFileDialog({
-      title: rendererI18n.t('common:collab_local_origin.relink_title'),
+      title: t('collab_local_origin.relink_title'),
       defaultPath: binding?.resolvedPath ?? workspacePath,
-      buttonLabel: rendererI18n.t('common:collab_local_origin.relink_button'),
+      buttonLabel: t('collab_local_origin.relink_button'),
     });
     const selectedPath = result?.filePaths?.[0];
     if (result?.canceled || !selectedPath) {
@@ -264,29 +309,35 @@ export function useCollabLocalOrigin(
       });
       if (!relinkResult.success) {
         errorNotificationService.showError(
-          rendererI18n.t('common:collab_local_origin.relink_failed'),
-          relinkResult.error || rendererI18n.t('common:collab_local_origin.relink_failed_message'),
+          t('collab_local_origin.relink_failed'),
+          relinkResult.error || t('collab_local_origin.relink_failed_message'),
         );
         return false;
       }
 
       setBinding(relinkResult.binding ?? null);
       errorNotificationService.showInfo(
-        rendererI18n.t('common:collab_local_origin.linked_title'),
-        relinkResult.binding?.relativePath || rendererI18n.t('common:collab_local_origin.linked_message'),
+        t('collab_local_origin.linked_title'),
+        relinkResult.binding?.relativePath || t('collab_local_origin.linked_message'),
         { duration: 4000 },
       );
       return true;
     } finally {
       setBusyAction(null);
     }
-  }, [binding?.resolvedPath, documentId, documentType, workspacePath]);
+  }, [binding?.resolvedPath, documentId, documentType, t, workspacePath]);
 
   const clearLocalSource = useCallback(async () => {
     if (!workspacePath || !documentId || !window.electronAPI?.documentSync?.clearLocalOrigin) {
       return false;
     }
-    if (!window.confirm(rendererI18n.t('common:collab_local_origin.clear_confirm'))) {
+    const confirmed = await requestConfirmation({
+      title: t('collab_local_origin.clear_title'),
+      message: t('collab_local_origin.clear_confirm'),
+      confirmLabel: t('clear'),
+      destructive: true,
+    });
+    if (!confirmed) {
       return false;
     }
 
@@ -295,22 +346,22 @@ export function useCollabLocalOrigin(
       const result = await window.electronAPI.documentSync.clearLocalOrigin(workspacePath, documentId);
       if (!result.success) {
         errorNotificationService.showError(
-          rendererI18n.t('common:collab_local_origin.clear_failed'),
-          result.error || rendererI18n.t('common:collab_local_origin.clear_failed_message'),
+          t('collab_local_origin.clear_failed'),
+          result.error || t('collab_local_origin.clear_failed_message'),
         );
         return false;
       }
       setBinding(null);
       errorNotificationService.showInfo(
-        rendererI18n.t('common:collab_local_origin.cleared_title'),
-        rendererI18n.t('common:collab_local_origin.cleared_message'),
+        t('collab_local_origin.cleared_title'),
+        t('collab_local_origin.cleared_message'),
         { duration: 3000 },
       );
       return true;
     } finally {
       setBusyAction(null);
     }
-  }, [documentId, workspacePath]);
+  }, [documentId, t, workspacePath]);
 
   const reuploadFromLocalSource = useCallback(async () => {
     if (!workspacePath || !documentId || !window.electronAPI?.documentSync?.reuploadLocalOrigin) {
@@ -325,7 +376,7 @@ export function useCollabLocalOrigin(
       });
 
       if (result.status === 'conflict') {
-        const confirmed = window.confirm(buildConflictPrompt(result, workspacePath));
+        const confirmed = await confirmOverwriteShared(buildConflictPrompt(result, workspacePath, t), t);
         if (!confirmed) return false;
         result = await window.electronAPI.documentSync.reuploadLocalOrigin({
           workspacePath,
@@ -339,17 +390,17 @@ export function useCollabLocalOrigin(
       }
 
       if (result.status === 'unsupported' && documentId) {
-        let rendererResult = await tryRendererHeadlessReupload(workspacePath, documentId, result);
+        let rendererResult = await tryRendererHeadlessReupload(workspacePath, documentId, result, t);
         if (rendererResult.status === 'conflict') {
-          const confirmed = window.confirm(buildConflictPrompt(rendererResult.result, workspacePath));
+          const confirmed = await confirmOverwriteShared(buildConflictPrompt(rendererResult.result, workspacePath, t), t);
           if (!confirmed) return false;
-          rendererResult = await tryRendererHeadlessReupload(workspacePath, documentId, result, true);
+          rendererResult = await tryRendererHeadlessReupload(workspacePath, documentId, result, t, true);
         }
         if (rendererResult.status === 'uploaded') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.updated_title'),
-            rendererI18n.t('common:collab_local_origin.updated_message'),
+            t('collab_local_origin.updated_title'),
+            t('collab_local_origin.updated_message'),
             { duration: 5000 },
           );
           return true;
@@ -357,8 +408,8 @@ export function useCollabLocalOrigin(
         if (rendererResult.status === 'noop') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
-            rendererI18n.t('common:collab_local_origin.nothing_to_upload_baseline'),
+            t('collab_local_origin.nothing_to_upload'),
+            t('collab_local_origin.nothing_to_upload_baseline'),
             { duration: 3500 },
           );
           return true;
@@ -375,19 +426,21 @@ export function useCollabLocalOrigin(
       switch (result.status) {
         case 'uploaded': {
           const migrationSummary = result.migration && (result.migration.okCount > 0 || result.migration.failedCount > 0)
-            ? ` ${rendererI18n.t('common:collab_local_origin.attachments_uploaded', { count: result.migration.okCount })}${result.migration.failedCount > 0 ? `; ${rendererI18n.t('common:collab_local_origin.attachments_failed', { count: result.migration.failedCount })}.` : '.'}`
+            ? ` ${result.migration.okCount > 0
+              ? t(result.migration.okCount === 1 ? 'collab_local_origin.attachments_uploaded_one' : 'collab_local_origin.attachments_uploaded_other', { count: result.migration.okCount })
+              : ''}${result.migration.failedCount > 0 ? `; ${t('collab_local_origin.attachments_failed', { count: result.migration.failedCount })}` : ''}`
             : '';
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.updated_title'),
-            `${result.message || rendererI18n.t('common:collab_local_origin.uploaded_message')}${migrationSummary}`,
+            t('collab_local_origin.updated_title'),
+            `${result.message || t('collab_local_origin.uploaded_message')}${migrationSummary}`,
             { duration: 5000 },
           );
           return true;
         }
         case 'noop':
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
-            result.message || rendererI18n.t('common:collab_local_origin.nothing_to_upload_file'),
+            t('collab_local_origin.nothing_to_upload'),
+            result.message || t('collab_local_origin.nothing_to_upload_file'),
             { duration: 3500 },
           );
           return true;
@@ -396,15 +449,15 @@ export function useCollabLocalOrigin(
         case 'error':
         default:
           errorNotificationService.showError(
-            rendererI18n.t('common:collab_local_origin.reupload_failed'),
-            result.message || rendererI18n.t('common:collab_local_origin.reupload_failed_message'),
+            t('collab_local_origin.reupload_failed'),
+            result.message || t('collab_local_origin.reupload_failed_message'),
           );
           return false;
       }
     } finally {
       setBusyAction(null);
     }
-  }, [documentId, workspacePath]);
+  }, [documentId, t, workspacePath]);
 
   return useMemo(() => ({
     binding,
@@ -433,6 +486,7 @@ export function useLocalFileSharedDocLink(
   workspacePath: string,
   sourceFilePath: string | null | undefined,
 ) {
+  const { t } = useTranslation('common');
   const [binding, setBinding] = useState<CollabLocalOriginBinding | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -460,6 +514,98 @@ export function useLocalFileSharedDocLink(
     void refresh();
   }, [refresh]);
 
+  const pullFromSharedDoc = useCallback(async () => {
+    if (
+      !workspacePath
+      || !sourceFilePath
+      || !binding?.documentId
+      || !window.electronAPI?.documentSync?.pullLocalOrigin
+    ) {
+      return false;
+    }
+
+    setBusyAction('pull');
+    try {
+      const documentModel = DocumentModelRegistry.get(sourceFilePath);
+      if (documentModel?.isDirty()) {
+        await documentModel.flushDirtyEditors();
+        if (documentModel.isDirty()) {
+          errorNotificationService.showError(
+            t('collab_local_origin.pull_failed'),
+            t('collab_local_origin.pull_save_first'),
+          );
+          return false;
+        }
+      }
+
+      let result = await window.electronAPI.documentSync.pullLocalOrigin({
+        workspacePath,
+        documentId: binding.documentId,
+      });
+
+      while (result.status === 'conflict') {
+        const confirmed = await requestConfirmation({
+          title: t('collab_local_origin.overwrite_local_title'),
+          message: buildPullConflictPrompt(result, workspacePath, t),
+          confirmLabel: t('collab_local_origin.overwrite_action'),
+          destructive: true,
+        });
+        if (!confirmed) return false;
+        if (!result.conflictToken) {
+          errorNotificationService.showError(
+            t('collab_local_origin.pull_failed'),
+            t('collab_local_origin.pull_overwrite_expired'),
+          );
+          return false;
+        }
+        result = await window.electronAPI.documentSync.pullLocalOrigin({
+          workspacePath,
+          documentId: binding.documentId,
+          forceOverwriteLocal: true,
+          conflictToken: result.conflictToken,
+        });
+      }
+
+      if (result.success && result.binding !== undefined) {
+        setBinding(result.binding ?? null);
+      }
+
+      switch (result.status) {
+        case 'pulled':
+          errorNotificationService.showInfo(
+            t('collab_local_origin.pulled_title'),
+            t('collab_local_origin.pulled_message', { file: binding.sourceBasename }),
+            { duration: 5000 },
+          );
+          return true;
+        case 'noop':
+          errorNotificationService.showInfo(
+            t('collab_local_origin.already_up_to_date'),
+            result.message || 'The local file already matches the shared document.',
+            { duration: 3500 },
+          );
+          return true;
+        case 'missing-source':
+        case 'unsupported':
+        case 'error':
+        default:
+          errorNotificationService.showError(
+            t('collab_local_origin.pull_failed'),
+            result.message || t('collab_local_origin.pull_failed_message'),
+          );
+          return false;
+      }
+    } catch (error) {
+      errorNotificationService.showError(
+        t('collab_local_origin.pull_failed'),
+        error instanceof Error ? error.message : String(error),
+      );
+      return false;
+    } finally {
+      setBusyAction(null);
+    }
+  }, [binding?.documentId, binding?.sourceBasename, sourceFilePath, t, workspacePath]);
+
   const reuploadToSharedDoc = useCallback(async () => {
     if (!workspacePath || !binding?.documentId || !window.electronAPI?.documentSync?.reuploadLocalOrigin) {
       return false;
@@ -473,7 +619,7 @@ export function useLocalFileSharedDocLink(
       });
 
       if (result.status === 'conflict') {
-        const confirmed = window.confirm(buildConflictPrompt(result, workspacePath));
+        const confirmed = await confirmOverwriteShared(buildConflictPrompt(result, workspacePath, t), t);
         if (!confirmed) return false;
         result = await window.electronAPI.documentSync.reuploadLocalOrigin({
           workspacePath,
@@ -487,17 +633,17 @@ export function useLocalFileSharedDocLink(
       }
 
       if (result.status === 'unsupported') {
-        let rendererResult = await tryRendererHeadlessReupload(workspacePath, binding.documentId, result);
+        let rendererResult = await tryRendererHeadlessReupload(workspacePath, binding.documentId, result, t);
         if (rendererResult.status === 'conflict') {
-          const confirmed = window.confirm(buildConflictPrompt(rendererResult.result, workspacePath));
+          const confirmed = await confirmOverwriteShared(buildConflictPrompt(rendererResult.result, workspacePath, t), t);
           if (!confirmed) return false;
-          rendererResult = await tryRendererHeadlessReupload(workspacePath, binding.documentId, result, true);
+          rendererResult = await tryRendererHeadlessReupload(workspacePath, binding.documentId, result, t, true);
         }
         if (rendererResult.status === 'uploaded') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.updated_title'),
-            rendererI18n.t('common:collab_local_origin.updated_message'),
+            t('collab_local_origin.updated_title'),
+            t('collab_local_origin.updated_message'),
             { duration: 5000 },
           );
           return true;
@@ -505,8 +651,8 @@ export function useLocalFileSharedDocLink(
         if (rendererResult.status === 'noop') {
           setBinding(rendererResult.binding ?? null);
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
-            rendererI18n.t('common:collab_local_origin.nothing_to_upload_baseline'),
+            t('collab_local_origin.nothing_to_upload'),
+            t('collab_local_origin.nothing_to_upload_baseline'),
             { duration: 3500 },
           );
           return true;
@@ -523,19 +669,21 @@ export function useLocalFileSharedDocLink(
       switch (result.status) {
         case 'uploaded': {
           const migrationSummary = result.migration && (result.migration.okCount > 0 || result.migration.failedCount > 0)
-            ? ` ${rendererI18n.t('common:collab_local_origin.attachments_uploaded', { count: result.migration.okCount })}${result.migration.failedCount > 0 ? `; ${rendererI18n.t('common:collab_local_origin.attachments_failed', { count: result.migration.failedCount })}.` : '.'}`
+            ? ` ${result.migration.okCount > 0
+              ? t(result.migration.okCount === 1 ? 'collab_local_origin.attachments_uploaded_one' : 'collab_local_origin.attachments_uploaded_other', { count: result.migration.okCount })
+              : ''}${result.migration.failedCount > 0 ? `; ${t('collab_local_origin.attachments_failed', { count: result.migration.failedCount })}` : ''}`
             : '';
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.updated_title'),
-            `${result.message || rendererI18n.t('common:collab_local_origin.uploaded_message')}${migrationSummary}`,
+            t('collab_local_origin.updated_title'),
+            `${result.message || t('collab_local_origin.uploaded_message')}${migrationSummary}`,
             { duration: 5000 },
           );
           return true;
         }
         case 'noop':
           errorNotificationService.showInfo(
-            rendererI18n.t('common:collab_local_origin.nothing_to_upload'),
-            result.message || rendererI18n.t('common:collab_local_origin.nothing_to_upload_file'),
+            t('collab_local_origin.nothing_to_upload'),
+            result.message || t('collab_local_origin.nothing_to_upload_file'),
             { duration: 3500 },
           );
           return true;
@@ -544,27 +692,29 @@ export function useLocalFileSharedDocLink(
         case 'error':
         default:
           errorNotificationService.showError(
-            rendererI18n.t('common:collab_local_origin.reupload_failed'),
-            result.message || rendererI18n.t('common:collab_local_origin.reupload_failed_message'),
+            t('collab_local_origin.reupload_failed'),
+            result.message || t('collab_local_origin.reupload_failed_message'),
           );
           return false;
       }
     } finally {
       setBusyAction(null);
     }
-  }, [binding?.documentId, workspacePath]);
+  }, [binding?.documentId, t, workspacePath]);
 
   return useMemo(() => ({
     binding,
     busyAction,
     loading,
     refresh,
+    pullFromSharedDoc,
     reuploadToSharedDoc,
   }), [
     binding,
     busyAction,
     loading,
     refresh,
+    pullFromSharedDoc,
     reuploadToSharedDoc,
   ]);
 }

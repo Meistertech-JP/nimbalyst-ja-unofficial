@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useSessionsForFile, type SessionEditEntry } from '../hooks/useSessionsForFile';
 
 interface ActiveFile {
@@ -12,18 +13,18 @@ interface SessionsForFilePaneProps {
   onCollapse: () => void;
 }
 
-function formatRelative(ts: number): string {
+function formatRelative(ts: number, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (!ts) return '';
   const diffMs = Date.now() - ts;
   const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1) return t('sessions:relative_time.compact_just_now');
+  if (diffMins < 60) return t('sessions:relative_time.compact_minutes', { count: diffMins });
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return t('sessions:relative_time.compact_hours', { count: diffHours });
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
+  if (diffDays < 7) return t('sessions:relative_time.compact_days', { count: diffDays });
+  if (diffDays < 30) return t('sessions:relative_time.compact_weeks', { count: Math.floor(diffDays / 7) });
+  return t('sessions:relative_time.compact_months', { count: Math.floor(diffDays / 30) });
 }
 
 function providerChipClass(provider: string): string {
@@ -42,22 +43,23 @@ function openSession(sessionId: string, workspacePath: string) {
 }
 
 function SessionRow({ entry, workspacePath }: { entry: SessionEditEntry; workspacePath: string }) {
+  const { t } = useTranslation(['git', 'sessions']);
   return (
     <div
       className="git-changes-sessions-row"
       onClick={() => openSession(entry.sessionId, workspacePath)}
-      title={`Open session "${entry.title}"`}
+      title={t('changes_tab.open_session', { title: entry.title })}
     >
       <div className="git-changes-sessions-row-title">
         <span className={providerChipClass(entry.provider)} />
         <span className="git-changes-sessions-row-name">{entry.title}</span>
       </div>
       <div className="git-changes-sessions-row-meta">
-        <span>{formatRelative(entry.lastEditAt)}</span>
+          <span>{formatRelative(entry.lastEditAt, t)}</span>
         <span className="git-changes-sessions-row-stats">
           {entry.linesAdded > 0 && <span className="git-diff-stat-added">+{entry.linesAdded}</span>}
           {entry.linesRemoved > 0 && <span className="git-diff-stat-removed">−{entry.linesRemoved}</span>}
-          {entry.editCount > 0 && <span>· {entry.editCount} edit{entry.editCount === 1 ? '' : 's'}</span>}
+          {entry.editCount > 0 && <span>· {t('changes_tab.edit_count', { count: entry.editCount })}</span>}
         </span>
       </div>
     </div>
@@ -65,6 +67,7 @@ function SessionRow({ entry, workspacePath }: { entry: SessionEditEntry; workspa
 }
 
 export function SessionsForFilePane({ workspacePath, activeFile, onCollapse }: SessionsForFilePaneProps) {
+  const { t } = useTranslation('git');
   // The attribution service stores absolute paths; ChangesTab works with workspace-relative.
   const absoluteFilePath = useMemo(() => {
     if (!activeFile) return null;
@@ -79,14 +82,14 @@ export function SessionsForFilePane({ workspacePath, activeFile, onCollapse }: S
     <div className="git-changes-sessions-pane">
       <div className="git-changes-sessions-header">
         <div>
-          <span className="git-changes-sessions-eyebrow">Sessions that edited this file</span>
+          <span className="git-changes-sessions-eyebrow">{t('changes_tab.sessions_header')}</span>
           {filename && <span className="git-changes-sessions-subtitle" title={activeFile?.path}>{filename}</span>}
         </div>
         <button
           type="button"
           className="git-changes-sessions-collapse"
           onClick={onCollapse}
-          title="Hide sessions pane"
+          title={t('changes_tab.hide_sessions')}
         >
           ▶
         </button>
@@ -94,20 +97,20 @@ export function SessionsForFilePane({ workspacePath, activeFile, onCollapse }: S
 
       {!activeFile && (
         <div className="git-changes-sessions-empty">
-          Select a file to see sessions that edited it.
+          {t('changes_tab.select_file_for_sessions')}
         </div>
       )}
 
       {activeFile && loading && (
-        <div className="git-changes-sessions-empty">Loading sessions...</div>
+        <div className="git-changes-sessions-empty">{t('changes_tab.loading_sessions')}</div>
       )}
 
       {activeFile && error && !loading && (
-        <div className="git-changes-sessions-empty">Failed to load: {error}</div>
+        <div className="git-changes-sessions-empty">{t('changes_tab.load_sessions_error', { error })}</div>
       )}
 
       {activeFile && !loading && !error && data.length === 0 && (
-        <div className="git-changes-sessions-empty">No sessions edited this file yet.</div>
+        <div className="git-changes-sessions-empty">{t('changes_tab.no_sessions_for_file')}</div>
       )}
 
       {activeFile && !loading && !error && data.length > 0 && (
@@ -118,7 +121,7 @@ export function SessionsForFilePane({ workspacePath, activeFile, onCollapse }: S
             ))}
           </div>
           <div className="git-changes-sessions-footer">
-            {data.length} session{data.length === 1 ? '' : 's'} · most recent first
+            {t('changes_tab.sessions_footer', { count: data.length })}
           </div>
         </>
       )}

@@ -8,6 +8,8 @@ import { ExtensionConfigPanel } from './ExtensionConfigPanel';
 import { ExtensionBackendModulesSection } from '../../ExtensionPermissions/ExtensionBackendModulesSection';
 import { useTheme } from '../../../hooks/useTheme';
 import { ToggleSwitch } from '../../GlobalSettings/SettingsToggle';
+import { requestConfirmation } from '../../../dialogs/requestConfirmation';
+import { getLocalizedExtensionMetadata } from './localizedExtensionMetadata';
 
 interface InstalledExtension {
   id: string;
@@ -62,7 +64,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
   scope,
   workspacePath,
 }) => {
-  const { t, i18n } = useTranslation(['extensions', 'common']);
+  const { t } = useTranslation('extensions');
   const posthog = usePostHog();
   const { theme } = useTheme();
   const [extensions, setExtensions] = useState<ExtensionWithState[]>([]);
@@ -170,7 +172,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
       setExtensions(extensionsWithState);
     } catch (err) {
       console.error('Failed to load extensions:', err);
-      setError(err instanceof Error ? err.message : t('extensions:installed_panel.load_failed'));
+      setError(err instanceof Error ? err.message : t('installed_panel.load_failed'));
     } finally {
       setLoading(false);
     }
@@ -195,7 +197,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
         } else {
           const result = await loader.loadExtensionFromPath(extensionPath);
           if (!result.success) {
-            throw new Error(result.error || t('extensions:installed_panel.load_extension_failed', { id: extensionId }));
+            throw new Error(result.error || t('installed_panel.load_extension_failed', { id: extensionId }));
           }
         }
       } else {
@@ -213,7 +215,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
       ));
     } catch (err) {
       console.error(`Failed to ${enabled ? 'enable' : 'disable'} extension:`, err);
-      setError(err instanceof Error ? err.message : t(enabled ? 'extensions:installed_panel.enable_failed' : 'extensions:installed_panel.disable_failed'));
+      setError(err instanceof Error ? err.message : t(enabled ? 'installed_panel.enable_failed' : 'installed_panel.disable_failed'));
     } finally {
       setProcessingId(null);
     }
@@ -239,7 +241,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
       ));
     } catch (err) {
       console.error(`Failed to ${enabled ? 'enable' : 'disable'} Claude plugin:`, err);
-      setError(err instanceof Error ? err.message : t(enabled ? 'extensions:installed_panel.enable_plugin_failed' : 'extensions:installed_panel.disable_plugin_failed'));
+      setError(err instanceof Error ? err.message : t(enabled ? 'installed_panel.enable_plugin_failed' : 'installed_panel.disable_plugin_failed'));
     } finally {
       setProcessingId(null);
     }
@@ -256,7 +258,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
       ));
     } catch (err) {
       console.error(`Failed to ${enabled ? 'enable' : 'disable'} agent workflows:`, err);
-      setError(err instanceof Error ? err.message : t(enabled ? 'extensions:installed_panel.enable_workflows_failed' : 'extensions:installed_panel.disable_workflows_failed'));
+      setError(err instanceof Error ? err.message : t(enabled ? 'installed_panel.enable_workflows_failed' : 'installed_panel.disable_workflows_failed'));
     } finally {
       setProcessingId(null);
     }
@@ -282,17 +284,23 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
         });
         await loadExtensions();
       } else {
-        setError(result.error || t('extensions:installed_panel.update_failed'));
+        setError(result.error || t('installed_panel.update_failed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions:installed_panel.update_failed'));
+      setError(err instanceof Error ? err.message : t('installed_panel.update_failed'));
     } finally {
       setProcessingId(null);
     }
   }, [posthog, t]);
 
   const handleUninstall = useCallback(async (extensionId: string) => {
-    if (!window.confirm(t('extensions:installed_panel.uninstall_confirm'))) return;
+    const approved = await requestConfirmation({
+      title: t('installed_panel.uninstall_title'),
+      message: t('installed_panel.uninstall_confirm'),
+      confirmLabel: t('installed_panel.uninstall'),
+      destructive: true,
+    });
+    if (!approved) return;
     setProcessingId(extensionId);
     setError(null);
     try {
@@ -304,10 +312,10 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
         }
         await loadExtensions();
       } else {
-        setError(result.error || t('extensions:installed_panel.uninstall_failed'));
+        setError(result.error || t('installed_panel.uninstall_failed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions:installed_panel.uninstall_failed'));
+      setError(err instanceof Error ? err.message : t('installed_panel.uninstall_failed'));
     } finally {
       setProcessingId(null);
     }
@@ -333,12 +341,15 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
     });
   }, [extensions, searchQuery]);
 
+  const getDisplayMetadata = (extension: ExtensionWithState) =>
+    getLocalizedExtensionMetadata(extension.id, extension.manifest, t);
+
   const sourceLabel = (s: ExtensionSource) => {
     switch (s) {
-      case 'marketplace': return t('extensions:installed_panel.source_marketplace');
-      case 'github': return t('extensions:installed_panel.source_github');
-      case 'local': return t('extensions:installed_panel.source_local');
-      case 'built-in': return t('extensions:installed_panel.source_builtin');
+      case 'marketplace': return t('installed_panel.source_marketplace');
+      case 'github': return t('installed_panel.source_github');
+      case 'local': return t('installed_panel.source_local');
+      case 'built-in': return t('installed_panel.source_builtin');
     }
   };
 
@@ -359,7 +370,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
         data-component="InstalledExtensionsPanel"
       >
         <div className="flex items-center justify-center py-12 text-[var(--nim-text-muted)]">
-          <p>{t('extensions:installed_panel.loading')}</p>
+        <p>{t('installed_panel.loading')}</p>
         </div>
       </div>
     );
@@ -374,7 +385,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
     >
       {/* Header */}
       <div className="provider-panel-header mb-5 pb-4 border-b border-[var(--nim-border)] flex-shrink-0">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('extensions:installed')}</h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('installed')}</h3>
 
       </div>
 
@@ -388,9 +399,9 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
       {totalCount === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center text-[var(--nim-text-muted)]">
           <MaterialSymbol icon="extension" size={48} />
-          <h3 className="mt-4 mb-2 text-lg font-medium text-[var(--nim-text)]">{t('extensions:no_installed')}</h3>
+          <h3 className="mt-4 mb-2 text-lg font-medium text-[var(--nim-text)]">{t('no_installed')}</h3>
           <p className="text-sm">
-            {t('extensions:installed_panel.no_installed_help')}
+            {t('installed_panel.no_installed_help')}
           </p>
         </div>
       ) : (
@@ -399,11 +410,11 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
           {/* Left: Extension list */}
           <div className="w-[260px] flex-shrink-0 flex flex-col bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg overflow-hidden">
             <div className="px-3 py-2.5 border-b border-[var(--nim-border)] flex items-center justify-between flex-shrink-0">
-              <span className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide">{t('extensions:extensions')}</span>
+              <span className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide">{t('extensions')}</span>
               <span className="text-xs text-[var(--nim-text-faint)]">
                 {enabledCount}/{totalCount}
                 {updateCount > 0 && (
-                  <span className="ml-2 text-[var(--nim-primary)]">{t('extensions:installed_panel.update_count', { count: updateCount })}</span>
+                  <span className="ml-2 text-[var(--nim-primary)]">{t('installed_panel.update_count', { count: updateCount })}</span>
                 )}
               </span>
             </div>
@@ -418,15 +429,15 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('extensions:search')}
-                  aria-label={t('extensions:installed_panel.search_installed')}
+                  placeholder={t('search')}
+                  aria-label={t('installed_panel.search_installed')}
                   data-testid="installed-extensions-search"
                   className="w-full py-1.5 pl-8 pr-7 rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] text-sm outline-none focus:border-[var(--nim-primary)] placeholder:text-[var(--nim-text-faint)]"
                 />
                 {searchQuery && (
                   <button
                     type="button"
-                    aria-label={t('extensions:installed_panel.clear_search')}
+                    aria-label={t('installed_panel.clear_search')}
                     data-testid="installed-extensions-search-clear"
                     className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]"
                     onClick={() => setSearchQuery('')}
@@ -439,7 +450,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
             <div className="flex-1 overflow-y-auto min-h-0">
               {filteredExtensions.length === 0 ? (
                 <div className="px-3 py-6 text-center text-xs text-[var(--nim-text-faint)]">
-                  {t('extensions:installed_panel.no_match_installed', { query: searchQuery })}
+                  {t('installed_panel.no_match_installed', { query: searchQuery })}
                 </div>
               ) : filteredExtensions.map((ext) => (
                 <div
@@ -454,7 +465,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm font-medium text-[var(--nim-text)] truncate">{ext.manifest.name}</span>
+                      <span className="text-sm font-medium text-[var(--nim-text)] truncate">{getDisplayMetadata(ext).name}</span>
                       {ext.availableUpdate && ext.registryEntry && (
                         <MaterialSymbol icon="upgrade" size={14} className="text-[var(--nim-primary)] shrink-0" />
                       )}
@@ -463,7 +474,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                       <span className={`inline-flex items-center px-1.5 py-0 rounded text-[0.625rem] font-semibold uppercase tracking-tight ${sourcePillClasses(ext.source)}`}>
                         {sourceLabel(ext.source)}
                       </span>
-                      <span className="text-xs text-[var(--nim-text-faint)] truncate">{ext.manifest.author || t('extensions:installed_panel.unknown_author')}</span>
+                      <span className="text-xs text-[var(--nim-text-faint)] truncate">{ext.manifest.author || t('installed_panel.unknown_author')}</span>
                     </div>
                   </div>
                   <span className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -484,13 +495,13 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
               <>
                 {/* Details header */}
                 <div className="p-4 border-b border-[var(--nim-border)] flex-shrink-0">
-                  <div className="text-base font-semibold text-[var(--nim-text)]">{selectedExtension.manifest.name}</div>
+                  <div className="text-base font-semibold text-[var(--nim-text)]">{getDisplayMetadata(selectedExtension).name}</div>
                   <div className="text-xs text-[var(--nim-text-muted)]">
-                    {t('extensions:installed_panel.by_author', { author: selectedExtension.manifest.author || t('extensions:installed_panel.unknown_author') })}
+                    {t('installed_panel.by_author', { author: selectedExtension.manifest.author || t('installed_panel.unknown_author') })}
                     <span className="text-[var(--nim-text-faint)] ml-2">v{selectedExtension.manifest.version}</span>
                   </div>
                   <div className="text-sm text-[var(--nim-text-muted)] mt-2 leading-relaxed">
-                    {selectedExtension.manifest.description || t('extensions:installed_panel.no_description')}
+                    {getDisplayMetadata(selectedExtension).description || t('installed_panel.no_description')}
                   </div>
                 </div>
 
@@ -503,7 +514,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                         {sourceLabel(selectedExtension.source)}
                       </span>
                       {selectedExtension.installedAt && (
-                        <span>{t('extensions:installed_panel.installed_on', { date: new Date(selectedExtension.installedAt).toLocaleDateString(i18n.language) })}</span>
+                      <span>{t('installed_panel.installed_on', { date: new Date(selectedExtension.installedAt).toLocaleDateString() })}</span>
                       )}
                       {selectedExtension.availableUpdate && (
                         <span className="text-[var(--nim-primary)]">
@@ -519,7 +530,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                           disabled={processingId === selectedExtension.id}
                           data-testid={`installed-update-${selectedExtension.id}`}
                         >
-                          {processingId === selectedExtension.id ? t('extensions:installed_panel.updating') : t('extensions:installed_panel.update_to', { version: selectedExtension.availableUpdate.availableVersion })}
+                          {processingId === selectedExtension.id ? t('installed_panel.updating') : t('installed_panel.update_to', { version: selectedExtension.availableUpdate.availableVersion })}
                         </button>
                       )}
                       {(selectedExtension.manifest.marketplace?.repositoryUrl || selectedExtension.registryEntry?.repositoryUrl) && (
@@ -530,7 +541,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                             if (url) window.electronAPI.openExternal(url);
                           }}
                         >
-                          {t('extensions:installed_panel.repository')}
+                          {t('installed_panel.repository')}
                         </button>
                       )}
                       <button
@@ -538,7 +549,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                         onClick={() => handleReveal(selectedExtension.path)}
                         data-testid={`installed-reveal-${selectedExtension.id}`}
                       >
-                        {t('extensions:installed_panel.reveal')}
+                        {t('installed_panel.reveal')}
                       </button>
                       {selectedExtension.source !== 'built-in' && (
                         <button
@@ -547,7 +558,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                           disabled={processingId === selectedExtension.id}
                           data-testid={`installed-uninstall-${selectedExtension.id}`}
                         >
-                          {t('extensions:installed_panel.uninstall')}
+                          {t('installed_panel.uninstall')}
                         </button>
                       )}
                     </div>
@@ -578,12 +589,12 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                   {/* Claude Plugin */}
                   {selectedExtension.manifest.contributions?.claudePlugin && (
                     <div className="mb-5">
-                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('extensions:claude_plugin')}</div>
+                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('claude_plugin')}</div>
                       <div className="bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--nim-text)]">
                             <span className="material-symbols-outlined text-base text-[var(--nim-primary)]">smart_toy</span>
-                            {selectedExtension.manifest.contributions.claudePlugin.displayName || t('extensions:installed_panel.claude_plugin')}
+                            {selectedExtension.manifest.contributions.claudePlugin.displayName || t('installed_panel.claude_plugin')}
                           </div>
                           <ToggleSwitch
                             checked={selectedExtension.claudePluginEnabled ?? true}
@@ -592,7 +603,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                           />
                         </div>
                         <div className="text-xs text-[var(--nim-text-muted)] mb-2.5">
-                          {selectedExtension.manifest.contributions.claudePlugin.description || t('extensions:installed_panel.no_description_short')}
+                          {selectedExtension.manifest.contributions.claudePlugin.description || t('installed_panel.no_description_short')}
                         </div>
                         {selectedExtension.manifest.contributions.claudePlugin.commands && selectedExtension.manifest.contributions.claudePlugin.commands.length > 0 && (
                           <div className="flex flex-wrap gap-1">
@@ -605,7 +616,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                         )}
                         {!selectedExtension.enabled && (
                           <div className="mt-2 text-xs text-[var(--nim-text-faint)] italic">
-                            {t('extensions:installed_panel.enable_plugin')}
+                            {t('installed_panel.enable_plugin')}
                           </div>
                         )}
                       </div>
@@ -614,12 +625,12 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
 
                   {selectedExtension.manifest.contributions?.agentWorkflows && (
                     <div className="mb-5">
-                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('extensions:agent_workflows')}</div>
+                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('agent_workflows')}</div>
                       <div className="bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--nim-text)]">
                             <span className="material-symbols-outlined text-base text-[var(--nim-primary)]">hub</span>
-                            {selectedExtension.manifest.contributions.agentWorkflows.displayName || t('extensions:agent_workflows')}
+                            {selectedExtension.manifest.contributions.agentWorkflows.displayName || t('agent_workflows')}
                           </div>
                           <ToggleSwitch
                             checked={selectedExtension.agentWorkflowsEnabled ?? true}
@@ -628,11 +639,11 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                           />
                         </div>
                         <div className="text-xs text-[var(--nim-text-muted)]">
-                          {selectedExtension.manifest.contributions.agentWorkflows.description || t('extensions:installed_panel.workflows_description')}
+                          {selectedExtension.manifest.contributions.agentWorkflows.description || t('installed_panel.workflows_description')}
                         </div>
                         {!selectedExtension.enabled && (
                           <div className="mt-2 text-xs text-[var(--nim-text-faint)] italic">
-                            {t('extensions:installed_panel.enable_workflows')}
+                            {t('installed_panel.enable_workflows')}
                           </div>
                         )}
                       </div>
@@ -641,14 +652,14 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
 
                   {/* Extension Info */}
                   <div className="mb-5">
-                    <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('extensions:extension_info')}</div>
+                    <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('extension_info')}</div>
                     <div className="space-y-1.5">
                       <div className="flex gap-2">
-                        <span className="text-xs text-[var(--nim-text-faint)] w-10">ID</span>
+                        <span className="text-xs text-[var(--nim-text-faint)] w-10">{t('id')}</span>
                         <span className="text-xs text-[var(--nim-text-muted)] font-mono">{selectedExtension.id}</span>
                       </div>
                       <div className="flex gap-2">
-                        <span className="text-xs text-[var(--nim-text-faint)] w-10">{t('extensions:path')}</span>
+                        <span className="text-xs text-[var(--nim-text-faint)] w-10">{t('path')}</span>
                         <span className="text-xs text-[var(--nim-text-muted)] font-mono truncate" title={selectedExtension.path}>
                           {selectedExtension.path.replace(/^.*?\/extensions\//, '~/extensions/')}
                         </span>
@@ -659,7 +670,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                   {/* Contributions */}
                   {selectedExtension.manifest.contributions && (
                     <div className="mb-5">
-                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('extensions:contributions')}</div>
+                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('contributions')}</div>
                       <div className="flex flex-wrap gap-1.5">
                         {selectedExtension.manifest.contributions.customEditors?.map((editor, idx) => (
                           <span key={`editor-${idx}`} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
@@ -672,7 +683,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                           return (
                             <span key={`tool-${idx}`} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
                               <span className="material-symbols-outlined text-sm">smart_toy</span>
-                              {t('extensions:installed_panel.ai_tool', { name: toolName })}
+                              {t('installed_panel.ai_tool', { name: toolName })}
                             </span>
                           );
                         })}
@@ -700,24 +711,24 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                   {/* Permissions */}
                   {selectedExtension.manifest.permissions && (
                     <div className="mb-5">
-                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('extensions:installed_panel.permissions')}</div>
+                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">{t('installed_panel.permissions')}</div>
                       <div className="flex flex-wrap gap-2">
                         {selectedExtension.manifest.permissions.filesystem && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
                             <span className="material-symbols-outlined text-sm">folder</span>
-                            {t('extensions:installed_panel.filesystem')}
+                            {t('installed_panel.filesystem')}
                           </span>
                         )}
                         {selectedExtension.manifest.permissions.ai && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
                             <span className="material-symbols-outlined text-sm">psychology</span>
-                            {t('extensions:installed_panel.ai_tools')}
+                            {t('installed_panel.ai_tools')}
                           </span>
                         )}
                         {selectedExtension.manifest.permissions.network && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
                             <span className="material-symbols-outlined text-sm">cloud</span>
-                            {t('extensions:installed_panel.network')}
+                            {t('installed_panel.network')}
                           </span>
                         )}
                       </div>
@@ -750,8 +761,8 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-[var(--nim-text-muted)] text-center p-5">
                 <span className="material-symbols-outlined text-5xl opacity-50 mb-3">extension</span>
-                <div className="text-sm font-medium text-[var(--nim-text)]">{t('extensions:no_selected')}</div>
-                <div className="text-xs">{t('extensions:select_details')}</div>
+                <div className="text-sm font-medium text-[var(--nim-text)]">{t('no_selected')}</div>
+                <div className="text-xs">{t('select_details')}</div>
               </div>
             )}
           </div>

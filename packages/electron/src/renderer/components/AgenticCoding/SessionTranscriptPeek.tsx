@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   autoUpdate,
   flip,
@@ -13,13 +13,26 @@ import {
   useRole,
   type Placement,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import { RichTranscriptView } from '@nimbalyst/runtime/ui/AgentTranscript/components/RichTranscriptView';
 import type { TranscriptViewMessage } from '@nimbalyst/runtime/ai/server/types';
 import { getCardType } from '../../store/atoms/sessionKanban';
 import { sessionRegistryAtom } from '../../store/atoms/sessions';
 import { transcriptEventSignalAtom } from '../../store/atoms/sessionTranscript';
 
+// Insertion-ordered; the oldest peeks drop off so hovering through a long list
+// does not keep 100 messages (images included) for every session ever peeked.
 const tailMessageCache = new Map<string, TranscriptViewMessage[]>();
+const TAIL_CACHE_LIMIT = 10;
+
+function cacheTailMessages(id: string, messages: TranscriptViewMessage[]): void {
+  tailMessageCache.delete(id);
+  tailMessageCache.set(id, messages);
+  for (const oldest of tailMessageCache.keys()) {
+    if (tailMessageCache.size <= TAIL_CACHE_LIMIT) break;
+    tailMessageCache.delete(oldest);
+  }
+}
 
 const PEEK_SETTINGS = {
   showToolCalls: true,
@@ -49,7 +62,7 @@ export function SessionTranscriptPeek({
   placement = 'bottom-start',
   onClose,
 }: SessionTranscriptPeekProps) {
-  const { t } = useTranslation(['sessions']);
+  const { t } = useTranslation('sessions');
   const registry = useAtomValue(sessionRegistryAtom);
   const resolvedSessionId = useMemo(() => {
     const meta = registry.get(sessionId);
@@ -87,6 +100,7 @@ export function SessionTranscriptPeek({
       offset(4),
       flip({ padding: 8 }),
       shift({ padding: 8 }),
+      windowControlsClearance(),
     ],
     whileElementsMounted: autoUpdate,
   });
@@ -109,7 +123,7 @@ export function SessionTranscriptPeek({
     try {
       const nextMessages = await window.electronAPI.ai.getTailMessages(id, 100) as TranscriptViewMessage[];
       if (generation !== fetchGenerationRef.current) return;
-      tailMessageCache.set(id, nextMessages);
+      cacheTailMessages(id, nextMessages);
       setMessages(nextMessages);
       setLoading(false);
     } catch {
@@ -189,7 +203,7 @@ export function SessionTranscriptPeek({
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center text-[11px] italic text-nim-disabled">
-            {t('sessions:no_messages')}
+            {t('no_messages')}
           </div>
         )}
       </div>

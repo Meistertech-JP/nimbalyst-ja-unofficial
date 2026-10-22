@@ -43,7 +43,6 @@ import {
 } from '../atoms';
 import { hasActiveDialogsAtom } from '../../contexts/DialogContext';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
-import { rendererI18n } from '../../i18n';
 import {
   walkthroughTriggerCommandAtom,
   walkthroughResetCommandAtom,
@@ -412,8 +411,13 @@ export function WalkthroughProvider({
     const walkthrough = walkthroughs.find((w) => w.id === walkthroughId);
     if (!walkthrough) {
       errorNotificationService.showInfo(
-        rendererI18n.t('notifications:guidance.walkthrough_not_found'),
-        rendererI18n.t('notifications:guidance.unknown_walkthrough', { id: walkthroughId }),
+        errorNotificationService.getLocalizedText('notifications', 'guidance.walkthrough_not_found', 'Walkthrough Not Found'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.unknown_walkthrough',
+          'Unknown walkthrough: {{id}}',
+          { id: walkthroughId },
+        ),
         { duration: 3000 }
       );
       return;
@@ -422,13 +426,23 @@ export function WalkthroughProvider({
     // Check if the first step's target element exists on the page
     const firstStep = walkthrough.steps[0];
     const targetElement = resolveTarget(firstStep.target);
-    const walkthroughName = rendererI18n.t(`menu:walkthrough_names.${walkthrough.id}`, { defaultValue: walkthrough.name });
-    const modeName = rendererI18n.t(walkthrough.trigger.screen === 'agent' ? 'menu:agent_mode' : 'menu:files_mode');
 
     if (!targetElement) {
       errorNotificationService.showInfo(
-        rendererI18n.t('notifications:guidance.cannot_show_walkthrough'),
-        rendererI18n.t('notifications:guidance.walkthrough_target_missing', { name: walkthroughName, mode: modeName }),
+        errorNotificationService.getLocalizedText('notifications', 'guidance.cannot_show_walkthrough', 'Cannot Show Walkthrough'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.walkthrough_target_missing',
+          '"{{name}}" requires UI elements that aren\'t visible on this screen. Try switching to {{mode}} first.',
+          {
+            name: walkthrough.name,
+            mode: errorNotificationService.getLocalizedText(
+              'common',
+              `help.${walkthrough.trigger.screen === 'agent' ? 'agent-mode-button' : 'files-mode-button'}.title`,
+              walkthrough.trigger.screen === 'agent' ? 'Agent Mode' : 'Files Mode',
+            ),
+          },
+        ),
         { duration: 5000 }
       );
       return;
@@ -437,8 +451,20 @@ export function WalkthroughProvider({
     // Check if walkthrough's condition is met
     if (walkthrough.trigger.condition && !walkthrough.trigger.condition()) {
       errorNotificationService.showInfo(
-        rendererI18n.t('notifications:guidance.cannot_show_walkthrough'),
-        rendererI18n.t('notifications:guidance.walkthrough_conditions_unmet', { name: walkthroughName, mode: modeName }),
+        errorNotificationService.getLocalizedText('notifications', 'guidance.cannot_show_walkthrough', 'Cannot Show Walkthrough'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.walkthrough_conditions_unmet',
+          '"{{name}}" conditions aren\'t met. Try switching to {{mode}} first.',
+          {
+            name: walkthrough.name,
+            mode: errorNotificationService.getLocalizedText(
+              'common',
+              `help.${walkthrough.trigger.screen === 'agent' ? 'agent-mode-button' : 'files-mode-button'}.title`,
+              walkthrough.trigger.screen === 'agent' ? 'Agent Mode' : 'Files Mode',
+            ),
+          },
+        ),
         { duration: 5000 }
       );
       return;
@@ -461,8 +487,12 @@ export function WalkthroughProvider({
       setState(newState);
       lastTriggeredModeRef.current = null;
       errorNotificationService.showInfo(
-        rendererI18n.t('notifications:guidance.walkthroughs_reset'),
-        rendererI18n.t('notifications:guidance.walkthroughs_reset_message'),
+        errorNotificationService.getLocalizedText('notifications', 'guidance.walkthroughs_reset', 'Walkthroughs Reset'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.walkthroughs_reset_message',
+          'All walkthrough guides will show again.',
+        ),
         { duration: 3000 }
       );
     })();

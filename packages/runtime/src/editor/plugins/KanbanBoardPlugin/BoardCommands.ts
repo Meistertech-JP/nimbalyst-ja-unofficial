@@ -31,31 +31,6 @@ import {
   $createCardNode,
   $isCardNode,
 } from './BoardCardNode';
-import { runtimeEnglishTranslation, type RuntimeTranslate } from '../../../ui/RuntimeTranslation';
-
-// Commands can run outside React. Keep creation-time translations editor-local;
-// never put locale information into document nodes or command payloads.
-const translations = new WeakMap<LexicalEditor, Map<object, RuntimeTranslate>>();
-
-export function bindKanbanTranslation(editor: LexicalEditor, t: RuntimeTranslate): () => void {
-  let bindings = translations.get(editor);
-  if (!bindings) {
-    bindings = new Map();
-    translations.set(editor, bindings);
-  }
-  const owner = {};
-  bindings.set(owner, t);
-  return () => {
-    bindings.delete(owner);
-    if (bindings.size === 0 && translations.get(editor) === bindings) translations.delete(editor);
-  };
-}
-
-export function getKanbanTranslation(editor: LexicalEditor): RuntimeTranslate {
-  let t = runtimeEnglishTranslation;
-  for (const translate of translations.get(editor)?.values() ?? []) t = translate;
-  return t;
-}
 
 export const INSERT_BOARD_COMMAND: LexicalCommand<void> = createCommand(
   'INSERT_BOARD_COMMAND',
@@ -95,7 +70,6 @@ export function registerKanbanCommands(editor: LexicalEditor): () => void {
   const removeInsertBoardCommand = editor.registerCommand(
     INSERT_BOARD_COMMAND,
     () => {
-      const t = getKanbanTranslation(editor);
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
         const kanbanBoard = $createBoardNode();
@@ -103,7 +77,7 @@ export function registerKanbanCommands(editor: LexicalEditor): () => void {
         // Create header node with title
         const headerNode = $createBoardHeaderNode();
         const titleParagraph = $createParagraphNode();
-        titleParagraph.append($createTextNode(t('common:help.session-kanban-button.title', 'Kanban Board')));
+        titleParagraph.append($createTextNode('Kanban Board'));
         headerNode.append(titleParagraph);
         kanbanBoard.append(headerNode);
 
@@ -124,19 +98,19 @@ export function registerKanbanCommands(editor: LexicalEditor): () => void {
           return { column, content };
         };
 
-        const { column: todoColumn, content: todoContent } = createColumn(t('editor:kanban.todo', 'To Do'));
-        const { column: inProgressColumn } = createColumn(t('tracker:plans.status_in_progress', 'In Progress'));
-        const { column: doneColumn } = createColumn(t('tracker:plans.status_done', 'Done'));
+        const { column: todoColumn, content: todoContent } = createColumn('To Do');
+        const { column: inProgressColumn } = createColumn('In Progress');
+        const { column: doneColumn } = createColumn('Done');
 
         // Add sample cards to demonstrate functionality
         const sampleCard1 = $createCardNode();
         const sampleParagraph1 = $createParagraphNode();
-        sampleParagraph1.append($createTextNode(t('editor:kanban.sample_task', 'Sample task {{number}}', { number: 1 })));
+        sampleParagraph1.append($createTextNode('Sample task 1'));
         sampleCard1.append(sampleParagraph1);
 
         const sampleCard2 = $createCardNode();
         const sampleParagraph2 = $createParagraphNode();
-        sampleParagraph2.append($createTextNode(t('editor:kanban.sample_task', 'Sample task {{number}}', { number: 2 })));
+        sampleParagraph2.append($createTextNode('Sample task 2'));
         sampleCard2.append(sampleParagraph2);
 
         todoContent.append(sampleCard1, sampleCard2);
@@ -151,7 +125,6 @@ export function registerKanbanCommands(editor: LexicalEditor): () => void {
   const removeInsertConfiguredBoardCommand = editor.registerCommand(
     INSERT_CONFIGURED_BOARD_COMMAND,
     ({ config }: { config: BoardConfig }) => {
-      const t = getKanbanTranslation(editor);
       const selection = $getSelection();
       if ($isRangeSelection(selection)) {
         const kanbanBoard = $createBoardNode(config);
@@ -159,7 +132,7 @@ export function registerKanbanCommands(editor: LexicalEditor): () => void {
         // Create header node with title
         const headerNode = $createBoardHeaderNode();
         const titleParagraph = $createParagraphNode();
-        titleParagraph.append($createTextNode(t('common:help.session-kanban-button.title', 'Kanban Board')));
+        titleParagraph.append($createTextNode('Kanban Board'));
         headerNode.append(titleParagraph);
         kanbanBoard.append(headerNode);
 
@@ -321,7 +294,7 @@ export function registerKanbanCommands(editor: LexicalEditor): () => void {
         }
 
         // Extract the text content safely
-        const cardText = cardNode.getTextContent() || getKanbanTranslation(editor)('editor:kanban.moved_card', 'Moved card');
+        const cardText = cardNode.getTextContent() || 'Moved card';
 
         // Remove the original card
         cardNode.remove();

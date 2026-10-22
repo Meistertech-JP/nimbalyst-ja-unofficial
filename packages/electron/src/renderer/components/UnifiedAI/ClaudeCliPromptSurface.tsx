@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react';
-import { rendererI18n } from '../../i18n';
+import React, { useCallback, useMemo } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { sessionMessagesAtom, isInteractivePromptTool } from '../../store/atoms/sessions';
 import {
   getCustomToolWidget,
   ToolWidgetErrorBoundary,
 } from '@nimbalyst/runtime/ui/AgentTranscript/components/CustomToolWidgets';
+import { isQuestionTool, partitionUnansweredQuestions } from '@nimbalyst/runtime/ai/server/interactivePromptTools';
 
 export interface ClaudeCliPromptSurfaceProps {
   sessionId: string;
@@ -25,20 +26,22 @@ export interface ClaudeCliPromptSurfaceProps {
  * answer back is already registered for every session in `SessionTranscript`.
  *
  * It reuses the exact widget dispatch (`getCustomToolWidget`) and the exact
- * pending-prompt predicate (`isInteractivePromptTool` + missing `result`) the
- * transcript uses, so behavior matches the SDK path. When nothing is pending it
+ * pending-prompt rule the transcript uses (`isInteractivePromptTool` + missing
+ * `result`, nothing before the last user message, and only open questions), so
+ * behavior matches the SDK path. When nothing is pending it
  * renders nothing and the terminal gets the full height.
  */
-const readFile = async (
-  filePath: string
+const readFileFromDisk = async (
+  filePath: string,
+  messages: { notFound: string; failed: string },
 ): Promise<{ success: boolean; content?: string; error?: string }> => {
   try {
     const result = await window.electronAPI.readFileContent(filePath);
-    if (!result) return { success: false, error: rendererI18n.t('aichat:file_not_found', { path: filePath }) };
-    if (!result.success) return { success: false, error: result.error || rendererI18n.t('aichat:read_file_failed') };
+    if (!result) return { success: false, error: messages.notFound };
+    if (!result.success) return { success: false, error: result.error || messages.failed };
     return { success: true, content: result.content };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : rendererI18n.t('aichat:read_file_failed') };
+    return { success: false, error: err instanceof Error ? err.message : messages.failed };
   }
 };
 
@@ -46,18 +49,31 @@ export const ClaudeCliPromptSurface: React.FC<ClaudeCliPromptSurfaceProps> = ({
   sessionId,
   workspacePath,
 }) => {
+  const { t } = useTranslation('aichat');
   const messages = useAtomValue(sessionMessagesAtom(sessionId));
+  const readFile = useCallback((path: string) => readFileFromDisk(path, {
+    notFound: t('read_file_failed_path', { path }),
+    failed: t('read_file_failed'),
+  }), [t]);
 
-  const pendingPrompts = useMemo(
-    () =>
-      messages.filter(
-        (m) =>
-          !!m.toolCall?.toolName &&
-          isInteractivePromptTool(m.toolCall.toolName) &&
-          !m.toolCall.result
-      ),
-    [messages]
-  );
+  const pendingPrompts = useMemo(() => {
+    // A prompt the user moved past by sending a new message can never be
+    // answered, so only prompts after the last user message are pending.
+    let lastUserIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === 'user_message') {
+        lastUserIndex = i;
+        break;
+      }
+    }
+    const openQuestionIndices = new Set(partitionUnansweredQuestions(messages).open.map((q) => q.index));
+    return messages.filter((m, index) => {
+      const toolName = m.toolCall?.toolName;
+      if (index <= lastUserIndex || !toolName || !isInteractivePromptTool(toolName) || m.toolCall!.result) return false;
+      // Questions also need last-occurrence-wins handling of provider echoes.
+      return !isQuestionTool(toolName) || openQuestionIndices.has(index);
+    });
+  }, [messages]);
 
   if (pendingPrompts.length === 0) return null;
 

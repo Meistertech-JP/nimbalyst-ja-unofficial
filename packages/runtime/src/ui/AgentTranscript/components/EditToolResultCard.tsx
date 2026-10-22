@@ -1,11 +1,11 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TranscriptViewMessage } from '../../../ai/server/transcript/TranscriptProjector';
 import { DiffViewer } from './DiffViewer';
 import { NewFilePreview } from './NewFilePreview';
 import { toProjectRelative, shortenPath } from '../utils/pathResolver';
 import { formatToolDisplayName } from '../utils/toolNameFormatter';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 /** Returns true if the edit represents a new file creation (content only, no diff) */
 const isNewFileEdit = (edit: any): boolean => {
@@ -66,7 +66,7 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
   renderEmbeddedFile,
   canEmbedFile,
 }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const isEmbeddable = (filePath?: string) =>
     typeof filePath === 'string' && !!canEmbedFile?.(filePath);
   const tool = toolMessage.toolCall;
@@ -78,7 +78,7 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
   const primarySupportsEmbeddedPreview = isEmbeddable(firstEditPath);
   const displayPath = firstEditPath ? toProjectRelative(firstEditPath, workspacePath) : '';
   const prettyPath = displayPath ? shortenPath(displayPath, 64) : '';
-  const toolDisplayName = formatToolDisplayName(tool.toolName || '', t) || tool.toolName || t('common:database.edit', 'Edit');
+  const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || 'Edit';
 
   const instruction = truncateInstruction(getInstructionText(toolMessage));
   const allNewFiles = edits.every(isNewFileEdit);
@@ -92,14 +92,14 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
   const rawResult = toolMessage.toolCall?.result;
   const hasResult = rawResult !== undefined && rawResult !== null && rawResult !== '';
   const statusLabel = toolMessage.isError
-    ? t('aichat:message_segment.failed', 'Failed')
+    ? t('message_segment.failed')
     : !hasResult
-      ? t('dialogs:superloop.status_pending', 'Pending')
-      : allNewFiles ? t('files:edits.created', 'Created') : t('aichat:edit_preview.applied', 'Applied');
+      ? t('transcript_sidebar.pending')
+      : allNewFiles ? t('tool_call_changes.created') : t('edit_preview.applied');
   const statusClass = toolMessage.isError ? 'error' : !hasResult ? 'pending' : 'success';
   const editCountLabel = allNewFiles
-    ? t('aichat:edit_preview.lines', edits[0].content.split('\n').length === 1 ? '{{count}} line' : '{{count}} lines', { count: edits[0].content.split('\n').length })
-    : t('aichat:message_segment.edits', edits.length === 1 ? '{{count}} edit' : '{{count}} edits', { count: edits.length });
+    ? t('edit_preview.lines', { count: edits[0].content.split('\n').length })
+    : t('edit_preview.edits', { count: edits.length });
   const previewFilePaths = Array.from(new Set(
     edits
       .map((edit) => resolveEditFilePath(edit, toolMessage))
@@ -132,7 +132,7 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
                   <button
                     className="rich-transcript-edit-card__file-link bg-transparent border-none p-0 m-0 font-[inherit] text-nim-link cursor-pointer no-underline hover:underline"
                     onClick={handleOpenFile}
-                    title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: firstEditPath })}
+                    title={t('tool_call_changes.open_file', { filePath: firstEditPath })}
                   >
                     {prettyPath}
                   </button>
@@ -145,15 +145,15 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
           <div className="rich-transcript-edit-card__meta flex items-center gap-1 text-xs text-nim-faint">
             <span>{editCountLabel}</span>
             {instruction && <span className="rich-transcript-edit-card__meta-divider text-nim-faint">•</span>}
-            {instruction && <span>{t('aichat:edit_preview.instruction', 'Instruction')}</span>}
+            {instruction && <span>{t('edit_preview.instruction')}</span>}
           </div>
         </div>
         {firstEditPath && onOpenFile && (
           <button
             className="rich-transcript-edit-card__open-button flex items-center justify-center w-5 h-5 p-0 border-none rounded bg-transparent text-nim-faint cursor-pointer shrink-0 transition-colors duration-150 hover:bg-nim-hover hover:text-nim"
             onClick={handleOpenFile}
-            title={t('common:open_file', 'Open file')}
-            aria-label={t('common:open_file', 'Open file')}
+            title={t('command_pill.open_file')}
+            aria-label={t('command_pill.open_file')}
           >
             <MaterialSymbol icon="open_in_new" size={14} />
           </button>

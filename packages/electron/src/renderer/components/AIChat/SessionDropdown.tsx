@@ -1,12 +1,13 @@
 import React, { useState, memo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
 import { parseModelInfo, getProviderLabel } from '../../utils/modelUtils';
 import type { SessionData } from '@nimbalyst/runtime/ai/server/types';
 import { formatDate } from '@nimbalyst/runtime';
 import { sessionProcessingAtom, sessionUnreadAtom } from '../../store';
 import { useFloatingMenu, FloatingPortal } from '../../hooks/useFloatingMenu';
+import { requestConfirmation } from '../../dialogs/requestConfirmation';
 
 /**
  * Status indicator that subscribes to session atoms.
@@ -222,9 +223,15 @@ export function SessionDropdown({
                         )}
                         <button
                           className="session-action-btn delete nim-btn-icon hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-error)]"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            if (confirm(t('session_dropdown.delete_confirm'))) {
+                            const confirmed = await requestConfirmation({
+                              title: t('session_dropdown.delete_session_title'),
+                              message: t('session_dropdown.delete_confirm'),
+                              confirmLabel: t('session_dropdown.delete'),
+                              destructive: true,
+                            });
+                            if (confirmed) {
                               onDeleteSession(session.id);
                             }
                           }}

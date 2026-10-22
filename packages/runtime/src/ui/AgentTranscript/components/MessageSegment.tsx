@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TranscriptViewMessage, ChatAttachment } from '../../../ai/server/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { JSONViewer } from './JSONViewer';
@@ -7,6 +8,7 @@ import { LoginRequiredWidget } from './LoginRequiredWidget';
 import { OpenAIAuthWidget } from './OpenAIAuthWidget';
 import { CodexAuthRequiredWidget } from './CodexAuthRequiredWidget';
 import { ContextLimitWidget } from './ContextLimitWidget';
+import { classifyContextFailure, isCompactionFailureText } from './contextFailureDetection';
 import { RateLimitWidget } from './RateLimitWidget';
 import { ApiServiceErrorWidget, isApiServiceError } from './ApiServiceErrorWidget';
 import { FullscreenModal } from './FullscreenModal';
@@ -14,10 +16,8 @@ import { MaterialSymbol } from '../../icons/MaterialSymbol';
 import { formatToolDisplayName } from '../utils/toolNameFormatter';
 import { isCommitRequestMessage, parseCommitRequest, CommitRequestCard } from './CommitRequestCard';
 import { localAssetUrl } from '../../../utils/localAssetUrl';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
-
-type TextPreviewContent = { kind: 'binary' } | { kind: 'text'; content: string };
-type TextPreviewError = { kind: 'detail'; message: string } | { kind: 'missing' | 'failed' | 'unavailable' };
+import { useTranscriptImageGallery } from './transcriptImageGalleryContext';
+import { attachmentImageKey, attachmentImageSrc } from '../utils/transcriptImages';
 
 interface MessageSegmentProps {
   message: TranscriptViewMessage;
@@ -36,14 +36,14 @@ interface MessageSegmentProps {
   /** Optional: Navigate to a session by ID (for @@session reference links) */
   onOpenSession?: (sessionId: string) => void;
   /** Optional: Callback to trigger /compact command */
-  onCompact?: () => void;
+  onCompact?: () => void | Promise<void>;
   /** Optional: Provider name for provider-specific rendering (e.g., 'openai-codex') */
   provider?: string;
   /** Optional: Session's project/worktree folder, used to open the login terminal there. */
   workspacePath?: string;
 }
 
-export const MessageSegment: React.FC<MessageSegmentProps> = ({
+export const MessageSegment = React.memo(function MessageSegment({
   message,
   isUser,
   isCollapsed = false,
@@ -60,21 +60,20 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
   onCompact,
   provider,
   workspacePath
-}) => {
-  const { t } = useRuntimeTranslation();
+}: MessageSegmentProps) {
+  const { t } = useTranslation('aichat');
   const [isDiffExpanded, setDiffExpanded] = useState(false);
+  const gallery = useTranscriptImageGallery();
   const [enlargedImage, setEnlargedImage] = useState<ChatAttachment | null>(null);
   const [enlargedText, setEnlargedText] = useState<ChatAttachment | null>(null);
-  const [textContent, setTextContent] = useState<TextPreviewContent | null>(null);
-  const [textLoadError, setTextLoadError] = useState<TextPreviewError | null>(null);
-  const textLoadErrorMessage = textLoadError?.kind === 'detail'
-    ? textLoadError.message
-    : textLoadError?.kind === 'missing'
-      ? t('aichat:message_segment.file_missing', 'File not found')
-      : textLoadError?.kind === 'unavailable'
-        ? t('aichat:message_segment.read_unavailable', 'File reading not available')
-        : t('aichat:read_file_failed', 'Failed to read file');
-
+  const [textContent, setTextContent] = useState<string | null>(null);
+  const [textLoadError, setTextLoadError] = useState<string | null>(null);
+  const closeImageModal = useCallback(() => setEnlargedImage(null), []);
+  const closeTextModal = useCallback(() => {
+    setEnlargedText(null);
+    setTextContent(null);
+    setTextLoadError(null);
+  }, []);
 
   // Load text content when a text attachment is selected
   useEffect(() => {
@@ -92,24 +91,24 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
           if (result?.success) {
             // Handle binary files (e.g., PDFs) - for now just show a message
             if (result.isBinary) {
-              setTextContent({ kind: 'binary' });
+              setTextContent('[Binary file - preview not available]');
             } else {
-              setTextContent({ kind: 'text', content: result.content });
+              setTextContent(result.content);
             }
             setTextLoadError(null);
           } else if (result === null) {
-            setTextLoadError({ kind: 'missing' });
+            setTextLoadError('message_segment.file_missing');
             setTextContent(null);
           } else {
-            setTextLoadError({ kind: 'failed' });
+            setTextLoadError('message_segment.read_failed');
             setTextContent(null);
           }
         } else {
-          setTextLoadError({ kind: 'unavailable' });
+          setTextLoadError('message_segment.read_unavailable');
           setTextContent(null);
         }
       } catch (error) {
-        setTextLoadError(error instanceof Error ? { kind: 'detail', message: error.message } : { kind: 'failed' });
+        setTextLoadError(error instanceof Error ? error.message : 'message_segment.read_failed');
         setTextContent(null);
       }
     };
@@ -140,19 +139,6 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
     );
   };
 
-  // Helper function to check if content indicates context limit exceeded
-  const isContextLimitError = (text: string): boolean => {
-    const lowerText = text.toLowerCase();
-    return (
-      lowerText.includes('prompt is too long') ||
-      lowerText.includes('prompt too long') ||
-      lowerText.includes('context limit') ||
-      lowerText.includes('context window') ||
-      lowerText.includes('exceeds maximum context') ||
-      lowerText.includes('maximum context length')
-    );
-  };
-
   // Helper function to check if content contains a rate limit marker
   const isRateLimitContent = (text: string): boolean => {
     return text.includes('[RATE_LIMIT_WARNING]') || text.includes('[RATE_LIMIT]');
@@ -178,7 +164,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
       <details className="rich-transcript-thinking rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
         <summary className="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--nim-text-muted)] cursor-pointer select-none">
           <MaterialSymbol icon="psychology" size={14} />
-          <span>{t('aichat:message_segment.thinking', 'Thinking')}</span>
+          <span>{t('message_segment.thinking')}</span>
         </summary>
         <div className="px-2 pb-2 pt-1 text-xs text-[var(--nim-text-muted)] whitespace-pre-wrap">
           {thinking}
@@ -197,7 +183,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
 
     // Check if this is a rate limit event embedded in text content
     if (!isUser && isRateLimitContent(message.text ?? '')) {
-      return <RateLimitWidget content={message.text ?? ''} />;
+      return <RateLimitWidget content={message.text ?? ''} sessionId={sessionId} isLastMessage={isLastMessage} />;
     }
 
     // Upstream Claude API service errors (api_error 5xx, overloaded_error)
@@ -207,6 +193,22 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
     // see isApiServiceError for the signal definition.
     if (!isUser && isApiServiceError(message.text ?? '')) {
       return <ApiServiceErrorWidget content={message.text ?? ''} />;
+    }
+
+    // #1414: a slash command's failure can arrive as an ordinary result string
+    // rather than an error-flagged message, so the compaction-failure surface
+    // has to be reachable from here too. Deliberately narrower than the error
+    // path -- only the CLI's own framing, never a phrase an agent might write.
+    if (!isUser && isCompactionFailureText(message.text ?? '')) {
+      return (
+        <ContextLimitWidget
+          sessionId={sessionId}
+          isLastMessage={isLastMessage}
+          variant="compaction-failed"
+          detail={message.text ?? ''}
+          onCompact={onCompact}
+        />
+      );
     }
 
     // Check if this is an OpenAI auth error in the message content
@@ -278,11 +280,11 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
     const explicitSuccess = resultDetails && 'success' in resultDetails ? resultDetails.success !== false : undefined;
     const derivedErrorMessage = (message.isError && message.text) || (resultDetails && typeof resultDetails.error === 'string' ? (resultDetails.error as string) : undefined);
     const didFail = message.isError || tool.isError || explicitSuccess === false || !!derivedErrorMessage;
-    const statusLabel = didFail ? t('aichat:message_segment.failed', 'Failed') : t('aichat:message_segment.succeeded', 'Succeeded');
+    const statusLabel = t(didFail ? 'message_segment.failed' : 'message_segment.succeeded');
     const statusColor = didFail ? 'var(--nim-error)' : 'var(--nim-success)';
     const statusBackground = didFail ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
     const hasResult = toolResult !== undefined && toolResult !== null && (typeof toolResult !== 'string' || toolResult.trim().length > 0);
-    const toolDisplayName = formatToolDisplayName(tool.toolName || '', t) || tool.toolName || t('aichat:message_segment.tool_call', 'Tool Call');
+    const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || t('message_segment.tool_call');
 
     return (
       <div className="rounded-md bg-nim-tertiary overflow-hidden border border-nim my-2">
@@ -317,14 +319,14 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
           <div className="py-2 px-3 text-xs">
             {typeof tool.arguments === 'object' && tool.arguments !== null && Object.keys(tool.arguments).length > 0 && (
               <div className="mb-2">
-                <div className="text-nim-faint mb-1">{t('aichat:message_segment.parameters', 'Parameters:')}</div>
+                <div className="text-nim-faint mb-1">{t('message_segment.parameters')}</div>
                 <JSONViewer data={tool.arguments} maxHeight="16rem" />
               </div>
             )}
 
 
             <div className="mt-2">
-              <div className="text-nim-faint mb-1">{t('agents:meta.result', 'Result:')}</div>
+              <div className="text-nim-faint mb-1">{t('message_segment.result')}</div>
               {hasResult ? (
                 typeof toolResult === 'string' ? (
                   <pre className="text-xs text-nim font-mono overflow-x-auto bg-nim-secondary p-2 rounded max-h-64 overflow-y-auto">
@@ -335,7 +337,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
                 )
               ) : (
                 <div className="text-xs text-nim-faint italic">
-                  {t('aichat:message_segment.no_result', 'Tool did not return a result.')}
+                  {t('message_segment.no_result')}
                 </div>
               )}
               {derivedErrorMessage && (
@@ -354,7 +356,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
   const renderError = () => {
     if (!message.isError || message.type === 'tool_call') return null;
 
-    const errorMessage = message.text || t('menu:generic_error_title', 'Error');
+    const errorMessage = message.text || 'Error';
 
     // Pre-flight Codex app-server auth failure -- prefer the structured CTA
     // over the generic OpenAIAuthWidget so the user gets a one-click jump to
@@ -388,14 +390,24 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
       return null;
     }
 
-    // Check if this is a context limit error
-    if (isContextLimitError(errorMessage)) {
-      return <ContextLimitWidget sessionId={sessionId} isLastMessage={isLastMessage} onCompact={onCompact} />;
+    // Check if this is a context limit error, or a compaction attempt that
+    // failed -- the widget offers a different action for each (#1414).
+    const contextFailure = classifyContextFailure(errorMessage);
+    if (contextFailure) {
+      return (
+        <ContextLimitWidget
+          sessionId={sessionId}
+          isLastMessage={isLastMessage}
+          variant={contextFailure}
+          detail={errorMessage}
+          onCompact={onCompact}
+        />
+      );
     }
 
     // Check if this is a rate limit event
     if (isRateLimitContent(errorMessage)) {
-      return <RateLimitWidget content={errorMessage} />;
+      return <RateLimitWidget content={errorMessage} sessionId={sessionId} isLastMessage={isLastMessage} />;
     }
 
     // Upstream API service error (api_error 5xx, overloaded_error) -
@@ -440,7 +452,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
 
     const handleAttachmentClick = (attachment: ChatAttachment) => {
       if (attachment.type === 'image') {
-        setEnlargedImage(attachment);
+        if (!gallery?.openImage(attachmentImageKey(message.id, attachment.id))) setEnlargedImage(attachment);
       } else {
         setEnlargedText(attachment);
       }
@@ -453,7 +465,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
             key={attachment.id}
             className="message-attachment-item flex items-center gap-2 px-2.5 py-1.5 border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg-secondary)] cursor-pointer transition-colors duration-150 max-w-[200px] hover:bg-[var(--nim-bg-hover)]"
             onClick={() => handleAttachmentClick(attachment as ChatAttachment)}
-            title={t('aichat:message_segment.preview', 'Click to preview')}
+            title={t('message_segment.preview')}
           >
             {attachment.type === 'image' ? (
               <img
@@ -478,43 +490,24 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
 
   // Render image lightbox modal
   const renderImageModal = () => {
-    // For enlarged view, use the full file path (not thumbnail).
-    // Local file paths are routed through `localAssetUrl` so Electron can
-    // serve them via `nim-asset://` (the main window has `webSecurity: true`
-    // and cannot load `file://` directly).
-    const getEnlargedSrc = () => {
-      if (!enlargedImage) return '';
-      if (enlargedImage.filepath) {
-        if (enlargedImage.filepath.startsWith('data:')) {
-          return enlargedImage.filepath;
-        }
-        if (enlargedImage.filepath.startsWith('file://')) {
-          return localAssetUrl(enlargedImage.filepath.replace(/^file:\/\//, ''));
-        }
-        return localAssetUrl(enlargedImage.filepath);
-      }
-      // Fallback to thumbnail if no filepath
-      return enlargedImage.thumbnail || '';
-    };
-
     return (
       <FullscreenModal
         isOpen={!!enlargedImage}
-        onClose={() => setEnlargedImage(null)}
-        ariaLabel={t('aichat:message_segment.image_preview', 'Image preview')}
+        onClose={closeImageModal}
+        ariaLabel={t('message_segment.image_preview')}
         contentClassName="max-w-[90vw] max-h-[90vh] flex flex-col items-center"
       >
         <button
           className="message-attachment-modal-close absolute -top-8 -right-8 w-7 h-7 p-0 border-none bg-[var(--nim-bg-secondary)] rounded-full cursor-pointer flex items-center justify-center text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
-          onClick={() => setEnlargedImage(null)}
-          aria-label={t('common:close', 'Close')}
+          onClick={closeImageModal}
+            aria-label={t('media.close')}
         >
           <MaterialSymbol icon="close" size={20} />
         </button>
         {enlargedImage && (
           <>
             <img
-              src={getEnlargedSrc()}
+              src={attachmentImageSrc(enlargedImage)}
               alt={enlargedImage.filename}
               className="message-attachment-modal-image max-w-full max-h-[calc(90vh-60px)] object-contain rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.3)]"
             />
@@ -529,17 +522,11 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
 
   // Render text preview modal
   const renderTextModal = () => {
-    const handleClose = () => {
-      setEnlargedText(null);
-      setTextContent(null);
-      setTextLoadError(null);
-    };
-
     return (
       <FullscreenModal
         isOpen={!!enlargedText}
-        onClose={handleClose}
-        ariaLabel={t('aichat:message_segment.text_preview', 'Text file preview')}
+        onClose={closeTextModal}
+        ariaLabel={t('message_segment.text_preview')}
         contentClassName="w-[80vw] max-w-[900px] max-h-[80vh] flex flex-col bg-[var(--nim-bg)] rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.3)] overflow-hidden"
       >
         {enlargedText && (
@@ -554,8 +541,8 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
               </span>
               <button
                 className="message-attachment-modal-close static ml-auto w-6 h-6 p-0 border-none bg-[var(--nim-bg-secondary)] rounded-full cursor-pointer flex items-center justify-center text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
-                onClick={handleClose}
-                aria-label={t('common:close', 'Close')}
+                onClick={closeTextModal}
+            aria-label={t('media.close')}
               >
                 <MaterialSymbol icon="close" size={18} />
               </button>
@@ -564,15 +551,15 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
               {textLoadError ? (
                 <div className="message-attachment-text-modal-error flex flex-col items-center justify-center gap-2 p-8 text-[var(--nim-error)] text-sm">
                   <MaterialSymbol icon="error" size={24} />
-                  <span>{textLoadErrorMessage}</span>
+                  <span>{textLoadError.startsWith('message_segment.') ? t(textLoadError) : textLoadError}</span>
                 </div>
               ) : textContent === null ? (
                 <div className="message-attachment-text-modal-loading flex flex-col items-center justify-center gap-2 p-8 text-[var(--nim-text-faint)] text-sm">
-                  <span>{t('common:loading', 'Loading…')}</span>
+                  <span>{t('message_segment.loading')}</span>
                 </div>
               ) : (
                 <pre className="message-attachment-text-modal-pre m-0 font-mono text-[13px] leading-normal text-[var(--nim-text)] whitespace-pre-wrap break-words tab-4">
-                  {textContent.kind === 'binary' ? t('aichat:message_segment.binary_preview', '[Binary file - preview not available]') : textContent.content}
+                  {textContent}
                 </pre>
               )}
             </div>
@@ -597,7 +584,7 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
             {isDiffExpanded ? '\u25BC' : '\u25B6'}
           </span>
           <span className="text-nim-muted font-medium">
-            {t('aichat:message_segment.edits', changes.length === 1 ? '{{count}} edit' : '{{count}} edits', { count: changes.length })}
+            {t('message_segment.edits', { count: message.toolCall?.changes?.length ?? 0 })}
           </span>
         </button>
 
@@ -634,4 +621,4 @@ export const MessageSegment: React.FC<MessageSegmentProps> = ({
       {renderTextModal()}
     </div>
   );
-};
+});

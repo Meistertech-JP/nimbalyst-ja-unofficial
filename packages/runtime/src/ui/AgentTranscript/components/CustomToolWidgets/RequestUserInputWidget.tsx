@@ -13,26 +13,9 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 
-import {
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { ReorderList } from './shared/ReorderList';
 
 import {
   $convertFromMarkdownString,
@@ -64,7 +47,6 @@ import {
 } from 'lexical';
 
 import type { CustomToolWidgetProps } from './index';
-import { useRuntimeTranslation, type RuntimeTranslate } from '../../../RuntimeTranslation';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import {
   clearRequestUserInputDraft,
@@ -72,6 +54,12 @@ import {
   type RequestUserInputDraft,
   type RequestUserInputFieldDraft,
 } from '../../../../store/atoms/requestUserInputDraft';
+import {
+  draftToAnswers,
+  fieldDraftValid,
+  seedDraft,
+  decidePriming,
+} from './requestUserInputFieldLogic';
 import type {
   RequestUserInputAnswer,
   RequestUserInputArgs,
@@ -131,6 +119,8 @@ function parseArgs(args: any): RequestUserInputArgs | null {
 
 interface ParsedResult {
   cancelled: boolean;
+  /** Why the prompt closed, e.g. `superseded` when the user sent a new message instead. */
+  reason?: string;
   answers: Record<string, RequestUserInputAnswer>;
 }
 
@@ -171,6 +161,7 @@ function parseFromUnknown(value: unknown): ParsedResult | null {
   if (record.cancelled === true || record.canceled === true) {
     return {
       cancelled: true,
+      reason: typeof record.reason === 'string' ? record.reason : undefined,
       answers: typeof record.answers === 'object' && record.answers !== null
         ? (record.answers as Record<string, RequestUserInputAnswer>)
         : {},
@@ -195,169 +186,29 @@ function parseFromUnknown(value: unknown): ParsedResult | null {
 }
 
 // ============================================================
-// Initial-draft seeding from field defaults
-// ============================================================
-
-function seedFieldDraft(field: RequestUserInputField): RequestUserInputFieldDraft {
-  switch (field.type) {
-    case 'multiSelect':
-      return {
-        type: 'multiSelect',
-        state: {
-          selectedIds: field.items.filter((i) => i.defaultChecked).map((i) => i.id),
-        },
-      };
-    case 'singleSelect':
-      return {
-        type: 'singleSelect',
-        state: { selectedId: null, otherSelected: false, otherText: '' },
-      };
-    case 'reorder':
-      return {
-        type: 'reorder',
-        state: { orderedIds: field.items.map((i) => i.id), removedIds: [] },
-      };
-    case 'editText':
-      return {
-        type: 'editText',
-        state: { text: field.initialText ?? '' },
-      };
-    case 'confirm':
-      return {
-        type: 'confirm',
-        state: { value: field.defaultValue ?? false },
-      };
-  }
-}
-
-function seedDraft(args: RequestUserInputArgs): RequestUserInputDraft {
-  const fields: Record<string, RequestUserInputFieldDraft> = {};
-  for (const f of args.fields) {
-    fields[f.id] = seedFieldDraft(f);
-  }
-  return { fields, primed: true };
-}
-
-// ============================================================
-// Validation - is the draft submittable?
-// ============================================================
-
-function fieldDraftValid(
-  field: RequestUserInputField,
-  draft: RequestUserInputFieldDraft | undefined,
-): boolean {
-  if (!draft) return false;
-  if (draft.type !== field.type) return false;
-
-  switch (field.type) {
-    case 'multiSelect': {
-      const min = field.minSelected ?? 0;
-      const max = field.maxSelected ?? field.items.length;
-      const count = (draft as any).state.selectedIds.length;
-      return count >= min && count <= max;
-    }
-    case 'singleSelect': {
-      const s = (draft as any).state;
-      if (s.otherSelected) {
-        return field.allowOther === true && typeof s.otherText === 'string' && s.otherText.trim().length > 0;
-      }
-      return typeof s.selectedId === 'string' && s.selectedId.length > 0;
-    }
-    case 'reorder': {
-      const min = field.minItems ?? 0;
-      return (draft as any).state.orderedIds.length >= Math.max(min, 0);
-    }
-    case 'editText': {
-      const s = (draft as any).state;
-      const trimmed = typeof s.text === 'string' ? s.text.trim() : '';
-      const min = field.minLength ?? 0;
-      const max = field.maxLength ?? Infinity;
-      return trimmed.length >= min && (s.text?.length ?? 0) <= max;
-    }
-    case 'confirm':
-      return true;
-  }
-}
-
-function draftToAnswers(
-  args: RequestUserInputArgs,
-  draft: RequestUserInputDraft,
-): Record<string, RequestUserInputAnswer> {
-  const out: Record<string, RequestUserInputAnswer> = {};
-  for (const field of args.fields) {
-    const fd = draft.fields[field.id];
-    if (!fd) continue;
-
-    switch (field.type) {
-      case 'multiSelect':
-        if (fd.type === 'multiSelect') {
-          out[field.id] = { type: 'multiSelect', selectedIds: [...fd.state.selectedIds] };
-        }
-        break;
-      case 'singleSelect':
-        if (fd.type === 'singleSelect') {
-          if (fd.state.otherSelected) {
-            out[field.id] = {
-              type: 'singleSelect',
-              selectedId: '__other__',
-              otherText: fd.state.otherText.trim(),
-            };
-          } else if (fd.state.selectedId) {
-            out[field.id] = { type: 'singleSelect', selectedId: fd.state.selectedId };
-          }
-        }
-        break;
-      case 'reorder':
-        if (fd.type === 'reorder') {
-          out[field.id] = {
-            type: 'reorder',
-            orderedIds: [...fd.state.orderedIds],
-            removedIds: [...fd.state.removedIds],
-          };
-        }
-        break;
-      case 'editText':
-        if (fd.type === 'editText') {
-          out[field.id] = {
-            type: 'editText',
-            text: fd.state.text,
-            edited: fd.state.text !== (field.initialText ?? ''),
-          };
-        }
-        break;
-      case 'confirm':
-        if (fd.type === 'confirm') {
-          out[field.id] = { type: 'confirm', value: fd.state.value };
-        }
-        break;
-    }
-  }
-  return out;
-}
-
-// ============================================================
 // Voice-friendliness hint (pure UI advisory; voice listener also computes
 // its own copy from the same data, so this is just for display)
 // ============================================================
 
 interface VoiceHint {
   friendly: boolean;
-  reason: string;
+  reasonKey: 'voice_reorder' | 'voice_long_text' | 'voice_available';
+  count?: number;
 }
 
-function computeVoiceHint(args: RequestUserInputArgs, t: RuntimeTranslate): VoiceHint {
+function computeVoiceHint(args: RequestUserInputArgs): VoiceHint {
   for (const field of args.fields) {
     if (field.type === 'reorder' && field.items.length > 6) {
-      return { friendly: false, reason: t('aichat:user_input.voice_reorder', 'Voice will defer — too many items to reorder verbally ({{count}})', { count: field.items.length }) };
+      return { friendly: false, reasonKey: 'voice_reorder', count: field.items.length };
     }
     if (field.type === 'editText') {
       const len = (field.initialText ?? '').length;
       if (len > 240) {
-        return { friendly: false, reason: t('aichat:user_input.voice_long_text', 'Voice will defer — text too long to dictate') };
+        return { friendly: false, reasonKey: 'voice_long_text' };
       }
     }
   }
-  return { friendly: true, reason: t('aichat:user_input.voice_available', 'Voice can read this aloud') };
+  return { friendly: true, reasonKey: 'voice_available' };
 }
 
 // ============================================================
@@ -449,7 +300,7 @@ function SingleSelectRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputSingleSelectField>) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   if (draft.type !== 'singleSelect') return null;
   const otherInputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -538,7 +389,7 @@ function SingleSelectRenderer({
             >
               {draft.state.otherSelected && <span className="w-2 h-2 rounded-full bg-white" />}
             </span>
-            <span className="text-[0.8125rem] font-medium text-nim leading-snug">{t('aichat:questions.other', 'Other')}</span>
+            <span className="text-[0.8125rem] font-medium text-nim leading-snug">{t('questions.other')}</span>
           </button>
           {draft.state.otherSelected && (
             <div className="px-2.5 pb-2">
@@ -547,7 +398,7 @@ function SingleSelectRenderer({
                 data-testid="request-user-input-singleselect-other-input"
                 value={draft.state.otherText}
                 onChange={(e) => setOtherText(e.target.value)}
-                placeholder={t('aichat:questions.answer_placeholder', 'Type your answer...')}
+                placeholder={t('questions.answer_placeholder')}
                 disabled={disabled}
                 rows={2}
                 className="w-full px-2.5 py-2 rounded border border-nim bg-nim text-sm text-nim placeholder-nim-faint resize-y focus:outline-none focus:border-nim-primary disabled:opacity-50"
@@ -560,197 +411,27 @@ function SingleSelectRenderer({
   );
 }
 
-interface ReorderRowProps {
-  itemId: string;
-  index: number;
-  title: string;
-  subtitle?: string;
-  removable: boolean;
-  canRemove: boolean;
-  onRemove: () => void;
-  disabled: boolean;
-}
-
-function ReorderRow({ itemId, index, title, subtitle, removable, canRemove, onRemove, disabled }: ReorderRowProps) {
-  const { t } = useRuntimeTranslation();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: itemId });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  // iOS WKWebView: the long-press text-selection callout will hijack a drag
-  // gesture if we let any text on the row be selectable. Keep the row's
-  // touchAction permissive (so vertical scroll still works on the transcript)
-  // but disable selection and the callout outright.
-  const rowStyle: React.CSSProperties = {
-    ...style,
-    WebkitUserSelect: 'none',
-    userSelect: 'none',
-    WebkitTouchCallout: 'none',
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={rowStyle}
-      data-testid="request-user-input-reorder-row"
-      data-item-id={itemId}
-      data-dragging={isDragging || undefined}
-      className={`flex items-center gap-2.5 py-2 px-2.5 rounded border bg-nim-secondary ${
-        isDragging ? 'border-nim-primary shadow-lg' : 'border-nim'
-      }`}
-    >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        disabled={disabled}
-        aria-label={t('aichat:user_input.drag_reorder', 'Drag to reorder')}
-        aria-roledescription={t('aichat:user_input.sortable', 'sortable')}
-        // touch-action: none on the handle -- once the TouchSensor fires
-        // (after the activation delay) the browser must NOT also try to
-        // pan/scroll. Without this, iOS routes the gesture to scroll and
-        // @dnd-kit cancels the drag mid-flight, snapping the row back to its
-        // original position on release.
-        style={{ touchAction: 'none' }}
-        className="w-5 h-5 shrink-0 text-nim-faint cursor-grab disabled:cursor-not-allowed flex items-center justify-center"
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <circle cx="5" cy="3" r="1" fill="currentColor" />
-          <circle cx="9" cy="3" r="1" fill="currentColor" />
-          <circle cx="5" cy="7" r="1" fill="currentColor" />
-          <circle cx="9" cy="7" r="1" fill="currentColor" />
-          <circle cx="5" cy="11" r="1" fill="currentColor" />
-          <circle cx="9" cy="11" r="1" fill="currentColor" />
-        </svg>
-      </button>
-      <div className="w-6 text-center text-xs font-semibold text-nim-muted font-mono shrink-0">{index + 1}</div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[0.8125rem] font-medium text-nim leading-snug">{title}</div>
-        {subtitle && <div className="text-xs text-nim-muted leading-snug">{subtitle}</div>}
-      </div>
-      {removable && (
-        <button
-          type="button"
-          data-testid="request-user-input-reorder-remove"
-          onClick={onRemove}
-          disabled={disabled || !canRemove}
-          aria-label={t('aichat:user_input.remove_item', 'Remove item')}
-          className="w-6 h-6 shrink-0 rounded text-nim-faint hover:text-nim-error hover:bg-[color-mix(in_srgb,var(--nim-error)_12%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 4h8M5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M4 4l.5 7a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1L10 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      )}
-    </div>
-  );
-}
-
 function ReorderRenderer({
   field,
   draft,
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputReorderField>) {
-  const { t } = useRuntimeTranslation();
   if (draft.type !== 'reorder') return null;
 
-  // Three sensors for cross-platform support:
-  //  - MouseSensor (distance) for desktop click-drag
-  //  - TouchSensor (delay) for iOS/Android long-press drag. The delay is what
-  //    lets us coexist with the iOS text-selection callout: short taps still
-  //    select text, but ~200ms holds initiate the drag and the activation
-  //    swallows the touch so the OS doesn't pop the callout.
-  //  - KeyboardSensor for accessibility
-  // PointerSensor is intentionally NOT used here -- on iOS WKWebView its
-  // default activation conflicts with the selection callout, which cancels
-  // the drag and snaps items back to their original order.
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const itemsById = useMemo(() => {
-    const map = new Map<string, RequestUserInputReorderField['items'][number]>();
-    for (const i of field.items) map.set(i.id, i);
-    return map;
-  }, [field.items]);
-
-  const min = Math.max(field.minItems ?? 0, 0);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = draft.state.orderedIds.indexOf(String(active.id));
-    const newIndex = draft.state.orderedIds.indexOf(String(over.id));
-    if (oldIndex === -1 || newIndex === -1) return;
-    setDraft({
-      type: 'reorder',
-      state: {
-        orderedIds: arrayMove(draft.state.orderedIds, oldIndex, newIndex),
-        removedIds: draft.state.removedIds,
-      },
-    });
-  };
-
-  const remove = (id: string) => {
-    if (disabled) return;
-    if (draft.state.orderedIds.length <= min) return;
-    setDraft({
-      type: 'reorder',
-      state: {
-        orderedIds: draft.state.orderedIds.filter((x) => x !== id),
-        removedIds: [...draft.state.removedIds, id],
-      },
-    });
-  };
-
   return (
-    <div data-testid={`request-user-input-reorder-${field.id}`} className="flex flex-col gap-1.5">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}
-        accessibility={{
-          screenReaderInstructions: { draggable: t('aichat:user_input.drag_instructions', 'To pick up a draggable item, press the space bar. While dragging, use the arrow keys to move the item. Press space again to drop the item in its new position, or press escape to cancel.') },
-          announcements: {
-            onDragStart: ({ active }) => t('aichat:user_input.drag_start', 'Picked up draggable item {{id}}.', { id: active.id }),
-            onDragOver: ({ active, over }) => over
-              ? t('aichat:user_input.drag_over', 'Draggable item {{id}} was moved over droppable area {{target}}.', { id: active.id, target: over.id })
-              : t('aichat:user_input.drag_outside', 'Draggable item {{id}} is no longer over a droppable area.', { id: active.id }),
-            onDragEnd: ({ active, over }) => over
-              ? t('aichat:user_input.drag_end_over', 'Draggable item {{id}} was dropped over droppable area {{target}}.', { id: active.id, target: over.id })
-              : t('aichat:user_input.drag_end', 'Draggable item {{id}} was dropped.', { id: active.id }),
-            onDragCancel: ({ active }) => t('aichat:user_input.drag_cancel', 'Dragging was cancelled. Draggable item {{id}} was dropped.', { id: active.id }),
-          },
-        }}>
-        <SortableContext items={draft.state.orderedIds} strategy={verticalListSortingStrategy}>
-          {draft.state.orderedIds.map((id, index) => {
-            const item = itemsById.get(id);
-            if (!item) return null;
-            return (
-              <ReorderRow
-                key={id}
-                itemId={id}
-                index={index}
-                title={item.title}
-                subtitle={item.subtitle}
-                removable={item.removable === true}
-                canRemove={draft.state.orderedIds.length > min}
-                onRemove={() => remove(id)}
-                disabled={disabled}
-              />
-            );
-          })}
-        </SortableContext>
-      </DndContext>
-      {draft.state.removedIds.length > 0 && (
-        <div className="text-[0.6875rem] text-nim-faint italic px-1">
-          {t('aichat:user_input.removed', draft.state.removedIds.length === 1 ? 'Removed: {{count}} item' : 'Removed: {{count}} items', { count: draft.state.removedIds.length })}
-        </div>
-      )}
-    </div>
+    <ReorderList
+      items={field.items}
+      state={draft.state}
+      minItems={field.minItems}
+      disabled={disabled}
+      onChange={(state) => setDraft({ type: 'reorder', state })}
+      testIds={{
+        root: `request-user-input-reorder-${field.id}`,
+        row: 'request-user-input-reorder-row',
+        remove: 'request-user-input-reorder-remove',
+      }}
+    />
   );
 }
 
@@ -798,7 +479,7 @@ interface FormatToolbarState {
 }
 
 function FormatToolbar({ disabled }: { disabled: boolean }) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const [editor] = useLexicalComposerContext();
   const [state, setState] = useState<FormatToolbarState>({ bold: false, italic: false, underline: false, code: false });
 
@@ -840,7 +521,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('bold')}
         disabled={disabled}
         className={`${baseBtn} ${state.bold ? activeBtn : ''}`}
-        aria-label={t('dialogs:keyboard_shortcuts.labels.bold', 'Bold')}
+        aria-label={t('user_input.bold')}
       >
         <strong>B</strong>
       </button>
@@ -850,7 +531,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('italic')}
         disabled={disabled}
         className={`${baseBtn} ${state.italic ? activeBtn : ''}`}
-        aria-label={t('dialogs:keyboard_shortcuts.labels.italic', 'Italic')}
+        aria-label={t('user_input.italic')}
       >
         <em>I</em>
       </button>
@@ -860,7 +541,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('underline')}
         disabled={disabled}
         className={`${baseBtn} ${state.underline ? activeBtn : 'underline'}`}
-        aria-label={t('dialogs:keyboard_shortcuts.labels.underline', 'Underline')}
+        aria-label={t('user_input.underline')}
       >
         <span style={{ textDecoration: 'underline' }}>U</span>
       </button>
@@ -871,7 +552,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('code')}
         disabled={disabled}
         className={`${baseBtn} ${state.code ? activeBtn : ''}`}
-        aria-label={t('aichat:user_input.code', 'Code')}
+        aria-label={t('user_input.code')}
       >
         {'<>'}
       </button>
@@ -880,10 +561,12 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
 }
 
 function InlineLexicalEditor({ initialText, format, placeholder, onChange, disabled }: InlineLexicalEditorProps) {
-  const { t } = useRuntimeTranslation();
-  // Capture the initial text so we don't reseed the editor when the parent
+  const { t } = useTranslation('aichat');
+  // Capture the seed text so we don't reseed the editor when the parent
   // re-renders. The editor owns its content state thereafter; the draft atom
-  // mirrors it via OnChangePlugin.
+  // mirrors it via OnChangePlugin. Callers must pass the draft's current text,
+  // not the agent's original -- this ref is re-read on every mount, and the
+  // transcript's virtual scroller remounts the widget freely (#1418).
   const initialTextRef = useRef(initialText);
 
   const initialConfig = useMemo(
@@ -943,7 +626,7 @@ function InlineLexicalEditor({ initialText, format, placeholder, onChange, disab
               <ContentEditable
                 data-testid="request-user-input-edittext-content"
                 className="rui-lexical-content px-3.5 py-3 min-h-[6rem] text-sm text-nim leading-relaxed outline-none"
-                aria-label={t('aichat:user_input.edit_text', 'Edit text')}
+                aria-label={t('user_input.edit_text')}
               />
             }
             placeholder={
@@ -969,7 +652,7 @@ function EditTextRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputEditTextField>) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   if (draft.type !== 'editText') return null;
   const format = field.format ?? 'markdown';
   const initial = field.initialText ?? '';
@@ -986,17 +669,20 @@ function EditTextRenderer({
   return (
     <div data-testid={`request-user-input-edittext-${field.id}`}>
       <InlineLexicalEditor
-        initialText={initial}
+        // Seed from the draft, which survives unmount, not from field.initialText.
+        // Seeding from the agent's original threw away everything the user had
+        // typed the moment the transcript scrolled the widget out of view (#1418).
+        initialText={draft.state.text}
         format={format}
         placeholder={field.placeholder}
         onChange={onChange}
         disabled={disabled}
       />
       <div className="flex items-center justify-between mt-1.5 text-[0.6875rem] text-nim-faint">
-        <span className={edited ? 'text-nim-warning' : ''}>{'• '}{edited ? t('aichat:user_input.edited', 'edited from draft') : t('aichat:user_input.unchanged', 'unchanged')}</span>
+        <span className={edited ? 'text-nim-warning' : ''}>{edited ? `• ${t('user_input.edited')}` : `• ${t('user_input.unchanged')}`}</span>
         <span>
-          {t('aichat:user_input.char_count', '{{count}} chars', { count: charCount })}{' · '}{format === 'plain' ? t('aichat:user_input.plain', 'plain') : format}
-          {field.maxLength ? ` · ${t('aichat:user_input.max_length', 'max {{count}}', { count: field.maxLength })}` : ''}
+          {t('user_input.char_count', { count: charCount })} · {format === 'plain' ? t('user_input.plain') : 'Markdown'}
+          {field.maxLength ? ` · ${t('user_input.max_length', { count: field.maxLength })}` : ''}
         </span>
       </div>
     </div>
@@ -1009,41 +695,57 @@ function ConfirmRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputConfirmField>) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   if (draft.type !== 'confirm') return null;
   const value = draft.state.value;
 
-  const toggle = () => {
+  const pick = (next: boolean) => {
     if (disabled) return;
-    setDraft({ type: 'confirm', state: { value: !value } });
+    setDraft({ type: 'confirm', state: { value: next } });
   };
 
+  // Both answers are always on screen as separate targets. The old single
+  // toggle labelled itself with its own current value ("No" when false), which
+  // reads as "the No option" rather than "currently set to No" -- users had no
+  // visible way to say yes, and untouched fields submitted a silent false.
   return (
-    <button
-      type="button"
+    <div
+      role="radiogroup"
+      aria-label={field.label}
       data-testid={`request-user-input-confirm-${field.id}`}
-      data-checked={value}
-      onClick={toggle}
-      disabled={disabled}
-      className={`flex items-start gap-2 py-2 px-2.5 rounded border transition-colors duration-150 cursor-pointer text-left bg-transparent disabled:opacity-50 disabled:cursor-not-allowed w-full ${
-        value
-          ? 'border-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_8%,var(--nim-bg-secondary))]'
-          : 'border-nim bg-nim-secondary hover:bg-nim-hover'
-      }`}
+      data-checked={value === null ? 'unanswered' : value}
+      className="flex gap-2"
     >
-      <span
-        className={`w-4 h-4 mt-0.5 shrink-0 border rounded-sm flex items-center justify-center transition-colors ${
-          value ? 'bg-nim-primary border-nim-primary text-nim-on-primary' : 'bg-nim border-nim text-nim-primary'
-        }`}
-      >
-        {value && (
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M8.5 2.5L3.75 7.25L1.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </span>
-      <span className="text-[0.8125rem] font-medium text-nim leading-snug">{value ? t('tracker:grid.boolean_yes', 'Yes') : t('tracker:grid.boolean_no', 'No')}</span>
-    </button>
+      {([true, false] as const).map((option) => {
+        const isSelected = value === option;
+        return (
+          <button
+            key={String(option)}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            data-testid={`request-user-input-confirm-${field.id}-${option ? 'yes' : 'no'}`}
+            data-selected={isSelected}
+            onClick={() => pick(option)}
+            disabled={disabled}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-2.5 rounded border transition-colors duration-150 cursor-pointer bg-transparent disabled:opacity-50 disabled:cursor-not-allowed ${
+              isSelected
+                ? 'border-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_8%,var(--nim-bg-secondary))]'
+                : 'border-nim bg-nim-secondary hover:bg-nim-hover'
+            }`}
+          >
+            <span
+              className={`w-4 h-4 shrink-0 border rounded-full flex items-center justify-center transition-colors ${
+                isSelected ? 'bg-nim-primary border-nim-primary' : 'bg-nim border-nim'
+              }`}
+            >
+              {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+            </span>
+            <span className="text-[0.8125rem] font-medium text-nim leading-snug">{option ? t('user_input.yes') : t('user_input.no')}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1062,27 +764,27 @@ function FieldCard({
   setDraft: (next: RequestUserInputFieldDraft) => void;
   disabled: boolean;
 }) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const helper = (() => {
     switch (field.type) {
       case 'multiSelect': {
         const min = field.minSelected ?? 0;
         const max = field.maxSelected ?? field.items.length;
-        if (min > 0 && max < field.items.length) return t('aichat:user_input.pick_range', 'Pick {{min}}-{{max}}', { min, max });
-        if (min > 0) return t('aichat:user_input.pick_min', 'Pick at least {{count}}', { count: min });
-        if (max < field.items.length) return t('aichat:user_input.pick_max', 'Pick up to {{count}}', { count: max });
-        return t('aichat:user_input.pick_any', 'Pick any subset');
+        if (min > 0 && max < field.items.length) return t('user_input.pick_range', { min, max });
+        if (min > 0) return t('user_input.pick_min', { count: min });
+        if (max < field.items.length) return t('user_input.pick_max', { count: max });
+        return t('user_input.pick_any');
       }
       case 'singleSelect':
-        return field.allowOther ? t('aichat:user_input.pick_or_write', 'Pick one or write your own') : t('aichat:user_input.pick_one', 'Pick one');
+        return field.allowOther ? t('user_input.pick_or_write') : t('user_input.pick_one');
       case 'reorder':
         return field.minItems
-          ? t('aichat:user_input.item_minimum', '{{count}} items · minimum {{min}}', { count: field.items.length, min: field.minItems })
-          : t('aichat:user_input.items', '{{count}} items', { count: field.items.length });
+          ? t('user_input.item_minimum', { count: field.items.length, min: field.minItems })
+          : t('user_input.items', { count: field.items.length });
       case 'editText':
-        return field.format === 'plain' ? t('aichat:user_input.plain_text', 'Plain text') : t('aichat:user_input.markdown_supported', 'Markdown supported');
+        return field.format === 'plain' ? t('user_input.plain_text') : t('user_input.markdown_supported');
       case 'confirm':
-        return undefined;
+        return t('user_input.answer_yes_no');
     }
   })();
 
@@ -1118,8 +820,8 @@ function FieldCard({
 // Main widget component
 // ============================================================
 
-export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ message, sessionId }) => {
-  const { t } = useRuntimeTranslation();
+export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ message, sessionId, superseded }) => {
+  const { t } = useTranslation('aichat');
   const toolCall = message.toolCall;
   const promptId = toolCall?.providerToolCallId || '';
 
@@ -1135,24 +837,26 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
 
   const rawResult = toolCall.result;
   const parsedResult = useMemo(() => parseResult(rawResult), [rawResult]);
-  const isCompleted = parsedResult !== null;
-  const isCancelled = parsedResult?.cancelled === true;
+  // The user sent a new message instead of answering. Older transcripts have
+  // no durable result for this, so the transcript also passes `superseded`.
+  const isSkipped = parsedResult?.reason === 'superseded' || (parsedResult === null && superseded === true);
+  const isCompleted = parsedResult !== null || isSkipped;
   const isPending = !isCompleted;
 
   const [draft, setDraft] = useAtom(requestUserInputDraftAtom(promptId));
 
-  // Prime the draft on first mount.
-  const primedRef = useRef(false);
+  // Prime the draft once per prompt KEY. Tracking which key was primed (not a
+  // bare "primed once" boolean) keeps this key-aware: if the atom key changes
+  // while the component stays mounted, the new draft is re-seeded rather than
+  // left as an empty, still-interactive form. See decidePriming + issue #1218.
+  const primedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (primedRef.current) return;
     if (!args) return;
-    if (draft.primed) {
-      primedRef.current = true;
-      return;
-    }
-    setDraft(seedDraft(args));
-    primedRef.current = true;
-  }, [args, draft.primed, setDraft]);
+    const decision = decidePriming(promptId, primedKeyRef.current, draft.primed);
+    if (decision === 'skip') return;
+    if (decision === 'seed') setDraft(seedDraft(args));
+    primedKeyRef.current = promptId;
+  }, [args, promptId, draft.primed, setDraft]);
 
   const setFieldDraft = useCallback(
     (fieldId: string, next: RequestUserInputFieldDraft) => {
@@ -1209,19 +913,23 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
 
   if (!args) return null;
 
-  const displayResult = localResult || (isCompleted && parsedResult ? parsedResult : null);
+  const displayResult = localResult
+    || (isSkipped ? { cancelled: true, answers: {} } : isCompleted && parsedResult ? parsedResult : null);
   const displayCancelled = displayResult?.cancelled === true;
+  const displaySkipped = !localResult && isSkipped;
 
-  const voiceHint = computeVoiceHint(args, t);
+  const voiceHint = computeVoiceHint(args);
 
   // ---- Completed state ----
   if (displayResult || hasResponded) {
-    const statusText = displayCancelled ? t('aichat:user_input.cancelled', 'Input Cancelled') : t('aichat:user_input.submitted', 'Input Submitted');
+    const statusText = displaySkipped
+      ? t('user_input.skipped')
+      : displayCancelled ? t('user_input.cancelled') : t('user_input.submitted');
 
     return (
       <div
         data-testid="request-user-input-widget"
-        data-state={displayCancelled ? 'cancelled' : 'completed'}
+        data-state={displaySkipped ? 'skipped' : displayCancelled ? 'cancelled' : 'completed'}
         className="request-user-input-widget rounded-lg bg-nim-secondary border border-nim overflow-hidden opacity-85"
       >
         <div className="flex items-center gap-2 py-3 px-4 border-b border-nim bg-nim-tertiary">
@@ -1235,10 +943,18 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {t('aichat:interactive.submitted', 'Submitted')}
+              {t('user_input.submitted_badge')}
             </span>
           )}
-          {displayCancelled && (
+          {displaySkipped && (
+            <span
+              data-testid="request-user-input-skipped"
+              className="flex items-center gap-1 text-xs font-medium text-nim-muted py-1 px-2 bg-nim-tertiary rounded-full"
+            >
+              {t('user_input.skipped')}
+            </span>
+          )}
+          {displayCancelled && !displaySkipped && (
             <span
               data-testid="request-user-input-cancelled"
               className="flex items-center gap-1 text-xs font-medium text-nim-muted py-1 px-2 bg-nim-tertiary rounded-full"
@@ -1246,13 +962,26 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {t('aichat:interactive.cancelled', 'Cancelled')}
+              {t('user_input.cancelled_short')}
             </span>
           )}
         </div>
         <div className="p-3 flex flex-col gap-2">
           {args.intro && <div className="text-sm text-nim-muted">{args.intro}</div>}
-          <CompletedSummary fields={args.fields} answers={displayResult?.answers ?? {}} cancelled={displayCancelled} />
+          {displaySkipped && (
+            <div
+              data-testid="request-user-input-skipped-note"
+              className="request-user-input-skipped-note text-xs text-nim-muted italic select-text"
+            >
+              {t('user_input.skipped_note')}
+            </div>
+          )}
+          <CompletedSummary
+            fields={args.fields}
+            answers={displayResult?.answers ?? {}}
+            cancelled={displayCancelled && !displaySkipped}
+            skipped={displaySkipped}
+          />
         </div>
       </div>
     );
@@ -1268,9 +997,9 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
       >
         <div className="flex items-center gap-2 py-3 px-4 bg-nim-tertiary">
           <RequestUserInputIcon />
-          <span className="text-sm font-semibold text-nim flex-1">{args.title || t('aichat:user_input.requested', 'Input requested')}</span>
+          <span className="text-sm font-semibold text-nim flex-1">{args.title || t('user_input.requested')}</span>
           <span data-testid="request-user-input-pending" className="text-xs text-nim-muted">
-            {t('aichat:interactive.waiting', 'Waiting...')}
+            {t('user_input.waiting')}
           </span>
         </div>
       </div>
@@ -1286,9 +1015,9 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
     >
       <div className="flex items-center gap-2 py-3 px-4 border-b border-nim bg-nim-tertiary">
         <RequestUserInputIcon />
-        <span className="text-sm font-semibold text-nim flex-1">{args.title || t('aichat:user_input.requested', 'Input requested')}</span>
+        <span className="text-sm font-semibold text-nim flex-1">{args.title || t('user_input.requested')}</span>
         <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_14%,transparent)] py-0.5 px-2 rounded-full">
-          {t('aichat:user_input.requested', 'Input requested')}
+          {t('user_input.requested')}
         </span>
       </div>
 
@@ -1318,7 +1047,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1v8M3 4v2M9 4v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            <span>{voiceHint.reason}</span>
+            <span>{t(`user_input.${voiceHint.reasonKey}`, voiceHint.count === undefined ? undefined : { count: voiceHint.count })}</span>
           </div>
           <div className="flex gap-2">
             <button
@@ -1328,7 +1057,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               disabled={isSubmitting}
               className="px-3 py-1.5 rounded-md text-[13px] cursor-pointer border border-nim transition-colors duration-150 hover:bg-nim-hover bg-nim-tertiary text-nim-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {args.cancelLabel ?? t('common:cancel', 'Cancel')}
+              {args.cancelLabel ?? t('user_input.cancel')}
             </button>
             <button
               type="button"
@@ -1337,7 +1066,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               disabled={!allValid || isSubmitting}
               className="px-4 py-1.5 rounded-md text-[13px] font-medium cursor-pointer border-none transition-colors duration-150 hover:opacity-90 bg-nim-primary text-nim-on-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? t('aichat:interactive.submitting', 'Submitting...') : args.submitLabel ?? t('common:pull_request.confirm', 'Confirm')}
+              {isSubmitting ? t('user_input.submitting') : args.submitLabel ?? t('user_input.confirm')}
             </button>
           </div>
         </div>
@@ -1360,14 +1089,17 @@ function CompletedSummary({
   fields,
   answers,
   cancelled,
+  skipped,
 }: {
   fields: RequestUserInputField[];
   answers: Record<string, RequestUserInputAnswer>;
   cancelled: boolean;
+  /** Show what was asked, with no answer line. */
+  skipped: boolean;
 }) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   if (cancelled) {
-    return <div className="text-xs text-nim-muted italic">{t('aichat:user_input.user_cancelled', 'User cancelled the request.')}</div>;
+    return <div className="text-xs text-nim-muted italic">{t('user_input.user_cancelled')}</div>;
   }
   return (
     <div className="flex flex-col gap-2">
@@ -1378,7 +1110,7 @@ function CompletedSummary({
             <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-nim-primary mb-1">
               {field.label}
             </div>
-            <SummaryAnswer field={field} answer={ans} />
+            {!skipped && <SummaryAnswer field={field} answer={ans} />}
           </div>
         );
       })}
@@ -1387,9 +1119,9 @@ function CompletedSummary({
 }
 
 function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer: RequestUserInputAnswer | undefined }) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   if (!answer) {
-    return <div className="text-xs text-nim-faint italic">{t('aichat:user_input.no_answer', 'No answer recorded')}</div>;
+    return <div className="text-xs text-nim-faint italic">{t('user_input.no_answer')}</div>;
   }
 
   switch (field.type) {
@@ -1398,12 +1130,12 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
       const titles = answer.selectedIds
         .map((id) => field.items.find((i) => i.id === id)?.title ?? id)
         .join(', ');
-      return <div className="text-xs text-nim">{titles || t('aichat:user_input.none_selected', '(none selected)')}</div>;
+      return <div className="text-xs text-nim">{titles || t('user_input.none_selected')}</div>;
     }
     case 'singleSelect': {
       if (answer.type !== 'singleSelect') return null;
       if (answer.selectedId === '__other__') {
-        return <div className="text-xs text-nim italic">{answer.otherText || t('aichat:user_input.empty', '(empty)')}</div>;
+        return <div className="text-xs text-nim italic">{answer.otherText || t('user_input.empty')}</div>;
       }
       const opt = field.options.find((o) => o.id === answer.selectedId);
       return <div className="text-xs text-nim">{opt?.label ?? answer.selectedId}</div>;
@@ -1434,7 +1166,7 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
           </ol>
           {answer.removedIds.length > 0 && (
             <div className="text-[0.6875rem] text-nim-faint italic">
-              {t('aichat:user_input.removed', answer.removedIds.length === 1 ? 'Removed: {{count}} item' : 'Removed: {{count}} items', { count: answer.removedIds.length })}
+              {t(answer.removedIds.length === 1 ? 'user_input.removed_one' : 'user_input.removed_other', { count: answer.removedIds.length })}
             </div>
           )}
         </div>
@@ -1447,13 +1179,13 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
           <pre className="text-xs text-nim font-mono whitespace-pre-wrap break-words">
             {answer.text}
           </pre>
-          {answer.edited && <div className="text-[0.6875rem] text-nim-warning italic">{t('aichat:user_input.edited', 'edited from draft')}</div>}
+          {answer.edited && <div className="text-[0.6875rem] text-nim-warning italic">{t('user_input.edited')}</div>}
         </div>
       );
     }
     case 'confirm': {
       if (answer.type !== 'confirm') return null;
-      return <div className="text-xs text-nim">{answer.value ? t('tracker:grid.boolean_yes', 'Yes') : t('tracker:grid.boolean_no', 'No')}</div>;
+      return <div className="text-xs text-nim">{answer.value ? t('user_input.yes') : t('user_input.no')}</div>;
     }
   }
 }

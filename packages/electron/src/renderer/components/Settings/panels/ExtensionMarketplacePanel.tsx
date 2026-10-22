@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useTheme } from '../../../hooks/useTheme';
 import { marketplaceInstallProgressAtom } from '../../../store/atoms/appCommands';
-import { formatExtensionInstallProgress } from '../../../utils/extensionInstallProgress';
 
 // Registry types (mirror main process types)
 interface RegistryExtension {
@@ -98,7 +97,7 @@ export function ExtensionMarketplacePanel({
   onInstallRequestHandled,
   onViewInstalled,
 }: ExtensionMarketplacePanelProps) {
-  const { t, i18n } = useTranslation(['extensions', 'common']);
+  const { t } = useTranslation('extensionMarketplace');
   const posthog = usePostHog();
   const { theme } = useTheme();
 
@@ -127,7 +126,7 @@ export function ExtensionMarketplacePanel({
   useEffect(() => {
     if (!githubInstalling || !installProgress) return;
     if (installProgress.version <= installProgressBaselineRef.current) return;
-    setStatusMessage(formatExtensionInstallProgress(installProgress, t));
+    setStatusMessage(t(`progress.${installProgress.stage}`));
   }, [githubInstalling, installProgress, t]);
 
   // Check if user has previously accepted the marketplace risk warning
@@ -151,7 +150,7 @@ export function ExtensionMarketplacePanel({
 
     const requestedExtension = registry.extensions.find((extension) => extension.id === installRequest.extensionId);
     if (!requestedExtension) {
-      setStatusMessage(t('extensions:marketplace_panel.not_found', { id: installRequest.extensionId }));
+      setStatusMessage(t('status.requested_extension_not_found', { extensionId: installRequest.extensionId }));
       onInstallRequestHandled?.(installRequest.token);
 
       const timeoutId = window.setTimeout(() => setStatusMessage(''), 5000);
@@ -161,7 +160,7 @@ export function ExtensionMarketplacePanel({
     setSelectedCategory(null);
     setSearchQuery('');
     setSelectedExtension(requestedExtension);
-    setStatusMessage(t('extensions:marketplace_panel.review_before_install', { name: requestedExtension.name }));
+    setStatusMessage(t('status.review_before_install', { extension: requestedExtension.name }));
     onInstallRequestHandled?.(installRequest.token);
 
     const timeoutId = window.setTimeout(() => setStatusMessage(''), 5000);
@@ -189,7 +188,7 @@ export function ExtensionMarketplacePanel({
       if (registryResult.success) {
         setRegistry(registryResult.data);
       } else {
-        setError(registryResult.error || t('extensions:marketplace_panel.load_failed'));
+        setError(registryResult.error || t('errors.load_marketplace'));
       }
 
       if (installedResult.success) {
@@ -209,7 +208,7 @@ export function ExtensionMarketplacePanel({
         setAvailableUpdates(updateMap);
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : t('extensions:marketplace_panel.load_data_failed');
+      const errorMessage = err instanceof Error ? err.message : t('errors.load_marketplace_data');
       console.error('Failed to load marketplace data:', err);
       setError(errorMessage);
     } finally {
@@ -219,7 +218,7 @@ export function ExtensionMarketplacePanel({
 
   const handleInstall = useCallback(async (extension: RegistryExtension) => {
     setInstallStatus(prev => ({ ...prev, [extension.id]: 'installing' }));
-    setStatusMessage(t('extensions:actions.status_installing', { name: extension.name }));
+    setStatusMessage(t('status.installing', { extension: extension.name }));
 
     try {
       const result = await window.electronAPI.invoke(
@@ -232,7 +231,7 @@ export function ExtensionMarketplacePanel({
 
       if (result.success) {
         setInstallStatus(prev => ({ ...prev, [extension.id]: 'installed' }));
-        setStatusMessage(t('extensions:marketplace_panel.installed', { name: extension.name }));
+        setStatusMessage(t('status.installed_successfully', { extension: extension.name }));
 
         posthog?.capture('extension_marketplace_installed', {
           extensionId: extension.id,
@@ -253,10 +252,10 @@ export function ExtensionMarketplacePanel({
         }
       } else {
         setInstallStatus(prev => ({ ...prev, [extension.id]: 'error' }));
-        setStatusMessage(result.error || t('extensions:actions.installation_failed'));
+        setStatusMessage(result.error || t('errors.installation_failed'));
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : t('extensions:actions.installation_failed');
+      const errorMessage = err instanceof Error ? err.message : t('errors.installation_failed');
       setInstallStatus(prev => ({ ...prev, [extension.id]: 'error' }));
       setStatusMessage(errorMessage);
     }
@@ -268,14 +267,14 @@ export function ExtensionMarketplacePanel({
     const ext = registry?.extensions.find(e => e.id === extensionId);
     const name = ext?.name || extensionId;
 
-    setStatusMessage(t('extensions:marketplace_panel.uninstalling', { name }));
+    setStatusMessage(t('status.uninstalling', { extension: name }));
 
     try {
       const result = await window.electronAPI.invoke('extension-marketplace:uninstall', extensionId);
 
       if (result.success) {
         setInstallStatus(prev => ({ ...prev, [extensionId]: 'idle' }));
-        setStatusMessage(t('extensions:marketplace_panel.uninstalled', { name }));
+        setStatusMessage(t('status.uninstalled', { extension: name }));
 
         posthog?.capture('extension_marketplace_uninstalled', { extensionId });
 
@@ -290,10 +289,10 @@ export function ExtensionMarketplacePanel({
           setAllInstalledExtensions(allExtensionsResult as InstalledExtensionInfo[]);
         }
       } else {
-        setStatusMessage(result.error || t('extensions:installed_panel.uninstall_failed'));
+        setStatusMessage(result.error || t('errors.uninstall_failed'));
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : t('extensions:installed_panel.uninstall_failed');
+      const errorMessage = err instanceof Error ? err.message : t('errors.uninstall_failed');
       setStatusMessage(errorMessage);
     }
 
@@ -307,13 +306,13 @@ export function ExtensionMarketplacePanel({
     // by this install, not stale ones from a previous run.
     installProgressBaselineRef.current = installProgress?.version ?? 0;
     setGithubInstalling(true);
-    setStatusMessage(t('extensions:actions.status_installing_github'));
+    setStatusMessage(t('status.installing_from_github'));
 
     try {
       const result = await window.electronAPI.invoke('extension-marketplace:install-from-github', githubUrl.trim());
 
       if (result.success) {
-        setStatusMessage(t('extensions:marketplace_panel.github_installed'));
+        setStatusMessage(t('status.installed_from_github'));
         setGithubUrl('');
 
         posthog?.capture('extension_marketplace_installed', {
@@ -326,10 +325,10 @@ export function ExtensionMarketplacePanel({
           setInstalledExtensions(installedResult.data || {});
         }
       } else {
-        setStatusMessage(result.error || t('extensions:marketplace_panel.github_failed'));
+        setStatusMessage(result.error || t('errors.github_install_failed'));
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : t('extensions:marketplace_panel.github_failed');
+      const errorMessage = err instanceof Error ? err.message : t('errors.github_install_failed');
       setStatusMessage(errorMessage);
     } finally {
       setGithubInstalling(false);
@@ -352,7 +351,7 @@ export function ExtensionMarketplacePanel({
 
   const handleUpdate = useCallback(async (extension: RegistryExtension) => {
     setInstallStatus(prev => ({ ...prev, [extension.id]: 'installing' }));
-    setStatusMessage(t('extensions:marketplace_panel.updating', { name: extension.name, version: extension.version }));
+    setStatusMessage(t('status.updating_to_version', { extension: extension.name, version: extension.version }));
 
     try {
       const result = await window.electronAPI.invoke(
@@ -365,7 +364,7 @@ export function ExtensionMarketplacePanel({
 
       if (result.success) {
         setInstallStatus(prev => ({ ...prev, [extension.id]: 'installed' }));
-        setStatusMessage(t('extensions:marketplace_panel.updated', { name: extension.name, version: extension.version }));
+        setStatusMessage(t('status.updated_to_version', { extension: extension.name, version: extension.version }));
         setAvailableUpdates(prev => {
           const next = { ...prev };
           delete next[extension.id];
@@ -390,10 +389,10 @@ export function ExtensionMarketplacePanel({
         }
       } else {
         setInstallStatus(prev => ({ ...prev, [extension.id]: 'error' }));
-        setStatusMessage(result.error || t('extensions:installed_panel.update_failed'));
+        setStatusMessage(result.error || t('errors.update_failed'));
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : t('extensions:installed_panel.update_failed');
+      const errorMessage = err instanceof Error ? err.message : t('errors.update_failed');
       setInstallStatus(prev => ({ ...prev, [extension.id]: 'error' }));
       setStatusMessage(errorMessage);
     }
@@ -406,7 +405,7 @@ export function ExtensionMarketplacePanel({
     const updateIds = Object.keys(availableUpdates);
     if (updateIds.length === 0) return;
 
-    setStatusMessage(t('extensions:marketplace_panel.updating_count', { count: updateIds.length }));
+    setStatusMessage(t('status.updating_extensions', { count: updateIds.length }));
 
     for (const extId of updateIds) {
       const ext = registry.extensions.find(e => e.id === extId);
@@ -456,7 +455,7 @@ export function ExtensionMarketplacePanel({
   if (hasAcceptedRisk === null) {
     return (
       <div className="provider-panel flex flex-col">
-        <div className="p-8 text-center text-[var(--nim-text-muted)]">{t('extensions:loading')}</div>
+        <div className="p-8 text-center text-[var(--nim-text-muted)]">{t('loading')}</div>
       </div>
     );
   }
@@ -466,9 +465,9 @@ export function ExtensionMarketplacePanel({
     return (
       <div className="provider-panel flex flex-col" data-testid="extension-marketplace-panel">
         <div className="mb-6 pb-4 border-b border-[var(--nim-border)]">
-          <h3 className="text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('extensions:marketplace')}</h3>
+          <h3 className="text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('title')}</h3>
           <p className="text-sm leading-relaxed text-[var(--nim-text-muted)]">
-            {t('extensions:marketplace_panel.description')}
+            {t('description')}
           </p>
         </div>
 
@@ -476,19 +475,19 @@ export function ExtensionMarketplacePanel({
           <div className="flex items-start gap-3">
             <MaterialSymbol icon="warning" size={24} className="text-[var(--nim-warning)] shrink-0 mt-0.5" />
             <div>
-              <h4 className="m-0 mb-2 text-base font-semibold text-[var(--nim-text)]">{t('extensions:security_warning')}</h4>
+              <h4 className="m-0 mb-2 text-base font-semibold text-[var(--nim-text)]">{t('security.title')}</h4>
               <div className="text-sm leading-relaxed text-[var(--nim-text-muted)] flex flex-col gap-3">
                 <p className="m-0">
-                  {t('extensions:marketplace_panel.security_intro')}
+                  {t('security.description')}
                 </p>
                 <ul className="m-0 pl-5 flex flex-col gap-1.5">
-                  <li>{t('extensions:risk_files')}</li>
-                  <li>{t('extensions:risk_code')}</li>
-                  <li>{t('extensions:risk_network')}</li>
-                  <li>{t('extensions:risk_extensions')}</li>
+                  <li>{t('security.risk_files')}</li>
+                  <li>{t('security.risk_code')}</li>
+                  <li>{t('security.risk_network')}</li>
+                  <li>{t('security.risk_extensions')}</li>
                 </ul>
                 <p className="m-0">
-                  {t('extensions:marketplace_panel.trust_warning')}
+                  {t('security.trust_notice')}
                 </p>
               </div>
             </div>
@@ -500,10 +499,10 @@ export function ExtensionMarketplacePanel({
               onClick={handleAcceptRisk}
               data-testid="marketplace-accept-risk"
             >
-              {t('extensions:marketplace_panel.accept_risk')}
+              {t('security.accept_risks')}
             </button>
             <span className="text-xs text-[var(--nim-text-faint)]">
-              {t('extensions:actions.reset_hint')}
+              {t('security.reset_hint')}
             </span>
           </div>
         </div>
@@ -514,7 +513,7 @@ export function ExtensionMarketplacePanel({
   if (loading) {
     return (
       <div className="provider-panel flex flex-col">
-        <div className="p-8 text-center text-[var(--nim-text-muted)]">{t('extensions:loading_marketplace')}</div>
+        <div className="p-8 text-center text-[var(--nim-text-muted)]">{t('loading_marketplace')}</div>
       </div>
     );
   }
@@ -523,13 +522,13 @@ export function ExtensionMarketplacePanel({
     return (
       <div className="provider-panel flex flex-col">
         <div className="p-8 text-center text-[var(--nim-error)]">
-          {t('extensions:marketplace_panel.error', { error })}
+          {t('errors.prefix')} {error}
           <button
             onClick={loadData}
             className="ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer"
             data-testid="marketplace-retry"
           >
-            {t('extensions:actions.retry')}
+            {t('actions.retry')}
           </button>
         </div>
       </div>
@@ -572,10 +571,10 @@ export function ExtensionMarketplacePanel({
         <div className="text-[0.8125rem] text-[var(--nim-text-muted)] leading-relaxed mb-3 flex-1 line-clamp-2">{ext.tagline || ext.description}</div>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--nim-text-faint)]">{t('extensions:installed_panel.by_author', { author: ext.author })}</span>
+            <span className="text-xs text-[var(--nim-text-faint)]">{t('metadata.by_author', { author: ext.author })}</span>
             {ext.downloads > 0 && (
               <span className="text-xs text-[var(--nim-text-faint)]">
-                {t('extensions:actions.install_count', { count: ext.downloads, formattedCount: ext.downloads.toLocaleString(i18n.language) })}
+                {t('metadata.downloads_count', { count: ext.downloads })}
               </span>
             )}
           </div>
@@ -593,7 +592,7 @@ export function ExtensionMarketplacePanel({
               disabled={status === 'installing'}
               data-testid={`marketplace-update-${ext.id}`}
             >
-              {status === 'installing' ? t('extensions:installed_panel.updating') : t('extensions:actions.update_to', { version: update.availableVersion })}
+                {status === 'installing' ? t('actions.updating') : t('actions.update_to_version', { version: update.availableVersion })}
             </button>
           ) : installed ? (
             <span className={`inline-flex items-center px-2 py-1 rounded text-[0.6875rem] font-semibold uppercase tracking-tight ${
@@ -601,7 +600,7 @@ export function ExtensionMarketplacePanel({
                 ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]'
                 : 'bg-[rgba(39,174,96,0.15)] text-[#27ae60]'
             }`}>
-              {isBuiltinExtension(ext.id) ? t('extensions:actions.builtin') : t('extensions:actions.installed_label')}
+              {isBuiltinExtension(ext.id) ? t('status.built_in') : t('status.installed')}
             </span>
           ) : (
             <button
@@ -617,7 +616,7 @@ export function ExtensionMarketplacePanel({
               disabled={status === 'installing'}
               data-testid={`marketplace-install-${ext.id}`}
             >
-              {status === 'installing' ? t('extensions:actions.installing') : t('extensions:actions.install')}
+              {status === 'installing' ? t('actions.installing') : t('actions.install')}
             </button>
           )}
         </div>
@@ -633,7 +632,7 @@ export function ExtensionMarketplacePanel({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t('extensions:search')}
+          placeholder={t('search.placeholder')}
           className="w-full py-3 pl-4 pr-10 border border-[var(--nim-border)] rounded-lg bg-[var(--nim-bg)] text-[var(--nim-text)] text-[0.9375rem] outline-none focus:border-[var(--nim-primary)] placeholder:text-[var(--nim-text-faint)]"
           data-testid="marketplace-search"
           autoFocus
@@ -642,10 +641,11 @@ export function ExtensionMarketplacePanel({
           <button
             className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-none rounded-full bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] text-xs cursor-pointer flex items-center justify-center hover:bg-[var(--nim-text-faint)] hover:text-[var(--nim-bg)]"
             onClick={() => setSearchQuery('')}
+            aria-label={t('search.clear')}
+            title={t('search.clear')}
             data-testid="marketplace-search-clear"
-            aria-label={t('extensions:installed_panel.clear_search')}
           >
-            x
+            ×
           </button>
         )}
       </div>
@@ -661,7 +661,7 @@ export function ExtensionMarketplacePanel({
             }`}
             onClick={() => setSelectedCategory(null)}
           >
-            {t('extensions:marketplace_panel.all')}
+            {t('categories.all')}
           </button>
           {registry.categories.map(cat => {
             const count = registry.extensions.filter(e => e.categories.includes(cat.id)).length;
@@ -676,7 +676,7 @@ export function ExtensionMarketplacePanel({
                 }`}
                 onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
               >
-                {t(`extensions:categories.${cat.id}`, { defaultValue: cat.name })} ({count})
+                {cat.name} ({count})
               </button>
             );
           })}
@@ -687,7 +687,7 @@ export function ExtensionMarketplacePanel({
       {!searchQuery && !selectedCategory && featuredExtensions.length > 0 && (
         <div className="mb-6">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">
-            {t('extensions:marketplace_panel.featured')}
+            {t('categories.featured')}
           </h4>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
             {featuredExtensions.map(renderExtensionCard)}
@@ -713,7 +713,7 @@ export function ExtensionMarketplacePanel({
           return (
             <div key={cat.id} className="mb-6">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">
-                {t(`extensions:categories.${cat.id}`, { defaultValue: cat.name })}
+                {cat.name}
               </h4>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
                 {nonFeatured.map(renderExtensionCard)}
@@ -726,14 +726,14 @@ export function ExtensionMarketplacePanel({
       {/* No results */}
       {filteredExtensions.length === 0 && searchQuery && (
         <div className="p-8 text-center text-[var(--nim-text-faint)] text-[0.9375rem]">
-          {t('extensions:actions.no_match', { query: searchQuery })}
+          {t('search.no_results', { query: searchQuery })}
         </div>
       )}
 
       {/* Install from GitHub URL */}
       <div className="mt-8 pt-6 border-t border-[var(--nim-border)]">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3">
-          {t('extensions:actions.github_install')}
+          {t('github.title')}
         </h4>
         <div className="flex gap-2">
           <input
@@ -753,11 +753,11 @@ export function ExtensionMarketplacePanel({
             disabled={githubInstalling || !githubUrl.trim()}
             data-testid="marketplace-github-install"
           >
-            {githubInstalling ? t('extensions:actions.installing') : t('extensions:actions.install')}
+            {githubInstalling ? t('actions.installing') : t('actions.install')}
           </button>
         </div>
         <p className="text-xs text-[var(--nim-text-faint)] mt-2 m-0">
-          {t('extensions:marketplace_panel.github_help')}
+          {t('github.description')}
         </p>
       </div>
     </div>
@@ -783,9 +783,10 @@ export function ExtensionMarketplacePanel({
           <button
             className="absolute top-4 right-4 w-7 h-7 border-none rounded-full bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] text-base cursor-pointer flex items-center justify-center transition-all duration-150 hover:bg-[var(--nim-text-faint)] hover:text-[var(--nim-bg)]"
             onClick={() => setSelectedExtension(null)}
-            aria-label={t('common:close')}
+            aria-label={t('actions.close_details')}
+            title={t('actions.close_details')}
           >
-            x
+            ×
           </button>
 
           <div className="flex items-center gap-4 mb-4">
@@ -794,7 +795,7 @@ export function ExtensionMarketplacePanel({
             </div>
             <div>
               <h3 className="m-0 mb-1 text-lg font-semibold text-[var(--nim-text)]">{selectedExtension.name}</h3>
-              <span className="text-[0.8125rem] text-[var(--nim-text-faint)]">{t('extensions:installed_panel.by_author', { author: selectedExtension.author })}</span>
+              <span className="text-[0.8125rem] text-[var(--nim-text-faint)]">{t('metadata.by_author', { author: selectedExtension.author })}</span>
             </div>
           </div>
 
@@ -840,27 +841,27 @@ export function ExtensionMarketplacePanel({
             <div className="flex items-center gap-2 mb-4 py-2 px-3 rounded-md bg-[rgba(96,165,250,0.1)] border border-[rgba(96,165,250,0.3)]">
               <MaterialSymbol icon="upgrade" size={18} className="text-[var(--nim-primary)]" />
               <span className="text-sm text-[var(--nim-text)]">
-                {t('extensions:actions.update_available', { current: update.currentVersion, available: update.availableVersion })}
+                {t('updates.available', { currentVersion: update.currentVersion, availableVersion: update.availableVersion })}
               </span>
             </div>
           )}
 
           <div className="flex flex-col gap-2 mb-6 p-3 bg-[var(--nim-bg-secondary)] rounded-lg">
             <div className="flex items-center gap-2 text-[0.8125rem]">
-              <span className="text-[var(--nim-text-faint)]">{t('extensions:version')}</span>
+              <span className="text-[var(--nim-text-faint)]">{t('metadata.version')}:</span>
               <span className="text-[var(--nim-text)] font-medium">
-                {update ? t('extensions:marketplace_panel.version_latest', { current: update.currentVersion, latest: update.availableVersion }) : selectedExtension.version}
+                {update ? t('metadata.current_and_latest_version', { currentVersion: update.currentVersion, availableVersion: update.availableVersion }) : selectedExtension.version}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[0.8125rem]">
-              <span className="text-[var(--nim-text-faint)]">{t('extensions:category')}</span>
+              <span className="text-[var(--nim-text-faint)]">{t('metadata.category')}:</span>
               <span className="text-[var(--nim-text)] font-medium">
-                {t(`extensions:categories.${selectedExtension.categories[0]}`, { defaultValue: registry?.categories.find(c => c.id === selectedExtension.categories[0])?.name || selectedExtension.categories[0] })}
+                {registry?.categories.find(c => c.id === selectedExtension.categories[0])?.name || selectedExtension.categories[0]}
               </span>
             </div>
             {selectedExtension.fileTypes && selectedExtension.fileTypes.length > 0 && (
               <div className="flex items-center gap-2 text-[0.8125rem]">
-                <span className="text-[var(--nim-text-faint)]">{t('extensions:file_types')}</span>
+                <span className="text-[var(--nim-text-faint)]">{t('metadata.file_types')}:</span>
                 <div className="flex gap-1">
                   {selectedExtension.fileTypes.map(ft => (
                     <span key={ft} className="inline-flex items-center px-2 py-0.5 rounded text-[0.6875rem] font-mono bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
@@ -872,11 +873,11 @@ export function ExtensionMarketplacePanel({
             )}
             {selectedExtension.permissions.length > 0 && (
               <div className="flex items-center gap-2 text-[0.8125rem]">
-                <span className="text-[var(--nim-text-faint)]">{t('extensions:permissions')}</span>
+                <span className="text-[var(--nim-text-faint)]">{t('metadata.permissions')}:</span>
                 <div className="flex gap-1">
                   {selectedExtension.permissions.map(p => (
                     <span key={p} className="inline-flex items-center px-2 py-0.5 rounded text-[0.6875rem] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
-                      {t(`extensions:marketplace_permissions.${p}`, { defaultValue: p })}
+                      {p}
                     </span>
                   ))}
                 </div>
@@ -884,13 +885,13 @@ export function ExtensionMarketplacePanel({
             )}
             {selectedExtension.downloads > 0 && (
               <div className="flex items-center gap-2 text-[0.8125rem]">
-                <span className="text-[var(--nim-text-faint)]">{t('extensions:downloads')}</span>
-                <span className="text-[var(--nim-text)] font-medium">{selectedExtension.downloads.toLocaleString(i18n.language)}</span>
+                <span className="text-[var(--nim-text-faint)]">{t('metadata.downloads')}:</span>
+                <span className="text-[var(--nim-text)] font-medium">{selectedExtension.downloads.toLocaleString()}</span>
               </div>
             )}
             {selectedExtension.repositoryUrl && (
               <div className="flex items-center gap-2 text-[0.8125rem]">
-                <span className="text-[var(--nim-text-faint)]">{t('extensions:repository')}</span>
+                <span className="text-[var(--nim-text-faint)]">{t('metadata.repository')}:</span>
                 <a
                   href="#"
                   className="text-[var(--nim-primary)] no-underline cursor-pointer hover:underline"
@@ -899,7 +900,7 @@ export function ExtensionMarketplacePanel({
                     window.electronAPI.openExternal(selectedExtension.repositoryUrl);
                   }}
                 >
-                  {t('extensions:marketplace_panel.view_github')}
+                  {t('actions.view_on_github')}
                 </a>
               </div>
             )}
@@ -908,7 +909,7 @@ export function ExtensionMarketplacePanel({
           {/* Changelog */}
           {selectedExtension.changelog && (
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-[var(--nim-text)] mb-2">{t('extensions:changelog')}</h4>
+              <h4 className="text-sm font-semibold text-[var(--nim-text)] mb-2">{t('metadata.changelog')}</h4>
               <pre className="text-xs text-[var(--nim-text-muted)] bg-[var(--nim-bg-secondary)] p-3 rounded-lg m-0 whitespace-pre-wrap font-[inherit]">
                 {selectedExtension.changelog}
               </pre>
@@ -927,7 +928,7 @@ export function ExtensionMarketplacePanel({
                   onClick={() => handleUpdate(selectedExtension)}
                   disabled={status === 'installing'}
                 >
-                  {status === 'installing' ? t('extensions:installed_panel.updating') : t('extensions:actions.update_to', { version: update.availableVersion })}
+                  {status === 'installing' ? t('actions.updating') : t('actions.update_to_version', { version: update.availableVersion })}
                 </button>
                 <button
                   className="py-1.5 px-3 border border-[var(--nim-error)] rounded bg-transparent text-[var(--nim-error)] text-xs font-medium cursor-pointer transition-all duration-150 hover:bg-[var(--nim-error)] hover:text-white"
@@ -936,7 +937,7 @@ export function ExtensionMarketplacePanel({
                     setSelectedExtension(null);
                   }}
                 >
-                  {t('extensions:installed_panel.uninstall')}
+                  {t('actions.uninstall')}
                 </button>
               </>
             ) : installed ? (
@@ -946,7 +947,7 @@ export function ExtensionMarketplacePanel({
                     ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]'
                     : 'bg-[rgba(39,174,96,0.15)] text-[#27ae60]'
                 }`}>
-                  {isBuiltinExtension(selectedExtension.id) ? t('extensions:actions.builtin') : t('extensions:actions.installed_label')}
+                  {isBuiltinExtension(selectedExtension.id) ? t('status.built_in') : t('status.installed')}
                 </span>
                 {!isBuiltinExtension(selectedExtension.id) && (
                   <button
@@ -956,7 +957,7 @@ export function ExtensionMarketplacePanel({
                       setSelectedExtension(null);
                     }}
                   >
-                    {t('extensions:installed_panel.uninstall')}
+                    {t('actions.uninstall')}
                   </button>
                 )}
               </>
@@ -970,7 +971,7 @@ export function ExtensionMarketplacePanel({
                 onClick={() => handleInstall(selectedExtension)}
                 disabled={status === 'installing'}
               >
-                {status === 'installing' ? t('extensions:actions.installing') : t('extensions:marketplace_panel.install_extension')}
+                {status === 'installing' ? t('actions.installing') : t('actions.install_extension')}
               </button>
             )}
           </div>
@@ -989,9 +990,9 @@ export function ExtensionMarketplacePanel({
     <div className="provider-panel flex flex-col" data-testid="extension-marketplace-panel">
       <div className="mb-4 pb-4 border-b border-[var(--nim-border)] flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('extensions:marketplace')}</h3>
+          <h3 className="text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('title')}</h3>
           <p className="text-sm leading-relaxed text-[var(--nim-text-muted)]">
-            {t('extensions:marketplace_panel.description')}
+            {t('description')}
           </p>
         </div>
         {onViewInstalled && (
@@ -1001,7 +1002,7 @@ export function ExtensionMarketplacePanel({
             data-testid="marketplace-view-installed"
           >
             <MaterialSymbol icon="extension" size={16} />
-            {t('extensions:marketplace_panel.installed_count', { count: installedCount })}{updateCount > 0 && ` • ${t('extensions:installed_panel.update_count', { count: updateCount })}`}
+            {t('status.installed_count', { count: installedCount })}{updateCount > 0 && ` • ${t('status.update_count', { count: updateCount })}`}
           </button>
         )}
       </div>

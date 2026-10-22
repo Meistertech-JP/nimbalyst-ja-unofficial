@@ -2,8 +2,10 @@
  * CollabAssetService
  *
  * Thin renderer-side facade over the `documentSync.uploadAsset` IPC.
- * All encryption + network I/O happens in main; the renderer only hands off
- * the bytes and gets back an `collab-asset://` URI to insert into the doc.
+ * Queueing + network I/O happen in main; the renderer only hands off the bytes
+ * and gets back a `collab-asset://` URI to insert into the doc. The URI is
+ * serviceable immediately from the local cache even if the upload is still
+ * queued, so an attachment added offline is not a broken image for its author.
  *
  * Image rendering: `<img src="collab-asset://...">` is handled natively by
  * the main-process protocol handler (see `protocols/collabAssetProtocol.ts`).
@@ -14,7 +16,6 @@
  */
 import type { UploadedEditorAsset } from '@nimbalyst/runtime';
 import type { CollabDocumentConfig } from '../utils/collabDocumentOpener';
-import { rendererI18n } from '../i18n';
 
 export class CollabAssetService {
   constructor(private readonly config: CollabDocumentConfig) {}
@@ -32,9 +33,7 @@ export class CollabAssetService {
     });
 
     if (!result.success || !result.uri) {
-      throw new Error(result.error || rendererI18n.t('errors:attachment_upload_failed', {
-        defaultValue: 'Attachment upload failed',
-      }));
+      throw new Error(result.error || 'Attachment upload failed');
     }
 
     return {

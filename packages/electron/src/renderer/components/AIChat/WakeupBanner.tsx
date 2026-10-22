@@ -1,29 +1,28 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import { useAtomValue } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { sessionWakeupAtom, type SessionWakeupView } from '../../store/atoms/sessions';
 
 interface WakeupBannerProps {
   sessionId?: string | null;
 }
 
-function formatRelativeFireAt(fireAt: number, t: TFunction): string {
+function formatRelativeFireAt(fireAt: number, t: ReturnType<typeof useTranslation<'agents'>>['t']): string {
   const ms = fireAt - Date.now();
-  if (ms <= 0) return t('aichat:wakeup.now');
+  if (ms <= 0) return t('wakeup_banner.now');
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return t('aichat:wakeup.in_seconds', { count: seconds });
+  if (seconds < 60) return t('wakeup_banner.in_seconds', { count: seconds });
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return t('aichat:wakeup.in_minutes', { count: minutes });
+  if (minutes < 60) return t('wakeup_banner.in_minutes', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t('aichat:wakeup.in_hours', { count: hours, remainder: minutes % 60 });
+  if (hours < 24) return t('wakeup_banner.in_hours_minutes', { hours, minutes: minutes % 60 });
   const days = Math.floor(hours / 24);
-  return t('aichat:wakeup.in_days', { count: days, remainder: hours % 24 });
+  return t('wakeup_banner.in_days_hours', { days, hours: hours % 24 });
 }
 
 function formatAbsoluteFireAt(fireAt: number, language: string): string {
-  return new Date(fireAt).toLocaleString(language, {
+  return new Date(fireAt).toLocaleString(language.startsWith('ja') ? 'ja-JP' : 'en-US', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -31,19 +30,26 @@ function formatAbsoluteFireAt(fireAt: number, language: string): string {
   });
 }
 
-function statusLabel(wakeup: SessionWakeupView, t: TFunction, language: string): string {
+function statusLabel(
+  wakeup: SessionWakeupView,
+  t: ReturnType<typeof useTranslation<'agents'>>['t'],
+  language: string,
+): string {
   switch (wakeup.status) {
     case 'pending':
-      return t('aichat:wakeup.scheduled', { relative: formatRelativeFireAt(wakeup.fireAt, t), absolute: formatAbsoluteFireAt(wakeup.fireAt, language) });
+      return t('wakeup_banner.scheduled', {
+        time: formatRelativeFireAt(wakeup.fireAt, t),
+        date: formatAbsoluteFireAt(wakeup.fireAt, language),
+      });
     case 'firing':
-      return t('aichat:wakeup.resuming');
+      return t('wakeup_banner.resuming');
     case 'waiting_for_workspace':
-      return t('aichat:wakeup.waiting_workspace');
+      return t('wakeup_banner.waiting_for_workspace');
     case 'overdue': {
       const hoursAgo = Math.max(0, Math.floor((Date.now() - wakeup.fireAt) / 3_600_000));
       return hoursAgo > 0
-        ? t('aichat:wakeup.overdue_hours', { hours: hoursAgo })
-        : t('aichat:wakeup.overdue_closed');
+        ? t('wakeup_banner.overdue_hours', { count: hoursAgo })
+        : t('wakeup_banner.overdue_closed');
     }
     default:
       return '';
@@ -51,7 +57,7 @@ function statusLabel(wakeup: SessionWakeupView, t: TFunction, language: string):
 }
 
 export function WakeupBanner({ sessionId }: WakeupBannerProps) {
-  const { t, i18n } = useTranslation('aichat');
+  const { t, i18n } = useTranslation('agents');
   const effectiveSessionId = sessionId || '__no_session__';
   const wakeup = useAtomValue(sessionWakeupAtom(effectiveSessionId));
   const [busy, setBusy] = useState(false);
@@ -101,11 +107,11 @@ export function WakeupBanner({ sessionId }: WakeupBannerProps) {
   const iconColor = isOverdue ? 'text-nim-warning' : 'text-nim-primary';
 
   return (
-    <div className={`wakeup-banner ${containerClass}`} data-testid="wakeup-banner">
+    <div className={containerClass} data-testid="wakeup-banner">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <MaterialSymbol icon="schedule" size={16} className={iconColor} />
         <span className={textClass}>
-          {statusLabel(wakeup, t, i18n.resolvedLanguage ?? i18n.language)}
+          {statusLabel(wakeup, t, i18n.language)}
           {wakeup.reason ? <span className="opacity-80"> — {wakeup.reason}</span> : null}
         </span>
       </div>
@@ -115,24 +121,26 @@ export function WakeupBanner({ sessionId }: WakeupBannerProps) {
             type="button"
             onClick={handleRunNow}
             disabled={busy}
+            aria-label={t('wakeup_banner.fire_now')}
             className="flex items-center gap-1 px-2.5 py-1 bg-transparent border border-current rounded text-[11px] font-medium cursor-pointer transition-all duration-200 hover:enabled:bg-current/10 disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="wakeup-banner-run-now"
-            title={t('wakeup.fire_now_title')}
+            title={t('wakeup_banner.fire_now_title')}
           >
             <MaterialSymbol icon="bolt" size={14} />
-            {t('wakeup.fire_now')}
+            {t('wakeup_banner.fire_now')}
           </button>
         )}
         <button
           type="button"
           onClick={handleCancel}
           disabled={busy}
+          aria-label={t('wakeup_banner.cancel')}
           className="flex items-center gap-1 px-2.5 py-1 bg-transparent border border-nim-border rounded text-nim-text-muted text-[11px] font-medium cursor-pointer transition-all duration-200 hover:enabled:bg-nim-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           data-testid="wakeup-banner-cancel"
-          title={t('wakeup.cancel_title')}
+          title={t('wakeup_banner.cancel_title')}
         >
           <MaterialSymbol icon="cancel" size={14} />
-          {t('wakeup.cancel')}
+          {t('wakeup_banner.cancel')}
         </button>
       </div>
     </div>

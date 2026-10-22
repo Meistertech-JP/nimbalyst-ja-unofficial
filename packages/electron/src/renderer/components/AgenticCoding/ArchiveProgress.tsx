@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface ArchiveTask {
   worktreeId: string;
@@ -22,7 +22,7 @@ interface ArchiveProgressProps {
  * Auto-hides when there are no tasks.
  */
 export const ArchiveProgress: React.FC<ArchiveProgressProps> = ({ onWorktreeArchived }) => {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('agents');
   const [tasks, setTasks] = useState<ArchiveTask[]>([]);
   const [notifiedWorktrees, setNotifiedWorktrees] = useState<Set<string>>(new Set());
   const [isExpanded, setIsExpanded] = useState(false);
@@ -107,15 +107,15 @@ export const ArchiveProgress: React.FC<ArchiveProgressProps> = ({ onWorktreeArch
   const getStatusText = (status: ArchiveTask['status']) => {
     switch (status) {
       case 'queued':
-        return t('dialogs:archive.queued');
+        return t('archive_progress.status.queued');
       case 'pending':
-        return t('dialogs:archive.starting');
+        return t('archive_progress.status.starting');
       case 'removing-worktree':
-        return t('dialogs:archive.removing');
+        return t('archive_progress.status.removing_worktree');
       case 'completed':
-        return t('dialogs:archive.archived');
+        return t('archive_progress.status.archived');
       case 'failed':
-        return t('dialogs:archive.failed');
+        return t('archive_progress.status.failed');
     }
   };
 
@@ -135,10 +135,10 @@ export const ArchiveProgress: React.FC<ArchiveProgressProps> = ({ onWorktreeArch
           icon="archive"
           className="archive-progress-header-icon text-lg text-[var(--nim-text-muted)] shrink-0"
         />
-        <span className="archive-progress-header-text flex-1 text-left">{t('dialogs:archive.tasks')}</span>
+        <span className="archive-progress-header-text flex-1 text-left">{t('archive_progress.title')}</span>
         {activeCount > 0 && (
           <span className="archive-progress-header-count text-[13px] font-medium text-[var(--nim-primary)]">
-            {activeCount} {t('dialogs:archive.active')}
+            {t('archive_progress.active_count', { count: activeCount })}
           </span>
         )}
         <MaterialSymbol
@@ -155,7 +155,7 @@ export const ArchiveProgress: React.FC<ArchiveProgressProps> = ({ onWorktreeArch
                 className="archive-progress-warning-icon text-base text-[var(--nim-warning)] shrink-0 mt-px"
               />
               <span className="archive-progress-warning-text text-[11px] italic text-[var(--nim-text-muted)] leading-[1.4]">
-                {t('dialogs:archive.removal_warning')}
+                {t('archive_progress.removal_warning')}
               </span>
             </div>
           )}

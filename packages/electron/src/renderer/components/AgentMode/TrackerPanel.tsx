@@ -7,10 +7,15 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { trackerItemByIdAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
+import {
+  defaultTrackerTypeColor,
+  defaultTrackerTypeIcon,
+} from '@nimbalyst/tracker-schema';
+import { TrackerSwatchBadge } from '@nimbalyst/collab-client/trackers-ui';
 import { sessionRegistryAtom, workstreamSessionsAtom } from '../../store/atoms/sessions';
 import { trackerPanelCollapsedAtom, toggleTrackerPanelCollapsedAtom } from '../../store/atoms/agentMode';
 import { setWindowModeAtom } from '../../store/atoms/windowMode';
@@ -23,28 +28,10 @@ interface TrackerPanelProps {
   workstreamId: string;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  bug: '#dc2626',
-  task: '#2563eb',
-  plan: '#7c3aed',
-  idea: '#ca8a04',
-  decision: '#8b5cf6',
-  feature: '#059669',
-};
-
-const TYPE_ICONS: Record<string, string> = {
-  bug: 'bug_report',
-  task: 'task_alt',
-  plan: 'description',
-  idea: 'lightbulb',
-  decision: 'gavel',
-  feature: 'star',
-};
-
 export const TrackerPanel: React.FC<TrackerPanelProps> = React.memo(({
   workstreamId,
 }) => {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   const isCollapsed = useAtomValue(trackerPanelCollapsedAtom);
   const toggleCollapsed = useSetAtom(toggleTrackerPanelCollapsedAtom);
   const setWindowMode = useSetAtom(setWindowModeAtom);
@@ -114,7 +101,7 @@ export const TrackerPanel: React.FC<TrackerPanelProps> = React.memo(({
           className="text-[var(--nim-text-muted)] shrink-0"
         />
         <span className="tracker-panel-title text-xs font-medium text-[var(--nim-text)]">
-          {t('agents:panels.trackers')}
+          {t('panels.trackers')}
         </span>
         <span className="tracker-panel-count ml-auto text-[11px] text-[var(--nim-text-muted)] font-mono">
           {linkedItemIds.length}
@@ -147,7 +134,7 @@ interface TrackerItemRowProps {
 }
 
 const TrackerItemRow: React.FC<TrackerItemRowProps> = React.memo(({ itemId, onNavigate }) => {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   const item = useAtomValue(trackerItemByIdAtom(itemId));
   const prRemote = useAtomValue(prRemoteAtom);
 
@@ -164,9 +151,12 @@ const TrackerItemRow: React.FC<TrackerItemRowProps> = React.memo(({ itemId, onNa
 
   if (!item) return null;
 
-  const color = TYPE_COLORS[item.primaryType] || '#6b7280';
-  const icon = TYPE_ICONS[item.primaryType] || 'label';
-  const title = (item.fields.title as string) || t('agents:session_tabs.untitled');
+  // Both helpers carry their own fallback, so this panel no longer keeps a
+  // private map that drifts from Tracker Mode -- `task` had a different icon
+  // and `feature` a different accent in the two surfaces.
+  const color = defaultTrackerTypeColor(item.primaryType);
+  const icon = defaultTrackerTypeIcon(item.primaryType);
+  const title = (item.fields.title as string) || t('session_tabs.untitled');
   const status = item.fields.status as string;
 
   return (
@@ -190,7 +180,7 @@ const TrackerItemRow: React.FC<TrackerItemRowProps> = React.memo(({ itemId, onNa
           role="button"
           tabIndex={-1}
           className="shrink-0 inline-flex items-center text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]"
-          title={t('agents:panels.open_pr', { number: prReference.number })}
+                title={t('panels.open_pr', { number: prReference.number })}
           data-testid="tracker-item-open-pr"
           onClick={(e) => {
             e.stopPropagation();
@@ -200,14 +190,7 @@ const TrackerItemRow: React.FC<TrackerItemRowProps> = React.memo(({ itemId, onNa
           <MaterialSymbol icon="merge" size={14} />
         </span>
       )}
-      {status && (
-        <span
-          className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
-          style={{ backgroundColor: `${color}15`, color }}
-        >
-          {status}
-        </span>
-      )}
+      {status && <TrackerSwatchBadge label={status} color={color} className="shrink-0" />}
     </button>
   );
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { HelpTooltip } from '../../help';
 
 export type AIMode = 'planning' | 'agent';
@@ -32,8 +32,8 @@ export function ModeTag({ mode, onModeChange }: ModeTagProps) {
         }`}
         onClick={handleToggle}
         aria-label={mode === 'planning'
-          ? t('mode.plan_description')
-          : t('mode.agent_description')}
+            ? t('mode.plan_description')
+            : t('mode.agent_description')}
         type="button"
       >
         {mode === 'planning' ? t('mode.plan') : t('mode.agent')}

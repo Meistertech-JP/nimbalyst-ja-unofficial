@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LexicalEditor } from 'lexical';
 import { $getRoot, $getNodeByKey, $isTextNode, $createRangeSelection, $setSelection } from 'lexical';
-import { SearchReplaceStateManager } from './SearchReplaceStateManager';
-import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
+import { SearchReplaceStateManager, type SearchNavigateDirection } from './SearchReplaceStateManager';
+import { resolveMatchRange } from './resolveMatchRange';
 // Only contains global highlight styles for dynamically applied classes
 import './SearchReplaceBar.css';
 
@@ -108,22 +109,10 @@ class HighlightManager {
         const domElement = this.editor.getElementByKey(match.key);
         if (!domElement) return;
 
-        const textNode = domElement.firstChild as Text;
-        if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
-
-        // Clamp the range to valid offsets
-        const validOffset = Math.min(match.offset, textNode.length);
-        const validEnd = Math.min(match.offset + match.length, textNode.length);
-
-        if (validOffset >= validEnd) return;
-
-        const range = document.createRange();
-        try {
-          range.setStart(textNode, validOffset);
-          range.setEnd(textNode, validEnd);
-        } catch (e) {
-          return;
-        }
+        // Not every TextNode renders as a single text child — inline code renders as
+        // <code><span class="nim-text-code">…</span></code> — so walk descendant text nodes.
+        const range = resolveMatchRange(domElement, match.offset, match.length);
+        if (!range) return;
 
         const rects = Array.from(range.getClientRects());
         rects.forEach((rect) => {
@@ -183,7 +172,7 @@ class HighlightManager {
 }
 
 export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   // console.log('[SearchReplaceBar] RENDER - filePath:', filePath);
 
   // Use filePath as the tabId for consistency with the registry's shouldRender check
@@ -192,6 +181,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
   const tabId = filePath;
 
   const [isOpen, setIsOpen] = useState(false);
+  const [focusNonce, setFocusNonce] = useState(0);
   const [searchString, setSearchString] = useState('');
   const [replaceString, setReplaceString] = useState('');
   const [caseInsensitive, setCaseInsensitive] = useState(true); // Case insensitive by default (Match case button OFF)
@@ -208,6 +198,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
     const handleStateChange = (changedTabId: string, state: any) => {
       if (changedTabId === tabId) {
         setIsOpen(state.isOpen);
+        setFocusNonce(state.focusNonce);
       }
     };
 
@@ -216,19 +207,23 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
     // Initialize state
     const initialState = SearchReplaceStateManager.getState(tabId);
     setIsOpen(initialState.isOpen);
+    setFocusNonce(initialState.focusNonce);
 
     return () => {
       SearchReplaceStateManager.removeListener(handleStateChange);
     };
   }, [tabId]);
 
-  // Focus search input when bar opens
+  // Focus the search input on every Find command, not just the one that opened
+  // the bar. Keying this on `isOpen` alone meant a Find issued while the bar was
+  // already open was a silent no-op, which is why Find had to close the bar to
+  // feel like it did anything -- and that dropped focus into the document (#1388).
   useEffect(() => {
     if (isOpen) {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
     }
-  }, [isOpen]);
+  }, [isOpen, focusNonce]);
 
   // Initialize and cleanup HighlightManager
   useEffect(() => {
@@ -469,6 +464,24 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
     navigateToMatchInternal(matches, newIndex);
   }, [matches, currentMatchIndex, navigateToMatchInternal]);
 
+  // Find Next / Previous from the app menu (Cmd+G / Cmd+Shift+G)
+  const navigateHandlersRef = useRef({ handleNext, handlePrevious });
+  navigateHandlersRef.current = { handleNext, handlePrevious };
+  useEffect(() => {
+    const handleNavigate = (changedTabId: string, direction: SearchNavigateDirection) => {
+      if (changedTabId !== tabId) return;
+      if (direction === 'next') {
+        navigateHandlersRef.current.handleNext();
+      } else {
+        navigateHandlersRef.current.handlePrevious();
+      }
+    };
+    SearchReplaceStateManager.addNavigateListener(handleNavigate);
+    return () => {
+      SearchReplaceStateManager.removeNavigateListener(handleNavigate);
+    };
+  }, [tabId]);
+
   // Replace current match
   const handleReplace = useCallback(() => {
     if (!editor || currentMatchIndex < 0 || currentMatchIndex >= matches.length) return;
@@ -674,7 +687,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             ref={searchInputRef}
             type="text"
             className={`search-replace-input ${inputStyles}`}
-            placeholder={t('menu:find', 'Find...')}
+            placeholder={t('search.find_placeholder')}
             value={searchString}
             tabIndex={1}
             onChange={(e) => handleSearchChange(e.target.value)}
@@ -705,7 +718,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
               setCaseInsensitive(newValue);
               performSearch(searchString, !newValue, useRegex);
             }}
-            title={t('editor:search.match_case', 'Match case')}
+            title={t('search.match_case')}
             data-testid="case-toggle"
           >
             Aa
@@ -718,7 +731,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
               setUseRegex(newValue);
               performSearch(searchString, !caseInsensitive, newValue);
             }}
-            title={t('editor:search.use_regex', 'Use regular expression')}
+            title={t('search.use_regex')}
             data-testid="regex-toggle"
           >
             .*
@@ -731,7 +744,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             onClick={handlePrevious}
             disabled={matches.length === 0}
             tabIndex={-1}
-            aria-label={t('editor:search.previous_match', 'Previous match')}
+            aria-label={t('search.previous_match')}
             className={`search-nav-button ${navButtonStyles}`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -739,13 +752,15 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             </svg>
           </button>
           <span className="search-match-counter text-[13px] text-[var(--nim-text-muted)] min-w-20 text-center select-none" data-testid="match-counter">
-            {matches.length > 0 ? t('editor:search.match_position', '{{current}} of {{total}}', { current: currentMatchIndex + 1, total: matches.length }) : searchString ? t('editor:search.no_results', 'No results') : ''}
+            {matches.length > 0
+              ? t('search.match_position', { current: currentMatchIndex + 1, total: matches.length })
+              : searchString ? t('search.no_results') : ''}
           </span>
           <button
             onClick={handleNext}
             disabled={matches.length === 0}
             tabIndex={-1}
-            aria-label={t('editor:search.next_match', 'Next match')}
+            aria-label={t('search.next_match')}
             className={`search-nav-button ${navButtonStyles}`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -759,8 +774,8 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
           className="search-replace-close bg-transparent border border-[var(--nim-border)] rounded w-7 h-7 flex items-center justify-center cursor-pointer text-[var(--nim-text-muted)] p-0 transition-all duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
           onClick={handleClose}
           tabIndex={-1}
-          aria-label={t('editor:search.close_search', 'Close search')}
-          title={t('editor:search.close_shortcut', 'Close ({{shortcut}})', { shortcut: 'Esc' })}
+          aria-label={t('search.close_search')}
+          title={t('search.close_shortcut', { shortcut: 'Esc' })}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M10 4L4 10M4 4L10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -783,7 +798,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
           <input
             type="text"
             className={`search-replace-input ${inputStyles}`}
-            placeholder={t('editor:search.replace_placeholder', 'Replace...')}
+            placeholder={t('search.replace_placeholder')}
             value={replaceString}
             tabIndex={2}
             onChange={(e) => handleReplaceChange(e.target.value)}
@@ -811,18 +826,18 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             onClick={handleReplace}
             disabled={currentMatchIndex < 0}
             tabIndex={3}
-            title={t('editor:search.replace_shortcut', 'Replace ({{shortcut}})', { shortcut: 'Cmd+Enter' })}
+            title={t('search.replace_shortcut', { shortcut: 'Cmd+Enter' })}
           >
-            {t('editor:search.replace', 'Replace')}
+            {t('search.replace')}
           </button>
           <button
             className="search-replace-button px-3 py-1.5 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 bg-transparent border border-[var(--nim-border)] text-[var(--nim-text)] whitespace-nowrap hover:enabled:bg-[var(--nim-bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleReplaceAll}
             disabled={matches.length === 0}
             tabIndex={4}
-            title={t('editor:search.replace_all_shortcut', 'Replace All ({{shortcut}})', { shortcut: 'Cmd+Shift+Enter' })}
+            title={t('search.replace_all_shortcut', { shortcut: 'Cmd+Shift+Enter' })}
           >
-            {t('editor:search.replace_all', 'Replace All')}
+            {t('search.replace_all')}
           </button>
         </div>
       </div>

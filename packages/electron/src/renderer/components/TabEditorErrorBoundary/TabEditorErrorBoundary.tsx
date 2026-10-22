@@ -7,7 +7,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Translation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { logger } from '../../utils/logger';
 
 interface Props {
@@ -16,6 +16,13 @@ interface Props {
   fileName: string;
   onRetry?: () => void;
   onClose?: () => void;
+  translations: {
+    title: string;
+    loadingError: (fileName: string) => string;
+    otherTabs: string;
+    retry: string;
+    closeTab: string;
+  };
 }
 
 interface State {
@@ -24,7 +31,7 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-export class TabEditorErrorBoundary extends Component<Props, State> {
+class TabEditorErrorBoundaryImpl extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -57,7 +64,6 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <Translation ns={['errors', 'menu']}>{(t) => (
         <div
           className="tab-editor-error-fallback"
           style={{
@@ -80,7 +86,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
               color: 'var(--nim-text)',
               fontSize: '18px',
             }}>
-              {t('errors:tab_editor.title')}
+              {this.props.translations.title}
             </h3>
 
             <p style={{
@@ -88,7 +94,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
               color: 'var(--nim-text-muted)',
               fontSize: '14px',
             }}>
-              {t('errors:tab_editor.loading_error', { fileName: this.props.fileName })}
+              {this.props.translations.loadingError(this.props.fileName)}
             </p>
 
             <p style={{
@@ -96,7 +102,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
               color: 'var(--nim-text-faint)',
               fontSize: '13px',
             }}>
-              {t('errors:tab_editor.other_tabs')}
+              {this.props.translations.otherTabs}
             </p>
 
             {this.state.error && (
@@ -135,7 +141,7 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
                   fontSize: '14px',
                 }}
               >
-                {t('errors:retry')}
+                {this.props.translations.retry}
               </button>
 
               {this.props.onClose && (
@@ -151,16 +157,32 @@ export class TabEditorErrorBoundary extends Component<Props, State> {
                     fontSize: '14px',
                   }}
                 >
-                  {t('menu:close_tab')}
+                  {this.props.translations.closeTab}
                 </button>
               )}
             </div>
           </div>
         </div>
-        )}</Translation>
       );
     }
 
     return this.props.children;
   }
+}
+
+export function TabEditorErrorBoundary(props: Omit<Props, 'translations'>) {
+  const { t } = useTranslation('errors');
+  const { t: tCommon } = useTranslation('common');
+  return (
+    <TabEditorErrorBoundaryImpl
+      {...props}
+      translations={{
+        title: t('tab_editor.title'),
+        loadingError: (fileName) => t('tab_editor.loading_error', { fileName }),
+        otherTabs: t('tab_editor.other_tabs'),
+        retry: t('retry'),
+        closeTab: tCommon('tab.close_tab'),
+      }}
+    />
+  );
 }

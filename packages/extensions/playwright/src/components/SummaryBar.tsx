@@ -1,3 +1,5 @@
+import { useTranslation } from '@nimbalyst/i18n/react';
+
 interface SummaryBarProps {
   passed: number;
   failed: number;
@@ -7,6 +9,7 @@ interface SummaryBarProps {
 }
 
 export function SummaryBar({ passed, failed, skipped, flaky, durationMs }: SummaryBarProps) {
+  const { t } = useTranslation('extensions', { keyPrefix: 'playwright.summary' });
   const total = passed + failed + skipped + flaky;
   const duration = durationMs < 1000
     ? `${durationMs}ms`
@@ -20,30 +23,30 @@ export function SummaryBar({ passed, failed, skipped, flaky, durationMs }: Summa
         {passed > 0 && (
           <span className="pw-stat pw-stat-passed">
             <span className="pw-stat-dot" style={{ background: '#4ade80' }} />
-            {passed} passed
+            {t('passed', { count: passed })}
           </span>
         )}
         {failed > 0 && (
           <span className="pw-stat pw-stat-failed">
             <span className="pw-stat-dot" style={{ background: '#ef4444' }} />
-            {failed} failed
+            {t('failed', { count: failed })}
           </span>
         )}
         {flaky > 0 && (
           <span className="pw-stat pw-stat-flaky">
             <span className="pw-stat-dot" style={{ background: '#fbbf24' }} />
-            {flaky} flaky
+            {t('flaky', { count: flaky })}
           </span>
         )}
         {skipped > 0 && (
           <span className="pw-stat pw-stat-skipped">
             <span className="pw-stat-dot" style={{ background: '#808080' }} />
-            {skipped} skipped
+            {t('skipped', { count: skipped })}
           </span>
         )}
       </div>
       <div className="pw-summary-meta">
-        <span>{total} tests</span>
+        <span>{t('tests', { count: total })}</span>
         <span>{duration}</span>
       </div>
     </div>

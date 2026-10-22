@@ -6,6 +6,12 @@ import {
 } from '../database/reclaimClaudeCodeRawLog';
 
 export function registerDatabaseBrowserHandlers() {
+    // NOTE: this whole module is the PGLite-era registration. On the SQLite
+    // backend -- which is now every install that has not deliberately rolled
+    // back -- `main/index.ts` registers `registerDatabaseBrowserSqliteHandlers`
+    // INSTEAD, so nothing here is reachable. Storage-maintenance handlers live
+    // in that module; do not add new handlers here expecting them to run.
+
     // Maintenance: preview how many claude-code rows still carry trimmable
     // tool_use_result / thinking-signature dead weight.
     safeHandle('database:reclaimRawLog:preview', async () => {
@@ -26,6 +32,42 @@ export function registerDatabaseBrowserHandlers() {
             return { success: true, result };
         } catch (error) {
             console.error('[DatabaseBrowserHandlers] reclaim run failed:', error);
+            return { success: false, error: String(error) };
+        }
+    });
+
+    // Maintenance: estimate what tombstoning aged tool output would reclaim.
+    // Bounded sample -- the full-table version of this query hangs the app.
+    safeHandle('database:toolRetention:estimate', async (_event, opts?: { retentionDays?: number }) => {
+        try {
+            const proxy = database as unknown as {
+                toolRetentionEstimate?: (days: number) => Promise<unknown>;
+            };
+            if (!proxy.toolRetentionEstimate) {
+                return { success: false, error: 'Tool-output retention requires the SQLite backend' };
+            }
+            const estimate = await proxy.toolRetentionEstimate(opts?.retentionDays ?? 30);
+            return { success: true, estimate };
+        } catch (error) {
+            console.error('[DatabaseBrowserHandlers] retention estimate failed:', error);
+            return { success: false, error: String(error) };
+        }
+    });
+
+    // Maintenance: run the retention pass. Destructive and irreversible, so it
+    // is user-triggered only. Runs on the worker's background lane.
+    safeHandle('database:toolRetention:run', async (_event, opts?: { retentionDays?: number; maxRows?: number }) => {
+        try {
+            const proxy = database as unknown as {
+                toolRetentionRun?: (days: number, maxRows?: number) => Promise<unknown>;
+            };
+            if (!proxy.toolRetentionRun) {
+                return { success: false, error: 'Tool-output retention requires the SQLite backend' };
+            }
+            const result = await proxy.toolRetentionRun(opts?.retentionDays ?? 30, opts?.maxRows);
+            return { success: true, result };
+        } catch (error) {
+            console.error('[DatabaseBrowserHandlers] retention run failed:', error);
             return { success: false, error: String(error) };
         }
     });
@@ -112,7 +154,7 @@ export function registerDatabaseBrowserHandlers() {
             if (!trimmedSQL.startsWith('select')) {
                 return {
                     success: false,
-                    error: 'Only SELECT queries are allowed in the Database Browser.'
+                    error: 'database.query_select_only'
                 };
             }
 
@@ -214,7 +256,6 @@ export function registerDatabaseBrowserHandlers() {
             // the current size (and the min/max bounds) here makes it possible to spot
             // when the maintenance loop has fallen behind.
             let walStats: {
-                backend: 'pglite';
                 fileCount: number;
                 totalBytes: number;
                 totalSize: string;
@@ -243,7 +284,6 @@ export function registerDatabaseBrowserHandlers() {
                 const row = walResult.rows[0];
                 if (row) {
                     walStats = {
-                        backend: 'pglite',
                         fileCount: parseInt(row.file_count) || 0,
                         totalBytes: parseInt(row.total_bytes) || 0,
                         totalSize: row.total_size || '0 bytes',
@@ -300,7 +340,7 @@ export function registerDatabaseBrowserHandlers() {
     ) => {
         try {
             if (!primaryKeys || primaryKeys.length === 0) {
-                return { success: false, error: 'Cannot update: table has no primary key' };
+                return { success: false, error: 'database.no_primary_key' };
             }
 
             // Sanitize table and column names (allow only alphanumeric and underscores)

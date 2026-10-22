@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import i18next from 'i18next';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { agentModeSettingsAtom } from '../../../store/atoms/appSettings';
 import { activeWorkspacePathAtom } from '../../../store/atoms/openProjects';
@@ -11,6 +12,14 @@ import { selectedWorkstreamAtom } from '../../../store/atoms/sessions';
 import { initWorkstreamState } from '../../../store/atoms/workstreamState';
 import { windowModeAtom } from '../../../store/atoms/windowMode';
 import { SessionLaunchPopup, launchSessionPrompt } from '../SessionLaunchPopup';
+
+vi.mock('../../../services/ErrorNotificationService', () => ({
+  errorNotificationService: {
+    showError: vi.fn(),
+    getLocalizedText: (_namespace: string, _key: string, fallback: string) => fallback,
+  },
+}));
+import { errorNotificationService } from '../../../services/ErrorNotificationService';
 
 vi.mock('../AIInput', () => ({
   AIInput: forwardRef(function MockAIInput(props: any, ref) {
@@ -25,7 +34,6 @@ vi.mock('../AIInput', () => ({
           ref={input}
           data-testid={props.testId}
           data-session-id={props.sessionId}
-          placeholder={props.placeholder}
           value={props.value}
           onChange={(event) => props.onChange(event.target.value)}
         />
@@ -48,6 +56,17 @@ class PointerEventStub extends MouseEvent {
     super(type, init);
     this.pointerId = init.pointerId ?? 0;
   }
+}
+
+async function renderPopup(store: ReturnType<typeof createStore>, language: 'en' | 'ja' = 'en') {
+  const i18n = await createI18nInstance(language);
+  render(
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}>
+        <SessionLaunchPopup workspacePath="/workspace" />
+      </Provider>
+    </I18nextProvider>,
+  );
 }
 
 describe('SessionLaunchPopup', () => {
@@ -78,26 +97,9 @@ describe('SessionLaunchPopup', () => {
     });
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
-    await i18next.changeLanguage('en');
-  });
-
-  it('localizes the popup and validates /plan without changing the fixed command', async () => {
-    await i18next.changeLanguage('ja');
-    const testStore = createStore();
-    testStore.set(activeWorkspacePathAtom, '/workspace');
-    initWorkstreamState('/workspace');
-    render(<Provider store={testStore}><SessionLaunchPopup workspacePath="/workspace" /></Provider>);
-    act(() => testStore.set(sessionLaunchPopupRequestAtom, 1));
-    expect(await screen.findByRole('dialog', { name: '新しいセッションを開始' })).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText('質問や指示を入力…'), { target: { value: '/plan' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start Session' }));
-    expect(await screen.findByText('セッションを開始する前に、/planの後に指示を入力してください。')).toBeTruthy();
-    expect(invoke.mock.calls.some(([channel]) => channel === 'sessions:create')).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'セッション起動ポップアップを閉じる' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('preserves a draft across dismiss/reopen and launches without changing modes', async () => {
@@ -111,15 +113,11 @@ describe('SessionLaunchPopup', () => {
       defaultEffortLevel: 'high',
       defaultThinkingMode: 'enabled',
     });
-    render(
-      <Provider store={testStore}>
-        <SessionLaunchPopup workspacePath="/workspace" />
-      </Provider>,
-    );
+    await renderPopup(testStore);
 
     act(() => testStore.set(sessionLaunchPopupRequestAtom, 1));
     const input = await screen.findByTestId('session-launch-popup-input');
-    expect(screen.getByText('Launch New Session')).toBeTruthy();
+    screen.getByText('Launch New Session');
     const backdropClass = document.querySelector('.session-launch-popup-backdrop')?.className;
     expect(backdropClass).toContain('bg-[var(--nim-bg)]');
     expect(backdropClass).not.toContain('bg-black');
@@ -130,7 +128,7 @@ describe('SessionLaunchPopup', () => {
     expect(screen.queryByTestId('session-launch-popup-input')).toBeNull();
 
     act(() => testStore.set(sessionLaunchPopupRequestAtom, 3));
-    expect(await screen.findByDisplayValue('Investigate the flaky test')).toBeTruthy();
+    await screen.findByDisplayValue('Investigate the flaky test');
 
     let resolveBackgroundLaunch: (result: { success: boolean }) => void = () => {};
     const backgroundLaunchPending = new Promise<{ success: boolean }>((resolve) => {
@@ -197,11 +195,7 @@ describe('SessionLaunchPopup', () => {
       defaultEffortLevel: 'high',
       defaultThinkingMode: 'disabled',
     });
-    render(
-      <Provider store={testStore}>
-        <SessionLaunchPopup workspacePath="/workspace" />
-      </Provider>,
-    );
+    await renderPopup(testStore);
 
     act(() => testStore.set(sessionLaunchPopupRequestAtom, 1));
     const input = await screen.findByTestId('session-launch-popup-input');
@@ -215,6 +209,56 @@ describe('SessionLaunchPopup', () => {
     expect(createCall?.[1].session.metadata).toMatchObject({ thinkingMode: 'disabled' });
   });
 
+  it('localizes the fixed background launch notification and preserves the dynamic error', async () => {
+    const testStore = createStore();
+    testStore.set(activeWorkspacePathAtom, '/workspace');
+    initWorkstreamState('/workspace');
+    testStore.set(agentModeSettingsAtom, {
+      defaultModel: 'claude-code:sonnet',
+      defaultEffortLevel: 'high',
+      defaultThinkingMode: 'enabled',
+    });
+    await renderPopup(testStore, 'ja');
+
+    act(() => testStore.set(sessionLaunchPopupRequestAtom, 1));
+    const input = await screen.findByTestId('session-launch-popup-input');
+    fireEvent.change(input, { target: { value: '確認' } });
+    invoke.mockImplementation(async (channel: string, payload?: any) => {
+      if (channel === 'sessions:create') return { success: true, id: payload.session.id };
+      if (channel === 'ai:sendMessage') throw new Error('backend unavailable');
+      return { success: true };
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Session' }));
+
+    await waitFor(() => {
+      expect(errorNotificationService.showError).toHaveBeenCalledWith(
+        'バックグラウンドセッションに失敗しました',
+        'backend unavailable',
+      );
+    });
+  });
+
+  it('localizes the /plan instruction validation error', async () => {
+    const testStore = createStore();
+    testStore.set(activeWorkspacePathAtom, '/workspace');
+    initWorkstreamState('/workspace');
+    testStore.set(agentModeSettingsAtom, {
+      defaultModel: 'claude-code:sonnet',
+      defaultEffortLevel: 'high',
+      defaultThinkingMode: 'enabled',
+    });
+    await renderPopup(testStore, 'ja');
+
+    act(() => testStore.set(sessionLaunchPopupRequestAtom, 1));
+    const input = await screen.findByTestId('session-launch-popup-input');
+    fireEvent.change(input, { target: { value: '/plan' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start Session' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain('セッションを開始する前に、/planの後に指示を入力してください。');
+    expect(invoke.mock.calls.some(([channel]) => channel === 'sessions:create')).toBe(false);
+  });
+
   it('moves the popup by dragging its title bar and closes from the title bar', async () => {
     const testStore = createStore();
     testStore.set(activeWorkspacePathAtom, '/workspace');
@@ -224,11 +268,7 @@ describe('SessionLaunchPopup', () => {
       defaultEffortLevel: 'high',
       defaultThinkingMode: 'enabled',
     });
-    render(
-      <Provider store={testStore}>
-        <SessionLaunchPopup workspacePath="/workspace" />
-      </Provider>,
-    );
+    await renderPopup(testStore);
 
     act(() => testStore.set(sessionLaunchPopupRequestAtom, 1));
     const popup = await screen.findByRole('dialog', { name: 'Launch new session' });
@@ -258,25 +298,7 @@ describe('SessionLaunchPopup', () => {
 });
 
 describe('launchSessionPrompt', () => {
-  afterEach(async () => {
-    cleanup();
-    await i18next.changeLanguage('en');
-  });
-
-  it('localizes a missing CLI error without attempting prompt submission', async () => {
-    await i18next.changeLanguage('ja');
-    const ensureClaudeCliSession = vi.fn().mockResolvedValue({ success: false, claudeNotInstalled: true });
-    const submitClaudeCliPrompt = vi.fn();
-    Object.defineProperty(window, 'electronAPI', {
-      configurable: true,
-      value: { terminal: { ensureClaudeCliSession, submitClaudeCliPrompt } },
-    });
-    await expect(launchSessionPrompt({
-      sessionId: 'session-ja', workspacePath: '/workspace', provider: 'claude-code-cli',
-      model: 'claude-code-cli:sonnet', prompt: 'Run the tests', mode: 'agent', attachments: [],
-    })).rejects.toThrow('Claude Code CLIがインストールされていません。');
-    expect(submitClaudeCliPrompt).not.toHaveBeenCalled();
-  });
+  afterEach(() => cleanup());
 
   it('explicitly starts and submits genuine CLI sessions from the user-triggered popup', async () => {
     const ensureClaudeCliSession = vi.fn().mockResolvedValue({ success: true });
@@ -296,6 +318,12 @@ describe('launchSessionPrompt', () => {
       prompt: 'Run the tests',
       mode: 'agent',
       attachments: [],
+      messages: {
+        cliNotInstalled: 'CLI is not installed.',
+        cliStartFailed: 'CLI session start failed.',
+        cliSubmitFailed: 'CLI prompt submit failed.',
+        startFailed: 'Session start failed.',
+      },
     });
 
     expect(ensureClaudeCliSession).toHaveBeenCalledWith({

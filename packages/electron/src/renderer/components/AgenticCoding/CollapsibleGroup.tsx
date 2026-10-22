@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface CollapsibleGroupProps {
   title: string;
@@ -17,14 +17,18 @@ export const CollapsibleGroup: React.FC<CollapsibleGroupProps> = ({
   children,
   count
 }) => {
-  const { t } = useTranslation(['sessions']);
+  const { t } = useTranslation('agents');
+
   return (
     <div className="collapsible-group mb-1">
       <button
         className="collapsible-group-header flex items-center gap-2 w-full py-2 px-3 bg-transparent border-none cursor-pointer text-xs font-semibold text-nim-muted text-left transition-colors duration-150 hover:bg-nim-hover"
         onClick={onToggle}
         aria-expanded={isExpanded}
-        aria-label={t('sessions:history.group_label', { group: title, state: t(`sessions:history.group_${isExpanded ? 'expanded' : 'collapsed'}`) })}
+        aria-label={t('context.group_toggle', {
+          action: t(isExpanded ? 'context.collapse' : 'context.expand'),
+          type: title,
+        })}
       >
         <MaterialSymbol
           icon="chevron_right"

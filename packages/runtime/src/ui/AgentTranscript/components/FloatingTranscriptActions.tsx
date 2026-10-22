@@ -9,6 +9,7 @@
  * in the TabEditor, with consistent styling, positioning, and interaction patterns.
  */
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   autoUpdate,
   flip,
@@ -20,10 +21,10 @@ import {
   useInteractions,
   useRole,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '../../floating/windowControlsClearance';
 import type { PromptMarker } from '../types';
 import { formatShortTime } from '../../../utils/dateUtils';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
 const tableOfContentsIconUrl = new URL('../../../images/icons/table-of-contents.svg', import.meta.url).href;
 
 // =============================================================================
@@ -49,7 +50,7 @@ export const PromptsMenuButton: React.FC<PromptsMenuButtonProps> = ({
   className,
   buttonClassName,
 }) => {
-  const { t, locale } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const [showMenu, setShowMenu] = useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open: showMenu,
@@ -61,6 +62,7 @@ export const PromptsMenuButton: React.FC<PromptsMenuButtonProps> = ({
       offset(8),
       flip({ fallbackPlacements: ['top-end', 'bottom-start', 'top-start'], padding: 8 }),
       shift({ padding: 8 }),
+      windowControlsClearance(),
     ],
   });
   const dismiss = useDismiss(context, {
@@ -104,13 +106,13 @@ export const PromptsMenuButton: React.FC<PromptsMenuButtonProps> = ({
                   {truncatePrompt(prompt.promptText)}
                 </div>
                 <div className="prompts-item-timestamp text-[var(--nim-text-faint)] text-[11px] whitespace-nowrap pt-0.5">
-                  {formatShortTime(prompt.timestamp, locale)}
+                  {formatShortTime(prompt.timestamp)}
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="prompts-empty py-6 px-4 text-center text-[var(--nim-text-faint)] text-[13px]">{t('aichat:transcript_sidebar.no_prompts', 'No prompts in this session')}</div>
+          <div className="prompts-empty py-6 px-4 text-center text-[var(--nim-text-faint)] text-[13px]">{t('transcript_sidebar.no_prompts')}</div>
         )}
       </div>
     </FloatingPortal>
@@ -121,9 +123,9 @@ export const PromptsMenuButton: React.FC<PromptsMenuButtonProps> = ({
       <button
         ref={refs.setReference}
         className={buttonClassName || 'floating-transcript-button pointer-events-auto w-9 h-9 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer flex items-center justify-center transition-all relative shadow-sm hover:bg-[var(--nim-bg-tertiary)] active:scale-95'}
-        aria-label={t('aichat:transcript_sidebar.prompts_menu', 'Prompts Menu')}
+        aria-label={t('transcript_sidebar.prompts_menu')}
         aria-expanded={showMenu}
-        title={t('aichat:transcript_sidebar.show_prompts', 'Show prompts in this session')}
+        title={t('transcript_sidebar.show_prompts')}
         {...getReferenceProps({
           onClick: () => setShowMenu(open => !open),
         })}
@@ -186,7 +188,7 @@ export const FloatingTranscriptActions: React.FC<FloatingTranscriptActionsProps>
   onSetPhase,
   searchBarVisible = false,
 }) => {
-  const { t } = useRuntimeTranslation();
+  const { t, i18n } = useTranslation('aichat');
   const [showPhaseMenu, setShowPhaseMenu] = useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open: showPhaseMenu,
@@ -198,6 +200,7 @@ export const FloatingTranscriptActions: React.FC<FloatingTranscriptActionsProps>
       offset(8),
       flip({ fallbackPlacements: ['top-end', 'bottom-start', 'top-start'], padding: 8 }),
       shift({ padding: 8 }),
+      windowControlsClearance(),
     ],
   });
   const dismiss = useDismiss(context, {
@@ -244,14 +247,14 @@ export const FloatingTranscriptActions: React.FC<FloatingTranscriptActionsProps>
                 }}
               >
                 <MaterialSymbol icon="close" size={14} />
-                {t('agents:context.remove_board', 'Remove from board')}
+                {i18n.t('tracker:session_kanban.remove_from_board')}
               </button>
             </>
           )}
         </div>
       </FloatingPortal>
     );
-  }, [currentPhase, floatingStyles, getFloatingProps, onSetPhase, phaseColumns, refs.setFloating, showPhaseMenu, t]);
+  }, [currentPhase, floatingStyles, getFloatingProps, onSetPhase, phaseColumns, refs.setFloating, showPhaseMenu]);
 
   return (
     <div
@@ -265,9 +268,11 @@ export const FloatingTranscriptActions: React.FC<FloatingTranscriptActionsProps>
           <button
             ref={refs.setReference}
             className="floating-transcript-button pointer-events-auto h-9 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer flex items-center gap-1.5 px-2.5 transition-all relative shadow-sm hover:bg-[var(--nim-bg-tertiary)] active:scale-95 text-[12px]"
-            aria-label={t('aichat:transcript_sidebar.set_phase', 'Set phase')}
+            aria-label={t('transcript_sidebar.set_phase')}
             aria-expanded={showPhaseMenu}
-            title={currentPhase ? t('aichat:transcript_sidebar.current_phase', 'Phase: {{phase}}', { phase: currentPhaseCol?.label || currentPhase }) : t('aichat:transcript_sidebar.set_kanban_phase', 'Set kanban phase')}
+            title={currentPhase
+              ? t('transcript_sidebar.current_phase', { phase: currentPhaseCol?.label || currentPhase })
+              : t('transcript_sidebar.set_kanban_phase')}
             {...getReferenceProps({
               onClick: () => setShowPhaseMenu(open => !open),
             })}
@@ -280,7 +285,7 @@ export const FloatingTranscriptActions: React.FC<FloatingTranscriptActionsProps>
             ) : (
               <>
                 <MaterialSymbol icon="view_kanban" size={16} />
-                <span className="text-[var(--nim-text-faint)]">{t('aichat:transcript_sidebar.phase', 'Phase')}</span>
+                <span className="text-[var(--nim-text-faint)]">{t('transcript_sidebar.phase')}</span>
               </>
             )}
           </button>
@@ -299,8 +304,8 @@ export const FloatingTranscriptActions: React.FC<FloatingTranscriptActionsProps>
         <button
           className="floating-transcript-button pointer-events-auto w-9 h-9 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer flex items-center justify-center transition-all relative shadow-sm hover:bg-[var(--nim-bg-tertiary)] active:scale-95"
           onClick={onToggleSidebar}
-          aria-label={isSidebarCollapsed ? t('aichat:transcript_sidebar.show_history', 'Show file history') : t('aichat:transcript_sidebar.hide_history', 'Hide file history')}
-          title={isSidebarCollapsed ? t('aichat:transcript_sidebar.show_history', 'Show file history') : t('aichat:transcript_sidebar.hide_history', 'Hide file history')}
+          aria-label={isSidebarCollapsed ? t('transcript_sidebar.show_history') : t('transcript_sidebar.hide_history')}
+          title={isSidebarCollapsed ? t('transcript_sidebar.show_history') : t('transcript_sidebar.hide_history')}
         >
           {isSidebarCollapsed ? (
             <MaterialSymbol icon="schedule" size={20} />

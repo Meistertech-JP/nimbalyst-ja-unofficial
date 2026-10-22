@@ -3,29 +3,43 @@
  */
 
 import type { EditorContextItem } from '@nimbalyst/runtime';
-import type { TFunction } from 'i18next';
 import type { PullRequestRow } from '../../services/RendererPullRequestService';
 
 /** Compact relative time ("just now", "5m ago", "3d ago", "2mo ago", "1y ago"). */
-export function formatRelative(ms: number, t: TFunction): string {
+export function formatRelative(ms: number): string {
   if (!ms) return '';
   const diff = Date.now() - ms;
   const sec = Math.floor(diff / 1000);
-  if (sec < 60) return t('sessions:relative_time.compact_just_now');
+  if (sec < 60) return 'just now';
   const min = Math.floor(sec / 60);
-  if (min < 60) return t('sessions:relative_time.compact_minutes', { count: min });
+  if (min < 60) return `${min}m ago`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return t('sessions:relative_time.compact_hours', { count: hr });
+  if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
-  if (day < 30) return t('sessions:relative_time.compact_days', { count: day });
+  if (day < 30) return `${day}d ago`;
   const mon = Math.floor(day / 30);
-  if (mon < 12) return t('sessions:relative_time.compact_months', { count: mon });
-  return t('sessions:relative_time.compact_years', { count: Math.floor(mon / 12) });
+  if (mon < 12) return `${mon}mo ago`;
+  return `${Math.floor(mon / 12)}y ago`;
 }
 
-/** Draft used when starting an agent session from a pull request. */
+/**
+ * Draft used when starting an agent session from a pull request.
+ *
+ * #1556: this must be a self-contained prompt. It previously invoked
+ * `/review-contribution`, a slash command that only exists in this repo's
+ * `.claude/commands/`, so shipped builds answered "Unknown command".
+ */
 export function buildReviewContributionDraft(remote: string, prNumber: number): string {
-  return `/review-contribution https://github.com/${remote}/pull/${prNumber}`;
+  const url = `https://github.com/${remote}/pull/${prNumber}`;
+  return [
+    `Review pull request ${url} (repo ${remote}, PR #${prNumber}) and report your findings here.`,
+    '',
+    'This is a read-only review. Do not edit, commit, push, merge, or post anything to GitHub.',
+    '',
+    `1. Read the PR: \`gh pr view ${prNumber} --repo ${remote}\` and \`gh pr diff ${prNumber} --repo ${remote}\`, plus the surrounding code for context.`,
+    '2. Look for correctness bugs, regressions, missing tests, and mismatches with the conventions already used in the files it touches.',
+    '3. Reply with a one-line recommendation, then the findings most important first, each citing file and line.',
+  ].join('\n');
 }
 
 /** Synthetic document path used to scope the selected PR to its chat pane. */

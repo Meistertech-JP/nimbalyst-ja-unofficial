@@ -9,12 +9,21 @@ import { app, dialog } from 'electron';
 import path from 'path';
 import { getPackageRoot } from '../utils/appPaths';
 import { logger } from '../utils/logger';
-import { v4 as uuidv4 } from 'uuid';
 import { AnalyticsService } from '../services/analytics/AnalyticsService';
 import type { SQLiteDatabase } from './sqlite/SQLiteDatabase';
 import { DatabaseBackupService } from '../services/database/DatabaseBackupService';
-import { deserializeWorkerError } from './workerErrorSerialization';
-import { t } from '../i18n';
+import { WorkerRequestTracker } from './WorkerRequestTracker';
+import { assertDatabaseAvailable } from './databaseMaintenance';
+import { MigrationSourceReader } from './sqlite/migrationSourceRead';
+import { resolveDatabaseUserDataPath } from './userDataPath';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
+import {
+  buildDatabaseOperationErrorProperties,
+  classifyDatabaseOperation,
+  DatabaseErrorTelemetryLimiter,
+  extractDatabaseTableName,
+  type DatabaseTelemetryOperation,
+} from './DatabaseErrorTelemetry';
 
 /**
  * Error that has already been shown to the user via a dialog.
@@ -65,22 +74,6 @@ export function raceWithTimeout<T>(work: Promise<T>, timeoutMs: number): Promise
  * Exported so unit tests can pin the value if reasoning ever shifts.
  */
 export const INIT_TIMEOUT_MS = 120_000;
-
-// Helper to categorize database errors
-function categorizeDBError(error: any): string {
-  const message = error?.message?.toLowerCase() || String(error).toLowerCase();
-  if (message.includes('permission') || message.includes('eacces')) return 'permission';
-  if (message.includes('disk') || message.includes('enospc')) return 'disk_full';
-  if (message.includes('lock') || message.includes('busy')) return 'lock';
-  if (message.includes('corrupt')) return 'corruption';
-  if (message.includes('syntax')) return 'syntax';
-  return 'unknown';
-}
-
-interface PendingRequest {
-  resolve: (value: any) => void;
-  reject: (error: Error) => void;
-}
 
 // ============================================================================
 // Database Performance Stats
@@ -223,7 +216,11 @@ class DatabaseStats {
 
 export class PGLiteDatabaseWorker {
   private worker: Worker | null = null;
-  private pendingRequests = new Map<string, PendingRequest>();
+  private requests = new WorkerRequestTracker((message) => {
+    if (!this.worker) throw new Error('Worker not initialized');
+    this.worker.postMessage(message);
+  });
+  private migrationReader = new MigrationSourceReader();
   private initialized = false;
   private initPromise: Promise<void> | null = null;
   private analytics = AnalyticsService.getInstance();
@@ -245,7 +242,7 @@ export class PGLiteDatabaseWorker {
       title: `Nimbalyst - ${title}`,
       message,
       detail,
-      buttons: [t('menu:quit')]
+      buttons: ['Quit']
     }).then(() => app.quit()).catch((err) => {
       logger.main.error('[PGLite Worker] Dialog error:', err);
       app.quit();
@@ -272,10 +269,13 @@ export class PGLiteDatabaseWorker {
   private async showStartFreshConfirmation(): Promise<boolean> {
     const response = await dialog.showMessageBox({
       type: 'warning',
-      title: `Nimbalyst - ${t('errors:database.start_fresh_title')}`,
-      message: t('errors:database.start_fresh_message'),
-      detail: t('errors:database.start_fresh_detail'),
-      buttons: [t('common:cancel'), t('errors:database.confirm_start_fresh')],
+      title: translateMainDialogLabel('database_recovery.start_fresh_title', 'Nimbalyst - Start Fresh?'),
+      message: translateMainDialogLabel('database_recovery.start_fresh_message', 'This will clear your AI chat sessions.'),
+      detail: translateMainDialogLabel('database_recovery.start_fresh_detail', 'Your files will not be affected, but all AI chat history will be permanently deleted.\n\nAre you sure you want to continue?'),
+      buttons: [
+        translateMainDialogLabel('database_recovery.cancel', 'Cancel'),
+        translateMainDialogLabel('database_recovery.start_fresh', 'Yes, Start Fresh'),
+      ],
       defaultId: 0,
       cancelId: 0
     });
@@ -310,15 +310,6 @@ export class PGLiteDatabaseWorker {
    */
   private formatError(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
-  }
-
-  private formatBackupSource(source: string | undefined): string {
-    switch (source) {
-      case 'current': return t('errors:database.source_current');
-      case 'previous': return t('errors:database.source_previous');
-      case 'oldest': return t('errors:database.source_oldest');
-      default: return String(source);
-    }
   }
 
   // ============================================================================
@@ -359,12 +350,9 @@ export class PGLiteDatabaseWorker {
       workerPath = path.join(getPackageRoot(), 'out', 'worker.bundle.js');
     }
 
-    // Use test-specific userData path to avoid touching production database
-    // NIMBALYST_USER_DATA_PATH: custom path (for manual testing of packaged builds)
-    // PLAYWRIGHT=1: use temp directory (for automated tests)
-    const userDataPath = process.env.NIMBALYST_USER_DATA_PATH
-      || (process.env.PLAYWRIGHT === '1' ? path.join(app.getPath('temp'), 'nimbalyst-test-db') : null)
-      || app.getPath('userData');
+    // Use test-specific userData path to avoid touching production database.
+    // Shared resolver: see `database/userDataPath.ts`.
+    const userDataPath = resolveDatabaseUserDataPath();
 
     logger.main.info('[PGLite] createWorker() called', {
       existingWorker: !!this.worker,
@@ -380,43 +368,23 @@ export class PGLiteDatabaseWorker {
 
     // Set up message handler
     this.worker.on('message', (response) => {
-      const pending = this.pendingRequests.get(response.id);
-      if (pending) {
-        this.pendingRequests.delete(response.id);
-        if (response.success) {
-          // Store worker-reported execution time for stats
-          if (response.execMs !== undefined) {
-            this.lastExecMs = response.execMs;
-          }
-          pending.resolve(response.data);
-        } else {
-          pending.reject(deserializeWorkerError(response.errorData, response.error));
-        }
+      if (this.requests.receive(response) && response.execMs !== undefined) {
+        this.lastExecMs = response.execMs;
       }
     });
 
     // Set up error handler
     this.worker.on('error', (error) => {
       logger.main.error('[PGLite Worker] Worker error:', error);
-      // Reject all pending requests with the original error
-      this.pendingRequests.forEach((pending) => {
-        pending.reject(error);
-      });
-      this.pendingRequests.clear();
+      this.requests.rejectAll(error);
     });
 
     // Set up exit handler
     this.worker.on('exit', (code) => {
-      if (code !== 0) {
-        logger.main.error(`[PGLite Worker] Worker exited with code ${code}`);
-        // Reject all pending requests
-        this.pendingRequests.forEach((pending) => {
-          pending.reject(new Error(`Worker exited with code ${code}`));
-        });
-        this.pendingRequests.clear();
-        this.initialized = false;
-        this.worker = null;
-      }
+      if (code !== 0) logger.main.error(`[PGLite Worker] Worker exited with code ${code}`);
+      this.requests.rejectAll(new Error(`Worker exited with code ${code}`));
+      this.initialized = false;
+      this.worker = null;
     });
   }
 
@@ -486,7 +454,7 @@ export class PGLiteDatabaseWorker {
               logger.main.info('[PGLite Worker] Recreating worker thread after restore...');
               await this.recreateWorkerAndReinit();
 
-              this.showInfoDialog(t('errors:database.restored_title'), t('errors:database.restored_successfully', { source: this.formatBackupSource(restoreResult.source) }));
+              this.showInfoDialog('Database Restored', `Your database has been successfully restored from the ${restoreResult.source} backup.`);
             } else {
               logger.main.error('[PGLite Worker] Failed to restore from backup:', restoreResult.error);
               this.analytics.sendEvent('database_corruption_restore_result', {
@@ -494,7 +462,7 @@ export class PGLiteDatabaseWorker {
                 errorType: restoreResult.error?.includes('verification') ? 'verification_failed' : 'restore_failed'
               });
 
-              this.showInfoDialog(t('errors:database.restore_failed_title'), t('errors:database.restore_failed_fresh'), restoreResult.error);
+              this.showInfoDialog('Restore Failed', 'Failed to restore from backup. Starting with a fresh database.', restoreResult.error);
             }
           } else {
             // User clicked "Start Fresh" - show confirmation dialog
@@ -532,7 +500,7 @@ export class PGLiteDatabaseWorker {
                 logger.main.info('[PGLite Worker] Recreating worker thread after restore...');
                 await this.recreateWorkerAndReinit();
 
-                this.showInfoDialog(t('errors:database.restored_title'), t('errors:database.restored_successfully', { source: this.formatBackupSource(restoreResult.source) }));
+                this.showInfoDialog('Database Restored', `Your database has been successfully restored from the ${restoreResult.source} backup.`);
               } else {
                 logger.main.error('[PGLite Worker] Failed to restore from backup:', restoreResult.error);
                 this.analytics.sendEvent('database_corruption_restore_result', {
@@ -541,7 +509,7 @@ export class PGLiteDatabaseWorker {
                   trigger: 'cancel_start_fresh'
                 });
 
-                this.showInfoDialog(t('errors:database.restore_failed_title'), t('errors:database.restore_failed_fresh'), restoreResult.error);
+                this.showInfoDialog('Restore Failed', 'Failed to restore from backup. Starting with a fresh database.', restoreResult.error);
               }
             }
           }
@@ -555,10 +523,14 @@ export class PGLiteDatabaseWorker {
 
           dialog.showMessageBox({
             type: 'warning',
-            title: `Nimbalyst - ${t('errors:database.recovered_title')}`,
-            message: t('errors:database.recovered_message'),
-            detail: t('errors:database.recovered_detail', { path: `${initResult.dataDir}.backup-[timestamp]` }),
-            buttons: ['OK']
+            title: translateMainDialogLabel('database_recovery.auto_recovered_title', 'Nimbalyst - Database Recovered'),
+            message: translateMainDialogLabel('database_recovery.auto_recovered_message', 'The application database was corrupted and has been automatically repaired.'),
+            detail: translateMainDialogLabel(
+              'database_recovery.auto_recovered_detail',
+              `A fresh database has been created. Your old data has been backed up to:\n\n${initResult.dataDir}.backup-[timestamp]\n\nYour document files have not been lost - they are still on disk. Only the internal application database (AI chat sessions and document history) needs to be rebuilt.`,
+              { dataDir: initResult.dataDir },
+            ),
+            buttons: [translateMainDialogLabel('database_recovery.ok', 'OK')]
           }).catch(() => {});
         }
       }
@@ -608,10 +580,25 @@ export class PGLiteDatabaseWorker {
         const lockFilePath = (error as any).lockFilePath as string | undefined;
         const response = await dialog.showMessageBox({
           type: 'question',
-          title: `Nimbalyst - ${t('errors:database.ambiguous_title')}`,
-          message: t('errors:database.ambiguous_message'),
-          detail: t('errors:database.ambiguous_detail', { pid: lockPid, host: lockHostname, timestamp: lockTimestamp }),
-          buttons: [t('common:cancel'), t('errors:database.open_anyway')],
+          title: translateMainDialogLabel('database_recovery.ambiguous_lock_title', 'Nimbalyst - Database Locked (Ambiguous)'),
+          message: translateMainDialogLabel('database_recovery.ambiguous_lock_message', 'Cannot tell whether another Nimbalyst is already running.'),
+          detail:
+            translateMainDialogLabel(
+              'database_recovery.ambiguous_lock_detail',
+              `Nimbalyst found a database lock from a few seconds ago and cannot confirm whether ` +
+                `the process holding it (PID ${lockPid}, host ${lockHostname}, acquired ${lockTimestamp}) ` +
+                `is still alive. Two scenarios are equally likely:\n\n` +
+                `  1. Another Nimbalyst window is open under a different user account or privilege level. ` +
+                `Opening anyway will run two instances against the same database and may corrupt data.\n\n` +
+                `  2. A previous Nimbalyst crashed less than a minute ago and the OS has already reused ` +
+                `the original PID for a system process. In this case the lock is safe to clear.\n\n` +
+                `If unsure, choose Cancel and look for another Nimbalyst window before retrying.`,
+              { pid: String(lockPid), hostname: String(lockHostname), timestamp: String(lockTimestamp) },
+            ),
+          buttons: [
+            translateMainDialogLabel('database_recovery.cancel', 'Cancel'),
+            translateMainDialogLabel('database_recovery.open_anyway', 'Open Anyway (clear lock)'),
+          ],
           defaultId: 0,
           cancelId: 0,
         }).catch(() => ({ response: 0 } as Electron.MessageBoxReturnValue));
@@ -629,9 +616,10 @@ export class PGLiteDatabaseWorker {
           } catch (unlockErr) {
             logger.main.error('[PGLite Worker] Force-unlock failed:', unlockErr);
             this.showErrorAndQuit(
-              t('errors:database.locked_title'),
-              t('errors:database.unlock_failed'),
-              t('errors:database.unlock_failed_detail', { error: this.formatError(unlockErr) })
+              'Database Locked',
+              'Could not clear the database lock.',
+              `Removing the lock file failed: ${this.formatError(unlockErr)}\n\n` +
+              `If another Nimbalyst window is open, close it manually before retrying.`
             );
             throw new HandledError('DATABASE_LOCKED_AMBIGUOUS_UNLOCK_FAILED');
           }
@@ -640,9 +628,9 @@ export class PGLiteDatabaseWorker {
         // User cancelled - quit cleanly without removing the lock.
         this.analytics.sendEvent('database_lock_ambiguous_cancel', { lockPid });
         this.showErrorAndQuit(
-          t('errors:database.locked_title'),
-          t('errors:database.uncertain_message'),
-          t('errors:database.uncertain_detail')
+          'Database Locked',
+          'Nimbalyst cannot start while the database lock state is uncertain.',
+          'Close any other Nimbalyst windows you have open and try again. If you are sure no other Nimbalyst is running, restart this machine to clear any stale system locks.'
         );
         throw new HandledError('DATABASE_LOCKED_AMBIGUOUS');
       }
@@ -656,9 +644,9 @@ export class PGLiteDatabaseWorker {
           process.exit(1);
         }
         this.showErrorAndQuit(
-          t('errors:database.locked_title'),
-          t('errors:database.locked_message'),
-          t('errors:database.locked_detail')
+          'Database Locked',
+          'Another instance of Nimbalyst is already running.',
+          'The database is locked by another process. Please close the other instance before starting a new one.\n\nRunning multiple instances simultaneously can cause data corruption.'
         );
         // Throw to prevent downstream code from continuing while quit dialog is pending.
         // HandledError signals to index.ts that a user-facing dialog was already shown.
@@ -696,16 +684,16 @@ export class PGLiteDatabaseWorker {
                 await this.recreateWorkerAndReinit();
               } catch (reinitError) {
                 logger.main.error('[PGLite Worker] Re-initialization after restore failed:', reinitError);
-                this.showErrorAndQuit(t('errors:database.init_failed_title'), t('errors:database.restored_init_failed'), this.formatError(reinitError));
+                this.showErrorAndQuit('Initialization Failed', 'Database was restored but failed to initialize.', this.formatError(reinitError));
                 return;
               }
 
-              this.showInfoDialog(t('errors:database.restored_title'), t('errors:database.restored', { source: this.formatBackupSource(restoreResult.source) }));
+              this.showInfoDialog('Database Restored', `Your database has been restored from the ${restoreResult.source} backup.`);
               this.initialized = true;
               return;
             } else {
               logger.main.error('[PGLite Worker] Restore failed:', restoreResult.error);
-              this.showErrorAndQuit(t('errors:database.restore_failed_title'), t('errors:database.restore_failed'), restoreResult.error || t('errors:database.unknown_error'));
+              this.showErrorAndQuit('Restore Failed', 'Failed to restore from backup.', restoreResult.error || 'Unknown error');
               return;
             }
           } else if (response.response === 1) {
@@ -739,17 +727,17 @@ export class PGLiteDatabaseWorker {
                 await this.recreateWorkerAndReinit();
               } catch (reinitError) {
                 logger.main.error('[PGLite Worker] Re-initialization after delete failed:', reinitError);
-                this.showErrorAndQuit(t('errors:database.init_failed_title'), t('errors:database.fresh_init_failed'), this.formatError(reinitError));
+                this.showErrorAndQuit('Initialization Failed', 'Failed to initialize fresh database.', this.formatError(reinitError));
                 return;
               }
 
-              this.showInfoDialog(t('errors:database.reset_title'), t('errors:database.reset_message'), t('errors:database.reset_detail'));
+              this.showInfoDialog('Database Reset', 'A fresh database has been created.', 'Your previous AI chat sessions could not be recovered, but your document files are safe.');
 
               this.initialized = true;
               return;
             } catch (deleteError) {
               logger.main.error('[PGLite Worker] Failed to delete database directory:', deleteError);
-              this.showErrorAndQuit(t('errors:database.delete_failed_title'), t('errors:database.delete_failed'), this.formatError(deleteError));
+              this.showErrorAndQuit('Delete Failed', 'Failed to delete corrupted database.', this.formatError(deleteError));
               return;
             }
           } else {
@@ -770,30 +758,9 @@ export class PGLiteDatabaseWorker {
    * Send a message to the worker and wait for response
    * @param timeoutMs - Timeout in milliseconds (default: 30000)
    */
-  private sendMessage(type: string, payload?: any, timeoutMs: number = 30000): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!this.worker) {
-        reject(new Error('Worker not initialized'));
-        return;
-      }
-
-      const id = uuidv4();
-      this.pendingRequests.set(id, { resolve, reject });
-
-      this.worker.postMessage({
-        id,
-        type,
-        payload
-      });
-
-      // Timeout (default 30 seconds, can be extended for long operations)
-      setTimeout(() => {
-        if (this.pendingRequests.has(id)) {
-          this.pendingRequests.delete(id);
-          reject(new Error(`Request ${type} timed out`));
-        }
-      }, timeoutMs);
-    });
+  private sendMessage(type: string, payload?: any, timeoutMs: number | null = 30000): Promise<any> {
+    if (type !== 'close' && type !== 'verifyBackup') assertDatabaseAvailable();
+    return this.requests.send(type, payload, timeoutMs);
   }
 
   // Threshold for logging slow queries (milliseconds)
@@ -834,12 +801,8 @@ export class PGLiteDatabaseWorker {
       this.lastExecMs = undefined;
       // Record stats even for failures
       this.stats.record(tableName, operation, duration, execMs);
-      // Track database error
-      this.analytics.sendEvent('database_error', {
-        operation,
-        errorType: categorizeDBError(error),
-        tableName
-      });
+      // `database_error` is emitted once, in ActiveDatabaseFacade, so the
+      // SQLite backend reports the same failures this one does.
       // Also log slow failed queries
       if (duration >= PGLiteDatabaseWorker.SLOW_QUERY_THRESHOLD_MS) {
         logger.main.warn(`[PGLite] Slow query failed (${duration.toFixed(0)}ms): table=${tableName}`);
@@ -904,6 +867,27 @@ export class PGLiteDatabaseWorker {
     }
   }
 
+  /** Internal migration bridge only; extension queryReadOnly keeps its deadline. */
+  async queryForMigration<T = unknown>(sql: string, params?: unknown[], timeoutMs = 30_000): Promise<{ rows: T[] }> {
+    if (!this.initialized) throw new Error('Database not initialized. Call initialize() first.');
+    const start = performance.now();
+    const tableName = this.extractTableName(sql);
+    try {
+      return await this.migrationReader.read(
+        // No transport rejection timer: ownership lasts until response or exit.
+        () => this.sendMessage('queryReadOnly', { sql, params, timeoutMs: clampReadOnlyTimeout(timeoutMs) }, null),
+        clampReadOnlyTimeout(timeoutMs),
+      );
+    } finally {
+      this.stats.record(tableName, 'read', performance.now() - start, this.lastExecMs);
+      this.lastExecMs = undefined;
+    }
+  }
+
+  assertMigrationAvailable(): void {
+    this.migrationReader.assertAvailable();
+  }
+
   /**
    * Execute a statement (no return value)
    * @param timeoutMs - Timeout in milliseconds (default: 30000, use longer for index creation)
@@ -935,12 +919,7 @@ export class PGLiteDatabaseWorker {
       this.lastExecMs = undefined;
       // Record stats even for failures
       this.stats.record(tableName, 'write', duration, execMs);
-      // Track database error
-      this.analytics.sendEvent('database_error', {
-        operation: 'write',
-        errorType: categorizeDBError(error),
-        tableName
-      });
+      // Emitted once in ActiveDatabaseFacade -- see the note in query().
       // Also log slow failed exec operations
       if (duration >= PGLiteDatabaseWorker.SLOW_QUERY_THRESHOLD_MS) {
         logger.main.warn(`[PGLite] Slow exec failed (${duration.toFixed(0)}ms): table=${tableName}`);
@@ -949,7 +928,7 @@ export class PGLiteDatabaseWorker {
     }
   }
 
-  async runTransaction(statements: Array<{ sql: string; params?: any[] }>): Promise<void> {
+  async runTransaction(statements: Array<{ sql: string; params?: any[]; expectedRows?: number }>): Promise<void> {
     if (!this.initialized) {
       throw new Error('Database not initialized. Call initialize() first.');
     }
@@ -957,27 +936,11 @@ export class PGLiteDatabaseWorker {
   }
 
   /**
-   * Extract table name from SQL query (simple heuristic)
+   * Extract a table name for local performance stats. Attribution is
+   * deliberately narrow -- see `extractDatabaseTableName`.
    */
   private extractTableName(sql: string): string {
-    // Normalize whitespace for easier matching
-    const normalized = sql.replace(/\s+/g, ' ').trim();
-    // Try specific DML patterns in priority order
-    const patterns = [
-      /^SELECT\b.+?\bFROM\s+([a-zA-Z_][a-zA-Z0-9_]*)/i,    // SELECT ... FROM table
-      /^INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)/i,          // INSERT INTO table
-      /^UPDATE\s+([a-zA-Z_][a-zA-Z0-9_]*)/i,                  // UPDATE table
-      /^DELETE\s+FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)/i,           // DELETE FROM table
-      /^CREATE\s+(?:TABLE|INDEX)\b.*?\bON\s+([a-zA-Z_][a-zA-Z0-9_]*)/i, // CREATE INDEX ... ON table
-      /^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)/i, // CREATE TABLE table
-      /^ALTER\s+TABLE\s+([a-zA-Z_][a-zA-Z0-9_]*)/i,           // ALTER TABLE table
-      /^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)/i, // DROP TABLE table
-    ];
-    for (const pattern of patterns) {
-      const match = normalized.match(pattern);
-      if (match) return match[1];
-    }
-    return 'unknown';
+    return extractDatabaseTableName(sql);
   }
 
   /**
@@ -985,11 +948,7 @@ export class PGLiteDatabaseWorker {
    * Parameterized DML goes through query(), so infer from the leading verb.
    */
   private classifySqlOperation(sql: string): 'read' | 'write' {
-    const normalized = sql.replace(/^\s+/, '');
-    if (/^(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|TRUNCATE|BEGIN|COMMIT|ROLLBACK)\b/i.test(normalized)) {
-      return 'write';
-    }
-    return 'read';
+    return classifyDatabaseOperation(sql);
   }
 
   /**
@@ -1128,16 +1087,16 @@ export class PGLiteDatabaseWorker {
     }
 
     const buttons = includeQuit
-      ? [t('errors:database.restore'), t('errors:database.start_fresh'), t('menu:quit')]
-      : [t('errors:database.restore'), t('errors:database.start_fresh')];
+      ? ['Restore (Recommended)', 'Start Fresh', 'Quit']
+      : ['Restore (Recommended)', 'Start Fresh'];
 
     return {
       type: 'info',
-      title: `Nimbalyst - ${t('errors:database.restore_title')}`,
-      message: t('errors:database.files_safe'),
+      title: 'Nimbalyst - Restore Your Data',
+      message: 'No file data has been lost.',
       detail: backupDateStr
-        ? t('errors:database.restore_dated_detail', { date: backupDateStr })
-        : t('errors:database.restore_detail'),
+        ? `Your files are safe, but your chat history will need to be restored from a backup dated ${backupDateStr}.`
+        : `Your files are safe and your AI chat sessions can be restored from a recent backup.`,
       buttons,
       defaultId: 0,
       cancelId: includeQuit ? 2 : 1
@@ -1150,7 +1109,7 @@ export class PGLiteDatabaseWorker {
    */
   async showRecoveryDialog(): Promise<void> {
     if (!this.backupService || !this.backupService.hasBackups()) {
-      this.showInfoDialog(t('errors:database.no_backups_title'), t('errors:database.no_backups'));
+      this.showInfoDialog('No Backups Available', 'No backups are available to test the recovery dialog.');
       return;
     }
 
@@ -1172,7 +1131,7 @@ export interface AppDatabase {
   query<T = any>(sql: string, params?: any[]): Promise<{ rows: T[] }>;
   queryReadOnly<T = any>(sql: string, params?: any[], timeoutMs?: number): Promise<{ rows: T[] }>;
   exec(sql: string, timeoutMs?: number): Promise<void>;
-  runTransaction(statements: Array<{ sql: string; params?: any[] }>): Promise<void>;
+  runTransaction(statements: Array<{ sql: string; params?: any[]; expectedRows?: number }>): Promise<void>;
   close(): Promise<void>;
   getStats(): Promise<any>;
   getDB(): any;
@@ -1192,6 +1151,7 @@ export interface AppDatabase {
 class ActiveDatabaseFacade implements AppDatabase {
   private active: AppDatabase;
   private engine: DatabaseEngine;
+  private errorTelemetryLimiter = new DatabaseErrorTelemetryLimiter();
 
   constructor(initial: AppDatabase, engine: DatabaseEngine) {
     this.active = initial;
@@ -1235,20 +1195,40 @@ class ActiveDatabaseFacade implements AppDatabase {
     return this.active.isInitialized();
   }
 
-  query<T = any>(sql: string, params?: any[]): Promise<{ rows: T[] }> {
-    return this.active.query<T>(sql, params);
+  async query<T = any>(sql: string, params?: any[]): Promise<{ rows: T[] }> {
+    try {
+      return await this.active.query<T>(sql, params);
+    } catch (error) {
+      this.reportOperationError(error, sql);
+      throw error;
+    }
   }
 
-  queryReadOnly<T = any>(sql: string, params?: any[], timeoutMs?: number): Promise<{ rows: T[] }> {
-    return this.active.queryReadOnly<T>(sql, params, timeoutMs);
+  async queryReadOnly<T = any>(sql: string, params?: any[], timeoutMs?: number): Promise<{ rows: T[] }> {
+    try {
+      return await this.active.queryReadOnly<T>(sql, params, timeoutMs);
+    } catch (error) {
+      this.reportOperationError(error, sql, 'read');
+      throw error;
+    }
   }
 
-  exec(sql: string, timeoutMs?: number): Promise<void> {
-    return this.active.exec(sql, timeoutMs);
+  async exec(sql: string, timeoutMs?: number): Promise<void> {
+    try {
+      await this.active.exec(sql, timeoutMs);
+    } catch (error) {
+      this.reportOperationError(error, sql);
+      throw error;
+    }
   }
 
-  runTransaction(statements: Array<{ sql: string; params?: any[] }>): Promise<void> {
-    return this.active.runTransaction(statements);
+  async runTransaction(statements: Array<{ sql: string; params?: any[]; expectedRows?: number }>): Promise<void> {
+    try {
+      await this.active.runTransaction(statements);
+    } catch (error) {
+      this.reportOperationError(error, statements[0]?.sql ?? '', 'write');
+      throw error;
+    }
   }
 
   close(): Promise<void> {
@@ -1288,6 +1268,42 @@ class ActiveDatabaseFacade implements AppDatabase {
   async showRecoveryDialog(): Promise<void> {
     if (typeof this.active.showRecoveryDialog === 'function') {
       await this.active.showRecoveryDialog();
+    }
+  }
+
+  /**
+   * The single `database_error` emit site, for whichever backend is live.
+   *
+   * Two things are deliberate here. The raw error and SQL go to the local log
+   * only -- they can quote row values, and rows here hold the user's prose --
+   * so PostHog receives just the fixed category/code taxonomy. And the emit is
+   * rate limited: on 2026-08-03 a wedged database produced ~62,000 events in
+   * two hours, none of which said more than the first one did.
+   */
+  private reportOperationError(
+    error: unknown,
+    sql: string,
+    operation?: DatabaseTelemetryOperation,
+  ): void {
+    const properties = buildDatabaseOperationErrorProperties({
+      backend: this.engine,
+      error,
+      sql,
+      operation,
+    });
+
+    logger.main.error('[Database] operation failed', { ...properties, sql, error });
+
+    const suppressedSinceLastReport = this.errorTelemetryLimiter.admit(properties);
+    if (suppressedSinceLastReport === null) return;
+    try {
+      AnalyticsService.getInstance().sendEvent('database_error', {
+        ...properties,
+        suppressedSinceLastReport,
+      });
+    } catch (analyticsError) {
+      // Telemetry must never turn a database failure into a second one.
+      logger.main.warn('[Database] failed to report database_error', analyticsError);
     }
   }
 }

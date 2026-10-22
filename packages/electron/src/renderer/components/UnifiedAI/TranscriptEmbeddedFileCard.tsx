@@ -1,8 +1,7 @@
 import React, { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
-import { rendererI18n } from '../../i18n';
 import { basename } from 'pathe';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { store } from '@nimbalyst/runtime/store';
 
 import { customEditorRegistry } from '../CustomEditors/registry';
@@ -27,20 +26,20 @@ async function readFileFromDisk(absolutePath: string): Promise<string> {
     };
   }).electronAPI;
   if (!api?.readFileContent) {
-    throw new Error(rendererI18n.t('aichat:file_read_unavailable'));
+    throw new Error('readFileContent IPC not available');
   }
   const result = await api.readFileContent(absolutePath);
   if (!result) {
-    throw new Error(rendererI18n.t('aichat:file_not_found', { path: absolutePath }));
+    throw new Error(`File not found: ${absolutePath}`);
   }
   if (result.success === false) {
-    throw new Error(result.error || rendererI18n.t('aichat:read_file_failed_path', { path: absolutePath }));
+    throw new Error(result.error || `Failed to read ${absolutePath}`);
   }
   return result.content;
 }
 
 class TranscriptEmbeddedFileErrorBoundary extends Component<
-  { children: ReactNode; filePath: string; errorFallback: string },
+  { children: ReactNode; filePath: string; fallbackLabel: string },
   { hasError: boolean; error: Error | null }
 > {
   state = { hasError: false, error: null as Error | null };
@@ -58,7 +57,7 @@ class TranscriptEmbeddedFileErrorBoundary extends Component<
       return (
         <div className="transcript-embedded-file__error flex items-center gap-2 p-3 text-sm text-[var(--nim-error)]">
           <MaterialSymbol icon="error" size={16} />
-          <span>{this.state.error?.message ?? this.props.errorFallback}</span>
+          <span>{this.state.error?.message ?? this.props.fallbackLabel}</span>
         </div>
       );
     }
@@ -77,7 +76,7 @@ export const TranscriptEmbeddedFileCard: React.FC<TranscriptEmbeddedFileCardProp
   onOpenFile,
   defaultExpanded = false,
 }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common', { keyPrefix: 'embed' });
   const { theme } = useTheme();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   // Click-to-activate gate. Mirrors EmbedFrame's shield: until the user
@@ -187,7 +186,7 @@ export const TranscriptEmbeddedFileCard: React.FC<TranscriptEmbeddedFileCardProp
 
   const canRenderPreview = isSupportedFile && host != null;
   const ExtensionComponent = registration?.component;
-  const editorLabel = registration?.name || t('common:embed.rendered_file');
+  const editorLabel = registration?.name || t('rendered_file');
   const previewHeight = registration?.transcriptEmbedHeight ?? DEFAULT_PREVIEW_HEIGHT;
 
   return (
@@ -226,8 +225,8 @@ export const TranscriptEmbeddedFileCard: React.FC<TranscriptEmbeddedFileCardProp
             type="button"
             className="flex h-6 w-6 items-center justify-center rounded border-none bg-transparent p-0 text-[var(--nim-text-faint)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
             onClick={handleOpenFile}
-            title={t('common:embed.open_file')}
-            aria-label={t('common:embed.open_file')}
+            title={t('open_file')}
+            aria-label={t('open_file')}
           >
             <MaterialSymbol icon="open_in_new" size={14} />
           </button>
@@ -241,10 +240,10 @@ export const TranscriptEmbeddedFileCard: React.FC<TranscriptEmbeddedFileCardProp
         >
           {!canRenderPreview || !ExtensionComponent || !host ? (
             <div className="transcript-embedded-file__placeholder flex h-full items-center justify-center px-4 text-center text-sm text-[var(--nim-text-muted)]">
-              {t('common:embed.no_editor')}
+              {t('no_editor')}
             </div>
           ) : (
-            <TranscriptEmbeddedFileErrorBoundary filePath={filePath} errorFallback={t('common:embed.render_failed')}>
+            <TranscriptEmbeddedFileErrorBoundary filePath={filePath} fallbackLabel={t('render_failed')}>
               {/* `inert` on the editor wrapper blocks pointer + wheel
                 * events even from editor canvases that paint above the
                 * shield (e.g. Excalidraw's high-z-index canvas). The
@@ -252,12 +251,12 @@ export const TranscriptEmbeddedFileCard: React.FC<TranscriptEmbeddedFileCardProp
                 * affordance. */}
               <div
                 className="transcript-embedded-file__canvas h-full overflow-hidden"
-                {...(isActive ? {} : { inert: '' as unknown as boolean })}
+                {...(isActive ? {} : { inert: true })}
               >
                 <React.Suspense
                   fallback={
                     <div className="transcript-embedded-file__loading flex h-full items-center justify-center text-sm text-[var(--nim-text-muted)]">
-                      {t('common:embed.loading_preview')}
+                      {t('loading_preview')}
                     </div>
                   }
                 >

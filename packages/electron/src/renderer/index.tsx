@@ -6,17 +6,31 @@
 // system for mounting editors and capturing screenshots via native capturePage().
 const isCaptureMode = new URLSearchParams(window.location.search).get('mode') === 'capture';
 
+// Must precede `react-dom`: this installs the DevTools hook shim the render
+// profiler reads, and react-dom captures that hook once at module init.
+// Records nothing until `window.__renderProfiler.start()`.
+// See docs/RENDER_PERFORMANCE.md.
+import './devtools/installRenderProfiler';
+import { installRendererJankMonitor } from './devtools/rendererJankMonitor';
+import { installBodyOverflowMonitor } from './devtools/bodyOverflowMonitor';
+import { installUserTimingTrimmer } from './devtools/userTimingTrimmer';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Provider as JotaiProvider } from 'jotai';
+import { Provider as JotaiProvider, useAtomValue } from 'jotai';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { createI18nInstance, resolveUiLocale, type I18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { errorNotificationService } from './services/ErrorNotificationService';
+import { setLocalWikiTranslator } from './services/localWikiUiText';
 import './index.css';
 import './styles/components.css';
 import posthog from "posthog-js";
 import {PostHogProvider} from "posthog-js/react";
 import { initMonacoEditor } from './utils/monacoConfig';
 import { store } from '@nimbalyst/runtime/store';
+import { initAgentFilePlacement } from './store/atoms/agentFilePlacement';
 import { registerLocalAssetUrlConverter } from '@nimbalyst/runtime';
 import { nimAssetUrl } from './utils/assetUrl';
 import {
@@ -27,8 +41,6 @@ import {
 import { initAnalyticsListeners } from './store/listeners/analyticsListeners';
 import { initializeTheme } from './hooks/useTheme';
 import { offscreenEditorRenderer } from './services/OffscreenEditorRenderer';
-import { initRendererI18n } from './i18n';
-import { withRuntimeTranslations } from './i18n/RuntimeTranslationBridge';
 import {
   voiceModeSettingsAtom,
   initVoiceModeSettings,
@@ -52,6 +64,7 @@ import {
   initExternalEditorSettings,
 } from './store/atoms/appSettings';
 import { initVoiceModeListeners } from './store/listeners/voiceModeListeners';
+import { initDeepLinkNoticeListeners } from './store/listeners/deepLinkNoticeListeners';
 import {
   autoCommitEnabledAtom,
   initAutoCommitSetting,
@@ -67,9 +80,30 @@ import {
 import {
   hydrateSettingsAtoms,
   registerSettingsChangeListener,
+  settingAtom,
 } from './store/atoms/settingAtomFamily';
 import { registerGutterCustomizationListener } from './store/listeners/gutterCustomizationListeners';
-import type { AppLocalePreference } from '../shared/i18n/types';
+import { registerDeveloperModeListener } from './store/listeners/developerModeListeners';
+import { waitForMaterialSymbols } from './utils/materialSymbolsReady';
+
+function RendererUiLanguageProvider({
+  i18n,
+  children,
+}: {
+  i18n: I18nInstance;
+  children: React.ReactNode;
+}) {
+  const preference = useAtomValue(settingAtom('app.uiLanguage'));
+  return (
+    <UiLanguageProvider
+      i18n={i18n}
+      preference={preference}
+      systemLocale={navigator.language}
+    >
+      {children}
+    </UiLanguageProvider>
+  );
+}
 
 // console.log('[RENDERER] Imports complete at', new Date().toISOString());
 
@@ -115,12 +149,33 @@ if (isCaptureMode) {
   console.log('[CaptureWindow] Ready - extensions and offscreen editor renderer initialized');
 } else {
 
+// Logs `[PERF] Renderer jank` to main.log: long frames, slow keystrokes, slow commits.
+installRendererJankMonitor();
+
+// Dev only: warns when something is left in <body> outside the viewport, and
+// clears the per-render measures React's dev build leaves in the timeline.
+if (process.env.NODE_ENV?.toLowerCase() === 'development') {
+  installBodyOverflowMonitor();
+  installUserTimingTrimmer();
+}
+
+// Material Symbols uses text ligatures. Wait for the bundled font before any
+// React chrome can paint, otherwise Chromium exposes names such as
+// `progress_activity` through its fallback text font during startup.
+await waitForMaterialSymbols();
+
 // Initialize Monaco Editor before rendering any components
 initMonacoEditor();
 
 // Initialize theme from main process and set up IPC listener
 // This must happen before React renders to avoid flash
 initializeTheme();
+
+// The tray panel window is transparent so macOS vibrancy shows through. Mark it
+// before the first paint, otherwise the opaque root flashes over the material.
+if (new URLSearchParams(window.location.search).get('mode') === 'tray-panel') {
+  document.documentElement.classList.add('tray-panel-window');
+}
 
 // Expose offscreen renderer on window for main process access
 (window as any).offscreenEditorRenderer = offscreenEditorRenderer;
@@ -131,10 +186,16 @@ initializeTheme();
 // broadcast listener keeps every window in lockstep on subsequent writes.
 // See nimbalyst-local/plans/settings-atomwithstorage-rewrite.md for the
 // design and shared/settings/keys.ts for the registry of keys.
+let rendererI18n: I18nInstance | undefined;
 try {
   const snapshot = await window.electronAPI.settingsGetAll();
+  const initialLocale = resolveUiLocale(
+    (snapshot as Record<string, unknown>)['app.uiLanguage'],
+    navigator.language,
+  );
+  rendererI18n = await createI18nInstance(initialLocale);
+  document.documentElement.lang = initialLocale;
   hydrateSettingsAtoms(snapshot as any);
-  await initRendererI18n(snapshot.uiLanguage as AppLocalePreference);
   registerSettingsChangeListener();
 } catch (err) {
   // Fail loud, fail fast: a missing settings snapshot means components would
@@ -144,6 +205,14 @@ try {
   console.error('[renderer] settings:getAll failed at startup; refusing to mount React', err);
   throw err;
 }
+if (!rendererI18n) {
+  throw new Error('[renderer] UI language initialization did not complete');
+}
+errorNotificationService.setTitleTranslator((key) => rendererI18n!.t(`error.${key}`, { ns: 'dialogs' }));
+errorNotificationService.setTextTranslator((namespace, key, fallback, options) =>
+  rendererI18n!.t(key, { ns: namespace, defaultValue: fallback, ...options }),
+);
+setLocalWikiTranslator((key, options) => rendererI18n!.t(key, { ns: 'common', ...options }));
 
 // Initialize legacy app settings atoms from main process.
 // These still drive most settings UI today; the flat-key SettingsService above
@@ -175,11 +244,13 @@ await Promise.allSettled([
   initAIProviderSettings().then((settings) => {
     store.set(aiProviderSettingsAtom, settings);
   }),
+  initAgentFilePlacement(),
   initAgentModeSettings().then((settings) => {
     store.set(agentModeSettingsAtom, settings);
   }),
   initDeveloperFeatureSettings().then((settings) => {
     store.set(developerFeatureSettingsAtom, settings);
+    registerDeveloperModeListener();
   }),
   initExternalEditorSettings().then((settings) => {
     store.set(externalEditorSettingsAtom, settings);
@@ -207,6 +278,7 @@ const root = ReactDOM.createRoot(rootElement);
 const analyticsId = await window.electronAPI.analytics?.getDistinctId() ?? '';
 const analyticsAllowed = await window.electronAPI.analytics?.allowedToSendAnalytics() ?? false;
 const nimbalystVersion = await window.electronAPI.getAppVersion?.() ?? '';
+const releaseAttribution = await window.electronAPI.analytics?.getReleaseAttribution?.().catch(() => null) ?? null;
 const isDevInstallation = process.env.NODE_ENV?.toLowerCase() === 'development';
 const isDevMode = process.env.IS_DEV_MODE === 'true';
 const isOfficialBuild = process.env.OFFICIAL_BUILD === 'true';
@@ -228,17 +300,27 @@ const posthogClient = posthog.init(
     capture_heatmaps: false,
     disable_session_recording: true,
     capture_exceptions: false,
+    // posthog-js defaults these ON (`history_change` / `if_capture_pageview`),
+    // and not setting `defaults` leaves them on. In an Electron shell there is
+    // no meaningful page to view or leave -- a "pageview" is a window opening --
+    // so they produced 241,643 events in 30 days that nothing consumed.
+    capture_pageview: false,
+    capture_pageleave: false,
     session_idle_timeout_seconds: 30 * 60, // 30 minutes
     loaded: (posthog) => {
       console.log(`[RENDERER] PostHog loaded (analytics ID: ${posthog.get_distinct_id()}, session: ${posthog.get_session_id()}, official build: ${isOfficialBuild})`);
 
-      posthog.register({ nimbalyst_version: nimbalystVersion });
+      // Release attribution as super-properties, so every renderer capture
+      // carries it without touching call sites. Resolved from the main service
+      // rather than re-derived from env vars here, so both processes report the
+      // same values.
+      posthog.register({ nimbalyst_version: nimbalystVersion, ...(releaseAttribution ?? {}) });
 
-      // Mark users as dev users if they've ever used a non-official build
-      // This property persists across all future events for this user
-      if (!isOfficialBuild) {
-        posthog.people.set_once({ is_dev_user: true });
-      }
+      // `is_dev_user` is NOT set with a standalone `people.set_once()` here.
+      // posthog-js turns that into a `$set` capture, and this callback runs on
+      // every renderer window load -- 669,977 events in 30 days for a flag that
+      // never changes after the first one. It rides along on outgoing events in
+      // `before_send` below instead, which costs nothing.
     },
     // Single choke point for every renderer capture. Consulting the consent
     // gate here (rather than relying only on opt_out_capturing) means no
@@ -247,6 +329,15 @@ const posthogClient = posthog.init(
     before_send: (event) => {
       if (process.env.PLAYWRIGHT_TEST) return null;
       if (!isAnalyticsConsentGranted()) return null;
+      // Mark users as dev users if they've ever used a non-official build.
+      // Attached to an event that was going to be sent anyway rather than
+      // captured on its own, mirroring AnalyticsService.sendEvent in main.
+      if (!isOfficialBuild && event) {
+        event.properties = {
+          ...event.properties,
+          $set_once: { is_dev_user: true, ...event.properties?.$set_once },
+        };
+      }
       return event;
     },
     debug: isDevInstallation
@@ -277,6 +368,13 @@ onAnalyticsConsentChange((enabled) => {
 // broadcasts the change to every window rather than only the one that toggled.
 initAnalyticsListeners();
 
+// With no project open the Project Manager is the only window, so it shows deep
+// links main could not route. Project windows start the same listener through
+// `initDeepLinkListeners`.
+if (new URLSearchParams(window.location.search).get('mode') === 'workspace-manager') {
+  initDeepLinkNoticeListeners();
+}
+
 // syncs the session ID from posthog-js to the electron-side analytics service
 posthog.onSessionId(async (sessionId: string, windowId, changeReason) => {
   window.electronAPI.analytics?.setSessionId(sessionId);
@@ -285,17 +383,19 @@ posthog.onSessionId(async (sessionId: string, windowId, changeReason) => {
 // IPC listeners (including ai:promptClaimed) live in store/listeners/* and
 // are initialized inside App.tsx once React mounts.
 
-root.render(withRuntimeTranslations(
+root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <JotaiProvider store={store}>
         <PostHogProvider client={posthogClient}>
-          <App />
+          <RendererUiLanguageProvider i18n={rendererI18n}>
+            <App />
+          </RendererUiLanguageProvider>
         </PostHogProvider>
       </JotaiProvider>
     </ErrorBoundary>
   </React.StrictMode>
-));
+);
 
 // console.log('[RENDERER] React render called at', new Date().toISOString());
 

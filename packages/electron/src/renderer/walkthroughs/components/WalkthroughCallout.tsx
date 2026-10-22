@@ -6,8 +6,8 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { WalkthroughStep, WalkthroughDefinition } from '../types';
 import {
   resolveTarget,
@@ -16,6 +16,7 @@ import {
   type CalloutPosition,
 } from '../WalkthroughService';
 import { getShortcutDisplay } from '../../../shared/KeyboardShortcuts';
+import { resolveWalkthroughStepCopy } from '../resolveWalkthroughStepCopy';
 
 /**
  * Parse basic markdown in walkthrough body text.
@@ -98,16 +99,13 @@ export function WalkthroughCallout({
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
 
   const step = definition.steps[stepIndex];
-  const contentKey = definition.id === 'agent-mode-intro'
-    ? 'walkthrough_content.agent_mode'
-    : definition.id === 'files-mode-intro'
-      ? 'walkthrough_content.files_mode'
-      : `help.${definition.id === 'agent-welcome-intro' ? 'agent-welcome' : definition.id === 'attach-files-intro' ? 'attach-files-input' : step?.target.testId ?? step?.id}`;
-  const translatedTitle = step ? t(`${contentKey}.title`, { defaultValue: step.title }) : '';
-  const translatedBody = step ? t(`${contentKey}.body`, { defaultValue: step.body }) : '';
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === definition.steps.length - 1;
   const totalSteps = definition.steps.length;
+  const copy = useMemo(
+    () => (step ? resolveWalkthroughStepCopy(definition.id, step, t) : { title: '', body: '' }),
+    [definition.id, step, t],
+  );
 
   // Find and validate target element
   useEffect(() => {
@@ -210,7 +208,7 @@ export function WalkthroughCallout({
   }, [isLastStep, onComplete, onNext]);
 
   // Parse markdown body
-  const renderedBody = useMemo(() => parseMarkdownBody(translatedBody), [translatedBody]);
+  const renderedBody = useMemo(() => parseMarkdownBody(copy.body), [copy.body]);
 
   // Don't render if no valid target
   if (!position || !step) {
@@ -267,7 +265,7 @@ export function WalkthroughCallout({
             id="walkthrough-title"
             className="walkthrough-callout-title text-[15px] font-semibold text-[var(--nim-text)] leading-tight"
           >
-            {translatedTitle}
+            {copy.title}
           </div>
           {step.shortcut && (
             <kbd className="walkthrough-shortcut inline-flex items-center justify-center h-6 px-2 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-[5px] font-sans text-xs font-medium text-[var(--nim-text-muted)] shadow-[0_1px_2px_rgba(0,0,0,0.05)] whitespace-nowrap shrink-0">
@@ -277,7 +275,7 @@ export function WalkthroughCallout({
           <button
             className="walkthrough-callout-dismiss nim-btn-icon ml-auto shrink-0 text-[var(--nim-text-faint)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)]"
             onClick={onDismiss}
-            aria-label={t('walkthrough.dismiss')}
+            aria-label={t('close')}
           >
             <svg
               className="w-[18px] h-[18px]"
@@ -330,7 +328,7 @@ export function WalkthroughCallout({
         </div>
         {totalSteps > 1 && (
           <div className="walkthrough-callout-progress text-xs text-[var(--nim-text-faint)] font-medium">
-            {t('diff.position', { current: stepIndex + 1, total: totalSteps })}
+            {t('walkthrough.progress', { current: stepIndex + 1, total: totalSteps })}
           </div>
         )}
       </div>

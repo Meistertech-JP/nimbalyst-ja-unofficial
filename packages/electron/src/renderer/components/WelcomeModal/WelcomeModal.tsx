@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import OnboardingService from '../../services/OnboardingService';
 
 export interface WelcomeModalProps {
@@ -18,6 +18,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
   onSkip,
 }) => {
   const { t } = useTranslation('onboarding');
+
   // Skip rendering in Playwright tests
   const isPlaywright = window.PLAYWRIGHT || (window as any).PLAYWRIGHT;
 
@@ -134,6 +135,18 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
     return null;
   }
 
+  const renderInlineCode = (message: string) => {
+    const parts = message.split(/<\/?code>/g);
+    if (parts.length < 3) return message;
+    return (
+      <>
+        {parts[0]}
+        <code>{parts[1]}</code>
+        {parts.slice(2).join('')}
+      </>
+    );
+  };
+
   return (
     <div className="welcome-modal-overlay nim-overlay bg-black/60">
       <div className="welcome-modal flex flex-col w-[90%] max-w-[700px] max-h-[85vh] rounded-2xl overflow-hidden nim-animate-slide-up bg-nim shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
@@ -215,7 +228,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                     className="mt-0.5 cursor-pointer w-[18px] h-[18px] shrink-0"
                   />
                   <div className="plan-location-content flex-1">
-                    <strong className="block mb-1 text-[15px] text-nim">nimbalyst-local/plans</strong> ({t('welcome_modal.plans.recommended')})
+                    <strong className="block mb-1 text-[15px] text-nim">{t('welcome_modal.plans.private_label')}</strong> ({t('welcome_modal.plans.recommended')})
                     <p className="m-0 text-sm leading-normal text-nim-muted">{t('welcome_modal.plans.private_desc')}</p>
                   </div>
                 </label>
@@ -233,7 +246,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                     className="mt-0.5 cursor-pointer w-[18px] h-[18px] shrink-0"
                   />
                   <div className="plan-location-content flex-1">
-                    <strong className="block mb-1 text-[15px] text-nim">plans/</strong>
+                    <strong className="block mb-1 text-[15px] text-nim">{t('welcome_modal.plans.shared_label')}</strong>
                     <p className="m-0 text-sm leading-normal text-nim-muted">{t('welcome_modal.plans.shared_desc')}</p>
                   </div>
                 </label>
@@ -280,7 +293,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                 <ul className="m-0 pl-6 text-nim-muted">
                   <li className="mb-1.5">{t('welcome_modal.plans.created')}</li>
                   {!checkInPlans && (
-                    <li className="mb-1.5"><Trans t={t} i18nKey="welcome_modal.plans.gitignore_note" components={{ code: <code className="px-1.5 py-0.5 rounded font-mono text-[13px] bg-nim-tertiary" /> }} /></li>
+                    <li className="mb-1.5">{renderInlineCode(t('welcome_modal.plans.gitignore_note'))}</li>
                   )}
                   {checkInPlans && (
                     <li className="mb-1.5">{t('welcome_modal.plans.in_repo')}</li>
@@ -366,7 +379,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                       className="mt-0.5 cursor-pointer w-[18px] h-[18px] shrink-0"
                     />
                     <span className="leading-normal text-nim">
-                      <strong className="block mb-1">CLAUDE.md</strong> - {t('welcome_modal.claude.claude_md_desc')}
+                      <strong className="block mb-1">{t('welcome_modal.claude.claude_md_label')}</strong> - {t('welcome_modal.claude.claude_md_desc')}
                     </span>
                   </label>
 
@@ -413,7 +426,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
 
 
                 <div className="plan-option-info py-3 px-4 rounded-md text-sm leading-normal bg-nim-tertiary text-nim-muted">
-                  <Trans t={t} i18nKey="welcome_modal.first_plan.storage" values={{ path: 'plans/' }} components={{ code: <code className="px-1.5 py-0.5 rounded font-mono bg-nim" /> }} />
+                  {renderInlineCode(t('welcome_modal.first_plan.storage', { path: 'plans/' }))}
                 </div>
               </div>
             </div>

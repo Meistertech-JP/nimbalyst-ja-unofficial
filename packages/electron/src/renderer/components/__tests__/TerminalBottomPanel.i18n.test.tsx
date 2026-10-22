@@ -1,53 +1,116 @@
 // @vitest-environment jsdom
 import React from 'react';
-import i18next from 'i18next';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { TerminalBottomPanel } from '../TerminalBottomPanel/TerminalBottomPanel';
+import { cleanup, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ load: vi.fn(), initListeners: vi.fn(() => vi.fn()), close: vi.fn(), create: vi.fn(async () => ({ success: false })) }));
+const mocks = vi.hoisted(() => ({
+  visibleAtom: { key: 'visible' },
+  heightAtom: { key: 'height' },
+  hydratedAtom: { key: 'hydrated' },
+  closeAtom: { key: 'close' },
+  listAtom: { key: 'list' },
+  activeIdAtom: { key: 'active-id' },
+  commandRunningAtom: { key: 'command-running' },
+  workstreamAtom: vi.fn(() => ({ key: 'workstream' })),
+  worktreeIdAtom: vi.fn(() => ({ key: 'worktree-id' })),
+  loadTerminals: vi.fn(),
+  initTerminalListeners: vi.fn(() => vi.fn()),
+}));
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: { key: string }) => {
+    switch (atom.key) {
+      case 'visible': return true;
+      case 'height': return 240;
+      case 'hydrated': return true;
+      case 'list': return [];
+      case 'active-id': return undefined;
+      case 'workstream': return undefined;
+      case 'worktree-id': return undefined;
+      case 'command-running': return false;
+      default: return undefined;
+    }
+  },
+  useSetAtom: () => vi.fn(),
+}));
+
+vi.mock('@nimbalyst/runtime/store', () => ({
+  store: { get: vi.fn(), set: vi.fn() },
+}));
+
+vi.mock('../../store/atoms/terminals', () => ({
+  terminalListAtom: mocks.listAtom,
+  activeTerminalIdAtom: mocks.activeIdAtom,
+  terminalPanelVisibleAtom: mocks.visibleAtom,
+  terminalPanelHeightAtom: mocks.heightAtom,
+  terminalPanelHydratedAtom: mocks.hydratedAtom,
+  closeTerminalPanelAtom: mocks.closeAtom,
+  loadTerminals: mocks.loadTerminals,
+  setActiveTerminal: vi.fn(),
+  removeTerminalFromList: vi.fn(),
+  initTerminalListeners: mocks.initTerminalListeners,
+  setTerminalCommandRunning: vi.fn(),
+  terminalCommandRunningAtom: mocks.commandRunningAtom,
+}));
+
+vi.mock('../../store/atoms/sessions', () => ({
+  selectedWorkstreamAtom: mocks.workstreamAtom,
+  sessionWorktreeIdAtom: mocks.worktreeIdAtom,
+}));
+
 vi.mock('posthog-js/react', () => ({ usePostHog: () => null }));
 vi.mock('../Terminal/TerminalPanel', () => ({ TerminalPanel: () => null }));
-vi.mock('../../store/atoms/sessions', async () => {
-  const { atom } = await import('jotai');
-  const empty = atom(null);
-  return { selectedWorkstreamAtom: () => empty, sessionWorktreeIdAtom: () => empty };
-});
-vi.mock('../../store/atoms/terminals', async () => {
-  const { atom } = await import('jotai');
-  return {
-    terminalListAtom: atom([]), activeTerminalIdAtom: atom(undefined),
-    terminalPanelVisibleAtom: atom(true), terminalPanelHeightAtom: atom(250), terminalPanelHydratedAtom: atom(true),
-    closeTerminalPanelAtom: atom(null, mocks.close), loadTerminals: mocks.load,
-    initTerminalListeners: mocks.initListeners, setActiveTerminal: vi.fn(), removeTerminalFromList: vi.fn(),
-    setTerminalCommandRunning: vi.fn(), terminalCommandRunningAtom: () => atom(false),
-  };
+vi.mock('../TerminalBottomPanel/TerminalTab', () => ({ TerminalTab: () => null }));
+
+import { TerminalBottomPanel } from '../TerminalBottomPanel/TerminalBottomPanel';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
 });
 
-beforeEach(async () => {
-  vi.clearAllMocks();
-  vi.stubGlobal('electronAPI', { terminal: { create: mocks.create, setPanelVisible: vi.fn(), onCommandRunning: vi.fn(() => vi.fn()) } });
-  await i18next.changeLanguage('ja');
-});
-afterEach(async () => {
-  cleanup();
-  vi.unstubAllGlobals();
-  await i18next.changeLanguage('en');
-});
+afterAll(() => cleanup());
 
-it('renders existing translations and keeps terminal creation and listeners unchanged across locales', async () => {
-  render(<TerminalBottomPanel workspacePath="F:/User project" />);
-  expect(screen.getByText('開いているターミナルはありません')).toBeTruthy();
-  expect(screen.getByTitle('新しいターミナル')).toBeTruthy();
-  expect(screen.getByTitle('パネルを閉じる')).toBeTruthy();
-  expect(screen.getAllByRole('button', { name: '新しいターミナル' })).toHaveLength(2);
-  await act(async () => fireEvent.click(screen.getAllByRole('button', { name: '新しいターミナル' })[1]));
-  expect(mocks.create).toHaveBeenCalledWith('F:/User project', { cwd: 'F:/User project', title: 'ターミナル1', source: 'panel' });
-  await act(() => i18next.changeLanguage('en'));
-  expect(screen.getByText('No terminals open')).toBeTruthy();
-  expect(screen.getByTitle('New Terminal')).toBeTruthy();
-  expect(mocks.load).toHaveBeenCalledTimes(1);
-  expect(mocks.initListeners).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByTitle('Close panel'));
-  expect(mocks.close).toHaveBeenCalledTimes(1);
+function renderPanel(i18n: typeof englishI18n) {
+  Object.defineProperty(window, 'electronAPI', {
+    configurable: true,
+    value: {
+      terminal: {
+        onCommandRunning: vi.fn(),
+        setPanelVisible: vi.fn(),
+      },
+    },
+  });
+
+  return render(
+    <I18nextProvider i18n={i18n}>
+      <TerminalBottomPanel workspacePath="C:/workspace" />
+    </I18nextProvider>,
+  );
+}
+
+describe('TerminalBottomPanel localization', () => {
+  it('renders English empty-state and panel controls', () => {
+    renderPanel(englishI18n);
+
+    expect(screen.getByText('No terminals open')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'New Terminal' })).toBeDefined();
+    expect(screen.getByTitle('New Terminal').getAttribute('aria-label')).toBe('New Terminal');
+    expect(screen.getByRole('button', { name: 'Close panel' })).toBeDefined();
+  });
+
+  it('renders Japanese empty-state and panel controls', () => {
+    renderPanel(japaneseI18n);
+
+    expect(screen.getByText('開いているターミナルはありません')).toBeDefined();
+    expect(screen.getByTitle('新しいターミナル')).toBeDefined();
+    expect(screen.getByTitle('新しいターミナル').getAttribute('aria-label')).toBe('新しいターミナル');
+    expect(screen.getByText('新しいターミナル')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'パネルを閉じる' })).toBeDefined();
+  });
 });

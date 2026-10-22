@@ -10,12 +10,12 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CustomToolWidgetProps } from './index';
 import { copyToClipboard } from '../../../../utils/clipboard';
 import { ToolCallChanges } from '../ToolCallChanges';
 import { unwrapShellCommand } from '../../utils/unwrapShellCommand';
 import { useElapsedTimeRef } from './useElapsedTime';
-import { useRuntimeTranslation } from '../../../RuntimeTranslation';
 
 /**
  * Maximum number of lines to show before adding "show more" in expanded view
@@ -178,14 +178,14 @@ function getOutputSummary(output: string | null): string | null {
   return `${lines.length} lines`;
 }
 
-export const BashWidget: React.FC<CustomToolWidgetProps> = ({ message, isExpanded, onToggle, workspacePath }) => {
-  const { t } = useRuntimeTranslation();
+export const BashWidget: React.FC<CustomToolWidgetProps> = ({ message, isExpanded, onToggle, workspacePath, loadToolCallDiffs }) => {
+  const { t } = useTranslation('common');
   const [copied, setCopied] = useState(false);
   const [outputExpanded, setOutputExpanded] = useState(false);
 
   const tool = message.toolCall;
   const isRunning = tool ? isToolRunning(tool) : false;
-  const elapsedRef = useElapsedTimeRef(isRunning ? message.createdAt.getTime() : undefined, t);
+  const elapsedRef = useElapsedTimeRef(isRunning ? message.createdAt.getTime() : undefined);
 
   // Reset copied state after timeout
   useEffect(() => {
@@ -312,13 +312,13 @@ export const BashWidget: React.FC<CustomToolWidgetProps> = ({ message, isExpande
               <line x1="12" y1="19" x2="20" y2="19"></line>
             </svg>
           </div>
-          <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">{t('common:navigation.terminal', 'Terminal')}</span>
+          <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">{t('navigation.terminal')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {isRunning && (
             <span className="flex items-center gap-1 text-[0.7rem] font-medium font-sans text-nim-primary">
               <span className="w-2.5 h-2.5 border-[1.5px] border-[color-mix(in_srgb,var(--nim-primary)_30%,transparent)] border-t-nim-primary rounded-full animate-spin" />
-              {t('common:agent_sessions.running', 'Running')} <span ref={elapsedRef} className="tabular-nums" />
+              {t('bash_widget.running')} <span ref={elapsedRef} className="tabular-nums" />
             </span>
           )}
           {!isRunning && !hasError && (
@@ -362,8 +362,8 @@ export const BashWidget: React.FC<CustomToolWidgetProps> = ({ message, isExpande
               e.stopPropagation();
               handleCopyCommand();
             }}
-            title={copied ? t('common:database.copied', 'Copied!') : t('dialogs:github.copy_command', 'Copy command')}
-            aria-label={copied ? t('common:database.copied', 'Copied!') : t('dialogs:github.copy_command', 'Copy command')}
+            title={copied ? t('database.copied') : t('bash_widget.copy_command')}
+            aria-label={copied ? t('database.copied') : t('bash_widget.copy_command')}
             type="button"
           >
             {copied ? (
@@ -393,8 +393,8 @@ export const BashWidget: React.FC<CustomToolWidgetProps> = ({ message, isExpande
               type="button"
             >
               {outputExpanded
-                ? t('aichat:tool_output.less', 'Show less')
-                : t('aichat:tool_output.more_lines', hiddenLineCount === 1 ? 'Show {{count}} more line' : 'Show {{count}} more lines', { count: hiddenLineCount })
+                ? t('bash_widget.show_less')
+                : t('bash_widget.show_more_lines', { count: hiddenLineCount })
               }
             </button>
           )}
@@ -413,12 +413,13 @@ export const BashWidget: React.FC<CustomToolWidgetProps> = ({ message, isExpande
       )}
 
       {/* File changes caused by this tool call */}
-      {tool.fileDiffs && tool.fileDiffs.length > 0 && (
+      {((tool.fileDiffs && tool.fileDiffs.length > 0) || loadToolCallDiffs) && (
         <div className="px-2 pb-2">
           <ToolCallChanges
             diffs={tool.fileDiffs}
             isExpanded={isExpanded}
             workspacePath={workspacePath}
+            loadDiffs={loadToolCallDiffs}
           />
         </div>
       )}

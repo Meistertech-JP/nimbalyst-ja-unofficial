@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ErrorDetailPopup } from './ErrorDetailPopup';
 
 interface GitStatusBarProps {
@@ -29,6 +30,7 @@ export function GitStatusBar({
   onDismissError,
   onShowDetails,
 }: GitStatusBarProps) {
+  const { t } = useTranslation('extensions');
   const [showFull, setShowFull] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -68,7 +70,7 @@ export function GitStatusBar({
                 className="git-log-status-action-btn"
                 onClick={() => setShowFull(true)}
               >
-                View full error
+                {t('git_extension_ui.view_full_error')}
               </button>
             )}
             <button
@@ -76,7 +78,7 @@ export function GitStatusBar({
               className="git-log-status-action-btn"
               onClick={handleCopy}
             >
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? t('git_extension_ui.copied') : t('git_extension_ui.copy')}
             </button>
             {onShowDetails && (
               <button
@@ -84,14 +86,14 @@ export function GitStatusBar({
                 className="git-log-status-details-btn"
                 onClick={onShowDetails}
               >
-                Show Details
+                {t('git_extension_ui.show_details')}
               </button>
             )}
             <button
               type="button"
               className="git-changes-dismiss-btn"
               onClick={onDismissError}
-              title="Dismiss"
+              title={t('git_extension_ui.dismiss')}
             >
               &#10005;
             </button>
@@ -100,7 +102,7 @@ export function GitStatusBar({
       </div>
       {showFull && (
         <ErrorDetailPopup
-          command={errorCommand ?? 'git operation'}
+          command={errorCommand ?? t('git_extension_ui.git_operation')}
           error={text}
           onClose={() => setShowFull(false)}
         />

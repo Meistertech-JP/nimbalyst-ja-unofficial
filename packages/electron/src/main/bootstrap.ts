@@ -24,8 +24,14 @@
 
 import { app } from 'electron';
 import * as path from 'path';
-import Store from 'electron-store';
+import Store, { hardenExistingSettings } from './utils/privateSettingsStore';
 import { createUncaughtExceptionHandler } from './uncaughtException';
+// Tells the runtime package which host it is running in, before any of its
+// modules resolve a binary path. Registration is a side effect of this import
+// rather than a call in this file's body: ESM evaluates all static imports
+// first, so a body statement here would lose the race to `./index.js` below.
+// This import must stay above that one.
+import './hostEnvironment';
 
 // CRITICAL: Strip inherited API keys from process.env before ANY downstream code
 // (SDKs, providers, services) can observe them. See CLAUDE.md, section
@@ -41,6 +47,11 @@ import { createUncaughtExceptionHandler } from './uncaughtException';
 // ensures no SDK or child process can ever inherit these keys.
 delete process.env.ANTHROPIC_API_KEY;
 delete process.env.OPENAI_API_KEY;
+
+// Keep the unofficial Japanese edition's default profile separate from the
+// official app. An explicit NIMBALYST_USER_DATA_DIR / --user-data-dir still
+// takes precedence below; no existing official profile is migrated or deleted.
+app.setName('Nimbalyst 日本語版（非公式）');
 
 // Global uncaught exception handler - must be registered early. This catches
 // errors that bubble up from async SDK operations. The throttling and the
@@ -74,7 +85,11 @@ if (customUserDataDir) {
   // Also set appData to parent directory for consistency
   app.setPath('appData', path.dirname(customUserDataDir));
   // console.log(`[Bootstrap] Using custom userData directory: ${customUserDataDir}`);
+} else {
+  app.setPath('userData', path.join(app.getPath('appData'), 'Nimbalyst 日本語版（非公式）'));
 }
+
+hardenExistingSettings(app.getPath('userData'));
 
 // Configure V8 heap memory limit from app settings
 // This must happen before app.whenReady() for the flag to take effect

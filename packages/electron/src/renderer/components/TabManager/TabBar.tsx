@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState, memo } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState, memo } from 'react';
+import { TrackerTabIssueKeyContext } from './trackerTabIssueKey';
 import { useSetAtom, useAtomValue } from 'jotai';
-import { useTranslation } from 'react-i18next';
 import { Tab } from './TabManager';
+import { isTabJumpShortcut } from './tabShortcuts';
 import {
   useTabDirty,
   useTabHasCollabUnsyncedChanges,
@@ -9,11 +10,14 @@ import {
 } from '../../hooks/useTabState';
 import { CommonFileActions } from '../CommonFileActions';
 import { historyDialogFileAtom } from '../../store';
+import { PERSONAL_PAGE_TAB_PREFIX, isPersonalPageTabPath } from '../../contexts/TabsContext';
+import { FEEDBACK_REQUEST_TAB_TITLE_KEY, isFeedbackRequestTab } from '../FeedbackRequest/feedbackRequestTab';
+import { personalPageHistoryKey } from '../CollabMode/usePersonalPageBody';
 import { KeyboardShortcuts, getShortcutDisplay } from '../../../shared/KeyboardShortcuts';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { trackerItemByIdAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
 import { getTypeIcon } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
-import { isSharedHomeTab } from '../CollabMode/sharedHomeTab';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * Label for a tracker resource tab. Subscribes to the canonical tracker atom so
@@ -23,11 +27,12 @@ import { isSharedHomeTab } from '../CollabMode/sharedHomeTab';
 const TrackerTabLabel = memo<{ trackerItemId: string; fallback: string; isActive: boolean }>(
   ({ trackerItemId, fallback, isActive }) => {
     const item = useAtomValue(trackerItemByIdAtom(trackerItemId));
+    const showIssueKey = useContext(TrackerTabIssueKeyContext);
     const icon = getTypeIcon(item?.primaryType ?? '');
     const title = (item?.fields?.title as string | undefined) ?? '';
-    const label = item?.issueKey
+    const label = item?.issueKey && showIssueKey
       ? `${item.issueKey} ${title}`.trim()
-      : (title || fallback);
+      : (title || item?.issueKey || fallback);
     return (
       <>
         <MaterialSymbol icon={icon} size={13} className="tab-tracker-icon mr-1 shrink-0 opacity-80" />
@@ -46,21 +51,21 @@ const TrackerTabLabel = memo<{ trackerItemId: string; fallback: string; isActive
 // Uses Jotai atoms for efficient per-tab subscriptions
 // Memoized to prevent re-renders when parent re-renders but filePath hasn't changed
 const TabDirtyIndicator = memo<{ filePath: string }>(({ filePath }) => {
+  const { t } = useTranslation('common');
   const isDirty = useTabDirty(filePath);
   const hasCollabUnsyncedChanges = useTabHasCollabUnsyncedChanges(filePath);
   const hasUnacceptedChanges = useTabHasUnacceptedChanges(filePath);
-  const { t } = useTranslation(['common']);
 
   if (hasUnacceptedChanges) {
-    return <span className="tab-unaccepted-indicator font-bold ml-0.5 text-xl leading-none text-[var(--nim-primary)]" title={t('common:tab.unaccepted_changes')}>•</span>;
+    return <span className="tab-unaccepted-indicator font-bold ml-0.5 text-xl leading-none text-[var(--nim-primary)]" title={t('tab.unaccepted_changes')}>•</span>;
   }
 
   if (isDirty) {
-    return <span className="tab-dirty-indicator font-bold ml-0.5 text-[var(--nim-warning)]" title={t('common:tab.unsaved_changes')}>•</span>;
+    return <span className="tab-dirty-indicator font-bold ml-0.5 text-[var(--nim-warning)]" title={t('tab.unsaved_changes')}>•</span>;
   }
 
   if (hasCollabUnsyncedChanges) {
-    return <span className="tab-dirty-indicator font-bold ml-0.5 text-orange-500" title={t('common:tab.collab_unsynced')}>•</span>;
+    return <span className="tab-dirty-indicator font-bold ml-0.5 text-orange-500" title={t('tab.collab_unsynced')}>•</span>;
   }
 
   return null;
@@ -127,9 +132,15 @@ const TabItem: React.FC<TabItemProps> = ({
   onRenameBlur,
   onTabRef,
 }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
+  const { t: tFeedback } = useTranslation('feedback');
   const isDirty = useTabDirty(tab.filePath);
   const hasCollabUnsyncedChanges = useTabHasCollabUnsyncedChanges(tab.filePath);
+  const displayName = isFeedbackRequestTab(tab.filePath)
+    ? tFeedback(FEEDBACK_REQUEST_TAB_TITLE_KEY)
+    : tab.kind === 'personal-page' && !tab.fileName
+      ? t('collab.untitled')
+      : tab.fileName;
 
   return (
     <div
@@ -163,7 +174,7 @@ const TabItem: React.FC<TabItemProps> = ({
       )}
       {tab.isPinned && <span className="tab-pin-icon text-[10px] mr-1 opacity-70">📌</span>}
       {tab.isProcessing && (
-        <span className="tab-processing-indicator inline-flex items-center justify-center mr-1.5 text-[var(--nim-primary)] opacity-80" title={t('common:tab.processing')}>
+        <span className="tab-processing-indicator inline-flex items-center justify-center mr-1.5 text-[var(--nim-primary)] opacity-80" title={t('tab.processing')}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32 16" strokeLinecap="round">
               <animateTransform
@@ -179,7 +190,7 @@ const TabItem: React.FC<TabItemProps> = ({
         </span>
       )}
       {tab.hasUnread && !tab.isProcessing && (
-        <span className="tab-unread-indicator inline-block w-2 h-2 rounded-full bg-[var(--nim-primary)] mr-1.5 shrink-0" title={t('common:tab.unread_response')}></span>
+        <span className="tab-unread-indicator inline-block w-2 h-2 rounded-full bg-[var(--nim-primary)] mr-1.5 shrink-0" title={t('tab.unread_response')}></span>
       )}
       {editingTabId === tab.id ? (
         <input
@@ -198,10 +209,20 @@ const TabItem: React.FC<TabItemProps> = ({
           fallback={tab.fileName}
           isActive={tab.id === activeTabId}
         />
+      ) : tab.kind === 'type' || tab.kind === 'personal-page' ? (
+        <>
+          {/* Same icons as the type and document rows in the Wiki tree. */}
+          {tab.kind === 'type'
+            ? <MaterialSymbol icon="table" size={13} className="tab-type-icon mr-1 shrink-0 opacity-80 text-[var(--nim-purple)]" />
+            : <MaterialSymbol icon="description" size={13} className="tab-personal-page-icon mr-1 shrink-0 opacity-80" />}
+          <span className={`tab-title flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-[var(--nim-text-muted)] ${tab.id === activeTabId ? 'text-[var(--nim-text)] font-medium' : ''}`}>
+            {displayName}
+          </span>
+        </>
       ) : (
         <>
           <span className={`tab-title flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-[var(--nim-text-muted)] ${tab.id === activeTabId ? 'text-[var(--nim-text)] font-medium' : ''}`}>
-            {isSharedHomeTab(tab.filePath) ? t('editor:tabs.shared_home') : tab.fileName}
+            {displayName}
           </span>
           <TabDirtyIndicator filePath={tab.filePath} />
         </>
@@ -212,7 +233,7 @@ const TabItem: React.FC<TabItemProps> = ({
           data-testid={`tab-close-button-${tab.id}`}
           data-filename={tab.fileName}
           onClick={(e) => onCloseClick(e, tab.id)}
-          title={t('common:tab.close_tab')}
+          title={t('tab.close_tab')}
         >
           ×
         </button>
@@ -237,6 +258,7 @@ interface TabBarProps {
   onToggleAIChat?: () => void; // Toggle AI Chat panel
   isAIChatCollapsed?: boolean; // Whether AI Chat is collapsed
   onTabDoubleClick?: (tabId: string) => void; // Double-click a tab (e.g. maximize editor)
+  leading?: React.ReactNode; // Controls before the tabs
 }
 
 export const TabBar: React.FC<TabBarProps> = ({
@@ -254,9 +276,11 @@ export const TabBar: React.FC<TabBarProps> = ({
   isActive = true,
   onToggleAIChat,
   isAIChatCollapsed = false,
-  onTabDoubleClick
+  onTabDoubleClick,
+  leading
 }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
+  const { t: tFeedback } = useTranslation('feedback');
   const openHistoryDialog = useSetAtom(historyDialogFileAtom);
   const [contextMenuTab, setContextMenuTab] = useState<string | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -405,7 +429,10 @@ export const TabBar: React.FC<TabBarProps> = ({
     if (contextMenuTab) {
       const tab = tabs.find(t => t.id === contextMenuTab);
       if (tab?.filePath) {
-        openHistoryDialog(tab.filePath);
+        // A personal page's history is keyed by its document, not its tab path.
+        openHistoryDialog(isPersonalPageTabPath(tab.filePath)
+          ? personalPageHistoryKey(tab.filePath.slice(PERSONAL_PAGE_TAB_PREFIX.length))
+          : tab.filePath);
       }
     }
     closeContextMenu();
@@ -660,7 +687,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       }
 
       // Cmd/Ctrl + 1-9 to jump to tab
-      if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
+      if (isTabJumpShortcut(e)) {
         e.preventDefault();
         const index = parseInt(e.key) - 1;
         if (index < tabs.length) {
@@ -680,6 +707,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   return (
     <>
       <div className="tab-bar-container flex items-center h-9 select-none bg-[var(--nim-bg-secondary)]">
+        {leading}
         <div className="tab-bar-scrollable nim-scrollbar-thin flex-1 flex items-center h-full px-2 overflow-x-auto overflow-y-hidden" ref={tabBarRef}>
           {tabs.map((tab, index) => (
             <TabItem
@@ -719,7 +747,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             <button
               className="tab-menu-button flex items-center justify-center w-7 h-7 border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] cursor-pointer rounded p-0 transition-all duration-200 hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
               onClick={toggleTabMenu}
-              title={t('common:tab.menu')}
+              title={t('tab.menu')}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                 <path d="M6 8L2 4h8z"/>
@@ -727,7 +755,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             </button>
 
             {showTabMenu && (
-              <div className="tab-menu-dropdown absolute top-[calc(100%+4px)] right-0 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md shadow-lg min-w-[200px] max-w-[300px] max-h-[400px] overflow-y-auto z-[1000]" role="menu" aria-label={t('common:tab.menu')}>
+              <div className="tab-menu-dropdown absolute top-[calc(100%+4px)] right-0 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md shadow-lg min-w-[200px] max-w-[300px] max-h-[400px] overflow-y-auto z-[1000]" role="menu" aria-label={t('tab.menu')}>
                 <div className="tab-menu-section py-1">
                   <div
                     className={`tab-menu-item tab-menu-action flex items-center justify-between px-3 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 whitespace-nowrap overflow-hidden text-ellipsis outline-none font-medium hover:bg-[var(--nim-bg-tertiary)] ${menuSelectedIndex === 0 ? 'selected bg-[var(--nim-bg-tertiary)] shadow-[inset_0_0_0_1px_var(--nim-primary)]' : ''}`}
@@ -735,7 +763,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                     role="menuitem"
                     tabIndex={0}
                   >
-                    {t('common:tab.close_all_tabs')}
+                    {t('tab.close_all_tabs')}
                   </div>
                 </div>
                 {tabs.length > 0 && (
@@ -753,7 +781,11 @@ export const TabBar: React.FC<TabBarProps> = ({
                           <span className="tab-menu-index inline-block min-w-[20px] mr-2 text-[var(--nim-text-faint)] text-[11px]">{index + 1}</span>
                           <span className="tab-menu-title flex-1 overflow-hidden text-ellipsis">
                             {tab.isPinned && '📌 '}
-                            {isSharedHomeTab(tab.filePath) ? t('editor:tabs.shared_home') : tab.fileName}
+                  {isFeedbackRequestTab(tab.filePath)
+                    ? tFeedback(FEEDBACK_REQUEST_TAB_TITLE_KEY)
+                    : tab.kind === 'personal-page' && !tab.fileName
+                      ? t('collab.untitled')
+                      : tab.fileName}
                             <MenuItemDirtyIndicator filePath={tab.filePath} />
                           </span>
                         </div>
@@ -769,8 +801,8 @@ export const TabBar: React.FC<TabBarProps> = ({
               className="ai-chat-toggle-button flex items-center justify-center w-7 h-7 border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-primary)] cursor-pointer rounded p-0 transition-all duration-200 hover:bg-[var(--nim-bg-tertiary)] hover:scale-105 active:scale-95"
               data-testid="ai-sidebar-toggle"
               onClick={onToggleAIChat}
-              title={`${t(isAIChatCollapsed ? 'editor:tabs.open_ai_assistant' : 'editor:tabs.close_ai_assistant')} (${getShortcutDisplay(KeyboardShortcuts.view.toggleAIChat)})`}
-              aria-label={t(isAIChatCollapsed ? 'editor:tabs.open_ai_assistant' : 'editor:tabs.close_ai_assistant')}
+              title={`${t(isAIChatCollapsed ? 'open' : 'close')} ${t('tab.ai_assistant')} (${getShortcutDisplay(KeyboardShortcuts.view.toggleAIChat)})`}
+              aria-label={`${t(isAIChatCollapsed ? 'open' : 'close')} ${t('tab.ai_assistant')}`}
             >
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10 2L11.5 7.5L17 9L11.5 10.5L10 16L8.5 10.5L3 9L8.5 7.5L10 2Z" fill="currentColor"/>
@@ -794,11 +826,11 @@ export const TabBar: React.FC<TabBarProps> = ({
           }}
         >
           <div className="context-menu-item px-4 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]" onClick={handleTogglePin}>
-            {t(tabs.find(tab => tab.id === contextMenuTab)?.isPinned ? 'editor:tabs.unpin' : 'editor:tabs.pin')}
+            {t(tabs.find(t => t.id === contextMenuTab)?.isPinned ? 'tab.unpin' : 'tab.pin')} {t('tab.tab')}
           </div>
           <div className="context-menu-separator h-px bg-[var(--nim-border)] my-1" />
           <div className="context-menu-item px-4 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]" onClick={handleViewHistory}>
-            {t('common:tab.view_history')}
+            {t('tab.view_history')}
           </div>
           {/* Common file actions (Open in Default App, External Editor, Finder, Copy Path, Share) */}
           {contextMenuTabData && (
@@ -816,16 +848,16 @@ export const TabBar: React.FC<TabBarProps> = ({
           )}
           <div className="context-menu-separator h-px bg-[var(--nim-border)] my-1" />
           <div className="context-menu-item px-4 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]" onClick={() => { onTabClose(contextMenuTab); closeContextMenu(); }}>
-            {t('common:close')}
+            {t('close')}
           </div>
           <div className="context-menu-item px-4 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]" onClick={handleCloseOthers}>
-            {t('common:tab.close_others')}
+            {t('tab.close_others')}
           </div>
           <div className="context-menu-item px-4 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]" onClick={handleCloseToRight}>
-            {t('common:tab.close_right')}
+            {t('tab.close_right')}
           </div>
           <div className="context-menu-item px-4 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]" onClick={handleCloseAll}>
-            {t('common:tab.close_all')}
+            {t('tab.close_all')}
           </div>
           {onReopenLastClosed && hasClosedTabs && (
             <>
@@ -837,7 +869,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                   closeContextMenu();
                 }}
               >
-                {t('common:tab.reopen_closed')}
+                {t('tab.reopen_closed')}
               </div>
             </>
           )}

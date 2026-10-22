@@ -9,8 +9,8 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
-import type { FieldDefinition, TrackerRelationshipValue } from '../models/TrackerDataModel';
+import { useTranslation } from 'react-i18next';
+import type { FieldDefinition, TrackerRelationshipValue } from '@nimbalyst/tracker-schema';
 import {
   normalizeRelationshipValue,
   addRelationshipValue,
@@ -57,7 +57,7 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
   onOpenItem,
   readOnly,
 }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('tracker');
   const [draft, setDraft] = useState('');
   // The add control is collapsed to a "+" until the user opens it.
   const [adding, setAdding] = useState(false);
@@ -71,9 +71,6 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
   // the field semantics and tint the pills. Schema-driven via relationshipTypeKey.
   const relType = useMemo(() => resolveRelationshipType(field.relationshipTypeKey), [field.relationshipTypeKey]);
   const pillColor = relType?.color;
-  const relTypeLabel = relType
-    ? t(`tracker:relationship.${relType.key.replace(/-/g, '_')}`, relType.displayName)
-    : '';
 
   const datalistId = `rel-cand-${field.name}`;
 
@@ -126,16 +123,16 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
       {relType && (
         <span
           className="relationship-type-badge inline-flex w-fit items-center gap-1 text-[10px] uppercase tracking-[0.5px] text-[var(--nim-text-faint)]"
-          title={relType.description || relTypeLabel}
+          title={t(`relationship.${relType.key.replace(/-/g, '_')}`, { defaultValue: relType.displayName })}
         >
           {relType.icon && <span className="material-symbols-outlined text-[12px]">{relType.icon}</span>}
-          {relTypeLabel}
-          {relType.symmetric && <span className="normal-case tracking-normal">{t('tracker:relationship.both_ways', '(both ways)')}</span>}
+          {t(`relationship.${relType.key.replace(/-/g, '_')}`, { defaultValue: relType.displayName })}
+          {relType.symmetric && <span className="normal-case tracking-normal">{t('relationship.both_ways')}</span>}
         </span>
       )}
       <div className="flex flex-wrap gap-1">
         {current.length === 0 && (
-          <span className="text-[12px] text-[var(--nim-text-faint)] italic">{t('tracker:relationship.no_links', 'No links')}</span>
+          <span className="text-[12px] text-[var(--nim-text-faint)] italic">{t('relationship.no_links')}</span>
         )}
         {current.map((v) => {
           const cand = candidateById.get(v.itemId);
@@ -158,8 +155,8 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
               <button
                 type="button"
                 className="relationship-pill-remove text-[var(--nim-text-faint)] hover:text-[var(--nim-error)]"
-                title={t('tracker:relationship.remove_link', 'Remove link')}
-                aria-label={t('tracker:relationship.remove_label', 'Remove {{label}}', { label })}
+                title={t('relationship.remove_link')}
+                aria-label={t('relationship.remove_label', { label })}
                 onClick={() => handleRemove(v.itemId)}
               >
                 ×
@@ -174,8 +171,8 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
         <button
           type="button"
           className="relationship-add-toggle inline-flex w-fit items-center text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]"
-          title={t('tracker:relationship.add_link', 'Add link')}
-          aria-label={t('tracker:relationship.add_link', 'Add link')}
+          title={t('relationship.add_link')}
+          aria-label={t('relationship.add_link')}
           onClick={() => setAdding(true)}
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
@@ -189,7 +186,7 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
             type="text"
             list={datalistId}
             value={draft}
-            placeholder={t('tracker:relationship.link_item_placeholder', 'Link an item…')}
+            placeholder={t('relationship.link_item_placeholder')}
             className="flex-1 py-1 px-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[12px] focus:outline-none focus:border-[var(--nim-primary)]"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -212,13 +209,13 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
             disabled={!draft.trim()}
             onClick={handleAdd}
           >
-            {t('tracker:main.add', 'Add')}
+            {t('relationship.add_link')}
           </button>
           <button
             type="button"
             className="relationship-add-cancel px-1.5 py-1 rounded text-[12px] text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]"
-            title={t('common:cancel', 'Cancel')}
-            aria-label={t('tracker:relationship.cancel_adding_link', 'Cancel adding link')}
+            title={t('cancel', { ns: 'common' })}
+            aria-label={t('relationship.cancel_adding_link')}
             onClick={closeAdd}
           >
             ×

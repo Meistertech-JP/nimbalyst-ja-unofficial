@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { CardData } from './BoardCardNode';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 interface CardEditDialogProps {
   visible: boolean;
@@ -10,7 +10,7 @@ interface CardEditDialogProps {
 }
 
 export function CardEditDialog({ visible, onHide, onSave, initialData }: CardEditDialogProps) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [title, setTitle] = useState(initialData.title || '');
   const [owner, setOwner] = useState(initialData.owner || '');
   const [dueDate, setDueDate] = useState(initialData.dueDate || '');
@@ -49,7 +49,7 @@ export function CardEditDialog({ visible, onHide, onSave, initialData }: CardEdi
 
   const handleSave = () => {
     const data: CardData = {
-      title: title || t('menu:untitled', 'Untitled'),
+      title: title || t('kanban.untitled'),
       owner: owner || undefined,
       dueDate: dueDate || undefined,
       priority: priority as 'low' | 'medium' | 'high',
@@ -68,39 +68,42 @@ export function CardEditDialog({ visible, onHide, onSave, initialData }: CardEdi
   return (
     <div className="card-edit-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]" onClick={handleOverlayClick}>
       <div className="card-edit-dialog bg-[var(--nim-bg-secondary)] p-6 rounded-lg min-w-[400px] max-w-[500px] max-h-[80vh] overflow-auto shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
-        <h3 className="card-edit-title m-0 mb-5 text-lg font-semibold text-[var(--nim-text)]">{t('editor:kanban.edit_card', 'Edit Card')}</h3>
+        <h3 className="card-edit-title m-0 mb-5 text-lg font-semibold text-[var(--nim-text)]">{t('kanban.edit_card')}</h3>
 
         <div className="card-edit-field mb-4">
-          <label className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
-            {t('tracker:columns.title', 'Title')}
+          <label htmlFor="kanban-card-title" className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
+            {t('kanban.title')}
           </label>
           <input
+            id="kanban-card-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="card-edit-input w-full p-2 border border-[var(--nim-border)] rounded text-sm bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] box-border font-inherit focus:outline-none focus:border-[var(--nim-border-focus)]"
-            placeholder={t('editor:kanban.card_title', 'Card title')}
+            placeholder={t('kanban.card_title')}
           />
         </div>
 
         <div className="card-edit-field mb-4">
-          <label className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
-            {t('tracker:columns.owner', 'Owner')}
+          <label htmlFor="kanban-card-owner" className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
+            {t('kanban.owner')}
           </label>
           <input
+            id="kanban-card-owner"
             type="text"
             value={owner}
             onChange={(e) => setOwner(e.target.value)}
             className="card-edit-input w-full p-2 border border-[var(--nim-border)] rounded text-sm bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] box-border font-inherit focus:outline-none focus:border-[var(--nim-border-focus)]"
-            placeholder={t('editor:kanban.assigned_to', 'Assigned to')}
+            placeholder={t('kanban.assigned_to')}
           />
         </div>
 
         <div className="card-edit-field mb-4">
-          <label className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
-            {t('tracker:columns.dueDate', 'Due Date')}
+          <label htmlFor="kanban-card-due-date" className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
+            {t('kanban.due_date')}
           </label>
           <input
+            id="kanban-card-due-date"
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
@@ -109,29 +112,31 @@ export function CardEditDialog({ visible, onHide, onSave, initialData }: CardEdi
         </div>
 
         <div className="card-edit-field mb-4">
-          <label className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
-            {t('tracker:columns.priority', 'Priority')}
+          <label htmlFor="kanban-card-priority" className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
+            {t('kanban.priority')}
           </label>
           <select
+            id="kanban-card-priority"
             value={priority}
             onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
             className="card-edit-select w-full p-2 border border-[var(--nim-border)] rounded text-sm bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] box-border font-inherit focus:outline-none focus:border-[var(--nim-border-focus)]"
           >
-            <option value="low">{t('tracker:kanban.priority_low', 'Low')}</option>
-            <option value="medium">{t('tracker:kanban.priority_medium', 'Medium')}</option>
-            <option value="high">{t('tracker:kanban.priority_high', 'High')}</option>
+            <option value="low">{t('kanban.low')}</option>
+            <option value="medium">{t('kanban.medium')}</option>
+            <option value="high">{t('kanban.high')}</option>
           </select>
         </div>
 
         <div className="card-edit-field mb-4">
-          <label className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
-            {t('aichat:tracker_tool.description', 'Description')}
+          <label htmlFor="kanban-card-description" className="card-edit-label block mb-1 text-sm font-medium text-[var(--nim-text)]">
+            {t('kanban.description')}
           </label>
           <textarea
+            id="kanban-card-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="card-edit-textarea w-full p-2 border border-[var(--nim-border)] rounded text-sm bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)] box-border font-inherit min-h-[80px] resize-y focus:outline-none focus:border-[var(--nim-border-focus)]"
-            placeholder={t('editor:kanban.description_placeholder', 'Add a description...')}
+            placeholder={t('kanban.description_placeholder')}
           />
         </div>
 
@@ -140,7 +145,7 @@ export function CardEditDialog({ visible, onHide, onSave, initialData }: CardEdi
             onClick={handleSave}
             className="card-edit-button card-edit-button-save py-2 px-4 rounded cursor-pointer text-sm transition-all font-inherit bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)]"
           >
-            {t('common:save', 'Save')}
+            {t('kanban.save')}
           </button>
         </div>
       </div>

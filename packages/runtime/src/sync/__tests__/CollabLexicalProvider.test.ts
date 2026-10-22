@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import type { DocumentSyncStatus } from '../documentSyncTypes';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import type { AwarenessState, DocumentSyncStatus } from '../documentSyncTypes';
 import { CollabLexicalProvider } from '../CollabLexicalProvider';
 
 function createSyncProviderStub(status: DocumentSyncStatus = 'disconnected', sharedDoc?: Y.Doc) {
@@ -8,6 +10,7 @@ function createSyncProviderStub(status: DocumentSyncStatus = 'disconnected', sha
   return {
     onAwarenessChange: vi.fn(() => () => {}),
     setLocalAwareness: vi.fn(),
+    sendAwarenessDeparture: vi.fn(() => true),
     connect: vi.fn(async () => {}),
     getYDoc: vi.fn(() => doc),
     getStatus: vi.fn(() => status),
@@ -55,6 +58,114 @@ describe('CollabLexicalProvider', () => {
 
     expect(onSync).toHaveBeenCalledOnce();
     expect(onSync).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps an idle desktop peer fresh and stops heartbeats on departure', async () => {
+    vi.useFakeTimers();
+    try {
+      const syncProvider = createSyncProviderStub();
+      const provider = new CollabLexicalProvider(syncProvider as any);
+      provider.awareness.setLocalState({
+        name: 'Desktop Member',
+        color: '#E05555',
+        anchorPos: null,
+        focusPos: null,
+        focusing: false,
+        awarenessData: {},
+      });
+      syncProvider.setLocalAwareness.mockClear();
+
+      provider.handleStatusChange('connected');
+      expect(syncProvider.setLocalAwareness).toHaveBeenCalledOnce();
+      expect(syncProvider.setLocalAwareness).toHaveBeenLastCalledWith({
+        cursor: undefined,
+        user: { name: 'Desktop Member', color: '#E05555' },
+      });
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(syncProvider.setLocalAwareness).toHaveBeenCalledTimes(2);
+
+      provider.destroy();
+      expect(syncProvider.sendAwarenessDeparture).toHaveBeenCalledWith({
+        name: 'Desktop Member',
+        color: '#E05555',
+      });
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(syncProvider.setLocalAwareness).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('marks only generated local awareness names without changing the name string', () => {
+    const syncProvider = createSyncProviderStub();
+    const provider = new CollabLexicalProvider(syncProvider as any, {
+      localNameSource: 'system-default',
+    });
+
+    provider.awareness.setLocalState({
+      name: 'Teammate',
+      color: '#E05555',
+      anchorPos: null,
+      focusPos: null,
+      focusing: false,
+      awarenessData: {},
+    });
+
+    expect(syncProvider.setLocalAwareness).toHaveBeenCalledWith(expect.objectContaining({
+      user: expect.objectContaining({ name: 'Teammate', nimbalystNameSource: 'system-default' }),
+    }));
+    provider.destroy();
+  });
+
+  it('labels a remote cursor by name, never by the member id a peer sent as its name', async () => {
+    const syncProvider = createSyncProviderStub('connected');
+    let emit: (states: Map<string, AwarenessState>) => void = () => {};
+    syncProvider.onAwarenessChange.mockImplementation(((listener: typeof emit) => {
+      emit = listener;
+      return () => {};
+    }) as any);
+    const provider = new CollabLexicalProvider(syncProvider as any);
+    await provider.connect();
+
+    emit(new Map([
+      ['member-live-abc', { user: { name: 'member-live-abc', color: '#E05555' } }],
+      ['member-live-def', { user: { name: 'Rowan Petrie', color: '#2BA89A' } }],
+    ]));
+
+    expect([...provider.awareness.getStates().values()].map((state) => state.name))
+      .toEqual(['Teammate', 'Rowan Petrie']);
+    provider.destroy();
+  });
+
+  it('updates unresolved cursor labels on language change without translating actual names', async () => {
+    const i18n = await createI18nInstance('en');
+    const syncProvider = createSyncProviderStub('connected');
+    let emit: (states: Map<string, AwarenessState>) => void = () => {};
+    syncProvider.onAwarenessChange.mockImplementation(((listener: typeof emit) => {
+      emit = listener;
+      return () => {};
+    }) as any);
+    const provider = new CollabLexicalProvider(syncProvider as any, {
+      unnamedCollaboratorLabel: i18n.t('editor:collab.unnamed_collaborator'),
+    });
+    await provider.connect();
+
+    emit(new Map([
+      ['member-live-pending', { user: { name: 'member-live-pending', color: '#E05555' } }],
+      ['member-rowan', { user: { name: 'Rowan', color: '#2BA89A' } }],
+      ['member-teammate', { user: { name: 'Teammate', color: '#3A8FD6' } }],
+      ['member-default', { user: { name: 'Teammate', color: '#9A55D6', nimbalystNameSource: 'system-default' } }],
+      ['member-email', { user: { name: 'rowan@example.test', color: '#E0A555' } }],
+    ]));
+    expect([...provider.awareness.getStates().values()].map((state) => state.name))
+      .toEqual(['Teammate', 'Rowan', 'Teammate', 'Teammate', 'rowan@example.test']);
+
+    await i18n.changeLanguage('ja');
+    provider.setUnnamedCollaboratorLabel(i18n.t('editor:collab.unnamed_collaborator'));
+    expect([...provider.awareness.getStates().values()].map((state) => state.name))
+      .toEqual(['チームメンバー', 'Rowan', 'Teammate', 'チームメンバー', 'rowan@example.test']);
+    provider.destroy();
   });
 
   // Lexical's CollaborationPlugin only paints content it OBSERVES as Y.Doc
@@ -121,6 +232,28 @@ describe('CollabLexicalProvider', () => {
       sharedDoc.get('root', Y.XmlText).insert(0, 'remote ');
 
       expect(provider.getYDoc().get('root', Y.XmlText).toString()).toBe('remote warm content');
+    });
+
+    it('keeps document comments observable across the shared and mounted editor docs', async () => {
+      const sharedDoc = new Y.Doc();
+      const syncProvider = createSyncProviderStub('connected', sharedDoc);
+      const provider = new CollabLexicalProvider(syncProvider as any);
+      provider.prepareForBinding();
+      const editorDoc = provider.getYDoc();
+      const mountedComments = editorDoc.getArray<{ id: string }>('comments');
+      const observed = vi.fn();
+      mountedComments.observe(observed);
+      await provider.connect();
+
+      sharedDoc.getArray<{ id: string }>('comments').push([{ id: 'from-shared' }]);
+      expect(observed).toHaveBeenCalled();
+      expect(mountedComments.toArray()).toEqual([{ id: 'from-shared' }]);
+
+      mountedComments.push([{ id: 'from-editor' }]);
+      expect(sharedDoc.getArray<{ id: string }>('comments').toArray()).toEqual([
+        { id: 'from-shared' },
+        { id: 'from-editor' },
+      ]);
     });
 
     it('does not echo bridged updates back and forth', async () => {

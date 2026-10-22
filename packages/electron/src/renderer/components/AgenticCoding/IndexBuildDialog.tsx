@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 
 export interface IndexBuildDialogProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ export const IndexBuildDialog: React.FC<IndexBuildDialogProps> = ({
   onBuild,
   onSkip
 }) => {
-  const { t } = useTranslation(['dialogs', 'sessions']);
+  const { t } = useTranslation('dialogs');
   if (!isOpen) return null;
 
   return (
@@ -29,15 +29,20 @@ export const IndexBuildDialog: React.FC<IndexBuildDialogProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="index-build-dialog-title m-0 mb-3 text-lg font-semibold text-[var(--nim-text)]">
-          {t('dialogs:index.title')}
+          {t('index.title')}
         </h2>
         <p className="index-build-dialog-message m-0 mb-6 text-sm leading-relaxed text-[var(--nim-text-muted)] [&_strong]:text-[var(--nim-text)]">
-          <Trans t={t} i18nKey="sessions:index_message" values={{ count: messageCount.toLocaleString() }} components={{ strong: <strong /> }} />
+          <Trans
+            t={t}
+            i18nKey="index.message"
+            values={{ count: messageCount.toLocaleString() }}
+            components={{ strong: <strong /> }}
+          />
         </p>
         {isBuilding ? (
           <div className="index-build-dialog-progress flex items-center gap-3 p-3 rounded bg-[var(--nim-bg-secondary)] text-sm text-[var(--nim-text-muted)]">
             <div className="index-build-dialog-spinner w-5 h-5 rounded-full border-2 border-[var(--nim-border)] border-t-[var(--nim-primary)] animate-spin" />
-            <span>{t('dialogs:index.building')}</span>
+            <span>{t('index.building')}</span>
           </div>
         ) : (
           <div className="index-build-dialog-buttons flex gap-3 justify-end">
@@ -45,13 +50,13 @@ export const IndexBuildDialog: React.FC<IndexBuildDialogProps> = ({
               className="index-build-dialog-button-skip nim-btn-secondary"
               onClick={onSkip}
             >
-              {t('dialogs:index.skip')}
+              {t('index.skip')}
             </button>
             <button
               className="index-build-dialog-button-build nim-btn-primary"
               onClick={onBuild}
             >
-              {t('dialogs:index.build')}
+              {t('index.build')}
             </button>
           </div>
         )}

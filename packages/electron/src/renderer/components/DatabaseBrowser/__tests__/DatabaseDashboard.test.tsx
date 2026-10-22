@@ -1,15 +1,51 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, afterEach, vi } from 'vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
-import i18next from 'i18next';
+import { beforeAll, describe, it, expect, afterEach, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { DatabaseDashboard } from '../DatabaseDashboard';
+import { StorageRetentionCard } from '../StorageRetentionCard';
 
-function mockDashboardStats(backup: { size?: number; sizeBytes?: number } | null, walStats: Record<string, unknown> | null = null) {
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function withLanguage(ui: React.ReactNode, language: 'en' | 'ja') {
+  const i18n = language === 'ja' ? japaneseI18n : englishI18n;
+  return (
+    <UiLanguageProvider
+      i18n={i18n}
+      preference={language}
+      systemLocale={language === 'ja' ? 'ja-JP' : 'en-US'}
+    >
+      {ui}
+    </UiLanguageProvider>
+  );
+}
+
+function mockDashboardStats(backup: { size?: number; sizeBytes?: number } | null) {
   Object.defineProperty(window, 'electronAPI', {
     configurable: true,
     value: {
       invoke: vi.fn().mockImplementation(async (channel: string) => {
+        // The storage-retention card reads its settings on mount.
+        if (channel === 'database:maintenance:get') {
+          return {
+            success: true,
+            settings: {
+              backupCopiesKept: 2,
+              backupIntervalHours: 12,
+              toolOutputRetentionDays: 0,
+            },
+          };
+        }
         if (channel !== 'database:getDashboardStats') {
           throw new Error(`Unexpected invoke channel: ${channel}`);
         }
@@ -34,7 +70,7 @@ function mockDashboardStats(backup: { size?: number; sizeBytes?: number } | null
             lastBackupAttempt: '2026-06-02T16:00:00.000Z',
             lastSuccessfulBackup: '2026-06-02T16:00:00.000Z',
           },
-          walStats,
+          walStats: null,
         };
       }),
     },
@@ -42,56 +78,60 @@ function mockDashboardStats(backup: { size?: number; sizeBytes?: number } | null
 }
 
 describe('DatabaseDashboard backup size rendering', () => {
-  afterEach(async () => {
-    cleanup();
+  afterEach(() => {
     delete (window as unknown as { electronAPI?: unknown }).electronAPI;
-    await i18next.changeLanguage('en');
   });
 
   it('renders SQLite backup metadata that uses sizeBytes', async () => {
     mockDashboardStats({ sizeBytes: 3 * 1024 });
 
-    render(<DatabaseDashboard onTableSelect={vi.fn()} />);
+    render(withLanguage(<DatabaseDashboard onTableSelect={vi.fn()} />, 'en'));
 
-    expect(await screen.findByText('3 KB')).toBeTruthy();
+    await screen.findByText('3 KB');
   });
 
   it('renders legacy backup metadata that uses size', async () => {
     mockDashboardStats({ size: 2 * 1024 });
 
-    render(<DatabaseDashboard onTableSelect={vi.fn()} />);
+    render(withLanguage(<DatabaseDashboard onTableSelect={vi.fn()} />, 'en'));
 
-    expect(await screen.findByText('2 KB')).toBeTruthy();
+    await screen.findByText('2 KB');
   });
 
-  it('localizes structured SQLite checkpoint details and backup counts', async () => {
-    mockDashboardStats({ sizeBytes: 2048 }, {
-      backend: 'sqlite', fileCount: 1, totalBytes: 1024, totalSize: '1 KB',
-      minWalSize: '0 B', maxWalSize: '4 MB', checkpointTimeout: 'auto at 1,000 pages',
-      description: 'SQLite checkpoint details', autoCheckpointPages: 1000, pageSizeBytes: 4096,
+  it('shows a Japanese estimate caveat in the retention card', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        invoke: vi.fn().mockImplementation(async (channel: string) => {
+          if (channel === 'database:maintenance:get') {
+            return {
+              success: true,
+              settings: { backupCopiesKept: 2, backupIntervalHours: 12, toolOutputRetentionDays: 30 },
+            };
+          }
+          if (channel === 'database:toolRetention:estimate') {
+            return {
+              success: true,
+              estimate: {
+                candidateRows: 100,
+                estimatedBytesSaved: 0,
+                sampledRows: 20,
+                sampleCoverage: 0.2,
+                probesTaken: 3,
+                lowConfidence: true,
+                note: { kind: 'sample_floor', sampledRows: 20, coveragePct: '20.000', candidateRows: 100, probesTaken: 3 },
+              },
+            };
+          }
+          throw new Error(`Unexpected invoke channel: ${channel}`);
+        }),
+      },
     });
-    render(<DatabaseDashboard onTableSelect={vi.fn()} />);
-    await screen.findByText('1 of 3');
-    await act(async () => { await i18next.changeLanguage('ja'); });
-    expect(screen.getByText('3件中1件')).toBeTruthy();
-    expect(screen.getByText('1,000ページで自動実行')).toBeTruthy();
-    expect(screen.getByText(/SQLiteはWALが1,000ページ/)).toBeTruthy();
-  });
 
-  it('localizes PGLite guidance but preserves unknown backend descriptions', async () => {
-    const wal = {
-      backend: 'pglite', fileCount: 1, totalBytes: 1024, totalSize: '1 KB',
-      minWalSize: '80 MB', maxWalSize: '1 GB', checkpointTimeout: '5min',
-      description: 'Legacy PGLite guidance',
-    };
-    await i18next.changeLanguage('ja');
-    mockDashboardStats(null, wal);
-    render(<DatabaseDashboard onTableSelect={vi.fn()} />);
-    expect(await screen.findByText(/PGLiteにはバックグラウンド/)).toBeTruthy();
-    expect(screen.getByText('5min')).toBeTruthy();
-    cleanup();
-    mockDashboardStats(null, { ...wal, backend: undefined, description: 'Future backend details' });
-    render(<DatabaseDashboard onTableSelect={vi.fn()} />);
-    expect(await screen.findByText('Future backend details')).toBeTruthy();
+    render(withLanguage(<StorageRetentionCard />, 'ja'));
+    fireEvent.click(await screen.findByRole('button', { name: '回収容量を見積もる' }));
+
+    expect(await screen.findByText(/サンプル20件/)).toBeDefined();
+    expect(screen.queryByText(/sampled rows/)).toBeNull();
   });
 });

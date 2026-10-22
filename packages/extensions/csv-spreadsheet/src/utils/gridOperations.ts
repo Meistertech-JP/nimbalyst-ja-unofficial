@@ -1,876 +1,438 @@
 /**
- * Grid operations utility module
+ * Grid operations: the editor's and agent tools' API over the sheet.
  *
- * Provides centralized functions for all RevoGrid data operations.
- * All operations work directly with RevoGrid as the single source of truth.
+ * Reads go straight to RevoGrid. Every mutation is a `SheetCommand` run by the
+ * grid command executor (`commands/gridCommandExecutor.ts`), so undo, formula
+ * and metadata rewriting, collab publication and the filtered-view refresh
+ * happen in one place for all of them.
  */
 
-import type { DimensionRows } from '@revolist/revogrid';
 import type { RevoGridElement } from '../revogrid-types';
-import type { NormalizedSelectionRange, ColumnFormat, CSVMetadata, FormulaEvalData } from '../types';
-import { copyToClipboard } from '@nimbalyst/extension-sdk';
-import { columnIndexToLetter, columnLetterToIndex, serializeMetadata } from './csvParser';
-import { isFormula, evaluateFormula } from './formulaEngine';
-import type { UndoRedoPlugin } from '../plugins/UndoRedoPlugin';
+import type { NormalizedSelectionRange, SpreadsheetData, CellValue } from '../types';
+import {
+  autoDetectHeaderRowCount,
+  buildMetadataLine,
+  columnIndexToLetter,
+  columnLetterToIndex,
+  DEFAULT_FILE_LAYOUT,
+  quoteCsvField,
+  type CsvFileLayout,
+} from './csvParser';
+import { headerRowCountForPinned, pickFormatting, pinnedRowCount } from '../sheetMeta/formatting';
+import { isFormula } from './formulaEngine';
+import type { GridSourceData } from './formulaViewState';
+import { cellDisplayText, getSortKey, shownValue } from './formatters';
+import { createRowIndexMapping, logicalRowsForPaste, logicalRowsForSelection } from '../filter/rowIndexMapping';
+import { CellStyleIndex } from '../cells/cellStyles';
+import { RangeIndex } from '../cells/sheetDecorations';
+import { buildCopyPayload, resolvePasteSource, type ClipboardInput, type CopyPayload } from '../clipboard/copyPayload';
+import { readClipboardInput, toHtmlCellStyle, writeClipboard } from '../clipboard/systemClipboard';
+import {
+  buildClear,
+  buildFillBetween,
+  buildFillCopy,
+  buildFillValue,
+  buildPaste,
+  buildSort,
+  buildUpdateCells,
+} from '../commands/builders';
+import {
+  createGridCommandExecutor,
+  readGridSources,
+  spreadsheetDataOf,
+  type GridCommandExecutor,
+  type GridCommandExecutorOptions,
+} from '../commands/gridCommandExecutor';
+import type { CommandOrigin } from '../commands/commandHistory';
+import { cellAt, type SheetMeta } from '../commands/sheetState';
+import { fillDownEndRow } from '../fill/fillExtent';
 
-export interface GridOperationsOptions {
-  getHeaderRowCount: () => number;
-  getColumnCount: () => number;
-  setColumnCount: (count: number) => void;
-  getDelimiter: () => ',' | '\t';
-  getColumnFormats: () => Record<number, ColumnFormat>;
-  getColumnWidths: () => Record<number, number>;
-  getFrozenColumnCount: () => number;
-  onDirty: () => void;
-  getUndoPlugin: () => UndoRedoPlugin | null;
+export { FormulaViewState, type FormulaChanges, type GridSourceData } from './formulaViewState';
+
+export interface GridCellUpdate {
+  row: number;
+  column: number;
+  value: string;
 }
 
-export interface GridOperations {
-  // Cell operations
-  updateCell: (row: number, col: number, value: string) => Promise<void>;
-  clearCells: (range: NormalizedSelectionRange) => Promise<void>;
-  getCellValue: (row: number, col: number) => Promise<string | number | null>;
-  getCellRawValue: (row: number, col: number) => Promise<string>;
-
-  // Row operations
-  addRow: (index?: number) => Promise<void>;
-  deleteRow: (index: number) => Promise<void>;
-
-  // Column operations
-  addColumn: (index?: number) => Promise<void>;
-  deleteColumn: (index: number) => Promise<void>;
-
-  // Header row operations
-  /** Move rows between pinned (header) and regular sections based on new header count */
-  updateHeaderRowCount: (newCount: number) => Promise<void>;
-
-  // Clipboard operations
-  copySelection: (range: NormalizedSelectionRange) => Promise<void>;
-  cutSelection: (range: NormalizedSelectionRange) => Promise<void>;
-  pasteFromText: (row: number, col: number, text: string) => Promise<void>;
-
-  // Serialization
-  toCSV: () => Promise<string>;
-  getData: () => Promise<{ source: Record<string, unknown>[]; pinnedTop: Record<string, unknown>[] }>;
-
-  // Sorting
-  sortByColumn: (columnIndex: number, direction: 'asc' | 'desc' | null) => Promise<void>;
+export interface GridCellUpdateResult extends GridCellUpdate {
+  raw: string;
+  displayed: string | number | null;
 }
 
 /**
- * Create grid operations bound to a specific grid element
+ * Convert parsed cells into RevoGrid rows while keeping formulas raw.
+ *
+ * Models carry keys for the data columns only. The empty columns the grid
+ * shows past the data are column definitions with no cells behind them (a
+ * missing key reads as blank); a write there creates the key.
  */
+export function spreadsheetDataToGridSource(
+  data: SpreadsheetData,
+  bufferRows = 20,
+): GridSourceData {
+  const columnCount = Math.max(data.columnCount, data.rows[0]?.length ?? 0);
+
+  const convertRow = (row: SpreadsheetData['rows'][number] | undefined) => {
+    const model: Record<string, string | number> = {};
+    for (let colIndex = 0; colIndex < columnCount; colIndex += 1) {
+      const cell = row?.[colIndex];
+      // A number only when it prints back as the file's text: `007` and `1.50`
+      // stay strings, or the next save would write `7` and `1.5`.
+      model[columnIndexToLetter(colIndex)] = cell
+        ? (typeof cell.computed === 'number' && !isFormula(cell.raw) && String(cell.computed) === cell.raw
+          ? cell.computed
+          : cell.raw)
+        : '';
+    }
+    return model;
+  };
+
+  // Header rows and frozen rows are both pinned; only header rows look like headers.
+  const pinned = Math.min(data.rows.length, pinnedRowCount(data));
+  const pinnedTop = data.rows
+    .slice(0, pinned)
+    .map((row, index) => (index < data.headerRowCount ? { ...convertRow(row), _rowClass: 'header-row' } : convertRow(row)));
+  const source = data.rows
+    .slice(pinned)
+    .map(convertRow);
+
+  for (let index = 0; index < bufferRows; index += 1) {
+    source.push(convertRow(undefined));
+  }
+
+  return { source, pinnedTop };
+}
+
+export interface GridOperationsOptions extends Omit<GridCommandExecutorOptions, 'gridRef'> {
+  getDelimiter: () => ',' | '\t';
+  /** Line endings, final newline and metadata-line presence of the loaded file. */
+  getFileLayout?: () => CsvFileLayout;
+}
+
+export interface PasteOptions {
+  /** Cmd+Shift+V: display values only, no formulas. */
+  valuesOnly?: boolean;
+  /** The native paste event's data, when there is one. */
+  transfer?: DataTransfer | null;
+}
+
+export interface GridOperations {
+  /** The command executor behind every mutation (undo/redo live here). */
+  readonly executor: GridCommandExecutor;
+
+  updateCell: (row: number, col: number, value: string, origin?: CommandOrigin) => Promise<void>;
+  /** One validated batch, one undo step; nothing is written if any update is out of bounds. */
+  updateCells: (updates: readonly GridCellUpdate[], origin?: CommandOrigin) => Promise<readonly GridCellUpdateResult[]>;
+  clearCells: (range: NormalizedSelectionRange) => Promise<void>;
+  getCellValue: (row: number, col: number) => Promise<string | number | null>;
+  getCellRawValue: (row: number, col: number) => Promise<string>;
+  recalculateFormulas: () => Promise<number>;
+
+  addRow: (index?: number) => Promise<void>;
+  deleteRow: (index: number) => Promise<void>;
+  addColumn: (index?: number) => Promise<void>;
+  deleteColumn: (index: number) => Promise<void>;
+  /** Pin the first `count` rows as headers (moves rows between grid sections). */
+  updateHeaderRowCount: (count: number) => Promise<void>;
+  /** Freeze, formats, widths, styles: undoable like everything else. */
+  setMeta: (patch: Partial<SheetMeta> | ((meta: SheetMeta) => Partial<SheetMeta>)) => Promise<void>;
+
+  copySelection: (range: NormalizedSelectionRange, transfer?: DataTransfer | null) => Promise<CopyPayload | null>;
+  cutSelection: (range: NormalizedSelectionRange, transfer?: DataTransfer | null) => Promise<void>;
+  /** Paste the clipboard (or `input`) at the selection; returns the range written. */
+  paste: (selection: NormalizedSelectionRange, options?: PasteOptions & { input?: ClipboardInput }) => Promise<NormalizedSelectionRange | null>;
+  pasteFromText: (row: number, col: number, text: string) => Promise<void>;
+
+  /** Fill handle: continue `source` as a series through the rest of `target` (which contains it). */
+  fillSeries: (source: NormalizedSelectionRange, target: NormalizedSelectionRange) => Promise<void>;
+  /** Fill-handle double-click: continue `source` down as far as the neighboring column's data; returns the filled range. */
+  fillDown: (source: NormalizedSelectionRange) => Promise<NormalizedSelectionRange | null>;
+  /** Ctrl+D / Ctrl+R. */
+  fillCopy: (range: NormalizedSelectionRange, axis: 'down' | 'right') => Promise<void>;
+  /** Cmd+Enter: one value into every cell, formulas shifted from `origin`. */
+  fillValue: (range: NormalizedSelectionRange, value: string, origin: { row: number; col: number }) => Promise<void>;
+
+  /** The sheet as CSV, after every command queued before the call. */
+  toCSV: () => Promise<string>;
+  /** `toCSV` plus the executor revision it reflects, so a save can tell whether anything changed since. */
+  snapshotCSV: () => Promise<{ content: string; revision: number }>;
+  /**
+   * The grid as CSV right now, without waiting for the queue. Only for the
+   * collab binding: it serializes inside a running command's mutation, where
+   * waiting on the queue would deadlock.
+   */
+  serializeCSV: () => Promise<string>;
+  getData: () => Promise<{ source: Record<string, unknown>[]; pinnedTop: Record<string, unknown>[] }>;
+  sortByColumn: (columnIndex: number, direction: 'asc' | 'desc' | null) => Promise<void>;
+}
+
+type GridModel = Record<string, unknown>;
+
+function isEmptyCell(value: unknown): boolean {
+  return value === undefined || value === null || value === '';
+}
+
+/** Narrow a grid model value to what the formatter helpers accept. */
+function toCellValue(value: unknown): CellValue {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  return String(value);
+}
+
 export function createGridOperations(
-  gridRef: React.RefObject<RevoGridElement | null>,
-  options: GridOperationsOptions
+  gridRef: { readonly current: RevoGridElement | null },
+  options: GridOperationsOptions,
 ): GridOperations {
-  const {
-    getHeaderRowCount,
-    getColumnCount,
-    setColumnCount,
-    getDelimiter,
-    getColumnFormats,
-    getColumnWidths,
-    getFrozenColumnCount,
-    onDirty,
-    getUndoPlugin,
-  } = options;
+  const { getMeta, getDelimiter, formulaViewState } = options;
+  const executor = createGridCommandExecutor({ ...options, gridRef });
 
-  /**
-   * Translate logical row index to RevoGrid row index and type
-   */
-  function translateRowIndex(logicalRow: number): { gridRow: number; rowType: DimensionRows } {
-    const headerRowCount = getHeaderRowCount();
-    if (logicalRow < headerRowCount) {
-      return { gridRow: logicalRow, rowType: 'rowPinStart' };
-    }
-    return { gridRow: logicalRow - headerRowCount, rowType: 'rgRow' };
-  }
-
-  /**
-   * Update a single cell value
-   */
-  const updateCell = async (row: number, col: number, value: string): Promise<void> => {
+  const readSources = async () => {
     const grid = gridRef.current;
     if (!grid) throw new Error('Grid not available');
+    const { source, pinnedTop } = await readGridSources(grid);
+    return {
+      source: source as Record<string, string | number>[],
+      pinnedTop: pinnedTop as Record<string, string | number>[],
+    };
+  };
 
-    const { gridRow, rowType } = translateRowIndex(row);
-    const prop = columnIndexToLetter(col);
+  const recalculateFormulas = async (): Promise<number> => {
+    const grid = gridRef.current;
+    if (!grid || !formulaViewState) return 0;
+    const { state } = await executor.readContext();
+    const durationMs = formulaViewState.recalculate(spreadsheetDataOf(state), await readSources());
+    await grid.refresh('all');
+    return durationMs;
+  };
 
-    // Get old value for undo tracking
-    const source = await grid.getSource(rowType);
-    const oldValue = source?.[gridRow]?.[prop] ?? '';
-
-    // Handle formulas
-    let displayValue: string | number = value;
-    if (isFormula(value)) {
-      // For formulas, we need to evaluate them
-      // Store raw formula and display computed result
-      const data = await getAllGridData(grid);
-      const { value: computed, error } = evaluateFormula(value, data, row, col);
-      displayValue = error ? error : (computed ?? value);
-    }
-
-    // Update the cell
-    await grid.setDataAt({
-      row: gridRow,
-      col,
-      val: displayValue,
-      rowType,
-      colType: 'rgCol',
+  const updateCells = async (
+    updates: readonly GridCellUpdate[],
+    origin: CommandOrigin = 'user',
+  ): Promise<readonly GridCellUpdateResult[]> => {
+    if (updates.length === 0) return [];
+    await executor.execute(({ state }) => buildUpdateCells(state, updates), { origin });
+    return updates.map((update) => {
+      const model = executor.modelAt(update.row);
+      const prop = columnIndexToLetter(update.column);
+      const raw = String(model?.[prop] ?? '');
+      return {
+        ...update,
+        raw,
+        displayed: shownValue((model && formulaViewState?.getDisplayValue(model, prop)) ?? (model?.[prop] as CellValue | undefined) ?? null),
+      };
     });
+  };
 
-    // Record for undo
-    const undoPlugin = getUndoPlugin();
-    if (undoPlugin && oldValue !== displayValue) {
-      undoPlugin.recordManualChange([{
-        rowIndex: gridRow,
-        colIndex: col,
-        prop,
-        oldValue,
-        newValue: displayValue,
-        rowType,
-      }]);
-    }
-
-    onDirty();
+  const clearCells = async (range: NormalizedSelectionRange) => {
+    await executor.execute(({ rowMapping }) => buildClear(logicalRowsForSelection(rowMapping, range).logicalRows, range));
   };
 
   /**
-   * Clear all cells in a selection range
+   * Build the copy payload synchronously from the grid's current sources: a
+   * native `copy` event's DataTransfer can only be written before the handler
+   * returns, so nothing here may await.
    */
-  const clearCells = async (range: NormalizedSelectionRange): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    const changes: Array<{
-      rowIndex: number;
-      colIndex: number;
-      prop: string;
-      oldValue: unknown;
-      newValue: unknown;
-      rowType: DimensionRows;
-    }> = [];
-
-    // Get current data for undo tracking
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const promises: Promise<void | undefined>[] = [];
-
-    for (let r = range.startRow; r <= range.endRow; r++) {
-      for (let c = range.startCol; c <= range.endCol; c++) {
-        const { gridRow, rowType } = translateRowIndex(r);
-        const prop = columnIndexToLetter(c);
-
-        // Get old value
-        const dataSource = rowType === 'rowPinStart' ? pinnedTop : source;
-        const oldValue = dataSource?.[gridRow]?.[prop] ?? '';
-
-        if (oldValue !== '') {
-          changes.push({
-            rowIndex: gridRow,
-            colIndex: c,
-            prop,
-            oldValue,
-            newValue: '',
-            rowType,
-          });
-        }
-
-        promises.push(grid.setDataAt({
-          row: gridRow,
-          col: c,
-          val: '',
-          rowType,
-          colType: 'rgCol',
-        }));
-      }
-    }
-
-    await Promise.all(promises);
-
-    // Record for undo
-    const undoPlugin = getUndoPlugin();
-    if (undoPlugin && changes.length > 0) {
-      undoPlugin.recordManualChange(changes);
-    }
-
-    onDirty();
+  const buildCopy = (range: NormalizedSelectionRange): CopyPayload | null => {
+    const grid = gridRef.current as unknown as { source?: GridModel[]; pinnedTopSource?: GridModel[] } | null;
+    const pinnedTop = grid?.pinnedTopSource ?? [];
+    const source = grid?.source ?? [];
+    const modelAt = (row: number) => (row < pinnedTop.length ? pinnedTop[row] : source[row - pinnedTop.length]);
+    const mapping = createRowIndexMapping({
+      rowCount: pinnedTop.length + source.length,
+      headerRowCount: pinnedTop.length,
+      trimmedRows: options.getTrimmedRows?.() ?? {},
+    });
+    const rows = logicalRowsForSelection(mapping, range).logicalRows;
+    if (rows.length === 0) return null;
+    const meta = getMeta();
+    const cols = Array.from({ length: range.endCol - range.startCol + 1 }, (_, i) => range.startCol + i);
+    const raw = rows.map((row) => cols.map((col) => String(modelAt(row)?.[columnIndexToLetter(col)] ?? '')));
+    const cellFormats = new RangeIndex(meta.cellFormats);
+    const display = rows.map((row, r) => cols.map((col, c) => {
+      const model = modelAt(row);
+      const prop = columnIndexToLetter(col);
+      const shown = (model && formulaViewState?.getDisplayValue(model, prop)) ?? raw[r][c];
+      const format = cellFormats.at(row, col) ?? meta.columnFormats[col];
+      return cellDisplayText(toCellValue(shown), format);
+    }));
+    const styles = new CellStyleIndex(meta.cellStyles);
+    return buildCopyPayload({
+      range: { startRow: rows[0], endRow: rows[0] + rows.length - 1, startCol: range.startCol, endCol: range.endCol },
+      raw,
+      display,
+      rows,
+      styleAt: (r, c) => toHtmlCellStyle(styles.styleAt(rows[r], cols[c])),
+    });
   };
 
-  /**
-   * Get the display value of a cell
-   */
-  const getCellValue = async (row: number, col: number): Promise<string | number | null> => {
-    const grid = gridRef.current;
-    if (!grid) return null;
-
-    const { gridRow, rowType } = translateRowIndex(row);
-    const source = await grid.getSource(rowType);
-    const prop = columnIndexToLetter(col);
-
-    return source?.[gridRow]?.[prop] ?? null;
+  const copySelection = (range: NormalizedSelectionRange, transfer?: DataTransfer | null) => {
+    const payload = buildCopy(range);
+    if (!payload) return Promise.resolve(null);
+    return writeClipboard(payload, transfer).then(() => payload);
   };
 
-  /**
-   * Get the raw value of a cell (for formulas, returns the formula text)
-   */
-  const getCellRawValue = async (row: number, col: number): Promise<string> => {
-    const grid = gridRef.current;
-    if (!grid) return '';
-
-    const { gridRow, rowType } = translateRowIndex(row);
-    const source = await grid.getSource(rowType);
-    const prop = columnIndexToLetter(col);
-
-    // Check for raw value property (used for formulas)
-    const rawProp = `_raw_${prop}`;
-    const rawValue = source?.[gridRow]?.[rawProp];
-    if (rawValue !== undefined) {
-      return String(rawValue);
-    }
-
-    return String(source?.[gridRow]?.[prop] ?? '');
-  };
-
-  /**
-   * Add a new row at the specified index
-   */
-  const addRow = async (index?: number): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    // For now, we'll need to get all data, add row, and set it back
-    // This is a limitation of RevoGrid's API
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const headerRowCount = getHeaderRowCount();
-    const columnCount = getColumnCount();
-
-    // Create empty row
-    const newRow: Record<string, string> = {};
-    for (let c = 0; c < columnCount; c++) {
-      newRow[columnIndexToLetter(c)] = '';
-    }
-
-    const insertIndex = index ?? (headerRowCount + (source?.length ?? 0));
-
-    if (insertIndex < headerRowCount) {
-      // Insert into pinned (header) rows
-      const newPinned = [...(pinnedTop || [])];
-      newPinned.splice(insertIndex, 0, newRow);
-      grid.pinnedTopSource = newPinned;
-    } else {
-      // Insert into regular rows
-      const dataIndex = insertIndex - headerRowCount;
-      const newSource = [...(source || [])];
-      newSource.splice(dataIndex, 0, newRow);
-      grid.source = newSource;
-    }
-
-    onDirty();
-  };
-
-  /**
-   * Delete a row at the specified index
-   */
-  const deleteRow = async (index: number): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const headerRowCount = getHeaderRowCount();
-    const totalRows = headerRowCount + (source?.length ?? 0);
-
-    // Don't allow deleting the last row
-    if (totalRows <= 1) return;
-
-    if (index < headerRowCount) {
-      // Delete from pinned rows
-      const newPinned = [...(pinnedTop || [])];
-      newPinned.splice(index, 1);
-      grid.pinnedTopSource = newPinned;
-    } else {
-      // Delete from regular rows
-      const dataIndex = index - headerRowCount;
-      const newSource = [...(source || [])];
-      newSource.splice(dataIndex, 1);
-      grid.source = newSource;
-    }
-
-    onDirty();
-  };
-
-  /**
-   * Update header row count - moves rows between pinned and regular sections
-   */
-  const updateHeaderRowCount = async (newCount: number): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const currentCount = pinnedTop?.length ?? 0;
-    const safeNewCount = Math.max(0, newCount);
-
-    if (safeNewCount === currentCount) return;
-
-    let newPinned = [...(pinnedTop || [])];
-    let newSource = [...(source || [])];
-
-    if (safeNewCount > currentCount) {
-      // Moving rows from source to pinned (making them headers)
-      const rowsToMove = safeNewCount - currentCount;
-      const movedRows = newSource.splice(0, rowsToMove);
-      // Add header-row class to moved rows
-      movedRows.forEach(row => {
-        row._rowClass = 'header-row';
+  const paste: GridOperations['paste'] = async (selection, pasteOptions = {}) => {
+    const input = pasteOptions.input ?? await readClipboardInput(pasteOptions.transfer);
+    const source = resolvePasteSource(input, { valuesOnly: pasteOptions.valuesOnly });
+    if (!source) return null;
+    let written: NormalizedSelectionRange | null = null;
+    await executor.execute(({ state, rowMapping }) => {
+      const result = buildPaste({
+        source,
+        selection,
+        visibleSelectionRows: Math.max(1, logicalRowsForSelection(rowMapping, selection).logicalRows.length),
+        destinationRows: (count) => logicalRowsForPaste(rowMapping, selection.startRow, count, state.rows.length).logicalRows,
+        columnFormats: state.meta.columnFormats,
       });
-      newPinned = [...newPinned, ...movedRows];
-    } else {
-      // Moving rows from pinned to source (removing headers)
-      const rowsToMove = currentCount - safeNewCount;
-      const movedRows = newPinned.splice(safeNewCount, rowsToMove);
-      // Remove header-row class from moved rows
-      movedRows.forEach(row => {
-        delete row._rowClass;
-      });
-      newSource = [...movedRows, ...newSource];
-    }
-
-    grid.pinnedTopSource = newPinned;
-    grid.source = newSource;
-    onDirty();
+      written = result?.range ?? null;
+      return result?.command ?? null;
+    }, { selectAfter: () => (written ? { cell: { row: written.startRow, col: written.startCol }, range: written } : null) });
+    return written;
   };
 
-  /**
-   * Add a new column at the specified index
-   */
-  const addColumn = async (index?: number): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const currentColumnCount = getColumnCount();
-    const insertIndex = index ?? currentColumnCount;
-
-    // Shift column data: for each row, shift columns from insertIndex onward
-    const shiftColumnsInRow = (row: Record<string, unknown>): Record<string, unknown> => {
-      const newRow: Record<string, unknown> = {};
-      for (let c = 0; c < currentColumnCount + 1; c++) {
-        const newKey = columnIndexToLetter(c);
-        if (c < insertIndex) {
-          // Columns before insert point stay the same
-          const oldKey = columnIndexToLetter(c);
-          newRow[newKey] = row[oldKey] ?? '';
-        } else if (c === insertIndex) {
-          // New column is empty
-          newRow[newKey] = '';
-        } else {
-          // Columns after insert point shift right (read from c-1)
-          const oldKey = columnIndexToLetter(c - 1);
-          newRow[newKey] = row[oldKey] ?? '';
-        }
-      }
-      // Preserve special properties like _rowClass
-      if (row._rowClass) {
-        newRow._rowClass = row._rowClass;
-      }
-      return newRow;
-    };
-
-    // Apply to all rows
-    if (pinnedTop) {
-      const newPinned = pinnedTop.map(shiftColumnsInRow);
-      grid.pinnedTopSource = newPinned;
-    }
-    if (source) {
-      const newSource = source.map(shiftColumnsInRow);
-      grid.source = newSource;
-    }
-
-    // Update column count
-    setColumnCount(currentColumnCount + 1);
-    onDirty();
+  const fillSeries: GridOperations['fillSeries'] = async (source, target) => {
+    await executor.execute(({ state, rowMapping }) => buildFillBetween(state, rowMapping.logicalRows, source, target),
+      { selectAfter: { cell: { row: target.startRow, col: target.startCol }, range: target } });
   };
 
-  /**
-   * Delete a column at the specified index
-   */
-  const deleteColumn = async (index: number): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const currentColumnCount = getColumnCount();
-
-    // Don't allow deleting the last column
-    if (currentColumnCount <= 1) return;
-
-    // Shift column data: for each row, shift columns after deleteIndex left
-    const shiftColumnsInRow = (row: Record<string, unknown>): Record<string, unknown> => {
-      const newRow: Record<string, unknown> = {};
-      for (let c = 0; c < currentColumnCount - 1; c++) {
-        const newKey = columnIndexToLetter(c);
-        if (c < index) {
-          // Columns before delete point stay the same
-          const oldKey = columnIndexToLetter(c);
-          newRow[newKey] = row[oldKey] ?? '';
-        } else {
-          // Columns after delete point shift left (read from c+1)
-          const oldKey = columnIndexToLetter(c + 1);
-          newRow[newKey] = row[oldKey] ?? '';
-        }
-      }
-      // Preserve special properties like _rowClass
-      if (row._rowClass) {
-        newRow._rowClass = row._rowClass;
-      }
-      return newRow;
-    };
-
-    // Apply to all rows
-    if (pinnedTop) {
-      const newPinned = pinnedTop.map(shiftColumnsInRow);
-      grid.pinnedTopSource = newPinned;
-    }
-    if (source) {
-      const newSource = source.map(shiftColumnsInRow);
-      grid.source = newSource;
-    }
-
-    // Update column count
-    setColumnCount(currentColumnCount - 1);
-    onDirty();
+  const fillDown: GridOperations['fillDown'] = async (source) => {
+    let target: NormalizedSelectionRange | null = null;
+    await executor.execute(({ state, rowMapping }) => {
+      const endRow = fillDownEndRow(state, source);
+      if (endRow === null) return null;
+      target = { ...source, endRow };
+      return buildFillBetween(state, rowMapping.logicalRows, source, target);
+    }, { selectAfter: () => (target ? { cell: { row: target.startRow, col: target.startCol }, range: target } : null) });
+    return target;
   };
 
-  /**
-   * Copy selection to clipboard
-   */
-  const copySelection = async (range: NormalizedSelectionRange): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) return;
-
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const values: string[][] = [];
-
-    for (let r = range.startRow; r <= range.endRow; r++) {
-      const row: string[] = [];
-      for (let c = range.startCol; c <= range.endCol; c++) {
-        const { gridRow, rowType } = translateRowIndex(r);
-        const prop = columnIndexToLetter(c);
-        const dataSource = rowType === 'rowPinStart' ? pinnedTop : source;
-        const value = dataSource?.[gridRow]?.[prop] ?? '';
-        row.push(String(value));
-      }
-      values.push(row);
-    }
-
-    const text = values.map(row => row.join('\t')).join('\n');
-    await copyToClipboard(text);
-  };
-
-  /**
-   * Cut selection (copy + clear)
-   */
-  const cutSelection = async (range: NormalizedSelectionRange): Promise<void> => {
-    await copySelection(range);
-    await clearCells(range);
-  };
-
-  /**
-   * Paste text at the specified position
-   */
-  const pasteFromText = async (targetRow: number, targetCol: number, text: string): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    // Parse the pasted text (tab and newline delimited)
-    const lines = text.split(/\r?\n/);
-    const values = lines
-      .filter(line => line.length > 0)
-      .map(line => line.split('\t'));
-
-    if (values.length === 0) return;
-
-    // Calculate required dimensions after paste
-    const pasteRowCount = values.length;
-    const pasteColCount = Math.max(...values.map(row => row.length));
-    const requiredColCount = targetCol + pasteColCount;
-
-    // Expand column count if paste extends beyond current columns
-    const currentColumnCount = getColumnCount();
-    if (requiredColCount > currentColumnCount) {
-      setColumnCount(requiredColCount);
-    }
-
-    const headerRowCount = getHeaderRowCount();
-    const finalColumnCount = Math.max(currentColumnCount, requiredColCount);
-
-    // Get current data
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    // Calculate required row count after paste
-    const requiredLastRow = targetRow + pasteRowCount - 1;
-    const requiredDataRows = requiredLastRow >= headerRowCount
-      ? requiredLastRow - headerRowCount + 1
-      : 0;
-    const currentDataRows = source?.length ?? 0;
-
-    // Expand grid source if needed
-    let newSource = [...(source || [])];
-    if (requiredDataRows > currentDataRows) {
-      // Add empty rows to accommodate pasted data
-      const rowsToAdd = requiredDataRows - currentDataRows;
-      for (let i = 0; i < rowsToAdd; i++) {
-        const emptyRow: Record<string, string> = {};
-        for (let c = 0; c < finalColumnCount; c++) {
-          emptyRow[columnIndexToLetter(c)] = '';
-        }
-        newSource.push(emptyRow);
-      }
-      // Update grid source with expanded rows
-      grid.source = newSource;
-    }
-
-    const changes: Array<{
-      rowIndex: number;
-      colIndex: number;
-      prop: string;
-      oldValue: unknown;
-      newValue: unknown;
-      rowType: DimensionRows;
-    }> = [];
-
-    const promises: Promise<void | undefined>[] = [];
-
-    for (let r = 0; r < values.length; r++) {
-      for (let c = 0; c < values[r].length; c++) {
-        const destRow = targetRow + r;
-        const destCol = targetCol + c;
-        const { gridRow, rowType } = translateRowIndex(destRow);
-        const prop = columnIndexToLetter(destCol);
-        const value = values[r][c];
-
-        // Get old value
-        const dataSource = rowType === 'rowPinStart' ? pinnedTop : newSource;
-        const oldValue = dataSource?.[gridRow]?.[prop] ?? '';
-
-        if (oldValue !== value) {
-          changes.push({
-            rowIndex: gridRow,
-            colIndex: destCol,
-            prop,
-            oldValue,
-            newValue: value,
-            rowType,
-          });
-        }
-
-        promises.push(grid.setDataAt({
-          row: gridRow,
-          col: destCol,
-          val: value,
-          rowType,
-          colType: 'rgCol',
-        }));
-      }
-    }
-
-    await Promise.all(promises);
-
-    // Record for undo
-    const undoPlugin = getUndoPlugin();
-    if (undoPlugin && changes.length > 0) {
-      undoPlugin.recordManualChange(changes);
-    }
-
-    onDirty();
-  };
-
-  /**
-   * Get all grid data for formula evaluation
-   */
-  async function getAllGridData(grid: RevoGridElement): Promise<FormulaEvalData> {
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const rows: Array<{ raw: string; computed: string | number | null }[]> = [];
-    let columnCount = 0;
-
-    // Add pinned (header) rows first
-    if (pinnedTop) {
-      for (const rowData of pinnedTop) {
-        const row: { raw: string; computed: string | number | null }[] = [];
-        const keys = Object.keys(rowData).filter(k => !k.startsWith('_'));
-        columnCount = Math.max(columnCount, keys.length);
-        for (const key of keys) {
-          const value = rowData[key];
-          row.push({
-            raw: String(value ?? ''),
-            computed: value ?? null,
-          });
-        }
-        rows.push(row);
-      }
-    }
-
-    // Add regular rows
-    if (source) {
-      for (const rowData of source) {
-        const row: { raw: string; computed: string | number | null }[] = [];
-        const keys = Object.keys(rowData).filter(k => !k.startsWith('_'));
-        columnCount = Math.max(columnCount, keys.length);
-        for (const key of keys) {
-          const value = rowData[key];
-          row.push({
-            raw: String(value ?? ''),
-            computed: value ?? null,
-          });
-        }
-        rows.push(row);
-      }
-    }
-
-    return { rows, columnCount };
-  }
-
-  /**
-   * Serialize grid data to CSV
-   */
-  const toCSV = async (): Promise<string> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    const headerRowCount = getHeaderRowCount();
-    const columnCount = getColumnCount();
+  const serializeCSV = async (): Promise<string> => {
+    const { source, pinnedTop } = await readSources();
+    const meta = getMeta();
     const delimiter = getDelimiter();
-    const columnFormats = getColumnFormats();
-    const frozenColumnCount = getFrozenColumnCount();
+    const allRows: Record<string, unknown>[] = [...pinnedTop, ...source];
 
-    // Helper to format a cell value for CSV
-    function formatCell(value: unknown): string {
-      const str = String(value ?? '');
-      if (str.includes(delimiter) || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    }
-
-    // Helper to check if a cell value is empty
-    function isEmptyCell(value: unknown): boolean {
-      return value === undefined || value === null || value === '';
-    }
-
-    // Find the last non-empty column across all rows (pinned + regular)
-    // We need to check ALL column keys that exist in row data, not just up to columnCount,
-    // because new columns may have been added that aren't reflected in the metadata
-    let lastNonEmptyCol = -1;
-    const allRows = [...(pinnedTop?.slice(0, headerRowCount) || []), ...(source || [])];
-
-    // Find the maximum possible column by looking at row object keys
-    let maxColToCheck = columnCount - 1;
-    for (const rowData of allRows) {
-      for (const key of Object.keys(rowData)) {
-        // Column keys are single or double letters (A-Z, AA-ZZ, etc.)
-        if (/^[A-Z]+$/.test(key)) {
-          const colIdx = columnLetterToIndex(key);
-          if (colIdx > maxColToCheck) {
-            maxColToCheck = colIdx;
-          }
+    let width = 0;
+    let populatedBelow = false;
+    allRows.forEach((row, index) => {
+      for (const [key, value] of Object.entries(row)) {
+        if (/^[A-Z]+$/.test(key) && !isEmptyCell(value)) {
+          width = Math.max(width, columnLetterToIndex(key) + 1);
+          if (index >= pinnedTop.length) populatedBelow = true;
         }
       }
-    }
+    });
+    width = Math.max(1, width);
+    // The pinned section is the header rows plus the frozen rows.
+    const headerRowCount = headerRowCountForPinned(meta, pinnedTop.length, populatedBelow);
 
-    for (const rowData of allRows) {
-      // Check all columns in this row from right to left
-      for (let colIdx = maxColToCheck; colIdx >= 0; colIdx--) {
-        const prop = columnIndexToLetter(colIdx);
-        if (!isEmptyCell(rowData[prop])) {
-          if (colIdx > lastNonEmptyCol) {
-            lastNonEmptyCol = colIdx;
-          }
-          break; // Found rightmost non-empty cell in this row
-        }
-      }
-    }
-
-    // Use at least 1 column
-    const effectiveColumnCount = Math.max(1, lastNonEmptyCol + 1);
-
-    const csvRows: string[] = [];
-
-    // Add pinned (header) rows first
-    if (pinnedTop) {
-      for (let rowIdx = 0; rowIdx < headerRowCount && rowIdx < pinnedTop.length; rowIdx++) {
-        const rowData = pinnedTop[rowIdx];
-        const cells: string[] = [];
-        for (let colIdx = 0; colIdx < effectiveColumnCount; colIdx++) {
-          const prop = columnIndexToLetter(colIdx);
-          const value = rowData[prop];
-          cells.push(formatCell(value));
-        }
-        csvRows.push(cells.join(delimiter));
-      }
-    }
-
-    // Add regular rows (include empty rows - they'll be trimmed from the end only)
-    if (source) {
-      for (let rowIdx = 0; rowIdx < source.length; rowIdx++) {
-        const rowData = source[rowIdx];
-        const cells: string[] = [];
-        for (let colIdx = 0; colIdx < effectiveColumnCount; colIdx++) {
-          const prop = columnIndexToLetter(colIdx);
-          const value = rowData[prop];
-          cells.push(formatCell(value));
-        }
-        csvRows.push(cells.join(delimiter));
-      }
-    }
-
-    // Trim trailing empty rows
-    while (csvRows.length > 0 && csvRows[csvRows.length - 1].split(delimiter).every(c => c === '')) {
+    const cellText = (row: Record<string, unknown> | undefined, col: number) => String(row?.[columnIndexToLetter(col)] ?? '');
+    const csvRows = allRows.map((row) => Array.from({ length: width }, (_, col) => (
+      quoteCsvField(cellText(row, col), delimiter)
+    )).join(delimiter));
+    while (csvRows.length > 0 && csvRows[csvRows.length - 1].split(delimiter).every((cell) => cell === '')) {
       csvRows.pop();
     }
+    const contentRows = csvRows.length;
+    if (csvRows.length === 0) csvRows.push('');
 
-    // Ensure at least one row
-    if (csvRows.length === 0) {
-      csvRows.push('');
-    }
-
-    // Build metadata - only include if using non-default features
-    const columnWidths = getColumnWidths();
-    const hasColumnFormats = Object.keys(columnFormats).length > 0;
-    const hasColumnWidths = Object.keys(columnWidths).length > 0;
-    const hasNonDefaultMetadata = headerRowCount > 0 || frozenColumnCount > 0 || hasColumnFormats || hasColumnWidths;
-
-    if (hasNonDefaultMetadata) {
-      const metadata: CSVMetadata = {
-        hasHeaders: headerRowCount > 0,
-        headerRowCount,
-        frozenColumnCount,
-        ...(hasColumnFormats ? { columnFormats } : {}),
-        ...(hasColumnWidths ? { columnWidths } : {}),
-      };
-      return `${serializeMetadata(metadata)}\n${csvRows.join('\n')}`;
-    }
-
-    return csvRows.join('\n');
+    const layout = options.getFileLayout?.() ?? DEFAULT_FILE_LAYOUT;
+    const firstRow = Array.from({ length: width }, (_, col) => cellText(allRows[0], col));
+    const metadataLine = buildMetadataLine({
+      headerRowCount,
+      frozenColumnCount: meta.frozenColumnCount,
+      columnFormats: meta.columnFormats,
+      columnWidths: meta.columnWidths,
+      cellStyles: meta.cellStyles,
+      ...pickFormatting(meta),
+    }, { detectedHeaderRowCount: autoDetectHeaderRowCount(firstRow, contentRows), keepLine: layout.hasMetadataLine });
+    const { lineEnding } = layout;
+    const body = csvRows.join(lineEnding) + (layout.trailingNewline && contentRows > 0 ? lineEnding : '');
+    return metadataLine ? `${metadataLine}${lineEnding}${body}` : body;
   };
 
-  /**
-   * Get raw grid data
-   */
-  const getData = async (): Promise<{ source: Record<string, unknown>[]; pinnedTop: Record<string, unknown>[] }> => {
-    const grid = gridRef.current;
-    if (!grid) return { source: [], pinnedTop: [] };
-
-    const [source, pinnedTop] = await Promise.all([
-      grid.getSource('rgRow'),
-      grid.getSource('rowPinStart'),
-    ]);
-
-    return {
-      source: source || [],
-      pinnedTop: pinnedTop || [],
-    };
-  };
-
-  /**
-   * Sort by column
-   */
-  const sortByColumn = async (columnIndex: number, direction: 'asc' | 'desc' | null): Promise<void> => {
-    const grid = gridRef.current;
-    if (!grid) throw new Error('Grid not available');
-
-    if (direction === null) {
-      // Clear sort - would need to restore original order
-      // For now, just return
-      return;
-    }
-
-    const source = await grid.getSource('rgRow');
-    if (!source) return;
-
-    const prop = columnIndexToLetter(columnIndex);
-
-    // Sort the source array
-    const sorted = [...source].sort((a, b) => {
-      const aVal = a[prop];
-      const bVal = b[prop];
-
-      // Handle empty values
-      const aEmpty = aVal === null || aVal === undefined || aVal === '';
-      const bEmpty = bVal === null || bVal === undefined || bVal === '';
-
-      if (aEmpty && bEmpty) return 0;
-      if (aEmpty) return direction === 'asc' ? 1 : -1;
-      if (bEmpty) return direction === 'asc' ? -1 : 1;
-
-      // Numeric comparison
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        return direction === 'asc' ? aVal - bVal : bVal - aVal;
-      }
-
-      // String comparison
-      const result = String(aVal).localeCompare(String(bVal));
-      return direction === 'asc' ? result : -result;
-    });
-
-    grid.source = sorted;
-    onDirty();
+  const getRowModel = async (row: number) => {
+    const { source, pinnedTop } = await readSources();
+    const header = pinnedTop.length;
+    return row < header ? pinnedTop[row] : source[row - header];
   };
 
   return {
-    updateCell,
+    executor,
+    updateCell: async (row, col, value, origin) => { await updateCells([{ row, column: col, value }], origin); },
+    updateCells,
     clearCells,
-    getCellValue,
-    getCellRawValue,
-    addRow,
-    deleteRow,
-    addColumn,
-    deleteColumn,
-    updateHeaderRowCount,
+    getCellValue: async (row, col) => {
+      const model = await getRowModel(row);
+      if (!model) return null;
+      const prop = columnIndexToLetter(col);
+      return formulaViewState?.getDisplayValue(model, prop) ?? model[prop] ?? null;
+    },
+    getCellRawValue: async (row, col) => String((await getRowModel(row))?.[columnIndexToLetter(col)] ?? ''),
+    recalculateFormulas,
+    // Without an index the row goes after the last row, as it always has.
+    addRow: async (index) => {
+      await executor.execute(({ state }) => ({
+        type: 'structural', edit: { type: 'insertRows', at: index ?? state.rows.length, count: 1 },
+      }));
+    },
+    deleteRow: async (index) => {
+      await executor.execute(({ state }) => (state.rows.length <= 1 ? null : {
+        type: 'structural', edit: { type: 'deleteRows', at: index, count: 1 },
+      }));
+    },
+    addColumn: async (index) => {
+      await executor.execute(({ state }) => ({
+        type: 'structural', edit: { type: 'insertCols', at: index ?? state.meta.columnCount, count: 1 },
+      }));
+    },
+    deleteColumn: async (index) => {
+      await executor.execute(({ state }) => (state.meta.columnCount <= 1 ? null : {
+        type: 'structural', edit: { type: 'deleteCols', at: index, count: 1 },
+      }));
+    },
+    updateHeaderRowCount: async (count) => {
+      await executor.execute({ type: 'setMeta', patch: { headerRowCount: Math.max(0, count) } });
+    },
+    setMeta: async (patch) => {
+      await executor.execute(({ state }) => ({
+        type: 'setMeta', patch: typeof patch === 'function' ? patch(state.meta) : patch,
+      }));
+    },
     copySelection,
-    cutSelection,
-    pasteFromText,
-    toCSV,
-    getData,
-    sortByColumn,
+    cutSelection: async (range, transfer) => {
+      if (await copySelection(range, transfer)) await clearCells(range);
+    },
+    paste,
+    pasteFromText: async (row, col, text) => {
+      await paste({ startRow: row, endRow: row, startCol: col, endCol: col }, { input: { text } });
+    },
+    fillSeries,
+    fillDown,
+    fillCopy: async (range, axis) => {
+      await executor.execute(({ state, rowMapping }) => (
+        buildFillCopy(state, logicalRowsForSelection(rowMapping, range).logicalRows, range, axis)
+      ));
+    },
+    fillValue: async (range, value, origin) => {
+      await executor.execute(({ rowMapping }) => (
+        buildFillValue(logicalRowsForSelection(rowMapping, range).logicalRows, range, value, origin)
+      ), { selectAfter: { cell: origin, range } });
+    },
+    toCSV: () => executor.readAfterQueued(() => serializeCSV()),
+    snapshotCSV: () => executor.readAfterQueued(async (revision) => ({ content: await serializeCSV(), revision })),
+    serializeCSV,
+    getData: readSources,
+    sortByColumn: async (columnIndex, direction) => {
+      // Clearing a sort would need the original order; nothing to do.
+      if (direction === null) return;
+      const prop = columnIndexToLetter(columnIndex);
+      await executor.execute(({ state }) => buildSort(state, direction, (row) => {
+        const model = executor.modelAt(row);
+        const shown = (model && formulaViewState?.getDisplayValue(model, prop)) ?? cellAt(state, row, columnIndex);
+        return getSortKey(shownValue(toCellValue(shown)), state.meta.columnFormats[columnIndex]);
+      }));
+    },
   };
 }

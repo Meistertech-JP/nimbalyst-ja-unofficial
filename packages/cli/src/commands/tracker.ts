@@ -2,7 +2,7 @@
  * `nim tracker <verb>` — the v1 noun, fully wired for reads.
  */
 import type { ParsedArgs } from '../cli/parse.js';
-import { flagStr, flagBool, flagInt } from '../cli/parse.js';
+import { flagStr, flagBool, flagInt, flagList } from '../cli/parse.js';
 import { usageError, notFoundError, writeNotPermittedError } from '../cli/exitCodes.js';
 import {
   makeGateway,
@@ -20,16 +20,26 @@ import {
   renderImporterSearch,
   renderImportResult,
   renderResnapshot,
+  getAssignedIssueKey,
+  getTrackerDisplayRef,
+  localRefNotice,
+  UNASSIGNED_ISSUE_KEY_MESSAGE,
 } from '../cli/output.js';
 import { loadTypeSchema } from './typeSchema.js';
 import { dim, green } from '../cli/colors.js';
 import * as fs from 'fs';
+import { runLocalTracker } from './trackerLocal.js';
 
 export async function runTracker(args: ParsedArgs): Promise<number> {
+  // Types placed in the local wiki are served from its files; see trackerLocal.ts.
+  const local = await runLocalTracker(args);
+  if (local !== null) return local;
   const verb = args.verb;
   switch (verb) {
     case 'list':
       return trackerList(args);
+    case 'ready':
+      return trackerReady(args);
     case 'get':
     case 'show':
       return trackerGet(args, verb === 'show');
@@ -53,10 +63,34 @@ export async function runTracker(args: ParsedArgs): Promise<number> {
       return trackerImport(args);
     default:
       throw usageError(
-        `Unknown tracker command '${verb ?? ''}'. Try: list, get, show, types, create, update, ` +
+        `Unknown tracker command '${verb ?? ''}'. Try: list, ready, get, show, types, create, update, ` +
           `comment, archive, link-session, importers, import.`,
       );
   }
+}
+
+/**
+ * The caveat for machine-private numbers goes to stderr so that `-q` stays a
+ * clean pipe and `--csv` stays a clean file, while the person at the terminal
+ * still sees it. `localRefNotice` decides whether there is anything to say.
+ */
+function writeLocalRefNotice(
+  records: { issueKey?: string; localKey?: string }[],
+  opts: ReturnType<typeof outputOptions>,
+): void {
+  const notice = localRefNotice(records, opts);
+  if (notice) process.stderr.write(dim(notice) + '\n');
+}
+
+async function trackerReady(args: ParsedArgs): Promise<number> {
+  return trackerList({
+    ...args,
+    verb: 'list',
+    flags: {
+      ...args.flags,
+      where: [...flagList(args, 'where'), 'readiness=ready'],
+    },
+  });
 }
 
 async function trackerList(args: ParsedArgs): Promise<number> {
@@ -65,7 +99,9 @@ async function trackerList(args: ParsedArgs): Promise<number> {
     const workspace = await resolveWorkspace(gateway, flagStr(args, 'workspace'));
     const filters = buildFilters(args, workspace);
     const records = await gateway.listTrackers(filters);
-    process.stdout.write(renderList(records, outputOptions(args)) + '\n');
+    const opts = outputOptions(args);
+    writeLocalRefNotice(records, opts);
+    process.stdout.write(renderList(records, opts) + '\n');
     return 0;
   } finally {
     gateway.close();
@@ -90,7 +126,9 @@ async function trackerGet(args: ParsedArgs, withBody: boolean): Promise<number> 
 
     const wantBody = withBody || flagBool(args, 'body') || flagBool(args, 'json');
     const body = wantBody ? await gateway.getTrackerBody(workspace, record) : undefined;
-    process.stdout.write(renderRecord(record, body, outputOptions(args)) + '\n');
+    const opts = outputOptions(args);
+    writeLocalRefNotice([record], opts);
+    process.stdout.write(renderRecord(record, body, opts) + '\n');
     return 0;
   } finally {
     gateway.close();
@@ -144,12 +182,17 @@ async function trackerCreate(args: ParsedArgs): Promise<number> {
   try {
     const workspace = await resolveWorkspace(gateway, flagStr(args, 'workspace'));
     const record = await gateway.createTracker(workspace, input);
+    const issueKey = getAssignedIssueKey(record);
+    const displayRef = getTrackerDisplayRef(record);
     if (flagBool(args, 'json')) {
       process.stdout.write(renderRecord(record, undefined, outputOptions(args)) + '\n');
     } else if (flagBool(args, 'quiet')) {
-      process.stdout.write((record.issueKey ?? record.id) + '\n');
+      process.stdout.write(displayRef + '\n');
     } else {
-      process.stdout.write(green(`Created ${record.issueKey ?? record.id}`) + dim(` (${record.primaryType})`) + '\n');
+      process.stdout.write(
+        green(`Created ${displayRef}`) + dim(` (${record.primaryType})`)
+        + (issueKey ? '' : `\n${dim(UNASSIGNED_ISSUE_KEY_MESSAGE)}`) + '\n',
+      );
     }
     return 0;
   } finally {
@@ -165,12 +208,17 @@ async function trackerUpdate(args: ParsedArgs): Promise<number> {
   try {
     const workspace = await resolveWorkspace(gateway, flagStr(args, 'workspace'));
     const record = await gateway.updateTracker(workspace, reference, input);
+    const issueKey = getAssignedIssueKey(record);
+    const displayRef = getTrackerDisplayRef(record);
     if (flagBool(args, 'json')) {
       process.stdout.write(renderRecord(record, undefined, outputOptions(args)) + '\n');
     } else if (flagBool(args, 'quiet')) {
-      process.stdout.write((record.issueKey ?? record.id) + '\n');
+      process.stdout.write(displayRef + '\n');
     } else {
-      process.stdout.write(green(`Updated ${record.issueKey ?? record.id}`) + '\n');
+      process.stdout.write(
+        green(`Updated ${displayRef}`)
+        + (issueKey ? '' : `\n${dim(UNASSIGNED_ISSUE_KEY_MESSAGE)}`) + '\n',
+      );
     }
     return 0;
   } finally {
@@ -203,7 +251,11 @@ async function trackerArchive(args: ParsedArgs, archived: boolean): Promise<numb
     const workspace = await resolveWorkspace(gateway, flagStr(args, 'workspace'));
     const record = await gateway.setArchived(workspace, reference, archived);
     if (!flagBool(args, 'quiet')) {
-      process.stdout.write(green(`${archived ? 'Archived' : 'Unarchived'} ${record.issueKey ?? record.id}.`) + '\n');
+      const issueKey = getAssignedIssueKey(record);
+      process.stdout.write(
+        green(`${archived ? 'Archived' : 'Unarchived'} ${getTrackerDisplayRef(record)}.`)
+        + (issueKey ? '' : `\n${dim(UNASSIGNED_ISSUE_KEY_MESSAGE)}`) + '\n',
+      );
     }
     return 0;
   } finally {

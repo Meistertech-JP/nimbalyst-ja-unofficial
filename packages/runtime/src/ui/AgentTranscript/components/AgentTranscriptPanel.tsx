@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { SessionData } from '../../../ai/server/types';
+import type { ToolCallDiffLoadResult } from '../../../ai/server/transcript';
 import type { TranscriptSettings, PromptMarker, FileEditSummary } from '../types';
 import { RichTranscriptView } from './RichTranscriptView';
+import type { TranscriptFileLocation } from './MarkdownRenderer';
 import { TranscriptSidebar } from './TranscriptSidebar';
 import { FileEditsSidebar } from './FileEditsSidebar';
 import { FloatingTranscriptActions } from './FloatingTranscriptActions';
 import { formatISO } from '../../../utils/dateUtils';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 interface Todo {
   status: 'pending' | 'in_progress' | 'completed';
@@ -45,7 +47,8 @@ interface AgentTranscriptPanelProps {
   onSettingsChange?: (settings: TranscriptSettings) => void;
   showSettings?: boolean;
   initialSettings?: TranscriptSettings;
-  onFileClick?: (filePath: string) => void;
+  /** `location` is set when the clicked link carried a `:line[:col]` suffix. */
+  onFileClick?: (filePath: string, location?: TranscriptFileLocation) => void;
   /** Optional: Navigate to a session by ID (for @@session reference links) */
   onOpenSession?: (sessionId: string) => void;
   hideSidebar?: boolean;  // Hide the prompts/files sidebar
@@ -97,7 +100,7 @@ interface AgentTranscriptPanelProps {
   /** Optional: Display name for external editor (e.g., "VS Code") */
   externalEditorName?: string;
   /** Optional: Callback to trigger /compact command */
-  onCompact?: () => void;
+  onCompact?: () => void | Promise<void>;
   /** Optional: Prompt additions for debugging (system prompt, user message, and attachments) */
   promptAdditions?: {
     systemPromptAddition: string | null;
@@ -112,10 +115,14 @@ interface AgentTranscriptPanelProps {
   renderEmbeddedFile?: (params: { filePath: string; defaultExpanded?: boolean }) => React.ReactNode;
   /** Optional: Predicate identifying files the host will render via renderEmbeddedFile */
   canEmbedFile?: (filePath: string) => boolean;
+  /** Host callback for lazy, workspace-scoped history diff hydration. */
+  loadToolCallDiffs?: (toolCallItemId: string, toolCallTimestamp?: number) => Promise<ToolCallDiffLoadResult>;
   /** Optional: merged teammate/worker statuses to drive transcript status UI */
   currentTeammates?: Array<{ agentId: string; status: 'running' | 'completed' | 'errored' | 'idle' }>;
   /** Optional: noun used in waiting text when teammates/workers are still running */
   waitingForNoun?: string;
+  /** Optional: background tasks the session is draining after the lead turn ended */
+  backgroundTasks?: Array<{ description: string; startedAt: number }>;
   /** Current session phase for the kanban board */
   currentPhase?: string | null;
   /** Available phase columns for the kanban board picker */
@@ -164,13 +171,15 @@ const AgentTranscriptPanelComponent = React.forwardRef<
   appStartTime,
   renderEmbeddedFile,
   canEmbedFile,
+  loadToolCallDiffs,
   currentTeammates,
   waitingForNoun,
+  backgroundTasks,
   currentPhase,
   phaseColumns,
   onSetPhase,
 }, ref) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   // Show floating actions if explicitly enabled, otherwise default to showing when sidebar is visible
   const shouldShowFloatingActions = showFloatingActions ?? !hideSidebar;
   // Prefer worktree path for worktree sessions, then prop, then sessionData
@@ -331,9 +340,11 @@ const AgentTranscriptPanelComponent = React.forwardRef<
           promptAdditions={promptAdditions}
           currentTeammates={currentTeammates ?? sessionData.metadata?.currentTeammates as Array<{ agentId: string; status: 'running' | 'completed' | 'errored' | 'idle' }> | undefined}
           waitingForNoun={waitingForNoun}
+          backgroundTasks={backgroundTasks}
           appStartTime={appStartTime}
           renderEmbeddedFile={renderEmbeddedFile}
           canEmbedFile={canEmbedFile}
+          loadToolCallDiffs={loadToolCallDiffs}
           onSearchBarVisibilityChange={setSearchBarVisible}
         />
 
@@ -376,7 +387,7 @@ const AgentTranscriptPanelComponent = React.forwardRef<
             {/* Header with Files label */}
             <div className="session-files-right-panel flex items-center gap-2 p-3 border-b border-nim bg-nim-secondary">
               <MaterialSymbol icon="description" size={16} />
-              <span className="font-medium text-nim">{t('aichat:transcript_panel.files_edited', 'Files Edited')}</span>
+              <span className="font-medium text-nim">{t('transcript_panel.files_edited')}</span>
               {fileEdits.length > 0 && (
                 <span className="ml-auto py-0.5 px-1.5 bg-nim-tertiary rounded text-[11px] font-medium text-nim-faint">
                   {fileEdits.length}
@@ -406,7 +417,7 @@ const AgentTranscriptPanelComponent = React.forwardRef<
               {Array.isArray(todos) && todos.length > 0 && (
                 <div className="border-t border-nim bg-nim-secondary p-3 max-h-[150px] overflow-auto">
                   <div className="mb-2 text-xs font-medium text-nim-muted">
-                    {t('aichat:transcript_panel.tasks', 'Tasks ({{completed}}/{{total}})', { completed: todos.filter(todo => todo.status === 'completed').length, total: todos.length })}
+                    {t('transcript_panel.tasks', { completed: todos.filter(t => t.status === 'completed').length, total: todos.length })}
                   </div>
                   <div className="flex flex-col gap-1">
                     {todos.map((todo, index) => {
@@ -588,6 +599,14 @@ export const AgentTranscriptPanel = React.memo(
       logPanelMemoDiff(nextProps.sessionId, 'currentTeammates', {
         prev: summarizePanelTeammates(prevProps.currentTeammates),
         next: summarizePanelTeammates(nextProps.currentTeammates),
+      });
+      return false;
+    }
+
+    if (prevProps.backgroundTasks !== nextProps.backgroundTasks) {
+      logPanelMemoDiff(nextProps.sessionId, 'backgroundTasks', {
+        prev: prevProps.backgroundTasks?.length ?? 0,
+        next: nextProps.backgroundTasks?.length ?? 0,
       });
       return false;
     }

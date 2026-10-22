@@ -35,13 +35,16 @@ import {
 import { $isListItemNode, $createListItemNode } from '@lexical/list';
 import { useEffect as useReactEffect } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import { $createTrackerItemNode, $getTrackerItemNode, $isTrackerItemNode, TrackerItemData, TrackerItemType, TrackerItemNode, TrackerItemStatus, TrackerItemPriority } from './TrackerItemNode';
 import { TRACKER_ITEM_TRANSFORMERS } from './TrackerItemTransformer';
 import { defineExtension } from 'lexical';
-import { TypeaheadMenuPlugin, type TypeaheadMenuOption, type UserCommand, $convertToEnhancedMarkdownString, getEditorTransformers } from '../../editor';
+import { type UserCommand, $convertToEnhancedMarkdownString, getEditorTransformers } from '../../editor';
 import { globalRegistry } from './models';
 import { trackerItemsArrayAtom } from './trackerDataAtoms';
-import { buildTrackerReferenceOptions, parseTypeScopedQuery, matchTrackerReferenceTrigger, $insertTrackerReference } from '../TrackerLinkPlugin/trackerReferencePicker';
+import { buildTrackerReferenceOptions, parseTypeScopedQuery, trackerRecordToCandidate } from '../TrackerLinkPlugin/trackerReferencePicker';
+import { collectCandidateTypes } from '../TrackerLinkPlugin/trackerReferenceSearch';
+import { TrackerReferenceTypeahead } from '../TrackerLinkPlugin/TrackerReferenceTypeahead';
 import { $createTrackerReferenceNode } from '../TrackerLinkPlugin/TrackerReferenceNode';
 import { DocumentHeaderRegistry } from './documentHeader/DocumentHeaderRegistry';
 import { TrackerDocumentHeader, shouldRenderTrackerHeader } from './documentHeader/TrackerDocumentHeader';
@@ -50,20 +53,14 @@ import { generateTrackerId } from './models/IDGenerator';
 import { formatLocalDateOnly } from './models/dateUtils';
 import { $isHeadingNode } from '@lexical/rich-text';
 import { $getRoot } from 'lexical';
-import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
 import './TrackerItem.css';
+import { appendStandaloneDecision } from '../../editor/plugins/DecisionPlugin/decisionDraft';
 
 interface TrackerEditorState {
   nodeKey: string;
   data: TrackerItemData;
   position: { x: number; y: number };
 }
-
-type TriggerFunction = (text: string, editor: LexicalEditor) => {
-  leadOffset: number;
-  matchingString: string;
-  replaceableString: string;
-} | null;
 
 // Register document header provider at module load time (not in component mount)
 // This ensures the provider is available before DocumentHeaderContainer tries to query it
@@ -88,11 +85,11 @@ function generateId(prefix: string): string {
   return `${prefix}_${timestamp}${random}`;
 }
 
-function insertTrackerItemNode(editor: LexicalEditor, type: TrackerItemType, existingText?: string, defaultTitle?: string): void {
+function insertTrackerItemNode(editor: LexicalEditor, type: TrackerItemType, existingText?: string): void {
   editor.update(() => {
     const selection = $getSelection();
 
-    const title = existingText || defaultTitle || `New ${type}`;
+    const title = existingText || `New ${type}`;
 
     // Generate ID prefix based on type
     let prefix = 'tsk';
@@ -134,8 +131,8 @@ function insertTrackerItemNode(editor: LexicalEditor, type: TrackerItemType, exi
 /**
  * Extract the first heading or a default title from the document
  */
-function extractDocumentTitle(editor: LexicalEditor, fallbackTitle = 'Untitled'): string {
-  let title = fallbackTitle;
+function extractDocumentTitle(editor: LexicalEditor): string {
+  let title = 'Untitled';
 
   editor.getEditorState().read(() => {
     const root = $getRoot();
@@ -150,7 +147,7 @@ function extractDocumentTitle(editor: LexicalEditor, fallbackTitle = 'Untitled')
     }
   });
 
-  return title || fallbackTitle;
+  return title || 'Untitled';
 }
 
 /**
@@ -185,7 +182,7 @@ function removeCommandText(editor: LexicalEditor): void {
 /**
  * Convert document to a plan by adding plan frontmatter
  */
-async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: string) => void, fallbackTitle?: string): Promise<void> {
+async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: string) => void): Promise<void> {
   if (!onContentChange) {
     console.warn('[TrackerPlugin] Cannot convert to plan: no content change handler');
     return;
@@ -195,7 +192,7 @@ async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: 
   removeCommandText(editor);
 
   // Extract title and get current content as markdown
-  const title = extractDocumentTitle(editor, fallbackTitle);
+  const title = extractDocumentTitle(editor);
   const planId = generateTrackerId('plan');
   const now = new Date();
 
@@ -231,7 +228,7 @@ async function convertToPlan(editor: LexicalEditor, onContentChange?: (content: 
 /**
  * Convert document to a decision by adding decision frontmatter
  */
-async function convertToDecision(editor: LexicalEditor, onContentChange?: (content: string) => void, fallbackTitle?: string): Promise<void> {
+async function convertToDecision(editor: LexicalEditor, onContentChange?: (content: string) => void): Promise<void> {
   if (!onContentChange) {
     console.warn('[TrackerPlugin] Cannot convert to decision: no content change handler');
     return;
@@ -241,7 +238,7 @@ async function convertToDecision(editor: LexicalEditor, onContentChange?: (conte
   removeCommandText(editor);
 
   // Extract title and get current content as markdown
-  const title = extractDocumentTitle(editor, fallbackTitle);
+  const title = extractDocumentTitle(editor);
   const decisionId = generateTrackerId('decision');
   const now = new Date();
 
@@ -265,7 +262,7 @@ async function convertToDecision(editor: LexicalEditor, onContentChange?: (conte
       const transformers = getEditorTransformers();
       const markdownContent = $convertToEnhancedMarkdownString(transformers, { includeFrontmatter: false });
       const updatedContent = updateTrackerInFrontmatter('', 'decision', decisionData);
-      const finalContent = updatedContent + '\n' + markdownContent;
+      const finalContent = updatedContent + '\n' + appendStandaloneDecision(markdownContent, title);
       onContentChange(finalContent);
     } catch (error) {
       console.error('[TrackerPlugin] Failed to convert to decision:', error);
@@ -276,9 +273,8 @@ async function convertToDecision(editor: LexicalEditor, onContentChange?: (conte
 export interface TrackerPluginProps {}
 
 function TrackerPlugin(): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   const [editor] = useLexicalComposerContext();
-  const { t } = useRuntimeTranslation();
-  const [query, setQuery] = useState<string | null>(null);
   const [editorState, setEditorState] = useState<TrackerEditorState | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -429,45 +425,45 @@ function TrackerPlugin(): JSX.Element | null {
     return editor.registerCommand(
       INSERT_TRACKER_TASK_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'task', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.task', 'task') }));
+        insertTrackerItemNode(editor, 'task');
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor, t]);
+  }, [editor]);
 
   useReactEffect(() => {
     return editor.registerCommand(
       INSERT_TRACKER_BUG_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'bug', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.bug', 'bug') }));
+        insertTrackerItemNode(editor, 'bug');
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor, t]);
+  }, [editor]);
 
   useReactEffect(() => {
     return editor.registerCommand(
       INSERT_TRACKER_PLAN_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'plan', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.plan', 'plan') }));
+        insertTrackerItemNode(editor, 'plan');
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor, t]);
+  }, [editor]);
 
   useReactEffect(() => {
     return editor.registerCommand(
       INSERT_TRACKER_IDEA_COMMAND,
       () => {
-        insertTrackerItemNode(editor, 'idea', undefined, t('tracker:inline.new_item', 'New {{type}}', { type: t('tracker:table.types.idea', 'idea') }));
+        insertTrackerItemNode(editor, 'idea');
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor, t]);
+  }, [editor]);
 
   // Register document conversion commands
   useReactEffect(() => {
@@ -476,14 +472,14 @@ function TrackerPlugin(): JSX.Element | null {
       () => {
         // Get onContentChange from window if available (set by DocumentHeaderContainer)
         const onContentChange = (window as any).__documentContentChangeHandler;
-        convertToPlan(editor, onContentChange, t('tracker:inline.untitled', 'Untitled')).catch(error => {
+        convertToPlan(editor, onContentChange).catch(error => {
           console.error('[TrackerPlugin] Failed to convert to plan:', error);
         });
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor, t]);
+  }, [editor]);
 
   useReactEffect(() => {
     return editor.registerCommand(
@@ -491,14 +487,14 @@ function TrackerPlugin(): JSX.Element | null {
       () => {
         // Get onContentChange from window if available (set by DocumentHeaderContainer)
         const onContentChange = (window as any).__documentContentChangeHandler;
-        convertToDecision(editor, onContentChange, t('tracker:inline.untitled', 'Untitled')).catch(error => {
+        convertToDecision(editor, onContentChange).catch(error => {
           console.error('[TrackerPlugin] Failed to convert to decision:', error);
         });
         return true;
       },
       COMMAND_PRIORITY_EDITOR,
     );
-  }, [editor, t]);
+  }, [editor]);
 
 
   // Handle tracker-item-toggle and tracker-item-edit events
@@ -643,140 +639,27 @@ function TrackerPlugin(): JSX.Element | null {
     }
   }, [editor]);
 
-  // Typeahead trigger function.
-  //
-  // The document editor runs Lexical's HashtagPlugin, so typing `#bug` becomes a
-  // HashtagNode and any following `-` (issue keys) or `:` (the `type:` scope)
-  // spills into a SEPARATE sibling text node. The shared `getTextUpToAnchor`
-  // only reads the anchor node, so it would miss the `#` and close the menu the
-  // instant you type `-`/`:`. We instead accumulate text backwards across
-  // same-level siblings up to the caret so the `#…` trigger is seen whole.
-  const trackerTriggerFn: TriggerFunction = useCallback((_text: string, editor: LexicalEditor) => {
-    let result: { leadOffset: number; matchingString: string; replaceableString: string } | null = null;
-
-    editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection) || !selection.isCollapsed()) return;
-
-      const anchor = selection.anchor;
-      if (anchor.type !== 'text') return;
-
-      const anchorNode = anchor.getNode();
-      const anchorOffset = anchor.offset;
-
-      const anchorUpToCaret = anchorNode.getTextContent().slice(0, anchorOffset);
-      let acc = anchorUpToCaret;
-      let prev: LexicalNode | null = anchorNode.getPreviousSibling();
-      while (prev) {
-        acc = prev.getTextContent() + acc;
-        prev = prev.getPreviousSibling();
-      }
-
-      const match = matchTrackerReferenceTrigger(acc);
-      if (!match) return;
-
-      // leadOffset is a DOM offset within the anchor node; clamp the matched
-      // span to the part that actually lives in the anchor node (the rest is in
-      // the preceding hashtag/sibling node).
-      const inAnchor = Math.min(match.replaceableString.length, anchorUpToCaret.length);
-      result = {
-        leadOffset: anchorOffset - inAnchor,
-        matchingString: match.matchingString,
-        replaceableString: match.replaceableString,
-      };
-    });
-
-    return result;
-  }, []);
-
-  // Set of known tracker types (registered models + types present in the data)
-  // used to recognize a `type:` scope prefix in the query.
+  // `#` typeahead (V2) — search EXISTING tracker items to reference. Selecting
+  // one inserts a TrackerReferenceNode pointer (live chip), instead of creating
+  // a frozen inline TrackerItemNode. Types known to the registry or present in
+  // the data recognize a `type:` scope prefix (e.g. `#bug:login`).
   const knownTrackerTypes = useMemo(() => {
-    const set = new Set<string>();
+    const set = collectCandidateTypes(trackerItems.map(trackerRecordToCandidate));
     for (const model of globalRegistry.getAll()) set.add(model.type.toLowerCase());
-    for (const item of trackerItems) {
-      if (item.primaryType) set.add(item.primaryType.toLowerCase());
-      for (const tag of item.typeTags ?? []) set.add(tag.toLowerCase());
-    }
     return set;
   }, [trackerItems]);
-
-  // A leading `type:` prefix (e.g. `#bug:login`) scopes the picker to that type.
-  const { typeFilter, searchQuery } = parseTypeScopedQuery(query, knownTrackerTypes);
-
-  // Typeahead options (V2) — search EXISTING tracker items to reference.
-  // Selecting one inserts a TrackerReferenceNode pointer (live chip), instead
-  // of creating a frozen inline TrackerItemNode. The icon comes from the item's
-  // registered tracker model; `option.id` carries the reference key to insert.
-  const referenceOptions = buildTrackerReferenceOptions(trackerItems, searchQuery, { typeFilter });
-
-  const filteredOptions: TypeaheadMenuOption[] = referenceOptions.map((item) => {
-    const model = globalRegistry.get(item.type);
-    const icon = model?.icon ?? 'sell';
-    const keyLabel = item.issueKey ?? item.referenceKey;
-    const meta = [keyLabel, item.type, item.status].filter(Boolean).join(' · ');
+  const searchReferences = useCallback((query: string | null) => {
+    const knownTypes = knownTrackerTypes;
+    const { typeFilter, searchQuery } = parseTypeScopedQuery(query, knownTypes);
     return {
-      id: item.referenceKey,
-      label: item.title || keyLabel,
-      description: meta,
-      icon: <span className="material-symbols-outlined">{icon}</span>,
-      keywords: [item.referenceKey, keyLabel, item.title, item.type].filter(Boolean) as string[],
-      onSelect: () => {}, // Required by TypeaheadMenuOption but handled in handleSelectOption
+      options: buildTrackerReferenceOptions(trackerItems, searchQuery, { typeFilter }),
+      typeFilter,
+      searchQuery,
     };
-  });
-
-  // When the user has typed a query that matches nothing, show a disabled hint
-  // rather than an empty floating box.
-  const noMatchLabel = typeFilter
-    ? (searchQuery
-      ? t('tracker:inline.no_type_items_match', 'No {{type}} items match “{{query}}”', { type: typeFilter, query: searchQuery })
-      : t('tracker:inline.no_type_items', 'No {{type}} items', { type: typeFilter }))
-    : (searchQuery
-      ? t('tracker:inline.no_items_match', 'No tracker items match “{{query}}”', { query: searchQuery })
-      : t('tracker:inline.no_items_yet', 'No tracker items yet'));
-  const menuOptions: TypeaheadMenuOption[] = filteredOptions.length > 0
-    ? filteredOptions
-    : [{
-        id: '__no-tracker-matches__',
-        label: noMatchLabel,
-        onSelect: () => {},
-        disabled: true,
-      }];
-
-  // Small header confirming an active type scope.
-  const typeaheadHeader = typeFilter ? (
-    <div className="tracker-typeahead-filter-hint">
-      <span className="material-symbols-outlined">filter_list</span>
-      {t('tracker:inline.filtering_by_type', 'Filtering by type:')} <strong>{typeFilter}</strong>
-    </div>
-  ) : undefined;
-
-  const handleSelectOption = useCallback(
-    (option: TypeaheadMenuOption, _textNode: TextNode | null, closeMenu: () => void, matchingString: string) => {
-      // The "no matches" hint is non-actionable.
-      if (option.disabled) {
-        closeMenu();
-        return;
-      }
-
-      editor.update(() => {
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          // Remove the `#query` trigger text ourselves (TypeaheadMenuPlugin's
-          // single-node split can't, because the trigger may span a HashtagNode
-          // plus a sibling text node). Delete backward over `#` + the query.
-          const removeCount = (matchingString?.length ?? 0) + 1; // +1 for '#'
-          for (let i = 0; i < removeCount; i++) {
-            selection.deleteCharacter(true);
-          }
-        }
-        // option.id is the reference key (issue key or record id). Insert an
-        // inline TrackerReferenceNode pointer at the caret.
-        $insertTrackerReference(option.id);
-      });
-      closeMenu();
-    },
-    [editor],
+  }, [knownTrackerTypes, trackerItems]);
+  const iconForTrackerType = useCallback(
+    (type: string) => globalRegistry.get(type)?.icon ?? 'sell',
+    [],
   );
 
   // Get model config for the tracker type being edited
@@ -805,7 +688,7 @@ function TrackerPlugin(): JSX.Element | null {
             <textarea
               value={value}
               onChange={(e) => handleChange(e.target.value)}
-              placeholder={t('tracker:inline.add_field', 'Add {{field}}...', { field: label.toLowerCase() })}
+              placeholder={t('inline.add_field', { field: label.toLowerCase() })}
               rows={4}
             />
           </div>
@@ -819,7 +702,7 @@ function TrackerPlugin(): JSX.Element | null {
               value={value}
               onChange={(e) => handleChange(e.target.value)}
             >
-              {!field.required && <option value="">{t('tracker:inline.none', 'None')}</option>}
+              {!field.required && <option value="">{t('inline.none')}</option>}
               {field.options?.map((option: any) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -837,12 +720,12 @@ function TrackerPlugin(): JSX.Element | null {
               type={field.type === 'number' ? 'number' : 'text'}
               value={value}
               onChange={(e) => handleChange(e.target.value)}
-              placeholder={t('tracker:inline.enter_field', 'Enter {{field}}...', { field: label.toLowerCase() })}
+              placeholder={t('inline.enter_field', { field: label.toLowerCase() })}
             />
           </div>
         );
     }
-  }, [editorState, updateTrackerData, t]);
+  }, [editorState, t, updateTrackerData]);
 
   // Group fields for layout
   const fields = model?.fields || [];
@@ -858,13 +741,9 @@ function TrackerPlugin(): JSX.Element | null {
 
   return (
     <>
-      <TypeaheadMenuPlugin
-        options={menuOptions}
-        triggerFn={trackerTriggerFn}
-        onQueryChange={setQuery}
-        onSelectOption={handleSelectOption}
-        header={typeaheadHeader}
-        shouldSplitNodeWithQuery={false}
+      <TrackerReferenceTypeahead
+        search={searchReferences}
+        iconForType={iconForTrackerType}
       />
 
       {editorState && model && (
@@ -886,7 +765,7 @@ function TrackerPlugin(): JSX.Element | null {
           {/* Title field - always first */}
           {titleField && (
             <div className="tracker-item-popover-field">
-              <label>{t('tracker:columns.title', 'Title')}</label>
+              <label>{t('columns.title')}</label>
               <input
                 type="text"
                 value={editorState.data.title}
@@ -894,7 +773,7 @@ function TrackerPlugin(): JSX.Element | null {
                   updateTrackerData(editorState.nodeKey, { title: e.target.value });
                   setEditorState({ ...editorState, data: { ...editorState.data, title: e.target.value } });
                 }}
-                placeholder={t('tracker:inline.enter_title', 'Enter title')}
+                placeholder={t('inline.enter_title')}
               />
             </div>
           )}
@@ -919,19 +798,17 @@ function TrackerPlugin(): JSX.Element | null {
               className="tracker-item-convert-button"
               disabled={converting}
               onClick={() => handleConvertToReference(editorState.nodeKey, editorState.data)}
-              title={t('tracker:inline.convert_title', 'Create a real tracked item from this inline note and replace it with a live reference chip')}
+              title={t('inline.convert_title')}
             >
               <span className="material-symbols-outlined">sync_alt</span>
-              {converting
-                ? t('tracker:inline.converting', 'Converting…')
-                : t('tracker:inline.convert', 'Convert to tracked reference')}
+              {converting ? t('inline.converting') : t('inline.convert')}
             </button>
           </div>
 
           <div className="tracker-item-popover-footer">
-            <span className="tracker-item-date">{t('tracker:inline.created', 'Created:')} {editorState.data.created ? new Date(editorState.data.created).toLocaleString() : t('tracker:inline.not_available', 'N/A')}</span>
-            <span className="tracker-item-date">{t('tracker:inline.updated', 'Updated:')} {editorState.data.updated ? new Date(editorState.data.updated).toLocaleString() : t('tracker:inline.not_available', 'N/A')}</span>
-            <span className="tracker-item-id">{t('tracker:inline.id', 'ID')}: {editorState.data.id}</span>
+            <span className="tracker-item-date">{t('inline.created')} {editorState.data.created ? new Date(editorState.data.created).toLocaleString() : t('inline.not_available')}</span>
+            <span className="tracker-item-date">{t('inline.updated')} {editorState.data.updated ? new Date(editorState.data.updated).toLocaleString() : t('inline.not_available')}</span>
+            <span className="tracker-item-id">{t('inline.id')}: {editorState.data.id}</span>
           </div>
         </div>
       )}
@@ -1019,16 +896,16 @@ export { TrackerDocumentHeader, shouldRenderTrackerHeader } from './documentHead
 
 // Export data models
 export { ModelLoader, loadBuiltinTrackers } from './models/ModelLoader';
-export type { TrackerDataModel, FieldDefinition, TrackerSyncPolicy, TrackerSyncMode, TrackerSchemaRole } from './models/TrackerDataModel';
-export { parseTrackerYAML } from './models/YAMLParser';
-export { globalRegistry, getRoleField, getFieldByRole } from './models/TrackerDataModel';
+export type { TrackerDataModel, FieldDefinition, TrackerSharing, TrackerSharingPolicy, TrackerSchemaRole } from '@nimbalyst/tracker-schema';
+export { parseTrackerYAML } from '@nimbalyst/tracker-schema';
+export { globalRegistry, getRoleField, getFieldByRole } from '@nimbalyst/tracker-schema';
 
 // Export components
 export { StatusBar } from './components/StatusBar';
 export { TrackerTable, convertFullDocumentToTrackerItems, resolveTrackerFrontmatter, renderCell } from './components/TrackerTable';
 export type { SortColumn, SortDirection } from './components/TrackerTable';
 export { TrackerRowContextMenu, ContextSubmenu } from './components/TrackerRowContextMenu';
-export type { TrackerRowContextMenuProps } from './components/TrackerRowContextMenu';
+export type { TrackerRowContextMenuProps, TrackerLinkedSessionOption } from './components/TrackerRowContextMenu';
 export { TrackerFavoriteStar } from './components/TrackerFavoriteStar';
 export { useTrackerRows } from './components/useTrackerRows';
 export type { UseTrackerRowsOptions, UseTrackerRowsResult, EditingCellRef, EditingField } from './components/useTrackerRows';
@@ -1046,10 +923,16 @@ export {
   getPriorityColor,
   getTypeColor,
   getTypeIcon,
+  getTypeLabel,
+  applyTypeColumnDisplay,
+  resolveTypeColumnDisplay,
   formatRelativeDate,
+  formatRelativeCalendarDay,
+  formatTrackerDateCell,
   getEffectiveUpdatedDate,
 } from './components/trackerColumns';
-export type { TrackerColumnDef, TypeColumnConfig, ColumnRenderType } from './components/trackerColumns';
+export type { TrackerColumnDef, TypeColumnConfig, ColumnRenderType, TypeColumnDisplay } from './components/trackerColumns';
+export { TrackerTypeCell } from './components/TrackerTypeCell';
 export {
   resolveCellEditor,
   coerceCellValue,
@@ -1070,6 +953,12 @@ export {
 export type { TrackerRecordGroup } from './components/trackerRowData';
 export type { TrackerFieldEditorProps } from './components/TrackerFieldEditor';
 
+// Export GitHub tracker reference resolution
+export { buildPrUrl, getRecordPrReferences, parsePrUrl, prTrackerReferencesAtom } from './prReferences';
+export type { PrReference } from './prReferences';
+export { buildIssueUrl, getRecordIssueReferences, issueTrackerReferencesAtom, parseIssueUrl } from './issueReferences';
+export type { IssueReference } from './issueReferences';
+
 // Export tracker data atoms (cross-platform reactive state)
 export {
   trackerItemsMapAtom,
@@ -1082,6 +971,8 @@ export {
   upsertTrackerItemAtom,
   removeTrackerItemAtom,
   replaceAllTrackerItemsAtom,
+  orgTrackerItemsAtom,
+  replaceOrgTrackerItemsAtom,
 } from './trackerDataAtoms';
 
 // Export tracker node and types

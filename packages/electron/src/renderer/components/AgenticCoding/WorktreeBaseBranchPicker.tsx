@@ -3,7 +3,8 @@
  *
  * Lets the user:
  * - Pick the base branch (local + cached remotes immediately; background
- *   `git:fetch` refreshes the list once new refs arrive).
+ *   `git:fetch` refreshes the list once new refs arrive), narrowing both
+ *   sections at once with the search field.
  * - Optionally set the worktree name (leaves blank for server-side
  *   auto-generation). Branch will be `worktree/<name>`.
  *
@@ -20,12 +21,17 @@
 
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface WorktreeBaseBranchPickerProps {
   isOpen: boolean;
-  workspacePath: string;
+  /**
+   * The repository the worktree will branch FROM -- not the workspace root.
+   * In a multi-root workspace those differ, and listing the primary root's
+   * branches would offer bases that do not exist in the repo being branched.
+   */
+  repoPath: string;
   initialName?: string;
   onCreate: (options: { baseBranch: string; name?: string }) => Promise<void>;
   onCancel: () => void;
@@ -55,9 +61,9 @@ function partition(branches: string[], current: string): BranchSections {
   return { local, remote, current };
 }
 
-async function fetchBranches(workspacePath: string): Promise<BranchSections> {
+async function fetchBranches(repoPath: string): Promise<BranchSections> {
   if (!window.electronAPI) return EMPTY_SECTIONS;
-  const result = (await window.electronAPI.invoke('git:branches', workspacePath)) as {
+  const result = (await window.electronAPI.invoke('git:branches', repoPath)) as {
     branches: string[];
     current: string;
   };
@@ -72,34 +78,49 @@ async function fetchBranches(workspacePath: string): Promise<BranchSections> {
  * as one or more path components under that prefix. Empty is allowed —
  * the server auto-generates a name in that case.
  */
-function validateName(name: string, t: TFunction): string | null {
+type NameValidationKey =
+  | 'too_long'
+  | 'starts_with_slash'
+  | 'ends_with_slash'
+  | 'starts_with_dot'
+  | 'ends_with_dot'
+  | 'starts_with_hyphen'
+  | 'ends_with_lock'
+  | 'contains_double_dot'
+  | 'contains_double_slash'
+  | 'contains_at_brace'
+  | 'contains_forbidden_characters'
+  | 'component_starts_with_dot'
+  | 'component_ends_with_lock';
+
+function validateName(name: string): NameValidationKey | null {
   if (!name) return null;
-  if (name.length > 64) return t('git:worktree_picker.validation.name_too_long');
+  if (name.length > 64) return 'too_long';
 
-  if (name.startsWith('/')) return t('git:worktree_picker.validation.cannot_start_slash');
-  if (name.endsWith('/')) return t('git:worktree_picker.validation.cannot_end_slash');
-  if (name.startsWith('.')) return t('git:worktree_picker.validation.cannot_start_dot');
-  if (name.endsWith('.')) return t('git:worktree_picker.validation.cannot_end_dot');
-  if (name.startsWith('-')) return t('git:worktree_picker.validation.cannot_start_dash');
+  if (name.startsWith('/')) return 'starts_with_slash';
+  if (name.endsWith('/')) return 'ends_with_slash';
+  if (name.startsWith('.')) return 'starts_with_dot';
+  if (name.endsWith('.')) return 'ends_with_dot';
+  if (name.startsWith('-')) return 'starts_with_hyphen';
 
-  if (name.endsWith('.lock')) return t('git:worktree_picker.validation.cannot_end_lock');
+  if (name.endsWith('.lock')) return 'ends_with_lock';
 
-  if (name.includes('..')) return t('git:worktree_picker.validation.cannot_contain_double_dot');
-  if (name.includes('//')) return t('git:worktree_picker.validation.cannot_contain_double_slash');
-  if (name.includes('@{')) return t('git:worktree_picker.validation.cannot_contain_at_brace');
+  if (name.includes('..')) return 'contains_double_dot';
+  if (name.includes('//')) return 'contains_double_slash';
+  if (name.includes('@{')) return 'contains_at_brace';
 
   // ASCII control chars, space, and git's forbidden refname chars.
   // eslint-disable-next-line no-control-regex
   const forbiddenChar = /[\x00-\x1f\x7f \t~^:?*[\\]/;
   if (forbiddenChar.test(name)) {
-    return t('git:worktree_picker.validation.forbidden_chars');
+    return 'contains_forbidden_characters';
   }
 
   // Each path component must not be empty (covered by // check) and
   // must not start/end with forbidden boundary chars individually.
   for (const segment of name.split('/')) {
-    if (segment.startsWith('.')) return t('git:worktree_picker.validation.component_start_dot');
-    if (segment.endsWith('.lock')) return t('git:worktree_picker.validation.component_end_lock');
+    if (segment.startsWith('.')) return 'component_starts_with_dot';
+    if (segment.endsWith('.lock')) return 'component_ends_with_lock';
   }
 
   return null;
@@ -107,17 +128,18 @@ function validateName(name: string, t: TFunction): string | null {
 
 export function WorktreeBaseBranchPicker({
   isOpen,
-  workspacePath,
+  repoPath,
   initialName,
   onCreate,
   onCancel,
 }: WorktreeBaseBranchPickerProps) {
-  const { t } = useTranslation(['git']);
+  const { t } = useTranslation('agents');
   const [sections, setSections] = useState<BranchSections>(EMPTY_SECTIONS);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshingRemotes, setIsRefreshingRemotes] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [branchQuery, setBranchQuery] = useState('');
   const [name, setName] = useState(initialName ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -143,6 +165,7 @@ export function WorktreeBaseBranchPicker({
     setIsRefreshingRemotes(false);
     setLoadError(null);
     setSelectedBranch('');
+    setBranchQuery('');
     setName(initialName ?? '');
     setIsSubmitting(false);
     setSubmitError(null);
@@ -154,7 +177,7 @@ export function WorktreeBaseBranchPicker({
 
     const loadInitial = async () => {
       try {
-        const initial = await fetchBranches(workspacePath);
+        const initial = await fetchBranches(repoPath);
         if (!aliveRef.current) return;
         setSections(initial);
         // Pre-select current branch as a sensible default.
@@ -166,7 +189,7 @@ export function WorktreeBaseBranchPicker({
         setIsLoading(false);
       } catch (error) {
         if (!aliveRef.current) return;
-        setLoadError(error instanceof Error ? error.message : 'git:load_branches_failed');
+        setLoadError(error instanceof Error ? error.message : t('worktree_picker.failed_to_load'));
         setIsLoading(false);
       }
     };
@@ -175,9 +198,9 @@ export function WorktreeBaseBranchPicker({
       if (!window.electronAPI) return;
       setIsRefreshingRemotes(true);
       try {
-        await window.electronAPI.invoke('git:fetch', workspacePath);
+        await window.electronAPI.invoke('git:fetch', repoPath);
         if (!aliveRef.current) return;
-        const refreshed = await fetchBranches(workspacePath);
+        const refreshed = await fetchBranches(repoPath);
         if (!aliveRef.current) return;
         setSections((prev) => ({ ...refreshed, current: refreshed.current || prev.current }));
       } catch (error) {
@@ -194,7 +217,7 @@ export function WorktreeBaseBranchPicker({
     return () => {
       aliveRef.current = false;
     };
-  }, [isOpen, workspacePath]);
+  }, [isOpen, repoPath, t]);
 
   // Focus name input when modal opens (after initial load completes).
   useEffect(() => {
@@ -222,7 +245,41 @@ export function WorktreeBaseBranchPicker({
     return () => window.removeEventListener('keydown', handler, true);
   }, [isOpen, handleCancel]);
 
-  const nameError = useMemo(() => validateName(name.trim(), t), [name, t]);
+  const nameError = useMemo(() => {
+    const error = validateName(name.trim());
+    if (!error) return null;
+    const messages: Record<NameValidationKey, string> = {
+      too_long: t('worktree_picker.validation.too_long'),
+      starts_with_slash: t('worktree_picker.validation.starts_with_slash'),
+      ends_with_slash: t('worktree_picker.validation.ends_with_slash'),
+      starts_with_dot: t('worktree_picker.validation.starts_with_dot'),
+      ends_with_dot: t('worktree_picker.validation.ends_with_dot'),
+      starts_with_hyphen: t('worktree_picker.validation.starts_with_hyphen'),
+      ends_with_lock: t('worktree_picker.validation.ends_with_lock'),
+      contains_double_dot: t('worktree_picker.validation.contains_double_dot'),
+      contains_double_slash: t('worktree_picker.validation.contains_double_slash'),
+      contains_at_brace: t('worktree_picker.validation.contains_at_brace'),
+      contains_forbidden_characters: t('worktree_picker.validation.contains_forbidden_characters'),
+      component_starts_with_dot: t('worktree_picker.validation.component_starts_with_dot'),
+      component_ends_with_lock: t('worktree_picker.validation.component_ends_with_lock'),
+    };
+    return messages[error];
+  }, [name, t]);
+
+  // Narrow local and remote in one pass so a query matches across both
+  // sections. Selection is intentionally NOT exempt from the filter -- the
+  // preview line names the base branch, so a hidden selection stays visible
+  // there instead of being pinned into a list it no longer matches.
+  const query = branchQuery.trim().toLowerCase();
+  const visibleSections = useMemo(() => {
+    if (!query) return sections;
+    const matches = (branch: string) => branch.toLowerCase().includes(query);
+    return {
+      ...sections,
+      local: sections.local.filter(matches),
+      remote: sections.remote.filter(matches),
+    };
+  }, [sections, query]);
   const canSubmit =
     !isSubmitting && !isLoading && !loadError && Boolean(selectedBranch) && !nameError;
 
@@ -241,7 +298,7 @@ export function WorktreeBaseBranchPicker({
     } catch (error) {
       // Surface the failure inline; keep the modal open so the user
       // can adjust the name and retry without losing their selection.
-      setSubmitError(error instanceof Error ? error.message : t('git:worktree_picker.create_failed'));
+      setSubmitError(error instanceof Error ? error.message : t('worktree_picker.failed_to_create'));
       setIsSubmitting(false);
     }
   }, [canSubmit, name, onCreate, selectedBranch, stopBackgroundWork, t]);
@@ -259,7 +316,10 @@ export function WorktreeBaseBranchPicker({
   if (!isOpen) return null;
 
   const hasAnyBranch = sections.local.length > 0 || sections.remote.length > 0;
-  const branchPreview = name.trim() ? `worktree/${name.trim()}` : 'worktree/<auto-generated>';
+  const hasVisibleBranch = visibleSections.local.length > 0 || visibleSections.remote.length > 0;
+  const branchPreview = name.trim()
+    ? `worktree/${name.trim()}`
+    : `worktree/<${t('worktree_picker.auto_generated')}>`;
 
   return (
     <div
@@ -275,13 +335,13 @@ export function WorktreeBaseBranchPicker({
         data-component="WorktreeBaseBranchPicker"
         role="dialog"
         aria-modal="true"
-        aria-label={t('git:worktree_picker.create_worktree')}
+        aria-label={t('worktree_picker.title')}
         aria-busy={isSubmitting}
       >
         <div className="worktree-base-branch-picker-header px-6 pt-6 pb-4 border-b border-nim">
-          <h2 className="m-0 text-[18px] font-semibold text-nim">{t('git:worktree_picker.create_worktree')}</h2>
+          <h2 className="m-0 text-[18px] font-semibold text-nim">{t('worktree_picker.title')}</h2>
           <p className="m-0 mt-1 text-[13px] text-nim-muted">
-            {t('git:worktree_picker.create_desc')}
+            {t('worktree_picker.description')}
           </p>
         </div>
 
@@ -291,7 +351,7 @@ export function WorktreeBaseBranchPicker({
               htmlFor="worktree-name-input"
               className="text-[12px] font-semibold text-nim uppercase tracking-wider"
             >
-              {t('git:worktree_picker.worktree_name')}
+              {t('worktree_picker.name_label')}
             </label>
             <input
               id="worktree-name-input"
@@ -299,7 +359,7 @@ export function WorktreeBaseBranchPicker({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={t('git:worktree_picker.name_placeholder')}
+              placeholder={t('worktree_picker.name_placeholder')}
               className="worktree-name-input px-3 py-2 text-[13px] rounded-md border border-nim bg-nim-secondary text-nim focus:outline-none focus:border-nim-primary disabled:opacity-50 disabled:cursor-not-allowed"
               data-testid="worktree-name-input"
               autoComplete="off"
@@ -310,7 +370,9 @@ export function WorktreeBaseBranchPicker({
             />
             <div className="flex items-center justify-between text-[11px] text-nim-muted gap-2">
               <span className="font-mono truncate" data-testid="worktree-branch-preview">
-                {t('git:worktree_picker.branch', { name: branchPreview })}
+                {selectedBranch
+                  ? t('worktree_picker.branch_preview_from', { branch: branchPreview, base: selectedBranch })
+                  : t('worktree_picker.branch_preview', { branch: branchPreview })}
               </span>
               {nameError && (
                 <span
@@ -327,14 +389,14 @@ export function WorktreeBaseBranchPicker({
           <div className="worktree-base-branch-field flex flex-col gap-1.5 min-h-[140px]">
             <div className="flex items-center justify-between">
               <span className="text-[12px] font-semibold text-nim uppercase tracking-wider">
-                {t('git:worktree_picker.base_branch')}
+                {t('worktree_picker.base_branch')}
               </span>
               {isRefreshingRemotes && (
                 <span
                   className="text-[11px] text-nim-muted italic"
                   data-testid="worktree-base-branch-refreshing"
                 >
-                  {t('git:worktree_picker.refreshing_remotes')}
+                  {t('worktree_picker.refreshing_remotes')}
                 </span>
               )}
             </div>
@@ -344,47 +406,91 @@ export function WorktreeBaseBranchPicker({
                 className="px-3 py-3 text-[12px] text-nim-muted"
                 data-testid="worktree-base-branch-loading"
               >
-                {t('git:worktree_picker.loading_branches')}
+                {t('worktree_picker.loading_branches')}
               </div>
             )}
 
             {!isLoading && loadError && (
-              <div className="px-3 py-3 text-[12px] text-[var(--nim-error)]">{loadError === 'git:load_branches_failed' ? t('git:load_branches_failed') : loadError}</div>
+              <div className="px-3 py-3 text-[12px] text-[var(--nim-error)]">{loadError}</div>
             )}
 
             {!isLoading && !loadError && !hasAnyBranch && (
-              <div className="px-3 py-3 text-[12px] text-nim-muted">{t('git:worktree_picker.no_branches')}</div>
+              <div className="px-3 py-3 text-[12px] text-nim-muted">{t('worktree_picker.no_branches')}</div>
             )}
 
             {!isLoading && !loadError && hasAnyBranch && (
-              <div
-                className="worktree-base-branch-list flex flex-col gap-3 max-h-[44vh] overflow-y-auto rounded-md border border-nim bg-nim-secondary p-2"
-                role="radiogroup"
-                aria-label={t('git:worktree_picker.base_branch')}
-              >
-                {sections.local.length > 0 && (
-                  <BranchSection
-                    sectionId="local-branches"
-                    title={t('git:worktree_picker.local_branches')}
-                    branches={sections.local}
-                    current={sections.current}
-                    selected={selectedBranch}
-                    onSelect={setSelectedBranch}
-                    disabled={isSubmitting}
+              <>
+                <div className="worktree-base-branch-search relative">
+                  <MaterialSymbol
+                    icon="search"
+                    size={14}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-nim-faint pointer-events-none"
                   />
-                )}
-                {sections.remote.length > 0 && (
-                  <BranchSection
-                    sectionId="remote-branches"
-                    title={t('git:worktree_picker.remote_branches')}
-                    branches={sections.remote}
-                    current={sections.current}
-                    selected={selectedBranch}
-                    onSelect={setSelectedBranch}
+                  <input
+                    type="text"
+                    value={branchQuery}
+                    onChange={(e) => setBranchQuery(e.target.value)}
+                    placeholder={t('worktree_picker.search_branches')}
+                    className="worktree-base-branch-search-input w-full pl-8 pr-8 py-1.5 text-[13px] rounded-md border border-nim bg-nim-secondary text-nim placeholder:text-nim-faint focus:outline-none focus:border-nim-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-testid="worktree-base-branch-search"
+                    autoComplete="off"
+                    spellCheck={false}
                     disabled={isSubmitting}
+                    aria-label={t('worktree_picker.search_branches')}
                   />
+                  {branchQuery && (
+                    <button
+                      type="button"
+                      className="worktree-base-branch-search-clear absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center p-1 bg-transparent border-none rounded cursor-pointer text-nim-faint hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                      data-testid="worktree-base-branch-search-clear"
+                      onClick={() => setBranchQuery('')}
+                      disabled={isSubmitting}
+                      aria-label={t('worktree_picker.clear_branch_search')}
+                    >
+                      <MaterialSymbol icon="close" size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {!hasVisibleBranch ? (
+                  <div
+                    className="worktree-base-branch-empty px-3 py-3 text-[12px] text-nim-muted"
+                    data-testid="worktree-base-branch-no-matches"
+                  >
+                    {t('worktree_picker.no_branch_matches', { query: branchQuery.trim() })}
+                  </div>
+                ) : (
+                  <div
+                    id="worktree-base-branch-list"
+                    className="worktree-base-branch-list flex flex-col gap-3 max-h-[44vh] overflow-y-auto rounded-md border border-nim bg-nim-secondary p-2"
+                    role="radiogroup"
+                    aria-label={t('worktree_picker.base_branch')}
+                  >
+                    {visibleSections.local.length > 0 && (
+                      <BranchSection
+                        title={t('worktree_picker.local_branches')}
+                        branches={visibleSections.local}
+                        current={visibleSections.current}
+                        selected={selectedBranch}
+                        onSelect={setSelectedBranch}
+                        disabled={isSubmitting}
+                        currentLabel={t('worktree_picker.current_branch')}
+                      />
+                    )}
+                    {visibleSections.remote.length > 0 && (
+                      <BranchSection
+                        title={t('worktree_picker.remote_branches')}
+                        branches={visibleSections.remote}
+                        current={visibleSections.current}
+                        selected={selectedBranch}
+                        onSelect={setSelectedBranch}
+                        disabled={isSubmitting}
+                        currentLabel={t('worktree_picker.current_branch')}
+                      />
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
 
@@ -407,7 +513,7 @@ export function WorktreeBaseBranchPicker({
             onClick={handleCancel}
             disabled={isSubmitting}
           >
-            {t('git:worktree_picker.cancel')}
+            {t('worktree_picker.cancel')}
           </button>
           <button
             type="button"
@@ -417,7 +523,7 @@ export function WorktreeBaseBranchPicker({
             disabled={!canSubmit}
           >
             {isSubmitting && <Spinner />}
-            {isSubmitting ? t('git:worktree_picker.creating') : t('git:worktree_picker.create_worktree_button')}
+            {isSubmitting ? t('worktree_picker.creating') : t('worktree_picker.create')}
           </button>
         </div>
       </div>
@@ -436,18 +542,17 @@ function Spinner() {
 }
 
 interface BranchSectionProps {
-  sectionId: string;
   title: string;
   branches: string[];
   current: string;
   selected: string;
   onSelect: (branch: string) => void;
   disabled?: boolean;
+  currentLabel: string;
 }
 
-function BranchSection({ sectionId, title, branches, current, selected, onSelect, disabled }: BranchSectionProps) {
-  const { t } = useTranslation(['git']);
-  const sectionLabelId = `worktree-branch-section-${sectionId}`;
+function BranchSection({ title, branches, current, selected, onSelect, disabled, currentLabel }: BranchSectionProps) {
+  const sectionLabelId = `worktree-branch-section-${title.replace(/\s+/g, '-').toLowerCase()}`;
   return (
     <div className="worktree-base-branch-section" role="group" aria-labelledby={sectionLabelId}>
       <div
@@ -477,8 +582,8 @@ function BranchSection({ sectionId, title, branches, current, selected, onSelect
               >
                 <span className="flex-1 truncate font-mono text-[12px]">{branch}</span>
                 {isCurrent && (
-                  <span className="text-[10px] text-nim-muted" aria-label={t('git:current_branch')}>
-                    {t('git:worktree_picker.current')}
+                  <span className="text-[10px] text-nim-muted" aria-label={currentLabel}>
+                    {currentLabel}
                   </span>
                 )}
                 {isSelected && (

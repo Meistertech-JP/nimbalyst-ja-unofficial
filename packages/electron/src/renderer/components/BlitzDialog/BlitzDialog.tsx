@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { getProviderIcon } from '@nimbalyst/runtime';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { getProviderIcon } from '@nimbalyst/runtime/ui/icons/ProviderIcons';
 import { getClaudeCodeModelLabel } from '../../utils/modelUtils';
 
 interface Model {
@@ -30,7 +30,7 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
   onCreated,
   workspacePath,
 }) => {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('dialogs');
   const [prompt, setPrompt] = useState('');
   const [modelSelections, setModelSelections] = useState<ModelSelection[]>([]);
   const [analysisModel, setAnalysisModel] = useState<string>('claude-code:opus');
@@ -78,7 +78,7 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
         }
       } catch (err) {
         console.error('[BlitzDialog] Failed to load models:', err);
-        setError(t('dialogs:blitz.load_failed'));
+        setError(t('blitz.load_failed'));
       } finally {
         setLoading(false);
       }
@@ -148,10 +148,10 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
         onCreated(result);
         onClose();
       } else {
-        setError(result.error || t('dialogs:blitz.create_failed'));
+        setError(result.error || t('blitz.create_failed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('dialogs:blitz.create_failed'));
+      setError(err instanceof Error ? err.message : t('blitz.create_failed'));
     } finally {
       setCreating(false);
     }
@@ -190,6 +190,9 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
     >
       <div
         className="nim-modal w-[90vw] max-w-[560px] max-h-[85vh] animate-[worktree-modal-appear_0.2s_ease]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="blitz-dialog-title"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -206,18 +209,18 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
             </div>
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <h2 className="m-0 text-[18px] font-semibold text-nim">{t('dialogs:blitz.title_new')}</h2>
+                <h2 id="blitz-dialog-title" className="m-0 text-[18px] font-semibold text-nim">{t('blitz.title_new')}</h2>
                 <span className="text-[10px] uppercase tracking-wide text-nim-faint border border-nim rounded-full px-2 py-0.5">
-                  {t('dialogs:blitz.beta')}
+                  {t('blitz.beta')}
                 </span>
               </div>
               <p className="m-0 text-[12px] text-nim-muted max-w-[24rem]">
-                {t('dialogs:blitz.description')}
+                {t('blitz.description')}
               </p>
             </div>
           </div>
           <span className="text-[11px] text-nim-faint px-2.5 py-1 rounded-full border border-nim bg-nim-tertiary">
-            {t('dialogs:blitz.max_worktrees', { count: 10 })}
+            {t('blitz.max_worktrees', { count: 10 })}
           </span>
         </div>
 
@@ -226,38 +229,39 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
           {/* Prompt */}
           <div className="flex flex-col gap-2 rounded-xl border border-nim bg-nim-secondary p-4">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-[13px] font-medium text-nim">{t('dialogs:blitz.prompt')}</label>
-              <span className="text-[11px] text-nim-faint">{t('dialogs:blitz.shortcut_hint', { shortcut: 'Cmd+Enter' })}</span>
+              <label htmlFor="blitz-prompt" className="text-[13px] font-medium text-nim">{t('blitz.prompt')}</label>
+              <span className="text-[11px] text-nim-faint">{t('blitz.shortcut_hint', { shortcut: 'Cmd+Enter' })}</span>
             </div>
             <textarea
               ref={textareaRef}
+              id="blitz-prompt"
               className="w-full p-3 text-[14px] bg-nim border border-nim rounded-lg text-nim resize-none outline-none focus:border-nim-focus transition-colors placeholder:text-nim-faint"
               rows={4}
-              placeholder={t('dialogs:blitz.prompt_placeholder')}
+              placeholder={t('blitz.prompt_placeholder')}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={creating}
             />
             <div className="text-[11px] text-nim-faint">
-              {t('dialogs:blitz.tip')}
+              {t('blitz.tip')}
             </div>
           </div>
 
           {/* Models */}
           <div className="flex flex-col gap-3 rounded-xl border border-nim bg-nim-secondary p-4">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-[13px] font-medium text-nim">{t('dialogs:blitz.models')}</label>
+              <label className="text-[13px] font-medium text-nim">{t('blitz.models')}</label>
               {selectedModels.length > 0 && (
                 <div className={`text-[11px] ${totalWorktrees > 10 ? 'text-nim-error' : 'text-nim-faint'}`}>
-                  {t('dialogs:blitz.total', { count: totalWorktrees })}
-                  {totalWorktrees > 10 && t('dialogs:blitz.maximum', { count: 10 })}
+                  {t('blitz.total', { count: totalWorktrees })}
+                  {totalWorktrees > 10 && t('blitz.maximum', { count: 10 })}
                 </div>
               )}
             </div>
             {loading ? (
-              <div className="text-[13px] text-nim-faint py-3">{t('dialogs:blitz.loading_models')}</div>
+              <div className="text-[13px] text-nim-faint py-3">{t('blitz.loading_models')}</div>
             ) : modelSelections.length === 0 ? (
-              <div className="text-[13px] text-nim-faint py-3">{t('dialogs:blitz.no_models')}</div>
+              <div className="text-[13px] text-nim-faint py-3">{t('blitz.no_models')}</div>
             ) : (
               <div className="max-h-[260px] overflow-y-auto pr-1">
                 <div className="flex flex-col gap-1.5">
@@ -283,6 +287,7 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
                         type="number"
                         min={1}
                         max={5}
+                        aria-label={`${getModelDisplayName(model)}: ${t('blitz.total', { count: model.count })}`}
                         value={model.count}
                         onChange={(e) => updateCount(model.id, parseInt(e.target.value) || 1)}
                         disabled={!model.checked || creating}
@@ -296,17 +301,18 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
               </div>
             )}
             <div className="text-[11px] text-nim-faint">
-              {t('dialogs:blitz.choose_sessions')}
+              {t('blitz.choose_sessions')}
             </div>
           </div>
 
           {/* Analysis Model */}
           <div className="flex flex-col gap-2 rounded-xl border border-nim bg-nim-secondary p-4">
-            <label className="text-[13px] font-medium text-nim">{t('dialogs:blitz.analysis_model')}</label>
+            <label htmlFor="blitz-analysis-model" className="text-[13px] font-medium text-nim">{t('blitz.analysis_model')}</label>
             <p className="m-0 text-[11px] text-nim-muted">
-              {t('dialogs:blitz.analysis_description')}
+              {t('blitz.analysis_description')}
             </p>
             <select
+              id="blitz-analysis-model"
               className="w-full px-3 py-2 text-[13px] bg-nim border border-nim rounded-lg text-nim outline-none focus:border-nim-focus transition-colors cursor-pointer"
               value={analysisModel}
               onChange={(e) => setAnalysisModel(e.target.value)}
@@ -335,7 +341,7 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
             onClick={onClose}
             disabled={creating}
           >
-            {t('dialogs:blitz.cancel')}
+            {t('blitz.cancel')}
           </button>
           <button
             className="nim-btn-primary px-5 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -345,10 +351,10 @@ export const BlitzDialog: React.FC<BlitzDialogProps> = ({
             {creating ? (
               <>
                 <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                {t('dialogs:blitz.creating')}
+                {t('blitz.creating')}
               </>
             ) : (
-              t('dialogs:blitz.start', { count: totalWorktrees })
+              t('blitz.start', { count: totalWorktrees })
             )}
           </button>
         </div>

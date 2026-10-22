@@ -2,9 +2,7 @@
  * Format MCP tool identifiers into a readable label for the transcript UI.
  * Falls back to the original name if it doesn't follow the expected pattern.
  */
-import type { RuntimeTranslate } from '../../RuntimeTranslation';
-
-export function formatToolDisplayName(toolName?: string, t?: RuntimeTranslate): string {
+export function formatToolDisplayName(toolName?: string): string {
   if (!toolName) {
     return '';
   }
@@ -19,11 +17,11 @@ export function formatToolDisplayName(toolName?: string, t?: RuntimeTranslate): 
   }
 
   if (trimmed === 'file_change') {
-    return t?.('aichat:rich_transcript.file_change', 'File Change') ?? 'File Change';
+    return 'File Change';
   }
 
   if (trimmed === 'web_search') {
-    return t?.('aichat:rich_transcript.web_search', 'Web Search') ?? 'Web Search';
+    return 'Web Search';
   }
 
   const parts = trimmed.split('__').filter(part => part.length > 0);

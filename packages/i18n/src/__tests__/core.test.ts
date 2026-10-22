@@ -1,0 +1,252 @@
+import { describe, expect, it } from 'vitest';
+import { createI18nInstance, normalizeUiLanguage, resolveSystemLocale, resolveUiLocale } from '../core';
+import { resources } from '../resources';
+
+describe('UI language preference', () => {
+  it('normalizes unsupported persisted values to system', () => {
+    expect(normalizeUiLanguage('ja')).toBe('ja');
+    expect(normalizeUiLanguage('en')).toBe('en');
+    expect(normalizeUiLanguage('system')).toBe('system');
+    expect(normalizeUiLanguage('fr')).toBe('system');
+    expect(normalizeUiLanguage(undefined)).toBe('system');
+  });
+
+  it('uses Japanese only for Japanese system locales and English as fallback', () => {
+    expect(resolveSystemLocale('ja-JP')).toBe('ja');
+    expect(resolveSystemLocale('JA')).toBe('ja');
+    expect(resolveSystemLocale('en-US')).toBe('en');
+    expect(resolveSystemLocale(undefined)).toBe('en');
+  });
+
+  it('resolves explicit preferences without depending on agent language', () => {
+    expect(resolveUiLocale('ja', 'en-US')).toBe('ja');
+    expect(resolveUiLocale('en', 'ja-JP')).toBe('en');
+    expect(resolveUiLocale('system', 'ja-JP')).toBe('ja');
+  });
+
+  it('keeps English and Japanese resource namespaces and key shapes in lockstep', () => {
+    expect(Object.keys(resources.en).sort()).toEqual(Object.keys(resources.ja).sort());
+
+    const stringLeaves = (value: unknown, prefix = ''): string[] => {
+      if (typeof value === 'string') return [prefix];
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+      return Object.entries(value).flatMap(([key, child]) =>
+        stringLeaves(child, prefix ? `${prefix}.${key}` : key),
+      );
+    };
+
+    let totalKeys = 0;
+    for (const namespace of Object.keys(resources.en) as Array<keyof typeof resources.en>) {
+      const englishKeys = stringLeaves(resources.en[namespace]).sort();
+      const japaneseKeys = stringLeaves(resources.ja[namespace]).sort();
+      expect(japaneseKeys).toEqual(englishKeys);
+      totalKeys += englishKeys.length;
+
+      const readValue = (root: unknown, path: string): unknown =>
+        path.split('.').reduce<unknown>((value, segment) =>
+          value && typeof value === 'object'
+            ? (value as Record<string, unknown>)[segment]
+            : undefined,
+        root);
+
+      const readPath = (root: unknown, path: string): unknown =>
+        path.split('.').reduce<unknown>((value, segment) =>
+          value && typeof value === 'object'
+            ? (value as Record<string, unknown>)[segment]
+            : undefined,
+        root);
+      for (const key of englishKeys) {
+        const placeholders = (value: unknown) =>
+          typeof value === 'string'
+            ? [...value.matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)].map((match) => match[1]).sort()
+            : [];
+        expect(placeholders(readPath(resources.ja[namespace], key))).toEqual(
+          placeholders(readPath(resources.en[namespace], key)),
+        );
+        const japaneseValue = readValue(resources.ja[namespace], key);
+        const englishValue = readValue(resources.en[namespace], key);
+        if (`${namespace}.${key}` === 'common.local_wiki.export.note_separator') {
+          expect(englishValue).toBe(' ');
+          expect(japaneseValue).toBe(' ');
+          continue;
+        }
+        if (typeof japaneseValue === 'string') {
+          expect(japaneseValue.trim().length).toBeGreaterThan(0);
+          if (typeof englishValue === 'string' && japaneseValue === englishValue) {
+            // Exact equivalents are intentional for brands, file formats,
+            // commands, identifiers and user-provided input examples.
+            expect(['common.app_name', 'common.usage_indicator.claude_name', 'common.usage_indicator.gemini_name',
+              'common.quick_open.file_type_typescript', 'common.quick_open.file_type_javascript',
+              'common.quick_open.file_type_markdown', 'common.quick_open.file_type_json',
+              'common.quick_open.file_type_html', 'common.quick_open.file_type_python',
+              'common.quick_open.file_type_rust', 'common.quick_open.file_type_swift',
+              'common.quick_open.file_type_go',
+              'settings.agent_features.features.blitz.name',
+              'settings.agent_features.features.meta-agent.name',
+              'settings.claude_code_panel.cli_title',
+              'settings.claude_code_panel.path_placeholder',
+              'settings.claude_code_panel.variable_name',
+              'settings.database.migration_progress_detail',
+              'settings.database.ok',
+              'settings.database.panel.disk_space_ok',
+              'settings.provider.claude_agent.git_for_windows',
+              'settings.provider.claude_agent.claude_code_for_windows',
+              'settings.provider.claude_agent.name',
+              'settings.provider.claude_agent.title',
+              'common.account_ui.email_placeholder', 'settings.provider.claude.title',
+              'settings.provider.openai.title', 'settings.provider.lm_studio.title',
+              'settings.provider.headless.providers.cursor_agent.title',
+              'settings.provider.headless.providers.grok_build.title',
+              'settings.provider.opencode.cli_title',
+              'settings.provider.opencode.title',
+              'settings.provider.codex.title',
+              'settings.provider.codex.api_key_placeholder',
+              'settings.provider.copilot.title',
+              'settings.provider.copilot.cli_title',
+              'settings.sidebar.groups.github',
+              'settings.sidebar.items.openai_codex',
+              'settings.sidebar.items.opencode',
+              'settings.sidebar.items.copilot_cli',
+              'settings.sidebar.items.claude',
+              'settings.sidebar.items.openai',
+              'settings.sidebar.items.lmstudio',
+              'settings.sidebar.item_openai_codex',
+              'settings.sidebar.item_opencode',
+              'settings.sidebar.item_copilot_cli',
+              'settings.sidebar.item_grok_build',
+              'settings.sidebar.item_antigravity_gemini_agent',
+              'settings.sidebar.item_openai',
+              'settings.sidebar.item_lmstudio',
+              'settings.sidebar.item_project_github',
+              'settings.ui_language.english',
+              'settings.ui_language.japanese',
+              'settings.sync.ios_app',
+              'settings.sync.app_store',
+              'settings.sync.delete_word',
+              'settings.mcp.env_help.zapier_url_label',
+              'settings.developer_dashboard.render_profiler.atom',
+              'settings.themes.builtin_names.monokai',
+              'settings.themes.builtin_names.solarized-dark',
+              'settings.themes.builtin_names.solarized-light',
+              'settings.provider.claude_agent.sdk_title',
+              'settings.provider.claude_agent.sdk_title',
+              'common.quick_open.file_type_go',
+              'aichat.visual.chart_description',
+              'dialogs.superloop.raw_json',
+              'dialogs.keyboard_shortcuts.groups.wiki',
+              'editor.insert_dialog.url',
+              'editor.canvas.history.version',
+              'editor.code_excerpt.reference_placeholder',
+              'editor.spreadsheet_ui.boolean_style.true_false',
+              'editor.spreadsheet_ui.negative_style.minus',
+              'editor.spreadsheet_ui.negative_style.parens',
+              'editor.spreadsheet_ui.link.url',
+              'extensions.project_graph.ui.type_github_pr',
+              'extensions.project_graph.views_list',
+              'extensions.project_graph.atlas_label',
+              'extensions.project_graph.atlas_title',
+              'extensions.project_graph.pulse_label',
+              'extensions.project_graph.pulse.title',
+              'extensions.project_graph.source_github',
+              'extensions.github_placeholder',
+              'extensions.installed_panel.source_github',
+              'extensions.crew.hire.plus_more',
+              'extensions.knowledge_ui.cloudflare_workers_ai',
+              'files.filter.git',
+              'files.new_file.markdown',
+              'files.welcome.markdown_label',
+              'file_edits_sidebar.status.operation',
+              'git.issues.upstream',
+              'mcp.panel.header_name_placeholder',
+              'mcp.panel.auth_oauth',
+              'mcp.env_help.ZAPIER_MCP_URL.label',
+              'menu.top_bar.nimbalyst',
+              'menu.top_bar.git_activity_entry',
+              'menu.top_bar.git_activity',
+              'menu.github_discussions',
+              'menu.youtube',
+              'menu.linkedin',
+              'menu.x_twitter',
+              'menu.tiktok',
+              'menu.instagram',
+              'onboarding.email_placeholder',
+              'onboarding.welcome_modal.plans.private_label',
+              'onboarding.welcome_modal.plans.shared_label',
+              'onboarding.welcome_modal.claude.claude_md_label',
+              'onboarding.referral_options.youtube',
+              'onboarding.referral_options.github',
+              'onboarding.social_options.linkedin',
+              'onboarding.social_options.twitter_x',
+              'onboarding.social_options.reddit',
+              'onboarding.social_options.tiktok',
+              'onboarding.social_options.instagram',
+              'onboarding.social_options.facebook',
+              'project.providers.claude-code.name',
+              'project.providers.claude.name',
+              'project.providers.claude.subtitle',
+              'project.providers.openai.name',
+              'project.providers.lmstudio.name',
+              'project.themes.builtin_crystal',
+              'project.workspace_welcome.markdown',
+              'tracker.item_tooltip',
+              'tracker.inline.id',
+              'tracker.placed_view_settings.layout_2x2',
+              'extensions.id',
+              'extensions.project_graph.atlas.area_accessible_label',
+              'extensions.project_graph.atlas.connection_count',
+              'dialogs.confirm.ok',
+              'dialogs.database_recovery.ok',
+              'dialogs.error.ok',
+              'dialogs.extension_project.ok',
+              'onboarding.referral_options.ai',
+              'onboarding.social_options.youtube'].includes(`${namespace}.${key}`),
+              `${namespace}.${key} is identical in English and Japanese`).toBe(true);
+          }
+        }
+      }
+    }
+    expect(resources.ja.mcp.env_help.GITHUB_PERSONAL_ACCESS_TOKEN.label)
+      .toBe('GitHub 個人アクセストークン');
+    expect(resources.ja.mcp.env_help.FIGMA_API_KEY.label)
+      .toBe('Figma 個人アクセストークン');
+    expect(resources.ja.mcp.panel.value_placeholder).toBe('値');
+    expect(resources.en.tracker.page_status).toEqual({ draft: 'Draft', current: 'Current', outdated: 'Outdated' });
+    expect(resources.ja.tracker.page_status).toEqual({ draft: '下書き', current: '最新', outdated: '古い' });
+    expect(resources.en.collabSidebar.list.unsupported_document).toBe('Unsupported document');
+    expect(resources.ja.collabSidebar.list.unsupported_document).toBe('未対応のドキュメント');
+    expect(resources.ja.aichat.feedback_compose.change).toBe('変更');
+    expect(resources.ja.aichat.feedback_compose.rating_range).toBe('{{min}}～{{max}}');
+    expect(resources.ja.aichat.git_commit.exclude_hunk).toBe('この差分を除外');
+    expect(resources.ja.aichat.git_commit.show_hunks_for_file).toBe('{{fileName}}の差分を表示');
+    expect(resources.ja.aichat.mobile_html_embed.loading).toBe('{{label}}を読み込み中…');
+    expect(resources.ja.feedback.composer.message_placeholder)
+      .toBe('{{surfaceLabel}}にメッセージを入力。@でメンションするユーザーまたはエージェントを指定できます。');
+    expect(resources.ja.feedback.backlinks.document_title)
+      .toBe('このドキュメントへのフィードバック（{{count}}件）');
+    expect(resources.en.extensions.animation.scene_aria_label).toBe('Animated diagram with {{partCount}} parts and {{stepCount}} steps.');
+    expect(resources.ja.extensions.animation.scene_aria_label).toBe('アニメーション図。要素{{partCount}}個、ステップ{{stepCount}}件。');
+    expect(resources.en.extensions.animation.scene_steps).toBe(' Steps: {{captions}}');
+    expect(resources.ja.extensions.animation.scene_steps).toBe('ステップ: {{captions}}');
+    expect(resources.en.extensions.project_graph.pulse.unit.auto).toBe('Auto');
+    expect(resources.ja.extensions.project_graph.pulse.unit.auto).toBe('自動');
+    expect(resources.en.extensions.image_generation_ui.styles.custom.label).toBe('Custom');
+    expect(resources.ja.extensions.image_generation_ui.styles.custom.label).toBe('カスタム');
+    expect(resources.en.settings.sidebar.item_grok_build).toBe('Grok Build');
+    expect(resources.ja.settings.sidebar.item_grok_build).toBe('Grok Build');
+    expect(resources.en.settings.sidebar.item_cursor_agent).toBe('Cursor Agent');
+    expect(resources.ja.settings.sidebar.item_cursor_agent).toBe('Cursorエージェント');
+    expect(resources.en.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
+    expect(resources.ja.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
+    expect(totalKeys).toBe(14289);
+  });
+
+  it('creates isolated translator instances with English fallback', async () => {
+    const english = await createI18nInstance('en');
+    const japanese = await createI18nInstance('ja');
+    expect(japanese.t('ui_language.label', { ns: 'settings' })).toBe('表示言語');
+    expect(english.t('ui_language.label', { ns: 'settings' })).toBe('Interface language');
+    expect(japanese.t('missing_key', { ns: 'settings', defaultValue: 'Fallback text' })).toBe('Fallback text');
+    expect(english.language).toBe('en');
+    expect(japanese.language).toBe('ja');
+  });
+});

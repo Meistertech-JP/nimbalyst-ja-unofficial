@@ -45,46 +45,6 @@ export const PROJECT_TRUST_CHOICE_DESCRIPTIONS: Record<
     'Approve each action before it runs. Your approvals are remembered.',
 };
 
-const PROJECT_TRUST_CHOICE_I18N_KEYS: Record<
-  ProjectTrustChoice,
-  { label: string; description: string }
-> = {
-  'agent-verified': {
-    label: 'project:trust_toast.choice_agent_verified',
-    description: 'project:trust_toast.choice_agent_verified_description',
-  },
-  'allow-everything': {
-    label: 'project:trust_toast.choice_allow_everything',
-    description: 'project:trust_toast.choice_allow_everything_description',
-  },
-  'allow-edits-only': {
-    label: 'project:trust_toast.choice_allow_edits_only',
-    description: 'project:trust_toast.choice_allow_edits_only_description',
-  },
-  'ask-every-time': {
-    label: 'project:trust_toast.choice_ask_every_time',
-    description: 'project:trust_toast.choice_ask_every_time_description',
-  },
-};
-
-export function getProjectTrustChoiceLabel(
-  choice: ProjectTrustChoice,
-  t?: TFunction
-): string {
-  return t
-    ? t(PROJECT_TRUST_CHOICE_I18N_KEYS[choice].label)
-    : PROJECT_TRUST_CHOICE_LABELS[choice];
-}
-
-export function getProjectTrustChoiceDescription(
-  choice: ProjectTrustChoice,
-  t?: TFunction
-): string {
-  return t
-    ? t(PROJECT_TRUST_CHOICE_I18N_KEYS[choice].description)
-    : PROJECT_TRUST_CHOICE_DESCRIPTIONS[choice];
-}
-
 const PROJECT_TRUST_SETTINGS_BY_CHOICE: Record<
   ProjectTrustChoice,
   PersistedProjectTrustSettings
@@ -148,15 +108,14 @@ export function getProjectTrustChoice(
 
 export function getProjectTrustPresentation(
   permissionMode: PermissionMode,
-  allowAllUsesClassifier: boolean,
-  t?: TFunction
+  allowAllUsesClassifier: boolean
 ): ProjectTrustPresentation {
   const choice = getProjectTrustChoice(permissionMode, allowAllUsesClassifier);
 
   return {
     choice,
-    label: getProjectTrustChoiceLabel(choice, t),
-    description: getProjectTrustChoiceDescription(choice, t),
+    label: PROJECT_TRUST_CHOICE_LABELS[choice],
+    description: PROJECT_TRUST_CHOICE_DESCRIPTIONS[choice],
     ...PROJECT_TRUST_INDICATORS[choice],
   };
 }
@@ -187,4 +146,3 @@ export async function persistProjectTrustChoice(
 
   return settings;
 }
-import type { TFunction } from 'i18next';

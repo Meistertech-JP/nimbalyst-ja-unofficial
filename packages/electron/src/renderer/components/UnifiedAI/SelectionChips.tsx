@@ -1,5 +1,5 @@
 import React, { useState, useSyncExternalStore } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   getEditorContextEntry,
   dismissEditorContextItem,
@@ -244,7 +244,11 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
           key={`group:${label}`}
           type="button"
           className="selection-chips-group-toggle"
-          aria-label={expanded ? t('selection_chips.show_fewer', { label }) : t('selection_chips.show_more', { count: hiddenCount, label })}
+          aria-label={
+            expanded
+              ? t('selection_chips.show_fewer', { label })
+              : t('selection_chips.show_more', { count: hiddenCount, label })
+          }
           onClick={() => {
             setExpandedGroups((previous) => {
               const next = new Set(previous);
@@ -262,7 +266,9 @@ export const SelectionChips: React.FC<SelectionChipsProps> = ({ currentFilePath 
             textDecoration: 'underline',
           }}
         >
-          {expanded ? t('selection_chips.show_fewer', { label }) : t('selection_chips.more', { count: hiddenCount, label })}
+          {expanded
+            ? t('selection_chips.show_fewer', { label })
+            : t('selection_chips.more', { count: hiddenCount, label })}
         </button>
       ))}
 

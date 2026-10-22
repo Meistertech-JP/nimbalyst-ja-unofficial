@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DiffPeekPopover } from './DiffPeekPopover';
-import { useRuntimeTranslation } from '../RuntimeTranslation';
 
 type DiffCacheEntry = {
   diff: string;
   isBinary: boolean;
   loading: boolean;
   error: string | null;
-  unavailable?: boolean;
 };
 
 export interface UseDiffPeekOptions {
@@ -43,7 +41,6 @@ export interface UseDiffPeekResult {
  * in their tree.
  */
 export function useDiffPeek(options: UseDiffPeekOptions): UseDiffPeekResult {
-  const { t } = useRuntimeTranslation();
   const { getDiff, width, height, onResize } = options;
 
   const [peekedFile, setPeekedFile] = useState<string | null>(null);
@@ -113,7 +110,6 @@ export function useDiffPeek(options: UseDiffPeekOptions): UseDiffPeekResult {
               isBinary: false,
               loading: false,
               error: 'Diff not available on this platform',
-              unavailable: true,
             });
           }
           return next;
@@ -151,7 +147,7 @@ export function useDiffPeek(options: UseDiffPeekOptions): UseDiffPeekResult {
         diff={cached?.diff ?? ''}
         isBinary={cached?.isBinary ?? false}
         loading={cached?.loading ?? true}
-        error={cached?.unavailable ? t('files:diff_peek.unavailable', 'Diff not available on this platform') : cached?.error ?? null}
+        error={cached?.error ?? null}
         onClose={closePeek}
         onPin={promotePeekToPin}
         width={width}
@@ -159,7 +155,7 @@ export function useDiffPeek(options: UseDiffPeekOptions): UseDiffPeekResult {
         onResize={onResize}
       />
     );
-  }, [activeFile, anchorRect, diffCache, peekedFile, closePeek, promotePeekToPin, width, height, onResize, t]);
+  }, [activeFile, anchorRect, diffCache, peekedFile, closePeek, promotePeekToPin, width, height, onResize]);
 
   return {
     peekSupported,

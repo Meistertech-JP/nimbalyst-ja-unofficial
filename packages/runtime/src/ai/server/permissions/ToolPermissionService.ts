@@ -22,6 +22,7 @@ import {
   PendingPermission,
 } from '../providers/ProviderPermissionMixin';
 import { AgentMessagesRepository } from '../../../storage/repositories/AgentMessagesRepository';
+import { constrainPermissionResponse, permissionPromptHints, type PermissionPromptHints, type UserDecisionRequirement } from './permissionPromptPolicy';
 
 /**
  * Configuration options for ToolPermissionService
@@ -56,7 +57,7 @@ export interface ToolPermissionServiceOptions {
 /**
  * Permission request parameters
  */
-export interface PermissionRequest {
+export interface PermissionRequest extends PermissionPromptHints {
   /**
    * Unique request ID
    */
@@ -196,7 +197,7 @@ export class ToolPermissionService {
 
     // Wait for response (from IPC or polling)
     try {
-      const response = await responsePromise;
+      const response = constrainPermissionResponse(await responsePromise, request);
 
       // Save pattern if user chose "Always" or "Always All"
       if ((response.scope === 'always' || response.scope === 'always-all') && response.decision === 'allow') {
@@ -329,81 +330,8 @@ export class ToolPermissionService {
     return this.sessionApprovedPatterns;
   }
 
-  /**
-   * Request permission for a tool call (Claude Code style)
-   *
-   * This is a higher-level API that handles:
-   * - Trust checking (with mode-specific fast paths)
-   * - Session cache checking
-   * - Permission request with UI events
-   * - Pattern saving on approval
-   *
-   * @param options - Tool permission request options
-   * @returns Promise that resolves with user's decision
-   */
-  async requestToolPermission(options: {
-    requestId: string;
-    sessionId: string;
-    workspacePath: string;
-    permissionsPath: string;
-    toolName: string;
-    toolInput: any;
-    pattern: string;
-    patternDisplayName: string;
-    toolDescription: string;
-    isDestructive: boolean;
-    warnings?: string[];
-    signal: AbortSignal;
-    /** Name of the teammate requesting permission (undefined for lead agent) */
-    teammateName?: string;
-  }): Promise<PermissionDecision> {
-    const {
-      requestId,
-      sessionId,
-      workspacePath,
-      permissionsPath,
-      toolName,
-      toolInput,
-      pattern,
-      patternDisplayName,
-      toolDescription,
-      isDestructive,
-      warnings = [],
-      signal,
-      teammateName,
-    } = options;
-
-    const pathForTrust = permissionsPath || workspacePath;
-
-    // Check trust status
-    if (pathForTrust && this.trustChecker) {
-      const trustStatus = this.trustChecker(pathForTrust);
-
-      if (!trustStatus.trusted) {
-        this.securityLogger('[ToolPermissionService] Workspace not trusted, denying tool', {
-          toolName,
-          workspacePath: pathForTrust,
-        });
-        throw new Error('Workspace is not trusted. Please trust the workspace to use AI tools.');
-      }
-
-      // Bypass-all mode: auto-approve everything
-      if (trustStatus.mode === 'bypass-all') {
-        this.securityLogger('[ToolPermissionService] Bypass-all mode, auto-approving', { toolName });
-        return { decision: 'allow', scope: 'once' };
-      }
-
-      // Allow-all mode: auto-approve file edit operations
-      if (trustStatus.mode === 'allow-all') {
-        const fileEditTools = ['Edit', 'Write', 'MultiEdit', 'Read', 'Glob', 'Grep', 'LS', 'NotebookEdit'];
-        if (fileEditTools.includes(toolName)) {
-          this.securityLogger('[ToolPermissionService] Allow-all mode, auto-approving file tool', { toolName });
-          return { decision: 'allow', scope: 'once' };
-        }
-      }
-    }
-
-    // Check session cache first
+  /** A Session approval or a saved Always rule that already covers this pattern. */
+  private async findRememberedApproval(workspacePath: string, toolName: string, pattern: string): Promise<PermissionDecision | null> {
     if (this.sessionApprovedPatterns.has(pattern)) {
       this.securityLogger('[ToolPermissionService] Pattern already approved this session', {
         pattern,
@@ -429,6 +357,101 @@ export class ToolPermissionService {
       return { decision: 'allow', scope: 'always' };
     }
 
+    return null;
+  }
+
+  /**
+   * Request permission for a tool call (Claude Code style)
+   *
+   * This is a higher-level API that handles:
+   * - Trust checking (with mode-specific fast paths)
+   * - Session cache checking
+   * - Permission request with UI events
+   * - Pattern saving on approval
+   *
+   * @param options - Tool permission request options
+   * @returns Promise that resolves with user's decision
+   */
+  async requestToolPermission(options: PermissionPromptHints & {
+    requestId: string;
+    sessionId: string;
+    workspacePath: string;
+    permissionsPath: string;
+    toolName: string;
+    toolInput: any;
+    pattern: string;
+    patternDisplayName: string;
+    toolDescription: string;
+    isDestructive: boolean;
+    warnings?: string[];
+    signal: AbortSignal;
+    /** Name of the teammate requesting permission (undefined for lead agent) */
+    teammateName?: string;
+    /**
+     * The caller already decided the user must answer. 'escalated' skips the bypass-all
+     * shortcut (#1740); 'hook-ask' also skips the allow-edits shortcut and every remembered
+     * Session or Always approval (#1741).
+     */
+    requiresUserDecision?: UserDecisionRequirement;
+  }): Promise<PermissionDecision> {
+    const {
+      requestId,
+      sessionId,
+      workspacePath,
+      permissionsPath,
+      toolName,
+      toolInput,
+      pattern,
+      patternDisplayName,
+      toolDescription,
+      isDestructive,
+      warnings = [],
+      signal,
+      teammateName,
+      requiresUserDecision,
+    } = options;
+
+    const pathForTrust = permissionsPath || workspacePath;
+    const hookAsked = requiresUserDecision === 'hook-ask';
+
+    // Check trust status
+    if (pathForTrust && this.trustChecker) {
+      const trustStatus = this.trustChecker(pathForTrust);
+
+      if (!trustStatus.trusted) {
+        this.securityLogger('[ToolPermissionService] Workspace not trusted, denying tool', {
+          toolName,
+          workspacePath: pathForTrust,
+        });
+        throw new Error('Workspace is not trusted. Please trust the workspace to use AI tools.');
+      }
+
+      // Bypass-all mode: auto-approve everything, unless the call was escalated to the user (#1740)
+      if (trustStatus.mode === 'bypass-all' && !requiresUserDecision) {
+        this.securityLogger('[ToolPermissionService] Bypass-all mode, auto-approving', { toolName });
+        return { decision: 'allow', scope: 'once' };
+      }
+
+      // Allow-all mode: auto-approve file edit operations, unless a hook asked (#1741)
+      if (trustStatus.mode === 'allow-all' && !hookAsked) {
+        const fileEditTools = ['Edit', 'Write', 'MultiEdit', 'Read', 'Glob', 'Grep', 'LS', 'NotebookEdit'];
+        if (fileEditTools.includes(toolName)) {
+          this.securityLogger('[ToolPermissionService] Allow-all mode, auto-approving file tool', { toolName });
+          return { decision: 'allow', scope: 'once' };
+        }
+      }
+    }
+
+    // A hook "ask" is answered by the user every time, never by a remembered approval (#1741)
+    if (hookAsked) {
+      this.securityLogger('[ToolPermissionService] PreToolUse hook asked, skipping remembered approvals', { pattern, toolName });
+    } else {
+      const remembered = await this.findRememberedApproval(workspacePath, toolName, pattern);
+      if (remembered) {
+        return remembered;
+      }
+    }
+
     const rawCommand = toolName === 'Bash' ? toolInput?.command || '' : toolDescription;
 
     this.securityLogger('[ToolPermissionService] Requesting tool permission', {
@@ -440,6 +463,7 @@ export class ToolPermissionService {
 
     // Create simplified request structure for UI widget
     const request = {
+      ...permissionPromptHints(options),
       id: requestId,
       toolName,
       rawCommand,
@@ -498,7 +522,7 @@ export class ToolPermissionService {
 
     try {
       // Wait for user response
-      const response = await responsePromise;
+      const response = constrainPermissionResponse(await responsePromise, options);
 
       this.securityLogger('[ToolPermissionService] User response received', {
         toolName,

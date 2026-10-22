@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { themeIdAtom } from '@nimbalyst/runtime/store';
 import {
   getAllAvailableThemesAsync,
@@ -16,7 +16,7 @@ interface ThemeToggleButtonProps {
 }
 
 export const ThemeToggleButton: React.FC<ThemeToggleButtonProps> = ({ className = '' }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common', { keyPrefix: 'theme_toggle' });
   // Theme state lives in themeIdAtom; updated by store/listeners/themeListeners.ts
   const currentTheme = useAtomValue(themeIdAtom) as string;
 
@@ -121,7 +121,7 @@ export const ThemeToggleButton: React.FC<ThemeToggleButtonProps> = ({ className 
           ref={buttonRef}
           className={`theme-toggle-button nav-button relative w-9 h-9 flex items-center justify-center bg-transparent border-none rounded-md text-nim-muted cursor-pointer transition-all duration-150 p-0 hover:bg-nim-tertiary hover:text-nim active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${className}`}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label={t('common:navigation.theme_toggle')}
+          aria-label={t('change_theme')}
           aria-expanded={isMenuOpen}
           aria-haspopup="menu"
           data-testid="gutter-theme-button"
@@ -135,7 +135,7 @@ export const ThemeToggleButton: React.FC<ThemeToggleButtonProps> = ({ className 
           ref={menuRef}
           className="theme-menu absolute bottom-0 left-full ml-2 bg-nim-secondary border border-nim rounded-md p-1 min-w-[200px] shadow-lg z-[1000]"
           role="menu"
-          aria-label={t('common:navigation.theme_toggle')}
+          aria-label={t('selection')}
         >
           {availableThemes.map(theme => (
             <button

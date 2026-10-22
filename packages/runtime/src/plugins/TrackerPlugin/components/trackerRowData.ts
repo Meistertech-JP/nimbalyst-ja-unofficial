@@ -14,7 +14,19 @@ import {
   getRecordTitle,
   getFieldByRole,
 } from '../trackerRecordAccessors';
-import { getCellValue, getEffectiveUpdatedDate } from './trackerColumns';
+import {
+  groupTrackerRecordsByAxis,
+  normalizeTrackerGroupBy,
+  resolveTrackerGroups,
+  type TrackerGroupBy,
+  type TrackerRelationshipLabelResolver,
+} from '../models/trackerGrouping';
+import {
+  getCellValue,
+  getEffectiveUpdatedDate,
+  resolveColumnFieldName,
+  type TrackerColumnDef,
+} from './trackerColumns';
 
 /**
  * Stamp `system.lastIndexed` with the record's effective updated date so
@@ -38,6 +50,7 @@ export function searchMatchesRecord(item: TrackerRecord, query: string): boolean
   const tags = getFieldByRole(item, 'tags');
   return Boolean(
     item.issueKey?.toLowerCase().includes(q)
+    || item.localKey?.toLowerCase().includes(q)
     || String(item.issueNumber ?? '').includes(q)
     || getRecordTitle(item).toLowerCase().includes(q)
     || (item.system.documentPath ?? '').toLowerCase().includes(q)
@@ -62,14 +75,73 @@ export function filterTrackerRecords(
   });
 }
 
+function isBlankCell(value: unknown): boolean {
+  return value === null || value === undefined || value === '';
+}
+
+function toEpoch(value: unknown): number | undefined {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value.getTime();
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
+/**
+ * Compare two raw cell values, preserving the value's real type.
+ *
+ * Dates are the reason this exists: RevoGrid's built-in comparer stringifies
+ * every non-number, so a `Date` column sorts by `"wed may 20 2026"` -- weekday
+ * then month *name* -- rather than chronologically. A single date column can
+ * also legitimately hold a `Date` (unquoted YAML frontmatter), a `YYYY-MM-DD`
+ * string (inline editor) or a full ISO string (JSON round-trip), so a mixed
+ * pair is coerced to epoch rather than falling through to a string compare.
+ *
+ * Empty values sort as "greater", so they land last ascending and first
+ * descending -- callers negate the whole result for `desc`.
+ */
+export function compareCellValues(
+  aVal: unknown,
+  bVal: unknown,
+  render?: string,
+): number {
+  const aBlank = isBlankCell(aVal);
+  const bBlank = isBlankCell(bVal);
+  if (aBlank && bBlank) return 0;
+  if (aBlank) return 1;
+  if (bBlank) return -1;
+
+  if (render === 'date' || aVal instanceof Date || bVal instanceof Date) {
+    const aTime = toEpoch(aVal);
+    const bTime = toEpoch(bVal);
+    if (aTime !== undefined && bTime !== undefined) return aTime - bTime;
+  }
+  if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
+  if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+    return Number(aVal) - Number(bVal);
+  }
+  return String(aVal).localeCompare(String(bVal));
+}
+
 /**
  * Compare two records on a column.
  *
  * Empty values sort as "greater", so they land last ascending and first
  * descending. That is the ordering the table view has always had, and callers
  * negate this result for `desc` -- see {@link sortTrackerRecords}.
+ *
+ * Pass `columns` when the rows can span types (the "All" view): a role column reads a
+ * different field per record, so sorting without them compares the wrong field -- or
+ * nothing at all -- for any type that names it differently.
  */
-export function compareRecords(a: TrackerRecord, b: TrackerRecord, sortBy: string): number {
+export function compareRecords(
+  a: TrackerRecord,
+  b: TrackerRecord,
+  sortBy: string,
+  columns?: TrackerColumnDef[],
+): number {
   switch (sortBy) {
     case 'type':
       return a.primaryType.localeCompare(b.primaryType);
@@ -88,17 +160,10 @@ export function compareRecords(a: TrackerRecord, b: TrackerRecord, sortBy: strin
       return identityValue(a).localeCompare(identityValue(b));
     }
     default: {
-      const aVal = getCellValue(a, sortBy);
-      const bVal = getCellValue(b, sortBy);
-      if (aVal == null && bVal == null) return 0;
-      if (aVal == null) return 1;
-      if (bVal == null) return -1;
-      if (aVal instanceof Date && bVal instanceof Date) return aVal.getTime() - bVal.getTime();
-      if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
-      if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
-        return Number(aVal) - Number(bVal);
-      }
-      return String(aVal).localeCompare(String(bVal));
+      const column = columns?.find(candidate => candidate.id === sortBy);
+      const aValue = getCellValue(a, column ? resolveColumnFieldName(a.primaryType, column) : sortBy);
+      const bValue = getCellValue(b, column ? resolveColumnFieldName(b.primaryType, column) : sortBy);
+      return compareCellValues(aValue, bValue, column?.render);
     }
   }
 }
@@ -107,9 +172,10 @@ export function sortTrackerRecords(
   records: TrackerRecord[],
   sortBy: string,
   direction: 'asc' | 'desc',
+  columns?: TrackerColumnDef[],
 ): TrackerRecord[] {
   return [...records].sort((a, b) => {
-    const compareValue = compareRecords(a, b, sortBy);
+    const compareValue = compareRecords(a, b, sortBy, columns);
     return direction === 'asc' ? compareValue : -compareValue;
   });
 }
@@ -120,46 +186,15 @@ export interface TrackerRecordGroup {
   items: TrackerRecord[];
 }
 
-function identityLabel(value: unknown): string {
-  if (!value || typeof value !== 'object') return String(value ?? '');
-  const identity = value as Record<string, unknown>;
-  return String(
-    identity.displayName
-    ?? identity.email
-    ?? identity.gitEmail
-    ?? identity.gitName
-    ?? '',
-  );
-}
-
-function titleCase(value: string): string {
-  return value
-    .split(/[-_]/)
-    .map(part => part ? part[0].toUpperCase() + part.slice(1) : part)
-    .join(' ');
-}
-
 /** Resolve the user-facing bucket name for one record. */
-export function getTrackerGroupLabel(record: TrackerRecord, groupBy: string | null): string {
-  switch (groupBy) {
-    case 'status':
-      return titleCase(getRecordStatus(record) || 'None');
-    case 'priority':
-      return titleCase(getRecordPriority(record) || 'None');
-    case 'type':
-      return titleCase(record.primaryType || 'None');
-    case 'owner':
-    case 'assignee': {
-      const label = identityLabel(getFieldByRole(record, 'assignee'));
-      return label || 'Unassigned';
-    }
-    default: {
-      if (!groupBy) return '';
-      const value = getCellValue(record, groupBy);
-      if (Array.isArray(value)) return value.map(identityLabel).filter(Boolean).join(', ') || 'None';
-      return identityLabel(value) || 'None';
-    }
-  }
+export function getTrackerGroupLabel(
+  record: TrackerRecord,
+  groupBy: TrackerGroupBy | string | null,
+  resolveLabel?: TrackerRelationshipLabelResolver,
+): string {
+  const normalized = normalizeTrackerGroupBy(groupBy);
+  if (normalized === 'none') return '';
+  return resolveTrackerGroups(record, normalized, resolveLabel).map(group => group.label).join(', ');
 }
 
 /**
@@ -168,16 +203,10 @@ export function getTrackerGroupLabel(record: TrackerRecord, groupBy: string | nu
  */
 export function groupTrackerRecords(
   records: TrackerRecord[],
-  groupBy: string | null,
+  groupBy: TrackerGroupBy | 'owner' | null,
+  resolveLabel?: TrackerRelationshipLabelResolver,
 ): TrackerRecordGroup[] {
-  if (!groupBy) return [{ key: '', label: null, items: records }];
-
-  const groups = new Map<string, TrackerRecord[]>();
-  for (const record of records) {
-    const label = getTrackerGroupLabel(record, groupBy);
-    const bucket = groups.get(label);
-    if (bucket) bucket.push(record);
-    else groups.set(label, [record]);
-  }
-  return Array.from(groups, ([label, items]) => ({ key: label, label, items }));
+  const normalized = normalizeTrackerGroupBy(groupBy);
+  if (normalized === 'none') return [{ key: '', label: null, items: records }];
+  return groupTrackerRecordsByAxis(records, normalized, resolveLabel);
 }

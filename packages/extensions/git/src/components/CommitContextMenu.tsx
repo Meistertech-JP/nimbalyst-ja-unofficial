@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useFloating,
   flip,
@@ -43,6 +44,7 @@ export function CommitContextMenu({
   onMessage,
   onRefresh,
 }: CommitContextMenuProps) {
+  const { t } = useTranslation('extensions');
   const virtualRef = useMemo(() => ({
     getBoundingClientRect: () => DOMRect.fromRect({ x, y, width: 0, height: 0 }),
   }), [x, y]);
@@ -63,13 +65,13 @@ export function CommitContextMenu({
 
   const handleCopyId = () => {
     copyToClipboard(commit.hash);
-    onMessage('Copied commit ID');
+    onMessage(t('git_extension_ui.copied_commit_id'));
     onClose();
   };
 
   const handleCopyMessage = () => {
     copyToClipboard(commit.message);
-    onMessage('Copied commit message');
+    onMessage(t('git_extension_ui.copied_commit_message'));
     onClose();
   };
 
@@ -77,10 +79,10 @@ export function CommitContextMenu({
     onClose();
     const result = await ipc.invoke('git:checkout', workspacePath, commit.hash) as ActionResult;
     if (result.success) {
-      onMessage(`Checked out ${shortHash} (detached HEAD)`);
+      onMessage(t('git_extension_ui.checked_out_detached', { hash: shortHash }));
       onRefresh();
     } else {
-      onMessage(result.error ?? 'Checkout failed', true);
+      onMessage(result.error ?? t('git_extension_ui.checkout_failed'), true);
     }
   };
 
@@ -88,23 +90,23 @@ export function CommitContextMenu({
     onClose();
     const result = await ipc.invoke('git:cherry-pick', workspacePath, commit.hash) as ActionResult;
     if (result.success) {
-      onMessage(`Cherry-picked ${shortHash}`);
+      onMessage(t('git_extension_ui.cherry_picked', { hash: shortHash }));
       onRefresh();
     } else {
-      onMessage(result.error ?? 'Cherry-pick failed', true);
+      onMessage(result.error ?? t('git_extension_ui.cherry_pick_failed'), true);
     }
   };
 
   const handleCreateBranch = async () => {
-    const name = window.prompt(`Branch name (from ${shortHash}):`, '');
+    const name = window.prompt(t('git_extension_ui.branch_name_prompt', { hash: shortHash }), '');
     if (!name?.trim()) return;
     onClose();
     const result = await ipc.invoke('git:create-branch', workspacePath, name.trim(), commit.hash) as ActionResult;
     if (result.success) {
-      onMessage(`Created branch "${name.trim()}"`);
+      onMessage(t('git_extension_ui.created_branch', { name: name.trim() }));
       onRefresh();
     } else {
-      onMessage(result.error ?? 'Create branch failed', true);
+      onMessage(result.error ?? t('git_extension_ui.create_branch_failed'), true);
     }
   };
 
@@ -117,21 +119,21 @@ export function CommitContextMenu({
         {...getFloatingProps()}
       >
         <button className="git-context-menu-item" onClick={handleCopyId}>
-          Copy Commit ID
+          {t('git_extension_ui.copy_commit_id')}
         </button>
         <button className="git-context-menu-item" onClick={handleCopyMessage}>
-          Copy Commit Message
+          {t('git_extension_ui.copy_commit_message')}
         </button>
         <div className="git-context-menu-sep" />
         <button className="git-context-menu-item" onClick={handleCheckout}>
-          Checkout (Detached)
+          {t('git_extension_ui.checkout_detached')}
         </button>
         <button className="git-context-menu-item" onClick={handleCreateBranch}>
-          Create Branch...
+          {t('git_extension_ui.create_branch')}
         </button>
         <div className="git-context-menu-sep" />
         <button className="git-context-menu-item" onClick={handleCherryPick}>
-          Cherry Pick
+          {t('git_extension_ui.cherry_pick')}
         </button>
       </div>
     </FloatingPortal>

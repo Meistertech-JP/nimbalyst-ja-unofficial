@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { getWorktreeNameFromPath } from '../../utils/pathUtils';
 
 interface MergeConfirmDialogProps {
@@ -26,8 +26,8 @@ export function MergeConfirmDialog({
   onConfirm,
   onCancel,
 }: MergeConfirmDialogProps) {
+  const { t } = useTranslation('dialogs');
   const dialogRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation(['dialogs']);
 
   // Close on escape key
   useEffect(() => {
@@ -58,30 +58,30 @@ export function MergeConfirmDialog({
       >
         <div className="merge-confirm-dialog-header flex items-center gap-3 px-6 pt-5 pb-4 text-[var(--nim-text)]">
           <MaterialSymbol icon="merge" size={24} />
-          <h2 className="m-0 text-lg font-semibold">{t('dialogs:merge_confirm.title')}</h2>
+          <h2 className="m-0 text-lg font-semibold">{t('merge_confirm.title')}</h2>
         </div>
 
         <div className="merge-confirm-dialog-body px-6 pb-5">
           <p className="m-0 mb-4 text-sm leading-relaxed text-[var(--nim-text-muted)]">
-            {t('dialogs:merge_confirm.confirm', { worktree: worktreeName, project: projectName })}
+            {t('merge_confirm.confirm', { worktree: worktreeName, project: projectName })}
           </p>
 
           {hasUncommittedChanges && (
             <div className="merge-confirm-dialog-info-banner flex items-start gap-2.5 p-3 mb-4 rounded-lg text-[0.8125rem] leading-snug bg-[var(--nim-info)]/10 text-[var(--nim-text-muted)]">
               <MaterialSymbol icon="info" size={18} className="text-[var(--nim-info)]" />
               <span>
-                {t('dialogs:merge_confirm.preserved')}
+                {t('merge_confirm.preserved')}
               </span>
             </div>
           )}
 
           <div className="merge-confirm-dialog-info flex flex-col gap-2 p-3 rounded-lg bg-[var(--nim-bg-secondary)]">
             <div className="merge-confirm-dialog-info-row flex items-center gap-2 text-[0.8125rem]">
-              <span className="merge-confirm-dialog-info-label min-w-[60px] text-[var(--nim-text-faint)]">{t('dialogs:merge_confirm.source')}</span>
+              <span className="merge-confirm-dialog-info-label min-w-[60px] text-[var(--nim-text-faint)]">{t('merge_confirm.source')}</span>
               <span className="merge-confirm-dialog-info-value font-mono text-[var(--nim-text)]">{worktreeName}</span>
             </div>
             <div className="merge-confirm-dialog-info-row flex items-center gap-2 text-[0.8125rem]">
-              <span className="merge-confirm-dialog-info-label min-w-[60px] text-[var(--nim-text-faint)]">{t('dialogs:merge_confirm.target')}</span>
+              <span className="merge-confirm-dialog-info-label min-w-[60px] text-[var(--nim-text-faint)]">{t('merge_confirm.target')}</span>
               <span className="merge-confirm-dialog-info-value font-mono text-[var(--nim-text)]">main ({projectName})</span>
             </div>
           </div>
@@ -93,7 +93,7 @@ export function MergeConfirmDialog({
             className="merge-confirm-dialog-button nim-btn-secondary text-sm"
             onClick={onCancel}
           >
-            {t('dialogs:merge_confirm.cancel')}
+            {t('merge_confirm.cancel')}
           </button>
           <button
             type="button"
@@ -101,7 +101,7 @@ export function MergeConfirmDialog({
             onClick={onConfirm}
           >
             <MaterialSymbol icon="merge" size={16} />
-            <span>{t('dialogs:merge_confirm.merge')}</span>
+            <span>{t('merge_confirm.merge')}</span>
           </button>
         </div>
       </div>

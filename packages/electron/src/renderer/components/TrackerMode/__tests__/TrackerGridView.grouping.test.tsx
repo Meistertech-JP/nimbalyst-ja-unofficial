@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, waitFor } from '@testing-library/react';
-import i18next from 'i18next';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, waitFor } from '@testing-library/react';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { loadBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
+import { globalRegistry } from '@nimbalyst/tracker-schema';
 
 const { gridProps, gridElement, gridListeners, dispatchGridEvent } = vi.hoisted(() => ({
   gridProps: { current: null as Record<string, any> | null },
@@ -44,10 +44,8 @@ vi.mock('@revolist/react-datagrid', async () => {
   };
 });
 
-vi.mock('@nimbalyst/runtime/plugins/TrackerPlugin', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@nimbalyst/runtime/plugins/TrackerPlugin')>();
+vi.mock('@nimbalyst/runtime/plugins/TrackerPlugin/components/useTrackerRows', () => {
   return {
-    ...actual,
     // Only the edit path is under test here; the rest of the hook's surface is
     // stubbed so the grid's context menu renders closed.
     useTrackerRows: () => ({
@@ -70,8 +68,6 @@ vi.mock('@nimbalyst/runtime/plugins/TrackerPlugin', async (importOriginal) => {
 });
 
 import { TrackerGridView } from '../TrackerGridView';
-
-afterEach(async () => { cleanup(); await i18next.changeLanguage('en'); });
 
 function record(id: string, status: string): TrackerRecord {
   return {
@@ -103,6 +99,7 @@ describe('TrackerGridView grouping', () => {
     render(
       <TrackerGridView
         filterType="bug"
+        groupBy="status"
         overrideItems={[
           record('bug-1', 'in-progress'),
           record('bug-2', 'done'),
@@ -110,42 +107,38 @@ describe('TrackerGridView grouping', () => {
         columnConfig={{
           visibleColumns: ['title', 'status', 'priority'],
           columnWidths: {},
-          groupBy: 'status',
         }}
       />,
     );
 
     await waitFor(() => expect(gridProps.current).not.toBeNull());
     expect(gridProps.current?.grouping).toEqual({
-      props: ['__trackerGroupLabel'],
+      props: ['__trackerGroupKey'],
       expandedAll: true,
+      groupLabelTemplate: expect.any(Function),
     });
     expect(gridProps.current?.source.map((row: Record<string, unknown>) => row.__trackerGroupLabel))
       .toEqual(['In Progress', 'Done']);
   });
 
-  it('localizes only group captions and column headings while keeping the group key and row order stable', async () => {
-    const items = [record('missing', ''), record('working', 'in-progress')];
-    render(<TrackerGridView filterType="bug" overrideItems={items}
-      columnConfig={{ visibleColumns: ['title', 'status', 'priority'], columnWidths: {}, groupBy: 'status' }} />);
-    await waitFor(() => expect(gridProps.current).not.toBeNull());
-    const originalRows = gridProps.current?.source;
-    await act(async () => { await i18next.changeLanguage('ja'); });
-    expect(gridProps.current?.source).toEqual(originalRows);
-    expect(gridProps.current?.source.map((row: Record<string, unknown>) => row.__trackerGroupLabel)).toEqual(['None', 'In Progress']);
-    expect(gridProps.current?.columns.map((column: Record<string, unknown>) => [column.prop, column.name]))
-      .toEqual([['title', 'タイトル'], ['status', 'ステータス'], ['priority', '優先度']]);
-    const h = (tag: string, props: Record<string, unknown>, children: unknown) => ({ tag, props, children });
-    const template = gridProps.current?.grouping.groupLabelTemplate;
-    const rendered = template(h, { name: 'None', hasExpand: true, expanded: false });
-    expect(rendered[0].props.class).toBe('group-expand');
-    expect(rendered[1].children).toBe('なし');
-    const stopPropagation = vi.fn();
-    rendered[1].props.onClick({ stopPropagation });
-    expect(stopPropagation).toHaveBeenCalledOnce();
-    expect(template(h, { name: 'In Progress', hasExpand: true, expanded: true })[1].children).toBe('In Progress');
-    expect(template(h, { name: 'None', hasExpand: false })).toBeNull();
-    expect(items[0].fields.status).toBe('');
+  it('keeps types with the same display name in distinct grid groups', async () => {
+    const model = { ...globalRegistry.get('bug')!, type: 'same-label-a', displayNamePlural: 'Issues' };
+    globalRegistry.register(model);
+    globalRegistry.register({ ...model, type: 'same-label-b' });
+    try {
+      render(<TrackerGridView groupBy="type" overrideItems={[
+        { ...record('a', 'open'), primaryType: model.type },
+        { ...record('b', 'open'), primaryType: 'same-label-b' },
+      ]} columnConfig={{ visibleColumns: ['title'], columnWidths: {} }} />);
+      await waitFor(() => expect(gridProps.current).not.toBeNull());
+      const { source, grouping } = gridProps.current!;
+      const keys = source.map((row: Record<string, unknown>) => row[grouping.props[0]]);
+      expect(new Set(keys).size).toBe(2);
+      expect(keys.map((name: string) => grouping.groupLabelTemplate(vi.fn(), { name, expanded: true })[1])).toEqual(['Issues', 'Issues']);
+    } finally {
+      globalRegistry.unregister(model.type);
+      globalRegistry.unregister('same-label-b');
+    }
   });
 });
 
@@ -172,12 +165,13 @@ describe('TrackerGridView sorting', () => {
         columnConfig={{
           visibleColumns: ['title', 'status', 'priority'],
           columnWidths: {},
-          groupBy: null,
         }}
       />,
     );
 
-    await waitFor(() => expect(gridElement.columns).toHaveLength(3));
+    await waitFor(() => expect(gridElement.columns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ prop: 'status', sortable: true }),
+    ])));
     const statusColumn = gridElement.columns.find(
       (column: Record<string, unknown>) => column.prop === 'status',
     );

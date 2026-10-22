@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface UnifiedDiffViewProps {
   diff: string;
@@ -62,19 +63,20 @@ function parseUnifiedDiff(diff: string): DiffLine[] {
 }
 
 export function UnifiedDiffView({ diff, isBinary, loading, error }: UnifiedDiffViewProps) {
+  const { t } = useTranslation('git');
   const lines = useMemo(() => (diff ? parseUnifiedDiff(diff) : []), [diff]);
 
   if (loading) {
-    return <div className="git-diff-placeholder">Loading diff...</div>;
+    return <div className="git-diff-placeholder">{t('supplemental.diff_view.loading')}</div>;
   }
   if (error) {
     return <div className="git-diff-placeholder git-diff-placeholder--error">{error}</div>;
   }
   if (isBinary) {
-    return <div className="git-diff-placeholder">Binary file</div>;
+    return <div className="git-diff-placeholder">{t('supplemental.diff_view.binary_file')}</div>;
   }
   if (!diff || lines.length === 0) {
-    return <div className="git-diff-placeholder">No textual changes</div>;
+    return <div className="git-diff-placeholder">{t('supplemental.diff_view.no_textual_changes')}</div>;
   }
 
   return (

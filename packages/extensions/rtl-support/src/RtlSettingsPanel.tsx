@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, type CSSProperties } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { loadSettings, saveSettings, resetSettings, type RtlSettings, type RtlMode } from './settings';
 import { setDebug } from './debug';
 
@@ -21,6 +22,7 @@ type RtlSettingsPanelProps = {
 };
 
 export function RtlSettingsPanel({ theme }: RtlSettingsPanelProps) {
+  const { t } = useTranslation('extensions', { keyPrefix: 'rtl_support' });
   const [settings, setSettings] = useState<RtlSettings>(loadSettings());
 
   useEffect(() => {
@@ -52,15 +54,12 @@ export function RtlSettingsPanel({ theme }: RtlSettingsPanelProps) {
 
   return (
     <div style={containerStyle(c)}>
-      <h2 style={headingStyle(c)}>RTL Support</h2>
-      <p style={descStyle(c)}>
-        Automatic right-to-left text direction detection for agent transcripts and markdown content.
-        Changes apply immediately.
-      </p>
+      <h2 style={headingStyle(c)}>{t('title')}</h2>
+      <p style={descStyle(c)}>{t('description')}</p>
 
       <Toggle
-        label="Enable RTL Support"
-        desc="Master on/off switch for the extension"
+        label={t('enable_label')}
+        desc={t('enable_description')}
         checked={settings.enabled}
         onChange={(v) => update({ enabled: v })}
         colors={c}
@@ -68,11 +67,11 @@ export function RtlSettingsPanel({ theme }: RtlSettingsPanelProps) {
 
       <Divider colors={c} />
 
-      <Field label="Mode" desc="auto = detect per block, rtl/ltr = force a direction" colors={c}>
+      <Field label={t('mode_label')} desc={t('mode_description')} colors={c}>
         <SegmentedControl
           value={settings.mode}
           options={[
-            { value: 'auto', label: 'Auto' },
+            { value: 'auto', label: t('mode_auto') },
             { value: 'rtl', label: 'RTL' },
             { value: 'ltr', label: 'LTR' },
           ]}
@@ -84,8 +83,8 @@ export function RtlSettingsPanel({ theme }: RtlSettingsPanelProps) {
       <Divider colors={c} />
 
       <Field
-        label={'RTL threshold: ' + Math.round(settings.threshold * 100) + '%'}
-        desc="Minimum ratio of RTL characters to classify a block as RTL"
+        label={t('threshold_label', { percent: Math.round(settings.threshold * 100) })}
+        desc={t('threshold_description')}
         colors={c}
       >
         <input
@@ -102,32 +101,32 @@ export function RtlSettingsPanel({ theme }: RtlSettingsPanelProps) {
       <Divider colors={c} />
 
       <Toggle
-        label="Per-block detection"
-        desc="Analyze each text block independently (recommended for mixed messages)"
+        label={t('per_block_label')}
+        desc={t('per_block_description')}
         checked={settings.perBlock}
         onChange={(v) => update({ perBlock: v })}
         colors={c}
       />
 
       <Toggle
-        label="RTL on input fields"
-        desc="Switch input direction to RTL when typing RTL languages"
+        label={t('input_rtl_label')}
+        desc={t('input_rtl_description')}
         checked={settings.inputRtl}
         onChange={(v) => update({ inputRtl: v })}
         colors={c}
       />
 
       <Toggle
-        label="Inline detection"
-        desc="Isolate RTL runs within LTR paragraphs for correct bidi rendering"
+        label={t('inline_detection_label')}
+        desc={t('inline_detection_description')}
         checked={settings.inlineDetect}
         onChange={(v) => update({ inlineDetect: v })}
         colors={c}
       />
 
       <Toggle
-        label="Debug logging"
-        desc="Enable detection logs in the console (for troubleshooting)"
+        label={t('debug_logging_label')}
+        desc={t('debug_logging_description')}
         checked={settings.debug}
         onChange={(v) => update({ debug: v })}
         colors={c}
@@ -137,12 +136,12 @@ export function RtlSettingsPanel({ theme }: RtlSettingsPanelProps) {
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
         <button style={buttonStyle(c)} onClick={onReset}>
-          Reset to defaults
+          {t('reset')}
         </button>
       </div>
 
       <p style={{ ...descStyle(c), marginTop: '16px', fontSize: '12px' }}>
-        Shortcut: <kbd style={kbdStyle(c)}>Ctrl+Shift+R</kbd> to toggle quickly
+        {t('shortcut', { shortcut: 'Ctrl+Shift+R' })}
       </p>
     </div>
   );

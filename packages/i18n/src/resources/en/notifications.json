@@ -1,0 +1,69 @@
+{
+  "archive": {
+    "auto_rejected": "The backend rejected the auto-archive."
+  },
+  "guidance": {
+    "unknown_tip": "Unknown Tip",
+    "tip_not_found": "Tip \"{{id}}\" not found.",
+    "tips_reset": "Tips Reset",
+    "tips_reset_message": "All tips will show again.",
+    "walkthrough_not_found": "Walkthrough Not Found",
+    "unknown_walkthrough": "Unknown walkthrough: {{id}}",
+    "cannot_show_walkthrough": "Cannot Show Walkthrough",
+    "walkthrough_target_missing": "\"{{name}}\" requires UI elements that aren't visible on this screen. Try switching to {{mode}} first.",
+    "walkthrough_conditions_unmet": "\"{{name}}\" conditions aren't met. Try switching to {{mode}} first.",
+    "walkthroughs_reset": "Walkthroughs Reset",
+    "walkthroughs_reset_message": "All walkthrough guides will show again."
+  },
+  "session": {
+    "archive_failed": "Failed to archive session",
+    "archive_rejected": "The backend rejected the archive request.",
+    "unarchive_failed": "Failed to unarchive session",
+    "unarchive_rejected": "The backend rejected the unarchive request.",
+    "navigation_source_fallback": "Session {{id}}",
+    "navigation_unavailable_title": "{{label}} unavailable",
+    "navigation_archived": "Session {{id}} is archived and was not opened. Restore it from archived sessions, then retry.",
+    "navigation_missing": "Session {{id}} could not be found in its originating project.",
+    "navigation_project_unavailable": "Nimbalyst could not switch to the project for session {{id}}. Close a project from the rail, then retry.",
+    "navigation_lookup_failed": "Nimbalyst could not verify session {{id}} in its originating project."
+  },
+  "collab": {
+    "view_not_available": "View not available",
+    "view_not_available_message": "This list is not available to open on its own.",
+    "page_not_in_project": "Page not in this project",
+    "page_not_in_project_message": "The page this link points at is not in this project."
+  },
+  "git": {
+    "nothing_to_commit": "Nothing to commit",
+    "nothing_to_commit_message": "The selected files cannot be committed (conflicted files are excluded).",
+    "commit_with_ai_failed": "Commit with AI failed"
+  },
+  "window": {
+    "unsaved_quit": "You have unsaved changes. Are you sure you want to quit?"
+  },
+  "agent": {
+    "response_ready": "Response Ready",
+    "response_complete": "Response complete",
+    "claude_cli_paused": "Claude CLI paused",
+    "anthropic_overloaded_retry": "Anthropic is overloaded. Claude will retry shortly.",
+    "rate_limited": "Rate limited by Anthropic.",
+    "rate_limited_retry": "Rate limited by Anthropic (retry after {{seconds}}s)."
+  },
+  "team_inbox": {
+    "room": "Room",
+    "direct_message": "Direct message",
+    "document_discussion": "Document discussion",
+    "document_question": "Document question",
+    "tracker": "Tracker",
+    "document": "Document",
+    "feedback_request": "Feedback request",
+    "new_activity": "New activity",
+    "teammate": "A teammate"
+  },
+  "notifications_enabled": "Notifications Enabled",
+  "notifications_enabled_message": "Nimbalyst will notify you when AI responses are ready.",
+  "project_open_failed_title": "{{label}} -- could not be opened",
+  "project_open_failed_message": "Nimbalyst could not open the project for this session. Open the project, then retry.",
+  "session_resumed": "Session resumed",
+  "scheduled_wakeup_fired": "A scheduled wakeup has fired."
+}

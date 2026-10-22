@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   autoUpdate,
   flip,
@@ -11,9 +10,12 @@ import {
   useInteractions,
   useRole,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { MaterialSymbol, getProviderIcon } from '@nimbalyst/runtime';
-import { isAgentProvider, shouldBlockStartedSessionProviderSwitch } from '@nimbalyst/runtime/ai/server/types';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { getProviderIcon } from '@nimbalyst/runtime/ui/icons/ProviderIcons';
+import { isAgentProvider, shouldBlockStartedSessionProviderSwitch, type AIModel } from '@nimbalyst/runtime/ai/server/types';
+import { registerClaudeCustomModelsFromCatalog } from '@nimbalyst/runtime/ai/claudeCustomModels';
 import { getClaudeCodeModelLabel } from '../../utils/modelUtils';
 import { advancedSettingsAtom, aiProviderSettingsAtom } from '../../store/atoms/appSettings';
 import { setWindowModeAtom } from '../../store/atoms/windowMode';
@@ -22,9 +24,10 @@ import type { SettingsCategory } from '../Settings/SettingsSidebar';
 import { AlphaBadge } from '../common/AlphaBadge';
 import { HelpTooltip } from '../../help';
 import { isDirectChatProvider, isProviderVisible } from '../../utils/chatProviderVisibility';
+import { useMenuTypeahead } from '../../hooks/useMenuTypeahead';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
-const ALPHA_PROVIDERS = new Set(['opencode', 'copilot-cli']);
-const TYPEAHEAD_RESET_MS = 700;
+const ALPHA_PROVIDERS = new Set(['opencode', 'copilot-cli', 'grok-build', 'cursor-agent', 'antigravity-gemini-agent']);
 
 interface Model {
   id: string;
@@ -35,6 +38,8 @@ interface Model {
 type ProviderType = 'agent' | 'model';
 
 interface ModelSelectorProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   currentModel: string;  // Full provider:model ID
   onModelChange: (modelId: string) => void;
   sessionHasMessages?: boolean;  // Whether current session has any messages
@@ -57,6 +62,8 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({
+  open,
+  onOpenChange,
   currentModel,
   onModelChange,
   sessionHasMessages = false,
@@ -66,8 +73,13 @@ export function ModelSelector({
   openRequest,
   onKeyboardDismiss,
 }: ModelSelectorProps) {
-  const { t } = useTranslation(['agents', 'settings', 'aichat']);
-  const [isOpen, setIsOpen] = useState(false);
+  const { t } = useTranslation('aichat');
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const setIsOpen = React.useCallback((value: boolean) => {
+    if (open === undefined) setInternalOpen(value);
+    else onOpenChange?.(value);
+  }, [open, onOpenChange]);
   const [models, setModels] = useState<Record<string, Model[]>>({});
   const [providerLabels, setProviderLabels] = useState<Record<string, string>>({});
   const [providerIcons, setProviderIcons] = useState<Record<string, string>>({});
@@ -79,8 +91,7 @@ export function ModelSelector({
   const navigateToSettings = useSetAtom(navigateToSettingsAtom);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const lastOpenRequestRef = React.useRef(openRequest);
-  const typeaheadQueryRef = React.useRef('');
-  const typeaheadResetTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { getTypeaheadMatch, resetTypeahead } = useMenuTypeahead(isOpen);
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
@@ -91,6 +102,7 @@ export function ModelSelector({
       offset(4),
       flip({ fallbackPlacements: ['bottom-start', 'top-end', 'bottom-end'], padding: 8 }),
       shift({ padding: 8 }),
+      windowControlsClearance(),
     ],
   });
   const dismiss = useDismiss(context, {
@@ -101,30 +113,14 @@ export function ModelSelector({
   const role = useRole(context, { role: 'menu' });
   const { getReferenceProps, getFloatingProps } = useInteractions([dismiss, role]);
 
-  React.useLayoutEffect(() => {
-    if (openRequest === undefined || openRequest === lastOpenRequestRef.current) return;
-    lastOpenRequestRef.current = openRequest;
-    setIsOpen(true);
-  }, [openRequest]);
-
-  // Clear cached models when provider settings change so next dropdown open fetches fresh data
-  useEffect(() => {
-    setModels({});
-  }, [providers]);
-
-  // Load models when dropdown opens
-  useEffect(() => {
-    if (isOpen && Object.keys(models).length === 0) {
-      loadModels();
-    }
-  }, [isOpen]);
-
-  const loadModels = async () => {
+  const loadModels = React.useCallback(async () => {
     setLoading(true);
     try {
       const response = await window.electronAPI.aiGetModels();
       if (response.success && response.grouped) {
         setModels(response.grouped);
+        // Labels and effort/thinking support for custom Claude gateway models.
+        registerClaudeCustomModelsFromCatalog(Object.values(response.grouped).flat() as AIModel[]);
         const meta = response as {
           providerLabels?: Record<string, string>;
           providerIcons?: Record<string, string>;
@@ -137,21 +133,22 @@ export function ModelSelector({
     } finally {
       setLoading(false);
     }
-  };
-
-  const resetTypeahead = React.useCallback(() => {
-    typeaheadQueryRef.current = '';
-    if (typeaheadResetTimerRef.current) {
-      clearTimeout(typeaheadResetTimerRef.current);
-      typeaheadResetTimerRef.current = null;
-    }
   }, []);
 
-  useEffect(() => resetTypeahead, [resetTypeahead]);
+  React.useLayoutEffect(() => {
+    if (openRequest === undefined || openRequest === lastOpenRequestRef.current) return;
+    lastOpenRequestRef.current = openRequest;
+    setIsOpen(true);
+  }, [openRequest, setIsOpen]);
 
+  // Preload before the user opens the picker. The main process serves its last
+  // successful catalog immediately and refreshes stale providers in the
+  // background, so mounting a new session input never turns a click into a
+  // network/CLI discovery boundary.
   useEffect(() => {
-    if (!isOpen) resetTypeahead();
-  }, [isOpen, resetTypeahead]);
+    setModels({});
+    void loadModels();
+  }, [providers, loadModels]);
 
   const handleModelSelect = (modelId: string) => {
     resetTypeahead();
@@ -214,41 +211,12 @@ export function ModelSelector({
       return;
     }
 
-    if (
-      event.key.length !== 1
-      || event.key.trim() === ''
-      || event.metaKey
-      || event.ctrlKey
-      || event.altKey
-      || event.nativeEvent.isComposing
-    ) return;
-
-    event.preventDefault();
-    typeaheadQueryRef.current += event.key.toLowerCase();
-
-    if (typeaheadResetTimerRef.current) clearTimeout(typeaheadResetTimerRef.current);
-    typeaheadResetTimerRef.current = setTimeout(resetTypeahead, TYPEAHEAD_RESET_MS);
-
-    const query = typeaheadQueryRef.current;
-    const matches = getEnabledModelOptions()
-      .map(option => {
-        const name = option.dataset.modelName?.toLowerCase() ?? '';
-        const id = option.dataset.modelId?.toLowerCase() ?? '';
-        const searchable = `${name} ${id}`;
-        const tokens = searchable.split(/[^a-z0-9]+/).filter(Boolean);
-        const score = name.startsWith(query)
-          ? 0
-          : tokens.some(token => token.startsWith(query))
-            ? 1
-            : searchable.includes(query)
-              ? 2
-              : -1;
-        return { option, score };
-      })
-      .filter(match => match.score >= 0)
-      .sort((a, b) => a.score - b.score);
-
-    matches[0]?.option.focus();
+    const options = getEnabledModelOptions();
+    const match = getTypeaheadMatch(event, options.map(option => ({
+      label: option.dataset.modelName ?? '',
+      keywords: option.dataset.modelId,
+    })));
+    options[match]?.focus();
   };
 
   const getSettingsCategoryForModel = (modelId: string): SettingsCategory => {
@@ -260,6 +228,9 @@ export function ModelSelector({
       case 'openai-codex':
       case 'opencode':
       case 'copilot-cli':
+      case 'grok-build':
+      case 'cursor-agent':
+      case 'antigravity-gemini-agent':
       case 'lmstudio':
         return provider;
       case 'openai-codex-acp':
@@ -285,7 +256,7 @@ export function ModelSelector({
     // provider so the chip doesn't misreport e.g. "Sonnet 4.6".
     if (currentProvider === 'openai-realtime') return 'OpenAI Voice Agent';
 
-    if (!currentModel) return t('aichat:picker.select_model');
+    if (!currentModel) return t('picker.select_model');
 
     // Find the model in our list
     for (const providerModels of Object.values(models)) {
@@ -307,13 +278,19 @@ export function ModelSelector({
     if (providerLabels[provider]) return providerLabels[provider];
     switch (provider) {
       case 'claude': return 'Claude Chat';
-      case 'claude-code': return 'Claude Agent (Claude Code Based)';
-      case 'claude-code-cli': return 'Claude Code CLI (Subscription)';
+      // The default agent, and the one a Claude subscription runs on without any
+      // extra setup. What it's built on lives in the hover help, so the
+      // parenthetical here is spent steering the choice instead.
+      case 'claude-code': return 'Claude Agent (Recommended)';
+      case 'claude-code-cli': return 'Claude Code CLI';
       case 'openai': return 'OpenAI';
       case 'openai-codex': return 'OpenAI Codex';
       case 'openai-codex-acp': return 'OpenAI Codex (ACP)';
       case 'opencode': return 'OpenCode';
       case 'copilot-cli': return 'GitHub Copilot';
+      case 'grok-build': return 'Grok Build';
+      case 'cursor-agent': return 'Cursor Agent';
+      case 'antigravity-gemini-agent': return 'Gemini';
       case 'lmstudio': return 'LMStudio';
       default: {
         // Extension-contributed providers carry their contribution id here
@@ -408,7 +385,7 @@ export function ModelSelector({
         aria-label={t('picker.current_model', { model: getCurrentModelName() })}
         data-testid="model-picker"
         {...getReferenceProps({
-          onClick: () => setIsOpen(open => !open),
+          onClick: () => setIsOpen(!isOpen),
         })}
       >
         <span className="model-selector-label overflow-hidden text-ellipsis">{getCurrentModelName()}</span>
@@ -427,7 +404,7 @@ export function ModelSelector({
           {loading ? (
             <div className="model-selector-loading p-3 text-center text-xs text-[var(--nim-text-faint)]">{t('picker.loading_models')}</div>
           ) : Object.keys(visibleModels).length === 0 ? (
-            <div className="model-selector-empty p-3 text-center text-xs text-[var(--nim-text-faint)]">{t('aichat:picker.no_models')}</div>
+            <div className="model-selector-empty p-3 text-center text-xs text-[var(--nim-text-faint)]">{t('picker.no_models')}</div>
           ) : (
             <>
               {/* Agents Section */}
@@ -436,7 +413,7 @@ export function ModelSelector({
                   <div className="model-selector-section-header px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--nim-text-faint)]">{t('picker.agents')}</div>
                   {isSectionDisabled('agent') && (
                     <div className="model-selector-disabled-notice px-2 pt-1 pb-1.5 text-[11px] italic text-[var(--nim-text-faint)]">
-                      {t('picker.start_new_session_agents')}
+                      {t('picker.new_session_for_agents')}
                     </div>
                   )}
                   {Object.entries(groupedProviders.agents).map(([provider, providerModels]) => (
@@ -452,13 +429,13 @@ export function ModelSelector({
                         >
                           {renderProviderIcon(provider, 12)}
                           <span>{getProviderLabel(provider)}</span>
-                          {ALPHA_PROVIDERS.has(provider) && <AlphaBadge size="xs" />}
+                          {ALPHA_PROVIDERS.has(provider) && <AlphaBadge size="xs" tooltip={t('common:alpha.tooltip')} />}
                         </div>
                       </HelpTooltip>
                       {providerModels.map(model => {
                         const isCurrent = model.id === currentModel;
                         const isDisabled = isProviderSwitchDisabled(provider);
-                        const disabledTooltip = t('picker.switch_provider_disabled');
+                        const disabledTooltip = t('picker.new_session_to_switch_provider');
                         return (
                           <button
                             key={model.id}
@@ -490,10 +467,10 @@ export function ModelSelector({
                   {groupedProviders.agents && Object.keys(groupedProviders.agents).length > 0 && (
                     <div className="model-selector-divider h-px my-1 bg-[var(--nim-border)]" />
                   )}
-                  <div className="model-selector-section-header px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--nim-text-faint)]">{t('picker.chat_with_document')}</div>
+                  <div className="model-selector-section-header px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--nim-text-faint)]">{t('picker.chat_with_open_document')}</div>
                   {isSectionDisabled('model') && (
                     <div className="model-selector-disabled-notice px-2 pt-1 pb-1.5 text-[11px] italic text-[var(--nim-text-faint)]">
-                      {t('picker.start_new_session_chat')}
+                      {t('picker.new_session_for_chat_models')}
                     </div>
                   )}
                   {Object.entries(groupedProviders.models).map(([provider, providerModels]) => (
@@ -505,7 +482,7 @@ export function ModelSelector({
                       {providerModels.map(model => {
                         const isCurrent = model.id === currentModel;
                         const isDisabled = isProviderSwitchDisabled(provider);
-                        const disabledTooltip = t('picker.switch_provider_disabled');
+                        const disabledTooltip = t('picker.new_session_to_switch_provider');
                         return (
                           <button
                             key={model.id}
@@ -538,7 +515,7 @@ export function ModelSelector({
                 onClick={handleConfigureModels}
               >
                 <MaterialSymbol icon="settings" size={14} />
-                <span>{t('settings:sync.configure_models')}</span>
+                <span>{t('picker.configure_models')}</span>
               </button>
             </>
           )}

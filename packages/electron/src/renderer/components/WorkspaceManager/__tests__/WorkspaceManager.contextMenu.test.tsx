@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const recentWorkspaces = [
   { path: '/projects/alpha', name: 'alpha', lastOpened: 1700000000000, exists: true, markdownCount: 2 },
@@ -15,16 +17,35 @@ const recentWorkspaces = [
     getWorkspaceStats: vi.fn().mockResolvedValue({ fileCount: 1, markdownCount: 1, totalSize: 10, recentFiles: [] }),
     openWorkspace: vi.fn(),
   },
+  tutorial: {
+    getStatus: vi.fn().mockResolvedValue({ success: true, exists: false }),
+    start: vi.fn(),
+  },
 };
 
 const { WorkspaceManager } = await import('../WorkspaceManager');
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderEnglish(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 afterEach(() => cleanup());
 
 // Locate the menu by its contents rather than by class, so the assertions below
 // exercise positioning rather than the marker class name.
 async function openContextMenuAt(clientX: number, clientY: number) {
-  const { container } = render(<WorkspaceManager />);
+  const { container } = renderEnglish(<WorkspaceManager />);
   const row = await screen.findByText('alpha');
   fireEvent.contextMenu(row, { clientX, clientY });
   const openProject = await screen.findByText('Open Project');

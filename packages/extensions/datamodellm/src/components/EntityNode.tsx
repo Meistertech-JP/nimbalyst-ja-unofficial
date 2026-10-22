@@ -6,10 +6,12 @@
  */
 
 import { memo, useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import type { Entity, Field, EntityViewMode, Database } from '../types';
 import { computeHandleState } from '../utils/handleUtils';
 import type { DataModelStoreApi } from '../store';
+import type { RemotePresence } from '../collab/presence';
 
 export interface EntityNodeData extends Record<string, unknown> {
   entity: Entity;
@@ -18,6 +20,32 @@ export interface EntityNodeData extends Record<string, unknown> {
   viewMode: EntityViewMode;
   database: Database;
   store: DataModelStoreApi;
+  /** Remote collaborators who currently have this entity selected. */
+  presences?: RemotePresence[];
+}
+
+/**
+ * Collaborator ring + name chips. The ring uses the first collaborator's
+ * color (the chips carry the rest), and is drawn with `box-shadow` so it
+ * never shifts the node's layout or its handle positions.
+ */
+function PresenceChrome({ presences }: { presences: RemotePresence[] }) {
+  const { t } = useTranslation('extensions');
+  if (presences.length === 0) return null;
+  return (
+    <div className="datamodel-entity-presence" aria-hidden="true">
+      {presences.map((presence) => (
+        <span
+          key={presence.clientId}
+          className="datamodel-presence-chip"
+          style={{ backgroundColor: presence.color }}
+          title={t('datamodellm_ui.collaborator_selected', { name: presence.name })}
+        >
+          {presence.name}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 // Default handle state to prevent creating new objects on every render
@@ -43,6 +71,7 @@ const FieldRow = memo(function FieldRow({
   showSourceHandle = false,
   store,
 }: FieldRowProps) {
+  const { t } = useTranslation('extensions');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingType, setIsEditingType] = useState(false);
   const [editName, setEditName] = useState(field.name);
@@ -128,7 +157,7 @@ const FieldRow = memo(function FieldRow({
   const showDescription = viewMode === 'full' && field.description;
 
   return (
-    <div className="datamodel-field-row">
+    <div className="datamodel-field-row" data-field-name={field.name}>
       {/* Hidden target handles */}
       <Handle
         type="target"
@@ -162,7 +191,7 @@ const FieldRow = memo(function FieldRow({
             <span
               className="datamodel-field-name"
               onDoubleClick={handleNameDoubleClick}
-              title="Double-click to edit"
+              title={t('datamodellm_ui.double_click_to_edit')}
             >
               {field.name}
             </span>
@@ -183,7 +212,7 @@ const FieldRow = memo(function FieldRow({
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <span onDoubleClick={handleTypeDoubleClick} title="Double-click to edit">
+                  <span onDoubleClick={handleTypeDoubleClick} title={t('datamodellm_ui.double_click_to_edit')}>
                     {field.dataType}
                   </span>
                 )}
@@ -246,7 +275,13 @@ const FieldRow = memo(function FieldRow({
 });
 
 function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>) {
-  const { entity, isSelected, isHovered, viewMode, database, store } = data as EntityNodeData;
+  const { t } = useTranslation('extensions');
+  const { entity, isSelected, isHovered, viewMode, database, store, presences } =
+    data as EntityNodeData;
+  const remotePresences = presences ?? [];
+  const presenceStyle = remotePresences.length
+    ? ({ ['--datamodel-presence-color' as string]: remotePresences[0].color })
+    : undefined;
 
   // Compute handle state for all fields in this entity
   const state = store.getState();
@@ -304,14 +339,17 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
   // Compact mode: just show entity name, field count, and description
   if (isCompact) {
     const fieldCount = entity.fields.length;
-    const fieldLabel = fieldCount === 1 ? '1 field' : `${fieldCount} fields`;
+    const fieldLabel = t('datamodellm_ui.field_count', { count: fieldCount });
 
     return (
       <div
         className={`datamodel-entity datamodel-entity-compact ${isActuallySelected ? 'datamodel-entity-selected' : ''} ${
           isHovered ? 'datamodel-entity-hovered' : ''
-        }`}
+        } ${remotePresences.length ? 'datamodel-entity-remote-selected' : ''}`}
+        style={presenceStyle}
       >
+        <PresenceChrome presences={remotePresences} />
+
         {/* Entity-wide handles */}
         <Handle type="target" position={Position.Top} id="target-top" className="datamodel-handle-invisible" />
         <Handle type="target" position={Position.Left} id="target-left" className="datamodel-handle-invisible" />
@@ -349,7 +387,7 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
               <span
                 className="datamodel-entity-compact-name"
                 onDoubleClick={handleNameDoubleClick}
-                title="Double-click to edit"
+                title={t('datamodellm_ui.double_click_to_edit')}
               >
                 {entity.name}
               </span>
@@ -368,8 +406,11 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
     <div
       className={`datamodel-entity ${isActuallySelected ? 'datamodel-entity-selected' : ''} ${
         isHovered ? 'datamodel-entity-hovered' : ''
-      }`}
+      } ${remotePresences.length ? 'datamodel-entity-remote-selected' : ''}`}
+      style={presenceStyle}
     >
+      <PresenceChrome presences={remotePresences} />
+
       {/* Entity-wide handles (invisible) */}
       <Handle type="target" position={Position.Top} id="target-top" className="datamodel-handle-invisible" />
       <Handle type="target" position={Position.Left} id="target-left" className="datamodel-handle-invisible" />
@@ -414,7 +455,7 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
           <h3
             className="datamodel-entity-name"
             onDoubleClick={handleNameDoubleClick}
-            title="Double-click to edit"
+            title={t('datamodellm_ui.double_click_to_edit')}
           >
             {entity.name}
           </h3>
@@ -439,7 +480,7 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
             );
           })
         ) : (
-          <div className="datamodel-entity-empty">No fields defined</div>
+          <div className="datamodel-entity-empty">{t('datamodellm_ui.no_fields_defined')}</div>
         )}
       </div>
 

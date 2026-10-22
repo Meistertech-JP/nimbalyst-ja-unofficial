@@ -1,7 +1,9 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
 import {
   getDefaultSettingsCategory,
+  getSettingsRouteLabel,
   getSettingsRoutesForScope,
   isExtensionSettingsRouteId,
   normalizeSettingsDestination,
@@ -35,12 +37,51 @@ const extensionRoutes: ExtensionSettingsRoute[] = [
 ];
 
 describe('settings route registry', () => {
+  it('localizes the built-in knowledge curator extension route label', () => {
+    const route: ExtensionSettingsRoute = {
+      source: 'extension',
+      id: 'ext:com.nimbalyst.knowledge:knowledge-curator',
+      extensionId: 'com.nimbalyst.knowledge',
+      scope: 'application',
+      group: 'Extensions',
+      label: 'Knowledge curator',
+      icon: 'hub',
+      componentName: 'KnowledgeCuratorSettings',
+      order: 85,
+    };
+    const translate = (key: string, options?: { defaultValue?: string }) =>
+      key === 'sidebar.item_knowledge_curator'
+        ? 'ナレッジキュレーター'
+        : options?.defaultValue ?? key;
+
+    expect(getSettingsRouteLabel(route, translate)).toBe('ナレッジキュレーター');
+  });
+
+  it('localizes the built-in memory extension route label', () => {
+    const route: ExtensionSettingsRoute = {
+      source: 'extension',
+      id: 'ext:com.nimbalyst.memory:memory',
+      extensionId: 'com.nimbalyst.memory',
+      scope: 'project',
+      group: 'Extensions',
+      label: 'Memory',
+      icon: 'psychology',
+      componentName: 'MemorySettings',
+      order: 50,
+    };
+    const translate = (key: string, options?: { defaultValue?: string }) =>
+      key === 'sidebar.item_memory' ? 'メモリ' : options?.defaultValue ?? key;
+
+    expect(getSettingsRouteLabel(route, translate)).toBe('メモリ');
+  });
+
   it('declares every route in exactly one scope', () => {
     const seen = new Map<string, string>();
     for (const scope of ['application', 'account', 'project'] as const) {
       for (const route of getSettingsRoutesForScope(scope, {
         developerMode: true,
         showDirectChatProviders: true,
+        teamsConfigured: true,
       })) {
         expect(seen.has(route.id)).toBe(false);
         seen.set(route.id, scope);
@@ -59,6 +100,7 @@ describe('settings route registry', () => {
     const projectRoutes = getSettingsRoutesForScope('project', {
       developerMode: false,
       showDirectChatProviders: false,
+      teamsConfigured: true,
     });
 
     expect(projectRoutes).toEqual(expect.arrayContaining([
@@ -79,14 +121,32 @@ describe('settings route registry', () => {
     });
   });
 
+  it('hides the project Sharing route until the account has a team (invite-only beta)', () => {
+    const withoutTeams = getSettingsRoutesForScope('project', {
+      developerMode: true,
+      showDirectChatProviders: false,
+      teamsConfigured: false,
+    });
+    const withTeams = getSettingsRoutesForScope('project', {
+      developerMode: false,
+      showDirectChatProviders: false,
+      teamsConfigured: true,
+    });
+
+    expect(withoutTeams.map((route) => route.id)).not.toContain('project-sharing');
+    expect(withTeams.map((route) => route.id)).toContain('project-sharing');
+  });
+
   it('hides direct chat providers until the visibility policy reveals the group', () => {
     const hiddenRoutes = getSettingsRoutesForScope('application', {
       developerMode: false,
       showDirectChatProviders: false,
+      teamsConfigured: true,
     });
     const visibleRoutes = getSettingsRoutesForScope('application', {
       developerMode: false,
       showDirectChatProviders: true,
+      teamsConfigured: true,
     });
 
     expect(hiddenRoutes.map((route) => route.id)).not.toEqual(
@@ -113,12 +173,12 @@ describe('settings route registry', () => {
   it('merges extension routes only into their declared scope', () => {
     const projectRoutes = getSettingsRoutesForScope(
       'project',
-      { developerMode: false, showDirectChatProviders: false },
+      { developerMode: false, showDirectChatProviders: false, teamsConfigured: true },
       extensionRoutes,
     );
     const applicationRoutes = getSettingsRoutesForScope(
       'application',
-      { developerMode: false, showDirectChatProviders: false },
+      { developerMode: false, showDirectChatProviders: false, teamsConfigured: true },
       extensionRoutes,
     );
 

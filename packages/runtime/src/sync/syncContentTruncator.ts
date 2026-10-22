@@ -14,24 +14,49 @@
  * Strategy:
  *   - Per large tool/output block: cap content at TRUNCATE_THRESHOLD_BYTES and
  *     splice in a human-readable marker explaining the elision.
- *   - Then clamp the whole sync-bound message at MAX_SYNC_MESSAGE_BYTES so a
- *     few pathological rows cannot still blow up a SessionRoom.
+ *   - Reduce disposable output fields within a per-message budget; preserve
+ *     conversation and actionable envelopes regardless of their size.
  *   - Leave `tool_use` blocks alone regardless of size; that's the "what
  *     happened" signal users actually want on mobile.
  *   - Keep inline image blocks (screenshots), downscaling instead of eliding.
  *     They are the one large payload whose whole point is being looked at on
  *     the phone, and there is no other channel that can deliver them.
- *   - Unknown providers fall back to a compact opaque marker rather than
- *     syncing arbitrarily large raw payloads.
+ *   - Plain-text and unknown-provider rows stay whole up to the inline row
+ *     limit. Any row still above MAX_SYNC_ROW_CONTENT_BYTES after all of the
+ *     above becomes a short elision marker, never a server refusal.
  *
  * Stats: a singleton tracker accumulates byte-savings across the process so we
  * can validate the impact locally before deploying. It self-logs periodically
  * (every N messages or every M seconds, whichever comes first) and exposes a
  * snapshot for inspection.
  */
+import { utf8ByteLen, formatBytes, isImageBlock } from '../utils/contentBytes';
+import { boundSyncOutputs, isInteractiveSyncItem, isStructuredSyncResult, syncTextPrefix } from './syncSemanticProjection';
+import {
+  CLAUDE_CODE_TRANSIENT_CHUNK_TYPES,
+  CLAUDE_CODE_TRANSIENT_SYSTEM_SUBTYPES,
+  CODEX_APP_SERVER_TRANSIENT_EVENT_TYPES,
+  CODEX_LEGACY_TRANSIENT_EVENT_TYPES,
+} from '../storage/nonRenderingFrames';
 
 const TRUNCATE_THRESHOLD_BYTES = 4 * 1024;
 const MAX_SYNC_MESSAGE_BYTES = 16 * 1024;
+// The server (SessionRoom.MAX_ENCRYPTED_CONTENT_BYTES) refuses a row whose
+// base64 ciphertext exceeds 512 KiB: 393,216 raw bytes, less the 16-byte
+// AES-GCM tag, is the largest plaintext envelope
+// `{"content":...,"metadata":...,"hidden":...}` that fits. encryptSessionMessage
+// enforces it on the whole envelope. The content clamp below reserves 32 KiB
+// for the rest of the envelope, so a row with ordinary metadata is elided here
+// and counted in the stats. Semantic projection keeps real rows far below both;
+// a row still above them becomes the elision marker instead of a refusal.
+const SERVER_MAX_ENCRYPTED_CONTENT_CHARS = 512 * 1024;
+const AES_GCM_TAG_BYTES = 16;
+const ENVELOPE_RESERVE_BYTES = 32 * 1024;
+export const MAX_SYNC_ROW_PLAINTEXT_BYTES = (SERVER_MAX_ENCRYPTED_CONTENT_CHARS / 4) * 3 - AES_GCM_TAG_BYTES;
+/** Measured on the content as JSON-escaped into the envelope, quotes included. */
+export const MAX_SYNC_ROW_CONTENT_BYTES = MAX_SYNC_ROW_PLAINTEXT_BYTES - ENVELOPE_RESERVE_BYTES;
+/** tool_use_result keys that hold the user's answers, never disposable output. */
+const TOOL_USE_RESULT_PROTECTED_KEYS = new Set(['answers', 'questions']);
 
 // Messages carrying an inline image block (capture_editor_screenshot and other
 // MCP tools that return pictures) get their own, much larger ceiling. Mobile
@@ -40,10 +65,8 @@ const MAX_SYNC_MESSAGE_BYTES = 16 * 1024;
 // "trim" the message, it deletes the screenshot the user wanted to look at on
 // their phone.
 //
-// MUST STAY UNDER the server's SessionRoom.MAX_ENCRYPTED_CONTENT_BYTES (512 KB).
-// Encryption inflates this ~1.4x (JSON escaping, then AES-GCM + base64), so 256
-// KB here lands near 358 KB on the wire. Raising it past ~365 KB makes the
-// server reject the message, which disables that session's message sync.
+// Stays well under MAX_SYNC_ROW_CONTENT_BYTES: base64 needs no JSON escaping,
+// so 256 KB here lands near 350 KB on the wire.
 const MAX_SYNC_MESSAGE_WITH_IMAGE_BYTES = 256 * 1024;
 
 // Largest single image block we will put on the wire, after the downscale pass
@@ -73,42 +96,14 @@ export function setSyncImageCompressor(compressor: SyncImageCompressor | null): 
   syncImageCompressor = compressor;
 }
 
-const CODEX_APP_SERVER_TRANSIENT_EVENT_TYPES = new Set([
-  'item/agentMessage/delta',
-  'item/commandExecution/outputDelta',
-  'thread/tokenUsage/updated',
-  'account/rateLimits/updated',
-  'thread/status/changed',
-  'mcpServer/startupStatus/updated',
-  'turn/started',
-  'turn/completed',
-  'turn/diff/updated',
-  'skills/changed',
-]);
-
-// Claude Agent SDK chunk types whose persisted form never renders -- they only
-// drive live in-memory side effects in ClaudeCodeProvider. The provider now
-// skips persisting these, but this sync-side filter catches the same chunks if
-// they're already sitting in ai_agent_messages from before the persistence fix
-// (e.g. older sessions replayed on first reconnect).
-const CLAUDE_CODE_TRANSIENT_CHUNK_TYPES = new Set([
-  'tool_progress',
-  'tool_use_summary',
-  'auth_status',
-  'rate_limit_event',
-]);
-const CLAUDE_CODE_TRANSIENT_SYSTEM_SUBTYPES = new Set([
-  'hook_started',
-  'hook_response',
-  'task_started',
-  'task_progress',
-  'task_notification',
-  // Live "estimated thinking tokens" progress ticks. A long turn emits dozens
-  // (190 in one observed session, ~37 KB + 190 extra synced rows). They drive a
-  // live in-memory indicator only and produce no descriptor on reparse, so they
-  // are pure waste on the wire.
-  'thinking_tokens',
-]);
+// The three "renders nothing" sets below are shared with the provider write
+// path and the storage backfill -- see `storage/nonRenderingFrames`. They used
+// to be a private copy here, which is how `thinking_tokens` ended up filtered
+// on the wire and persisted to disk for months.
+//
+// This sync-side filter still earns its keep independently of the write-path
+// gate: it catches chunks already sitting in ai_agent_messages from before that
+// gate landed (older sessions replayed on first reconnect).
 
 // System subtypes that ARE persisted locally (so the desktop's own transcript
 // build can read e.g. the SDK session_id) but must NOT cross the sync wire.
@@ -120,11 +115,8 @@ const CLAUDE_CODE_TRANSIENT_SYSTEM_SUBTYPES = new Set([
 // assistant branch, rendering a stray bubble desktop never shows. Drop it.
 const CLAUDE_CODE_NON_SYNCED_SYSTEM_SUBTYPES = new Set(['init']);
 
-// Legacy codex SDK/exec transport events that render nothing on mobile.
-// `thread.started` only captures a thread id; `token_count` (bare or wrapped in
-// an `event_msg` envelope) only feeds a turn_ended descriptor, which the
-// projector drops. Text deltas / item events DO render and must pass through.
-const CODEX_LEGACY_TRANSIENT_EVENT_TYPES = new Set(['thread.started', 'token_count']);
+// Legacy codex `event_msg` envelopes are additionally unwrapped below; the bare
+// event-type set itself lives in `storage/nonRenderingFrames`.
 
 // OpenCode SSE event types that can produce something the mobile transcript
 // renders, mirroring the switch in OpenCodeRawParser.parseOutputMessage. That
@@ -140,6 +132,9 @@ const OPENCODE_SYNCED_EVENT_TYPES = new Set([
   'file.edited',
   'session.error',
   'todo.updated',
+  'permission.asked',
+  'permission.updated',
+  'permission.replied',
 ]);
 
 /** OpenCode `message.part.updated` renders only tool parts; text/reasoning
@@ -177,6 +172,21 @@ export interface PerMessageTruncationStats {
   elidedBytes: number;
   largestBlockElidedBytes: number;
 }
+
+/**
+ * Record types the headless-agent parser turns into canonical events.
+ *
+ * `thought` and `text` are deliberately absent: both are per-token deltas that
+ * the parser drops in favour of the turn-final `item.completed`.
+ */
+export const HEADLESS_AGENT_SYNCED_EVENT_TYPES = new Set([
+  'item.completed',
+  // Grok
+  'tool_call',
+  'tool_call_update',
+  // Cursor -- its records carry the same `type` discriminator
+  'result',
+]);
 
 export function shouldSyncMessageForSessionRoom(
   source: string,
@@ -223,6 +233,22 @@ export function shouldSyncMessageForSessionRoom(
       }
     }
     return true;
+  }
+
+  // Grok Build and Cursor Agent persist every NDJSON record their CLI emits.
+  // HeadlessAgentRawParser renders only the turn-final `item.completed`, the
+  // tool_call / tool_call_update (Grok) or tool_call started/completed
+  // (Cursor) rows, and errors. Text and reasoning deltas are dropped by design
+  // -- the full response arrives self-contained on item.completed -- and Grok
+  // emits one `thought` row per word, so syncing them would be pure waste.
+  //
+  // Keep this in sync with `HeadlessAgentRawParser`: a record type the parser
+  // learns to render must be added here, or mobile silently shows less than
+  // the desktop does. `headlessAgentSyncParity.test.ts` is the gate.
+  if (source.startsWith('grok-build') || source.startsWith('cursor-agent')) {
+    const eventType = typeof metadata?.eventType === 'string' ? metadata.eventType : '';
+    if (!eventType) return true;
+    return HEADLESS_AGENT_SYNCED_EVENT_TYPES.has(eventType);
   }
 
   if (source.startsWith('opencode')) {
@@ -309,6 +335,10 @@ export function shouldSyncMessageForSessionRoom(
     return true;
   }
 
+  // Everything else, including Gemini. Gemini has no branch on purpose: it
+  // writes three row kinds (prompt, answer, tool) and its parser renders all
+  // three, so a filter here could only take something off mobile that desktop
+  // shows. `syncContentTruncator.test.ts` pins that.
   return true;
 }
 
@@ -349,29 +379,6 @@ function emptyPerMessage(bytesBefore: number): PerMessageTruncationStats {
   };
 }
 
-function formatBytes(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let v = n;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
-  }
-  return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
-
-/** UTF-8 byte length of a string. JSON.stringify result is ASCII-heavy but
- * tool output may include non-ASCII; use Blob to get the real wire size. */
-function utf8ByteLen(s: string): number {
-  // TextEncoder is available in both Node and Workers; fall back to char count
-  // if missing (vanishingly unlikely in our runtime).
-  if (typeof TextEncoder !== 'undefined') {
-    return new TextEncoder().encode(s).length;
-  }
-  return s.length;
-}
-
 /**
  * Find which size bucket a block belongs to. Mirrors the cleanup script's
  * bucket scheme so we can correlate "bytes elided here" with "bytes saved
@@ -399,10 +406,9 @@ function truncateBlockContent(
 ): { content: string | unknown[]; originalBytes: number; truncatedBytes: number } | null {
   if (typeof content === 'string') {
     const originalBytes = utf8ByteLen(content);
-    if (originalBytes <= TRUNCATE_THRESHOLD_BYTES) return null;
-    // We slice on character count; the resulting byte count is close enough to
-    // the threshold for our purposes (no need to be perfectly precise).
-    const keep = content.slice(0, TRUNCATE_THRESHOLD_BYTES);
+    if (originalBytes <= TRUNCATE_THRESHOLD_BYTES || isStructuredSyncResult(content)) return null;
+    // Keep a complete UTF-8 prefix, including for emoji and non-Latin output.
+    const keep = syncTextPrefix(content, TRUNCATE_THRESHOLD_BYTES);
     const elided = originalBytes - utf8ByteLen(keep);
     const marker = `\n\n[... ${formatBytes(elided)} elided from mobile sync; view on desktop for full output]`;
     const out = keep + marker;
@@ -426,15 +432,19 @@ function truncateBlockContent(
         typeof (item as { text?: unknown }).text === 'string'
       ) {
         const text = (item as { text: string }).text;
+        if (isStructuredSyncResult(text)) {
+          out.push(item);
+          continue;
+        }
         if (budget <= 0) {
           elided += utf8ByteLen(text);
           continue;
         }
-        if (text.length <= budget) {
+        if (utf8ByteLen(text) <= budget) {
           out.push(item);
-          budget -= text.length;
+          budget -= utf8ByteLen(text);
         } else {
-          const kept = text.slice(0, budget);
+          const kept = syncTextPrefix(text, budget);
           out.push({ ...(item as object), text: kept });
           elided += utf8ByteLen(text) - utf8ByteLen(kept);
           budget = 0;
@@ -463,18 +473,6 @@ function truncateBlockContent(
   }
 
   return null;
-}
-
-/**
- * An inline image block, in either the current Anthropic shape
- * (`{ type:'image', source:{ type:'base64', data } }`) or the legacy MCP shape
- * (`{ type:'image', data, mimeType }`). EditorScreenshotWidget reads both.
- */
-function isImageBlock(item: unknown): boolean {
-  if (item == null || typeof item !== 'object') return false;
-  const block = item as { type?: unknown; data?: unknown; source?: { data?: unknown } };
-  if (block.type !== 'image') return false;
-  return typeof block.data === 'string' || typeof block.source?.data === 'string';
 }
 
 /** Read the base64 payload out of either image block shape. */
@@ -552,11 +550,8 @@ function messageCarriesImageBlock(parsed: unknown): boolean {
 }
 
 /**
- * Last resort before the whole-message marker: swap every image block for a
- * text marker. Used when a message carries so much image data that even
- * MAX_SYNC_MESSAGE_WITH_IMAGE_BYTES can't hold it -- dropping the pictures
- * keeps the message valid JSON, so mobile still renders the tool call instead
- * of a bare marker string it can't parse.
+ * Retain the existing image-size policy independently of logical row size.
+ * Conversation, tool identities and schemas remain parseable and intact.
  */
 function stripImageBlocksInPlace(parsed: unknown): boolean {
   if (!parsed || typeof parsed !== 'object') return false;
@@ -582,30 +577,29 @@ function stripImageBlocksInPlace(parsed: unknown): boolean {
   return modified;
 }
 
-function makeWholeMessageMarker(source: string, originalBytes: number): string {
-  const label = source || 'unknown';
-  return (
-    `[Full ${label} message elided from mobile sync: ${formatBytes(originalBytes)} raw. ` +
-    `View on desktop for the full content.]`
-  );
+/**
+ * Replace a row that would still exceed the server's inline limit with the
+ * pre-#1711 marker, which phones already render. Sets `stats.bytesAfter`.
+ */
+/** The pre-#1711 whole-row marker, which phones already render. */
+export function wholeRowElisionMarker(source: string, rawBytes: number): string {
+  return `[Full ${source || 'unknown'} message elided from mobile sync: ${formatBytes(rawBytes)} raw. View on desktop for the full content.]`;
 }
 
-function clampWholeMessage(
-  content: string,
-  source: string,
-  maxBytes: number = MAX_SYNC_MESSAGE_BYTES,
-): { content: string; bytesAfter: number; elidedBytes: number } {
-  const bytesBefore = utf8ByteLen(content);
-  if (bytesBefore <= maxBytes) {
-    return { content, bytesAfter: bytesBefore, elidedBytes: 0 };
+function clampWholeRow(content: string, source: string, stats: PerMessageTruncationStats): string {
+  const bytes = utf8ByteLen(content);
+  // Escaping at most sextuples a byte (\u00XX), so short rows skip the stringify.
+  if (bytes * 6 + 2 <= MAX_SYNC_ROW_CONTENT_BYTES || utf8ByteLen(JSON.stringify(content)) <= MAX_SYNC_ROW_CONTENT_BYTES) {
+    stats.bytesAfter = bytes;
+    return content;
   }
-
-  const marker = makeWholeMessageMarker(source, bytesBefore);
-  return {
-    content: marker,
-    bytesAfter: utf8ByteLen(marker),
-    elidedBytes: bytesBefore - utf8ByteLen(marker),
-  };
+  const marker = wholeRowElisionMarker(source, stats.bytesBefore);
+  const elided = bytes - utf8ByteLen(marker);
+  stats.bytesAfter = utf8ByteLen(marker);
+  stats.blocksTruncated++;
+  stats.elidedBytes += elided;
+  if (elided > stats.largestBlockElidedBytes) stats.largestBlockElidedBytes = elided;
+  return marker;
 }
 
 class SyncTruncationTracker {
@@ -803,6 +797,8 @@ function truncateClaudeToolUseResultInPlace(
   let modified = false;
 
   for (const key of Object.keys(turObj)) {
+    // #1711: AskUserQuestion-style sidecars carry the user's answers.
+    if (TOOL_USE_RESULT_PROTECTED_KEYS.has(key)) continue;
     const value = turObj[key];
     let replacement: string | null = null;
     let originalBytes = 0;
@@ -879,29 +875,11 @@ function truncateCodexStructuredResultInPlace(
   const resultObj = value as Record<string, unknown>;
   let modified = false;
 
-  for (const [key, fieldValue] of Object.entries(resultObj)) {
-    const result = truncateBlockContent(fieldValue);
-    if (result) {
-      resultObj[key] = result.content;
-      recordCodexTruncation(result.originalBytes, result.truncatedBytes, stats, blockBytesBefore);
-      modified = true;
-      continue;
-    }
-
-    // Structured sidecars are not consumed by the transcript parser. Keep the
-    // field name and a compact marker rather than allowing a large opaque
-    // object to force the entire app-server envelope through the whole-message
-    // clamp.
-    if (fieldValue && typeof fieldValue === 'object') {
-      const json = JSON.stringify(fieldValue);
-      const originalBytes = utf8ByteLen(json);
-      if (originalBytes > TRUNCATE_THRESHOLD_BYTES) {
-        const marker = `[... ${formatBytes(originalBytes)} elided from mobile sync; view on desktop for full output]`;
-        resultObj[key] = marker;
-        recordCodexTruncation(originalBytes, utf8ByteLen(marker), stats, blockBytesBefore);
-        modified = true;
-      }
-    }
+  const result = truncateBlockContent(resultObj.content);
+  if (result) {
+    resultObj.content = result.content;
+    recordCodexTruncation(result.originalBytes, result.truncatedBytes, stats, blockBytesBefore);
+    modified = true;
   }
 
   return modified;
@@ -918,6 +896,8 @@ function truncateCodexItemInPlace(
   if (!item || typeof item !== 'object') return false;
 
   const itemObj = item as Record<string, unknown>;
+  if (isInteractiveSyncItem(itemObj)) return false;
+  if (!['commandExecution', 'command_execution', 'mcpToolCall', 'mcp_tool_call'].includes(String(itemObj.type))) return false;
   let modified = false;
 
   for (const field of CODEX_TRUNCATE_FIELDS) {
@@ -951,75 +931,48 @@ export function truncateContentForSync(
   const bytesBefore = utf8ByteLen(rawContent);
   const stats = emptyPerMessage(bytesBefore);
 
-  // Route to a provider-specific walker. Sources we don't yet understand pass
-  // through unchanged so we don't risk corrupting messages, but their bytes
-  // still feed the cumulative tracker so the rollup can surface "X MB of
-  // provider Y went through untruncated".
   const sourceKey = source || 'unknown';
-  const isClaudeCode = source != null && source.startsWith('claude-code');
-  const isCodex =
-    source != null && (source.startsWith('openai-codex') || source.startsWith('opencode'));
-  if (!isClaudeCode && !isCodex) {
-    const wholeClamp = clampWholeMessage(rawContent, sourceKey);
-    stats.bytesAfter = wholeClamp.bytesAfter;
-    if (wholeClamp.elidedBytes > 0) {
-      stats.blocksTruncated = 1;
-      stats.elidedBytes = wholeClamp.elidedBytes;
-      stats.largestBlockElidedBytes = wholeClamp.elidedBytes;
-    }
-    syncTruncationTracker.record(stats, [], sourceKey);
-    return { content: wholeClamp.content, stats };
-  }
-
+  const isCodex = sourceKey.startsWith('openai-codex') || sourceKey.startsWith('opencode');
+  // Plain-text content is conversation and stays whole up to the row clamp.
+  // JSON rows from any source get the shape-based output bounds below, so an
+  // unrecognized provider cannot ship raw tool output.
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawContent);
-  } catch {
-    const wholeClamp = clampWholeMessage(rawContent, sourceKey);
-    stats.bytesAfter = wholeClamp.bytesAfter;
-    if (wholeClamp.elidedBytes > 0) {
-      stats.blocksTruncated = 1;
-      stats.elidedBytes = wholeClamp.elidedBytes;
-      stats.largestBlockElidedBytes = wholeClamp.elidedBytes;
-    }
+  try { parsed = JSON.parse(rawContent); }
+  catch {
+    const content = clampWholeRow(rawContent, sourceKey, stats);
     syncTruncationTracker.record(stats, [], sourceKey);
-    return { content: wholeClamp.content, stats };
+    return { content, stats };
   }
 
   const blockBytesBefore: number[] = [];
-  let modified: boolean;
-  if (isClaudeCode) {
+  let modified = false;
+  if (isCodex) {
+    modified = truncateCodexItemInPlace(parsed, stats, blockBytesBefore);
+  } else {
     // Run both: tool_result blocks live in message.content, tool_use_result is a
-    // top-level sibling. Either can be the oversized part.
+    // top-level sibling. Either can be the oversized part. Both walkers match
+    // on shape, so they are also the fallback for unrecognized sources.
     const blocksModified = truncateBlocksInPlace(parsed, stats, blockBytesBefore);
     const turModified = truncateClaudeToolUseResultInPlace(parsed, stats, blockBytesBefore);
     modified = blocksModified || turModified;
-  } else {
-    modified = truncateCodexItemInPlace(parsed, stats, blockBytesBefore);
+  }
+  const beforeAggregate = utf8ByteLen(modified ? JSON.stringify(parsed) : rawContent);
+  if (boundSyncOutputs(parsed)) {
+    modified = true;
+    recordCodexTruncation(beforeAggregate, utf8ByteLen(JSON.stringify(parsed)), stats, blockBytesBefore);
   }
   let providerContent = modified ? JSON.stringify(parsed) : rawContent;
 
   // A surviving image block buys a bigger ceiling -- see
   // MAX_SYNC_MESSAGE_WITH_IMAGE_BYTES. If even that isn't enough, drop the
   // images rather than the message, so mobile gets parseable JSON.
-  let maxBytes = MAX_SYNC_MESSAGE_BYTES;
   if (utf8ByteLen(providerContent) > MAX_SYNC_MESSAGE_BYTES && messageCarriesImageBlock(parsed)) {
-    maxBytes = MAX_SYNC_MESSAGE_WITH_IMAGE_BYTES;
     if (utf8ByteLen(providerContent) > MAX_SYNC_MESSAGE_WITH_IMAGE_BYTES) {
       if (stripImageBlocksInPlace(parsed)) providerContent = JSON.stringify(parsed);
-      maxBytes = MAX_SYNC_MESSAGE_BYTES;
     }
   }
 
-  const wholeClamp = clampWholeMessage(providerContent, sourceKey, maxBytes);
-  stats.bytesAfter = wholeClamp.bytesAfter;
-  if (wholeClamp.elidedBytes > 0) {
-    stats.blocksTruncated++;
-    stats.elidedBytes += wholeClamp.elidedBytes;
-    if (wholeClamp.elidedBytes > stats.largestBlockElidedBytes) {
-      stats.largestBlockElidedBytes = wholeClamp.elidedBytes;
-    }
-  }
+  providerContent = clampWholeRow(providerContent, sourceKey, stats);
 
   syncTruncationTracker.record(stats, blockBytesBefore, sourceKey);
 
@@ -1033,5 +986,5 @@ export function truncateContentForSync(
   //     syncTruncationTracker.runningTotalsString(),
   // );
 
-  return { content: wholeClamp.content, stats };
+  return { content: providerContent, stats };
 }

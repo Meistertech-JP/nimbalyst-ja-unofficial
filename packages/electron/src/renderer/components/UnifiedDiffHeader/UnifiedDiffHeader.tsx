@@ -18,15 +18,15 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { ProviderIcon } from '@nimbalyst/runtime/ui/icons/ProviderIcons';
 import { usePostHog } from 'posthog-js/react';
-import type { TFunction } from 'i18next';
 import type { UnifiedDiffHeaderProps } from './DiffCapabilities';
 
 /**
  * Format a timestamp as a relative time string (e.g., "2 hours ago")
  */
-function formatRelativeTime(timestamp: number, t: TFunction): string {
+function formatRelativeTime(timestamp: number, locale: string, justNow: string): string {
   const now = Date.now();
   const diff = now - timestamp;
 
@@ -35,16 +35,11 @@ function formatRelativeTime(timestamp: number, t: TFunction): string {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 0) {
-    return t('editor:diff.days_ago', { count: days });
-  }
-  if (hours > 0) {
-    return t('editor:diff.hours_ago', { count: hours });
-  }
-  if (minutes > 0) {
-    return t('editor:diff.minutes_ago', { count: minutes });
-  }
-  return t('editor:diff.just_now');
+  const relativeTime = new Intl.RelativeTimeFormat(locale, { numeric: 'always' });
+  if (days > 0) return relativeTime.format(-days, 'day');
+  if (hours > 0) return relativeTime.format(-hours, 'hour');
+  if (minutes > 0) return relativeTime.format(-minutes, 'minute');
+  return justNow;
 }
 
 export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
@@ -53,9 +48,11 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
   onGoToSession,
   capabilities,
   editorType,
+  readOnlyWhileReviewing = false,
 }) => {
-  const { t } = useTranslation(['common', 'editor']);
   const posthog = usePostHog();
+  const { t: tEditor, i18n } = useTranslation('editor');
+  const { t: tCommon } = useTranslation('common');
   const { changeGroups } = capabilities;
   const hasChangeGroups = changeGroups && changeGroups.count > 0;
   const hasSelection = changeGroups && changeGroups.currentIndex !== null && changeGroups.currentIndex >= 0;
@@ -114,7 +111,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
           onClick={canNavigate ? handleGoToSession : undefined}
           type="button"
           disabled={!canNavigate}
-          title={canNavigate ? t('editor:tooltips.open_session', { title: sessionInfo.sessionTitle }) : undefined}
+          title={canNavigate ? tEditor('tooltips.open_session', { title: sessionInfo.sessionTitle }) : undefined}
         >
           {provider ? (
             <ProviderIcon provider={provider} size={18} className="unified-diff-header-session-icon shrink-0" />
@@ -136,7 +133,9 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
           {/*</span>*/}
           {sessionInfo.editedAt && (
             <span className="unified-diff-header-timestamp text-[var(--nim-text-faint)] shrink-0 before:content-['\00b7'] before:mr-1.5 @[max-700px]/diff-header:hidden">
-              {t('editor:diff.edited_time', { time: formatRelativeTime(sessionInfo.editedAt, t) })}
+              {tEditor('diff.edited_time', {
+                time: formatRelativeTime(sessionInfo.editedAt, i18n.resolvedLanguage ?? i18n.language, tEditor('diff.just_now')),
+              })}
             </span>
           )}
         </div>
@@ -149,7 +148,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="unified-diff-header-sparkle shrink-0">
           <path d="M8 1L9 5L13 6L9 7L8 11L7 7L3 6L7 5L8 1Z" fill="currentColor"/>
         </svg>
-        {t('editor:diff.ai_edited', { file: fileName || t('editor:diff.file') })}
+        {tEditor('diff.ai_edited', { file: fileName || tEditor('diff.file') })}
       </span>
     );
   };
@@ -160,6 +159,20 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
         {/* Left section: Session info */}
         <div className="unified-diff-header-info flex items-center gap-3 shrink min-w-0 overflow-hidden @[max-450px]/diff-header:flex-[1_1_100%] @[max-450px]/diff-header:order-1">
           {renderSessionInfo()}
+          {/* Editors that lock during review say so here rather than letting
+              the user discover it by typing into a dead cell. The lock icon
+              survives the narrow breakpoint; only the sentence is dropped. */}
+          {readOnlyWhileReviewing && (
+            <span
+              className="unified-diff-header-readonly-note flex items-center gap-1.5 text-[13px] text-[var(--nim-text-muted)] shrink-0"
+              title={tEditor('diff.read_only_title')}
+            >
+              <MaterialSymbol icon="lock" size={14} className="shrink-0" />
+              <span className="@[max-700px]/diff-header:hidden whitespace-nowrap">
+                {tEditor('diff.read_only_reviewing')}
+              </span>
+            </span>
+          )}
         </div>
 
         {/* Middle section: Navigation (only if change groups supported) */}
@@ -167,7 +180,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
           <div className="unified-diff-header-navigation flex items-center gap-2 shrink-0 @[max-450px]/diff-header:flex-[0_1_auto] @[max-450px]/diff-header:order-2">
             <button
               onClick={changeGroups.onNavigatePrevious}
-              aria-label={t('common:diff.previous_change')}
+              aria-label={tCommon('diff.previous_change')}
               className="unified-diff-header-nav-button bg-transparent border border-[var(--nim-border)] rounded w-6 h-6 flex items-center justify-center cursor-pointer text-[var(--nim-text)] p-0 transition-colors duration-150 hover:enabled:bg-[var(--nim-bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -176,12 +189,12 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
             </button>
             <span className="unified-diff-header-change-counter text-[13px] text-[var(--nim-text-muted)] min-w-[80px] text-center select-none @[max-350px]/diff-header:min-w-[60px] @[max-350px]/diff-header:text-xs">
               {hasSelection
-                ? t('common:diff.position', { current: changeGroups.currentIndex! + 1, total: changeGroups.count })
-                : t('common:diff.changes', { count: changeGroups.count })}
+                ? tCommon('diff.position', { current: changeGroups.currentIndex! + 1, total: changeGroups.count })
+                : tCommon('diff.changes', { count: changeGroups.count })}
             </span>
             <button
               onClick={changeGroups.onNavigateNext}
-              aria-label={t('common:diff.next_change')}
+              aria-label={tCommon('diff.next_change')}
               className="unified-diff-header-nav-button bg-transparent border border-[var(--nim-border)] rounded w-6 h-6 flex items-center justify-center cursor-pointer text-[var(--nim-text)] p-0 transition-colors duration-150 hover:enabled:bg-[var(--nim-bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -199,24 +212,24 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
               <button
                 className="unified-diff-header-button unified-diff-header-button-reject-single py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-border)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-bg)] text-[var(--nim-text)] hover:enabled:bg-[var(--nim-bg-hover)] hover:enabled:opacity-100 active:enabled:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed @[max-450px]/diff-header:py-1.5 @[max-450px]/diff-header:px-2.5 @[max-350px]/diff-header:py-[5px] @[max-350px]/diff-header:px-2 @[max-350px]/diff-header:text-xs"
                 onClick={handleRejectCurrent}
-                title={t('common:diff.revert_title')}
+                title={tCommon('diff.revert_title')}
                 disabled={!hasSelection}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M10 4L4 10M4 4L10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
-                {t('common:diff.revert')}
+                {tCommon('diff.revert')}
               </button>
               <button
                 className="unified-diff-header-button unified-diff-header-button-accept-single py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-white hover:enabled:opacity-90 active:enabled:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed @[max-450px]/diff-header:py-1.5 @[max-450px]/diff-header:px-2.5 @[max-350px]/diff-header:py-[5px] @[max-350px]/diff-header:px-2 @[max-350px]/diff-header:text-xs"
                 onClick={handleAcceptCurrent}
-                title={t('common:diff.keep_title')}
+                title={tCommon('diff.keep_title')}
                 disabled={!hasSelection}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M12 3L5 10L2 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                {t('common:diff.keep')}
+                {tCommon('diff.keep')}
               </button>
             </>
           )}
@@ -232,7 +245,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
                 <path d="M10 4L4 10M4 4L10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             )}
-            {hasChangeGroups && supportsPerChangeActions ? t('common:diff.revert_all') : t('common:diff.revert')}
+            {hasChangeGroups && supportsPerChangeActions ? tCommon('diff.revert_all') : tCommon('diff.revert')}
           </button>
           <button
             className="unified-diff-header-button unified-diff-header-button-accept py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-white hover:enabled:opacity-90 active:enabled:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed @[max-450px]/diff-header:py-1.5 @[max-450px]/diff-header:px-2.5 @[max-350px]/diff-header:py-[5px] @[max-350px]/diff-header:px-2 @[max-350px]/diff-header:text-xs"
@@ -245,7 +258,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
                 <path d="M12 3L5 10L2 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             )}
-            {hasChangeGroups && supportsPerChangeActions ? t('common:diff.keep_all') : t('common:diff.keep')}
+            {hasChangeGroups && supportsPerChangeActions ? tCommon('diff.keep_all') : tCommon('diff.keep')}
           </button>
         </div>
       </div>

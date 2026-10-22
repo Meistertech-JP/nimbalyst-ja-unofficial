@@ -1,0 +1,168 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ProviderConfig } from '../../Settings/SettingsView';
+import { SettingsToggle } from '../SettingsToggle';
+import { SettingsAlphaBadge } from '../../common/AlphaBadge';
+
+/**
+ * Settings panel for the Gemini agent.
+ *
+ * Deliberately not `HeadlessCliProviderPanel`: that panel's whole middle is
+ * "install this CLI with this command, then run this login command", and
+ * neither applies here. Antigravity is a desktop application you download and
+ * sign into once, and the language server Nimbalyst talks to is inside its
+ * bundle.
+ *
+ * What this replaces is worth naming, because it is the reason this file
+ * exists. While Gemini shipped as an extension, its pane opened with a "Native
+ * code grant required" banner asking the user to grant permission to execute
+ * native code, listed a `nimbalyst-database-write` catalog permission, and
+ * pointed at Installed Extensions to revoke it — first-party code asking the
+ * user for consent to run itself. There is no grant here, because there is
+ * nothing to grant: this is Nimbalyst's own code in Nimbalyst's own process,
+ * held to the same bar as every other built-in provider.
+ *
+ * So the pane answers the three questions every other provider pane answers:
+ * is the tool installed, are you signed in, and what happens to your files.
+ */
+
+type InstallStatus = 'checking' | 'installed' | 'not-installed';
+
+interface GeminiPanelProps {
+  config: ProviderConfig;
+  onToggle: (enabled: boolean) => void;
+}
+
+const ANTIGRAVITY_URL = 'https://antigravity.google';
+
+export function GeminiPanel({ config, onToggle }: GeminiPanelProps) {
+  const { t } = useTranslation('settings', { keyPrefix: 'provider.gemini' });
+  const [status, setStatus] = useState<InstallStatus>('checking');
+  const [installPath, setInstallPath] = useState<string | null>(null);
+
+  const check = useCallback(async () => {
+    setStatus('checking');
+    try {
+      const availability = await window.electronAPI.aiGetHeadlessAgentAvailability?.();
+      const gemini = availability?.['antigravity-gemini-agent'];
+      setInstallPath(gemini?.executablePath ?? null);
+      setStatus(gemini?.installed ? 'installed' : 'not-installed');
+    } catch {
+      setStatus('not-installed');
+    }
+  }, []);
+
+  useEffect(() => {
+    void check();
+  }, [check]);
+
+  return (
+    <div className="provider-panel gemini-provider-panel flex flex-col">
+      <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)] flex items-center gap-2">
+          Gemini
+        <SettingsAlphaBadge size="sm" />
+        </h3>
+        <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
+          {t('description')}
+        </p>
+      </div>
+
+      <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)]">
+        <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">
+          Antigravity
+        </h4>
+
+        {status === 'checking' && (
+          <p className="text-[13px] text-[var(--nim-text-muted)]">{t('checking')}</p>
+        )}
+
+        {status === 'installed' && (
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[var(--nim-success)] shrink-0" />
+              <span className="text-[13px] text-[var(--nim-text)]">{t('installed')}</span>
+            </div>
+            {installPath && (
+              <code className="block text-[12px] text-[var(--nim-code-text)] bg-[var(--nim-code-bg)] px-3 py-2 rounded mt-2 select-text break-all">
+                {installPath}
+              </code>
+            )}
+          </div>
+        )}
+
+        {status === 'not-installed' && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full bg-[var(--nim-warning)] shrink-0" />
+              <span className="text-[13px] text-[var(--nim-text)]">{t('not_found')}</span>
+            </div>
+            <p className="text-[13px] text-[var(--nim-text-muted)] mb-3 leading-relaxed">
+              {t('not_installed_description')}
+            </p>
+            <button
+              className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-surface)] text-[var(--nim-text)] border border-[var(--nim-border)] hover:bg-[var(--nim-surface-hover)]"
+              onClick={() => void check()}
+            >
+              {t('check_again')}
+            </button>
+          </div>
+        )}
+
+        <p className="text-[13px] text-[var(--nim-text-muted)] mt-3 leading-relaxed">
+          {t('see_downloads_prefix')}{' '}
+          <a
+            href={ANTIGRAVITY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--nim-primary)] hover:underline"
+          >
+            antigravity.google
+          </a>
+          {' '}{t('see_downloads_suffix')}
+        </p>
+      </div>
+
+      <SettingsToggle
+        variant="enable"
+        name={t('enable')}
+        checked={config.enabled || false}
+        onChange={onToggle}
+      />
+
+      {status === 'installed' && (
+        <p className="text-[13px] text-[var(--nim-text-muted)] mt-2 leading-relaxed">
+          {t('enabled_by_default')}
+        </p>
+      )}
+
+      {config.enabled && (
+        <>
+          <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)]">
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('authentication')}</h4>
+            <p className="text-[13px] text-[var(--nim-text-muted)] mb-3 leading-relaxed">
+              {t('authentication_description')}
+            </p>
+            <p className="text-[13px] text-[var(--nim-text-muted)]">
+              {t('no_api_key')}
+            </p>
+          </div>
+
+          <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)]">
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('file_tracking')}</h4>
+            <p className="text-[13px] text-[var(--nim-text-muted)] leading-relaxed">
+              {t('file_tracking_description')}
+            </p>
+          </div>
+
+          <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('context_usage')}</h4>
+            <p className="text-[13px] text-[var(--nim-text-muted)] leading-relaxed">
+              {t('context_usage_description')}
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

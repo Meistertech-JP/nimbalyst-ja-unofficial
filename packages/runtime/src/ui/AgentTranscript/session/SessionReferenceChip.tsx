@@ -15,7 +15,6 @@ import { useAtomValue } from 'jotai';
 
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
 import { resolveProviderIcon } from '../../icons/ProviderIcons';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
 import {
   sessionRefByIdAtom,
   openSessionReference,
@@ -23,12 +22,12 @@ import {
 } from './sessionRefAtoms';
 
 /** Phase -> presentation. Falls back to neutral for unknown phases. */
-const PHASE_PRESENTATION: Record<string, { color: string }> = {
-  backlog: { color: 'var(--nim-text-muted)' },
-  planning: { color: 'var(--nim-info)' },
-  implementing: { color: 'var(--nim-warning)' },
-  validating: { color: 'var(--nim-info)' },
-  complete: { color: 'var(--nim-success)' },
+const PHASE_PRESENTATION: Record<string, { color: string; label: string }> = {
+  backlog: { color: 'var(--nim-text-muted)', label: 'Backlog' },
+  planning: { color: 'var(--nim-info)', label: 'Planning' },
+  implementing: { color: 'var(--nim-warning)', label: 'Implementing' },
+  validating: { color: 'var(--nim-info)', label: 'Validating' },
+  complete: { color: 'var(--nim-success)', label: 'Complete' },
 };
 
 /** Short, stable id label for the unresolved / fallback state. */
@@ -51,6 +50,14 @@ export interface SessionReferenceChipProps {
   /** Compact chips drop the phase label, keeping the icon + title. */
   variant?: 'default' | 'compact';
   /**
+   * Presentation to use when the id isn't in `sessionRefMapAtom` — which the
+   * registry only covers for the current workspace. A caller that already has
+   * the session's title/provider from its own query (e.g. a session in another
+   * worktree) passes it here so the chip shows a name instead of a raw id.
+   * Live atom data always wins.
+   */
+  fallbackMeta?: Partial<SessionRefMeta>;
+  /**
    * Host-supplied navigation. Defaults to the `open-ai-session` window event;
    * hosts that already own an open-session action (e.g. the PR pane, which also
    * switches window mode) pass their own here.
@@ -61,27 +68,22 @@ export interface SessionReferenceChipProps {
 export function SessionReferenceChip({
   sessionId,
   variant = 'default',
+  fallbackMeta,
   onOpen: onOpenOverride,
 }: SessionReferenceChipProps): JSX.Element {
-  const { t } = useRuntimeTranslation();
-  const meta = useAtomValue(sessionRefByIdAtom(sessionId));
-  const phaseLabels: Record<string, string> = {
-    backlog: t('agents:status.phase_backlog', 'Backlog'),
-    planning: t('agents:status.phase_planning', 'Planning'),
-    implementing: t('agents:status.phase_implementing', 'Implementing'),
-    validating: t('agents:status.phase_validating', 'Validating'),
-    complete: t('agents:status.phase_complete', 'Complete'),
-  };
+  const liveMeta = useAtomValue(sessionRefByIdAtom(sessionId));
+  const meta: SessionRefMeta | null =
+    liveMeta ?? (fallbackMeta ? { id: sessionId, title: '', ...fallbackMeta } : null);
 
   const label = meta?.title?.trim() || shortSessionId(sessionId);
   const dotColor = statusDotColor(meta);
   const phase =
     meta?.phase && PHASE_PRESENTATION[meta.phase]
-      ? phaseLabels[meta.phase]
+      ? PHASE_PRESENTATION[meta.phase].label
       : undefined;
   const tooltip = meta
-    ? t('aichat:cross_session.open_resolved', '{{title}}{{phase}} — open session', { title: meta.title || t('agents:context.session', 'Session'), phase: phase ? ` · ${phase}` : '' })
-    : t('aichat:cross_session.open_unknown', 'Session {{id}} — open session', { id: shortSessionId(sessionId) });
+    ? `${meta.title || 'Session'}${phase ? ` · ${phase}` : ''} — open session`
+    : `Session ${shortSessionId(sessionId)} — open session`;
 
   const onOpen = React.useCallback(
     (event: React.MouseEvent) => {

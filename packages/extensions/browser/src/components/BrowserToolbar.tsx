@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { BrowserNavigationState } from '../browserClient';
 
 interface BrowserToolbarProps {
@@ -29,6 +30,8 @@ export function BrowserToolbar({
   pinnedUrlLabel,
   autoFocusUrl,
 }: BrowserToolbarProps): JSX.Element {
+  const { t: tCommon } = useTranslation('common');
+  const { t } = useTranslation('editor');
   // Local input keeps the URL bar editable without fighting the broadcast
   // state updates. We seed it from state and sync on remote navigation.
   const [draft, setDraft] = useState<string>(displayUrl(state?.url));
@@ -90,8 +93,8 @@ export function BrowserToolbar({
         onClick={onBack}
         disabled={!state?.canGoBack}
         className="nim-browser-toolbar-btn"
-        aria-label="Back"
-        title="Back"
+        aria-label={tCommon('back')}
+        title={tCommon('back')}
         style={{ padding: '4px 8px' }}
       >
         &larr;
@@ -101,8 +104,8 @@ export function BrowserToolbar({
         onClick={onForward}
         disabled={!state?.canGoForward}
         className="nim-browser-toolbar-btn"
-        aria-label="Forward"
-        title="Forward"
+        aria-label={tCommon('forward')}
+        title={tCommon('forward')}
         style={{ padding: '4px 8px' }}
       >
         &rarr;
@@ -111,8 +114,8 @@ export function BrowserToolbar({
         type="button"
         onClick={onReload}
         className="nim-browser-toolbar-btn"
-        aria-label="Reload"
-        title="Reload"
+        aria-label={tCommon('reload')}
+        title={tCommon('reload')}
         style={{ padding: '4px 8px' }}
       >
         &#x21bb;
@@ -153,7 +156,7 @@ export function BrowserToolbar({
             }
           }}
           spellCheck={false}
-          aria-label="URL"
+          aria-label={t('insert_dialog.url')}
           style={{
             flex: 1,
             minWidth: 0,
@@ -164,7 +167,7 @@ export function BrowserToolbar({
             color: 'var(--nim-text)',
             outline: 'none',
           }}
-          placeholder="Enter URL"
+          placeholder={t('browser.enter_url')}
         />
       )}
 
@@ -174,7 +177,7 @@ export function BrowserToolbar({
           aria-hidden="true"
           style={{ fontSize: 11, color: 'var(--nim-text-muted)' }}
         >
-          Loading&hellip;
+          {tCommon('loading')}
         </span>
       ) : null}
 
@@ -183,10 +186,10 @@ export function BrowserToolbar({
           type="button"
           onClick={onToggleSourceMode}
           className="nim-browser-toolbar-btn"
-          title="Toggle source view"
+          title={t('diff.source_mode_toggle')}
           style={{ padding: '4px 8px' }}
         >
-          Source
+          {t('html_page.source')}
         </button>
       ) : null}
     </div>

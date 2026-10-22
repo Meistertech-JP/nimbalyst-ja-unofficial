@@ -7,9 +7,10 @@
  * runtime uses, so it catches the failure class where build is green but
  * the feature is broken because runtime resolution would fail.
  *
- * Why this exists: validate-extra-resources.js only checks INPUTS (do the
- * source paths exist before electron-builder runs). That answers "did the
- * config look right" but NOT "did the packaging actually work". Every
+ * Why this exists: the pre-pack validation in validate-extra-resources.js
+ * checks INPUTS (do the source paths exist before electron-builder runs).
+ * That answers "did the config look right" but NOT "did the SDK packaging
+ * actually work". Every
  * recurring "build green, feature broken in production" bug we've shipped
  * has been a packaging-output failure that input validation cannot catch.
  *
@@ -42,10 +43,12 @@
  */
 
 const fs = require('fs');
+const { validateClaudeRuntime, locations: claudeLocations } = require('./claude-runtime.js');
 const os = require('os');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { spawnSync } = require('child_process');
+const { withElectronAbiProbeExecutable } = require('./electron-abi-probe.js');
 
 function parseArgs(argv) {
   const out = { positional: [], platform: undefined, arch: undefined };
@@ -255,13 +258,11 @@ function nativeBinaryChecks() {
   const out = [];
   const nmRel = (...parts) => path.join(nodeModulesPath, ...parts);
 
-  // 1. claude binary -- @anthropic-ai/claude-agent-sdk-<plat>-<arch>/claude(.exe)
-  const claudePlatDir = `claude-agent-sdk-${targetPlatform === 'win32' ? 'win32' : targetPlatform}-${targetArch}`;
+  // #1476: the executable must be outside node_modules/@anthropic-ai.
+  validateClaudeRuntime(resourcesRoot, targetPlatform, targetArch);
   out.push({
-    label: 'claude binary (@anthropic-ai/claude-agent-sdk)',
-    candidates: [
-      nmRel('@anthropic-ai', claudePlatDir, targetPlatform === 'win32' ? 'claude.exe' : 'claude'),
-    ],
+    label: 'claude bundled runtime',
+    candidates: [claudeLocations(resourcesRoot, targetPlatform, targetArch).destination],
   });
 
   // 2. codex binary -- @openai/codex-<plat>-<arch>/vendor/<triple>/<bin|codex>/codex(.exe)
@@ -397,10 +398,65 @@ const WORKER_BUNDLES = [
     ],
   },
   {
+    // Spawned by the SQLite worker to verify a backup file off its thread. It
+    // resolves better-sqlite3 from its own location, same as its parent, so a
+    // missing bundle or missing binding here silently degrades backup
+    // verification back to blocking the query loop.
+    name: 'sqlite-verify-worker',
+    bundle: 'sqlite-verify-worker.bundle.js',
+    externals: ['better-sqlite3'],
+    nativeBinaries: [
+      {
+        candidateRelPaths: [
+          `node_modules/better-sqlite3/prebuilds/${targetPlatform}-${targetArch}.node`,
+          ...(targetPlatform === 'linux'
+            ? [`node_modules/better-sqlite3/prebuilds/linuxmusl-${targetArch}.node`]
+            : []),
+          'node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+        ],
+      },
+    ],
+  },
+  {
+    // Spawned to run the full integrity/schema/content check that authorizes
+    // replacing a live database during recovery. If this bundle or its binding
+    // is missing the check falls back to running inline, which is exactly the
+    // multi-GB main-thread stall the worker exists to avoid -- and it degrades
+    // silently, so it has to be validated in the packaged output.
+    name: 'sqlite-recovery-verify-worker',
+    bundle: 'sqlite-recovery-verify-worker.bundle.js',
+    externals: ['better-sqlite3'],
+    nativeBinaries: [
+      {
+        candidateRelPaths: [
+          `node_modules/better-sqlite3/prebuilds/${targetPlatform}-${targetArch}.node`,
+          ...(targetPlatform === 'linux'
+            ? [`node_modules/better-sqlite3/prebuilds/linuxmusl-${targetArch}.node`]
+            : []),
+          'node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+        ],
+      },
+    ],
+  },
+  {
     name: 'pglite-worker',
     bundle: 'worker.bundle.js',
     externals: [],
     nativeBinaries: [],
+  },
+  {
+    // The memory backend is a utility-process module under Resources/extensions.
+    // Its local embedder is externalized and must resolve from Resources/node_modules.
+    name: 'memory-backend',
+    bundle: 'extensions/nimbalyst-memory/dist/backend.js',
+    externals: ['@huggingface/transformers', 'onnxruntime-node', 'onnxruntime-common'],
+    nativeBinaries: (targetArch === 'universal' ? ['x64', 'arm64'] : [targetArch]).map(
+      (arch) => ({
+        candidateRelPaths: [
+          `node_modules/onnxruntime-node/bin/napi-v3/${targetPlatform}/${arch}/onnxruntime_binding.node`,
+        ],
+      }),
+    ),
   },
 ];
 
@@ -542,26 +598,31 @@ if (canBootCheck) {
         db.close();
         if (!r || !r.v) throw new Error('better-sqlite3 returned no sqlite_version');
       `,
+      'onnxruntime-node': `
+        const ort = req('onnxruntime-node');
+        if (!ort || typeof ort.InferenceSession !== 'function') {
+          throw new Error('onnxruntime-node did not expose InferenceSession');
+        }
+      `,
     };
 
     const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-worker-boot-'));
     try {
-      for (const wb of WORKER_BUNDLES) {
-        for (const spec of wb.externals) {
-          const probe = NATIVE_BOOT_PROBES[spec];
-          if (!probe) continue; // No probe defined; resolution check above is the floor.
-          // The harness chdir's into the packaged Resources/ so require()
-          // resolves the same way the worker does at runtime.
-          const harnessPath = path.join(tmpRoot, `boot-${wb.name}-${spec.replace(/[^a-z0-9]/gi, '_')}.js`);
-          // Key require() to the worker bundle's path so module resolution
-          // walks the same node_modules/ chain the worker_threads worker
-          // would at runtime. A bare `require()` from this temp harness
-          // would walk up from /tmp/... and miss the packaged tree. Use
-          // `req` (not `require`) so we don't shadow the harness's own
-          // require -- shadowing trips Electron's loader, which treats the
-          // redeclaration as an ESM signal.
-          const bundlePathLiteral = JSON.stringify(path.join(resourcesRoot, wb.bundle));
-          const harnessSource = `
+      withElectronAbiProbeExecutable(electronBin, (probeExecutable) => {
+        for (const wb of WORKER_BUNDLES) {
+          for (const spec of wb.externals) {
+            const probe = NATIVE_BOOT_PROBES[spec];
+            if (!probe) continue; // No probe defined; resolution check above is the floor.
+            // Key require() to the worker bundle's path so module resolution
+            // walks the same node_modules/ chain the worker_threads worker
+            // would at runtime. A bare `require()` from this temp harness
+            // would walk up from /tmp/... and miss the packaged tree. Use
+            // `req` (not `require`) so we don't shadow the harness's own
+            // require -- shadowing trips Electron's loader, which treats the
+            // redeclaration as an ESM signal.
+            const harnessPath = path.join(tmpRoot, `boot-${wb.name}-${spec.replace(/[^a-z0-9]/gi, '_')}.js`);
+            const bundlePathLiteral = JSON.stringify(path.join(resourcesRoot, wb.bundle));
+            const harnessSource = `
             'use strict';
             const req = require('module').createRequire(${bundlePathLiteral});
             try {
@@ -573,36 +634,37 @@ if (canBootCheck) {
               process.exit(1);
             }
           `;
-          fs.writeFileSync(harnessPath, harnessSource, 'utf8');
-          const result = spawnSync(electronBin, [harnessPath], {
-            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-            encoding: 'utf8',
-            timeout: 30_000,
-          });
-          if (result.status === 0 && result.stdout.includes('OK')) {
-            console.log(`  [ok] ${wb.bundle} require("${spec}") + dlopen (ABI matches Electron's Node)`);
-          } else {
-            const stderr = (result.stderr || '').trim();
-            // Distinguish a real probe failure from an environmental hang.
-            // Real failure: status=1 with stderr containing the thrown error.
-            // Environmental hang: status=null (killed by timeout) with empty
-            // stderr -- the binary never executed the harness JS, usually
-            // because afterPack runs before signing and macOS Gatekeeper
-            // blocks the unsigned Electron Framework on clean CI runners.
-            if (result.status === null && !stderr) {
-              console.log(
-                `  [skip] ${wb.bundle} require("${spec}"): Electron-as-Node spawn timed out before the harness produced output ` +
-                `(probably unsigned binary on a CI runner; path-resolution check above is the real gate)`,
-              );
+            fs.writeFileSync(harnessPath, harnessSource, 'utf8');
+            const result = spawnSync(probeExecutable, [harnessPath], {
+              env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+              encoding: 'utf8',
+              timeout: 30_000,
+            });
+            if (result.status === 0 && result.stdout.includes('OK')) {
+              console.log(`  [ok] ${wb.bundle} require("${spec}") + dlopen (ABI matches Electron's Node)`);
             } else {
-              bootWarnings.push({
-                target: `${wb.bundle} -> require("${spec}")`,
-                reason: `Electron-as-Node boot failed (status=${result.status}): ${stderr.split('\n').slice(0, 5).join(' | ') || '<no stderr>'}`,
-              });
+              const stderr = (result.stderr || '').trim();
+              // Distinguish a real probe failure from an environmental hang.
+              // Real failure: status=1 with stderr containing the thrown error.
+              // Environmental hang: status=null (killed by timeout) with empty
+              // stderr -- the binary never executed the harness JS, usually
+              // because afterPack runs before signing and macOS Gatekeeper
+              // blocks the unsigned Electron Framework on clean CI runners.
+              if (result.status === null && !stderr) {
+                console.log(
+                  `  [skip] ${wb.bundle} require("${spec}"): Electron-as-Node spawn timed out before the harness produced output ` +
+                  `(probably unsigned binary on a CI runner; path-resolution check above is the real gate)`,
+                );
+              } else {
+                bootWarnings.push({
+                  target: `${wb.bundle} -> require("${spec}")`,
+                  reason: `Electron-as-Node boot failed (status=${result.status}): ${stderr.split('\n').slice(0, 5).join(' | ') || '<no stderr>'}`,
+                });
+              }
             }
           }
         }
-      }
+      });
     } finally {
       try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
     }

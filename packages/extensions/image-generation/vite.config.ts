@@ -26,6 +26,7 @@ export default defineConfig({
         'react-dom',
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
+        '@nimbalyst/i18n/react',
         'lexical',
         /^@lexical\//,
         /^@nimbalyst\/runtime/,

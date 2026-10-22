@@ -12,7 +12,7 @@
 import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { SettingsScope } from '../SettingsView';
 import { getPullRequestService } from '../../../services/RendererPullRequestService';
 
@@ -28,7 +28,7 @@ interface GhAccount {
 }
 
 export function GitHubAccountPanel({ scope, workspacePath }: GitHubAccountPanelProps): JSX.Element {
-  const { t } = useTranslation(['settings']);
+  const { t } = useTranslation('settings');
   const [accounts, setAccounts] = useState<GhAccount[]>([]);
   const [defaultAccount, setDefaultAccount] = useState<string | null>(null);
   const [override, setOverride] = useState<string | null>(null);
@@ -50,11 +50,11 @@ export function GitHubAccountPanel({ scope, workspacePath }: GitHubAccountPanelP
       setDefaultAccount(config.defaultAccount);
       setOverride(config.override);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('settings:github_account.load_failed'));
+      setError(err instanceof Error ? err.message : t('github_account.load_failed'));
     } finally {
       setLoading(false);
     }
-  }, [service, workspacePath, t]);
+  }, [service, t, workspacePath]);
 
   useEffect(() => {
     void reload();
@@ -83,38 +83,44 @@ export function GitHubAccountPanel({ scope, workspacePath }: GitHubAccountPanelP
     <div className="github-account-panel provider-panel flex flex-col" data-testid="github-account-panel">
       <div className="provider-panel-header mb-5 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-1.5 text-[var(--nim-text)]">
-          {t('settings:github_account.title')}
+          {t('github_account.title')}
         </h3>
         <p className="provider-panel-description text-[13px] leading-relaxed text-[var(--nim-text-muted)]">
           {isProject
-            ? t('settings:github_account.project_description')
-            : t('settings:github_account.default_description')}
+            ? t('github_account.project_description')
+            : t('github_account.default_description')}
         </p>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 py-6 text-[var(--nim-text-muted)] text-sm">
           <div className="spinner w-4 h-4 border-[2px] border-[var(--nim-bg-secondary)] border-t-[var(--nim-primary)] rounded-full animate-spin" />
-          {t('settings:github_account.loading')}
+          {t('github_account.loading')}
         </div>
       ) : error ? (
         <div className="flex flex-col items-start gap-2 py-4 text-[var(--nim-error)] text-sm">
           <span>{error}</span>
           <button className="text-xs text-[var(--nim-primary)] hover:underline" onClick={() => void reload()}>
-            {t('settings:github_account.retry')}
+            {t('github_account.retry')}
           </button>
         </div>
       ) : noAccounts ? (
         <div className="flex items-start gap-2.5 p-3 bg-[rgba(96,165,250,0.08)] border border-[rgba(96,165,250,0.2)] rounded-lg text-[13px] text-[var(--nim-text-muted)]">
           <MaterialSymbol icon="info" size={16} className="text-[var(--nim-primary)] shrink-0 mt-0.5" />
           <div>
-            <Trans t={t} i18nKey="settings:github_account.no_accounts" components={{ code: <code className="text-[11px] bg-[var(--nim-code-bg)] px-1 py-[1px] rounded" /> }} />
+            <Trans
+              ns="settings"
+              i18nKey="github_account.no_accounts"
+              components={{
+                code: <code className="text-[11px] bg-[var(--nim-code-bg)] px-1 py-[1px] rounded" />,
+              }}
+            />
           </div>
         </div>
       ) : (
         <div className="provider-panel-section py-2">
           <label className="block text-[13px] font-medium text-[var(--nim-text)] mb-2">
-            {isProject ? t('settings:github_account.project_account') : t('settings:github_account.default_account')}
+            {isProject ? t('github_account.project_account') : t('github_account.default_account')}
           </label>
           <select
             data-testid="github-account-select"
@@ -128,23 +134,23 @@ export function GitHubAccountPanel({ scope, workspacePath }: GitHubAccountPanelP
           >
             <option value="">
               {isProject
-                ? `${t('settings:github_account.use_default')}${defaultAccount ? ` (${defaultAccount})` : ''}`
-                : t('settings:github_account.active_no_preference')}
+                ? `${t('github_account.use_default')}${defaultAccount ? ` (${defaultAccount})` : ''}`
+                : t('github_account.active_no_preference')}
             </option>
             {accounts.map((acc) => (
               <option key={`${acc.host}:${acc.login}`} value={acc.login}>
                 {acc.login}
                 {acc.host !== 'github.com' ? ` — ${acc.host}` : ''}
-                {acc.active ? ` (${t('settings:github_account.active')})` : ''}
+                {acc.active ? ` (${t('github_account.active')})` : ''}
               </option>
             ))}
           </select>
 
           {isProject && (
             <p className="text-[11px] text-[var(--nim-text-faint)] mt-2">
-              {t('settings:github_account.effective')}{' '}
+              {t('github_account.effective')}{' '}
               <strong className="text-[var(--nim-text-muted)]">
-                {override ?? defaultAccount ?? t('settings:github_account.active_account')}
+                {override ?? defaultAccount ?? t('github_account.active_account')}
               </strong>
             </p>
           )}

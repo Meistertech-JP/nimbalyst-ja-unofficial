@@ -18,7 +18,8 @@
 import log from 'electron-log/main';
 import { BrowserWindow, Notification } from 'electron';
 import { findWindowByWorkspace } from '../window/WindowManager';
-import { t } from '../i18n';
+import { resolveNotificationIcon } from './notificationIcons';
+import { translateMainNotification } from '../i18n/mainI18n';
 import {
   type SessionWakeup,
   type SessionWakeupsStore,
@@ -275,11 +276,12 @@ export class SessionWakeupScheduler {
 function notifyWakeupFired(row: SessionWakeup): void {
   if (!Notification.isSupported()) return;
   try {
-    const title = t('errors:notifications.session_resumed');
+    const title = translateMainNotification('session_resumed', 'Session resumed');
     const body = row.reason
       ? `${row.reason}`
-      : t('errors:notifications.wakeup_fired');
-    const notification = new Notification({ title, body, silent: false });
+      : translateMainNotification('scheduled_wakeup_fired', 'A scheduled wakeup has fired.');
+    const icon = resolveNotificationIcon('agent-complete');
+    const notification = new Notification({ title, body, silent: false, ...(icon ? { icon } : {}) });
     notification.on('failed', (_event, error) => {
       logger.warn('Wakeup notification failed', {
         sessionId: row.sessionId,

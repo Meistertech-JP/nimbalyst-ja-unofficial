@@ -74,11 +74,22 @@ export const DragDropPasteExtension = defineExtension({
     return editor.registerCommand(
       DRAG_DROP_PASTE,
       (files) => {
+        // console.log('[DragDropPaste] DRAG_DROP_PASTE', {
+        //   files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
+        //   hasUploadAsset: Boolean(config.uploadAsset),
+        // });
         (async () => {
           for (const file of files) {
             if (config.uploadAsset) {
-              const asset = await config.uploadAsset(file);
-              insertUploadedAsset(editor, file, asset);
+              try {
+                const asset = await config.uploadAsset(file);
+                // console.log('[DragDropPaste] uploaded', asset);
+                insertUploadedAsset(editor, file, asset);
+              } catch (error) {
+                // Keep the loop alive for the remaining files; an unhandled
+                // rejection here would drop the rest of a multi-file drop.
+                console.error('Failed to upload dropped asset:', error);
+              }
               continue;
             }
             if (isMimeType(file, ACCEPTABLE_IMAGE_TYPES)) {

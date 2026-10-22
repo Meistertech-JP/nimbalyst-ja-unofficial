@@ -10,11 +10,19 @@ import type {JSX} from 'react';
 
 import {LexicalEditor} from 'lexical';
 import {useState} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import Button from '../../ui/Button';
 import DropDown, {DropDownItem} from '../../ui/DropDown';
 import {INSERT_LAYOUT_COMMAND} from './LayoutPlugin';
-import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
+
+const LAYOUTS = [
+  {labelKey: 'formatting.layout_two_columns_equal', value: '1fr 1fr'},
+  {labelKey: 'formatting.layout_two_columns_25_75', value: '1fr 3fr'},
+  {labelKey: 'formatting.layout_three_columns_equal', value: '1fr 1fr 1fr'},
+  {labelKey: 'formatting.layout_three_columns_25_50_25', value: '1fr 2fr 1fr'},
+  {labelKey: 'formatting.layout_four_columns_equal', value: '1fr 1fr 1fr 1fr'},
+] as const;
 
 export default function InsertLayoutDialog({
   activeEditor,
@@ -23,16 +31,9 @@ export default function InsertLayoutDialog({
   activeEditor: LexicalEditor;
   onClose: () => void;
 }): JSX.Element {
-  const {t} = useRuntimeTranslation();
-  const layouts = [
-    {label: t('editor:insert_dialog.equal_columns', '{{columns}} columns (equal width)', {columns: 2}), value: '1fr 1fr'},
-    {label: t('editor:insert_dialog.two_columns_ratio', '2 columns (25% - 75%)'), value: '1fr 3fr'},
-    {label: t('editor:insert_dialog.equal_columns', '{{columns}} columns (equal width)', {columns: 3}), value: '1fr 1fr 1fr'},
-    {label: t('editor:insert_dialog.three_columns_ratio', '3 columns (25% - 50% - 25%)'), value: '1fr 2fr 1fr'},
-    {label: t('editor:insert_dialog.equal_columns', '{{columns}} columns (equal width)', {columns: 4}), value: '1fr 1fr 1fr 1fr'},
-  ];
-  const [layout, setLayout] = useState(layouts[0].value);
-  const buttonLabel = layouts.find((item) => item.value === layout)?.label;
+  const {t} = useTranslation('editor');
+  const [layout, setLayout] = useState<string>(LAYOUTS[0].value);
+  const selectedLayout = LAYOUTS.find((item) => item.value === layout);
 
   const onClick = () => {
     activeEditor.dispatchCommand(INSERT_LAYOUT_COMMAND, layout);
@@ -43,17 +44,17 @@ export default function InsertLayoutDialog({
     <>
       <DropDown
         buttonClassName="toolbar-item dialog-dropdown"
-        buttonLabel={buttonLabel}>
-        {layouts.map(({label, value}) => (
+        buttonLabel={selectedLayout ? t(selectedLayout.labelKey) : undefined}>
+        {LAYOUTS.map(({labelKey, value}) => (
           <DropDownItem
             key={value}
             className="item"
             onClick={() => setLayout(value)}>
-            <span className="text">{label}</span>
+            <span className="text">{t(labelKey)}</span>
           </DropDownItem>
         ))}
       </DropDown>
-      <Button onClick={onClick}>{t('editor:formatting.insert', 'Insert')}</Button>
+      <Button onClick={onClick}>{t('formatting.insert')}</Button>
     </>
   );
 }

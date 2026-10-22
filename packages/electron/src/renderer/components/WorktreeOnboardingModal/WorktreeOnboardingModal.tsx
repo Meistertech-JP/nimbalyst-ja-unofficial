@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 
 export interface WorktreeOnboardingModalProps {
   isOpen: boolean;
@@ -33,7 +33,7 @@ export const WorktreeOnboardingModal: React.FC<WorktreeOnboardingModalProps> = (
 
         <div className="worktree-onboarding-content px-7 py-6">
           <p className="worktree-onboarding-description m-0 mb-6 text-[15px] leading-relaxed text-nim-muted text-center [&_strong]:text-nim">
-            <Trans t={t} i18nKey="worktree_description" components={{ strong: <strong /> }} />
+            <Trans i18nKey="worktree_description" components={{ strong: <strong /> }} />
           </p>
 
           <div className="worktree-onboarding-benefits flex flex-col gap-4">

@@ -10,18 +10,31 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAtom } from 'jotai';
-import { Trans, useTranslation } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   workspacePermissionsAtomFamily,
   loadWorkspacePermissions,
   type PermissionMode,
 } from '../../../store/atoms/appSettings';
 import {
-  getProjectTrustChoiceDescription,
-  getProjectTrustChoiceLabel,
   getProjectTrustChoice,
+  type ProjectTrustChoice,
 } from '../../ProjectTrustToast/projectTrustChoices';
+
+const PROJECT_TRUST_CHOICE_LABEL_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified',
+  'allow-everything': 'trust_toast.choice_allow_everything',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only',
+  'ask-every-time': 'trust_toast.choice_ask_every_time',
+} as const satisfies Record<ProjectTrustChoice, string>;
+
+const PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified_description',
+  'allow-everything': 'trust_toast.choice_allow_everything_description',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only_description',
+  'ask-every-time': 'trust_toast.choice_ask_every_time_description',
+} as const satisfies Record<ProjectTrustChoice, string>;
 
 interface ProjectPermissionsPanelProps {
   workspacePath: string;
@@ -32,7 +45,7 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
   workspacePath,
   workspaceName,
 }) => {
-  const { t, i18n } = useTranslation('project');
+  const { t } = useTranslation('project');
   const posthog = usePostHog();
 
   // Get the atom for this workspace
@@ -257,6 +270,12 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
 
   // Check if "all domains" wildcard is enabled (pattern is '*' which maps to 'WebFetch')
   const isAllDomainsAllowed = permissions?.allowedUrlPatterns?.some(p => p.pattern === 'WebFetch') ?? false;
+  const [permissionsDescriptionBefore, permissionsDescriptionAfter = ''] = t('permissions.description').split(
+    '<code>.claude/settings.local.json</code>'
+  );
+  const [allowedUrlsDescriptionBefore, allowedUrlsDescriptionAfter = ''] = t('permissions.allowed_urls_desc').split(
+    '<code>*.github.com</code>'
+  );
 
   if (!workspacePath) {
     return (
@@ -281,7 +300,9 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
       <div className="settings-panel-header mb-6">
         <h2 className="text-xl font-semibold text-[var(--nim-text)] mb-2">{t('permissions.title')}</h2>
         <p className="text-sm text-[var(--nim-text-muted)] leading-relaxed">
-          <Trans t={t} i18nKey="permissions.description" components={{ code: <code className="text-xs bg-[var(--nim-bg-secondary)] px-1 py-0.5 rounded" /> }} />
+          {permissionsDescriptionBefore}
+          <code className="text-xs bg-[var(--nim-bg-secondary)] px-1 py-0.5 rounded">.claude/settings.local.json</code>
+          {permissionsDescriptionAfter}
         </p>
       </div>
 
@@ -326,7 +347,7 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
             </p>
             {permissions?.trustedAt && (
               <p className="permissions-trust-date text-xs text-[var(--nim-text-faint)] mt-1">
-                {t('permissions.trusted_on', { date: new Date(permissions.trustedAt).toLocaleDateString(i18n.resolvedLanguage) })}
+                {t('permissions.trusted_on', { date: new Date(permissions.trustedAt).toLocaleDateString() })}
               </p>
             )}
           </div>
@@ -373,9 +394,11 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
               <div className="permissions-mode-option-content flex items-start gap-3">
                 <span className="material-symbols-outlined text-[var(--nim-text-muted)]">verified_user</span>
                 <div className="permissions-mode-option-text flex flex-col gap-0.5">
-                  <span className="permissions-mode-option-title text-sm font-medium text-[var(--nim-text)]">{getProjectTrustChoiceLabel('ask-every-time', t)}</span>
+                  <span className="permissions-mode-option-title text-sm font-medium text-[var(--nim-text)]">
+                    {t(PROJECT_TRUST_CHOICE_LABEL_KEYS['ask-every-time'])}
+                  </span>
                   <span className="permissions-mode-option-description text-xs text-[var(--nim-text-muted)]">
-                    {getProjectTrustChoiceDescription('ask-every-time', t)}
+                    {t(PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS['ask-every-time'])}
                   </span>
                 </div>
               </div>
@@ -396,9 +419,11 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
               <div className="permissions-mode-option-content flex items-start gap-3">
                 <span className="material-symbols-outlined text-[var(--nim-text-muted)]">check_circle</span>
                 <div className="permissions-mode-option-text flex flex-col gap-0.5">
-                  <span className="permissions-mode-option-title text-sm font-medium text-[var(--nim-text)]">{getProjectTrustChoiceLabel('allow-edits-only', t)}</span>
+                  <span className="permissions-mode-option-title text-sm font-medium text-[var(--nim-text)]">
+                    {t(PROJECT_TRUST_CHOICE_LABEL_KEYS['allow-edits-only'])}
+                  </span>
                   <span className="permissions-mode-option-description text-xs text-[var(--nim-text-muted)]">
-                    {getProjectTrustChoiceDescription('allow-edits-only', t)}
+                    {t(PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS['allow-edits-only'])}
                   </span>
                 </div>
               </div>
@@ -420,14 +445,14 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
                 <span className="material-symbols-outlined text-[var(--nim-text-muted)]">check_circle</span>
                 <div className="permissions-mode-option-text flex flex-col gap-0.5">
                   <span className="permissions-mode-option-title text-sm font-medium text-[var(--nim-text)]">
-                    {getProjectTrustChoiceLabel(
-                      getProjectTrustChoice('bypass-all', permissions.allowAllUsesClassifier), t
-                    )}
+                    {t(PROJECT_TRUST_CHOICE_LABEL_KEYS[
+                      getProjectTrustChoice('bypass-all', permissions.allowAllUsesClassifier)
+                    ])}
                   </span>
                   <span className="permissions-mode-option-description text-xs text-[var(--nim-text-muted)]">
-                    {getProjectTrustChoiceDescription(
-                      getProjectTrustChoice('bypass-all', permissions.allowAllUsesClassifier), t
-                    )}
+                    {t(PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS[
+                      getProjectTrustChoice('bypass-all', permissions.allowAllUsesClassifier)
+                    ])}
                   </span>
                 </div>
               </div>
@@ -476,6 +501,7 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
                     className="permissions-directory-remove w-6 h-6 flex items-center justify-center rounded text-[var(--nim-text-muted)] hover:text-[var(--nim-error)] hover:bg-[var(--nim-bg-hover)] cursor-pointer bg-transparent border-none"
                     onClick={() => handleRemoveDirectory(dir.path)}
                     title={t('permissions.remove_directory')}
+                    aria-label={t('permissions.remove_directory')}
                   >
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                       <path d="M2 4h12M6 4V2.5A1.5 1.5 0 017.5 1h1A1.5 1.5 0 0110 2.5V4M5 7v5M8 7v5M11 7v5M3 4v9.5A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V4"/>
@@ -504,7 +530,9 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
             <span className="permissions-section-count text-xs px-1.5 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">{permissions?.allowedUrlPatterns?.length || 0}</span>
           </div>
           <p className="permissions-section-description text-xs text-[var(--nim-text-muted)] mb-3">
-            <Trans t={t} i18nKey="permissions.allowed_urls_desc" components={{ code: <code className="bg-[var(--nim-bg-tertiary)] px-1 py-0.5 rounded" /> }} />
+            {allowedUrlsDescriptionBefore}
+            <code className="bg-[var(--nim-bg-tertiary)] px-1 py-0.5 rounded">*.github.com</code>
+            {allowedUrlsDescriptionAfter}
           </p>
 
           {/* All Domains Allowed Card */}
@@ -546,6 +574,7 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
                         className="permissions-url-remove w-6 h-6 flex items-center justify-center rounded text-[var(--nim-text-muted)] hover:text-[var(--nim-error)] hover:bg-[var(--nim-bg-hover)] cursor-pointer bg-transparent border-none"
                         onClick={() => handleRemoveUrlPattern(urlPattern.pattern)}
                         title={t('permissions.remove_url')}
+                        aria-label={t('permissions.remove_url')}
                       >
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                           <path d="M2 4h12M6 4V2.5A1.5 1.5 0 017.5 1h1A1.5 1.5 0 0110 2.5V4M5 7v5M8 7v5M11 7v5M3 4v9.5A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V4"/>
@@ -635,6 +664,7 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
                     className="permissions-pattern-remove w-6 h-6 flex items-center justify-center rounded text-[var(--nim-text-muted)] hover:text-[var(--nim-error)] hover:bg-[var(--nim-bg-hover)] cursor-pointer bg-transparent border-none"
                     onClick={() => handleRemovePattern(rule.pattern, 'allowed')}
                     title={t('permissions.remove_pattern')}
+                    aria-label={t('permissions.remove_pattern')}
                   >
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
                       <path d="M2 4h12M6 4V2.5A1.5 1.5 0 017.5 1h1A1.5 1.5 0 0110 2.5V4M5 7v5M8 7v5M11 7v5M3 4v9.5A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V4"/>

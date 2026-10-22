@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export const GH_WORKFLOW_SCOPE_REFRESH_COMMAND = 'gh auth refresh -h github.com -s workflow';
 
@@ -9,7 +9,7 @@ interface PullRequestActionErrorProps {
 }
 
 export function PullRequestActionError({ error }: PullRequestActionErrorProps): JSX.Element {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('git');
   const [copied, setCopied] = useState(false);
   const hasWorkflowScopeRecovery = error.includes(GH_WORKFLOW_SCOPE_REFRESH_COMMAND);
 
@@ -34,7 +34,9 @@ export function PullRequestActionError({ error }: PullRequestActionErrorProps): 
           onClick={copyRecoveryCommand}
           data-testid="pr-copy-workflow-scope-command"
         >
-          {copied ? t('dialogs:share.copied') : t('dialogs:github.copy_command')}
+          {copied
+            ? t('supplemental.output.copied')
+            : t('pull_request.onboarding.copy_command')}
         </button>
       )}
     </span>

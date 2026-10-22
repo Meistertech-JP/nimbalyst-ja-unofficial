@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import type { TestConfig, TestNode } from '../types';
 import { TestRunner, setRunner } from '../testRunner';
@@ -13,12 +14,14 @@ import { HistoryPanel } from './HistoryPanel';
 const DEFAULT_E2E_CONFIG: TestConfig = {
   id: 'e2e',
   label: 'E2E Tests',
+  labelKey: 'playwright.config_labels.e2e',
   configPath: 'playwright.config.ts',
 };
 
 const EXTENSION_TEST_CONFIG: TestConfig = {
   id: 'extensions',
   label: 'Extension Tests',
+  labelKey: 'playwright.config_labels.extensions',
   configPath: 'packages/electron/playwright-extension.config.ts',
 };
 
@@ -68,6 +71,7 @@ async function detectExtensionTests(host: PanelHostProps['host']): Promise<TestC
 }
 
 export function TestExplorerPanel({ host }: PanelHostProps) {
+  const { t } = useTranslation('extensions');
   const runnerRef = useRef<TestRunner | null>(null);
   const historyStoreRef = useRef<HistoryStore | null>(null);
   const [tree, setTree] = useState<TestNode[]>([]);
@@ -188,10 +192,10 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
       if (output && output.includes('"suites"')) {
         runner.parseDiscoveryOutput(output, id);
       } else if (!result.success) {
-        runner.setError(result.stderr || 'Test discovery failed');
+        runner.setError(result.stderr || t('playwright.discovery_failed'));
       }
     } catch (e) {
-      runner.setError(e instanceof Error ? e.message : 'Test discovery failed');
+      runner.setError(e instanceof Error ? e.message : t('playwright.discovery_failed'));
     } finally {
       setIsDiscovering(false);
     }
@@ -213,11 +217,11 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
         runner.parseRunOutput(output, configId);
       } else {
         runner.setRunning(false);
-        runner.setError(result.stderr || 'Test run failed');
+        runner.setError(result.stderr || t('playwright.run_failed'));
       }
     } catch (e) {
       runner.setRunning(false);
-      runner.setError(e instanceof Error ? e.message : 'Test run failed');
+      runner.setError(e instanceof Error ? e.message : t('playwright.run_failed'));
     }
   }
 
@@ -227,7 +231,7 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
       testCount: countTests(tree),
       isRunning,
       lastRun,
-      configs: configs.map(c => ({ id: c.id, label: c.label })),
+      configs: configs.map(c => ({ id: c.id, label: c.labelKey ? t(c.labelKey) : c.label })),
       activeConfig: activeConfigId,
       historyRuns: historyStoreRef.current?.getHistory().runs.length ?? 0,
     });
@@ -287,11 +291,11 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
   const filteredTree = searchQuery ? filterTree(tree, searchQuery.toLowerCase()) : tree;
 
   const tabs = [
-    { id: 'tests' as const, label: 'Tests', icon: 'science' },
-    { id: 'traces' as const, label: 'Traces', icon: 'timeline' },
+    { id: 'tests' as const, label: t('playwright.tabs.tests'), icon: 'science' },
+    { id: 'traces' as const, label: t('playwright.tabs.traces'), icon: 'timeline' },
     {
       id: 'history' as const,
-      label: 'History',
+      label: t('playwright.tabs.history'),
       icon: 'analytics',
       badge: historyStoreRef.current?.getHistory().runs.length,
     },
@@ -308,7 +312,7 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
           {activeTab === 'tests' && (
             <>
               {!isRunning ? (
-                <button className="pw-icon-btn pw-run-all" onClick={handleRunAll} title="Run all tests">
+                <button className="pw-icon-btn pw-run-all" onClick={handleRunAll} title={t('playwright.run_all_tests')}>
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
                     play_arrow
                   </span>
@@ -321,14 +325,14 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
                   >
                     progress_activity
                   </span>
-                  <span style={{ fontSize: 11, color: '#60a5fa' }}>Running...</span>
+                  <span style={{ fontSize: 11, color: '#60a5fa' }}>{t('playwright.running')}</span>
                 </span>
               )}
               <button
                 className="pw-icon-btn"
                 onClick={showConfigSelector ? handleRefreshAll : handleRefresh}
                 disabled={isDiscovering}
-                title={showConfigSelector ? 'Refresh all test configs' : 'Refresh test list'}
+                title={showConfigSelector ? t('playwright.refresh_all_configs') : t('playwright.refresh_test_list')}
               >
                 <span
                   className="material-symbols-outlined"
@@ -350,17 +354,17 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
                 className="pw-config-select"
                 value={activeConfigId}
                 onChange={(e) => handleConfigChange(e.target.value)}
-                title="Select test config for running tests"
+                title={t('playwright.select_config')}
               >
                 {configs.map(c => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
+              <option key={c.id} value={c.id}>{c.labelKey ? t(c.labelKey) : c.label}</option>
                 ))}
               </select>
             )}
             <input
               type="text"
               className="pw-search-input"
-              placeholder="Filter tests..."
+              placeholder={t('playwright.filter_tests')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -394,9 +398,9 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
                 <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#666' }}>
                   science
                 </span>
-                <p>No Playwright tests found</p>
+                <p>{t('playwright.no_tests_found')}</p>
                 <p className="pw-hint">
-                  Make sure playwright.config.ts exists in your workspace
+                  {t('playwright.config_hint', { config: 'playwright.config.ts' })}
                 </p>
               </div>
             )}
@@ -408,7 +412,7 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
                 >
                   progress_activity
                 </span>
-                <p>Discovering tests...</p>
+                <p>{t('playwright.discovering_tests')}</p>
               </div>
             )}
             {filteredTree.map((node) => (
@@ -437,7 +441,7 @@ export function TestExplorerPanel({ host }: PanelHostProps) {
                 <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#4a4a4a' }}>
                   science
                 </span>
-                <p>Select a test to view details</p>
+                <p>{t('playwright.select_test_details')}</p>
               </div>
             )}
           </div>

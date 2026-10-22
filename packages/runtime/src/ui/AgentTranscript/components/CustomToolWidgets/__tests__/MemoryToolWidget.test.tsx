@@ -2,6 +2,8 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Provider as JotaiProvider } from 'jotai';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { store } from '../../../../../store/store';
 import { setInteractiveWidgetHost } from '../../../../../store/atoms/interactiveWidgetHost';
 import { MemoryToolWidget } from '../MemoryToolWidget';
@@ -9,6 +11,7 @@ import type { InteractiveWidgetHost } from '../InteractiveWidgetHost';
 
 const SESSION_ID = 'session-1';
 const WORKSPACE_PATH = '/workspace';
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
 function makeMessage(overrides: Record<string, unknown> = {}) {
   return {
@@ -34,15 +37,17 @@ function renderWidget(
   props: Partial<{ isExpanded: boolean; onToggle: () => void; workspacePath: string }> = {}
 ) {
   return render(
-    <JotaiProvider store={store}>
-      <MemoryToolWidget
-        message={makeMessage(overrides)}
-        sessionId={SESSION_ID}
-        workspacePath={props.workspacePath ?? WORKSPACE_PATH}
-        isExpanded={props.isExpanded ?? false}
-        onToggle={props.onToggle ?? vi.fn()}
-      />
-    </JotaiProvider>
+    <I18nextProvider i18n={testI18n}>
+      <JotaiProvider store={store}>
+        <MemoryToolWidget
+          message={makeMessage(overrides)}
+          sessionId={SESSION_ID}
+          workspacePath={props.workspacePath ?? WORKSPACE_PATH}
+          isExpanded={props.isExpanded ?? false}
+          onToggle={props.onToggle ?? vi.fn()}
+        />
+      </JotaiProvider>
+    </I18nextProvider>
   );
 }
 
@@ -51,7 +56,8 @@ function makeFakeHost(): InteractiveWidgetHost {
 }
 
 describe('MemoryToolWidget', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    testI18n = await createI18nInstance('en');
     setInteractiveWidgetHost(SESSION_ID, null);
   });
 
@@ -221,13 +227,29 @@ describe('MemoryToolWidget', () => {
     expect(sources[0].textContent).toContain('Use one-sentence commit subjects');
   });
 
+  it('localizes fallback document and fact titles', async () => {
+    await testI18n.changeLanguage('ja');
+    const { unmount } = renderWidget({
+      arguments: { query: 'document fallback' },
+      result: JSON.stringify({ chunks: [{ refType: 'doc-file', text: 'A document result without a title.' }] }),
+    });
+    expect(screen.getByTestId('memory-tool-source').textContent).toContain('ドキュメントの結果');
+    unmount();
+
+    renderWidget({
+      arguments: { query: 'fact fallback' },
+      result: JSON.stringify({ facts: [{ text: 'A fact without a path.' }] }),
+    });
+    expect(screen.getByTestId('memory-tool-source').textContent).toContain('情報1');
+  });
+
   it('shows an explicit empty state when recall returns no facts', () => {
     renderWidget({
       arguments: { query: 'something never remembered' },
       result: JSON.stringify({ facts: [] }),
     });
 
-    expect(screen.getByTestId('memory-tool-empty')).toBeTruthy();
+    screen.getByTestId('memory-tool-empty');
     expect(screen.queryByTestId('memory-tool-source')).toBeNull();
   });
 
@@ -238,7 +260,7 @@ describe('MemoryToolWidget', () => {
       result: JSON.stringify({ chunks: [] }),
     });
 
-    expect(screen.getByTestId('memory-tool-empty')).toBeTruthy();
+    screen.getByTestId('memory-tool-empty');
     expect(screen.queryByTestId('memory-tool-source')).toBeNull();
   });
 
@@ -292,12 +314,16 @@ describe('MemoryToolWidget', () => {
 
   it('returns null when there is no tool call to render', () => {
     const { container } = render(
-      <MemoryToolWidget
-        message={{ toolCall: undefined } as any}
-        sessionId="session-1"
-        isExpanded={false}
-        onToggle={() => {}}
-      />
+      <I18nextProvider i18n={testI18n}>
+        <JotaiProvider store={store}>
+          <MemoryToolWidget
+            message={{ toolCall: undefined } as any}
+            sessionId="session-1"
+            isExpanded={false}
+            onToggle={() => {}}
+          />
+        </JotaiProvider>
+      </I18nextProvider>
     );
     expect(container.firstChild).toBeNull();
   });

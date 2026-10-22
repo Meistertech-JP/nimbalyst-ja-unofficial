@@ -11,9 +11,6 @@ export interface UserCommand {
   /** Display name for the command */
   title: string;
 
-  /** Optional translation key for the display title */
-  titleTranslationKey?: string;
-
   /** Optional description */
   description?: string;
 

@@ -1,99 +1,56 @@
-/**
- * SyncManager - Manages optional session sync.
- *
- * This service is responsible for:
- * - Reading sync configuration from app settings
- * - Creating and managing the SyncProvider instance
- * - Wrapping the session store with sync capabilities when enabled
- *
- * Supports two sync backends:
- * - CollabV3 (recommended): Simple append-only protocol with DO SQLite storage
- * - Y.js (legacy): CRDT-based sync with D1 BLOB storage
- *
- * The sync feature is completely optional. If not configured, nothing happens.
- */
+import type { SessionSyncStatus } from '../../shared/sessionSyncStatus';
+import { directoryDeviceId } from './sync/directoryDeviceIdentity';
+import { remoteSessions } from './ai/remoteSessions';
+import { registerSessionHierarchyPublication } from './sync/sessionHierarchyPublication';
+import Store from '../utils/privateSettingsStore';
+import { getProviderCredentials, subscribeProviderCredentialChanges } from './credentials/providerCredentials';
+/** Manages optional personal sync, provider lifecycle, and session-store wrapping. */
 
 import type { SessionStore } from '@nimbalyst/runtime';
 import { asPersonalMemberId } from '@nimbalyst/runtime';
+import type { PersonalJwt, PersonalMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 import type { DeviceInfo } from '@nimbalyst/runtime/sync';
 import * as syncModule from '@nimbalyst/runtime/sync';
-import { getSessionSyncConfig, setSessionSyncConfig, getReleaseChannel, getDefaultAIModel, getAlphaFeatures, getPreferredAgentLanguage, store, type SessionSyncConfig } from '../utils/store';
+import { deriveEncryptionKey, personalSyncEncryptionSalt } from '@nimbalyst/runtime/sync';
+import { getSessionSyncConfig, setSessionSyncConfig, getReleaseChannel, getDefaultAIModel, getAlphaFeatures, getPreferredAgentLanguage, getAttachmentStagingConfig, store, type SessionSyncConfig } from '../utils/store';
 import { logger } from '../utils/logger';
 import { getCredentials } from './CredentialService';
-import { getStytchUserId, isAuthenticated, getPersonalOrgId, getPersonalUserId, resolvePersonalUserId, getPersonalSessionJwt, refreshPersonalSession } from './StytchAuthService';
+import { getStytchUserId, isAuthenticated, getPersonalOrgId, getPersonalUserId, resolvePersonalUserId, getPersonalSessionJwt, refreshPersonalSessionDetailed } from './StytchAuthService';
+import { describePersonalJwtFailure, type PersonalRefreshFailureReason } from './auth/personalJwtFailure';
 import { app } from 'electron';
 import * as os from 'os';
 import { getProjectFileSyncService } from './ProjectFileSyncService';
 import { startProjectFileSync, stopAllProjectFileSync } from '../file/WorkspaceWatcher';
 import { windowStates } from '../window/WindowManager';
-import { getNormalizedGitRemote } from '../utils/gitUtils';
-import { resolveProjectPath } from '../utils/workspaceDetection';
-import { createHash } from 'crypto';
+import { createProjectConfigSync } from './sync/projectConfigSync';
+import { projectConfigSources } from './sync/projectConfigSources';
+import { nextMobileSettingsVersion } from './sync/mobileSettingsVersion';
+import { createMobileJoinDetector } from './sync/mobileJoinDetector';
+import { createEnabledProjectFilter, createLiveSessionSyncFilter, createTranscriptSyncDisabledPredicate, isSessionMidTurn } from './sync/projectSyncFilter';
+import { transcriptBackfill } from './sync/transcriptBackfill';
+import { reconcileSessionIndex } from './sync/indexReconciliation';
 import { setSleepPreventionMode, setSyncConnected, shutdownSleepPrevention, type PreventSleepMode } from './PowerSaveService';
 import { reconnectAllTrackerSyncs } from './TrackerSyncManager';
 import { BrowserWindow } from 'electron';
 import { timeStartupPhase } from '../utils/startupTiming';
-import { compressImageIfNeeded } from '../mcp/mcpImageCompression';
-
-// Screenshots taken by a desktop session are only viewable on mobile if their
-// bytes ride along in the synced message -- there is no desktop -> mobile
-// attachment channel. Give the truncator a way to downscale the big ones
-// instead of dropping them (nativeImage lives in main, the truncator does not).
-//
-// The budget is much tighter than the MCP one: every screenshot permanently
-// occupies part of a SessionRoom's storage cap on the sync server. 150 KB at
-// 1600px still gives real zoom headroom on a phone.
-const MOBILE_SYNC_IMAGE_MAX_BYTES = 150 * 1024;
-const MOBILE_SYNC_IMAGE_MAX_DIMENSION = 1600;
-
-syncModule.setSyncImageCompressor((data, mimeType) => {
-  const { data: out, mimeType: outMime } = compressImageIfNeeded(data, mimeType, {
-    maxBytes: MOBILE_SYNC_IMAGE_MAX_BYTES,
-    maxDimension: MOBILE_SYNC_IMAGE_MAX_DIMENSION,
-  });
-  return { data: out, mimeType: outMime };
-});
+import { resolveWorkspaceAttachmentStagingDirectory } from './attachments/attachmentStagingRoot';
+// Side effect: registers the mobile-sync image compressor and display_to_user image loader.
+import './sync/mobileSyncImages';
 
 function loadSyncModule() {
   return syncModule;
 }
 
-/**
- * Derive an encryption key from a passphrase using PBKDF2.
- * This is used for E2E encryption in CollabV3.
- */
-async function deriveEncryptionKey(passphrase: string, salt: string): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(passphrase),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
+// `deriveEncryptionKey` used to be defined here. It moved to
+// `@nimbalyst/runtime/sync` (src/sync/encryptionKey.ts) so the headless Node
+// host derives bit-identical keys; its parameters are pinned by fixed vectors
+// in that package's tests.
 
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: encoder.encode(salt),
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-interface SyncManagerState {
+interface SyncManagerState extends SessionSyncStatus {
   provider: import('@nimbalyst/runtime/sync').SyncProvider | null;
   config: SessionSyncConfig | null;
   messageSyncHandler: ReturnType<typeof import('@nimbalyst/runtime/sync').createMessageSyncHandler> | null;
   encryptionKey: CryptoKey | null;
-  connected: boolean;
-  syncing: boolean;
-  error: string | null;
   sessionKeepAliveInterval: ReturnType<typeof setInterval> | null;
 }
 
@@ -111,16 +68,35 @@ const state: SyncManagerState = {
 // Guard against overlapping incremental syncs (initial + triggered) and enforce minimum interval
 let incrementalSyncInFlight = false;
 let lastIncrementalSyncAt = 0;
+/** A forced pass (project selection changed) arrived while another was running; run it after. */
+let incrementalSyncRerun = false;
+
+function finishIncrementalSync(): void {
+  incrementalSyncInFlight = false;
+  if (!incrementalSyncRerun) return;
+  incrementalSyncRerun = false;
+  void triggerIncrementalSync({ force: true });
+}
 const MIN_INCREMENTAL_SYNC_INTERVAL = 5000; // 5 seconds minimum between syncs
 
-// Must match SERVER_TTL (IndexRoom.ts SESSION_TTL_MS = 30 days).
-// Sessions older than this that are missing from the server were TTL-expired;
-// re-uploading them is wasteful because they'll just be expired again.
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Event emitter for sync status changes
-type SyncStatusListener = (status: { connected: boolean; syncing: boolean; error: string | null }) => void;
+type SyncStatusListener = (status: SessionSyncStatus) => void;
 const statusListeners = new Set<SyncStatusListener>();
+
+let personalSyncGateUnsubscribe: (() => void) | null = null;
+let indexReadyUnsubscribe: (() => void) | null = null;
+let hierarchySyncUnsubscribe: (() => void) | null = null;
+
+export function getSyncStatusSnapshot(): SessionSyncStatus {
+  return {
+    connected: state.provider?.isIndexReady?.() ?? state.connected,
+    syncing: state.syncing,
+    error: state.error,
+    personalSyncWriteGate: state.provider?.getPersonalSyncWriteGate?.() ?? state.personalSyncWriteGate ?? null,
+    skippedRowCount: state.provider?.getPersonalSyncWriteGate?.().skippedRowCount ?? state.skippedRowCount ?? 0,
+  };
+}
 
 /**
  * Subscribe to sync status changes.
@@ -129,41 +105,21 @@ const statusListeners = new Set<SyncStatusListener>();
 export function onSyncStatusChange(listener: SyncStatusListener): () => void {
   statusListeners.add(listener);
   // Immediately emit current status
-  listener({ connected: state.connected, syncing: state.syncing, error: state.error });
+  listener(getSyncStatusSnapshot());
   return () => statusListeners.delete(listener);
 }
 
 /**
  * Update sync status and notify listeners.
  */
-function updateSyncStatus(update: Partial<{ connected: boolean; syncing: boolean; error: string | null }>) {
-  let changed = false;
-  if (update.connected !== undefined && update.connected !== state.connected) {
-    state.connected = update.connected;
-    changed = true;
-  }
-  if (update.syncing !== undefined && update.syncing !== state.syncing) {
-    state.syncing = update.syncing;
-    changed = true;
-  }
-  if (update.error !== undefined && update.error !== state.error) {
-    state.error = update.error;
-    changed = true;
-  }
-
-  if (changed) {
-    const status = { connected: state.connected, syncing: state.syncing, error: state.error };
-    statusListeners.forEach(listener => listener(status));
-
-    // Manage sleep prevention based on connection state and user preference
-    if (update.connected !== undefined) {
-      setSyncConnected(update.connected);
-    }
-  }
+function updateSyncStatus(update: Partial<SessionSyncStatus>) {
+  const changed = (Object.keys(update) as Array<keyof SessionSyncStatus>).some(key => state[key] !== update[key]);
+  if (!changed) return;
+  Object.assign(state, update);
+  const status = getSyncStatusSnapshot();
+  statusListeners.forEach(listener => listener(status));
+  if (update.connected !== undefined) setSyncConnected(status.connected);
 }
-
-// Cache the device ID so it's stable across sync reinitializations
-let cachedDeviceId: string | null = null;
 
 // ============================================================================
 // Desktop Presence Tracking
@@ -180,9 +136,6 @@ let isScreenLocked = false;
 
 /** Timestamp when the desktop first connected */
 let connectionTime = Date.now();
-
-/** Cached user ID for device info */
-let cachedUserId: string | null = null;
 
 /** Configurable idle threshold - default 5 minutes, can be set lower for testing */
 let idleThresholdMs = 5 * 60 * 1000; // 5 minutes default
@@ -266,32 +219,10 @@ export function deriveDeviceStatus(): 'active' | 'idle' | 'away' {
 }
 
 /**
- * Get or generate a stable device ID.
- * Uses the user ID + a hash of machine identifiers for stability.
- */
-function getDeviceId(userId: string): string {
-  if (cachedDeviceId) {
-    return cachedDeviceId;
-  }
-
-  // Use hostname + platform as a simple machine identifier
-  // This isn't perfect but gives reasonable stability
-  const machineId = `${os.hostname()}-${process.platform}`;
-  const crypto = require('crypto');
-  const hash = crypto.createHash('sha256')
-    .update(`${userId}:${machineId}`)
-    .digest('hex')
-    .substring(0, 16);
-
-  cachedDeviceId = hash;
-  return hash;
-}
-
-/**
  * Get device info for sync presence awareness.
  * Returns current presence state (focus, activity, status).
  */
-function getDeviceInfo(userId: string): DeviceInfo {
+function getDeviceInfo(personalMemberId: PersonalMemberId): DeviceInfo {
   const platform = process.platform === 'darwin' ? 'macos'
     : process.platform === 'win32' ? 'windows'
     : process.platform === 'linux' ? 'linux'
@@ -306,7 +237,7 @@ function getDeviceInfo(userId: string): DeviceInfo {
     .replace(/\b\w/g, c => c.toUpperCase());
 
   return {
-    deviceId: getDeviceId(userId),
+    deviceId: directoryDeviceId(app.getPath('userData'), personalMemberId),
     name: friendlyName || 'Desktop',
     type: 'desktop',
     platform,
@@ -371,10 +302,11 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
     return baseStore;
   }
 
-  // Get encryption key seed from CredentialService (for E2E encryption)
-  const credentials = getCredentials();
-
   try {
+    // Credential failures disable optional sync through the normal error path,
+    // while keeping local sessions available and preserving the existing key.
+    const credentials = getCredentials();
+
     // Use personalUserId for stable identity across team session exchanges.
     // In Stytch B2B, each org has its own member record. After joining a team,
     // the session gets exchanged to the team org and the JWT sub / user_id changes
@@ -390,19 +322,13 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
       personalUserId = getPersonalUserId();
     }
     if (!personalUserId) {
-      // Last-resort fallback: the active/team member id is NOT a personal member
-      // id (see jwtScopes / NIM-859) -- using it for the personal index room is
-      // wrong for multi-org users, but better than not syncing at all. The
-      // explicit cast records that we KNOW this is a personal-scope violation.
-      logger.main.warn('[SyncManager] Could not resolve personalUserId, falling back to stytchUserId (NOT personal-scoped):', stytchUserId);
-      // stytchUserId is guaranteed non-null (guarded above). The cast records
-      // that we KNOWINGLY use the active/team member id for the personal room.
-      personalUserId = asPersonalMemberId(stytchUserId);
+      logger.main.warn('[SyncManager] Could not resolve a personal member id; personal session sync remains disabled');
+      return baseStore;
     }
 
     logger.main.info('[SyncManager] Initializing session sync...', {
       serverUrl,
-      userId: stytchUserId,
+      activeMemberId: stytchUserId,
       personalUserId,
     });
 
@@ -414,11 +340,9 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
 
     // CollabV3 uses the encryption key seed from CredentialService for E2E encryption
     // Use personalUserId for salt to ensure same encryption key across devices
-    const encryptionKey = await deriveEncryptionKey(credentials.encryptionKeySeed, `nimbalyst:${personalUserId}`);
+    const encryptionKey = await deriveEncryptionKey(credentials.encryptionKeySeed, personalSyncEncryptionSalt(personalUserId));
     state.encryptionKey = encryptionKey;
 
-    // Cache user ID for dynamic device info callback
-    cachedUserId = stytchUserId;
     connectionTime = Date.now(); // Reset connection time on init
 
     // Apply idle timeout from config (default 5 minutes)
@@ -427,7 +351,7 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
     }
 
     // Get initial device info for logging
-    const initialDeviceInfo = getDeviceInfo(stytchUserId);
+    const initialDeviceInfo = getDeviceInfo(personalUserId);
     logger.main.info('[SyncManager] Initial device info:', JSON.stringify(initialDeviceInfo));
 
     // Refresh the personal JWT when its `exp` claim is within this window.
@@ -441,13 +365,17 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
     // throttle on success -- the expiry check above is what gates that path.
     const FAILED_REFRESH_BACKOFF_MS = 5_000;
     let lastFailedRefreshTime = 0;
+    /** Why the most recent refresh attempt failed, so the thrown error can say so. */
+    let lastRefreshFailureReason: PersonalRefreshFailureReason | null = null;
+    /** The rendered transport error behind a `network` failure, for the log line. */
+    let lastRefreshFailureDetail: string | null = null;
 
     /**
      * Returns the `exp` claim (in ms since epoch) for the JWT, or null if it
      * can't be decoded. JWT signatures are verified by the server; we only
      * read `exp` to decide if a refresh is needed before reconnect.
      */
-    function getJwtExpiryMs(jwt: string | null): number | null {
+    function getJwtExpiryMs(jwt: PersonalJwt | null): number | null {
       if (!jwt) return null;
       const parts = jwt.split('.');
       if (parts.length !== 3) return null;
@@ -515,7 +443,7 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
     const provider = createCollabV3Sync({
       serverUrl,
       orgId: personalOrgId,
-      userId: personalUserId,
+      personalMemberId: personalUserId,
       getJwt: async () => {
         // Session sync uses the PERSONAL JWT -- its sub claim matches personalUserId
         // which the server validates against the room URL path. The team-scoped JWT
@@ -533,12 +461,22 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
           const failedRecently =
             lastFailedRefreshTime > 0 && now - lastFailedRefreshTime < FAILED_REFRESH_BACKOFF_MS;
           if (!failedRecently) {
-            const refreshed = await refreshPersonalSession(serverUrl);
-            if (!refreshed) {
+            const outcome = await refreshPersonalSessionDetailed(serverUrl);
+            if (!outcome.ok) {
               lastFailedRefreshTime = Date.now();
-              logger.main.warn('[SyncManager] Personal session refresh failed, JWT may be stale');
+              lastRefreshFailureReason = outcome.reason;
+              lastRefreshFailureDetail = outcome.reason === 'network' ? outcome.detail ?? null : null;
+              // Name the URL AND the transport error. "refresh failed" alone is
+              // what made an unreachable collab worker unreadable in main.log.
+              logger.main.warn(
+                outcome.reason === 'network'
+                  ? `[SyncManager] Sync server ${serverUrl} is unreachable (${lastRefreshFailureDetail ?? 'unknown transport error'}) - personal session refresh will retry; credentials are NOT being cleared`
+                  : `[SyncManager] Personal session refresh rejected by ${serverUrl} (${outcome.reason}), JWT may be stale`,
+              );
             } else {
               lastFailedRefreshTime = 0;
+              lastRefreshFailureReason = null;
+              lastRefreshFailureDetail = null;
             }
           }
         }
@@ -553,21 +491,31 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
           // Returning an already-expired JWT guarantees the server rejects the
           // upgrade and the WS error loop never escapes. Throw so the caller's
           // reconnect-with-backoff path runs instead of the bad-token hammer.
-          throw new Error(
-            `[SyncManager] Personal JWT is expired (exp=${new Date(freshExpiryMs).toISOString()}) and refresh did not produce a fresh one`,
-          );
+          // The message must name the ACTUAL cause: an unreachable sync server
+          // is not a token problem, and calling it one has twice sent
+          // investigations after a JWT bug that did not exist.
+          throw describePersonalJwtFailure({
+            reason: lastRefreshFailureReason,
+            expiryMs: freshExpiryMs,
+            serverUrl,
+            detail: lastRefreshFailureDetail,
+          });
         }
 
         return freshJwt;
       },
       encryptionKey,
       // Use callback for dynamic presence updates (called every 30s)
-      getDeviceInfo: () => getDeviceInfo(stytchUserId),
+      getDeviceInfo: () => getDeviceInfo(personalUserId),
+      // Opted-out projects stay listed on the phone, marked as not syncing their transcript (NIM-7545).
+      isTranscriptSyncDisabled: createTranscriptSyncDisabledPredicate(),
     });
     logger.main.info('[SyncManager] Created CollabV3 sync provider with device:', initialDeviceInfo.name);
 
-    // Create message sync handler
-    const messageSyncHandler = createMessageSyncHandler(provider);
+    const messageSyncHandler = createMessageSyncHandler(provider, {
+      outbox: {},
+      shouldSync: createLiveSessionSyncFilter(async (sessionId) => (await baseStore.get(sessionId))?.workspacePath),
+    });
 
     // Keep the Stytch session token alive while sync is active.
     // The WebSocket only refreshes JWT on reconnect, so if it stays connected
@@ -589,13 +537,28 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
 
     // Store state
     state.provider = provider;
+    hierarchySyncUnsubscribe?.();
+    hierarchySyncUnsubscribe = registerSessionHierarchyPublication(provider);
+    remoteSessions.setProvider(provider, encryptionKey);
     state.config = config;
     state.messageSyncHandler = messageSyncHandler;
+
+    personalSyncGateUnsubscribe?.();
+    indexReadyUnsubscribe?.();
+    updateSyncStatus({ personalSyncWriteGate: provider.getPersonalSyncWriteGate?.() ?? null });
+    personalSyncGateUnsubscribe = provider.onPersonalSyncWriteGateChange?.((gate) => {
+      updateSyncStatus({ personalSyncWriteGate: gate, skippedRowCount: gate.skippedRowCount ?? 0 });
+    }) ?? null;
+    indexReadyUnsubscribe = provider.onIndexReadyChange?.((connected) => {
+      updateSyncStatus({ connected, ...(connected ? { error: null } : {}) });
+    }) ?? null;
 
     // Wrap store with sync capabilities
     const syncedStore = createSyncedSessionStore(baseStore, provider, {
       autoConnect: true,
     });
+    // Config discovery owns its retry/logging and must not delay session startup.
+    void projectConfigSync.refresh();
 
     // Sync existing sessions and projects to index using delta sync
     // logger.main.info('[SyncManager] Setting up incremental sync...');
@@ -628,232 +591,104 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
           return;
         }
 
-        // Build a map of server sessions for quick lookup
-        const serverSessionMap = new Map(
-          serverIndex.sessions.map(s => [s.sessionId, s])
-        );
+        // Absence from the index is what drives republishing, so it only means
+        // anything when the provider proved complete coverage. A partial mirror
+        // would look like "the server lost almost everything" and trigger a
+        // mass upload. (The CollabV3 provider throws instead of returning a
+        // partial result; this is the belt-and-braces check.)
+        if (serverIndex.complete === false) {
+          logger.main.warn('[SyncManager] Server index coverage is incomplete; skipping reconciliation this cycle');
+          return;
+        }
+        const tombstonedSessionIds = new Set(serverIndex.deletedSessionIds ?? []);
+        const serverSessionMap = new Map(serverIndex.sessions.map(s => [s.sessionId, s]));
 
-        // Step 2: Get local sessions (without messages first for comparison)
-        const localStart = performance.now();
-        const { getAllSessionsForSync } = await import('./PGLiteSessionStore');
-        const allLocalSessions = await timeStartupPhase(
-          'SyncManager.getAllSessionsForSync',
-          () => getAllSessionsForSync(false), // No messages yet
-        );
-        const localTime = performance.now() - localStart;
-        // logger.main.info(`[SyncManager] Local has ${allLocalSessions.length} sessions (query took ${localTime.toFixed(1)}ms)`);
-
-        // Get enabled projects filter (if configured)
-        const syncSettings = store.get('sessionSync');
-        const enabledProjects = syncSettings?.enabledProjects ?? [];
-        // logger.main.info(`[SyncManager] Enabled projects filter: ${JSON.stringify(enabledProjects)}`);
-
-        // Build enabled projects set - only sync explicitly selected projects
-        const enabledProjectIds = new Set(enabledProjects);
-
-        // Step 4: Find sessions that need syncing using timestamp comparison
-        // Compare local updatedAt vs server updatedAt - if local is newer, we have changes to sync
-        const sessionsNeedingIndexUpdate: typeof allLocalSessions = [];
-        const sessionsNeedingMessageSync: string[] = [];
-
-        for (const localSession of allLocalSessions) {
-          // Skip sessions without a workspace - they shouldn't exist but just in case
-          if (!localSession.workspaceId) {
-            logger.main.warn(`[SyncManager] Skipping session ${localSession.id.slice(0, 8)} - no workspaceId`);
-            continue;
-          }
-
-          // Skip sessions from disabled projects (if project filtering is enabled).
-          // Sessions running in a git worktree may have a workspaceId of
-          // ".../<project>_worktrees/<name>" rather than the parent project path
-          // the user enabled in Settings > Sync. Claude sessions normally adopt
-          // the parent path via adoptWorktreeForSession(), but the Codex
-          // provider currently does not, so a Codex worktree session keeps the
-          // raw worktree path and is silently filtered out here. Resolve to the
-          // parent project path and accept either form against the enabled set.
-          if (enabledProjectIds) {
-            const projectPath = resolveProjectPath(localSession.workspaceId);
-            if (!enabledProjectIds.has(localSession.workspaceId) && !enabledProjectIds.has(projectPath)) {
-              continue;
-            }
-          }
-
-          const serverSession = serverSessionMap.get(localSession.id);
-
-          if (!serverSession) {
-            // Session missing from server. Check if it's older than the server TTL --
-            // if so, the server already expired it and re-uploading is wasteful.
-            const localUpdatedAt = localSession.updatedAt || 0;
-            const ttlCutoff = Date.now() - SESSION_TTL_MS;
-            const ttlExpired = localUpdatedAt < ttlCutoff;
-            if (ttlExpired && !localSession.isArchived) {
-              continue; // Expired and not archived: nothing the other devices need.
-            }
-            // Push index entry. For TTL-expired but locally archived sessions,
-            // we push without messages so iOS can see the archived flag and stop
-            // showing the session even though its message body is long gone from
-            // the server.
-            sessionsNeedingIndexUpdate.push(localSession);
-            if (!ttlExpired) {
-              sessionsNeedingMessageSync.push(localSession.id);
-            }
-          } else {
-            // Compare timestamps AND message counts to detect sessions needing sync.
-            // The real-time pushChange sends updatedAt=Date.now() after DB write, so
-            // the server's updatedAt is often ahead of local. Message count comparison
-            // catches sessions with new messages that timestamps miss.
-            const serverUpdatedAt = serverSession.updatedAt || 0;
-            const localUpdatedAt = localSession.updatedAt || 0;
-            const serverMessageCount = serverSession.messageCount || 0;
-            const localMessageCount = localSession.messageCount || 0;
-
-            if (localUpdatedAt > serverUpdatedAt) {
-              sessionsNeedingIndexUpdate.push(localSession);
-              sessionsNeedingMessageSync.push(localSession.id);
-            } else if (localMessageCount > serverMessageCount) {
-              sessionsNeedingIndexUpdate.push(localSession);
-              sessionsNeedingMessageSync.push(localSession.id);
-            } else if (
-              // Detect stale server metadata: desktop has fields the server doesn't.
-              // This happens after server schema migrations add new columns --
-              // existing rows have NULL but the desktop has the real values --
-              // and also when a session was pushed before a given field was
-              // wired into the publish path, leaving the server row permanently
-              // missing a value the desktop has.
-              (localSession.worktreeId && !serverSession.worktreeId) ||
-              (localSession.sessionType && !serverSession.sessionType) ||
-              (localSession.provider && !serverSession.provider) ||
-              (localSession.model && !serverSession.model) ||
-              (localSession.mode && !serverSession.mode) ||
-              // Value-mismatch checks for fields whose changes don't bump
-              // updated_at. updateMetadata intentionally keeps updated_at stable
-              // for pins/reparents/archives/title-edits to avoid resorting the
-              // list on iOS, so the timestamp comparison above can't catch a
-              // real divergence. Heal those on the next reconnect.
-              (Boolean(localSession.isArchived) !== Boolean(serverSession.isArchived)) ||
-              (Boolean(localSession.isPinned) !== Boolean(serverSession.isPinned)) ||
-              ((localSession.parentSessionId ?? null) !== (serverSession.parentSessionId ?? null)) ||
-              (localSession.title !== serverSession.title)
-            ) {
-              sessionsNeedingIndexUpdate.push(localSession);
-            }
-          }
+        // Clear stale isExecuting flags: on startup, no sessions are running yet.
+        // If the app crashed or the WebSocket disconnected before isExecuting:false
+        // was pushed, the server retains the stale flag permanently. Clear the
+        // provider's cache first so every row this pass builds says false, then
+        // force those rows into the pass.
+        const staleExecutingIds = new Set(serverIndex.sessions.filter(s => s.isExecuting).map(s => s.sessionId));
+        if (staleExecutingIds.size > 0) {
+          logger.main.info(`[SyncManager] Clearing stale isExecuting for ${staleExecutingIds.size} sessions`);
+          provider.clearAllExecutingState?.();
         }
 
+        const { getAllSessionsForSync, getSessionMessagesForSyncBatch } = await import('./PGLiteSessionStore');
+        const result = await reconcileSessionIndex({
+          syncSessionsToIndex: provider.syncSessionsToIndex.bind(provider),
+          serverIndex,
+          // No messages yet, and only the requested projects -- the filter is
+          // applied in SQL rather than over every row in the database.
+          loadLocalSessions: isProjectEnabled => timeStartupPhase(
+            'SyncManager.getAllSessionsForSync',
+            () => getAllSessionsForSync(false, { isProjectEnabled }),
+          ),
+          getMessagesForSync: getSessionMessagesForSyncBatch,
+          isProjectEnabled: createEnabledProjectFilter(),
+          isMidTurn: isSessionMidTurn,
+          forceIndexOnlySessionIds: staleExecutingIds,
+          backfill: transcriptBackfill,
+          warn: (message, error) => logger.main.warn(message, error),
+        });
+
+        const { sessionsNeedingIndexUpdate, sessionsNeedingMessageSync } = result;
         const archiveMismatches = sessionsNeedingIndexUpdate.filter(s => {
           const server = serverSessionMap.get(s.id);
           return server && Boolean(s.isArchived) !== Boolean(server.isArchived);
         }).length;
-        const ttlExpiredArchives = sessionsNeedingIndexUpdate.filter(s => !serverSessionMap.has(s.id) && s.isArchived).length;
-        logger.main.info(`[SyncManager] startup sync: ${sessionsNeedingIndexUpdate.length} need index update (${archiveMismatches} archive mismatches, ${ttlExpiredArchives} ttl-expired archives), ${sessionsNeedingMessageSync.length} need message sync, local=${allLocalSessions.length}, server=${serverIndex.sessions.length}`);
-
-        // Sync sessions that need it
-        if (sessionsNeedingIndexUpdate.length === 0 && sessionsNeedingMessageSync.length === 0) {
-          // logger.main.info('[SyncManager] All sessions up to date, no sync needed');
-        } else {
-          // Build per-session sinceTimestamp requests for lazy message loading.
-          // Messages are NOT loaded here -- the provider loads them in small batches
-          // to avoid blocking PGLite's single-threaded worker for 30+ seconds.
-          const messageSyncRequests = sessionsNeedingMessageSync.length > 0
-            ? sessionsNeedingIndexUpdate
-                .filter(s => sessionsNeedingMessageSync.includes(s.id))
-                .map(session => {
-                  const serverSession = serverSessionMap.get(session.id);
-                  return { sessionId: session.id, sinceTimestamp: serverSession?.lastMessageAt || 0 };
-                })
-            : undefined;
-
-          const { getSessionMessagesForSyncBatch } = await import('./PGLiteSessionStore');
-
-          // logger.main.info(`[SyncManager] Syncing ${sessionsNeedingIndexUpdate.length} sessions (${sessionsNeedingMessageSync.length} need message sync, messages will load lazily)`);
-          provider.syncSessionsToIndex(sessionsNeedingIndexUpdate, {
-            syncMessages: sessionsNeedingMessageSync.length > 0,
-            messageSyncRequests,
-            getMessagesForSync: getSessionMessagesForSyncBatch,
-          });
-        }
-        // Clear stale isExecuting flags: on startup, no sessions are running yet.
-        // If the app crashed or the WebSocket disconnected before isExecuting:false
-        // was pushed, the server retains the stale flag permanently.
-        // Clear the local cache and re-sync affected sessions to push isExecuting:false.
-        const staleExecutingSessions = serverIndex.sessions.filter(s => s.isExecuting);
-        if (staleExecutingSessions.length > 0) {
-          logger.main.info(`[SyncManager] Clearing stale isExecuting for ${staleExecutingSessions.length} sessions`);
-          // Clear isExecuting in the provider's local cache so syncSessionsToIndex
-          // builds entries with isExecuting:false
-          if (provider.clearAllExecutingState) {
-            provider.clearAllExecutingState();
-          }
-          // Re-sync these sessions to push the cleared flag to the server
-          const staleLocalSessions = staleExecutingSessions
-            .map(s => allLocalSessions.find(ls => ls.id === s.sessionId))
-            .filter((s): s is NonNullable<typeof s> => s != null);
-          if (staleLocalSessions.length > 0) {
-            provider.syncSessionsToIndex(staleLocalSessions, { syncMessages: false });
-          }
-        }
+        const missingFromServer = sessionsNeedingIndexUpdate.filter(s => !serverSessionMap.has(s.id)).length;
+        logger.main.info(`[SyncManager] startup sync: ${sessionsNeedingIndexUpdate.length} need index update (${archiveMismatches} archive mismatches, ${missingFromServer} missing from server), ${sessionsNeedingMessageSync.length} need message sync, ${result.indexOnlySessions.length} index-only (opted-out marks + stale execution), local=${result.allLocalSessions.length}, server=${serverIndex.sessions.length}, protocol=v${serverIndex.indexProtocolVersion ?? 1}, tombstones=${tombstonedSessionIds.size}`);
 
         // const totalSyncTime = performance.now() - syncStart;
         // logger.main.info(`[SyncManager] Incremental sync completed in ${totalSyncTime.toFixed(1)}ms`);
       } catch (error) {
         logger.main.warn('[SyncManager] Failed to sync sessions:', error);
       } finally {
-        incrementalSyncInFlight = false;
         lastIncrementalSyncAt = Date.now();
+        finishIncrementalSync();
       }
     }, 2000); // Wait for index connection
 
     // Sync current OpenAI API key to mobile (in case mobile connects after key was set)
     setTimeout(async () => {
       try {
-        const Store = (await import('electron-store')).default;
-        const aiStore = new Store({ name: 'ai-settings' });
-        const apiKeys = aiStore.get('apiKeys', {}) as Record<string, string>;
-        const openaiKey = apiKeys['openai'];
+
         // Always sync so the mobile model picker gets the available-models list
         // even for agent-only users with no OpenAI key (e.g. Codex). Mobile
         // keeps its stored key when openaiKey is undefined (NIM-976).
         // logger.main.info('[SyncManager] Syncing existing settings to mobile devices');
-        syncSettingsToMobile(openaiKey);
+        await syncSettingsToMobile();
       } catch (error) {
         logger.main.warn('[SyncManager] Failed to sync initial settings:', error);
       }
     }, 3000); // Wait a bit for index connection to be established
 
     // Sync settings whenever a mobile device connects (joins or reconnects)
-    // Track which mobile devices are currently connected so we can detect when one joins
-    let previousMobileDeviceIds = new Set<string>();
+    const mobileJoins = createMobileJoinDetector();
     let isFirstCallback = true;
     if (provider.onDeviceStatusChange) {
       provider.onDeviceStatusChange((devices) => {
-        const mobileDevices = devices.filter(d => d.type === 'mobile');
-        const currentMobileIds = new Set(mobileDevices.map(d => d.deviceId));
-
-        // Check for mobile devices that just connected (weren't in the previous set)
-        for (const device of mobileDevices) {
-          if (!previousMobileDeviceIds.has(device.deviceId)) {
-            logger.main.info(`[SyncManager] Mobile device connected: ${device.name}, syncing settings...`);
-            // On first callback, add a small delay to ensure WebSocket is fully ready
-            // This handles the case where mobile connected before desktop registered the listener
-            const delay = isFirstCallback ? 1000 : 0;
-            setTimeout(() => {
-              // Sync settings to the mobile device
-              import('electron-store').then(({ default: Store }) => {
-                const aiStore = new Store({ name: 'ai-settings' });
-                const apiKeys = aiStore.get('apiKeys', {}) as Record<string, string>;
-                const openaiKey = apiKeys['openai'];
-                // Always sync the available-models list so agent-only users with
-                // no OpenAI key still get the model picker populated (NIM-976).
-                // Mobile retains its stored key when openaiKey is undefined.
-                syncSettingsToMobile(openaiKey);
-              }).catch((err) => {
-                logger.main.warn('[SyncManager] Failed to sync settings to device:', err);
+        for (const device of mobileJoins(devices)) {
+          logger.main.info(`[SyncManager] Mobile device connected: ${device.name}, syncing settings...`);
+          // On first callback, add a small delay to ensure WebSocket is fully ready
+          // This handles the case where mobile connected before desktop registered the listener
+          const delay = isFirstCallback ? 1000 : 0;
+          setTimeout(async () => {
+            // Sync settings to the mobile device
+            if (state.provider !== provider) return;
+            try {
+              const results = await Promise.allSettled([syncSettingsToMobile(), projectConfigSync.refresh()]);
+              const operations = ['settings', 'project config'];
+              results.forEach((result, index) => {
+                if (result.status === 'rejected') logger.main.warn(`[SyncManager] Failed to refresh mobile device ${operations[index]}:`, result.reason);
               });
-            }, delay);
-          }
+            } catch (error) {
+              logger.main.warn('[SyncManager] Failed to refresh mobile device settings or project config:', error);
+            }
+          }, delay);
         }
 
-        previousMobileDeviceIds = currentMobileIds;
         isFirstCallback = false;
       });
     }
@@ -882,7 +717,7 @@ export async function initializeSync(baseStore: SessionStore): Promise<SessionSt
     }
 
     // Mark as connected
-    updateSyncStatus({ connected: true, syncing: false, error: null });
+    updateSyncStatus({ connected: provider.isIndexReady?.() ?? true, syncing: false });
 
     logger.main.info('[SyncManager] Session sync initialized successfully');
     return syncedStore;
@@ -953,14 +788,16 @@ export function isSyncProviderReady(): boolean {
 export function getPersonalDocSyncConfig(): {
   serverUrl: string;
   orgId: string;
-  userId: string;
+  personalMemberId: PersonalMemberId;
   encryptionKeyRaw: CryptoKey;
 } | null {
   if (!isSyncEnabled() || !state.encryptionKey || !state.config) return null;
 
   const personalOrgId = state.config.personalOrgId || getPersonalOrgId();
-  const personalUserId = state.config.personalUserId || getPersonalUserId() || getStytchUserId();
-  if (!personalOrgId || !personalUserId) return null;
+  const personalMemberId = state.config.personalUserId
+    ? asPersonalMemberId(state.config.personalUserId)
+    : getPersonalUserId();
+  if (!personalOrgId || !personalMemberId) return null;
 
   const isDev = process.env.NODE_ENV !== 'production';
   const env = isDev ? state.config.environment : undefined;
@@ -969,7 +806,7 @@ export function getPersonalDocSyncConfig(): {
   return {
     serverUrl,
     orgId: personalOrgId,
-    userId: personalUserId,
+    personalMemberId,
     encryptionKeyRaw: state.encryptionKey,
   };
 }
@@ -978,6 +815,8 @@ export function getPersonalDocSyncConfig(): {
  * Shutdown sync and disconnect all sessions.
  */
 export function shutdownSync(): void {
+  projectConfigSync.stop();
+  remoteSessions.setProvider(null);
   shutdownSleepPrevention();
 
   if (state.sessionKeepAliveInterval) {
@@ -997,11 +836,18 @@ export function shutdownSync(): void {
 
   if (state.provider) {
     logger.main.info('[SyncManager] Shutting down session sync...');
+    personalSyncGateUnsubscribe?.();
+    personalSyncGateUnsubscribe = null;
+    indexReadyUnsubscribe?.();
+    indexReadyUnsubscribe = null;
+    hierarchySyncUnsubscribe?.();
+    hierarchySyncUnsubscribe = null;
     state.provider.disconnectAll();
     state.provider = null;
     state.config = null;
+    state.messageSyncHandler?.dispose();
     state.messageSyncHandler = null;
-    updateSyncStatus({ connected: false, syncing: false, error: null });
+    updateSyncStatus({ connected: false, syncing: false, error: null, skippedRowCount: 0, personalSyncWriteGate: null });
   }
 }
 
@@ -1016,9 +862,12 @@ export async function reinitializeSync(baseStore: SessionStore): Promise<Session
 
 /**
  * Trigger an incremental sync to push local sessions to the server.
- * Useful when a new project is enabled for sync.
+ * Useful when a new project is enabled for sync. `force` (a project-selection
+ * change) skips the minimum interval and, if a pass is running, queues one
+ * more rather than being dropped: the running pass may have read the old
+ * selection.
  */
-export async function triggerIncrementalSync(): Promise<void> {
+export async function triggerIncrementalSync(options: { force?: boolean } = {}): Promise<void> {
   const provider = state.provider;
   if (!provider) {
     logger.main.warn('[SyncManager] Cannot trigger sync - provider not initialized');
@@ -1032,13 +881,14 @@ export async function triggerIncrementalSync(): Promise<void> {
 
   // Skip if a sync is already in flight
   if (incrementalSyncInFlight) {
+    if (options.force) incrementalSyncRerun = true;
     logger.main.debug('[SyncManager] Incremental sync already in flight, skipping');
     return;
   }
 
   // Enforce minimum interval between syncs
   const now = Date.now();
-  if (now - lastIncrementalSyncAt < MIN_INCREMENTAL_SYNC_INTERVAL) {
+  if (!options.force && now - lastIncrementalSyncAt < MIN_INCREMENTAL_SYNC_INTERVAL) {
     logger.main.debug('[SyncManager] Incremental sync too soon after last sync, skipping');
     return;
   }
@@ -1070,113 +920,24 @@ export async function triggerIncrementalSync(): Promise<void> {
       return;
     }
 
-    // Build a map of server sessions for quick lookup
-    const serverSessionMap = new Map(
-      serverIndex.sessions.map(s => [s.sessionId, s])
-    );
-
-    // Get local sessions
-    const localStart = performance.now();
-    const { getAllSessionsForSync } = await import('./PGLiteSessionStore');
-    const allLocalSessions = await getAllSessionsForSync(false);
-    const localTime = performance.now() - localStart;
-    // logger.main.info(`[SyncManager] Triggered sync: local has ${allLocalSessions.length} sessions (query took ${localTime.toFixed(1)}ms)`);
-
-    // Get enabled projects filter
-    const syncSettings = store.get('sessionSync');
-    const enabledProjects = syncSettings?.enabledProjects ?? [];
-    // logger.main.info(`[SyncManager] Triggered sync: enabled projects: ${JSON.stringify(enabledProjects)}`);
-
-    // Only sync explicitly selected projects
-    const enabledProjectIds = new Set(enabledProjects);
-
-    // Find sessions that need syncing using timestamp comparison
-    const sessionsNeedingIndexUpdate: typeof allLocalSessions = [];
-    const sessionsNeedingMessageSync: string[] = [];
-
-    for (const localSession of allLocalSessions) {
-      if (!localSession.workspaceId) {
-        continue;
-      }
-
-      // Skip sessions from disabled projects. Resolve worktree paths to their
-      // parent project path so Codex worktree sessions (which do not adopt the
-      // parent path the way Claude sessions do) match the user's enabled set.
-      if (enabledProjectIds) {
-        const projectPath = resolveProjectPath(localSession.workspaceId);
-        if (!enabledProjectIds.has(localSession.workspaceId) && !enabledProjectIds.has(projectPath)) {
-          continue;
-        }
-      }
-
-      const serverSession = serverSessionMap.get(localSession.id);
-
-      if (!serverSession) {
-        // Session missing from server. Check if it's older than the server TTL --
-        // if so, the server already expired it and re-uploading is wasteful.
-        const localUpdatedAt = localSession.updatedAt || 0;
-        const ttlCutoff = Date.now() - SESSION_TTL_MS;
-        const ttlExpired = localUpdatedAt < ttlCutoff;
-        if (ttlExpired && !localSession.isArchived) {
-          continue; // Expired and not archived: nothing other devices need.
-        }
-        // For TTL-expired but locally archived sessions, push the index entry
-        // without messages so iOS can see the archived flag and hide the row.
-        sessionsNeedingIndexUpdate.push(localSession);
-        if (!ttlExpired) {
-          sessionsNeedingMessageSync.push(localSession.id);
-        }
-      } else {
-        // Compare timestamps AND message counts to detect sessions that need syncing.
-        // Note: The real-time pushChange path sends updatedAt=Date.now() AFTER the DB write,
-        // so the server's updatedAt is often slightly ahead of the local DB updated_at.
-        // Timestamp comparison alone misses sessions with new messages. Message count
-        // comparison catches these cases reliably.
-        const serverUpdatedAt = serverSession.updatedAt || 0;
-        const localUpdatedAt = localSession.updatedAt || 0;
-        const serverMessageCount = serverSession.messageCount || 0;
-        const localMessageCount = localSession.messageCount || 0;
-
-        if (localUpdatedAt > serverUpdatedAt) {
-          sessionsNeedingIndexUpdate.push(localSession);
-          sessionsNeedingMessageSync.push(localSession.id);
-          // logger.main.info(`[SyncManager] Session ${localSession.id} needs sync (timestamp): local=${localUpdatedAt} server=${serverUpdatedAt}`);
-        } else if (localMessageCount > serverMessageCount) {
-          sessionsNeedingIndexUpdate.push(localSession);
-          sessionsNeedingMessageSync.push(localSession.id);
-          // logger.main.info(`[SyncManager] Session ${localSession.id} needs sync (messages): local=${localMessageCount} server=${serverMessageCount}`);
-        } else if (Boolean(localSession.isArchived) !== Boolean(serverSession.isArchived)) {
-          // Archive state diverged. updateMetadata doesn't bump updated_at, so the
-          // timestamp comparison above misses it. Push the index entry without
-          // re-uploading messages.
-          sessionsNeedingIndexUpdate.push(localSession);
-          logger.main.info(`[SyncManager] triggered sync: archive mismatch ${localSession.id.slice(0,8)} local=${localSession.isArchived} server=${serverSession.isArchived}`);
-        }
-      }
+    // See the startup path: absence only means "republish" over proven coverage.
+    if (serverIndex.complete === false) {
+      logger.main.warn('[SyncManager] Server index coverage is incomplete; skipping incremental sync this cycle');
+      return;
     }
-
-    // logger.main.info(`[SyncManager] Triggered sync: ${sessionsNeedingIndexUpdate.length}/${allLocalSessions.length} sessions need update, ${sessionsNeedingMessageSync.length} need message sync (server has ${serverIndex.sessions.length})`);
-
-    if (sessionsNeedingIndexUpdate.length === 0 && sessionsNeedingMessageSync.length === 0) {
-      // logger.main.info('[SyncManager] Triggered sync: all sessions up to date');
-    } else {
-      const messageSyncRequests = sessionsNeedingMessageSync.length > 0
-        ? sessionsNeedingIndexUpdate
-            .filter(s => sessionsNeedingMessageSync.includes(s.id))
-            .map(session => {
-              const serverSession = serverSessionMap.get(session.id);
-              return { sessionId: session.id, sinceTimestamp: serverSession?.lastMessageAt || 0 };
-            })
-        : undefined;
-
-      const { getSessionMessagesForSyncBatch } = await import('./PGLiteSessionStore');
-
-      // logger.main.info(`[SyncManager] Syncing ${sessionsNeedingIndexUpdate.length} sessions (${sessionsNeedingMessageSync.length} need message sync, messages will load lazily)`);
-      provider.syncSessionsToIndex(sessionsNeedingIndexUpdate, {
-        syncMessages: sessionsNeedingMessageSync.length > 0,
-        messageSyncRequests,
-        getMessagesForSync: getSessionMessagesForSyncBatch,
-      });
+    const { getAllSessionsForSync, getSessionMessagesForSyncBatch } = await import('./PGLiteSessionStore');
+    const result = await reconcileSessionIndex({
+      syncSessionsToIndex: provider.syncSessionsToIndex.bind(provider),
+      serverIndex,
+      loadLocalSessions: isProjectEnabled => getAllSessionsForSync(false, { isProjectEnabled }),
+      getMessagesForSync: getSessionMessagesForSyncBatch,
+      isProjectEnabled: createEnabledProjectFilter(),
+      isMidTurn: isSessionMidTurn,
+      backfill: transcriptBackfill,
+      warn: (message, error) => logger.main.warn(message, error),
+    });
+    if (result.indexOnlySessions.length > 0 || result.sessionsNeedingMessageSync.length > 0) {
+      logger.main.info(`[SyncManager] triggered sync: ${result.sessionsNeedingIndexUpdate.length} need index update, ${result.sessionsNeedingMessageSync.length} need message sync, ${result.indexOnlySessions.length} index-only`);
     }
 
     // const totalSyncTime = performance.now() - syncStart;
@@ -1184,7 +945,7 @@ export async function triggerIncrementalSync(): Promise<void> {
   } catch (error) {
     logger.main.error('[SyncManager] Triggered sync failed:', error);
   } finally {
-    incrementalSyncInFlight = false;
+    finishIncrementalSync();
   }
 }
 
@@ -1192,17 +953,13 @@ export async function triggerIncrementalSync(): Promise<void> {
 // Settings Sync (Desktop -> Mobile)
 // ============================================================================
 
-// Track settings version to avoid re-syncing unchanged settings
-let settingsVersion = 0;
-
 /**
  * Get voice mode settings from the settings store.
  */
-async function getVoiceModeSettings(): Promise<{ voice?: string; submitDelayMs?: number } | undefined> {
+async function getVoiceModeSettings(): Promise<{ voice?: string; submitDelayMs?: number; engine?: string; liveVoice?: string; liveControllerModel?: string } | undefined> {
   try {
-    const Store = (await import('electron-store')).default;
     const settingsStore = new Store<Record<string, unknown>>({ name: 'nimbalyst-settings' });
-    const voiceMode = settingsStore.get('voiceMode') as { voice?: string; submitDelayMs?: number } | undefined;
+    const voiceMode = settingsStore.get('voiceMode') as { voice?: string; submitDelayMs?: number; engine?: string; liveVoice?: string; liveControllerModel?: string } | undefined;
     return voiceMode;
   } catch {
     return undefined;
@@ -1215,11 +972,10 @@ async function getVoiceModeSettings(): Promise<{ voice?: string; submitDelayMs?:
  */
 async function getAvailableModelsForMobile(): Promise<{ models: Array<{ id: string; name: string; provider: string }>; defaultModel?: string }> {
   try {
-    const Store = (await import('electron-store')).default;
     const { ModelRegistry } = await import('@nimbalyst/runtime/ai/server/ModelRegistry');
 
     const aiStore = new Store<Record<string, unknown>>({ name: 'ai-settings' });
-    const apiKeys = aiStore.get('apiKeys', {}) as Record<string, string>;
+    const apiKeys = getProviderCredentials().availableKeys();
     const providerSettings = aiStore.get('providerSettings', {}) as Record<string, { enabled?: boolean; models?: string[]; baseUrl?: string }>;
 
     // Build enabled provider set to avoid fetching from disabled providers (e.g., LMStudio network call)
@@ -1235,7 +991,9 @@ async function getAvailableModelsForMobile(): Promise<{ models: Array<{ id: stri
       ...apiKeys,
       lmstudio_url: providerSettings['lmstudio']?.baseUrl || 'http://127.0.0.1:8234'
     };
-    const allModels = await ModelRegistry.getAllModels(modelsConfig, enabledSet as Set<any>);
+    // Mobile syncs one account-wide model list, not a per-project one, and
+    // `enabledSet` above never includes opencode -- the only project-scoped lane.
+    const allModels = await ModelRegistry.getAllModels(modelsConfig, undefined, enabledSet as Set<any>);
     // Filter to enabled models (model-level filtering for specific model selection)
     const enabledModels = allModels.filter(model => {
       const ps = providerSettings[model.provider] as { enabled?: boolean; models?: string[]; hiddenModels?: string[] } | undefined;
@@ -1261,9 +1019,9 @@ async function getAvailableModelsForMobile(): Promise<{ models: Array<{ id: stri
  * Sync sensitive settings to mobile devices.
  * Syncs the OpenAI API key, voice mode settings, and available AI models.
  *
- * @param openaiApiKey The OpenAI API key to sync
+ * Reads the current protected value at send time; omitted preserves, empty deletes.
  */
-export async function syncSettingsToMobile(openaiApiKey?: string): Promise<void> {
+export async function syncSettingsToMobile(_legacyOpenaiApiKey?: string): Promise<void> {
   const provider = state.provider;
   if (!provider) {
     logger.main.debug('[SyncManager] Cannot sync settings - provider not initialized');
@@ -1275,9 +1033,8 @@ export async function syncSettingsToMobile(openaiApiKey?: string): Promise<void>
     return;
   }
 
-  // Increment version to ensure mobile gets the latest
-  settingsVersion++;
-
+  const settingsVersion = nextMobileSettingsVersion();
+  if (settingsVersion === undefined) return;
   // Get voice mode settings
   const voiceModeSettings = await getVoiceModeSettings();
 
@@ -1296,10 +1053,13 @@ export async function syncSettingsToMobile(openaiApiKey?: string): Promise<void>
 
   try {
     await provider.syncSettings({
-      openaiApiKey,
+      openaiApiKey: getProviderCredentials().mobileOpenAIKey(),
       voiceMode: voiceModeSettings ? {
         voice: voiceModeSettings.voice as 'alloy' | 'ash' | 'ballad' | 'coral' | 'echo' | 'sage' | 'shimmer' | 'verse' | 'marin' | 'cedar' | undefined,
         submitDelayMs: voiceModeSettings.submitDelayMs,
+        engine: voiceModeSettings.engine,
+        liveVoice: voiceModeSettings.liveVoice ?? voiceModeSettings.voice,
+        liveControllerModel: voiceModeSettings.liveControllerModel,
       } : undefined,
       availableModels,
       defaultModel,
@@ -1317,46 +1077,13 @@ export async function syncSettingsToMobile(openaiApiKey?: string): Promise<void>
 // Project Config Sync (commands, etc.)
 // ============================================================================
 
-/**
- * Sync slash commands for a workspace to mobile via the index room.
- * Called after commands are discovered/updated.
- * @param workspacePath The workspace path (used as project ID)
- * @param commands Array of slash commands to sync (name + description + source only)
- */
-export async function syncProjectCommandsToMobile(
-  workspacePath: string,
-  commands: Array<{ name: string; description?: string; source: string }>
-): Promise<void> {
-  const provider = state.provider;
-  if (!provider) {
-    return; // Sync not initialized, silently skip
-  }
-
-  if (!provider.syncProjectConfig) {
-    return;
-  }
-
-  try {
-    // Compute gitRemoteHash from the workspace's git remote URL
-    let gitRemoteHash: string | undefined;
-    const gitRemote = await getNormalizedGitRemote(workspacePath);
-    if (gitRemote) {
-      gitRemoteHash = createHash('sha256').update(gitRemote).digest('hex');
-    }
-
-    await provider.syncProjectConfig(workspacePath, {
-      commands: commands.map(cmd => ({
-        name: cmd.name,
-        description: cmd.description,
-        source: cmd.source as 'builtin' | 'project' | 'user' | 'plugin',
-      })),
-      lastCommandsUpdate: Date.now(),
-      gitRemoteHash,
-    });
-  } catch (error) {
-    logger.main.error('[SyncManager] Failed to sync project commands:', error);
-  }
-}
+export const projectConfigSync = createProjectConfigSync({
+  ...projectConfigSources,
+  getProvider: () => state.provider,
+  getEnabledProjects: () => store.get('sessionSync')?.enabledProjects ?? [],
+  isProjectEnabled: path => createEnabledProjectFilter()(path),
+  warn: (message, error) => logger.main.warn(message, error),
+});
 
 /**
  * Decrypt mobile image attachments and convert to ChatAttachment format.
@@ -1384,8 +1111,9 @@ export async function decryptMobileAttachments(
   }
 
   const { AttachmentService } = await import('./AttachmentService');
-  const userDataPath = app.getPath('userData');
-  const attachmentService = new AttachmentService(workspacePath, userDataPath);
+  const stagingConfig = getAttachmentStagingConfig();
+  const stagingDirectory = resolveWorkspaceAttachmentStagingDirectory(workspacePath);
+  const attachmentService = new AttachmentService(workspacePath, stagingDirectory, stagingConfig.mode);
 
   const results: import('@nimbalyst/runtime').ChatAttachment[] = [];
 
@@ -1518,8 +1246,10 @@ export async function attemptReconnect(): Promise<void> {
       return;
     }
 
+    // Readiness clears transport errors; the separate write gate remains authoritative.
     updateSyncStatus({ connected: true, error: null });
     logger.main.info('[SyncManager] Successfully reconnected after network change');
+    await projectConfigSync.refresh();
 
     // 3. Fan out: all other sync providers get an immediate reconnect now that
     //    we know the network is good. TrackerSync lives in main; TeamSync and
@@ -1552,3 +1282,6 @@ export async function attemptReconnect(): Promise<void> {
     attemptReconnectInFlight = false;
   }
 }
+
+// Reconnect also sends the durable vault tombstone if a clear occurred offline.
+subscribeProviderCredentialChanges(() => { void syncSettingsToMobile(); /* Credential edits must not wait for network sync. */ });

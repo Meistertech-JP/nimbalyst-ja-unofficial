@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, KeyboardEvent, useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { GenericTypeahead, TypeaheadOption } from '../Typeahead/GenericTypeahead';
 import { extractTriggerMatch, getSlashTypeaheadScope, insertAtTrigger, type SlashTypeaheadScope, TriggerMatch } from '../Typeahead/typeaheadUtils';
 import { buildSlashCommandOptions, fetchSlashCommandEntries, type SlashCommandEntry } from '../Typeahead/slashCommandAutocomplete';
 import type { ChatAttachment } from '@nimbalyst/runtime';
 import { AttachmentPreviewList } from './AttachmentPreviewList';
+import { errorNotificationService } from '../../services/ErrorNotificationService';
+import { useTranslation } from 'react-i18next';
 
 interface AgenticInputProps {
   value: string;
@@ -47,7 +48,7 @@ export function AgenticInput({
   onAttachmentAdd,
   onAttachmentRemove
 }: AgenticInputProps) {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastSlashValueRef = useRef<string | null>(null);
   const [typeaheadMatch, setTypeaheadMatch] = useState<TriggerMatch | null>(null);
@@ -57,6 +58,7 @@ export function AgenticInput({
   const [slashCommandOptions, setSlashCommandOptions] = useState<TypeaheadOption[]>([]);
   const [allSlashCommands, setAllSlashCommands] = useState<SlashCommandEntry[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const inputPlaceholder = placeholder ?? t('input.placeholder');
 
   // Track attachments that are being processed (e.g., compressed)
   const [processingAttachments, setProcessingAttachments] = useState<Array<{ id: string; filename: string }>>([]);
@@ -290,7 +292,7 @@ export function AgenticInput({
 
       if (!validation.valid) {
         console.error('[AgenticInput] File validation failed:', validation.error);
-        alert(validation.error || t('agents:input.invalid_file'));
+        errorNotificationService.showError(t('input.attachment_rejected'), validation.error || t('input.invalid_file'));
         return;
       }
 
@@ -320,13 +322,13 @@ export function AgenticInput({
         onChange(value + (value ? ' ' : '') + reference);
       } else {
         console.error('[AgenticInput] Failed to save attachment:', result.error);
-        alert(result.error || t('agents:input.save_failed'));
+        errorNotificationService.showError(t('input.attachment_failed'), result.error || t('input.save_failed'));
       }
     } catch (error) {
       // Remove from processing state on error
       setProcessingAttachments(prev => prev.filter(p => p.id !== processingId));
       console.error('[AgenticInput] Error handling file attachment:', error);
-      alert(t('agents:input.attach_failed'));
+      errorNotificationService.showError(t('input.attachment_failed'), t('input.attach_failed'));
     }
   }, [onAttachmentAdd, sessionId, value, onChange, t]);
 
@@ -418,7 +420,7 @@ export function AgenticInput({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={placeholder ?? t('agents:input.placeholder')}
+          placeholder={inputPlaceholder}
           disabled={disabled}
           rows={1}
         />
@@ -426,8 +428,8 @@ export function AgenticInput({
           <button
             className="ai-chat-cancel-button w-9 h-9 flex items-center justify-center bg-[var(--nim-error)] border-none rounded-md text-white cursor-pointer transition-all duration-200 animate-pulse hover:opacity-90 hover:scale-105 hover:animate-none"
             onClick={onCancel}
-            title={t('agents:input.cancel_request')}
-            aria-label={t('agents:input.cancel_request_aria')}
+            title={t('input.cancel_request')}
+            aria-label={t('input.cancel_request_aria')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -438,8 +440,8 @@ export function AgenticInput({
             className="ai-chat-send-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] border-none rounded-md text-white cursor-pointer transition-all duration-200 shrink-0 hover:enabled:bg-[var(--nim-primary-hover)] hover:enabled:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={onSend}
             disabled={disabled || !value.trim()}
-            title={t('agents:input.send_message')}
-            aria-label={t('agents:input.send_message_aria')}
+            title={t('input.send_message')}
+            aria-label={t('input.send_message_aria')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 8L14 2L11 14L8 9L2 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

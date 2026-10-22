@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface ExtensionProjectIntroModalProps {
   isOpen: boolean;
@@ -21,12 +21,14 @@ export const ExtensionProjectIntroModal: React.FC<ExtensionProjectIntroModalProp
   onDontShowAgain,
   onCancel,
 }) => {
-  const { t } = useTranslation(['onboarding', 'common']);
+  const { t: tOnboarding } = useTranslation('onboarding');
+  const { t: tCommon } = useTranslation('common');
+
   if (!isOpen) return null;
 
   return (
     <div
-      className="extension-project-intro-overlay nim-overlay backdrop-blur-sm bg-black/55"
+      className="nim-overlay backdrop-blur-sm bg-black/55"
       onClick={onCancel}
     >
       <div
@@ -38,10 +40,10 @@ export const ExtensionProjectIntroModal: React.FC<ExtensionProjectIntroModalProp
             <span className="material-symbols-outlined text-[26px]">extension</span>
           </div>
           <h2 className="m-0 text-xl font-semibold tracking-[-0.02em] text-nim">
-            {t('extension_intro.title')}
+            {tOnboarding('extension_intro.title')}
           </h2>
           <p className="mt-2 text-[14px] leading-6 text-nim-muted">
-            {t('extension_intro.description')}
+            {tOnboarding('extension_intro.description')}
           </p>
         </div>
 
@@ -51,14 +53,16 @@ export const ExtensionProjectIntroModal: React.FC<ExtensionProjectIntroModalProp
               <span className="material-symbols-outlined mt-0.5 text-[18px] text-[var(--nim-primary)]">
                 {cap.icon}
               </span>
-              <span className="text-[13px] leading-5 text-nim-muted">{t(`extension_intro.${cap.key}`)}</span>
+              <span className="text-[13px] leading-5 text-nim-muted">
+                {tOnboarding(`extension_intro.${cap.key}`)}
+              </span>
             </div>
           ))}
         </div>
 
         <div className="mx-7 mb-5 rounded-lg bg-nim-secondary px-4 py-3">
           <span className="text-[13px] leading-5 text-nim-muted">
-            {t('extension_intro.agent_help')}
+            {tOnboarding('extension_intro.agent_help')}
           </span>
         </div>
 
@@ -67,19 +71,19 @@ export const ExtensionProjectIntroModal: React.FC<ExtensionProjectIntroModalProp
             className="nim-btn-secondary rounded-lg px-4 py-2 text-sm font-medium"
             onClick={onCancel}
           >
-            {t('cancel')}
+            {tOnboarding('cancel')}
           </button>
           <button
             className="rounded-lg border border-nim bg-transparent px-4 py-2 text-sm font-medium text-nim-muted transition-colors hover:bg-nim-secondary hover:text-nim"
             onClick={onDontShowAgain}
           >
-            {t('extension_intro.dont_show_again')}
+            {tOnboarding('extension_intro.dont_show_again')}
           </button>
           <button
             className="nim-btn-primary rounded-lg px-5 py-2 text-sm font-semibold"
             onClick={onContinue}
           >
-            {t('common:continue')}
+            {tCommon('continue')}
           </button>
         </div>
       </div>

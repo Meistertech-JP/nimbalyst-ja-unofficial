@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * Notice shown in a `claude-code-cli` session when the genuine `claude` CLI
@@ -97,7 +97,8 @@ export const ClaudeCliNotInstalledNotice: React.FC<ClaudeCliNotInstalledNoticePr
         {t('claude_cli.not_installed_short')}
       </div>
       <div style={{ fontSize: '12px', color: 'var(--nim-text-muted)', maxWidth: 360 }}>
-        <Trans t={t} i18nKey="claude_cli.detail" components={{ code: <code /> }} />
+        {t('claude_cli.detail_prefix')} <code>claude</code>{' '}
+        {t('claude_cli.detail_suffix')}
       </div>
       {installButton}
     </div>

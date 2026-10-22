@@ -5,12 +5,10 @@
  */
 
 import posthog from 'posthog-js';
-import { rendererI18n } from '../i18n';
-
-const notificationT = (key: string, fallback: string): string =>
-  rendererI18n.isInitialized ? rendererI18n.t(key) : fallback;
 
 export type ErrorSeverity = 'error' | 'warning' | 'info';
+export type ErrorNotificationTitleKey = 'generic_title' | 'uncaught_title' | 'unhandled_rejection_title';
+export type NotificationTranslationOptions = Record<string, string | number>;
 
 export interface NotificationAction {
   label: string;
@@ -33,13 +31,67 @@ export interface ErrorNotification {
 
 type ErrorListener = (notification: ErrorNotification) => void;
 
+/**
+ * Failures that arrive as a storm rather than as an event.
+ *
+ * When one shared resource stalls, everything queued behind it fails at once,
+ * each naming whichever request happened to be waiting — 221 SQLite worker
+ * timeouts in a two-second burst on 2026-08-21, surfacing under different
+ * titles and messages so ordinary title+message dedup let several through.
+ * To the user that is one thing going wrong, so collapse the whole class onto
+ * a single dedup key.
+ */
+const STORM_SIGNATURES: Array<{ match: RegExp; signature: string }> = [
+  { match: /SQLite worker request '[^']*' timed out after \d+ms/, signature: 'sqlite-worker-timeout' },
+];
+
+/**
+ * Dedup key for a notification. Storm-class failures key on the class alone;
+ * everything else keys on its own severity, title and message.
+ */
+export function notificationDedupKey(
+  severity: ErrorSeverity,
+  title: string,
+  message: string,
+): string {
+  for (const { match, signature } of STORM_SIGNATURES) {
+    if (match.test(message)) return `storm:${signature}`;
+  }
+  return `${severity}:${title}:${message}`;
+}
+
 class ErrorNotificationService {
   private listeners: Set<ErrorListener> = new Set();
   private notifications: ErrorNotification[] = [];
   private nextId = 1;
   // Deduplication: track recent error keys to suppress duplicates
   private recentErrorKeys = new Map<string, { count: number; firstSeen: number }>();
+  private translateTitle: ((key: ErrorNotificationTitleKey) => string) | null = null;
+  private translateText: ((namespace: string, key: string, fallback: string, options?: NotificationTranslationOptions) => string) | null = null;
   private static DEDUP_WINDOW_MS = 5000; // Suppress identical errors within 5s
+
+  setTitleTranslator(translate: ((key: ErrorNotificationTitleKey) => string) | null): void {
+    this.translateTitle = translate;
+  }
+
+  getLocalizedTitle(key: ErrorNotificationTitleKey, fallback: string): string {
+    return this.translateTitle?.(key) || fallback;
+  }
+
+  setTextTranslator(
+    translate: ((namespace: string, key: string, fallback: string, options?: NotificationTranslationOptions) => string) | null,
+  ): void {
+    this.translateText = translate;
+  }
+
+  getLocalizedText(
+    namespace: string,
+    key: string,
+    fallback: string,
+    options?: NotificationTranslationOptions,
+  ): string {
+    return this.translateText?.(namespace, key, fallback, options) || fallback;
+  }
 
   /**
    * Register a listener for error notifications
@@ -80,6 +132,12 @@ class ErrorNotificationService {
       details?: string;
       duration?: number;
       action?: NotificationAction;
+      /**
+       * Bypass the 5s duplicate suppression. Set this when the notification is
+       * the direct result of a user action (e.g. a Retry button) — otherwise a
+       * fast retry that fails the same way looks like it did nothing.
+       */
+      allowDuplicate?: boolean;
     }
   ): string {
     return this.notify({
@@ -119,7 +177,7 @@ class ErrorNotificationService {
     title?: string,
     context?: Record<string, any>
   ): string {
-    return this.showError(title ?? notificationT('dialogs:error.generic_title', 'An error occurred'), error.message, {
+    return this.showError(title ?? this.getLocalizedTitle('generic_title', 'An error occurred'), error.message, {
       stack: error.stack,
       context
     });
@@ -137,12 +195,14 @@ class ErrorNotificationService {
     context?: Record<string, any>;
     duration?: number;
     action?: NotificationAction;
+    allowDuplicate?: boolean;
   }): string {
+    const { allowDuplicate, ...notificationOptions } = options;
     // Deduplicate: suppress identical title+message within the dedup window
-    const dedupKey = `${options.severity}:${options.title}:${options.message}`;
+    const dedupKey = notificationDedupKey(options.severity, options.title, options.message);
     const now = Date.now();
     const existing = this.recentErrorKeys.get(dedupKey);
-    if (existing && (now - existing.firstSeen) < ErrorNotificationService.DEDUP_WINDOW_MS) {
+    if (!allowDuplicate && existing && (now - existing.firstSeen) < ErrorNotificationService.DEDUP_WINDOW_MS) {
       existing.count++;
       // Still log to console so devs can see the repeat count
       console.debug(`[ErrorNotificationService] Suppressed duplicate (x${existing.count}): ${options.title}: ${options.message}`);
@@ -164,7 +224,7 @@ class ErrorNotificationService {
       timestamp: Date.now(),
       dismissible: true,
       duration: options.duration ?? (options.severity === 'error' ? 0 : 10000),
-      ...options
+      ...notificationOptions
     };
 
     this.notifications.push(notification);
@@ -267,7 +327,7 @@ if (typeof window !== 'undefined') {
     });
 
     errorNotificationService.showError(
-      notificationT('dialogs:error.uncaught_title', 'Uncaught Error'),
+      errorNotificationService.getLocalizedTitle('uncaught_title', 'Uncaught Error'),
       message,
       {
         stack: event.error?.stack,
@@ -300,7 +360,7 @@ if (typeof window !== 'undefined') {
     });
 
     errorNotificationService.showError(
-      notificationT('dialogs:error.unhandled_rejection_title', 'Unhandled Promise Rejection'),
+      errorNotificationService.getLocalizedTitle('unhandled_rejection_title', 'Unhandled Promise Rejection'),
       message,
       {
         stack: reason?.stack

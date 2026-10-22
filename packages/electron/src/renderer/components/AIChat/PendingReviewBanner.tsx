@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { sessionPendingReviewFilesAtom } from '../../store/atoms/sessionFiles';
 
 interface PendingReviewBannerProps {
@@ -42,7 +42,12 @@ export function PendingReviewBanner({ workspacePath, sessionId }: PendingReviewB
       <div className="pending-review-banner__info flex items-center gap-2">
         <MaterialSymbol icon="rate_review" size={16} className="pending-review-banner__icon text-nim-warning" />
         <span className="pending-review-banner__text text-xs text-nim-warning font-medium">
-          <Trans t={t} i18nKey="pending_review.files" count={pendingCount} components={{ count: <span className="pending-review-banner__count font-semibold" /> }} />
+          <Trans
+            ns="aichat"
+            i18nKey="pending_review.files"
+            count={pendingCount}
+            components={{ count: <span className="pending-review-banner__count font-semibold" /> }}
+          />
         </span>
       </div>
       <button
@@ -50,6 +55,7 @@ export function PendingReviewBanner({ workspacePath, sessionId }: PendingReviewB
         onClick={handleClearAll}
         disabled={isClearing}
         title={t('pending_review.accept_all_title')}
+        aria-label={t('pending_review.keep_all')}
       >
         <MaterialSymbol icon="check_circle" size={14} />
         {isClearing ? t('pending_review.keeping') : t('pending_review.keep_all')}

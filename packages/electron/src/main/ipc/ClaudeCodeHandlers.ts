@@ -9,7 +9,6 @@ import { AnalyticsService } from "../services/analytics/AnalyticsService.ts";
 import { shouldShowClaudeCodeWindowsWarning, dismissClaudeCodeWindowsWarning } from '../utils/store';
 import os from "os";
 import { safeHandle, safeOn } from '../utils/ipcRegistry';
-import { t } from '../i18n';
 
 // Use IPC component logger for this file
 const log = logger.ipc;
@@ -40,12 +39,7 @@ function resolveLoginCwd(workspacePath?: string): string | undefined {
  * Register Claude Code related IPC handlers
  */
 export function registerClaudeCodeHandlers() {
-  // NIM-1573: Log the bundled-runtime integrity once at init so an already-broken
-  // install (interrupted CLI self-update that orphaned claude.exe) is recorded
-  // honestly up front, not only when a session first fails. We deliberately do
-  // NOT restore an orphaned .old file -- a truncated download must not be
-  // resurrected; the disabled self-updater (sdkOptionsBuilder / env) stops the
-  // bleeding going forward and the run/login paths surface the honest message.
+  // #1476: resolution attempts manifest-verified recovery before reporting a missing runtime.
   try {
     if (!resolveNativeBinaryPath()) {
       const orphans = findOrphanedClaudeUpdateFiles();
@@ -169,8 +163,9 @@ export function registerClaudeCodeHandlers() {
     try {
       const platform = process.platform;
       analytics.sendEvent('do_claude_code_login', {platform: platform});
+      const env = setupClaudeCodeEnvironment();
       const binaryPath = resolveClaudeCodeExecutablePath({
-        pathValue: setupClaudeCodeEnvironment().PATH,
+        pathValue: env.PATH,
         allowSystemFallback: true,
       }) ?? (platform === 'win32' ? findWindowsClaudeExecutable() : null);
       if (!binaryPath) {
@@ -181,25 +176,23 @@ export function registerClaudeCodeHandlers() {
       // Open the login terminal in the current project folder so the CLI's
       // /login lands in the same directory the user is working in.
       const cwd = resolveLoginCwd(workspacePath);
-      const terminalTitle = t('settings:provider.claude_agent.terminal_auth_title');
-      const loginInstruction = t('settings:provider.claude_agent.terminal_login_instruction');
-      const oauthInstruction = t('settings:provider.claude_agent.terminal_oauth_instruction');
-      const quitInstruction = t('settings:provider.claude_agent.terminal_login_quit_instruction');
 
       if (platform === 'darwin') {
         const cdPrefix = cwd ? `cd ${shellQuote(cwd)} && ` : '';
         const script = `
 tell application "Terminal"
   activate
-  do script "${cdPrefix}clear && echo ${shellQuote(terminalTitle)} && echo '' && echo ${shellQuote(loginInstruction)} && echo ${shellQuote(oauthInstruction)} && echo ${shellQuote(quitInstruction)} && echo '' && '${binaryPath}'"
+  do script "${cdPrefix}clear && echo 'Claude Code Authentication' && echo '' && echo 'Type /login and press Enter to authenticate.' && echo 'Complete the OAuth flow in your browser when prompted.' && echo 'When finished, type /quit to exit and close this window.' && echo '' && env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"
 end tell`;
 
         spawn('osascript', ['-e', script], {
+          env,
           detached: true,
           stdio: 'ignore'
         }).unref();
       } else if (platform === 'win32') {
-        spawn('cmd', ['/c', 'start', `"${terminalTitle}"`, 'cmd', '/k', `echo ${terminalTitle} && echo. && echo ${loginInstruction} && echo ${oauthInstruction} && echo ${quitInstruction} && echo. && "${binaryPath}"`], {
+        spawn('cmd', ['/c', 'start', '"Claude Code Authentication"', 'cmd', '/k', `echo Claude Code Authentication && echo. && echo Type /login and press Enter to authenticate. && echo Complete the OAuth flow in your browser when prompted. && echo When finished, type /quit to exit and close this window. && echo. && "${binaryPath}"`], {
+          env,
           detached: true,
           stdio: 'ignore',
           shell: true,
@@ -212,7 +205,8 @@ end tell`;
 
         for (const terminal of terminals) {
           try {
-            spawn(terminal, ['-e', `bash -c "${cdPrefix}clear; echo ${shellQuote(terminalTitle)}; echo ''; echo ${shellQuote(loginInstruction)}; echo ${shellQuote(oauthInstruction)}; echo ${shellQuote(quitInstruction)}; echo ''; '${binaryPath}'"`], {
+            spawn(terminal, ['-e', `bash -c "${cdPrefix}clear; echo 'Claude Code Authentication'; echo ''; echo 'Type /login and press Enter to authenticate.'; echo 'Complete the OAuth flow in your browser when prompted.'; echo 'When finished, type /quit to exit.'; echo ''; env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`], {
+              env,
               detached: true,
               stdio: 'ignore',
               ...(cwd ? { cwd } : {})
@@ -225,13 +219,13 @@ end tell`;
         }
 
         if (!terminalOpened) {
-          throw new Error(t('settings:provider.claude_agent.login_terminal_unavailable', { binaryPath }));
+          throw new Error('No terminal emulator found. Please run "' + binaryPath + '" manually and type /login to authenticate.');
         }
       }
 
       return {
         success: true,
-        message: t('settings:provider.claude_agent.login_started')
+        message: 'Terminal window opened. Type /login and press Enter to authenticate, then click "Refresh Status" to verify.'
       };
     } catch (error) {
       log.error('[ClaudeCodeHandlers] Login error:', error);
@@ -242,13 +236,11 @@ end tell`;
   // Handle claude logout command
   safeHandle('claude-code:logout', async () => {
     try {
-      const terminalTitle = t('settings:provider.claude_agent.terminal_logout_title');
-      const logoutInstruction = t('settings:provider.claude_agent.terminal_logout_instruction');
-      const quitInstruction = t('settings:provider.claude_agent.terminal_logout_quit_instruction');
       const platform = process.platform;
       analytics.sendEvent('do_claude_code_logout', {platform: platform});
+      const env = setupClaudeCodeEnvironment();
       const binaryPath = resolveClaudeCodeExecutablePath({
-        pathValue: setupClaudeCodeEnvironment().PATH,
+        pathValue: env.PATH,
         allowSystemFallback: true,
       }) ?? (platform === 'win32' ? findWindowsClaudeExecutable() : null);
       if (!binaryPath) {
@@ -260,15 +252,17 @@ end tell`;
         const script = `
 tell application "Terminal"
   activate
-  do script "clear && echo ${shellQuote(terminalTitle)} && echo '' && echo ${shellQuote(logoutInstruction)} && echo ${shellQuote(quitInstruction)} && echo '' && '${binaryPath}'"
+  do script "clear && echo 'Claude Code Logout' && echo '' && echo 'Type /logout and press Enter to logout:' && echo '' && env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"
 end tell`;
 
         spawn('osascript', ['-e', script], {
+          env,
           detached: true,
           stdio: 'ignore'
         }).unref();
       } else if (platform === 'win32') {
-        spawn('cmd', ['/c', 'start', `"${terminalTitle}"`, 'cmd', '/k', `"${binaryPath}"`], {
+        spawn('cmd', ['/c', 'start', '"Claude Code Logout"', 'cmd', '/k', `"${binaryPath}"`], {
+          env,
           detached: true,
           stdio: 'ignore',
           shell: true
@@ -279,7 +273,8 @@ end tell`;
 
         for (const terminal of terminals) {
           try {
-            spawn(terminal, ['-e', `bash -c "clear; echo ${shellQuote(terminalTitle)}; echo ''; echo ${shellQuote(logoutInstruction)}; echo ${shellQuote(quitInstruction)}; echo ''; '${binaryPath}'"`], {
+            spawn(terminal, ['-e', `bash -c "clear; echo 'Claude Code Logout'; echo ''; echo 'Type /logout and press Enter to logout:'; echo ''; env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`], {
+              env,
               detached: true,
               stdio: 'ignore'
             }).unref();
@@ -291,13 +286,13 @@ end tell`;
         }
 
         if (!terminalOpened) {
-          throw new Error(t('settings:provider.claude_agent.logout_terminal_unavailable', { binaryPath }));
+          throw new Error('No terminal emulator found. Please run "' + binaryPath + '" manually and type /logout in your terminal.');
         }
       }
 
       return {
         success: true,
-        message: t('settings:provider.claude_agent.logout_started')
+        message: 'Terminal window opened. Type /logout and press Enter to complete logout.'
       };
     } catch (error) {
       log.error('[ClaudeCodeHandlers] Logout error:', error);

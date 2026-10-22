@@ -7,13 +7,12 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { rendererI18n } from '../../i18n';
 import { useAtomValue } from 'jotai';
 import { Terminal, FitAddon, OSC8LinkProvider, UrlRegexProvider, type ITheme, type ILinkProvider, type ILink } from 'ghostty-web';
 import { themeIdAtom } from '@nimbalyst/runtime/store';
 import { TerminalContextMenu } from './TerminalContextMenu';
 import { sanitizeScrollback, stripProblematicEscapeSequences, cleanScrollback } from './scrollbackSanitization';
-import { loadTerminalGhostty } from './ghosttyInstance';
+import { loadTerminalGhostty, isGhosttyWasmTrap, writeGuardingWasmTrap } from './ghosttyInstance';
 import {
   isElementMeasurable,
   waitUntilElementMeasurable,
@@ -120,7 +119,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   focusNonce,
   autoFocus = true,
 }) => {
-  const { t } = useTranslation(['common', 'terminal']);
+  const { t } = useTranslation('terminal');
   // Support legacy sessionId prop name
   const sessionId = terminalId;
 
@@ -158,6 +157,12 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   const lateInitRecoveredRef = useRef(false); // NIM-817: one-shot auto-retry when the backend comes up after the init timeout
   const initStartTimeRef = useRef<number>(0); // Track when initialization started
   const disposedRef = useRef(false); // Ref to track disposed state for async callbacks
+  // A ghostty-vt.wasm trap poisons the terminal's instance (upstream
+  // coder/ghostty-web#138): every later write traps too. Rebuild once on a
+  // fresh instance without replaying the saved history that may have caused
+  // it; a second trap is surfaced as an init error instead of looping.
+  const wasmTrapRecoveriesRef = useRef(0);
+  const skipScrollbackReplayRef = useRef(false);
   const [exitCode, setExitCode] = useState<number | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [restoreWarning, setRestoreWarning] = useState<string | null>(null);
@@ -230,7 +235,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       await initBackend();
     } catch (error) {
       console.error('[TerminalPanel] Failed to restart terminal:', error);
-      setInitError(error instanceof Error ? error.message : rendererI18n.t('terminal:restart_failed'));
+      setInitError(error instanceof Error ? error.message : 'Failed to restart terminal');
     }
   };
 
@@ -278,9 +283,29 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
     let focusOutHandler: (() => void) | null = null;
     let renderStatePersistTimer: ReturnType<typeof setTimeout> | null = null;
     let renderStateReadyToPersist = false;
+    let wasmTrapped = false;
+
+    const handleWasmTrap = (error: unknown) => {
+      if (wasmTrapped) return;
+      wasmTrapped = true;
+      if (wasmTrapRecoveriesRef.current >= 1) {
+        console.error('[TerminalPanel] Terminal WASM trapped again after a rebuild:', error);
+        // No live instance, so Retry re-runs the whole init effect.
+        terminalInstanceRef.current = null;
+        setInitError('The terminal display failed and could not be rebuilt.');
+        return;
+      }
+      wasmTrapRecoveriesRef.current += 1;
+      console.warn('[TerminalPanel] Terminal WASM trapped; rebuilding on a fresh instance without saved history:', error);
+      skipScrollbackReplayRef.current = true;
+      setRestoreWarning('display_rebuilt');
+      hasInitializedRef.current = false;
+      setInitAttempt((n) => n + 1);
+    };
 
     const persistRenderStateNow = async () => {
-      if (!terminal || !canPersistTerminalRenderState(true, disposed, renderStateReadyToPersist)) return;
+      // A trapped instance's buffer cannot be trusted; never mirror it.
+      if (!terminal || wasmTrapped || !canPersistTerminalRenderState(true, disposed, renderStateReadyToPersist)) return;
 
       const maxCols = Math.max(1, terminal.cols);
       const maxRows = Math.max(1, terminal.rows);
@@ -342,7 +367,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           dims?: { cols?: number; rows?: number }
         ): Promise<boolean> => {
           const initPromise = initBackend(dims);
-          const timedOutSentinel = { success: false as const, error: rendererI18n.t('terminal:init_timeout', { seconds: INIT_TIMEOUT_MS / 1000 }) };
+          const timedOutSentinel = { success: false as const, error: `Terminal initialization timed out after ${INIT_TIMEOUT_MS / 1000} seconds` };
           const timeoutPromise = new Promise<typeof timedOutSentinel>((resolve) => {
             setTimeout(() => resolve(timedOutSentinel), INIT_TIMEOUT_MS);
           });
@@ -366,7 +391,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
                   handleRestart();
                 }
               } else {
-                setInitError(late.error || rendererI18n.t('terminal:pty_init_failed'));
+                setInitError(late.error || 'Failed to initialize PTY');
               }
             }).catch((err) => {
               if (!disposedRef.current) {
@@ -379,7 +404,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           }
 
           if (!result.success && !('alreadyActive' in result && result.alreadyActive)) {
-            const errorMessage = result.error || rendererI18n.t('terminal:pty_init_failed');
+            const errorMessage = result.error || 'Failed to initialize PTY';
             console.error('[TerminalPanel] Failed to initialize PTY:', errorMessage);
             setInitError(errorMessage);
             return false;
@@ -496,13 +521,13 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           const pendingOutput: Array<{ data: string; sequence: number }> = [];
 
           unsubscribeOutput = window.electronAPI.terminal.onOutput((data) => {
-            if (data.sessionId === sessionId && terminal && !disposed) {
+            if (data.sessionId === sessionId && terminal && !disposed && !wasmTrapped) {
               if (data.sequence <= lastAppliedSequence) {
                 return;
               }
               if (scrollbackRestoreComplete) {
                 // Normal path: write directly to terminal
-                terminal.write(data.data);
+                if (!writeGuardingWasmTrap(terminal, data.data, handleWasmTrap)) return;
                 lastAppliedSequence = data.sequence;
                 scheduleRenderStatePersist();
               } else {
@@ -521,7 +546,13 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           // Restore only the captured screen + cursor; the authoritative resize
           // at the end of init delivers a SIGWINCH that makes the live TUI
           // repaint itself over the stamp.
-          if (launchMode === 'claude-cli') {
+          //
+          // Rebuilt after a WASM trap: the saved history may be what trapped
+          // the old instance, so start blank and let that same resize make the
+          // shell or TUI repaint.
+          if (skipScrollbackReplayRef.current) {
+            // Intentionally nothing to restore.
+          } else if (launchMode === 'claude-cli') {
             if (!disposed && snapshot.screenLines && snapshot.screenLines.length > 0) {
               terminal.write('\x1b[r'); // reset scroll region
               const visibleLines = snapshot.screenLines.slice(-terminal.rows);
@@ -571,7 +602,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
                   }
 
                   try {
-                    terminal.write(cleaned.slice(i, i + CHUNK_SIZE));
+                    if (!writeGuardingWasmTrap(terminal, cleaned.slice(i, i + CHUNK_SIZE), handleWasmTrap)) return;
                   } catch (err) {
                     writeError = err instanceof Error ? err : new Error(String(err));
                     break;
@@ -589,6 +620,9 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
               } catch (err) {
                 writeError = err instanceof Error ? err : new Error(String(err));
               }
+
+              // handleWasmTrap has already scheduled a rebuild on a fresh instance.
+              if (wasmTrapped) return;
 
               if (writeError) {
                 console.warn('[TerminalPanel] Failed to restore scrollback, keeping persisted history:', writeError);
@@ -625,7 +659,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           if (pendingOutput.length > 0 && terminal && !disposed) {
             for (const pending of pendingOutput) {
               if (pending.sequence <= lastAppliedSequence) continue;
-              terminal.write(pending.data);
+              if (!writeGuardingWasmTrap(terminal, pending.data, handleWasmTrap)) return;
               lastAppliedSequence = pending.sequence;
             }
           }
@@ -755,7 +789,12 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           }
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : rendererI18n.t('common:embed.unknown_error');
+        // Any other init-time write (screen stamp, cursor restore) that trapped.
+        if (isGhosttyWasmTrap(error)) {
+          handleWasmTrap(error);
+          return;
+        }
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error('[TerminalPanel] Error initializing terminal:', error);
         setInitError(errorMessage);
       }
@@ -788,7 +827,14 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
       unsubscribeOutput?.();
       unsubscribeExited?.();
       inputDisposable?.dispose();
-      terminal?.dispose();
+      if (wasmTrapped) {
+        // free() on a trapped instance can trap again. ghostty-web removes the
+        // canvas and DOM listeners before it frees, and the instance memory is
+        // dropped with this closure, so the trap is safe to discard here.
+        try { terminal?.dispose(); } catch { /* trapped instance */ }
+      } else {
+        terminal?.dispose();
+      }
       fitAddon?.dispose();
       terminalInstanceRef.current = null;
       fitAddonRef.current = null;
@@ -855,6 +901,18 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   // React to theme changes by re-reading CSS vars into the terminal instance.
   // themeIdAtom is updated by store/listeners/themeListeners.ts.
   const currentThemeId = useAtomValue(themeIdAtom);
+  const timeoutMatch = initError?.match(/^Terminal initialization timed out after (\d+) seconds$/);
+  const localizedInitError = timeoutMatch
+    ? t('init_timeout', { seconds: Number(timeoutMatch[1]) })
+    : initError === 'Failed to restart terminal'
+      ? t('restart_failed')
+      : initError === 'Failed to initialize PTY'
+        ? t('pty_init_failed')
+        : initError === 'The terminal display failed and could not be rebuilt.'
+          ? t('display_failed')
+          : initError === 'Unknown error'
+            ? t('unknown_error')
+            : initError;
   useEffect(() => {
     if (terminalInstanceRef.current) {
       terminalInstanceRef.current.options.theme = getTerminalTheme();
@@ -916,11 +974,11 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
             gap: '8px',
           }}
         >
-          <span>{t(`terminal:${restoreWarning}`)}</span>
+          <span>{t(restoreWarning === 'display_rebuilt' ? 'display_rebuilt' : restoreWarning)}</span>
           <button
             type="button"
             onClick={() => setRestoreWarning(null)}
-            aria-label={t('common:terminal.dismiss')}
+            aria-label={t('dismiss_warning')}
             style={{
               flexShrink: 0,
               background: 'none',
@@ -951,7 +1009,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
             zIndex: 1,
           }}
         >
-          {t('terminal:initializing')}
+          {t('initializing')}
         </div>
       )}
 
@@ -960,7 +1018,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           className="absolute inset-0 flex flex-col items-center justify-center text-nim-error text-sm p-5 text-center"
         >
           <div style={{ marginBottom: '12px' }}>
-            {t('terminal:init_failed', { error: initError })}
+            {t('init_failed', { error: localizedInitError })}
           </div>
           <button
             onClick={handleRestart}
@@ -974,7 +1032,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
               cursor: 'pointer',
             }}
           >
-            {t('terminal:retry')}
+            {t('retry')}
           </button>
         </div>
       )}
@@ -997,7 +1055,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           }}
         >
           <span>
-            {t('terminal:process_exited', { code: exitCode ?? 0 })}
+            {t('process_exited', { code: exitCode ?? 0 })}
           </span>
           <button
             onClick={handleRestart}
@@ -1011,7 +1069,7 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
               cursor: 'pointer',
             }}
           >
-            {t('terminal:restart_action')}
+            {t('restart_action')}
           </button>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useSyncExternalStore, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface MockupAnnotationIndicatorProps {
   /** Current document file path */

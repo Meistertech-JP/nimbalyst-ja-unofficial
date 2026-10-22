@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface QueuedPromptAttachment {
   id: string;
@@ -56,7 +56,7 @@ function AttachmentIndicator({ attachments }: { attachments: QueuedPromptAttachm
 - PromptQueueList - Displays queued prompts waiting to be processed
  */
 export function PromptQueueList({ queue, onCancel, onEdit, onSendNow }: PromptQueueListProps) {
-  const { t } = useTranslation('aichat');
+  const { t } = useTranslation('aichat', { keyPrefix: 'prompt_queue' });
   if (queue.length === 0) {
     return null;
   }
@@ -64,18 +64,13 @@ export function PromptQueueList({ queue, onCancel, onEdit, onSendNow }: PromptQu
   return (
     <div className="prompt-queue-list px-3 py-2 border-b border-nim bg-nim-secondary">
       <div className="prompt-queue-header flex items-center mb-1.5">
-        <span className="prompt-queue-count text-[11px] font-medium text-nim-muted uppercase tracking-wide">{t('prompt_queue.queued_count', { count: queue.length })}</span>
+        <span className="prompt-queue-count text-[11px] font-medium text-nim-muted uppercase tracking-wide">{t('queued_count', { count: queue.length })}</span>
       </div>
       <div className="prompt-queue-items flex flex-col gap-1 max-h-[30vh] overflow-y-auto">
         {queue.map((item, index) => (
           <div key={item.id} className="prompt-queue-item flex items-center gap-2 px-2 py-1.5 bg-nim-tertiary border border-nim rounded text-[13px]">
             <span className="prompt-queue-number shrink-0 w-[18px] h-[18px] flex items-center justify-center bg-nim-tertiary rounded-full text-[11px] font-medium text-nim-muted">{index + 1}</span>
             <span className="prompt-queue-text flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-nim-primary" title={item.prompt}>{item.prompt}</span>
-            {item.prompt.includes('\n') && (
-              <span className="prompt-queue-lines shrink-0 text-[10px] text-nim-muted bg-nim-secondary rounded px-1 py-0.5" title={t('prompt_queue.messages_bundled', { count: item.prompt.split('\n\n').length })}>
-                {t('prompt_queue.more_messages', { count: item.prompt.split('\n\n').length - 1 })}
-              </span>
-            )}
             {item.attachments && item.attachments.length > 0 && (
               <AttachmentIndicator attachments={item.attachments} />
             )}
@@ -83,7 +78,7 @@ export function PromptQueueList({ queue, onCancel, onEdit, onSendNow }: PromptQu
               <button
                 className="prompt-queue-send-now shrink-0 w-5 h-5 flex items-center justify-center bg-transparent border-none rounded text-nim-muted cursor-pointer text-sm leading-none p-0 transition-all duration-150 hover:bg-nim-hover hover:text-nim-accent"
                 onClick={() => onSendNow(item.id, item.prompt)}
-                title={t('prompt_queue.send_now')}
+                title={t('send_now')}
                 type="button"
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -95,7 +90,7 @@ export function PromptQueueList({ queue, onCancel, onEdit, onSendNow }: PromptQu
               <button
                 className="prompt-queue-edit shrink-0 w-5 h-5 flex items-center justify-center bg-transparent border-none rounded text-nim-muted cursor-pointer text-sm leading-none p-0 transition-all duration-150 hover:bg-nim-hover hover:text-nim-primary"
                 onClick={() => onEdit(item.id, item.prompt)}
-                title={t('prompt_queue.edit')}
+                title={t('edit')}
                 type="button"
               >
                 &#x270E;
@@ -104,7 +99,7 @@ export function PromptQueueList({ queue, onCancel, onEdit, onSendNow }: PromptQu
             <button
               className="prompt-queue-cancel shrink-0 w-5 h-5 flex items-center justify-center bg-transparent border-none rounded text-nim-muted cursor-pointer text-lg leading-none p-0 transition-all duration-150 hover:bg-nim-hover hover:text-nim-primary"
               onClick={() => onCancel(item.id)}
-              title={t('prompt_queue.cancel')}
+              title={t('cancel')}
               type="button"
             >
               ×

@@ -1,29 +1,27 @@
 // @vitest-environment jsdom
 import React from 'react';
-import i18next from 'i18next';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountExpiryBanner } from '../AccountExpiryBanner';
 
+vi.mock('@nimbalyst/i18n/react', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, string>) => {
+      const labels: Record<string, string> = {
+        'account_ui.expired': '{{email}}のセッションの有効期限が切れました',
+        'account_ui.organizations_paused': '{{organizations}}でのチーム共同作業は一時停止されます。',
+        'account_ui.access_paused': 'アカウントへのアクセスは一時停止されます。',
+        'account_ui.reconnect_email': '{{email}}を再接続',
+        'account_ui.reconnect': '再接続',
+      };
+      return (labels[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_, name: string) => options?.[name] ?? '');
+    },
+  }),
+}));
+
 describe('AccountExpiryBanner', () => {
-  afterEach(async () => {
-    cleanup();
-    await i18next.changeLanguage('en');
-  });
-
-  it('localizes the expired account notice and keeps the reconnect target intact', async () => {
-    await i18next.changeLanguage('ja');
-    const account = { personalOrgId: 'expired', personalUserId: 'u1', email: 'work@example.com', isSyncAccount: false, sessionStatus: 'expired' as const };
-    const onReconnect = vi.fn();
-    render(<AccountExpiryBanner accounts={[account]} organizations={[{ orgId: 'org-work', name: 'Work Team', role: 'admin', sourcePersonalOrgId: 'expired' }]} onReconnect={onReconnect} />);
-
-    expect(screen.getByTestId('account-expiry-banner').textContent).toContain('work@example.comのセッションの有効期限が切れました');
-    expect(screen.getByText('work@example.com').tagName).toBe('STRONG');
-    expect(screen.getByText('再接続するまで、Work Teamでのチーム共同作業は一時停止されます。')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'work@example.comを再接続' }));
-    expect(onReconnect).toHaveBeenCalledWith(account);
-  });
+  afterEach(() => cleanup());
 
   it('persists expired account identity and opens account-scoped re-auth', () => {
     const onReconnect = vi.fn();
@@ -40,9 +38,10 @@ describe('AccountExpiryBanner', () => {
       />,
     );
 
-    expect(screen.getByText(/work@example.com/)).toBeTruthy();
-    expect(screen.getByText(/Work Team/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Reconnect work@example.com' }));
+    screen.getByText('work@example.comのセッションの有効期限が切れました');
+    screen.getByText(/Work Team/);
+    screen.getByText('再接続');
+    fireEvent.click(screen.getByRole('button', { name: 'work@example.comを再接続' }));
     expect(onReconnect).toHaveBeenCalledWith(expect.objectContaining({ personalOrgId: 'expired' }));
   });
 });

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, KeyboardEvent, useState, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { shouldAcceptPromptSuggestion } from './promptSuggestionKeys';
 import { GenericTypeahead, TypeaheadOption } from '../Typeahead/GenericTypeahead';
 import { extractTriggerMatch, getSlashTypeaheadScope, insertAtTrigger, type SlashTypeaheadScope, TriggerMatch } from '../Typeahead/typeaheadUtils';
 import { buildSlashCommandOptions, fetchSlashCommandEntries, type SlashCommandEntry } from '../Typeahead/slashCommandAutocomplete';
@@ -8,16 +9,12 @@ import { readClipboard, encodeMarkdownLinkPath, type ChatAttachment } from '@nim
 import type { TokenUsageCategory } from '@nimbalyst/runtime/ai/server/types';
 import type { EffortLevel, ThinkingMode } from '../../utils/modelUtils';
 import { AttachmentPreviewList } from '../AgenticCoding/AttachmentPreviewList';
-import { ModeTag, AIMode } from './ModeTag';
-import { ModelSelector } from './ModelSelector';
-import { EffortLevelSelector } from './EffortLevelSelector';
-import { ThinkingModeSelector } from './ThinkingModeSelector';
+import type { AIMode } from './ModeTag';
+import { AIInputControls } from './AIInputControls';
 import { registerPendingVoiceCommandSetter } from './VoiceModeButton.tsx';
 import { PendingVoiceCommand } from './PendingVoiceCommand';
 import { pendingVoiceCommandAtom, voiceActiveSessionIdAtom, type PendingVoiceCommand as PendingVoiceCommandType } from '../../store/atoms/voiceModeState';
-import { ContextUsageDisplay } from './ContextUsageDisplay';
-import { ActionPromptsDropdown } from './ActionPromptsDropdown';
-import type { ActionPrompt } from '../../store/atoms/actionPrompts';
+import type { ActionPrompt, ActionPickerSettings } from '../../store/atoms/actionPrompts';
 import { SelectionChips } from './SelectionChips';
 import {
   MemoryPromptIndicator,
@@ -35,6 +32,7 @@ import {
   sessionRegistryAtom,
 } from '../../store';
 import { useAIInputUndo } from '../../hooks/useAIInputUndo';
+import { errorNotificationService } from '../../services/ErrorNotificationService';
 import type { AIInputSnapshot } from '../../store/atoms/aiInputUndo';
 import { parseCommandTokens, type CommandToken } from './commandPills/parseCommandTokens';
 import { parseMentionTokens } from './commandPills/parseMentionTokens';
@@ -47,7 +45,7 @@ export interface AIInputRef {
   textarea: HTMLTextAreaElement | null;
 }
 
-interface AIInputProps {
+export interface AIInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: (message?: string) => void;
@@ -55,7 +53,13 @@ interface AIInputProps {
   disabled?: boolean;
   isLoading?: boolean;
   placeholder?: string;
+  /** Predicted next prompt. Shown in place of the placeholder; Tab on an empty draft fills it in. */
+  promptSuggestion?: string | null;
   workspacePath?: string;
+  /** Host catalogs replace local file/command discovery for remote sessions. */
+  remoteSession?: boolean;
+  remoteFiles?: string[];
+  remoteCommands?: SlashCommandEntry[];
   sessionId?: string;
 
   // History navigation support (from ChatInput)
@@ -96,11 +100,18 @@ interface AIInputProps {
   reasoningControlsDisabled?: boolean;
   reasoningControlsDisabledTitle?: string;
 
+  // OpenCode session role (an `app.agents` primary agent). Only supplied for
+  // OpenCode sessions; the selector hides itself when no roles are known.
+  openCodeRole?: string | null;
+  onOpenCodeRoleChange?: (role: string | null) => void;
+
   // Token usage display support (for Claude Code)
   tokenUsage?: {
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
+    cacheReadInputTokens?: number;
+    cacheCreationInputTokens?: number;
     contextWindow?: number;
     categories?: TokenUsageCategory[];
     currentContext?: {
@@ -158,8 +169,12 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     onCancel,
     disabled,
     isLoading,
+    promptSuggestion,
     placeholder,
     workspacePath,
+    remoteSession = false,
+    remoteFiles,
+    remoteCommands,
     sessionId,
     onNavigateHistory,
     attachments = [],
@@ -182,6 +197,8 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     showThinkingToggle,
     reasoningControlsDisabled = false,
     reasoningControlsDisabledTitle,
+    openCodeRole = null,
+    onOpenCodeRoleChange,
     tokenUsage,
     provider,
     onQueue,
@@ -190,7 +207,9 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     testId,
     onLaunchActionInNewSession,
   }, ref) => {
-    const { t } = useTranslation(['agents', 'aichat']);
+    const { t } = useTranslation('aichat');
+    const { t: tAgents } = useTranslation('agents');
+    const resolvedPlaceholder = placeholder ?? tAgents('input.placeholder');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [typeaheadMatch, setTypeaheadMatch] = useState<TriggerMatch | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -287,7 +306,10 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     // Replace the draft with an action-prompt body and place the cursor at
     // the end. Pushes a boundary undo snapshot so Cmd+Z restores the prior
     // draft instead of coalescing with the user's next keystroke.
-    const handleActionPromptInsert = useCallback((body: string) => {
+    const handleActionPromptInsert = useCallback((body: string, picker?: ActionPickerSettings) => {
+      // An action that pins a model or effort switches the matching picker.
+      if (picker?.model && onModelChange && picker.model !== currentModel) onModelChange(picker.model);
+      if (picker?.effort && onEffortLevelChange && picker.effort !== effortLevel) onEffortLevelChange(picker.effort);
       pushSnapshot(captureSnapshot(), { boundary: true });
       onChange(body);
       requestAnimationFrame(() => {
@@ -300,14 +322,17 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
           // best-effort cursor placement
         }
       });
-    }, [pushSnapshot, captureSnapshot, onChange]);
+    }, [pushSnapshot, captureSnapshot, onChange, onModelChange, currentModel, onEffortLevelChange, effortLevel]);
 
     // File mention state via Jotai atoms
     // Subscribes directly to atoms instead of receiving props (no prop drilling)
-    const fileMentionOptions = useAtomValue(
+    const localFileMentionOptions = useAtomValue(
       fileMentionOptionsAtom(workspacePath || '')
     );
     const searchFileMention = useSetAtom(searchFileMentionAtom);
+    const fileMentionOptions: TypeaheadOption[] = remoteSession
+      ? (remoteFiles ?? []).filter(path => path.toLowerCase().includes((typeaheadMatch?.query ?? '').toLowerCase())).slice(0, 30).map(path => ({id: path, label: path.split('/').pop() ?? path, description: path, data: {path, name: path}}))
+      : localFileMentionOptions;
 
     // Session mention state via Jotai atoms (for @@ trigger)
     const sessionMentionOptions = useAtomValue(
@@ -495,6 +520,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
 
     // Fetch slash commands from IPC (SDK commands + local commands)
     const fetchSlashCommands = useCallback(async () => {
+      if (remoteSession) { setAllSlashCommands(remoteCommands ?? []); return; }
       if (!enableSlashCommands || !workspacePath) return;
       try {
         const commands = await fetchSlashCommandEntries({
@@ -507,7 +533,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         console.error('[AIInput] Failed to load slash commands:', error);
         setAllSlashCommands([]);
       }
-    }, [workspacePath, sessionId, enableSlashCommands, currentProvider, provider]);
+    }, [workspacePath, sessionId, enableSlashCommands, currentProvider, provider, remoteSession, remoteCommands]);
 
     // Fetch on mount and when workspace/session changes
     useEffect(() => {
@@ -602,7 +628,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
       // @@ (session mentions) must be checked alongside @ (file mentions)
       const triggers: string[] = [];
       if (workspacePath) triggers.push('@@');
-      if (workspacePath) triggers.push('@');
+      if (workspacePath && (!remoteSession || remoteFiles)) triggers.push('@');
       if (enableSlashCommands) triggers.push('/');
 
       if (triggers.length === 0) {
@@ -638,7 +664,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         const timerId = setTimeout(() => {
           if (match.trigger === '@@' && workspacePath) {
             searchSessionMention({ workspacePath, query: match.query, excludeSessionId: sessionId });
-          } else if (match.trigger === '@' && workspacePath) {
+          } else if (match.trigger === '@' && workspacePath && !remoteSession) {
             searchFileMention({ workspacePath, query: match.query });
           }
         }, 150); // 150ms debounce - fast enough to feel instant, slow enough to skip intermediate keystrokes
@@ -683,7 +709,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         // Re-evaluate typeahead trigger when cursor moves via click/select
         // (The main typeahead effect only triggers on value changes)
         const triggers: string[] = [];
-        if (workspacePath) triggers.push('@');
+        if (workspacePath && (!remoteSession || remoteFiles)) triggers.push('@');
         if (enableSlashCommands) triggers.push('/');
         if (triggers.length > 0) {
           const match = extractTriggerMatch(value, pos, triggers);
@@ -723,7 +749,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     // Detect memory mode trigger (# as first character, Claude Code provider only)
     useEffect(() => {
       // If content starts with '#', check if it came from a paste operation
-      if (shouldActivateMemoryMode(value, provider)) {
+      if (!remoteSession && shouldActivateMemoryMode(value, provider)) {
         // Don't activate memory mode if this '#' content was pasted
         if (pastedHashContentRef.current) {
           return;
@@ -772,7 +798,8 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
 
       if (typeaheadMatch.trigger === '@@') {
         const session = option.data;
-        insertText = `@@[${session.title}](${session.shortId})`;
+        const title = session.title || tAgents('session_tabs.untitled');
+        insertText = `@@[${title}](${session.shortId})`;
       } else if (typeaheadMatch.trigger === '@') {
         const doc = option.data;
         const isDirectory = doc?.type === 'directory';
@@ -807,7 +834,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
       setTypeaheadMatch(null);
       setSelectedIndex(null);
       setSelectedOption(null);
-    }, [typeaheadMatch, value, onChange, pushSnapshot, captureSnapshot]);
+    }, [typeaheadMatch, value, onChange, pushSnapshot, captureSnapshot, tAgents]);
 
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
       const currentOptions = typeaheadMatch?.trigger === '@@' ? sessionMentionOptions
@@ -883,6 +910,14 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         e.preventDefault();
         const restored = redo(captureSnapshot());
         if (restored) applySnapshot(restored);
+        return;
+      }
+
+      // Tab accepts the predicted next prompt into an empty draft; Enter then sends it as usual.
+      // After the typeahead block above so Tab inside a typeahead still selects its option.
+      if (promptSuggestion && shouldAcceptPromptSuggestion(e, { promptSuggestion, value, isLoading })) {
+        e.preventDefault();
+        onChange(promptSuggestion);
         return;
       }
 
@@ -1038,7 +1073,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         if (!validation.valid) {
           pasteUndoCountRef.current.delete(processingId);
           console.error('[AIInput] File validation failed:', validation.error);
-          alert(validation.error || t('input.invalid_file'));
+          errorNotificationService.showError(tAgents('input.attachment_rejected'), validation.error || tAgents('input.invalid_file'));
           return;
         }
 
@@ -1073,16 +1108,16 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
           onChange(value + (value ? ' ' : '') + reference);
         } else {
           console.error('[AIInput] Failed to save attachment:', result.error);
-          alert(result.error || t('input.save_failed'));
+          errorNotificationService.showError(tAgents('input.attachment_failed'), result.error || tAgents('input.save_failed'));
         }
       } catch (error) {
         // Remove from processing state on error
         setProcessingAttachments(prev => prev.filter(p => p.id !== processingId));
         pasteUndoCountRef.current.delete(processingId);
         console.error('[AIInput] Error handling file attachment:', error);
-        alert(t('input.attach_failed'));
+        errorNotificationService.showError(tAgents('input.attachment_failed'), tAgents('input.attach_failed'));
       }
-    }, [onAttachmentAdd, sessionId, value, onChange, getUndoCount, t]);
+    }, [onAttachmentAdd, sessionId, value, onChange, getUndoCount, tAgents]);
 
     // Drag and drop handlers
     const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -1112,7 +1147,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         try {
           const dragData = JSON.parse(sessionDataStr);
           const session = sessionRegistry.get(dragData.sessionId);
-          const title = session?.title || 'Untitled';
+          const title = session?.title || tAgents('session_tabs.untitled');
           const shortId = dragData.sessionId.substring(0, 5);
           const mention = `@@[${title}](${shortId})`;
 
@@ -1140,7 +1175,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
 
       // Handle file mention drops from file tree or files-edited sidebar
       const fileMentionPath = e.dataTransfer.getData('application/x-nimbalyst-file-mention');
-      if (fileMentionPath) {
+      if (fileMentionPath && !remoteSession) {
         // The drag source may give either an absolute path (file tree) or a
         // workspace-relative path (files-edited sidebar). Derive both so we can
         // build a markdown link that includes the absolute target.
@@ -1191,7 +1226,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
       for (const file of files) {
         await handleFileAttachment(file);
       }
-    }, [onAttachmentAdd, handleFileAttachment, value, onChange, workspacePath, sessionRegistry, pushSnapshot, captureSnapshot]);
+    }, [onAttachmentAdd, handleFileAttachment, value, onChange, workspacePath, sessionRegistry, pushSnapshot, captureSnapshot, tAgents]);
 
     // Threshold for converting large text pastes to attachments (25 lines or 2000 characters)
     const LARGE_PASTE_LINE_THRESHOLD = 25;
@@ -1346,7 +1381,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         <div
           className={`ai-chat-input-resize-handle absolute -top-[3px] left-0 right-0 h-1.5 cursor-row-resize z-10 before:content-[''] before:absolute before:top-0.5 before:left-0 before:right-0 before:h-0.5 before:transition-colors before:duration-150 ${isResizing ? 'before:bg-[var(--nim-primary)]' : ''} hover:before:bg-[var(--nim-primary)]`}
           onMouseDown={handleResizeMouseDown}
-          title={t('aichat:resize_prompt')}
+          title={t('resize_prompt')}
         />
 
         {/* Pending voice command with countdown */}
@@ -1381,67 +1416,34 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
 
         {/* Inline controls row - hidden in memory mode */}
         {!isMemoryMode && (onModeChange || onModelChange || readOnlyModel || workspacePath || (tokenUsage && provider === 'claude-code')) && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
-{onModeChange && provider === 'claude-code' && mode && <ModeTag mode={mode} onModeChange={onModeChange} />}
-
-            {(onModelChange || (readOnlyModel && currentModel)) && (
-              <span style={{ display: 'inline-flex' }}>
-                <ModelSelector
-                  currentModel={currentModel || ''}
-                  onModelChange={(modelId) => {
-                    onModelChange?.(modelId);
-                    textareaRef.current?.focus();
-                  }}
-                  sessionHasMessages={sessionHasMessages}
-                  currentProvider={currentProvider}
-                  readOnly={!onModelChange && readOnlyModel}
-                  readOnlyTitle={readOnlyModelTitle}
-                  openRequest={modelPickerOpenRequest}
-                  onKeyboardDismiss={() => textareaRef.current?.focus()}
-                />
-              </span>
-            )}
-            {showEffortLevel && onEffortLevelChange && effortLevel && (
-              <EffortLevelSelector
-                level={effortLevel}
-                onLevelChange={onEffortLevelChange}
-                disabled={reasoningControlsDisabled}
-                disabledTitle={reasoningControlsDisabledTitle}
-              />
-            )}
-            {showThinkingToggle && onThinkingModeChange && thinkingMode && (
-              <ThinkingModeSelector
-                mode={thinkingMode}
-                onModeChange={onThinkingModeChange}
-                disabled={reasoningControlsDisabled}
-                disabledTitle={reasoningControlsDisabledTitle}
-              />
-            )}
-            {workspacePath && (
-              <HelpTooltip testId="action-prompts-dropdown">
-                <span style={{ display: 'inline-flex' }}>
-                  <ActionPromptsDropdown
-                    workspacePath={workspacePath}
-                    onInsert={handleActionPromptInsert}
-                    onLaunchNewSession={onLaunchActionInNewSession}
-                  />
-                </span>
-              </HelpTooltip>
-            )}
-            {/* Show token usage for all providers - displays "--" if no data yet */}
-            <ContextUsageDisplay
-              inputTokens={tokenUsage?.inputTokens || 0}
-              outputTokens={tokenUsage?.outputTokens || 0}
-              totalTokens={tokenUsage?.totalTokens || 0}
-              contextWindow={tokenUsage?.contextWindow || 0}
-              categories={tokenUsage?.categories}
-              currentContext={tokenUsage?.currentContext}
-            />
-          </div>
+          <AIInputControls
+            onModeChange={onModeChange}
+            provider={provider}
+            mode={mode}
+            onModelChange={onModelChange}
+            readOnlyModel={readOnlyModel}
+            currentModel={currentModel}
+            sessionHasMessages={sessionHasMessages}
+            currentProvider={currentProvider}
+            readOnlyModelTitle={readOnlyModelTitle}
+            onOpenCodeRoleChange={onOpenCodeRoleChange}
+            workspacePath={workspacePath}
+            openCodeRole={openCodeRole}
+            isLoading={isLoading}
+            showEffortLevel={showEffortLevel}
+            onEffortLevelChange={onEffortLevelChange}
+            effortLevel={effortLevel}
+            reasoningControlsDisabled={reasoningControlsDisabled}
+            reasoningControlsDisabledTitle={reasoningControlsDisabledTitle}
+            showThinkingToggle={showThinkingToggle}
+            onThinkingModeChange={onThinkingModeChange}
+            thinkingMode={thinkingMode}
+            onLaunchActionInNewSession={onLaunchActionInNewSession}
+            tokenUsage={tokenUsage}
+            modelPickerOpenRequest={modelPickerOpenRequest}
+            focusInput={() => textareaRef.current?.focus()}
+            onActionInsert={handleActionPromptInsert}
+          />
         )}
 
         {/* Input container with drag/drop support */}
@@ -1496,7 +1498,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
             onPaste={handlePaste}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={placeholder ?? t('input.placeholder')}
+            placeholder={promptSuggestion && !value && !isLoading ? promptSuggestion : resolvedPlaceholder}
             disabled={disabled}
             rows={1}
             style={{
@@ -1528,8 +1530,8 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
                   console.log('[AIInput] Cancel button clicked, onCancel:', !!onCancel);
                   onCancel();
                 }}
-                title={t('input.cancel_request')}
-                aria-label={t('input.cancel_request_aria')}
+                title={t('input_controls.cancel_request_shortcut')}
+                aria-label={t('input_controls.cancel_request')}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1541,8 +1543,10 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
               className="ai-chat-send-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] border-none rounded-md text-white cursor-pointer transition-all duration-200 shrink-0 hover:enabled:bg-[var(--nim-primary-hover)] hover:enabled:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handleSend}
               disabled={disabled || !value.trim() || processingAttachments.length > 0}
-              title={processingAttachments.length > 0 ? t('aichat:attachments.processing_attachments') : t('input.send_message')}
-              aria-label={t('input.send_message_aria')}
+              title={processingAttachments.length > 0
+                ? t('attachments.processing_attachments')
+                : t('input_controls.send_message_shortcut')}
+              aria-label={t('input_controls.send_message')}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2 8L14 2L11 14L8 9L2 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1581,7 +1585,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
           />
         )}
 
-        {pillPopover && (
+        {pillPopover && !remoteSession && (
           <CommandPillPopover
             command={pillPopover.command}
             rect={pillPopover.rect}

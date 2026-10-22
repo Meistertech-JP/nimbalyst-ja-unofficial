@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type {
   OrganizationDirectoryEntry,
@@ -15,7 +15,7 @@ export function AccountExpiryBanner({
   organizations: OrganizationDirectoryEntry[];
   onReconnect: (account: PersonalAccountSummary) => void;
 }) {
-  const { t } = useTranslation(['common', 'settings']);
+  const { t } = useTranslation('common');
   const expiredAccount = accounts.find((account) => account.sessionStatus === 'expired');
   if (!expiredAccount) return null;
   const affectedOrganizations = organizations
@@ -29,7 +29,7 @@ export function AccountExpiryBanner({
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--nim-bg-tertiary)] text-xs font-semibold">{(email[0] ?? '?').toUpperCase()}</span>
         <div className="min-w-0">
-          <p className="m-0 truncate select-text text-xs"><Trans t={t} i18nKey="account_ui.expired" values={{ email }} components={{ account: <strong /> }} /></p>
+          <p className="m-0 truncate select-text text-xs">{t('account_ui.expired', { email })}</p>
           <p className="m-0 mt-0.5 truncate text-[11px] text-[var(--nim-warning)]">
             {affectedOrganizations.length > 0
               ? t('account_ui.organizations_paused', { organizations: affectedOrganizations.join(', ') })
@@ -37,7 +37,7 @@ export function AccountExpiryBanner({
           </p>
         </div>
       </div>
-      <button type="button" aria-label={t('account_ui.reconnect_email', { email })} className="shrink-0 rounded-md bg-[var(--nim-warning)] px-3 py-1.5 text-xs font-semibold text-neutral-950" onClick={() => onReconnect(expiredAccount)}>{t('settings:sync.reconnect')}</button>
+      <button type="button" aria-label={t('account_ui.reconnect_email', { email })} className="shrink-0 rounded-md bg-[var(--nim-warning)] px-3 py-1.5 text-xs font-semibold text-neutral-950" onClick={() => onReconnect(expiredAccount)}>{t('account_ui.reconnect')}</button>
     </aside>
   );
 }

@@ -1,7 +1,11 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
-import { getCollabStatusPresentation } from '../../utils/collabStatusPresentation';
+import type { CollabScope } from '@nimbalyst/collab-client/core';
+import { EditorBreadcrumb } from '@nimbalyst/collab-client/docs-ui/EditorHeaderBar';
+import { pageHeaderCrumbs } from '@nimbalyst/collab-client/trackers-ui/page';
+import { useSharedPagePath } from '../CollabMode/useSharedPagePath';
+import { openPageAncestor } from '../CollabMode/pageHeaderNavigation';
 import {
   collabAwarenessAtom,
   collabProductStatusAtom,
@@ -20,6 +24,7 @@ function useCollabStatus(filePath: string) {
 }
 
 const CollabAvatars: React.FC<{ filePath: string }> = ({ filePath }) => {
+  const { t } = useTranslation('editor');
   const users = useAtomValue(collabAwarenessAtom(filePath));
   const status = useCollabStatus(filePath);
   if (!status.showPresence || users.size === 0) return null;
@@ -30,7 +35,10 @@ const CollabAvatars: React.FC<{ filePath: string }> = ({ filePath }) => {
       data-testid="collab-header-presence"
     >
       {[...users.entries()].map(([userId, user]) => {
-        const initials = user.name
+        const displayName = user.nimbalystNameSource === 'system-default'
+          ? t('collab.unnamed_collaborator')
+          : user.name;
+        const initials = displayName
           .split(/\s+/)
           .map(word => word[0])
           .join('')
@@ -45,7 +53,7 @@ const CollabAvatars: React.FC<{ filePath: string }> = ({ filePath }) => {
               color: '#fff',
               border: '1.5px solid var(--nim-bg)',
             }}
-            title={user.name}
+            title={displayName}
           >
             {initials}
           </div>
@@ -58,47 +66,33 @@ const CollabAvatars: React.FC<{ filePath: string }> = ({ filePath }) => {
 export const CollabDocumentHeaderMeta: React.FC<{
   filePath: string;
   displayPath: string;
-}> = ({ filePath, displayPath }) => {
+  /** With both, the crumb reads the page's place in the tree and each page above it opens. */
+  scope?: CollabScope;
+  documentId?: string;
+}> = ({ filePath, displayPath, scope, documentId }) => {
   const { t } = useTranslation('editor');
   const status = useCollabStatus(filePath);
-  const presentation = getCollabStatusPresentation(status, t);
+  const page = useSharedPagePath(scope ?? null, documentId ?? '');
+  const statusLabel = t(`collab_status.${status.kind}.label`);
+  const statusDetail = status.detail
+    ? t(`collab_status.${status.kind}.detail`)
+    : null;
+  const statusDescription = statusDetail
+    ? `${statusLabel}: ${statusDetail}`
+    : statusLabel;
+  // Until the session lists the page, the stored display path stands in.
   const segments = displayPath.split('/').filter(Boolean);
-  const statusDescription = presentation.detail
-    ? `${presentation.label}: ${presentation.detail}`
-    : presentation.label;
+  const crumbs = page.title !== null && scope
+    ? pageHeaderCrumbs(null, page.path, page.title, (ancestor) => openPageAncestor(ancestor, { personal: false, scope }))
+    : segments.map((segment, index) => ({
+      id: `${index}:${segment}`,
+      label: segment,
+      current: index === segments.length - 1,
+    }));
 
   return (
-    <div className="collab-header-meta flex min-w-0 items-center gap-2">
-      <div
-        className="shared-document-breadcrumb flex min-w-0 items-center gap-1.5 overflow-hidden text-[13px]"
-        data-testid="shared-document-breadcrumb"
-        title={displayPath}
-      >
-        {segments.map((segment, index) => {
-          const isLast = index === segments.length - 1;
-          return (
-            <React.Fragment key={`${segment}-${index}`}>
-              <span className={`breadcrumb-segment flex items-center gap-1 whitespace-nowrap ${
-                isLast
-                  ? 'breadcrumb-filename text-[var(--nim-text)] font-medium'
-                  : 'text-[var(--nim-text-muted)]'
-              }`}>
-                <span
-                  className="material-symbols-outlined breadcrumb-icon shrink-0 opacity-75"
-                  style={{ fontSize: '14px' }}
-                  aria-hidden="true"
-                >
-                  {isLast ? 'description' : 'folder'}
-                </span>
-                {segment}
-              </span>
-              {!isLast && (
-                <span className="breadcrumb-separator text-[var(--nim-text-faint)] text-[11px]">/</span>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
+    <div className="collab-header-meta flex min-w-0 flex-1 items-center gap-2" data-testid="shared-document-breadcrumb">
+      <EditorBreadcrumb crumbs={crumbs} className="shared-document-breadcrumb flex-initial" />
       <span
         className={`collab-sync-dot h-2 w-2 shrink-0 rounded-full ${statusDotClass(status.severity)}`}
         data-testid="collab-sync-dot"
@@ -112,6 +106,30 @@ export const CollabDocumentHeaderMeta: React.FC<{
   );
 };
 
+/**
+ * Shown when remote edits are arriving but cannot be rendered. The sync chip
+ * alone was not enough: a healthy socket and a clean outbox made the document
+ * read as fully synced while it silently stopped showing collaborators' text,
+ * which is why this failure is normally only caught by comparing screens.
+ */
+export const CollabRenderFailureBanner: React.FC<{ filePath: string }> = ({ filePath }) => {
+  const { t } = useTranslation('editor');
+  const status = useCollabStatus(filePath);
+  if (status.kind !== 'not-receiving-changes') return null;
+
+  return (
+    <div
+      className="collab-render-failure-banner flex min-h-9 items-center gap-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3 py-1 text-xs"
+      data-testid="collab-render-failure-banner"
+      role="alert"
+    >
+      <span className="min-w-0 flex-1 text-[var(--nim-error)]">
+        {t(`collab_status.${status.kind}.label`)}{status.detail ? ` — ${t(`collab_status.${status.kind}.detail`)}` : ''}
+      </span>
+    </div>
+  );
+};
+
 export const CollabRecoveryBanner: React.FC<{
   filePath: string;
   onCopyCurrentDocument: () => Promise<void>;
@@ -119,7 +137,6 @@ export const CollabRecoveryBanner: React.FC<{
 }> = ({ filePath, onCopyCurrentDocument, onDiscardLocalCopy }) => {
   const { t } = useTranslation('editor');
   const status = useCollabStatus(filePath);
-  const presentation = getCollabStatusPresentation(status, t);
   if (!status.showRejectedActions) return null;
 
   return (
@@ -128,7 +145,7 @@ export const CollabRecoveryBanner: React.FC<{
       data-testid="collab-recovery-banner"
     >
       <span className="min-w-0 flex-1 text-[var(--nim-error)]">
-        {presentation.label}{presentation.detail ? ` — ${presentation.detail}` : ''}
+        {t(`collab_status.${status.kind}.label`)}{status.detail ? ` — ${t(`collab_status.${status.kind}.detail`)}` : ''}
       </span>
       <button
         type="button"

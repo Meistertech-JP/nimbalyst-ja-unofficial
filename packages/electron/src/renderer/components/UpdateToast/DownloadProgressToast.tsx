@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface DownloadProgress {
   bytesPerSecond: number;
@@ -22,23 +22,24 @@ function formatBytes(bytes: number): string {
   return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
 }
 
-function estimateTimeRemaining(bytesPerSecond: number, remaining: number, t: (key: string, options?: Record<string, unknown>) => string): string {
-  if (bytesPerSecond <= 0 || remaining <= 0) {
-    return t('dialogs:update.calculating');
-  }
+type TimeRemainingEstimate =
+  | { kind: 'calculating' }
+  | { kind: 'less_than_minute' }
+  | { kind: 'minutes'; count: number }
+  | { kind: 'hours'; hours: number; minutes: number };
+
+function estimateTimeRemaining(bytesPerSecond: number, remaining: number): TimeRemainingEstimate {
+  if (bytesPerSecond <= 0 || remaining <= 0) return { kind: 'calculating' };
 
   const secondsRemaining = remaining / bytesPerSecond;
-
-  if (secondsRemaining < 60) {
-    return t('dialogs:update.less_than_minute');
-  } else if (secondsRemaining < 3600) {
-    const minutes = Math.ceil(secondsRemaining / 60);
-    return t('dialogs:update.minutes_remaining', { count: minutes });
-  } else {
-    const hours = Math.floor(secondsRemaining / 3600);
-    const minutes = Math.ceil((secondsRemaining % 3600) / 60);
-    return t('dialogs:update.hours_remaining', { hours, minutes });
+  if (secondsRemaining < 60) return { kind: 'less_than_minute' };
+  if (secondsRemaining < 3600) {
+    return { kind: 'minutes', count: Math.ceil(secondsRemaining / 60) };
   }
+
+  const hours = Math.floor(secondsRemaining / 3600);
+  const minutes = Math.ceil((secondsRemaining % 3600) / 60);
+  return { kind: 'hours', hours, minutes };
 }
 
 export function DownloadProgressToast({
@@ -46,10 +47,23 @@ export function DownloadProgressToast({
   progress,
   onCancel,
 }: DownloadProgressToastProps): React.ReactElement {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('dialogs');
   // Handle initial state before first progress event
   const remaining = progress ? progress.total - progress.transferred : 0;
-  const timeRemaining = progress ? estimateTimeRemaining(progress.bytesPerSecond, remaining, t) : t('dialogs:update.starting_download');
+  const timeEstimate = progress ? estimateTimeRemaining(progress.bytesPerSecond, remaining) : null;
+  let timeRemaining: string;
+  if (timeEstimate === null) {
+    timeRemaining = t('update.starting_download');
+  } else if (timeEstimate.kind === 'calculating') {
+    timeRemaining = t('update.calculating');
+  } else if (timeEstimate.kind === 'less_than_minute') {
+    timeRemaining = t('update.less_than_minute');
+  } else if (timeEstimate.kind === 'minutes') {
+    const key = timeEstimate.count === 1 ? 'update.minutes_remaining_one' : 'update.minutes_remaining_other';
+    timeRemaining = t(key, { count: timeEstimate.count });
+  } else {
+    timeRemaining = t('update.hours_remaining', { hours: timeEstimate.hours, minutes: timeEstimate.minutes });
+  }
   const percent = progress ? Math.round(progress.percent) : 0;
 
   return (
@@ -59,7 +73,7 @@ export function DownloadProgressToast({
     >
       {/* Header */}
       <div className="update-toast-title text-sm font-semibold text-[var(--nim-text)] mb-3 pr-7">
-        {t('dialogs:update.downloading', { version })}
+        {t('update.downloading', { version })}
       </div>
 
       {/* Progress section */}
@@ -74,7 +88,9 @@ export function DownloadProgressToast({
         {/* Progress details */}
         <div className="update-toast-progress-details flex-1">
           <div className="update-toast-progress-text text-xs text-[var(--nim-text)] mb-1.5" data-testid="download-progress-text">
-            {progress ? `${formatBytes(progress.transferred)} / ${formatBytes(progress.total)}` : t('dialogs:update.preparing')}
+            {progress
+              ? t('update.download_progress', { transferred: formatBytes(progress.transferred), total: formatBytes(progress.total) })
+              : t('update.preparing')}
           </div>
           <div className="update-toast-progress-bar h-1.5 bg-[var(--nim-bg-tertiary)] rounded-sm overflow-hidden">
             <div
@@ -99,7 +115,7 @@ export function DownloadProgressToast({
           onClick={onCancel}
           data-testid="download-cancel-btn"
         >
-          {t('dialogs:update.cancel')}
+          {t('update.cancel')}
         </button>
       </div>
     </div>

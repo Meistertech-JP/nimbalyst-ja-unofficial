@@ -7,6 +7,7 @@
  */
 
 import type {JSX} from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {
@@ -21,7 +22,6 @@ import {createContext, useContext, useEffect, useMemo, useState} from 'react';
 import Button from '../../ui/Button.tsx';
 import {DialogActions} from '../../ui/Dialog.tsx';
 import TextInput from '../../ui/TextInput.tsx';
-import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
 
 export type InsertTableCommandPayload = Readonly<{
   columns: string;
@@ -86,7 +86,7 @@ export function InsertTableDialog({
   activeEditor: LexicalEditor;
   onClose: () => void;
 }): JSX.Element {
-  const {t} = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [rows, setRows] = useState('5');
   const [columns, setColumns] = useState('5');
   const [isDisabled, setIsDisabled] = useState(true);
@@ -113,16 +113,16 @@ export function InsertTableDialog({
   return (
     <>
       <TextInput
-        placeholder={t('editor:insert_dialog.rows_placeholder', '# of rows (1-500)')}
-        label={t('editor:insert_dialog.rows', 'Rows')}
+        placeholder={t('insert_dialog.rows_placeholder')}
+        label={t('insert_dialog.rows')}
         onChange={setRows}
         value={rows}
         data-test-id="table-modal-rows"
         type="number"
       />
       <TextInput
-        placeholder={t('editor:insert_dialog.columns_placeholder', '# of columns (1-50)')}
-        label={t('common:database.columns', 'Columns')}
+        placeholder={t('insert_dialog.columns_placeholder')}
+        label={t('insert_dialog.columns')}
         onChange={setColumns}
         value={columns}
         data-test-id="table-modal-columns"
@@ -130,7 +130,7 @@ export function InsertTableDialog({
       />
       <DialogActions data-test-id="table-model-confirm-insert">
         <Button disabled={isDisabled} onClick={onClick}>
-          {t('common:pull_request.confirm', 'Confirm')}
+          {t('insert_dialog.confirm')}
         </Button>
       </DialogActions>
     </>

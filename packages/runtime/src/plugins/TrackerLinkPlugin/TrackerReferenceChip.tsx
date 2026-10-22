@@ -3,13 +3,15 @@
  *
  * Shows the item's type, reference key, LIVE title, workflow state, and owner,
  * resolved from the canonical runtime tracker store. Clicking opens a hover-card
- * preview popover (floating-ui) with a "Go to item" action.
+ * preview popover (floating-ui) with a "Go to item" action. Inside a typed
+ * page's body (see `trackerReferenceSource.ts`) hovering opens it too, and the
+ * card offers the named relations allowed between the two types.
  *
  * When the key can't be resolved, it degrades to a muted chip showing just the
  * key — it never throws and never blocks rendering.
  */
 
-import type { JSX } from 'react';
+import type { JSX, MouseEvent as ReactMouseEvent } from 'react';
 import * as React from 'react';
 import {
   useFloating,
@@ -19,10 +21,29 @@ import {
   autoUpdate,
   FloatingPortal,
   useClick,
+  useHover,
+  safePolygon,
   useDismiss,
   useRole,
   useInteractions,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '../../ui/floating/windowControlsClearance';
+import {
+  globalRegistry,
+  resolveKnownStatusCategory,
+  type StatusCategory,
+} from '@nimbalyst/tracker-schema';
+import { LexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { $getNodeByKey } from 'lexical';
+import { useTranslation } from '@nimbalyst/i18n/react';
+
+import { $isTrackerReferenceNode } from './TrackerReferenceNodeCore';
+import {
+  TrackerReferenceRelationMenu,
+  trackerReferenceRelationLabel,
+  trackerReferenceRelationOptions,
+} from './TrackerReferenceRelationMenu';
+import { useTrackerReferenceSource } from './trackerReferenceSource';
 
 import {
   useResolvedTrackerReference,
@@ -30,26 +51,11 @@ import {
   type ResolvedTrackerReference,
 } from './trackerReferenceData';
 import {
-  formatRelativeDate,
-  getPriorityColor,
-  getStatusColor,
   getTypeColor,
   getTypeIcon,
   getInitials,
 } from '../TrackerPlugin/components/trackerColumns';
-import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
-
-function normalizeStatus(status: string | undefined): string | undefined {
-  return status?.trim().toLowerCase();
-}
-
-function displayLabel(value: string): string {
-  return value
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
+import { TrackerReferencePreview, displayLabel, normalizeStatus } from './TrackerReferencePreview';
 
 type StatusTone =
   | 'to-do'
@@ -111,24 +117,20 @@ const STATUS_TONES: Record<
   },
 };
 
+/**
+ * Overrides for statuses whose tone the lifecycle category cannot express.
+ *
+ * `in-review` and `blocked` are both `started`, but a reviewer and a blockage
+ * are not the same news, so they keep their own colours. Everything the category
+ * DOES express -- finished, abandoned, not begun -- is deliberately absent:
+ * listing `done` here but not `completed` is precisely how a plan's closing
+ * status ended up rendering as neutral.
+ */
 const STATUS_TONE_BY_VALUE: Record<string, StatusTone> = {
-  'to-do': 'to-do',
-  draft: 'to-do',
-  'ready-for-development': 'to-do',
-  'in-progress': 'in-progress',
-  'in-development': 'in-progress',
   'in-review': 'in-review',
-  done: 'completed',
-  completed: 'completed',
-  implemented: 'completed',
-  decided: 'completed',
   blocked: 'blocked',
-  rejected: 'blocked',
   proposed: 'informational',
   'in-discussion': 'informational',
-  superseded: 'neutral',
-  "won't-fix": 'neutral',
-  'wont-fix': 'neutral',
 };
 
 // Transcript markdown can remount a link renderer during routine message
@@ -137,11 +139,31 @@ const STATUS_TONE_BY_VALUE: Record<string, StatusTone> = {
 // leaking across messages or duplicate references.
 const previewOpenKeysByHost = new WeakMap<HTMLElement, Set<string>>();
 
+/** Tone for a status the type's schema categorises. */
+const TONE_BY_CATEGORY: Record<StatusCategory, StatusTone> = {
+  backlog: 'to-do',
+  unstarted: 'to-do',
+  started: 'in-progress',
+  done: 'completed',
+  cancelled: 'neutral',
+};
+
 function getStatusPresentation(
   normalizedStatus: string | undefined,
+  type: string | undefined,
 ): StatusPresentation | null {
   if (!normalizedStatus) return null;
-  const tone = STATUS_TONE_BY_VALUE[normalizedStatus] ?? 'neutral';
+  // The per-value table still wins where it says something the category cannot:
+  // `in-review` and `blocked` are both `started`, but they deserve their own
+  // colours. Everything else derives from the schema, so a type that closes on
+  // `completed` or `implemented` reads as finished without being listed here.
+  //
+  // Deliberately the KNOWN category, not the resolved one: a status this install
+  // has never heard of stays neutral. Painting it as in-progress would state
+  // something about it that nobody has said.
+  const category = resolveKnownStatusCategory(type ?? '', normalizedStatus);
+  const tone = STATUS_TONE_BY_VALUE[normalizedStatus]
+    ?? (category ? TONE_BY_CATEGORY[category] : 'neutral');
   return {
     ...STATUS_TONES[tone],
     label: displayLabel(normalizedStatus),
@@ -149,80 +171,40 @@ function getStatusPresentation(
   };
 }
 
-interface MetadataBadgeProps {
-  color: string;
-  icon?: string;
-  label: string;
-  className: string;
-}
-
-function MetadataBadge({
-  color,
-  icon,
-  label,
-  className,
-}: MetadataBadgeProps): JSX.Element {
-  return (
-    <span
-      className={className}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        minHeight: '22px',
-        padding: '1px 7px',
-        borderRadius: '999px',
-        border: `1px solid ${color}40`,
-        background: `${color}18`,
-        color,
-        fontSize: '10px',
-        fontWeight: 600,
-        lineHeight: 1.2,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {icon ? (
-        <span
-          className="material-symbols-outlined"
-          aria-hidden="true"
-          style={{ fontSize: '13px', lineHeight: 1 }}
-        >
-          {icon}
-        </span>
-      ) : (
-        <span
-          aria-hidden="true"
-          style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: color,
-            flexShrink: 0,
-          }}
-        />
-      )}
-      {label}
-    </span>
-  );
-}
-
 export interface TrackerReferenceChipProps {
   referenceKey: string;
   nodeKey?: string;
+  /** Predicate id of the relation the link states; null for a plain link. */
+  relation?: string | null;
   /** Stable per-renderer identity used to preserve an open transcript card. */
   previewStateKey?: string;
   /** Compact chips omit the live title while retaining preview and navigation. */
   variant?: 'default' | 'compact';
+  /** Host-provided label while this renderer has no local tracker record. */
+  unresolvedLabel?: string;
+  /**
+   * Host navigation override.
+   *
+   * Dedicated windows without a local tracker store use this to hand the
+   * reference back to the desktop router. Receiving `null` is intentional:
+   * the host can still route the stable reference key to the owning workspace.
+   */
+  onNavigate?: (resolved: ResolvedTrackerReference | null) => void;
 }
 
 export function TrackerReferenceChip({
   referenceKey,
   nodeKey,
+  relation = null,
   previewStateKey,
   variant = 'default',
+  unresolvedLabel,
+  onNavigate,
 }: TrackerReferenceChipProps): JSX.Element {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('tracker');
   const resolved = useResolvedTrackerReference(referenceKey);
+  const source = useTrackerReferenceSource();
+  const editor = React.useContext(LexicalComposerContext)?.[0] ?? null;
   const [open, setOpen] = React.useState(false);
   const referenceHostRef = React.useRef<HTMLElement | null>(null);
   const openStateKey = previewStateKey ?? nodeKey ?? referenceKey;
@@ -247,15 +229,23 @@ export function TrackerReferenceChip({
     open,
     onOpenChange: handleOpenChange,
     placement: 'bottom-start',
-    middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
+    middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 }), windowControlsClearance()],
     whileElementsMounted: autoUpdate,
   });
 
   const click = useClick(context);
+  // Hover only inside a typed page, where the card is where a link's relation
+  // is chosen; elsewhere the preview stays click-to-open.
+  const hover = useHover(context, {
+    enabled: source !== null,
+    delay: { open: 350, close: 150 },
+    handleClose: safePolygon(),
+  });
   const dismiss = useDismiss(context);
   const role = useRole(context, { role: 'dialog' });
   const { getReferenceProps, getFloatingProps } = useInteractions([
     click,
+    hover,
     dismiss,
     role,
   ]);
@@ -277,13 +267,15 @@ export function TrackerReferenceChip({
   );
 
   const normalizedStatus = normalizeStatus(resolved?.status);
-  const statusPresentation = getStatusPresentation(normalizedStatus);
-  const localizedStatusLabel = statusPresentation && normalizedStatus
-    ? t(`tracker:plans.status_${normalizedStatus.replace(/-/g, '_')}`, statusPresentation.label)
-    : statusPresentation?.label;
+  const statusPresentation = getStatusPresentation(normalizedStatus, resolved?.type);
   const isCompleted = statusPresentation?.tone === 'completed';
-  const label = resolved?.issueKey ?? referenceKey;
+  const label = resolved?.issueKey ?? unresolvedLabel ?? referenceKey;
   const title = resolved?.title;
+  // The name is what a reader cares about, so it carries the weight. A type
+  // with no key prefix falls back to the raw item id, which is never shown
+  // inline; the key stays in the tooltip and the preview card.
+  const showTitle = Boolean(title) && (variant === 'default' || !resolved?.issueKey);
+  const showKey = !showTitle || Boolean(resolved?.issueKey);
   const typeColor = resolved?.type ? getTypeColor(resolved.type) : undefined;
   const typeIcon = resolved?.type ? getTypeIcon(resolved.type) : undefined;
   const ownerInitials = resolved?.owner
@@ -297,7 +289,32 @@ export function TrackerReferenceChip({
     ? `${label}${resolved.status ? ` · ${resolved.status}` : ''}${
         resolved.title ? ` — ${resolved.title}` : ''
       }`
-    : `${label} (not resolved)`;
+    : `${label} — ${t('reference.unresolved')}`;
+  const relationLabel = relation
+    ? trackerReferenceRelationLabel(globalRegistry, relation)
+    : undefined;
+
+  let relationMenu: JSX.Element | null = null;
+  if (open && source && resolved?.type && resolved.id !== source.itemId) {
+    const canChoose = Boolean(editor && nodeKey && editor.isEditable());
+    relationMenu = (
+      <TrackerReferenceRelationMenu
+        options={trackerReferenceRelationOptions(globalRegistry, source.type, resolved.type)}
+        relation={relation}
+        relationLabel={relationLabel}
+        onChoose={
+          canChoose && editor && nodeKey
+            ? next => {
+                editor.update(() => {
+                  const node = $getNodeByKey(nodeKey);
+                  if ($isTrackerReferenceNode(node)) node.setRelation(next);
+                });
+              }
+            : undefined
+        }
+      />
+    );
+  }
 
   return (
     <>
@@ -312,7 +329,8 @@ export function TrackerReferenceChip({
         data-completed={isCompleted ? 'true' : 'false'}
         data-type={resolved?.type}
         data-owner={resolved?.owner}
-        title={tooltip}
+        data-relation={relation ?? undefined}
+        title={relationLabel ? `${relationLabel}: ${tooltip}` : tooltip}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -335,7 +353,7 @@ export function TrackerReferenceChip({
           <span
             className="material-symbols-outlined tracker-reference-chip-type-icon"
             role="img"
-            aria-label={t('tracker:reference.type_item', `${displayLabel(resolved?.type ?? '')} item`, { type: displayLabel(resolved?.type ?? '') })}
+            aria-label={t('reference.type_item', { type: displayLabel(resolved?.type ?? '') })}
             style={{
               color: typeColor,
               flexShrink: 0,
@@ -346,17 +364,19 @@ export function TrackerReferenceChip({
             {typeIcon}
           </span>
         ) : null}
-        <span
-          className="tracker-reference-chip-key"
-          style={{
-            flexShrink: 0,
-            fontWeight: 700,
-            color: 'var(--nim-text)',
-          }}
-        >
-          {label}
-        </span>
-        {title && variant === 'default' ? (
+        {showKey ? (
+          <span
+            className="tracker-reference-chip-key"
+            style={{
+              flexShrink: 0,
+              fontWeight: showTitle ? 400 : 700,
+              color: showTitle ? 'var(--nim-text-muted)' : 'var(--nim-text)',
+            }}
+          >
+            {label}
+          </span>
+        ) : null}
+        {showTitle ? (
           <span
             className="tracker-reference-chip-title"
             style={{
@@ -365,7 +385,8 @@ export function TrackerReferenceChip({
               maxWidth: '32ch',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              color: 'var(--nim-text-muted)',
+              fontWeight: 600,
+              color: 'var(--nim-text)',
               textDecoration: isCompleted ? 'line-through' : undefined,
             }}
           >
@@ -400,13 +421,13 @@ export function TrackerReferenceChip({
                 {statusPresentation.icon}
               </span>
             ) : null}
-            {localizedStatusLabel}
+            {statusPresentation.label}
           </span>
         ) : null}
         {ownerInitials ? (
           <span
             className="tracker-reference-chip-owner"
-            aria-label={t('tracker:reference.owner', `Owner: ${resolved?.owner}`, { owner: resolved?.owner ?? '' })}
+            aria-label={t('reference.owner', { owner: resolved?.owner })}
             title={resolved?.owner}
             style={{
               display: 'inline-flex',
@@ -439,199 +460,29 @@ export function TrackerReferenceChip({
             <TrackerReferencePreview
               referenceKey={referenceKey}
               resolved={resolved}
-              onGoTo={() => {
-                if (resolved) {
-                  navigateToTrackerReference(resolved);
-                }
-                handleOpenChange(false);
-              }}
+              displayLabel={label}
+              relationMenu={relationMenu}
+              onGoTo={
+                resolved || onNavigate
+                  ? (event: ReactMouseEvent) => {
+                      if (onNavigate) onNavigate(resolved);
+                      else if (resolved) navigateToTrackerReference(resolved, { fromPage: true, newTab: event.metaKey || event.ctrlKey });
+                      handleOpenChange(false);
+                    }
+                  : undefined
+              }
+              onOpenItem={
+                onNavigate
+                  ? undefined
+                  : (itemId: string, event: ReactMouseEvent) => {
+                      navigateToTrackerReference({ id: itemId }, { fromPage: true, newTab: event.metaKey || event.ctrlKey });
+                      handleOpenChange(false);
+                    }
+              }
             />
           </div>
         </FloatingPortal>
       ) : null}
     </>
-  );
-}
-
-interface TrackerReferencePreviewProps {
-  referenceKey: string;
-  resolved: ResolvedTrackerReference | null;
-  onGoTo: () => void;
-}
-
-function TrackerReferencePreview({
-  referenceKey,
-  resolved,
-  onGoTo,
-}: TrackerReferencePreviewProps): JSX.Element {
-  const { t } = useRuntimeTranslation();
-  const typeColor = resolved?.type
-    ? getTypeColor(resolved.type)
-    : 'var(--nim-text-muted)';
-  const resolvedStatusColor = resolved?.status
-    ? getStatusColor(
-        normalizeStatus(resolved.status) ?? resolved.status,
-        resolved.type,
-      )
-    : 'var(--nim-text-muted)';
-  const priorityColor = getPriorityColor(resolved?.priority);
-  const updatedDate = resolved?.updatedAt
-    ? new Date(resolved.updatedAt)
-    : undefined;
-  const updatedLabel =
-    updatedDate && !Number.isNaN(updatedDate.getTime())
-      ? formatRelativeDate(updatedDate)
-      : '';
-  const localizedStatusLabel = resolved?.status
-    ? t(`tracker:plans.status_${normalizeStatus(resolved.status)?.replace(/-/g, '_') ?? ''}`, displayLabel(resolved.status))
-    : '';
-
-  return (
-    <div
-      style={{
-        width: 'min(340px, calc(100vw - 24px))',
-        padding: '12px',
-        borderRadius: '10px',
-        background: 'var(--nim-bg)',
-        border: '1px solid var(--nim-border)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-        fontSize: '12px',
-        color: 'var(--nim-text)',
-        zIndex: 1000,
-      }}
-    >
-      {resolved ? (
-        <>
-          <div
-            className="tracker-reference-preview-header"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '7px',
-            }}
-          >
-            {resolved.type ? (
-              <MetadataBadge
-                className="tracker-reference-preview-type"
-                color={typeColor}
-                icon={getTypeIcon(resolved.type)}
-                label={displayLabel(resolved.type)}
-              />
-            ) : null}
-            <span
-              className="tracker-reference-preview-key"
-              style={{
-                color: 'var(--nim-text-faint)',
-                fontSize: '10px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {resolved.issueKey ?? referenceKey}
-            </span>
-          </div>
-          <div
-            style={{
-              marginBottom: '10px',
-              fontSize: '14px',
-              fontWeight: 550,
-              lineHeight: 1.35,
-            }}
-          >
-            {resolved.title}
-          </div>
-          <div
-            className="tracker-reference-preview-badges"
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px',
-              marginBottom: '12px',
-            }}
-          >
-            {resolved.status ? (
-              <MetadataBadge
-                className="tracker-reference-preview-status"
-                color={resolvedStatusColor}
-                label={localizedStatusLabel}
-              />
-            ) : null}
-            {resolved.priority ? (
-              <MetadataBadge
-                className="tracker-reference-preview-priority"
-                color={priorityColor}
-                icon="flag"
-                label={t('tracker:reference.priority', `${displayLabel(resolved.priority)} priority`, { priority: displayLabel(resolved.priority) })}
-              />
-            ) : null}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              paddingTop: '10px',
-              borderTop: '1px solid var(--nim-border)',
-            }}
-          >
-            <div
-              className="tracker-reference-preview-updated"
-              title={updatedDate?.toLocaleString()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                flex: 1,
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                color: 'var(--nim-text-faint)',
-                fontSize: '10px',
-              }}
-            >
-              <span
-                className="material-symbols-outlined"
-                aria-hidden="true"
-                style={{ fontSize: '13px' }}
-              >
-                schedule
-              </span>
-              {updatedLabel
-                ? t('tracker:reference.updated', `Updated ${updatedLabel}`, { display: updatedLabel })
-                : t('tracker:reference.updated_unavailable', 'Update time unavailable')}
-              {resolved.owner ? ` · ${resolved.owner}` : ''}
-            </div>
-            <button
-              type="button"
-              onClick={onGoTo}
-              style={{
-                marginLeft: 'auto',
-                flexShrink: 0,
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '5px 10px',
-                borderRadius: '6px',
-                border: '1px solid var(--nim-border)',
-                background: 'var(--nim-bg-secondary)',
-                color: 'var(--nim-text)',
-                cursor: 'pointer',
-              }}
-            >
-              {t('tracker:reference.go_to_item', 'Go to item')}
-            </button>
-          </div>
-        </>
-      ) : (
-        <div style={{ color: 'var(--nim-text-muted)' }}>
-          <div style={{ fontWeight: 600, marginBottom: '4px' }}>
-            {referenceKey}
-          </div>
-          <div>{t('tracker:reference.unresolved', 'This tracker item couldn’t be resolved in this workspace.')}</div>
-        </div>
-      )}
-    </div>
   );
 }

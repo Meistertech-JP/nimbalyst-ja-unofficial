@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { IDisposable } from 'monaco-editor';
 import type { EditorHostProps } from '@nimbalyst/extension-sdk';
 import { MonacoCodeEditor } from '@nimbalyst/runtime';
@@ -11,18 +12,24 @@ const EDITOR_LINE_HEIGHT = 30;
 function lineTitle(
   line: ReturnType<typeof parseCalcSheetDocument>['lines'][number],
   evaluation: ReturnType<typeof evaluateCalcSheet>,
+  t: ReturnType<typeof useTranslation<'extensions'>>['t'],
 ): string | undefined {
   if (line.kind === 'binding' && line.binding) {
     const result = evaluation.bindings.get(line.binding.name);
     if (!result) return undefined;
     const parts = [
-      `${result.classification === 'constant' ? 'Constant' : 'Formula'}: ${line.binding.name}`,
+      t(
+        result.classification === 'constant'
+          ? 'calc_sheets.constant_tooltip'
+          : 'calc_sheets.formula_tooltip',
+        { name: line.binding.name },
+      ),
     ];
     if (result.dependencies.length > 0) {
-      parts.push(`Depends on: ${result.dependencies.join(', ')}`);
+      parts.push(t('calc_sheets.depends_tooltip', { dependencies: result.dependencies.join(', ') }));
     }
     if (result.error) {
-      parts.push(`Error: ${result.error}`);
+      parts.push(t('calc_sheets.error_tooltip', { error: result.error }));
     }
     return parts.join('\n');
   }
@@ -31,12 +38,12 @@ function lineTitle(
       (entry) => entry.expression === line.assertion?.expression,
     );
     if (!assertion) return undefined;
-    const parts = [`Assertion: ${line.assertion.expression}`];
+    const parts = [t('calc_sheets.assertion_tooltip', { expression: line.assertion.expression })];
     if (assertion.dependencies.length > 0) {
-      parts.push(`Depends on: ${assertion.dependencies.join(', ')}`);
+      parts.push(t('calc_sheets.depends_tooltip', { dependencies: assertion.dependencies.join(', ') }));
     }
     if (assertion.error) {
-      parts.push(`Error: ${assertion.error}`);
+      parts.push(t('calc_sheets.error_tooltip', { error: assertion.error }));
     }
     return parts.join('\n');
   }
@@ -47,6 +54,9 @@ function lineTitle(
 }
 
 export function CalcSheetShareViewer({ host }: EditorHostProps) {
+  const { t } = useTranslation('extensions');
+  const tRef = useRef(t);
+  tRef.current = t;
   const [bodyContent, setBodyContent] = useState<string | null>(null);
   const [initialBodyContent, setInitialBodyContent] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -74,7 +84,7 @@ export function CalcSheetShareViewer({ host }: EditorHostProps) {
       })
       .catch((error) => {
         if (!mounted) return;
-        setLoadError(error instanceof Error ? error.message : 'Failed to load calc sheet');
+        setLoadError(error instanceof Error ? error.message : tRef.current('calc_sheets.load_failed'));
       });
 
     return () => {
@@ -172,13 +182,13 @@ export function CalcSheetShareViewer({ host }: EditorHostProps) {
   if (loadError) {
     return (
       <div className="calc-sheets calc-sheets--error">
-        Failed to load calc sheet: {loadError}
+        {t('calc_sheets.load_error', { error: loadError })}
       </div>
     );
   }
 
   if (bodyContent === null || initialBodyContent === null) {
-    return <div className="calc-sheets calc-sheets--loading">Loading calc sheet...</div>;
+    return <div className="calc-sheets calc-sheets--loading">{t('calc_sheets.loading')}</div>;
   }
 
   return (
@@ -187,13 +197,13 @@ export function CalcSheetShareViewer({ host }: EditorHostProps) {
         <div className="calc-sheets__title-group">
           <div className="calc-sheets__title">{title}</div>
           <div className="calc-sheets__subtitle">
-            Shared calc sheet. Local edits recalculate results but do not save back to the source file.
+            {t('calc_sheets.share_subtitle')}
           </div>
         </div>
         <div className="calc-sheets__meta">
-          <span>Base currency: {baseCurrency}</span>
-          <span>Errors: {evaluation.errorCount}</span>
-          {hasLocalChanges ? <span>Local edits active</span> : null}
+          <span>{t('calc_sheets.base_currency', { currency: baseCurrency })}</span>
+          <span>{t('calc_sheets.errors', { count: evaluation.errorCount })}</span>
+          {hasLocalChanges ? <span>{t('calc_sheets.local_edits_active')}</span> : null}
           <button
             type="button"
             className="calc-sheets__action"
@@ -208,14 +218,14 @@ export function CalcSheetShareViewer({ host }: EditorHostProps) {
               refreshLayout(editorRef.current?.editor);
             }}
           >
-            Reset
+            {t('calc_sheets.reset')}
           </button>
         </div>
       </div>
 
       {parsed.frontmatterError ? (
         <div className="calc-sheets__banner calc-sheets__banner--error">
-          Frontmatter error: {parsed.frontmatterError}
+          {t('calc_sheets.frontmatter_error', { error: parsed.frontmatterError })}
         </div>
       ) : null}
 
@@ -273,9 +283,11 @@ export function CalcSheetShareViewer({ host }: EditorHostProps) {
                     top: lineTops[line.index] ?? (line.index * EDITOR_LINE_HEIGHT),
                     height: EDITOR_LINE_HEIGHT,
                   }}
-                  title={lineTitle(line, evaluation)}
+                  title={lineTitle(line, evaluation, t)}
                 >
-                  <span className="calc-sheets__result-value">{output}</span>
+                  <span className="calc-sheets__result-value">
+                    {line.kind === 'section' || line.kind === 'prose' ? '' : output}
+                  </span>
                 </div>
               );
             })}

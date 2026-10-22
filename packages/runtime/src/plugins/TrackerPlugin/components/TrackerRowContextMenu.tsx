@@ -9,28 +9,55 @@
 
 import type { JSX } from 'react';
 import React, { useEffect, useRef, useState } from 'react';
-import { useFloating, offset, flip, shift, FloatingPortal } from '@floating-ui/react';
+import { useTranslation } from 'react-i18next';
+import { useFloating, FloatingPortal } from '@floating-ui/react';
+import { useScrollableMenuFloating } from '../../../ui/floating/useScrollableMenuFloating';
 import type { TrackerItemType } from '../../../core/DocumentService';
 import type { TrackerRecord } from '../../../core/TrackerRecord';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
+import { ProviderIcon } from '../../../ui/icons/ProviderIcons';
 import { getRecordTitle } from '../trackerRecordAccessors';
 import { getStatusColor, getPriorityColor, getTypeColor, getTypeIcon } from './trackerColumns';
+import type { ConfirmTrackerDelete } from './useTrackerRows';
 
 const PRIORITIES = ['critical', 'high', 'medium', 'low'] as const;
+const BUILT_IN_STATUS_KEYS: Record<string, string> = {
+  'to-do': 'table.statuses.to_do',
+  'in-progress': 'table.statuses.in_progress',
+  'in-review': 'table.statuses.in_review',
+  done: 'table.statuses.done',
+  blocked: 'table.statuses.blocked',
+};
+
+/**
+ * Panel chrome carried as inline style rather than Tailwind arbitrary values.
+ *
+ * `size()` makes the browser resolve computed style on these panels, and jsdom's
+ * selector engine cannot parse a `:has()` rule against an element whose class
+ * list contains `[...]` — it mangles `min-w-[140px]` into an invalid selector and
+ * throws, which surfaces as an unhandled rejection in any suite that renders this
+ * menu. Real browsers are fine either way; keeping these values off the class list
+ * simply avoids handing jsdom something it cannot read.
+ */
+const MENU_PANEL_STYLE: React.CSSProperties = {
+  backgroundColor: 'var(--nim-bg-secondary)',
+  borderColor: 'var(--nim-border)',
+};
+
+/**
+ * An AI session linked to a tracker item, shaped for menu display.
+ *
+ * Callers pre-resolve these: merging the two link directions and formatting the
+ * timestamp both live on the Electron side, so the menu stays presentational.
+ */
+export interface TrackerLinkedSessionOption {
+  id: string;
+  title: string;
+  provider?: string;
+  /** Pre-formatted relative time, e.g. "2h ago". */
+  timeLabel?: string;
+}
 
 export interface TrackerRowContextMenuProps {
-  /** Optional host-localized captions; action values and selected IDs are untouched. */
-  presentation?: {
-    selectedCount?: (count: number) => string;
-    setStatus?: string;
-    setPriority?: string;
-    priorityLabel?: (priority: string) => string;
-    addToCollection?: string;
-    copyLink?: string;
-    archive?: string;
-    delete?: string;
-    deleteConfirm?: (count: number) => string;
-  };
   /** Anchor rect for the menu; `null` keeps it closed. */
   anchor: DOMRect | null;
   refs: ReturnType<typeof useFloating>['refs'];
@@ -45,14 +72,25 @@ export interface TrackerRowContextMenuProps {
   onSetPriority: (priority: string) => void;
   onAddToCollection?: (collection: TrackerRecord) => void;
   onCopyDeepLink?: (itemId: string) => void;
+  /** Open the item as a document (focused document view); single selection only. */
+  onOpenDocument?: (itemId: string) => void;
+  /** Sessions already linked to a single selected item. Omit to hide the submenu. */
+  getLinkedSessions?: (itemId: string) => TrackerLinkedSessionOption[];
+  /** Jump to an existing linked session. */
+  onOpenSession?: (sessionId: string) => void;
+  /** Start a new AI session seeded with the item's context. */
+  onLaunchSession?: (itemId: string) => void;
+  /** Start a new isolated worktree session for the item. */
+  onLaunchWorktree?: (itemId: string) => void;
   onArchiveItems?: (itemIds: string[], archive: boolean) => void;
   onDeleteItems?: (itemIds: string[]) => void;
+  /** Confirms a delete; the Delete action is hidden without it. */
+  confirmDelete?: ConfirmTrackerDelete;
   closeContextMenu: () => void;
   clearSelection: () => void;
 }
 
 export function TrackerRowContextMenu({
-  presentation,
   anchor,
   refs,
   floatingStyles,
@@ -64,40 +102,53 @@ export function TrackerRowContextMenu({
   onSetPriority,
   onAddToCollection,
   onCopyDeepLink,
+  onOpenDocument,
+  getLinkedSessions,
+  onOpenSession,
+  onLaunchSession,
+  onLaunchWorktree,
   onArchiveItems,
   onDeleteItems,
+  confirmDelete,
   closeContextMenu,
   clearSelection,
 }: TrackerRowContextMenuProps): JSX.Element | null {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('tracker');
   if (!anchor || selectedIds.size === 0) return null;
 
   const statusType = activeTypeFilter !== 'all' ? activeTypeFilter : undefined;
+
+  // Session actions are item-scoped, so they only make sense for one row.
+  const singleId = selectedIds.size === 1 ? Array.from(selectedIds)[0] : null;
+  const linkedSessions = singleId && getLinkedSessions && onOpenSession
+    ? getLinkedSessions(singleId)
+    : [];
+  const hasSessionActions = singleId != null
+    && (linkedSessions.length > 0 || onLaunchSession != null || onLaunchWorktree != null);
 
   return (
     <FloatingPortal>
       <div
         ref={refs.setFloating}
         data-testid="tracker-row-context-menu"
-        className="tracker-row-context-menu z-50 min-w-[180px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md shadow-lg py-1 text-[13px]"
-        style={floatingStyles}
+        className="tracker-row-context-menu z-50 overflow-y-auto overscroll-contain border rounded-md shadow-lg py-1"
+        style={{ ...floatingStyles, ...MENU_PANEL_STYLE, minWidth: 180, fontSize: 13 }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-3 py-1 text-[11px] text-[var(--nim-text-faint)] font-medium">
-          {presentation?.selectedCount?.(selectedIds.size) ?? t(
-            selectedIds.size === 1 ? 'tracker:kanban.selected_count_one' : 'tracker:kanban.selected_count_other',
-            selectedIds.size === 1 ? '{{count}} item selected' : '{{count}} items selected',
-            { count: selectedIds.size },
-          )}
+          {t('kanban.selected_count', { count: selectedIds.size })}
         </div>
         <div className="border-b border-[var(--nim-border)] my-1" />
 
-        <ContextSubmenu label={presentation?.setStatus ?? t('tracker:kanban.set_status', 'Set Status')} icon="swap_horiz">
+        <ContextSubmenu label={t('kanban.set_status')} icon="swap_horiz">
           {statusOptions.map(opt => {
             const value = typeof opt === 'string' ? opt : opt.value;
-            const label = typeof opt === 'string'
-              ? opt.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-              : opt.label;
+            const builtInStatusKey = BUILT_IN_STATUS_KEYS[value];
+            const label = builtInStatusKey
+              ? t(builtInStatusKey)
+              : typeof opt === 'string'
+                ? opt.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                : opt.label;
             return (
               <button
                 key={value}
@@ -114,7 +165,7 @@ export function TrackerRowContextMenu({
           })}
         </ContextSubmenu>
 
-        <ContextSubmenu label={presentation?.setPriority ?? t('tracker:kanban.set_priority', 'Set Priority')} icon="flag">
+        <ContextSubmenu label={t('kanban.set_priority')} icon="flag">
           {PRIORITIES.map(p => (
             <button
               key={p}
@@ -125,13 +176,13 @@ export function TrackerRowContextMenu({
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: getPriorityColor(p) }}
               />
-            {presentation?.priorityLabel?.(p) ?? t(`tracker:kanban.priority_${p}`, p.charAt(0).toUpperCase() + p.slice(1))}
+              {t(`kanban.priority_${p}`)}
             </button>
           ))}
         </ContextSubmenu>
 
         {onAddToCollection && collectionTargets.length > 0 && (
-          <ContextSubmenu label={presentation?.addToCollection ?? t('tracker:kanban.add_to_collection', 'Add to Collection')} icon="inventory_2">
+          <ContextSubmenu label={t('kanban.add_to_collection')} icon="inventory_2">
             {collectionTargets.map(collection => (
               <button
                 key={collection.id}
@@ -150,7 +201,83 @@ export function TrackerRowContextMenu({
           </ContextSubmenu>
         )}
 
+        {hasSessionActions && (
+          <>
+            <div className="border-b border-[var(--nim-border)] my-1" />
+
+            {linkedSessions.length > 0 && (
+              <ContextSubmenu label={t('kanban.sessions_count', { count: linkedSessions.length })} icon="smart_toy">
+                {linkedSessions.map(session => (
+                  <button
+                    key={session.id}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer"
+                    data-testid="tracker-row-context-open-session"
+                    title={t('kanban.open_session_title', { title: session.title })}
+                    onClick={() => {
+                      closeContextMenu();
+                      onOpenSession?.(session.id);
+                    }}
+                  >
+                    <span className="shrink-0 flex items-center text-[var(--nim-text-muted)]">
+                      <ProviderIcon provider={session.provider || 'claude'} size={14} />
+                    </span>
+                    <span className="flex-1 truncate max-w-[220px]">{session.title}</span>
+                    {session.timeLabel && (
+                      <span className="text-[11px] text-[var(--nim-text-faint)] shrink-0">
+                        {session.timeLabel}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </ContextSubmenu>
+            )}
+
+            {onLaunchSession && (
+              <button
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer"
+                data-testid="tracker-row-context-launch-session"
+                onClick={() => {
+                  closeContextMenu();
+                  onLaunchSession(singleId!);
+                }}
+              >
+                <span className="material-symbols-outlined text-sm">add_circle</span>
+                {t('kanban.launch_session')}
+              </button>
+            )}
+
+            {onLaunchWorktree && (
+              <button
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer"
+                data-testid="tracker-row-context-launch-worktree"
+                onClick={() => {
+                  closeContextMenu();
+                  onLaunchWorktree(singleId!);
+                }}
+              >
+                <span className="material-symbols-outlined text-sm">account_tree</span>
+                {t('kanban.launch_worktree')}
+              </button>
+            )}
+          </>
+        )}
+
         <div className="border-b border-[var(--nim-border)] my-1" />
+
+        {onOpenDocument && selectedIds.size === 1 && (
+          <button
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer"
+            data-testid="tracker-row-context-open-document"
+            onClick={() => {
+              const [onlyId] = selectedIds;
+              closeContextMenu();
+              onOpenDocument(onlyId);
+            }}
+          >
+            <span className="material-symbols-outlined text-sm">article</span>
+            {t('kanban.open_document')}
+          </button>
+        )}
 
         {onCopyDeepLink && selectedIds.size === 1 && (
           <button
@@ -163,7 +290,7 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">link</span>
-            {presentation?.copyLink ?? t('tracker:kanban.copy_link', 'Copy Link')}
+            {t('kanban.copy_link')}
           </button>
         )}
 
@@ -178,30 +305,25 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">archive</span>
-            {presentation?.archive ?? t('tracker:kanban.archive', 'Archive')}
+            {t('kanban.archive')}
           </button>
         )}
 
-        {onDeleteItems && (
+        {onDeleteItems && confirmDelete && (
           <button
             className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[#ef4444] hover:bg-[var(--nim-bg-hover)] cursor-pointer"
             data-testid="tracker-row-context-delete"
-            onClick={() => {
+            onClick={async () => {
               closeContextMenu();
               const ids = Array.from(selectedIds);
-              const fallbackConfirm = t(
-                ids.length === 1 ? 'tracker:kanban.delete_confirm_one' : 'tracker:kanban.delete_confirm_other',
-                ids.length === 1 ? 'Delete {{count}} item? This cannot be undone.' : 'Delete {{count}} items? This cannot be undone.',
-                { count: ids.length },
-              );
-              if (window.confirm(presentation?.deleteConfirm?.(ids.length) ?? fallbackConfirm)) {
+              if (await confirmDelete(ids.length)) {
                 onDeleteItems(ids);
                 clearSelection();
               }
             }}
           >
             <span className="material-symbols-outlined text-sm">delete</span>
-            {presentation?.delete ?? t('tracker:kanban.delete', 'Delete')}
+            {t('kanban.delete')}
           </button>
         )}
       </div>
@@ -217,10 +339,7 @@ export const ContextSubmenu: React.FC<{
 }> = ({ label, icon, children }) => {
   const [open, setOpen] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { refs, floatingStyles } = useFloating({
-    placement: 'right-start',
-    middleware: [offset(2), flip({ padding: 8 }), shift({ padding: 8 })],
-  });
+  const { refs, floatingStyles } = useScrollableMenuFloating('right-start');
 
   useEffect(() => () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -249,8 +368,8 @@ export const ContextSubmenu: React.FC<{
         <FloatingPortal>
           <div
             ref={refs.setFloating}
-            className="min-w-[140px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md shadow-lg py-1 z-[60]"
-            style={floatingStyles}
+            className="tracker-context-submenu overflow-y-auto overscroll-contain border rounded-md shadow-lg py-1"
+            style={{ ...floatingStyles, ...MENU_PANEL_STYLE, minWidth: 140, maxWidth: 280, zIndex: 60 }}
             onMouseEnter={handleEnter}
             onMouseLeave={handleLeave}
           >

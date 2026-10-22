@@ -13,10 +13,10 @@ import {
   LexicalEditor,
 } from 'lexical';
 import {useState} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 import {copyToClipboard} from '../../../../../utils/clipboard';
 
 import {useDebounce} from '../../utils';
-import {useRuntimeTranslation} from '../../../../../ui/RuntimeTranslation';
 
 interface Props {
   editor: LexicalEditor;
@@ -24,7 +24,7 @@ interface Props {
 }
 
 export function CopyButton({editor, getCodeDOMNode}: Props) {
-  const {t} = useRuntimeTranslation();
+  const {t} = useTranslation('common');
   const [isCopyCompleted, setCopyCompleted] = useState<boolean>(false);
 
   const removeSuccessIcon = useDebounce(() => {
@@ -61,7 +61,7 @@ export function CopyButton({editor, getCodeDOMNode}: Props) {
   }
 
   return (
-    <button className="menu-item" onClick={handleClick} aria-label={t('common:copy', 'Copy')}>
+    <button className="menu-item" onClick={handleClick} aria-label={t('copy')}>
       {isCopyCompleted ? (
         <i className="format success" />
       ) : (

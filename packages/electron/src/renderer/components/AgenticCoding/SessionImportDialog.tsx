@@ -2,23 +2,20 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRelativeTimeString } from '../../utils/dateFormatting';
 import { getFileName } from '../../utils/pathUtils';
-import type { TokenUsageCategory } from '@nimbalyst/runtime/ai/server/types';
+import type { ExternalSessionSelection, ExternalSessionSummary, ExternalSessionScanResponse } from '../../../shared/externalSessions';
 
-interface SessionToImport {
-  sessionId: string;
-  workspacePath: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  messageCount: number;
-  tokenUsage: {
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-    categories?: TokenUsageCategory[];
-  };
-  syncStatus: 'new' | 'up-to-date' | 'needs-update';
+interface SessionToImport extends ExternalSessionSummary {
   selected: boolean;
+}
+
+const selectionKey = (session: ExternalSessionSelection) =>
+  JSON.stringify([session.providerId, session.sessionId, session.workspacePath]);
+
+function totalTokens(usage: unknown): number | undefined {
+  if (usage && typeof usage === 'object' && 'totalTokens' in usage && typeof usage.totalTokens === 'number') {
+    return usage.totalTokens;
+  }
+  return undefined;
 }
 
 interface SessionsByWorkspace {
@@ -28,7 +25,7 @@ interface SessionsByWorkspace {
 interface SessionImportDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (sessionIds: string[]) => Promise<void>;
+  onImport: (sessions: ExternalSessionSelection[]) => Promise<void>;
   currentWorkspacePath: string;
   filterByWorkspace?: boolean; // If true, only show sessions for current workspace
 }
@@ -40,7 +37,8 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
   currentWorkspacePath,
   filterByWorkspace = true  // Default to filtering by current workspace
 }) => {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('dialogs');
+  const { t: tSessions } = useTranslation('sessions');
   const [sessions, setSessions] = useState<SessionToImport[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -49,25 +47,18 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load sessions when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      loadSessions();
-    }
-  }, [isOpen]);
-
   const loadSessions = useCallback(async () => {
     setLoading(true);
     setError(null);
     setScopeNotice(null);
 
     try {
-      const scanSessions = async (workspacePath?: string) => {
-        return window.electronAPI.invoke('claude-code:scan-sessions', { workspacePath });
+      const scanSessions = async (workspacePath?: string): Promise<ExternalSessionScanResponse> => {
+        return window.electronAPI.invoke('external-sessions:scan', { workspacePath });
       };
 
       // Prefer the current workspace for performance, but do not fail closed if
-      // Claude stored the sessions under a sibling worktree, nested package
+      // the CLI stored the sessions under a sibling worktree, nested package
       // workspace, or a differently-resolved path.
       let result = await scanSessions(filterByWorkspace ? currentWorkspacePath : undefined);
 
@@ -79,13 +70,13 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
       ) {
         result = await scanSessions();
         if (result.success && Array.isArray(result.sessions) && result.sessions.length > 0) {
-          setScopeNotice(t('dialogs:session_import.scope_notice'));
+          setScopeNotice(t('session_import.scope_notice_external'));
         }
       }
 
       if (result.success && Array.isArray(result.sessions)) {
         // Auto-select new and needs-update sessions
-        const sessionsWithSelection = result.sessions.map((s: any) => ({
+        const sessionsWithSelection = result.sessions.map((s) => ({
           ...s,
           selected: s.syncStatus === 'new' || s.syncStatus === 'needs-update',
         }));
@@ -104,22 +95,29 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
         }
         setExpandedWorkspaces(initialExpanded);
       } else {
-        setError(result.error || t('dialogs:session_import.error_load'));
+        setError(result.error || t('session_import.error_load'));
       }
     } catch (err) {
       console.error('[SessionImportDialog] Failed to load sessions:', err);
-      setError(t('dialogs:session_import.error_load'));
+      setError(t('session_import.error_load'));
     } finally {
       setLoading(false);
     }
   }, [currentWorkspacePath, filterByWorkspace, t]);
 
-  const handleImport = async () => {
-    const selectedSessionIds = sessions
-      .filter(s => s.selected)
-      .map(s => s.sessionId);
+  // Load sessions when dialog opens.
+  useEffect(() => {
+    if (isOpen) {
+      loadSessions();
+    }
+  }, [isOpen, loadSessions]);
 
-    if (selectedSessionIds.length === 0) {
+  const handleImport = async () => {
+    const selectedSessions = sessions
+      .filter(s => s.selected)
+      .map(({ providerId, sessionId, workspacePath }) => ({ providerId, sessionId, workspacePath }));
+
+    if (selectedSessions.length === 0) {
       return;
     }
 
@@ -127,19 +125,19 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
     setError(null);
 
     try {
-      await onImport(selectedSessionIds);
+      await onImport(selectedSessions);
       onClose();
     } catch (err) {
       console.error('[SessionImportDialog] Failed to import sessions:', err);
-      setError(t('dialogs:session_import.error_import'));
+      setError(t('session_import.error_import'));
     } finally {
       setImporting(false);
     }
   };
 
-  const toggleSession = (sessionId: string) => {
+  const toggleSession = (key: string) => {
     setSessions(prev =>
-      prev.map(s => (s.sessionId === sessionId ? { ...s, selected: !s.selected } : s))
+      prev.map(s => (selectionKey(s) === key ? { ...s, selected: !s.selected } : s))
     );
   };
 
@@ -215,11 +213,11 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="session-import-dialog-header flex items-center justify-between px-5 py-4 border-b border-[var(--nim-border)]">
-          <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">{t('dialogs:session_import.title')}</h2>
+          <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">{t('session_import.title_external')}</h2>
           <button
             className="session-import-dialog-close bg-transparent border-none text-[var(--nim-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
             onClick={onClose}
-            aria-label={t('dialogs:session_import.close')}
+            aria-label={t('session_import.close')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -229,7 +227,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
 
         {loading ? (
           <div className="session-import-dialog-loading py-10 px-5 text-center text-[var(--nim-text-muted)]">
-            <p>{t('dialogs:session_import.scanning')}</p>
+            <p>{t('session_import.scanning_external')}</p>
           </div>
         ) : error ? (
           <div className="session-import-dialog-error py-10 px-5 text-center text-[var(--nim-text-muted)]">
@@ -238,7 +236,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
               className="mt-3 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer"
               onClick={loadSessions}
             >
-              {t('dialogs:session_import.retry')}
+              {t('session_import.retry')}
             </button>
           </div>
         ) : (
@@ -246,19 +244,19 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
             <div className="session-import-dialog-stats flex gap-4 px-5 py-4 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{totalSessions}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('dialogs:session_import.total')}</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.total')}</span>
               </div>
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{newSessions}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('dialogs:session_import.new')}</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.new')}</span>
               </div>
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{needsUpdate}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('dialogs:session_import.updates')}</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.updates')}</span>
               </div>
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{inSync}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('dialogs:session_import.in_sync')}</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.in_sync')}</span>
               </div>
             </div>
 
@@ -266,7 +264,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
               <input
                 type="text"
                 className="session-import-search-input nim-input text-sm"
-                placeholder={t('dialogs:session_import.search')}
+                placeholder={t('session_import.search')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -283,22 +281,22 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                 onClick={selectAll}
                 className="session-import-action-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               >
-                {t('dialogs:session_import.select_all')}
+                {t('session_import.select_all')}
               </button>
               <button
                 onClick={deselectAll}
                 className="session-import-action-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               >
-                {t('dialogs:session_import.deselect_all')}
+                {t('session_import.deselect_all')}
               </button>
             </div>
 
             <div className="session-import-dialog-content flex-1 overflow-y-auto py-3">
               {workspacePaths.length === 0 ? (
                 <div className="session-import-empty py-10 px-5 text-center text-[var(--nim-text-muted)]">
-                  <p>{t('dialogs:session_import.none')}</p>
+                  <p>{t('session_import.none_external')}</p>
                   <p className="session-import-empty-hint text-[13px] mt-2 text-[var(--nim-text-faint)]">
-                    {t('dialogs:session_import.cli_hint')}
+                    {t('session_import.cli_hint_external')}
                   </p>
                 </div>
               ) : (
@@ -336,7 +334,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                             }
                           }}
                           onChange={() => toggleWorkspace(workspacePath)}
-                          aria-label={t('dialogs:session_import.select_workspace', { workspace: workspaceName })}
+                          aria-label={t('session_import.select_workspace', { workspace: workspaceName })}
                         />
                         <span className="session-import-workspace-name flex-1 font-medium text-[var(--nim-text)] text-sm">{workspaceName}</span>
                         <span className="session-import-workspace-count text-xs text-[var(--nim-text-faint)]">
@@ -348,25 +346,33 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                         <div className="session-import-session-list p-0">
                           {workspaceSessions.map(session => (
                             <div
-                              key={session.sessionId}
-                              data-id={session.sessionId}
+                              key={selectionKey(session)}
+                              data-id={selectionKey(session)}
                               className="session-import-session-item flex items-start gap-2.5 py-3 pr-5 pl-[50px] border-t border-[var(--nim-border)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                             >
                               <input
                                 type="checkbox"
                                 checked={session.selected}
-                                onChange={() => toggleSession(session.sessionId)}
-                                aria-label={t('dialogs:session_import.select_session', { title: session.title })}
+                                onChange={() => toggleSession(selectionKey(session))}
+                                aria-label={t('session_import.select_session', { title: session.title })}
                                 className="mt-0.5 cursor-pointer"
                               />
                               <div className="session-import-session-info flex-1 min-w-0">
                                 <div className="session-import-session-title text-sm text-[var(--nim-text)] font-medium mb-1">{session.title}</div>
                                 <div className="session-import-session-meta text-xs text-[var(--nim-text-muted)] flex items-center gap-1.5">
-                            <span>{getRelativeTimeString(session.updatedAt, t)}</span>
+                                  <span>{session.providerId === 'claude-code' ? 'Claude Code' : 'Codex'}</span>
                                   <span>•</span>
-                                  <span>{t('dialogs:session_import.message_count', { count: session.messageCount })}</span>
-                                  <span>•</span>
-                                  <span>{t('dialogs:session_import.token_count', { count: session.tokenUsage.totalTokens.toLocaleString() })}</span>
+                                  <span>
+                                    {getRelativeTimeString(session.updatedAt, (key, options) => tSessions(key, options))}
+                                  </span>
+                                  {typeof session.messageCount === 'number' && <>
+                                    <span>•</span>
+                                    <span>{t('session_import.message_count', { count: session.messageCount })}</span>
+                                  </>}
+                                  {totalTokens(session.tokenUsage) !== undefined && <>
+                                    <span>•</span>
+                                    <span>{t('session_import.token_count', { count: totalTokens(session.tokenUsage)?.toLocaleString() })}</span>
+                                  </>}
                                   <span>•</span>
                                   <span
                                     className={`session-import-status-badge px-1.5 py-0.5 rounded text-[11px] font-medium ${
@@ -377,9 +383,9 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                                           : 'bg-[rgba(158,158,158,0.15)] text-[rgb(158,158,158)]'
                                     }`}
                                   >
-                                    {session.syncStatus === 'new' && t('dialogs:session_import.status_new')}
-                                    {session.syncStatus === 'up-to-date' && t('dialogs:session_import.status_in_sync')}
-                                    {session.syncStatus === 'needs-update' && t('dialogs:session_import.status_updates')}
+                                    {session.syncStatus === 'new' && t('session_import.status_new')}
+                                    {session.syncStatus === 'up-to-date' && t('session_import.status_in_sync')}
+                                    {session.syncStatus === 'needs-update' && t('session_import.status_updates')}
                                   </span>
                                 </div>
                               </div>
@@ -399,16 +405,14 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                 onClick={onClose}
                 disabled={importing}
               >
-                {t('dialogs:session_import.cancel')}
+                {t('session_import.cancel')}
               </button>
               <button
                 className="session-import-button-primary nim-btn-primary"
                 onClick={handleImport}
                 disabled={importing || selectedCount === 0}
               >
-                {importing
-                  ? t('dialogs:session_import.importing')
-                  : t(selectedCount === 1 ? 'dialogs:session_import.import_one' : 'dialogs:session_import.import_other', { count: selectedCount })}
+                {importing ? t('session_import.importing') : t('session_import.import', { count: selectedCount })}
               </button>
             </div>
           </>

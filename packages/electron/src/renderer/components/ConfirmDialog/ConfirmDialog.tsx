@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -22,8 +22,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel
 }) => {
-  const { t } = useTranslation(['dialogs']);
-
+  const { t } = useTranslation('dialogs');
   if (!isOpen) return null;
 
   return (
@@ -36,13 +35,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         <p className="confirm-dialog-message m-0 mb-6 text-sm text-nim-muted leading-relaxed">{message}</p>
         <div className="confirm-dialog-buttons flex gap-3 justify-end">
           <button className="confirm-dialog-button-cancel nim-btn-secondary" onClick={onCancel}>
-            {cancelLabel ?? t('dialogs:confirm.cancel')}
+            {cancelLabel ?? t('confirm.cancel')}
           </button>
           <button
             className={`confirm-dialog-button-confirm ${destructive ? 'nim-btn-danger' : 'nim-btn-primary'}`}
             onClick={onConfirm}
           >
-            {confirmLabel ?? t('dialogs:confirm.ok')}
+            {confirmLabel ?? t('confirm.ok')}
           </button>
         </div>
       </div>

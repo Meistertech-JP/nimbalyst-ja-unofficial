@@ -30,6 +30,7 @@ import {
   useInteractions,
   useRole,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '../../ui/floating/windowControlsClearance';
 
 type DropDownContextType = {
   registerItem: (ref: React.RefObject<HTMLButtonElement | null>) => void;
@@ -43,13 +44,11 @@ export function DropDownItem({
   className,
   onClick,
   title,
-  'aria-label': ariaLabel,
 }: {
   children: React.ReactNode;
   className: string;
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   title?: string;
-  'aria-label'?: string;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -73,7 +72,6 @@ export function DropDownItem({
       onClick={onClick}
       ref={ref}
       title={title}
-      aria-label={ariaLabel}
       type="button">
       {children}
     </button>
@@ -180,7 +178,6 @@ export default function DropDown({
   children,
   stopCloseOnClickSelf,
   className = '',
-  title,
 }: {
   disabled?: boolean;
   buttonAriaLabel?: string;
@@ -190,7 +187,6 @@ export default function DropDown({
   children: ReactNode;
   stopCloseOnClickSelf?: boolean;
   className?: string;
-  title?: string;
 }): JSX.Element {
   const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(null);
   const [showDropDown, setShowDropDown] = useState(false);
@@ -218,6 +214,7 @@ export default function DropDown({
       offset(dropDownPadding),
       flip({padding: 8}),
       shift({padding: 8}),
+      windowControlsClearance(),
     ],
   });
   const dismiss = useDismiss(context, {
@@ -248,7 +245,6 @@ export default function DropDown({
         type="button"
         disabled={disabled}
         aria-label={buttonAriaLabel || buttonLabel}
-        title={title}
         className={buttonClassName}
         ref={setReferenceRef}
         {...getReferenceProps({

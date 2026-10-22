@@ -15,15 +15,21 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type * as Y from 'yjs';
 import { MonacoCodeEditor } from './MonacoCodeEditor';
 import { createMonacoCollabBinding } from './monacoCollabBinding';
 import { waitForMonacoModel } from './monacoModelReady';
 import { useCollaborativeEditor } from '../extensions/useCollaborativeEditor';
 import type { EditorHost } from '../extensions/editorHost';
-import type { ConfigTheme } from '../editor';
+// Deep path, not the `../editor` barrel: that barrel is the Lexical editor's
+// entry point, and importing it here drags the whole Lexical tree into every
+// graph that contains Monaco -- including the web console, which loads Monaco
+// but deliberately does not ship Lexical's editor surface. `ConfigTheme` is a
+// string union in a leaf module, so there is nothing to gain by routing it
+// through the barrel.
+import type { Theme as ConfigTheme } from '../editor/EditorConfig';
 import type { editor as MonacoEditorType } from 'monaco-editor';
-import { useRuntimeTranslation } from '../ui/RuntimeTranslation';
 
 /**
  * Opt-in collaboration config for MonacoEditor. When provided AND the host
@@ -115,7 +121,7 @@ export function MonacoEditor({
   onGetContent: onGetContentProp,
   onDiffChangeCountUpdate,
 }: MonacoEditorProps): React.ReactElement {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const transformLoadContent = config.transformLoadContent;
   const transformSaveContent = config.transformSaveContent;
 
@@ -244,6 +250,7 @@ export function MonacoEditor({
         await host.saveContent(transformSaveContent?.(content) ?? content);
       } catch (error) {
         console.error('[MonacoEditor] Save failed:', error);
+        throw error;
       }
     };
 
@@ -312,7 +319,7 @@ export function MonacoEditor({
         height: '100%',
         color: 'var(--nim-text-muted)'
       }}>
-        <span>{t('editor:loading', 'Loading...')}</span>
+        <span>{t('loading')}</span>
       </div>
     );
   }
@@ -327,7 +334,7 @@ export function MonacoEditor({
         height: '100%',
         color: 'var(--nim-error)'
       }}>
-        <span>{t('editor:load_failed', 'Failed to load: {{error}}', { error: loadError.message })}</span>
+        <span>{t('load_failed', { error: loadError.message })}</span>
       </div>
     );
   }

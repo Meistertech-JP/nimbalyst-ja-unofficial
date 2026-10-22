@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { ExtensionManifest, ConfigurationProperty } from '@nimbalyst/runtime';
 
 interface ExtensionConfigPanelProps {

@@ -1,5 +1,7 @@
 # Release Quick Start
 
+This document is inherited upstream guidance and does not describe releases of the unofficial Japanese edition. For this edition's source-only preview policy, see [UNOFFICIAL_RELEASE.md](docs/UNOFFICIAL_RELEASE.md). Do not use the upstream release automation to publish packages from this repository.
+
 **TL;DR for making a release:**
 
 ## Step 1: Add Your Changes to CHANGELOG.md

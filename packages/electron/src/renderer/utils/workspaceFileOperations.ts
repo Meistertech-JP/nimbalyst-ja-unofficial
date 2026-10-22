@@ -5,7 +5,6 @@
  */
 
 import { errorNotificationService } from '../services/ErrorNotificationService';
-import { rendererI18n } from '../i18n';
 
 const LOG_CONFIG = {
   WORKSPACE_FILE_SELECT: false,
@@ -95,7 +94,7 @@ export async function handleWorkspaceFileSelect(options: FileSelectOptions): Pro
     // Handle error response from main process
     if ('error' in result) {
       errorNotificationService.showWarning(
-        rendererI18n.t('files:operations.cannot_open_file', { defaultValue: 'Cannot Open File' }),
+        errorNotificationService.getLocalizedText('files', 'operations.cannot_open_file', 'Cannot Open File'),
         (result as { error: string }).error,
         { duration: 5000 },
       );

@@ -72,11 +72,10 @@ function directionClasses(tagName: string, dir: Dir): string[] {
 function setDirection(node: Element, dir: Dir): void {
   const properties: Element['properties'] = { ...(node.properties || {}), dir };
   const existing = properties.className;
-  const existingValue: unknown = existing;
-  const classNames = Array.isArray(existingValue)
-    ? existingValue.map(String)
-    : typeof existingValue === 'string'
-      ? existingValue.split(/\s+/).filter(Boolean)
+  const classNames = Array.isArray(existing)
+    ? existing.map(String)
+    : typeof existing === 'string'
+      ? existing.split(/\s+/).filter(Boolean)
       : [];
 
   for (const className of directionClasses(node.tagName, dir)) {

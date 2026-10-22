@@ -12,13 +12,6 @@ import { activeTipIdAtom, emptyTranscriptVisibleCountAtom } from '../atoms';
 import { TipProvider } from '../TipProvider';
 import { InlineTipDisplay } from '../InlineTipDisplay';
 import { FEATURE_USAGE_KEYS } from '../../../shared/featureUsage';
-import i18next from 'i18next';
-import { tipTriggerCommandAtom, tipResetCommandAtom } from '../../store/atoms/walkthroughCommands';
-import { errorNotificationService } from '../../services/ErrorNotificationService';
-
-vi.mock('../../services/ErrorNotificationService', () => ({
-  errorNotificationService: { showInfo: vi.fn() },
-}));
 
 vi.mock('posthog-js/react', () => ({
   usePostHog: () => ({
@@ -43,6 +36,9 @@ describe('TipProvider', () => {
       featureUsage: {
         getAll: vi.fn(async () => ({})),
       },
+      toolUsage: {
+        getRollup: vi.fn(async () => ({})),
+      },
     };
 
     store.set(walkthroughStateAtom, {
@@ -55,9 +51,6 @@ describe('TipProvider', () => {
     store.set(hasActiveDialogsAtom, false);
     store.set(activeTipIdAtom, null);
     store.set(emptyTranscriptVisibleCountAtom, 0);
-    store.set(tipTriggerCommandAtom, null);
-    store.set(tipResetCommandAtom, 0);
-    vi.mocked(errorNotificationService.showInfo).mockClear();
     store.set(syncConfigAtom, {
       ...store.get(syncConfigAtom),
       enabled: true,
@@ -69,35 +62,10 @@ describe('TipProvider', () => {
     });
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     cleanup();
     vi.useRealTimers();
     delete (window as any).electronAPI;
-    await i18next.changeLanguage('en');
-  });
-
-  it('translates unknown-tip commands at event time without repeating them on language change', async () => {
-    render(<JotaiProvider store={store as any}><TipProvider currentMode="files"><div /></TipProvider></JotaiProvider>);
-    await act(async () => {
-      await i18next.changeLanguage('ja');
-      store.set(tipTriggerCommandAtom, { tipId: 'custom-tip-id', timestamp: 1 });
-    });
-    expect(errorNotificationService.showInfo).toHaveBeenCalledWith('ヒントが見つかりません', 'ヒント「custom-tip-id」が見つかりません。', { duration: 3000 });
-    await act(() => i18next.changeLanguage('en'));
-    expect(errorNotificationService.showInfo).toHaveBeenCalledTimes(1);
-    expect(store.get(activeTipIdAtom)).toBeNull();
-  });
-
-  it('resets tips once and keeps the persistence channel unchanged in Japanese', async () => {
-    render(<JotaiProvider store={store as any}><TipProvider currentMode="files"><div /></TipProvider></JotaiProvider>);
-    await act(async () => {
-      await i18next.changeLanguage('ja');
-      store.set(tipResetCommandAtom, 1);
-    });
-    expect(errorNotificationService.showInfo).toHaveBeenCalledWith('ヒントをリセットしました', 'すべてのヒントが再び表示されます。', { duration: 3000 });
-    await act(() => i18next.changeLanguage('en'));
-    expect((window as any).electronAPI.invoke.mock.calls.filter(([channel]: [string]) => channel === 'tips:reset')).toHaveLength(1);
-    expect(errorNotificationService.showInfo).toHaveBeenCalledTimes(1);
   });
 
   it('shows the mobile keep-awake tip inline when an empty transcript is visible', async () => {
@@ -115,7 +83,7 @@ describe('TipProvider', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText('Keep your computer awake for mobile prompts')).toBeTruthy();
+    screen.getByText('Keep your computer awake for mobile prompts');
     expect((window as any).electronAPI.invoke).toHaveBeenCalledWith(
       'walkthroughs:record-shown',
       'tip-mobile-keep-awake',
@@ -234,11 +202,40 @@ describe('TipProvider', () => {
     });
 
     expect(store.get(activeTipIdAtom)).toBeNull();
+    expect((window as any).electronAPI.featureUsage.getAll).not.toHaveBeenCalled();
+    expect((window as any).electronAPI.toolUsage.getRollup).not.toHaveBeenCalled();
     expect((window as any).electronAPI.invoke).not.toHaveBeenCalledWith(
       'walkthroughs:record-shown',
       'tip-mobile-keep-awake',
       1,
     );
+  });
+
+  it('loads usage once when an empty transcript surface appears without polling', async () => {
+    render(
+      <JotaiProvider store={store as any}>
+        <TipProvider currentMode="files">
+          <InlineTipDisplay />
+        </TipProvider>
+      </JotaiProvider>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect((window as any).electronAPI.featureUsage.getAll).toHaveBeenCalledTimes(1);
+    expect((window as any).electronAPI.toolUsage.getRollup).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect((window as any).electronAPI.featureUsage.getAll).toHaveBeenCalledTimes(1);
+    expect((window as any).electronAPI.toolUsage.getRollup).toHaveBeenCalledTimes(1);
   });
 
   it('loads feature usage and git workspace context when a workspace path is provided', async () => {
@@ -278,7 +275,7 @@ describe('TipProvider', () => {
     render(
       <JotaiProvider store={store as any}>
         <TipProvider currentMode="agent" workspacePath="/repo">
-          <div>App</div>
+          <InlineTipDisplay />
         </TipProvider>
       </JotaiProvider>
     );

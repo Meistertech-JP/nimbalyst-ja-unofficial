@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 type LogSource = 'renderer' | 'main' | 'build';
@@ -133,7 +133,7 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
   };
 
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString(i18n.resolvedLanguage, {
+    return new Date(timestamp).toLocaleTimeString(i18n.resolvedLanguage ?? i18n.language, {
       hour12: false,
       hour: '2-digit',
       minute: '2-digit',

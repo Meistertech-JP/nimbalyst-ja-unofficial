@@ -10,10 +10,9 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
-import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   prListAtom,
   prListLoadingAtom,
@@ -28,6 +27,7 @@ import { getPullRequestService } from '../../services/RendererPullRequestService
 import { PullRequestRow } from './PullRequestRow';
 import { getRecordStatus } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import { usePrTrackerReferences, useSessionCountsByTrackerItem } from './usePrTrackerContext';
+import { GithubListToolbar, type GithubListSortOption } from './GithubListToolbar';
 
 interface PullRequestListViewProps {
   workspaceId: string;
@@ -35,14 +35,18 @@ interface PullRequestListViewProps {
   isActive: boolean;
 }
 
-const SORT_OPTIONS: PrSortKey[] = ['updated', 'created', 'number'];
+const SORT_OPTIONS: GithubListSortOption<PrSortKey>[] = [
+  { id: 'updated', label: 'pull_request.sort.last_activity' },
+  { id: 'created', label: 'pull_request.sort.created' },
+  { id: 'number', label: 'pull_request.sort.number' },
+];
 
 export function PullRequestListView({
   workspaceId,
   remote,
   isActive,
 }: PullRequestListViewProps): JSX.Element {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('git');
   const layout = useAtomValue(prModeLayoutAtom);
   const setLayout = useSetAtom(setPrModeLayoutAtom);
   const ghStatus = useAtomValue(ghCliStatusAtom);
@@ -75,7 +79,7 @@ export function PullRequestListView({
       });
       setPrList(rows);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('common:pull_request.failed_load_list'));
+      setError(err instanceof Error ? err.message : t('pull_request.error'));
     } finally {
       setLoading(false);
     }
@@ -122,11 +126,6 @@ export function PullRequestListView({
     return rows;
   }, [prList, activeFilters, trackerStatusFilters, trackerReferences, ghStatus?.user, search, sortKey]);
 
-  const sortMenu = useFloatingMenu({ placement: 'bottom-end' });
-  const activeSortLabel = t(`common:pull_request.${
-    sortKey === 'updated' ? 'last_activity' : sortKey
-  }`);
-
   const handleSelect = useCallback(
     (id: string) => setLayout({ selectedItemId: id }),
     [setLayout],
@@ -138,73 +137,17 @@ export function PullRequestListView({
 
   return (
     <div className="pr-list flex flex-col h-full w-full overflow-hidden" data-testid="pr-list">
-      {/* Header: search + sort + refresh */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-nim shrink-0">
-        <div className="relative flex-1 min-w-0">
-          <MaterialSymbol
-            icon="search"
-            size={15}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-nim-faint pointer-events-none"
-          />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('common:pull_request.list_search')}
-            data-testid="pr-search-input"
-            className="nim-input w-full h-8 text-sm !py-0 !pl-7"
-          />
-        </div>
-
-        <button
-          ref={sortMenu.refs.setReference}
-          {...sortMenu.getReferenceProps()}
-          onClick={() => sortMenu.setIsOpen(!sortMenu.isOpen)}
-          className="flex items-center gap-1 h-8 px-2 text-xs text-nim-muted hover:text-nim border border-nim rounded transition-colors shrink-0"
-          data-testid="pr-sort-button"
-        >
-          <MaterialSymbol icon="sort" size={15} />
-          {activeSortLabel}
-        </button>
-        {sortMenu.isOpen && (
-          <FloatingPortal>
-            <div
-              ref={sortMenu.refs.setFloating}
-              style={sortMenu.floatingStyles}
-              {...sortMenu.getFloatingProps()}
-              className="z-50 min-w-[140px] bg-nim-secondary border border-nim rounded-md shadow-lg py-1"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-                    sortKey === opt ? 'text-nim bg-nim-active' : 'text-nim-muted hover:bg-nim-tertiary hover:text-nim'
-                  }`}
-                  onClick={() => {
-                    setLayout({ sortKey: opt });
-                    sortMenu.setIsOpen(false);
-                  }}
-                >
-                  {sortKey === opt && <MaterialSymbol icon="check" size={13} />}
-                  <span className={sortKey === opt ? '' : 'pl-[21px]'}>
-                    {t(`common:pull_request.${opt === 'updated' ? 'last_activity' : opt}`)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </FloatingPortal>
-        )}
-
-        <button
-          onClick={() => void runFetch()}
-          disabled={loading}
-          className="flex items-center justify-center w-8 h-8 text-nim-muted hover:text-nim border border-nim rounded transition-colors shrink-0 disabled:opacity-50"
-          title={t('common:pull_request.refresh')}
-          data-testid="pr-refresh-button"
-        >
-          <MaterialSymbol icon="refresh" size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
+      <GithubListToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('pull_request.search')}
+        sortOptions={SORT_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))}
+        sortKey={sortKey}
+        onSortChange={(key) => setLayout({ sortKey: key })}
+        onRefresh={() => void runFetch()}
+        loading={loading}
+        testIdPrefix="pr"
+      />
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
@@ -216,21 +159,19 @@ export function PullRequestListView({
               className="mt-1 text-xs text-nim-link hover:text-nim-link-hover hover:underline"
               onClick={() => void runFetch()}
             >
-              {t('common:pull_request.retry')}
+              {t('pull_request.retry')}
             </button>
           </div>
         ) : loading && prList.length === 0 ? (
           <div className="flex items-center justify-center gap-2 py-10 text-nim-muted text-sm">
             <div className="spinner w-5 h-5 border-[3px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-            {t('common:pull_request.loading_list')}
+            {t('pull_request.loading')}
           </div>
         ) : visibleRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-[60px] px-5 text-nim-faint gap-2">
             <MaterialSymbol icon="inbox" size={40} className="opacity-50" />
             <span className="text-sm text-center">
-              {hasActiveNarrowing
-                ? t('common:pull_request.no_match_filters')
-                : t('common:pull_request.no_pull_requests')}
+              {hasActiveNarrowing ? t('pull_request.no_matches') : t('pull_request.empty')}
             </span>
             {hasActiveNarrowing && (
               <button
@@ -240,7 +181,7 @@ export function PullRequestListView({
                   setLayout({ activeFilters: ['open'] });
                 }}
               >
-                {t('common:pull_request.clear_filters')}
+                {t('pull_request.clear_filters')}
               </button>
             )}
           </div>

@@ -6,9 +6,9 @@ import React, {
   useState,
 } from "react";
 import { useAtomValue } from "jotai";
-import { useTranslation } from "react-i18next";
 import { MaterialSymbol } from "@nimbalyst/runtime";
 import { VList } from "virtua";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import { isPathInWorkspace } from "../../../shared/pathUtils";
 import {
   sessionFileEditsAtom,
@@ -111,7 +111,7 @@ export function AgentReviewPanel({
   worktreePath,
   width,
 }: AgentReviewPanelProps) {
-  const { t } = useTranslation(['agents', 'git']);
+  const { t } = useTranslation("agents");
   const effectiveWorkspacePath = worktreePath || workspacePath;
   const reviewSessionId = activeSessionId || workstreamId;
   const workstreamSessions = useAtomValue(workstreamSessionsAtom(workstreamId));
@@ -304,7 +304,7 @@ export function AgentReviewPanel({
           unifiedDiff: "",
           isBinary: false,
           status,
-          error: error instanceof Error ? error.message : t('git:pull_request_files.failed_load_diff'),
+          error: error instanceof Error ? error.message : t("review.load_failed"),
         };
       }
     },
@@ -391,7 +391,7 @@ export function AgentReviewPanel({
           canSelectCurrent={Boolean(activeSessionId)}
         />
         <span className="ml-auto text-xs text-[var(--nim-text-faint)] shrink-0">
-          {t('agents:review.files', { count: reviewFiles.length })}
+          {t("review.files", { count: reviewFiles.length })}
         </span>
       </div>
 
@@ -399,7 +399,7 @@ export function AgentReviewPanel({
         {reviewFiles.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center text-[var(--nim-text-faint)]">
             <MaterialSymbol icon="check_circle" size={32} />
-            <span className="text-sm">{t('agents:review.no_files')}</span>
+            <span className="text-sm">{t("review.no_files")}</span>
           </div>
         ) : (
           <VList
@@ -458,11 +458,11 @@ function ReviewTargetDropdown({
   workstreamSessionCount: number;
   canSelectCurrent: boolean;
 }) {
-  const { t } = useTranslation(['agents', 'files']);
+  const { t } = useTranslation("agents");
   const menu = useFloatingMenu({ placement: "bottom-start" });
   const targetLabel = filterToCurrentSession
-    ? t('files:scope.current_session_only')
-    : t('files:scope.all_sessions', { count: workstreamSessionCount });
+    ? t("review.current_session")
+    : t("review.all_sessions", { count: workstreamSessionCount });
 
   return (
     <div className="workstream-review-target min-w-0">
@@ -485,7 +485,7 @@ function ReviewTargetDropdown({
             className="text-[var(--nim-text-muted)] shrink-0"
           />
           <span className="workstream-review-target__title text-sm font-medium text-[var(--nim-text)] truncate min-w-0">
-            {t('agents:review.title')}
+            {t("review.title")}
           </span>
           <MaterialSymbol
             icon="expand_more"
@@ -510,7 +510,7 @@ function ReviewTargetDropdown({
           >
             <div className="workstream-review-target__section px-3 py-2">
               <div className="workstream-review-target__section-header text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wide mb-1.5">
-                {t('agents:review.target')}
+                {t("review.target")}
               </div>
               <label className="workstream-review-target__option flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-[var(--nim-bg-hover)]">
                 <input
@@ -524,7 +524,7 @@ function ReviewTargetDropdown({
                   className="cursor-pointer"
                 />
                 <span className="text-xs text-[var(--nim-text)]">
-                  {t('files:scope.all_sessions', { count: workstreamSessionCount })}
+                  {t("review.all_sessions", { count: workstreamSessionCount })}
                 </span>
               </label>
               {canSelectCurrent && (
@@ -540,7 +540,7 @@ function ReviewTargetDropdown({
                     className="cursor-pointer"
                   />
                   <span className="text-xs text-[var(--nim-text)]">
-                    {t('files:scope.current_session_only')}
+                    {t("review.current_session")}
                   </span>
                 </label>
               )}
@@ -575,7 +575,7 @@ function ReviewFileSection({
   ) => void;
   onToggleCollapsed: (filePath: string) => void;
 }) {
-  const { t } = useTranslation('git');
+  const { t } = useTranslation("agents");
   useEffect(() => {
     if (!collapsed && !diff) {
       onEnsureDiff(filePath, status, sourceRevision);
@@ -632,7 +632,7 @@ function ReviewFileSection({
         <div className="agent-review-panel__diff overflow-x-auto bg-[var(--nim-bg)]">
           {!diff ? (
             <div className="px-4 py-6 text-xs text-[var(--nim-text-faint)]">
-              {t('pull_request_files.loading_diff')}
+              {t("review.loading_diff")}
             </div>
           ) : diff.error ? (
             <div className="px-4 py-6 text-xs text-[var(--nim-error)]">
@@ -640,7 +640,7 @@ function ReviewFileSection({
             </div>
           ) : diff.isBinary ? (
             <div className="px-4 py-6 text-xs text-[var(--nim-text-faint)]">
-              {t('pull_request_files.binary_no_diff')}
+              {t("review.binary_file")}
             </div>
           ) : (
             <InlineFileDiff

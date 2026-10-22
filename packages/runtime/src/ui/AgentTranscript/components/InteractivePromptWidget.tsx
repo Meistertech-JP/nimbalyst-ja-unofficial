@@ -13,15 +13,19 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { useAtom } from 'jotai';
 import type {
   PermissionRequestContent,
   PermissionResponseContent,
   AskUserQuestionRequestContent,
   AskUserQuestionResponseContent,
 } from '../../../ai/server/types';
+import {
+  clearInteractivePromptDraft,
+  interactivePromptDraftAtom,
+} from '../../../store/atoms/interactivePromptDraft';
 import { unwrapShellCommand } from '../utils/unwrapShellCommand';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
-import { getPermissionCaption, getPermissionWarningText } from './CustomToolWidgets/ToolPermissionWidget';
 
 // Inject interactive prompt styles once (for animations and color-mix patterns)
 const injectInteractivePromptStyles = () => {
@@ -88,8 +92,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
   onSubmit,
   isSubmitting,
 }) => {
-  const { t } = useRuntimeTranslation();
-  const patternDisplayName = getPermissionCaption(content.pattern, content.patternDisplayName, t);
+  const { t } = useTranslation('agents');
   const [showDetails, setShowDetails] = useState(false);
 
   if (content.status !== 'pending') {
@@ -101,7 +104,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
               <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('aichat:permission.resolved', 'Permission Resolved')}</span>
+          <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('interactive_prompt.permission_resolved')}</span>
         </div>
         <div className="interactive-prompt__command bg-[var(--nim-bg-tertiary)] rounded p-2 px-3 mb-3 overflow-x-auto">
           <code className="font-mono text-xs text-[var(--nim-text)] whitespace-pre-wrap break-all">{unwrapShellCommand(content.rawCommand || content.toolName)}</code>
@@ -128,12 +131,12 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
             </svg>
           )}
         </span>
-        <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('aichat:permission.allow_question', 'Allow this tool?')}</span>
+        <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('permission.allow_tool')}</span>
         <button
           className="interactive-prompt__details-toggle ml-auto text-xs text-[var(--nim-text-faint)] bg-transparent border-none cursor-pointer py-0.5 px-1.5 rounded hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)]"
           onClick={() => setShowDetails(!showDetails)}
         >
-          {showDetails ? t('settings:sync.hide_details', 'Hide details') : t('aichat:interactive.show_details', 'Show details')}
+          {showDetails ? t('interactive_prompt.hide_details') : t('interactive_prompt.show_details')}
         </button>
       </div>
 
@@ -146,7 +149,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
                 <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M8 5.5v3M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
-              <span>{getPermissionWarningText(warning, t)}</span>
+              <span>{warning}</span>
             </div>
           ))}
         </div>
@@ -161,12 +164,12 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
       {showDetails && (
         <div className="interactive-prompt__details bg-[var(--nim-bg-tertiary)] rounded p-2 px-3 mb-3">
           <div className="interactive-prompt__detail-row flex gap-2 text-xs py-0.5">
-            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('aichat:permission.tool', 'Tool:')}</span>
+            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('interactive_prompt.tool')}</span>
             <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{content.toolName}</span>
           </div>
           <div className="interactive-prompt__detail-row flex gap-2 text-xs py-0.5">
-            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('aichat:permission.pattern', 'Pattern:')}</span>
-            <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{patternDisplayName}</span>
+            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('permission.pattern')}</span>
+            <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{content.patternDisplayName}</span>
           </div>
         </div>
       )}
@@ -175,41 +178,44 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
       <div className="interactive-prompt__actions flex flex-wrap gap-2 mb-2">
         <button
           className="interactive-prompt__button interactive-prompt__button--deny px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-error)] hover:text-white hover:border-[var(--nim-error)] disabled:opacity-50 disabled:cursor-not-allowed"
+          autoFocus={content.defaultToNo === true}
           onClick={() => onSubmit('deny', 'once')}
           disabled={isSubmitting}
         >
-          {t('aichat:permission.deny', 'Deny')}
+          {t('permission.deny')}
         </button>
         <button
           className="interactive-prompt__button interactive-prompt__button--allow px-3 py-1.5 text-xs font-medium rounded-md border border-transparent cursor-pointer transition-all bg-[var(--nim-primary)] text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'once')}
           disabled={isSubmitting}
         >
-          {t('aichat:permission.allow_once', 'Allow Once')}
+          {t('permission.allow_once')}
         </button>
-        <div className="interactive-prompt__separator w-px bg-[var(--nim-border)] mx-1" />
-        <button
-          className="interactive-prompt__button interactive-prompt__button--session px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => onSubmit('allow', 'session')}
-          disabled={isSubmitting}
-          title={t('aichat:permission.session_title', 'Allow {{pattern}} for this session', { pattern: patternDisplayName })}
-        >
-          {t('aichat:permission.session', 'Session')}
-        </button>
-        <button
-          className="interactive-prompt__button interactive-prompt__button--always px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => onSubmit('allow', 'always')}
-          disabled={isSubmitting}
-          title={t('aichat:permission.save_settings', 'Save {{pattern}} to settings', { pattern: patternDisplayName })}
-        >
-          {t('aichat:permission.always', 'Always')}
-        </button>
+        {!content.suppressAlwaysAllowRule && <>
+          <div className="interactive-prompt__separator w-px bg-[var(--nim-border)] mx-1" />
+          <button
+            className="interactive-prompt__button interactive-prompt__button--session px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => onSubmit('allow', 'session')}
+            disabled={isSubmitting}
+            title={t('permission.allow_for_session', { pattern: content.patternDisplayName })}
+          >
+            {t('permission.session')}
+          </button>
+          <button
+            className="interactive-prompt__button interactive-prompt__button--always px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => onSubmit('allow', 'always')}
+            disabled={isSubmitting}
+            title={t('interactive_prompt.save_pattern_to_settings', { pattern: content.patternDisplayName })}
+          >
+            {t('permission.always')}
+          </button>
+        </>}
       </div>
 
       {/* Pattern info */}
-      <div className="interactive-prompt__pattern-info text-[11px] text-[var(--nim-text-faint)]">
-        {t('aichat:permission.allowed_pattern', 'Session/Always will allow:')}{' '}<span className="interactive-prompt__pattern-badge inline-block px-1.5 py-0.5 bg-[var(--nim-bg-tertiary)] rounded font-mono text-[10px]">{patternDisplayName}</span>
-      </div>
+      {!content.suppressAlwaysAllowRule && <div className="interactive-prompt__pattern-info text-[11px] text-[var(--nim-text-faint)]">
+        {t('permission.session_always_allow')} <span className="interactive-prompt__pattern-badge inline-block px-1.5 py-0.5 bg-[var(--nim-bg-tertiary)] rounded font-mono text-[10px]">{content.patternDisplayName}</span>
+      </div>}
     </div>
   );
 };
@@ -225,47 +231,76 @@ interface AskUserQuestionWidgetProps {
   isSubmitting?: boolean;
 }
 
+/**
+ * A question with no questionId gets a per-mount key so its draft never
+ * collides with another anonymous prompt's. Such a draft still dies on unmount
+ * (there is nothing stable to key it to), which is exactly today's behavior.
+ */
+let anonymousDraftKeySeq = 0;
+
 const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = ({
   content,
   onSubmit,
   onCancel,
   isSubmitting,
 }) => {
-  const { t } = useRuntimeTranslation();
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({});
-  const [otherText, setOtherText] = useState<Record<string, string>>({});
+  const { t } = useTranslation('agents');
+  const anonymousKeyRef = useRef<string | null>(null);
+  if (!content.questionId && !anonymousKeyRef.current) {
+    anonymousKeyRef.current = `anonymous-question-${++anonymousDraftKeySeq}`;
+  }
+  const draftKey = content.questionId || anonymousKeyRef.current!;
+
+  // Draft lives in a module-level jotai atomFamily so it survives the virtual
+  // scroller unmounting this row when it leaves the viewport (#1418). Selections
+  // and the "Other" toggle are held here too, not just the typed text.
+  const [draft, setDraft] = useAtom(interactivePromptDraftAtom(draftKey));
+  const { answers, otherSelected, otherText } = draft;
   const otherInputRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   const handleOptionSelect = useCallback((questionText: string, optionLabel: string, multiSelect: boolean) => {
-    if (!multiSelect) {
-      setOtherSelected(prev => ({ ...prev, [questionText]: false }));
-    }
-    setAnswers(prev => {
+    setDraft(prev => {
+      let nextAnswer: string;
       if (multiSelect) {
-        const current = prev[questionText] || '';
+        const current = prev.answers[questionText] || '';
         const selected = current.split(', ').filter(o => o.trim());
         const newSelected = selected.includes(optionLabel)
           ? selected.filter(o => o !== optionLabel)
           : [...selected, optionLabel];
-        return { ...prev, [questionText]: newSelected.join(', ') };
+        nextAnswer = newSelected.join(', ');
+      } else {
+        nextAnswer = optionLabel;
       }
-      return { ...prev, [questionText]: optionLabel };
+      return {
+        ...prev,
+        answers: { ...prev.answers, [questionText]: nextAnswer },
+        otherSelected: multiSelect
+          ? prev.otherSelected
+          : { ...prev.otherSelected, [questionText]: false },
+      };
     });
-  }, []);
+  }, [setDraft]);
 
   const handleOtherToggle = useCallback((questionText: string, multiSelect: boolean) => {
     const isCurrentlyOther = otherSelected[questionText];
-    if (!multiSelect) {
-      setAnswers(prev => ({ ...prev, [questionText]: '' }));
-    }
-    setOtherSelected(prev => ({ ...prev, [questionText]: !isCurrentlyOther }));
+    setDraft(prev => ({
+      ...prev,
+      answers: multiSelect ? prev.answers : { ...prev.answers, [questionText]: '' },
+      otherSelected: { ...prev.otherSelected, [questionText]: !isCurrentlyOther },
+    }));
     if (!isCurrentlyOther) {
       setTimeout(() => {
         otherInputRefs.current[questionText]?.focus();
       }, 0);
     }
-  }, [otherSelected]);
+  }, [otherSelected, setDraft]);
+
+  const handleOtherTextChange = useCallback((questionText: string, value: string) => {
+    setDraft(prev => ({
+      ...prev,
+      otherText: { ...prev.otherText, [questionText]: value },
+    }));
+  }, [setDraft]);
 
   const handleSubmit = useCallback(() => {
     // Build final answers incorporating "Other" text
@@ -301,7 +336,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
               <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className="interactive-prompt__title">{t('aichat:questions.answered_title', 'Questions Answered')}</span>
+          <span className="interactive-prompt__title">{t('interactive_prompt.questions_answered')}</span>
         </div>
       </div>
     );
@@ -317,7 +352,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             <path d="M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </span>
-        <span className="interactive-prompt__title">{t('aichat:questions.claude_has_questions', 'Claude has questions for you')}</span>
+        <span className="interactive-prompt__title">{t('interactive_prompt.questions_title')}</span>
       </div>
 
       <div className="interactive-prompt__questions">
@@ -326,7 +361,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             <div className="interactive-prompt__question-header">
               <span className="interactive-prompt__question-chip">{question.header}</span>
               {question.multiSelect && (
-                <span className="interactive-prompt__multi-hint">{t('aichat:questions.select_multiple', 'Select multiple')}</span>
+                <span className="interactive-prompt__multi-hint">{t('interactive_prompt.select_multiple')}</span>
               )}
             </div>
             <div className="interactive-prompt__question-text">
@@ -378,20 +413,20 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
                       </svg>
                     )}
                   </div>
-                  <span className="interactive-prompt__option-label">{t('aichat:questions.other', 'Other')}</span>
+                  <span className="interactive-prompt__option-label">{t('interactive_prompt.other')}</span>
                 </button>
                 {otherSelected[question.question] && (
                   <textarea
                     ref={(el) => { otherInputRefs.current[question.question] = el; }}
                     value={otherText[question.question] || ''}
-                    onChange={(e) => setOtherText(prev => ({ ...prev, [question.question]: e.target.value }))}
+                    onChange={(e) => handleOtherTextChange(question.question, e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && allAnswered) {
                         e.preventDefault();
                         handleSubmit();
                       }
                     }}
-                    placeholder={t('aichat:questions.answer_placeholder', 'Type your answer...')}
+                    placeholder={t('interactive_prompt.answer_placeholder')}
                     disabled={isSubmitting}
                     rows={2}
                     style={{
@@ -419,7 +454,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
           onClick={handleSubmit}
           disabled={isSubmitting || !allAnswered}
         >
-          {isSubmitting ? t('aichat:interactive.submitting', 'Submitting...') : t('aichat:questions.submit_answers', 'Submit Answers')}
+          {isSubmitting ? t('interactive_prompt.submitting') : t('interactive_prompt.submit_answers')}
         </button>
         {onCancel && (
           <button
@@ -427,7 +462,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            {t('common:cancel', 'Cancel')}
+            {t('interactive_prompt.cancel')}
           </button>
         )}
       </div>
@@ -469,6 +504,8 @@ export const InteractivePromptWidget: React.FC<InteractivePromptWidgetProps> = (
       respondedAt: Date.now(),
       respondedBy: isMobile ? 'mobile' : 'desktop',
     };
+    // Resolved: drop the draft atom so answered questions don't leak atoms.
+    if (questionContent.questionId) clearInteractivePromptDraft(questionContent.questionId);
     onSubmitResponse(response);
   }, [content, isMobile, onSubmitResponse]);
 
@@ -482,6 +519,7 @@ export const InteractivePromptWidget: React.FC<InteractivePromptWidgetProps> = (
       respondedAt: Date.now(),
       respondedBy: isMobile ? 'mobile' : 'desktop',
     };
+    if (questionContent.questionId) clearInteractivePromptDraft(questionContent.questionId);
     if (onCancelQuestion) {
       onCancelQuestion(response);
     } else {

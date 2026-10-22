@@ -4,7 +4,7 @@
 
 import type { JSX } from 'react';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface PlanFiltersProps {
   searchTerm: string;
@@ -27,24 +27,24 @@ export function PlanFilters({
   hideCompleted,
   onHideCompletedChange
 }: PlanFiltersProps): JSX.Element {
-  const { t } = useTranslation('tracker');
+  const { t } = useTranslation('tracker', { keyPrefix: 'plans' });
   const statusOptions = [
-    { value: 'all', label: t('plans.status_all') },
-    { value: 'draft', label: t('plans.status_draft') },
-    { value: 'ready-for-development', label: t('plans.status_ready') },
-    { value: 'in-development', label: t('plans.status_in_dev') },
-    { value: 'in-review', label: t('plans.status_review') },
-    { value: 'completed', label: t('plans.status_done') },
-    { value: 'blocked', label: t('plans.status_blocked') },
-    { value: 'rejected', label: t('plans.status_rejected') },
+    { value: 'all', label: t('status_all') },
+    { value: 'draft', label: t('status_draft') },
+    { value: 'ready-for-development', label: t('status_ready') },
+    { value: 'in-development', label: t('status_in_dev') },
+    { value: 'in-review', label: t('status_review') },
+    { value: 'completed', label: t('status_done') },
+    { value: 'blocked', label: t('status_blocked') },
+    { value: 'rejected', label: t('status_rejected') },
   ];
 
   const priorityOptions = [
-    { value: 'all', label: t('plans.priority_all') },
-    { value: 'critical', label: t('plans.priority_critical') },
-    { value: 'high', label: t('plans.priority_high') },
-    { value: 'medium', label: t('plans.priority_medium') },
-    { value: 'low', label: t('plans.priority_low') },
+    { value: 'all', label: t('priority_all') },
+    { value: 'critical', label: t('priority_critical') },
+    { value: 'high', label: t('priority_high') },
+    { value: 'medium', label: t('priority_medium') },
+    { value: 'low', label: t('priority_low') },
   ];
 
   return (
@@ -56,7 +56,7 @@ export function PlanFilters({
         <input
           type="text"
           className="plan-search-input w-full py-2 pr-8 pl-9 border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg)] text-[var(--nim-text)] text-[13px] outline-none transition-colors duration-150 placeholder:text-[var(--nim-text-faint)] focus:border-[var(--nim-border-focus)]"
-          placeholder={t('plans.search')}
+          placeholder={t('search')}
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
         />
@@ -64,7 +64,7 @@ export function PlanFilters({
           <button
             className="plan-search-clear absolute right-1.5 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-1 flex items-center justify-center text-[var(--nim-text-faint)] rounded transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] [&_.material-symbols-outlined]:text-base"
             onClick={() => onSearchChange('')}
-            aria-label={t('plans.clear_search')}
+            aria-label={t('clear_search')}
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -104,7 +104,7 @@ export function PlanFilters({
             checked={hideCompleted}
             onChange={(e) => onHideCompletedChange(e.target.checked)}
           />
-          <span>{t('plans.hide_completed')}</span>
+          <span>{t('hide_completed')}</span>
         </label>
       </div>
     </div>

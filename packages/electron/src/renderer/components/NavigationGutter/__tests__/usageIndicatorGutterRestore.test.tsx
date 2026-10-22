@@ -9,9 +9,11 @@
  * the same gutter-customization atom the restore UI reads.
  */
 import React from 'react';
-import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, afterEach, beforeAll, vi } from 'vitest';
+import { render, cleanup, fireEvent, screen } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 import { hiddenGutterItemsAtom } from '../../../store/atoms/appSettings';
 import { canHideGutterItem, type GutterItemMeta } from '../navGutterItems';
@@ -40,14 +42,71 @@ import { geminiUsageAtom } from '../../../store/atoms/geminiUsageAtoms';
 import { ClaudeUsagePopover } from '../../ClaudeUsageIndicator/ClaudeUsagePopover';
 import { CodexUsagePopover } from '../../CodexUsageIndicator/CodexUsagePopover';
 import { GeminiUsagePopover } from '../../GeminiUsageIndicator/GeminiUsagePopover';
+import { GeminiUsageIndicator } from '../../GeminiUsageIndicator/GeminiUsageIndicator';
 
 afterEach(() => cleanup());
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderUsagePopover(store: ReturnType<typeof createStore>, children: React.ReactNode) {
+  return render(
+    <I18nextProvider i18n={englishI18n}>
+      <Provider store={store}>{children}</Provider>
+    </I18nextProvider>,
+  );
+}
+
+it('localizes Gemini usage tooltips in Japanese', async () => {
+  const i18n = await createI18nInstance('ja');
+  const store = createStore();
+  store.set(geminiUsageAtom, {
+    fiveHour: { utilization: 1, resetsAt: null },
+    sevenDay: { utilization: 0, resetsAt: null },
+    lastUpdated: 1,
+    notStarted: true,
+  });
+
+  render(
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}>
+        <GeminiUsageIndicator />
+      </Provider>
+    </I18nextProvider>,
+  );
+
+  expect(screen.getByTitle('最初のリクエスト後にGeminiの使用量が表示されます')).toBeDefined();
+});
 
 function noopRef() {
   return { current: null } as React.RefObject<HTMLElement | null>;
 }
 
 describe('usage popover "Disable" hides via the gutter customization atom', () => {
+  it('shows model percent used including unused limits without duplicating legacy Opus', () => {
+    const store = createStore();
+    store.set(claudeUsageAtom, {
+      fiveHour: { utilization: 55, resetsAt: null },
+      sevenDay: { utilization: 73, resetsAt: null },
+      sevenDayOpus: { utilization: 10, resetsAt: null },
+      weeklyModelLimits: [
+        { model: 'Fable', utilization: 86, resetsAt: null },
+        { model: 'Opus', utilization: 0, resetsAt: null },
+      ],
+      lastUpdated: Date.now(),
+    });
+    const { getByText, getAllByText } = renderUsagePopover(
+      store,
+      <ClaudeUsagePopover anchorRef={noopRef()} onClose={() => {}} onRefresh={async () => {}} />,
+    );
+    getByText('86%');
+    getByText('0%');
+    expect(getAllByText('Opus (Weekly)')).toHaveLength(1);
+  });
+
   it('ClaudeUsagePopover Disable adds claude-usage to hiddenGutterItemsAtom', () => {
     const store = createStore();
     store.set(claudeUsageAtom, {
@@ -56,10 +115,9 @@ describe('usage popover "Disable" hides via the gutter customization atom', () =
       lastUpdated: Date.now(),
     });
 
-    const { getByText } = render(
-      <Provider store={store}>
-        <ClaudeUsagePopover anchorRef={noopRef()} onClose={() => {}} onRefresh={async () => {}} />
-      </Provider>,
+    const { getByText } = renderUsagePopover(
+      store,
+      <ClaudeUsagePopover anchorRef={noopRef()} onClose={() => {}} onRefresh={async () => {}} />,
     );
 
     expect(store.get(hiddenGutterItemsAtom)).not.toContain('claude-usage');
@@ -77,10 +135,9 @@ describe('usage popover "Disable" hides via the gutter customization atom', () =
       lastUpdated: Date.now(),
     });
 
-    const { getByText } = render(
-      <Provider store={store}>
-        <CodexUsagePopover anchorRef={noopRef()} onClose={() => {}} onRefresh={async () => {}} />
-      </Provider>,
+    const { getByText } = renderUsagePopover(
+      store,
+      <CodexUsagePopover anchorRef={noopRef()} onClose={() => {}} onRefresh={async () => {}} />,
     );
 
     expect(store.get(hiddenGutterItemsAtom)).not.toContain('codex-usage');
@@ -96,10 +153,9 @@ describe('usage popover "Disable" hides via the gutter customization atom', () =
       lastUpdated: Date.now(),
     });
 
-    const { getByText } = render(
-      <Provider store={store}>
-        <GeminiUsagePopover anchorRef={noopRef()} onClose={() => {}} onRefresh={async () => {}} />
-      </Provider>,
+    const { getByText } = renderUsagePopover(
+      store,
+      <GeminiUsagePopover anchorRef={noopRef()} onClose={() => {}} onRefresh={async () => {}} />,
     );
 
     expect(store.get(hiddenGutterItemsAtom)).not.toContain('gemini-usage');

@@ -21,6 +21,10 @@ public final class NotificationManager: NSObject, ObservableObject {
     @Published public var deviceToken: String?
     /// Set when the user taps a push notification. Views observe this to deep-link.
     @Published public var pendingSessionId: String?
+    /// Reserved push key for a team console page (`/org/<org>/project/<p>/...`).
+    /// Nothing sends it yet; when TeamInboxRoom pushes do, the key and its
+    /// fixture land on desktop, iOS and Android together.
+    public static let consolePathKey = "consolePath"
 
     /// Callback to send the push token to the server. Set by SyncManager.
     public var onTokenReceived: ((String) -> Void)?
@@ -51,6 +55,17 @@ public final class NotificationManager: NSObject, ObservableObject {
         UNUserNotificationCenter.current().delegate = self
         // If already authorized from a previous launch, re-register for the APNs token
         checkAndReregister()
+    }
+
+    /// Claim the notification-center delegate before the app finishes launching.
+    ///
+    /// iOS only delivers the tap that launched the app if the delegate is set
+    /// during `didFinishLaunchingWithOptions`. Relying on this singleton being
+    /// created lazily by the first view that observes it puts delegate
+    /// assignment after scene setup, where the launch response is dropped and a
+    /// notification tap does nothing at all. Call this from the app delegate.
+    public static func registerAsNotificationCenterDelegate() {
+        _ = NotificationManager.shared
     }
 
     /// If push permission was previously granted, re-register for remote notifications
@@ -217,6 +232,8 @@ extension NotificationManager: @preconcurrency UNUserNotificationCenterDelegate 
         logger.info("Notification tapped: \(userInfo)")
         if let sessionId = userInfo["sessionId"] as? String {
             pendingSessionId = sessionId
+        } else if let consolePath = userInfo[Self.consolePathKey] as? String {
+            ConsoleLinkInbox.shared.open(path: consolePath)
         }
         completionHandler()
     }

@@ -6,12 +6,24 @@
  * subscribes to `trackerSyncRejectionAtom`, which is populated by
  * `trackerSyncListeners` on `tracker-sync:mutation-rejected` events.
  *
- * Two states, distinct affordances:
- * - `rotationLocked`: team is mid-rotation; writes will resume in a
- *   moment. Auto-clears 30s after the last event.
- * - `staleKeyEpoch` with `refreshKey -> null`: the user's admin hasn't
- *   shared the new envelope yet. Persistent until cleared; "Retry"
- *   triggers `tracker-sync:connect` which re-fetches the org key.
+ * States, distinct affordances:
+ * - `custodyUnavailable`: the server could not load the team DEK -- the
+ *   organization's encryption was never migrated to server-managed
+ *   custody, so writes are refused. Persistent until dismissed.
+ * - `rotationLocked` (legacy, old servers only): team is mid-rotation;
+ *   writes will resume in a moment. Auto-clears 30s after the last event.
+ * - `staleKeyEpoch` (legacy, old servers only) with `refreshKey -> null`:
+ *   the user's admin hasn't shared the new envelope yet. Persistent until
+ *   cleared; "Retry" triggers `tracker-sync:connect` which re-fetches the
+ *   org key.
+ *
+ * It also surfaces a `drainHold` (`trackerSyncDrainHoldAtom`), which is not a
+ * rejection: nothing was refused and no edit rolled back. The socket is
+ * `connected` and the CLIENT declined to push, because it could not resolve the
+ * tracker's sharing policy and would otherwise have deleted previously shared
+ * items from the room on a guess (NIM-2968). It shares this banner because the
+ * user-visible consequence is identical -- your changes are not reaching your
+ * team -- and it self-clears on the next drain that completes.
  *
  * No button-gating: the mutation surface stays available so the user
  * can keep trying. The banner itself is the explanation for any
@@ -19,31 +31,38 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
-import { trackerSyncRejectionAtom } from '../../store/atoms/trackerSync';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { trackerSyncDrainHoldAtom, trackerSyncRejectionAtom } from '../../store/atoms/trackerSync';
 
 interface TrackerSyncRejectionBannerProps {
   workspacePath?: string;
 }
 
 export const TrackerSyncRejectionBanner: React.FC<TrackerSyncRejectionBannerProps> = ({ workspacePath }) => {
-  const { t } = useTranslation(['tracker']);
+  const { t } = useTranslation('tracker');
   const state = useAtomValue(trackerSyncRejectionAtom);
   const setRejection = useSetAtom(trackerSyncRejectionAtom);
+  const drainHoldState = useAtomValue(trackerSyncDrainHoldAtom);
+
+  const drainHold = drainHoldState
+    && (!workspacePath || drainHoldState.workspacePath === workspacePath)
+    ? drainHoldState
+    : null;
 
   // Filter to this workspace -- the listener stores rejections globally
   // (mutation-rejected is broadcast to all windows). A user with multiple
   // workspaces open shouldn't see a peer workspace's banner.
   const active = useMemo(() => {
-    const candidates = [state.staleKeyEpoch, state.rotationLocked].filter(
+    const candidates = [state.custodyUnavailable, state.staleKeyEpoch, state.rotationLocked].filter(
       (r): r is NonNullable<typeof r> => r != null && (!workspacePath || r.workspacePath === workspacePath),
     );
     if (candidates.length === 0) return null;
-    // Show the most recent. staleKeyEpoch needs explicit user action,
-    // rotationLocked auto-clears -- if both are present at once,
-    // staleKeyEpoch wins because it's the one that won't disappear.
+    // Priority: custodyUnavailable and staleKeyEpoch need explicit user
+    // action and won't disappear on their own; rotationLocked auto-clears.
+    const custody = candidates.find((r) => r.code === 'custodyUnavailable');
+    if (custody) return custody;
     const stale = candidates.find((r) => r.code === 'staleKeyEpoch');
     if (stale) return stale;
     return candidates[0];
@@ -66,9 +85,41 @@ export const TrackerSyncRejectionBanner: React.FC<TrackerSyncRejectionBannerProp
     setRejection((prev) => ({ ...prev, [active.code]: null }));
   }, [active, setRejection]);
 
+  // A hold means nothing is syncing at all, which outranks a per-item
+  // rejection. Not dismissible: it is a live state, not a past event, and it
+  // clears itself as soon as a drain completes.
+  if (drainHold) {
+    return (
+      <div
+        className="tracker-sync-rejection-banner flex items-center gap-2 px-3 py-2 border-b border-nim bg-nim-tertiary text-xs text-nim shrink-0"
+        role="status"
+        data-testid="tracker-sync-drain-hold-banner"
+        data-drain-hold-reason={drainHold.reason}
+      >
+        <MaterialSymbol icon="cloud_off" size={16} className="text-nim-warning" />
+        <span className="flex-1">
+          {t(drainHold.rowsHeldBack === 1 ? 'sync.drain_hold_one' : 'sync.drain_hold_many', {
+            count: drainHold.rowsHeldBack,
+          })}
+          {' '}
+          {t('sync.drain_hold_details')}
+        </span>
+        <button
+          type="button"
+          className="px-2 py-0.5 rounded border border-nim text-nim-muted hover:bg-nim hover:text-nim transition-colors"
+          onClick={handleRetry}
+          data-testid="tracker-sync-drain-hold-retry"
+        >
+          {t('sync.try_again')}
+        </button>
+      </div>
+    );
+  }
+
   if (!active) return null;
 
   const isRotation = active.code === 'rotationLocked';
+  const isCustodyUnavailable = active.code === 'custodyUnavailable';
 
   return (
     <div
@@ -77,22 +128,33 @@ export const TrackerSyncRejectionBanner: React.FC<TrackerSyncRejectionBannerProp
       data-testid="tracker-sync-rejection-banner"
       data-rejection-code={active.code}
     >
-      {isRotation ? (
+      {isCustodyUnavailable ? (
+        <>
+          <MaterialSymbol icon="key_off" size={16} className="text-nim-warning" />
+          <span className="flex-1">
+            {t('sync.custody_unavailable')}
+          </span>
+        </>
+      ) : isRotation ? (
         <>
           <MaterialSymbol icon="sync" size={16} className="text-nim-faint animate-spin" />
-          <span className="flex-1">{t('tracker:sync.key_rotation')}</span>
+          <span className="flex-1">
+            {t('sync.key_rotation')}
+          </span>
         </>
       ) : (
         <>
           <MaterialSymbol icon="key_off" size={16} className="text-nim-warning" />
-          <span className="flex-1">{t('tracker:sync.key_changed')}</span>
+          <span className="flex-1">
+            {t('sync.key_changed')}
+          </span>
           <button
             type="button"
             className="px-2 py-0.5 rounded border border-nim text-nim-muted hover:bg-nim hover:text-nim transition-colors"
             onClick={handleRetry}
             data-testid="tracker-sync-rejection-retry"
           >
-            {t('tracker:sync.check_again')}
+            {t('sync.check_again')}
           </button>
         </>
       )}
@@ -100,7 +162,7 @@ export const TrackerSyncRejectionBanner: React.FC<TrackerSyncRejectionBannerProp
         type="button"
         className="text-nim-faint hover:text-nim p-0.5"
         onClick={handleDismiss}
-        aria-label={t('tracker:detail.dismiss')}
+        aria-label={t('sync.dismiss')}
         data-testid="tracker-sync-rejection-dismiss"
       >
         <MaterialSymbol icon="close" size={14} />

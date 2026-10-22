@@ -6,18 +6,17 @@
  */
 
 import React, { useEffect, RefObject } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { ProviderIcon } from '@nimbalyst/runtime/ui/icons/ProviderIcons';
 import {
   claudeUsageAtom,
   claudeUsageSessionColorAtom,
   claudeUsageWeeklyColorAtom,
-  formatResetTime,
 } from '../../store/atoms/claudeUsageAtoms';
 import { toggleGutterItemHiddenAtom } from '../../store/atoms/appSettings';
 import { useFloatingMenu, FloatingPortal } from '../../hooks/useFloatingMenu';
-import { formatUsageLastUpdated, localizeUsageResetTime } from './usagePresentation';
 
 interface ClaudeUsagePopoverProps {
   anchorRef: RefObject<HTMLElement | null>;
@@ -59,7 +58,7 @@ const UsageSection: React.FC<UsageSectionProps> = ({
   color,
   windowDurationMs,
 }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
   const colorClasses: Record<string, { text: string; bar: string }> = {
     green: { text: 'text-green-500', bar: 'bg-green-500' },
     yellow: { text: 'text-yellow-500', bar: 'bg-yellow-500' },
@@ -72,7 +71,7 @@ const UsageSection: React.FC<UsageSectionProps> = ({
   const isOverPacing = utilization > timeElapsedPercent;
 
   return (
-    <div className="mb-4 last:mb-0">
+    <div className="claude-usage-section mb-4 last:mb-0">
       <div className="flex justify-between items-baseline mb-1">
         <div>
           <div className="text-[13px] font-semibold text-nim">{title}</div>
@@ -80,6 +79,7 @@ const UsageSection: React.FC<UsageSectionProps> = ({
         </div>
         <div className={`text-[16px] font-semibold ${colors.text}`}>
           {Math.round(utilization)}%
+          <span className="block text-[10px] font-normal text-right">{t('usage_indicator.usage')}</span>
         </div>
       </div>
       <div className="relative h-1.5 bg-nim-tertiary rounded-full overflow-hidden mb-1.5">
@@ -92,12 +92,12 @@ const UsageSection: React.FC<UsageSectionProps> = ({
         <div
           className={`absolute top-0 h-full w-0.5 transition-all duration-300 ${isOverPacing ? 'bg-red-400' : 'bg-nim-text-muted'}`}
           style={{ left: `${timeElapsedPercent}%` }}
-          title={t('common:usage_indicator.pace_elapsed', { percent: Math.round(timeElapsedPercent) })}
+          title={t('usage_indicator.pace_elapsed', { percent: Math.round(timeElapsedPercent) })}
         />
       </div>
       <div className="flex items-center gap-1 text-[11px] text-nim-muted">
         <MaterialSymbol icon="schedule" size={12} className="opacity-70" />
-        <span>{t('common:usage_indicator.resets_in', { time: localizeUsageResetTime(formatResetTime(resetsAt), t) })}</span>
+        <span>{t('usage_indicator.resets_in', { time: formatReset(resetsAt, t) })}</span>
       </div>
     </div>
   );
@@ -108,7 +108,7 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
   onClose,
   onRefresh,
 }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
   const usage = useAtomValue(claudeUsageAtom);
   const sessionColor = useAtomValue(claudeUsageSessionColorAtom);
   const weeklyColor = useAtomValue(claudeUsageWeeklyColorAtom);
@@ -147,28 +147,28 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
         ref={menu.refs.setFloating}
         style={menu.floatingStyles}
         {...menu.getFloatingProps()}
-        className="w-60 bg-nim-secondary border border-nim rounded-lg shadow-lg z-50 overflow-y-auto"
+        className="claude-usage-popover w-60 bg-nim-secondary border border-nim rounded-lg shadow-lg z-50 overflow-y-auto"
         data-testid="claude-usage-popover"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-nim">
           <div className="flex items-center gap-2">
             <ProviderIcon provider="claude-code" size={18} className="shrink-0 text-amber-500" />
-            <span className="text-[14px] font-semibold text-nim">{t('common:usage_indicator.claude_title')}</span>
+            <span className="text-[14px] font-semibold text-nim">{t('usage_indicator.claude_title')}</span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
               className="p-1 rounded hover:bg-nim-tertiary text-nim-muted hover:text-nim transition-colors disabled:opacity-50"
-              aria-label={t('common:usage_indicator.refresh')}
+              aria-label={t('usage_indicator.refresh')}
             >
               <MaterialSymbol icon="refresh" size={14} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={onClose}
               className="p-1 rounded hover:bg-nim-tertiary text-nim-muted hover:text-nim transition-colors"
-              aria-label={t('common:usage_indicator.close')}
+              aria-label={t('usage_indicator.close')}
             >
               <MaterialSymbol icon="close" size={14} />
             </button>
@@ -182,25 +182,37 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
           ) : (
             <>
               <UsageSection
-                title={t('common:usage_indicator.session')}
-                subtitle={t('common:usage_indicator.five_hour')}
+                title={t('usage_indicator.session')}
+                subtitle={t('usage_indicator.window_hour', { count: 5 })}
                 utilization={usage.fiveHour.utilization}
                 resetsAt={usage.fiveHour.resetsAt}
                 color={sessionColor as 'green' | 'yellow' | 'red' | 'muted'}
                 windowDurationMs={5 * 60 * 60 * 1000} // 5 hours
               />
               <UsageSection
-                title={t('common:usage_indicator.weekly')}
-                subtitle={t('common:usage_indicator.seven_day')}
+                title={t('usage_indicator.weekly')}
+                subtitle={t('usage_indicator.window_day', { count: 7 })}
                 utilization={usage.sevenDay.utilization}
                 resetsAt={usage.sevenDay.resetsAt}
                 color={weeklyColor as 'green' | 'yellow' | 'red' | 'muted'}
                 windowDurationMs={7 * 24 * 60 * 60 * 1000} // 7 days
               />
-              {usage.sevenDayOpus && usage.sevenDayOpus.utilization > 0 && (
+              {usage.weeklyModelLimits?.map((limit, index) => (
                 <UsageSection
-                  title={t('common:usage_indicator.opus_weekly')}
-                  subtitle={t('common:usage_indicator.seven_day')}
+                  key={`${limit.model}-${index}`}
+                  title={`${limit.model} (${t('usage_indicator.weekly')})`}
+                  subtitle={t('usage_indicator.window_day', { count: 7 })}
+                  utilization={limit.utilization}
+                  resetsAt={limit.resetsAt}
+                  color={limit.utilization >= 80 ? 'red' : limit.utilization >= 50 ? 'yellow' : 'green'}
+                  windowDurationMs={7 * 24 * 60 * 60 * 1000}
+                />
+              ))}
+              {usage.sevenDayOpus && usage.sevenDayOpus.utilization > 0 &&
+                !usage.weeklyModelLimits?.some(limit => limit.model.toLowerCase() === 'opus') && (
+                <UsageSection
+                  title={t('usage_indicator.opus_weekly')}
+                  subtitle={t('usage_indicator.window_day', { count: 7 })}
                   utilization={usage.sevenDayOpus.utilization}
                   resetsAt={usage.sevenDayOpus.resetsAt}
                   color={
@@ -222,7 +234,7 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
           <div className="flex items-center justify-between">
             {usage.lastUpdated && (
               <span className="text-[10px] text-nim-faint">
-                {t('common:usage_indicator.updated', { time: formatUsageLastUpdated(usage.lastUpdated, t) })}
+                {t('usage_indicator.updated', { time: formatLastUpdated(usage.lastUpdated, t) })}
               </span>
             )}
             <button
@@ -232,7 +244,7 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
               }}
               className="text-[11px] text-nim-muted hover:text-nim transition-colors"
             >
-              {t('common:usage_indicator.disable')}
+              {t('usage_indicator.disable')}
             </button>
           </div>
           <button
@@ -240,10 +252,39 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
             className="flex items-center gap-1 text-[11px] text-nim-muted hover:text-nim transition-colors"
           >
             <MaterialSymbol icon="open_in_new" size={12} />
-            <span>{t('common:usage_indicator.anthropic_status')}</span>
+            <span>{t('usage_indicator.anthropic_status')}</span>
           </button>
         </div>
       </div>
     </FloatingPortal>
   );
 };
+
+function formatLastUpdated(timestamp: number, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+
+  if (diffSeconds < 60) {
+    return t('usage_indicator.just_now');
+  }
+  if (diffMinutes < 60) {
+    return t('usage_indicator.minutes_ago', { count: diffMinutes });
+  }
+  const diffHours = Math.floor(diffMinutes / 60);
+  return t('usage_indicator.hours_ago', { count: diffHours });
+}
+
+function formatReset(resetsAt: string | null, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (!resetsAt) return t('usage_indicator.reset_unknown');
+  const diffMs = new Date(resetsAt).getTime() - Date.now();
+  if (diffMs <= 0) return t('usage_indicator.reset_now');
+  const totalMinutes = Math.floor(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return t('usage_indicator.reset_days_hours', { days, hours });
+  if (hours > 0) return t('usage_indicator.reset_hours_minutes', { hours, minutes });
+  return t('usage_indicator.reset_minutes', { minutes });
+}

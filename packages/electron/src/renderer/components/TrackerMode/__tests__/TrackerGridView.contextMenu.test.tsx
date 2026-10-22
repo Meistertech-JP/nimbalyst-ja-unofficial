@@ -5,30 +5,18 @@
  * cell range, which these cover: a right-click inside the range acts on every
  * row in it, and a right-click outside it acts on the clicked row alone.
  */
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import i18next from 'i18next';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { loadBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 
-const { selectedRange, gridElement } = vi.hoisted(() => ({
+const { selectedRange, gridElement, requestConfirmation } = vi.hoisted(() => ({
   selectedRange: { current: null as { y: number; y1: number } | null },
   gridElement: {} as Record<string, any>,
+  requestConfirmation: vi.fn(),
 }));
 
-// JSDOM has no menu layout; avoid its CSS :has()/arbitrary-class selector bug
-// during Floating UI measurements. Real menu captions and action handlers run.
-vi.mock('@floating-ui/react', async importOriginal => {
-  const actual = await importOriginal<typeof import('@floating-ui/react')>();
-  const React = await import('react');
-  return {
-    ...actual,
-    useFloating: () => ({
-      refs: React.useMemo(() => ({ setReference: vi.fn(), setFloating: vi.fn() }), []),
-      floatingStyles: {},
-    }),
-  };
-});
+vi.mock('../../../dialogs/requestConfirmation', () => ({ requestConfirmation }));
 
 vi.mock('@revolist/react-datagrid', async () => {
   const React = await import('react');
@@ -58,8 +46,6 @@ vi.mock('@revolist/react-datagrid', async () => {
 
 import { TrackerGridView } from '../TrackerGridView';
 
-afterEach(async () => { cleanup(); vi.restoreAllMocks(); await i18next.changeLanguage('en'); });
-
 function record(id: string): TrackerRecord {
   return {
     id,
@@ -85,7 +71,7 @@ function renderGrid(overrides: Record<string, unknown> = {}) {
     <TrackerGridView
       filterType="bug"
       overrideItems={ITEMS}
-      columnConfig={{ visibleColumns: ['title', 'status'], columnWidths: {}, groupBy: null }}
+      columnConfig={{ visibleColumns: ['title', 'status'], columnWidths: {} }}
       {...overrides}
     />,
   );
@@ -104,6 +90,7 @@ describe('TrackerGridView row context menu', () => {
 
   beforeEach(() => {
     selectedRange.current = null;
+    requestConfirmation.mockReset();
     (window as any).electronAPI = { documentService: { updateTrackerItem: vi.fn() } };
   });
 
@@ -114,8 +101,8 @@ describe('TrackerGridView row context menu', () => {
     selectedRange.current = { y: 0, y1: 0 };
     rightClickRow(1);
 
-    await waitFor(() => expect(screen.getByTestId('tracker-row-context-menu')).toBeTruthy());
-    expect(screen.getByText('1 item selected')).toBeTruthy();
+    await waitFor(() => screen.getByTestId('tracker-row-context-menu'));
+    screen.getByText('1 item selected');
 
     fireEvent.click(screen.getByTestId('tracker-row-context-archive'));
     expect(onArchiveItems).toHaveBeenCalledWith(['bug-2'], true);
@@ -123,46 +110,35 @@ describe('TrackerGridView row context menu', () => {
 
   it('acts on every row of the selected range when the click lands inside it', async () => {
     const onDeleteItems = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    requestConfirmation.mockResolvedValue(true);
     renderGrid({ onDeleteItems });
 
     selectedRange.current = { y: 0, y1: 1 };
     rightClickRow(1);
 
-    await waitFor(() => expect(screen.getByText('2 items selected')).toBeTruthy());
+    await waitFor(() => screen.getByText('2 items selected'));
 
     fireEvent.click(screen.getByTestId('tracker-row-context-delete'));
-    expect(onDeleteItems).toHaveBeenCalledWith(['bug-1', 'bug-2']);
-    confirmSpy.mockRestore();
+    await waitFor(() => expect(onDeleteItems).toHaveBeenCalledWith(['bug-1', 'bug-2']));
+    expect(requestConfirmation).toHaveBeenCalledWith(expect.objectContaining({
+      message: 'Delete 2 items? This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    }));
   });
 
-  it('updates an open bulk menu in Japanese while preserving action values, selection and cancellation', async () => {
+  it('does not delete when the in-app confirmation is cancelled', async () => {
     const onDeleteItems = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    requestConfirmation.mockResolvedValue(false);
     renderGrid({ onDeleteItems });
-    selectedRange.current = { y: 0, y1: 1 };
-    rightClickRow(1);
-    await waitFor(() => expect(screen.getByText('2 items selected')).toBeTruthy());
-    await act(async () => { await i18next.changeLanguage('ja'); });
-    expect(screen.getByText('2件を選択中')).toBeTruthy();
-    fireEvent.mouseEnter(screen.getByText('優先度を設定').parentElement!.parentElement!);
-    fireEvent.click(await screen.findByText('重大'));
-    await waitFor(() => expect(window.electronAPI.documentService.updateTrackerItem).toHaveBeenCalledWith(expect.objectContaining({
-      itemId: 'bug-1', updates: { priority: 'critical' },
-    })));
-    expect(window.electronAPI.documentService.updateTrackerItem).toHaveBeenCalledWith(expect.objectContaining({
-      itemId: 'bug-2', updates: { priority: 'critical' },
-    }));
-    rightClickRow(1);
-    await screen.findByText('2件を選択中');
+
+    rightClickRow(0);
+    await waitFor(() => screen.getByText('1 item selected'));
     fireEvent.click(screen.getByTestId('tracker-row-context-delete'));
-    expect(confirmSpy).toHaveBeenCalledWith('項目を2件削除しますか？この操作は取り消せません。');
+
+    await waitFor(() => expect(requestConfirmation).toHaveBeenCalled());
+    await Promise.resolve();
     expect(onDeleteItems).not.toHaveBeenCalled();
-    confirmSpy.mockReturnValue(true);
-    rightClickRow(1);
-    await screen.findByText('2件を選択中');
-    fireEvent.click(screen.getByTestId('tracker-row-context-delete'));
-    expect(onDeleteItems).toHaveBeenCalledWith(['bug-1', 'bug-2']);
   });
 
   it('offers the deep link only for a single-row selection', async () => {
@@ -171,14 +147,64 @@ describe('TrackerGridView row context menu', () => {
 
     selectedRange.current = { y: 0, y1: 1 };
     rightClickRow(0);
-    await waitFor(() => expect(screen.getByText('2 items selected')).toBeTruthy());
+    await waitFor(() => screen.getByText('2 items selected'));
     expect(screen.queryByTestId('tracker-row-context-copy-link')).toBeNull();
 
     selectedRange.current = null;
     rightClickRow(0);
-    await waitFor(() => expect(screen.getByText('1 item selected')).toBeTruthy());
+    await waitFor(() => screen.getByText('1 item selected'));
     fireEvent.click(screen.getByTestId('tracker-row-context-copy-link'));
     expect(onCopyDeepLink).toHaveBeenCalledWith('bug-1');
+  });
+
+  /**
+   * Session actions are item-scoped, so a multi-row selection must not offer
+   * them -- launching one session for two items has no meaning, and the submenu
+   * would silently act on whichever id happened to be first.
+   */
+  it('offers session actions only for a single-row selection', async () => {
+    const onLaunchSession = vi.fn();
+    const onOpenSession = vi.fn();
+    const getLinkedSessions = vi.fn().mockReturnValue([
+      { id: 'sess-1', title: 'Fix the crash', provider: 'claude-code', timeLabel: '2h ago' },
+    ]);
+    renderGrid({ onLaunchSession, onOpenSession, getLinkedSessions });
+
+    selectedRange.current = { y: 0, y1: 1 };
+    rightClickRow(0);
+    await waitFor(() => screen.getByText('2 items selected'));
+    expect(screen.queryByTestId('tracker-row-context-launch-session')).toBeNull();
+    expect(screen.queryByText('Sessions (1)')).toBeNull();
+
+    selectedRange.current = null;
+    rightClickRow(0);
+    await waitFor(() => screen.getByText('1 item selected'));
+    expect(getLinkedSessions).toHaveBeenCalledWith('bug-1');
+
+    fireEvent.mouseEnter(screen.getByText('Sessions (1)'));
+    fireEvent.click(await screen.findByTestId('tracker-row-context-open-session'));
+    expect(onOpenSession).toHaveBeenCalledWith('sess-1');
+
+    rightClickRow(0);
+    await waitFor(() => screen.getByText('1 item selected'));
+    fireEvent.click(screen.getByTestId('tracker-row-context-launch-session'));
+    expect(onLaunchSession).toHaveBeenCalledWith('bug-1');
+  });
+
+  /** No linked sessions means no submenu -- Launch Session is the only action. */
+  it('hides the sessions submenu when the item has no linked sessions', async () => {
+    renderGrid({
+      onLaunchSession: vi.fn(),
+      onOpenSession: vi.fn(),
+      getLinkedSessions: () => [],
+    });
+
+    selectedRange.current = null;
+    rightClickRow(0);
+    await waitFor(() => screen.getByText('1 item selected'));
+
+    expect(screen.queryByText(/^Sessions \(/)).toBeNull();
+    screen.getByTestId('tracker-row-context-launch-session');
   });
 
   it('ignores a right-click that is not over a row', async () => {
@@ -228,7 +254,7 @@ describe('TrackerGridView favorites', () => {
     expect(onToggleFavorite).toHaveBeenCalledWith('bug-1');
   });
 
-  it('omits the star when the surface does not support favorites', async () => {
+  it('omits the star but keeps the title action when favorites are unsupported', async () => {
     renderGrid({});
 
     await waitFor(() => expect(gridElement.columns).toBeTruthy());
@@ -243,6 +269,8 @@ describe('TrackerGridView favorites', () => {
       model: { __trackerItemId: 'bug-1', title: 'Title bug-1' },
     });
 
-    expect(cell.props.class).toBe('tracker-grid-cell-text');
+    expect(cell.props.class).toBe('tracker-grid-cell-title');
+    expect(cell.children[0].props.class).toBe('tracker-grid-cell-text');
+    expect(cell.children[1].props.class).toContain('tracker-grid-cell-menu-title');
   });
 });

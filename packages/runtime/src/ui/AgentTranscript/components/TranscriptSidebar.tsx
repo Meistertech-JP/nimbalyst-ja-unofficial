@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PromptMarker } from '../types';
 import { formatTimeAgo, formatDuration } from '../../../utils/dateUtils';
-import { useRuntimeTranslation } from '../../RuntimeTranslation';
 
 interface TranscriptSidebarProps {
   sessionId: string;
@@ -18,7 +18,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
   isCollapsed,
   onToggleCollapse
 }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const [selectedPromptId, setSelectedPromptId] = useState<number | null>(null);
 
   const handlePromptClick = (marker: PromptMarker) => {
@@ -52,7 +52,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
               fontSize: '0.875rem',
               margin: 0
             }}>
-              {t('aichat:transcript_sidebar.prompt_history', 'Prompt History')}
+              {t('transcript_sidebar.prompt_history')}
             </h3>
           </div>
 
@@ -68,7 +68,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
                 color: 'var(--nim-text-faint)',
                 fontSize: '0.875rem'
               }}>
-                {t('aichat:transcript_sidebar.no_prompts_hint', 'No prompts yet. Start by entering a prompt.')}
+                {t('transcript_sidebar.no_prompts_hint')}
               </div>
             ) : (
               <>
@@ -154,14 +154,14 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
                           fontSize: '0.75rem',
                           color: 'var(--nim-text-faint)'
                         }}>
-                          <span>{formatTimeAgo(marker.timestamp, t)}</span>
+                          <span>{formatTimeAgo(marker.timestamp)}</span>
                           {marker.completionTimestamp && (
                             <>
                               <span>•</span>
                               <span style={{
                                 color: 'var(--nim-text-muted)'
                               }}>
-                                {formatDuration(marker.timestamp, marker.completionTimestamp, t)}
+                                {formatDuration(marker.timestamp, marker.completionTimestamp)}
                               </span>
                             </>
                           )}

@@ -1,7 +1,6 @@
 /**
  * Utilities for resolving and formatting file paths in the agent transcript
  */
-import type { RuntimeTranslate } from '../../RuntimeTranslation';
 
 /**
  * Tools that have file paths that should be clickable (actual files, not directories)
@@ -162,8 +161,7 @@ export function shortenPath(path: string, maxLength: number = 60): string {
 export function formatToolArguments(
   toolName: string,
   args: any,
-  workspacePath?: string,
-  t?: RuntimeTranslate,
+  workspacePath?: string
 ): string {
   if (!args || typeof args !== 'object') {
     return '';
@@ -180,11 +178,11 @@ export function formatToolArguments(
         if (args.offset !== undefined && args.limit !== undefined) {
           const start = args.offset;
           const end = args.offset + args.limit;
-          parts.push(t?.('aichat:rich_transcript.lines_range', 'lines {{start}}-{{end}}', { start, end }) ?? `lines ${start}-${end}`);
+          parts.push(`lines ${start}-${end}`);
         } else if (args.offset !== undefined) {
-          parts.push(t?.('aichat:rich_transcript.from_line', 'from line {{line}}', { line: args.offset }) ?? `from line ${args.offset}`);
+          parts.push(`from line ${args.offset}`);
         } else if (args.limit !== undefined) {
-          parts.push(t?.('aichat:rich_transcript.first_lines', 'first {{count}} lines', { count: args.limit }) ?? `first ${args.limit} lines`);
+          parts.push(`first ${args.limit} lines`);
         }
 
         return parts.join(', ');
@@ -225,8 +223,7 @@ export function formatToolArguments(
       }
       if (path) {
         const relativePath = toProjectRelative(path, workspacePath);
-        const pathLabel = shortenPath(relativePath, 40);
-        parts.push(t?.('aichat:rich_transcript.in_path', 'in {{path}}', { path: pathLabel }) ?? `in ${pathLabel}`);
+        parts.push(`in ${shortenPath(relativePath, 40)}`);
       }
 
       return parts.join(' ');

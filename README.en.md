@@ -1,58 +1,64 @@
 # Nimbalyst — Unofficial Japanese Edition
 
-An unofficial Japanese-language build of Nimbalyst, based on version 0.71.2.
+An unofficial Japanese-language build of the Nimbalyst desktop application, based on version 0.81.7.
 
-Japanese localization covers desktop menus, settings, file management, AI sessions, trackers, dialogs, and other parts of the user interface. The display language can be switched between Japanese and English.
+Japanese localization is included across settings, file management, AI sessions, trackers, Git and pull requests, extensions, dialogs, and other parts of the user interface. The display language can be switched between Japanese and English.
 
 This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
 
+日本語のREADMEは[README.md](README.md)を参照してください。
+
 ## Downloads
 
-This preview release does not provide verified Windows binaries. Source code is available from GitHub Releases. Windows binary publication is on hold until the authentication URL protocol conflict is resolved and packaged Windows startup and sign-in are verified.
+Source code is available from the [GitHub Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases) page. No Windows installer, portable build, or other executable binary is currently provided. Windows package protocol registration and authentication callbacks have not been verified from a packaged build.
 
-## Requirements
+v0.81.7-ja.1 is a source-only prerelease. The locally generated Windows packages are unsigned. Installation, startup, authentication, and uninstallation have not been validated on a Windows machine. No Windows binaries are included in this release.
 
-- Windows 10 or Windows 11, x64
-- An internet connection for features that connect to AI providers or synchronization services
+## Version and requirements
 
-## Change the display language
+- Base: Nimbalyst desktop version 0.81.7
+- Pinned base commit: `79b8c560c491061c39ea70d01097139055b62ae8`. Existing CHANGELOG entries include upstream history; edition-specific changes are described in the `v0.81.7-ja.1` release notes.
+- The source is configured for a Windows x64 desktop build. A distributable Windows package has not been tested by launching it.
+- Build environment: Node.js 24 or later and pnpm 12 or later (the repository specifies pnpm 12.9.1)
+- Features and fixes may differ from the current official release. This edition does not automatically track or install updates from the official release.
 
-Open Settings and choose “日本語” or “English” under Display language. The selected language is retained after restarting the app.
+## Display language
 
-## Version and updates
+Choose Japanese or English in the application's settings. The selected language is saved and restored after restarting the app.
 
-This edition is based on official Nimbalyst v0.71.2 (commit `59ab7eaf8c995840a37766c65a09307506b87a2b`). It may not include features or fixes from newer official releases.
+## Limitations
 
-App auto-updates and the in-app update check for official Nimbalyst GitHub Releases are disabled. Download future versions from this repository’s GitHub Releases.
-
-## Known limitations
-
-- Running this build alongside the official Nimbalyst application is not supported. Both applications use the `nimbalyst://` URL protocol for authentication. Installing both on the same Windows system may cause authentication callbacks to open in the wrong application.
-- Authentication callbacks may open in the wrong application. Authentication in a packaged Windows build has not been verified.
-- Some technical terms, model names, and content supplied by external services are not localized.
-- The Windows build is unsigned.
-- This preview does not provide its own update mechanism.
+- Older clients do not distinguish a generated fallback name from an actual user name. Their “Teammate” values are left unchanged to protect real names. This edition marks generated fallback names so supported views can display them in Japanese or English.
+- The full unit-test suite has unresolved failures on Windows. Passing localization tests does not establish that every application feature works.
+- Known test failures also reproduce on the pinned upstream baseline. On Windows, EPERM while creating test symlinks prevents runtime verification of the rejection of symlinked files and symlinked ancestor directories. NTFS ACL access controls and some Stytch authentication recovery paths remain unverified. These are verification limitations, not confirmed defects or vulnerabilities.
+- Complete runtime verification of 119 dynamic translation references is pending. Exhaustive Japanese-language E2E and visual QA has not been performed.
+- Large CLI uploads stall in a particular host environment; this has not been established as a problem affecting all environments.
+- External Browser/Embed hosts and the packaged application's visual UI have not been verified. Errors returned by external services or the runtime environment, and legacy collaboration data, may contain English. Notifications already displayed before a language change may retain their original language until dismissed.
+- Running this build alongside the official Nimbalyst application is not supported. Authentication uses an instance-specific, nonce-protected `http://127.0.0.1:<port>/auth/callback`. Starting this edition on Windows does not change the default `nimbalyst://` handler. Non-authentication `nimbalyst://` links may open in another application that currently owns the association. Windows installer file associations and uninstall behavior have not been verified.
+- This edition does not download or apply updates from the official release. The manual update-check menu is also disabled.
+- Authentication callbacks from a packaged Windows build have not been verified, so no Windows binary is currently provided.
+- If a binary is distributed in a future release, its code-signing status will be stated for that release.
 
 ## Build from source
 
-Install Node.js and npm, then run the following commands from the repository root:
+Run these commands from the repository root:
 
-```powershell
-npm install
-npm run typecheck
-npm run build
-cd packages/electron
-npm run build:win
+```sh
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter @nimbalyst/i18n run build
+corepack pnpm run build:workspace-deps
+corepack pnpm --filter @nimbalyst/collab-bundle run build
+corepack pnpm --filter @nimbalyst/runtime run build
+corepack pnpm --dir packages/electron run build:win
 ```
 
-The `build:win` script in `packages/electron/package.json` produces a Windows x64 NSIS installer and ZIP. Do not publish or distribute generated binaries while the authentication URL protocol conflict remains unresolved. Run the Runtime and Electron typechecks and i18n tests before building.
-
-## Upstream project
-
-Official Nimbalyst repository: [nimbalyst/nimbalyst](https://github.com/nimbalyst/nimbalyst)
+`build:win` is the repository script for producing a Windows x64 package. Before distributing its output, verify installation, launch, localhost authentication callbacks, URL and file associations, and user-data separation on Windows. A successful build alone does not verify the distributable application's behavior.
 
 ## License
 
-The upstream source is licensed under the MIT License. See [LICENSE](./LICENSE) for the copyright notice and license text. Licenses and notices for third-party libraries included in the app are available under `resources/legal` in the distribution.
+The source code is provided under the [MIT License](LICENSE). The original copyright and license notices are retained. Third-party license information and notices are available in [`packages/electron/resources/generated/THIRD_PARTY_LICENSES.json`](packages/electron/resources/generated/THIRD_PARTY_LICENSES.json), [`THIRD_PARTY_LICENSE_AUDIT.md`](packages/electron/resources/generated/THIRD_PARTY_LICENSE_AUDIT.md), and [`THIRD_PARTY_NOTICES.txt`](packages/electron/resources/generated/THIRD_PARTY_NOTICES.txt).
 
-This software is provided as-is. Review the license terms for the upstream software and each third-party library before use or redistribution.
+## Links
+
+- [Original Nimbalyst repository](https://github.com/nimbalyst/nimbalyst)
+- [Japanese README](README.md)

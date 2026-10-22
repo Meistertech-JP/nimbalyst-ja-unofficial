@@ -14,10 +14,10 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { TFunction } from 'i18next';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { useFloating, offset, flip, shift, FloatingPortal, autoUpdate } from '@floating-ui/react';
+import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import type { TrackerItemType } from '@nimbalyst/runtime/core/DocumentService';
 import type { TrackerIdentity } from '@nimbalyst/runtime';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
@@ -45,6 +45,7 @@ import {
   setTrackerSnoozeAtom,
   trackerSnoozedUntilByItemIdAtom,
 } from '../../store/atoms/trackerPersonalState';
+import { confirmTrackerItemDelete } from './confirmTrackerItemDelete';
 
 interface TrackerInboxViewProps {
   filterType?: TrackerItemType | 'all';
@@ -68,15 +69,11 @@ const SIGNALS: InboxSignals = {
 
 const PRIORITY_KEYS = ['1', '2', '3', '4'];
 
-/** Relative age, e.g. "3d". Keeps the row narrow where a date would not. */
-function ageLabel(record: TrackerRecord, t: TFunction): string {
+/** Relative age in days. The view localizes the resulting label. */
+function ageInDays(record: TrackerRecord): number | null {
   const created = record.system.createdAt ? new Date(record.system.createdAt).getTime() : 0;
-  if (!created || Number.isNaN(created)) return '';
-  const days = Math.floor((Date.now() - created) / (24 * 60 * 60 * 1000));
-  if (days <= 0) return t('tracker:inbox.age_today');
-  if (days < 7) return t('tracker:inbox.age_days', { count: days });
-  if (days < 30) return t('tracker:inbox.age_weeks', { count: Math.floor(days / 7) });
-  return t('tracker:inbox.age_months', { count: Math.floor(days / 30) });
+  if (!created || Number.isNaN(created)) return null;
+  return Math.floor((Date.now() - created) / (24 * 60 * 60 * 1000));
 }
 
 export function TrackerInboxView({
@@ -91,12 +88,28 @@ export function TrackerInboxView({
   onScopeChange,
   currentIdentity,
 }: TrackerInboxViewProps): JSX.Element {
-  const { t } = useTranslation(['tracker']);
+  const { t } = useTranslation('tracker');
   const atomItems = useAtomValue(trackerItemsByTypeAtom('all'));
   const dataLoaded = useAtomValue(trackerDataLoadedAtom);
   const snoozedUntilByItemId = useAtomValue(trackerSnoozedUntilByItemIdAtom);
   const setSnooze = useSetAtom(setTrackerSnoozeAtom);
   const [collectionMenuOpen, setCollectionMenuOpen] = useState(false);
+
+  const formatAgeLabel = (record: TrackerRecord): string => {
+    const days = ageInDays(record);
+    if (days === null) return '';
+    if (days <= 0) return t('inbox.age_today');
+    if (days < 7) return t('inbox.age_days', { count: days });
+    if (days < 30) return t('inbox.age_weeks', { count: Math.floor(days / 7) });
+    return t('inbox.age_months', { count: Math.floor(days / 30) });
+  };
+
+  const sourceLabel = (source: string): string => {
+    if (source === 'inline') return t('detail_extra.source_inline');
+    if (source === 'frontmatter') return t('detail_extra.source_frontmatter');
+    if (source === 'import') return t('detail_extra.source_import');
+    return source;
+  };
 
   const sourceItems = overrideItems ?? atomItems;
 
@@ -122,6 +135,7 @@ export function TrackerInboxView({
     activeTypeFilter: filterType,
     onItemSelect,
     onDeleteItems,
+    confirmDelete: (itemCount) => confirmTrackerItemDelete(itemCount, t),
     onArchiveItems,
     onSwitchToFilesMode,
   });
@@ -158,7 +172,7 @@ export function TrackerInboxView({
     onOpenChange: setCollectionMenuOpen,
     placement: 'top-start',
     whileElementsMounted: autoUpdate,
-    middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
+    middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 }), windowControlsClearance()],
   });
 
   const assignToMe = useCallback(async (item: TrackerRecord) => {
@@ -251,7 +265,7 @@ export function TrackerInboxView({
     <div className="tracker-inbox-view h-full flex flex-col min-h-0" data-testid="tracker-inbox-view">
       <div className="flex items-center gap-3 px-3 py-2 border-b border-nim shrink-0">
         <span className="text-[12px] font-medium text-nim">
-          {t('tracker:inbox.title')}
+          {t('inbox.title')}
           <span className="ml-2 text-nim-faint">{queue.length}</span>
         </span>
         <div className="flex items-center rounded border border-nim overflow-hidden" role="group">
@@ -264,14 +278,12 @@ export function TrackerInboxView({
               onClick={() => onScopeChange(option)}
               data-testid={`tracker-inbox-scope-${option}`}
             >
-              {option === 'global'
-                ? t('tracker:inbox.all_types')
-                : t('tracker:inbox.this_type')}
+              {option === 'global' ? t('inbox.all_types') : t('inbox.this_type')}
             </button>
           ))}
         </div>
         <span className="ml-auto text-[10px] text-nim-faint select-none">
-          {t('tracker:inbox.shortcuts')}
+          {t('inbox.shortcuts')}
         </span>
       </div>
 
@@ -283,13 +295,11 @@ export function TrackerInboxView({
         data-testid="tracker-inbox-queue"
       >
         {loading ? (
-          <div className="h-full flex items-center justify-center text-sm text-nim-muted">
-            {t('tracker:inbox.loading')}
-          </div>
+          <div className="h-full flex items-center justify-center text-sm text-nim-muted">{t('inbox.loading')}</div>
         ) : queue.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-2 text-nim-faint">
             <MaterialSymbol icon="inbox" size={28} />
-            <span className="text-sm">{t('tracker:inbox.empty')}</span>
+            <span className="text-sm">{t('inbox.empty')}</span>
           </div>
         ) : (
           queue.map((item, index) => (
@@ -317,19 +327,17 @@ export function TrackerInboxView({
               {isAgentProposal(item) && (
                 <span
                   className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-[var(--nim-primary)] border border-[var(--nim-primary)]"
-                  title={t('tracker:inbox.agent_proposal_title')}
+                  title={t('inbox.agent_proposal_title')}
                   data-testid="tracker-inbox-agent-proposal"
                 >
                   <MaterialSymbol icon="smart_toy" size={11} />
-                  {t('tracker:inbox.proposed')}
+                  {t('inbox.proposed')}
                 </span>
               )}
               {item.source !== 'native' && (
-                <span className="shrink-0 text-[10px] text-nim-faint">{item.source}</span>
+                <span className="shrink-0 text-[10px] text-nim-faint">{sourceLabel(item.source)}</span>
               )}
-              <span className="shrink-0 w-10 text-right text-[10px] text-nim-faint">
-                {ageLabel(item, t)}
-              </span>
+              <span className="shrink-0 w-10 text-right text-[10px] text-nim-faint">{formatAgeLabel(item)}</span>
             </div>
           ))
         )}
@@ -345,19 +353,17 @@ export function TrackerInboxView({
             className="px-2 py-1 text-[11px] text-nim-muted hover:text-nim rounded hover:bg-nim-tertiary disabled:opacity-40"
             onClick={() => void assignToMe(focused)}
             disabled={!currentIdentity?.email}
-            title={currentIdentity?.email
-              ? t('tracker:inbox.assign_to_me_title')
-              : t('tracker:inbox.no_identity')}
+            title={currentIdentity?.email ? t('inbox.assign_to_me_title') : t('inbox.no_identity')}
             data-testid="tracker-inbox-assign"
           >
-            {t('tracker:inbox.assign_to_me')}
+            {t('inbox.assign_to_me')}
           </button>
           {priorityOptionsFor(focused.primaryType).map((priority, index) => (
             <button
               key={priority}
               className="px-2 py-1 text-[11px] text-nim-muted hover:text-nim rounded hover:bg-nim-tertiary"
               onClick={() => void setPriority(focused, priority)}
-              title={t('tracker:inbox.set_priority', { priority, shortcut: index + 1 })}
+              title={t('inbox.set_priority', { priority, shortcut: index + 1 })}
               data-testid={`tracker-inbox-priority-${priority}`}
             >
               {priority}
@@ -368,50 +374,53 @@ export function TrackerInboxView({
             className="px-2 py-1 text-[11px] text-nim-muted hover:text-nim rounded hover:bg-nim-tertiary disabled:opacity-40"
             onClick={() => setCollectionMenuOpen((open) => !open)}
             disabled={collectionTargets.length === 0}
-            title={collectionTargets.length === 0
-              ? t('tracker:inbox.no_collections')
-              : t('tracker:inbox.add_to_collection_title')}
+            title={collectionTargets.length === 0 ? t('inbox.no_collections') : t('inbox.add_to_collection_title')}
             data-testid="tracker-inbox-collection"
           >
-            {t('tracker:inbox.add_to')}
+            {t('inbox.add_to')}
           </button>
           <button
             className="px-2 py-1 text-[11px] text-nim-muted hover:text-nim rounded hover:bg-nim-tertiary"
             onClick={() => void leaveIt(focused)}
-            title={t('tracker:inbox.leave_title')}
+            title={t('inbox.leave_title')}
             data-testid="tracker-inbox-leave"
           >
-            {t('tracker:inbox.leave')}
+            {t('inbox.leave')}
           </button>
           <button
             className="px-2 py-1 text-[11px] text-nim-muted hover:text-nim rounded hover:bg-nim-tertiary disabled:opacity-40"
             onClick={() => void accept(focused)}
             disabled={!acceptStatusFor(focused.primaryType)}
-            title={t('tracker:inbox.accept_title')}
+            title={t('inbox.accept_title')}
             data-testid="tracker-inbox-accept"
           >
-            {t('tracker:inbox.accept')}
+            {t('inbox.accept')}
           </button>
-          {SNOOZE_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              className="px-2 py-1 text-[11px] text-nim-muted hover:text-nim rounded hover:bg-nim-tertiary"
-              onClick={() => snooze(focused, preset.ms)}
-              title={t('tracker:inbox.snooze_until', {
-                time: t(`tracker:inbox.snooze_${preset.id}`, { defaultValue: preset.label }),
-              })}
-              data-testid={`tracker-inbox-snooze-${preset.id}`}
-            >
-              {t(`tracker:inbox.snooze_${preset.id}`, { defaultValue: preset.label })}
-            </button>
-          ))}
+          {SNOOZE_PRESETS.map((preset) => {
+            const label = preset.id === 'tomorrow'
+              ? t('inbox.snooze_tomorrow')
+              : preset.id === 'week'
+                ? t('inbox.snooze_week')
+                : preset.label;
+            return (
+              <button
+                key={preset.id}
+                className="px-2 py-1 text-[11px] text-nim-muted hover:text-nim rounded hover:bg-nim-tertiary"
+                onClick={() => snooze(focused, preset.ms)}
+                title={t('inbox.snooze_until', { time: label })}
+                data-testid={`tracker-inbox-snooze-${preset.id}`}
+              >
+                {label}
+              </button>
+            );
+          })}
           <button
             className="ml-auto px-2 py-1 text-[11px] text-nim-muted hover:text-[#ef4444] rounded hover:bg-nim-tertiary"
             onClick={() => dismiss(focused)}
-            title={t('tracker:inbox.dismiss_title')}
+            title={t('inbox.dismiss_title')}
             data-testid="tracker-inbox-dismiss"
           >
-            {t('tracker:inbox.dismiss')}
+            {t('inbox.dismiss')}
           </button>
         </div>
       )}

@@ -10,10 +10,10 @@
  * Both variants share the same internal structure (header / body / actions).
  */
 
-import React, { useEffect, useRef, useCallback, useId, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import type { TipDefinition } from './types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * Parse basic markdown in tip body text.
@@ -98,8 +98,15 @@ export function TipCard({
   inlineFooterExtras,
 }: TipCardProps) {
   const { t } = useTranslation('common');
-  const tipKey = tip.id.replace(/^tip-/, '').replace(/-/g, '_');
-  const translatedBody = t(`tip_content.${tipKey}.body`, { defaultValue: tip.content.body });
+  const contentKey = tip.id.replace(/^tip-/, '').replace(/-/g, '_');
+  const title = t(`tip_content.${contentKey}.title`, { defaultValue: tip.content.title });
+  const body = t(`tip_content.${contentKey}.body`, { defaultValue: tip.content.body });
+  const actionLabel = tip.content.action
+    ? t(`tip_content.${contentKey}.action`, { defaultValue: tip.content.action.label })
+    : undefined;
+  const secondaryActionLabel = tip.content.secondaryAction
+    ? t(`tip_content.${contentKey}.secondary`, { defaultValue: tip.content.secondaryAction.label })
+    : undefined;
   const cardRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const bodyId = useId();
@@ -129,7 +136,7 @@ export function TipCard({
     onSecondaryAction?.();
   }, [onSecondaryAction]);
 
-  const renderedBody = useMemo(() => parseMarkdownBody(translatedBody), [translatedBody]);
+  const renderedBody = parseMarkdownBody(body);
 
   const floatingClasses =
     'tip-card fixed bottom-5 left-[50px] w-[340px] bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-[10px] z-[10000] overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.35),0_2px_8px_rgba(0,0,0,0.2)] motion-safe:animate-[tip-slide-in_0.3s_ease-out_forwards]';
@@ -182,7 +189,7 @@ export function TipCard({
             </div>
           )}
           <div id={titleId} className={titleClasses}>
-            {t(`tip_content.${tipKey}.title`, { defaultValue: tip.content.title })}
+            {title}
           </div>
         </div>
         {isFloating && onDismiss && (
@@ -218,7 +225,7 @@ export function TipCard({
               className={primaryButtonClasses}
               onClick={handleActionClick}
             >
-              {t(`tip_content.${tipKey}.action`, { defaultValue: tip.content.action.label })}
+              {actionLabel}
             </button>
           )}
           {tip.content.secondaryAction && (
@@ -226,7 +233,7 @@ export function TipCard({
               className={secondaryButtonClasses}
               onClick={handleSecondaryClick}
             >
-              {t(`tip_content.${tipKey}.secondary`, { defaultValue: tip.content.secondaryAction.label })}
+              {secondaryActionLabel}
             </button>
           )}
           {!isFloating && inlineFooterExtras && (

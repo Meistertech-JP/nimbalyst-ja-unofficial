@@ -9,10 +9,12 @@ import {
   bucketDuration,
   bucketItemCount,
   bucketMemberCount,
+  bucketOrganizationCount,
   bucketProjectCount,
   bucketQueryLength,
   bucketRetryCount,
   categorizeTeamAnalyticsError,
+  normalizeTeamAnalyticsCallerRole,
   teamPersonPropertiesForEvent,
   validateTeamAnalyticsEvent,
 } from '../teamAnalytics';
@@ -74,6 +76,34 @@ describe('Teams analytics contract', () => {
     expect(() => validateTeamAnalyticsEvent('collab_sync_attempt_completed', {
       outcome: 'retrying',
     } as never)).toThrow('not an allowlisted category');
+    expect(() => validateTeamAnalyticsEvent('team_invitation_accepted', {
+      status: 'redirected',
+    } as never)).toThrow('not an allowlisted category');
+  });
+
+  it('enforces the signup-funnel buckets and property allowlists', () => {
+    expect([bucketOrganizationCount(1), bucketOrganizationCount(3), bucketOrganizationCount(11)])
+      .toEqual(['1', '2-3', '11+']);
+    expect(validateTeamAnalyticsEvent('team_sign_in_completed', {
+      surface: 'desktop',
+      membershipState: 'mixed',
+      organizationCountBucket: bucketOrganizationCount(4),
+    }).properties.organizationCountBucket).toBe('4-10');
+    expect(() => validateTeamAnalyticsEvent('invite_handoff_shown', {
+      surface: 'web_console',
+      orgResolved: true,
+      orgId: 'organization-secret',
+    } as never)).toThrow('not an allowlisted property');
+  });
+
+  it('records viewer roles without treating unknown roles as known', () => {
+    expect(normalizeTeamAnalyticsCallerRole('viewer')).toBe('viewer');
+    expect(normalizeTeamAnalyticsCallerRole('future-role')).toBe('unknown');
+    expect(validateTeamAnalyticsEvent('team_organization_switched', {
+      surface: 'desktop',
+      entryPoint: 'org_switcher',
+      callerRole: 'viewer',
+    }).properties.callerRole).toBe('viewer');
   });
 
   it('buckets counts and durations without returning exact high-cardinality values', () => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { OverviewDashboard } from './OverviewDashboard';
 import { HistoricalGraph } from './HistoricalGraph';
 import { ModelComparison } from './ModelComparison';
@@ -12,7 +12,7 @@ interface AIUsageReportProps {
 }
 
 export const AIUsageReport: React.FC<AIUsageReportProps> = ({ onClose }) => {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('common');
   const [workspaceFilter, setWorkspaceFilter] = useState<string | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<'overview' | 'tools'>('overview');
 
@@ -21,7 +21,7 @@ export const AIUsageReport: React.FC<AIUsageReportProps> = ({ onClose }) => {
       <div
         className="ai-usage-report-tabs flex gap-1 px-4 pt-4 border-b border-nim"
         role="tablist"
-        aria-label={t('common:usage_report.sections')}
+        aria-label={t('usage_report.sections')}
       >
         {(['overview', 'tools'] as const).map((tab) => (
           <button
@@ -36,7 +36,7 @@ export const AIUsageReport: React.FC<AIUsageReportProps> = ({ onClose }) => {
                 : 'border-transparent text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]'
             }`}
           >
-            {t(`common:usage_report.tabs.${tab}`)}
+            {t(`usage_report.tabs.${tab}`)}
           </button>
         ))}
       </div>

@@ -17,6 +17,7 @@ import type {JSX} from 'react';
 import './ImageNode.css';
 
 import type {VirtualElement} from '@floating-ui/react';
+import { windowControlsClearance } from '../../../ui/floating/windowControlsClearance';
 import {
   FloatingPortal,
   offset,
@@ -62,11 +63,21 @@ import ContentEditable from '../../ui/ContentEditable';
 import ImageResizer from '../../ui/ImageResizer';
 import {$isImageNode} from './ImageNode';
 import {getImagePluginCallbacks} from './index';
+import {resolveKnownImageSrc} from './resolveKnownImageSrc';
 import {localAssetUrl} from '../../../utils/localAssetUrl';
 import {copyImageToClipboard} from '../../../utils/clipboard';
-import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 const imageCache = new Map<string, Promise<boolean> | boolean>();
+
+function safeDecodePath(src: string): string {
+  try {
+    return decodeURIComponent(src);
+  } catch {
+    // a literal `%` in a file name that is not an escape
+    return src;
+  }
+}
 
 export const RIGHT_CLICK_IMAGE_COMMAND: LexicalCommand<MouseEvent> =
   createCommand('RIGHT_CLICK_IMAGE_COMMAND');
@@ -209,7 +220,7 @@ function LazyImage({
 }
 
 function BrokenImage(): JSX.Element {
-  const {t} = useRuntimeTranslation();
+  const {t} = useTranslation('editor');
   return (
     <div
       className="collab-asset-unavailable-placeholder"
@@ -224,7 +235,7 @@ function BrokenImage(): JSX.Element {
         minWidth: 200,
       }}
       role="img"
-      aria-label={t('editor:shared_ui.image_unavailable', 'Image unavailable')}
+      aria-label={t('image_node.unavailable')}
     >
       <img
         src={brokenImage}
@@ -232,7 +243,7 @@ function BrokenImage(): JSX.Element {
         draggable="false"
         alt=""
       />
-      <span style={{fontSize: 12}}>{t('editor:shared_ui.image_unavailable', 'Image unavailable')}</span>
+      <span style={{fontSize: 12}}>{t('image_node.unavailable')}</span>
     </div>
   );
 }
@@ -259,14 +270,14 @@ export function ImageContextMenu({
   onCopy: () => void;
   onClose: () => void;
 }): JSX.Element {
-  const {t} = useRuntimeTranslation();
+  const {t} = useTranslation('editor');
   const {refs, floatingStyles, context} = useFloating({
     open: true,
     onOpenChange: (open) => {
       if (!open) onClose();
     },
     placement: 'right-start',
-    middleware: [offset(4), flip({padding: 8}), shift({padding: 8})],
+    middleware: [offset(4), flip({padding: 8}), shift({padding: 8}), windowControlsClearance()],
   });
   // Virtual anchor at the cursor position (react's `elements.reference` only
   // accepts a real Element, so point references go through setPositionReference).
@@ -295,7 +306,7 @@ export function ImageContextMenu({
           className="image-context-menu__item"
           onClick={onCopy}
         >
-          {t('aichat:media.copy_image', 'Copy image')}
+          {t('image_node.copy_image')}
         </button>
       </div>
     </FloatingPortal>
@@ -325,7 +336,7 @@ export default function ImageComponent({
   width: 'inherit' | number;
   captionsEnabled: boolean;
 }): JSX.Element {
-  const {t} = useRuntimeTranslation();
+  const {t} = useTranslation('editor');
   const imageRef = useRef<null | HTMLImageElement>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -367,47 +378,11 @@ export default function ImageComponent({
     let cancelled = false;
 
     const resolveSrc = async () => {
-      // collab-asset:// is a registered standard+secure scheme -- the main
-      // process handles fetch+decrypt and hands the bytes to Chromium. The
-      // renderer must pass these URLs through untouched so we don't double-
-      // resolve to a stale blob URL or mistake them for a relative path.
-      if (src.startsWith('collab-asset://')) {
+      const known = await resolveKnownImageSrc(src, getImagePluginCallbacks());
+      if (known) {
         if (!cancelled) {
-          setResolvedSrc(src);
-        }
-        return;
-      }
-
-      const callbacks = getImagePluginCallbacks();
-
-      if (callbacks.resolveImageSrc) {
-        try {
-          const resolved = await callbacks.resolveImageSrc(src);
-          if (resolved) {
-            imageCache.delete(src);
-            if (!cancelled) {
-              setResolvedSrc(resolved);
-            }
-            return;
-          }
-        } catch (error) {
-          console.error('Failed to resolve image source', error);
-        }
-      }
-
-      // file:// needs to be re-routed through the platform's local-asset URL
-      // (nim-asset:// in Electron). Other absolute URL schemes pass through.
-      if (src.startsWith('file://')) {
-        const absolutePath = src.replace(/^file:\/\//, '');
-        if (!cancelled) {
-          imageCache.delete(src);
-          setResolvedSrc(localAssetUrl(absolutePath));
-        }
-        return;
-      }
-      if (src.match(/^(https?|data|blob):/)) {
-        if (!cancelled) {
-          setResolvedSrc(src);
+          if (known.evictCache) imageCache.delete(src);
+          setResolvedSrc(known.src);
         }
         return;
       }
@@ -450,7 +425,8 @@ export default function ImageComponent({
             documentPath.lastIndexOf('\\'),
           );
           const documentDir = lastSep >= 0 ? documentPath.substring(0, lastSep) : '';
-          const absolutePath = documentDir + '/' + src;
+          // Markdown percent-encodes spaces in relative paths (`Q3%20Plan/.assets/x.png`).
+          const absolutePath = documentDir + '/' + safeDecodePath(src);
           setResolvedSrc(localAssetUrl(absolutePath));
         } else {
           setResolvedSrc(src);
@@ -715,7 +691,7 @@ export default function ImageComponent({
     <Suspense fallback={null}>
       <div ref={setContainerRef}>
         {!resolvedSrc ? (
-          <div style={{ width, height, minHeight: 100 }}>{t('common:loading', 'Loading…')}</div>
+          <div style={{ width, height, minHeight: 100 }}>{t('image_node.loading')}</div>
         ) : (
           <>
             <div draggable={draggable}>
@@ -759,7 +735,7 @@ export default function ImageComponent({
                   <RichTextPlugin
                     contentEditable={
                       <ContentEditable
-                        placeholder={t('editor:shared_ui.caption_placeholder', 'Enter a caption...')}
+                        placeholder={t('image_node.caption_placeholder')}
                         placeholderClassName="ImageNode__placeholder"
                         className="ImageNode__contentEditable"
                       />

@@ -8,6 +8,12 @@ The SDK is versioned independently of the Nimbalyst app. Each release declares i
 
 | SDK version | Minimum Nimbalyst app version |
 | --- | --- |
+| 0.7.1 | 0.79.0 |
+| 0.7.0 | 0.79.0 |
+| 0.6.0 | 0.78.0 |
+| 0.5.0 | 0.70.0 |
+| 0.4.0 | 0.70.0 |
+| 0.3.0 | 0.70.0 |
 | 0.2.2 | 0.58.5 |
 | 0.2.1 | 0.58.5 |
 | 0.2.0 | 0.58.5 |
@@ -15,6 +21,87 @@ The SDK is versioned independently of the Nimbalyst app. Each release declares i
 | 0.1.0 | 0.58.5 |
 
 ## [Unreleased]
+
+## [0.7.1] - 2026-10-16
+
+Requires Nimbalyst 0.79.0.
+
+### Changed
+
+- The `filePatterns` documentation on `CustomEditorContribution` and `DocumentHeaderContribution` now lists the forms that match (`*.ext` suffixes, paths containing `/` for headers, and a `virtual://` prefix for fileless editor tabs); general globs such as `*.{csv,tsv}` never matched.
+
+## [0.7.0] - 2026-10-09
+
+Requires Nimbalyst 0.79.0.
+
+### Added
+
+- `BackendSessionsService` lets an extension backend create and own agent sessions and workstreams, send prompts, read status, results and usage, notify the user, and react when a session settles; it needs the new `ai-sessions` permission.
+- Backend extensions can define MCP tools (`BackendMcpToolDefinition`), and panels call them with `PanelHost.callBackendTool()`.
+- `PanelHost.setGutterBadge()` and `BackendPanelsService` show a count or warning badge on a panel's gutter icon.
+- `PanelHost.setPanes()` and `onPaneToggle()` give a panel resizable, hideable left and right panes like the built-in modes, and `PanelHostComponents` exposes the host's session transcript.
+- Agent usage events can report `cache_read_input_tokens` and `cache_creation_input_tokens` separately from uncached input.
+
+### Changed
+
+- The `yjs` peer dependency is pinned to 13.6.32, the version the app ships, so an extension cannot load a second copy.
+
+## [0.6.0] - 2026-09-14
+
+Requires Nimbalyst 0.78.0, available on the alpha channel at publication, for the complete host API including native screenshots.
+
+### Added
+
+- `CollaborationCommentsService`, `CommentAnchor`, and codec-level `commentAnchors` let collaborative editors mount the platform comment experience and resolve structured anchors both live and headlessly.
+- `host.registerViewport()` and `EditorViewport` let an editor expose proportional scroll position to hosts that carry the reader's place between related documents; `createReadOnlyHost()` can receive those registrations.
+- `contributions.customEditors[].collaboration.documentType` lets a host identify a collaborative document type from the manifest before its extension bundle and codec are loaded.
+- `screenshotService` exposes host-provided element and file screenshots, including unopened documents.
+- `PanelHost.getWorkspaceFolders()` and `getPrimaryFolderPath()` expose multiple workspace roots; file-tree helpers accept those roots.
+- `EditorHost.getAssetUrl()` and the `assetUrls` capability let media editors stream local files through a host-provided URL.
+- The `agents`, `types/editor`, and `git-operation-log` entry points expose agent contracts, editor types, and Git operation selectors.
+- `ProtocolSession.appliedModel` and `deliveredMcpServerCount` report the model and MCP servers actually used by an agent.
+
+### Changed
+
+- `CollabCodec` documents file-form fallback for headless agent edits when no structured patch pair exists, while recommending structured edits for minimal concurrent deltas.
+
+### Fixed
+
+- Agent host declarations use a Node-compatible relative import for consumers using Node16 or NodeNext module resolution.
+
+## [0.5.0]
+
+Still runs on Nimbalyst 0.70.0: a host that declares no capabilities is treated as fully capable, so an extension written against this release keeps working on older desktop builds.
+
+### Added
+
+- `host.capabilities` plus `editorHostSupports()` and `editorHostCapabilityGap()` let one editor bundle run in hosts that cannot honour every part of `EditorHost` — check a capability before calling instead of discovering the gap at runtime.
+- `AiAgentProviderContribution` declares `supportsSlashCommands`, `supportsSkills`, and `compaction` instead of having the app infer them; all three default to off, so an unclaimed affordance is hidden rather than offered and silently broken.
+- `AgentProtocol.compactSession()` is the optional real compaction entry point for a transport that has one.
+
+### Changed
+
+- `host.filePath` is documented as an opaque document identifier — an absolute path on the desktop host, a synthetic URI on a host with no filesystem. Gate anything that touches disk on the `localFileSave` / `projectFileSystem` capabilities.
+
+## [0.4.0]
+
+### Added
+
+- `applyTextDiff()` and `replaceYText()` reduce a whole-string replacement to one contiguous `Y.Text` edit, so a binding no longer has to hand-write the prefix/suffix diff.
+- `@nimbalyst/extension-sdk/collab` is a React-free entry point for the collaborative-document helpers, for codecs and codec tests that have no React installed.
+- `host.onFindRequested()` routes the app's Find command (Cmd+F) to a custom editor's own find UI.
+
+## [0.3.0]
+
+Requires Nimbalyst 0.70.0 for the new host-provided selection, filesystem, and visibility APIs.
+
+### Added
+
+- `host.setEditorContextItems()` and `EditorContextItem` let node-like editors (diagrams, CAD, electronics) push a list of selected items to the chat as individually removable context chips, instead of a single `setEditorContext` blob.
+- `host.fs` (`EditorHostFileSystem`) reads files with SHA-256 version tokens and applies labeled, compare-and-swap grouped writes recorded in document history.
+- `host.openExternal()` opens a reviewed HTTPS URL in the operating system's browser without navigating the renderer.
+- `host.visible` and `host.onVisibilityChanged()` let editors pause render loops and release GPU resources while mounted but hidden.
+- `ExtensionFileSystemService.writeFile()` accepts a `Uint8Array` so extensions can write binary files without corrupting their contents.
 
 ## [0.2.2]
 

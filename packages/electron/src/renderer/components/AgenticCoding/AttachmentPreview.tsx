@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { ChatAttachment } from '@nimbalyst/runtime';
 import { getFileIcon } from '@nimbalyst/runtime';
 import { nimAssetUrl } from '../../utils/assetUrl';
@@ -12,7 +12,7 @@ interface ProcessingAttachmentPreviewProps {
  * Shows a loading indicator for an attachment that is being processed (e.g., compressed).
  */
 export function ProcessingAttachmentPreview({ filename }: ProcessingAttachmentPreviewProps) {
-  const { t } = useTranslation(['aichat']);
+  const { t } = useTranslation('aichat', { keyPrefix: 'attachments' });
   return (
     <div className="attachment-preview attachment-preview-processing flex items-center gap-2 p-2 border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg-secondary)] min-w-[200px] max-w-[250px] relative transition-colors duration-150 opacity-80">
       <div className="attachment-preview-thumbnail shrink-0 w-10 h-10 flex items-center justify-center rounded bg-[var(--nim-bg-tertiary)] overflow-hidden">
@@ -23,7 +23,7 @@ export function ProcessingAttachmentPreview({ filename }: ProcessingAttachmentPr
           {filename}
         </div>
         <div className="attachment-preview-size attachment-preview-processing-text text-[11px] text-[var(--nim-text-faint)] italic">
-          {t('aichat:attachments.processing')}
+          {t('processing')}
         </div>
       </div>
     </div>
@@ -37,7 +37,7 @@ interface AttachmentPreviewProps {
 }
 
 export function AttachmentPreview({ attachment, onRemove, onConvertToText }: AttachmentPreviewProps) {
-  const { t } = useTranslation(['aichat']);
+  const { t } = useTranslation('aichat', { keyPrefix: 'attachments' });
   const [isExpanded, setIsExpanded] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -116,7 +116,7 @@ export function AttachmentPreview({ attachment, onRemove, onConvertToText }: Att
           className="attachment-preview-thumbnail shrink-0 w-10 h-10 flex items-center justify-center rounded bg-[var(--nim-bg-tertiary)] overflow-hidden"
           onClick={handleThumbnailClick}
           style={{ cursor: attachment.type === 'image' ? 'pointer' : attachment.type === 'document' ? 'context-menu' : 'default' }}
-          title={attachment.type === 'image' ? t('aichat:attachments.enlarge') : attachment.type === 'document' ? t('aichat:attachments.options') : undefined}
+          title={attachment.type === 'image' ? t('enlarge') : attachment.type === 'document' ? t('options') : undefined}
         >
           {attachment.type === 'image' ? (
             <img
@@ -143,8 +143,8 @@ export function AttachmentPreview({ attachment, onRemove, onConvertToText }: Att
       <button
         className="attachment-preview-remove shrink-0 w-5 h-5 p-0 border-none bg-transparent cursor-pointer flex items-center justify-center rounded-sm transition-colors duration-150 text-[var(--nim-text-faint)] hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
         onClick={() => onRemove(attachment.id)}
-        title={t('aichat:attachments.remove')}
-        aria-label={t('aichat:attachments.remove')}
+        title={t('remove')}
+        aria-label={t('remove')}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -165,7 +165,7 @@ export function AttachmentPreview({ attachment, onRemove, onConvertToText }: Att
             <button
               className="attachment-preview-modal-close absolute -top-10 right-0 w-8 h-8 p-0 border-none bg-white/10 text-white cursor-pointer flex items-center justify-center rounded transition-colors duration-150 hover:bg-white/20"
               onClick={() => setIsExpanded(false)}
-              aria-label={t('aichat:attachments.close')}
+              aria-label={t('close')}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -199,7 +199,7 @@ export function AttachmentPreview({ attachment, onRemove, onConvertToText }: Att
             className="attachment-context-menu-item block w-full py-2 px-3 border-none bg-transparent text-[13px] text-[var(--nim-text)] text-left cursor-pointer transition-colors duration-100 hover:bg-[var(--nim-bg-hover)]"
             onClick={handleConvertToText}
           >
-            {t('aichat:attachments.insert_text')}
+            {t('insert_text')}
           </button>
         </div>
       )}

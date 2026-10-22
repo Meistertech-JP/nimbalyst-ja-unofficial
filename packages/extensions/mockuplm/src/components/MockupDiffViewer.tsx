@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { renderMockupHtml } from '../utils/mockupDomUtils';
 
 interface MockupDiffViewerProps {
@@ -19,6 +20,7 @@ export const MockupDiffViewer: React.FC<MockupDiffViewerProps> = ({
   updatedHtml,
   fileName,
 }) => {
+  const { t } = useTranslation('extensions');
   const [sliderPosition, setSliderPosition] = useState(50);
   const beforeFrameRef = useRef<HTMLIFrameElement>(null);
   const afterFrameRef = useRef<HTMLIFrameElement>(null);
@@ -96,7 +98,7 @@ export const MockupDiffViewer: React.FC<MockupDiffViewerProps> = ({
       <div
         className="mockup-diff-content flex-1 flex flex-col min-h-0 overflow-hidden bg-[#111]"
         role="region"
-        aria-label={isNewFile ? 'New mockup preview' : 'Mockup diff preview'}
+        aria-label={t(isNewFile ? 'mockup_lm_ui.new_mockup_preview' : 'mockup_lm_ui.mockup_diff_preview')}
       >
         {isNewFile ? (
           // New file: simple preview without slider
@@ -104,7 +106,7 @@ export const MockupDiffViewer: React.FC<MockupDiffViewerProps> = ({
             <div className="mockup-diff-new-file-stage absolute inset-0 rounded-lg overflow-hidden bg-black">
               <iframe
                 ref={afterFrameRef}
-                title="New mockup preview"
+                title={t('mockup_lm_ui.new_mockup_preview')}
                 sandbox="allow-scripts allow-same-origin"
                 className="absolute inset-0 w-full h-full border-none"
               />
@@ -119,7 +121,7 @@ export const MockupDiffViewer: React.FC<MockupDiffViewerProps> = ({
             >
               <iframe
                 ref={afterFrameRef}
-                title="Updated mockup preview"
+                title={t('mockup_lm_ui.updated_mockup_preview')}
                 sandbox="allow-scripts allow-same-origin"
                 className="absolute inset-0 w-full h-full border-none"
               />
@@ -129,7 +131,7 @@ export const MockupDiffViewer: React.FC<MockupDiffViewerProps> = ({
               >
                 <iframe
                   ref={beforeFrameRef}
-                  title="Original mockup preview"
+                  title={t('mockup_lm_ui.original_mockup_preview')}
                   sandbox="allow-scripts allow-same-origin"
                   className="absolute inset-0 w-full h-full border-none"
                 />
@@ -138,6 +140,7 @@ export const MockupDiffViewer: React.FC<MockupDiffViewerProps> = ({
                 className="mockup-diff-slider-handle absolute top-0 bottom-0 w-0.5 bg-white/80 border border-gray-500/75 pointer-events-auto cursor-ew-resize z-[6]"
                 style={{ left: `${sliderPosition}%` }}
                 role="slider"
+                aria-label={t('mockup_lm_ui.diff_slider_aria')}
                 aria-valuenow={sliderPosition}
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -145,9 +148,9 @@ export const MockupDiffViewer: React.FC<MockupDiffViewerProps> = ({
               >
                 <div className="mockup-diff-slider-handle-bar absolute top-1/2 -left-2.5 w-5 h-10 bg-white/90 rounded-full border-2 border-gray-500/75 -translate-y-1/2 -translate-x-1/2" />
               </div>
-              <div className="mockup-diff-slider-label before absolute top-3 left-4 py-1 px-2.5 text-[11px] uppercase tracking-wide rounded-full text-white z-[6]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>Before</div>
-              <div className="mockup-diff-slider-label after absolute top-3 right-4 py-1 px-2.5 text-[11px] uppercase tracking-wide rounded-full text-white z-[6]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>After</div>
-              <div className="mockup-diff-slider-hint absolute bottom-3 left-1/2 -translate-x-1/2 text-white text-xs py-1 px-2.5 rounded-full pointer-events-none z-[6]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}>Drag anywhere to compare</div>
+              <div className="mockup-diff-slider-label before absolute top-3 left-4 py-1 px-2.5 text-[11px] uppercase tracking-wide rounded-full text-white z-[6]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{t('mockup_lm_ui.before')}</div>
+              <div className="mockup-diff-slider-label after absolute top-3 right-4 py-1 px-2.5 text-[11px] uppercase tracking-wide rounded-full text-white z-[6]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{t('mockup_lm_ui.after')}</div>
+              <div className="mockup-diff-slider-hint absolute bottom-3 left-1/2 -translate-x-1/2 text-white text-xs py-1 px-2.5 rounded-full pointer-events-none z-[6]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}>{t('mockup_lm_ui.drag_to_compare')}</div>
               <div
                 className="mockup-diff-slider-overlay absolute inset-0 z-[5] cursor-ew-resize"
                 onPointerDown={handleSliderPointerDown}

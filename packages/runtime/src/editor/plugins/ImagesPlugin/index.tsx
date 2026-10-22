@@ -11,6 +11,7 @@
  */
 
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export { IMAGE_TRANSFORMER } from './ImageTransformer';
 export { ImageNode, $createImageNode, $isImageNode } from './ImageNode';
@@ -25,7 +26,6 @@ import Button from '../../ui/Button';
 import { DialogActions, DialogButtonsList } from '../../ui/Dialog';
 import FileInput from '../../ui/FileInput';
 import TextInput from '../../ui/TextInput';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 let imagePluginCallbacks: {
   onImageDoubleClick?: (src: string, nodeKey: NodeKey) => void;
@@ -49,22 +49,22 @@ export function InsertImageUriDialogBody({
 }: {
   onClick: (payload: InsertImagePayload) => void;
 }) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [src, setSrc] = useState('');
   const [altText, setAltText] = useState('');
   const isDisabled = src === '';
   return (
     <>
       <TextInput
-        label={t('editor:insert_dialog.image_url', 'Image URL')}
-        placeholder={t('editor:insert_dialog.image_url_placeholder', 'i.e. https://source.unsplash.com/random')}
+        label={t('insert_dialog.image_url')}
+        placeholder={t('insert_dialog.image_url_placeholder')}
         onChange={setSrc}
         value={src}
         data-test-id="image-modal-url-input"
       />
       <TextInput
-        label={t('editor:insert_dialog.alt_text', 'Alt Text')}
-        placeholder={t('editor:insert_dialog.image_alt_example', 'Random unsplash image')}
+        label={t('insert_dialog.alt_text')}
+        placeholder={t('insert_dialog.image_alt_example')}
         onChange={setAltText}
         value={altText}
         data-test-id="image-modal-alt-text-input"
@@ -75,7 +75,7 @@ export function InsertImageUriDialogBody({
           disabled={isDisabled}
           onClick={() => onClick({ altText, src })}
         >
-          {t('common:pull_request.confirm', 'Confirm')}
+          {t('insert_dialog.confirm')}
         </Button>
       </DialogActions>
     </>
@@ -87,7 +87,7 @@ export function InsertImageUploadedDialogBody({
 }: {
   onClick: (payload: InsertImagePayload) => void;
 }) {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [src, setSrc] = useState('');
   const [altText, setAltText] = useState('');
   const isDisabled = src === '';
@@ -149,14 +149,14 @@ export function InsertImageUploadedDialogBody({
   return (
     <>
       <FileInput
-        label={t('editor:insert_dialog.image_upload', 'Image Upload')}
+        label={t('insert_dialog.image_upload')}
         onChange={loadImage}
         accept="image/*"
         data-test-id="image-modal-file-upload"
       />
       <TextInput
-        label={t('editor:insert_dialog.alt_text', 'Alt Text')}
-        placeholder={t('editor:insert_dialog.alt_description', 'Descriptive alternative text')}
+        label={t('insert_dialog.alt_text')}
+        placeholder={t('insert_dialog.alt_description')}
         onChange={setAltText}
         value={altText}
         data-test-id="image-modal-alt-text-input"
@@ -167,7 +167,7 @@ export function InsertImageUploadedDialogBody({
           disabled={isDisabled}
           onClick={() => onClick({ altText, src })}
         >
-          {t('common:pull_request.confirm', 'Confirm')}
+          {t('insert_dialog.confirm')}
         </Button>
       </DialogActions>
     </>
@@ -181,7 +181,7 @@ export function InsertImageDialog({
   activeEditor: LexicalEditor;
   onClose: () => void;
 }): JSX.Element {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [mode, setMode] = useState<null | 'url' | 'file'>(null);
   const hasModifier = useRef(false);
 
@@ -206,10 +206,10 @@ export function InsertImageDialog({
       {!mode && (
         <DialogButtonsList>
           <Button data-test-id="image-modal-option-url" onClick={() => setMode('url')}>
-            URL
+            {t('insert_dialog.url')}
           </Button>
           <Button data-test-id="image-modal-option-file" onClick={() => setMode('file')}>
-            {t('menu:file.title', 'File')}
+            {t('insert_dialog.file')}
           </Button>
         </DialogButtonsList>
       )}

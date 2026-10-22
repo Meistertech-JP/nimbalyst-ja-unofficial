@@ -27,9 +27,9 @@
 
 import React, { useCallback } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
-import { useRuntimeTranslation, type RuntimeTranslate } from '../../../RuntimeTranslation';
 
 // ---------- Types ----------
 
@@ -106,14 +106,15 @@ function basename(path: string): string {
 }
 
 /** Human label for a non-file refType, shown instead of an internal id like `tracker:<uuid>`. */
-function refTypeLabel(refType: string, t: RuntimeTranslate): string {
-  if (refType === 'doc-file') return t('common:collab.document', 'Document');
-  if (refType === 'tracker') return t('common:navigation.tracker', 'Tracker');
-  if (refType === 'session') return t('agents:context.session', 'Session');
-  return refType.length > 0 ? refType.charAt(0).toUpperCase() + refType.slice(1) : t('aichat:rich_transcript.result', 'Result');
+function refTypeLabel(refType: string, documentLabel: string, resultLabel: string): string {
+  if (refType === 'doc-file') return documentLabel;
+  return refType.length > 0 ? refType.charAt(0).toUpperCase() + refType.slice(1) : resultLabel;
 }
 
-function normalizeChunks(chunks: SearchHitLike[], t: RuntimeTranslate): MemorySource[] {
+function normalizeChunks(
+  chunks: SearchHitLike[],
+  labels: { document: string; resultTitle: (kind: string) => string; result: string }
+): MemorySource[] {
   return chunks.map((chunk, i) => {
     const refType = typeof chunk.refType === 'string' && chunk.refType.length > 0 ? chunk.refType : 'doc-file';
     const isFileBacked = refType === 'doc-file';
@@ -126,7 +127,7 @@ function normalizeChunks(chunks: SearchHitLike[], t: RuntimeTranslate): MemorySo
       ? headingPath.join(' › ')
       : path
         ? basename(path)
-        : t('aichat:memory_tool.result_title', '{{kind}} result', { kind: refTypeLabel(refType, t) });
+        : labels.resultTitle(refTypeLabel(refType, labels.document, labels.result));
     const snippetSource = typeof chunk.text === 'string' ? chunk.text : '';
     const citation = typeof chunk.citation === 'string' ? chunk.citation : null;
     const rawSourcePath = typeof chunk.sourcePath === 'string' ? chunk.sourcePath : undefined;
@@ -137,12 +138,12 @@ function normalizeChunks(chunks: SearchHitLike[], t: RuntimeTranslate): MemorySo
       path,
       // A real file's path is useful context; a virtual record's internal id
       // (e.g. `tracker:<uuid>`) isn't -- show its kind instead.
-      meta: path ?? (isFileBacked ? undefined : refTypeLabel(refType, t)),
+      meta: path ?? (isFileBacked ? undefined : refTypeLabel(refType, labels.document, labels.result)),
     };
   });
 }
 
-function normalizeFacts(facts: FactLike[], t: RuntimeTranslate): MemorySource[] {
+function normalizeFacts(facts: FactLike[], factTitle: (index: number) => string): MemorySource[] {
   return facts.map((fact, i) => {
     const hasPath = typeof fact.sourcePath === 'string' && fact.sourcePath.length > 0;
     const path = hasPath ? (fact.sourcePath as string) : undefined;
@@ -152,7 +153,7 @@ function normalizeFacts(facts: FactLike[], t: RuntimeTranslate): MemorySource[] 
     );
     return {
       key: `${path || 'fact'}#${i}`,
-      title: truncate(path ? basename(path) : t('aichat:memory_tool.fact_title', 'fact-{{index}}', { index: i }), MAX_TITLE_CHARS),
+      title: truncate(path ? basename(path) : factTitle(i + 1), MAX_TITLE_CHARS),
       snippet: truncate(snippetSource, MAX_SNIPPET_CHARS),
       path,
       meta: metaParts.length > 0 ? metaParts.join(' / ') : path,
@@ -161,7 +162,10 @@ function normalizeFacts(facts: FactLike[], t: RuntimeTranslate): MemorySource[] 
 }
 
 /** Parses the tool's JSON result into a normalized source list, or null if unrecognized/unparseable. */
-function extractSources(resultText: string | null, t: RuntimeTranslate): MemorySource[] | null {
+function extractSources(
+  resultText: string | null,
+  labels: { document: string; resultTitle: (kind: string) => string; result: string; factTitle: (index: number) => string }
+): MemorySource[] | null {
   if (!resultText) return null;
   let parsed: any;
   try {
@@ -169,20 +173,13 @@ function extractSources(resultText: string | null, t: RuntimeTranslate): MemoryS
   } catch {
     return null;
   }
-  if (Array.isArray(parsed?.chunks)) return normalizeChunks(parsed.chunks, t);
-  if (Array.isArray(parsed?.facts)) return normalizeFacts(parsed.facts, t);
+  if (Array.isArray(parsed?.chunks)) return normalizeChunks(parsed.chunks, labels);
+  if (Array.isArray(parsed?.facts)) return normalizeFacts(parsed.facts, labels.factTitle);
   return null;
 }
 
 function getBaseName(toolName: string): string {
   return toolName.replace(/^mcp__[^_]+__/, '').replace(/^memory_/, '');
-}
-
-function getToolLabel(toolName: string, t: RuntimeTranslate): string {
-  const baseName = getBaseName(toolName);
-  if (baseName === 'recall') return t('aichat:memory_tool.recall', 'Memory Recall');
-  if (baseName === 'search_project_knowledge') return t('aichat:memory_tool.search', 'Memory Search');
-  return t('aichat:memory_tool.title', 'Memory Tool');
 }
 
 // ---------- Small pieces ----------
@@ -226,7 +223,7 @@ const Shell: React.FC<{ header: React.ReactNode; children: React.ReactNode; tone
 // ---------- Main widget ----------
 
 export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isExpanded, onToggle, sessionId, workspacePath }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
   const handleOpenSource = useCallback(
     (e: React.MouseEvent, path: string) => {
@@ -258,7 +255,12 @@ export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isE
 
   const args = (tool.arguments || {}) as Record<string, unknown>;
   const query = typeof args.query === 'string' && args.query.trim().length > 0 ? args.query.trim() : null;
-  const label = getToolLabel(tool.toolName, t);
+  const baseName = getBaseName(tool.toolName);
+  const label = baseName === 'recall'
+    ? t('memory_tool.recall')
+    : baseName === 'search_project_knowledge'
+      ? t('memory_tool.search')
+      : t('memory_tool.title');
   const resultText = getResultText(tool.result);
   const isError = tool.isError === true || (resultText != null && /^Error:/i.test(resultText));
 
@@ -270,11 +272,11 @@ export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isE
       >
         {query && (
           <div style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>
-            {t('aichat:memory_tool.query', 'Query:')} <span style={{ fontStyle: 'italic' }}>&ldquo;{truncate(query, MAX_TITLE_CHARS)}&rdquo;</span>
+            {t('memory_tool.query')} <span style={{ fontStyle: 'italic' }}>&ldquo;{truncate(query, MAX_TITLE_CHARS)}&rdquo;</span>
           </div>
         )}
         <div style={{ color: '#f87171', fontSize: '10px' }} data-testid="memory-tool-error">
-          {truncate(resultText || t('aichat:memory_tool.failed', 'Memory lookup failed.'), MAX_SNIPPET_CHARS)}
+          {truncate(resultText || t('memory_tool.failed'), MAX_SNIPPET_CHARS)}
         </div>
       </Shell>
     );
@@ -286,14 +288,19 @@ export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isE
       <Shell header={<span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{label}</span>}>
         {query && (
           <div style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }} data-testid="memory-tool-query">
-            {t('aichat:memory_tool.query', 'Query:')} <span style={{ fontStyle: 'italic' }}>&ldquo;{truncate(query, MAX_TITLE_CHARS)}&rdquo;</span>
+            {t('memory_tool.query')} <span style={{ fontStyle: 'italic' }}>&ldquo;{truncate(query, MAX_TITLE_CHARS)}&rdquo;</span>
           </div>
         )}
       </Shell>
     );
   }
 
-  const sources = extractSources(resultText, t);
+  const sources = extractSources(resultText, {
+    document: t('memory_tool.document'),
+    resultTitle: (kind) => t('memory_tool.result_title', { kind }),
+    result: t('memory_tool.result'),
+    factTitle: (index) => t('memory_tool.fact_title', { index }),
+  });
   const visibleSources = sources ? (isExpanded ? sources : sources.slice(0, MAX_VISIBLE_SOURCES)) : null;
   const hiddenCount = sources ? Math.max(0, sources.length - (visibleSources?.length ?? 0)) : 0;
   const canCollapse = isExpanded && (sources?.length ?? 0) > MAX_VISIBLE_SOURCES;
@@ -305,7 +312,7 @@ export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isE
           <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{label}</span>
           {sources && sources.length > 0 && (
             <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--nim-primary)', fontWeight: 500 }}>
-              {t('aichat:memory_tool.sources', sources.length === 1 ? '({{count}} source)' : '({{count}} sources)', { count: sources.length })}
+              {t('memory_tool.sources', { count: sources.length })}
             </span>
           )}
         </>
@@ -313,7 +320,7 @@ export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isE
     >
       {query && (
         <div style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }} data-testid="memory-tool-query">
-          {t('aichat:memory_tool.query', 'Query:')} <span style={{ fontStyle: 'italic', color: 'var(--nim-text-muted)' }}>&ldquo;{truncate(query, MAX_TITLE_CHARS)}&rdquo;</span>
+          {t('memory_tool.query')} <span style={{ fontStyle: 'italic', color: 'var(--nim-text-muted)' }}>&ldquo;{truncate(query, MAX_TITLE_CHARS)}&rdquo;</span>
         </div>
       )}
 
@@ -322,7 +329,7 @@ export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isE
           style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}
           data-testid="memory-tool-empty"
         >
-          {t('aichat:memory_tool.empty', 'No matching memory found for this query.')}
+          {t('memory_tool.empty')}
         </div>
       ) : (
         <>
@@ -384,7 +391,9 @@ export const MemoryToolWidget: React.FC<CustomToolWidgetProps> = ({ message, isE
                 cursor: 'pointer',
               }}
             >
-              {hiddenCount > 0 ? t('aichat:memory_tool.more_sources', hiddenCount === 1 ? 'Show {{count}} more source' : 'Show {{count}} more sources', { count: hiddenCount }) : t('aichat:memory_tool.show_fewer', 'Show fewer')}
+              {hiddenCount > 0
+                ? t('memory_tool.more_sources', { count: hiddenCount })
+                : t('memory_tool.show_fewer')}
             </button>
           )}
         </>

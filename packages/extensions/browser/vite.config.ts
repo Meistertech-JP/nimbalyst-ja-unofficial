@@ -15,6 +15,7 @@ const baseConfig = createExtensionConfig({
 export default mergeExtensionConfig(baseConfig, {
   build: {
     rollupOptions: {
+      external: [...(baseConfig.build?.rollupOptions?.external ?? []), '@nimbalyst/i18n/react'],
       output: {
         inlineDynamicImports: true,
         assetFileNames: (assetInfo) => {

@@ -13,12 +13,13 @@ import {
   useInteractions,
   useRole,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '../../ui/floating/windowControlsClearance';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { trackerItemsArrayAtom } from '../TrackerPlugin/trackerDataAtoms';
 import { buildTrackerReferenceOptions } from './trackerReferencePicker';
 import { TrackerReferenceChip } from './TrackerReferenceChip';
-import { useRuntimeTranslation } from '../../ui/RuntimeTranslation';
 
 export interface TrackerReferencePickerProps {
   /** Canonical issue keys or tracker ids persisted by the consumer. */
@@ -47,8 +48,8 @@ export function TrackerReferencePicker({
   className,
   maxResults = 25,
 }: TrackerReferencePickerProps): JSX.Element {
-  const { t } = useRuntimeTranslation();
-  const resolvedPlaceholder = placeholder ?? t('tracker:reference.link_item', 'Link tracker item');
+  const { t } = useTranslation('tracker');
+  const triggerLabel = placeholder ?? t('reference.link_item');
   const trackerItems = useAtomValue(trackerItemsArrayAtom);
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -64,9 +65,11 @@ export function TrackerReferencePicker({
       offset(6),
       flip({ padding: 8 }),
       shift({ padding: 8 }),
+      windowControlsClearance(),
       size({
         padding: 8,
-        apply({ rects, elements, availableHeight, availableWidth }) {
+        apply({ rects, elements, availableHeight, availableWidth, middlewareData }) {
+          const pushed = middlewareData.windowControlsClearance?.pushed ?? 0;
           const width = Math.max(
             rects.reference.width,
             Math.min(420, Math.max(280, availableWidth)),
@@ -74,7 +77,7 @@ export function TrackerReferencePicker({
           Object.assign(elements.floating.style, {
             width: `${width}px`,
             maxWidth: 'calc(100vw - 16px)',
-            maxHeight: `${Math.max(160, Math.min(360, availableHeight))}px`,
+            maxHeight: `${Math.max(160, Math.min(360, availableHeight - pushed))}px`,
           });
         },
       }),
@@ -126,7 +129,7 @@ export function TrackerReferencePicker({
               {!disabled ? (
                 <button
                   type="button"
-                  aria-label={t('tracker:reference.remove', 'Remove tracker reference {{key}}', { key: referenceKey })}
+                  aria-label={t('reference.remove', { key: referenceKey })}
                   onClick={() => removeReference(referenceKey)}
                   style={{
                     border: 0,
@@ -151,7 +154,7 @@ export function TrackerReferencePicker({
         aria-haspopup="listbox"
         aria-expanded={open}
         {...getReferenceProps()}
-         aria-label={resolvedPlaceholder}
+        aria-label={triggerLabel}
         className="tracker-reference-picker-trigger"
         style={{
           width: '100%',
@@ -165,7 +168,7 @@ export function TrackerReferencePicker({
           cursor: disabled ? 'default' : 'pointer',
         }}
       >
-        {resolvedPlaceholder}
+        {triggerLabel}
       </button>
 
       {open ? (
@@ -190,8 +193,8 @@ export function TrackerReferencePicker({
               autoFocus
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder={t('tracker:reference.search', 'Search tracker items…')}
-              aria-label={t('tracker:reference.search_aria', 'Search tracker items')}
+              placeholder={t('reference.search')}
+              aria-label={t('reference.search_aria')}
               style={{
                 margin: '8px',
                 padding: '6px 8px',
@@ -261,8 +264,8 @@ export function TrackerReferencePicker({
                   style={{ padding: '12px', color: 'var(--nim-text-muted)', fontSize: '12px' }}
                 >
                   {query
-                    ? t('tracker:reference.no_matches', 'No tracker items match “{{query}}”', { query })
-                    : t('tracker:reference.no_items', 'No tracker items available')}
+                    ? t('reference.no_matches', { query })
+                    : t('reference.no_items')}
                 </div>
               )}
             </div>

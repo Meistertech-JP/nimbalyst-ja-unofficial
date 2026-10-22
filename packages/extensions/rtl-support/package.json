@@ -8,10 +8,11 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../../scripts/tsc-native.mjs --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@nimbalyst/i18n": "workspace:*",
     "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
@@ -19,7 +20,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
-    "typescript": "^5.0.0",
+    "typescript": "^6.0.3",
     "unified": "^11.0.5",
     "vite": "^7.1.12"
   },

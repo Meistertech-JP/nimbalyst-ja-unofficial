@@ -1,20 +1,17 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import {useAtomValue} from 'jotai';
+import {selectedMachineAtom} from '../store/atoms/remoteMachines';
+import {RemoteMachineSelector} from './RemoteMachineSelector';
 import { getFileName } from '../utils/pathUtils';
 
-export function generateWorkspaceAccentColor(path: string): string {
-  let hash = 0;
-  for (let i = 0; i < path.length; i++) {
-    hash = ((hash << 5) - hash) + path.charCodeAt(i);
-    hash &= hash;
-  }
-
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 65%, 55%)`;
-}
+import { generateWorkspaceAccentColor } from '../../shared/projectAppearance';
+import { projectAppearanceAtom } from '../store/atoms/projectAppearance';
+export { generateWorkspaceAccentColor } from '../../shared/projectAppearance';
 
 interface WorkspaceSummaryHeaderProps {
   workspacePath: string;
+  showMachineSelector?: boolean;
   workspaceName?: string;
   actions?: React.ReactNode;
   subtitle?: React.ReactNode;
@@ -26,21 +23,24 @@ interface WorkspaceSummaryHeaderProps {
 export function WorkspaceSummaryHeader({
   workspacePath,
   workspaceName,
+  showMachineSelector = false,
   actions,
   subtitle,
   showAccent = true,
   headerClassName = '',
   actionsClassName = '',
 }: WorkspaceSummaryHeaderProps) {
-  const { t } = useTranslation(['common']);
-  const displayName = workspaceName || getFileName(workspacePath) || t('common:workspace');
+  const { t } = useTranslation('common');
+  const appearance = useAtomValue(projectAppearanceAtom(workspacePath)).snapshot?.appearance;
+  const remoteHost = useAtomValue(selectedMachineAtom(workspacePath));
+  const displayName = workspaceName || getFileName(workspacePath) || t('workspace');
 
   return (
     <>
       {showAccent && (
         <div
           className="workspace-color-accent h-[3px] w-full opacity-90 shrink-0"
-          style={{ backgroundColor: generateWorkspaceAccentColor(workspacePath) }}
+          style={{ backgroundColor: appearance?.color || generateWorkspaceAccentColor(workspacePath) }}
         />
       )}
       <div
@@ -63,11 +63,12 @@ export function WorkspaceSummaryHeader({
             </div>
           ) : null}
         </div>
+        {showMachineSelector && <RemoteMachineSelector workspacePath={workspacePath} />}
         <div
           className="workspace-summary-header-path mt-0.5 text-[11px] text-[var(--nim-text-muted)] overflow-hidden text-ellipsis whitespace-nowrap opacity-75 font-normal"
           title={workspacePath}
         >
-          {workspacePath}
+          {showMachineSelector && remoteHost ? t('remote_workspace') : workspacePath}
         </div>
       </div>
     </>

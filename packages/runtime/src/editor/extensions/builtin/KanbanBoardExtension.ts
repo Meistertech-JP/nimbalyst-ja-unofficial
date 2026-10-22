@@ -28,7 +28,7 @@ import { BoardColumnNode } from '../../plugins/KanbanBoardPlugin/BoardColumnNode
 import { BoardHeaderNode } from '../../plugins/KanbanBoardPlugin/BoardHeaderNode';
 import { KanbanBoardNode, $isBoardNode } from '../../plugins/KanbanBoardPlugin/KanbanBoardNode';
 import { BOARD_TABLE_TRANSFORMER } from '../../plugins/KanbanBoardPlugin/BoardTableTransformer';
-import { getKanbanTranslation, registerKanbanCommands } from '../../plugins/KanbanBoardPlugin/BoardCommands';
+import { registerKanbanCommands } from '../../plugins/KanbanBoardPlugin/BoardCommands';
 import { registerBoardTransformCommands } from '../../plugins/KanbanBoardPlugin/BoardTransformCommands';
 import { setExtensionContributions } from '../extensionContributionsStore';
 
@@ -121,7 +121,7 @@ export const KanbanBoardExtension = defineExtension({
           if (sourceColumn === column) return true;
 
           editor.update(() => {
-            const cardText = sourceCardNode.getTextContent() || getKanbanTranslation(editor)('editor:kanban.moved_card', 'Moved card');
+            const cardText = sourceCardNode.getTextContent() || 'Moved card';
             const cardData = sourceCardNode.getData();
             sourceCardNode.remove();
             const newCard = $createCardNode(cardId, cardData);

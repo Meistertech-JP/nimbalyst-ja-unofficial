@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 export type FeedbackKind = 'bug' | 'feature';
 
@@ -31,8 +31,8 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
   onClose,
   onLaunch,
 }) => {
-  const { t } = useTranslation(['dialogs']);
   const posthog = usePostHog();
+  const { t } = useTranslation('dialogs', { keyPrefix: 'feedback' });
   const [selectedKind, setSelectedKind] = useState<FeedbackKind | null>(null);
   const [mayGatherLogs, setMayGatherLogs] = useState(true);
   const [shouldCreateMockup, setShouldCreateMockup] = useState(false);
@@ -91,7 +91,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
           type="button"
           className="absolute top-3.5 right-3.5 z-[1] flex h-8 w-8 items-center justify-center rounded-md border-none bg-transparent text-[var(--nim-text-muted)] transition-colors duration-150 hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
           onClick={onClose}
-          aria-label={t('dialogs:feedback.close')}
+          aria-label={t('close')}
           data-testid="feedback-intake-close"
         >
           <MaterialSymbol icon="close" size={20} />
@@ -103,10 +103,10 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
               id="feedback-intake-title"
               className="m-0 text-[24px] font-semibold leading-[1.1] text-[var(--nim-text)]"
             >
-              {t('dialogs:feedback.title')}
+              {t('title')}
             </h2>
             <p className="mt-2 max-w-[42ch] text-[13px] leading-relaxed text-[var(--nim-text-muted)]">
-              {t('dialogs:feedback.description')}
+              {t('description')}
             </p>
           </div>
 
@@ -126,10 +126,10 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(239,68,68,0.12)] text-[var(--nim-error)]">
                     <MaterialSymbol icon="bug_report" size={20} />
                   </span>
-                  <span className="text-[14px] font-semibold leading-none">{t('dialogs:feedback.bug')}</span>
+                  <span className="text-[14px] font-semibold leading-none">{t('bug')}</span>
                 </div>
                 <p className="m-0 text-[12px] leading-relaxed">
-                  {t('dialogs:feedback.bug_desc')}
+                  {t('bug_desc')}
                 </p>
               </button>
 
@@ -147,10 +147,10 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(245,158,11,0.14)] text-[var(--nim-warning)]">
                     <MaterialSymbol icon="lightbulb" size={20} />
                   </span>
-                  <span className="text-[14px] font-semibold leading-none">{t('dialogs:feedback.feature')}</span>
+                  <span className="text-[14px] font-semibold leading-none">{t('feature')}</span>
                 </div>
                 <p className="m-0 text-[12px] leading-relaxed">
-                  {t('dialogs:feedback.feature_desc')}
+                  {t('feature_desc')}
                 </p>
               </button>
             </div>
@@ -173,10 +173,10 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                       />
                       <div className="min-w-0 flex-1">
                         <p className="m-0 text-[13px] font-medium leading-snug text-[var(--nim-text)]">
-                          {t('dialogs:feedback.logs_title')}
+                          {t('logs_title')}
                         </p>
                         <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--nim-text-muted)]">
-                          {t('dialogs:feedback.logs_desc')}
+                          {t('logs_desc')}
                         </p>
                       </div>
                     </div>
@@ -199,10 +199,10 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                       />
                       <div className="min-w-0 flex-1">
                         <p className="m-0 text-[13px] font-medium leading-snug text-[var(--nim-text)]">
-                          {t('dialogs:feedback.mockup_title')}
+                          {t('mockup_title')}
                         </p>
                         <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--nim-text-muted)]">
-                          {t('dialogs:feedback.mockup_desc')}
+                          {t('mockup_desc')}
                         </p>
                       </div>
                     </div>
@@ -224,10 +224,10 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
             >
               <span>
                 {selectedKind === 'bug'
-                  ? t('dialogs:feedback.start_bug')
+                  ? t('start_bug')
                   : selectedKind === 'feature'
-                    ? t('dialogs:feedback.start_feature')
-                    : t('dialogs:feedback.choose')}
+                    ? t('start_feature')
+                    : t('choose')}
               </span>
               <MaterialSymbol
                 icon="arrow_forward"
@@ -240,7 +240,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
 
         <div className="border-t border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-8 pt-4 pb-4.5">
           <p className="m-0 mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--nim-text-faint)]">
-            {t('dialogs:feedback.other')}
+            {t('other')}
           </p>
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             <li>
@@ -255,7 +255,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                   size={16}
                   className="text-[var(--nim-text-faint)] group-hover:text-[var(--nim-primary)]"
                 />
-                {t('dialogs:feedback.issues')}
+                {t('issues')}
               </button>
             </li>
             <li>
@@ -270,7 +270,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                   size={16}
                   className="text-[var(--nim-text-faint)] group-hover:text-[var(--nim-primary)]"
                 />
-                {t('dialogs:feedback.discussions')}
+                {t('discussions')}
               </button>
             </li>
             <li>
@@ -285,7 +285,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                   size={16}
                   className="text-[var(--nim-text-faint)] group-hover:text-[var(--nim-primary)]"
                 />
-                {t('dialogs:feedback.email')}
+                {t('email')}
               </button>
             </li>
           </ul>

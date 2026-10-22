@@ -11,6 +11,7 @@ import {
 import { ShareAccountPicker, type ShareAccountOption } from './ShareAccountPicker';
 import { AccountLoginForm } from '../Accounts/AccountLoginForm';
 import { stytchAuthAtom } from '../../store/atoms/stytchAuth';
+import { prerenderMermaidForShare } from './prerenderShareDiagrams';
 
 export interface ShareDialogProps {
   isOpen: boolean;
@@ -20,17 +21,6 @@ export interface ShareDialogProps {
   filePath?: string;
   title?: string;
 }
-
-type ExpirationOption = {
-  label: string;
-  value: number;
-};
-
-const EXPIRATION_OPTIONS: ExpirationOption[] = [
-  { label: 'expiration_1', value: 1 },
-  { label: 'expiration_7', value: 7 },
-  { label: 'expiration_30', value: 30 },
-];
 
 type ShareState = 'ready' | 'sharing' | 'success' | 'error';
 
@@ -42,7 +32,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   filePath,
   title,
 }) => {
-  const { t } = useTranslation(['dialogs']);
+  const { t } = useTranslation('dialogs');
   const [shareState, setShareState] = useState<ShareState>('ready');
   const [errorMessage, setErrorMessage] = useState('');
   const [shareUrl, setShareUrl] = useState('');
@@ -133,6 +123,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           filePath,
           expirationDays,
           personalOrgId: selectedPersonalOrgId || undefined,
+          mermaidSvgs: await prerenderMermaidForShare(filePath),
         });
       }
 
@@ -149,7 +140,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           addShare({
             shareId: result.shareId,
             sessionId,
-            title: title ?? t('dialogs:share.untitled'),
+            title: title ?? t('share.untitled'),
             sizeBytes: 0,
             createdAt: new Date().toISOString(),
             expiresAt,
@@ -159,11 +150,11 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           });
         }
       } else {
-        setErrorMessage(result?.error ?? t('dialogs:share.failed'));
+        setErrorMessage(result?.error ?? t('share.failed'));
         setShareState('error');
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : t('dialogs:share.unexpected'));
+      setErrorMessage(error instanceof Error ? error.message : t('share.unexpected'));
       setShareState('error');
     }
   }, [contentType, sessionId, filePath, expirationDays, selectedPersonalOrgId, title, addShare, t]);
@@ -177,7 +168,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 
   if (!isOpen) return null;
 
-  const contentLabel = t(contentType === 'session' ? 'dialogs:share.session' : 'dialogs:share.file');
+  const contentLabel = t(`share.${contentType}`);
   const isAlreadyShared = !!existingShare;
   const needsAuth = authState?.isAuthenticated === false;
 
@@ -194,7 +185,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
         <button
           className="absolute top-4 right-4 w-8 h-8 p-0 flex items-center justify-center bg-transparent border-none text-[28px] leading-none cursor-pointer rounded-md z-[1] text-[var(--nim-text-muted)] transition-[color,transform] duration-200 hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] hover:scale-110"
           onClick={onClose}
-          aria-label={t('dialogs:share.close')}
+          aria-label={t('share.close')}
         >
           &times;
         </button>
@@ -206,7 +197,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               <MaterialSymbol icon="share" size={22} />
             </div>
             <h2 className="m-0 text-lg font-semibold text-[var(--nim-text)]">
-              {t('dialogs:share.title', { content: contentLabel })}
+              {t('share.title', { content: contentLabel })}
             </h2>
           </div>
 
@@ -214,7 +205,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           {needsAuth ? (
             <div className="share-dialog-login flex flex-col gap-4">
               <p className="m-0 text-[0.8125rem] text-[var(--nim-text-muted)]">
-                {t('dialogs:share.sign_in_description')}
+                {t('share.sign_in_description')}
               </p>
               <AccountLoginForm mode="first-sign-in" />
               <div className="flex justify-end">
@@ -223,7 +214,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   className="rounded-lg border-none bg-transparent px-4 py-2.5 text-[0.8125rem] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                   onClick={onClose}
                 >
-                  {t('dialogs:share.cancel')}
+                  {t('share.cancel')}
                 </button>
               </div>
             </div>
@@ -234,12 +225,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                 <MaterialSymbol icon="lock" size={18} className="shrink-0 mt-0.5 text-[var(--nim-text-muted)]" />
                 <div>
                   <p className="m-0 text-[0.8125rem] text-[var(--nim-text)]">
-                    {t('dialogs:share.anyone_can_view', { content: contentLabel })}
+                    {t('share.anyone_can_view', { content: contentLabel })}
                   </p>
                   <p className="m-0 mt-1 text-[0.75rem] text-[var(--nim-text-faint)]">
-                    {t('dialogs:share.encrypted')}
+                    {t('share.encrypted')}
                     <br />
-                    {t('dialogs:share.no_one_without_link')}
+                    {t('share.no_one_without_link')}
                   </p>
                 </div>
               </div>
@@ -257,7 +248,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   )}
                   <div>
                   <label className="block text-[0.75rem] font-medium text-[var(--nim-text-muted)] mb-1.5">
-                    {t('dialogs:share.expires_after')}
+                    {t('share.expires_after')}
                   </label>
                   <select
                     className="w-full px-3 py-2 text-[0.8125rem] rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] cursor-pointer outline-none transition-colors duration-150 focus:border-[var(--nim-primary)] [&>option]:bg-[var(--nim-bg)] [&>option]:text-[var(--nim-text)]"
@@ -266,14 +257,14 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       setExpirationDays(Number(e.target.value));
                     }}
                   >
-                    {EXPIRATION_OPTIONS.map((opt) => (
-                      <option key={String(opt.value)} value={String(opt.value)}>
-                        {t('dialogs:share.' + opt.label)}
+                    {[1, 7, 30].map((days) => (
+                      <option key={String(days)} value={String(days)}>
+                        {t(`share.expiration_${days}`)}
                       </option>
                     ))}
                   </select>
                   <p className="m-0 mt-1.5 text-[0.6875rem] text-[var(--nim-text-faint)]">
-                    {t('dialogs:share.remember_choice')}
+                    {t('share.remember_choice')}
                   </p>
                   </div>
                 </div>
@@ -283,7 +274,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               {shareState === 'success' && shareUrl && (
                 <div className="mb-5">
                   <label className="block text-[0.75rem] font-medium text-[var(--nim-text-muted)] mb-1.5">
-                    {t('dialogs:share.share_link')}
+                    {t('share.share_link')}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -299,7 +290,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       onClick={handleCopyUrl}
                     >
                       <MaterialSymbol icon={urlCopied ? 'check' : 'content_copy'} size={14} />
-                      {urlCopied ? t('dialogs:share.copied') : t('dialogs:share.copy')}
+                      {urlCopied ? t('share.copied') : t('share.copy')}
                     </button>
                   </div>
                 </div>
@@ -319,7 +310,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     className="px-5 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium cursor-pointer text-[var(--nim-text)] bg-[var(--nim-bg-hover)] transition-colors duration-150 hover:bg-[var(--nim-border)]"
                     onClick={onClose}
                   >
-                    {t('dialogs:share.done')}
+                    {t('share.done')}
                   </button>
                 ) : (
                   <>
@@ -327,7 +318,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       className="px-4 py-2.5 rounded-lg border-none text-[0.8125rem] cursor-pointer text-[var(--nim-text-muted)] bg-transparent transition-colors duration-150 hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
                       onClick={onClose}
                     >
-                      {t('dialogs:share.cancel')}
+                      {t('share.cancel')}
                     </button>
                     <button
                       className="flex items-center gap-2 px-5 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium cursor-pointer text-white bg-[var(--nim-primary)] transition-all duration-150 hover:brightness-110 disabled:opacity-50 disabled:cursor-default"
@@ -337,19 +328,19 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       {shareState === 'sharing' ? (
                         <>
                           <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />
-                          {t('dialogs:share.sharing')}
+                          {t('share.sharing')}
                         </>
                       ) : shareState === 'error' ? (
-                        t('dialogs:share.retry')
+                        t('share.retry')
                       ) : isAlreadyShared ? (
                         <>
                           <MaterialSymbol icon="link" size={14} />
-                          {t('dialogs:share.update_link')}
+                          {t('share.update_link')}
                         </>
                       ) : (
                         <>
                           <MaterialSymbol icon="link" size={14} />
-                          {t('dialogs:share.copy_link')}
+                          {t('share.copy_link')}
                         </>
                       )}
                     </button>

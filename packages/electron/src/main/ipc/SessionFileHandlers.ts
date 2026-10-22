@@ -1,8 +1,7 @@
-/**
- * IPC handlers for session-file link operations
- */
+import { getShellTrackingCoverage } from '../services/ai/codexShellTrackingHost';
+/** IPC handlers for session-file link operations. */
 
-import { SessionFilesRepository, type FileLinkType, type FileLink } from '@nimbalyst/runtime';
+import { AISessionsRepository, SessionFilesRepository, type FileLinkType, type FileLink } from '@nimbalyst/runtime';
 import { promises as fs } from 'fs';
 import { createPatch } from 'diff';
 import { logger } from '../utils/logger';
@@ -12,6 +11,9 @@ import { toolCallMatcher } from '../services/ToolCallMatcher';
 import { historyManager } from '../HistoryManager';
 import { createSessionFilesQueryCache } from '../services/sessionFilesQueryCache';
 import { registerSessionFilesCacheInvalidator } from '../services/sessionFilesNotify';
+import { isSessionWorkspaceAllowed, resolveSessionDiffPath } from './sessionFileScope';
+
+export { isSessionWorkspaceAllowed, resolveSessionDiffPath } from './sessionFileScope';
 
 // ============================================================
 // Session Files Cache (NIM-816: extracted to sessionFilesQueryCache)
@@ -30,8 +32,7 @@ function invalidateSessionCache(sessionId: string): void {
 }
 
 export function setupSessionFileHandlers(): void {
-  // All direct-DB session_files writers route their post-write notification
-  // through sessionFilesNotify; give it the cache invalidator (NIM-816).
+  safeHandle('session-files:coverage', (_event, ids: string[]) => getShellTrackingCoverage(ids));
   registerSessionFilesCacheInvalidator(invalidateSessionCache);
   /**
    * Add a file link to a session (used by AI and tests)
@@ -83,8 +84,27 @@ export function setupSessionFileHandlers(): void {
    */
   safeHandle('session-files:get-by-sessions', async (event, sessionIds: string[], linkType?: string) => {
     try {
-      const files = await SessionFilesRepository.getFilesBySessionMany(sessionIds, linkType as any);
-      return { success: true, files };
+      const unique = Array.from(new Set(sessionIds ?? [])).filter(Boolean);
+      if (unique.length === 0) return { success: true, files: [] };
+
+      // Go through the per-session cache so batching keeps NIM-816's
+      // epoch-based invalidation semantics, but let every cache MISS share a
+      // single `getFilesBySessionMany` round trip. The shared query is created
+      // lazily, so an all-hit batch issues no query at all. It fetches the
+      // whole requested set (a superset of the misses) — one query either way.
+      let shared: Promise<FileLink[]> | null = null;
+      const runShared = () => (shared ??= SessionFilesRepository.getFilesBySessionMany(unique, linkType as any));
+
+      const perSession = await Promise.all(
+        unique.map((sessionId) =>
+          sessionFilesCache.get(sessionId, linkType, async () => {
+            const all = await runShared();
+            return all.filter((file) => file.sessionId === sessionId);
+          })
+        )
+      );
+
+      return { success: true, files: perSession.flat() };
     } catch (error) {
       logger.main.error('[SessionFileHandlers] Failed to batch get files by sessions:', error);
       return { success: false, error: String(error), files: [] };
@@ -109,20 +129,23 @@ export function setupSessionFileHandlers(): void {
    */
   safeHandle('session-files:get-stats', async (event, sessionId: string) => {
     try {
-      const [edited, referenced, read] = await Promise.all([
-        SessionFilesRepository.getFilesBySession(sessionId, 'edited'),
-        SessionFilesRepository.getFilesBySession(sessionId, 'referenced'),
-        SessionFilesRepository.getFilesBySession(sessionId, 'read')
-      ]);
+      // One round trip, counted in JS, sharing the linkType-less cache entry
+      // with `session-files:get-by-session`. This used to fire three queries
+      // over the same index for three subsets of the same rows — on a FIFO
+      // single-lane DB worker each one is an independent chance to queue
+      // behind an unrelated multi-second query.
+      const files = await sessionFilesCache.get(sessionId, undefined, () =>
+        SessionFilesRepository.getFilesBySession(sessionId)
+      );
+
+      const counts = { edited: 0, referenced: 0, read: 0 };
+      for (const file of files) {
+        if (file.linkType in counts) counts[file.linkType as keyof typeof counts] += 1;
+      }
 
       return {
         success: true,
-        stats: {
-          edited: edited.length,
-          referenced: referenced.length,
-          read: read.length,
-          total: edited.length + referenced.length + read.length
-        }
+        stats: { ...counts, total: counts.edited + counts.referenced + counts.read }
       };
     } catch (error) {
       logger.main.error('[SessionFileHandlers] Failed to get file stats:', error);
@@ -166,21 +189,32 @@ export function setupSessionFileHandlers(): void {
   safeHandle(
     'session-files:get-tool-call-diffs',
     async (
-      event,
+      _event,
+      workspacePath: string,
       sessionId: string,
       toolCallItemId: string,
       toolCallTimestamp?: number
     ) => {
+      if (!workspacePath || !sessionId || !toolCallItemId) {
+        return { state: 'failed', diffs: [], omissions: [], errorCode: 'snapshot-read-failed' };
+      }
       try {
-        const diffs = await toolCallMatcher.getDiffsForToolCall(
+        const session = await AISessionsRepository.get(sessionId);
+        if (!isSessionWorkspaceAllowed(session, workspacePath)) {
+          logger.main.warn('[SessionFileHandlers] Rejected cross-workspace tool diff request', {
+            sessionId,
+          });
+          return { state: 'failed', diffs: [], omissions: [], errorCode: 'snapshot-read-failed' };
+        }
+
+        return await toolCallMatcher.getDiffsForToolCallResult(
           sessionId,
           toolCallItemId,
           toolCallTimestamp
         );
-        return { success: true, diffs };
       } catch (error) {
         logger.main.error('[SessionFileHandlers] Failed to get tool call diffs:', error);
-        return { success: false, error: String(error), diffs: [] };
+        return { state: 'failed', diffs: [], omissions: [], errorCode: 'worker-failed' };
       }
     }
   );
@@ -202,7 +236,7 @@ export function setupSessionFileHandlers(): void {
     'session:file-diff',
     async (
       _event,
-      _workspacePath: string,
+      workspacePath: string,
       sessionId: string,
       filePath: string,
     ): Promise<{
@@ -213,9 +247,15 @@ export function setupSessionFileHandlers(): void {
       if (!sessionId || !filePath) {
         return { unifiedDiff: '', isBinary: false, source: 'none' };
       }
+      // Snapshots are keyed by absolute path; the commit widget asks with
+      // workspace-relative ones.
+      const absoluteFilePath = resolveSessionDiffPath(workspacePath, filePath);
+      if (!absoluteFilePath) {
+        return { unifiedDiff: '', isBinary: false, source: 'none' };
+      }
       try {
         const beforeContent = await historyManager.getLatestSnapshotContent(
-          filePath,
+          absoluteFilePath,
           sessionId,
           'pre-edit',
         );
@@ -224,7 +264,7 @@ export function setupSessionFileHandlers(): void {
           return { unifiedDiff: '', isBinary: false, source: 'none' };
         }
         let afterContent = await historyManager.getLatestSnapshotContent(
-          filePath,
+          absoluteFilePath,
           sessionId,
           'ai-edit',
         );
@@ -235,7 +275,7 @@ export function setupSessionFileHandlers(): void {
           // content as a best-effort "after" — this matches what the chat
           // transcript inline card has always done.
           try {
-            afterContent = await fs.readFile(filePath, 'utf-8');
+            afterContent = await fs.readFile(absoluteFilePath, 'utf-8');
             source = 'session-history-disk-fallback';
           } catch {
             // File deleted post-edit — show pre-edit content removed against

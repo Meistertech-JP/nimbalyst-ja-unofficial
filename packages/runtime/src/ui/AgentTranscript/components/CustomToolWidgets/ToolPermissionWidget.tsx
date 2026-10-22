@@ -27,48 +27,48 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom, getInteractiveWidgetHost } from '../../../../store/atoms/interactiveWidgetHost';
 import type { PermissionScope } from './InteractiveWidgetHost';
 import { unwrapShellCommand } from '../../utils/unwrapShellCommand';
-import { useRuntimeTranslation, runtimeEnglishTranslation, type RuntimeTranslate } from '../../../RuntimeTranslation';
 
 /**
  * Get a human-readable display name for a tool pattern
  */
-function getPatternDisplayName(pattern: string, t: RuntimeTranslate = runtimeEnglishTranslation): string {
+function getPatternDisplayName(pattern: string, t: (key: string, options?: Record<string, unknown>) => string): string {
   // Handle compound commands - these get unique patterns and shouldn't be cached
   if (pattern.startsWith('Bash:compound:')) {
-    return t('aichat:permission.compound', 'this compound command (one-time only)');
+    return t('permission.compound_once');
   }
 
   // Handle Bash patterns like "Bash(git commit:*)" -> "git commit commands"
   const bashMatch = pattern.match(/^Bash\(([^:]+):\*\)$/);
   if (bashMatch) {
-    return t('aichat:permission.commands', '{{command}} commands', { command: bashMatch[1] });
+    return t('permission.bash_commands', { command: bashMatch[1] });
   }
   if (pattern === 'Bash') {
-    return t('aichat:permission.shell', 'Run shell commands');
+    return t('permission.run_shell_commands');
   }
 
   // Handle WebFetch patterns like "WebFetch(domain:example.com)" -> "Fetch from example.com"
   const webfetchMatch = pattern.match(/^WebFetch\(domain:(.+)\)$/);
   if (webfetchMatch) {
-    return t('aichat:permission.fetch_domain', 'Fetch from {{domain}}', { domain: webfetchMatch[1] });
+    return t('permission.fetch_from_domain', { domain: webfetchMatch[1] });
   }
   if (pattern === 'WebFetch') {
-    return t('aichat:permission.fetch_any', 'Fetch any web page');
+    return t('permission.fetch_any_web_page');
   }
 
   const displayNames: Record<string, string> = {
-    'Edit': t('aichat:permission.edit', 'Edit files in project'),
-    'Write': t('aichat:permission.write', 'Create files in project'),
-    'Read': t('aichat:permission.read', 'Read files'),
-    'Glob': t('aichat:permission.glob', 'Search for files'),
-    'Grep': t('aichat:permission.grep', 'Search file contents'),
-    'WebSearch': t('aichat:permission.web_search', 'Search the web'),
-    'Task': t('aichat:permission.task', 'Run background tasks'),
-    'TodoWrite': t('aichat:permission.todos', 'Update task list'),
+    Edit: t('permission.edit_files'),
+    Write: t('permission.create_files'),
+    Read: t('permission.read_files'),
+    Glob: t('permission.search_files'),
+    Grep: t('permission.search_file_contents'),
+    WebSearch: t('permission.search_web'),
+    Task: t('permission.run_background_tasks'),
+    TodoWrite: t('permission.update_task_list'),
   };
 
   if (displayNames[pattern]) {
@@ -94,33 +94,6 @@ function getPatternDisplayName(pattern: string, t: RuntimeTranslate = runtimeEng
   return pattern;
 }
 
-export function getPermissionCaption(pattern: string, supplied: string | undefined, t: RuntimeTranslate): string {
-  if (!supplied || supplied === getPatternDisplayName(pattern)) return getPatternDisplayName(pattern, t);
-  // Older server-generated captions are persisted in transcripts; custom captions stay verbatim.
-  if (pattern === 'WebFetch' && supplied === 'all web fetches') {
-    return t('aichat:permission.fetch_all', 'all web fetches');
-  }
-  const legacyWebFetch = pattern.match(/^WebFetch\(([^:]+):\*\)$/);
-  if (legacyWebFetch && supplied === `Fetch from ${legacyWebFetch[1]}`) {
-    return t('aichat:permission.fetch_domain', 'Fetch from {{domain}}', { domain: legacyWebFetch[1] });
-  }
-  return supplied;
-}
-
-export function getPermissionWarningText(warning: string, t: RuntimeTranslate): string {
-  if (warning === 'This is part of a compound command - each part is checked separately') {
-    return t('aichat:permission.compound_warning', 'This is part of a compound command - each part is checked separately');
-  }
-  if (warning === 'Auto-mode classifier requested user approval before running this tool.') {
-    return t('aichat:permission.auto_approval', 'Auto-mode classifier requested user approval before running this tool.');
-  }
-  const classifierPrefix = 'Auto-mode classifier flagged this call: ';
-  if (warning.startsWith(classifierPrefix)) {
-    return t('aichat:permission.auto_flagged', 'Auto-mode classifier flagged this call: {{reason}}', { reason: warning.slice(classifierPrefix.length) });
-  }
-  return warning;
-}
-
 // ============================================================
 // Widget Component
 // ============================================================
@@ -129,7 +102,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
   message,
   sessionId,
 }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('agents');
   const toolCall = message.toolCall;
   if (!toolCall) return null;
 
@@ -142,9 +115,9 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
   const toolName = (args.toolName || '') as string;
   const rawCommand = unwrapShellCommand((args.rawCommand || '') as string);
   const pattern = (args.pattern || toolName) as string;
-  // Preserve caller-provided custom names; translate conventional generated captions only.
-  const patternDisplayName = getPermissionCaption(pattern, args.patternDisplayName, t);
+  const patternDisplayName = (args.patternDisplayName || getPatternDisplayName(pattern, t)) as string;
   const isDestructive = (args.isDestructive || false) as boolean;
+  const suppressAlwaysAllowRule = args.suppressAlwaysAllowRule === true;
   const warnings: string[] = (args.warnings || []) as string[];
   const workspacePath = (args.workspacePath || '') as string;
 
@@ -302,10 +275,10 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
   // Show completed state
   if (displayResult || hasResponded) {
     const statusText = displayCancelled
-      ? t('aichat:permission.cancelled', 'Permission Cancelled')
+      ? t('permission.cancelled')
       : displayResult?.decision === 'allow'
-        ? t('aichat:permission.granted', 'Permission Granted')
-        : t('aichat:permission.denied', 'Permission Denied');
+        ? t('permission.granted')
+        : t('permission.denied');
 
     const statusColor = displayCancelled
       ? 'text-nim-muted'
@@ -314,12 +287,12 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
         : 'text-nim-error';
 
     const scopeText = displayResult?.scope === 'always-all'
-      ? t('aichat:permission.all_domains', 'All Domains')
+      ? t('permission.all_domains')
       : displayResult?.scope === 'always'
-        ? t('aichat:permission.always', 'Always')
+        ? t('permission.always')
         : displayResult?.scope === 'session'
-          ? t('aichat:permission.this_session', 'This Session')
-          : t('aichat:permission.once', 'Once');
+          ? t('permission.this_session')
+          : t('permission.once');
 
     return (
       <div
@@ -343,7 +316,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
             {statusText}
             {teammateName && (
               <span className="ml-2 text-xs font-normal text-nim-muted">
-                {t('aichat:permission.teammate', '(from teammate: {{name}})', { name: teammateName })}
+                {t('permission.from_teammate', { name: teammateName })}
               </span>
             )}
           </span>
@@ -419,15 +392,16 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
           )}
         </span>
         <span className="text-sm font-semibold text-nim flex-1">
-          {t('aichat:permission.allow_question', 'Allow this tool?')}
+          {t('permission.allow_tool')}
           {teammateName && (
             <span className="ml-2 text-xs font-normal text-nim-muted">
-              {t('aichat:permission.teammate', '(from teammate: {{name}})', { name: teammateName })}
+              {t('permission.from_teammate', { name: teammateName })}
             </span>
           )}
         </span>
         <span
           className="relative flex items-center cursor-pointer text-nim-faint hover:text-nim-muted"
+          aria-label={t('permission.options_title')}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
@@ -438,28 +412,30 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
           {showTooltip && (
             <div className="absolute bottom-full right-0 mb-2 p-3 w-[300px] rounded-md border border-nim bg-nim-tertiary text-[11px] leading-relaxed text-nim-muted shadow-lg z-[100]">
               <div className="font-semibold text-nim mb-2">
-                {t('aichat:permission.options', 'Permission Options')}
+                {t('permission.options_title')}
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-nim">{t('aichat:permission.deny_label', 'Deny:')}</span>{' '}{t('aichat:permission.deny_detail', 'Block this request')}
+                <span className="font-semibold text-nim">{t('permission.deny')}:</span> {t('permission.block_request')}
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-nim">{t('aichat:permission.once_label', 'Allow Once:')}</span>{' '}{t('aichat:permission.once_detail', 'Allow just this request')}
+                <span className="font-semibold text-nim">{t('permission.allow_once')}:</span> {t('permission.allow_just_this_request')}
               </div>
-              <div className="mb-2">
-                <span className="font-semibold text-nim">{t('aichat:permission.session_label', 'Session:')}</span>{' '}{t('aichat:permission.session_before', 'Allow')}{' '}
-                <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">
-                  {patternDisplayName}
-                </span>{' '}{t('aichat:permission.session_after', 'until you close the app')}
-              </div>
-              <div className="mb-0">
-                <span className="font-semibold text-nim">{t('aichat:permission.always_label', 'Always:')}</span>{' '}{t('aichat:permission.save_to', 'Save to')}{' '}
-                <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">
-                  .claude/settings.local.json
-                </span>
-              </div>
+              {!suppressAlwaysAllowRule && <>
+                <div className="mb-2">
+                  <span className="font-semibold text-nim">{t('permission.session')}:</span> {t('permission.allow')}{' '}
+                  <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">
+                    {patternDisplayName}
+                  </span>{' '}{t('permission.until_app_closes')}
+                </div>
+                <div className="mb-0">
+                  <span className="font-semibold text-nim">{t('permission.always')}:</span> {t('permission.save_to')}{' '}
+                  <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">
+                    .claude/settings.local.json
+                  </span>
+                </div>
+              </>}
               <div className="mt-2 pt-2 border-t border-nim text-nim-faint">
-                {t('aichat:permission.pattern', 'Pattern:')}{' '}<span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">{pattern}</span>
+                {t('permission.pattern')}: <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">{pattern}</span>
               </div>
             </div>
           )}
@@ -477,7 +453,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
                   <path d="M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
                 </svg>
-                <span>{getPermissionWarningText(warning, t)}</span>
+                <span>{warning}</span>
               </div>
             ))}
           </div>
@@ -499,7 +475,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
             data-testid="tool-permission-host-reconnecting"
             className="text-[11px] text-nim-muted bg-nim-tertiary border border-nim rounded px-2 py-1.5"
           >
-            {t('aichat:permission.reconnecting', 'Reconnecting to permission backend. Buttons will work once the session view is fully loaded.')}
+            {t('permission.reconnecting')}
           </div>
         )}
 
@@ -508,11 +484,12 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
           <button
             type="button"
             data-testid="tool-permission-deny"
+            autoFocus={args.defaultToNo === true}
             onClick={handleDeny}
             disabled={isSubmitting}
             className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border border-nim bg-nim-tertiary text-nim whitespace-nowrap transition-all duration-150 hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t('aichat:permission.deny', 'Deny')}
+            {t('permission.deny')}
           </button>
           <button
             type="button"
@@ -521,30 +498,32 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isSubmitting}
             className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border border-nim bg-nim-tertiary text-nim whitespace-nowrap transition-all duration-150 hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t('aichat:permission.allow_once', 'Allow Once')}
+            {t('permission.allow_once')}
           </button>
-          <div className="w-px h-5 bg-nim mx-1" />
-          <button
-            type="button"
-            data-testid="tool-permission-allow-session"
-            onClick={handleAllowSession}
-            disabled={isSubmitting}
-            title={t('aichat:permission.session_title', 'Allow {{pattern}} for this session', { pattern: patternDisplayName })}
-            className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border border-nim-primary bg-transparent text-nim-primary whitespace-nowrap transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {t('aichat:permission.session', 'Session')}
-          </button>
-          <button
-            type="button"
-            data-testid="tool-permission-allow-always"
-            onClick={handleAllowAlways}
-            disabled={isSubmitting}
-            title={t('aichat:permission.always_title', 'Save {{pattern}} to .claude/settings.local.json', { pattern: patternDisplayName })}
-            className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border-none bg-nim-primary text-nim-on-primary whitespace-nowrap transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {t('aichat:permission.always', 'Always')}
-          </button>
-          {isWebFetchRequest && (
+          {!suppressAlwaysAllowRule && <>
+            <div className="w-px h-5 bg-nim mx-1" />
+            <button
+              type="button"
+              data-testid="tool-permission-allow-session"
+              onClick={handleAllowSession}
+              disabled={isSubmitting}
+              title={t('permission.allow_for_session', { pattern: patternDisplayName })}
+              className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border border-nim-primary bg-transparent text-nim-primary whitespace-nowrap transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t('permission.session')}
+            </button>
+            <button
+              type="button"
+              data-testid="tool-permission-allow-always"
+              onClick={handleAllowAlways}
+              disabled={isSubmitting}
+              title={t('permission.save_rule_to_settings', { pattern: patternDisplayName })}
+              className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border-none bg-nim-primary text-nim-on-primary whitespace-nowrap transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t('permission.always')}
+            </button>
+          </>}
+          {isWebFetchRequest && !suppressAlwaysAllowRule && (
             <>
               <div className="w-px h-5 bg-nim mx-1" />
               <button
@@ -552,19 +531,19 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
                 data-testid="tool-permission-allow-all-domains"
                 onClick={handleAllowAllDomains}
                 disabled={isSubmitting || isAllowingAllDomains}
-                title={t('aichat:permission.all_domains_title', 'Allow fetching from any domain without asking')}
+                title={t('permission.allow_any_domain')}
                 className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border-none bg-nim-primary text-nim-on-primary whitespace-nowrap transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isAllowingAllDomains ? t('aichat:permission.saving', 'Saving...') : t('aichat:permission.all_domains', 'All Domains')}
+                {isAllowingAllDomains ? t('permission.saving') : t('permission.all_domains')}
               </button>
             </>
           )}
         </div>
 
         {/* Pattern info */}
-        <div className="text-[11px] text-nim-faint">
-          {t('aichat:permission.allowed_pattern', 'Session/Always will allow:')}{' '}<span className="font-medium text-nim-muted bg-nim-tertiary px-1.5 py-0.5 rounded text-[10px]">{patternDisplayName}</span>
-        </div>
+        {!suppressAlwaysAllowRule && <div className="text-[11px] text-nim-faint">
+          {t('permission.session_always_allow')}: <span className="font-medium text-nim-muted bg-nim-tertiary px-1.5 py-0.5 rounded text-[10px]">{patternDisplayName}</span>
+        </div>}
       </div>
     </div>
   );

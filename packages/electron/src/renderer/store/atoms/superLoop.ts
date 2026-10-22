@@ -6,7 +6,6 @@
  */
 
 import { atom } from 'jotai';
-import { rendererI18n } from '../../i18n';
 import { atomFamily } from '../debug/atomFamilyRegistry';
 import type {
   SuperLoop,
@@ -384,17 +383,17 @@ export function getSuperStatusInfo(status: SuperLoopStatus): {
 } {
   switch (status) {
     case 'running':
-      return { label: rendererI18n.t('dialogs:superloop.running'), color: 'running' };
+      return { label: 'Running', color: 'running' };
     case 'paused':
-      return { label: rendererI18n.t('dialogs:superloop.phase_paused'), color: 'paused' };
+      return { label: 'Paused', color: 'paused' };
     case 'completed':
-      return { label: rendererI18n.t('dialogs:superloop.status_completed'), color: 'completed' };
+      return { label: 'Completed', color: 'completed' };
     case 'failed':
-      return { label: rendererI18n.t('dialogs:superloop.status_failed'), color: 'failed' };
+      return { label: 'Failed', color: 'failed' };
     case 'blocked':
-      return { label: rendererI18n.t('dialogs:superloop.blocked'), color: 'blocked' };
+      return { label: 'Blocked', color: 'blocked' };
     case 'pending':
     default:
-      return { label: rendererI18n.t('dialogs:superloop.status_pending'), color: 'pending' };
+      return { label: 'Pending', color: 'pending' };
   }
 }

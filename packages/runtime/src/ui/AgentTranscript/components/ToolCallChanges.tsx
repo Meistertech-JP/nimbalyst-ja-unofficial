@@ -1,5 +1,5 @@
 /**
- * ToolCallChanges - Shows pre-resolved file changes caused by a tool call.
+ * ToolCallChanges - Lazily shows file changes caused by a tool call.
  *
  * Renders a collapsible "File Changes" section with:
  * - Compact summary header showing file count and +/- stats
@@ -7,16 +7,15 @@
  * - NewFilePreview for create operations (full content)
  * - Compact file entry for bash/unknown operations (path + stats only)
  *
- * Diff resolution happens in main during transcript enrichment. The renderer
- * only receives the resolved `diffs` payload and renders it synchronously.
+ * History-derived diffs are requested only when the user opens this disclosure.
  */
 
-import React, { useState } from 'react';
-import type { ToolCallDiffResult } from './CustomToolWidgets';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ToolCallDiffLoadResult, ToolCallDiffResult } from '../../../ai/server/transcript';
 import { DiffViewer } from './DiffViewer';
 import { NewFilePreview } from './NewFilePreview';
 import { toProjectRelative } from '../utils/pathResolver';
-import { useRuntimeTranslation, type RuntimeTranslate } from '../../RuntimeTranslation';
 
 interface ToolCallChangesProps {
   diffs: ToolCallDiffResult[] | null | undefined;
@@ -31,31 +30,35 @@ interface ToolCallChangesProps {
    * editor registry; the runtime asks.
    */
   canEmbedFile?: (filePath: string) => boolean;
+  loadDiffs?: () => Promise<ToolCallDiffLoadResult>;
 }
 
-function getOperationBadge(operation: string, t: RuntimeTranslate): { label: string; colorClass: string; bgClass: string } {
+function getOperationBadge(
+  operation: string,
+  labels: { created: string; deleted: string; shell: string; edited: string },
+): { label: string; colorClass: string; bgClass: string } {
   switch (operation) {
     case 'create':
       return {
-        label: t('files:edits.created', 'Created'),
+        label: labels.created,
         colorClass: 'text-nim-success',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-success)_15%,transparent)]',
       };
     case 'delete':
       return {
-        label: t('files:edits.deleted', 'Deleted'),
+        label: labels.deleted,
         colorClass: 'text-nim-error',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]',
       };
     case 'bash':
       return {
-        label: t('aichat:edit_preview.shell', 'Shell'),
+        label: labels.shell,
         colorClass: 'text-nim-faint',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-text-faint)_15%,transparent)]',
       };
     default:
       return {
-        label: t('aichat:file_gutter.edited', 'Edited'),
+        label: labels.edited,
         colorClass: 'text-nim-primary',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-primary)_15%,transparent)]',
       };
@@ -69,21 +72,67 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
   onOpenFile,
   renderEmbeddedFile,
   canEmbedFile,
+  loadDiffs,
 }) => {
-  const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('aichat');
   const [changesExpanded, setChangesExpanded] = useState(false);
+  const [loadResult, setLoadResult] = useState<ToolCallDiffLoadResult | null>(
+    diffs && diffs.length > 0
+      ? { state: 'ready', diffs, omissions: [] }
+      : null,
+  );
+  const [loading, setLoading] = useState(false);
+  const requestEpochRef = useRef(0);
 
-  // Don't render anything if not expanded or no diffs
+  useEffect(() => () => {
+    requestEpochRef.current += 1;
+  }, []);
+
+  useEffect(() => {
+    if (diffs && diffs.length > 0) {
+      setLoadResult({ state: 'ready', diffs, omissions: [] });
+    }
+  }, [diffs]);
+
+  const requestDiffs = useCallback(async () => {
+    if (!loadDiffs || loading) return;
+    const requestEpoch = ++requestEpochRef.current;
+    setLoading(true);
+    try {
+      const result = await loadDiffs();
+      if (requestEpoch === requestEpochRef.current) setLoadResult(result);
+    } catch {
+      if (requestEpoch === requestEpochRef.current) {
+        setLoadResult({ state: 'failed', diffs: [], omissions: [], errorCode: 'worker-failed' });
+      }
+    } finally {
+      if (requestEpoch === requestEpochRef.current) setLoading(false);
+    }
+  }, [loadDiffs, loading]);
+
+  const handleToggle = useCallback(() => {
+    const nextExpanded = !changesExpanded;
+    setChangesExpanded(nextExpanded);
+    if (nextExpanded && !loadResult && loadDiffs) {
+      void requestDiffs();
+    }
+  }, [changesExpanded, loadDiffs, loadResult, requestDiffs]);
+
+  // Mounting or expanding the outer tool card must not trigger diff work.
   if (!isExpanded) return null;
-  if (!diffs || diffs.length === 0) return null;
+  if ((!diffs || diffs.length === 0) && !loadDiffs) return null;
+
+  const resolvedDiffs = loadResult?.diffs ?? diffs ?? [];
 
   // Compute summary stats
-  const totalAdded = diffs.reduce((sum, d) => sum + (d.linesAdded ?? 0), 0);
-  const totalRemoved = diffs.reduce((sum, d) => sum + (d.linesRemoved ?? 0), 0);
-  const fileCount = diffs.length;
-  const primaryFilePath = diffs[0]?.filePath;
-  const primarySupportsEmbeddedPreview = !!canEmbedFile?.(diffs[0]?.filePath);
-  const summaryParts = [t('aichat:edit_preview.files_changed', fileCount === 1 ? '{{count}} file changed' : '{{count}} files changed', { count: fileCount })];
+  const totalAdded = resolvedDiffs.reduce((sum, d) => sum + (d.linesAdded ?? 0), 0);
+  const totalRemoved = resolvedDiffs.reduce((sum, d) => sum + (d.linesRemoved ?? 0), 0);
+  const fileCount = resolvedDiffs.length;
+  const primaryFilePath = resolvedDiffs[0]?.filePath;
+  const primarySupportsEmbeddedPreview = !!primaryFilePath && !!canEmbedFile?.(primaryFilePath);
+  const summaryParts = fileCount > 0
+    ? [t('tool_call_changes.files_changed', { count: fileCount })]
+    : [t('tool_call_changes.view_diff')];
   if (totalAdded > 0) summaryParts.push(`+${totalAdded}`);
   if (totalRemoved > 0) summaryParts.push(`-${totalRemoved}`);
   const summary = summaryParts.join(' ');
@@ -93,7 +142,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
       {/* Header */}
       <button
         className="flex items-center justify-between w-full py-1.5 px-2 bg-nim-secondary border-b border-nim gap-2 cursor-pointer transition-colors duration-150 text-left hover:bg-nim-hover"
-        onClick={() => setChangesExpanded(!changesExpanded)}
+        onClick={handleToggle}
         type="button"
       >
         <div className="flex items-center gap-1.5">
@@ -106,7 +155,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
             </svg>
           </div>
           <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">
-            {t('aichat:file_change.title', 'File Changes')}
+            {t('tool_call_changes.title')}
           </span>
           <span className="text-[0.65rem] text-nim-faint font-sans">
             ({summary})
@@ -123,9 +172,36 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
       {/* Expanded content */}
       {changesExpanded && (
         <div className="flex flex-col">
-          {diffs.map((diff, idx) => {
+          {loading && (
+            <div className="px-3 py-2 text-xs text-nim-muted">{t('tool_call_changes.computing')}</div>
+          )}
+          {!loading && loadResult?.state === 'none' && (
+            <div className="px-3 py-2 text-xs text-nim-muted">{t('tool_call_changes.none')}</div>
+          )}
+          {!loading && loadResult?.state === 'failed' && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-nim-muted">
+              <span>{t('tool_call_changes.failed')}</span>
+              <button className="text-nim-primary hover:underline" type="button" onClick={() => void requestDiffs()}>{t('tool_call_changes.retry')}</button>
+            </div>
+          )}
+          {!loading && loadResult?.omissions.map((omission) => (
+            <div key={`${omission.filePath}-${omission.reason}`} className="px-3 py-2 text-xs text-nim-muted border-t border-nim first:border-t-0">
+              <code>{toProjectRelative(omission.filePath, workspacePath)}</code>: {' '}
+              {omission.reason === 'input-too-large'
+                ? t('tool_call_changes.omission_too_large')
+                : omission.reason === 'edit-distance-limit'
+                  ? t('tool_call_changes.omission_too_different')
+                  : t('tool_call_changes.omission_timeout')}
+            </div>
+          ))}
+          {resolvedDiffs.map((diff, idx) => {
             const relPath = toProjectRelative(diff.filePath, workspacePath);
-            const badge = getOperationBadge(diff.operation, t);
+            const badge = getOperationBadge(diff.operation, {
+              created: t('tool_call_changes.created'),
+              deleted: t('tool_call_changes.deleted'),
+              shell: t('tool_call_changes.shell'),
+              edited: t('tool_call_changes.edited'),
+            });
             const hasDiffContent = diff.diffs.length > 0;
             const hasNewContent = !hasDiffContent && !!diff.content;
             const isSecondaryEmbeddableFile =
@@ -152,7 +228,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
                     <button
                       className="text-[0.75rem] text-nim-muted flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap hover:text-nim-primary hover:underline cursor-pointer bg-transparent border-none p-0 m-0 font-[inherit] text-left"
                       onClick={() => onOpenFile(diff.filePath)}
-                      title={t('aichat:rich_transcript.open_path', 'Open {{path}}', { path: relPath })}
+                      title={t('tool_call_changes.open_file', { filePath: relPath })}
                       type="button"
                     >
                       <code>{relPath}</code>

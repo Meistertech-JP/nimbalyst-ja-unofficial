@@ -28,22 +28,20 @@ export function ClaudePanel({
   onTestConnection,
   onConfigChange
 }: ClaudePanelProps) {
-  const { t } = useTranslation(['settings']);
+  const { t } = useTranslation('settings');
 
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">
-          {t('settings:provider.claude.title')}
-        </h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('provider.claude.title')}</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          {t('settings:provider.claude.description')}
+          {t('provider.claude.description')}
         </p>
       </div>
 
       <SettingsToggle
         variant="enable"
-        name={t('settings:provider.claude.enable')}
+        name={t('provider.claude.enable')}
         checked={config.enabled}
         onChange={onToggle}
       />
@@ -51,9 +49,7 @@ export function ClaudePanel({
       {config.enabled && (
         <>
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">
-              {t('settings:provider.api_configuration')}
-            </h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.api_configuration')}</h4>
             <div className="api-key-section mt-4">
               <div className="api-key-row flex gap-2 items-center">
                 <input
@@ -73,9 +69,9 @@ export function ClaudePanel({
                   onClick={onTestConnection}
                   disabled={config.testStatus === 'testing'}
                 >
-                  {config.testStatus === 'testing' ? t('settings:provider.testing') :
-                   config.testStatus === 'success' ? t('settings:provider.connected') :
-                   config.testStatus === 'error' ? t('settings:provider.failed') : t('settings:provider.test')}
+                  {config.testStatus === 'testing' ? t('provider.testing') :
+                   config.testStatus === 'success' ? t('provider.connected') :
+                   config.testStatus === 'error' ? t('provider.failed') : t('provider.test')}
                 </button>
               </div>
               {config.testMessage && config.testStatus === 'error' && (
@@ -85,33 +81,27 @@ export function ClaudePanel({
           </div>
 
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">
-              {t('settings:provider.available_models')}
-            </h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.available_models')}</h4>
             {loading && (
-              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">
-                {t('settings:provider.loading_models')}
-              </div>
+              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">{t('provider.loading_models')}</div>
             )}
 
             {!loading && availableModels.length > 0 && (
               <div className="models-section">
                 <div className="models-header flex items-center justify-between mb-3">
-                  <span className="text-sm text-[var(--nim-text-muted)]">
-                    {t('settings:provider.select_models')}
-                  </span>
+                  <span className="text-sm text-[var(--nim-text-muted)]">{t('provider.select_models')}</span>
                   <div className="models-actions flex gap-2">
                     <button
                       className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                       onClick={() => onSelectAllModels(true)}
                     >
-                      {t('settings:provider.select_all')}
+                      {t('provider.select_all')}
                     </button>
                     <button
                       className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                       onClick={() => onSelectAllModels(false)}
                     >
-                      {t('settings:provider.deselect_all')}
+                      {t('provider.deselect_all')}
                     </button>
                   </div>
                 </div>
@@ -132,9 +122,7 @@ export function ClaudePanel({
             )}
 
             {!loading && availableModels.length === 0 && apiKeys.anthropic && (
-              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">
-                {t('settings:provider.no_models')}
-              </div>
+              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">{t('provider.no_models')}</div>
             )}
           </div>
         </>

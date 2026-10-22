@@ -11,9 +11,12 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getShowInFileBrowserLabel } from '@nimbalyst/runtime';
 import {
   useFloating,
+  autoUpdate,
   FloatingPortal,
+  FloatingFocusManager,
   useDismiss,
   useHover,
   useInteractions,
@@ -21,9 +24,11 @@ import {
   offset,
   flip,
   shift,
+  size,
   type VirtualElement,
 } from '@floating-ui/react';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { clearWindowControls, getWindowControlsZones, windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
+import { useAtom, useAtomValue, useSetAtom, useStore } from 'jotai';
 import { OrgSwitcher } from './OrgSwitcher';
 import {
   multiProjectModeAtom,
@@ -32,24 +37,24 @@ import {
   isOpenProjectsAtCapAtom,
   addOpenProjectAtom,
   closeOpenProjectAtom,
+  moveOpenProjectAtom,
+  sortOpenProjectsAtom,
   type OpenProject,
 } from '../store/atoms/openProjects';
 import {
   globalSessionActivityAtom,
   projectActivitySummaryAtom,
 } from '../store/atoms/sessionActivity';
-import { generateWorkspaceAccentColor } from './WorkspaceSummaryHeader';
+import { generateWorkspaceAccentColor, projectIconForeground } from '../../shared/projectAppearance';
+import { projectAppearanceAtom } from '../store/atoms/projectAppearance';
+import { openSettingsCommandAtom } from '../store/atoms/settingsNavigation';
+import { ProjectIcon } from './ProjectIcon';
+import { requestConfirmation } from '../dialogs/requestConfirmation';
+import { errorNotificationService } from '../services/ErrorNotificationService';
+import { useProjectRailDrag } from './hooks/useProjectRailDrag';
 import './ProjectRail.css';
 
-function projectInitials(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return '??';
-  const words = trimmed.split(/[-_\s]+/).filter(Boolean);
-  if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }
-  return trimmed.slice(0, 2).toUpperCase();
-}
+const REVEAL_LABEL = getShowInFileBrowserLabel();
 
 interface ProjectRailIconProps {
   project: OpenProject;
@@ -59,6 +64,11 @@ interface ProjectRailIconProps {
   onActivate: (path: string) => void;
   onClose: (project: OpenProject) => void;
   onContextMenu: (project: OpenProject, x: number, y: number) => void;
+  isDragging: boolean;
+  menuOpen: boolean;
+  dropPosition?: 'before' | 'after';
+  onDragStart: (event: React.DragEvent, path: string) => void;
+  onDragEnd: () => void;
 }
 
 function ProjectRailIcon({
@@ -69,9 +79,13 @@ function ProjectRailIcon({
   onActivate,
   onClose,
   onContextMenu,
+  isDragging,
+  menuOpen,
+  dropPosition,
+  onDragStart,
+  onDragEnd,
 }: ProjectRailIconProps) {
-  const { t } = useTranslation(['common']);
-
+  const { t } = useTranslation('project');
   // Hover tooltip via floating-ui. Renders through FloatingPortal so the
   // tooltip escapes the rail container's `overflow: hidden` clip — the
   // earlier CSS-only `:hover > .project-rail-tooltip` approach was clipped
@@ -81,9 +95,10 @@ function ProjectRailIcon({
     open: tooltipOpen,
     onOpenChange: setTooltipOpen,
     placement: 'right',
-    middleware: [offset(12), flip({ padding: 8 }), shift({ padding: 8 })],
+    middleware: [offset(12), flip({ padding: 8 }), shift({ padding: 8 }), windowControlsClearance()],
   });
-  const tooltipHover = useHover(tooltipContext, { delay: { open: 200, close: 0 }, move: false });
+  const tooltipHover = useHover(tooltipContext, { enabled: !menuOpen && !isDragging, delay: { open: 200, close: 0 }, move: false });
+  React.useEffect(() => { if (menuOpen) setTooltipOpen(false); }, [menuOpen]);
   const { getReferenceProps: getTooltipRefProps, getFloatingProps: getTooltipFloatingProps } =
     useInteractions([tooltipHover]);
 
@@ -103,17 +118,19 @@ function ProjectRailIcon({
     (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
+      event.currentTarget.querySelector<HTMLButtonElement>('.project-rail-item-main')?.focus();
       onContextMenu(project, event.clientX, event.clientY);
     },
     [onContextMenu, project]
   );
 
-  const className = isActive ? 'project-rail-item is-active' : 'project-rail-item';
+  const appearance = useAtomValue(projectAppearanceAtom(project.path)).snapshot?.appearance ?? {};
+  const className = `project-rail-item${isActive ? ' is-active' : ''}${isDragging ? ' is-dragging' : ''}`;
 
   // Per-project accent color, derived deterministically from the workspace
   // path so the rail icon matches the colored bar shown in the workspace
   // summary header (and in SessionHistory entries) for the same project.
-  const accentColor = useMemo(() => generateWorkspaceAccentColor(project.path), [project.path]);
+  const accentColor = appearance.color || generateWorkspaceAccentColor(project.path);
 
   // Inactive projects show a badge when something needs attention. Active
   // projects already have the user's eyes on them so we suppress the
@@ -131,25 +148,35 @@ function ProjectRailIcon({
       onContextMenu={handleContextMenu}
       data-testid="project-rail-item"
       data-project-path={project.path}
-      style={{ ['--rail-item-accent' as any]: accentColor }}
+      data-drop-position={dropPosition}
+      style={{ '--rail-item-accent': accentColor, '--rail-item-foreground': projectIconForeground(appearance.color) } as React.CSSProperties}
       {...getTooltipRefProps()}
     >
       <button
         type="button"
         className="project-rail-item-main"
         onClick={handleClick}
-        aria-label={t('common:projects.switch_to', { name: project.name })}
+        draggable
+        onDragStart={event => { setTooltipOpen(false); onDragStart(event, project.path); }}
+        onDragEnd={onDragEnd}
+        onKeyDown={event => {
+          if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const rect = event.currentTarget.getBoundingClientRect();
+          onContextMenu(project, rect.right, rect.top);
+        }}
+        aria-haspopup="menu"
+        aria-label={t('rail.switch_to_project', { name: project.name })}
         aria-current={isActive ? 'true' : undefined}
       >
-        {projectInitials(project.name)}
+        <ProjectIcon name={project.name} appearance={appearance} />
         {showBadge && (
           <span
             className="project-rail-item-badge"
-            aria-label={
-              processingCount > 0
-                ? t('common:projects.streaming_sessions', { count: processingCount })
-                : t('common:projects.unread', { count: unreadCount })
-            }
+            aria-label={processingCount > 0
+              ? t('rail.streaming_sessions', { count: processingCount })
+              : t('rail.unread_sessions', { count: unreadCount })}
           >
             {badgeLabel}
           </span>
@@ -159,11 +186,11 @@ function ProjectRailIcon({
         type="button"
         className="project-rail-item-close"
         onClick={handleClose}
-        aria-label={t('common:projects.close', { name: project.name })}
+        aria-label={t('rail.close_project', { name: project.name })}
       >
         ×
       </button>
-      {tooltipOpen && (
+      {tooltipOpen && !isDragging && !menuOpen && (
         <FloatingPortal>
           <div
             ref={tooltipRefs.setFloating}
@@ -181,21 +208,49 @@ function ProjectRailIcon({
 }
 
 export function ProjectRail() {
-  const { t } = useTranslation(['common']);
-  const revealLabel = (() => {
-    const platform = typeof navigator !== 'undefined' ? navigator.platform : '';
-    if (platform.startsWith('Mac')) return t('common:projects.reveal_finder');
-    if (platform.startsWith('Win')) return t('common:projects.reveal_explorer');
-    return t('common:projects.reveal_folder');
-  })();
+  const { t } = useTranslation('project');
+  const openSettings = useSetAtom(openSettingsCommandAtom);
+  const store = useStore();
   const isMultiProjectMode = useAtomValue(multiProjectModeAtom);
   const openProjects = useAtomValue(openProjectsAtom);
   const [activePath, setActivePath] = useAtom(activeWorkspacePathAtom);
   const atCap = useAtomValue(isOpenProjectsAtCapAtom);
   const addProject = useSetAtom(addOpenProjectAtom);
   const closeProject = useSetAtom(closeOpenProjectAtom);
+  const moveProject = useSetAtom(moveOpenProjectAtom);
+  const sortProjects = useSetAtom(sortOpenProjectsAtom);
   const activity = useAtomValue(globalSessionActivityAtom);
   const activitySummary = useAtomValue(projectActivitySummaryAtom);
+  const revealLabel = t(REVEAL_LABEL === 'Show in Finder'
+    ? 'rail.show_in_finder'
+    : REVEAL_LABEL === 'Show in Explorer'
+      ? 'rail.show_in_explorer'
+      : 'rail.show_in_folder');
+  const projectListRef = React.useRef<HTMLDivElement | null>(null);
+  const drag = useProjectRailDrag(projectListRef, moveProject);
+
+  React.useLayoutEffect(() => {
+    const list = projectListRef.current;
+    if (!isMultiProjectMode || !list) return;
+
+    const revealActiveProject = () => {
+      const active = list.querySelector<HTMLElement>('.project-rail-item.is-active');
+      if (!active) return;
+      const viewport = list.getBoundingClientRect();
+      const item = active.getBoundingClientRect();
+      // Include the close button's overhang. Scroll only the project list,
+      // leaving the rest of the window and keyboard focus untouched.
+      const above = item.top - viewport.top - 4;
+      const below = item.bottom - viewport.bottom + 4;
+      if (above < 0) list.scrollTop += above;
+      else if (below > 0) list.scrollTop += below;
+    };
+
+    revealActiveProject();
+    const observer = new ResizeObserver(revealActiveProject);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [activePath, openProjects.length, isMultiProjectMode]);
 
   const handleActivate = useCallback(
     (path: string) => {
@@ -210,6 +265,7 @@ export function ProjectRail() {
 
   const addProjectByPath = useCallback(async (workspacePath: string) => {
     if (!window.electronAPI?.invoke) return;
+    if (store.get(isOpenProjectsAtCapAtom) && !store.get(openProjectsAtom).some(p => p.path === workspacePath)) return;
     try {
       const reg = await window.electronAPI.invoke('workspace:register-additional', { workspacePath });
       if (!reg?.success) {
@@ -224,18 +280,21 @@ export function ProjectRail() {
       };
       // `addOpenProjectAtom` flips `activeWorkspacePathAtom` to this path;
       // the atom subscriber dispatches `workspace:set-active` to main.
-      addProject(project);
+      if (!addProject(project)) {
+        // The limit can change in another window while registration is pending.
+        await window.electronAPI.invoke('workspace:unregister-additional', { workspacePath });
+      }
     } catch (err) {
       console.error('[ProjectRail] addProjectByPath failed:', err);
     }
-  }, [addProject]);
+  }, [addProject, store]);
 
   const handlePickFolder = useCallback(async () => {
     if (!window.electronAPI?.invoke) return;
     try {
       const result = await window.electronAPI.invoke('dialog-show-open-dialog', {
         properties: ['openDirectory'],
-        title: t('common:projects.open_project'),
+        title: t('rail.open_project'),
       });
       if (result?.canceled) return;
       const picked: string | undefined = result?.filePaths?.[0];
@@ -258,7 +317,10 @@ export function ProjectRail() {
 
   const handleOpenAddMenu = useCallback(() => {
     if (atCap) {
-      window.alert(t('common:projects.max_open_projects'));
+      errorNotificationService.showWarning(
+        t('rail.project_limit_reached'),
+        t('rail.project_limit_description'),
+      );
       return;
     }
     refreshRecents();
@@ -274,12 +336,11 @@ export function ProjectRail() {
       // the prompt when closing an inactive rail project.
       const streaming = activity.get(project.path)?.streaming.size ?? 0;
       if (streaming > 0) {
-        const proceed = window.confirm(
-          t('common:projects.close_streaming_confirm', {
-            name: project.name,
-            count: streaming,
-          })
-        );
+        const proceed = await requestConfirmation({
+          title: t('rail.close_project_title'),
+          message: t('rail.close_project_warning', { name: project.name, count: streaming }),
+          confirmLabel: t('rail.close_project_confirm'),
+        });
         if (!proceed) return;
       }
 
@@ -311,6 +372,13 @@ export function ProjectRail() {
   // cursor position so it works for any rail icon without per-icon refs.
   const [menu, setMenu] = useState<{ project: OpenProject; x: number; y: number } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const menuIndex = openProjects.findIndex(project => project.path === menu?.project.path);
+  const moveMenuProject = (direction: -1 | 1) => {
+    if (menuIndex < 0) return;
+    const beforePath = direction === -1 ? openProjects[menuIndex - 1]?.path : openProjects[menuIndex + 2]?.path;
+    moveProject({ path: menu!.project.path, beforePath: beforePath ?? null });
+    closeMenu();
+  };
 
   // "Add project" dropdown — opens recents + folder picker action when the
   // user clicks the `+` button.
@@ -325,8 +393,28 @@ export function ProjectRail() {
   } = useFloating({
     open: addMenuOpen,
     onOpenChange: setAddMenuOpen,
+    // The Add button stays at the bottom of the rail. Align the menu's
+    // bottom with it, and track size changes as recent folders load.
     placement: 'right-end',
-    middleware: [offset(8), flip(), shift({ padding: 8 })],
+    strategy: 'fixed',
+    whileElementsMounted: autoUpdate,
+    middleware: [
+      offset(8),
+      flip({ padding: 8 }),
+      shift({ padding: 8 }),
+      windowControlsClearance(),
+      size({
+        padding: 8,
+        apply({ availableHeight, elements, x, rects }) {
+          // Reserve the controls band from the viewport's padded top, not
+          // from the menu's current y: bottom alignment makes y depend on
+          // height, so subtracting the last push can cause a resize loop.
+          const reserved = clearWindowControls(x, 8, rects.floating.width, getWindowControlsZones()) - 8;
+          elements.floating.style.maxHeight = `${Math.max(0, availableHeight - reserved)}px`;
+          elements.floating.style.overflowY = 'auto';
+        },
+      }),
+    ],
   });
   const addDismiss = useDismiss(addContext);
   const addRole = useRole(addContext, { role: 'menu' });
@@ -344,7 +432,7 @@ export function ProjectRail() {
     open: addTooltipOpen,
     onOpenChange: setAddTooltipOpen,
     placement: 'right',
-    middleware: [offset(12), flip({ padding: 8 }), shift({ padding: 8 })],
+    middleware: [offset(12), flip({ padding: 8 }), shift({ padding: 8 }), windowControlsClearance()],
   });
   const addTooltipHover = useHover(addTooltipContext, { delay: { open: 200, close: 0 }, move: false });
   const { getReferenceProps: getAddTooltipRefProps, getFloatingProps: getAddTooltipFloatingProps } =
@@ -369,7 +457,7 @@ export function ProjectRail() {
       if (!open) closeMenu();
     },
     placement: 'right-start',
-    middleware: [offset(4), flip(), shift({ padding: 8 })],
+    middleware: [offset(4), flip({ padding: 8 }), shift({ padding: 8 }), windowControlsClearance()],
   });
 
   // Use a virtual reference at the cursor position. setPositionReference
@@ -413,28 +501,31 @@ export function ProjectRail() {
   if (!isMultiProjectMode) return null;
 
   return (
-    <nav
-      className="project-rail"
-      data-testid="project-rail"
-      aria-label={t('common:projects.open_projects')}
-    >
+    <nav className="project-rail" data-testid="project-rail" aria-label={t('rail.open_projects')}>
       {/* Epic H1: org switcher sits above the project switcher. */}
       <OrgSwitcher />
-      {openProjects.map((project) => {
-        const activity = activitySummary.get(project.path);
-        return (
-          <ProjectRailIcon
-            key={project.path}
-            project={project}
-            isActive={project.path === activePath}
-            processingCount={activity?.processing ?? 0}
-            unreadCount={activity?.unread ?? 0}
-            onActivate={handleActivate}
-            onClose={handleClose}
-            onContextMenu={handleContextMenu}
-          />
-        );
-      })}
+      <div ref={projectListRef} className="project-rail-projects" data-testid="project-rail-projects" {...drag.listProps}>
+        {openProjects.map((project) => {
+          const activity = activitySummary.get(project.path);
+          return (
+            <ProjectRailIcon
+              key={project.path}
+              project={project}
+              isActive={project.path === activePath}
+              processingCount={activity?.processing ?? 0}
+              unreadCount={activity?.unread ?? 0}
+              onActivate={handleActivate}
+              onClose={handleClose}
+              onContextMenu={handleContextMenu}
+              isDragging={drag.draggedPath === project.path}
+              menuOpen={menu !== null}
+              dropPosition={drag.beforePath === project.path ? 'before' : drag.beforePath === null && project === openProjects.at(-1) ? 'after' : undefined}
+              onDragStart={(event, path) => { closeMenu(); drag.onDragStart(event, path); }}
+              onDragEnd={drag.onDragEnd}
+            />
+          );
+        })}
+      </div>
       {openProjects.length > 0 && <div className="project-rail-divider" aria-hidden="true" />}
       <button
         ref={addButtonRef}
@@ -443,7 +534,7 @@ export function ProjectRail() {
         onClick={handleOpenAddMenu}
         disabled={atCap}
         data-testid="project-rail-add"
-        aria-label={t('common:projects.add_to_rail')}
+        aria-label={t('rail.add_project_to_rail')}
         {...getAddTooltipRefProps()}
       >
         +
@@ -456,14 +547,14 @@ export function ProjectRail() {
             style={addTooltipFloatingStyles}
             {...getAddTooltipFloatingProps()}
           >
-            {atCap ? t('common:projects.rail_full') : t('common:projects.add')}
+            {atCap ? t('rail.project_limit_tooltip') : t('rail.add_project')}
           </div>
         </FloatingPortal>
       )}
 
       {addMenuOpen && (
         <FloatingPortal>
-          <div
+        <div
             ref={addRefs.setFloating}
             className="project-rail-context-menu project-rail-add-menu"
             style={addFloatingStyles}
@@ -478,14 +569,12 @@ export function ProjectRail() {
                 handlePickFolder();
               }}
             >
-              {t('common:projects.open_folder')}
+              {t('rail.open_folder')}
             </button>
             {filteredRecents.length > 0 && (
               <>
                 <div className="project-rail-context-menu-divider" />
-                <div className="project-rail-context-menu-heading">
-                  {t('common:projects.recent')}
-                </div>
+                <div className="project-rail-context-menu-heading">{t('rail.recent_projects')}</div>
                 {filteredRecents.map((recent) => (
                   <button
                     key={recent.path}
@@ -509,22 +598,60 @@ export function ProjectRail() {
 
       {menu && (
         <FloatingPortal>
+          <FloatingFocusManager context={context} modal={false}>
           <div
             ref={refs.setFloating}
             className="project-rail-context-menu"
             style={floatingStyles}
             data-testid="project-rail-context-menu"
-            {...getFloatingProps()}
+            {...getFloatingProps({
+              onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+                if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+                const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+                  : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+                buttons[next]?.focus();
+              },
+            })}
           >
+            <button type="button" role="menuitem" className="project-rail-context-menu-item"
+              disabled={menuIndex <= 0} onClick={() => moveMenuProject(-1)}>
+              {t('rail.move_up')}
+            </button>
+            <button type="button" role="menuitem" className="project-rail-context-menu-item"
+              disabled={menuIndex < 0 || menuIndex === openProjects.length - 1} onClick={() => moveMenuProject(1)}>
+              {t('rail.move_down')}
+            </button>
+            <button type="button" role="menuitem" className="project-rail-context-menu-item"
+              disabled={openProjects.length < 2} onClick={() => { sortProjects(); closeMenu(); }}>
+              {t('rail.sort_by_name')}
+            </button>
+            <div className="project-rail-context-menu-divider" />
+            <button
+              type="button"
+              role="menuitem"
+              className="project-rail-context-menu-item"
+              onClick={() => {
+                openSettings({ category: 'project-appearance', scope: 'project', timestamp: Date.now(),
+                  destination: { scope: 'project', category: 'project-appearance', target: { kind: 'workspace', workspacePath: menu.project.path } } });
+                closeMenu();
+              }}
+            >
+              {t('rail.customize_appearance')}
+            </button>
             <button
               type="button"
               className="project-rail-context-menu-item"
               onClick={() => handleOpenInNewWindow(menu.project)}
             >
-              {t('common:projects.open_new_window')}
+              {t('rail.open_in_new_window')}
             </button>
             <button
               type="button"
+              role="menuitem"
               className="project-rail-context-menu-item"
               onClick={() => handleRevealInFinder(menu.project)}
             >
@@ -533,15 +660,17 @@ export function ProjectRail() {
             <div className="project-rail-context-menu-divider" />
             <button
               type="button"
+              role="menuitem"
               className="project-rail-context-menu-item"
               onClick={() => {
                 closeMenu();
                 handleClose(menu.project);
               }}
             >
-              {t('common:projects.close_project')}
+              {t('rail.close_project_confirm')}
             </button>
           </div>
+          </FloatingFocusManager>
         </FloatingPortal>
       )}
     </nav>

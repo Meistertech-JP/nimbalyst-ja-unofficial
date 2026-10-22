@@ -10,6 +10,7 @@ import type {TableOfContentsEntry} from '@lexical/react/LexicalTableOfContentsPl
 import type {HeadingTagType} from '@lexical/rich-text';
 import type {NodeKey} from 'lexical';
 import type {JSX} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import './index.css';
 
@@ -17,7 +18,6 @@ import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {TableOfContentsPlugin as LexicalTableOfContentsPlugin} from '@lexical/react/LexicalTableOfContentsPlugin';
 import {useEffect, useState, useCallback} from 'react';
 import DropDown, {DropDownItem} from '../../ui/DropDown';
-import {useRuntimeTranslation} from '../../../ui/RuntimeTranslation';
 
 function getIndentClass(tagName: HeadingTagType): string {
   if (tagName === 'h2') {
@@ -35,7 +35,7 @@ function TableOfContentsDropdown({
   tableOfContents: Array<TableOfContentsEntry>;
   disabled?: boolean;
 }): JSX.Element {
-  const {t} = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const [activeHeadingKey, setActiveHeadingKey] = useState<NodeKey | null>(null);
 
@@ -110,7 +110,7 @@ function TableOfContentsDropdown({
       disabled={disabled || !hasHeaders}
         className="table-of-contents"
       buttonIconClassName="icon table-of-contents"
-      buttonAriaLabel={t('editor:tooltips.table_of_contents', 'Table of Contents')}
+      buttonAriaLabel="Table of Contents"
       buttonClassName="toolbar-item spaced">
       {filteredTableOfContents.map(([key, text, tag]) => (
         <DropDownItem
@@ -127,7 +127,7 @@ function TableOfContentsDropdown({
         <DropDownItem
           className="item toc-item-empty"
           onClick={() => {}}>
-          <span className="text">{t('editor:toc.empty', 'No headings in document')}</span>
+          <span className="text">{t('toc.empty')}</span>
         </DropDownItem>
       )}
     </DropDown>

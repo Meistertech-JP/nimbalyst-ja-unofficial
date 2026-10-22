@@ -1,0 +1,69 @@
+{
+  "archive": {
+    "auto_rejected": "バックエンドが自動アーカイブを拒否しました。"
+  },
+  "guidance": {
+    "unknown_tip": "ヒントが見つかりません",
+    "tip_not_found": "ヒント「{{id}}」が見つかりません。",
+    "tips_reset": "ヒントをリセットしました",
+    "tips_reset_message": "すべてのヒントが再び表示されます。",
+    "walkthrough_not_found": "操作ガイドが見つかりません",
+    "unknown_walkthrough": "不明な操作ガイド: {{id}}",
+    "cannot_show_walkthrough": "操作ガイドを表示できません",
+    "walkthrough_target_missing": "「{{name}}」に必要なUI要素がこの画面に表示されていません。まず{{mode}}に切り替えてください。",
+    "walkthrough_conditions_unmet": "「{{name}}」の表示条件が満たされていません。まず{{mode}}に切り替えてください。",
+    "walkthroughs_reset": "操作ガイドをリセットしました",
+    "walkthroughs_reset_message": "すべての操作ガイドが再び表示されます。"
+  },
+  "session": {
+    "archive_failed": "セッションのアーカイブに失敗しました",
+    "archive_rejected": "バックエンドがアーカイブ要求を拒否しました。",
+    "unarchive_failed": "セッションのアーカイブ解除に失敗しました",
+    "unarchive_rejected": "バックエンドがアーカイブ解除要求を拒否しました。",
+    "navigation_source_fallback": "セッション {{id}}",
+    "navigation_unavailable_title": "{{label}}を利用できません",
+    "navigation_archived": "セッション {{id}} はアーカイブ済みのため開けませんでした。アーカイブ済みセッションから復元して、もう一度お試しください。",
+    "navigation_missing": "元のプロジェクトにセッション {{id}} が見つかりません。",
+    "navigation_project_unavailable": "セッション {{id}} のプロジェクトに切り替えられませんでした。サイドバーからプロジェクトを閉じて、もう一度お試しください。",
+    "navigation_lookup_failed": "元のプロジェクトでセッション {{id}} を確認できませんでした。"
+  },
+  "collab": {
+    "view_not_available": "ビューを利用できません",
+    "view_not_available_message": "このリストを単独で開くことはできません。",
+    "page_not_in_project": "このプロジェクトではページを利用できません",
+    "page_not_in_project_message": "リンク先のページはこのプロジェクトにありません。"
+  },
+  "git": {
+    "nothing_to_commit": "コミットする内容がありません",
+    "nothing_to_commit_message": "競合中のファイルを除き、選択したファイルをコミットできません。",
+    "commit_with_ai_failed": "AIコミットに失敗しました"
+  },
+  "window": {
+    "unsaved_quit": "未保存の変更があります。終了してもよろしいですか？"
+  },
+  "agent": {
+    "response_ready": "応答が完了しました",
+    "response_complete": "応答が完了しました",
+    "claude_cli_paused": "Claude CLIを一時停止しました",
+    "anthropic_overloaded_retry": "Anthropicが過負荷のため、Claudeはまもなく再試行します。",
+    "rate_limited": "Anthropicによるレート制限中です。",
+    "rate_limited_retry": "Anthropicによるレート制限中です（{{seconds}}秒後に再試行）。"
+  },
+  "team_inbox": {
+    "room": "ルーム",
+    "direct_message": "ダイレクトメッセージ",
+    "document_discussion": "ドキュメントのディスカッション",
+    "document_question": "ドキュメントの質問",
+    "tracker": "トラッカー",
+    "document": "ドキュメント",
+    "feedback_request": "フィードバック依頼",
+    "new_activity": "新しいアクティビティ",
+    "teammate": "チームメンバー"
+  },
+  "notifications_enabled": "通知を有効にしました",
+  "notifications_enabled_message": "AIの応答が完了すると、Nimbalystから通知されます。",
+  "project_open_failed_title": "{{label}}を開けませんでした",
+  "project_open_failed_message": "このセッションのプロジェクトを開けませんでした。プロジェクトを開いてから、もう一度お試しください。",
+  "session_resumed": "セッションを再開しました",
+  "scheduled_wakeup_fired": "スケジュールした再開時刻になりました。"
+}

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, memo, useMemo, useCallback } from 'react';
 import { useAtomValue } from 'jotai';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { WorktreeIcon } from '../common/WorktreeIcon';
 import { groupSessionStatusAtom, sessionProcessingAtom, sessionUnreadAtom, sessionPendingPromptAtom } from '../../store';
 import { SessionContextMenu } from './SessionContextMenu';
 import { SessionRelativeTime } from './SessionRelativeTime';
-import { useTranslation } from 'react-i18next';
+import { sessionAgentWakePendingAtom } from '../../store/atoms/teamInbox';
 
 import type { SessionMeta as SessionItem } from '../../store';
 
@@ -58,27 +60,27 @@ interface BlitzGroupProps {
  * Matches WorkstreamGroupStatusIndicator pattern.
  */
 const BlitzGroupStatus: React.FC<{ sessionIds: string[] }> = memo(({ sessionIds }) => {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   const sessionIdsKey = useMemo(() => JSON.stringify([...sessionIds].sort()), [sessionIds]);
   const { hasProcessing, hasPendingPrompt, hasUnread } = useAtomValue(groupSessionStatusAtom(sessionIdsKey));
 
   if (hasProcessing) {
     return (
-        <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('agents:status.processing')}>
+      <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('status.processing')}>
         <MaterialSymbol icon="progress_activity" size={12} className="animate-spin" />
       </div>
     );
   }
   if (hasPendingPrompt) {
     return (
-        <div className="flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title={t('agents:status.waiting')}>
+      <div className="flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title={t('status.waiting')}>
         <MaterialSymbol icon="help" size={12} />
       </div>
     );
   }
   if (hasUnread) {
     return (
-        <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('agents:status.unread')}>
+      <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('status.unread')}>
         <MaterialSymbol icon="circle" size={6} fill />
       </div>
     );
@@ -91,28 +93,32 @@ const BlitzGroupStatus: React.FC<{ sessionIds: string[] }> = memo(({ sessionIds 
  * Matches WorkstreamSessionStatusIndicator pattern.
  */
 const BlitzSessionStatus: React.FC<{ sessionId: string }> = memo(({ sessionId }) => {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   const isProcessing = useAtomValue(sessionProcessingAtom(sessionId));
   const hasPendingPrompt = useAtomValue(sessionPendingPromptAtom(sessionId));
+  const hasAgentWakePending = useAtomValue(sessionAgentWakePendingAtom(sessionId));
   const hasUnread = useAtomValue(sessionUnreadAtom(sessionId));
 
   if (isProcessing) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-primary)] animate-spin" title={t('agents:status.processing_ellipsis')}>
+      <div className="flex items-center justify-center text-[var(--nim-primary)] animate-spin" title={t('status.processing_ellipsis')}>
         <MaterialSymbol icon="progress_activity" size={12} />
       </div>
     );
   }
+  if (hasAgentWakePending) {
+    return <MaterialSymbol icon="hourglass_top" size={12} />;
+  }
   if (hasPendingPrompt) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-warning)]" title={t('agents:status.waiting')}>
+      <div className="flex items-center justify-center text-[var(--nim-warning)]" title={t('status.waiting')}>
         <MaterialSymbol icon="help" size={12} />
       </div>
     );
   }
   if (hasUnread) {
     return (
-      <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('agents:status.unread')}>
+      <div className="flex items-center justify-center text-[var(--nim-primary)]" title={t('status.unread')}>
         <MaterialSymbol icon="circle" size={6} fill />
       </div>
     );
@@ -138,9 +144,10 @@ const BlitzSessionRow: React.FC<{
   onSelect: (e: Pick<React.MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }> = memo(({ session, sessionTitle, isActive, isRenaming, isAnalysis, renameInputRef, renameValue, onRenameChange, onRenameKeyDown, onRenameBlur, onSelect, onContextMenu }) => {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
+
   return (
-    <div
+  <div
     className={`blitz-session-item flex items-center gap-2 py-1.5 px-3 mr-2 mb-0.5 cursor-pointer rounded transition-colors duration-150 select-none ${
       isActive ? 'bg-[var(--nim-bg-selected)]' : 'hover:bg-[var(--nim-bg-hover)]'
     } focus:outline-2 focus:outline-[var(--nim-border-focus)] focus:outline-offset-[-2px]`}
@@ -149,7 +156,7 @@ const BlitzSessionRow: React.FC<{
     role="button"
     tabIndex={0}
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(e); } }}
-    aria-label={t('agents:context.session_label', { title: sessionTitle })}
+            aria-label={`${t('context.session')}: ${sessionTitle}`}
     aria-current={isActive ? 'page' : undefined}
   >
     <div className={`shrink-0 flex items-center justify-center ${
@@ -158,13 +165,7 @@ const BlitzSessionRow: React.FC<{
       {isAnalysis ? (
         <MaterialSymbol icon="compare_arrows" size={14} />
       ) : (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="2" width="3" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-          <rect x="10" y="2" width="3" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-          <rect x="3" y="11" width="3" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-          <path d="M4.5 5v3.5a1.5 1.5 0 0 0 1.5 1.5h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M11.5 5v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
+        <WorktreeIcon size={14} />
       )}
     </div>
     {isRenaming ? (
@@ -191,7 +192,7 @@ const BlitzSessionRow: React.FC<{
     <div className="shrink-0 flex items-center">
       <BlitzSessionStatus sessionId={session.id} />
     </div>
-    </div>
+  </div>
   );
 });
 
@@ -224,7 +225,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
   onWorktreeCleanGitignored,
   onSessionRename,
 }) => {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   const allSessionIds = useMemo(
     () => worktrees.flatMap(w => w.sessions.map(s => s.id)),
     [worktrees]
@@ -479,13 +480,13 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
 
   return (
     <div
-      className={`blitz-group mb-1 ${isArchived ? 'archived' : ''} ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
+      className={`blitz-group pb-1 ${isArchived ? 'archived' : ''} ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
       data-testid={`blitz-group-${blitzId}`}
       onMouseLeave={handleGroupMouseLeave}
     >
       {/* Header - matches WorkstreamGroup header structure */}
       <div
-        className={`blitz-group-header flex items-center gap-0 text-[0.8125rem] text-[var(--nim-text)] transition-colors duration-150 rounded-md mx-2 w-[calc(100%-1rem)] ${
+        className={`blitz-group-header flex items-center gap-0 text-[0.8125rem] text-[var(--nim-text)] transition-colors duration-150 rounded-md mr-2 w-[calc(100%-0.5rem)] ${
           isSelected ? 'bg-[var(--nim-bg-selected)]' : isActive ? 'bg-[var(--nim-bg-selected)]' : 'hover:bg-[var(--nim-bg-hover)]'
         }`}
         onContextMenu={handleContextMenu}
@@ -495,7 +496,10 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
           className="flex items-center justify-center w-6 h-full min-h-[2.5rem] p-0 bg-transparent border-none cursor-pointer text-[var(--nim-text-faint)] shrink-0 rounded-l-md hover:bg-[var(--nim-bg-secondary)] focus:outline-none focus-visible:outline-2 focus-visible:outline-[var(--nim-border-focus)] focus-visible:outline-offset-[-2px]"
           onClick={handleChevronClick}
           aria-expanded={isExpanded}
-          aria-label={t('agents:accessibility.blitz_toggle', { action: t(isExpanded ? 'agents:context.collapse' : 'agents:context.expand') })}
+          aria-label={t('context.group_toggle', {
+            action: t(isExpanded ? 'context.collapse' : 'context.expand'),
+            type: 'Blitz',
+          })}
         >
           <MaterialSymbol
             icon="chevron_right"
@@ -516,7 +520,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
               handleHeaderClick(e as unknown as React.MouseEvent);
             }
           }}
-          aria-label={t('agents:blitz.aria', { title, count: worktreeCount })}
+          aria-label={`Blitz: ${title}, ${t('blitz.worktrees', { count: worktreeCount })}`}
         >
           {/* Lightning bolt icon */}
           <div className={`shrink-0 w-[1.125rem] h-[1.125rem] mt-[0.0625rem] flex items-center justify-center ${
@@ -550,13 +554,13 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                 <MaterialSymbol icon="push_pin" size={12} className="shrink-0 text-[var(--nim-text-faint)] opacity-70" />
               )}
               {isArchived && !isRenaming && (
-                <span className="text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(156,163,175,0.15)] text-[var(--nim-text-faint)]">{t('agents:blitz.archived')}</span>
+                <span className="text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(156,163,175,0.15)] text-[var(--nim-text-faint)]">{t('status.archived')}</span>
               )}
               {!isRenaming && <BlitzGroupStatus sessionIds={allSessionIds} />}
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="shrink-0 text-[0.6875rem] text-[var(--nim-text-faint)]">
-                {t('agents:blitz.worktrees', { count: worktreeCount })}
+                {t('blitz.worktrees', { count: worktreeCount })}
               </span>
             </div>
           </div>
@@ -572,7 +576,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
             // Use the oldest session's title as the worktree group name (e.g. "Session 1")
             // This keeps the original numbered name when additional sessions are added
             const oldestSession = [...sessions].sort((a, b) => a.createdAt - b.createdAt)[0];
-            const worktreeGroupName = oldestSession?.title || wtData?.displayName || wtData?.name || t('agents:status.loading');
+            const worktreeGroupName = oldestSession?.title || wtData?.displayName || wtData?.name || 'Loading...';
 
             if (sessions.length === 1) {
               // Single session - render flat (no worktree subgroup)
@@ -625,7 +629,9 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                     className="flex items-center justify-center w-5 h-full min-h-[1.75rem] p-0 bg-transparent border-none cursor-pointer text-[var(--nim-text-faint)] shrink-0 rounded-l hover:bg-[var(--nim-bg-secondary)] focus:outline-none"
                     onClick={(e) => { e.stopPropagation(); onToggleWorktreeGroup(groupKey); }}
                     aria-expanded={isWorktreeExpanded}
-                    aria-label={t('agents:accessibility.worktree_toggle', { action: t(isWorktreeExpanded ? 'agents:context.collapse' : 'agents:context.expand') })}
+                    aria-label={t('accessibility.worktree_toggle', {
+                      action: t(isWorktreeExpanded ? 'context.collapse' : 'context.expand'),
+                    })}
                   >
                     <MaterialSymbol
                       icon="chevron_right"
@@ -644,13 +650,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                     <div className={`shrink-0 flex items-center justify-center ${
                       worktreeIsActive ? 'text-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)]'
                     }`}>
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="3" y="2" width="3" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                        <rect x="10" y="2" width="3" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                        <rect x="3" y="11" width="3" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                        <path d="M4.5 5v3.5a1.5 1.5 0 0 0 1.5 1.5h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                        <path d="M11.5 5v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
+                      <WorktreeIcon size={12} />
                     </div>
                     <span className={`flex-1 text-xs whitespace-nowrap overflow-hidden text-ellipsis ${
                       worktreeIsActive ? 'font-medium text-[var(--nim-text)]' : 'text-[var(--nim-text)]'
@@ -714,7 +714,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
               onClick={handleRenameClick}
             >
               <MaterialSymbol icon="edit" size={14} />
-              {t('agents:context.rename')}
+              {t('context.rename')}
             </button>
           )}
           {onBlitzPinToggle && (
@@ -723,7 +723,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
               onClick={handlePinToggle}
             >
               <MaterialSymbol icon="push_pin" size={14} />
-              {isPinned ? t('agents:context.unpin') : t('agents:context.pin')}
+              {isPinned ? t('context.unpin') : t('context.pin')}
             </button>
           )}
           {onBlitzArchive && (
@@ -734,7 +734,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                 onClick={handleArchive}
               >
                 <MaterialSymbol icon="archive" size={14} />
-                {t('agents:context.archive_item', { type: 'Blitz' })}
+                {t('blitz.archive_blitz')}
               </button>
             </>
           )}
@@ -780,7 +780,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                 onClick={handleSessionWorktreeRename}
               >
                 <MaterialSymbol icon="edit" size={14} />
-                {t('agents:context.rename')}
+                {t('context.rename')}
               </button>
             )}
             {!isAnalysisContextMenu && onArchiveOtherWorktrees && worktrees.length > 1 && (
@@ -789,7 +789,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                 onClick={handleArchiveOtherWorktrees}
               >
                 <MaterialSymbol icon="archive" size={14} />
-                {t('agents:blitz.archive_other_worktrees')}
+                {t('blitz.archive_other_worktrees')}
               </button>
             )}
             {!isAnalysisContextMenu && onWorktreeCleanGitignored && (
@@ -798,7 +798,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                 onClick={handleSessionWorktreeCleanGitignored}
               >
                 <MaterialSymbol icon="delete_sweep" size={14} />
-                {t('agents:context.clear_gitignored_files')}
+                {t('context.clear_gitignored_files')}
               </button>
             )}
             {!isAnalysisContextMenu && onWorktreeArchive && (
@@ -809,7 +809,7 @@ export const BlitzGroup: React.FC<BlitzGroupProps> = memo(({
                   onClick={handleSessionWorktreeArchive}
                 >
                   <MaterialSymbol icon="archive" size={14} />
-                  {t('agents:context.archive_worktree')}
+                  {t('context.archive_worktree')}
                 </button>
               </>
             )}

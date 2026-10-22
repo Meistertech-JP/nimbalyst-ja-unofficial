@@ -7,7 +7,11 @@
 import type { ExtensionContext } from '@nimbalyst/extension-sdk';
 import { SpreadsheetEditor } from './components/SpreadsheetEditor';
 import { CsvCollabContentAdapter } from './collab/CsvCollabContentAdapter';
+import { aiTools as csvAITools } from './aiTools';
 import './revogrid-theme.css';
+import './revogrid-cells.css';
+import './revogrid-diff.css';
+import './sheet-format.css';
 
 // Export the editor component for the extension system
 export { SpreadsheetEditor };
@@ -37,3 +41,5 @@ export async function deactivate() {
 export const components = {
   SpreadsheetEditor,
 };
+
+export const aiTools = csvAITools;

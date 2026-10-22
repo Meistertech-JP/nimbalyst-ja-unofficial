@@ -1,16 +1,23 @@
 // @vitest-environment jsdom
 import React from "react";
 import {
-  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { I18nextProvider } from "react-i18next";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentReviewPanel } from "../AgentReviewPanel";
-import i18next from 'i18next';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance("en");
+  japaneseI18n = await createI18nInstance("ja");
+});
 
 const testState = vi.hoisted(() => ({
   visibleItemCount: 1,
@@ -115,6 +122,17 @@ const defaultProps = {
   width: 360,
 };
 
+function renderPanel(element: React.ReactElement, i18n = englishI18n) {
+  const result = render(
+    <I18nextProvider i18n={i18n}>{element}</I18nextProvider>
+  );
+  return {
+    ...result,
+    rerender: (nextElement: React.ReactElement) =>
+      result.rerender(<I18nextProvider i18n={i18n}>{nextElement}</I18nextProvider>),
+  };
+}
+
 function diffFor(filePath: string) {
   return {
     unifiedDiff: `@@ -1 +1 @@\n-old\n+${filePath}`,
@@ -167,30 +185,18 @@ beforeEach(() => {
   };
 });
 
-afterEach(async () => {
+afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  await i18next.changeLanguage('en');
 });
 
 describe("AgentReviewPanel diff loading", () => {
-  it('updates review labels in Japanese without translating file names or refetching diffs', async () => {
-    render(<AgentReviewPanel {...defaultProps} />);
-    await screen.findByText(/diff:src\/a\.ts:/);
-    const requestCount = vi.mocked(window.electronAPI.invoke).mock.calls.length;
-    await act(async () => { await i18next.changeLanguage('ja'); });
-    expect(screen.getByText('ワークストリームレビュー')).toBeTruthy();
-    expect(screen.getByText('4ファイル')).toBeTruthy();
-    expect(screen.getByTitle('src/a.ts')).toBeTruthy();
-    expect(window.electronAPI.invoke).toHaveBeenCalledTimes(requestCount);
-  });
-
   it("loads only rendered virtual rows and reuses cached diffs", async () => {
     testState.uncommittedFiles = ["/workspace/src/unrelated.ts"];
-    const { rerender } = render(<AgentReviewPanel {...defaultProps} />);
+    const { rerender } = renderPanel(<AgentReviewPanel {...defaultProps} />);
 
     await screen.findByText(/diff:src\/a\.ts:/);
-    expect(screen.getByText("4 files")).toBeTruthy();
+    screen.getByText("4 files");
     expect(window.electronAPI.invoke).toHaveBeenCalledTimes(1);
     expect(window.electronAPI.invoke).toHaveBeenCalledWith(
       "session:file-diff",
@@ -232,23 +238,37 @@ describe("AgentReviewPanel diff loading", () => {
 
   it("defaults to the workstream and can target the current session", async () => {
     testState.visibleItemCount = 5;
-    render(<AgentReviewPanel {...defaultProps} />);
+    renderPanel(<AgentReviewPanel {...defaultProps} />);
 
-    expect(screen.getByText("Workstream Review")).toBeTruthy();
-    expect(screen.getByText("All sessions (2)")).toBeTruthy();
-    expect(screen.getByText("4 files")).toBeTruthy();
+    screen.getByText("Workstream Review");
+    screen.getByText("All sessions (2)");
+    screen.getByText("4 files");
 
     fireEvent.click(screen.getByTestId("workstream-review-target"));
     fireEvent.click(screen.getByLabelText("Current session only"));
 
     await waitFor(() => {
-      expect(screen.getByText("3 files")).toBeTruthy();
+      screen.getByText("3 files");
     });
-    expect(screen.getByText("Current session only")).toBeTruthy();
+    screen.getByText("Current session only");
+  });
+
+  it("renders review labels in Japanese", () => {
+    testState.fileEdits = [];
+    testState.workstreamFileEdits = [];
+    renderPanel(<AgentReviewPanel {...defaultProps} />, japaneseI18n);
+
+    screen.getByText("ワークストリームレビュー");
+    screen.getByText("0ファイル");
+    screen.getByText("レビューする変更ファイルはありません。");
+    fireEvent.click(screen.getByTestId("workstream-review-target"));
+    screen.getByText("レビュー対象");
+    expect(screen.getAllByText("すべてのセッション（2件）")).toHaveLength(2);
+    screen.getByText("現在のセッションのみ");
   });
 
   it("waits for an expanded row before loading a new diff scope", async () => {
-    const { rerender } = render(<AgentReviewPanel {...defaultProps} />);
+    const { rerender } = renderPanel(<AgentReviewPanel {...defaultProps} />);
     await screen.findByText(/diff:src\/a\.ts:/);
 
     const firstHeader = screen.getByTitle("src/a.ts").closest("button");
@@ -285,7 +305,7 @@ describe("AgentReviewPanel diff loading", () => {
 
   it("invalidates cached diffs when edit or git source data refreshes", async () => {
     testState.visibleItemCount = 2;
-    const { rerender } = render(<AgentReviewPanel {...defaultProps} />);
+    const { rerender } = renderPanel(<AgentReviewPanel {...defaultProps} />);
 
     await waitFor(() => {
       expect(window.electronAPI.invoke).toHaveBeenCalledTimes(2);
@@ -333,7 +353,7 @@ describe("AgentReviewPanel diff loading", () => {
     }));
     (window as unknown as { electronAPI: unknown }).electronAPI = { invoke };
 
-    render(<AgentReviewPanel {...defaultProps} />);
+    renderPanel(<AgentReviewPanel {...defaultProps} />);
 
     await screen.findByText((content) =>
       content.startsWith("diff:src/a.ts:--- /workspace/src/a.ts")
@@ -363,7 +383,7 @@ describe("AgentReviewPanel diff loading", () => {
     );
     (window as unknown as { electronAPI: unknown }).electronAPI = { invoke };
 
-    render(<AgentReviewPanel {...defaultProps} />);
+    renderPanel(<AgentReviewPanel {...defaultProps} />);
 
     await screen.findByText("Binary file — no text diff available.");
     expect(invoke.mock.calls).toEqual([

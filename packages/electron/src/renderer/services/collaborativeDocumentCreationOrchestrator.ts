@@ -1,5 +1,11 @@
 import { store } from '@nimbalyst/runtime/store';
-import { rendererI18n } from '../i18n';
+import {
+  isPersonalCollabScope,
+  workspacePathFromPersonalScopeKey,
+  type CollabScope,
+} from '@nimbalyst/collab-client/core';
+import { pageDisplayName, type SharedParentKind } from '@nimbalyst/collab-client/docs';
+import { ensureTypePageDocument as ensureSharedTypePageDocument } from '@nimbalyst/collab-client/docs/pageTypes';
 import type { CollabDocumentConfig } from '../utils/collabDocumentOpener';
 import {
   removeCollabConfigsForDocument,
@@ -14,14 +20,17 @@ import {
 } from '../components/CollabMode/collabTree';
 import {
   pendingCollabDocumentAtom,
+  getElectronCollabDocsSession,
+  getPersonalCollabHost,
+  getSharedDocumentsForScope,
+  getSharedFoldersForScope,
   registerDocumentInIndex,
-  sharedDocumentsAtom,
-  sharedFoldersAtom,
+  trashSharedDocument,
   type SharedDocument,
   type SharedFolder,
 } from '../store/atoms/collabDocuments';
-import { activeWorkspacePathAtom } from '../store/atoms/openProjects';
 import { setWindowModeAtom } from '../store/atoms/windowMode';
+import { isTypePageDocumentId } from './localWikiCommands';
 import {
   getCollaborativeDocumentTypeCatalog,
   normalizeSuffix,
@@ -44,9 +53,12 @@ export interface CollaborativeDocumentLocalOrigin {
 }
 
 export interface CreateCollaborativeDocumentInput {
+  scope: CollabScope;
   descriptor: CollaborativeDocumentTypeDescriptor;
   requestedName: string;
   parentFolderId: string | null;
+  /** What `parentFolderId` names: a page (default) or a typed page (tracker item id). */
+  parentKind?: SharedParentKind;
   sourceContent?: string | Uint8Array;
   localOrigin?: string | CollaborativeDocumentLocalOrigin;
   /** Optional stable retry key. Defaults to the generated document id. */
@@ -75,19 +87,15 @@ export type CollaborativeDocumentCreationErrorCode =
   | 'operation-conflict';
 
 export class CollaborativeDocumentCreationError extends Error {
-  /** Keep language-independent diagnostics for the existing analytics classifier. */
-  readonly diagnosticMessage: string;
-
   constructor(
     public readonly code: CollaborativeDocumentCreationErrorCode,
     message: string,
     public readonly operationId: string,
     public readonly documentId: string,
     public readonly announced: boolean,
-    options?: { cause?: unknown; diagnosticMessage?: string },
+    options?: { cause?: unknown },
   ) {
     super(message);
-    this.diagnosticMessage = options?.diagnosticMessage ?? message;
     if (options && 'cause' in options) {
       (this as Error & { cause?: unknown }).cause = options.cause;
     }
@@ -110,11 +118,10 @@ interface FrozenOperation {
 
 export interface CollaborativeDocumentCreationDependencies {
   getCatalog(): CollaborativeDocumentTypeCatalog;
-  getWorkspacePath(): string | null;
-  getDocuments(): SharedDocument[];
-  getFolders(): SharedFolder[];
+  getDocuments(scope: CollabScope): SharedDocument[];
+  getFolders(scope: CollabScope): SharedFolder[];
   resolveConfig(
-    workspacePath: string,
+    scope: CollabScope,
     uri: string,
     documentId: string,
     title: string,
@@ -127,14 +134,24 @@ export interface CollaborativeDocumentCreationDependencies {
     documentType: string;
     title: string;
     content: string | Uint8Array;
+    /** Tolerate a room whose index row may still be in flight. */
+    retryWhileUnregistered?: boolean;
   }): Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Resolves `true` when the server confirmed the index row is committed.
+   * The seed cannot connect until it is (NIM-2472).
+   */
   register(
+    scope: CollabScope,
     documentId: string,
     title: string,
     documentType: string,
     parentFolderId: string | null,
     metadata: { metadataVersion: 2; fileExtension: string; editorId: string },
-  ): Promise<void>;
+    placement: { parentKind: SharedParentKind },
+  ): Promise<boolean>;
+  /** Undo an announced registration when the seed that follows it fails. */
+  rollbackRegistration(scope: CollabScope, documentId: string): void;
   saveLocalOrigin?(payload: {
     workspacePath: string;
     documentId: string;
@@ -144,11 +161,20 @@ export interface CollaborativeDocumentCreationDependencies {
     lastCollabContentHash: string | null;
   }): Promise<{ success: boolean; error?: string }>;
   publishPending(
+    scope: CollabScope,
     document: SharedDocument,
     initialContent?: string,
     source?: CollabDocumentOpenSource,
   ): void;
-  cleanup(workspacePath: string, documentId: string): Promise<void>;
+  cleanup(scope: CollabScope, documentId: string): Promise<void>;
+  /** Open a Personal page in Pages mode; it has no room and no pending-share path. */
+  openPersonal(scope: CollabScope, document: SharedDocument): void;
+  /** Drop the optimistic tree row of a Personal page main refused to save. */
+  discardPersonal(scope: CollabScope, documentId: string): void;
+  /** Write a new Personal page's first body; throws when it was not saved. */
+  writePersonalBody(scope: CollabScope, documentId: string, content: string): Promise<void>;
+  /** Move a Personal page whose body could not be written to Trash. */
+  trashPersonal(scope: CollabScope, documentId: string): Promise<void>;
   generateId(): string;
   now(): number;
   hashContent(content: string | Uint8Array): Promise<string>;
@@ -231,6 +257,8 @@ function operationFingerprint(input: CreateCollaborativeDocumentInput): string {
     ? undefined
     : input.localOrigin?.sourceContent;
   return JSON.stringify([
+    input.scope.scopeKey,
+    input.scope.orgId,
     input.descriptor.documentType,
     input.descriptor.defaultExtension,
     input.descriptor.fileExtensions,
@@ -238,6 +266,7 @@ function operationFingerprint(input: CreateCollaborativeDocumentInput): string {
     input.descriptor.editor.componentName ?? '',
     input.requestedName.trim(),
     input.parentFolderId,
+    input.parentFolderId ? input.parentKind ?? 'page' : 'page',
     fingerprintContent(input.sourceContent),
     localPath,
     fingerprintContent(localContent),
@@ -259,12 +288,11 @@ async function sha256Hex(content: string | Uint8Array): Promise<string> {
 function defaultDependencies(): CollaborativeDocumentCreationDependencies {
   return {
     getCatalog: getCollaborativeDocumentTypeCatalog,
-    getWorkspacePath: () => store.get(activeWorkspacePathAtom),
-    getDocuments: () => store.get(sharedDocumentsAtom),
-    getFolders: () => store.get(sharedFoldersAtom),
-    resolveConfig: (workspacePath, uri, documentId, title, documentType, metadata) =>
+    getDocuments: getSharedDocumentsForScope,
+    getFolders: getSharedFoldersForScope,
+    resolveConfig: (scope, uri, documentId, title, documentType, metadata) =>
       resolveCollabConfigForUri(
-        workspacePath,
+        scope,
         uri,
         documentId,
         title,
@@ -273,13 +301,16 @@ function defaultDependencies(): CollaborativeDocumentCreationDependencies {
       ),
     seed: seedSharedDocument,
     register: registerDocumentInIndex,
+    rollbackRegistration: trashSharedDocument,
     saveLocalOrigin: async payload => {
       const save = window.electronAPI?.documentSync?.saveLocalOrigin;
-      if (!save) return { success: false, error: rendererI18n.t('errors:shared_document.local_origin_unavailable') };
+      if (!save) return { success: false, error: 'Local-origin persistence is unavailable.' };
       return save(payload);
     },
-    publishPending: (document, initialContent, source) => {
+    publishPending: (scope, document, initialContent, source) => {
       store.set(pendingCollabDocumentAtom, {
+        scopeKey: scope.scopeKey,
+        orgId: scope.orgId,
         documentId: document.documentId,
         documentType: document.documentType,
         metadataVersion: document.metadataVersion,
@@ -290,9 +321,48 @@ function defaultDependencies(): CollaborativeDocumentCreationDependencies {
       });
       store.set(setWindowModeAtom, 'collab');
     },
-    cleanup: async (workspacePath, documentId) => {
-      removeCollabConfigsForDocument(workspacePath, documentId);
+    cleanup: async (scope, documentId) => {
+      removeCollabConfigsForDocument(scope, documentId);
       await window.electronAPI?.documentSync?.closeDoc?.(documentId).catch(() => undefined);
+    },
+    openPersonal: (scope, document) => {
+      store.set(setWindowModeAtom, 'collab');
+      getPersonalCollabHost(workspacePathFromPersonalScopeKey(scope.scopeKey)).openArtifact({
+        kind: 'document',
+        scope,
+        documentId: document.documentId,
+        teamProjectId: null,
+      }, 'sidebar');
+    },
+    discardPersonal: (scope, documentId) => {
+      // Local only: main never stored the row, so there is nothing to delete.
+      store.set(getElectronCollabDocsSession(scope).atoms.allSharedDocuments, (current) =>
+        current.filter((document) => document.documentId !== documentId));
+    },
+    writePersonalBody: async (scope, documentId, content) => {
+      if (isTypePageDocumentId(documentId)) {
+        // A type page's description stays in the database store (see localWikiCommands).
+        const stored = await window.electronAPI.invoke(
+          'personal-pages:update-body',
+          workspacePathFromPersonalScopeKey(scope.scopeKey),
+          documentId,
+          content,
+        ) as { version?: number; conflict?: boolean } | null;
+        if (!stored || stored.conflict) throw new Error('The page body was not saved.');
+        return;
+      }
+      // A new Local page is a file in the wiki folder; nobody else has written it yet.
+      const result = await window.electronAPI.invoke(
+        'local-wiki:write-body',
+        workspacePathFromPersonalScopeKey(scope.scopeKey),
+        documentId,
+        content,
+        null,
+      ) as { ok?: boolean } | null;
+      if (!result?.ok) throw new Error('The page body was not saved.');
+    },
+    trashPersonal: async (scope, documentId) => {
+      await getElectronCollabDocsSession(scope).trashDocument(documentId);
     },
     generateId: () => crypto.randomUUID(),
     now: () => Date.now(),
@@ -348,7 +418,7 @@ export class CollaborativeDocumentCreationOrchestrator {
   ): Promise<SharedDocument> {
     const { operationId, documentId } = operation;
     let announced = false;
-    let workspacePath: string | null = null;
+    const { scope } = input;
     let configResolved = false;
     try {
       if (!operation.resolvedType) {
@@ -357,7 +427,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!normalized) {
           throw new CollaborativeDocumentCreationError(
             'invalid-name',
-            rendererI18n.t('errors:shared_document.invalid_name'),
+            'A shared document needs a valid name and catalog suffix.',
             operationId,
             documentId,
             false,
@@ -392,35 +462,30 @@ export class CollaborativeDocumentCreationOrchestrator {
       }
       const { descriptor, name, metadata } = operation.resolvedType;
 
-      workspacePath = this.dependencies.getWorkspacePath();
-      if (!workspacePath) {
-        throw new CollaborativeDocumentCreationError(
-          'workspace-unavailable',
-          rendererI18n.t('errors:shared_document.workspace_unavailable'),
-          operationId,
-          documentId,
-          false,
-        );
-      }
-
-      const documents = this.dependencies.getDocuments();
-      const folders = this.dependencies.getFolders();
-      const parentPath = folderPathForId(folders, input.parentFolderId);
+      const documents = this.dependencies.getDocuments(scope);
+      const folders = this.dependencies.getFolders(scope);
+      const parentKind: SharedParentKind = input.parentFolderId ? input.parentKind ?? 'page' : 'page';
+      // A typed page is not in the folder list; main (Personal) or the tree checks it.
+      const parentPath = parentKind === 'item' ? '' : folderPathForId(folders, input.parentFolderId);
       if (parentPath === null) {
         throw new CollaborativeDocumentCreationError(
           'invalid-parent-folder',
-          rendererI18n.t('errors:shared_document.parent_folder_missing'),
+          'The selected shared folder no longer exists.',
           operationId,
           documentId,
           false,
         );
       }
-      const title = joinCollabPath(parentPath, name);
+      // A page stores its bare name: no parent path, and no ".md" on markdown.
+      const title = descriptor.documentType === 'markdown'
+        ? name.slice(0, name.length - metadata.fileExtension.length)
+        : name;
       const existingById = documents.find(document => document.documentId === documentId);
       if (existingById) {
         const sameDocument = existingById.title === title
           && existingById.documentType === descriptor.documentType
           && (existingById.parentFolderId ?? null) === input.parentFolderId
+          && (existingById.parentKind ?? 'page') === parentKind
           && existingById.metadataVersion === 2
           && existingById.fileExtension === metadata.fileExtension
           && existingById.editorId === metadata.editorId;
@@ -435,18 +500,28 @@ export class CollaborativeDocumentCreationOrchestrator {
         }
         announced = true;
       } else {
-        const targetPath = normalizeCollabPath(title);
-        const documentCollision = documents.some(document => (
-          normalizeCollabPath(getSharedDocumentDisplayPath(document, folders)) === targetPath
-        ));
-        const folderCollision = folders.some(folder => (
+        // Names compare as the tree shows them, so an older "Child.md" (or a
+        // full-path title) and a new bare "Child" collide.
+        const shownName = pageDisplayName(title, descriptor.documentType);
+        const shownPath = (document: SharedDocument): string => {
+          const path = normalizeCollabPath(getSharedDocumentDisplayPath(document, folders));
+          const leaf = getCollabNodeName(path);
+          return joinCollabPath(path.slice(0, Math.max(0, path.length - leaf.length - 1)), pageDisplayName(leaf, document.documentType));
+        };
+        const documentCollision = parentKind === 'item'
+          ? documents.some(document => document.parentKind === 'item'
+            && document.parentFolderId === input.parentFolderId
+            && pageDisplayName(document.title, document.documentType) === shownName)
+          : documents.some(document => (document.parentKind ?? 'page') === 'page'
+            && normalizeCollabPath(shownPath(document)) === normalizeCollabPath(joinCollabPath(parentPath, shownName)));
+        const folderCollision = parentKind === 'page' && folders.some(folder => (
           (folder.parentFolderId ?? null) === input.parentFolderId
-          && folder.name.trim() === name
+          && pageDisplayName(folder.name.trim(), 'markdown') === shownName
         ));
         if (documentCollision || folderCollision) {
           throw new CollaborativeDocumentCreationError(
             'name-collision',
-            rendererI18n.t('errors:shared_document.name_collision', { title }),
+            `A shared document or folder named "${shownName}" already exists.`,
             operationId,
             documentId,
             false,
@@ -455,9 +530,12 @@ export class CollaborativeDocumentCreationOrchestrator {
       }
 
       const content = input.sourceContent ?? descriptor.creation?.defaultContent ?? '';
+      if (!announced && isPersonalCollabScope(scope)) {
+        return await this.createPersonal(input, operation, title);
+      }
       if (!announced) {
         const config = await this.dependencies.resolveConfig(
-          workspacePath,
+          scope,
           `collab://create/${documentId}`,
           documentId,
           title,
@@ -467,7 +545,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!config) {
           throw new CollaborativeDocumentCreationError(
             'config-unavailable',
-            rendererI18n.t('errors:shared_document.credentials_unavailable'),
+            'Could not resolve team collaboration credentials for the new document.',
             operationId,
             documentId,
             false,
@@ -475,57 +553,81 @@ export class CollaborativeDocumentCreationOrchestrator {
         }
         configResolved = true;
 
-        const requiresSeed = byteLength(content) > 0
-          || (descriptor.content.strategy !== 'lexical' && descriptor.content.strategy !== 'text');
-        if (requiresSeed) {
-          const seed = await this.dependencies.seed({
-            workspacePath,
-            documentId,
-            documentType: descriptor.documentType,
-            title,
-            content,
-          });
-          if (!seed.ok) {
-            throw new CollaborativeDocumentCreationError(
-              'seed-failed',
-              seed.error || rendererI18n.t('errors:shared_document.seed_not_acknowledged'),
-              operationId,
-              documentId,
-              false,
-              { diagnosticMessage: seed.error || rendererI18n.getFixedT('en')('errors:shared_document.seed_not_acknowledged') },
-            );
-          }
-        }
-
+        // Announce BEFORE seeding. The server binds a document room's id
+        // through the org's index and 404s an id that isn't there yet, so a
+        // seed that runs first can never connect (NIM-2472). `register`
+        // resolves only once the row is confirmed committed.
+        //
+        // The cost is a window where teammates can see the document before its
+        // content lands. That is deliberate and bounded: the seed follows
+        // immediately, and a seed failure trashes the row below.
+        let registrationAcked = false;
         try {
-          await this.dependencies.register(
+          registrationAcked = await this.dependencies.register(
+            scope,
             documentId,
             title,
             descriptor.documentType,
             input.parentFolderId,
             metadata,
+            { parentKind },
           );
           announced = true;
         } catch (cause) {
           throw new CollaborativeDocumentCreationError(
             'register-failed',
-            cause instanceof Error ? cause.message : rendererI18n.t('errors:shared_document.register_failed'),
+            cause instanceof Error ? cause.message : 'Failed to register the shared document.',
             operationId,
             documentId,
             false,
-            {
-              cause,
-              diagnosticMessage: cause instanceof Error
-                ? cause.message
-                : rendererI18n.getFixedT('en')('errors:shared_document.register_failed'),
-            },
+            { cause },
           );
+        }
+
+        const requiresSeed = byteLength(content) > 0
+          || (descriptor.content.strategy !== 'lexical' && descriptor.content.strategy !== 'text');
+        if (requiresSeed) {
+          const seed = await this.dependencies.seed({
+            workspacePath: scope.scopeKey,
+            documentId,
+            documentType: descriptor.documentType,
+            title,
+            content,
+            // An unconfirmed registration (server predating the ack, or a
+            // queued offline mutation) means the row may still be in flight,
+            // so the room's 404 is transient and worth retrying. A confirmed
+            // one makes a 404 a real error to surface immediately.
+            retryWhileUnregistered: !registrationAcked,
+          });
+          if (!seed.ok) {
+            // The document is already announced. Roll it back into Trash so a
+            // failed share doesn't leave teammates an empty document, and
+            // report the failure as unannounced -- the caller's rollback path
+            // has nothing left to undo.
+            try {
+              this.dependencies.rollbackRegistration(scope, documentId);
+              announced = false;
+            } catch (rollbackError) {
+              logger.ui.warn(
+                '[collaborativeDocumentCreationOrchestrator] Failed to roll back registration',
+                rollbackError,
+              );
+            }
+            throw new CollaborativeDocumentCreationError(
+              'seed-failed',
+              seed.error || 'The initial shared content was not acknowledged by the server.',
+              operationId,
+              documentId,
+              false,
+            );
+          }
         }
       }
 
       const now = existingById?.createdAt ?? this.dependencies.now();
       const document: SharedDocument = existingById ?? {
         documentId,
+        teamProjectId: scope.indexConfig.teamProjectId ?? null,
         title,
         documentType: descriptor.documentType,
         ...metadata,
@@ -533,6 +635,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         createdAt: now,
         updatedAt: now,
         parentFolderId: input.parentFolderId,
+        ...(parentKind === 'item' ? { parentKind } : {}),
       };
 
       if (input.localOrigin) {
@@ -543,7 +646,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!save) {
           throw new CollaborativeDocumentCreationError(
             'local-origin-failed',
-            rendererI18n.t('errors:shared_document.local_origin_unavailable'),
+            'Local-origin persistence is unavailable.',
             operationId,
             documentId,
             true,
@@ -551,7 +654,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         }
         const originalContent = localOrigin.sourceContent ?? content;
         const result = await save({
-          workspacePath,
+          workspacePath: scope.scopeKey,
           documentId,
           documentType: descriptor.documentType,
           sourceFilePath: localOrigin.sourceFilePath,
@@ -561,7 +664,7 @@ export class CollaborativeDocumentCreationOrchestrator {
         if (!result.success) {
           throw new CollaborativeDocumentCreationError(
             'local-origin-failed',
-            result.error || rendererI18n.t('errors:shared_document.local_origin_save_failed'),
+            result.error || 'Failed to save the local-origin binding.',
             operationId,
             documentId,
             true,
@@ -570,7 +673,7 @@ export class CollaborativeDocumentCreationOrchestrator {
       }
 
       try {
-        await this.dependencies.cleanup(workspacePath, documentId);
+        await this.dependencies.cleanup(scope, documentId);
         configResolved = false;
       } catch (cleanupError) {
         logger.ui.warn(
@@ -591,6 +694,7 @@ export class CollaborativeDocumentCreationOrchestrator {
               ? 'embedded_document'
               : 'sidebar';
         this.dependencies.publishPending(
+          scope,
           document,
           typeof content === 'string' ? content : undefined,
           openSource,
@@ -608,9 +712,9 @@ export class CollaborativeDocumentCreationOrchestrator {
       });
       return document;
     } catch (cause) {
-      if (workspacePath && configResolved) {
+      if (configResolved) {
         try {
-          await this.dependencies.cleanup(workspacePath, documentId);
+          await this.dependencies.cleanup(scope, documentId);
         } catch (cleanupError) {
           logger.ui.warn('[collaborativeDocumentCreationOrchestrator] Cleanup failed', cleanupError);
         }
@@ -631,17 +735,149 @@ export class CollaborativeDocumentCreationOrchestrator {
         source: input.analyticsSource ?? 'new_document',
         actorType: input.analyticsActorType ?? 'user',
         documentType: toStableAnalyticsCategory(input.descriptor.documentType),
-        errorCategory: categorizeTeamAnalyticsError('document', normalized.diagnosticMessage),
+        errorCategory: categorizeTeamAnalyticsError('document', normalized),
       });
       throw normalized;
     }
   }
+
+  /**
+   * The prose page of a tracker type, `type-page:<typeId>`, created on first
+   * need under the type's placement parent. The register step and its retries
+   * are collab-client's `ensureTypePageDocument`; this supplies the create.
+   * Nothing opens: the type's tab shows it.
+   */
+  async ensureTypePage(input: {
+    scope: CollabScope;
+    typeId: string;
+    typeName: string;
+    parentFolderId: string | null;
+  }): Promise<SharedDocument> {
+    let resolvedDescriptor: CollaborativeDocumentTypeDescriptor | null = null;
+    return ensureSharedTypePageDocument(input, {
+      existing: (documentId) => this.dependencies.getDocuments(input.scope).find((document) => document.documentId === documentId),
+      create: ({ documentId, requestedName, parentFolderId, operationSuffix }) => {
+        let descriptor = resolvedDescriptor;
+        if (!descriptor) {
+          const resolution = this.dependencies.getCatalog().resolveMetadata('markdown', '.md');
+          if (resolution.state !== 'ready') {
+            throw new CollaborativeDocumentCreationError('invalid-descriptor', resolution.reason, documentId, documentId, false);
+          }
+          descriptor = resolvedDescriptor = resolution.descriptor;
+        }
+        return this.create({
+          scope: input.scope,
+          descriptor,
+          requestedName,
+          parentFolderId,
+          documentId,
+          // The same type id exists in every workspace, so the operation is per scope.
+          operationId: `${input.scope.scopeKey}\u0000${documentId}${operationSuffix}`,
+          sourceContent: '',
+          openAfterCreate: false,
+        });
+      },
+      refusal: (error) => {
+        if (!(error instanceof CollaborativeDocumentCreationError)) return null;
+        if (error.code === 'name-collision') return 'name-collision';
+        if (error.code === 'invalid-parent-folder') return 'invalid-parent';
+        return null;
+      },
+    });
+  }
+
+  /**
+   * A Personal page is a row in the local database: register it and open its
+   * tab. There is no room to seed, no credentials to resolve and no team to
+   * announce it to.
+   */
+  private async createPersonal(
+    input: CreateCollaborativeDocumentInput,
+    operation: FrozenOperation,
+    title: string,
+  ): Promise<SharedDocument> {
+    const { operationId, documentId } = operation;
+    const { descriptor, metadata } = operation.resolvedType!;
+    let saved = false;
+    let failure: unknown;
+    try {
+      saved = await this.dependencies.register(
+        input.scope,
+        documentId,
+        title,
+        descriptor.documentType,
+        input.parentFolderId,
+        metadata,
+        { parentKind: input.parentFolderId ? input.parentKind ?? 'page' : 'page' },
+      );
+    } catch (cause) {
+      failure = cause;
+    }
+    if (!saved) {
+      // Nothing was stored, so nothing opens and no row stays in the tree.
+      this.dependencies.discardPersonal(input.scope, documentId);
+      throw new CollaborativeDocumentCreationError(
+        'register-failed',
+        failure instanceof Error ? failure.message : 'The personal page was not saved.',
+        operationId,
+        documentId,
+        false,
+        failure === undefined ? undefined : { cause: failure },
+      );
+    }
+    // A team page is seeded from `sourceContent` in its room; a Personal page's
+    // body is a separate local write. Without it, content handed in (an agent's
+    // initialContent, a moved page) came back as an empty page. A new editor
+    // page (drawing, mockup...) starts from its type's default file.
+    const seed = input.sourceContent || descriptor.creation?.defaultContent;
+    if (seed) {
+      try {
+        const body = typeof seed === 'string' ? seed : new TextDecoder().decode(seed);
+        await this.dependencies.writePersonalBody(input.scope, documentId, body);
+      } catch (cause) {
+        // Recoverable from Trash, not a blank page that reads as a success.
+        await this.dependencies.trashPersonal(input.scope, documentId).catch(() => undefined);
+        throw new CollaborativeDocumentCreationError(
+          'seed-failed',
+          `The page was created but its text was not saved: ${cause instanceof Error ? cause.message : String(cause)}`,
+          operationId,
+          documentId,
+          false,
+          { cause },
+        );
+      }
+    }
+    const now = this.dependencies.now();
+    const document: SharedDocument = {
+      documentId,
+      teamProjectId: null,
+      title,
+      documentType: descriptor.documentType,
+      ...metadata,
+      createdBy: '',
+      createdAt: now,
+      updatedAt: now,
+      parentFolderId: input.parentFolderId,
+      ...(input.parentFolderId && input.parentKind === 'item' ? { parentKind: 'item' as const } : {}),
+    };
+    if (input.openAfterCreate !== false) this.dependencies.openPersonal(input.scope, document);
+    return document;
+  }
 }
 
-const sharedCreationOrchestrator = new CollaborativeDocumentCreationOrchestrator();
+// Built on first use, so importing this module (for createCollaborativeDocument)
+// does not read its dependencies at load time.
+let sharedCreationOrchestrator: CollaborativeDocumentCreationOrchestrator | undefined;
+const sharedOrchestrator = () => (sharedCreationOrchestrator ??= new CollaborativeDocumentCreationOrchestrator());
 
 export function createCollaborativeDocument(
   input: CreateCollaborativeDocumentInput,
 ): Promise<SharedDocument> {
-  return sharedCreationOrchestrator.create(input);
+  return sharedOrchestrator().create(input);
+}
+
+export function ensureTypePageDocument(
+  input: Parameters<CollaborativeDocumentCreationOrchestrator['ensureTypePage']>[0],
+): Promise<SharedDocument> {
+  return sharedOrchestrator().ensureTypePage(input);
 }

@@ -1,11 +1,15 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { TrackerRecord } from '../../../../core/TrackerRecord';
 import { StatusBar } from '../../components/StatusBar';
-import type { TrackerDataModel } from '../../models/TrackerDataModel';
+import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { findAssociatedTrackerItem } from '../TrackerDocumentHeader';
+import { TrackerTypeRow } from '../../components/TrackerTypeRow';
+import { globalRegistry } from '../../models';
 
 function record(overrides: Partial<TrackerRecord> = {}): TrackerRecord {
   return {
@@ -38,8 +42,9 @@ describe('TrackerDocumentHeader tracker item link', () => {
     expect(findAssociatedTrackerItem([record({ source: 'native' })], '/workspace/plans/roadmap.md', 'plan')).toBeNull();
   });
 
-  it('renders a pill that opens the tracker item without collapsing the header', () => {
+  it('renders a pill that opens the tracker item without collapsing the header', async () => {
     const onOpen = vi.fn();
+    const i18n = await createI18nInstance('en');
     const model: TrackerDataModel = {
       type: 'plan',
       displayName: 'Plan',
@@ -53,17 +58,52 @@ describe('TrackerDocumentHeader tracker item link', () => {
     };
 
     render(
-      <StatusBar
-        model={model}
-        data={{}}
-        onChange={() => {}}
-        trackerItemLink={{ label: 'NIM-42', title: 'Roadmap', onOpen }}
-      />,
+      <I18nextProvider i18n={i18n}>
+        <StatusBar
+          model={model}
+          data={{}}
+          onChange={() => {}}
+          trackerItemLink={{ label: 'NIM-42', title: 'Roadmap', onOpen }}
+        />
+      </I18nextProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Open tracker item NIM-42' }));
 
     expect(onOpen).toHaveBeenCalledOnce();
-    expect(screen.getByText('Plan')).toBeTruthy();
+    screen.getByText('Plan');
+  });
+});
+
+describe('TrackerTypeRow', () => {
+  it('shows only filled fields, offers the rest from "+", and keeps relations off a page row', () => {
+    globalRegistry.register({
+      type: 'ttr-plan', displayName: 'Plan', displayNamePlural: 'Plans', icon: 'flag', color: '#336699',
+      modes: { inline: false, fullDocument: true }, idPrefix: 'p', idFormat: 'ulid',
+      fields: [
+        { name: 'title', type: 'string' },
+        { name: 'status', type: 'select', options: [{ value: 'draft', label: 'Draft' }] },
+        { name: 'owner', type: 'string' },
+        { name: 'goal', type: 'relationship' },
+      ],
+    } as unknown as TrackerDataModel);
+    try {
+      const row = (fieldSet: 'page' | 'all') => render(
+        <TrackerTypeRow typeId="ttr-plan" values={{ status: 'draft', goal: 'g1' }} editable onSaveField={vi.fn()} fieldSet={fieldSet} testIdBase={fieldSet} />,
+      );
+      const shown = (base: string) => Array.from(screen.getByTestId(`${base}-props`).querySelectorAll('.tracker-field-pill[data-field]'))
+        .map((pill) => pill.getAttribute('data-field'));
+
+      row('page');
+      expect(shown('page')).toEqual(['status']);
+      row('all');
+      expect(shown('all')).toEqual(['status', 'goal']);
+
+      fireEvent.click(screen.getByTestId('all-add-field'));
+      expect(Array.from(screen.getByTestId('all-add-field-menu').querySelectorAll('[role="menuitem"]'))
+        .map((item) => item.getAttribute('data-field'))).toEqual(['owner', 'tags']);
+    } finally {
+      globalRegistry.unregister('ttr-plan');
+    }
   });
 });

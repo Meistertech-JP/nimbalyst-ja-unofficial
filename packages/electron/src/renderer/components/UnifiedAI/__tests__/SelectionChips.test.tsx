@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import i18next from 'i18next';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SelectionChips } from '../SelectionChips';
 import { clearTextSelection, setTextSelection } from '../TextSelectionIndicator';
 import {
@@ -13,8 +14,23 @@ import {
 const FILE = '/test/diagram.excalidraw';
 const OTHER_FILE = '/test/other.excalidraw';
 const COLLAB_FILE = 'collab://org:o:doc:shared.md';
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
-afterEach(async () => {
+async function renderChips(currentFilePath?: string, i18n = englishI18n) {
+  render(
+    <I18nextProvider i18n={i18n}>
+      <SelectionChips currentFilePath={currentFilePath} />
+    </I18nextProvider>,
+  );
+}
+
+beforeEach(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+afterEach(() => {
   cleanup();
   clearTextSelection();
   clearEditorContext(FILE);
@@ -24,112 +40,114 @@ afterEach(async () => {
   delete (window as any).__mockupSelectedElement;
   delete (window as any).__mockupDrawing;
   delete (window as any).__mockupAnnotationTimestamp;
-  await i18next.changeLanguage('en');
 });
 
 describe('SelectionChips', () => {
-  it('localizes selection controls without rewriting extension-authored labels', async () => {
-    await i18next.changeLanguage('ja');
-    act(() => {
-      setEditorContextItems(FILE, [{ id: 'a', label: 'Rectangle A', description: 'Authored description' }]);
-      setTextSelection('Keep this text', FILE);
-    });
-    render(<SelectionChips currentFilePath={FILE} />);
-    expect(screen.getByText('選択範囲')).toBeTruthy();
-    expect(screen.getByText('Rectangle A')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText('Rectangle Aをコンテキストから除外'));
-    expect(getActiveEditorContextItems(FILE)).toBeUndefined();
-    fireEvent.click(screen.getByText('1件を非表示中 — 再表示'));
-    expect(getActiveEditorContextItems(FILE)?.[0]).toMatchObject({ id: 'a', label: 'Rectangle A' });
-    fireEvent.click(screen.getByLabelText('選択範囲をコンテキストから除外'));
-    expect(screen.queryByText('選択範囲')).toBeNull();
-  });
-
-  it('reacts to text-selection events and removes the selection immediately', () => {
-    render(<SelectionChips currentFilePath={FILE} />);
+  it('reacts to text-selection events and removes the selection immediately', async () => {
+    await renderChips(FILE);
     expect(screen.queryByText('Selection')).toBeNull();
 
     act(() => setTextSelection('selected text', FILE));
-    expect(screen.getByText('Selection')).toBeTruthy();
+    screen.getByText('Selection');
 
     fireEvent.click(screen.getByLabelText('Remove Selection from context'));
     expect(screen.queryByText('Selection')).toBeNull();
   });
 
-  it('does not show a selection when the panel has no currentFilePath (prevents cross-mode leak)', () => {
+  it('does not show a selection when the panel has no currentFilePath (prevents cross-mode leak)', async () => {
     // A panel with no active document (e.g. the agent chat with no editor tab)
     // must NOT surface a selection made in another mode. Strict scoping: no
     // currentFilePath -> no chip, even if a selection is stored.
-    render(<SelectionChips />);
+    await renderChips();
     act(() => setTextSelection('selected text', COLLAB_FILE));
     expect(screen.queryByText('Selection')).toBeNull();
   });
 
-  it('shows the selection when currentFilePath matches the selection file', () => {
-    render(<SelectionChips currentFilePath={COLLAB_FILE} />);
+  it('shows the selection when currentFilePath matches the selection file', async () => {
+    await renderChips(COLLAB_FILE);
     expect(screen.queryByText('Selection')).toBeNull();
 
     act(() => setTextSelection('selected text', COLLAB_FILE));
-    expect(screen.getByText('Selection')).toBeTruthy();
+    screen.getByText('Selection');
   });
 
-  it('does not show a selection belonging to a different file when currentFilePath is set', () => {
-    render(<SelectionChips currentFilePath={FILE} />);
+  it('localizes text-selection labels and tooltips in Japanese', async () => {
+    await renderChips(FILE, japaneseI18n);
+    act(() => setTextSelection('選択されたテキスト', FILE));
+
+    expect(screen.getByText('選択範囲')).toBeDefined();
+    expect(screen.getByTitle('選択したテキストが含まれます: 「選択されたテキスト」')).toBeDefined();
+    expect(screen.getByRole('button', { name: '選択範囲をコンテキストから除外' })).toBeDefined();
+  });
+
+  it('does not show a selection belonging to a different file when currentFilePath is set', async () => {
+    await renderChips(FILE);
 
     act(() => setTextSelection('selection from another doc', OTHER_FILE));
     expect(screen.queryByText('Selection')).toBeNull();
   });
 
-  it('dismisses and restores an extension item without sending it while hidden', () => {
+  it('dismisses and restores an extension item without sending it while hidden', async () => {
     act(() => {
       setEditorContextItems(FILE, [{ id: 'a', label: 'Rectangle A', description: 'A rectangle' }]);
     });
-    render(<SelectionChips currentFilePath={FILE} />);
+    await renderChips(FILE);
 
     fireEvent.click(screen.getByLabelText('Remove Rectangle A from context'));
     expect(screen.queryByText('Rectangle A')).toBeNull();
-    expect(screen.getByText('1 hidden — restore')).toBeTruthy();
+    screen.getByText('1 hidden — restore');
     expect(getActiveEditorContextItems(FILE)).toBeUndefined();
 
     fireEvent.click(screen.getByText('1 hidden — restore'));
-    expect(screen.getByText('Rectangle A')).toBeTruthy();
+    screen.getByText('Rectangle A');
     expect(getActiveEditorContextItems(FILE)?.[0].id).toBe('a');
   });
 
-  it('scopes extension items to the active file', () => {
+  it('localizes removal and restore affordances while preserving user labels', async () => {
+    act(() => {
+      setEditorContextItems(FILE, [{ id: 'a', label: 'Rectangle A', description: 'A rectangle' }]);
+    });
+    const japaneseI18n = await createI18nInstance('ja');
+    await renderChips(FILE, japaneseI18n);
+
+    fireEvent.click(screen.getByLabelText('Rectangle Aをコンテキストから除外'));
+    screen.getByText('1件を非表示中 — 再表示');
+  });
+
+  it('scopes extension items to the active file', async () => {
     act(() => {
       setEditorContextItems(FILE, [{ id: 'a', label: 'Current file', description: 'current' }]);
       setEditorContextItems(OTHER_FILE, [{ id: 'b', label: 'Other file', description: 'other' }]);
     });
 
-    render(<SelectionChips currentFilePath={FILE} />);
-    expect(screen.getByText('Current file')).toBeTruthy();
+    await renderChips(FILE);
+    screen.getByText('Current file');
     expect(screen.queryByText('Other file')).toBeNull();
   });
 
-  it('shows a collab spreadsheet cell selection when the panel is scoped to that doc', () => {
+  it('shows a collab spreadsheet cell selection when the panel is scoped to that doc', async () => {
     // A collaborative spreadsheet publishes its selected-cell context keyed by
     // the collab doc path; the collab chat panel scopes to that same path.
     act(() => {
       setEditorContextItems(COLLAB_FILE, [{ id: 'c1', label: 'Cells A1:B2', description: '4 cells' }]);
     });
 
-    render(<SelectionChips currentFilePath={COLLAB_FILE} />);
-    expect(screen.getByText('Cells A1:B2')).toBeTruthy();
+    await renderChips(COLLAB_FILE);
+    screen.getByText('Cells A1:B2');
   });
 
-  it('does not leak an extension selection into a panel with no currentFilePath', () => {
+  it('does not leak an extension selection into a panel with no currentFilePath', async () => {
     // Regression: switching from collab (spreadsheet) to agent mode must not
     // carry the spreadsheet's cell chip into the agent panel.
     act(() => {
       setEditorContextItems(COLLAB_FILE, [{ id: 'c1', label: 'Cells A1:B2', description: '4 cells' }]);
     });
 
-    render(<SelectionChips />);
+    await renderChips();
     expect(screen.queryByText('Cells A1:B2')).toBeNull();
   });
 
-  it('collapses large groups and can expand them', () => {
+  it('collapses large groups and can expand them', async () => {
     act(() => {
       setEditorContextItems(
         FILE,
@@ -142,12 +160,12 @@ describe('SelectionChips', () => {
       );
     });
 
-    render(<SelectionChips currentFilePath={FILE} />);
-    expect(screen.getByText('Shape 5')).toBeTruthy();
+    await renderChips(FILE);
+    screen.getByText('Shape 5');
     expect(screen.queryByText('Shape 6')).toBeNull();
 
     fireEvent.click(screen.getByLabelText('Show 3 more shapes'));
-    expect(screen.getByText('Shape 8')).toBeTruthy();
-    expect(screen.getByLabelText('Show fewer shapes')).toBeTruthy();
+    screen.getByText('Shape 8');
+    screen.getByLabelText('Show fewer shapes');
   });
 });

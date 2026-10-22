@@ -1,23 +1,31 @@
 /**
- * TrackerDocumentHeader - Renders tracker status bar for full-document tracking
+ * TrackerDocumentHeader - the type row of a typed markdown file.
  *
- * This component:
- * - Detects tracker frontmatter in document content
- * - Loads the appropriate tracker data model
- * - Renders the StatusBar component with tracker data
- * - Updates frontmatter when fields change
+ * A file with tracker frontmatter (a plan, a decision, ...) is a typed page
+ * that lives in Files. It draws the same row a typed page in Pages draws
+ * (`TrackerTypeRow`): the type chip, the fields that hold a value, and a "+"
+ * for the rest, with the file's tracker item key at the end. Edits round-trip
+ * through the frontmatter.
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
-import { StatusBar } from '../components/StatusBar';
+import type { FieldDefinition } from '@nimbalyst/tracker-schema';
+import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
+import { TrackerTypeRow } from '../components/TrackerTypeRow';
+import { useTrackerChipFieldSections } from '../components/trackerChipFields';
+import { useTrackerRelationshipCandidates } from '../components/useTrackerRelationshipCandidates';
+import type { TeamMemberOption } from '../components/TrackerFieldEditor';
 import { ModelLoader } from '../models/ModelLoader';
-import type { TrackerDataModel } from '../models/TrackerDataModel';
+import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
 import type { TrackerRecord } from '../../../core/TrackerRecord';
 import { trackerItemsMapAtom } from '../trackerDataAtoms';
 import { getRecordTitle } from '../trackerRecordAccessors';
 import { navigateToTrackerReference } from '../../TrackerLinkPlugin/trackerReferenceData';
 import { detectTrackerFromFrontmatter, updateTrackerInFrontmatter } from './frontmatterUtils';
+import { FrontmatterWriteError } from './frontmatterSource';
+import { detectFlatTypedPage, updateFlatTypedPageFields } from './flatTypedPage';
 import type { DocumentHeaderComponentProps } from './DocumentHeaderRegistry';
 
 function normalizeDocumentPath(path: string): string {
@@ -56,17 +64,27 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
   contentVersion,
   onContentChange,
   editor,
+  trackerFieldCapabilities,
 }) => {
+  const { t } = useTranslation('files');
   const [dataModel, setDataModel] = useState<TrackerDataModel | null>(null);
   const [trackerType, setTrackerType] = useState<string | null>(null);
   const trackerItems = useAtomValue(trackerItemsMapAtom);
+  const [teamMembers, setTeamMembers] = useState<TeamMemberOption[]>([]);
+  /** Set when the frontmatter writer refused the last edit; cleared by the next one. */
+  const [writeError, setWriteError] = useState<string | null>(null);
+  const { chipFields } = useTrackerChipFieldSections(dataModel?.type ?? '');
 
-  // Get fresh tracker data when contentVersion changes
+  // Get fresh tracker data when contentVersion changes. A Local wiki page
+  // keeps its type and fields flat at the top of the frontmatter.
   const trackerData = useMemo(() => {
     const content = getContent();
-    return detectTrackerFromFrontmatter(content);
+    const wrapped = detectTrackerFromFrontmatter(content);
+    if (wrapped) return { ...wrapped, flatId: undefined };
+    const flat = detectFlatTypedPage(content, filePath);
+    return flat ? { type: flat.type, data: flat.data, flatId: flat.id } : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getContent, contentVersion]);
+  }, [getContent, contentVersion, filePath]);
 
   // Load data model when tracker type changes (or on mount)
   useEffect(() => {
@@ -93,26 +111,84 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
     }
   }, [trackerData?.type, trackerType]);
 
+  // The row shows an edit at once; the file's next read confirms it.
+  const [localData, setLocalData] = useState<Record<string, unknown>>(trackerData?.data ?? {});
+  useEffect(() => setLocalData(trackerData?.data ?? {}), [trackerData]);
+
   // Handle field changes - get fresh content at the moment of change
   const handleChange = useCallback((updates: Record<string, any>) => {
     if (!trackerData || !onContentChange) return;
 
     // Get fresh content and update with new frontmatter
     const currentContent = getContent();
-    const updatedContent = updateTrackerInFrontmatter(currentContent, trackerData.type, updates);
+    let updatedContent: string;
+    try {
+      updatedContent = trackerData.flatId !== undefined
+        ? updateFlatTypedPageFields(currentContent, updates)
+        : updateTrackerInFrontmatter(currentContent, trackerData.type, updates);
+    } catch (error) {
+      // The writer refuses a header it cannot rewrite without losing the
+      // author's YAML (#1552). Say so and leave the document alone -- silently
+      // dropping the edit just makes the field snap back with no explanation.
+      if (error instanceof FrontmatterWriteError) {
+        setWriteError(error.message);
+        return;
+      }
+      throw error;
+    }
+    setWriteError(null);
+    setLocalData((current) => ({ ...current, ...updates }));
     onContentChange(updatedContent);
   }, [getContent, trackerData, onContentChange]);
+  const handleSaveField = useCallback(
+    (field: FieldDefinition, value: unknown) => handleChange({ [field.name]: value }),
+    [handleChange],
+  );
 
   const associatedItem = useMemo(() => {
     if (!trackerData) return null;
+    // A Local wiki page is its own record, under the id in its frontmatter.
+    if (trackerData.flatId !== undefined) return trackerData.flatId ? trackerItems.get(trackerData.flatId) ?? null : null;
     return findAssociatedTrackerItem(trackerItems.values(), filePath, trackerData.type);
   }, [filePath, trackerData, trackerItems]);
+  const relationshipCandidates = useTrackerRelationshipCandidates(associatedItem, chipFields);
+
+  useEffect(() => {
+    const loadTeamMembers = trackerFieldCapabilities?.loadTeamMembers;
+    if (!loadTeamMembers || !trackerData) {
+      setTeamMembers([]);
+      return;
+    }
+    let cancelled = false;
+    void loadTeamMembers()
+      .then((members) => {
+        if (!cancelled) setTeamMembers(members);
+      })
+      .catch(() => {
+        if (!cancelled) setTeamMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trackerData?.type, trackerFieldCapabilities?.loadTeamMembers]);
+
+  const handleOpenItem = useCallback((itemId: string) => {
+    const related = trackerItems.get(itemId);
+    if (!related) return;
+    const title = getRecordTitle(related) || related.issueKey || t('tracker_item.generic_label');
+    navigateToTrackerReference({
+      id: related.id,
+      issueKey: related.issueKey,
+      title,
+      type: related.primaryType,
+    });
+  }, [t, trackerItems]);
 
   const trackerItemLink = useMemo(() => {
     if (!associatedItem) return undefined;
-    const title = getRecordTitle(associatedItem) || associatedItem.issueKey || 'Tracker item';
+    const title = getRecordTitle(associatedItem) || associatedItem.issueKey || t('tracker_item.generic_label');
     return {
-      label: associatedItem.issueKey ?? 'Tracker item',
+      label: associatedItem.issueKey ?? t('tracker_item.generic_label'),
       title,
       onOpen: () => navigateToTrackerReference({
         id: associatedItem.id,
@@ -121,7 +197,7 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
         type: associatedItem.primaryType,
       }),
     };
-  }, [associatedItem]);
+  }, [associatedItem, t]);
 
   // Don't render if no tracker data or no data model
   if (!trackerData || !dataModel) {
@@ -129,13 +205,42 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
   }
 
   return (
-    <div className="document-header-tracker">
-      <StatusBar
-        model={dataModel}
-        data={trackerData.data}
-        onChange={handleChange}
-        trackerItemLink={trackerItemLink}
+    <div className="document-header-tracker tracker-document-header">
+      <TrackerTypeRow
+        typeId={dataModel.type}
+        values={localData}
+        editable={Boolean(onContentChange)}
+        onSaveField={handleSaveField}
+        fieldSet="all"
+        resetKey={filePath}
+        teamMembers={teamMembers}
+        relationshipCandidates={relationshipCandidates}
+        onOpenItem={handleOpenItem}
+        onCreateCollection={trackerFieldCapabilities?.onCreateCollection}
+        testIdBase="tracker-document"
+        className="border-b border-[var(--nim-border)] pb-3"
+        end={trackerItemLink && (
+          <button
+            type="button"
+            className="tracker-document-header-item-link ml-auto inline-flex shrink-0 items-center gap-1 rounded border-none bg-transparent px-1 text-xs text-[var(--nim-text-muted)] cursor-pointer hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
+            title={t('tracker_item.open_title', { title: trackerItemLink.title })}
+            aria-label={t('tracker_item.open_aria_label', { label: trackerItemLink.label })}
+            onClick={trackerItemLink.onOpen}
+          >
+            <MaterialSymbol icon="tag" size={13} />
+            {trackerItemLink.label}
+          </button>
+        )}
       />
+      {writeError && (
+        <div
+          className="tracker-document-header-write-error px-3 py-1.5 text-xs select-text"
+          style={{ color: 'var(--nim-error)' }}
+          role="alert"
+        >
+          {t('tracker_frontmatter_update_failed', { error: writeError })}
+        </div>
+      )}
     </div>
   );
 };
@@ -149,6 +254,5 @@ export function shouldRenderTrackerHeader(content: string, filePath: string): bo
   if (lowerPath && !lowerPath.endsWith('.md') && !lowerPath.endsWith('.mdx')) {
     return false;
   }
-  const detected = detectTrackerFromFrontmatter(content);
-  return detected !== null;
+  return detectTrackerFromFrontmatter(content) !== null || detectFlatTypedPage(content, filePath) !== null;
 }

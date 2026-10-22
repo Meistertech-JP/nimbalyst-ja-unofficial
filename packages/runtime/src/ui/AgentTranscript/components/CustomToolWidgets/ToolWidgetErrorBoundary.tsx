@@ -1,5 +1,5 @@
 import React from 'react';
-import { useRuntimeTranslation } from '../../../RuntimeTranslation';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface Props {
   children: React.ReactNode;
@@ -11,8 +11,19 @@ interface State {
   showDetails: boolean;
 }
 
-export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
-  constructor(props: Props) {
+interface Labels {
+  unknownTool: string;
+  showDetails: string;
+  hideDetails: string;
+  copy: string;
+  retry: string;
+  unknownError: string;
+}
+
+type InnerProps = Props & { failedLabel: string; labels: Labels };
+
+class ToolWidgetErrorBoundaryInner extends React.Component<InnerProps, State> {
+  constructor(props: InnerProps) {
     super(props);
     this.state = { error: null, showDetails: false };
   }
@@ -51,19 +62,6 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
     const { error, showDetails } = this.state;
     if (!error) return this.props.children;
 
-    return <ToolWidgetErrorFallback error={error} showDetails={showDetails} toolName={this.props.toolName} onToggleDetails={this.toggleDetails} onCopy={this.copyError} onRetry={this.reset} />;
-  }
-}
-
-const ToolWidgetErrorFallback: React.FC<{
-  error: Error;
-  showDetails: boolean;
-  toolName?: string;
-  onToggleDetails: () => void;
-  onCopy: () => Promise<void>;
-  onRetry: () => void;
-}> = ({ error, showDetails, toolName, onToggleDetails, onCopy, onRetry }) => {
-  const { t } = useRuntimeTranslation();
     return (
       <div
         role="alert"
@@ -78,15 +76,15 @@ const ToolWidgetErrorFallback: React.FC<{
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontWeight: 600, color: 'var(--nim-error, #ef4444)' }}>
-            {t('aichat:widget_error.render_failed', 'Widget failed to render')}
+            {this.props.failedLabel}
           </span>
           <span style={{ color: 'var(--nim-text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>
-            {toolName ?? t('aichat:rich_transcript.unknown_tool', 'unknown tool')}
+            {this.props.toolName ?? this.props.labels.unknownTool}
           </span>
           <span style={{ flex: 1 }} />
           <button
             type="button"
-            onClick={onToggleDetails}
+            onClick={this.toggleDetails}
             style={{
               background: 'transparent',
               border: '1px solid var(--nim-border)',
@@ -97,11 +95,11 @@ const ToolWidgetErrorFallback: React.FC<{
               cursor: 'pointer',
             }}
           >
-            {showDetails ? t('aichat:widget_error.hide_details', 'Hide details') : t('aichat:interactive.show_details', 'Show details')}
+            {showDetails ? this.props.labels.hideDetails : this.props.labels.showDetails}
           </button>
           <button
             type="button"
-            onClick={onCopy}
+            onClick={this.copyError}
             style={{
               background: 'transparent',
               border: '1px solid var(--nim-border)',
@@ -112,11 +110,11 @@ const ToolWidgetErrorFallback: React.FC<{
               cursor: 'pointer',
             }}
           >
-            {t('common:copy', 'Copy')}
+            {this.props.labels.copy}
           </button>
           <button
             type="button"
-            onClick={onRetry}
+            onClick={this.reset}
             style={{
               background: 'transparent',
               border: '1px solid var(--nim-border)',
@@ -127,11 +125,11 @@ const ToolWidgetErrorFallback: React.FC<{
               cursor: 'pointer',
             }}
           >
-            {t('common:retry', 'Retry')}
+            {this.props.labels.retry}
           </button>
         </div>
         <div style={{ marginTop: '4px', color: 'var(--nim-text-muted)' }}>
-          {error.message || t('dialogs:error.unknown', 'Unknown error')}
+          {error.message || this.props.labels.unknownError}
         </div>
         {showDetails && error.stack && (
           <pre
@@ -153,4 +151,24 @@ const ToolWidgetErrorFallback: React.FC<{
         )}
       </div>
     );
-};
+  }
+}
+
+export function ToolWidgetErrorBoundary(props: Props): React.ReactElement {
+  const { t: tAichat } = useTranslation('aichat');
+  const { t: tCommon } = useTranslation('common');
+  return (
+    <ToolWidgetErrorBoundaryInner
+      {...props}
+      failedLabel={tAichat('tool_widget.failed_to_render')}
+      labels={{
+        unknownTool: tAichat('rich_transcript.unknown_tool'),
+        showDetails: tAichat('interactive.show_details'),
+        hideDetails: tAichat('widget_error.hide_details'),
+        copy: tCommon('copy'),
+        retry: tCommon('retry'),
+        unknownError: tCommon('embed.unknown_error'),
+      }}
+    />
+  );
+}

@@ -8,15 +8,29 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   workspacePermissionsAtomFamily,
   loadWorkspacePermissions,
 } from '../../store/atoms/appSettings';
 import { permissionsChangedVersionAtom } from '../../store/atoms/permissions';
 import { HelpTooltip } from '../../help';
-import { getProjectTrustPresentation } from '../ProjectTrustToast/projectTrustChoices';
+import { getProjectTrustPresentation, type ProjectTrustChoice } from '../ProjectTrustToast/projectTrustChoices';
+
+const PROJECT_TRUST_CHOICE_LABEL_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified',
+  'allow-everything': 'trust_toast.choice_allow_everything',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only',
+  'ask-every-time': 'trust_toast.choice_ask_every_time',
+} as const satisfies Record<ProjectTrustChoice, string>;
+
+const PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified_description',
+  'allow-everything': 'trust_toast.choice_allow_everything_description',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only_description',
+  'ask-every-time': 'trust_toast.choice_ask_every_time_description',
+} as const satisfies Record<ProjectTrustChoice, string>;
 
 export interface TrustStatus {
   trustedAt?: number;
@@ -35,7 +49,7 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
   onOpenSettings,
   onChangeMode,
 }) => {
-  const { t, i18n } = useTranslation('project');
+  const { t } = useTranslation('project');
   const [menuOpen, setMenuOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -142,7 +156,6 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
       ? getProjectTrustPresentation(
           status.permissionMode,
           status.allowAllUsesClassifier,
-          t,
         )
       : null;
 
@@ -221,7 +234,9 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
       return t('trust_indicator.loading');
     }
     if (currentPresentation) {
-      return t('trust_indicator.mode', { mode: currentPresentation.label });
+      return t('trust_indicator.mode', {
+        mode: t(PROJECT_TRUST_CHOICE_LABEL_KEYS[currentPresentation.choice]),
+      });
     }
     return t('trust_indicator.untrusted');
   };
@@ -231,7 +246,7 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
       return '';
     }
     if (currentPresentation) {
-      return currentPresentation.description;
+      return t(PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS[currentPresentation.choice]);
     }
     return t('permissions.untrusted_desc');
   };
@@ -294,7 +309,9 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
                 size={20}
               />
               <span>
-                {currentPresentation?.label ?? t('trust_indicator.not_trusted')}
+                {currentPresentation
+                  ? t(PROJECT_TRUST_CHOICE_LABEL_KEYS[currentPresentation.choice])
+                  : t('trust_indicator.not_trusted')}
               </span>
             </div>
             <div className="trust-menu-current-mode-description text-xs text-[var(--nim-text-muted)] leading-[1.4]">
@@ -304,7 +321,7 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
 
           {status?.trustedAt && (
             <div className="trust-menu-date px-3 pb-2 text-[11px] text-[var(--nim-text-faint)]">
-              {t('trust_indicator.trusted_on', { date: new Date(status.trustedAt).toLocaleDateString(i18n.resolvedLanguage) })}
+              {t('trust_indicator.trusted_on', { date: new Date(status.trustedAt).toLocaleDateString() })}
             </div>
           )}
 

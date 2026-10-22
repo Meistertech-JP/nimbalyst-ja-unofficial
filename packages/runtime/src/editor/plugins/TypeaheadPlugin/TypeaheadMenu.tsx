@@ -20,6 +20,7 @@
  */
 
 import React, {ReactNode, useCallback, useEffect, useMemo, useRef, useState,} from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   autoUpdate,
@@ -30,6 +31,7 @@ import {
   type VirtualElement,
   useFloating,
 } from '@floating-ui/react';
+import { windowControlsClearance } from '../../../ui/floating/windowControlsClearance';
 import {
   $getSelection,
   $isRangeSelection,
@@ -39,7 +41,6 @@ import {
   RangeSelection,
   TextNode,
 } from 'lexical';
-import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
 
 // ============================================================================
   // TYPES
@@ -59,8 +60,6 @@ import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
     disabled?: boolean;
     type?: 'option' | 'header';
     section?: string; // New: automatically groups options by section
-    /** Display-only label; section remains the stable grouping/sorting key. */
-    sectionLabel?: string;
     hidden?: boolean; // Hide this option from the menu
     flag?: 'beta' | 'new' | 'experimental' | 'developer'; // Add visual flags to menu items
     /** Optional tooltip text shown on hover */
@@ -229,7 +228,6 @@ import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
     className = '',
     selectedClassName = '',
   }) => {
-    const { t } = useRuntimeTranslation();
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -315,10 +313,7 @@ import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
                   border: `1px solid ${option.flag === 'beta' ? '#ff6b35' : option.flag === 'new' ? '#00c851' : option.flag === 'developer' ? '#6f42c1' : '#ff4444'}`,
                   flexShrink: 0,
                 }}>
-                  {option.flag === 'beta' ? t('dialogs:blitz.beta', 'Beta')
-                    : option.flag === 'new' ? t('editor:typeahead.new_flag', 'New')
-                    : option.flag === 'experimental' ? t('settings:agent_features.experimental', 'Experimental')
-                    : option.flag === 'developer' ? t('menu:developer', 'Developer') : option.flag}
+                  {option.flag}
                 </span>
               )}
             </div>
@@ -434,7 +429,7 @@ import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
     selectedOptionClassName = '',
     anchorElem,
   }) => {
-    const { t } = useRuntimeTranslation();
+  const { t } = useTranslation('editor');
     const virtualReference = useMemo<VirtualElement>(() => ({
       getBoundingClientRect: resolution.getRect,
       contextElement: anchorElem ?? undefined,
@@ -447,14 +442,16 @@ import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
         offset(0),
         flip({ padding: VIEWPORT_PADDING }),
         shift({ padding: VIEWPORT_PADDING }),
+        windowControlsClearance(),
         size({
           padding: VIEWPORT_PADDING,
-          apply({ availableHeight, availableWidth, elements }) {
+          apply({ availableHeight, availableWidth, elements, middlewareData }) {
+            const pushed = middlewareData.windowControlsClearance?.pushed ?? 0;
             const constrainedWidth = Math.max(0, availableWidth);
             Object.assign(elements.floating.style, {
               minWidth: `${Math.min(minWidth, constrainedWidth)}px`,
               maxWidth: `${Math.min(maxWidth, constrainedWidth)}px`,
-              maxHeight: `${Math.max(0, Math.min(maxHeight, availableHeight))}px`,
+              maxHeight: `${Math.max(0, Math.min(maxHeight, availableHeight - pushed))}px`,
             });
           },
         }),
@@ -537,7 +534,7 @@ import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
                   <div key={sectionName} className="typeahead-section">
                     {sectionName !== '_default' && (
                       <div className="typeahead-section-header px-2.5 py-1.5 bg-nim-tertiary text-[0.7rem] font-semibold text-nim-muted uppercase tracking-wide m-0 pointer-events-none">
-                        {sectionOptions[0]?.sectionLabel ?? sectionName}
+                        {sectionName}
                       </div>
                     )}
                     {sectionOptions.map((option) => {
@@ -574,7 +571,7 @@ import { useRuntimeTranslation } from '../../../ui/RuntimeTranslation';
             )}
             {options.length === 0 && (
               <div className="p-4 text-center text-nim-faint italic">
-                {t('editor:typeahead.no_matches', 'No matches found')}
+                {t('typeahead.no_matches')}
               </div>
             )}
           </div>

@@ -6,11 +6,11 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { atom, useSetAtom } from 'jotai';
 import { store } from '@nimbalyst/runtime/store';
-import { getHelpContent, HelpContent } from './HelpContent';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { getHelpContent, localizeHelpEntry } from './HelpContent';
 import { getShortcutDisplay } from '../../shared/KeyboardShortcuts';
 
 // Atom to track when window last regained focus - shared across all HelpTooltip instances
@@ -192,14 +192,13 @@ export function HelpTooltip({
 
   const setLastWindowFocusTime = useSetAtom(lastWindowFocusTimeAtom);
 
-  const helpContent = getHelpContent(testId);
-  const isBuiltIn = Object.prototype.hasOwnProperty.call(HelpContent, testId);
-  const title = helpContent
-    ? isBuiltIn ? t(`help.${testId}.title`, { defaultValue: helpContent.title }) : helpContent.title
-    : '';
-  const body = helpContent
-    ? isBuiltIn ? t(`help.${testId}.body`, { defaultValue: helpContent.body }) : helpContent.body
-    : '';
+  const sourceHelp = getHelpContent(testId);
+  const helpContent = useMemo(() => {
+    if (!sourceHelp || typeof sourceHelp.title !== 'string' || typeof sourceHelp.body !== 'string') {
+      return sourceHelp;
+    }
+    return localizeHelpEntry(testId, sourceHelp, t);
+  }, [sourceHelp, t, testId]);
 
   const showTooltip = useCallback(() => {
     // Read current value from store at callback time, not stale closure value
@@ -271,7 +270,7 @@ export function HelpTooltip({
       );
       setPosition(pos);
     }
-  }, [isVisible, placement, title, body]);
+  }, [isVisible, placement]);
 
   // Hide tooltip when window loses focus or page becomes hidden (e.g., user tabs away from app)
   // and track when window regains focus to prevent tooltips from appearing
@@ -317,8 +316,8 @@ export function HelpTooltip({
 
   // Parse markdown body
   const renderedBody = useMemo(
-    () => parseMarkdownBody(body),
-    [body]
+    () => (helpContent ? parseMarkdownBody(helpContent.body) : null),
+    [helpContent]
   );
 
   // If no help content, just render children without tooltip
@@ -371,7 +370,7 @@ export function HelpTooltip({
             role="tooltip"
           >
             <div className="help-tooltip-header flex items-center gap-2 mb-1">
-              <span className="help-tooltip-title text-[13px] font-semibold text-[var(--nim-text)]">{title}</span>
+              <span className="help-tooltip-title text-[13px] font-semibold text-[var(--nim-text)]">{helpContent.title}</span>
               {helpContent.shortcut && (
                 <kbd className="help-tooltip-shortcut inline-flex items-center justify-center h-5 px-1.5 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[11px] font-medium text-[var(--nim-text-muted)] ml-auto shrink-0 font-sans">
                   {getShortcutDisplay(helpContent.shortcut)}

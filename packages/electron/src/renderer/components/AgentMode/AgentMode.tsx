@@ -11,9 +11,10 @@
  * the massive re-renders caused by holding sessionTabs[] in useState.
  */
 
-import React, { forwardRef, useImperativeHandle, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { forwardRef, useImperativeHandle, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
+import { moveWorkstreamEditorAtom } from '../../store/atoms/agentFileViewer';
 import { ResizablePanel } from '../AgenticCoding/ResizablePanel';
 import { SessionHistory } from '../AgenticCoding/SessionHistory';
 import { SessionKanbanBoard } from '../TrackerMode/SessionKanbanBoard';
@@ -68,7 +69,6 @@ import { MetaAgentMode } from '../MetaAgentMode/MetaAgentMode';
 import { tipCreateWorktreeSessionRequestAtom } from '../../tips/atoms';
 import {
   blitzDialogOpenAtom,
-  isGitRepoAtom,
   sessionQuickOpenRequestedAtom,
   selectSessionActionAtom,
   openSessionInTabActionAtom,
@@ -78,6 +78,7 @@ import {
   addSessionToWorktreeActionAtom,
 } from '../../store/actions/sessionHistoryActions';
 import { defaultAgentModelAtom } from '../../store/atoms/appSettings';
+import { useGitRepoProbe } from '../../hooks/useGitRepoProbe';
 export interface AgentModeRef {
   createNewSession: (initialDraft?: string) => Promise<string | undefined>;
   createNewWorktreeSession: (options?: { baseBranch?: string; name?: string }) => Promise<void>;
@@ -88,6 +89,7 @@ export interface AgentModeRef {
   previousTab: () => void;
   toggleRightPanel: () => void;
   showRightPanel: (mode: AgentRightPanelMode) => void;
+  toggleEditorMaximized: () => void;
 }
 
 export interface AgentModePanelState {
@@ -129,14 +131,14 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
   onOpenSessionInChat,
   onPanelStateChange,
 }, ref) {
-  const { t } = useTranslation(['agents']);
+  const { t } = useTranslation('agents');
   // Ref to the workstream panel for closing tabs
   const workstreamPanelRef = useRef<AgentWorkstreamPanelRef>(null);
 
-  // Git repo status for the worktree feature. Stored per-workspace in an
-  // atom so SessionHistory and the New Worktree action atom can read it
-  // without prop-threading.
-  const isGitRepo = useAtomValue(isGitRepoAtom(workspacePath));
+  // Git repo status for the worktree feature. Shared per-workspace through
+  // `isGitRepoAtom` so SessionHistory and the New Worktree action atom see
+  // the same answer; `undefined` until the probe resolves.
+  const isGitRepo = useGitRepoProbe(workspacePath);
 
   // Blitz dialog open state. Lives in an atom so SessionHistory's
   // "New Blitz" button can open the dialog via an action atom while the
@@ -158,6 +160,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
   const setSelectedWorkstream = useSetAtom(setSelectedWorkstreamAtom);
   const toggleFilesSidebar = useSetAtom(toggleWorkstreamFilesSidebarAtom);
   const setRightPanelMode = useSetAtom(setWorkstreamRightPanelModeAtom);
+  const moveEditor = useSetAtom(moveWorkstreamEditorAtom);
   const rightPanelVisible = useAtomValue(
     workstreamFilesSidebarVisibleAtom(selectedWorkstreamId ?? '__no_workstream__'),
   );
@@ -225,10 +228,11 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
     store.set(activeSessionIdAtom, actualActiveSessionId);
   }, [actualActiveSessionId]);
 
-  // Initialize on mount
-  useEffect(() => {
+  // Initialize before child passive effects write workspace state. Restored
+  // projects can already have Git status when GitOperationsPanel mounts.
+  useLayoutEffect(() => {
     initSessionList(workspacePath);
-    initAgentModeLayout(workspacePath);
+    initAgentModeLayout(workspacePath, { setActive: false });
     initSessionEditors(workspacePath);
     // Initialize unified workstream state
     initWorkstreamState(workspacePath);
@@ -306,51 +310,6 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
     return cleanup;
   }, [workspacePath]);
 
-  // Check if workspace is a git repository (needed for worktree feature).
-  // Writes the per-workspace `isGitRepoAtom` so SessionHistory and the
-  // worktree action atoms can read it without prop drilling.
-  //
-  // Past bug: the effect's only dep is `workspacePath`, so a single
-  // transient failure (electronAPI not ready, IPC reject) would write
-  // `false` and the atom would stay false forever, leaving the
-  // New Worktree / New Blitz / Super Loop buttons disabled even though
-  // the workspace is a git repo. Only write `false` when we have a
-  // definitive answer from the IPC; bail out silently otherwise and
-  // retry shortly until electronAPI is available.
-  useEffect(() => {
-    if (!workspacePath) return;
-
-    let cancelled = false;
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-
-    const probe = () => {
-      if (cancelled) return;
-      const invoke = window.electronAPI?.invoke;
-      if (!invoke) {
-        // electronAPI not ready yet — retry briefly. Don't lock the
-        // atom to `false` in the meantime.
-        retryTimer = setTimeout(probe, 250);
-        return;
-      }
-      invoke('git:is-repo', workspacePath)
-        .then(result => {
-          if (cancelled) return;
-          store.set(isGitRepoAtom(workspacePath), Boolean(result?.success && result.isRepo));
-        })
-        .catch(() => {
-          if (cancelled) return;
-          store.set(isGitRepoAtom(workspacePath), false);
-        });
-    };
-
-    probe();
-
-    return () => {
-      cancelled = true;
-      if (retryTimer) clearTimeout(retryTimer);
-    };
-  }, [workspacePath]);
-
   // Push navigation entry when selected workstream changes (unified cross-mode navigation)
   const pushNavigationEntry = useSetAtom(pushNavigationEntryAtom);
   const isRestoringNavigation = useAtomValue(isRestoringNavigationAtom);
@@ -382,7 +341,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
   useEffect(() => {
     if (trayNewSessionRequest) {
       setTrayNewSessionRequest(false);
-      void dispatchCreateNewSession(undefined);
+      void dispatchCreateNewSession({ launchSource: 'tray' });
     }
   }, [trayNewSessionRequest, setTrayNewSessionRequest, dispatchCreateNewSession]);
 
@@ -493,7 +452,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
           });
       }
     }
-  }, [workspacePath, addSession, setSelectedWorkstream, defaultModel, refreshSessions, t]);
+  }, [workspacePath, addSession, setSelectedWorkstream, defaultModel, refreshSessions]);
 
   // React to `blitz:analysis-created` events broadcast by main when all blitz
   // children complete. The IPC event is handled centrally in
@@ -510,7 +469,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
 
     addSession({
       id: data.analysisSessionId,
-      title: t('agents:blitz.analysis_title'),
+      title: t('blitz.analysis_title'),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       provider: data.analysisProvider || 'claude-code',
@@ -533,7 +492,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
       });
 
     refreshSessions();
-  }, [blitzAnalysisCreated, workspacePath, addSession, refreshSessions]);
+  }, [blitzAnalysisCreated, workspacePath, addSession, refreshSessions, t]);
 
   // Handle @@session reference link clicks from transcript
   const requestedSessionId = useAtomValue(requestOpenSessionAtom);
@@ -549,7 +508,8 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
   // setter identities returned by useSetAtom are stable, so the deps array
   // does not churn.
   useImperativeHandle(ref, () => ({
-    createNewSession: (initialDraft?: string) => dispatchCreateNewSession(initialDraft),
+    createNewSession: (initialDraft?: string) =>
+      dispatchCreateNewSession({ initialDraft, launchSource: 'new_session_button' }),
     createNewWorktreeSession: async (options?: { baseBranch?: string; name?: string }) => {
       await dispatchCreateNewWorktreeSession(options);
     },
@@ -574,11 +534,19 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
     },
     showRightPanel: (mode: AgentRightPanelMode) => {
       if (selectedWorkstreamId && !isSelectedMetaAgent) {
+        if (mode === 'file-viewer') {
+          moveEditor({ workstreamId: selectedWorkstreamId, placement: 'right' });
+          return;
+        }
         setRightPanelMode({ workstreamId: selectedWorkstreamId, mode });
         if (!rightPanelVisible) {
           toggleFilesSidebar(selectedWorkstreamId);
         }
       }
+    },
+    toggleEditorMaximized: () => {
+      // The maximize state lives with the workstream panel that owns the tabs.
+      workstreamPanelRef.current?.toggleEditorMaximized();
     },
   }), [
     dispatchCreateNewSession,
@@ -588,6 +556,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
     rightPanelVisible,
     selectedWorkstreamId,
     setRightPanelMode,
+    moveEditor,
     toggleFilesSidebar,
   ]);
 
@@ -630,19 +599,19 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
         onAddSessionToWorktree={dispatchAddSessionToWorktree}
         onCreateWorktreeSession={createWorktreeSession}
         onWorktreeArchived={handleWorktreeArchived}
-        isGitRepo={isGitRepo}
+        isGitRepo={isGitRepo === true}
         onSwitchToAgentMode={onSwitchToAgentMode}
         onOpenSessionInChat={onOpenSessionInChat}
       />
     )
   ) : (
     <div className="agent-mode-empty flex flex-col items-center justify-center h-full gap-4 text-nim-muted">
-      <p className="m-0 text-sm">{t('agents:select_or_create')}</p>
+      <p className="m-0 text-sm">{t('select_or_create')}</p>
       <button
-        onClick={() => dispatchCreateNewSession(undefined)}
+        onClick={() => dispatchCreateNewSession({ launchSource: 'new_session_button' })}
         className="agent-mode-new-button py-2 px-4 rounded-md border border-nim-border bg-nim-bg-secondary text-nim cursor-pointer text-sm transition-colors hover:bg-nim-bg-active"
       >
-        {t('agents:new_session')}
+        {t('new_session')}
       </button>
     </div>
   );

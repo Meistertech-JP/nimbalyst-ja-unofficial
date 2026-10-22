@@ -12,8 +12,8 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAtom } from 'jotai';
-import { useTranslation } from 'react-i18next';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { extensionPermissionPromptQueueAtom } from '../../store/atoms/extensionPermissions';
 
 type RiskTier = 'low' | 'elevated' | 'high';

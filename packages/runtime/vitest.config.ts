@@ -15,16 +15,16 @@ import path from 'path';
  * split is expressed with `test.projects` instead.
  */
 const alias = [
+  { find: /^@nimbalyst\/i18n\/core$/, replacement: path.resolve(__dirname, '../i18n/src/core.ts') },
+  { find: /^@nimbalyst\/i18n\/react$/, replacement: path.resolve(__dirname, '../i18n/src/react.tsx') },
+  { find: /^@nimbalyst\/i18n\/resources$/, replacement: path.resolve(__dirname, '../i18n/src/resources/index.ts') },
   { find: '@nimbalyst/runtime', replacement: path.resolve(__dirname, './src') },
+  { find: '@nimbalyst/tracker-core', replacement: path.resolve(__dirname, '../tracker-core/src') },
+  { find: '@nimbalyst/tracker-schema', replacement: path.resolve(__dirname, '../tracker-schema/src') },
+  { find: '@nimbalyst/tracker-engine', replacement: path.resolve(__dirname, '../tracker-engine/src') },
   { find: '@nimbalyst/extension-sdk/file-tree', replacement: path.resolve(__dirname, '../extension-sdk/src/fileDirectoryTree.ts') },
   { find: '@nimbalyst/extension-sdk', replacement: path.resolve(__dirname, '../extension-sdk/src') },
   { find: /^@\//, replacement: `${path.resolve(__dirname, './src/editor')}/` },
-  // Monaco's ESM entry imports raw CSS, which Node cannot load during unit
-  // tests. Reuse the Electron test stub for runtime tests that only need the
-  // editor barrel for type/runtime wiring.
-  { find: /^monaco-editor(?:\/.*)?$/, replacement: path.resolve(__dirname, '../electron/test-stubs/monaco-stub.ts') },
-  { find: '@monaco-editor/react', replacement: path.resolve(__dirname, '../electron/test-stubs/monaco-stub.ts') },
-  { find: 'y-monaco', replacement: path.resolve(__dirname, '../electron/test-stubs/monaco-stub.ts') },
 ];
 
 const setupFiles = ['../../test-utils/setup.ts'];
@@ -44,7 +44,7 @@ export default defineConfig({
             'src/**/__tests__/**/*.test.{ts,tsx}',
             'src/**/__tests__/**/*.spec.{ts,tsx}',
           ],
-          exclude: ['node_modules', 'dist', 'src/ai/**'],
+          exclude: ['**/node_modules/**', 'dist', 'src/ai/**'],
         },
       },
       {
@@ -59,7 +59,7 @@ export default defineConfig({
             'src/ai/**/__tests__/**/*.test.{ts,tsx}',
             'src/ai/**/__tests__/**/*.spec.{ts,tsx}',
           ],
-          exclude: ['node_modules', 'dist'],
+          exclude: ['**/node_modules/**', 'dist'],
         },
       },
     ],

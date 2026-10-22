@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { permissionsChangedVersionAtom } from '../../store/atoms/permissions';
+import { requestConfirmation } from '../../dialogs/requestConfirmation';
 import {
   DEFAULT_PROJECT_TRUST_CHOICE,
   getProjectTrustChoice,
-  getProjectTrustChoiceDescription,
-  getProjectTrustChoiceLabel,
   persistProjectTrustChoice,
   type ProjectTrustChoice,
 } from './projectTrustChoices';
@@ -28,6 +27,20 @@ const PROJECT_TRUST_CHOICES: ProjectTrustChoice[] = [
   'ask-every-time',
 ];
 
+const PROJECT_TRUST_CHOICE_LABEL_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified',
+  'allow-everything': 'trust_toast.choice_allow_everything',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only',
+  'ask-every-time': 'trust_toast.choice_ask_every_time',
+} as const satisfies Record<ProjectTrustChoice, string>;
+
+const PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified_description',
+  'allow-everything': 'trust_toast.choice_allow_everything_description',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only_description',
+  'ask-every-time': 'trust_toast.choice_ask_every_time_description',
+} as const satisfies Record<ProjectTrustChoice, string>;
+
 /**
  * One-time dialog that appears when an untrusted project is opened.
  * The user must choose a permission mode before the agent can operate.
@@ -38,7 +51,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
   forceShow = false,
   onDismiss,
 }) => {
-  const { t } = useTranslation(['project']);
+  const { t } = useTranslation('project');
   const posthog = usePostHog();
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,7 +64,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
   const permissionChangeTimeoutRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
-  const projectName = workspacePath?.split(/[\\/]/).pop() || t('project:trust_toast.this_project');
+  const projectName = workspacePath?.split(/[\\/]/).pop() || t('trust_toast.this_project');
 
   const releasePermissionChangeSuppression = useCallback(() => {
     if (permissionChangeTimeoutRef.current) {
@@ -239,9 +252,12 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
   const handleDontTrust = useCallback(async () => {
     if (!workspacePath || isSubmitting) return;
 
-    const confirmed = window.confirm(
-      t('project:trust_toast.confirm_revoke', { project: projectName })
-    );
+    const confirmed = await requestConfirmation({
+      title: t('trust_toast.stop_trusting_title'),
+      message: t('trust_toast.confirm_revoke', { project: projectName }),
+      confirmLabel: t('trust_toast.dont_trust'),
+      destructive: true,
+    });
     if (!confirmed) {
       return;
     }
@@ -332,13 +348,13 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
               id="project-trust-toast-title"
               className="project-trust-toast-title m-0 mb-[3px] text-[17px] font-semibold text-nim"
             >
-              {t('project:trust_toast.setup_title', { project: projectName })}
+              {t('trust_toast.setup_title', { project: projectName })}
             </h2>
             <p
               id="project-trust-toast-subtitle"
               className="project-trust-toast-subtitle m-0 text-[13px] leading-[1.45] text-nim-muted"
             >
-              {t('project:trust_toast.setup_subtitle')}
+              {t('trust_toast.setup_subtitle')}
             </p>
           </div>
         </div>
@@ -402,11 +418,11 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
                           : 'text-sm font-semibold text-nim'
                       }`}
                     >
-                      {getProjectTrustChoiceLabel(choice, t)}
+                      {t(PROJECT_TRUST_CHOICE_LABEL_KEYS[choice])}
                     </span>
                     {choice === 'agent-verified' && (
                       <span className="project-trust-toast-option-badge rounded-full bg-[color-mix(in_srgb,var(--nim-success)_15%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold tracking-[0.02em] text-nim-success">
-                        {t('project:trust_toast.recommended')}
+                        {t('trust_toast.recommended')}
                       </span>
                     )}
                   </span>
@@ -421,18 +437,18 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
                   >
                     {choice === 'agent-verified' ? (
                       <>
-                        {t('project:trust_toast.agent_verified_before')}{' '}
+                        {t('trust_toast.agent_verified_before')}{' '}
                         <strong className="font-medium text-nim">
-                          {t('project:trust_toast.agent_verified_risky')}
+                          {t('trust_toast.agent_verified_risky')}
                         </strong>{' '}
-                        {t('project:trust_toast.agent_verified_middle')}{' '}
+                        {t('trust_toast.agent_verified_middle')}{' '}
                         <strong className="font-medium text-nim">
-                          {t('project:trust_toast.agent_verified_pause')}
+                          {t('trust_toast.agent_verified_pause')}
                         </strong>
-                        {t('project:trust_toast.agent_verified_after')}
+                        {t('trust_toast.agent_verified_after')}
                       </>
                     ) : (
-                      getProjectTrustChoiceDescription(choice, t)
+                      t(PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS[choice])
                     )}
                   </span>
                 </span>
@@ -472,16 +488,16 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
             />
           </svg>
           <span>
-            {t('project:trust_toast.footnote_before')}{' '}
+            {t('trust_toast.footnote_before')}{' '}
             <button
               type="button"
               className="project-trust-toast-revoke-link cursor-pointer border-none bg-transparent p-0 font-inherit text-nim-muted underline disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleDontTrust}
               disabled={isSubmitting}
             >
-              {t('project:trust_toast.dont_trust_it')}
+              {t('trust_toast.dont_trust_it')}
             </button>
-            {t('project:trust_toast.footnote_after')}
+            {t('trust_toast.footnote_after')}
           </span>
         </div>
 
@@ -491,7 +507,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
             className="project-trust-toast-settings-link cursor-pointer rounded border-none bg-transparent px-0.5 py-1 text-[13px] text-nim-faint transition-colors duration-150 hover:underline"
             onClick={handleOpenSettings}
           >
-            {t('project:trust_toast.advanced_settings')}
+            {t('trust_toast.advanced_settings')}
           </button>
           <div className="project-trust-toast-actions flex gap-2">
             <button
@@ -500,7 +516,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
               onClick={handleDismiss}
               disabled={isSubmitting}
             >
-              {t('project:trust_toast.not_now')}
+              {t('trust_toast.not_now')}
             </button>
             <button
               type="button"
@@ -508,7 +524,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
               onClick={handleSave}
               disabled={isSubmitting}
             >
-              {isSubmitting ? t('project:trust_toast.saving') : t('project:trust_toast.start_working')}
+              {isSubmitting ? t('trust_toast.saving') : t('trust_toast.start_working')}
             </button>
           </div>
         </div>

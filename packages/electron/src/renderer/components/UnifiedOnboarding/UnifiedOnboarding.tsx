@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import './UnifiedOnboarding.css';
 
 export interface UnifiedOnboardingProps {
   isOpen: boolean;
-  onComplete: (data: OnboardingData) => void;
+  onComplete: (data: OnboardingData, intent: OnboardingIntent) => void | Promise<void>;
   onSkip: () => void;
   /** Force showing as new user ('new') or existing user ('existing') for testing */
   forcedMode?: 'new' | 'existing' | null;
 }
+
+export type OnboardingIntent = 'get-started' | 'tutorial';
 
 export interface OnboardingData {
   role: string | null;
@@ -19,44 +21,44 @@ export interface OnboardingData {
 }
 
 const ROLE_OPTIONS = [
-  { value: '', label: 'No Answer' },
-  { value: 'developer', label: 'Software Developer' },
-  { value: 'product_manager', label: 'Product Manager' },
-  { value: 'designer', label: 'Designer' },
-  { value: 'writer', label: 'Writer / Content' },
-  { value: 'researcher', label: 'Researcher' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'finance', label: 'Finance' },
-  { value: 'student', label: 'Student' },
-  { value: 'hobbyist', label: 'Hobbyist / Personal Use' },
-  { value: 'other', label: 'Other' },
+  { value: '', key: 'no_answer' },
+  { value: 'developer', key: 'developer' },
+  { value: 'product_manager', key: 'product_manager' },
+  { value: 'designer', key: 'designer' },
+  { value: 'writer', key: 'writer' },
+  { value: 'researcher', key: 'researcher' },
+  { value: 'marketing', key: 'marketing' },
+  { value: 'sales', key: 'sales' },
+  { value: 'finance', key: 'finance' },
+  { value: 'student', key: 'student' },
+  { value: 'hobbyist', key: 'hobbyist' },
+  { value: 'other', key: 'other' },
 ];
 
 const REFERRAL_OPTIONS = [
-  { value: '', label: 'No Answer' },
-  { value: 'search', label: 'Search' },
-  { value: 'social', label: 'Social', hasSubOptions: true },
-  { value: 'friend', label: 'Friend' },
-  { value: 'ai', label: 'AI' },
-  { value: 'ad', label: 'Ad' },
-  { value: 'youtube', label: 'YouTube' },
-  { value: 'github', label: 'GitHub' },
-  { value: 'course_training', label: 'Course/Training' },
-  { value: 'podcast', label: 'Podcast' },
-  { value: 'newsletter_article', label: 'Newsletter/Article' },
-  { value: 'other', label: 'Other' },
+  { value: '', key: 'no_answer' },
+  { value: 'search', key: 'search' },
+  { value: 'social', key: 'social' },
+  { value: 'friend', key: 'friend' },
+  { value: 'ai', key: 'ai' },
+  { value: 'ad', key: 'ad' },
+  { value: 'youtube', key: 'youtube' },
+  { value: 'github', key: 'github' },
+  { value: 'course_training', key: 'course_training' },
+  { value: 'podcast', key: 'podcast' },
+  { value: 'newsletter_article', key: 'newsletter_article' },
+  { value: 'other', key: 'other' },
 ];
 
 const SOCIAL_MEDIA_OPTIONS = [
-  'LinkedIn',
-  'Twitter/X',
-  'Reddit',
-  'TikTok',
-  'YouTube',
-  'Instagram',
-  'Facebook',
-  'Other',
+  { value: 'LinkedIn', key: 'linkedin' },
+  { value: 'Twitter/X', key: 'twitter_x' },
+  { value: 'Reddit', key: 'reddit' },
+  { value: 'TikTok', key: 'tiktok' },
+  { value: 'YouTube', key: 'youtube' },
+  { value: 'Instagram', key: 'instagram' },
+  { value: 'Facebook', key: 'facebook' },
+  { value: 'Other', key: 'other' },
 ];
 
 const isValidEmail = (email: string): boolean => {
@@ -71,6 +73,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
   forcedMode,
 }) => {
   const { t } = useTranslation('onboarding');
+
   // Mode Selection (at top) - null means no selection yet
   const [developerMode, setDeveloperMode] = useState<boolean | null>(null);
 
@@ -83,7 +86,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
   const [searchDetail, setSearchDetail] = useState<string>('');
   const [socialMediaPlatform, setSocialMediaPlatform] = useState<string>('');
   const [email, setEmail] = useState<string>('');
-  const [emailError, setEmailError] = useState<string>('');
+  const [hasEmailError, setHasEmailError] = useState(false);
 
   // Whether user has already filled out the old onboarding form (hide data collection)
   const [isExistingUser, setIsExistingUser] = useState<boolean>(false);
@@ -142,7 +145,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
       setSearchDetail('');
       setSocialMediaPlatform('');
       setEmail('');
-      setEmailError('');
+      setHasEmailError(false);
       setForceShowAllFields(false);
     }
   }, [isOpen]);
@@ -175,13 +178,13 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
   const handleEmailChange = (value: string) => {
     setEmail(value);
     if (value && !isValidEmail(value)) {
-      setEmailError('invalid_email');
+      setHasEmailError(true);
     } else {
-      setEmailError('');
+      setHasEmailError(false);
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = (intent: OnboardingIntent) => {
     // Append optional detail to referral sources that collect a follow-up answer.
     let finalReferralSource = referralSource || null;
     if (referralSource === 'social' && socialMediaPlatform) {
@@ -201,7 +204,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
       email: email.trim() || null,
       developerMode: developerMode ?? false,
     };
-    onComplete(data);
+    void onComplete(data, intent);
   };
 
   if (!isOpen) return null;
@@ -307,7 +310,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
                 >
                   {ROLE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {t(`role_options.${option.value || 'no_answer'}`, { defaultValue: option.label })}
+                      {t(`role_options.${option.key}`)}
                     </option>
                   ))}
                 </select>
@@ -356,7 +359,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
                 >
                   {REFERRAL_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {t(`referral_options.${option.value || 'no_answer'}`, { defaultValue: option.label })}
+                      {t(`referral_options.${option.key}`)}
                     </option>
                   ))}
                 </select>
@@ -422,10 +425,10 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
                   placeholder={t('email_placeholder')}
                   value={email}
                   onChange={(e) => handleEmailChange(e.target.value)}
-                  className={`unified-onboarding-input ${emailError ? 'error' : ''}`}
+                  className={`unified-onboarding-input ${hasEmailError ? 'error' : ''}`}
                   disabled={!isModeSelected}
                 />
-                {emailError && <p className="error-text">{t(emailError)}</p>}
+                {hasEmailError && <p className="error-text">{t('invalid_email')}</p>}
               </div>
 
               {/* Social Media Platform - appears when social is selected */}
@@ -443,8 +446,8 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
                   >
                     <option value="">{t('select_one')}</option>
                     {SOCIAL_MEDIA_OPTIONS.map((platform) => (
-                      <option key={platform} value={platform}>
-                        {platform === 'Other' ? t('social_options.other') : platform}
+                      <option key={platform.value} value={platform.value}>
+                        {t(`social_options.${platform.key}`)}
                       </option>
                     ))}
                   </select>
@@ -461,13 +464,24 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
         </div>
 
         <div className="unified-onboarding-footer unified-onboarding-footer-single">
-          <button
-            className="unified-onboarding-submit"
-            onClick={handleComplete}
-            disabled={!isModeSelected || (showDataCollection && !isEmailValid)}
-          >
-            {t('get_started')}
-          </button>
+          <div className="unified-onboarding-footer-buttons">
+            <button
+              type="button"
+              className="unified-onboarding-secondary-button"
+              onClick={() => handleComplete('get-started')}
+              disabled={!isModeSelected || (showDataCollection && !isEmailValid)}
+            >
+              {t('get_started_intent')}
+            </button>
+            <button
+              type="button"
+              className="unified-onboarding-submit"
+              onClick={() => handleComplete('tutorial')}
+              disabled={!isModeSelected || (showDataCollection && !isEmailValid)}
+            >
+              {t('start_tutorial')}
+            </button>
+          </div>
           <p className="unified-onboarding-legal-links">
             {t('continue_agree')}{' '}
             <a
