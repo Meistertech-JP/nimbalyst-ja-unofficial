@@ -337,7 +337,7 @@
     "list": {
       "load_error": "Failed to load issues",
       "refresh_error": "Failed to refresh issues",
-      "search": "Search by title, number, or label",
+      "search": "Search title, number, label, or author:login",
       "loading": "Loading issues…",
       "no_matches": "No issues match these filters",
       "empty": "No issues"
@@ -364,7 +364,7 @@
   },
   "pull_request": {
     "sort": { "last_activity": "Last activity", "created": "Created", "number": "Number" },
-    "search": "Search by title or number",
+    "search": "Search title, number, label, or author:login",
     "retry": "Retry",
     "error": "Failed to load pull requests",
     "loading": "Loading pull requests…",

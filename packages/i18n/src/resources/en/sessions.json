@@ -73,6 +73,7 @@
     "undo": "Undo"
   },
   "history": {
+    "show_context_usage": "Show context usage",
     "today": "Today",
     "yesterday": "Yesterday",
     "this_week": "This Week",

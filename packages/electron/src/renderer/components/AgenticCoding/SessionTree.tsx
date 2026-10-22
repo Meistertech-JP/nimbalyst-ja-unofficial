@@ -145,14 +145,12 @@ export function SessionTreeRow(props: SessionTreeRowHandlers & VisibleSessionTre
       () =>
         atom((get) => {
           let running = 0;
-          let unread = 0;
           let review = 0;
           for (const id of node.ids) {
             if (get(sessionProcessingAtom(id))) running++;
-            if (get(sessionUnreadAtom(id))) unread++;
             if (get(sessionHasPendingInteractivePromptAtom(id))) review++;
           }
-          return { running, unread, review, expanded: readTreeExpanded(get, { id: row.id, ids: node.ids }, activeSessionId) };
+          return { running, review, expanded: readTreeExpanded(get, { id: row.id, ids: node.ids }, activeSessionId) };
         }),
       // Keyed by content, not node identity, so a re-sorted list never mints a new atom.
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,14 +167,13 @@ export function SessionTreeRow(props: SessionTreeRowHandlers & VisibleSessionTre
   const details = useMemo(() => hasChildren && (
     <span className="session-tree-rollup inline-flex shrink-0 gap-1.5 whitespace-nowrap text-[10px] text-[var(--nim-text-muted)]">
       {status.running > 0 && <span className="text-[var(--nim-primary)]">{t('session_tree.running', { count: status.running })}</span>}
-      {status.unread > 0 && <span>{t('session_tree.unread', { count: status.unread })}</span>}
       {status.review > 0 && <span>{t('session_tree.needs_review', { count: status.review })}</span>}
       {node.uncommittedCount > 0 && (
         <span className="text-[var(--nim-warning)]">{t('accessibility.uncommitted_changes', { count: node.uncommittedCount })}</span>
       )}
       {!expanded && <span>{t('context.session_count', { count: hiddenCount })}</span>}
     </span>
-  ), [hasChildren, status.running, status.unread, status.review, node.uncommittedCount, expanded, hiddenCount, t]);
+  ), [hasChildren, status.running, status.review, node.uncommittedCount, expanded, hiddenCount, t]);
   const leading = useMemo(() => (
     hasChildren ? (
       <button

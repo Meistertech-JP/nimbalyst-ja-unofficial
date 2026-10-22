@@ -26,9 +26,9 @@ import { PINNED_EXTENSIONS, pinnedExtensionEnvPrefix } from '@nimbalyst/web-edit
 import { findPinnedExtensionRoot } from '@nimbalyst/web-editors/vite';
 import { writeThirdPartyLicenses } from './third-party-licenses.mjs';
 import { WIKI_EDITOR_SLUGS, wikiEditorBuildDir } from './wikiEditorPins.mjs';
+import { packageManagerSpawnConfig } from '../../../scripts/package-manager.mjs';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 function run(command, args, options) {
   const result = spawnSync(command, args, { stdio: 'inherit', ...options });
@@ -36,6 +36,11 @@ function run(command, args, options) {
     console.error(`[wiki-web] ${options.label} failed${result.error ? `: ${result.error.message}` : ` with exit code ${result.status}`}`);
     process.exit(result.status || 1);
   }
+}
+
+function runPnpm(args, options) {
+  const { command, argsPrefix } = packageManagerSpawnConfig();
+  run(command, [...argsPrefix, ...args], options);
 }
 
 const env = { ...process.env };
@@ -59,14 +64,14 @@ for (const slug of WIKI_EDITOR_SLUGS) {
   // fresh checkout (CI) fails it. Build once in place first when they are missing.
   const manifest = JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'utf8'));
   if ([manifest.main, manifest.styles].some((file) => file && !existsSync(path.join(root, file)))) {
-    run(pnpm, ['run', 'build'], { cwd: root, env: { ...process.env, NODE_ENV: 'production' }, label: `${pin.package} build in place` });
+    runPnpm(['run', 'build'], { cwd: root, env: { ...process.env, NODE_ENV: 'production' }, label: `${pin.package} build in place` });
   }
   // No `--` separator: pnpm would forward it and Vite would ignore --outDir.
-  run(pnpm, ['run', 'build', '--outDir', outDir, '--emptyOutDir'], { cwd: root, env: { ...process.env, NODE_ENV: 'production' }, label: `${pin.package} build` });
+  runPnpm(['run', 'build', '--outDir', outDir, '--emptyOutDir'], { cwd: root, env: { ...process.env, NODE_ENV: 'production' }, label: `${pin.package} build` });
   env[`${pinnedExtensionEnvPrefix(slug)}_BUNDLE_DIR`] = outDir;
 }
 
-run(pnpm, ['exec', 'vite', 'build'], { cwd: packageRoot, env, label: 'vite build' });
+runPnpm(['exec', 'vite', 'build'], { cwd: packageRoot, env, label: 'vite build' });
 
 await esbuild({
   entryPoints: [path.join(packageRoot, 'scripts/editor-models.entry.mjs')],

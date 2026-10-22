@@ -1,6 +1,6 @@
 {
   "name": "@nimbalyst/cli",
-  "version": "0.11.1",
+  "version": "0.12.1",
   "description": "nim — companion command-line tool for Nimbalyst trackers and agent interop",
   "license": "MIT",
   "author": "Nimbalyst Team",
@@ -37,9 +37,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm --filter @nimbalyst/local-wiki run build && node scripts/build.mjs",
+    "build": "pnpm --filter @nimbalyst/i18n run build && pnpm --filter @nimbalyst/local-wiki run build && node scripts/build.mjs",
     "dev": "tsc --watch",
-    "typecheck": "pnpm --filter @nimbalyst/local-wiki run build && node ../../scripts/tsc-native.mjs --noEmit",
+    "typecheck": "pnpm --filter @nimbalyst/i18n run build && pnpm --filter @nimbalyst/local-wiki run build && node ../../scripts/tsc-native.mjs --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "pnpm run build"
@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@nimbalyst/collab-protocol": "workspace:*",
+    "@nimbalyst/i18n": "workspace:*",
     "@nimbalyst/local-wiki": "workspace:*",
     "@nimbalyst/tracker-core": "workspace:*",
     "@types/better-sqlite3": "^7.6.12",
@@ -59,6 +60,7 @@
     "@types/node": "^20.0.0",
     "esbuild": "^0.28.2",
     "js-yaml": "^4.3.2",
+    "marked": "16.4.2",
     "typescript": "^6.0.3",
     "vitest": "4.1.11"
   }

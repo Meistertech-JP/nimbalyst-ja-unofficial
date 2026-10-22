@@ -90,6 +90,53 @@ test('each side drops the other side\'s blocks and unwraps its own', () => {
   assert.equal(applyBranch('a\n\n\n\nb\n', 'remote'), 'a\n\n\n\nb\n');
 });
 
+test('LF and CRLF branch markers select identical blocks without hiding malformed markers', () => {
+  const source = [
+    'Intro.', '',
+    '<!-- desktop-only -->', 'Desktop content.', '<!-- /desktop-only -->',
+    '<!-- remote-only -->', 'Remote content.', '<!-- /remote-only -->',
+    '<!-- local-only -->', 'Local content.', '<!-- /local-only -->',
+    '', 'Outro.', '',
+  ].join('\n');
+  for (const side of ['desktop', 'remote']) {
+    assert.equal(applyBranch(source.replaceAll('\n', '\r\n'), side), applyBranch(source, side));
+    for (const kind of ['desktop', 'remote', 'local']) {
+      assert.throws(() => applyBranch(`<!-- ${kind}-only -->\r\nno end\r\n`, side, 'broken.md'), /broken\.md: unbalanced/);
+      assert.throws(() => applyBranch(`<!-- /${kind}-only -->\r\n`, side, 'broken.md'), /broken\.md: unbalanced/);
+    }
+  }
+  const unmarked = 'a\r\n\r\n\r\nb\r\n';
+  assert.equal(applyBranch(unmarked, 'remote'), unmarked, 'unmarked direct input still passes through byte for byte');
+});
+
+test('LF and CRLF skill sources generate identical files while check mode still detects real drift', (t) => {
+  const root = tempRoot(t);
+  const sourceDir = fixtureSource(root);
+  writeFileSync(path.join(sourceDir, 'setup', 'references', 'wiki-guide.md'), '# Guide\n\nContent.\n');
+  const expected = buildGeneratedFiles(sourceDir);
+  for (const skill of ['setup', 'update']) {
+    for (const rel of ['SKILL.md', 'references/kind.yaml', ...(skill === 'setup' ? ['references/wiki-guide.md'] : [])]) {
+      const file = path.join(sourceDir, skill, rel);
+      writeFileSync(file, readFileSync(file, 'utf8').replaceAll('\n', '\r\n'));
+    }
+  }
+  assert.deepEqual(buildGeneratedFiles(sourceDir), expected, 'CRLF frontmatter and references generate the same canonical content');
+  const targets = fixtureTargets(root);
+  writeGenerated({ sourceDir, targets, configs: false });
+  const checkedOut = new Map();
+  for (const [key, content] of expected) {
+    const separator = key.indexOf(':');
+    const file = path.join(targets[key.slice(0, separator)], key.slice(separator + 1));
+    const bytes = content.replaceAll('\n', '\r\n');
+    writeFileSync(file, bytes);
+    checkedOut.set(file, bytes);
+  }
+  assert.deepEqual(checkGenerated({ sourceDir, targets, configs: false }), [], 'CRLF checkout is not substantive drift');
+  for (const [file, bytes] of checkedOut) assert.equal(readFileSync(file, 'utf8'), bytes, 'check mode must not rewrite checkout line endings');
+  writeFileSync(path.join(targets.remote, 'setup', 'references', 'kind.yaml'), '# changed\r\nid: changed\r\n');
+  assert.deepEqual(checkGenerated({ sourceDir, targets, configs: false }), ['changed: remote:setup/references/kind.yaml']);
+});
+
 test('generated files carry the generated marker, except references copied into pages', (t) => {
   const root = tempRoot(t);
   const sourceDir = fixtureSource(root, 'Follow `../setup/references/wiki-guide.md`, or run (`/wiki:setup`).\n');

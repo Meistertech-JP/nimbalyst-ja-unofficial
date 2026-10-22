@@ -9,6 +9,7 @@
  * closes (see `drafts.ts`). Closing or reloading the tab is guarded the same way.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 import {
   CollabDocsUIProvider,
   CollabSidebar,
@@ -21,7 +22,9 @@ import {
 import { createTrackerReferenceResolver, TrackersUIProvider } from '@nimbalyst/collab-bundle/trackers-ui';
 import { PageEditorServicesContext, type PageEditorServices } from './pageEditorServices';
 import { setWorkspaceFileLinkOpener } from '@nimbalyst/collab-bundle/editor';
+import { MaterialSymbol } from '@nimbalyst/runtime-source/ui/icons/MaterialSymbol';
 import { wikiApi, wikiChanges } from '../api/client';
+import { isStaticSite, parseStaticLocation, staticRoutePath } from '../api/staticSite';
 import { LocalCollabHost, routePath } from '../host/LocalCollabHost';
 import type { LocalTrackerDataSource } from '../host/LocalTrackerDataSource';
 import { DraftStore, DraftStoreContext, prepareToLeave, resolveLeave, type LeaveChoice, type LeaveDecision } from './drafts';
@@ -31,11 +34,13 @@ import { setWikiCanvasContext } from '../editors/canvas/WikiCanvasCard';
 import { renderWikiFileEmbed } from '../editors/WikiFileEmbed';
 import { setWikiHtmlNavigator } from '../editors/html/htmlPages';
 import { openWikiHtmlLink } from '../editors/html/wikiHtmlNavigation';
+import { StaticSidebar } from './staticViews';
 
 type Route = ViewRoute;
 
 function parseLocation(): Route {
   const { pathname, search } = window.location;
+  if (isStaticSite()) return parseStaticLocation(pathname, search);
   const [, kind, raw] = pathname.split('/');
   const value = raw ? decodeURIComponent(raw) : '';
   if (kind === 'page' && value) return { kind: 'page', id: value };
@@ -47,6 +52,7 @@ function parseLocation(): Route {
 }
 
 function pathOf(route: Route): string {
+  if (isStaticSite()) return staticRoutePath(route);
   if (route.kind === 'search') return route.query ? `/search?q=${encodeURIComponent(route.query)}` : '/search';
   if (route.kind === 'types') return '/types';
   return routePath(route);
@@ -135,6 +141,7 @@ export interface AppProps {
 }
 
 export function App({ root, projectRoot, trackers, module }: AppProps) {
+  const { t } = useTranslation('common');
   const drafts = useMemo(() => new DraftStore(), []);
   const [route, navigate, leaving, chooseLeave] = useRoute(drafts);
   const [notice, setNotice] = useState<string | null>(null);
@@ -144,11 +151,11 @@ export function App({ root, projectRoot, trackers, module }: AppProps) {
   useEffect(() => {
     const lifecycle = createCollabDocsScopeLifecycle(host, {
       onSessionChanged: setSession,
-      onError: (error) => setNotice(`The page tree could not load: ${error instanceof Error ? error.message : String(error)}`),
+      onError: (error) => setNotice(t('wiki_web.tree_load_failed', { error: error instanceof Error ? error.message : String(error) })),
     });
     lifecycle.start();
     return () => lifecycle.dispose();
-  }, [host]);
+  }, [host, t]);
 
   // References in page bodies resolve against the wiki's own typed pages and rows; a click opens the item here.
   const trackerReferences = useMemo(
@@ -207,7 +214,7 @@ export function App({ root, projectRoot, trackers, module }: AppProps) {
           <Shell root={root} host={host} route={route} navigate={navigate} trackers={trackers} module={module} notice={notice} onNotice={setNotice} onDismissNotice={() => setNotice(null)} leaving={leaving} onChooseLeave={chooseLeave} />
         </CollabDocsUIProvider>
       ) : (
-        <div className="flex h-full items-center justify-center text-sm text-nim-muted">{notice ?? 'Opening the wiki…'}</div>
+        <div className="flex h-full items-center justify-center text-sm text-nim-muted">{notice ?? t('wiki_web.opening')}</div>
       )}
     </TrackersUIProvider>
     </PageEditorServicesContext.Provider>
@@ -246,10 +253,24 @@ function Shell({
   leaving: Leaving | null;
   onChooseLeave: (choice: LeaveChoice) => void;
 }) {
+  const { t } = useTranslation('common');
   const typeResolver = module.useBrowserTypeResolver('team');
   const { documents } = useCollabPagesState();
   const [createMenu, setCreateMenu] = useState<CollabSidebarCreateMenu | null>(null);
   const reachable = useServerReachable();
+  const published = isStaticSite();
+  // Narrow screens: the tree is a drawer over the page, opened from the bar; picking a page,
+  // tapping outside it or Escape closes it. Wide screens show the tree as a column and ignore this.
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => setNavOpen(false), [route]);
+  useEffect(() => {
+    if (!navOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navOpen]);
 
   // Home is the first top-level page, as `nim wiki init` writes one.
   const home = useMemo(
@@ -265,18 +286,38 @@ function Shell({
   useEffect(() => {
     if (!openPageId) return undefined;
     setWorkspaceFileLinkOpener((href) => {
+      // A published wiki writes links to the items it carries from the app's tracker as site paths (`/items/<id>/`).
+      if (published && href.startsWith('/') && !href.startsWith('//')) {
+        const [pathname, search = ''] = href.split('?');
+        navigate(parseStaticLocation(pathname, search ? `?${search}` : ''));
+        return;
+      }
       const target = host.resolveLink(openPageId, href);
       // An attachment or other file beside the page opens from the server, as the browser shows it.
       if (target.kind === 'outside' && !/\.md$/i.test(target.path) && !/^[a-z][a-z0-9+.-]*:/i.test(href)) {
         window.open(wikiApi.pageFileUrl(openPageId, href.replace(/[?#].*$/, '')), '_blank', 'noopener');
-      } else if (target.kind === 'outside') onNotice(`${target.path} is not a page in this wiki, so it cannot open here. Open it in your editor or in Nimbalyst.`);
+      } else if (target.kind === 'outside') onNotice(published ? t('wiki_web.outside_published', { path: target.path }) : t('wiki_web.outside_local', { path: target.path }));
       else navigate(target);
     });
     return () => setWorkspaceFileLinkOpener(null);
-  }, [host, navigate, onNotice, openPageId]);
+  }, [host, navigate, onNotice, openPageId, published, t]);
 
   return (
-    <div className="wiki-web-app flex h-full min-h-0">
+    <div className={`wiki-web-app flex h-full min-h-0 ${published ? 'wiki-static-app' : ''}`}>
+      {published ? (
+        <div className="wiki-static-topbar items-center gap-2 border-b border-nim bg-nim-secondary px-3 py-2">
+          <button type="button" className="flex items-center text-nim-muted hover:text-nim" aria-label={navOpen ? t('wiki_web.hide_pages') : t('wiki_web.show_pages')} aria-expanded={navOpen} onClick={() => setNavOpen((open) => !open)}>
+            <MaterialSymbol icon={navOpen ? 'close' : 'menu'} size={20} />
+          </button>
+        </div>
+      ) : null}
+      {published ? <button type="button" className="wiki-static-scrim" data-open={navOpen} aria-label={t('wiki_web.hide_pages')} tabIndex={-1} onClick={() => setNavOpen(false)} /> : null}
+      {published ? (
+        // Shown and hidden by styles.css, not utilities: an extension bundle injects its own `.flex`/`.hidden` later in the page.
+        <aside className="wiki-web-sidebar wiki-static-sidebar-panel w-[280px] shrink-0 flex-col border-r border-nim bg-nim-secondary" data-open={navOpen}>
+          <StaticSidebar activeId={resolved.kind === 'page' || resolved.kind === 'item' ? resolved.id : null} navigate={navigate} />
+        </aside>
+      ) : (
       <aside className="wiki-web-sidebar flex w-[280px] shrink-0 flex-col border-r border-nim bg-nim-secondary">
         <WikiCreateMenu menu={createMenu} />
         <div className="min-h-0 flex-1">
@@ -285,7 +326,7 @@ function Shell({
             activeDocumentId={resolved.kind === 'page' ? resolved.id : null}
             activeItemId={resolved.kind === 'item' ? resolved.id : null}
             activeTypeId={resolved.kind === 'type' ? resolved.typeId : null}
-            sectionTitle="Local wiki"
+            sectionTitle={t('wiki_web.local_wiki')}
             sectionEntries={(
               <PagesSectionEntries
                 active={resolved.kind === 'search' ? 'search' : resolved.kind === 'types' ? 'types' : resolved.kind === 'page' && resolved.id === home?.documentId ? 'home' : null}
@@ -302,28 +343,29 @@ function Shell({
           />
         </div>
       </aside>
+      )}
       <main className="wiki-web-main flex min-w-0 flex-1 flex-col overflow-auto select-text">
         {reachable ? null : (
           <div className="wiki-web-server-down border-b border-nim bg-nim-secondary px-4 py-2 text-xs text-nim" role="alert">
-            The wiki server stopped, so changes made here are not saved. Ask your agent to open the wiki in the browser again, or run <code>nim wiki serve</code>; this page reconnects on its own.
+            <Trans ns="common" i18nKey="wiki_web.server_stopped" components={{ command: <code /> }} />
           </div>
         )}
         {notice ? (
           <div className="wiki-web-notice flex items-start gap-2 border-b border-nim bg-nim-secondary px-4 py-2 text-xs text-nim" role="alert">
             <span className="flex-1">{notice}</span>
-            <button type="button" className="text-nim-muted hover:text-nim" onClick={onDismissNotice}>Dismiss</button>
+            <button type="button" className="text-nim-muted hover:text-nim" onClick={onDismissNotice}>{t('dismiss')}</button>
           </div>
         ) : null}
         {leaving ? (
           <div className="wiki-web-leave-conflict mx-8 my-2 flex flex-wrap items-center gap-2 rounded border border-nim bg-nim-secondary px-3 py-2 text-xs text-nim" role="alert">
             <span className="flex-1">
               {leaving.reason === 'conflict'
-                ? 'Your edits to this page are not saved: the file changed on disk while you were editing it.'
-                : 'Your edits to this page could not be saved.'}
+                ? t('wiki_web.leave_conflict')
+                : t('wiki_web.leave_failed')}
             </span>
-            <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => onChooseLeave('keep')}>Keep editing</button>
-            <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => onChooseLeave('discard')}>Discard my changes</button>
-            <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => onChooseLeave('overwrite')}>Use mine and overwrite the file</button>
+            <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => onChooseLeave('keep')}>{t('wiki_web.keep_editing')}</button>
+            <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => onChooseLeave('discard')}>{t('wiki_web.discard_changes')}</button>
+            <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => onChooseLeave('overwrite')}>{t('wiki_web.overwrite_file')}</button>
           </div>
         ) : null}
         {resolved.kind === 'page' ? <PageView pageId={resolved.id} filePath={joinPath(root, host.pagePath(resolved.id))} navigate={navigate} />
@@ -331,7 +373,7 @@ function Shell({
             : resolved.kind === 'type' ? <TypeTableView typeId={resolved.typeId} module={module} trackers={trackers} navigate={navigate} />
               : resolved.kind === 'search' ? <SearchView query={resolved.query} navigate={navigate} />
                 : resolved.kind === 'types' ? <TypesView trackers={trackers} navigate={navigate} />
-                : <div className="px-8 py-6 text-sm text-nim-muted">This wiki has no pages yet. Create one from the tree.</div>}
+                : <div className="px-8 py-6 text-sm text-nim-muted">{t('wiki_web.no_pages')}</div>}
       </main>
     </div>
   );

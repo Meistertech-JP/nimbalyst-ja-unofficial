@@ -109,6 +109,14 @@ function Rows({ messages, infos }: { messages: TranscriptViewMessage[]; infos: T
 }
 
 describe('transcript row memoization', () => {
+  it('keeps progress-only assistant turns after a teammate notification while hiding empty processing turns', () => {
+    const teammate = msg(0, { type: 'user_message', text: 'Teammate status', metadata: { isTeammateMessage: true } });
+    const progress = msg(1, { thinking: 'Checking the files.', progressUpdate: true });
+
+    expect(infosFor([teammate, progress], null)[1].kind).toBe('message');
+    expect(infosFor([teammate, { ...progress, progressUpdate: false }], null)[1].kind).toBe('hidden');
+  });
+
   beforeAll(async () => {
     testI18n = await createI18nInstance('en');
   });

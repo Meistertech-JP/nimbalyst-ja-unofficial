@@ -31,6 +31,9 @@
     "start_new_session_chat": "チャットモデルを使うには新しいセッションを開始してください",
     "switch_provider_disabled": "セッション開始後にプロバイダーを切り替えるには、新しいセッションを開始してください"
   },
+  "context_usage": {
+    "label": "コンテキスト {{used}} / {{total}}（{{percent}}%）"
+  },
   "status": {
     "processing": "処理中",
     "loading": "読み込み中",

@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WIKI_API_VERSION } from './api.js';
+import type { ExportTranslator } from '../staticExport/i18n.js';
 
 export const WIKI_WEB_PACKAGE = '@nimbalyst/wiki-web';
 
@@ -34,17 +35,17 @@ function readManifest(packageDir: string): WikiWebManifest | null {
   }
 }
 
-function fromPackageDir(packageDir: string, source: ResolvedAssets['source']): AssetResolution {
+function fromPackageDir(packageDir: string, source: ResolvedAssets['source'], t?: ExportTranslator): AssetResolution {
   const dir = path.join(packageDir, 'dist');
   const manifest = readManifest(packageDir);
   if (manifest?.nimbalystWikiApi !== undefined && manifest.nimbalystWikiApi !== WIKI_API_VERSION) {
     return {
       ok: false,
       reason: 'incompatible',
-      detail: `${packageDir} speaks wiki API ${manifest.nimbalystWikiApi}; this nim speaks ${WIKI_API_VERSION}`,
+      detail: t ? t('wiki_export.assets.detail_incompatible', { path: packageDir, actual: manifest.nimbalystWikiApi, expected: WIKI_API_VERSION }) : `${packageDir} speaks wiki API ${manifest.nimbalystWikiApi}; this nim speaks ${WIKI_API_VERSION}`,
     };
   }
-  if (!existsSync(path.join(dir, 'index.html'))) return { ok: false, reason: 'unbuilt', detail: `${dir} has no index.html` };
+  if (!existsSync(path.join(dir, 'index.html'))) return { ok: false, reason: 'unbuilt', detail: t ? t('wiki_export.assets.detail_unbuilt', { path: dir }) : `${dir} has no index.html` };
   return { ok: true, assets: { dir, version: manifest?.version ?? null, source } };
 }
 
@@ -72,10 +73,10 @@ function workspacePackageDir(from: string): string | null {
  * dependency first, by Node's lookup), the package installed in the project,
  * the monorepo's workspace package.
  */
-export function resolveWikiWebAssets(options: { flag?: string; projectRoot?: string; selfDir?: string }): AssetResolution {
+export function resolveWikiWebAssets(options: { flag?: string; projectRoot?: string; selfDir?: string; translate?: ExportTranslator }): AssetResolution {
   if (options.flag) {
     const dir = path.resolve(options.flag);
-    if (!existsSync(path.join(dir, 'index.html'))) return { ok: false, reason: 'unbuilt', detail: `${dir} has no index.html` };
+    if (!existsSync(path.join(dir, 'index.html'))) return { ok: false, reason: 'unbuilt', detail: options.translate ? options.translate('wiki_export.assets.detail_unbuilt', { path: dir }) : `${dir} has no index.html` };
     return { ok: true, assets: { dir, version: null, source: 'flag' } };
   }
   const selfDir = options.selfDir ?? path.dirname(fileURLToPath(import.meta.url));
@@ -83,22 +84,28 @@ export function resolveWikiWebAssets(options: { flag?: string; projectRoot?: str
   for (const from of [selfDir, options.projectRoot].filter((d): d is string => Boolean(d))) {
     const packageDir = installedPackageDir(from);
     if (!packageDir) continue;
-    const result = fromPackageDir(packageDir, 'installed');
+    const result = fromPackageDir(packageDir, 'installed', options.translate);
     if (result.ok) return result;
     firstFailure ??= result;
   }
   const workspace = workspacePackageDir(selfDir);
   if (workspace) {
-    const result = fromPackageDir(workspace, 'workspace');
+    const result = fromPackageDir(workspace, 'workspace', options.translate);
     if (result.ok) return result;
     firstFailure ??= result;
   }
-  return firstFailure ?? { ok: false, reason: 'missing', detail: `${WIKI_WEB_PACKAGE} is not installed` };
+  return firstFailure ?? { ok: false, reason: 'missing', detail: options.translate ? options.translate('wiki_export.assets.detail_missing', { package: WIKI_WEB_PACKAGE }) : `${WIKI_WEB_PACKAGE} is not installed` };
 }
 
 /** What to tell someone whose `nim` has no browser assets. */
-export function installHint(cliVersion: string, resolution: Exclude<AssetResolution, { ok: true }>): string {
+export function installHint(cliVersion: string, resolution: Exclude<AssetResolution, { ok: true }>, t?: ExportTranslator): string {
   const spec = cliVersion && !cliVersion.startsWith('0.0.0') ? `@nimbalyst/cli@${cliVersion}` : '@nimbalyst/cli';
+  if (t) {
+    const lines = [t('wiki_export.assets.required', { package: WIKI_WEB_PACKAGE }), `  ${resolution.detail}`, '', t('wiki_export.assets.reinstall'), `  npm install -g ${spec}`];
+    if (resolution.reason === 'unbuilt') lines.push('', t('wiki_export.assets.build'), '  pnpm --filter @nimbalyst/wiki-web run build');
+    lines.push('', t('wiki_export.assets.flag'));
+    return lines.join('\n') + '\n';
+  }
   const lines = [`nim wiki serve needs the browser app (${WIKI_WEB_PACKAGE}), which installs with nim.`, `  ${resolution.detail}`, '', 'Reinstall nim to get it back:', `  npm install -g ${spec}`];
   if (resolution.reason === 'unbuilt') lines.push('', 'In the Nimbalyst repo, build it instead:', '  pnpm --filter @nimbalyst/wiki-web run build');
   lines.push('', 'Or point at a built copy with --assets <dir>.');

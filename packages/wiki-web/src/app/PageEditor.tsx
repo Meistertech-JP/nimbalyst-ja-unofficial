@@ -21,6 +21,7 @@
  * draft store and restored, conflict included, when the page opens again.
  */
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { Doc as YDoc } from 'yjs';
 import {
   asTeamMemberId,
@@ -30,6 +31,7 @@ import {
   type TrackerReferenceResolver,
 } from '@nimbalyst/collab-bundle/editor';
 import { wikiApi, wikiChanges } from '../api/client';
+import { isStaticSite } from '../api/staticSite';
 import { DraftStoreContext, type Conflict, type PageDraft, type SaveOutcome } from './drafts';
 import { pageImageResolver, pageUploadAsset } from './pageAssets';
 import { PageEditorServicesContext } from './pageEditorServices';
@@ -39,8 +41,8 @@ const LOCAL_USER = { memberId: asTeamMemberId('local'), name: 'You' };
 
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 
-export function saveStateLabel(state: SaveState, error: string | null): string {
-  return state === 'saving' ? 'Saving…' : state === 'unsaved' ? 'Unsaved changes' : state === 'error' ? `Not saved: ${error}` : 'Saved to file';
+export function saveStateLabel(state: SaveState, error: string | null, t: (key: string, values?: Record<string, unknown>) => string): string {
+  return state === 'saving' ? t('wiki_web.saving') : state === 'unsaved' ? t('wiki_web.unsaved') : state === 'error' ? t('wiki_web.not_saved', { error }) : t('wiki_web.saved_to_file');
 }
 
 export function PageEditor({
@@ -55,6 +57,7 @@ export function PageEditor({
   /** When given, the host shows the save state (in its header); otherwise it is a line under the body. */
   onSaveState?: (state: SaveState, error: string | null) => void;
 }) {
+  const { t } = useTranslation('common');
   const drafts = useContext(DraftStoreContext);
   const services = useContext(PageEditorServicesContext);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -225,11 +228,12 @@ export function PageEditor({
         source: { kind: 'in-memory', document: doc },
         user: LOCAL_USER,
         // A file whose frontmatter does not parse is shown whole and not written until fixed by hand.
-        readOnly: body.malformed === true,
+        // A static export is a published copy: every page reads only.
+        readOnly: body.malformed === true || isStaticSite(),
         trackerReferences: trackerReferences ?? services?.trackerReferences,
         trackerReferenceAppearance: 'quiet',
         trackerReferenceSource,
-        onUploadAsset: pageUploadAsset(pageId),
+        onUploadAsset: isStaticSite() ? undefined : pageUploadAsset(pageId),
         resolveImageSrc: pageImageResolver(pageId),
         pageLinks: services?.pageLinks(pageId),
         renderFileEmbed: services ? (embed) => services.fileEmbed(pageId, embed) : undefined,
@@ -241,7 +245,7 @@ export function PageEditor({
           if (restore && !conflictRef.current) scheduleSave();
         },
         onError: (error) => setLoadError(error.message),
-        onBindingError: (error) => setLoadError(`This page could not be shown: ${error.message}`),
+        onBindingError: (error) => setLoadError(t('wiki_web.page_display_failed', { error: error.message })),
       });
       doc.on('update', () => {
         if (handleRef.current && !malformedRef.current && !applyingRef.current) scheduleSave();
@@ -301,23 +305,24 @@ export function PageEditor({
   }, [save]);
 
   return (
-    <div className="wiki-web-page-editor flex min-h-0 flex-1 flex-col">
+    // A published page grows to its content so the page, with "Linked from" under it, scrolls as one.
+    <div className={`wiki-web-page-editor flex flex-col ${isStaticSite() ? 'flex-none' : 'min-h-0 flex-1'}`}>
       {malformed ? (
         <div className="wiki-web-banner mx-8 my-2 rounded border border-nim bg-nim-secondary px-3 py-2 text-xs text-nim-muted" role="status">
-          This file&apos;s frontmatter does not parse, so it is shown whole and read-only. Fix it in an editor and it opens normally.
+          {t('wiki_web.malformed_frontmatter')}
         </div>
       ) : null}
       {conflict ? (
         <div className="wiki-web-conflict mx-8 my-2 flex flex-wrap items-center gap-2 rounded border border-nim bg-nim-secondary px-3 py-2 text-xs text-nim" role="alert">
-          <span className="flex-1">This page changed on disk while you were editing it.</span>
+          <span className="flex-1">{t('wiki_web.file_changed')}</span>
           <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => {
             applyDisk(conflict.diskMarkdown, conflict.diskVersion);
             showConflict(null);
           }}>
-            Use the file
+            {t('wiki_web.use_file')}
           </button>
           <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => void save(true)}>
-            Keep mine
+            {t('wiki_web.keep_mine')}
           </button>
         </div>
       ) : null}
@@ -326,9 +331,9 @@ export function PageEditor({
       ) : null}
       {/* The console's editor surface (web-console collab/editorSurfaceStyles.ts): the editor fills the pane. */}
       <div ref={hostRef} className="wiki-web-editor-host collab-editor-surface flex min-h-[200px] flex-1 flex-col bg-nim" data-testid="wiki-web-editor" />
-      {onSaveState ? null : (
+      {onSaveState || isStaticSite() ? null : (
         <div className="wiki-web-save-state px-8 pb-2 text-[11px] text-nim-faint" data-save-state={saveState} aria-live="polite">
-          {saveStateLabel(saveState, saveError)}
+          {saveStateLabel(saveState, saveError, t)}
         </div>
       )}
     </div>

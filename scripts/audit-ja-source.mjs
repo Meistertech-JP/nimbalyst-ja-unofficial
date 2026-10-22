@@ -15,7 +15,7 @@ export const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.
 const RESOURCE_ROOT = 'packages/i18n/src/resources';
 const SOURCE_ROOTS = [
   'packages/electron/src', 'packages/runtime/src', 'packages/collab-client/src',
-  'packages/extensions',
+  'packages/extensions', 'packages/cli/src', 'packages/wiki-web/src',
 ];
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'out', 'coverage', 'build', '__tests__', '__mocks__', 'generated']);
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);

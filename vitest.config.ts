@@ -26,6 +26,10 @@ const electronLogStub = path.resolve(__dirname, './test-utils/electronLogStub.ts
 
 const alias = [
   {
+    find: /^@nimbalyst\/i18n\/locale$/,
+    replacement: path.resolve(__dirname, './packages/i18n/src/locale.ts'),
+  },
+  {
     find: /^@nimbalyst\/i18n\/core$/,
     replacement: path.resolve(__dirname, './packages/i18n/src/core.ts'),
   },
@@ -52,6 +56,10 @@ const alias = [
   {
     find: /^@nimbalyst\/local-wiki$/,
     replacement: path.resolve(__dirname, './packages/local-wiki/src/index.ts'),
+  },
+  {
+    find: /^@nimbalyst\/local-wiki\/browser$/,
+    replacement: path.resolve(__dirname, './packages/local-wiki/src/browser.ts'),
   },
   {
     find: '@nimbalyst/collab-protocol',

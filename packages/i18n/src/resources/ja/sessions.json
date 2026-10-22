@@ -73,6 +73,7 @@
     "undo": "元に戻す"
   },
   "history": {
+    "show_context_usage": "コンテキスト使用率を表示",
     "today": "今日",
     "yesterday": "昨日",
     "this_week": "今週",

@@ -122,11 +122,17 @@ const BLOCK = {
 };
 const STRAY_MARKER = /<!-- \/?(?:desktop|remote|local)-only\b/;
 
+// Git may check text out as CRLF on Windows; generation and drift checks use
+// canonical LF in memory without rewriting the source or checked-out targets.
+function normalizeNewlines(text) {
+  return text.replace(/\r\n/g, '\n');
+}
+
 /** `text` as `side` sees it: its own blocks unwrapped, the other side's dropped. */
 export function applyBranch(text, side, fileLabel = '<text>') {
   if (!text.includes('-only')) return text;
   const other = side === 'desktop' ? 'remote' : 'desktop';
-  const out = text
+  const out = normalizeNewlines(text)
     .replace(BLOCK[other], '')
     .replace(BLOCK[side], '$1')
     .replace(BLOCK.local, side === 'remote' ? '$1' : '')
@@ -167,7 +173,7 @@ export function renameSkills(text, side) {
 
 function transformFile(relPath, text, side) {
   const label = `${relPath} (${side})`;
-  const branched = renameSkills(applyBranch(text, side, label), side);
+  const branched = renameSkills(applyBranch(normalizeNewlines(text), side, label), side);
   const unknown = checkToolNames(branched, side);
   if (unknown.length > 0) {
     const fence = side === 'remote' ? 'desktop-only' : 'remote-only';
@@ -265,7 +271,7 @@ export function checkGenerated({ sourceDir = DEFAULT_SOURCE, targets = DEFAULT_T
   for (const [key, content] of expected) {
     const onDisk = targetPath(targets, key);
     if (!existsSync(onDisk)) stale.push(`missing: ${key}`);
-    else if (readFileSync(onDisk, 'utf8') !== content) stale.push(`changed: ${key}`);
+    else if (normalizeNewlines(readFileSync(onDisk, 'utf8')) !== content) stale.push(`changed: ${key}`);
   }
   for (const side of SIDES) {
     for (const skill of outputSkills(side)) {
@@ -279,7 +285,7 @@ export function checkGenerated({ sourceDir = DEFAULT_SOURCE, targets = DEFAULT_T
       const out = path.join(PLUGIN_DIR, rel);
       const label = path.relative(REPO_ROOT, out);
       if (!existsSync(out)) stale.push(`missing: ${label}`);
-      else if (readFileSync(out, 'utf8') !== content) stale.push(`changed: ${label}`);
+      else if (normalizeNewlines(readFileSync(out, 'utf8')) !== content) stale.push(`changed: ${label}`);
     }
   }
   return stale;

@@ -31,6 +31,9 @@
     "start_new_session_chat": "Start a new session to use chat models",
     "switch_provider_disabled": "Start a new session to switch providers after the session has started"
   },
+  "context_usage": {
+    "label": "Context {{used}} / {{total}} ({{percent}}%)"
+  },
   "status": {
     "processing": "Processing",
     "loading": "Loading",

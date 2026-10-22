@@ -451,6 +451,9 @@ importers:
       '@nimbalyst/collab-protocol':
         specifier: workspace:*
         version: link:../collab-protocol
+      '@nimbalyst/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@nimbalyst/local-wiki':
         specifier: workspace:*
         version: link:../local-wiki
@@ -472,6 +475,9 @@ importers:
       js-yaml:
         specifier: ^4.3.2
         version: 4.3.2
+      marked:
+        specifier: 16.4.2
+        version: 16.4.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -2478,6 +2484,9 @@ importers:
       '@nimbalyst/extension-datamodellm':
         specifier: workspace:*
         version: link:../extensions/datamodellm
+      '@nimbalyst/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@nimbalyst/local-wiki':
         specifier: workspace:*
         version: link:../local-wiki
@@ -2508,6 +2517,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      i18next:
+        specifier: ^26.3.6
+        version: 26.4.7(typescript@6.0.3)
       lexical:
         specifier: 0.44.0
         version: 0.44.0
@@ -2523,6 +2535,9 @@ importers:
       react-dom:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
+      react-i18next:
+        specifier: ^17.0.9
+        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
       tailwindcss:
         specifier: ^3.4.19
         version: 3.4.19(yaml@2.8.3)

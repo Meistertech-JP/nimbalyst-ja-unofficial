@@ -46,6 +46,7 @@ const resolvePath = (specifier: string) => fileURLToPath(import.meta.resolve(spe
 const hostSingletons = [
   'react',
   'react-dom',
+  'react-i18next',
   'lexical',
   '@lexical/code',
   '@lexical/code-core',

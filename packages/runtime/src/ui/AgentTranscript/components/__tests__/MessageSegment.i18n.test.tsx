@@ -44,3 +44,29 @@ it('localizes fixed transcript tool labels and thinking disclosure', async () =>
   expect(screen.getByText('パラメーター:')).toBeTruthy();
   expect(screen.getByText('結果:')).toBeTruthy();
 });
+
+it('keeps API progress visible without translating model text when thinking is hidden', async () => {
+  const i18n = await createI18nInstance('ja');
+  const message = {
+    id: 2,
+    sequence: 2,
+    createdAt: new Date(),
+    type: 'assistant_message',
+    subagentId: null,
+    thinking: '  I am checking the requested files.  ',
+    progressUpdate: true,
+  } as TranscriptViewMessage;
+  const node = (progressUpdate: boolean) => (
+    <I18nextProvider i18n={i18n}>
+      <MessageSegment message={{ ...message, progressUpdate }} isUser={false} showToolCalls showThinking={false} expandedTools={new Set()} onToggleToolExpand={() => {}} />
+    </I18nextProvider>
+  );
+  const { rerender } = render(node(true));
+
+  const progress = screen.getByText('I am checking the requested files.');
+  expect(progress.closest('details')).toBeNull();
+  expect(screen.queryByText('思考内容')).toBeNull();
+
+  rerender(node(false));
+  expect(screen.queryByText('I am checking the requested files.')).toBeNull();
+});

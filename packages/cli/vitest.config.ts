@@ -13,6 +13,10 @@ export default defineConfig({
   define: { __NIM_VERSION__: JSON.stringify(version) },
   resolve: {
     alias: [
+      {
+        find: '@nimbalyst/i18n/core',
+        replacement: path.join(repoRoot, 'packages/i18n/src/core.ts'),
+      },
       // Match the root config: test tracker-core's SOURCE, not its build. The
       // package's `exports` points at a gitignored `dist/`, so without this a
       // project-scoped run either exercises a stale build or fails outright on

@@ -9,9 +9,11 @@
  * under unsaved edits shows a bar to load the file or keep these edits.
  */
 import { Component, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { loadBrowserExtension } from '@nimbalyst/web-editors/registry';
 import type { ExtensionEditorComponent } from '@nimbalyst/collab-bundle/editor';
 import { wikiApi, wikiChanges } from '../api/client';
+import { isStaticSite } from '../api/staticSite';
 import { DraftStoreContext } from '../app/drafts';
 import type { SaveState } from '../app/PageEditor';
 import { createWikiFileEditorHost, type WikiFileEditorState } from '../host/wikiFileEditorHost';
@@ -26,14 +28,14 @@ export function editorSaveState(state: WikiFileEditorState): { state: SaveState;
 }
 
 /** An editor that throws while rendering shows its error instead of blanking the app. */
-class EditorErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class EditorErrorBoundary extends Component<{ children: ReactNode; fallback: (error: Error) => ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
   render() {
     return this.state.error
-      ? <div className="wiki-web-banner mx-8 my-2 text-xs text-nim-error" role="alert">This editor stopped: {this.state.error.message}</div>
+      ? this.props.fallback(this.state.error)
       : this.props.children;
   }
 }
@@ -54,12 +56,13 @@ export function ExtensionPageEditor({
   /** Inside a canvas card: the editor is told so, and the page's own shortcuts stay with the page. */
   embedded?: boolean;
 }) {
+  const { t } = useTranslation('common');
   const drafts = useContext(DraftStoreContext);
   const [EditorComponent, setEditorComponent] = useState<ExtensionEditorComponent | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   // One host per page; `fileName` changes on rename without reopening the file.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const host = useMemo(() => createWikiFileEditorHost({ pageId, fileName, filePath, embedded, theme: currentTheme(), api: wikiApi, changes: wikiChanges }), [pageId]);
+  const host = useMemo(() => createWikiFileEditorHost({ pageId, fileName, filePath, embedded, theme: currentTheme(), api: wikiApi, changes: wikiChanges, readOnly: isStaticSite() }), [pageId]);
   const [state, setState] = useState(host.getState());
 
   useEffect(() => {
@@ -69,14 +72,14 @@ export function ExtensionPageEditor({
       if (!live) return;
       const found = loaded.components[editor.component];
       if (found) setEditorComponent(() => found);
-      else setLoadError(`The ${editor.displayName} editor is missing from its bundle`);
+      else setLoadError(t('wiki_web.editor_missing', { editor: editor.displayName }));
     }).catch((error: unknown) => {
       if (live) setLoadError(error instanceof Error ? error.message : String(error));
     });
     return () => {
       live = false;
     };
-  }, [editor.extensionId, editor.component, editor.displayName]);
+  }, [editor.extensionId, editor.component, editor.displayName, t]);
 
   useEffect(() => {
     setState(host.getState());
@@ -130,12 +133,12 @@ export function ExtensionPageEditor({
     <div className="wiki-web-extension-editor flex min-h-0 flex-1 flex-col" data-testid="wiki-web-extension-editor" data-extension-id={editor.extensionId}>
       {state.conflict ? (
         <div className="wiki-web-conflict mx-8 my-2 flex flex-wrap items-center gap-2 rounded border border-nim bg-nim-secondary px-3 py-2 text-xs text-nim" role="alert">
-          <span className="flex-1">This file changed on disk while you were editing it.</span>
+          <span className="flex-1">{t('wiki_web.editor_file_changed')}</span>
           <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => void host.resolveConflict('theirs')}>
-            Use the file
+            {t('wiki_web.use_file')}
           </button>
           <button type="button" className="rounded border border-nim px-2 py-1 hover:bg-nim-hover" onClick={() => void host.resolveConflict('mine')}>
-            Keep mine
+            {t('wiki_web.keep_mine')}
           </button>
         </div>
       ) : null}
@@ -143,11 +146,11 @@ export function ExtensionPageEditor({
       <div className={`wiki-web-extension-editor-host relative flex-1 select-none ${embedded ? 'min-h-0' : 'min-h-[320px]'}`}>
         <div className="absolute inset-0">
           {EditorComponent ? (
-            <EditorErrorBoundary>
+            <EditorErrorBoundary fallback={(error) => <div className="wiki-web-banner mx-8 my-2 text-xs text-nim-error" role="alert">{t('wiki_web.editor_stopped', { error: error.message })}</div>}>
               <EditorComponent host={host} />
             </EditorErrorBoundary>
           ) : loadError ? null : (
-            <div className="p-8 text-xs text-nim-faint">Loading the {editor.displayName} editor…</div>
+            <div className="p-8 text-xs text-nim-faint">{t('wiki_web.editor_loading', { editor: editor.displayName })}</div>
           )}
         </div>
       </div>

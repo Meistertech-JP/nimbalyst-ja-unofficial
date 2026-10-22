@@ -76,6 +76,7 @@ describe('UI language preference', () => {
             // Exact equivalents are intentional for brands, file formats,
             // commands, identifiers and user-provided input examples.
             expect(['common.app_name', 'common.usage_indicator.claude_name', 'common.usage_indicator.gemini_name',
+              'common.wiki_export.wiki_title',
               'common.quick_open.file_type_typescript', 'common.quick_open.file_type_javascript',
               'common.quick_open.file_type_markdown', 'common.quick_open.file_type_json',
               'common.quick_open.file_type_html', 'common.quick_open.file_type_python',
@@ -237,7 +238,7 @@ describe('UI language preference', () => {
     expect(resources.ja.settings.sidebar.item_cursor_agent).toBe('Cursorエージェント');
     expect(resources.en.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
     expect(resources.ja.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
-    expect(totalKeys).toBe(14289);
+    expect(totalKeys).toBe(14400);
   });
 
   it('creates isolated translator instances with English fallback', async () => {

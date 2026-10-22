@@ -1,8 +1,33 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import ts from 'typescript';
 
-import { classifyUntrackedPath, finiteStringValues, findSecretMatchesInText, flattenLeaves, placeholders, publicationDecision, resolveTranslationKey } from '../audit-ja-source.mjs';
+import { audit, classifyUntrackedPath, finiteStringValues, findSecretMatchesInText, flattenLeaves, placeholders, publicationDecision, resolveTranslationKey } from '../audit-ja-source.mjs';
+
+test('audits translation references and user-facing candidates in CLI and Wiki Web', (context) => {
+  const root = mkdtempSync(path.join(tmpdir(), 'nimbalyst-i18n-audit-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  execFileSync('git', ['init', '--quiet', root]);
+  const fixture = (relative, contents) => {
+    const target = path.join(root, relative);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, contents);
+  };
+  for (const locale of ['en', 'ja']) {
+    fixture(`packages/i18n/src/resources/${locale}/common.json`, '{"known":"Known"}');
+  }
+  fixture('packages/i18n/src/__tests__/core.test.ts', 'expect(totalKeys).toBe(1);');
+  fixture('packages/cli/src/export.ts', "t('common:missing_cli');");
+  fixture('packages/wiki-web/src/View.tsx', "const view = <button title=\"Open navigation\">{t('common:missing_web')}</button>;");
+  const report = audit(root);
+  assert.deepEqual(report.references.missingLiteralReferences.map((ref) => ref.key).sort(), ['missing_cli', 'missing_web']);
+  assert.equal(report.references.astEnglishCandidates[0].file, 'packages/wiki-web/src/View.tsx');
+  assert.equal(report.references.astEnglishCandidates[0].text, 'Open navigation');
+});
 
 test('flattens nested translation objects to leaf keys only', () => {
   assert.deepEqual([...flattenLeaves({ menu: { open: 'Open' }, empty: '' })], [
