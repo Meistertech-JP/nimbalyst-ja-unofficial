@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 /**
  * #1376: the workspace scan stops at a file/depth budget, so its counts are
@@ -47,11 +49,26 @@ const getWorkspaceStats = vi.fn();
 
 const { WorkspaceManager } = await import('../WorkspaceManager');
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderEnglish(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
+
 afterEach(() => cleanup());
 
 describe('workspace card markdown count (#1376)', () => {
   it('shows a truncated count as a lower bound, not as an exact total', async () => {
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
     expect(await screen.findByText('16+ markdown files')).toBeTruthy();
   });
 
@@ -61,14 +78,14 @@ describe('workspace card markdown count (#1376)', () => {
    * complete scan. A finished count must still render bare.
    */
   it('shows a completed count with no suffix', async () => {
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
     expect(await screen.findByText('7 markdown files')).toBeTruthy();
     expect(screen.queryByText('7+ markdown files')).toBeNull();
   });
 
   it('does not render the truncated count as "16"', async () => {
     // The pre-fix symptom, stated as the thing that must no longer appear.
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
     await screen.findByText('16+ markdown files');
     expect(screen.queryByText('16 markdown files')).toBeNull();
   });
@@ -83,7 +100,7 @@ describe('workspace stats panel counts (#1376)', () => {
       recentFiles: [],
     });
 
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
     fireEvent.click(await screen.findByText('big'));
 
     // Labelled cards, so the assertion cannot pass on a stray match elsewhere.
@@ -102,7 +119,7 @@ describe('workspace stats panel counts (#1376)', () => {
       recentFiles: [],
     });
 
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
     fireEvent.click(await screen.findByText('small'));
 
     const markdownCard = (await screen.findByText('Markdown Files')).parentElement;

@@ -12,8 +12,11 @@
  */
 
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createInstance } from 'i18next';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { resources } from '@nimbalyst/i18n/resources';
 import { asTeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 import type { FeedbackArtifact, FeedbackRequestReadModel } from '@nimbalyst/collab-protocol';
 
@@ -31,6 +34,26 @@ const TARGET = {
 
 const VIEWER = 'u-karl';
 const OTHER = 'u-dana';
+
+const testI18n = createInstance();
+const testI18nReady = testI18n.init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'common',
+  interpolation: { escapeValue: false },
+});
+
+beforeEach(async () => {
+  await testI18nReady;
+});
+
+function render(ui: React.ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider>,
+  });
+}
 
 function makeRequest(
   overrides: Partial<FeedbackRequestReadModel> = {},
@@ -104,6 +127,7 @@ function renderRespond(options: {
   renderOptionPreview?: () => React.ReactNode;
   renderArtifactDetail?: FeedbackArtifactDetailRenderer;
 } = {}) {
+  void testI18nReady;
   const viewerUserId = options.viewerUserId ?? VIEWER;
   render(
     <FeedbackRequestRespond
@@ -378,6 +402,40 @@ describe('artifact detail popover', () => {
     // the decision all over again.
     const card = screen.getAllByTestId('feedback-respond-option-card')[0]!;
     await waitFor(() => expect(card.getAttribute('data-selected')).toBe('true'));
+  });
+
+  it('localizes the unavailable artifact state and its controls', async () => {
+    await act(async () => {
+      await testI18n.changeLanguage('ja');
+    });
+    try {
+      const onOpenSubject = vi.fn();
+      renderRespond({
+        request: twoArtifactRequest(),
+        onOpenSubject,
+        renderArtifactDetail: () => null,
+      });
+
+      expect(screen.getAllByTestId('feedback-respond-option-expand')[0]?.getAttribute('aria-label'))
+        .toBe('Split panel mockupを開く');
+      fireEvent.click(screen.getAllByTestId('feedback-respond-option-expand')[0]!);
+
+      expect(screen.getByTestId('feedback-artifact-detail-unavailable').textContent)
+        .toContain('このアーティファクトはここでは表示できません。');
+      expect(screen.getByRole('button', { name: '前の選択肢' }).getAttribute('disabled')).not.toBeNull();
+      expect(screen.getByText('1 / 2')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: '次の選択肢' }));
+      const popover = screen.getByTestId('feedback-artifact-detail-popover');
+      expect(await within(popover).findByText('B · Radial')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'コメントを開く' }));
+      expect(onOpenSubject).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: '閉じる' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'これを選択' })).toBeDefined();
+    } finally {
+      await act(async () => {
+        await testI18n.changeLanguage('en');
+      });
+    }
   });
 
   // The fallback -- no detail renderer, so expand still opens a tab -- is

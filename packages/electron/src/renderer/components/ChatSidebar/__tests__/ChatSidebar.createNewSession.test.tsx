@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import React, { createRef } from 'react';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSidebar, type ChatSidebarRef } from '../ChatSidebar';
 
@@ -47,13 +49,16 @@ describe('ChatSidebar createNewSession ref action', () => {
   });
 
   it('creates a chat session while the panel is hidden', async () => {
+    const englishI18n = await createI18nInstance('en');
     const ref = createRef<ChatSidebarRef>();
     render(
-      <ChatSidebar
-        ref={ref}
-        workspacePath="/workspace"
-        isActive={false}
-      />,
+      <I18nextProvider i18n={englishI18n}>
+        <ChatSidebar
+          ref={ref}
+          workspacePath="/workspace"
+          isActive={false}
+        />
+      </I18nextProvider>,
     );
 
     await act(async () => {
@@ -72,6 +77,47 @@ describe('ChatSidebar createNewSession ref action', () => {
         workspaceId: '/workspace',
       },
     );
+  });
+
+  it('uses localized defaults for new chat and auto-created session titles', async () => {
+    const japaneseI18n = await createI18nInstance('ja');
+    const ref = createRef<ChatSidebarRef>();
+    render(
+      <I18nextProvider i18n={japaneseI18n}>
+        <ChatSidebar ref={ref} workspacePath="/workspace" isActive={false} />
+      </I18nextProvider>,
+    );
+
+    await act(async () => {
+      await ref.current?.createNewSession();
+    });
+
+    expect(window.electronAPI.invoke).toHaveBeenCalledWith(
+      'sessions:create',
+      expect.objectContaining({
+        session: expect.objectContaining({ title: 'チャット' }),
+      }),
+    );
+
+    vi.mocked(window.electronAPI.invoke).mockClear();
+    vi.mocked(window.electronAPI.invoke).mockImplementation(async (channel: string) => {
+      if (channel === 'sessions:list') return { success: true, sessions: [] };
+      return { success: true };
+    });
+    render(
+      <I18nextProvider i18n={japaneseI18n}>
+        <ChatSidebar workspacePath="/workspace" />
+      </I18nextProvider>,
+    );
+
+    await waitFor(() => {
+      expect(window.electronAPI.invoke).toHaveBeenCalledWith(
+        'sessions:create',
+        expect.objectContaining({
+          session: expect.objectContaining({ title: '新しいセッション' }),
+        }),
+      );
+    });
   });
 
   it('uses a controlled session without auto-selecting or creating another session', () => {
@@ -135,5 +181,51 @@ describe('ChatSidebar createNewSession ref action', () => {
       'Regarding @@[Source](source-session): ',
     );
     expect(onSessionIdChange).toHaveBeenCalledWith('new-chat-session');
+  });
+
+  it('localizes fixed empty-state and accessibility labels while preserving linked session text', async () => {
+    const englishI18n = await createI18nInstance('en');
+    const japaneseI18n = await createI18nInstance('ja');
+    const props = {
+      workspacePath: '/workspace',
+      autoInitializeSession: false,
+      onWidthChange: () => {},
+      onSwitchToAgentMode: () => {},
+      linkedSession: { id: 'source-session', title: 'Design review' },
+    };
+    const view = render(
+      <I18nextProvider i18n={englishI18n}>
+        <ChatSidebar {...props} sessionId={null} />
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByText('Failed to load chat session')).toBeDefined();
+
+    view.rerender(
+      <I18nextProvider i18n={englishI18n}>
+        <ChatSidebar {...props} sessionId="chat-session" />
+      </I18nextProvider>,
+    );
+    expect(screen.getByRole('separator', { name: 'Resize AI chat sidebar' })).toBeDefined();
+    expect(screen.getByTitle('Open in agent mode')).toBeDefined();
+    expect(screen.getByText('Connected to')).toBeDefined();
+    expect(screen.getByTitle('Design review')).toBeDefined();
+
+    view.rerender(
+      <I18nextProvider i18n={japaneseI18n}>
+        <ChatSidebar {...props} sessionId={null} />
+      </I18nextProvider>,
+    );
+    expect(screen.getByText('チャットセッションの読み込みに失敗しました')).toBeDefined();
+
+    view.rerender(
+      <I18nextProvider i18n={japaneseI18n}>
+        <ChatSidebar {...props} sessionId="chat-session" />
+      </I18nextProvider>,
+    );
+    expect(screen.getByRole('separator', { name: 'AIチャットサイドバーの幅を変更' })).toBeDefined();
+    expect(screen.getByTitle('エージェントモードで開く')).toBeDefined();
+    expect(screen.getByText('接続先')).toBeDefined();
+    expect(screen.getByTitle('Design review')).toBeDefined();
   });
 });

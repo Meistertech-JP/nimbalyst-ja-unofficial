@@ -26,6 +26,7 @@
  */
 
 import { isCollabUri, parseCollabUri } from '@nimbalyst/collab-protocol';
+import { resources } from '@nimbalyst/i18n/resources';
 import { clampEffortLevel } from '@nimbalyst/runtime/ai/server/effortLevels';
 import {
   setActionButtonHost,
@@ -73,6 +74,29 @@ const TRACKER_TAB = 'tracker://';
 const TEAM_TYPED_BODY = 'collab://tracker-content/';
 const PERSONAL_PREFIXES = ['personal://', 'personal-doc://'];
 const MAX_SESSION_TITLE = 80;
+
+function interpolate(template: string, values: Record<string, string>): string {
+  return template.replace(/{{(\w+)}}/g, (_match, key: string) => values[key] ?? '');
+}
+
+function newItemNotPlacedCopy(
+  itemTitle: string,
+  error: string,
+  typeName: string,
+  section: Section,
+): { title: string; body: string } {
+  const locale = typeof document !== 'undefined' && document.documentElement.lang.toLowerCase().startsWith('ja') ? 'ja' : 'en';
+  const copy = resources[locale].common.action_button.new_item_not_placed;
+  return {
+    title: copy.title,
+    body: interpolate(copy.body, {
+      itemTitle,
+      error,
+      typeName,
+      sectionPages: copy.sections[section],
+    }),
+  };
+}
 
 /**
  * A Local wiki page opens as a tab on its markdown file, so a file path is
@@ -274,7 +298,8 @@ export async function createItemFromButton(request: NewItemRequest): Promise<Act
     if (!placed.ok) {
       // The item exists; say so where it outlives this block's error line.
       failure = `"${request.title}" was created, but it could not be placed under this page (${placed.error}). It is listed under ${typeName} in ${section === 'team' ? 'the team' : 'Personal'} Pages.`;
-      errorNotificationService.showWarning('New item not placed', failure, { duration: 0 });
+      const copy = newItemNotPlacedCopy(request.title, placed.error, typeName, section);
+      errorNotificationService.showWarning(copy.title, copy.body, { duration: 0 });
     } else if (created.error) {
       failure = `Created "${request.title}", but it has not reached the team yet: ${created.error}`;
     }

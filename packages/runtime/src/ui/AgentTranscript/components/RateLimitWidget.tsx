@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { interactiveWidgetHostAtom } from '../../../store/atoms/interactiveWidgetHost';
 
 // Inject rate limit widget styles once (for color-mix patterns)
@@ -57,22 +58,20 @@ function parseRateLimitInfo(content: string): {
   };
 }
 
-function formatResetTime(resetsAtMs: number): string {
+function formatResetTime(resetsAtMs: number): { hours: number; minutes: number } | null {
   const diffMs = resetsAtMs - Date.now();
 
-  if (diffMs <= 0) return 'any moment now';
+  if (diffMs <= 0) return null;
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMinutes / 60);
   const remainingMinutes = diffMinutes % 60;
 
-  if (diffHours > 0) {
-    return `${diffHours}h ${remainingMinutes}m`;
-  }
-  return `${diffMinutes}m`;
+  return { hours: diffHours, minutes: diffHours > 0 ? remainingMinutes : diffMinutes };
 }
 
 export const RateLimitWidget: React.FC<RateLimitWidgetProps> = ({ content, sessionId, isLastMessage = false }) => {
+  const { t } = useTranslation('aichat');
   useEffect(() => {
     injectRateLimitStyles();
   }, []);
@@ -80,6 +79,13 @@ export const RateLimitWidget: React.FC<RateLimitWidgetProps> = ({ content, sessi
   const { isWarning, limitType, resetsAtMs, utilization, model } = parseRateLimitInfo(content);
   const accentVar = isWarning ? '--nim-warning' : '--nim-error';
   const is1mModel = model != null && model.includes('-1m');
+  const displayLimitType = limitType === '5-hour session' ? t('usage.five_hour_window') : limitType;
+  const resetTime = resetsAtMs ? formatResetTime(resetsAtMs) : null;
+  const resetLabel = resetTime
+    ? resetTime.hours > 0
+      ? t('rate_limit.hours_minutes', resetTime)
+      : t('rate_limit.minutes', { count: resetTime.minutes })
+    : t('rate_limit.any_moment');
 
   return (
     <div className={isWarning ? 'rate-limit-widget my-4 p-4 rounded-lg flex flex-col gap-2' : 'rate-limit-widget-blocked my-4 p-4 rounded-lg flex flex-col gap-2'}>
@@ -91,15 +97,15 @@ export const RateLimitWidget: React.FC<RateLimitWidgetProps> = ({ content, sessi
           !
         </span>
         <span className="text-sm font-semibold" style={{ color: `var(${accentVar})` }}>
-          {isWarning ? 'Approaching rate limit' : 'Rate limit reached'}
+          {isWarning ? t('rate_limit.approaching') : t('rate_limit.reached')}
         </span>
       </div>
       <div className="text-[var(--nim-text-muted)] text-[0.85rem] leading-relaxed">
         {isWarning
-          ? `You're at ${utilization != null ? `${utilization}%` : 'near'} of your ${limitType} limit.`
-          : `You've hit your ${limitType} rate limit.`}
-        {resetsAtMs && ` Resets in ${formatResetTime(resetsAtMs)}.`}
-        {!isWarning && is1mModel && ' This 1M context model may not be available on your plan.'}
+          ? t('rate_limit.approaching_message', { amount: utilization != null ? `${utilization}%` : t('rate_limit.near'), limitType: displayLimitType })
+          : t('rate_limit.reached_message', { limitType: displayLimitType })}
+        {resetsAtMs && ` ${t('rate_limit.resets_in', { time: resetLabel })}`}
+        {!isWarning && is1mModel && ` ${t('rate_limit.context_model_notice')}`}
       </div>
       {!isWarning && isLastMessage && sessionId && (
         <AutoResumeControl sessionId={sessionId} resetsAtMs={resetsAtMs} />
@@ -114,6 +120,7 @@ export const RateLimitWidget: React.FC<RateLimitWidgetProps> = ({ content, sessi
  * banner shows the exact resume time, so this only shows on/off.
  */
 function AutoResumeControl({ sessionId, resetsAtMs }: { sessionId: string; resetsAtMs: number | null }) {
+  const { t } = useTranslation('aichat');
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
   // The host is a stable proxy, so a toggle does not re-render this card; keep
   // what the user chose here, seeded from the setting.
@@ -140,14 +147,14 @@ function AutoResumeControl({ sessionId, resetsAtMs }: { sessionId: string; reset
     <div className="rate-limit-auto-resume flex items-center gap-3 text-[0.85rem]">
       {isOn ? (
         <>
-          <span className="text-[var(--nim-text-muted)]">Auto-resume is on. This session continues when the limit resets.</span>
+          <span className="text-[var(--nim-text-muted)]">{t('rate_limit.auto_resume_enabled')}</span>
           <button
             type="button"
             className="rate-limit-auto-resume-off bg-transparent border-none p-0 cursor-pointer text-[var(--nim-primary)] hover:underline disabled:cursor-not-allowed disabled:opacity-60"
             disabled={busy}
             onClick={() => toggle(false)}
           >
-            Turn off
+            {t('rate_limit.turn_off')}
           </button>
         </>
       ) : (
@@ -157,7 +164,7 @@ function AutoResumeControl({ sessionId, resetsAtMs }: { sessionId: string; reset
           disabled={busy}
           onClick={() => toggle(true)}
         >
-          Resume automatically when the limit resets
+          {t('rate_limit.auto_resume_action')}
         </button>
       )}
       {error && <span className="text-[var(--nim-error)]">{error}</span>}

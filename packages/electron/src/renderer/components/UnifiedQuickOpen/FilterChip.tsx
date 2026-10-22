@@ -28,6 +28,7 @@ import {
 } from '@floating-ui/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from 'react-i18next';
 
 export interface FilterChipOption {
   /** Stored / submitted value, e.g. ".ts" or "bug". */
@@ -78,13 +79,14 @@ export const FilterChip = forwardRef<FilterChipHandle, FilterChipProps>(
       options = [],
       history = [],
       freeText = false,
-      placeholder = 'Filter...',
+      placeholder,
       onAddToHistory,
       onRemoveFromHistory,
       resolveLabel,
     },
     ref,
   ) => {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -146,7 +148,7 @@ export const FilterChip = forwardRef<FilterChipHandle, FilterChipProps>(
         tabIndex={-1}
       >
         <span className="font-medium">{label}:</span>
-        <span className="truncate max-w-[140px]">{displayValue ?? 'Any'}</span>
+        <span className="truncate max-w-[140px]">{displayValue ?? t('quick_open.any')}</span>
         {value && (
           <span
             role="button"
@@ -156,7 +158,7 @@ export const FilterChip = forwardRef<FilterChipHandle, FilterChipProps>(
               e.stopPropagation();
               handlePick(null);
             }}
-            title="Clear filter"
+            title={t('quick_open.clear_filter')}
           >
             <MaterialSymbol icon="close" size={10} />
           </span>
@@ -177,12 +179,12 @@ export const FilterChip = forwardRef<FilterChipHandle, FilterChipProps>(
               className="w-full text-left px-3 py-1.5 text-sm rounded cursor-pointer text-nim-muted hover:bg-nim-hover hover:text-nim"
               onClick={() => handlePick(null)}
             >
-              Any
+              {t('quick_open.any')}
             </button>
 
             {options.length > 0 && (
               <>
-                <MenuHeader>Options</MenuHeader>
+                <MenuHeader>{t('quick_open.options')}</MenuHeader>
                 {options.map((opt) => (
                   <button
                     key={opt.value}
@@ -212,7 +214,7 @@ export const FilterChip = forwardRef<FilterChipHandle, FilterChipProps>(
 
             {history.length > 0 && (
               <>
-                <MenuHeader>Recent</MenuHeader>
+                <MenuHeader>{t('quick_open.recent')}</MenuHeader>
                 {history.map((entry) => (
                   <div
                     key={entry}
@@ -234,7 +236,7 @@ export const FilterChip = forwardRef<FilterChipHandle, FilterChipProps>(
                           e.stopPropagation();
                           onRemoveFromHistory(entry);
                         }}
-                        title="Remove from history"
+                        title={t('quick_open.remove_from_history')}
                       >
                         <MaterialSymbol icon="close" size={12} />
                       </button>
@@ -246,13 +248,13 @@ export const FilterChip = forwardRef<FilterChipHandle, FilterChipProps>(
 
             {freeText && (
               <>
-                <MenuHeader>Custom</MenuHeader>
+                <MenuHeader>{t('quick_open.custom')}</MenuHeader>
                 <div className="px-2 pb-1">
                   <input
                     type="text"
                     autoFocus
                     className="nim-input w-full text-sm py-1 px-2"
-                    placeholder={placeholder}
+                    placeholder={placeholder ?? t('quick_open.filter')}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => {

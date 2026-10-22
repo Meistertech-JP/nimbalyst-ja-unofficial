@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useStore, type PrimitiveAtom } from 'jotai';
 import {
   COMMAND_PRIORITY_HIGH,
@@ -50,6 +51,7 @@ export const TrackerQuickCreateEditor = React.memo(
     /** Cmd/Ctrl+Enter inside the body; the popup decides what submitting means. */
     onSubmit?: () => void;
   }) {
+    const { t } = useTranslation('tracker');
     const store = useStore();
     const draft = useAtomValue(draftAtom);
     const initialContent = useRef(store.get(draftAtom).description);
@@ -192,6 +194,17 @@ export const TrackerQuickCreateEditor = React.memo(
       [workspacePath, draftId, draftAtom, store, upload],
     );
 
+    const localizedImageError = (message: string) => {
+      const keyByMessage: Record<string, string> = {
+        'Screenshot staging timed out. Retry the image.': 'screenshot_timeout',
+        'Use a PNG, JPEG, GIF, or WebP screenshot': 'screenshot_format_error',
+        'Screenshot must be between 1 byte and 25 MB': 'screenshot_size_error',
+        'Screenshot could not be saved': 'screenshot_save_error',
+      };
+      const key = keyByMessage[message];
+      return key ? t(`quick_create.${key}`) : message;
+    };
+
     useEffect(
       () =>
         editor?.registerUpdateListener(({ dirtyElements, dirtyLeaves }) => {
@@ -259,12 +272,12 @@ export const TrackerQuickCreateEditor = React.memo(
         </div>
         <div className="tracker-quick-create-image-actions flex items-center justify-between px-3 py-1 text-xs text-nim-muted">
           <button type="button" onClick={() => imageInput.current?.click()}>
-            Add screenshot
+            {t('quick_create.screenshot_add')}
           </button>
           <span>
             {draft.pendingImages
-              ? 'Adding screenshot…'
-              : 'Paste or drop screenshots into Content'}
+              ? t('quick_create.screenshot_adding')
+              : t('quick_create.screenshot_paste_drop')}
           </span>
           <input
             data-testid="tracker-quick-create-image-input"
@@ -287,7 +300,7 @@ export const TrackerQuickCreateEditor = React.memo(
             role="alert"
           >
             <span className="select-text">
-              {failure.file.name}: {failure.error}
+              {failure.file.name}: {localizedImageError(failure.error)}
             </span>
             <button
               type="button"
@@ -301,7 +314,7 @@ export const TrackerQuickCreateEditor = React.memo(
                 void insertFile(failure.file);
               }}
             >
-              Retry image
+              {t('quick_create.screenshot_retry')}
             </button>
             <button
               type="button"
@@ -314,7 +327,7 @@ export const TrackerQuickCreateEditor = React.memo(
                 }))
               }
             >
-              Remove
+              {t('quick_create.screenshot_remove')}
             </button>
           </div>
         ))}

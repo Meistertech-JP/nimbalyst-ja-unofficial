@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { EffortLevel } from '../../utils/modelUtils';
 import { EFFORT_LEVELS, DEFAULT_EFFORT_LEVEL, clampEffortLevel, getAvailableEffortLevels } from '../../utils/modelUtils';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
@@ -21,6 +22,7 @@ interface EffortLevelSelectorProps {
 }
 
 export function EffortLevelSelector({ open, onOpenChange, level, onLevelChange, disabled = false, disabledTitle, modelId }: EffortLevelSelectorProps) {
+  const { t } = useTranslation('aichat');
   const menu = useFloatingMenu({ placement: 'top-start', offsetPx: 4, open, onOpenChange });
   const { isOpen, setIsOpen } = menu;
   const { getTypeaheadMatch, resetTypeahead } = useMenuTypeahead(isOpen);
@@ -36,6 +38,7 @@ export function EffortLevelSelector({ open, onOpenChange, level, onLevelChange, 
   const availableLevels = getAvailableEffortLevels(modelId);
   const effectiveLevel = clampEffortLevel(level, modelId);
   const currentLevel = availableLevels.find((l) => l.key === effectiveLevel) ?? EFFORT_LEVELS.find((l) => l.key === DEFAULT_EFFORT_LEVEL)!;
+  const currentLevelLabel = t(`effort.${currentLevel.key}`);
 
   const setMenuRef = React.useCallback((node: HTMLDivElement | null) => {
     menu.refs.setFloating(node);
@@ -67,12 +70,12 @@ export function EffortLevelSelector({ open, onOpenChange, level, onLevelChange, 
         onClick={() => {
           if (!disabled) setIsOpen(!isOpen);
         }}
-        aria-label={`Effort level: ${currentLevel.label}`}
+        aria-label={t('effort.selected_label', { level: currentLevelLabel })}
         disabled={disabled}
         title={disabled ? disabledTitle : undefined}
       >
         <MaterialSymbol icon="psychology" size={12} />
-        <span>{currentLevel.label}</span>
+        <span>{currentLevelLabel}</span>
         <MaterialSymbol icon="expand_more" size={14} className={`transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -98,7 +101,7 @@ export function EffortLevelSelector({ open, onOpenChange, level, onLevelChange, 
                   setIsOpen(false);
                 }}
               >
-                <span>{l.label}</span>
+                <span>{t(`effort.${l.key}`)}</span>
                 {l.key === effectiveLevel && <MaterialSymbol icon="check" size={14} />}
               </button>
             ))}

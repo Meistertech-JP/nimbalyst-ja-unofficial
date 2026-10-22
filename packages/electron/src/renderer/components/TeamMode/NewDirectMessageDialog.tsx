@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { ConversationDirectoryEntry } from '../../../shared/conversationDirectory';
 import {
@@ -38,6 +39,7 @@ export function NewDirectMessageDialog({
   onClose: () => void;
   onOpened: (conversationId: string) => void;
 }) {
+  const { t } = useTranslation('collabSidebar', { keyPrefix: 'new_dm_dialog' });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +48,13 @@ export function NewDirectMessageDialog({
     () => buildDirectMessageRequest(selectedIds, viewerUserId),
     [selectedIds, viewerUserId],
   );
+  const validationError = validation.error === 'Your membership in this organization is still resolving.'
+    ? t('membership_resolving')
+    : validation.error === 'Pick at least one person.'
+      ? t('pick_one_person')
+      : validation.error === `A direct message holds at most ${MAX_DM_PARTICIPANTS} people, including you.`
+        ? t('participant_limit', { max: MAX_DM_PARTICIPANTS })
+        : validation.error;
 
   const submit = async () => {
     if (!validation.request || submitting) return;
@@ -68,22 +77,22 @@ export function NewDirectMessageDialog({
 
   return (
     <OrgDialog
-      title="New direct message"
-      description={`Pick up to ${MAX_DM_PARTICIPANTS - 1} people. Direct messages are private to their participants and cannot be renamed or joined later.`}
+      title={t('title')}
+      description={t('description', { max: MAX_DM_PARTICIPANTS - 1 })}
       testId="new-dm-dialog"
       error={error}
       onClose={onClose}
       footer={(
         <>
           <OrgDialogSecondaryButton testId="new-dm-cancel" onClick={onClose}>
-            Cancel
+            {t('cancel')}
           </OrgDialogSecondaryButton>
           <OrgDialogPrimaryButton
             testId="new-dm-submit"
             disabled={!validation.request || submitting}
             onClick={() => { void submit(); }}
           >
-            {submitting ? 'Opening…' : 'Start conversation'}
+            {submitting ? t('opening') : t('start_conversation')}
           </OrgDialogPrimaryButton>
         </>
       )}
@@ -104,8 +113,10 @@ export function NewDirectMessageDialog({
         className="new-dm-summary m-0 mt-2 text-[11px] text-[var(--nim-text-muted)]"
         data-testid="new-dm-summary"
       >
-        {validation.error
-          ?? `${validation.participants.length} participants, including you.`}
+        {validationError
+          ?? t(validation.participants.length === 1 ? 'participants_one' : 'participants_plural', {
+            count: validation.participants.length,
+          })}
       </p>
     </OrgDialog>
   );

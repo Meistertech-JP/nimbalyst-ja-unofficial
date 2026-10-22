@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { LayoutControls } from '../layout/LayoutControls';
 import { MaterialSymbol, copyToClipboard } from '@nimbalyst/extension-sdk';
 import type { DataModelStoreApi } from '../store';
@@ -19,13 +20,14 @@ interface DataModelToolbarProps {
   host?: EditorHost;
 }
 
-const VIEW_MODES: { value: EntityViewMode; label: string }[] = [
-  { value: 'compact', label: 'Compact' },
-  { value: 'standard', label: 'Standard' },
-  { value: 'full', label: 'Full' },
+const VIEW_MODES: { value: EntityViewMode }[] = [
+  { value: 'compact' },
+  { value: 'standard' },
+  { value: 'full' },
 ];
 
 export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: DataModelToolbarProps) {
+  const { t } = useTranslation('extensions');
   const state = store.getState();
   const { entities, relationships, entityViewMode, database } = state;
 
@@ -158,13 +160,14 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
             className="datamodel-toolbar-button datamodel-toolbar-button-primary"
             onClick={handleAddEntity}
           >
-            + Add Entity
+            + {t('datamodellm_ui.add_entity')}
           </button>
           <LayoutControls store={store} />
           <button
             className="datamodel-toolbar-button datamodel-toolbar-icon-button"
             onClick={onScreenshot}
-            title="Capture screenshot"
+            title={t('datamodellm_ui.capture_screenshot')}
+            aria-label={t('datamodellm_ui.capture_screenshot')}
             disabled={!onScreenshot || isCapturing}
             aria-busy={isCapturing}
           >
@@ -173,7 +176,7 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
         </div>
 
         <div className="datamodel-toolbar-center">
-          <span className="datamodel-toolbar-label">View:</span>
+          <span className="datamodel-toolbar-label">{t('datamodellm_ui.view')}</span>
           <div className="datamodel-view-mode-group">
             {VIEW_MODES.map((mode) => (
               <button
@@ -181,7 +184,7 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
                 className={`datamodel-view-mode-button ${entityViewMode === mode.value ? 'active' : ''}`}
                 onClick={() => handleViewModeChange(mode.value)}
               >
-                {mode.label}
+                {t(`datamodellm_ui.${mode.value}`)}
               </button>
             ))}
           </div>
@@ -189,8 +192,7 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
 
         <div className="datamodel-toolbar-right">
           <span className="datamodel-toolbar-stats">
-            {entities.length} {entities.length === 1 ? 'entity' : 'entities'} · {relationships.length}{' '}
-            {relationships.length === 1 ? 'relationship' : 'relationships'}
+            {t('datamodellm_ui.entity_count', { count: entities.length })} · {t('datamodellm_ui.relationship_count', { count: relationships.length })}
           </span>
 
           {/* Export dropdown */}
@@ -198,7 +200,7 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
             className="datamodel-toolbar-button datamodel-toolbar-icon-button"
             onClick={() => handleExportFormatSelect(exportFormat)}
             disabled={entities.length === 0}
-            title="Export schema"
+            title={t('datamodellm_ui.export_schema')}
           >
             <MaterialSymbol icon="download" size={18} />
           </button>
@@ -208,9 +210,9 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
             <button
               className="datamodel-toolbar-button"
               onClick={() => host.toggleSourceMode?.()}
-              title="View raw Prisma source"
+              title={t('datamodellm_ui.view_prisma_source')}
             >
-              View Source
+              {t('datamodellm_ui.view_source')}
             </button>
           )}
         </div>
@@ -221,17 +223,18 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
         <div className="datamodel-export-overlay" onClick={() => setShowExportDialog(false)}>
           <div className="datamodel-export-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="datamodel-export-dialog-header">
-              <h2>Export Schema</h2>
+              <h2>{t('datamodellm_ui.export_schema_title')}</h2>
               <button
                 className="datamodel-export-dialog-close"
                 onClick={() => setShowExportDialog(false)}
+                aria-label={t('datamodellm_ui.close_export_dialog')}
               >
                 <MaterialSymbol icon="close" size={20} />
               </button>
             </div>
 
             <div className="datamodel-export-dialog-format">
-              <label>Format</label>
+              <label>{t('datamodellm_ui.format')}</label>
               <select
                 value={exportFormat}
                 onChange={(e) => handleExportFormatChange(e.target.value as ExportFormat)}
@@ -246,21 +249,21 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
 
             <div className="datamodel-export-dialog-content">
               <div className="datamodel-export-dialog-content-header">
-                <label>Generated Code</label>
+                <label>{t('datamodellm_ui.generated_code')}</label>
                 <div className="datamodel-export-dialog-actions">
                   <button
                     className="datamodel-export-dialog-action"
                     onClick={handleCopyExport}
                   >
                     <MaterialSymbol icon={copyFeedback ? 'check' : 'content_copy'} size={16} />
-                    {copyFeedback ? 'Copied!' : 'Copy'}
+                    {copyFeedback ? t('datamodellm_ui.copied') : t('datamodellm_ui.copy')}
                   </button>
                   <button
                     className="datamodel-export-dialog-action"
                     onClick={handleDownloadExport}
                   >
                     <MaterialSymbol icon="download" size={16} />
-                    Download
+                    {t('datamodellm_ui.download')}
                   </button>
                 </div>
               </div>
@@ -272,7 +275,7 @@ export function DataModelToolbar({ store, onScreenshot, isCapturing, host }: Dat
                 className="datamodel-export-dialog-button"
                 onClick={() => setShowExportDialog(false)}
               >
-                Close
+                {t('datamodellm_ui.close')}
               </button>
             </div>
           </div>

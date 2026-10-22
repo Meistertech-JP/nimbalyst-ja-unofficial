@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   storeSet: vi.fn(),
   setEditorContext: vi.fn(),
   setEditorContextItems: vi.fn(),
+  showWarning: vi.fn(),
+  getLocalizedText: vi.fn((_namespace: string, key: string) => `ja:${key}`),
 }));
 
 vi.mock('@nimbalyst/runtime/store', () => ({
@@ -18,7 +20,10 @@ vi.mock('../../../stores/editorContextStore', () => ({
   setEditorContextItems: mocks.setEditorContextItems,
 }));
 vi.mock('../../../services/ErrorNotificationService', () => ({
-  errorNotificationService: { showWarning: vi.fn() },
+  errorNotificationService: {
+    showWarning: mocks.showWarning,
+    getLocalizedText: mocks.getLocalizedText,
+  },
 }));
 
 import {
@@ -141,5 +146,34 @@ describe('flushCollaborativeContent', () => {
 
     await flushCollaborativeContent(context);
     expect(flush).not.toHaveBeenCalled();
+  });
+});
+
+describe('collaboration seed warning localization', () => {
+  it('uses translated fixed copy while preserving dynamic server details', () => {
+    const context = createCollaborationContext({
+      syncProvider: {
+        getYDoc: () => ({}),
+        getStatus: () => 'connected',
+        flushWithAck: async () => true,
+        hasUndecodedContent: () => false,
+        flushLocalState: async () => {},
+      } as never,
+      awareness: {} as never,
+      activeConfig: { teamMemberId: 'user-1', userName: 'User One' } as never,
+    });
+
+    context.reportSeedOutcome?.({ ok: false, error: new Error('server detail') });
+
+    expect(mocks.getLocalizedText).toHaveBeenCalledWith(
+      'editor',
+      'collab.seed_not_confirmed',
+      'Shared document seed not confirmed',
+    );
+    expect(mocks.showWarning).toHaveBeenCalledWith(
+      'ja:collab.seed_not_confirmed',
+      'ja:collab.seed_not_confirmed_message',
+      { details: 'server detail', duration: 10000 },
+    );
   });
 });

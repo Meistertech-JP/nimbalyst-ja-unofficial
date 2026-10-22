@@ -3,6 +3,8 @@ import React from 'react';
 import { Provider, createStore } from 'jotai';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { stytchAuthAtom } from '../../../../store/atoms/stytchAuth';
 import { OrgCreationWizard } from '../OrgCreationWizard';
@@ -14,7 +16,7 @@ vi.mock('@nimbalyst/runtime', () => ({
 }));
 vi.mock('../../../common/AlphaBadge', () => ({ AlphaBadge: () => <span /> }));
 vi.mock('../../../common/TeamBetaNotice', () => ({
-  TEAM_BETA_TOOLTIP: 'beta',
+  TeamBetaBadge: () => <span />,
   TeamBetaNotice: () => <div />,
 }));
 vi.mock('../../../../utils/teamAnalytics', () => ({ trackTeamAnalyticsEvent: vi.fn() }));
@@ -32,12 +34,18 @@ function fakeApi(overrides: Partial<OrgWizardApi> = {}): OrgWizardApi {
 
 const settings = new Map<string, unknown>();
 let jotaiStore = createStore();
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
 function renderWithStore(element: React.ReactElement) {
-  return render(<Provider store={jotaiStore}>{element}</Provider>);
+  return render(
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <Provider store={jotaiStore}>{element}</Provider>
+    </UiLanguageProvider>,
+  );
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  englishI18n = await createI18nInstance('en');
   settings.clear();
   jotaiStore = createStore();
   jotaiStore.set(stytchAuthAtom, {
@@ -110,6 +118,23 @@ describe('OrgCreationWizard', () => {
     expect(settings.get('orgWindowPendingRoute')).toEqual({ orgId: 'org-1', conversationId: 'general' });
     expect(settings.get('orgWizardDraft')).toBeNull();
     expect(settings.get('orgWelcomeDismissedOrgIds')).toEqual(['org-1']);
+  });
+
+  it('shows the organization creation wizard in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <Provider store={jotaiStore}>
+          <OrgCreationWizard isOpen onClose={() => {}} api={fakeApi()} />
+        </Provider>
+      </UiLanguageProvider>,
+    );
+
+    expect((await screen.findByRole('dialog', { name: '組織を作成' })).getAttribute('aria-label')).toBe('組織を作成');
+    expect((await screen.findByText('組織名を入力')).textContent).toBe('組織名を入力');
+    expect(screen.getByPlaceholderText('例：研究開発チーム').getAttribute('placeholder')).toBe('例：研究開発チーム');
+    expect(screen.getByTestId('org-wizard-step-count').textContent).toBe('3ステップ中1番目');
+    expect(screen.getByTestId('org-wizard-primary').textContent).toBe('組織を作成');
   });
 
   /**

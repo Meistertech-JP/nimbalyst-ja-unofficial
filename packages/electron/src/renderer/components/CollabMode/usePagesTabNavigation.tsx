@@ -6,6 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
 import { store } from '@nimbalyst/runtime/store';
 import { trackerItemsMapAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
@@ -116,6 +117,7 @@ const NAV_BUTTON = 'pages-tab-history-button flex h-6 w-6 items-center justify-c
 
 /** Back and Forward for the active tab, at the start of the tab strip. */
 export function PagesTabHistoryButtons({ onStep }: { onStep: (direction: -1 | 1) => void }) {
+  const { t } = useTranslation('common');
   const { activeTab } = useTabs();
   const back = activeTab?.history?.back.at(-1);
   const forward = activeTab?.history?.forward[0];
@@ -125,8 +127,8 @@ export function PagesTabHistoryButtons({ onStep }: { onStep: (direction: -1 | 1)
         type="button"
         className={NAV_BUTTON}
         disabled={!back}
-        title={`${back ? `Back to ${back.fileName}` : 'Back'} (${MOD}+[)`}
-        aria-label="Back"
+        title={`${t(back ? 'pages_tab_history.back_to' : 'back', { fileName: back?.fileName })} (${MOD}+[)`}
+        aria-label={t('back')}
         data-testid="pages-tab-back"
         onClick={() => onStep(-1)}
       >
@@ -136,8 +138,8 @@ export function PagesTabHistoryButtons({ onStep }: { onStep: (direction: -1 | 1)
         type="button"
         className={NAV_BUTTON}
         disabled={!forward}
-        title={`${forward ? `Forward to ${forward.fileName}` : 'Forward'} (${MOD}+])`}
-        aria-label="Forward"
+        title={`${t(forward ? 'pages_tab_history.forward_to' : 'forward', { fileName: forward?.fileName })} (${MOD}+])`}
+        aria-label={t('forward')}
         data-testid="pages-tab-forward"
         onClick={() => onStep(1)}
       >

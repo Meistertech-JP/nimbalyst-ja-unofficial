@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 interface TrackerActivityLike {
   action: string;
   field?: string;
@@ -11,31 +13,35 @@ function quoted(value: string): string {
   return `“${bounded}”`;
 }
 
-function changed(label: string, entry: TrackerActivityLike): string {
+type TrackerTranslator = TFunction<'tracker'>;
+
+function changed(label: string, entry: TrackerActivityLike, t: TrackerTranslator): string {
   if (entry.oldValue !== undefined && entry.newValue !== undefined) {
-    return `changed ${label} from ${quoted(entry.oldValue)} to ${quoted(entry.newValue)}`;
+    return t('activity.changed_from', { field: label, oldValue: quoted(entry.oldValue), newValue: quoted(entry.newValue) });
   }
-  if (entry.newValue !== undefined) return `changed ${label} to ${quoted(entry.newValue)}`;
-  return `updated ${label}`;
+  if (entry.newValue !== undefined) return t('activity.changed_to', { field: label, newValue: quoted(entry.newValue) });
+  return t('activity.updated', { field: label });
 }
 
-export function formatTrackerActivity(entry: TrackerActivityLike): string {
-  if (entry.action === 'created') return 'created this item';
-  if (entry.action === 'commented') return 'added a comment';
+export function formatTrackerActivity(entry: TrackerActivityLike, t: TrackerTranslator): string {
+  if (entry.action === 'created') return t('activity.created');
+  if (entry.action === 'commented') return t('activity.commented');
   if (entry.action === 'comment_updated') {
     if (entry.oldValue !== undefined && entry.newValue !== undefined) {
-      return `edited a comment from ${quoted(entry.oldValue)} to ${quoted(entry.newValue)}`;
+      return t('activity.comment_updated_from', { oldValue: quoted(entry.oldValue), newValue: quoted(entry.newValue) });
     }
-    return 'edited a comment';
+    return t('activity.comment_updated');
   }
   if (entry.action === 'comment_deleted') {
-    return entry.oldValue !== undefined ? `deleted comment ${quoted(entry.oldValue)}` : 'deleted a comment';
+    return entry.oldValue !== undefined
+      ? t('activity.comment_deleted_value', { oldValue: quoted(entry.oldValue) })
+      : t('activity.comment_deleted');
   }
   if (entry.action === 'archived') {
-    return entry.newValue === 'true' ? 'archived this item' : 'unarchived this item';
+    return entry.newValue === 'true' ? t('activity.archived') : t('activity.unarchived');
   }
-  if (entry.action === 'status_changed') return changed('status', entry);
-  if (entry.action === 'type_changed') return changed('type', entry);
-  if (entry.field) return changed(entry.field, entry);
+  if (entry.action === 'status_changed') return changed(t('activity.field_status'), entry, t);
+  if (entry.action === 'type_changed') return changed(t('activity.field_type'), entry, t);
+  if (entry.field) return changed(entry.field, entry, t);
   return entry.action.replace(/_/g, ' ');
 }

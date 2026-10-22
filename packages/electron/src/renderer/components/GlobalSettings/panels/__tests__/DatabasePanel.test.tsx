@@ -1,8 +1,26 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { migrationPhaseTranslationKey } from '../database/MigrationProgressViews';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function render(tree: React.ReactElement) {
+  return testingLibraryRender(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        <Provider store={store}>{children}</Provider>
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
@@ -108,11 +126,7 @@ function installMigrationApi(activeBackend: Backend, recovery: RecoveryFixtures 
 }
 
 function renderPanel() {
-  return render(
-    <Provider store={store}>
-      <DatabasePanel />
-    </Provider>,
-  );
+  return render(<DatabasePanel />);
 }
 
 function resetRecoveryAtoms() {
@@ -126,7 +140,7 @@ function resetRecoveryAtoms() {
 describe('DatabasePanel dry-run eligibility', () => {
   it('shows the durable partial-history warning after restart without an operation snapshot', async () => {
     installMigrationApi('sqlite', { historyRowsQuarantined: 2 });
-    render(<Provider store={store}><DatabasePanel /></Provider>);
+    render(<DatabasePanel />);
     expect(await screen.findByText(/Migration completed with 2 document-history entries omitted/)).toBeTruthy();
     expect(screen.getByText(/original data is retained in a local recovery record/)).toBeTruthy();
   });
@@ -356,5 +370,17 @@ describe('migration operation hydration', () => {
     await act(async () => { hydrateMigrationOperation(operation); });
     expect(store.get(dbMigrationOperationAtom)?.revision).toBe(6);
     expect(invoke).not.toHaveBeenCalledWith('db:migration:dry-run');
+  });
+});
+
+describe('migration phase translation keys', () => {
+  it('keeps hyphenated phase ids and resolves the underscore resource keys', () => {
+    expect(migrationPhaseTranslationKey('rebuilding-fts')).toBe('database.phase.rebuilding_fts');
+    expect(migrationPhaseTranslationKey('verifying-counts')).toBe('database.phase.verifying_counts');
+    expect(migrationPhaseTranslationKey('verifying-spot-check')).toBe('database.phase.verifying_spot_check');
+    expect(migrationPhaseTranslationKey('verifying-integrity')).toBe('database.phase.verifying_integrity');
+    expect(migrationPhaseTranslationKey('verifying-foreign-keys')).toBe('database.phase.verifying_foreign_keys');
+    expect(migrationPhaseTranslationKey('preparing')).toBe('database.phase.preparing');
+    expect(migrationPhaseTranslationKey(undefined)).toBe('database.phase.preparing');
   });
 });

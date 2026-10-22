@@ -10,6 +10,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type {
   DecisionBlockSource,
   DecisionSelectTally,
@@ -138,6 +139,7 @@ export const DecisionConfirm: React.FC<ConfirmProps> = ({
   members,
   myAnswer,
 }) => {
+  const { t } = useTranslation('editor');
   const value = draft?.type === 'confirm' ? draft.value : null;
   const mine = myAnswer?.type === 'confirm' ? myAnswer.value : null;
   const total = tally ? tally.yesVoterIds.length + tally.noVoterIds.length : 0;
@@ -174,8 +176,8 @@ export const DecisionConfirm: React.FC<ConfirmProps> = ({
 
   return (
     <div className="decision-rows" role="radiogroup" data-checked={value === null ? 'unanswered' : value}>
-      {row(true, 'Yes')}
-      {row(false, 'No')}
+      {row(true, t('decision.confirm.yes'))}
+      {row(false, t('decision.confirm.no'))}
     </div>
   );
 };

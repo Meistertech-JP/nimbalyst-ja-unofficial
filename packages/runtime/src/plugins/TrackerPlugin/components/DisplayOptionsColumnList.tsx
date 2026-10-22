@@ -5,6 +5,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TrackerColumnDef, TypeColumnConfig } from './trackerColumns';
 
 interface DisplayOptionsColumnListProps {
@@ -18,6 +19,7 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
   config,
   onConfigChange,
 }) => {
+  const { t } = useTranslation('tracker');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -88,7 +90,7 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
     <div className="display-options-column-list" data-testid="tracker-display-options-columns">
       {/* Visible columns (drag-reorderable) */}
       <div className="px-3 py-2 border-b border-[var(--nim-border)]">
-        <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">Display properties</span>
+        <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">{t('display.properties')}</span>
         <div className="mt-1.5 space-y-0.5">
           {visibleColumns.map(col => (
             <div
@@ -103,7 +105,7 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
               } ${draggedId === col.id ? 'opacity-50' : ''}`}
             >
               {col.id !== 'title' && (
-                <button type="button" aria-label={`Reorder ${col.label}`} title="Drag or use the arrow keys to reorder" className="text-[var(--nim-text-faint)] cursor-grab" onKeyDown={event => {
+                <button type="button" aria-label={t('display.reorder_column', { column: col.label })} title={t('display.reorder_hint')} className="text-[var(--nim-text-faint)] cursor-grab" onKeyDown={event => {
                   if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
                   event.preventDefault();
                   const visible = [...config.visibleColumns];
@@ -118,10 +120,10 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
               {col.id !== 'title' && (
                 <button
                   type="button"
-                  aria-label={`Hide ${col.label}`}
+                  aria-label={t('display.hide_named_column', { column: col.label })}
                   onClick={() => toggleColumn(col.id)}
                   className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] transition-colors"
-                  title="Hide column"
+                  title={t('display.hide_column')}
                 >
                   <span className="material-symbols-outlined text-[14px]">visibility</span>
                 </button>
@@ -134,19 +136,19 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
       {/* Hidden columns */}
       {hiddenColumns.length > 0 && (
         <div className="px-3 py-2">
-          <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">Hidden</span>
+          <span className="text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-wide">{t('display.hidden')}</span>
           <div className="mt-1.5 space-y-0.5">
             {hiddenColumns.map(col => (
               <button
                 key={col.id}
                 type="button"
-                aria-label={`Show ${col.label}`}
+                aria-label={t('display.show_named_column', { column: col.label })}
                 className="flex w-full items-center gap-2 px-1.5 py-1 rounded text-left text-xs hover:bg-[var(--nim-bg-hover)] cursor-pointer"
                 onClick={() => toggleColumn(col.id)}
               >
                 <span className="material-symbols-outlined text-[14px] text-[var(--nim-text-faint)]">visibility_off</span>
                 <span className="flex-1 text-[var(--nim-text-faint)]">{col.label}</span>
-                <span className="text-[10px] text-[var(--nim-primary)]">Show</span>
+                <span className="text-[10px] text-[var(--nim-primary)]">{t('display.show')}</span>
               </button>
             ))}
           </div>

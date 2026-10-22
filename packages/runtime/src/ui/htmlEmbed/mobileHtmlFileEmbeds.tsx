@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { EmbedFrameProps } from '../../editor/plugins/EmbedPlugin/EmbedPluginCallbacks';
 import { setEmbedPluginCallbacks } from '../../editor/plugins/EmbedPlugin/EmbedPluginCallbacks';
@@ -56,7 +57,7 @@ export function createEmbedFileRequests(send: (requestId: number, src: string) =
       const settle = pending.get(requestId);
       if (!settle) return;
       pending.delete(requestId);
-      settle(typeof content === 'string' ? { text: content, error: null } : { text: null, error: error || 'File not found' });
+      settle(typeof content === 'string' ? { text: content, error: null } : { text: null, error: error || '' });
     },
   };
 }
@@ -71,6 +72,7 @@ export function installMobileHtmlEmbeds(host: MobileHtmlEmbedHost): MobileHtmlEm
   const requests = createEmbedFileRequests((id, src) => host.requestFile(id, src));
 
   const MobileHtmlFileEmbed: React.FC<EmbedFrameProps> = ({ src, label, attrs }) => {
+    const { t } = useTranslation('aichat');
     const [result, setResult] = useState<FileResult | null>(null);
     // The mobile apps are dark only.
     const theme = useMemo(() => readHtmlEmbedTheme('dark'), []);
@@ -92,10 +94,10 @@ export function installMobileHtmlEmbeds(host: MobileHtmlEmbedHost): MobileHtmlEm
     return (
       <div className="mobile-html-embed" contentEditable={false} data-embed-src={src}>
         {result === null ? (
-          <div className="mobile-html-embed__placeholder">Loading {label || src}…</div>
+          <div className="mobile-html-embed__placeholder">{t('mobile_html_embed.loading', { label: label || src })}</div>
         ) : result.error !== null ? (
           <div className="mobile-html-embed__placeholder mobile-html-embed__placeholder--error">
-            <span>{result.error}</span>
+            <span>{result.error || t('visual.file_not_found', { path: src })}</span>
             <code>{src}</code>
           </div>
         ) : (

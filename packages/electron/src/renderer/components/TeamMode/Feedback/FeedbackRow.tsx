@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import type { FeedbackListRowView, FeedbackListStatus } from './feedbackListModel';
@@ -27,6 +28,8 @@ export function FeedbackRow({
   selected: boolean;
   onSelect: (requestId: string) => void;
 }) {
+  const { t } = useTranslation('feedback');
+  const progress = /^(\d+)\/(\d+) responded$/.exec(row.progressLabel);
   return (
     <button
       type="button"
@@ -70,21 +73,23 @@ export function FeedbackRow({
             className={`feedback-row-status rounded-full px-2 text-[10px] font-bold uppercase leading-4 tracking-wide ${STATUS_CLASS[row.status]}`}
             data-testid="feedback-row-status"
           >
-            {row.statusLabel}
+            {t(`list.status.${row.status}`)}
           </span>
           <span className="feedback-row-progress flex items-center gap-1 text-[11px] text-[var(--nim-text-faint)]">
             <MaterialSymbol
               icon={row.awaitingFirstResponse ? 'schedule' : 'check'}
               size={11}
             />
-            {row.progressLabel}
+            {progress
+              ? t('list.progress', { answered: progress[1], total: progress[2] })
+              : row.progressLabel}
           </span>
           {row.needsViewerResponse && (
             <span
               className="feedback-row-needs-response rounded-full bg-[color-mix(in_srgb,var(--nim-primary)_18%,transparent)] px-2 text-[10px] font-semibold leading-4 text-[var(--nim-primary)]"
               data-testid="feedback-row-needs-response"
             >
-              Your answer
+              {t('list.yourAnswer')}
             </span>
           )}
         </span>

@@ -118,8 +118,16 @@ export function createCollaborationContext(args: {
       if (outcome.ok) return;
       const detail = outcome.error instanceof Error ? outcome.error.message : String(outcome.error ?? '');
       errorNotificationService.showWarning(
-        'Shared document seed not confirmed',
-        'The initial shared content was not confirmed by the server. Re-upload the local source before teammates rely on this document.',
+        errorNotificationService.getLocalizedText(
+          'editor',
+          'collab.seed_not_confirmed',
+          'Shared document seed not confirmed',
+        ),
+        errorNotificationService.getLocalizedText(
+          'editor',
+          'collab.seed_not_confirmed_message',
+          'The initial shared content was not confirmed by the server. Re-upload the local source before teammates rely on this document.',
+        ),
         { details: detail || undefined, duration: 10000 },
       );
     },

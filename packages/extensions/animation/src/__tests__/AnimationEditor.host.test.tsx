@@ -1,6 +1,9 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { UiLanguageProvider } from "@nimbalyst/i18n/react";
 import { AnimationEditor } from "../components/AnimationEditor";
+import type { AnimationEditorProps } from "../components/AnimationEditor";
 
 const VALID_DOCUMENT = JSON.stringify({
   version: 1,
@@ -12,7 +15,10 @@ const VALID_DOCUMENT = JSON.stringify({
   ],
 });
 
-beforeAll(() => {
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  testI18n = await createI18nInstance("en");
   Object.defineProperty(globalThis, "CSS", {
     configurable: true,
     value: {
@@ -20,6 +26,14 @@ beforeAll(() => {
     },
   });
 });
+
+function renderEditor(host: AnimationEditorProps["host"]) {
+  return render(
+    <UiLanguageProvider i18n={testI18n} preference="en" systemLocale="en-US">
+      <AnimationEditor host={host} />
+    </UiLanguageProvider>,
+  );
+}
 
 interface HostWriteEdit {
   label: string;
@@ -145,18 +159,28 @@ afterEach(() => {
 describe("AnimationEditor host contract", () => {
   it("refuses to overwrite malformed source through the save callback", async () => {
     const harness = hostHarness({ content: "{ not valid JSON" });
-    const view = render(<AnimationEditor host={harness.host} />);
+    const view = renderEditor(harness.host);
 
     await waitFor(() =>
       expect(view.container.querySelector(".anim-badge-error")).not.toBeNull()
     );
+    await act(async () => {
+      await testI18n.changeLanguage("ja");
+    });
+    expect(
+      view.container.querySelector<HTMLElement>(".anim-badge-error")?.title
+    ).toContain("JSONが無効です");
+    await act(async () => {
+      await testI18n.changeLanguage("en");
+    });
+
     await expect(harness.requestSave()).rejects.toThrow(/parse errors/i);
     expect(harness.host.saveContent).not.toHaveBeenCalled();
   });
 
   it("keeps retiming inert while a host is read-only", async () => {
     const harness = hostHarness({ readOnly: true });
-    const view = render(<AnimationEditor host={harness.host} />);
+    const view = renderEditor(harness.host);
     await waitFor(() =>
       expect(view.container.querySelector(".anim-boundary")).not.toBeNull()
     );
@@ -193,7 +217,7 @@ describe("AnimationEditor host contract", () => {
 
   it("scopes playback shortcuts to the active animation editor", async () => {
     const harness = hostHarness();
-    const view = render(<AnimationEditor host={harness.host} />);
+    const view = renderEditor(harness.host);
     const playButton = await waitFor(() => {
       const button = view.container.querySelector(
         ".anim-tbtn-play"
@@ -213,6 +237,28 @@ describe("AnimationEditor host contract", () => {
     root.focus();
     fireEvent.keyDown(window, { code: "Space", key: " " });
     expect(playButton.title).toBe("Pause");
+  });
+
+  it("updates playback controls when the UI language changes", async () => {
+    const harness = hostHarness();
+    const view = renderEditor(harness.host);
+    const playButton = await waitFor(() => {
+      const button = view.container.querySelector(
+        ".anim-tbtn-play"
+      ) as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      return button!;
+    });
+
+    await act(async () => {
+      await testI18n.changeLanguage("ja");
+    });
+    expect(playButton.title).toBe("再生");
+    expect(view.container.querySelector("iframe")?.title).toBe("アニメーションプレビュー");
+
+    await act(async () => {
+      await testI18n.changeLanguage("en");
+    });
   });
 });
 
@@ -234,7 +280,7 @@ describe("export menu item", () => {
         value: { invoke },
       });
       const harness = hostHarness({ existingExport: null });
-      render(<AnimationEditor host={harness.host} />);
+      renderEditor(harness.host);
 
       await waitFor(() => expect(harness.menuItems.length).toBeGreaterThan(0));
       await act(async () => {
@@ -253,7 +299,7 @@ describe("export menu item", () => {
     // export of the same animation succeed, and nothing on screen would show
     // that it had regressed.
     const harness = hostHarness({ existingExport: { sha256: "abc123" } });
-    render(<AnimationEditor host={harness.host} />);
+    renderEditor(harness.host);
 
     await waitFor(() => expect(harness.menuItems.length).toBeGreaterThan(0));
     clickMenuItem(harness.menuItems, "Export as HTML…");
@@ -271,7 +317,7 @@ describe("export menu item", () => {
 
   it("requires the file not to exist when there is no prior export", async () => {
     const harness = hostHarness({ existingExport: null });
-    render(<AnimationEditor host={harness.host} />);
+    renderEditor(harness.host);
 
     await waitFor(() => expect(harness.menuItems.length).toBeGreaterThan(0));
     clickMenuItem(harness.menuItems, "Export as HTML…");
@@ -283,14 +329,14 @@ describe("export menu item", () => {
   it("registers nothing on a host that cannot honour it", async () => {
     // A menu entry that throws when clicked is worse than no menu entry.
     const noFs = hostHarness({ withFs: false });
-    render(<AnimationEditor host={noFs.host} />);
+    renderEditor(noFs.host);
     await waitFor(() => expect(noFs.host.registerEditorAPI).toHaveBeenCalled());
     expect(noFs.host.registerMenuItems).not.toHaveBeenCalled();
 
     const noCapability = hostHarness({
       supports: (capability) => capability !== "menuItems",
     });
-    render(<AnimationEditor host={noCapability.host} />);
+    renderEditor(noCapability.host);
     await waitFor(() =>
       expect(noCapability.host.registerEditorAPI).toHaveBeenCalled()
     );
@@ -300,14 +346,14 @@ describe("export menu item", () => {
   it("reports a failed write instead of claiming success", async () => {
     const harness = hostHarness({ existingExport: null });
     harness.fsWrite.mockRejectedValueOnce(new Error("Disk is full"));
-    const view = render(<AnimationEditor host={harness.host} />);
+    const view = renderEditor(harness.host);
 
     await waitFor(() => expect(harness.menuItems.length).toBeGreaterThan(0));
     clickMenuItem(harness.menuItems, "Export as HTML…");
 
     await waitFor(() =>
       expect(view.container.querySelector(".anim-badge-error")?.textContent).toBe(
-        "Disk is full"
+        "Export failed: Disk is full"
       )
     );
   });
@@ -340,7 +386,7 @@ describe("htmlFile partials", () => {
       content: DOC_WITH_PARTIAL,
       partials: { "/workspace/parts/card.html": "<b>hello {{who}}</b>" },
     });
-    const view = render(<AnimationEditor host={harness.host} />);
+    const view = renderEditor(harness.host);
 
     await waitFor(() =>
       expect(harness.fsRead).toHaveBeenCalledWith(["/workspace/parts/card.html"])
@@ -358,7 +404,7 @@ describe("htmlFile partials", () => {
     // Without this the parts just draw nothing, which is indistinguishable from
     // markup that is simply wrong.
     const harness = hostHarness({ content: DOC_WITH_PARTIAL, withFs: false });
-    const view = render(<AnimationEditor host={harness.host} />);
+    const view = renderEditor(harness.host);
     await waitFor(() =>
       expect(view.container.textContent).toContain("1 warning")
     );
@@ -366,7 +412,7 @@ describe("htmlFile partials", () => {
 
   it("reports an unreadable partial as a warning rather than failing to open", async () => {
     const harness = hostHarness({ content: DOC_WITH_PARTIAL, partials: {} });
-    const view = render(<AnimationEditor host={harness.host} />);
+    const view = renderEditor(harness.host);
 
     await waitFor(() =>
       expect(view.container.textContent).toContain("1 warning")

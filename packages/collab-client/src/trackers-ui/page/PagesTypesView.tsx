@@ -6,6 +6,7 @@
  * which view shows: the web console in the URL, the desktop in the tab.
  */
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
 import { getRecordTitle } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
@@ -32,12 +33,13 @@ export interface PagesTypesViewProps {
   renderTypeActions?: (typeId: string) => React.ReactNode;
 }
 
-const VIEWS: ReadonlyArray<{ id: PagesTypesViewMode; label: string; icon: string }> = [
-  { id: 'map', label: 'Map', icon: 'hub' },
-  { id: 'table', label: 'Table', icon: 'table_rows' },
+const VIEWS: ReadonlyArray<{ id: PagesTypesViewMode; icon: string }> = [
+  { id: 'map', icon: 'hub' },
+  { id: 'table', icon: 'table_rows' },
 ];
 
 export function PagesTypesView({ lane, title, typePlacements, view, onViewChange, onOpenType, renderNewType, renderTypeActions }: PagesTypesViewProps): React.JSX.Element {
+  const { t } = useTranslation('tracker');
   const records = useTrackerDataSelector((store) => store.records);
   const [registryRevision, setRegistryRevision] = useState(0);
   useEffect(() => globalRegistry.onChange(() => setRegistryRevision((value) => value + 1)), []);
@@ -56,7 +58,7 @@ export function PagesTypesView({ lane, title, typePlacements, view, onViewChange
   const rows = useMemo(() => (view === 'table'
     ? buildPagesTypeTable({ types, items, placedTypeIds: new Set(typePlacements.map((placement) => placement.typeId)) })
     : []), [view, types, items, typePlacements]);
-  const sectionName = lane === 'team' ? 'Team' : 'Personal';
+  const sectionName = lane === 'team' ? t('pages_types.team') : t('pages_types.personal');
 
   return (
     <div className="pages-types-view flex h-full min-h-0 flex-col bg-nim" data-testid="pages-types-view" data-lane={lane} data-view={view}>
@@ -65,10 +67,10 @@ export function PagesTypesView({ lane, title, typePlacements, view, onViewChange
           <MaterialSymbol icon="category" size={18} className="text-nim-muted" />
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-[13px] font-medium text-nim">{title ?? sectionName}</span>
-            <span className="truncate text-[11px] text-nim-faint">{`Types · ${types.length}`}</span>
+            <span className="truncate text-[11px] text-nim-faint">{t('pages_types.types_count', { count: types.length })}</span>
           </div>
         </div>
-        <div className="pages-types-switch mx-auto flex items-center rounded-md border border-nim p-0.5" role="tablist" aria-label="Types view">
+        <div className="pages-types-switch mx-auto flex items-center rounded-md border border-nim p-0.5" role="tablist" aria-label={t('pages_types.view_aria')}>
           {VIEWS.map((entry) => (
             <button
               key={entry.id}
@@ -80,7 +82,7 @@ export function PagesTypesView({ lane, title, typePlacements, view, onViewChange
               onClick={() => onViewChange(entry.id)}
             >
               <MaterialSymbol icon={entry.icon} size={14} />
-              {entry.label}
+              {t(`pages_types.${entry.id}`)}
             </button>
           ))}
         </div>
@@ -91,14 +93,14 @@ export function PagesTypesView({ lane, title, typePlacements, view, onViewChange
             onClick={() => setCreating(true)}
           >
             <MaterialSymbol icon="add" size={15} />
-            New type...
+            {t('pages_types.new_type')}
           </button>
         )}
       </header>
       <div className="pages-types-body min-h-0 flex-1 overflow-auto">
         {types.length === 0 ? (
           <p className="m-0 px-6 py-10 text-center text-[13px] text-nim-muted">
-            {`${sectionName} has no page types yet. A type gives pages the same fields, and its page lists them as a table.`}
+            {t('pages_types.empty', { section: sectionName })}
           </p>
         ) : model ? (
           <div className="h-full p-3">
@@ -124,18 +126,19 @@ function PagesTypesTable({ rows, onOpenType, renderTypeActions }: {
   onOpenType: PagesTypesViewProps['onOpenType'];
   renderTypeActions?: PagesTypesViewProps['renderTypeActions'];
 }) {
+  const { t } = useTranslation('tracker');
   const cell = 'px-2 py-2 align-top';
   return (
     <table className="pages-types-table w-full table-fixed border-collapse text-[13px] select-text">
       <thead>
         <tr className="sticky top-0 z-10 border-b border-nim bg-nim text-left text-[11px] uppercase tracking-wide text-nim-muted">
-          <th className="py-1.5 pl-4 pr-2 font-medium">Type</th>
-          <th className="w-[160px] px-2 py-1.5 font-medium">Extends</th>
-          <th className="w-[80px] px-2 py-1.5 text-right font-medium">Pages</th>
-          <th className="w-[80px] px-2 py-1.5 text-right font-medium">Fields</th>
-          <th className="w-[90px] px-2 py-1.5 text-right font-medium">Relations</th>
-          <th className="w-[80px] py-1.5 pl-2 pr-4 font-medium">In tree</th>
-          {renderTypeActions && <th className="w-[150px] py-1.5 pl-2 pr-4" aria-label="Actions" />}
+          <th className="py-1.5 pl-4 pr-2 font-medium">{t('pages_types.type')}</th>
+          <th className="w-[160px] px-2 py-1.5 font-medium">{t('pages_types.extends')}</th>
+          <th className="w-[80px] px-2 py-1.5 text-right font-medium">{t('pages_types.pages')}</th>
+          <th className="w-[80px] px-2 py-1.5 text-right font-medium">{t('pages_types.fields')}</th>
+          <th className="w-[90px] px-2 py-1.5 text-right font-medium">{t('pages_types.relations')}</th>
+          <th className="w-[80px] py-1.5 pl-2 pr-4 font-medium">{t('pages_types.in_tree')}</th>
+          {renderTypeActions && <th className="w-[150px] py-1.5 pl-2 pr-4" aria-label={t('pages_types.actions')} />}
         </tr>
       </thead>
       <tbody>
@@ -161,7 +164,7 @@ function PagesTypesTable({ rows, onOpenType, renderTypeActions }: {
               <td className={`${cell} text-right tabular-nums text-nim-muted`}>{row.pages}</td>
               <td className={`${cell} text-right tabular-nums text-nim-muted`}>{row.fields}</td>
               <td className={`${cell} text-right tabular-nums text-nim-muted`}>{row.relations}</td>
-              <td className={`${cell} pr-4 text-nim-muted`}>{row.placed ? 'Yes' : ''}</td>
+              <td className={`${cell} pr-4 text-nim-muted`}>{row.placed ? t('pages_types.yes') : ''}</td>
               {renderTypeActions && (
                 // A control in the row must not also open the type.
                 <td className={`${cell} pr-4 text-right`} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>

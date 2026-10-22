@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import { resources } from '@nimbalyst/i18n/resources';
 
 const { registrations, refresh } = vi.hoisted(() => ({ registrations: [] as any[], refresh: vi.fn() }));
 vi.mock('../../../contexts/DialogContext', () => ({ registerDialog: (config: any) => registrations.push(config) }));
@@ -15,10 +18,30 @@ import { SessionImportDialog } from '../SessionImportDialog';
 import { registerDataDialogs } from '../../../dialogs/dataDialogs';
 import { DIALOG_IDS } from '../../../dialogs/registry';
 
+const testI18n = createInstance();
+const testI18nReady = testI18n.init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'dialogs',
+  interpolation: { escapeValue: false },
+});
+
+function render(ui: React.ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider>,
+  });
+}
+
 const summaries = ['claude-code', 'openai-codex'].map(providerId => ({
   providerId, sessionId: 'same-id', workspacePath: '/workspace', title: providerId,
   createdAt: 100, updatedAt: 100, messageCount: 1, tokenUsage: { totalTokens: 2 }, syncStatus: 'new',
 }));
+beforeEach(async () => {
+  await testI18nReady;
+  await testI18n.changeLanguage('en');
+});
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 it('does no closed-dialog scan, then imports only the selected provider identity through the mounted caller while follow is off', async () => {

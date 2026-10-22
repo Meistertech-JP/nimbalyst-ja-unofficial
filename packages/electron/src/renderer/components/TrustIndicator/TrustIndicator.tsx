@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   workspacePermissionsAtomFamily,
@@ -15,7 +16,21 @@ import {
 } from '../../store/atoms/appSettings';
 import { permissionsChangedVersionAtom } from '../../store/atoms/permissions';
 import { HelpTooltip } from '../../help';
-import { getProjectTrustPresentation } from '../ProjectTrustToast/projectTrustChoices';
+import { getProjectTrustPresentation, type ProjectTrustChoice } from '../ProjectTrustToast/projectTrustChoices';
+
+const PROJECT_TRUST_CHOICE_LABEL_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified',
+  'allow-everything': 'trust_toast.choice_allow_everything',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only',
+  'ask-every-time': 'trust_toast.choice_ask_every_time',
+} as const satisfies Record<ProjectTrustChoice, string>;
+
+const PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS = {
+  'agent-verified': 'trust_toast.choice_agent_verified_description',
+  'allow-everything': 'trust_toast.choice_allow_everything_description',
+  'allow-edits-only': 'trust_toast.choice_allow_edits_only_description',
+  'ask-every-time': 'trust_toast.choice_ask_every_time_description',
+} as const satisfies Record<ProjectTrustChoice, string>;
 
 export interface TrustStatus {
   trustedAt?: number;
@@ -34,6 +49,7 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
   onOpenSettings,
   onChangeMode,
 }) => {
+  const { t } = useTranslation('project');
   const [menuOpen, setMenuOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -215,12 +231,14 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
 
   const getStatusLabel = (): string => {
     if (!status || loading) {
-      return 'Loading trust status...';
+      return t('trust_indicator.loading');
     }
     if (currentPresentation) {
-      return `${currentPresentation.label} mode`;
+      return t('trust_indicator.mode', {
+        mode: t(PROJECT_TRUST_CHOICE_LABEL_KEYS[currentPresentation.choice]),
+      });
     }
-    return 'Workspace not trusted for agent';
+    return t('trust_indicator.untrusted');
   };
 
   const getStatusDescription = (): string => {
@@ -228,9 +246,9 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
       return '';
     }
     if (currentPresentation) {
-      return currentPresentation.description;
+      return t(PROJECT_TRUST_CHOICE_DESCRIPTION_KEYS[currentPresentation.choice]);
     }
-    return 'Trust this workspace to allow the AI agent to run commands.';
+    return t('permissions.untrusted_desc');
   };
 
   return (
@@ -276,14 +294,14 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
           `}</style>
           <div className="trust-menu-header flex items-center justify-between px-3 pt-3 pb-2">
             <span className="trust-menu-title text-[13px] font-semibold text-[var(--nim-text)]">
-              Agent Permissions
+              {t('permissions.title')}
             </span>
           </div>
 
           {/* Current mode - prominent display */}
           <div className={`trust-menu-current-mode ${getStatusClass()} ${getCurrentModeClasses()}`}>
             <div className="trust-menu-current-mode-label text-[11px] font-medium text-[var(--nim-text-faint)] uppercase tracking-[0.5px] mb-1.5">
-              Current mode:
+              {t('trust_indicator.current_mode')}
             </div>
             <div className={`trust-menu-current-mode-value flex items-center gap-2 text-sm font-semibold mb-1 ${getModeValueColorClass()}`}>
               <MaterialSymbol
@@ -291,7 +309,9 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
                 size={20}
               />
               <span>
-                {currentPresentation?.label ?? 'Not Trusted'}
+                {currentPresentation
+                  ? t(PROJECT_TRUST_CHOICE_LABEL_KEYS[currentPresentation.choice])
+                  : t('trust_indicator.not_trusted')}
               </span>
             </div>
             <div className="trust-menu-current-mode-description text-xs text-[var(--nim-text-muted)] leading-[1.4]">
@@ -301,7 +321,7 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
 
           {status?.trustedAt && (
             <div className="trust-menu-date px-3 pb-2 text-[11px] text-[var(--nim-text-faint)]">
-              Trusted {new Date(status.trustedAt).toLocaleDateString()}
+              {t('trust_indicator.trusted_on', { date: new Date(status.trustedAt).toLocaleDateString() })}
             </div>
           )}
 
@@ -314,7 +334,7 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
                 role="menuitem"
               >
                 <MaterialSymbol icon="swap_horiz" size={18} className="text-[var(--nim-text-muted)]" />
-                <span>Change permission mode</span>
+                <span>{t('trust_indicator.change_mode')}</span>
               </button>
             <button
               className="trust-menu-action flex items-center gap-2 w-full p-2 border-none bg-transparent text-[var(--nim-text)] text-[13px] font-inherit text-left rounded cursor-pointer transition-colors duration-100 hover:bg-[var(--nim-bg-hover)]"
@@ -322,7 +342,7 @@ export const TrustIndicator: React.FC<TrustIndicatorProps> = ({
               role="menuitem"
             >
               <MaterialSymbol icon="settings" size={18} className="text-[var(--nim-text-muted)]" />
-              <span>Permission settings</span>
+              <span>{t('trust_indicator.settings')}</span>
             </button>
           </div>
         </div>

@@ -8,6 +8,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Provider, createStore } from 'jotai';
 
 const dialog = vi.hoisted(() => ({ onRestore: null as null | ((content: string) => Promise<void> | void) }));
+const getLocalizedText = vi.hoisted(() => vi.fn((namespace: string, key: string, fallback: string) =>
+  namespace === 'dialogs' && key === 'history.restore_failed_title' ? '復元に失敗しました' : fallback,
+));
 vi.mock('../HistoryDialog', () => ({
   HistoryDialog: (props: { onRestore: (content: string) => Promise<void> }) => {
     dialog.onRestore = props.onRestore;
@@ -16,7 +19,7 @@ vi.mock('../HistoryDialog', () => ({
 }));
 vi.mock('../CollabHistoryDialog', () => ({ CollabHistoryDialog: () => null }));
 const showError = vi.hoisted(() => vi.fn());
-vi.mock('../../../services/ErrorNotificationService', () => ({ errorNotificationService: { showError } }));
+vi.mock('../../../services/ErrorNotificationService', () => ({ errorNotificationService: { showError, getLocalizedText } }));
 
 import { GlobalHistoryDialog } from '../GlobalHistoryDialog';
 import { historyDialogFileAtom } from '../../../store';
@@ -70,7 +73,8 @@ describe('GlobalHistoryDialog restore', () => {
     render(<Provider store={store}><GlobalHistoryDialog theme="light" workspacePath="/ws" /></Provider>);
 
     await dialog.onRestore!('# Old');
-    expect(showError).toHaveBeenCalledWith('Version not restored', expect.stringMatching(/changed while restoring/));
+    expect(getLocalizedText).toHaveBeenCalledWith('dialogs', 'history.restore_failed_title', 'Restore failed');
+    expect(showError).toHaveBeenCalledWith('復元に失敗しました', expect.stringMatching(/changed while restoring/));
   });
 
   it('still writes an ordinary file path to disk', async () => {

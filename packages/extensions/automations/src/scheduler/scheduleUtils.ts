@@ -168,22 +168,35 @@ function formatDayList(days: DayOfWeek[]): string {
 /**
  * Format a relative time string (e.g., "2h ago", "in 5 min").
  */
-export function formatRelativeTime(date: Date | string, now: Date = new Date()): string {
+export function formatRelativeTime(
+  date: Date | string,
+  now: Date = new Date(),
+  translate: (key: string, count?: number) => string,
+): string {
   const target = typeof date === 'string' ? new Date(date) : date;
   const diffMs = target.getTime() - now.getTime();
   const absDiff = Math.abs(diffMs);
   const isFuture = diffMs > 0;
-
-  if (absDiff < 60_000) return isFuture ? 'in <1 min' : 'just now';
+  if (absDiff < 60_000) return isFuture
+    ? translate('in_less_than_minute')
+    : translate('just_now');
   if (absDiff < 3600_000) {
     const mins = Math.round(absDiff / 60_000);
-    return isFuture ? `in ${mins} min` : `${mins}m ago`;
+    return isFuture
+      ? translate('in_minutes', mins)
+      : translate('minutes_ago', mins);
   }
   if (absDiff < 86_400_000) {
     const hours = Math.round(absDiff / 3600_000);
-    return isFuture ? `in ${hours}h` : `${hours}h ago`;
+    return isFuture
+      ? translate('in_hours', hours)
+      : translate('hours_ago', hours);
   }
   const days = Math.round(absDiff / 86_400_000);
-  if (days === 1) return isFuture ? 'Tomorrow' : 'Yesterday';
-  return isFuture ? `in ${days} days` : `${days}d ago`;
+  if (days === 1) return isFuture
+    ? translate('tomorrow')
+    : translate('yesterday');
+  return isFuture
+    ? translate('in_days', days)
+    : translate('days_ago', days);
 }

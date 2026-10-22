@@ -114,6 +114,7 @@ import {
   setSessionTagsAtom,
 } from '../../store/atoms/sessionKanban';
 import { defaultAgentModelAtom } from '../../store/atoms/appSettings';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface AgentWorkstreamPanelRef {
   closeActiveTab: () => void;
@@ -140,34 +141,26 @@ export interface AgentWorkstreamPanelProps {
 
 const pairedChatCreationPromises = new Map<string, Promise<string | null>>();
 
-function sessionMentionDraft(sessionId: string, sessionTitle: string): string {
-  const safeTitle = (sessionTitle.trim() || 'Session')
-    .replace(/[\r\n[\]]+/g, ' ')
-    .trim();
-  return `Regarding @@[${safeTitle}](${sessionId}): `;
-}
-
 async function createPairedStandardChat({
   workspacePath,
-  targetSessionId,
-  targetSessionTitle,
+  draft,
+  newSessionTitle,
   defaultModel,
 }: {
   workspacePath: string;
-  targetSessionId: string;
-  targetSessionTitle: string;
+  draft: string;
+  newSessionTitle: string;
   defaultModel: string | null;
 }): Promise<string | null> {
   const chatSessionId = crypto.randomUUID();
   const modelId = defaultModel ? ModelIdentifier.tryParse(defaultModel) : null;
   const provider = modelId?.provider || 'claude-code';
-  const cleanTitle = targetSessionTitle.trim() || 'Session';
   const result = await window.electronAPI.invoke('sessions:create', {
     session: {
       id: chatSessionId,
       provider,
       model: defaultModel,
-      title: `Chat with ${cleanTitle}`.slice(0, 120),
+      title: newSessionTitle.slice(0, 120),
     },
     workspaceId: workspacePath,
   });
@@ -178,7 +171,7 @@ async function createPairedStandardChat({
     await window.electronAPI.invoke(
       'sessions:update-draft-input',
       chatSessionId,
-      sessionMentionDraft(targetSessionId, cleanTitle),
+      draft,
     );
   } catch (error) {
     // The session already exists. Preserve its pairing even if draft seeding
@@ -199,6 +192,7 @@ const TAG_PILL_CLASS = "group flex items-center gap-0.5 text-[10px] font-medium 
 const TAG_OVERFLOW_PILL_CLASS = "flex items-center gap-0.5 text-[10px] font-medium leading-none px-1.5 py-0.5 rounded-full whitespace-nowrap cursor-pointer text-nim-faint bg-[color-mix(in_srgb,var(--nim-text)_8%,transparent)] hover:bg-[color-mix(in_srgb,var(--nim-text)_14%,transparent)] border-none";
 
 const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstreamId }) => {
+  const { t } = useTranslation('agents');
   const tags = useAtomValue(workstreamTagsAtom(workstreamId));
   const allTags = useAtomValue(sessionKanbanTagsAtom);
   const registry = useAtomValue(sessionRegistryAtom);
@@ -343,7 +337,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
           ref={tagInputRef}
           type="text"
           className="text-[10px] leading-none py-0.5 px-1.5 rounded-full border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] outline-none w-[80px]"
-          placeholder="add tag..."
+          placeholder={t('context.tag_input_placeholder')}
           value={tagInput}
           onChange={(e) => setTagInput(e.target.value)}
           onKeyDown={handleTagInputKeyDown}
@@ -375,7 +369,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
       <button
         className="flex items-center justify-center w-4 h-4 rounded-full border border-dashed border-[var(--nim-border)] bg-transparent cursor-pointer text-[var(--nim-text-faint)] hover:border-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)] transition-colors duration-100"
         onClick={() => setIsEditingTags(true)}
-        title="Add tag"
+        title={t('context.add_tag')}
       >
         <MaterialSymbol icon="add" size={10} />
       </button>
@@ -423,7 +417,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
           <button
             className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-3 h-3 rounded-full border-none bg-transparent cursor-pointer text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] transition-opacity duration-100"
             onClick={() => handleRemoveTag(tag)}
-            title={`Remove tag "${tag}"`}
+            title={t('context.remove_tag', { tag })}
           >
             <MaterialSymbol icon="close" size={10} />
           </button>
@@ -436,7 +430,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
             ref={overflowRefs.setReference}
             {...getOverflowReferenceProps()}
             className={TAG_OVERFLOW_PILL_CLASS}
-            title={`Show ${hiddenTags.length} more tag${hiddenTags.length === 1 ? '' : 's'}`}
+            title={t('context.show_more_tags', { count: hiddenTags.length })}
           >
             +{hiddenTags.length}
           </button>
@@ -457,7 +451,7 @@ const WorkstreamHeaderTagsRow: React.FC<{ workstreamId: string }> = ({ workstrea
                     <button
                       className="flex items-center justify-center w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] bg-transparent border-none cursor-pointer"
                       onClick={() => handleRemoveTag(tag)}
-                      title={`Remove tag "${tag}"`}
+          title={t('context.remove_tag', { tag })}
                     >
                       <MaterialSymbol icon="close" size={10} />
                     </button>
@@ -501,7 +495,9 @@ const WorkstreamHeader: React.FC<{
   onCreateNewTerminal?: () => void;
   onShowArchiveDialog?: () => void;
 }> = React.memo(({ workstreamId, workspacePath, activeSessionId, worktreeId, worktreePath, onArchiveStatusChange, onOpenTerminal, onCreateNewTerminal, onShowArchiveDialog }) => {
-  const title = useAtomValue(workstreamTitleAtom(workstreamId));
+  const { t } = useTranslation('agents');
+  const storedTitle = useAtomValue(workstreamTitleAtom(workstreamId));
+  const title = storedTitle || t('session_tabs.untitled');
   const isProcessing = useAtomValue(workstreamProcessingAtom(workstreamId));
   const sessionData = useAtomValue(sessionStoreAtom(workstreamId));
   const layoutMode = useAtomValue(workstreamLayoutModeAtom(workstreamId));
@@ -517,7 +513,7 @@ const WorkstreamHeader: React.FC<{
 
   // Inline editing state
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(title ?? '');
+  const [editValue, setEditValue] = useState(storedTitle ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Terminal button context menu state
@@ -572,18 +568,18 @@ const WorkstreamHeader: React.FC<{
   // Update edit value when title changes externally
   useEffect(() => {
     if (!isEditing) {
-      setEditValue(title ?? '');
+      setEditValue(storedTitle ?? '');
     }
-  }, [title, isEditing]);
+  }, [storedTitle, isEditing]);
 
   const handleTitleClick = useCallback(() => {
-    setEditValue(title ?? '');
+    setEditValue(storedTitle ?? '');
     setIsEditing(true);
-  }, [title]);
+  }, [storedTitle]);
 
   const handleRenameSubmit = useCallback(async () => {
     const trimmedValue = editValue.trim();
-    if (trimmedValue && trimmedValue !== title) {
+    if (trimmedValue && trimmedValue !== storedTitle) {
       try {
         const result = await window.electronAPI.invoke('sessions:update-metadata', workstreamId, { title: trimmedValue });
         if (result.success) {
@@ -598,7 +594,7 @@ const WorkstreamHeader: React.FC<{
       }
     }
     setIsEditing(false);
-  }, [editValue, title, workstreamId, updateSessionStore]);
+  }, [editValue, storedTitle, workstreamId, updateSessionStore]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     e.stopPropagation();
@@ -607,10 +603,10 @@ const WorkstreamHeader: React.FC<{
       handleRenameSubmit();
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      setEditValue(title ?? '');
+      setEditValue(storedTitle ?? '');
       setIsEditing(false);
     }
-  }, [handleRenameSubmit, title]);
+  }, [handleRenameSubmit, storedTitle]);
 
   const handleLayoutChange = useCallback((mode: WorkstreamLayoutMode) => {
     setLayoutMode({ workstreamId, mode });
@@ -618,10 +614,10 @@ const WorkstreamHeader: React.FC<{
 
   // Determine session type label for archive and pin buttons
   const getSessionTypeLabel = useCallback(() => {
-    if (worktreeId) return 'Worktree';
-    if (hasChildren) return 'Workstream';
-    return 'Session';
-  }, [worktreeId, hasChildren]);
+    if (worktreeId) return t('context.worktree');
+    if (hasChildren) return t('context.workstream');
+    return t('context.session');
+  }, [t, worktreeId, hasChildren]);
 
   // The header title stays the session title, so the chip shows the worktree's
   // own name (its directory/branch slug) — the one piece of worktree identity
@@ -701,7 +697,7 @@ const WorkstreamHeader: React.FC<{
             <h2
               className="workstream-header-title max-w-full m-0 text-sm font-semibold text-[var(--nim-text)] whitespace-nowrap overflow-hidden text-ellipsis leading-tight cursor-pointer py-0.5 px-1 rounded transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               onClick={handleTitleClick}
-              title="Click to rename"
+              title={t('context.click_to_rename')}
             >
               {title}
             </h2>
@@ -710,7 +706,7 @@ const WorkstreamHeader: React.FC<{
             {worktreeChipName && (
               <span
                 className="workstream-header-worktree-chip shrink-0 flex items-center gap-1 max-w-[14rem] px-1.5 py-px rounded text-[0.625rem] font-medium text-[var(--nim-text-muted)] bg-[var(--nim-bg-secondary)] whitespace-nowrap overflow-hidden text-ellipsis"
-                title={worktreePath ? `Worktree: ${worktreeChipName}\n${worktreePath}` : `Worktree: ${worktreeChipName}`}
+                title={worktreePath ? `${t('context.worktree')}: ${worktreeChipName}\n${worktreePath}` : `${t('context.worktree')}: ${worktreeChipName}`}
               >
                 <WorktreeIcon size={10} />
                 {worktreeChipName}
@@ -737,7 +733,7 @@ const WorkstreamHeader: React.FC<{
             className="workstream-terminal-btn w-8 h-8 flex items-center justify-center rounded text-[var(--nim-text-faint)] cursor-pointer border-none bg-transparent hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)] mr-2"
             onClick={onOpenTerminal}
             onContextMenu={handleTerminalContextMenu}
-            title="Open terminal in worktree"
+            title={t('context.open_terminal')}
           >
             <MaterialSymbol icon="terminal" size={20} />
           </button>
@@ -760,7 +756,7 @@ const WorkstreamHeader: React.FC<{
               onClick={handleNewTerminalClick}
             >
               <MaterialSymbol icon="add" size={18} />
-              <span>New Terminal</span>
+              <span>{t('context.add_terminal')}</span>
             </div>
           </div>
         )}
@@ -777,7 +773,8 @@ const WorkstreamHeader: React.FC<{
           }`}
           onClick={handlePinToggle}
           aria-pressed={isPinned}
-          title={`${isPinned ? 'Unpin' : 'Pin'} ${getSessionTypeLabel().toLowerCase()}`}
+          title={`${t(isPinned ? 'context.unpin' : 'context.pin')} ${getSessionTypeLabel()}`}
+          aria-label={`${t(isPinned ? 'context.unpin' : 'context.pin')} ${getSessionTypeLabel()}`}
         >
           <MaterialSymbol icon="push_pin" size={18} fill={isPinned} />
         </button>
@@ -786,10 +783,10 @@ const WorkstreamHeader: React.FC<{
         <button
           className="workstream-archive-button flex items-center gap-1.5 h-8 px-2 rounded text-[var(--nim-text-faint)] text-[11px] font-medium cursor-pointer border-none bg-transparent hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)]"
           onClick={isArchived ? handleUnarchive : handleArchive}
-          title={isArchived ? `Unarchive ${getSessionTypeLabel().toLowerCase()}` : `Archive ${getSessionTypeLabel().toLowerCase()}`}
+          title={t(isArchived ? 'context.unarchive_item' : 'context.archive_item', { type: getSessionTypeLabel() })}
         >
           <MaterialSymbol icon={isArchived ? 'unarchive' : 'archive'} size={18} />
-          <span>{isArchived ? `Unarchive ${getSessionTypeLabel()}` : `Archive ${getSessionTypeLabel()}`}</span>
+          <span>{t(isArchived ? 'context.unarchive_item' : 'context.archive_item', { type: getSessionTypeLabel() })}</span>
         </button>
 
       </div>
@@ -817,6 +814,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
   onSwitchToAgentMode,
   onOpenSessionInChat,
 }, ref) => {
+  const { t } = useTranslation('agents');
   // Ref to the workstream editor tabs for opening files
   const editorTabsRef = useRef<WorkstreamEditorTabsRef>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -867,7 +865,11 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
   const setSidebarWidth = useSetAtom(setFilesEditedWidthAtom);
   const chatTargetId = activeSessionId || (workstreamType === 'session' ? workstreamId : null);
   const chatTargetSession = useAtomValue(sessionStoreAtom(chatTargetId || '__no_chat_target__'));
-  const chatTargetTitle = chatTargetSession?.title || 'Session';
+  const chatTargetTitle = chatTargetSession?.title || t('session_tabs.untitled');
+  const safeChatTargetTitle = chatTargetTitle.trim().replace(/[\r\n[\]]+/g, ' ').trim();
+  const chatTargetMention = `@@[${safeChatTargetTitle}](${chatTargetId ?? ''})`;
+  const chatTargetDraft = t('panels.session_mention_draft', { mention: chatTargetMention });
+  const chatSessionTitle = t('panels.chat_with', { title: chatTargetTitle });
   const chatSessionId = chatTargetId ? sessionChatSessionIds[chatTargetId] ?? null : null;
   const [chatCreationError, setChatCreationError] = useState<string | null>(null);
   const [chatCreationAttempt, setChatCreationAttempt] = useState(0);
@@ -898,8 +900,8 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
     if (!creation) {
       creation = createPairedStandardChat({
         workspacePath,
-        targetSessionId: chatTargetId,
-        targetSessionTitle: chatTargetTitle,
+        draft: chatTargetDraft,
+        newSessionTitle: chatSessionTitle,
         defaultModel,
       });
       pairedChatCreationPromises.set(creationKey, creation);
@@ -916,7 +918,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
       .then((createdSessionId) => {
         if (!createdSessionId) {
           if (!cancelled) {
-            setChatCreationError('Could not open a chat for this session.');
+            setChatCreationError(t('panels.chat_failed'));
           }
           return;
         }
@@ -932,7 +934,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
       .catch((error) => {
         console.error('[AgentWorkstreamPanel] Failed to create paired chat:', error);
         if (!cancelled) {
-          setChatCreationError('Could not open a chat for this session.');
+          setChatCreationError(t('panels.chat_failed'));
         }
       });
 
@@ -941,8 +943,10 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
     };
   }, [
     chatCreationAttempt,
+    chatSessionTitle,
     chatSessionId,
     chatTargetId,
+    chatTargetDraft,
     chatTargetTitle,
     defaultModel,
     isActive,
@@ -950,6 +954,7 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
     rightPanelMode,
     setSessionChatId,
     sidebarVisible,
+    t,
     workspacePath,
     workstreamId,
   ]);
@@ -1649,8 +1654,8 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
                 sessionId={chatSessionId}
                 onSessionIdChange={handleChatSessionChange}
                 autoInitializeSession={false}
-                newSessionTitle={`Chat with ${chatTargetTitle}`.slice(0, 120)}
-                newSessionDraft={sessionMentionDraft(chatTargetId, chatTargetTitle)}
+                newSessionTitle={chatSessionTitle.slice(0, 120)}
+                newSessionDraft={chatTargetDraft}
                 linkedSession={{ id: chatTargetId, title: chatTargetTitle }}
                 onFileOpen={handleFileClick}
               />
@@ -1665,13 +1670,13 @@ export const AgentWorkstreamPanel = React.memo(React.forwardRef<AgentWorkstreamP
                       onClick={() => setChatCreationAttempt((attempt) => attempt + 1)}
                       className="px-3 py-1.5 rounded border border-nim bg-nim-secondary text-xs text-nim cursor-pointer hover:bg-nim-hover"
                     >
-                      Try again
+                      {t('panels.try_again')}
                     </button>
                   </>
                 ) : (
                   <>
                     <span className="w-5 h-5 border-2 border-nim border-t-nim-primary rounded-full animate-spin" />
-                    <span>{chatTargetId ? 'Opening chat…' : 'Select a session to start chatting.'}</span>
+                    <span>{chatTargetId ? t('panels.opening_chat') : t('panels.select_chat')}</span>
                   </>
                 )}
               </div>

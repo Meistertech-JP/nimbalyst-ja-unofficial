@@ -15,6 +15,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating, offset, flip, shift, autoUpdate,
   FloatingPortal, useClick, useDismiss, useRole, useInteractions,
@@ -56,6 +57,7 @@ function initials(name: string): string {
 }
 
 export function OrgSwitcher() {
+  const { t } = useTranslation('common');
   const activePath = useAtomValue(activeWorkspacePathAtom);
   const inboxSnapshot = useAtomValue(teamInboxSnapshotAtom);
   // These rows open the org's MESSAGES, which is not a way into its project.
@@ -172,15 +174,17 @@ export function OrgSwitcher() {
         {...getReferenceProps()}
         className="org-switcher-button w-10 h-10 mx-auto mt-2 mb-1 rounded-lg bg-gradient-to-br from-[#60a5fa] to-[#a78bfa] text-white text-[12px] font-semibold flex items-center justify-center shadow-sm hover:brightness-110 transition"
         data-testid="org-switcher"
-        title={activeOrg ? `Organization: ${activeOrg.name}` : 'Organization'}
-        aria-label="Switch organization"
+        title={activeOrg
+          ? t('organization_switcher.title', { name: activeOrg.name })
+          : t('organization')}
+        aria-label={t('organization_switcher.switch')}
       >
         {activeOrg ? initials(activeOrg.name) : <MaterialSymbol icon="corporate_fare" size={18} />}
         {unreadSummary.totalUnread > 0 && (
           <span
             className="org-switcher-unread-badge"
             data-testid="org-switcher-unread-badge"
-            aria-label={`${unreadSummary.totalUnread} unread across organizations`}
+            aria-label={t('organization_switcher.unread_across', { count: unreadSummary.totalUnread })}
           >
             {formatUnreadCount(unreadSummary.totalUnread)}
           </span>
@@ -196,7 +200,7 @@ export function OrgSwitcher() {
             className="org-switcher-menu z-[1000] min-w-[260px] bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-lg shadow-lg py-1.5"
           >
             <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-[var(--nim-text-faint)]">
-              Unread messages
+              {t('organization_switcher.unread_heading')}
             </div>
             {orgs.map((o) => (
               <button
@@ -212,8 +216,8 @@ export function OrgSwitcher() {
                   <span className="block text-[13px] text-[var(--nim-text)] truncate">{o.name}</span>
                   <span className="block text-[10px] text-[var(--nim-text-faint)]">
                     {(unreadByOrg.get(o.orgId) ?? 0) > 0
-                      ? `${unreadByOrg.get(o.orgId)} unread`
-                      : 'No unread messages'}
+                      ? t('projects.unread', { count: unreadByOrg.get(o.orgId) })
+                      : t('organization_switcher.no_unread')}
                   </span>
                 </span>
                 {(unreadByOrg.get(o.orgId) ?? 0) > 0 ? (
@@ -232,7 +236,7 @@ export function OrgSwitcher() {
                 // on that tab rather than the organization's default one.
                 if (pendingOrgId) openOrgManagement(pendingOrgId, 'members');
               }}>
-                {pendingInviteCount} pending invitation{pendingInviteCount === 1 ? '' : 's'}
+                {t('organization_switcher.pending_invitations', { count: pendingInviteCount })}
               </button>
             )}
             <div className="border-t border-[var(--nim-border)] mt-1 pt-1">
@@ -246,7 +250,7 @@ export function OrgSwitcher() {
                   }}
                 >
                   <MaterialSymbol icon="drive_folder_upload" size={14} />
-                  Join {projectWalk.enterableOrgs[0].name} project
+                  {t('organization_switcher.join_project', { name: projectWalk.enterableOrgs[0].name })}
                 </button>
               )}
               <button
@@ -255,7 +259,7 @@ export function OrgSwitcher() {
                 onClick={() => openOrgManagement()}
               >
                 <MaterialSymbol icon="settings" size={14} />
-                Manage organization…
+                {t('organization_switcher.manage')}
               </button>
               {/* Opening the org window untargeted dumped the user on a create
                   card in a window for an organization that does not exist yet.
@@ -273,7 +277,7 @@ export function OrgSwitcher() {
                   }}
                 >
                   <MaterialSymbol icon="add" size={14} />
-                  New organization
+                  {t('organization_switcher.new')}
                 </button>
               )}
             </div>

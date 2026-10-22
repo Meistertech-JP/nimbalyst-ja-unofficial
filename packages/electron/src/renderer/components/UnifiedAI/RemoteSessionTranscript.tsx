@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useTranslation } from "react-i18next";
 import { RichTranscriptView } from "@nimbalyst/runtime/ui/AgentTranscript/components/RichTranscriptView";
 import {
   acquireRemoteSession,
@@ -34,6 +35,8 @@ export const RemoteSessionTranscript = forwardRef<
   SessionTranscriptRef,
   SessionTranscriptProps
 >(({ sessionId, workspacePath }, ref) => {
+  const { t: tAichat } = useTranslation("aichat");
+  const { t: tCommon } = useTranslation("common");
   const snapshot = useAtomValue(remoteSessionSnapshotAtom(sessionId));
   const connectionError = useAtomValue(remoteSessionErrorAtom(sessionId));
   const [prompt, setPrompt] = useAtom(sessionDraftInputAtom(sessionId));
@@ -165,7 +168,7 @@ export const RemoteSessionTranscript = forwardRef<
       await persistDraft("", []);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "The prompt could not be sent."
+        err instanceof Error ? err.message : tAichat("remote.prompt_send_failed")
       );
     } finally {
       setBusy(false);
@@ -183,7 +186,7 @@ export const RemoteSessionTranscript = forwardRef<
       setError(
         err instanceof Error
           ? err.message
-          : "The stop request could not be sent."
+          : tAichat("remote.stop_request_failed")
       );
     }
   };
@@ -222,7 +225,7 @@ export const RemoteSessionTranscript = forwardRef<
         );
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "The Action could not be launched."
+        err instanceof Error ? err.message : tAichat("remote.action_launch_failed")
       );
     } finally {
       setBusy(false);
@@ -238,18 +241,18 @@ export const RemoteSessionTranscript = forwardRef<
         data-testid="remote-session-status"
       >
         {!snapshot
-          ? "Connecting…"
+          ? tCommon("collab.sync_connecting")
           : snapshot.readOnlyReason
-          ? "History only"
+          ? tAichat("remote_session_status.history_only")
           : !snapshot.hostOnline
-          ? "Host offline"
+          ? tAichat("remote_machine_selector.offline")
           : snapshot.syncing
-          ? "Loading transcript…"
+          ? tAichat("remote_session_status.loading_transcript")
           : snapshot.executing
-          ? "Working"
-          : "Ready"}
+          ? tAichat("remote_session_status.working")
+          : tAichat("remote_session_status.ready")}
         {!!snapshot?.queuedPrompts.length && (
-          <span>{snapshot.queuedPrompts.length} queued</span>
+          <span>{tAichat("prompt_queue.queued_count", { count: snapshot.queuedPrompts.length })}</span>
         )}
       </div>
       {snapshot?.readOnlyReason && (
@@ -319,7 +322,7 @@ export const RemoteSessionTranscript = forwardRef<
           onModeChange={(mode) => updateOptions({ mode })}
           onModelChange={(model) => {
             if (!model.startsWith("claude-code:")) {
-              setError("This machine currently runs Claude Code models.");
+              setError(tAichat("remote.claude_models_only"));
               return;
             }
             updateOptions({ model });

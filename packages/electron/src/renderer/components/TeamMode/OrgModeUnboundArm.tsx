@@ -1,4 +1,5 @@
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 // Accept an invitation / create an organization: what is left to do on the
 // unbound arm, where there is no organization to open the management dialog
@@ -8,8 +9,7 @@ import { OrganizationOnboardingChoices } from '../Settings/panels/OrganizationOn
 // the org window's module graph.
 import { DIALOG_IDS } from '../../dialogs/registry';
 import { dialogRef } from '../../contexts/DialogContext';
-import { AlphaBadge } from '../common/AlphaBadge';
-import { TEAM_BETA_TOOLTIP, TeamBetaNotice } from '../common/TeamBetaNotice';
+import { TeamBetaBadge, TeamBetaNotice } from '../common/TeamBetaNotice';
 import { organizationCreationEnabled } from '../../store/atoms/settingsDomains';
 import { activeOrganizations } from './defaultOrg';
 import { OrgWindowTitleBar } from './OrgWindowTitleBar';
@@ -39,6 +39,7 @@ export function OrgModeUnboundArm({
   onReload: () => void;
   onLoadError: (message: string) => void;
 }) {
+  const { t } = useTranslation('common');
   return (
     <section className="org-mode-host team-mode team-mode-unbound flex h-full flex-col overflow-hidden bg-[var(--nim-bg)] text-[var(--nim-text)]" data-component="OrgModeHost">
       {chrome === 'window' && <OrgWindowTitleBar />}
@@ -47,17 +48,17 @@ export function OrgModeUnboundArm({
         data-window-drag-region="true"
       >
         <h1 className="m-0 flex items-center gap-2 text-xl font-semibold text-[var(--nim-text)]">
-          Organizations
-          <AlphaBadge size="sm" stage="beta" tooltip={TEAM_BETA_TOOLTIP} className="org-window-no-drag" />
+          {t('organization_switcher.heading')}
+          <TeamBetaBadge size="sm" className="org-window-no-drag" />
         </h1>
         <p className="m-0 mt-1 text-sm text-[var(--nim-text-muted)]">
           {targetedOrgId
-            ? 'This organization is not available yet. Your destination has been preserved.'
+            ? t('team_mode.target_unavailable')
             : loadError
-              ? 'Your organizations could not be loaded.'
+              ? t('team_mode.organizations_load_failed')
               : organizationCreationEnabled
-              ? 'Create an organization to collaborate with a team, or accept a pending invitation.'
-              : 'Creating an organization is temporarily unavailable. Accept a pending invitation to get started.'}
+              ? t('team_mode.unbound_description')
+              : t('team_mode.creation_unavailable')}
         </p>
         <TeamBetaNotice className="mt-2.5 max-w-[640px]" />
       </header>
@@ -81,7 +82,7 @@ export function OrgModeUnboundArm({
                   <span className="min-w-0 flex-1 truncate">{organization.name}</span>
                   {organization.role && (
                     <span className="ml-2 shrink-0 text-[11px] capitalize text-[var(--nim-text-muted)]">
-                      {organization.role}
+                      {t(`organization_switcher.roles.${organization.role}`, { defaultValue: organization.role })}
                     </span>
                   )}
                 </button>
@@ -92,8 +93,8 @@ export function OrgModeUnboundArm({
                   className="team-mode-organization-settings shrink-0 rounded p-1.5 text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
                   data-testid="team-mode-organization-settings"
                   data-org-id={organization.orgId}
-                  title={`Organization settings for ${organization.name}`}
-                  aria-label={`Organization settings for ${organization.name}`}
+                  title={t('team_mode.organization_settings_for', { name: organization.name })}
+                  aria-label={t('team_mode.organization_settings_for', { name: organization.name })}
                   onClick={() => dialogRef.current?.open(DIALOG_IDS.ORG_MANAGEMENT, {
                     orgId: organization.orgId,
                   })}
@@ -109,7 +110,7 @@ export function OrgModeUnboundArm({
               data-testid="team-mode-organization-recovery"
             >
               <p className="m-0 text-sm text-[var(--nim-text)]">
-                {loadError ?? 'Waiting for your organization membership to finish loading.'}
+                {loadError ?? t('team_mode.waiting_for_membership')}
               </p>
               <button
                 type="button"
@@ -117,7 +118,7 @@ export function OrgModeUnboundArm({
                 data-testid="team-mode-retry-organization"
                 onClick={onReload}
               >
-                Retry
+                {t('retry')}
               </button>
             </div>
           )}

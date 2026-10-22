@@ -1,12 +1,20 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 vi.mock('../../../../utils/clipboard', () => ({
   copyImageToClipboard: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { ZoomableImageSurface } from '../ZoomableImageSurface';
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+function render(ui: React.ReactElement) {
+  return rtlRender(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+}
 
 class ResizeObserverMock {
   observe(target: Element) {
@@ -40,7 +48,8 @@ class PointerEventMock extends MouseEvent {
 }
 
 describe('ZoomableImageSurface', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    testI18n = await createI18nInstance('en');
     vi.stubGlobal('ResizeObserver', ResizeObserverMock);
     vi.stubGlobal('PointerEvent', PointerEventMock);
   });
@@ -131,5 +140,16 @@ describe('ZoomableImageSurface', () => {
       });
     });
     await screen.findByRole('button', { name: 'Copied' });
+  });
+
+  it('localizes the fit control in Japanese', async () => {
+    testI18n = await createI18nInstance('ja');
+    render(
+      <div style={{ width: 400, height: 300 }}>
+        <ZoomableImageSurface src="test.png" alt="テスト画像" />
+      </div>
+    );
+
+    expect(screen.getByRole('button', { name: '全体を表示' })).toBeTruthy();
   });
 });

@@ -16,6 +16,7 @@ import { WorkerRequestTracker } from './WorkerRequestTracker';
 import { assertDatabaseAvailable } from './databaseMaintenance';
 import { MigrationSourceReader } from './sqlite/migrationSourceRead';
 import { resolveDatabaseUserDataPath } from './userDataPath';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import {
   buildDatabaseOperationErrorProperties,
   classifyDatabaseOperation,
@@ -268,10 +269,13 @@ export class PGLiteDatabaseWorker {
   private async showStartFreshConfirmation(): Promise<boolean> {
     const response = await dialog.showMessageBox({
       type: 'warning',
-      title: 'Nimbalyst - Start Fresh?',
-      message: 'This will clear your AI chat sessions.',
-      detail: 'Your files will not be affected, but all AI chat history will be permanently deleted.\n\nAre you sure you want to continue?',
-      buttons: ['Cancel', 'Yes, Start Fresh'],
+      title: translateMainDialogLabel('database_recovery.start_fresh_title', 'Nimbalyst - Start Fresh?'),
+      message: translateMainDialogLabel('database_recovery.start_fresh_message', 'This will clear your AI chat sessions.'),
+      detail: translateMainDialogLabel('database_recovery.start_fresh_detail', 'Your files will not be affected, but all AI chat history will be permanently deleted.\n\nAre you sure you want to continue?'),
+      buttons: [
+        translateMainDialogLabel('database_recovery.cancel', 'Cancel'),
+        translateMainDialogLabel('database_recovery.start_fresh', 'Yes, Start Fresh'),
+      ],
       defaultId: 0,
       cancelId: 0
     });
@@ -519,10 +523,14 @@ export class PGLiteDatabaseWorker {
 
           dialog.showMessageBox({
             type: 'warning',
-            title: 'Nimbalyst - Database Recovered',
-            message: 'The application database was corrupted and has been automatically repaired.',
-            detail: `A fresh database has been created. Your old data has been backed up to:\n\n${initResult.dataDir}.backup-[timestamp]\n\nYour document files have not been lost - they are still on disk. Only the internal application database (AI chat sessions and document history) needs to be rebuilt.`,
-            buttons: ['OK']
+            title: translateMainDialogLabel('database_recovery.auto_recovered_title', 'Nimbalyst - Database Recovered'),
+            message: translateMainDialogLabel('database_recovery.auto_recovered_message', 'The application database was corrupted and has been automatically repaired.'),
+            detail: translateMainDialogLabel(
+              'database_recovery.auto_recovered_detail',
+              `A fresh database has been created. Your old data has been backed up to:\n\n${initResult.dataDir}.backup-[timestamp]\n\nYour document files have not been lost - they are still on disk. Only the internal application database (AI chat sessions and document history) needs to be rebuilt.`,
+              { dataDir: initResult.dataDir },
+            ),
+            buttons: [translateMainDialogLabel('database_recovery.ok', 'OK')]
           }).catch(() => {});
         }
       }
@@ -572,18 +580,25 @@ export class PGLiteDatabaseWorker {
         const lockFilePath = (error as any).lockFilePath as string | undefined;
         const response = await dialog.showMessageBox({
           type: 'question',
-          title: 'Nimbalyst - Database Locked (Ambiguous)',
-          message: 'Cannot tell whether another Nimbalyst is already running.',
+          title: translateMainDialogLabel('database_recovery.ambiguous_lock_title', 'Nimbalyst - Database Locked (Ambiguous)'),
+          message: translateMainDialogLabel('database_recovery.ambiguous_lock_message', 'Cannot tell whether another Nimbalyst is already running.'),
           detail:
-            `Nimbalyst found a database lock from a few seconds ago and cannot confirm whether ` +
-            `the process holding it (PID ${lockPid}, host ${lockHostname}, acquired ${lockTimestamp}) ` +
-            `is still alive. Two scenarios are equally likely:\n\n` +
-            `  1. Another Nimbalyst window is open under a different user account or privilege level. ` +
-            `Opening anyway will run two instances against the same database and may corrupt data.\n\n` +
-            `  2. A previous Nimbalyst crashed less than a minute ago and the OS has already reused ` +
-            `the original PID for a system process. In this case the lock is safe to clear.\n\n` +
-            `If unsure, choose Cancel and look for another Nimbalyst window before retrying.`,
-          buttons: ['Cancel', 'Open Anyway (clear lock)'],
+            translateMainDialogLabel(
+              'database_recovery.ambiguous_lock_detail',
+              `Nimbalyst found a database lock from a few seconds ago and cannot confirm whether ` +
+                `the process holding it (PID ${lockPid}, host ${lockHostname}, acquired ${lockTimestamp}) ` +
+                `is still alive. Two scenarios are equally likely:\n\n` +
+                `  1. Another Nimbalyst window is open under a different user account or privilege level. ` +
+                `Opening anyway will run two instances against the same database and may corrupt data.\n\n` +
+                `  2. A previous Nimbalyst crashed less than a minute ago and the OS has already reused ` +
+                `the original PID for a system process. In this case the lock is safe to clear.\n\n` +
+                `If unsure, choose Cancel and look for another Nimbalyst window before retrying.`,
+              { pid: String(lockPid), hostname: String(lockHostname), timestamp: String(lockTimestamp) },
+            ),
+          buttons: [
+            translateMainDialogLabel('database_recovery.cancel', 'Cancel'),
+            translateMainDialogLabel('database_recovery.open_anyway', 'Open Anyway (clear lock)'),
+          ],
           defaultId: 0,
           cancelId: 0,
         }).catch(() => ({ response: 0 } as Electron.MessageBoxReturnValue));

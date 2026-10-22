@@ -12,6 +12,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useStore } from 'jotai';
 import type { TeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 
@@ -87,6 +88,7 @@ export function FeedbackRequestSurface({
   className = '',
   discussionClassName = DEFAULT_DISCUSSION_CLASS,
 }: FeedbackRequestSurfaceProps) {
+  const { t } = useTranslation('common');
   const target = useMemo<FeedbackRequestServiceTarget>(
     () => ({ workspacePath, orgId, requestId }),
     [workspacePath, orgId, requestId],
@@ -174,13 +176,13 @@ export function FeedbackRequestSurface({
           conversationTitle: title,
           agentPostingEnabled: false,
           attachedAgentSessionIds: [],
-          surfaceLabel: title ?? 'Feedback request',
+          surfaceLabel: title ?? t('comments.thread.feedback_request'),
         }}
         directory={directory}
         orgId={orgId}
         viewerUserId={teamMemberId}
         viewerActor={viewerActor}
-        emptyLabel="No discussion yet."
+        emptyLabel={t('comments.thread.empty_discussion')}
         density={density}
       />
     </div>

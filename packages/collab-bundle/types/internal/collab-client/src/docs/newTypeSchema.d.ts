@@ -34,12 +34,14 @@ export interface NewTypeValidationContext {
     /** Every type id the host knows, in any section. A collision is refused, never replaced. */
     existingTypeIds: ReadonlySet<string>;
 }
+export type NewTypeValidationMessageKey = 'plural_required' | 'singular_required' | 'singular_must_start_with_letter' | 'type_exists' | 'field_name_required' | 'field_name_must_start_with_letter' | 'field_name_reserved' | 'field_name_duplicate' | 'select_option_required' | 'relation_type_required';
+export type NewTypeValidationMessage = (key: NewTypeValidationMessageKey, values?: Record<string, string>) => string;
 /** "Feature Request" -> "feature-request". Empty when the name has no usable characters. */
 export declare function newTypeIdFromName(name: string): string;
 /** "Renewal date" -> "renewalDate". */
 export declare function newFieldNameFromLabel(label: string): string;
 /** Problems in reading order; empty when the draft can be written. */
-export declare function validateNewTypeDraft(draft: NewTypeDraft, context: NewTypeValidationContext): string[];
+export declare function validateNewTypeDraft(draft: NewTypeDraft, context: NewTypeValidationContext, formatMessage?: NewTypeValidationMessage): string[];
 /**
  * The declaration to hand to the host's define-type write. Validate first:
  * this assumes `validateNewTypeDraft` returned no errors.

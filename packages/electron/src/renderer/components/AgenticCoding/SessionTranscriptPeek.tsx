@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   autoUpdate,
   flip,
@@ -61,6 +62,7 @@ export function SessionTranscriptPeek({
   placement = 'bottom-start',
   onClose,
 }: SessionTranscriptPeekProps) {
+  const { t } = useTranslation('sessions');
   const registry = useAtomValue(sessionRegistryAtom);
   const resolvedSessionId = useMemo(() => {
     const meta = registry.get(sessionId);
@@ -201,7 +203,7 @@ export function SessionTranscriptPeek({
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center text-[11px] italic text-nim-disabled">
-            No messages yet
+            {t('no_messages')}
           </div>
         )}
       </div>

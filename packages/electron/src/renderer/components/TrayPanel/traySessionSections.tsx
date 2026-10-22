@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrayPanelSectionState, TrayPanelSession } from '../../../shared/traySessions';
 
@@ -21,6 +22,8 @@ export const STATE_STYLES: Record<
   { label: string; colorClass: string; dotClass: string }
 > = {
   attention: {
+    // Kept as the stable English default for existing consumers. Rendered
+    // labels below come from component-local translations instead.
     label: 'Needs attention',
     colorClass: 'text-nim-warning',
     dotClass: 'bg-[var(--nim-warning)]',
@@ -52,16 +55,18 @@ export function TrayStatusIndicator({
   session: TrayPanelSession;
   state: TrayPanelSectionState;
 }) {
+  const { t: tSessions } = useTranslation('sessions');
+  const { t: tAgents } = useTranslation('agents');
   if (session.hasError) {
     return (
-      <div className="flex h-5 w-5 items-center justify-center text-[var(--nim-error)]" title="Session error">
+      <div className="flex h-5 w-5 items-center justify-center text-[var(--nim-error)]" title={tSessions('tray.session_error')}>
         <MaterialSymbol icon="error" size={14} />
       </div>
     );
   }
   if (session.hasPendingPrompt) {
     return (
-      <div className="flex h-5 w-5 animate-pulse items-center justify-center text-[var(--nim-warning)]" title="Waiting for your response">
+      <div className="flex h-5 w-5 animate-pulse items-center justify-center text-[var(--nim-warning)]" title={tAgents('status.waiting')}>
         <MaterialSymbol icon="contact_support" size={14} />
       </div>
     );
@@ -71,7 +76,7 @@ export function TrayStatusIndicator({
   // claim this state exists to doubt.
   if (state === 'stalled') {
     return (
-      <div className="flex h-5 w-5 items-center justify-center text-nim-faint" title="Running, but silent">
+      <div className="flex h-5 w-5 items-center justify-center text-nim-faint" title={tSessions('tray.running_silent')}>
         <MaterialSymbol icon="pause_circle" size={14} />
       </div>
     );
@@ -81,14 +86,14 @@ export function TrayStatusIndicator({
   // a tool call rendered as a bare row with no indicator at all.
   if (state === 'running') {
     return (
-      <div className="flex h-5 w-5 items-center justify-center text-[var(--nim-success)] opacity-80" title="Running">
+      <div className="flex h-5 w-5 items-center justify-center text-[var(--nim-success)] opacity-80" title={tAgents('attention.running')}>
         <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />
       </div>
     );
   }
   if (state === 'unread') {
     return (
-      <div className="flex h-5 w-5 items-center justify-center text-[var(--nim-primary)]" title="Unread response">
+      <div className="flex h-5 w-5 items-center justify-center text-[var(--nim-primary)]" title={tAgents('status.unread')}>
         <MaterialSymbol icon="circle" size={8} fill />
       </div>
     );
@@ -114,6 +119,7 @@ export function TrayMarkAllReadButton({
   className: string;
   testId: string;
 }) {
+  const { t } = useTranslation('sessions');
   return (
     <button
       type="button"
@@ -121,7 +127,7 @@ export function TrayMarkAllReadButton({
       onClick={onClick}
       data-testid={testId}
     >
-      Mark all as read
+      {t('mark_all_read')}
     </button>
   );
 }
@@ -136,12 +142,20 @@ export function TraySessionSectionHeader({
   count: number;
   actionSlot?: React.ReactNode;
 }) {
+  const { t: tSessions } = useTranslation('sessions');
+  const { t: tAgents } = useTranslation('agents');
   const style = STATE_STYLES[state];
+  const label = {
+    attention: tSessions('tray.needs_attention'),
+    running: tAgents('attention.running'),
+    stalled: tSessions('tray.not_responding'),
+    unread: tSessions('state.unread'),
+  }[state];
   return (
     <div className={`flex items-center justify-between gap-2 px-3.5 pb-1 pt-2.5 text-[10.5px] font-semibold uppercase tracking-wide ${style.colorClass}`}>
       <span className="flex items-center gap-1.5">
         <span className={`h-1.5 w-1.5 rounded-full ${style.dotClass}`} />
-        <span>{style.label}</span>
+        <span>{label}</span>
         <span aria-hidden>·</span>
         <span>{count}</span>
       </span>

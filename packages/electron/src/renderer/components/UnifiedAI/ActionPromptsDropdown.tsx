@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
+import { Trans, useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
 import { useMenuTypeahead } from '../../hooks/useMenuTypeahead';
@@ -36,6 +37,7 @@ function firstLinePreview(body: string, maxLen = 80): string {
 }
 
 export function ActionPromptsDropdown({ open, onOpenChange, workspacePath, onInsert, onLaunchNewSession }: ActionPromptsDropdownProps) {
+  const { t } = useTranslation('aichat', { keyPrefix: 'action_prompts' });
   const state = useAtomValue(actionPromptsAtomFamily(workspacePath));
   const setState = useSetAtom(actionPromptsAtomFamily(workspacePath));
   const posthog = usePostHog();
@@ -192,7 +194,7 @@ export function ActionPromptsDropdown({ open, onOpenChange, workspacePath, onIns
     node?.focus();
   }, [menu.refs.setFloating]);
 
-  const buttonLabel = useMemo(() => 'Actions', []);
+  const buttonLabel = t('actions');
 
   return (
     <>
@@ -226,7 +228,7 @@ export function ActionPromptsDropdown({ open, onOpenChange, workspacePath, onIns
             className="action-prompts-dropdown-panel z-[1000] min-w-[260px] max-w-[360px] rounded-lg p-1 bg-[var(--nim-bg)] border border-[var(--nim-border)] shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
           >
             <div className="action-prompts-dropdown-header px-2 py-1.5 text-[10px] uppercase tracking-wider text-[var(--nim-text-faint)] flex items-center justify-between">
-              <span>{state.fileExists ? 'From ai-actions.md' : 'Action prompts'}</span>
+              <span>{state.fileExists ? t('from_file') : t('title')}</span>
               {state.fileExists && (
                 <span className="text-[10px] text-[var(--nim-text-disabled)]">
                   {actions.length}
@@ -237,8 +239,7 @@ export function ActionPromptsDropdown({ open, onOpenChange, workspacePath, onIns
             {showSeedCta && (
               <div className="px-2 py-2 flex flex-col gap-2">
                 <p className="text-xs text-[var(--nim-text-muted)] leading-snug">
-                  No <code>ai-actions.md</code> in this workspace yet. Seed it with a few example
-                  prompts you can edit.
+                  <Trans t={t} i18nKey="missing_file" components={{ code: <code /> }} />
                 </p>
                 <button
                   type="button"
@@ -246,15 +247,14 @@ export function ActionPromptsDropdown({ open, onOpenChange, workspacePath, onIns
                   onClick={handleSeed}
                   data-testid="action-prompts-seed-button"
                 >
-                  Create ai-actions.md with examples
+                  {t('create_examples')}
                 </button>
               </div>
             )}
 
             {state.fileExists && !hasActions && (
               <div className="px-2 py-3 text-xs text-[var(--nim-text-muted)] leading-snug">
-                <code>ai-actions.md</code> has no <code>## Heading</code> sections yet. Open the file
-                and add one to get started.
+                <Trans t={t} i18nKey="no_sections" components={{ code: <code /> }} />
               </div>
             )}
 
@@ -263,7 +263,7 @@ export function ActionPromptsDropdown({ open, onOpenChange, workspacePath, onIns
                 {actions.map((action, idx) => {
                   const isLauncher = action.config?.launch === 'new-session';
                   const launcherSubtitle = isLauncher
-                    ? `Opens new session${action.config?.model ? ` · ${action.config.model}` : ''}`
+                    ? `${t('open_new_session')}${action.config?.model ? ` · ${action.config.model}` : ''}`
                     : null;
                   return (
                     <button
@@ -307,7 +307,7 @@ export function ActionPromptsDropdown({ open, onOpenChange, workspacePath, onIns
                 data-testid="action-prompts-edit-link"
               >
                 <MaterialSymbol icon="edit" size={12} />
-                <span>{state.fileExists ? 'Edit actions…' : 'Open ai-actions.md…'}</span>
+                <span>{state.fileExists ? t('edit') : t('open')}</span>
               </button>
             </div>
           </div>

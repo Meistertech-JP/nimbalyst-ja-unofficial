@@ -16,7 +16,8 @@ import {
   resolveDesktopCollabConfigForUri,
   type CollabDocumentConfig,
 } from '../utils/collabDocumentOpener';
-import { collabPresenceName } from '../utils/collabPresenceName';
+import { collabPresenceIdentity } from '../utils/collabPresenceName';
+import { UNNAMED_COLLABORATOR_LABEL } from '@nimbalyst/runtime/sync/collaboratorDisplayName';
 import { ElectronLocalReplicaStore } from './ElectronLocalReplicaStore';
 
 export interface CollaborativeEmbedReference {
@@ -41,6 +42,7 @@ export interface CollaborativeEmbedProviderResource {
   replica: LocalDocumentReplica;
   syncProvider: DocumentSyncProvider;
   collaboration: CollaborationContext;
+  setUnnamedCollaboratorLabel?(label: string): void;
   destroy(): void;
 }
 
@@ -58,6 +60,7 @@ interface CacheEntry {
 interface CollaborativeEmbedProviderCacheDependencies {
   createResource(
     request: CollaborativeEmbedProviderRequest,
+    getUnnamedCollaboratorLabel: () => string,
   ): Promise<CollaborativeEmbedProviderResource>;
   close(workspacePath: string, documentId: string): Promise<void>;
 }
@@ -108,6 +111,7 @@ function cacheKey(request: CollaborativeEmbedProviderRequest): string {
 
 export async function createDefaultResource(
   request: CollaborativeEmbedProviderRequest,
+  getUnnamedCollaboratorLabel: () => string = () => UNNAMED_COLLABORATOR_LABEL,
 ): Promise<CollaborativeEmbedProviderResource> {
   const uri = buildCollabUri(request.orgId, request.documentId);
   const config = await resolveDesktopCollabConfigForUri(
@@ -128,6 +132,7 @@ export async function createDefaultResource(
 
   let syncProvider: DocumentSyncProvider | null = null;
   let bridge: ReturnType<typeof createExtensionAwarenessBridge> | null = null;
+  let unnamedCollaboratorLabel = getUnnamedCollaboratorLabel();
   let replica: LocalDocumentReplica | null = null;
   const replicaIdentity = {
     accountId: config.accountId,
@@ -180,9 +185,10 @@ export async function createDefaultResource(
       yDoc: syncProvider.getYDoc(),
       user: {
         id: config.teamMemberId,
-        name: collabPresenceName(config),
+        ...collabPresenceIdentity(config),
         color: '#3A8FD6',
       },
+      getUnnamedCollaboratorLabel: () => unnamedCollaboratorLabel,
     });
     const collaboration = createCollaborationContext({
       syncProvider,
@@ -200,6 +206,11 @@ export async function createDefaultResource(
       replica: connectedReplica,
       syncProvider: connectedProvider,
       collaboration,
+      setUnnamedCollaboratorLabel(label) {
+        if (!label || label === unnamedCollaboratorLabel) return;
+        unnamedCollaboratorLabel = label;
+        connectedBridge.refreshRemoteDisplayNames();
+      },
       destroy() {
         documentSyncRegistry.unregister(connectedProvider);
         connectedBridge.destroy();
@@ -232,7 +243,8 @@ export async function createDefaultResource(
 }
 
 const defaultDependencies: CollaborativeEmbedProviderCacheDependencies = {
-  createResource: createDefaultResource,
+  createResource: (request, getUnnamedCollaboratorLabel) =>
+    createDefaultResource(request, getUnnamedCollaboratorLabel),
   close: async (_workspacePath, documentId) => {
     await window.electronAPI?.documentSync?.closeDoc?.(documentId);
   },
@@ -252,13 +264,14 @@ export class CollaborativeEmbedProviderCache {
 
   async acquire(
     request: CollaborativeEmbedProviderRequest,
+    getUnnamedCollaboratorLabel: () => string = () => UNNAMED_COLLABORATOR_LABEL,
   ): Promise<CollaborativeEmbedProviderAcquisition> {
     const key = cacheKey(request);
     let entry = this.entries.get(key);
     if (!entry) {
       let resourcePromise = this.pending.get(key);
       if (!resourcePromise) {
-        resourcePromise = this.dependencies.createResource(request);
+        resourcePromise = this.dependencies.createResource(request, getUnnamedCollaboratorLabel);
         this.pending.set(key, resourcePromise);
       }
       const resource = await resourcePromise.finally(() => {
@@ -274,6 +287,7 @@ export class CollaborativeEmbedProviderCache {
       }
     }
 
+    entry.resource.setUnnamedCollaboratorLabel?.(getUnnamedCollaboratorLabel());
     entry.refCount += 1;
     let released = false;
     return {

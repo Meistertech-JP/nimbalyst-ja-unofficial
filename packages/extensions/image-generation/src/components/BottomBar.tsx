@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { ImageStyle, AspectRatio } from '../types';
 import { STYLE_PRESETS, ASPECT_RATIOS } from '../types';
 
@@ -33,6 +34,7 @@ export function BottomBar({
   theme,
   initialPrompt = '',
 }: BottomBarProps) {
+  const { t } = useTranslation('extensions');
   const isDark = theme === 'dark';
 
   const [prompt, setPrompt] = useState(initialPrompt);
@@ -86,7 +88,7 @@ export function BottomBar({
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Describe the image you want to generate..."
+        placeholder={t('image_generation_ui.prompt_placeholder')}
         rows={1}
         className="w-full min-h-[44px] max-h-[120px] px-3.5 py-3 bg-nim border border-nim rounded-lg text-nim text-sm font-inherit resize-none leading-[1.4] overflow-hidden"
       />
@@ -95,7 +97,7 @@ export function BottomBar({
       <div className="flex gap-4 items-center flex-wrap overflow-visible">
         {/* Style selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-nim-muted">Style</span>
+          <span className="text-xs text-nim-muted">{t('image_generation_ui.style')}</span>
           <select
             value={style}
             onChange={(e) => setStyle(e.target.value as ImageStyle)}
@@ -103,7 +105,7 @@ export function BottomBar({
           >
             {STYLE_PRESETS.map((preset) => (
               <option key={preset.id} value={preset.id}>
-                {preset.label}
+                {t(`image_generation_ui.styles.${preset.id}.label`)}
               </option>
             ))}
           </select>
@@ -111,7 +113,7 @@ export function BottomBar({
 
         {/* Size selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-nim-muted">Size</span>
+          <span className="text-xs text-nim-muted">{t('image_generation_ui.size')}</span>
           <select
             value={aspectRatio}
             onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
@@ -119,7 +121,7 @@ export function BottomBar({
           >
             {ASPECT_RATIOS.map((ratio) => (
               <option key={ratio.id} value={ratio.id}>
-                {ratio.label}
+                {t(`image_generation_ui.aspect_ratios.${ratio.id.replace(':', '_')}`)}
               </option>
             ))}
           </select>
@@ -127,7 +129,7 @@ export function BottomBar({
 
         {/* Variations input */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-nim-muted">Variations</span>
+          <span className="text-xs text-nim-muted">{t('image_generation_ui.variations')}</span>
           <input
             type="number"
             min={1}
@@ -149,7 +151,7 @@ export function BottomBar({
           disabled={!prompt.trim() || isGenerating}
           className={`px-5 py-2 border-none rounded-md text-[13px] font-semibold flex items-center gap-2 whitespace-nowrap transition-colors duration-150 ${!prompt.trim() || isGenerating ? 'bg-nim-tertiary text-nim-disabled cursor-not-allowed' : 'bg-nim-primary text-nim-on-primary cursor-pointer hover:bg-nim-primary-hover'}`}
         >
-          {isGenerating ? 'Generating...' : 'Generate'}
+          {isGenerating ? t('image_generation_ui.generating') : t('image_generation_ui.generate')}
         </button>
       </div>
 

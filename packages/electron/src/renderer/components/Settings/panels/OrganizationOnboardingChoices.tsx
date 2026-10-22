@@ -9,6 +9,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import { TeamBetaNotice } from '../../common/TeamBetaNotice';
@@ -44,6 +45,7 @@ export function OrganizationOnboardingChoices({
   /** Off where the host already discloses the beta on the same screen. */
   showBetaNotice?: boolean;
 }) {
+  const { t } = useTranslation('settings');
   const pending = organizations.filter(
     (organization) => organization.membershipType && organization.membershipType !== 'active_member',
   );
@@ -51,7 +53,7 @@ export function OrganizationOnboardingChoices({
   const acceptInvitation = (invitation: OrganizationChoice) => {
     void window.electronAPI.organization.acceptInvitation(invitation.orgId)
       .then(async (result: { success?: boolean; error?: string }) => {
-        if (result?.success === false) throw new Error(result.error ?? 'Could not accept invitation');
+        if (result?.success === false) throw new Error(result.error ?? t('organization_ui.accept_failed'));
         trackTeamAnalyticsEvent('team_invitation_accepted', {
           surface: 'desktop',
           entryPoint: 'organization_manager',
@@ -60,9 +62,7 @@ export function OrganizationOnboardingChoices({
         // Land the new member in the organization on #general rather than
         // leaving them looking at a settings list.
         if (!(await queueOrgWindowGeneralRoute(invitation.orgId))) {
-          throw new Error(
-            'Invitation accepted, but the organization destination could not be saved. Try again.',
-          );
+          throw new Error(t('organization_ui.accept_destination_failed'));
         }
         // Deliberately still the window: #general is a conversation, and
         // conversations are what `openManagementWindow` opens since NIM-2322
@@ -77,7 +77,7 @@ export function OrganizationOnboardingChoices({
           entryPoint: 'organization_manager',
           errorCategory: categorizeTeamAnalyticsError('organization', reason),
         });
-        onError(String(reason));
+        onError(reason instanceof Error ? reason.message : t('organization_ui.accept_failed'));
       });
   };
 
@@ -89,7 +89,7 @@ export function OrganizationOnboardingChoices({
     >
       {pending.length > 0 && (
         <div className="organization-invitation-inbox mb-5" data-testid="organization-invitation-inbox">
-          <h3 className="m-0 mb-2 text-sm font-semibold">Pending invitations</h3>
+          <h3 className="m-0 mb-2 text-sm font-semibold">{t('organization_ui.pending_invitations')}</h3>
           <div className="flex flex-col gap-2">
             {pending.map((invitation) => (
               <article
@@ -101,7 +101,7 @@ export function OrganizationOnboardingChoices({
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{invitation.name}</div>
                   <div className="text-xs text-[var(--nim-text-muted)]">
-                    Invited account: {invitation.sourceEmail ?? 'signed-in account'}
+                    {t('organization_ui.invited_account', { account: invitation.sourceEmail ?? t('organization_ui.signed_in_account') })}
                   </div>
                 </div>
                 <button
@@ -110,7 +110,7 @@ export function OrganizationOnboardingChoices({
                   data-testid="pending-invitation-accept"
                   onClick={() => acceptInvitation(invitation)}
                 >
-                  Accept
+                  {t('organization_ui.accept')}
                 </button>
               </article>
             ))}
@@ -125,9 +125,9 @@ export function OrganizationOnboardingChoices({
         >
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold">New organization</div>
+              <div className="text-sm font-semibold">{t('organization_ui.new')}</div>
               <div className="mt-0.5 text-xs text-[var(--nim-text-muted)]">
-                Name it, invite your team, and pick starting rooms.
+                {t('organization_ui.new_description')}
               </div>
             </div>
             <button
@@ -138,7 +138,7 @@ export function OrganizationOnboardingChoices({
                 onOrganizationCreated: () => onChanged(),
               })}
             >
-              Create organization
+              {t('project_sharing.create_organization')}
             </button>
           </div>
           {showBetaNotice && <TeamBetaNotice className="mt-3" />}

@@ -8,6 +8,7 @@
 import type { JSX } from 'react';
 import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useTheme } from '../../hooks/useTheme';
 import { createExtensionStorage } from '@nimbalyst/runtime';
 import { createPanelHost, type PanelHostOptions } from './PanelHostImpl';
@@ -36,11 +37,19 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
+interface PanelErrorBoundaryProps {
+  panelId: string;
+  errorTitle: string;
+  unknownError: string;
+  retryLabel: string;
+  children: React.ReactNode;
+}
+
 class PanelErrorBoundary extends React.Component<
-  { panelId: string; children: React.ReactNode },
+  PanelErrorBoundaryProps,
   ErrorBoundaryState
 > {
-  constructor(props: { panelId: string; children: React.ReactNode }) {
+  constructor(props: PanelErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
@@ -58,15 +67,15 @@ class PanelErrorBoundary extends React.Component<
       return (
         <div className="panel-error flex flex-col items-center justify-center h-full p-8 text-center gap-3">
           <span className="material-symbols-outlined panel-error-icon text-5xl text-[var(--nim-error)]">error</span>
-          <div className="panel-error-title text-base font-semibold text-[var(--nim-text)]">Panel Error</div>
+          <div className="panel-error-title text-base font-semibold text-[var(--nim-text)]">{this.props.errorTitle}</div>
           <div className="panel-error-message text-[13px] text-[var(--nim-text-muted)] max-w-[300px] break-words">
-            {this.state.error?.message || 'An unknown error occurred'}
+            {this.state.error?.message || this.props.unknownError}
           </div>
           <button
             className="panel-error-retry mt-2 px-4 py-2 border border-[var(--nim-border)] rounded bg-transparent text-[var(--nim-text)] text-[13px] cursor-pointer hover:bg-[var(--nim-bg-hover)]"
             onClick={() => this.setState({ hasError: false, error: undefined })}
           >
-            Retry
+            {this.props.retryLabel}
           </button>
         </div>
       );
@@ -209,6 +218,8 @@ function PanelContainerInner({
  */
 export function PanelContainer(props: PanelContainerProps): JSX.Element {
   const { theme } = useTheme();
+  const { t: tErrors } = useTranslation('errors');
+  const { t: tCommon } = useTranslation('common');
 
   return (
     <div
@@ -217,7 +228,12 @@ export function PanelContainer(props: PanelContainerProps): JSX.Element {
       data-extension-id={props.panel.extensionId}
       data-theme={theme}
     >
-      <PanelErrorBoundary panelId={props.panel.id}>
+      <PanelErrorBoundary
+        panelId={props.panel.id}
+        errorTitle={tErrors('something_went_wrong')}
+        unknownError={tErrors('unexpected_error')}
+        retryLabel={tCommon('retry')}
+      >
         <PanelContainerInner {...props} />
       </PanelErrorBoundary>
     </div>

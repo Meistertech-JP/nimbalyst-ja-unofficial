@@ -9,9 +9,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "noEmit": true,
     "types": [],
     "paths": {
+      "@nimbalyst/i18n/core": ["./packages/i18n/src/core.ts"],
+      "@nimbalyst/i18n/react": ["./packages/i18n/src/react.tsx"],
+      "@nimbalyst/i18n/resources": ["./packages/i18n/src/resources/index.ts"],
       "@nimbalyst/tracker-engine": ["./packages/tracker-engine/src/index.ts"],
       "@nimbalyst/tracker-engine/*": ["./packages/tracker-engine/src/*"],
       "@nimbalyst/tracker-schema": ["./packages/tracker-schema/src/index.ts"],

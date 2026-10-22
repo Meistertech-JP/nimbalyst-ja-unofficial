@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, KeyboardEvent, useState, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { shouldAcceptPromptSuggestion } from './promptSuggestionKeys';
 import { GenericTypeahead, TypeaheadOption } from '../Typeahead/GenericTypeahead';
@@ -169,7 +170,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     disabled,
     isLoading,
     promptSuggestion,
-    placeholder = "Type your message... (Enter to send, Shift+Enter for new line, @ for files, @@ for sessions, / for commands)",
+    placeholder,
     workspacePath,
     remoteSession = false,
     remoteFiles,
@@ -206,6 +207,9 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     testId,
     onLaunchActionInNewSession,
   }, ref) => {
+    const { t } = useTranslation('aichat');
+    const { t: tAgents } = useTranslation('agents');
+    const resolvedPlaceholder = placeholder ?? tAgents('input.placeholder');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [typeaheadMatch, setTypeaheadMatch] = useState<TriggerMatch | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -794,7 +798,8 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
 
       if (typeaheadMatch.trigger === '@@') {
         const session = option.data;
-        insertText = `@@[${session.title}](${session.shortId})`;
+        const title = session.title || tAgents('session_tabs.untitled');
+        insertText = `@@[${title}](${session.shortId})`;
       } else if (typeaheadMatch.trigger === '@') {
         const doc = option.data;
         const isDirectory = doc?.type === 'directory';
@@ -829,7 +834,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
       setTypeaheadMatch(null);
       setSelectedIndex(null);
       setSelectedOption(null);
-    }, [typeaheadMatch, value, onChange, pushSnapshot, captureSnapshot]);
+    }, [typeaheadMatch, value, onChange, pushSnapshot, captureSnapshot, tAgents]);
 
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
       const currentOptions = typeaheadMatch?.trigger === '@@' ? sessionMentionOptions
@@ -1068,7 +1073,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         if (!validation.valid) {
           pasteUndoCountRef.current.delete(processingId);
           console.error('[AIInput] File validation failed:', validation.error);
-          errorNotificationService.showError('Attachment Rejected', validation.error || 'Invalid file');
+          errorNotificationService.showError(tAgents('input.attachment_rejected'), validation.error || tAgents('input.invalid_file'));
           return;
         }
 
@@ -1103,16 +1108,16 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
           onChange(value + (value ? ' ' : '') + reference);
         } else {
           console.error('[AIInput] Failed to save attachment:', result.error);
-          errorNotificationService.showError('Attachment Failed', result.error || 'Failed to save attachment');
+          errorNotificationService.showError(tAgents('input.attachment_failed'), result.error || tAgents('input.save_failed'));
         }
       } catch (error) {
         // Remove from processing state on error
         setProcessingAttachments(prev => prev.filter(p => p.id !== processingId));
         pasteUndoCountRef.current.delete(processingId);
         console.error('[AIInput] Error handling file attachment:', error);
-        errorNotificationService.showError('Attachment Failed', 'Failed to attach file');
+        errorNotificationService.showError(tAgents('input.attachment_failed'), tAgents('input.attach_failed'));
       }
-    }, [onAttachmentAdd, sessionId, value, onChange, getUndoCount]);
+    }, [onAttachmentAdd, sessionId, value, onChange, getUndoCount, tAgents]);
 
     // Drag and drop handlers
     const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -1142,7 +1147,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         try {
           const dragData = JSON.parse(sessionDataStr);
           const session = sessionRegistry.get(dragData.sessionId);
-          const title = session?.title || 'Untitled';
+          const title = session?.title || tAgents('session_tabs.untitled');
           const shortId = dragData.sessionId.substring(0, 5);
           const mention = `@@[${title}](${shortId})`;
 
@@ -1221,7 +1226,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
       for (const file of files) {
         await handleFileAttachment(file);
       }
-    }, [onAttachmentAdd, handleFileAttachment, value, onChange, workspacePath, sessionRegistry, pushSnapshot, captureSnapshot]);
+    }, [onAttachmentAdd, handleFileAttachment, value, onChange, workspacePath, sessionRegistry, pushSnapshot, captureSnapshot, tAgents]);
 
     // Threshold for converting large text pastes to attachments (25 lines or 2000 characters)
     const LARGE_PASTE_LINE_THRESHOLD = 25;
@@ -1376,7 +1381,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         <div
           className={`ai-chat-input-resize-handle absolute -top-[3px] left-0 right-0 h-1.5 cursor-row-resize z-10 before:content-[''] before:absolute before:top-0.5 before:left-0 before:right-0 before:h-0.5 before:transition-colors before:duration-150 ${isResizing ? 'before:bg-[var(--nim-primary)]' : ''} hover:before:bg-[var(--nim-primary)]`}
           onMouseDown={handleResizeMouseDown}
-          title="Drag to resize prompt box"
+          title={t('resize_prompt')}
         />
 
         {/* Pending voice command with countdown */}
@@ -1493,7 +1498,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
             onPaste={handlePaste}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={promptSuggestion && !value && !isLoading ? promptSuggestion : placeholder}
+            placeholder={promptSuggestion && !value && !isLoading ? promptSuggestion : resolvedPlaceholder}
             disabled={disabled}
             rows={1}
             style={{
@@ -1525,8 +1530,8 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
                   console.log('[AIInput] Cancel button clicked, onCancel:', !!onCancel);
                   onCancel();
                 }}
-                title="Cancel request (Esc)"
-                aria-label="Cancel request"
+                title={t('input_controls.cancel_request_shortcut')}
+                aria-label={t('input_controls.cancel_request')}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1538,8 +1543,10 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
               className="ai-chat-send-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] border-none rounded-md text-white cursor-pointer transition-all duration-200 shrink-0 hover:enabled:bg-[var(--nim-primary-hover)] hover:enabled:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handleSend}
               disabled={disabled || !value.trim() || processingAttachments.length > 0}
-              title={processingAttachments.length > 0 ? "Processing attachments..." : "Send message (Enter)"}
-              aria-label="Send message"
+              title={processingAttachments.length > 0
+                ? t('attachments.processing_attachments')
+                : t('input_controls.send_message_shortcut')}
+              aria-label={t('input_controls.send_message')}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2 8L14 2L11 14L8 9L2 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

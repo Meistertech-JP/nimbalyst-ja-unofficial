@@ -5,11 +5,15 @@
  */
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createInstance } from 'i18next';
+import { I18nextProvider, initReactI18next } from 'react-i18next';
+import { resources } from '@nimbalyst/i18n/resources';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { TrackerPageView } from '../TrackerPageView';
 import { PlainPageHeader } from '../PlainPageHeader';
+import { PagesSectionEntries } from '../../../docs-ui/PagesSectionEntries';
 
 const MODULE = {
   type: 'tpv-module', displayName: 'Module', displayNamePlural: 'Modules', icon: 'widgets', color: '#888',
@@ -22,10 +26,80 @@ const item = {
   fields: { title: 'Sync engine' }, fieldUpdatedAt: {}, system: {},
 } as unknown as TrackerRecord;
 
-beforeAll(() => globalRegistry.register(MODULE));
+const testI18n = createInstance();
+const testI18nReady = testI18n.use(initReactI18next).init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'common',
+  interpolation: { escapeValue: false },
+});
+
+function renderWithI18n(ui: React.ReactNode) {
+  return render(ui, { wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider> });
+}
+
+beforeAll(async () => {
+  await testI18nReady;
+  globalRegistry.register(MODULE);
+});
+beforeEach(async () => { await testI18n.changeLanguage('en'); });
 afterAll(() => globalRegistry.unregister('tpv-module'));
 
 describe('TrackerPageView', () => {
+  it('localizes page history, archive, and the editable-title placeholder', async () => {
+    await testI18n.changeLanguage('ja');
+    renderWithI18n(
+      <TrackerPageView
+        item={item} loaded crumb={{ ancestors: [], underType: false }} editable title="Sync engine"
+        onRename={vi.fn()} fieldValues={item.fields} onUpdateField={vi.fn()} renderBody={() => null} onArchive={vi.fn()}
+        onShowHistory={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'ページの履歴' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'ページをアーカイブ' })).toBeDefined();
+    expect((screen.getByTestId('tracker-page-title') as HTMLTextAreaElement).placeholder).toBe('無題');
+    fireEvent.click(screen.getByRole('button', { name: 'ページをアーカイブ' }));
+    const dialog = await screen.findByTestId('collab-confirm-dialog');
+    expect(dialog.querySelector('.collab-confirm-cancel')?.textContent).toBe('キャンセル');
+    fireEvent.click(dialog.querySelector('.collab-confirm-cancel')!);
+  });
+
+  it('localizes the plain page title fallback and type-chip label and tooltip', async () => {
+    await testI18n.changeLanguage('ja');
+    renderWithI18n(
+      <PlainPageHeader title="" editable={false} onSetType={vi.fn()} />,
+    );
+
+    expect(screen.getByRole('heading', { name: '無題' })).toBeDefined();
+    const pageType = screen.getByTestId('plain-page-type');
+    expect(pageType.textContent).toContain('ページ');
+    expect(pageType.getAttribute('title')).toBe('ページ。クリックしてタイプを変更します。');
+  });
+
+  it('localizes Pages section navigation while keeping its open actions intact', async () => {
+    await testI18n.changeLanguage('ja');
+    const onOpenHome = vi.fn();
+    renderWithI18n(
+      <PagesSectionEntries
+        active="home"
+        onOpenHome={onOpenHome}
+        onOpenSearch={vi.fn()}
+        onOpenTypes={vi.fn()}
+      />,
+    );
+
+    const group = screen.getByRole('group', { name: 'セクション' });
+    const home = group.querySelector('[data-entry="home"]') as HTMLButtonElement;
+    expect(home.textContent).toContain('ホーム');
+    expect(group.textContent).toContain('検索');
+    expect(group.textContent).toContain('種類');
+    fireEvent.click(home);
+    expect(onOpenHome).toHaveBeenCalledWith({ newTab: false });
+  });
+
   it('lays out crumb, title, body and links from host-supplied pieces', async () => {
     expect((window as { electronAPI?: unknown }).electronAPI).toBeUndefined();
     const onRename = vi.fn();
@@ -35,7 +109,7 @@ describe('TrackerPageView', () => {
       predicateId: null, relationshipTypeKey: null, sentence: 'Writes go to Storage.', sourceFieldId: 'body:link',
     }]);
 
-    render(
+    renderWithI18n(
       <TrackerPageView
         item={item}
         loaded
@@ -72,7 +146,7 @@ describe('TrackerPageView', () => {
         onRename={vi.fn()} fieldValues={record.fields} onUpdateField={vi.fn()} renderBody={() => null} onArchive={onArchive}
       />
     );
-    const { rerender } = render(page(item));
+    const { rerender } = renderWithI18n(page(item));
     fireEvent.click(screen.getByRole('button', { name: 'Archive page' }));
     const dialog = await screen.findByTestId('collab-confirm-dialog');
     expect(onArchive).not.toHaveBeenCalled();
@@ -89,7 +163,7 @@ describe('TrackerPageView', () => {
     const onOpenAncestor = vi.fn();
     const onArchive = vi.fn();
     const onShowHistory = vi.fn();
-    render(
+    renderWithI18n(
       <TrackerPageView
         item={item} loaded editable title="Sync engine"
         crumb={{
@@ -119,7 +193,7 @@ describe('PlainPageHeader', () => {
   it('renames on Enter only when the title changed, and Escape puts the title back', () => {
     const onRename = vi.fn();
     const onSetType = vi.fn();
-    render(<PlainPageHeader title="Product" editable onRename={onRename} onSetType={onSetType} onUpdateField={vi.fn()} />);
+    renderWithI18n(<PlainPageHeader title="Product" editable onRename={onRename} onSetType={onSetType} onUpdateField={vi.fn()} />);
     const title = screen.getByTestId('plain-page-title') as HTMLTextAreaElement;
 
     fireEvent.focus(title);

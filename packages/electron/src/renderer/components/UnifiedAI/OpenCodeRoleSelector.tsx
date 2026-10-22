@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
 import type { OpenCodeAgentSummary } from '../../../shared/openCodeAgentCatalog';
@@ -7,6 +8,7 @@ import {
   findRoleModelConflict,
   shouldShowRoleSelector,
   summarizeRolePermissions,
+  type RolePermissionSummary,
 } from './openCodeRoles';
 
 interface OpenCodeRoleSelectorProps {
@@ -43,6 +45,7 @@ export function OpenCodeRoleSelector({
   onModelChange,
   turnActive = false,
 }: OpenCodeRoleSelectorProps) {
+  const { t } = useTranslation('aichat');
   const [agents, setAgents] = useState<OpenCodeAgentSummary[]>([]);
   const menu = useFloatingMenu({ placement: 'top-start', offsetPx: 4 });
   const { isOpen, setIsOpen } = menu;
@@ -95,13 +98,17 @@ export function OpenCodeRoleSelector({
         data-testid="opencode-role-selector"
         className={`flex items-center gap-1 px-2 py-[3px] rounded-xl text-[11px] font-medium transition-all duration-200 outline-none whitespace-nowrap cursor-pointer bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] border border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)]`}
         onClick={() => setIsOpen(!isOpen)}
-        aria-label={role ? `Session role: ${role}` : 'Session role'}
+        aria-label={role
+          ? t('open_code_role.aria_label_role', { role })
+          : t('open_code_role.aria_label_default')}
         title={conflict
-          ? `This role is configured for ${conflict.roleModelLabel}, but the session model runs instead`
+          ? `${t('open_code_role.conflict_configured', { roleModel: conflict.roleModelLabel })} ${
+            t('open_code_role.conflict_session_precedence')
+          }`
           : undefined}
       >
         <MaterialSymbol icon="badge" size={12} />
-        <span>{role ?? 'Role'}</span>
+        <span>{role ?? t('open_code_role.label')}</span>
         {conflict && (
           <MaterialSymbol
             icon="error"
@@ -125,12 +132,12 @@ export function OpenCodeRoleSelector({
             className="opencode-role-selector-menu min-w-[260px] max-w-[340px] overflow-y-auto rounded-lg p-1 z-[1000] bg-[var(--nim-bg)] border border-[var(--nim-border)] shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
           >
             <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-[var(--nim-text-muted)]">
-              Session role
+              {t('open_code_role.menu_label')}
             </div>
 
             <RoleOption
-              label="Default"
-              description="Run as OpenCode's own default agent."
+              label={t('open_code_role.default')}
+              description={t('open_code_role.default_description')}
               selected={!role}
               onSelect={() => select(null)}
             />
@@ -150,8 +157,8 @@ export function OpenCodeRoleSelector({
             {conflict && (
               <div className="opencode-role-model-conflict mt-1 border-t border-[var(--nim-border)] px-2 py-2 text-[11px] text-[var(--nim-text-muted)] select-text">
                 <div>
-                  This role is configured for <span className="text-[var(--nim-text)]">{conflict.roleModelLabel}</span>.
-                  The session&apos;s own model is sent with every prompt and takes precedence, so that is what runs.
+                  {t('open_code_role.conflict_configured', { roleModel: conflict.roleModelLabel })}{' '}
+                  {t('open_code_role.conflict_session_precedence')}
                 </div>
                 {onModelChange && (
                   <button
@@ -161,7 +168,7 @@ export function OpenCodeRoleSelector({
                       setIsOpen(false);
                     }}
                   >
-                    Switch session to {conflict.roleModelLabel}
+                    {t('open_code_role.conflict_switch_session', { roleModel: conflict.roleModelLabel })}
                   </button>
                 )}
               </div>
@@ -184,11 +191,12 @@ function RoleOption({
   label: string;
   description?: string;
   /** Built-in vs config-defined. Omitted for the synthetic "Default" entry. */
-  origin?: { label: string; title: string };
-  permissions?: string[];
+  origin?: ReturnType<typeof describeRoleOrigin>;
+  permissions?: RolePermissionSummary[];
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation('aichat');
   return (
     <button
       className={`opencode-role-option flex items-start justify-between gap-2 px-2 py-1.5 w-full border-none rounded text-xs cursor-pointer transition-[background] duration-150 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] ${selected ? 'bg-[var(--nim-bg-secondary)]' : ''}`}
@@ -199,9 +207,9 @@ function RoleOption({
         {origin && (
           <span
             className="opencode-role-origin ml-1.5 px-1 py-px rounded align-middle text-[9px] uppercase tracking-wide text-[var(--nim-text-muted)] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)]"
-            title={origin.title}
+            title={t(origin.titleKey)}
           >
-            {origin.label}
+            {t(origin.labelKey)}
           </span>
         )}
         {description && (
@@ -211,7 +219,9 @@ function RoleOption({
         )}
         {permissions && permissions.length > 0 && (
           <span className="block text-[10px] text-[var(--nim-text-muted)] mt-0.5">
-            {permissions.join(' · ')}
+            {permissions.map(({ key, count }) => (
+              count === undefined ? t(key) : t(key, { count })
+            )).join(' · ')}
           </span>
         )}
       </span>

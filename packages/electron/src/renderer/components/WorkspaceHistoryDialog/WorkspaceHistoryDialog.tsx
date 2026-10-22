@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from '../../hooks/useHistory';
 import { DiffPreviewEditor, type DiffNavigationState } from '../HistoryDialog/DiffPreviewEditor';
 import { TextDiffViewer, type TextDiffNavigationState } from '../HistoryDialog/TextDiffViewer';
@@ -31,6 +32,7 @@ export function WorkspaceHistoryDialog({
   onFileRestored,
   theme = 'light'
 }: WorkspaceHistoryDialogProps) {
+  const { t, i18n } = useTranslation('dialogs');
   const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
@@ -220,9 +222,9 @@ export function WorkspaceHistoryDialog({
 
     if (isDeleted) {
       const confirmed = await requestConfirmation({
-        title: 'Restore deleted file?',
-        message: 'This file has been deleted. Restoring will recreate the file on disk. Continue?',
-        confirmLabel: 'Restore',
+        title: t('history.restore_deleted_file_title'),
+        message: t('history.restore_deleted_confirm'),
+        confirmLabel: t('history.restore_file'),
       });
       if (!confirmed) return;
     }
@@ -240,11 +242,11 @@ export function WorkspaceHistoryDialog({
         await loadWorkspaceFiles();
         onFileRestored?.();
       } else {
-        errorNotificationService.showError('Restore failed', `Failed to restore file: ${result.error}`);
+        errorNotificationService.showError(t('history.restore_failed_title'), t('history.restore_failed', { error: result.error }));
       }
     } catch (error: any) {
       console.error('Failed to restore file:', error);
-      errorNotificationService.showError('Restore failed', `Failed to restore file: ${error.message}`);
+      errorNotificationService.showError(t('history.restore_failed_title'), t('history.restore_failed', { error: error.message }));
     } finally {
       setIsRestoring(false);
     }
@@ -255,9 +257,9 @@ export function WorkspaceHistoryDialog({
 
     const count = selectedDeletedFiles.size;
     const confirmed = await requestConfirmation({
-      title: count > 1 ? 'Restore deleted files?' : 'Restore deleted file?',
-      message: `Restore ${count} deleted file${count > 1 ? 's' : ''} to their most recent versions?`,
-      confirmLabel: 'Restore',
+      title: t(count === 1 ? 'history.restore_deleted_file_title' : 'history.restore_deleted_files_title'),
+      message: t(count === 1 ? 'history.restore_batch_confirm_one' : 'history.restore_batch_confirm_other', { count }),
+      confirmLabel: t('history.restore_file'),
     });
     if (!confirmed) return;
 
@@ -272,8 +274,8 @@ export function WorkspaceHistoryDialog({
       if (failed.length > 0) {
         const failedNames = failed.map((r: any) => getFileName(r.path)).join(', ');
         errorNotificationService.showWarning(
-          'Some files were not restored',
-          `Restored ${successful} file${successful !== 1 ? 's' : ''}. Failed: ${failedNames}`,
+          t('history.restore_partial_title'),
+          t('history.restore_batch_result', { successful, failed: failedNames }),
         );
       }
 
@@ -283,7 +285,7 @@ export function WorkspaceHistoryDialog({
       onFileRestored?.();
     } catch (error: any) {
       console.error('Failed to batch restore:', error);
-      errorNotificationService.showError('Restore failed', `Failed to restore files: ${error.message}`);
+      errorNotificationService.showError(t('history.restore_failed_title'), t('history.restore_batch_failed', { error: error.message }));
     } finally {
       setIsRestoring(false);
     }
@@ -294,36 +296,29 @@ export function WorkspaceHistoryDialog({
     const now = new Date();
     const diff = now.getTime() - date.getTime();
 
-    if (diff < 3600000) {
-      const minutes = Math.floor(diff / 60000);
-      return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
-    }
+    const relativeTime = new Intl.RelativeTimeFormat(i18n.resolvedLanguage || i18n.language, { numeric: 'auto' });
+    if (diff < 3600000) return relativeTime.format(-Math.floor(diff / 60000), 'minute');
+    if (diff < 86400000) return relativeTime.format(-Math.floor(diff / 3600000), 'hour');
+    if (diff < 604800000) return relativeTime.format(-Math.floor(diff / 86400000), 'day');
+    return date.toLocaleDateString(i18n.resolvedLanguage || i18n.language) + ' ' + date.toLocaleTimeString(i18n.resolvedLanguage || i18n.language);
+  };
 
-    if (diff < 86400000) {
-      const hours = Math.floor(diff / 3600000);
-      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+  const formatVersionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'ai-diff': return t('history.version_ai_edit');
+      case 'pre-apply': return t('history.version_pre_edit');
+      case 'pre-edit': return t('history.version_session_start');
+      case 'incremental-approval': return t('history.version_partial_review');
+      case 'manual': return t('history.version_manual_save');
+      case 'auto-save': return t('history.version_auto_save');
+      case 'external-change': return t('history.version_external_change');
+      default: return type;
     }
-
-    if (diff < 604800000) {
-      const days = Math.floor(diff / 86400000);
-      return `${days} day${days !== 1 ? 's' : ''} ago`;
-    }
-
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
   const formatVersionLabel = (type: string, timestamp: string) => {
-    const typeLabel = type === 'ai-diff' ? 'AI Edit'
-      : type === 'pre-apply' ? 'Pre-edit'
-      : type === 'pre-edit' ? 'AI Session Start'
-      : type === 'incremental-approval' ? 'Partial Review'
-      : type === 'manual' ? 'Manual Save'
-      : type === 'auto-save' ? 'Auto-save'
-      : type === 'external-change' ? 'External Change'
-      : type;
-
     const timeLabel = formatTimestamp(timestamp);
-    return `${typeLabel} ${timeLabel}`;
+    return `${formatVersionTypeLabel(type)} ${timeLabel}`;
   };
 
   const getSnapshotIcon = (type: string) => {
@@ -388,9 +383,9 @@ export function WorkspaceHistoryDialog({
         <div className="workspace-history-dialog-header flex items-center justify-between px-4 py-3 border-b border-[var(--nim-border)]">
           <div className="workspace-history-dialog-title flex items-center gap-2">
             <span className="material-symbols-outlined text-xl text-[var(--nim-text-muted)]">history</span>
-            <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">Folder History</h2>
+            <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">{t('history.title')}</h2>
           </div>
-          <button className="workspace-history-dialog-close nim-btn-icon" onClick={onClose}>
+          <button className="workspace-history-dialog-close nim-btn-icon" onClick={onClose} aria-label={t('common:close')}>
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
@@ -399,8 +394,8 @@ export function WorkspaceHistoryDialog({
           {/* Left Panel - File Tree */}
           <div className="workspace-history-file-panel w-[350px] border-r border-[var(--nim-border)] flex flex-col bg-[var(--nim-bg-secondary)]">
             <div className="workspace-history-file-panel-header px-3 py-2 border-b border-[var(--nim-border)] text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide flex items-center justify-between">
-              <span>Files with History ({files.length} files{deletedFilesCount > 0 ? `, ${deletedFilesCount} deleted` : ''})</span>
-              {loading && <span className="workspace-history-loading text-[11px] font-normal text-[var(--nim-text-faint)]">Loading...</span>}
+              <span>{t('history.files_with_history', { count: files.length, deleted: deletedFilesCount > 0 ? t('history.deleted_suffix', { count: deletedFilesCount }) : '' })}</span>
+              {loading && <span className="workspace-history-loading text-[11px] font-normal text-[var(--nim-text-faint)]">{t('history.loading')}</span>}
             </div>
             <WorkspaceHistoryFileTree
               files={files}
@@ -423,11 +418,11 @@ export function WorkspaceHistoryDialog({
                       {selectedFilePath.replace(workspacePath + '/', '')}
                     </span>
                     <span className="workspace-history-snapshot-count text-xs text-[var(--nim-text-faint)] shrink-0">
-                      ({snapshots.length} snapshot{snapshots.length !== 1 ? 's' : ''})
+                      ({t('history.snapshots', { count: snapshots.length })})
                     </span>
                   </>
                 ) : (
-                  <span className="workspace-history-no-selection text-[13px] text-[var(--nim-text-muted)]">Select a file to view history</span>
+                  <span className="workspace-history-no-selection text-[13px] text-[var(--nim-text-muted)]">{t('history.select_file')}</span>
                 )}
               </div>
               <div className="workspace-history-header-buttons flex items-center gap-2 shrink-0">
@@ -438,7 +433,7 @@ export function WorkspaceHistoryDialog({
                     disabled={isRestoring}
                   >
                     <span className="material-symbols-outlined text-base">restore</span>
-                    Restore Selected ({selectedDeletedFiles.size})
+                    {t('history.restore_selected', { count: selectedDeletedFiles.size })}
                   </button>
                 )}
                 {selectedFilePath && selectedSnapshotTimestamp && (
@@ -448,7 +443,7 @@ export function WorkspaceHistoryDialog({
                     disabled={isRestoring || !previewContent}
                   >
                     <span className="material-symbols-outlined text-base">restore</span>
-                    {isSelectedFileDeleted ? 'Restore File' : 'Restore This Version'}
+                    {t(isSelectedFileDeleted ? 'history.restore_file' : 'history.restore_version')}
                   </button>
                 )}
               </div>
@@ -459,9 +454,9 @@ export function WorkspaceHistoryDialog({
                 {/* Snapshot List */}
                 <div className="workspace-history-snapshot-list border-b border-[var(--nim-border)] max-h-[200px] overflow-y-auto nim-scrollbar">
                   {snapshotsLoading ? (
-                    <div className="workspace-history-snapshots-loading p-5 text-center text-[var(--nim-text-muted)] text-[13px]">Loading snapshots...</div>
+                    <div className="workspace-history-snapshots-loading p-5 text-center text-[var(--nim-text-muted)] text-[13px]">{t('history.loading_snapshots')}</div>
                   ) : snapshots.length === 0 ? (
-                    <div className="workspace-history-no-snapshots p-5 text-center text-[var(--nim-text-muted)] text-[13px]">No snapshots available</div>
+                    <div className="workspace-history-no-snapshots p-5 text-center text-[var(--nim-text-muted)] text-[13px]">{t('history.no_snapshots')}</div>
                   ) : (
                     snapshots.map((snapshot, index) => (
                       <div
@@ -473,7 +468,7 @@ export function WorkspaceHistoryDialog({
                           <span className="material-symbols-outlined text-base">{getSnapshotIcon(snapshot.type)}</span>
                         </div>
                         <div className="workspace-history-snapshot-info flex-1 min-w-0">
-                          <span className="workspace-history-snapshot-type block text-xs font-medium text-[var(--nim-text)] capitalize">{snapshot.type.replace('-', ' ')}</span>
+                          <span className="workspace-history-snapshot-type block text-xs font-medium text-[var(--nim-text)] capitalize">{formatVersionTypeLabel(snapshot.type)}</span>
                           <span className="workspace-history-snapshot-time block text-[11px] text-[var(--nim-text-faint)]">{formatTimestamp(snapshot.timestamp)}</span>
                         </div>
                       </div>
@@ -488,7 +483,7 @@ export function WorkspaceHistoryDialog({
                       <span className="workspace-history-diff-label old px-2 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-[11px] font-medium text-[var(--nim-error)]">
                         {formatVersionLabel(versionAMeta.type, versionAMeta.timestamp)}
                       </span>
-                      <span className="workspace-history-diff-separator text-[11px] font-semibold text-[var(--nim-text-faint)]">vs</span>
+                       <span className="workspace-history-diff-separator text-[11px] font-semibold text-[var(--nim-text-faint)]">{t('history.vs')}</span>
                       <span className="workspace-history-diff-label new px-2 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-[11px] font-medium text-[var(--nim-success)]">
                         {formatVersionLabel(versionBMeta.type, versionBMeta.timestamp)}
                       </span>
@@ -498,13 +493,13 @@ export function WorkspaceHistoryDialog({
                             className={`workspace-history-diff-mode-button px-3 py-1 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${diffViewMode === 'rich' ? 'active text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                             onClick={() => setDiffViewMode('rich')}
                           >
-                            Rich
+                            {t('history.rich')}
                           </button>
                           <button
                             className={`workspace-history-diff-mode-button px-3 py-1 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${diffViewMode === 'text' ? 'active text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                             onClick={() => setDiffViewMode('text')}
                           >
-                            Text
+                            {t('history.text')}
                           </button>
                         </div>
                       )}
@@ -514,7 +509,7 @@ export function WorkspaceHistoryDialog({
                   {loadingPreview ? (
                     <div className="workspace-history-preview-loading flex flex-col items-center justify-center p-10 gap-3 text-[var(--nim-text-muted)] text-[13px]">
                       <div className="workspace-history-preview-loading-spinner w-6 h-6 border-2 border-[var(--nim-border)] border-t-[var(--nim-primary)] rounded-full animate-spin" />
-                      Loading preview...
+                      {t('history.loading_preview')}
                     </div>
                   ) : diffMode ? (
                     <div className="workspace-history-diff-content flex-1 overflow-auto nim-scrollbar">
@@ -553,7 +548,7 @@ export function WorkspaceHistoryDialog({
                     <pre className="workspace-history-preview-text m-0 p-4 font-mono text-[13px] leading-relaxed text-[var(--nim-text)] whitespace-pre-wrap break-words">{previewContent}</pre>
                   ) : (
                     <div className="workspace-history-preview-empty flex items-center justify-center flex-1 text-[var(--nim-text-muted)] text-[13px]">
-                      Select a snapshot to preview
+                      {t('history.select_snapshot')}
                     </div>
                   )}
                 </div>
@@ -561,7 +556,7 @@ export function WorkspaceHistoryDialog({
             ) : (
               <div className="workspace-history-no-file-selected flex flex-col items-center justify-center flex-1 gap-3 text-[var(--nim-text-faint)]">
                 <span className="material-symbols-outlined text-5xl opacity-30">folder_open</span>
-                <p className="m-0 text-sm">Select a file from the tree to view its history</p>
+                <p className="m-0 text-sm">{t('history.select_file_tree')}</p>
               </div>
             )}
           </div>

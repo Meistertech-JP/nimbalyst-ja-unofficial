@@ -2,8 +2,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { renderHook, act } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { TabsProvider, useTabs } from '../../../contexts/TabsContext';
 import { documentAvailability, isPagesEntryAvailable, planPagesOpen, type PagesEntryLookup } from '../pagesTabNavigation';
+import { PagesTabHistoryButtons } from '../usePagesTabNavigation';
 
 const DOC_A = 'collab://org:org-a:doc:a';
 const DOC_B = 'collab://org:org-a:doc:b';
@@ -173,5 +177,49 @@ describe('which history entries can still be shown', () => {
     expect(isPagesEntryAvailable('tracker://archived', lookup)).toBe(false);
     expect(isPagesEntryAvailable('type://dropped', lookup)).toBe(false);
     expect(isPagesEntryAvailable('virtual://pages-search/team', lookup)).toBe(true);
+  });
+});
+
+describe('Pages tab history button accessibility labels', () => {
+  function HistoryButtonsWithEntry({ direction }: { direction: 'back' | 'forward' }) {
+    const { addTab, navigateTab, stepTab } = useTabs();
+    React.useEffect(() => {
+      const tabId = addTab('/repo/first.md', '', true, 'First page');
+      if (!tabId) return;
+      navigateTab(tabId, '/repo/second.md', 'Second page');
+      if (direction === 'forward') stepTab(tabId, -1);
+    }, [addTab, direction, navigateTab, stepTab]);
+    return <PagesTabHistoryButtons onStep={() => undefined} />;
+  }
+
+  it('localizes accessibility labels and dynamic history titles in English and Japanese', async () => {
+    const english = await createI18nInstance('en');
+    const japanese = await createI18nInstance('ja');
+    const renderButtons = (i18n: typeof english, direction: 'back' | 'forward') => render(
+      <I18nextProvider i18n={i18n}>
+        <TabsProvider workspacePath={null} disablePersistence>
+          <HistoryButtonsWithEntry direction={direction} />
+        </TabsProvider>
+      </I18nextProvider>
+    );
+
+    renderButtons(english, 'back');
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Forward' })).toBeDefined();
+    expect(screen.getByTestId('pages-tab-back').getAttribute('title')).toBe('Back to First page (Ctrl+[)');
+
+    cleanup();
+    renderButtons(english, 'forward');
+    expect(screen.getByTestId('pages-tab-forward').getAttribute('title')).toBe('Forward to Second page (Ctrl+])');
+
+    cleanup();
+    renderButtons(japanese, 'back');
+    expect(screen.getByRole('button', { name: '戻る' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '進む' })).toBeDefined();
+    expect(screen.getByTestId('pages-tab-back').getAttribute('title')).toBe('First pageに戻る (Ctrl+[)');
+
+    cleanup();
+    renderButtons(japanese, 'forward');
+    expect(screen.getByTestId('pages-tab-forward').getAttribute('title')).toBe('Second pageに進む (Ctrl+])');
   });
 });

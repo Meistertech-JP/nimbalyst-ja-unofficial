@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { summarizeDatabaseQueryStats } from './dashboardStats';
 import { RenderProfilerPanel } from './RenderProfilerPanel';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -161,10 +162,11 @@ function OverviewPanel({
   atomStats: AtomFamilyStat[];
   history: TimeSeriesPoint[];
 }) {
+  const { t } = useTranslation('settings');
   if (!systemStats) {
     return (
       <div className="flex items-center justify-center h-full text-[var(--nim-text-muted)]">
-        Loading...
+        {t('common:loading')}
       </div>
     );
   }
@@ -190,28 +192,28 @@ function OverviewPanel({
     <div className="flex flex-col gap-4 p-4 overflow-auto h-full">
       {/* Stats cards */}
       <div className="grid grid-cols-4 gap-3">
-        <StatCard label="Main Memory (RSS)" value={`${proc.memoryRssMB} MB`} />
-        <StatCard label="Main Heap" value={`${proc.heapUsedMB} / ${proc.heapTotalMB} MB`} />
-        <StatCard label="Renderer Heap" value={rendererHeapMB != null ? `${rendererHeapMB} / ${rendererHeapTotalMB} MB` : 'N/A'} />
-        <StatCard label="Active Handles" value={String(proc.activeHandles)} />
-        <StatCard label="IPC Handlers" value={String(ipc.registeredHandlers)} />
-        <StatCard label="IPC Calls" value={String(totalIpcCalls)} />
-        <StatCard label="Slow IPC Calls" value={String(totalSlowIpcCalls)} />
-        <StatCard label="Watcher Type" value={fileWatchers.type.replace('WorkspaceEventBus ', '').replace(/[()]/g, '')} />
-        <StatCard label="Watched Workspaces" value={String(fileWatchers.activeWorkspaces)} />
-        <StatCard label="Watcher Subscribers" value={String(fileWatchers.totalSubscribers)} />
-        <StatCard label="Atom Families" value={`${nonEmptyFamilies} active / ${atomStats.length} total`} />
-        <StatCard label="Atom Instances" value={String(totalInstances)} />
-        <StatCard label="DB Queries (5m)" value={`${totalDbReads} R / ${totalDbWrites} W`} />
-        <StatCard label="DB Tables Active" value={String(dbStats.tableCount)} />
-        <StatCard label="Top IPC Channel" value={hottestIpc ? hottestIpc.channel : 'N/A'} />
-        <StatCard label="Top IPC p95" value={hottestIpc ? `${hottestIpc.p95Ms}ms` : 'N/A'} />
+        <StatCard label={t('developer_dashboard.main_memory')} value={`${proc.memoryRssMB} MB`} />
+        <StatCard label={t('developer_dashboard.main_heap')} value={`${proc.heapUsedMB} / ${proc.heapTotalMB} MB`} />
+        <StatCard label={t('developer_dashboard.renderer_heap')} value={rendererHeapMB != null ? `${rendererHeapMB} / ${rendererHeapTotalMB} MB` : t('developer_dashboard.not_available')} />
+        <StatCard label={t('developer_dashboard.active_handles')} value={String(proc.activeHandles)} />
+        <StatCard label={t('developer_dashboard.ipc_handlers')} value={String(ipc.registeredHandlers)} />
+        <StatCard label={t('developer_dashboard.ipc_calls')} value={String(totalIpcCalls)} />
+        <StatCard label={t('developer_dashboard.slow_ipc_calls')} value={String(totalSlowIpcCalls)} />
+        <StatCard label={t('developer_dashboard.watcher_type')} value={fileWatchers.type.replace('WorkspaceEventBus ', '').replace(/[()]/g, '')} />
+        <StatCard label={t('developer_dashboard.watched_workspaces')} value={String(fileWatchers.activeWorkspaces)} />
+        <StatCard label={t('developer_dashboard.watcher_subscribers')} value={String(fileWatchers.totalSubscribers)} />
+        <StatCard label={t('developer_dashboard.atom_families')} value={t('developer_dashboard.active_families_total', { active: nonEmptyFamilies, total: atomStats.length })} />
+        <StatCard label={t('developer_dashboard.atom_instances')} value={String(totalInstances)} />
+        <StatCard label={t('developer_dashboard.db_queries')} value={`${totalDbReads} R / ${totalDbWrites} W`} />
+        <StatCard label={t('developer_dashboard.db_tables_active')} value={String(dbStats.tableCount)} />
+        <StatCard label={t('developer_dashboard.top_ipc_channel')} value={hottestIpc ? hottestIpc.channel : t('developer_dashboard.not_available')} />
+        <StatCard label={t('developer_dashboard.top_ipc_p95')} value={hottestIpc ? `${hottestIpc.p95Ms}ms` : t('developer_dashboard.not_available')} />
       </div>
 
       {/* Charts */}
       {history.length > 1 && (
         <>
-          <ChartSection title="Memory">
+          <ChartSection title={t('developer_dashboard.memory')}>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={history}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--nim-border)" />
@@ -227,14 +229,14 @@ function OverviewPanel({
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="memoryRssMB" name="Main RSS" stroke={CHART_COLORS.rss} dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="heapUsedMB" name="Main Heap" stroke={CHART_COLORS.heap} dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="rendererHeapMB" name="Renderer Heap" stroke={CHART_COLORS.rendererHeap} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="memoryRssMB" name={t('developer_dashboard.main_rss')} stroke={CHART_COLORS.rss} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="heapUsedMB" name={t('developer_dashboard.main_heap')} stroke={CHART_COLORS.heap} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="rendererHeapMB" name={t('developer_dashboard.renderer_heap')} stroke={CHART_COLORS.rendererHeap} dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </ChartSection>
 
-          <ChartSection title="Handles and Watchers">
+          <ChartSection title={t('developer_dashboard.handles_watchers')}>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={history}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--nim-border)" />
@@ -250,15 +252,15 @@ function OverviewPanel({
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="activeHandles" name="Active Handles" stroke={CHART_COLORS.handles} dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="ipcHandlers" name="IPC Handlers" stroke={CHART_COLORS.ipcHandlers} dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="activeWorkspaces" name="Workspaces" stroke={CHART_COLORS.workspaces} dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="totalSubscribers" name="Subscribers" stroke={CHART_COLORS.subscribers} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="activeHandles" name={t('developer_dashboard.active_handles')} stroke={CHART_COLORS.handles} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="ipcHandlers" name={t('developer_dashboard.ipc_handlers')} stroke={CHART_COLORS.ipcHandlers} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="activeWorkspaces" name={t('developer_dashboard.workspaces')} stroke={CHART_COLORS.workspaces} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="totalSubscribers" name={t('developer_dashboard.subscribers')} stroke={CHART_COLORS.subscribers} dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </ChartSection>
 
-          <ChartSection title="Jotai Atom Families">
+          <ChartSection title={t('developer_dashboard.jotai_atom_families')}>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={history}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--nim-border)" />
@@ -274,13 +276,13 @@ function OverviewPanel({
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="atomFamilies" name="Active Families" stroke={CHART_COLORS.families} dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="atomInstances" name="Live Instances" stroke={CHART_COLORS.instances} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="atomFamilies" name={t('developer_dashboard.active_families')} stroke={CHART_COLORS.families} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="atomInstances" name={t('developer_dashboard.live_instances')} stroke={CHART_COLORS.instances} dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </ChartSection>
 
-          <ChartSection title="Database Queries (rolling count per sample)">
+          <ChartSection title={t('developer_dashboard.database_queries_rolling')}>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={history}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--nim-border)" />
@@ -296,8 +298,8 @@ function OverviewPanel({
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="dbReads" name="Reads (5m)" stroke={CHART_COLORS.dbReads} dot={false} strokeWidth={2} />
-                <Line type="monotone" dataKey="dbWrites" name="Writes (5m)" stroke={CHART_COLORS.dbWrites} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="dbReads" name={t('developer_dashboard.reads_5m')} stroke={CHART_COLORS.dbReads} dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="dbWrites" name={t('developer_dashboard.writes_5m')} stroke={CHART_COLORS.dbWrites} dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </ChartSection>
@@ -307,19 +309,19 @@ function OverviewPanel({
       {/* Database query performance table */}
       {dbStats.legacyRows.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">Database Query Performance (5m window)</h3>
+          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">{t('developer_dashboard.database_query_performance')}</h3>
           <div className="overflow-auto">
             <table className="w-full text-xs font-mono border-collapse">
               <thead>
                 <tr className="text-left text-[var(--nim-text-muted)] border-b border-[var(--nim-border)]">
-                  <th className="px-2 py-1.5">Table</th>
-                  <th className="px-2 py-1.5 text-right">Op</th>
-                  <th className="px-2 py-1.5 text-right">Count</th>
+                  <th className="px-2 py-1.5">{t('settings:database.table')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.operation')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.count')}</th>
                   <th className="px-2 py-1.5 text-right">p50</th>
                   <th className="px-2 py-1.5 text-right">p95</th>
                   <th className="px-2 py-1.5 text-right">p99</th>
-                  <th className="px-2 py-1.5 text-right">Max</th>
-                  <th className="px-2 py-1.5 text-right">Blocked p95</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.maximum')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.blocked_p95')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -371,15 +373,15 @@ function OverviewPanel({
 
       {dbStats.sqliteRows.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">Database Query Activity (5m window)</h3>
+          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">{t('developer_dashboard.database_query_activity')}</h3>
           <div className="overflow-auto">
             <table className="w-full text-xs font-mono border-collapse">
               <thead>
                 <tr className="text-left text-[var(--nim-text-muted)] border-b border-[var(--nim-border)]">
-                  <th className="px-2 py-1.5">Table</th>
-                  <th className="px-2 py-1.5 text-right">Reads</th>
-                  <th className="px-2 py-1.5 text-right">Writes</th>
-                  <th className="px-2 py-1.5 text-right">Total ms</th>
+                  <th className="px-2 py-1.5">{t('settings:database.table')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.reads')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.writes')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.total_ms')}</th>
                   <th className="px-2 py-1.5 text-right">p99</th>
                 </tr>
               </thead>
@@ -403,19 +405,19 @@ function OverviewPanel({
 
       {ipc.channelStats.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">IPC Channels</h3>
+          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">{t('developer_dashboard.ipc_channels')}</h3>
           <div className="overflow-auto">
             <table className="w-full text-xs font-mono border-collapse">
               <thead>
                 <tr className="text-left text-[var(--nim-text-muted)] border-b border-[var(--nim-border)]">
-                  <th className="px-2 py-1.5">Channel</th>
-                  <th className="px-2 py-1.5 text-right">Calls</th>
-                  <th className="px-2 py-1.5 text-right">Errors</th>
-                  <th className="px-2 py-1.5 text-right">Slow</th>
-                  <th className="px-2 py-1.5 text-right">Avg</th>
+                  <th className="px-2 py-1.5">{t('developer_dashboard.channel')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.calls')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.errors')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.slow')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.average')}</th>
                   <th className="px-2 py-1.5 text-right">p95</th>
-                  <th className="px-2 py-1.5 text-right">Max</th>
-                  <th className="px-2 py-1.5 text-right">Inflight</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.maximum')}</th>
+                  <th className="px-2 py-1.5 text-right">{t('developer_dashboard.in_flight')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -449,7 +451,7 @@ function OverviewPanel({
       {/* File watcher detail */}
       {fileWatchers.workspaces.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">Watched Workspaces</h3>
+          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">{t('developer_dashboard.watched_workspaces')}</h3>
           <div className="space-y-1">
             {fileWatchers.workspaces.map(ws => (
               <div
@@ -458,7 +460,7 @@ function OverviewPanel({
               >
                 <div className="text-[var(--nim-text)]">{ws.workspacePath}</div>
                 <div className="text-[var(--nim-text-muted)] mt-0.5">
-                  Subscribers ({ws.subscriberCount}): {ws.subscriberIds.join(', ')}
+                  {t('developer_dashboard.subscriber_details', { count: ws.subscriberCount, ids: ws.subscriberIds.join(', ') })}
                 </div>
               </div>
             ))}
@@ -469,7 +471,7 @@ function OverviewPanel({
       {/* Window state detail */}
       {systemStats.windows.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">Windows</h3>
+          <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">{t('developer_dashboard.windows')}</h3>
           <div className="space-y-1">
             {systemStats.windows.map(win => (
               <div
@@ -479,10 +481,10 @@ function OverviewPanel({
                 <span className="text-[var(--nim-text-muted)]">#{win.id}</span>
                 <span className="text-[var(--nim-text)]">{win.mode}</span>
                 <span className="text-[var(--nim-text-muted)] truncate flex-1">
-                  {win.workspacePath || win.filePath || '(none)'}
+                  {win.workspacePath || win.filePath || t('developer_dashboard.no_path')}
                 </span>
                 {win.documentEdited && (
-                  <span className="text-[var(--nim-warning)] text-[10px]">edited</span>
+                  <span className="text-[var(--nim-warning)] text-[10px]">{t('developer_dashboard.edited')}</span>
                 )}
               </div>
             ))}
@@ -521,6 +523,7 @@ function ChartSection({ title, children }: { title: string; children: React.Reac
 // ---------------------------------------------------------------------------
 
 function AtomFamilyPanel({ stats, loading, refresh }: { stats: AtomFamilyStat[]; loading: boolean; refresh: () => void }) {
+  const { t } = useTranslation('settings');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [filterEmpty, setFilterEmpty] = useState(true);
 
@@ -533,11 +536,16 @@ function AtomFamilyPanel({ stats, loading, refresh }: { stats: AtomFamilyStat[];
       {/* Summary bar */}
       <div className="flex items-center gap-4 px-4 py-3 border-b border-[var(--nim-border)] text-sm">
         <span className="text-[var(--nim-text-muted)]">
-          {stats.length} families registered
+          {t('developer_dashboard.families_registered', { count: stats.length })}
         </span>
         <span className="text-[var(--nim-text-muted)]">|</span>
         <span className="text-[var(--nim-text)]">
-          <strong>{totalInstances}</strong> live instances across <strong>{nonEmptyCount}</strong> families
+          <Trans
+            i18nKey="developer_dashboard.live_instances_summary"
+            ns="settings"
+            values={{ instances: totalInstances, families: nonEmptyCount }}
+            components={{ instances: <strong />, families: <strong /> }}
+          />
         </span>
         <div className="flex-1" />
         <label className="flex items-center gap-1.5 cursor-pointer text-[var(--nim-text-muted)]">
@@ -547,14 +555,14 @@ function AtomFamilyPanel({ stats, loading, refresh }: { stats: AtomFamilyStat[];
             onChange={e => setFilterEmpty(e.target.checked)}
             className="accent-[var(--nim-accent)]"
           />
-          Hide empty
+          {t('developer_dashboard.hide_empty')}
         </label>
         <button
           onClick={refresh}
           disabled={loading}
           className="px-3 py-1 rounded text-xs bg-[var(--nim-surface-hover)] text-[var(--nim-text)] hover:bg-[var(--nim-surface-active)] transition-colors disabled:opacity-50"
         >
-          {loading ? 'Loading...' : 'Refresh'}
+          {loading ? t('common:loading') : t('developer_dashboard.refresh')}
         </button>
       </div>
 
@@ -563,9 +571,9 @@ function AtomFamilyPanel({ stats, loading, refresh }: { stats: AtomFamilyStat[];
         <table className="w-full text-sm border-collapse">
           <thead className="sticky top-0 bg-[var(--nim-surface)] z-10">
             <tr className="text-left text-[var(--nim-text-muted)] border-b border-[var(--nim-border)]">
-              <th className="px-4 py-2 font-medium">Name</th>
-              <th className="px-4 py-2 font-medium w-20">File</th>
-              <th className="px-4 py-2 font-medium w-24 text-right">Instances</th>
+              <th className="px-4 py-2 font-medium">{t('developer_dashboard.name')}</th>
+              <th className="px-4 py-2 font-medium w-20">{t('developer_dashboard.file')}</th>
+              <th className="px-4 py-2 font-medium w-24 text-right">{t('developer_dashboard.instances')}</th>
             </tr>
           </thead>
           <tbody>
@@ -593,7 +601,7 @@ function AtomFamilyPanel({ stats, loading, refresh }: { stats: AtomFamilyStat[];
                     <tr className="bg-[var(--nim-surface)]">
                       <td colSpan={3} className="px-8 py-2">
                         <div className="text-xs text-[var(--nim-text-muted)] mb-1">
-                          Live params ({s.params.length}):
+                          {t('developer_dashboard.live_params', { count: s.params.length })}
                         </div>
                         <div className="flex flex-wrap gap-1.5 max-h-40 overflow-auto">
                           {s.params.map((p, i) => (
@@ -615,7 +623,7 @@ function AtomFamilyPanel({ stats, loading, refresh }: { stats: AtomFamilyStat[];
             {displayed.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-4 py-8 text-center text-[var(--nim-text-muted)]">
-                  {filterEmpty ? 'No families with live instances' : 'No families registered'}
+                  {filterEmpty ? t('developer_dashboard.no_live_families') : t('developer_dashboard.no_families')}
                 </td>
               </tr>
             )}
@@ -639,10 +647,10 @@ function CountBadge({ count }: { count: number }) {
 // Main Dashboard
 // ---------------------------------------------------------------------------
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'atomfamily', label: 'Atom Families' },
-  { id: 'renders', label: 'Renders' },
+const TABS: { id: TabId; labelKey: string }[] = [
+  { id: 'overview', labelKey: 'overview' },
+  { id: 'atomfamily', labelKey: 'atom_families' },
+  { id: 'renders', labelKey: 'renders' },
 ];
 
 function formatTime(date: Date): string {
@@ -650,6 +658,7 @@ function formatTime(date: Date): string {
 }
 
 export function DeveloperDashboard() {
+  const { t } = useTranslation('settings');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
   const [atomStats, setAtomStats] = useState<AtomFamilyStat[]>([]);
@@ -727,16 +736,16 @@ export function DeveloperDashboard() {
                 : 'border-transparent text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]'
             }`}
           >
-            {tab.label}
+            {t(`developer_dashboard.${tab.labelKey}`)}
           </button>
         ))}
         <div className="flex-1" />
         <div className="flex items-center gap-2 text-xs text-[var(--nim-text-muted)]">
-          {loading && <span className="animate-pulse">Refreshing...</span>}
+          {loading && <span className="animate-pulse">{t('developer_dashboard.refreshing')}</span>}
           {lastRefresh && !loading && (
-            <span>Last: {formatTime(lastRefresh)}</span>
+            <span>{t('developer_dashboard.last_refresh', { time: formatTime(lastRefresh) })}</span>
           )}
-          <span className="opacity-50">Auto-refresh 15s</span>
+          <span className="opacity-50">{t('developer_dashboard.auto_refresh', { seconds: 15 })}</span>
         </div>
       </div>
 

@@ -27,6 +27,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FeedbackAnswer, FeedbackAsk } from '@nimbalyst/collab-protocol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   InteractiveWidgetBody,
   InteractiveWidgetCard,
@@ -50,22 +51,35 @@ import {
   type FeedbackSubjectPreviewRenderer,
 } from './FeedbackArtifactSubjects';
 import {
-  FEEDBACK_RESPOND_BLOCKED_MESSAGES,
   feedbackRespondAsks,
   feedbackRespondSignature,
   feedbackRespondSubmitPlan,
   initialFeedbackRespondDraft,
   setFeedbackRespondAnswer,
   type FeedbackRespondDraft,
+  type FeedbackRespondBlockedReason,
 } from '@nimbalyst/collab-client/feedback';
 
-const ASK_TYPE_HINTS: Record<FeedbackAsk['type'], string> = {
-  singleSelect: 'pick one',
-  multiSelect: 'pick any',
-  reorder: 'drag to rank — top is first',
-  editText: 'free text',
-  confirm: 'yes or no',
-  rating: 'rating',
+const BLOCKED_MESSAGE_KEYS: Record<FeedbackRespondBlockedReason, string> = {
+  notARecipient: 'request.blocked.not_a_recipient',
+  requestNotOpen: 'request.blocked.request_not_open',
+  incomplete: 'request.blocked.incomplete',
+  rejected: 'request.blocked.rejected',
+};
+
+const ASK_TYPE_HINTS: Record<FeedbackAsk['type'],
+  | 'ask_hint.pick_one'
+  | 'ask_hint.pick_any'
+  | 'ask_hint.drag_to_rank'
+  | 'ask_hint.free_text'
+  | 'ask_hint.yes_or_no'
+  | 'ask_hint.rating'> = {
+  singleSelect: 'ask_hint.pick_one',
+  multiSelect: 'ask_hint.pick_any',
+  reorder: 'ask_hint.drag_to_rank',
+  editText: 'ask_hint.free_text',
+  confirm: 'ask_hint.yes_or_no',
+  rating: 'ask_hint.rating',
 };
 
 export interface FeedbackRespondSubmitResult {
@@ -134,15 +148,21 @@ const LockIcon: React.FC = () => (
   </svg>
 );
 
-function formatDeadline(deadline: number, now: number): string {
+function formatDeadline(
+  deadline: number,
+  now: number,
+  locale: string,
+  pastDue: string,
+  due: (date: string) => string,
+): string {
   const remainingMs = deadline - now;
-  if (remainingMs <= 0) return 'Past due';
-  const formatted = new Date(deadline).toLocaleString(undefined, {
+  if (remainingMs <= 0) return pastDue;
+  const formatted = new Date(deadline).toLocaleString(locale, {
     weekday: 'short',
     hour: 'numeric',
     minute: '2-digit',
   });
-  return `Due ${formatted}`;
+  return due(formatted);
 }
 
 export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
@@ -156,6 +176,7 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
   resolveArtifactAction,
   now,
 }) => {
+  const { t, i18n } = useTranslation('feedback');
   const request = state.request;
   const teamMemberId = state.teamMemberId;
 
@@ -203,17 +224,17 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
       if (result.success) {
         setSubmittedSignature(feedbackRespondSignature(asks, draft));
       } else {
-        setSubmitError(result.error ?? 'Your answers could not be sent.');
+        setSubmitError(result.error ?? t('request.submit_error'));
       }
     } catch (error) {
       console.error('[FeedbackRequestRespond] Failed to submit:', error);
       setSubmitError(
-        error instanceof Error ? error.message : 'Your answers could not be sent.',
+        error instanceof Error ? error.message : t('request.submit_error'),
       );
     } finally {
       setIsSubmitting(false);
     }
-  }, [request, draft, host, teamMemberId, clock, asks]);
+  }, [request, draft, host, teamMemberId, clock, asks, t]);
 
   if (!request) {
     return (
@@ -223,10 +244,10 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
         state={state.status === 'error' ? 'error' : 'loading'}
         tone="resolved"
       >
-        <InteractiveWidgetHeader icon={<FeedbackIcon />} title="Feedback request" />
+        <InteractiveWidgetHeader icon={<FeedbackIcon />} title={t('request.title')} />
         <InteractiveWidgetBody>
           <div className="text-xs text-nim-muted select-text">
-            {state.error?.message ?? 'Loading this request…'}
+            {state.error?.message ?? t('request.loading')}
           </div>
         </InteractiveWidgetBody>
       </InteractiveWidgetCard>
@@ -246,12 +267,12 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
   const footerNote = submitError
     ? submitError
     : plan.kind === 'blocked'
-      ? FEEDBACK_RESPOND_BLOCKED_MESSAGES[plan.reason]
+      ? t(BLOCKED_MESSAGE_KEYS[plan.reason])
       : !host
-        ? 'Answering is not available in this session yet.'
+        ? t('request.unavailable')
         : hasSubmitted
-          ? 'Your answers are in. Change one to send an update.'
-          : 'Your answers go to the person who asked, not the whole room.';
+          ? t('request.answers_sent')
+          : t('request.recipient_note');
 
   return (
     <InteractiveWidgetCard
@@ -262,25 +283,33 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
     >
       <InteractiveWidgetHeader
         icon={<FeedbackIcon />}
-        title="Feedback request"
+        title={t('request.title')}
         trailing={
           <span className="flex items-center gap-1.5">
             {hasSubmitted ? (
               <WidgetStatusPill tone="success" testId="feedback-respond-status">
-                Answers submitted
+                {t('status.answers_submitted')}
               </WidgetStatusPill>
             ) : isRecipient ? (
               <WidgetStatusPill tone="primary" testId="feedback-respond-status">
-                {asks.length === 1 ? '1 ask for you' : `${asks.length} asks for you`}
+                {asks.length === 1
+                  ? t('status.one_ask_for_you')
+                  : t('status.asks_for_you', { count: asks.length })}
               </WidgetStatusPill>
             ) : (
               <WidgetStatusPill tone="muted" testId="feedback-respond-status">
-                Nothing for you
+                {t('status.nothing_for_you')}
               </WidgetStatusPill>
             )}
             {request.deadline !== undefined && (
               <WidgetStatusPill tone="warning">
-                {formatDeadline(request.deadline, clock)}
+                {formatDeadline(
+                  request.deadline,
+                  clock,
+                  i18n.language,
+                  t('deadline.past_due'),
+                  (date) => t('deadline.due', { date }),
+                )}
               </WidgetStatusPill>
             )}
           </span>
@@ -303,8 +332,8 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
             key={ask.id}
             testId="feedback-respond-ask"
             rootClassName="feedback-respond-ask"
-            tag={`Q${index + 1} · ${ask.label}`}
-            hint={ASK_TYPE_HINTS[ask.type]}
+            tag={t('request.question_tag', { number: index + 1, label: ask.label })}
+            hint={t(ASK_TYPE_HINTS[ask.type])}
             question={ask.description || ask.label}
             selectableQuestion
           >
@@ -330,8 +359,7 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
             rootClassName="feedback-respond-observer-note"
             testId="feedback-respond-observer-note"
           >
-            Nothing on this request is assigned to you. You can still follow the
-            discussion.
+            {t('request.observer_note')}
           </WidgetNoteRow>
         )}
 
@@ -341,7 +369,7 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
             rootClassName="feedback-respond-hidden-note"
             testId="feedback-respond-hidden-note"
           >
-            Other people&apos;s answers stay hidden until you submit yours.
+            {t('request.hidden_answers_note')}
           </WidgetNoteRow>
         )}
 
@@ -356,7 +384,7 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
                 rootClassName="feedback-respond-add-comment"
                 onClick={() => setDiscussionOpen(true)}
               >
-                Add a comment
+                {t('request.add_comment')}
               </WidgetQuietLink>
             </span>
           }
@@ -369,10 +397,10 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
               disabled={plan.kind === 'blocked' || !canSend || isUnchangedSinceSubmit}
             >
               {isSubmitting
-                ? 'Sending…'
+                ? t('request.sending')
                 : hasSubmitted
-                  ? 'Update answers'
-                  : 'Submit answers'}
+                  ? t('request.update_answers')
+                  : t('request.submit_answers')}
             </WidgetActionButton>
           )}
         </WidgetFooter>
@@ -384,14 +412,14 @@ export const FeedbackRequestRespond: React.FC<FeedbackRequestRespondProps> = ({
           className="feedback-respond-discussion border-t border-nim bg-nim-secondary px-3.5 py-3"
         >
           <div className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-wide text-nim-faint">
-            Discussion{request.discussion?.length ? ` · ${request.discussion.length}` : ''}
+            {t('request.discussion')}{request.discussion?.length ? ` · ${request.discussion.length}` : ''}
           </div>
           {discussion != null ? discussion : (
             <div
               data-testid="feedback-respond-discussion-unavailable"
               className="text-xs text-nim-muted select-text"
             >
-              Commenting on this request is not available here yet.
+              {t('request.commenting_unavailable')}
             </div>
           )}
         </div>

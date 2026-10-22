@@ -6,6 +6,7 @@
 
 import type { JSX } from 'react';
 import type { LexicalEditor } from 'lexical';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { $collectCitationNodes, useCitationIndex } from './citationIndex';
 import { getCitationHost } from './citationHost';
@@ -29,10 +30,11 @@ export function revealCitation(editor: LexicalEditor, index: number): void {
 }
 
 function CitationRow({ citation, onReveal }: { citation: Citation; onReveal: () => void }): JSX.Element {
+  const { t } = useTranslation('editor');
   const host = getCitationHost();
   if (citation.kind === 'human') {
     const name = citation.by ?? citation.label;
-    const origin = [citation.sessionTitle ?? 'Session', displayDate(citation.at)].filter(Boolean).join(' · ');
+    const origin = [citation.sessionTitle ?? t('citation_sources.session'), displayDate(citation.at)].filter(Boolean).join(' · ');
     const canOpen = Boolean(host.openHumanCitation) && (host.canOpenHumanCitation?.(citation) ?? true);
     return (
       <li className="citation-sources-row flex gap-2.5 py-2">
@@ -55,7 +57,7 @@ function CitationRow({ citation, onReveal }: { citation: Citation; onReveal: () 
           {citation.quote && <q className="mt-0.5 block select-text text-xs italic text-nim-muted">{citation.quote}</q>}
         </div>
         <button type="button" className="citation-sources-reveal shrink-0 self-start border-none bg-transparent p-0 text-xs text-nim-faint hover:text-nim" onClick={onReveal}>
-          Go to
+          {t('citation_sources.go_to')}
         </button>
       </li>
     );
@@ -70,23 +72,24 @@ function CitationRow({ citation, onReveal }: { citation: Citation; onReveal: () 
             className="citation-sources-open max-w-full truncate border-none bg-transparent p-0 text-left text-xs text-nim-faint hover:text-nim-primary"
             onClick={() => host.openSource?.(citation.target)}
           >
-            {isWebSource(citation.target) ? 'Open link' : 'Open document'} &#8250;
+            {isWebSource(citation.target) ? t('citation_sources.open_link') : t('citation_sources.open_document')} &#8250;
           </button>
         ) : (
           <div className="truncate select-text text-xs text-nim-faint">{citation.target}</div>
         )}
       </div>
       <button type="button" className="citation-sources-reveal shrink-0 self-start border-none bg-transparent p-0 text-xs text-nim-faint hover:text-nim" onClick={onReveal}>
-        Go to
+        {t('citation_sources.go_to')}
       </button>
     </li>
   );
 }
 
 export default function CitationSourcesList({ editor }: { editor: LexicalEditor }): JSX.Element {
+  const { t } = useTranslation('editor');
   const { citations } = useCitationIndex(editor);
   if (citations.length === 0) {
-    return <div className="text-xs text-nim-faint">This page cites nothing yet.</div>;
+    return <div className="text-xs text-nim-faint">{t('citation_sources.empty')}</div>;
   }
   return (
     <ul className="citation-sources-list m-0 list-none divide-y divide-[var(--nim-border)] p-0" data-testid="citation-sources-list">

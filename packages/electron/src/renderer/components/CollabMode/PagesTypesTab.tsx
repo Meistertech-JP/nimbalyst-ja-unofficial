@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { atom, useAtom, useAtomValue, type PrimitiveAtom } from 'jotai';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
 import { TrackersUIProvider } from '@nimbalyst/collab-client/trackers-ui';
@@ -83,6 +84,8 @@ function useWorkspaceHasTeam(workspacePath: string | null): boolean {
 }
 
 function ShareTypeButton({ workspacePath, typeId }: { workspacePath: string; typeId: string }) {
+  const { t } = useTranslation('collabSidebar');
+  const { t: tTracker } = useTranslation('tracker');
   const model = globalRegistry.get(typeId);
   if (!model || !canShareTrackerTypeWithTeam(model)) return null;
   return (
@@ -90,9 +93,9 @@ function ShareTypeButton({ workspacePath, typeId }: { workspacePath: string; typ
       type="button"
       className="pages-types-share cursor-pointer rounded border-none bg-transparent px-1.5 py-0.5 text-[12px] text-nim-muted hover:bg-nim-hover hover:text-nim"
       data-testid="pages-types-share-with-team"
-      onClick={() => { void shareTrackerTypeWithTeam(workspacePath, model); }}
+      onClick={() => { void shareTrackerTypeWithTeam(workspacePath, model, tTracker); }}
     >
-      Share with team
+      {t('pages_section.share_with_team')}
     </button>
   );
 }

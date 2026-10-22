@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import {
   frameAt,
   startTimeOf,
@@ -68,6 +69,7 @@ export function StepStrip({
   currentStepIndex,
   readOnly,
 }: StepStripProps) {
+  const { t } = useTranslation("extensions");
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
 
@@ -140,7 +142,7 @@ export function StepStrip({
             type="button"
             className="anim-tbtn"
             onClick={onJumpToStart}
-            title="Jump to start"
+            title={t("animation.jump_to_start")}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path
@@ -156,7 +158,7 @@ export function StepStrip({
             type="button"
             className="anim-tbtn"
             onClick={() => onStep(-1)}
-            title="Previous step"
+            title={t("animation.previous_step")}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path
@@ -173,7 +175,7 @@ export function StepStrip({
             type="button"
             className="anim-tbtn anim-tbtn-play"
             onClick={onTogglePlay}
-            title={playing ? "Pause" : "Play"}
+            title={playing ? t("animation.pause") : t("animation.play")}
           >
             {playing ? (
               <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -204,7 +206,7 @@ export function StepStrip({
             type="button"
             className="anim-tbtn"
             onClick={() => onStep(1)}
-            title="Next step"
+            title={t("animation.next_step")}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path
@@ -221,7 +223,7 @@ export function StepStrip({
             type="button"
             className={loop ? "anim-tbtn anim-tbtn-on" : "anim-tbtn"}
             onClick={onToggleLoop}
-            title="Loop"
+            title={t("animation.loop")}
             aria-pressed={loop}
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -251,19 +253,19 @@ export function StepStrip({
         <div className="anim-transport-meta">
           <span>{doc.stage.fps} fps</span>
           <span className="anim-sep">|</span>
-          <span>frame {frameAt(doc, time)}</span>
+          <span>{t("animation.frame", { count: frameAt(doc, time) })}</span>
         </div>
 
         <div className="anim-transport-spacer" />
 
         {currentStep ? (
           <span className="anim-current-step">
-            step {currentStepIndex + 1} of {doc.steps.length} &middot;{" "}
+            {t("animation.step_position", { current: currentStepIndex + 1, total: doc.steps.length })} &middot;{" "}
             {currentStep.id}
           </span>
         ) : (
           <span className="anim-current-step anim-current-step-empty">
-            no steps
+            {t("animation.no_steps")}
           </span>
         )}
       </div>
@@ -337,8 +339,8 @@ export function StepStrip({
                 style={{ left: `${pct(starts[index] + step.duration)}%` }}
                 title={
                   readOnly
-                    ? `"${step.id}" is read-only`
-                    : `Drag to retime "${step.id}"`
+                    ? t("animation.step_read_only", { name: step.id })
+                    : t("animation.drag_to_retime", { name: step.id })
                 }
                 aria-disabled={readOnly}
                 onPointerDown={(event) => {

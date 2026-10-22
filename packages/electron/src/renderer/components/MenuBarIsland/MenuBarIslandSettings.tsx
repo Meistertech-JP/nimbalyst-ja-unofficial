@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   MENU_BAR_ISLAND_CHANNELS,
   type MenuBarIslandSettingChange,
@@ -93,35 +94,42 @@ function SegmentedChoice<T extends string>({
 }
 
 export function MenuBarIslandSettingsPanel({ settings }: { settings: MenuBarIslandSettings }) {
+  const { t } = useTranslation('menu');
   return (
     <div data-testid="menu-bar-island-settings">
       <Row
-        label="Menu bar style"
+        label={t('menu_bar_island.settings_panel.style_label')}
         hint={settings.style === 'island'
-          ? 'The floating pill. Replaces the menu bar icon.'
-          : 'A status item on the right of the menu bar.'}
+          ? t('menu_bar_island.settings_panel.style_hint_island')
+          : t('menu_bar_island.settings_panel.style_hint_icon')}
       >
         <SegmentedChoice
           value={settings.style}
-          options={[{ value: 'island', label: 'Island' }, { value: 'image', label: 'Icon' }]}
+          options={[
+            { value: 'island', label: t('menu_bar_island.settings_panel.style_option_island') },
+            { value: 'image', label: t('menu_bar_island.settings_panel.style_option_icon') },
+          ]}
           onChange={(value) => send({ key: 'style', value })}
         />
       </Row>
 
-      <Row label="Show fleet status" hint="Off leaves just the menu bar icon.">
+      <Row
+        label={t('menu_bar_island.settings_panel.fleet_status_label')}
+        hint={t('menu_bar_island.settings_panel.fleet_status_hint')}
+      >
         <Toggle
-          label="Show fleet status"
+          label={t('menu_bar_island.settings_panel.fleet_status_label')}
           checked={settings.showFleetStatus}
           onChange={(value) => send({ key: 'showFleetStatus', value })}
         />
       </Row>
 
       <Row
-        label="System notifications"
-        hint="Banners when a session finishes or needs you."
+        label={t('menu_bar_island.settings_panel.notifications_label')}
+        hint={t('menu_bar_island.settings_panel.notifications_hint')}
       >
         <Toggle
-          label="System notifications"
+          label={t('menu_bar_island.settings_panel.notifications_label')}
           checked={settings.osNotifications}
           onChange={(value) => send({ key: 'osNotifications', value })}
         />
@@ -130,13 +138,13 @@ export function MenuBarIslandSettingsPanel({ settings }: { settings: MenuBarIsla
       {/* Null means sync is not configured, in which case preventing sleep has
           nothing to protect -- the tray menu hides it on the same condition. */}
       {settings.preventSleep !== null && (
-        <Row label="Prevent sleep">
+        <Row label={t('menu_bar_island.settings_panel.prevent_sleep_label')}>
           <SegmentedChoice<PreventSleepMode>
             value={settings.preventSleep}
             options={[
-              { value: 'off', label: 'Off' },
-              { value: 'pluggedIn', label: 'Plugged in' },
-              { value: 'always', label: 'Always' },
+              { value: 'off', label: t('menu_bar_island.settings_panel.off') },
+              { value: 'pluggedIn', label: t('menu_bar_island.settings_panel.plugged_in') },
+              { value: 'always', label: t('menu_bar_island.settings_panel.always') },
             ]}
             onChange={(value) => send({ key: 'preventSleep', value })}
           />

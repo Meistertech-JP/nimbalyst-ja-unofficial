@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { autoUpdate, flip, FloatingPortal, offset, shift, useFloating } from '@floating-ui/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type {
   TrackerColumnDef,
@@ -10,7 +11,6 @@ import {
   clausesForField,
   isClauseComplete,
   opsForFieldType,
-  OP_LABELS,
   UNARY_OPS,
   type TrackerFieldFilter,
   type TrackerFilterOp,
@@ -85,19 +85,15 @@ export interface TrackerViewHeaderControlsProps {
   viewModeOptions?: readonly TrackerViewModeOption[];
 }
 
-const STATUS_SCOPE_OPTIONS: ReadonlyArray<{
-  scope: TrackerStatusScope;
-  label: string;
-  title: string;
-}> = [
-  { scope: 'open', label: 'Open', title: 'Work that is still outstanding' },
-  { scope: 'all', label: 'All', title: 'Every item, open and closed' },
+const STATUS_SCOPE_OPTIONS = [
+  { scope: 'open', labelKey: 'main_extra.scope_open', titleKey: 'main_extra.scope_open_title' },
+  { scope: 'all', labelKey: 'main_extra.scope_all', titleKey: 'main_extra.scope_all_title' },
   {
     scope: 'closed',
-    label: 'Closed',
-    title: 'Work that was finished or abandoned',
+    labelKey: 'main_extra.scope_closed',
+    titleKey: 'main_extra.scope_closed_title',
   },
-];
+] as const;
 
 /**
  * The lifecycle scope, as a segment rather than a menu.
@@ -113,11 +109,12 @@ function TrackerStatusScopeControl({
   scope: TrackerStatusScope;
   onScopeChange: (scope: TrackerStatusScope) => void;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   return (
     <div
       className="tracker-status-scope inline-flex h-7 overflow-hidden rounded border border-nim"
       role="group"
-      aria-label="Status scope"
+      aria-label={t('main_extra.status_scope')}
       data-testid="tracker-status-scope"
     >
       {STATUS_SCOPE_OPTIONS.map((option) => (
@@ -130,11 +127,11 @@ function TrackerStatusScopeControl({
               : 'bg-nim-secondary text-nim-muted hover:bg-nim-tertiary hover:text-nim'
           }`}
           aria-pressed={option.scope === scope}
-          title={option.title}
+          title={t(option.titleKey)}
           onClick={() => onScopeChange(option.scope)}
           data-testid={`tracker-status-scope-${option.scope}`}
         >
-          {option.label}
+          {t(option.labelKey)}
         </button>
       ))}
     </div>
@@ -176,7 +173,8 @@ function iconForField(field: TrackerFilterField): string {
 function filterValueLabel(
   value: unknown,
   op?: TrackerFilterOp,
-  field?: TrackerFilterField
+  field?: TrackerFilterField,
+  formatDays?: (value: string) => string,
 ): string {
   if (value === undefined) return '';
   // Show what the field calls the value ("Yes", "To do"), not its stored form.
@@ -189,7 +187,7 @@ function filterValueLabel(
   const text = Array.isArray(value)
     ? value.map(label).join(', ')
     : label(value);
-  return op === 'in-last' || op === 'not-in-last' ? `${text} days` : text;
+  return op === 'in-last' || op === 'not-in-last' ? (formatDays?.(text) ?? `${text} days`) : text;
 }
 
 type FilterMenuMode = 'fields' | 'field' | 'advanced';
@@ -219,6 +217,31 @@ export function TrackerViewHeaderControls({
   onLayoutChange,
   viewModeOptions = TRACKER_VIEW_MODE_OPTIONS,
 }: TrackerViewHeaderControlsProps): JSX.Element {
+  const { t } = useTranslation('tracker');
+  const statusScopeLabels: Record<TrackerStatusScope, string> = {
+    open: t('main_extra.scope_open'),
+    all: t('main_extra.scope_all'),
+    closed: t('main_extra.scope_closed'),
+  };
+  const operatorLabels: Record<TrackerFilterOp, string> = {
+    '=': t('main_extra.operators.is'),
+    '!=': t('main_extra.operators.is_not'),
+    contains: t('main_extra.operators.contains'),
+    'not-contains': t('main_extra.operators.not_contains'),
+    in: t('main_extra.operators.is_any_of'),
+    'not-in': t('main_extra.operators.is_none_of'),
+    '>': t('main_extra.operators.after_or_greater_than'),
+    '>=': t('main_extra.operators.at_or_after'),
+    '<': t('main_extra.operators.before_or_less_than'),
+    '<=': t('main_extra.operators.at_or_before'),
+    between: t('main_extra.operators.between'),
+    'in-last': t('main_extra.operators.in_last'),
+    'not-in-last': t('main_extra.operators.not_in_last'),
+    'is-current-user': t('main_extra.operators.current_user'),
+    'is-not-current-user': t('main_extra.operators.not_current_user'),
+    'is-empty': t('main_extra.operators.empty'),
+    'is-not-empty': t('main_extra.operators.not_empty'),
+  };
   const [showFilters, setShowFilters] = useState(false);
   const [showDisplayOptions, setShowDisplayOptions] = useState(false);
   const [menuMode, setMenuMode] = useState<FilterMenuMode>('fields');
@@ -372,10 +395,14 @@ export function TrackerViewHeaderControls({
         data-testid="tracker-view-item-count"
       >
         {unscopedItemCount === undefined
-          ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
+          ? t('filters.item_count', { count: itemCount })
           : statusScope === 'all'
-          ? `${itemCount} total`
-          : `${itemCount} ${statusScope} of ${unscopedItemCount}`}
+          ? t('main_extra.total_count', { count: itemCount })
+          : t('main_extra.scope_count', {
+              count: itemCount,
+              scope: statusScopeLabels[statusScope],
+              total: unscopedItemCount,
+            })}
       </span>
 
       <TrackerStatusScopeControl
@@ -404,7 +431,7 @@ export function TrackerViewHeaderControls({
           data-testid="tracker-view-filter-button"
         >
           <MaterialSymbol icon="filter_list" size={14} />
-          Filter
+          {t('filters.filter')}
           {activeFilterCount > 0 && (
             <span className="rounded-full bg-[var(--nim-primary)] px-1.5 text-[10px] leading-4 text-white">
               {activeFilterCount}
@@ -424,7 +451,7 @@ export function TrackerViewHeaderControls({
               menuMode === 'advanced' ? 'w-[620px]' : 'w-[360px]'
             }`}
             role="dialog"
-            aria-label="Tracker filters"
+            aria-label={t('filters.tracker_filters')}
             data-testid="tracker-filter-builder"
           >
             {menuMode !== 'advanced' && (
@@ -438,7 +465,7 @@ export function TrackerViewHeaderControls({
                   <input
                     autoFocus
                     className="h-9 w-full rounded-md border border-transparent bg-transparent pl-8 pr-10 text-[15px] text-nim outline-none placeholder:text-nim-faint focus:border-nim-focus"
-                    placeholder="Add filter…"
+                    placeholder={t('filters.add_filter_placeholder')}
                     value={query}
                     onChange={(event) => {
                       setQuery(event.target.value);
@@ -481,7 +508,7 @@ export function TrackerViewHeaderControls({
                     data-testid="tracker-filter-active-list"
                   >
                     <div className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wider text-nim-faint">
-                      Active filters
+                      {t('filters.active_filters')}
                     </div>
                     {(filters?.clauses ?? []).map((clause, index) => {
                       if (!isClauseComplete(clause)) return null;
@@ -506,17 +533,17 @@ export function TrackerViewHeaderControls({
                           <span className="min-w-0 flex-1 truncate">
                             {field?.label ?? clause.field}{' '}
                             <span className="text-nim-muted">
-                              {OP_LABELS[clause.op]}
+                              {operatorLabels[clause.op]}
                             </span>{' '}
-                            {filterValueLabel(clause.value, clause.op, field)}
+                            {filterValueLabel(clause.value, clause.op, field, (value) => t('filters.days', { value }))}
                           </span>
                           <button
                             type="button"
                             className="rounded p-0.5 text-nim-faint hover:bg-nim-tertiary hover:text-nim"
                             onClick={() => removeActiveFilter(index)}
-                            aria-label={`Remove ${
-                              field?.label ?? clause.field
-                            } filter`}
+                            aria-label={t('filters.remove_field_filter', {
+                              field: field?.label ?? clause.field,
+                            })}
                           >
                             <MaterialSymbol icon="close" size={13} />
                           </button>
@@ -554,7 +581,7 @@ export function TrackerViewHeaderControls({
                       size={19}
                       className="text-nim-muted"
                     />
-                    <span className="flex-1">Advanced filter</span>
+                    <span className="flex-1">{t('filters.advanced_filter')}</span>
                   </button>
                 </div>
 
@@ -616,7 +643,7 @@ export function TrackerViewHeaderControls({
                   })}
                   {matchingFields.length === 0 && (
                     <div className="px-3 py-8 text-center text-[12px] text-nim-faint">
-                      No matching fields
+                      {t('filters.no_matching_fields')}
                     </div>
                   )}
                 </div>
@@ -707,13 +734,13 @@ export function TrackerViewHeaderControls({
             preloadTagBoard();
             preloadTrackerTimelineView();
           }}
-          title="Display settings — view, grouping, ordering & columns"
-          aria-label="Display settings"
+          title={t('ui.display_settings_title')}
+          aria-label={t('ui.display_settings')}
           aria-expanded={showDisplayOptions}
           data-testid="tracker-view-display-options"
         >
           <MaterialSymbol icon="tune" size={14} />
-          Display
+          {t('ui.display')}
         </button>
         {showDisplayOptions && (
           <LazyDisplayOptionsPanel

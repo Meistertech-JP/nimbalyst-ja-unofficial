@@ -17,19 +17,35 @@
  */
 
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider as JotaiProvider } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { store } from '../../../../../store/store';
 import { setInteractiveWidgetHost } from '../../../../../store/atoms/interactiveWidgetHost';
 import { ToolPermissionWidget } from '../ToolPermissionWidget';
 import type { InteractiveWidgetHost } from '../InteractiveWidgetHost';
 
-// Wrap renders in a Jotai Provider bound to the same singleton store that
-// setInteractiveWidgetHost writes to, otherwise the widget reads from
-// Jotai's default store and never sees the test setup.
-function renderWithStore(ui: React.ReactElement) {
-  return render(<JotaiProvider store={store}>{ui}</JotaiProvider>);
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+// Bind each render to the same Jotai store that the test setup writes to,
+// and provide the host i18n instance expected by the shared runtime widget.
+function renderWithStore(ui: React.ReactElement, language: 'en' | 'ja' = 'en') {
+  const i18n = language === 'ja' ? japaneseI18n : englishI18n;
+  return render(
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+      <JotaiProvider store={store}>{ui}</JotaiProvider>
+    </UiLanguageProvider>,
+  );
 }
 
 function makeMessage(overrides: Record<string, unknown> = {}) {
@@ -99,6 +115,22 @@ describe('ToolPermissionWidget — host-null regression (#276)', () => {
     screen.getByTestId('tool-permission-allow-once');
     screen.getByTestId('tool-permission-allow-session');
     screen.getByTestId('tool-permission-allow-always');
+  });
+
+  it('shows translated permission controls in Japanese', () => {
+    renderWithStore(
+      <ToolPermissionWidget
+        message={makeMessage()}
+        sessionId={sessionId}
+        isExpanded={false}
+        onToggle={() => {}}
+      />,
+      'ja',
+    );
+
+    screen.getByText('このツールを許可しますか？');
+    screen.getByRole('button', { name: '一度だけ許可' });
+    screen.getByRole('button', { name: '常に許可' });
   });
 
   it('shows a "Reconnecting to permission backend" note when host is null', () => {

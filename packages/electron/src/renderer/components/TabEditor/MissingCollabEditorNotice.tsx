@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { extensionMarketplaceInstallRequestAtom } from '../../store/atoms/appCommands';
 import type { CollabEditorAvailability } from './collabEditorAvailability';
@@ -59,22 +60,23 @@ export const MissingCollabEditorNotice: React.FC<MissingCollabEditorNoticeProps>
   availability,
   documentType,
 }) => {
+  const { t } = useTranslation('editor');
   const requestMarketplaceInstall = useSetAtom(extensionMarketplaceInstallRequestAtom);
   const { extensionId } = availability;
   const { name, listed } = useMarketplaceExtensionName(extensionId);
 
   const isMissing = availability.kind === 'extension-missing';
   const headline = !extensionId
-    ? `No editor available for document type: ${documentType}`
+    ? t('collab.no_editor', { type: documentType })
     : isMissing
-      ? `${name} isn't installed`
-      : `${name} can't open shared documents`;
+      ? t('collab.extension_not_installed', { name })
+      : t('collab.extension_cannot_open_shared_documents', { name });
 
   const detail = !extensionId
-    ? 'This document was shared from an editor this copy of Nimbalyst does not recognize.'
+    ? t('collab.unknown_shared_editor')
     : isMissing
-      ? 'This shared document needs that extension to open.'
-      : 'Update the extension to a version that supports collaborative editing.';
+      ? t('collab.shared_document_needs_extension')
+      : t('collab.update_extension_for_collaboration');
 
   return (
     <div className="missing-collab-editor-notice flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-nim-muted">
@@ -94,9 +96,9 @@ export const MissingCollabEditorNotice: React.FC<MissingCollabEditorNoticeProps>
         >
           {listed
             ? isMissing
-              ? `Install ${name}`
-              : `Update ${name}`
-            : 'Open Extension Marketplace'}
+              ? t('collab.install_extension_button', { name })
+              : t('collab.update_extension_button', { name })
+            : t('collab.open_extension_marketplace')}
         </button>
       )}
     </div>

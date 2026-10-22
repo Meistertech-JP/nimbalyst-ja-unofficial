@@ -7,6 +7,7 @@ import type { TeamInboxSnapshot } from '@nimbalyst/runtime/sync';
 import { createInboxFixtures } from '../inboxFixtures';
 import {
   deriveScopeOptions,
+  formatRelativeTimestamp,
   groupRows,
   inboxNavCount,
   openRow,
@@ -19,6 +20,17 @@ import { inboxUnreadCount } from '../../orgSidebarViewModel';
 import { EMPTY_INBOX_SCOPE, type HydratedInboxDelivery, type InboxRowView } from '../inboxTypes';
 
 const NOW = Date.parse('2026-07-26T18:00:00.000Z');
+
+describe('formatRelativeTimestamp', () => {
+  it('formats Japanese relative times without English unit suffixes', () => {
+    expect(formatRelativeTimestamp(NOW - 5 * 60_000, NOW, 'ja')).toBe('5分');
+    expect(formatRelativeTimestamp(NOW - 2 * 60 * 60_000, NOW, 'ja')).toBe('2時間');
+  });
+
+  it('keeps the compact English labels by default', () => {
+    expect(formatRelativeTimestamp(NOW - 5 * 60_000, NOW)).toBe('5m');
+  });
+});
 
 /**
  * The fixtures carry no feedback request, and it is the one source kind the

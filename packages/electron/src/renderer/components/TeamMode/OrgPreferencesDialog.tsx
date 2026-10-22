@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import { settingAtom } from '../../store/atoms/settingAtomFamily';
@@ -9,22 +10,22 @@ type MessageDensity = 'comfortable' | 'compact';
 
 interface DensityChoice {
   value: MessageDensity;
-  label: string;
-  detail: string;
+  labelKey: string;
+  detailKey: string;
   icon: string;
 }
 
 const DENSITY_CHOICES: DensityChoice[] = [
   {
     value: 'comfortable',
-    label: 'Comfortable',
-    detail: 'Avatar, name on its own line, room to breathe.',
+    labelKey: 'comfortable',
+    detailKey: 'comfortable_detail',
     icon: 'view_agenda',
   },
   {
     value: 'compact',
-    label: 'Compact',
-    detail: 'One line per message: time, name, then the message.',
+    labelKey: 'compact',
+    detailKey: 'compact_detail',
     icon: 'view_headline',
   },
 ];
@@ -40,17 +41,18 @@ const DENSITY_CHOICES: DensityChoice[] = [
  * second design; today there is exactly one.
  */
 export function OrgPreferencesDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('collabSidebar');
   return (
     <OrgDialog
-      title="Preferences"
-      description="These settings apply to this window on this device."
+      title={t('org_preferences.title')}
+      description={t('org_preferences.description')}
       testId="org-preferences-dialog"
       onClose={onClose}
       footer={
         // Every preference here writes through on change, so there is nothing
         // to submit — the only button closes.
         <OrgDialogSecondaryButton testId="org-preferences-done" onClick={onClose}>
-          Done
+          {t('org_preferences.done')}
         </OrgDialogSecondaryButton>
       }
     >
@@ -60,17 +62,22 @@ export function OrgPreferencesDialog({ onClose }: { onClose: () => void }) {
 }
 
 function MessageDisplaySection() {
+  const { t } = useTranslation('collabSidebar');
   const [density, setDensity] = useAtom(settingAtom('team.messages.density'));
 
   return (
     <section className="org-preferences-section" data-testid="org-preferences-message-display">
       <h4 className="m-0 mb-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">
-        Message display
+        {t('org_preferences.message_display')}
       </h4>
       <p className="m-0 mb-2.5 text-[12px] text-[var(--nim-text-muted)]">
-        How messages are laid out in rooms and direct messages.
+        {t('org_preferences.message_display_description')}
       </p>
-      <div className="org-preferences-density flex flex-col gap-2" role="radiogroup" aria-label="Message display">
+      <div
+        className="org-preferences-density flex flex-col gap-2"
+        role="radiogroup"
+        aria-label={t('org_preferences.message_display')}
+      >
         {DENSITY_CHOICES.map((choice) => {
           const selected = density === choice.value;
           return (
@@ -96,10 +103,10 @@ function MessageDisplaySection() {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--nim-text)]">
                   <MaterialSymbol icon={choice.icon} size={14} />
-                  {choice.label}
+                  {t(`org_preferences.density.${choice.labelKey}`)}
                 </span>
                 <span className="mt-0.5 block text-[12px] text-[var(--nim-text-muted)]">
-                  {choice.detail}
+                  {t(`org_preferences.density.${choice.detailKey}`)}
                 </span>
               </span>
             </button>

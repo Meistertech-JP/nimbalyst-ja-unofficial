@@ -9,7 +9,8 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { atom, useSetAtom } from 'jotai';
 import { store } from '@nimbalyst/runtime/store';
-import { getHelpContent, type HelpEntry } from './HelpContent';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { getHelpContent, localizeHelpEntry } from './HelpContent';
 import { getShortcutDisplay } from '../../shared/KeyboardShortcuts';
 
 // Atom to track when window last regained focus - shared across all HelpTooltip instances
@@ -181,6 +182,7 @@ export function HelpTooltip({
   disabled = false,
   extraContent,
 }: HelpTooltipProps) {
+  const { t } = useTranslation('common');
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<TooltipPosition | null>(null);
   const targetRef = useRef<HTMLElement | null>(null);
@@ -190,7 +192,13 @@ export function HelpTooltip({
 
   const setLastWindowFocusTime = useSetAtom(lastWindowFocusTimeAtom);
 
-  const helpContent = getHelpContent(testId);
+  const sourceHelp = getHelpContent(testId);
+  const helpContent = useMemo(() => {
+    if (!sourceHelp || typeof sourceHelp.title !== 'string' || typeof sourceHelp.body !== 'string') {
+      return sourceHelp;
+    }
+    return localizeHelpEntry(testId, sourceHelp, t);
+  }, [sourceHelp, t, testId]);
 
   const showTooltip = useCallback(() => {
     // Read current value from store at callback time, not stale closure value

@@ -2,6 +2,8 @@
 import { Provider } from 'jotai';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { store } from '@nimbalyst/runtime/store';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import {
@@ -102,13 +104,27 @@ describe('TrackerDocumentViewHeader', () => {
     expect(onCollapseToTracker).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a copy-link button for a shared tracker and reports the action', () => {
+  it.each([
+    ['en', 'Copy shareable link'],
+    ['ja', '共有リンクをコピー'],
+  ] as const)('shows a copy-link button for a shared tracker and reports the action (%s)', async (language, label) => {
     const onCopyDocumentLink = vi.fn();
-    renderHeader({ onCopyDocumentLink });
+    const i18n = await createI18nInstance(language);
+    render(
+      <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+        <TrackerDocumentViewHeader
+          issueKey="NIM-1647"
+          title="Linear-Style Tracker Views and Filtering Plan"
+          fieldPills={<span>In Progress</span>}
+          onCollapseToTracker={vi.fn()}
+          onCopyDocumentLink={onCopyDocumentLink}
+        />
+      </UiLanguageProvider>,
+    );
 
     const copyLink = screen.getByTestId('tracker-document-copy-link');
-    expect(copyLink.getAttribute('aria-label')).toBe('Copy collaborative tracker link');
-    expect(copyLink.getAttribute('title')).toBe('Copy collaborative tracker link');
+    expect(copyLink.getAttribute('aria-label')).toBe(label);
+    expect(copyLink.getAttribute('title')).toBe(label);
 
     fireEvent.click(copyLink);
     expect(onCopyDocumentLink).toHaveBeenCalledTimes(1);

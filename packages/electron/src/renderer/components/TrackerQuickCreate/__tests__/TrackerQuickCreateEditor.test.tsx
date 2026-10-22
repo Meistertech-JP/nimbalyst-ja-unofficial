@@ -9,6 +9,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import {
   $getRoot,
   $createParagraphNode,
@@ -27,7 +29,9 @@ import {
 import { trackerQuickCreateDraftAtom } from '../../../store/atoms/trackerQuickCreate';
 
 const stage = vi.fn();
-beforeEach(() => {
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeEach(async () => {
+  englishI18n = await createI18nInstance('en');
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -50,20 +54,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function harness() {
+function harness(i18n = englishI18n) {
   const store = createStore();
   const draftAtom = trackerQuickCreateDraftAtom('/screenshots');
   const onSubmit = vi.fn();
   const renderEditor = () =>
     render(
-      <Provider store={store}>
-        <TrackerQuickCreateEditor
-          workspacePath="/screenshots"
-          draftId={store.get(draftAtom).id}
-          draftAtom={draftAtom}
-          onSubmit={onSubmit}
-        />
-      </Provider>,
+      <UiLanguageProvider i18n={i18n} preference={i18n.language === 'ja' ? 'ja' : 'en'} systemLocale="en-US">
+        <Provider store={store}>
+          <TrackerQuickCreateEditor
+            workspacePath="/screenshots"
+            draftId={store.get(draftAtom).id}
+            draftAtom={draftAtom}
+            onSubmit={onSubmit}
+          />
+        </Provider>
+      </UiLanguageProvider>,
     );
   const file = new File(['image'], 'screen.png', { type: 'image/png' });
   Object.defineProperty(file, 'arrayBuffer', {
@@ -71,6 +77,15 @@ function harness() {
   });
   return { store, draftAtom, renderEditor, file, onSubmit };
 }
+
+it('renders screenshot actions in Japanese', async () => {
+  const i18n = await createI18nInstance('ja');
+  const { renderEditor } = harness(i18n);
+  renderEditor();
+  await screen.findByRole('textbox');
+  screen.getByRole('button', { name: 'スクリーンショットを追加' });
+  screen.getByText('スクリーンショットをコンテンツに貼り付けるか、ドロップ');
+});
 
 it('submits on Cmd/Ctrl+Enter from the body and leaves plain Enter to the editor', async () => {
   const { store, draftAtom, renderEditor, onSubmit } = harness();

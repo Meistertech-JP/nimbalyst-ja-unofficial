@@ -194,6 +194,7 @@ export const collabConnectionStatusAtom = atomFamily(
 export interface RemoteUser {
   name: string;
   color: string;
+  nimbalystNameSource?: 'system-default';
 }
 
 /** Remote user awareness per collab document. */

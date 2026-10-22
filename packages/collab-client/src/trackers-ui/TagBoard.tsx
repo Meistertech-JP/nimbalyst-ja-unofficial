@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import {
@@ -41,18 +42,19 @@ export const TagBoard: React.FC<TagBoardProps> = ({
   renderUnreadSlot,
   renderFavoriteSlot,
 }) => {
+  const { t } = useTranslation('tracker');
   const columns = useMemo(() => groupTrackerItemsByTag(items), [items]);
 
   if (items.length === 0) {
-    return <TrackerSurfaceMessage icon="sell" message="No items to display" />;
+    return <TrackerSurfaceMessage icon="sell" message={t('kanban.no_items')} />;
   }
 
   if (columns.length === 0) {
     return (
       <TrackerSurfaceMessage
         icon="sell"
-        message="No tags on these items yet"
-        hint="Add tags to group them on the tag board."
+        message={t('tag_board.no_tags')}
+        hint={t('tag_board.no_tags_desc')}
       />
     );
   }

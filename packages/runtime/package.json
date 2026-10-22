@@ -339,6 +339,7 @@
     "dist-node"
   ],
   "scripts": {
+    "prebuild": "pnpm --filter @nimbalyst/i18n run build",
     "dev": "vite build --watch --mode development",
     "build": "pnpm run build:node && vite build",
     "build:node": "pnpm --filter @nimbalyst/collab-protocol run build && tsc -p tsconfig.node.json && node scripts/add-node-extensions.mjs",
@@ -346,6 +347,7 @@
     "typecheck": "node ../../scripts/tsc-native.mjs --noEmit"
   },
   "dependencies": {
+    "@nimbalyst/i18n": "workspace:*",
     "@agentclientprotocol/sdk": "^0.20.0",
     "@anthropic-ai/claude-agent-sdk": "0.3.300",
     "@anthropic-ai/sdk": "^0.115.0",

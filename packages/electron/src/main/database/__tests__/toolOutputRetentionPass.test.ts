@@ -341,7 +341,13 @@ describe('estimate confidence', () => {
     expect(est.candidateRows).toBe(20);
     expect(est.estimatedBytesSaved).toBe(0);
     expect(est.lowConfidence).toBe(true);
-    expect(est.note).toMatch(/floor, not a guarantee/);
+    expect(est.note).toEqual({
+      kind: 'sample_floor',
+      sampledRows: 20,
+      coveragePct: '100.000',
+      candidateRows: 20,
+      probesTaken: 1,
+    });
   });
 
   it('distinguishes an empty candidate set from an uninformative sample', () => {
@@ -351,7 +357,7 @@ describe('estimate confidence', () => {
 
     expect(est.candidateRows).toBe(0);
     expect(est.lowConfidence).toBe(false);
-    expect(est.note).toMatch(/No rows are old enough/);
+    expect(est.note).toEqual({ kind: 'no_eligible_rows' });
   });
 
   it('reports coverage so a thin sample cannot pass as a survey', () => {

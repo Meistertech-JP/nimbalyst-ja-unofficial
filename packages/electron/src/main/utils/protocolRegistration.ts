@@ -13,8 +13,9 @@ import path from 'path';
  * reaches Nimbalyst. Worse, every dev launch (including the short-lived instance that
  * forwards a deep link) re-registered it, stomping any correct handler.
  *
- * Dev deep links on macOS are instead routed by a dedicated handler bundle with its own
- * identifier -- see `scripts/install-dev-url-handler.sh`.
+ * Dev authentication callbacks use a nonce-protected loopback listener owned by the
+ * instance that started the flow, so unpackaged development runs do not need to claim
+ * the shared `nimbalyst://` scheme on any platform.
  */
 export type ProtocolRegistrationPlan =
     | { action: 'register-packaged' }
@@ -32,6 +33,17 @@ export interface ProtocolRegistrationInput {
 }
 
 export function planProtocolRegistration(input: ProtocolRegistrationInput): ProtocolRegistrationPlan {
+    // The current electron-builder NSIS target does not register URL protocols.
+    // Keep Windows startup from replacing the user's selected handler (which may
+    // be the official Nimbalyst installation). Authentication uses an instance-
+    // owned loopback callback; other deep links keep the existing system handler.
+    if (input.platform === 'win32') {
+        return {
+            action: 'skip',
+            reason: 'Windows startup does not claim the shared nimbalyst:// scheme; preserve the existing system handler',
+        };
+    }
+
     if (!input.isDefaultApp) {
         return { action: 'register-packaged' };
     }
@@ -44,9 +56,9 @@ export function planProtocolRegistration(input: ProtocolRegistrationInput): Prot
         return {
             action: 'skip',
             reason:
-                'macOS dev run would claim the generic com.github.Electron bundle id, which every ' +
-                'Electron checkout shares -- run scripts/install-dev-url-handler.sh instead ' +
-                '(NIMBALYST_DEV_PROTOCOL=1 forces the old behavior)',
+                `${input.platform} dev run does not register the shared nimbalyst:// scheme; ` +
+                'authentication uses an instance-owned loopback callback ' +
+                '(NIMBALYST_DEV_PROTOCOL=1 forces legacy registration)',
         };
     }
 

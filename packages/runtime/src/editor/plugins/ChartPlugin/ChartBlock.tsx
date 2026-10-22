@@ -21,6 +21,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import { $getNodeByKey, type NodeKey } from 'lexical';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { parseFenceYaml, setFenceYamlValues } from '../../../core/fenceBody';
 import { compileChartSource, MAX_CHART_HEIGHT, MIN_CHART_HEIGHT, MIN_CHART_WIDTH } from '../../../ui/chart/chartSpec';
@@ -40,6 +41,7 @@ interface Draft {
 const clampHeight = (height: number) => Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(height)));
 
 export function ChartBlock({ source, nodeKey }: { source: string; nodeKey: NodeKey }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const editable = useLexicalEditable();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -145,7 +147,7 @@ export function ChartBlock({ source, nodeKey }: { source: string; nodeKey: NodeK
         <input
           className="chart-block-title-input mb-1 w-full rounded border border-[var(--nim-border-focus)] bg-nim px-2 py-1 text-[13px] font-semibold text-nim focus:outline-none"
           value={titleDraft}
-          placeholder="Chart title"
+          placeholder={t('chart_block.title_placeholder')}
           autoFocus
           onChange={(event) => setTitleDraft(event.target.value)}
           onBlur={saveTitle}
@@ -172,19 +174,19 @@ export function ChartBlock({ source, nodeKey }: { source: string; nodeKey: NodeK
             data-testid="chart-block-edit"
             onClick={() => (draft ? save() : open())}
           >
-            {draft ? 'Done' : 'Edit'}
+            {draft ? t('chart_block.done') : t('chart_block.edit')}
           </button>
         </div>
       ) : null}
       {draft?.conflict ? (
         <div role="alert" className="chart-block-conflict mt-1 flex items-center gap-3 rounded border border-nim bg-nim-tertiary px-2 py-1 text-xs text-nim-warning" data-testid="chart-block-conflict">
-          <span>This chart changed while you were editing it.</span>
+          <span>{t('chart_block.edit_conflict')}</span>
           {/* mousedown keeps focus in the text, so the blur-save does not race the choice. */}
           <button type="button" className="ml-auto cursor-pointer border-none bg-transparent p-0 text-xs text-nim-link hover:underline" onMouseDown={(event) => event.preventDefault()} onClick={overwrite} data-testid="chart-block-conflict-overwrite">
-            Keep mine
+            {t('chart_block.keep_mine')}
           </button>
           <button type="button" className="cursor-pointer border-none bg-transparent p-0 text-xs text-nim-link hover:underline" onMouseDown={(event) => event.preventDefault()} onClick={() => setDraft(null)} data-testid="chart-block-conflict-discard">
-            Use theirs
+            {t('chart_block.use_theirs')}
           </button>
         </div>
       ) : null}

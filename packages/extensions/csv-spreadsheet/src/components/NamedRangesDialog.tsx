@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import type { EditorCore } from '../editor/editorCore';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   defineNamedRangeCommand,
   normalizeRangeTarget,
@@ -15,6 +16,15 @@ import {
 
 const FIELD = 'px-2 py-1 text-[12px] bg-nim-secondary border border-nim rounded text-nim outline-none focus:border-[var(--nim-primary)] min-w-0';
 
+/** Maps the pure helper's English messages to resource keys for display. */
+const ERROR_KEYS: Record<string, string> = {
+  'Enter a name.': 'spreadsheet_ui.named_ranges.err_enter_name',
+  'Names can contain only letters, numbers and underscores, and cannot start with a number.': 'spreadsheet_ui.named_ranges.err_invalid_chars',
+  'TRUE and FALSE cannot be names.': 'spreadsheet_ui.named_ranges.err_reserved',
+  'A name cannot look like a cell reference.': 'spreadsheet_ui.named_ranges.err_cell_ref',
+  'Enter a range like A1 or B2:D20.': 'spreadsheet_ui.named_ranges.err_enter_range',
+};
+
 export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }: {
   core: EditorCore;
   isOpen: boolean;
@@ -22,6 +32,7 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
   selectionKey: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('editor');
   const [newName, setNewName] = useState('');
   const [newRange, setNewRange] = useState(selectionKey);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +52,8 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
     if (!gridOps || core.editingLockedRef.current) return false;
     const name = nameText.trim();
     const range = normalizeRangeTarget(rangeText);
-    const problem = rangeNameError(name, names, previous) ?? (range ? null : 'Enter a range like A1 or B2:D20.');
+    const raw = rangeNameError(name, names, previous) ?? (range ? null : 'Enter a range like A1 or B2:D20.');
+    const problem = raw ? (ERROR_KEYS[raw] ?? raw) : null;
     setError(problem);
     if (problem || !range) return false;
     void gridOps.executor.execute(({ state }) => defineNamedRangeCommand(state, name, range, previous));
@@ -61,7 +73,7 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
     <div className="csv-named-ranges-dialog fixed inset-0 bg-black/40 flex items-center justify-center z-[2000]" onClick={onClose}>
       <div
         role="dialog"
-        aria-label="Named ranges"
+        aria-label={t('spreadsheet_ui.named_ranges.title')}
         className="bg-nim border border-nim rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.24)] w-[440px] max-h-[80vh] flex flex-col"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
@@ -70,11 +82,11 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
         }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-nim">
-          <h3 className="m-0 text-base font-semibold text-nim">Named ranges</h3>
+          <h3 className="m-0 text-base font-semibold text-nim">{t('spreadsheet_ui.named_ranges.title')}</h3>
           <button className="bg-none border-none text-xl text-nim-muted cursor-pointer p-0 leading-none hover:text-nim" onClick={onClose}>&times;</button>
         </div>
         <div className="px-5 py-3 flex flex-col gap-2 overflow-y-auto">
-          {entries.length === 0 && <p className="m-0 text-[12px] text-nim-muted">No named ranges yet. Formulas can use a name in place of a range, like =SUM(Sales).</p>}
+          {entries.length === 0 && <p className="m-0 text-[12px] text-nim-muted">{t('spreadsheet_ui.named_ranges.empty')}</p>}
           {entries.map(([name, range]) => (
             <NamedRangeRow key={name} name={name} range={range} onApply={(next, nextRange) => apply(next, nextRange, name)} onDelete={() => remove(name)} />
           ))}
@@ -86,11 +98,11 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
             if (apply(newName, newRange)) setNewName('');
           }}
         >
-          <input className={`${FIELD} flex-1`} placeholder="Name" aria-label="New name" value={newName} onChange={(event) => setNewName(event.target.value)} />
-          <input className={`${FIELD} w-[110px] font-mono`} placeholder="A1:B10" aria-label="New range" value={newRange} onChange={(event) => setNewRange(event.target.value)} />
-          <button type="submit" className="px-3 py-1 text-[12px] rounded cursor-pointer bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:opacity-90">Add</button>
+          <input className={`${FIELD} flex-1`} placeholder={t('spreadsheet_ui.named_ranges.placeholder_name')} aria-label={t('spreadsheet_ui.named_ranges.new_name')} value={newName} onChange={(event) => setNewName(event.target.value)} />
+          <input className={`${FIELD} w-[110px] font-mono`} placeholder="A1:B10" aria-label={t('spreadsheet_ui.named_ranges.new_range')} value={newRange} onChange={(event) => setNewRange(event.target.value)} />
+          <button type="submit" className="px-3 py-1 text-[12px] rounded cursor-pointer bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:opacity-90">{t('spreadsheet_ui.named_ranges.add')}</button>
         </form>
-        {error && <p className="csv-named-range-error m-0 px-5 pb-3 text-[12px] text-[var(--nim-error)]">{error}</p>}
+        {error && <p className="csv-named-range-error m-0 px-5 pb-3 text-[12px] text-[var(--nim-error)]">{t(error)}</p>}
       </div>
     </div>
   );
@@ -103,6 +115,7 @@ function NamedRangeRow({ name, range, onApply, onDelete }: {
   onApply: (name: string, range: string) => boolean;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation('editor');
   const [draftName, setDraftName] = useState(name);
   const [draftRange, setDraftRange] = useState(range);
   useEffect(() => { setDraftName(name); setDraftRange(range); }, [name, range]);
@@ -121,12 +134,12 @@ function NamedRangeRow({ name, range, onApply, onDelete }: {
   };
   return (
     <div className="csv-named-range-row flex items-center gap-2">
-      <input className={`${FIELD} flex-1`} aria-label={`Name ${name}`} value={draftName}
+      <input className={`${FIELD} flex-1`} aria-label={t('spreadsheet_ui.named_ranges.row_name', { name })} value={draftName}
         onChange={(event) => setDraftName(event.target.value)} onBlur={commit} onKeyDown={onKeyDown} />
-      <input className={`${FIELD} w-[110px] font-mono ${range === '#REF!' ? 'text-[var(--nim-error)]' : ''}`} aria-label={`Range of ${name}`}
+      <input className={`${FIELD} w-[110px] font-mono ${range === '#REF!' ? 'text-[var(--nim-error)]' : ''}`} aria-label={t('spreadsheet_ui.named_ranges.row_range', { name })}
         value={draftRange} onChange={(event) => setDraftRange(event.target.value)} onBlur={commit} onKeyDown={onKeyDown} />
       <button type="button" className="px-2 py-1 text-[12px] rounded cursor-pointer bg-transparent border border-nim text-nim-muted hover:bg-nim-hover"
-        aria-label={`Delete ${name}`} onClick={onDelete}>Delete</button>
+        aria-label={t('spreadsheet_ui.named_ranges.row_delete', { name })} onClick={onDelete}>{t('spreadsheet_ui.named_ranges.delete')}</button>
     </div>
   );
 }

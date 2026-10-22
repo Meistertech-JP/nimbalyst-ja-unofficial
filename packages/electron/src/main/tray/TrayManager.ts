@@ -65,6 +65,7 @@ import { TrayStripRenderer } from './TrayStripRenderer';
 import { ISLAND_STRIP_KEY, toIslandStrip } from './islandStrip';
 import { latestAssistantTextSql, sessionTitlesSql, toSnippetLine } from './sessionSnippets';
 import { unreadSeedQuery } from './unreadSeedQuery';
+import { translateMainMenuLabel } from '../i18n/mainI18n';
 import {
   closeMenuBarIsland,
   isMenuBarIslandSupported,
@@ -928,9 +929,11 @@ export class TrayManager {
 
     // Needs Attention section
     if (feed.needsAttention.length > 0) {
-      menuItems.push({ label: 'Needs Attention', enabled: false });
+      menuItems.push({ label: translateMainMenuLabel('tray.needs_attention', 'Needs Attention'), enabled: false });
       for (const session of feed.needsAttention) {
-        const suffix = session.hasError ? ' (error)' : ' (blocked)';
+        const suffix = session.hasError
+          ? translateMainMenuLabel('tray.suffix_error', ' (error)')
+          : translateMainMenuLabel('tray.suffix_blocked', ' (blocked)');
         menuItems.push({
           label: this.truncateTitle(session.title) + suffix,
           icon: session.hasError ? redDot : orangeDot,
@@ -942,9 +945,11 @@ export class TrayManager {
 
     // Running section
     if (feed.running.length > 0) {
-      menuItems.push({ label: 'Running', enabled: false });
+      menuItems.push({ label: translateMainMenuLabel('tray.running', 'Running'), enabled: false });
       for (const session of feed.running) {
-        const suffix = session.isStreaming ? ' (streaming...)' : '';
+        const suffix = session.isStreaming
+          ? translateMainMenuLabel('tray.suffix_streaming', ' (streaming...)')
+          : '';
         menuItems.push({
           label: this.truncateTitle(session.title) + suffix,
           click: () => this.handleSessionClick(session.sessionId, session.workspacePath),
@@ -955,7 +960,7 @@ export class TrayManager {
 
     // Unread section
     if (feed.unread.length > 0) {
-      menuItems.push({ label: 'Unread', enabled: false });
+      menuItems.push({ label: translateMainMenuLabel('tray.unread', 'Unread'), enabled: false });
       for (const session of feed.unread) {
         menuItems.push({
           label: this.truncateTitle(session.title),
@@ -964,7 +969,7 @@ export class TrayManager {
         });
       }
       menuItems.push({
-        label: 'Clear All Unread',
+        label: translateMainMenuLabel('tray.clear_all_unread', 'Clear All Unread'),
         click: () => {
           void this.clearAllUnreadSessions();
         },
@@ -980,11 +985,11 @@ export class TrayManager {
     const menuItems: Electron.MenuItemConstructorOptions[] = [];
 
     menuItems.push({
-      label: 'New Session',
+      label: translateMainMenuLabel('tray.new_session', 'New Session'),
       click: () => this.handleNewSession(),
     });
     menuItems.push({
-      label: 'Open Nimbalyst',
+      label: translateMainMenuLabel('tray.open_nimbalyst', 'Open Nimbalyst'),
       click: () => this.handleOpenApp(),
     });
     // Prevent Sleep submenu (only show when sync is configured)
@@ -993,11 +998,11 @@ export class TrayManager {
       const currentMode = resolvePreventSleepMode(syncConfig);
       const setMode = (mode: 'off' | 'always' | 'pluggedIn') => this.setPreventSleepMode(mode);
       menuItems.push({
-        label: 'Prevent Sleep',
+        label: translateMainMenuLabel('menu_bar_island.settings_panel.prevent_sleep_label', 'Prevent Sleep'),
         submenu: [
-          { label: 'Off', type: 'radio', checked: currentMode === 'off', click: () => setMode('off') },
-          { label: 'Always', type: 'radio', checked: currentMode === 'always', click: () => setMode('always') },
-          { label: 'When Plugged In', type: 'radio', checked: currentMode === 'pluggedIn', click: () => setMode('pluggedIn') },
+          { label: translateMainMenuLabel('menu_bar_island.settings_panel.off', 'Off'), type: 'radio', checked: currentMode === 'off', click: () => setMode('off') },
+          { label: translateMainMenuLabel('menu_bar_island.settings_panel.always', 'Always'), type: 'radio', checked: currentMode === 'always', click: () => setMode('always') },
+          { label: translateMainMenuLabel('menu_bar_island.settings_panel.plugged_in', 'Plugged in'), type: 'radio', checked: currentMode === 'pluggedIn', click: () => setMode('pluggedIn') },
         ],
       });
     }
@@ -1006,7 +1011,7 @@ export class TrayManager {
     // item fitting and vanishing under the notch.
     if (process.platform === 'darwin') {
       menuItems.push({
-        label: 'Show Fleet Status',
+        label: translateMainMenuLabel('menu_bar_island.settings_panel.fleet_status_label', 'Show Fleet Status'),
         type: 'checkbox',
         checked: isShowTrayStrip(),
         click: () => this.setStripVisible(!isShowTrayStrip()),
@@ -1014,16 +1019,16 @@ export class TrayManager {
       if (isShowTrayStrip()) {
         const style = getTrayStripStyle();
         menuItems.push({
-          label: 'Fleet Status Style',
+          label: translateMainMenuLabel('tray.fleet_status_style', 'Fleet Status Style'),
           submenu: [
             {
-              label: 'Menu Bar Item',
+              label: translateMainMenuLabel('tray.menu_bar_item', 'Menu Bar Item'),
               type: 'radio',
               checked: style === 'image',
               click: () => this.setStripStyle('image'),
             },
             {
-              label: 'Island',
+              label: translateMainMenuLabel('menu_bar_island.settings_panel.style_option_island', 'Island'),
               type: 'radio',
               checked: style === 'island',
               click: () => this.setStripStyle('island'),
@@ -1033,12 +1038,12 @@ export class TrayManager {
       }
     }
     menuItems.push({
-      label: 'Hide Menu Bar Icon',
+      label: translateMainMenuLabel('tray.hide_menu_bar_icon', 'Hide Menu Bar Icon'),
       click: () => this.setVisible(false),
     });
     menuItems.push({ type: 'separator' });
     menuItems.push({
-      label: 'Quit',
+      label: translateMainMenuLabel('quit', 'Quit'),
       click: () => app.quit(),
     });
 

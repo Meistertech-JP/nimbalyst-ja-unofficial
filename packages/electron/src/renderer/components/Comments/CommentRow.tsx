@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import { CommentActionMenu } from './CommentActionMenu';
 import { CommentBody } from './CommentBody';
 import { EmojiPicker, EmojiTriggerButton } from './EmojiPicker';
 import { ReactionBar } from './ReactionBar';
+import { initialsFor } from './commentBodyParser';
+import { DISPLAY_NAME_FALLBACK_KEY, REPLY_UNAVAILABLE_KEY, localizeCommentRelativeTime } from './displayNameFallbackKeys';
 import type {
   CommentActionKind,
   CommentView,
@@ -66,6 +69,10 @@ export function CommentRow({
    */
   timestampMs?: number;
 }) {
+  const { t: tCommon } = useTranslation('common');
+  const { t: tChat, i18n } = useTranslation('aichat');
+  const { t: tCollab } = useTranslation('collabSidebar');
+  const { t: tEditor } = useTranslation('editor');
   const isAgent = view.actor.kind === 'agent';
   const compact = density === 'compact';
   // Lifted out of the picker so the hover-revealed actions container can stay
@@ -73,6 +80,24 @@ export function CommentRow({
   // into a portal, which `focus-within` on this row cannot see.
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const canAddReaction = view.reactionsSupported && view.canReact;
+  // Directory-miss fallbacks: the view carries a semantic marker plus a
+  // stable English string; the row resolves the localized label. A real
+  // directory name never has a marker, so it is shown verbatim.
+  const actorName = view.actor.displayNameFallback
+    ? tEditor(DISPLAY_NAME_FALLBACK_KEY[view.actor.displayNameFallback])
+    : view.actor.displayName;
+  const ownerName = view.actor.ownerDisplayNameFallback
+    ? tEditor(DISPLAY_NAME_FALLBACK_KEY[view.actor.ownerDisplayNameFallback])
+    : view.actor.ownerDisplayName;
+  const sessionName = view.actor.sessionName
+    ? (view.actor.displayNameFallback ? actorName : view.actor.sessionName)
+    : undefined;
+  const openSessionTitle = sessionName
+    ? tEditor('tooltips.open_session', { title: sessionName })
+    : undefined;
+  const actorInitials = view.actor.displayNameFallback
+    ? initialsFor(actorName)
+    : view.actor.initials;
 
   const body = view.deleted ? (
     <p
@@ -80,7 +105,7 @@ export function CommentRow({
       data-testid="comment-row-deleted"
     >
       <MaterialSymbol icon="block" size={13} />
-      {view.deletedLabel}
+      {tEditor('comments.message_deleted')}
     </p>
   ) : (
     <CommentBody
@@ -111,7 +136,7 @@ export function CommentRow({
         />
       ) : (
         <div className="comment-row-gutter w-7 shrink-0 pt-0.5">
-          {!grouped && <ActorAvatar view={view} />}
+          {!grouped && <ActorAvatar view={view} agentLabel={tCommon('floating_document_actions.agent')} userInitials={actorInitials} />}
         </div>
       )}
 
@@ -133,32 +158,58 @@ export function CommentRow({
             {!grouped && (
               <>
                 <span className="comment-row-actor max-w-[180px] shrink-0 truncate text-[13px] font-semibold text-[var(--nim-text)]">
-                  {view.actor.displayName}
+                  {actorName}
                 </span>
-                {isAgent && <AgentBadges view={view} />}
+                {isAgent && (
+                  <AgentBadges
+                    view={view}
+                    agentLabel={tCommon('floating_document_actions.agent')}
+                    ownerLabel={tEditor('comments.on_behalf_of', { name: ownerName })}
+                  />
+                )}
               </>
             )}
             <div className="comment-row-compact-body min-w-0 flex-1">{body}</div>
-            <RowStatusBadges view={view} isAgent={isAgent} onOpenSession={onOpenSession} />
+            <RowStatusBadges
+              view={view}
+              isAgent={isAgent}
+              onOpenSession={onOpenSession}
+              pendingFallback={tCollab('inbox_surface.row.pending')}
+              openSessionTitle={openSessionTitle}
+              sessionLabel={sessionName}
+            />
           </div>
         ) : (
           <>
             {!grouped && (
               <div className="comment-row-header flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <span className="comment-row-actor truncate text-[13px] font-semibold text-[var(--nim-text)]">
-                  {view.actor.displayName}
+                  {actorName}
                 </span>
 
-                {isAgent && <AgentBadges view={view} />}
+                {isAgent && (
+                  <AgentBadges
+                    view={view}
+                    agentLabel={tCommon('floating_document_actions.agent')}
+                    ownerLabel={tEditor('comments.on_behalf_of', { name: ownerName })}
+                  />
+                )}
 
                 <span
                   className="comment-row-timestamp shrink-0 text-[11px] text-[var(--nim-text-faint)]"
                   title={view.timestampTitle}
                 >
-                  {view.timestampLabel}
+                  {localizeCommentRelativeTime(view.timestampLabel, tEditor)}
                 </span>
 
-                <RowStatusBadges view={view} isAgent={isAgent} onOpenSession={onOpenSession} />
+                <RowStatusBadges
+                  view={view}
+                  isAgent={isAgent}
+                  onOpenSession={onOpenSession}
+                  pendingFallback={tCollab('inbox_surface.row.pending')}
+                  openSessionTitle={openSessionTitle}
+                  sessionLabel={sessionName}
+                />
               </div>
             )}
 
@@ -172,7 +223,9 @@ export function CommentRow({
             data-testid="comment-row-failed"
           >
             <MaterialSymbol icon="error" size={13} />
-            <span>Not sent.</span>
+            <span>
+              {tChat('feedback_compose.not_sent')}{i18n.language === 'ja' ? '。' : '.'}
+            </span>
             {onRetry && (
               <button
                 type="button"
@@ -180,7 +233,7 @@ export function CommentRow({
                 data-testid="comment-row-retry"
                 onClick={() => onRetry(view)}
               >
-                Retry
+                {tCommon('retry')}
               </button>
             )}
           </div>
@@ -208,7 +261,7 @@ export function CommentRow({
             onOpenChange={setReactionPickerOpen}
             onSelect={(emoji) => onToggleReaction(emoji, true, view)}
             trigger={(props) => (
-              <EmojiTriggerButton label="Add reaction" testId="reaction-add-trigger" triggerProps={props} />
+              <EmojiTriggerButton label={tCommon('add_reaction')} testId="reaction-add-trigger" triggerProps={props} />
             )}
           />
         )}
@@ -236,7 +289,10 @@ function ClockGutter({
   grouped: boolean;
   timestampMs?: number;
 }) {
-  const label = timestampMs !== undefined ? formatClockTime(timestampMs) : view.timestampLabel;
+  const { t: tEditor } = useTranslation('editor');
+  const label = timestampMs !== undefined
+    ? formatClockTime(timestampMs)
+    : localizeCommentRelativeTime(view.timestampLabel, tEditor);
   return (
     <div className="comment-row-gutter comment-row-clock-gutter w-[58px] shrink-0 text-right">
       <span
@@ -265,20 +321,20 @@ export function formatClockTime(timestamp: number): string {
  * Authorship/authorization split: the session authored it, the owner authorized
  * it, and both belong next to the name in either density.
  */
-function AgentBadges({ view }: { view: CommentView }) {
+function AgentBadges({ view, agentLabel, ownerLabel }: { view: CommentView; agentLabel: string; ownerLabel: string }) {
   return (
     <>
       <span
         className="comment-row-agent-badge inline-flex shrink-0 items-center gap-1 rounded-[4px] bg-[color-mix(in_srgb,var(--nim-primary)_16%,transparent)] px-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--nim-primary)]"
         data-testid="comment-row-agent-badge"
       >
-        <MaterialSymbol icon="smart_toy" size={10} /> Agent
+        <MaterialSymbol icon="smart_toy" size={10} /> {agentLabel}
       </span>
       <span
         className="comment-row-agent-owner shrink-0 text-[12px] text-[var(--nim-text-faint)]"
         data-testid="comment-row-agent-owner"
       >
-        for {view.actor.ownerDisplayName}
+        {ownerLabel}
       </span>
     </>
   );
@@ -292,20 +348,30 @@ function RowStatusBadges({
   view,
   isAgent,
   onOpenSession,
+  pendingFallback,
+  openSessionTitle,
+  sessionLabel,
 }: {
   view: CommentView;
   isAgent: boolean;
   onOpenSession?: (sessionId: string) => void;
+  pendingFallback: string;
+  openSessionTitle?: string;
+  sessionLabel?: string;
 }) {
+  const { t: tEditor } = useTranslation('editor');
+  const editedTitle = view.editedTitle
+    ? tEditor('comments.edited_title', { time: view.editedTitle.replace(/^Edited\s+/, '') })
+    : undefined;
   return (
     <>
       {view.editedLabel && (
         <span
           className="comment-row-edited shrink-0 text-[11px] text-[var(--nim-text-faint)]"
           data-testid="comment-row-edited"
-          title={view.editedTitle}
+          title={editedTitle}
         >
-          ({view.editedLabel})
+          ({tEditor('comments.edited')})
         </span>
       )}
 
@@ -314,12 +380,12 @@ function RowStatusBadges({
           type="button"
           data-testid="comment-row-session-chip"
           data-session-id={view.actor.sessionId}
-          title={`Open session ${view.actor.sessionName}`}
+          title={openSessionTitle}
           onClick={() => onOpenSession?.(view.actor.sessionId!)}
           className="comment-row-session-chip inline-flex min-w-0 shrink items-center gap-1 rounded-[5px] border border-[var(--nim-border)] px-1.5 text-[11px] text-[var(--nim-text-muted)] hover:border-[var(--nim-primary)] hover:bg-[var(--nim-bg-hover)]"
         >
           <MaterialSymbol icon="open_in_new" size={11} />
-          <span className="comment-row-session-chip-label truncate">{view.actor.sessionName}</span>
+          <span className="comment-row-session-chip-label truncate">{sessionLabel}</span>
         </button>
       )}
 
@@ -329,20 +395,20 @@ function RowStatusBadges({
           data-testid="comment-row-pending"
           title={view.pendingLabel}
         >
-          <MaterialSymbol icon="hourglass_top" size={10} /> {view.pendingLabel ?? 'Pending'}
+          <MaterialSymbol icon="hourglass_top" size={10} /> {view.pendingLabel ?? pendingFallback}
         </span>
       )}
     </>
   );
 }
 
-function ActorAvatar({ view }: { view: CommentView }) {
+function ActorAvatar({ view, agentLabel, userInitials }: { view: CommentView; agentLabel: string; userInitials: string }) {
   if (view.actor.kind === 'agent') {
     return (
       <span
         className="comment-row-avatar comment-row-avatar-agent flex size-7 items-center justify-center rounded-[6px] bg-[color-mix(in_srgb,var(--nim-primary)_18%,transparent)] text-[var(--nim-primary)]"
         data-testid="comment-row-agent-glyph"
-        aria-label="Agent"
+        aria-label={agentLabel}
       >
         <MaterialSymbol icon="smart_toy" size={15} />
       </span>
@@ -354,7 +420,7 @@ function ActorAvatar({ view }: { view: CommentView }) {
       data-testid="comment-row-avatar"
       aria-hidden="true"
     >
-      {view.actor.initials}
+      {userInitials}
     </span>
   );
 }
@@ -371,8 +437,15 @@ function ReplyParentStrip({
   view: CommentView;
   onOpenReplyParent?: (commentId: string) => void;
 }) {
+  const { t: tEditor } = useTranslation('editor');
   const parent = view.replyParent!;
   const unavailable = parent.unavailableLabel !== undefined;
+  const unavailableText = parent.unavailableReason
+    ? tEditor(REPLY_UNAVAILABLE_KEY[parent.unavailableReason])
+    : parent.unavailableLabel;
+  const actorText = parent.actorLabelFallback
+    ? tEditor(DISPLAY_NAME_FALLBACK_KEY[parent.actorLabelFallback])
+    : parent.actorLabel;
 
   return (
     <button
@@ -387,10 +460,10 @@ function ReplyParentStrip({
     >
       <MaterialSymbol icon="reply" size={11} />
       {unavailable ? (
-        <span className="truncate italic">{parent.unavailableLabel}</span>
+        <span className="truncate italic">{unavailableText}</span>
       ) : (
         <>
-          <span className="comment-reply-parent-actor shrink-0 font-medium">{parent.actorLabel}</span>
+          <span className="comment-reply-parent-actor shrink-0 font-medium">{actorText}</span>
           <span className="comment-reply-parent-snippet truncate">{parent.snippet}</span>
         </>
       )}

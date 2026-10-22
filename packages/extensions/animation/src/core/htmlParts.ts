@@ -25,6 +25,11 @@ import type { AnimDocument, HtmlPart } from "./types";
 /** Markup for each `htmlFile` path a document referenced, keyed as written. */
 export type HtmlAssets = ReadonlyMap<string, string>;
 
+export interface HtmlAssetIssue {
+  messageKey: "animation.issue.html_file_invalid_relative" | "animation.issue.html_file_read_failed";
+  messageParams: Record<string, string>;
+}
+
 const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g;
 
 /**
@@ -126,9 +131,10 @@ export async function loadHtmlAssets(
   doc: AnimDocument,
   basePath: string,
   readFile: (path: string) => Promise<string>
-): Promise<{ assets: HtmlAssets; errors: string[] }> {
+): Promise<{ assets: HtmlAssets; errors: string[]; issues: HtmlAssetIssue[] }> {
   const assets = new Map<string, string>();
   const errors: string[] = [];
+  const issues: HtmlAssetIssue[] = [];
 
   await Promise.all(
     htmlFileRefs(doc).map(async (ref) => {
@@ -137,6 +143,10 @@ export async function loadHtmlAssets(
         errors.push(
           `htmlFile ${JSON.stringify(ref)} must be a path relative to the document.`
         );
+        issues.push({
+          messageKey: "animation.issue.html_file_invalid_relative",
+          messageParams: { ref: JSON.stringify(ref) },
+        });
         return;
       }
       try {
@@ -147,9 +157,13 @@ export async function loadHtmlAssets(
         errors.push(
           `Could not read htmlFile ${JSON.stringify(ref)}: ${message}`
         );
+        issues.push({
+          messageKey: "animation.issue.html_file_read_failed",
+          messageParams: { ref: JSON.stringify(ref), reason: message },
+        });
       }
     })
   );
 
-  return { assets, errors };
+  return { assets, errors, issues };
 }

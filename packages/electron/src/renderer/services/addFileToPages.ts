@@ -17,11 +17,13 @@ export async function addFileToPages(target: {
   parentId: string | null;
   /** Where the picker starts; the open project when absent. */
   workspacePath?: string | null;
+  dialogTitle: string;
+  buttonLabel: string;
 }): Promise<void> {
   const startIn = target.workspacePath ?? store.get(activeWorkspacePathAtom);
   const picked = await window.electronAPI.openFileDialog({
-    title: 'Add from Files',
-    buttonLabel: 'Add',
+    title: target.dialogTitle,
+    buttonLabel: target.buttonLabel,
     ...(startIn ? { defaultPath: startIn } : {}),
   });
   const filePath = picked?.filePaths?.[0];
@@ -32,7 +34,15 @@ export async function addFileToPages(target: {
     { section: target.section, destination: { folderId: target.parentId, folderPath: '' } },
   );
   if (ask.status === 'unavailable') {
-    errorNotificationService.showError(`Could not add ${fileName}`, ask.reason);
+    errorNotificationService.showError(
+      errorNotificationService.getLocalizedText(
+        'files',
+        'notifications.add_file_failed_title',
+        `Could not add ${fileName}`,
+        { fileName }
+      ),
+      ask.reason,
+    );
     return;
   }
   if (ask.status !== 'answered') return;

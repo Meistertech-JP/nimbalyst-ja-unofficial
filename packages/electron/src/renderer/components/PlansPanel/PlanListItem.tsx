@@ -4,6 +4,7 @@
 
 import type { JSX } from 'react';
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface PlanData {
   id: string;
@@ -61,24 +62,45 @@ function getPlanTypeIcon(planType?: string): string {
   return icons[planType?.toLowerCase() || ''] || 'description';
 }
 
-function formatDate(date: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-
-  if (hours < 1) return 'now';
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 export function PlanListItem({ plan, isActive, onClick }: PlanListItemProps): JSX.Element {
+  const { t, i18n } = useTranslation('tracker');
   const statusColor = getStatusColor(plan.status);
   const priorityColor = getPriorityColor(plan.priority);
   const planTypeIcon = getPlanTypeIcon(plan.planType);
+  const priority = plan.priority.toLowerCase();
+  const status = plan.status.toLowerCase();
+  const priorityLabel =
+    priority === 'critical' ? t('plans.priority_critical')
+      : priority === 'high' ? t('plans.priority_high')
+        : priority === 'medium' ? t('plans.priority_medium')
+          : priority === 'low' ? t('plans.priority_low')
+            : plan.priority;
+  const statusLabel =
+    status === 'draft' ? t('plans.status_draft')
+      : status === 'ready-for-development' ? t('plans.status_ready')
+        : status === 'in-development' ? t('plans.status_in_dev')
+          : status === 'in-progress' ? t('plans.status_in_progress')
+            : status === 'in-review' ? t('plans.status_review')
+              : status === 'completed' ? t('plans.status_done')
+                : status === 'blocked' ? t('plans.status_blocked')
+                  : status === 'rejected' ? t('plans.status_rejected')
+                    : status === 'active' ? t('plans.status_active')
+                      : status === 'cancelled' ? t('plans.status_cancelled')
+                        : plan.status.replace(/-/g, ' ');
+
+  const formatDate = (date: Date): string => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    if (hours < 1) return t('plans.now');
+    if (hours < 24) return t('plans.hours_ago', { count: hours });
+    if (days === 1) return t('plans.yesterday');
+    if (days < 7) return t('plans.days_ago', { count: days });
+    if (days < 30) return t('plans.weeks_ago', { count: Math.floor(days / 7) });
+    return date.toLocaleDateString(i18n.resolvedLanguage || 'en', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <div
@@ -89,13 +111,13 @@ export function PlanListItem({ plan, isActive, onClick }: PlanListItemProps): JS
         <span
           className="plan-priority-indicator text-[11px] font-bold tracking-tighter shrink-0 min-w-4"
           style={{ color: priorityColor }}
-          title={`Priority: ${plan.priority}`}
+          title={t('plans.priority_title', { priority: priorityLabel })}
         >
           {plan.priority === 'critical' && '!!!'}
           {plan.priority === 'high' && '!!'}
           {plan.priority === 'medium' && '!'}
         </span>
-        <span className="material-symbols-outlined plan-type-icon text-base text-nim-faint shrink-0 mt-px" title={plan.planType || 'plan'}>
+        <span className="material-symbols-outlined plan-type-icon text-base text-nim-faint shrink-0 mt-px" title={plan.planType || t('plans.plan_type')}>
           {planTypeIcon}
         </span>
         <div className="plan-list-item-title flex-1 text-[13px] font-medium text-nim-primary leading-snug overflow-hidden text-ellipsis line-clamp-2">{plan.title}</div>
@@ -123,7 +145,7 @@ export function PlanListItem({ plan, isActive, onClick }: PlanListItemProps): JS
             borderColor: statusColor
           }}
         >
-          {plan.status.replace('-', ' ')}
+          {statusLabel}
         </span>
       </div>
     </div>

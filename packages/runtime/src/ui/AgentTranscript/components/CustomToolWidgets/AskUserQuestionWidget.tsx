@@ -10,6 +10,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import {
@@ -240,6 +241,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
   sessionId,
   superseded,
 }) => {
+  const { t } = useTranslation('aichat');
   const toolCall = message.toolCall;
   const questionId = toolCall?.providerToolCallId || '';
 
@@ -457,8 +459,8 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
   // Show completed state
   if (displayResult || hasResponded) {
     const statusText = displaySkipped
-      ? 'Question Skipped'
-      : displayCancelled ? 'Question Cancelled' : 'Questions Answered';
+      ? t('questions.skipped_title')
+      : displayCancelled ? t('questions.cancelled_title') : t('questions.answered_title');
 
     return (
       <InteractiveWidgetCard
@@ -473,21 +475,21 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
           trailing={
             displaySkipped ? (
               <WidgetStatusPill tone="muted" testId="ask-user-question-skipped">
-                Skipped
+                {t('questions.skipped')}
               </WidgetStatusPill>
             ) : displayCancelled ? (
               <WidgetStatusPill tone="muted" testId="ask-user-question-cancelled">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Cancelled
+                {t('questions.cancelled')}
               </WidgetStatusPill>
             ) : (
               <WidgetStatusPill tone="success" testId="ask-user-question-completed">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Submitted
+                {t('questions.submitted')}
               </WidgetStatusPill>
             )
           }
@@ -496,7 +498,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
         <InteractiveWidgetBody>
           {displaySkipped && (
             <WidgetNoteRow rootClassName="ask-user-question-skipped-note" testId="ask-user-question-skipped-note">
-              You sent a new message instead of answering.
+              {t('questions.skipped_note')}
             </WidgetNoteRow>
           )}
           {questions.map((question, qIndex) => {
@@ -506,7 +508,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
               <WidgetBlock
                 key={qIndex}
                 tag={question.header}
-                hint={question.multiSelect ? 'Multiple selection' : undefined}
+                hint={question.multiSelect ? t('questions.multiple_selection') : undefined}
                 question={question.question}
               >
                 <WidgetOptionList>
@@ -527,7 +529,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
                 </WidgetOptionList>
                 {answer && (
                   <div className="mt-2 pt-2 border-t border-nim text-xs text-nim-muted italic">
-                    Selected: {answer}
+                  {t('questions.selected', { answer })}
                   </div>
                 )}
               </WidgetBlock>
@@ -554,10 +556,10 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
     >
       <InteractiveWidgetHeader
         icon={<QuestionMarkIcon />}
-        title="Questions from Claude"
+        title={t('questions.from_claude')}
         trailing={
           !host ? (
-            <span data-testid="ask-user-question-pending" className="text-xs text-nim-muted">Waiting...</span>
+            <span data-testid="ask-user-question-pending" className="text-xs text-nim-muted">{t('questions.waiting')}</span>
           ) : undefined
         }
       />
@@ -570,7 +572,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
             <WidgetBlock
               key={qIndex}
               tag={question.header}
-              hint={question.multiSelect ? 'Select multiple' : undefined}
+              hint={question.multiSelect ? t('questions.select_multiple') : undefined}
               question={question.question}
             >
               <WidgetOptionList>
@@ -620,7 +622,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
                         </svg>
                       )}
                     </div>
-                    <span className="text-[0.8125rem] font-medium text-nim leading-snug">Other</span>
+                    <span className="text-[0.8125rem] font-medium text-nim leading-snug">{t('questions.other')}</span>
                   </button>
                   {otherSelected[question.question] && (
                     <div className="px-2.5 pb-2">
@@ -635,7 +637,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
                             handleSubmit();
                           }
                         }}
-                        placeholder="Type your answer..."
+                        placeholder={t('questions.answer_placeholder')}
                         disabled={isSubmitting}
                         rows={2}
                         className="w-full px-2.5 py-2 rounded border border-nim bg-nim text-sm text-nim placeholder-nim-faint resize-y focus:outline-none focus:border-nim-primary disabled:opacity-50"
@@ -656,7 +658,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
             onClick={handleCancel}
             disabled={isSubmitting || !host}
           >
-            Cancel
+            {t('cancel', { ns: 'common' })}
           </WidgetActionButton>
           <WidgetActionButton
             variant="primary"
@@ -664,7 +666,7 @@ export const AskUserQuestionWidget: React.FC<CustomToolWidgetProps> = ({
             onClick={handleSubmit}
             disabled={!allAnswered || isSubmitting || !host}
           >
-            {isSubmitting ? 'Submitting...' : 'Submit'}
+            {isSubmitting ? t('questions.submitting') : t('questions.submit')}
           </WidgetActionButton>
         </WidgetFooter>
       </InteractiveWidgetBody>

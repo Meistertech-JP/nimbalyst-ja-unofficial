@@ -7,6 +7,7 @@
  */
 
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { PullRequestRow as PullRequestRowData } from '../../services/RendererPullRequestService';
@@ -25,15 +26,16 @@ interface PullRequestRowProps {
 
 function stateBadge(
   pr: PullRequestRowData,
+  t: (key: string) => string,
 ): { label: string; className: string; icon: string } | null {
   if (pr.isDraft) {
-    return { label: 'Draft', className: 'text-nim-muted bg-nim-tertiary', icon: 'edit_note' };
+    return { label: t('pull_request.state.draft'), className: 'text-nim-muted bg-nim-tertiary', icon: 'edit_note' };
   }
   switch (pr.state) {
     case 'merged':
-      return { label: 'Merged', className: 'text-nim-on-primary bg-[var(--nim-primary)]', icon: 'merge' };
+      return { label: t('pull_request.state.merged'), className: 'text-nim-on-primary bg-[var(--nim-primary)]', icon: 'merge' };
     case 'closed':
-      return { label: 'Closed', className: 'text-nim-on-primary bg-[var(--nim-error)]', icon: 'cancel' };
+      return { label: t('pull_request.state.closed'), className: 'text-nim-on-primary bg-[var(--nim-error)]', icon: 'cancel' };
     default:
       return null;
   }
@@ -53,7 +55,8 @@ function ciIcon(ci: PullRequestRowData['ciStatus']): { icon: string; className: 
 }
 
 export function PullRequestRow({ pr, selected, onSelect, trackerItem, hasSessions }: PullRequestRowProps): JSX.Element {
-  const badge = stateBadge(pr);
+  const { t } = useTranslation('git');
+  const badge = stateBadge(pr, t);
   const ci = ciIcon(pr.ciStatus);
   const conflicting = pr.mergeable === 'conflicting';
 
@@ -96,7 +99,7 @@ export function PullRequestRow({ pr, selected, onSelect, trackerItem, hasSession
                 icon="smart_toy"
                 size={13}
                 className="text-nim-primary"
-                title="Has linked review sessions"
+                title={t('pull_request.has_linked_review_sessions')}
               />
             )}
             {trackerItem && <PrTrackerBadge record={trackerItem} compact />}

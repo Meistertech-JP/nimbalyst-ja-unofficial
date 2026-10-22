@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { PageHeaderBar } from '@nimbalyst/collab-client/trackers-ui/page';
 import { getPersonalCollabDocsSession, getPersonalCollabHost, personalPagesDocumentsAtomFamily } from '../../store/atoms/collabDocuments';
@@ -72,6 +73,8 @@ export interface PersonalPageTabProps {
 }
 
 export const PersonalPageTab: React.FC<PersonalPageTabProps> = ({ documentId, workspacePath, fallbackTitle }) => {
+  const { t } = useTranslation('common');
+  const { t: tCollab } = useTranslation('collabSidebar');
   const info = usePersonalPage(workspacePath, documentId, fallbackTitle);
   const { title } = info;
   const scope = useMemo(() => getPersonalCollabHost(workspacePath).scope, [workspacePath]);
@@ -111,7 +114,7 @@ export const PersonalPageTab: React.FC<PersonalPageTabProps> = ({ documentId, wo
       data-document-id={documentId}
     >
       <PageHeaderBar
-        section="Personal"
+        section={tCollab('pages_section.personal')}
         path={page.path}
         title={page.title ?? title}
         onOpenAncestor={(ancestor) => openPageAncestor(ancestor, { personal: true, workspacePath })}
@@ -120,7 +123,7 @@ export const PersonalPageTab: React.FC<PersonalPageTabProps> = ({ documentId, wo
         onShowHistory={() => openHistory(personalPageDocumentPath(documentId))}
       />
       {info.documentType === null ? (
-        <div className="py-4 text-center text-sm text-nim-faint" role="status">Loading...</div>
+        <div className="py-4 text-center text-sm text-nim-faint" role="status">{t('loading', { defaultValue: 'Loading...' })}</div>
       ) : info.documentType === 'markdown' ? (
         <PersonalPageBodyEditor
           documentId={documentId}

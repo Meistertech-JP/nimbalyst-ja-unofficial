@@ -56,6 +56,7 @@ permissions:
 
 jobs:
   build:
+    if: github.repository == 'nimbalyst/nimbalyst'
     strategy:
       # One platform failing must not cancel the others. With fail-fast on, a
       # single red job skipped the `release` job entirely -- leaving the pushed
@@ -600,7 +601,7 @@ jobs:
     runs-on: windows-latest
     # The `env` context is not available in a job-level `if:`, so this repeats
     # the release condition rather than reusing the build job's IS_RELEASE.
-    if: github.ref_type == 'tag' || inputs.release == true || inputs.release == 'true'
+    if: github.repository == 'nimbalyst/nimbalyst' && (github.ref_type == 'tag' || inputs.release == true || inputs.release == 'true')
     environment: electron-release
     permissions:
       contents: read
@@ -725,7 +726,7 @@ jobs:
     runs-on: ubuntu-latest
     # The `env` context is not available in a job-level `if:`, so this repeats
     # the release condition rather than reusing the build job's IS_RELEASE.
-    if: github.ref_type == 'tag' || inputs.release == true || inputs.release == 'true'
+    if: github.repository == 'nimbalyst/nimbalyst' && (github.ref_type == 'tag' || inputs.release == true || inputs.release == 'true')
     environment: electron-release
     # The only job that publishes anything. `contents: write` is what
     # softprops/action-gh-release needs to create or update the release.

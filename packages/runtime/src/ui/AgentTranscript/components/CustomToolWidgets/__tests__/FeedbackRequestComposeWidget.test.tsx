@@ -8,24 +8,24 @@
  */
 
 import React from 'react';
+import { I18nextProvider } from 'react-i18next';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { Provider as JotaiProvider } from 'jotai';
 import { store } from '../../../../../store/store';
 import { setInteractiveWidgetHost } from '../../../../../store/atoms/interactiveWidgetHost';
 import { feedbackRecipientDirectoryAtom } from '../../../../../store/atoms/feedbackRecipientDirectory';
 import { clearFeedbackRequestComposeDraft } from '../../../../../store/atoms/feedbackRequestComposeDraft';
 import { FeedbackRequestComposeWidget } from '../feedback/FeedbackRequestComposeWidget';
+import { FeedbackComposePublishPrompt } from '../feedback/FeedbackComposePublishPrompt';
 import type { FeedbackAskArtifact } from '@nimbalyst/collab-protocol';
 import type { InteractiveWidgetHost } from '../InteractiveWidgetHost';
 
 const SESSION_ID = 'session-compose';
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
-function makeMessage(
-  toolCallId: string,
-  args: Record<string, unknown>,
-  result: unknown = null,
-) {
+function makeMessage(toolCallId: string, args: Record<string, unknown>, result: unknown = null) {
   return {
     toolCall: {
       providerToolCallId: toolCallId,
@@ -55,17 +55,19 @@ function makeMessage(
 function renderWidget(
   toolCallId: string,
   args: Record<string, unknown> = {},
-  result: unknown = null,
+  result: unknown = null
 ) {
   return render(
-    <JotaiProvider store={store}>
-      <FeedbackRequestComposeWidget
-        message={makeMessage(toolCallId, args, result)}
-        sessionId={SESSION_ID}
-        isExpanded={false}
-        onToggle={() => {}}
-      />
-    </JotaiProvider>,
+    <I18nextProvider i18n={testI18n}>
+      <JotaiProvider store={store}>
+        <FeedbackRequestComposeWidget
+          message={makeMessage(toolCallId, args, result)}
+          sessionId={SESSION_ID}
+          isExpanded={false}
+          onToggle={() => {}}
+        />
+      </JotaiProvider>
+    </I18nextProvider>
   );
 }
 
@@ -76,10 +78,14 @@ function makeHost(send: ReturnType<typeof vi.fn>): InteractiveWidgetHost {
   } as unknown as InteractiveWidgetHost;
 }
 
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
+
 describe('FeedbackRequestComposeWidget', () => {
   let send: ReturnType<typeof vi.fn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     send = vi.fn().mockResolvedValue({ success: true, requestId: 'fr-1' });
     setInteractiveWidgetHost(SESSION_ID, makeHost(send));
     store.set(feedbackRecipientDirectoryAtom, [
@@ -106,6 +112,19 @@ describe('FeedbackRequestComposeWidget', () => {
     screen.getByTestId('feedback-compose-delivery-block');
     screen.getByTestId('feedback-compose-recipient-block');
     expect(screen.queryByTestId('feedback-compose-defaults')).toBeNull();
+  });
+
+  it('localizes the collapsed quick-ask delivery summary', async () => {
+    testI18n = await createI18nInstance('ja');
+    const toolCallId = 'tc-localized-defaults';
+    clearFeedbackRequestComposeDraft(toolCallId);
+    renderWidget(toolCallId);
+
+    const summary = screen.getByTestId('feedback-compose-defaults').textContent ?? '';
+    expect(summary).toContain('ダイレクトメッセージで送信');
+    expect(summary).toContain('各ユーザーの回答後に回答を公開');
+    expect(summary).toContain('期限なし');
+    expect(summary).toContain('Karl Reyesの返信後にこのセッションを再開');
   });
 
   it('does not publish or send an unshared subject until the author confirms', async () => {
@@ -137,11 +156,13 @@ describe('FeedbackRequestComposeWidget', () => {
   it('stays sent after the transcript unmounts and remounts the row', async () => {
     const toolCallId = 'tc-sent-remount';
     clearFeedbackRequestComposeDraft(toolCallId);
-    send.mockResolvedValue({ success: true, warning: 'Tracker link unavailable: decision trackers are private in this workspace.' });
+    send.mockResolvedValue({
+      success: true,
+      warning: 'Tracker link unavailable: decision trackers are private in this workspace.',
+    });
     const first = renderWidget(toolCallId);
-    const state = () => screen
-      .getByTestId('feedback-request-compose-widget')
-      .getAttribute('data-state');
+    const state = () =>
+      screen.getByTestId('feedback-request-compose-widget').getAttribute('data-state');
 
     fireEvent.click(screen.getByTestId('feedback-compose-send'));
     await vi.waitFor(() => expect(state()).toBe('sent'));
@@ -157,7 +178,9 @@ describe('FeedbackRequestComposeWidget', () => {
     renderWidget(toolCallId);
 
     expect(state()).toBe('sent');
-    expect(screen.getByText('Tracker link unavailable: decision trackers are private in this workspace.')).toBeTruthy();
+    expect(
+      screen.getByText('Tracker link unavailable: decision trackers are private in this workspace.')
+    ).toBeTruthy();
     expect(screen.queryByTestId('feedback-compose-send')).toBeNull();
     expect(send).toHaveBeenCalledTimes(1);
   });
@@ -165,7 +188,10 @@ describe('FeedbackRequestComposeWidget', () => {
   it('keeps the draft on screen when the send fails, so the author can retry', async () => {
     const toolCallId = 'tc-send-failed';
     clearFeedbackRequestComposeDraft(toolCallId);
-    send.mockResolvedValue({ success: false, error: 'The room refused the request.' });
+    send.mockResolvedValue({
+      success: false,
+      error: 'The room refused the request.',
+    });
     renderWidget(toolCallId);
 
     fireEvent.click(screen.getByTestId('feedback-compose-send'));
@@ -173,9 +199,9 @@ describe('FeedbackRequestComposeWidget', () => {
 
     // Still the draft, not the sent card: the composed request is intact and
     // the primary action is available again.
-    expect(
-      screen.getByTestId('feedback-request-compose-widget').getAttribute('data-state'),
-    ).toBe('draft-quick');
+    expect(screen.getByTestId('feedback-request-compose-widget').getAttribute('data-state')).toBe(
+      'draft-quick'
+    );
     fireEvent.click(screen.getByTestId('feedback-compose-send'));
     expect(send).toHaveBeenCalledTimes(2);
   });
@@ -184,7 +210,10 @@ describe('FeedbackRequestComposeWidget', () => {
     const toolCallId = 'tc-publish-retry';
     clearFeedbackRequestComposeDraft(toolCallId);
     // What a cancelled share-to-team dialog looks like from here.
-    send.mockResolvedValue({ success: false, error: 'Sharing direction-a was cancelled.' });
+    send.mockResolvedValue({
+      success: false,
+      error: 'Sharing direction-a was cancelled.',
+    });
     renderWidget(toolCallId, {
       subjects: [
         {
@@ -210,7 +239,9 @@ describe('FeedbackRequestComposeWidget', () => {
       publishSubjectRefs: [{ orgId: 'org-1', kind: 'file', sourceId: 'direction-a' }],
       recipients: [{ userId: 'u-karl', name: 'Karl Reyes' }],
     });
-    expect(send.mock.calls[1][0].asks.map((ask: { id: string }) => ask.id)).toEqual(['ask-direction']);
+    expect(send.mock.calls[1][0].asks.map((ask: { id: string }) => ask.id)).toEqual([
+      'ask-direction',
+    ]);
   });
 
   it('carries the destination the author picked into the send payload', async () => {
@@ -294,9 +325,7 @@ describe('FeedbackRequestComposeWidget', () => {
             description: 'Does this direction work?',
           },
         ],
-        assignments: [
-          { askId: 'approve', target: { kind: 'user', userId: 'u-karl' } },
-        ],
+        assignments: [{ askId: 'approve', target: { kind: 'user', userId: 'u-karl' } }],
         subjects: [],
         visibility: 'hiddenUntilAnswered',
         quorumMode: 'all',
@@ -305,9 +334,9 @@ describe('FeedbackRequestComposeWidget', () => {
 
     renderWidget(toolCallId, { recipients: [], asks: [] }, toolResult);
 
-    expect(
-      screen.getByTestId('feedback-request-compose-widget').getAttribute('data-state'),
-    ).toBe('draft-quick');
+    expect(screen.getByTestId('feedback-request-compose-widget').getAttribute('data-state')).toBe(
+      'draft-quick'
+    );
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -341,20 +370,38 @@ describe('FeedbackRequestComposeWidget', () => {
  */
 describe('compose artifact previews', () => {
   const ARTIFACT_ASK = {
-    asks: [{
-      type: 'singleSelect',
-      id: 'ask-direction',
-      label: 'Direction',
-      description: 'Which of these should we build?',
-      options: [
-        { id: 'a', label: 'A · Split panel' },
-        { id: 'b', label: 'B · Radial' },
-      ],
-      artifacts: [
-        { entryId: 'a', ref: { orgId: 'org-1', kind: 'file', sourceId: 'mockups/a.mockup.html' }, label: 'Split panel' },
-        { entryId: 'b', ref: { orgId: 'org-1', kind: 'file', sourceId: 'mockups/b.mockup.html' }, label: 'Radial' },
-      ],
-    }],
+    asks: [
+      {
+        type: 'singleSelect',
+        id: 'ask-direction',
+        label: 'Direction',
+        description: 'Which of these should we build?',
+        options: [
+          { id: 'a', label: 'A · Split panel' },
+          { id: 'b', label: 'B · Radial' },
+        ],
+        artifacts: [
+          {
+            entryId: 'a',
+            ref: {
+              orgId: 'org-1',
+              kind: 'file',
+              sourceId: 'mockups/a.mockup.html',
+            },
+            label: 'Split panel',
+          },
+          {
+            entryId: 'b',
+            ref: {
+              orgId: 'org-1',
+              kind: 'file',
+              sourceId: 'mockups/b.mockup.html',
+            },
+            label: 'Radial',
+          },
+        ],
+      },
+    ],
   };
 
   it('paints each bound artifact when the host can render one', () => {
@@ -364,7 +411,7 @@ describe('compose artifact previews', () => {
       feedbackRequestCancel: vi.fn(),
       renderFeedbackArtifactPreview: (
         entry: { id: string; label: string },
-        artifact: FeedbackAskArtifact,
+        artifact: FeedbackAskArtifact
       ) => {
         painted.push(`${entry.id}:${artifact.ref.sourceId}`);
         return <div data-testid={`painted-${entry.id}`} />;
@@ -378,13 +425,10 @@ describe('compose artifact previews', () => {
 
     // Each option gets its *own* artifact — binding is by entry id, and getting
     // that mapping backwards would still render two previews.
-    expect(painted).toEqual([
-      'a:mockups/a.mockup.html',
-      'b:mockups/b.mockup.html',
-    ]);
-    expect(
-      container.querySelectorAll('[data-testid="feedback-compose-option-card"]'),
-    ).toHaveLength(2);
+    expect(painted).toEqual(['a:mockups/a.mockup.html', 'b:mockups/b.mockup.html']);
+    expect(container.querySelectorAll('[data-testid="feedback-compose-option-card"]')).toHaveLength(
+      2
+    );
   });
 
   it('keeps the plain option rows when the host cannot paint artifacts', () => {
@@ -401,9 +445,69 @@ describe('compose artifact previews', () => {
 
     // A host with no renderer — mobile, or a build with no editor registry —
     // still shows a complete, readable draft rather than a row of empty frames.
-    expect(
-      container.querySelector('[data-testid="feedback-compose-option-card"]'),
-    ).toBeNull();
+    expect(container.querySelector('[data-testid="feedback-compose-option-card"]')).toBeNull();
     expect(container.textContent).toContain('A · Split panel');
+  });
+});
+
+describe('FeedbackComposePublishPrompt localization', () => {
+  it('renders the compose controls and recipient assignment labels in Japanese', async () => {
+    testI18n = await createI18nInstance('ja');
+    const toolCallId = 'tc-compose-localized';
+    clearFeedbackRequestComposeDraft(toolCallId);
+    const send = vi.fn().mockResolvedValue({ success: true, requestId: 'fr-ja' });
+    setInteractiveWidgetHost(SESSION_ID, makeHost(send));
+    store.set(feedbackRecipientDirectoryAtom, [
+      { userId: 'u-karl', name: 'Karl Reyes' },
+      { userId: 'u-dana', name: 'Dana Ok' },
+    ]);
+
+    renderWidget(toolCallId);
+
+    expect(screen.getByRole('button', { name: 'Karl Reyesに質問' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '依頼先を追加' })).toBeDefined();
+    expect(screen.getByText('既定値：')).toBeDefined();
+
+    fireEvent.click(screen.getByTestId('feedback-compose-more-options'));
+    fireEvent.click(screen.getByTestId('feedback-compose-add-recipient'));
+    fireEvent.click(screen.getByTestId('feedback-compose-candidate'));
+    expect(screen.getByText('依頼先')).toBeDefined();
+    expect(screen.getByText('質問1・Direction')).toBeDefined();
+    expect(screen.getAllByTestId('feedback-compose-ask-chip')[0].getAttribute('title')).toContain(
+      'Karl Reyesに割り当て済み'
+    );
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDefined();
+  });
+
+  it('renders the publish warning, destination, disclosure, and confirmation in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    const onConfirmAndSend = vi.fn();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <FeedbackComposePublishPrompt
+          subjects={[
+            {
+              ref: { orgId: 'org-1', kind: 'file', sourceId: 'mockup-a' },
+              label: 'mockup-a.html',
+              shared: false,
+            },
+          ]}
+          confirmedSourceIds={[]}
+          recipientNames={[]}
+          destinationSubjectCount={1}
+          onChangeDestination={vi.fn()}
+          onConfirmAndSend={onConfirmAndSend}
+        />
+      </I18nextProvider>
+    );
+
+    expect(screen.getByText('1件の項目はまだチームに共有されていません。')).toBeDefined();
+    expect(screen.getByText('公開先：')).toBeDefined();
+    expect(screen.getByText('フィードバック依頼')).toBeDefined();
+    expect(screen.getByRole('button', { name: '変更' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '公開される項目を確認' }));
+    expect(screen.getByText('mockup-a.html')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '公開して送信' }));
+    expect(onConfirmAndSend).toHaveBeenCalledTimes(1);
   });
 });

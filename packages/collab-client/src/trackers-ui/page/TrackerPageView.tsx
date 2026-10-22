@@ -11,6 +11,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CollabOpenOptions } from '@nimbalyst/collab-client/core';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
@@ -101,13 +102,14 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   onArchive,
   headerBar,
 }) => {
+  const { t } = useTranslation('tracker');
   const model = useMemo(() => globalRegistry.get(item?.primaryType ?? ''), [item?.primaryType]);
   const titleRef = useAutoSizedTitle(localTitle);
 
   if (!item) {
     return (
       <div className="tracker-page-view flex h-full items-center justify-center bg-nim text-sm text-nim-faint" data-testid="tracker-page-view">
-        {loaded ? 'This page is no longer available' : 'Loading…'}
+        {loaded ? t('collaboration_surface.page_unavailable') : t('collaboration_surface.loading')}
       </div>
     );
   }
@@ -116,9 +118,10 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   const typeName = model?.displayName || item.primaryType;
   const confirmArchive = onArchive && (() => {
     void confirmDestructive(
-      'Archive page',
-      `Archive "${title}"? It leaves the Wiki and its type's table, with its comments and sessions kept. Restore it from its tracker's Archived view.`,
-      'Archive',
+      t('collaboration_surface.archive_page'),
+      t('collaboration_surface.archive_page_confirm', { title }),
+      t('detail.archived'),
+      t('cancel', { ns: 'common' }),
     ).then((accepted) => { if (accepted) onArchive(); });
   });
   const typeColor = model?.color || TYPE_COLORS[item.primaryType] || NEUTRAL_SWATCH;
@@ -133,14 +136,14 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
           titleIcon={model?.icon || 'label'}
           onOpenAncestor={headerBar.onOpenAncestor}
           status={item.archived
-            ? <span className="tracker-page-view-archived shrink-0 px-1 text-xs text-nim-faint">Archived</span>
+            ? <span className="tracker-page-view-archived shrink-0 px-1 text-xs text-nim-faint">{t('detail.archived')}</span>
             : headerBar.status}
           actions={headerBar.actions}
           onShowHistory={onShowHistory}
           menuItems={[
             ...(headerBar.menuItems ?? []),
             // Last, as Move to Trash is on a plain page.
-            ...(confirmArchive && !item.archived ? [{ id: 'archive', label: 'Archive page', icon: 'archive', onSelect: confirmArchive, dividerBefore: true }] : []),
+            ...(confirmArchive && !item.archived ? [{ id: 'archive', label: t('collaboration_surface.archive_page'), icon: 'archive', onSelect: confirmArchive, dividerBefore: true }] : []),
           ]}
         />
       )}
@@ -155,13 +158,13 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
               {title}
             </div>
             {item.archived
-              ? <span className="tracker-page-view-archived shrink-0 text-xs text-nim-faint">Archived</span>
+              ? <span className="tracker-page-view-archived shrink-0 text-xs text-nim-faint">{t('detail.archived')}</span>
               : confirmArchive && (
                 <button
                   type="button"
                   className="tracker-page-view-archive flex shrink-0 items-center rounded border-none bg-transparent px-1.5 py-0.5 text-nim-faint cursor-pointer hover:bg-nim-hover hover:text-nim"
-                  title="Archive page"
-                  aria-label="Archive page"
+                  title={t('collaboration_surface.archive_page')}
+                  aria-label={t('collaboration_surface.archive_page')}
                   onClick={confirmArchive}
                 >
                   <MaterialSymbol icon="archive" size={15} />
@@ -184,7 +187,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
                 }
               }}
               className="tracker-page-view-title m-0 mb-3 w-full resize-none overflow-hidden break-words border-none bg-transparent p-0 text-[28px] font-medium leading-tight text-nim outline-none placeholder:text-nim-faint"
-              placeholder="Untitled"
+              placeholder={t('collaboration_surface.untitled')}
               data-testid="tracker-page-title"
             />
           ) : (
@@ -204,7 +207,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
             end={headerBar && (
               <PageFacts facts={[
                 ...pageTimeFacts({ updatedAt: Date.parse(item.system.updatedAt) || null }),
-                ...(item.issueKey ? [{ id: 'key', value: item.issueKey, title: 'Issue key' }] : []),
+                ...(item.issueKey ? [{ id: 'key', value: item.issueKey, title: t('detail.key') }] : []),
               ]} />
             )}
           />

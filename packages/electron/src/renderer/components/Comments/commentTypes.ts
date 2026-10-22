@@ -225,8 +225,8 @@ export type BodySegment =
   | { type: 'strong'; text: string }
   | { type: 'emphasis'; text: string }
   | { type: 'emoji'; shortcode: string; glyph: string }
-  | { type: 'mention'; userId: string; displayName: string; initials: string; isViewer: boolean }
-  | { type: 'agentMention'; sessionId: string; sessionName: string; ownerDisplayName?: string; pending?: boolean }
+  | { type: 'mention'; userId: string; displayName: string; initials: string; isViewer: boolean; displayNameFallback?: 'unknown_member' }
+  | { type: 'agentMention'; sessionId: string; sessionName: string; ownerDisplayName?: string; pending?: boolean; sessionNameFallback?: 'agent_session' }
   | {
       type: 'resource';
       pill: ResourcePillView;
@@ -249,16 +249,37 @@ export interface ActorView {
   sessionId?: string;
   sessionName?: string;
   ownerDisplayName?: string;
+  /**
+   * Set only when `displayName` (and, for agents, `sessionName`) is the
+   * directory-miss fallback rather than a real name. The display layer
+   * resolves the localized label from it; the string fields stay stable for
+   * serialization and non-React consumers.
+   */
+  displayNameFallback?: DisplayNameFallback;
+  /** Same marker for `ownerDisplayName`. */
+  ownerDisplayNameFallback?: DisplayNameFallback;
   isViewer: boolean;
 }
+
+/**
+ * Meaning marker for a name the directory could not resolve. A real
+ * user-supplied or session-supplied name never gets a marker, so switching
+ * the UI language can never rewrite someone's actual name.
+ */
+export type DisplayNameFallback = 'unknown_member' | 'agent_session' | 'teammate';
+
+/** Why a reply parent's content is not shown. */
+export type ReplyUnavailableReason = 'restricted' | 'earlier' | 'deleted';
 
 /** The one displayed level of reply context. Never recursive. */
 export interface ReplyParentView {
   commentId: string;
   /** Absent when the parent is unavailable or deleted. */
   actorLabel?: string;
+  actorLabelFallback?: DisplayNameFallback;
   snippet?: string;
   unavailableLabel?: string;
+  unavailableReason?: ReplyUnavailableReason;
 }
 
 export type CommentActionKind = 'reply' | 'edit' | 'delete' | 'copyLink';
@@ -309,4 +330,10 @@ export interface ComposerRestriction {
   title: string;
   detail: string;
   icon: string;
+  /** Display-layer marker. English title and detail stay for non-React callers. */
+  reason?: ComposerRestrictionReason;
+  /** Surface name interpolated into archived and read-only copy. Not translated. */
+  surfaceLabel?: string;
 }
+
+export type ComposerRestrictionReason = 'no_access' | 'archived' | 'read_only';

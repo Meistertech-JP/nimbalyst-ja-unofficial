@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { EditorHostProps } from '@nimbalyst/runtime';
 
 /**
@@ -16,6 +17,7 @@ import type { EditorHostProps } from '@nimbalyst/runtime';
  * success, so there is nothing to detect here and nothing to fall back to.
  */
 export function MediaViewerEditor({ host }: EditorHostProps) {
+  const { t } = useTranslation('editor');
   const [failed, setFailed] = useState(false);
 
   const src = useMemo(() => host.getAssetUrl?.() ?? null, [host]);
@@ -23,9 +25,9 @@ export function MediaViewerEditor({ host }: EditorHostProps) {
   if (!src) {
     return (
       <div className="media-viewer-editor media-viewer-unavailable">
-        <p>This video cannot be played here.</p>
+        <p>{t('media_viewer.unavailable_title')}</p>
         <p className="media-viewer-detail">
-          It is not backed by a file on disk.
+          {t('media_viewer.unavailable_detail')}
         </p>
       </div>
     );
@@ -34,9 +36,9 @@ export function MediaViewerEditor({ host }: EditorHostProps) {
   if (failed) {
     return (
       <div className="media-viewer-editor media-viewer-unavailable">
-        <p>This video could not be played.</p>
+        <p>{t('media_viewer.playback_error_title')}</p>
         <p className="media-viewer-detail">
-          The file may be incomplete, or use a format this build cannot decode.
+          {t('media_viewer.playback_error_detail')}
         </p>
       </div>
     );

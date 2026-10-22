@@ -5,6 +5,7 @@ import { createRequire } from "module";
 const require_ = createRequire(import.meta.url);
 const packageJson = require_("../../package.json");
 const { shouldSign } = require_("../sign-windows.js");
+const productName = packageJson.build.productName;
 
 // PR #854 added build.win.signExts, which makes electron-builder run the
 // DigiCert signer once per matching file in the staged payload: 59 KeyLocker
@@ -36,12 +37,20 @@ const RELEASE_DIR =
 
 describe("shouldSign", () => {
   it.each([
+    `${RELEASE_DIR}\\win-unpacked\\${productName}.exe`,
+    `${RELEASE_DIR}\\${productName}-Windows-x64.exe`,
+    `${RELEASE_DIR}\\${productName}-Windows-arm64.exe`,
+    `${RELEASE_DIR}\\${productName}-Windows-x64.__uninstaller.exe`,
+  ])("signs our own binary %s", (filePath) => {
+    expect(shouldSign(filePath)).toBe(true);
+  });
+
+  it.each([
     `${RELEASE_DIR}\\win-unpacked\\Nimbalyst.exe`,
     `${RELEASE_DIR}\\Nimbalyst-Windows-x64.exe`,
     `${RELEASE_DIR}\\Nimbalyst-Windows-arm64.exe`,
-    `${RELEASE_DIR}\\Nimbalyst-Windows-x64.__uninstaller.exe`,
-  ])("signs our own binary %s", (filePath) => {
-    expect(shouldSign(filePath)).toBe(true);
+  ])("does not sign official Nimbalyst binary %s in the unofficial build", (filePath) => {
+    expect(shouldSign(filePath)).toBe(false);
   });
 
   it.each([

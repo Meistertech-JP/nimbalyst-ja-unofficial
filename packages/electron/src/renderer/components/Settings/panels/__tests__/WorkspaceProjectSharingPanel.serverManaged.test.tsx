@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 // NIM-1779/C2: team key custody is server-managed, so the reachable team
 // sharing surface (ProjectScopedTeamExistsState) must not present the legacy
@@ -23,6 +25,7 @@ vi.mock('../ProjectAccessEditor', () => ({
 }));
 vi.mock('../../../common/AlphaBadge', () => ({
   AlphaBadge: () => null,
+  SettingsAlphaBadge: () => null,
   SETTINGS_ALPHA_TOOLTIP: '',
 }));
 const openDialog = vi.fn();
@@ -41,6 +44,21 @@ const openManagementWindow = vi.fn();
 
 import { ProjectScopedTeamExistsState } from '../WorkspaceProjectSharingPanel';
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderEnglish(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
+
 function renderServerManagedTeamSurface(callerRole = 'admin', teamOverrides: Record<string, unknown> = {}) {
   const team = {
     orgId: 'org-sm',
@@ -58,7 +76,7 @@ function renderServerManagedTeamSurface(callerRole = 'admin', teamOverrides: Rec
   const projects = [
     { projectId: 'proj-1', teamProjectId: 'proj-1', gitRemoteHash: 'abc123', slug: 'app', name: 'App' },
   ];
-  return render(
+  return renderEnglish(
     <ProjectScopedTeamExistsState
       team={team}
       projects={projects}

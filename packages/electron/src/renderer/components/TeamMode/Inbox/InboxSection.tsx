@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useAtom, useStore } from 'jotai';
 
@@ -30,7 +31,6 @@ import { useInboxProvider, type InboxProvider } from './inboxProvider';
 import {
   deriveScopeOptions,
   groupRows,
-  inboxFilterLabel,
   isScopeActive,
   openRow,
   scopeWithinOrg,
@@ -61,7 +61,7 @@ export function InboxSection({
   now: nowProp,
   onBrowseRooms,
   onNewMessage,
-  composeUnavailableLabel = 'Compose is available in the organization window',
+  composeUnavailableLabel,
 }: {
   /** Mounted surface whose imperative command latches this Inbox consumes. */
   surfaceId?: string;
@@ -99,6 +99,8 @@ export function InboxSection({
    */
   composeUnavailableLabel?: string;
 } = {}) {
+  const { t, i18n } = useTranslation('collabSidebar');
+  const { t: tInbox } = useTranslation('collabSidebar', { keyPrefix: 'inbox_surface' });
   const provider = useInboxProvider(providerProp);
 
   const snapshot = useSyncExternalStore(provider.subscribe, provider.getSnapshot, provider.getSnapshot);
@@ -203,10 +205,11 @@ export function InboxSection({
       scope,
       query,
       now,
+      locale: i18n.language,
       stalePreviews: offline,
       restrictToOrgId,
     }),
-    [snapshot.deliveries, filter, unreadOnly, scope, query, now, offline, restrictToOrgId],
+    [snapshot.deliveries, filter, unreadOnly, scope, query, now, offline, restrictToOrgId, i18n.language],
   );
 
   // What the controls must show, which is what the list actually applied — a
@@ -223,7 +226,14 @@ export function InboxSection({
   );
   const groups = useMemo(() => groupRows(rows, now), [rows, now]);
   const selectedRow = useMemo(() => rows.find((row) => row.id === selectedId) ?? null, [rows, selectedId]);
-  const filterLabel = inboxFilterLabel(filter);
+  const filterLabel = {
+    all: t('org_sidebar.inbox_filter.all'),
+    mentions: t('org_sidebar.inbox_filter.mentions'),
+    assigned: t('org_sidebar.inbox_filter.assigned'),
+    awaiting: t('org_sidebar.inbox_filter.awaiting'),
+    follows: t('org_sidebar.inbox_filter.follows'),
+    archived: t('org_sidebar.inbox_filter.archived'),
+  }[filter];
 
   // Selecting is free: it fills the context pane and never moves you. Every
   // navigation is an explicit second act, so a click is safe to spend on
@@ -249,9 +259,9 @@ export function InboxSection({
     if (result.outcome === 'navigationFailed') {
       // Read state is the user's record of what they have actually seen. A
       // failed open must not consume it.
-      setActivationNotice('Could not open that conversation. It stays unread.');
+      setActivationNotice(tInbox('activation_failed'));
     }
-  }, [provider]);
+  }, [provider, tInbox]);
 
   const handleMarkAllRead = useCallback(() => {
     // Scoped to the active filter, per the plan; the search query does not
@@ -334,7 +344,7 @@ export function InboxSection({
         data-window-drag-region="true"
       >
         <div className="inbox-header-title flex items-center gap-2">
-          <h2 className="m-0 text-[15px] font-semibold text-[var(--nim-text)]">Inbox</h2>
+          <h2 className="m-0 text-[15px] font-semibold text-[var(--nim-text)]">{t('org_sidebar.inbox')}</h2>
           {unreadInScope > 0 && (
             <span
               className="inbox-header-unread rounded-full bg-[var(--nim-primary)] px-1.5 text-[10px] font-semibold leading-4 text-[var(--nim-on-primary)]"
@@ -349,10 +359,10 @@ export function InboxSection({
               className="inbox-mark-all-read org-window-no-drag rounded-md border border-[var(--nim-border)] px-2.5 py-1 text-[12px] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] disabled:cursor-not-allowed disabled:text-[var(--nim-text-disabled)]"
               data-testid="inbox-mark-all-read"
               disabled={loading || unreadInScope === 0}
-              title={`Mark everything in ${filterLabel} as read`}
+              title={tInbox('mark_filter_read_title', { filter: filterLabel })}
               onClick={handleMarkAllRead}
             >
-              Mark {filterLabel.toLowerCase()} read
+              {tInbox('mark_filter_read', { filter: filterLabel })}
             </button>
             <button
               type="button"
@@ -360,11 +370,11 @@ export function InboxSection({
               data-testid="inbox-new-message"
               disabled={!onNewMessage}
               title={onNewMessage
-                ? 'Write to a room or a person'
-                : composeUnavailableLabel}
+                ? tInbox('new_message_title')
+                : composeUnavailableLabel ?? tInbox('compose_unavailable')}
               onClick={onNewMessage}
             >
-              <MaterialSymbol icon="edit_square" size={14} /> New message
+              <MaterialSymbol icon="edit_square" size={14} /> {tInbox('new_message')}
             </button>
           </div>
         </div>
@@ -398,7 +408,7 @@ export function InboxSection({
         >
           <MaterialSymbol icon="encrypted_off" size={15} />
           <span className="min-w-0 flex-1">
-            Messaging is not available for {organization.orgName}. Migrate this organization to server-managed encryption to enable it.
+            {tInbox('organization_unavailable', { organization: organization.orgName })}
           </span>
           <button
             type="button"
@@ -407,7 +417,7 @@ export function InboxSection({
               void provider.migrateOrganization(organization.orgId);
             }}
           >
-            Migrate organization
+            {tInbox('migrate_organization')}
           </button>
         </div>
       ))}

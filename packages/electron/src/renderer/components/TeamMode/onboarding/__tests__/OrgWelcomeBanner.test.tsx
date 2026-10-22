@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { Provider, createStore } from 'jotai';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { OrgWelcomeBanner } from '../OrgWelcomeBanner';
 import { ORG_WELCOME_DISMISSED_SETTING_KEY } from '../orgWelcomeModel';
@@ -10,6 +12,15 @@ import { ORG_WELCOME_DISMISSED_SETTING_KEY } from '../orgWelcomeModel';
 const invoke = vi.fn();
 const list = vi.fn();
 const listMembers = vi.fn();
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+function render(ui: React.ReactElement) {
+  return rtlRender(
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      {ui}
+    </UiLanguageProvider>,
+  );
+}
 
 function installApi(dismissedOrgIds: unknown = []) {
   invoke.mockImplementation(async (channel: string, key: string) => (
@@ -28,7 +39,8 @@ function installApi(dismissedOrgIds: unknown = []) {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  englishI18n = await createI18nInstance('en');
   invoke.mockReset();
   list.mockReset();
   listMembers.mockReset();

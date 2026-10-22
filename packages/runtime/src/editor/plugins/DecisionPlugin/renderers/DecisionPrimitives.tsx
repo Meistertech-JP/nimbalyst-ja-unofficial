@@ -15,6 +15,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { DecisionMember } from '../../../decisions/types';
 
 /** Stable per-person tint, so the same voter is the same color across blocks. */
@@ -115,6 +116,7 @@ export const DecisionRow: React.FC<DecisionRowProps> = ({
   preview,
   testId,
 }) => {
+  const { t } = useTranslation('editor');
   const interactive = Boolean(onSelect) && !disabled;
   const className = [
     'decision-row',
@@ -147,7 +149,7 @@ export const DecisionRow: React.FC<DecisionRowProps> = ({
           <span className="decision-row-title-line">
             <span className="decision-row-title">{label}</span>
             {badge ? <span className="decision-entry-badge">{badge}</span> : null}
-            {isMine ? <span className="decision-you">You</span> : null}
+            {isMine ? <span className="decision-you">{t('decision.proposal.you')}</span> : null}
           </span>
           {description ? (
             <span className="decision-row-sub">{description}</span>
@@ -230,8 +232,9 @@ export const AnsweredMark: React.FC<{ children: React.ReactNode }> = ({ children
 export const HiddenTallyNote: React.FC<{ count: number; noun: string }> = ({
   count,
   noun,
-}) => (
-  <span className="decision-blind">
+}) => {
+  const { t } = useTranslation('editor');
+  return <span className="decision-blind">
     <svg
       width="11"
       height="11"
@@ -244,6 +247,6 @@ export const HiddenTallyNote: React.FC<{ count: number; noun: string }> = ({
       <rect x="3" y="7" width="10" height="7" rx="1.5" />
       <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
     </svg>
-      {`${count} ${noun} — results hidden until you answer`}
+      {t('decision.hidden_tally', { count, noun })}
   </span>
-);
+};

@@ -6,6 +6,7 @@
  */
 
 import { memo, useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import type { Entity, Field, EntityViewMode, Database } from '../types';
 import { computeHandleState } from '../utils/handleUtils';
@@ -29,6 +30,7 @@ export interface EntityNodeData extends Record<string, unknown> {
  * never shifts the node's layout or its handle positions.
  */
 function PresenceChrome({ presences }: { presences: RemotePresence[] }) {
+  const { t } = useTranslation('extensions');
   if (presences.length === 0) return null;
   return (
     <div className="datamodel-entity-presence" aria-hidden="true">
@@ -37,7 +39,7 @@ function PresenceChrome({ presences }: { presences: RemotePresence[] }) {
           key={presence.clientId}
           className="datamodel-presence-chip"
           style={{ backgroundColor: presence.color }}
-          title={`${presence.name} has this selected`}
+          title={t('datamodellm_ui.collaborator_selected', { name: presence.name })}
         >
           {presence.name}
         </span>
@@ -69,6 +71,7 @@ const FieldRow = memo(function FieldRow({
   showSourceHandle = false,
   store,
 }: FieldRowProps) {
+  const { t } = useTranslation('extensions');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingType, setIsEditingType] = useState(false);
   const [editName, setEditName] = useState(field.name);
@@ -188,7 +191,7 @@ const FieldRow = memo(function FieldRow({
             <span
               className="datamodel-field-name"
               onDoubleClick={handleNameDoubleClick}
-              title="Double-click to edit"
+              title={t('datamodellm_ui.double_click_to_edit')}
             >
               {field.name}
             </span>
@@ -209,7 +212,7 @@ const FieldRow = memo(function FieldRow({
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <span onDoubleClick={handleTypeDoubleClick} title="Double-click to edit">
+                  <span onDoubleClick={handleTypeDoubleClick} title={t('datamodellm_ui.double_click_to_edit')}>
                     {field.dataType}
                   </span>
                 )}
@@ -272,6 +275,7 @@ const FieldRow = memo(function FieldRow({
 });
 
 function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>) {
+  const { t } = useTranslation('extensions');
   const { entity, isSelected, isHovered, viewMode, database, store, presences } =
     data as EntityNodeData;
   const remotePresences = presences ?? [];
@@ -335,7 +339,7 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
   // Compact mode: just show entity name, field count, and description
   if (isCompact) {
     const fieldCount = entity.fields.length;
-    const fieldLabel = fieldCount === 1 ? '1 field' : `${fieldCount} fields`;
+    const fieldLabel = t('datamodellm_ui.field_count', { count: fieldCount });
 
     return (
       <div
@@ -383,7 +387,7 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
               <span
                 className="datamodel-entity-compact-name"
                 onDoubleClick={handleNameDoubleClick}
-                title="Double-click to edit"
+                title={t('datamodellm_ui.double_click_to_edit')}
               >
                 {entity.name}
               </span>
@@ -451,7 +455,7 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
           <h3
             className="datamodel-entity-name"
             onDoubleClick={handleNameDoubleClick}
-            title="Double-click to edit"
+            title={t('datamodellm_ui.double_click_to_edit')}
           >
             {entity.name}
           </h3>
@@ -476,7 +480,7 @@ function EntityNodeComponent({ data, selected }: NodeProps<Node<EntityNodeData>>
             );
           })
         ) : (
-          <div className="datamodel-entity-empty">No fields defined</div>
+          <div className="datamodel-entity-empty">{t('datamodellm_ui.no_fields_defined')}</div>
         )}
       </div>
 

@@ -10,7 +10,9 @@
     "test": "vitest run",
     "typecheck": "node ../../../scripts/tsc-native.mjs --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@nimbalyst/i18n": "workspace:*"
+  },
   "devDependencies": {
     "@nimbalyst/extension-sdk": "workspace:*",
     "@types/react": "^19.2.17",

@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, beforeAll } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 // GitLogPanel and ChangesTab both read `window.electronAPI` at module scope, so
 // the stub has to exist before the imports are evaluated.
@@ -12,6 +14,19 @@ const invoke = vi.hoisted(() => {
 import { GitLogPanel } from '../components/GitLogPanel';
 
 const WORKSPACE = '/repo';
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderPanel() {
+  return render(
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <GitLogPanel host={makeHost()} />
+    </UiLanguageProvider>,
+  );
+}
 
 function makeHost() {
   const storage = new Map<string, unknown>();
@@ -33,7 +48,8 @@ function workingChangesCalls() {
 }
 
 describe('GitLogPanel refresh', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await englishI18n.changeLanguage('en');
     invoke.mockReset();
     invoke.mockImplementation((channel: string) => {
       switch (channel) {
@@ -58,11 +74,45 @@ describe('GitLogPanel refresh', () => {
     });
   });
 
+  it('translates a persisted fast-forward strategy without changing the pull operation', async () => {
+    const i18n = await createI18nInstance('en');
+    const host = makeHost();
+    await host.storage.setGlobal('pullStrategy', 'ff-only');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+        <GitLogPanel host={host} />
+      </UiLanguageProvider>,
+    );
+    await screen.findByTitle('Pull (Fast-forward only)');
+    await act(() => i18n.changeLanguage('ja'));
+    const pull = await screen.findByTitle('プル（ファストフォワードのみ）');
+    fireEvent.click(pull);
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith('git:pull', WORKSPACE, { ffOnly: true }));
+    expect(host.storage.getGlobal('pullStrategy')).toBe('ff-only');
+  });
+
+  it('updates the log UI when the language changes from English to Japanese', async () => {
+    const i18n = await createI18nInstance('en');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+        <GitLogPanel host={makeHost()} />
+      </UiLanguageProvider>,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Log' })).not.toBeNull();
+    expect(screen.getByPlaceholderText('Search commits by message, author, or hash')).not.toBeNull();
+    await i18n.changeLanguage('ja');
+
+    expect(await screen.findByRole('button', { name: 'ログ' })).not.toBeNull();
+    expect(screen.getByPlaceholderText('コミットメッセージ、作成者、ハッシュで検索')).not.toBeNull();
+    expect(screen.getByText('コミットが見つかりません')).not.toBeNull();
+  });
+
   // The Refresh button lives in the shared header, so it used to reload only the
   // commit log and branch pill -- pressing it on the Changes tab left the file
   // list untouched, and a path that had just been gitignored kept showing.
   it('reloads the working-tree file list when the Changes tab is open', async () => {
-    const { container } = render(<GitLogPanel host={makeHost()} />);
+    const { container } = renderPanel();
 
     fireEvent.click(await screen.findByRole('button', { name: /changes/i }));
     await screen.findByText('picked.ts');
@@ -83,7 +133,7 @@ describe('GitLogPanel refresh', () => {
   // the workspace. Getting this wrong shows the primary repo's branch and log
   // under the attached repo's name.
   it('hides the repo picker and targets the workspace when there is one repo', async () => {
-    render(<GitLogPanel host={makeHost()} />);
+    renderPanel();
 
     await waitFor(() => expect(invoke).toHaveBeenCalledWith('git:branches', WORKSPACE));
     expect(screen.queryByRole('button', { name: /^Repository:/ })).toBeNull();
@@ -106,7 +156,7 @@ describe('GitLogPanel refresh', () => {
       }
     });
 
-    render(<GitLogPanel host={makeHost()} />);
+    renderPanel();
 
     const picker = await screen.findByRole('button', { name: `Repository: repo` });
     fireEvent.click(picker);
@@ -135,7 +185,7 @@ describe('GitLogPanel refresh', () => {
       }
     });
 
-    render(<GitLogPanel host={makeHost()} />);
+    renderPanel();
 
     fireEvent.click(await screen.findByRole('button', { name: /changes/i }));
     expect(screen.getByRole('button', { name: /changes/i }).classList.contains('git-tab-btn--active')).toBe(true);
@@ -153,7 +203,8 @@ describe('GitLogPanel commit hover card', () => {
   const COMMIT = { hash: 'abc1234def', message: 'Fix the thing', author: 'Dev', date: '2026-10-01T12:00:00Z' };
   const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await englishI18n.changeLanguage('en');
     invoke.mockReset();
     invoke.mockImplementation((channel: string) => {
       switch (channel) {
@@ -183,7 +234,7 @@ describe('GitLogPanel commit hover card', () => {
   // which re-triggered the overlap: the card blinked as long as the mouse sat
   // still.
   it('does not reload the card when the cursor returns to the row it belongs to', async () => {
-    render(<GitLogPanel host={makeHost()} />);
+    renderPanel();
     // Panel state is per workspace and module-scoped, so an earlier test can
     // leave the Changes tab active.
     fireEvent.click(await screen.findByRole('button', { name: /^log$/i }));

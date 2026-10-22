@@ -8,6 +8,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { CollabTypeTreeResolver } from '../docs/collabTree';
 import type { CollabTypeLane } from '../docs/collabTypeResolver';
@@ -20,6 +21,7 @@ import {
   type NewTypeFieldDraft,
   type NewTypeFieldKind,
   type NewTypeSchema,
+  type NewTypeValidationMessageKey,
 } from '../docs/newTypeSchema';
 
 export interface NewTypeDialogProps {
@@ -40,13 +42,25 @@ export interface NewTypeDialogProps {
 }
 
 const ICONS = ['label', 'folder_special', 'person', 'groups', 'storefront', 'lightbulb', 'flag', 'description', 'build', 'public'];
-const KINDS: Array<{ kind: NewTypeFieldKind; label: string }> = [
-  { kind: 'text', label: 'Text' },
-  { kind: 'number', label: 'Number' },
-  { kind: 'select', label: 'Choice' },
-  { kind: 'date', label: 'Date' },
-  { kind: 'person', label: 'Person' },
-  { kind: 'relation', label: 'Link to type' },
+const ICON_LABEL_KEYS: Record<string, string> = {
+  label: 'label',
+  folder_special: 'folder_special',
+  person: 'person',
+  groups: 'groups',
+  storefront: 'storefront',
+  lightbulb: 'lightbulb',
+  flag: 'flag',
+  description: 'description',
+  build: 'build',
+  public: 'public',
+};
+const KINDS: Array<{ kind: NewTypeFieldKind; labelKey: string }> = [
+  { kind: 'text', labelKey: 'text' },
+  { kind: 'number', labelKey: 'number' },
+  { kind: 'select', labelKey: 'choice' },
+  { kind: 'date', labelKey: 'date' },
+  { kind: 'person', labelKey: 'person' },
+  { kind: 'relation', labelKey: 'link_to_type' },
 ];
 
 /** "Libraries" -> "Library", "Boxes" -> "Box", "Customers" -> "Customer". */
@@ -63,6 +77,7 @@ const inputClass = `w-full ${controlClass}`;
 const labelClass = 'block text-[11px] uppercase tracking-wider font-semibold text-nim-faint mb-1';
 
 export function NewTypeDialog({ lane, resolver, session, parent, defineType, onCreated, onClose }: NewTypeDialogProps) {
+  const { t } = useTranslation('tracker');
   const [pluralName, setPluralName] = useState('');
   const [singularEdited, setSingularEdited] = useState<string | null>(null);
   const [icon, setIcon] = useState('label');
@@ -103,7 +118,9 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
     const candidate = newTypeIdFromName(singularName);
     const existingTypeIds = new Set(types.map((type) => type.typeId));
     if (candidate && resolver.typeName(candidate) !== null) existingTypeIds.add(candidate);
-    const problems = validateNewTypeDraft(draft, { existingTypeIds });
+    const problems = validateNewTypeDraft(draft, { existingTypeIds }, (key: NewTypeValidationMessageKey, values) =>
+      t(`new_type_dialog.validation.${key}`, values),
+    );
     setErrors(problems);
     if (problems.length > 0) return;
 
@@ -115,13 +132,13 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
       const placed = await session.placeType(schema.type, parent?.id ?? null, parent?.kind);
       if (closedRef.current) return;
       // The type exists either way; a failed placement only leaves it unplaced.
-      if (!placed.ok) setErrors([`The type was created but could not be added to the tree: ${placed.error}`]);
+      if (!placed.ok) setErrors([t('new_type_dialog.placement_failed', { error: placed.error })]);
       if (written && written.status === 'syncing') {
         // Both hosts land here: desktop has written the YAML, the console holds
         // the definition until its next connection. Neither has a server answer,
         // so `onCreated` is not called: a host that opens the new type would
         // close this notice and land on a type the team does not have yet.
-        setSyncingNotice(`${draft.pluralName.trim()} is still syncing to the team. Teammates see it once the team's server confirms it.`);
+        setSyncingNotice(t('new_type_dialog.syncing', { name: draft.pluralName.trim() }));
         return;
       }
       onCreated?.(schema.type);
@@ -143,35 +160,35 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
       <div
         className="new-type-dialog w-[480px] max-w-[92vw] max-h-[80vh] flex flex-col bg-nim border border-nim rounded-lg shadow-xl overflow-hidden"
         role="dialog"
-        aria-label="New type"
+        aria-label={t('new_type_dialog.title')}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="px-4 pt-3 pb-2 border-b border-nim">
-          <div className="text-sm font-medium text-nim">New type</div>
+          <div className="text-sm font-medium text-nim">{t('new_type_dialog.title')}</div>
           <div className="text-xs text-nim-faint mt-0.5">
-            {lane === 'team' ? 'Team · shared with this project.' : 'Personal · on this device. Available offline.'}
+            {lane === 'team' ? t('new_type_dialog.team_description') : t('new_type_dialog.personal_description')}
           </div>
         </div>
 
         <div className="new-type-dialog-body flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
           <div className="flex gap-2">
             <label className="flex-1">
-              <span className={labelClass}>Name (plural)</span>
+              <span className={labelClass}>{t('new_type_dialog.plural_name')}</span>
               <input
                 className={inputClass}
                 value={pluralName}
-                placeholder="Customers"
+                placeholder={t('new_type_dialog.plural_placeholder')}
                 autoFocus
                 onChange={(event) => setPluralName(event.target.value)}
                 data-testid="new-type-plural"
               />
             </label>
             <label className="flex-1">
-              <span className={labelClass}>One of them</span>
+              <span className={labelClass}>{t('new_type_dialog.singular_name')}</span>
               <input
                 className={inputClass}
                 value={singularName}
-                placeholder="Customer"
+                placeholder={t('new_type_dialog.singular_placeholder')}
                 onChange={(event) => setSingularEdited(event.target.value)}
                 data-testid="new-type-singular"
               />
@@ -179,13 +196,13 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
           </div>
 
           <div>
-            <span className={labelClass}>Icon</span>
+            <span className={labelClass}>{t('new_type_dialog.icon')}</span>
             <div className="new-type-icons flex flex-wrap gap-1">
               {ICONS.map((name) => (
                 <button
                   key={name}
                   type="button"
-                  aria-label={name}
+                  aria-label={t(`new_type_dialog.icons.${ICON_LABEL_KEYS[name]}`)}
                   aria-pressed={icon === name}
                   className={`w-7 h-7 rounded-md inline-flex items-center justify-center ${icon === name ? 'bg-[var(--nim-primary)]/20 text-nim' : 'text-nim-muted hover:bg-nim-hover'}`}
                   onClick={() => setIcon(name)}
@@ -197,28 +214,28 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
           </div>
 
           <label>
-            <span className={labelClass}>Kind of</span>
+            <span className={labelClass}>{t('new_type_dialog.extends')}</span>
             <select
               className={inputClass}
               value={extendsTypeId ?? ''}
               onChange={(event) => setExtendsTypeId(event.target.value || null)}
               data-testid="new-type-extends"
             >
-              <option value="">Nothing (a new kind of page)</option>
+              <option value="">{t('new_type_dialog.extends_none')}</option>
               {types.map((type) => <option key={type.typeId} value={type.typeId}>{type.name}</option>)}
             </select>
           </label>
 
           <div>
-            <span className={labelClass}>Fields</span>
-            {fields.some((field) => field.kind === 'relation') && <p className="mb-2 text-xs text-nim-muted">Link to type adds a reference field. Named relations in page sentences use the project's relation definitions.</p>}
+            <span className={labelClass}>{t('new_type_dialog.fields')}</span>
+            {fields.some((field) => field.kind === 'relation') && <p className="mb-2 text-xs text-nim-muted">{t('new_type_dialog.relation_help')}</p>}
             <div className="flex flex-col gap-1.5">
               {fields.map((field, index) => (
                 <div key={index} className="new-type-field-row flex items-center gap-1.5">
                   <input
                     className={`${controlClass} flex-1 min-w-0`}
                     value={field.label}
-                    placeholder="Field name"
+                    placeholder={t('new_type_dialog.field_name')}
                     onChange={(event) => updateField(index, { label: event.target.value })}
                     data-testid={`new-type-field-label-${index}`}
                   />
@@ -228,13 +245,13 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
                     onChange={(event) => updateField(index, { kind: event.target.value as NewTypeFieldKind })}
                     data-testid={`new-type-field-kind-${index}`}
                   >
-                    {KINDS.map(({ kind, label }) => <option key={kind} value={kind}>{label}</option>)}
+                    {KINDS.map(({ kind, labelKey }) => <option key={kind} value={kind}>{t(`new_type_dialog.kinds.${labelKey}`)}</option>)}
                   </select>
                   {field.kind === 'select' ? (
                     <input
                       className={`${controlClass} flex-1 min-w-0`}
                       value={field.options ?? ''}
-                      placeholder="Low, Medium, High"
+                      placeholder={t('new_type_dialog.options_placeholder')}
                       onChange={(event) => updateField(index, { options: event.target.value })}
                       data-testid={`new-type-field-options-${index}`}
                     />
@@ -246,13 +263,13 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
                       onChange={(event) => updateField(index, { targetTypeId: event.target.value || undefined })}
                       data-testid={`new-type-field-target-${index}`}
                     >
-                      <option value="">Choose a type</option>
+                      <option value="">{t('new_type_dialog.choose_type')}</option>
                       {types.map((type) => <option key={type.typeId} value={type.typeId}>{type.name}</option>)}
                     </select>
                   ) : null}
                   <button
                     type="button"
-                    aria-label="Remove field"
+                    aria-label={t('new_type_dialog.remove_field')}
                     className="w-7 h-7 shrink-0 rounded-md inline-flex items-center justify-center text-nim-faint hover:text-nim hover:bg-nim-hover"
                     onClick={() => setFields((current) => current.filter((_, i) => i !== index))}
                   >
@@ -267,7 +284,7 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
                 data-testid="new-type-add-field"
               >
                 <MaterialSymbol icon="add" size={14} />
-                Add field
+                {t('new_type_dialog.add_field')}
               </button>
             </div>
           </div>
@@ -288,7 +305,7 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
             className="px-3 py-1.5 rounded-md text-xs text-nim-muted hover:text-nim hover:bg-nim-hover"
             onClick={close}
           >
-            Cancel
+            {t('new_type_dialog.cancel')}
           </button>
           <button
             type="button"
@@ -297,7 +314,7 @@ export function NewTypeDialog({ lane, resolver, session, parent, defineType, onC
             onClick={() => { if (syncingNotice) close(); else void create(); }}
             data-testid="new-type-create"
           >
-            {running ? 'Creating...' : syncingNotice ? 'Close' : 'Create type'}
+            {running ? t('new_type_dialog.creating') : syncingNotice ? t('new_type_dialog.close') : t('new_type_dialog.create')}
           </button>
         </div>
       </div>

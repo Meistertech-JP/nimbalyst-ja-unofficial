@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TranscriptViewMessage, ChatAttachment } from '../../../ai/server/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { JSONViewer } from './JSONViewer';
@@ -60,6 +61,7 @@ export const MessageSegment = React.memo(function MessageSegment({
   provider,
   workspacePath
 }: MessageSegmentProps) {
+  const { t } = useTranslation('aichat');
   const [isDiffExpanded, setDiffExpanded] = useState(false);
   const gallery = useTranscriptImageGallery();
   const [enlargedImage, setEnlargedImage] = useState<ChatAttachment | null>(null);
@@ -95,18 +97,18 @@ export const MessageSegment = React.memo(function MessageSegment({
             }
             setTextLoadError(null);
           } else if (result === null) {
-            setTextLoadError('File not found');
+            setTextLoadError('message_segment.file_missing');
             setTextContent(null);
           } else {
-            setTextLoadError('Failed to read file');
+            setTextLoadError('message_segment.read_failed');
             setTextContent(null);
           }
         } else {
-          setTextLoadError('File reading not available');
+          setTextLoadError('message_segment.read_unavailable');
           setTextContent(null);
         }
       } catch (error) {
-        setTextLoadError(error instanceof Error ? error.message : 'Failed to read file');
+        setTextLoadError(error instanceof Error ? error.message : 'message_segment.read_failed');
         setTextContent(null);
       }
     };
@@ -162,7 +164,7 @@ export const MessageSegment = React.memo(function MessageSegment({
       <details className="rich-transcript-thinking rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
         <summary className="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--nim-text-muted)] cursor-pointer select-none">
           <MaterialSymbol icon="psychology" size={14} />
-          <span>Thinking</span>
+          <span>{t('message_segment.thinking')}</span>
         </summary>
         <div className="px-2 pb-2 pt-1 text-xs text-[var(--nim-text-muted)] whitespace-pre-wrap">
           {thinking}
@@ -278,11 +280,11 @@ export const MessageSegment = React.memo(function MessageSegment({
     const explicitSuccess = resultDetails && 'success' in resultDetails ? resultDetails.success !== false : undefined;
     const derivedErrorMessage = (message.isError && message.text) || (resultDetails && typeof resultDetails.error === 'string' ? (resultDetails.error as string) : undefined);
     const didFail = message.isError || tool.isError || explicitSuccess === false || !!derivedErrorMessage;
-    const statusLabel = didFail ? 'Failed' : 'Succeeded';
+    const statusLabel = t(didFail ? 'message_segment.failed' : 'message_segment.succeeded');
     const statusColor = didFail ? 'var(--nim-error)' : 'var(--nim-success)';
     const statusBackground = didFail ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
     const hasResult = toolResult !== undefined && toolResult !== null && (typeof toolResult !== 'string' || toolResult.trim().length > 0);
-    const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || 'Tool Call';
+    const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || t('message_segment.tool_call');
 
     return (
       <div className="rounded-md bg-nim-tertiary overflow-hidden border border-nim my-2">
@@ -317,14 +319,14 @@ export const MessageSegment = React.memo(function MessageSegment({
           <div className="py-2 px-3 text-xs">
             {typeof tool.arguments === 'object' && tool.arguments !== null && Object.keys(tool.arguments).length > 0 && (
               <div className="mb-2">
-                <div className="text-nim-faint mb-1">Parameters:</div>
+                <div className="text-nim-faint mb-1">{t('message_segment.parameters')}</div>
                 <JSONViewer data={tool.arguments} maxHeight="16rem" />
               </div>
             )}
 
 
             <div className="mt-2">
-              <div className="text-nim-faint mb-1">Result:</div>
+              <div className="text-nim-faint mb-1">{t('message_segment.result')}</div>
               {hasResult ? (
                 typeof toolResult === 'string' ? (
                   <pre className="text-xs text-nim font-mono overflow-x-auto bg-nim-secondary p-2 rounded max-h-64 overflow-y-auto">
@@ -335,7 +337,7 @@ export const MessageSegment = React.memo(function MessageSegment({
                 )
               ) : (
                 <div className="text-xs text-nim-faint italic">
-                  Tool did not return a result.
+                  {t('message_segment.no_result')}
                 </div>
               )}
               {derivedErrorMessage && (
@@ -463,7 +465,7 @@ export const MessageSegment = React.memo(function MessageSegment({
             key={attachment.id}
             className="message-attachment-item flex items-center gap-2 px-2.5 py-1.5 border border-[var(--nim-border)] rounded-md bg-[var(--nim-bg-secondary)] cursor-pointer transition-colors duration-150 max-w-[200px] hover:bg-[var(--nim-bg-hover)]"
             onClick={() => handleAttachmentClick(attachment as ChatAttachment)}
-            title="Click to preview"
+            title={t('message_segment.preview')}
           >
             {attachment.type === 'image' ? (
               <img
@@ -492,13 +494,13 @@ export const MessageSegment = React.memo(function MessageSegment({
       <FullscreenModal
         isOpen={!!enlargedImage}
         onClose={closeImageModal}
-        ariaLabel="Image preview"
+        ariaLabel={t('message_segment.image_preview')}
         contentClassName="max-w-[90vw] max-h-[90vh] flex flex-col items-center"
       >
         <button
           className="message-attachment-modal-close absolute -top-8 -right-8 w-7 h-7 p-0 border-none bg-[var(--nim-bg-secondary)] rounded-full cursor-pointer flex items-center justify-center text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
           onClick={closeImageModal}
-          aria-label="Close"
+            aria-label={t('media.close')}
         >
           <MaterialSymbol icon="close" size={20} />
         </button>
@@ -524,7 +526,7 @@ export const MessageSegment = React.memo(function MessageSegment({
       <FullscreenModal
         isOpen={!!enlargedText}
         onClose={closeTextModal}
-        ariaLabel="Text file preview"
+        ariaLabel={t('message_segment.text_preview')}
         contentClassName="w-[80vw] max-w-[900px] max-h-[80vh] flex flex-col bg-[var(--nim-bg)] rounded-lg shadow-[0_4px_24px_rgba(0,0,0,0.3)] overflow-hidden"
       >
         {enlargedText && (
@@ -540,7 +542,7 @@ export const MessageSegment = React.memo(function MessageSegment({
               <button
                 className="message-attachment-modal-close static ml-auto w-6 h-6 p-0 border-none bg-[var(--nim-bg-secondary)] rounded-full cursor-pointer flex items-center justify-center text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                 onClick={closeTextModal}
-                aria-label="Close"
+            aria-label={t('media.close')}
               >
                 <MaterialSymbol icon="close" size={18} />
               </button>
@@ -549,11 +551,11 @@ export const MessageSegment = React.memo(function MessageSegment({
               {textLoadError ? (
                 <div className="message-attachment-text-modal-error flex flex-col items-center justify-center gap-2 p-8 text-[var(--nim-error)] text-sm">
                   <MaterialSymbol icon="error" size={24} />
-                  <span>{textLoadError}</span>
+                  <span>{textLoadError.startsWith('message_segment.') ? t(textLoadError) : textLoadError}</span>
                 </div>
               ) : textContent === null ? (
                 <div className="message-attachment-text-modal-loading flex flex-col items-center justify-center gap-2 p-8 text-[var(--nim-text-faint)] text-sm">
-                  <span>Loading...</span>
+                  <span>{t('message_segment.loading')}</span>
                 </div>
               ) : (
                 <pre className="message-attachment-text-modal-pre m-0 font-mono text-[13px] leading-normal text-[var(--nim-text)] whitespace-pre-wrap break-words tab-4">
@@ -582,7 +584,7 @@ export const MessageSegment = React.memo(function MessageSegment({
             {isDiffExpanded ? '\u25BC' : '\u25B6'}
           </span>
           <span className="text-nim-muted font-medium">
-            {message.toolCall?.changes?.length ?? 0} edit{(message.toolCall?.changes?.length ?? 0) !== 1 ? 's' : ''}
+            {t('message_segment.edits', { count: message.toolCall?.changes?.length ?? 0 })}
           </span>
         </button>
 

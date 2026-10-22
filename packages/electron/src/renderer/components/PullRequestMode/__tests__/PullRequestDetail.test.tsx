@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { PullRequestRow } from '../../../services/RendererPullRequestService';
 import { PullRequestDetail } from '../PullRequestDetail';
 import { buildReviewContributionDraft } from '../prFormat';
@@ -67,6 +69,28 @@ describe('PullRequestDetail review session action', () => {
     fireEvent.click(screen.getByTestId('pr-start-review-session'));
 
     expect(onStartReviewSession).toHaveBeenCalledOnce();
+  });
+
+  it('renders translated PR actions and tabs in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <PullRequestDetail
+          workspaceId="/workspace"
+          remote="nimbalyst/nimbalyst"
+          pr={pr}
+          onClose={() => undefined}
+          onStartReviewSession={() => undefined}
+          trackerContext={{ items: [], primary: null, sessions: [] }}
+        />
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByTestId('pr-start-review-session').textContent).toContain('AIでレビュー');
+    expect(screen.getByTestId('pr-start-review-session').getAttribute('title')).toBe('#809をAIでレビュー');
+    expect(screen.getByTestId('pr-tab-conversation').textContent).toBe('会話');
+    await waitFor(() => expect(document.documentElement.lang).toBe('ja'));
   });
 
   // #1556: the draft used to be `/review-contribution <url>`, a repo-private

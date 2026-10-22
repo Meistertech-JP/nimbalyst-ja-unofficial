@@ -5,6 +5,7 @@ export interface ConfirmModalProps {
   title: string;
   message: string;
   confirmLabel: string;
+  cancelLabel: string;
   onSettle: (accepted: boolean) => void;
 }
 
@@ -14,7 +15,7 @@ export interface ConfirmModalProps {
  * accept button carries the error color. Escape or Cancel cancels; Enter
  * submits from the focused accept button.
  */
-export function ConfirmModal({ title, message, confirmLabel, onSettle }: ConfirmModalProps) {
+export function ConfirmModal({ title, message, confirmLabel, cancelLabel, onSettle }: ConfirmModalProps) {
   const onCancel = () => onSettle(false);
   return (
     <div
@@ -37,7 +38,7 @@ export function ConfirmModal({ title, message, confirmLabel, onSettle }: Confirm
           <h3 id="collab-confirm-title" className="collab-confirm-title m-0 mb-2 text-base font-semibold">{title}</h3>
           <p id="collab-confirm-message" className="collab-confirm-message m-0 mb-5 text-sm leading-snug text-[var(--nim-text-muted)] select-text">{message}</p>
           <div className="flex justify-end gap-2">
-            <button type="button" className="collab-confirm-cancel nim-btn-secondary px-4 py-1.5 text-sm" onClick={onCancel}>Cancel</button>
+            <button type="button" className="collab-confirm-cancel nim-btn-secondary px-4 py-1.5 text-sm" onClick={onCancel}>{cancelLabel}</button>
             <button
               type="submit"
               autoFocus
@@ -57,7 +58,7 @@ export function ConfirmModal({ title, message, confirmLabel, onSettle }: Confirm
  * user answers. Its own root keeps callers free of dialog state, so the docs-ui
  * eager bundle carries only the lazy import (see `confirmDestructive`).
  */
-export function openConfirm(title: string, message: string, confirmLabel: string): Promise<boolean> {
+export function openConfirm(title: string, message: string, confirmLabel: string, cancelLabel: string): Promise<boolean> {
   return new Promise((resolve) => {
     const container = document.createElement('div');
     document.body.appendChild(container);
@@ -67,6 +68,6 @@ export function openConfirm(title: string, message: string, confirmLabel: string
       container.remove();
       resolve(accepted);
     };
-    root.render(<ConfirmModal title={title} message={message} confirmLabel={confirmLabel} onSettle={settle} />);
+    root.render(<ConfirmModal title={title} message={message} confirmLabel={confirmLabel} cancelLabel={cancelLabel} onSettle={settle} />);
   });
 }

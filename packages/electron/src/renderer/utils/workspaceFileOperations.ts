@@ -93,7 +93,11 @@ export async function handleWorkspaceFileSelect(options: FileSelectOptions): Pro
 
     // Handle error response from main process
     if ('error' in result) {
-      errorNotificationService.showWarning('Cannot Open File', (result as { error: string }).error, { duration: 5000 });
+      errorNotificationService.showWarning(
+        errorNotificationService.getLocalizedText('files', 'operations.cannot_open_file', 'Cannot Open File'),
+        (result as { error: string }).error,
+        { duration: 5000 },
+      );
       return;
     }
 

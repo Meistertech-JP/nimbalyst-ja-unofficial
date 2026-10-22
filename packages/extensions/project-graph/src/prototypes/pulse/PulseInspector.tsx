@@ -1,5 +1,6 @@
 import React from 'react';
-import type { PrototypeEvent, PrototypeModel, PrototypeViewProps } from '../contracts';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import type { PrototypeModel, PrototypeViewProps } from '../contracts';
 import type { PulseBucket } from './pulseBuckets';
 import { bucketRangeLabel } from './pulseBuckets';
 import type { PulseMatrix, PulseSelectionSummary, PulseStateItem } from './pulseModel';
@@ -9,13 +10,6 @@ import { formatRelative, formatStamp } from './pulseFormat';
 const MAX_EPISODES = 10;
 const MAX_EVENTS_PER_EPISODE = 6;
 const MAX_OPEN_ITEMS = 10;
-
-const KIND_LABEL: Record<PrototypeEvent['kind'], string> = {
-  created: 'Created',
-  commit: 'Commit',
-  status: 'Status',
-  'last-activity': 'Last observed',
-};
 
 export { formatRelative, formatStamp } from './pulseFormat';
 
@@ -30,6 +24,9 @@ function StateList({
   onSelectNode: PrototypeViewProps['onSelectNode'];
   onOpenNode: PrototypeViewProps['onOpenNode'];
 }) {
+  const { t } = useTranslation('extensions');
+  const translatePulse = (key: string, options?: Record<string, string | number>) =>
+    String(t(`project_graph.pulse.${key}`, options));
   return (
     <ul className="pgp-open-list">
       {items.map((item) => (
@@ -45,8 +42,8 @@ function StateList({
           </button>
           <span className="pgp-open-when">
             {item.lastEventAt === null
-              ? 'no dated event'
-              : formatRelative(item.lastEventAt, nowMs)}
+              ? t('project_graph.pulse.no_dated_event')
+              : formatRelative(item.lastEventAt, nowMs, translatePulse)}
           </span>
         </li>
       ))}
@@ -77,20 +74,19 @@ export function PulseInspector({
   onNavigate,
   selectedNodeId,
 }: Props) {
+  const { t } = useTranslation('extensions');
   const census = React.useMemo(
     () => openStateItems(model, matrix, MAX_OPEN_ITEMS),
     [model, matrix],
   );
 
   return (
-    <aside className="pgp-inspector" aria-label="Pulse selection detail">
+    <aside className="pgp-inspector" aria-label={t('project_graph.pulse.selection_detail')}>
       {summary === null ? (
         <div className="pgp-inspector-empty">
-          <h3>Nothing selected</h3>
+          <h3>{t('project_graph.pulse.nothing_selected')}</h3>
           <p>
-            Pick a cell to read the events behind it. Drag, or hold Shift with the arrow keys, to
-            explain a wider period. An empty cell means no events were loaded for it, which is not
-            evidence that nothing happened.
+            {t('project_graph.pulse.selection_help')}
           </p>
         </div>
       ) : (
@@ -106,15 +102,14 @@ export function PulseInspector({
         />
       )}
 
-      <section className="pgp-open-state" aria-label="Current state census">
-        <div className="pgp-eyebrow">Open now · current state</div>
+      <section className="pgp-open-state" aria-label={t('project_graph.pulse.current_state_census')}>
+        <div className="pgp-eyebrow">{t('project_graph.pulse.open_now')}</div>
         <p className="pgp-note">
-          A state census of the {census.scopeSize.toLocaleString()} records in scope, not activity.
-          Nothing here is counted in any bucket above, and it says nothing about the selected window.
+          {t('project_graph.pulse.state_census_help', { count: census.scopeSize.toLocaleString() })}
         </p>
         {census.openTotal === 0 ? (
           <p className="pgp-empty-line">
-            No record in scope carries a status this view recognizes as non-terminal.
+            {t('project_graph.pulse.no_open_records')}
           </p>
         ) : (
           <>
@@ -125,7 +120,7 @@ export function PulseInspector({
               onOpenNode={onOpenNode}
             />
             <div className="pgp-count-line">
-              Showing {census.open.length} of {census.openTotal} records in a recognized open state
+              {t('project_graph.pulse.showing_open_records', { shown: census.open.length, total: census.openTotal })}
             </div>
           </>
         )}
@@ -133,22 +128,17 @@ export function PulseInspector({
         {census.unrecognizedTotal > 0 && (
           <div className="pgp-unrecognized">
             <p className="pgp-note">
-              {census.unrecognizedTotal} record{census.unrecognizedTotal === 1 ? '' : 's'} carry a
-              status this prototype does not recognize
+              {t('project_graph.pulse.unrecognized_status_count', { count: census.unrecognizedTotal })}
               {/* Examples, already clipped and bounded by the model: status is
                   free text and live data puts whole notes in the field. */}
               {census.unrecognizedStatuses.length > 0
                 ? ` (${census.unrecognizedStatuses.join(', ')}${
                     census.unrecognizedStatusTotal > census.unrecognizedStatuses.length
-                      ? ` and ${census.unrecognizedStatusTotal - census.unrecognizedStatuses.length} other value${
-                          census.unrecognizedStatusTotal - census.unrecognizedStatuses.length === 1
-                            ? ''
-                            : 's'
-                        }`
+                      ? ` ${t('project_graph.pulse.other_status_values', { count: census.unrecognizedStatusTotal - census.unrecognizedStatuses.length })}`
                       : ''
                   })`
                 : ''}
-              . They are listed separately because it cannot be shown whether they are unresolved.
+              {t('project_graph.pulse.unrecognized_status_explanation')}
             </p>
             <StateList
               items={census.unrecognized}
@@ -157,8 +147,7 @@ export function PulseInspector({
               onOpenNode={onOpenNode}
             />
             <div className="pgp-count-line">
-              Showing {census.unrecognized.length} of {census.unrecognizedTotal} unrecognized-status
-              records
+              {t('project_graph.pulse.showing_unrecognized_records', { shown: census.unrecognized.length, total: census.unrecognizedTotal })}
             </div>
           </div>
         )}
@@ -166,10 +155,7 @@ export function PulseInspector({
         {census.archivedTotal > 0 && (
           <div className="pgp-archived">
             <p className="pgp-note">
-              {census.archivedTotal} record{census.archivedTotal === 1 ? ' is' : 's are'} archived.
-              Archiving is where a record is filed, not whether its work finished, so
-              {census.archivedTotal === 1 ? ' it is' : ' they are'} listed here and counted in
-              neither the open list nor the terminal count.
+              {t('project_graph.pulse.archived_explanation', { count: census.archivedTotal })}
             </p>
             <StateList
               items={census.archived}
@@ -178,20 +164,17 @@ export function PulseInspector({
               onOpenNode={onOpenNode}
             />
             <div className="pgp-count-line">
-              Showing {census.archived.length} of {census.archivedTotal} archived records
+              {t('project_graph.pulse.showing_archived_records', { shown: census.archived.length, total: census.archivedTotal })}
             </div>
           </div>
         )}
 
         <div className="pgp-count-line">
-          {census.closedTotal} in a terminal state · {census.statuslessTotal} with no status
+          {t('project_graph.pulse.terminal_and_statusless', { terminal: census.closedTotal, statusless: census.statuslessTotal })}
         </div>
         {census.closureConflicts > 0 && (
           <p className="pgp-note">
-            {census.closureConflicts} record{census.closureConflicts === 1 ? '' : 's'} carry a close
-            timestamp alongside a status this view reads as non-terminal. The status is taken as the
-            stronger signal, so {census.closureConflicts === 1 ? 'it is' : 'they are'} counted as
-            open.
+            {t('project_graph.pulse.closure_conflicts', { count: census.closureConflicts })}
           </p>
         )}
       </section>
@@ -218,61 +201,53 @@ function SelectionDetail({
   onNavigate: PrototypeViewProps['onNavigate'];
   selectedNodeId: string | null;
 }) {
+  const { t, i18n } = useTranslation('extensions');
   const period = bucketRangeLabel(buckets, summary.colStart, summary.colEnd);
   const rowScope =
     summary.rowLabels.length === 1
       ? summary.rowLabels[0]
-      : `${summary.rowLabels.length} rows`;
+      : t('project_graph.pulse.selection.row_count', { count: summary.rowLabels.length });
   const shownEpisodes = summary.episodes.slice(0, MAX_EPISODES);
 
   return (
-    <section className="pgp-selection" aria-label="Selected period">
+    <section className="pgp-selection" aria-label={t('project_graph.pulse.selected_period')}>
       <div className="pgp-eyebrow">
         {period} · {rowScope}
       </div>
       <h3 className="pgp-selection-heading">{summary.heading}</h3>
       <p className="pgp-note">
-        Counted from source records. No summary is generated and no outcome is inferred.
+        {t('project_graph.pulse.counted_from_source')}
       </p>
 
       {summary.rowsOutOfView > 0 && (
         <p className="pgp-warn-line">
-          {summary.rowsOutOfView} of the {summary.rowsSelected} selected row
-          {summary.rowsSelected === 1 ? '' : 's'} fell below the display cap after the rows were
-          reordered, so their events are not counted here.
+          {t('project_graph.pulse.rows_below_cap', { count: summary.rowsOutOfView, selected: summary.rowsSelected })}
         </p>
       )}
       {summary.includesPartialBucket && (
         <p className="pgp-warn-line">
-          The selection includes a bucket clipped by the toolbar range. Its totals cover only the
-          part inside the range, so that column is not comparable with the full buckets beside it.
+          {t('project_graph.pulse.partial_bucket_warning')}
         </p>
       )}
       {summary.includesOutsideLoaded && (
         <p className="pgp-warn-line">
-          Part of this selection predates the earliest event in the whole loaded model. That is one
-          global bound, not per-source coverage: each adapter has its own caps and horizons, so
-          other buckets may be just as unloaded without being marked.
+          {t('project_graph.pulse.outside_loaded_warning')}
         </p>
       )}
       {summary.lastObservedCount > 0 && (
         <p className="pgp-note">
-          {summary.recordedCount} recorded event{summary.recordedCount === 1 ? '' : 's'} and{' '}
-          {summary.lastObservedCount} last-observed timestamp
-          {summary.lastObservedCount === 1 ? '' : 's'}. A last-observed timestamp is one
-          observation, not a stretch of work.
+          {t('project_graph.pulse.observed_vs_recorded', { recorded: summary.recordedCount, observed: summary.lastObservedCount })}
         </p>
       )}
 
       {summary.episodes.length === 0 ? (
         <p className="pgp-empty-line">
-          No events were loaded for this period. Nothing was filtered out here, and nothing here
-          shows whether work occurred.
+          {t('project_graph.pulse.no_events_loaded_period')}
         </p>
       ) : (
         <>
           <div className="pgp-eyebrow pgp-eyebrow-sub">
-            Grouped by artifact · not a causal story
+            {t('project_graph.pulse.grouped_by_artifact')}
           </div>
           <ul className="pgp-episodes">
             {shownEpisodes.map((episode) => {
@@ -289,10 +264,9 @@ function SelectionDetail({
                     onClick={() => onSelectNode(episode.nodeId)}
                   >
                     <span className="pgp-episode-title">{episode.label}</span>
-                    <span className="pgp-episode-meta">
-                      {episode.type} · {episode.events.length} event
-                      {episode.events.length === 1 ? '' : 's'} ·{' '}
-                      {formatRelative(episode.lastAt, nowMs)}
+                  <span className="pgp-episode-meta">
+                      {episode.type} · {t('project_graph.pulse.event_count', { count: episode.events.length })} ·{' '}
+                      {formatRelative(episode.lastAt, nowMs, (key, options) => String(t(`project_graph.pulse.${key}`, options)))}
                     </span>
                   </button>
                   <ul className="pgp-episode-events">
@@ -305,22 +279,22 @@ function SelectionDetail({
                               : 'pgp-kind'
                           }
                         >
-                          {KIND_LABEL[event.kind]}
+          {t(`project_graph.pulse.event_kind.${event.kind}`)}
                         </span>
                         <span className="pgp-event-label">{event.label}</span>
-                        <span className="pgp-event-when">{formatStamp(event.at)}</span>
+                        <span className="pgp-event-when">{formatStamp(event.at, i18n.language)}</span>
                       </li>
                     ))}
                   </ul>
                   {episode.events.length > MAX_EVENTS_PER_EPISODE && (
                     <div className="pgp-count-line">
-                      Showing {MAX_EVENTS_PER_EPISODE} of {episode.events.length} events
+                      {t('project_graph.pulse.showing_events', { shown: MAX_EVENTS_PER_EPISODE, total: episode.events.length })}
                     </div>
                   )}
                   <div className="pgp-episode-actions">
                     {node && (
                       <button type="button" className="pgp-btn" onClick={() => onOpenNode(node)}>
-                        Open source
+                        {t('project_graph.pulse.open_source')}
                       </button>
                     )}
                     <button
@@ -328,7 +302,7 @@ function SelectionDetail({
                       className="pgp-btn"
                       onClick={() => onNavigate('trails', episode.nodeId)}
                     >
-                      Evidence trail
+                      {t('project_graph.pulse.evidence_trail')}
                     </button>
                   </div>
                 </li>
@@ -336,8 +310,7 @@ function SelectionDetail({
             })}
           </ul>
           <div className="pgp-count-line">
-            Showing {shownEpisodes.length} of {summary.episodes.length} artifacts ·{' '}
-            {summary.eventCount} event{summary.eventCount === 1 ? '' : 's'} in selection
+            {t('project_graph.pulse.showing_artifacts_events', { shown: shownEpisodes.length, total: summary.episodes.length, count: summary.eventCount })}
           </div>
         </>
       )}

@@ -6,7 +6,9 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { LexicalEditor, ParagraphNode } from 'lexical';
 import { $createNodeSelection, $createParagraphNode, $getRoot, $setSelection } from 'lexical';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import {
   $createTrackerReferenceNode,
@@ -22,7 +24,33 @@ import { fakeDataSource, fakeSchema, item } from './referenceFixtures';
 
 afterEach(cleanup);
 
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  japaneseI18n = await createI18nInstance('ja');
+  englishI18n = await createI18nInstance('en');
+});
+
 describe('LiveTrackerReferenceRenderer', () => {
+  it('localizes statement view labels and loading state', async () => {
+    const fake = fakeDataSource();
+    const resolver = createTrackerReferenceResolver(fake.source, { schema: fakeSchema() });
+
+    render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <TrackerReferenceResolverProvider resolver={resolver}>
+          <LiveTrackerReferenceRenderer referenceKey="KB-1" nodeKey="n1" view="statements" />
+        </TrackerReferenceResolverProvider>
+      </UiLanguageProvider>,
+    );
+    expect(screen.getByText('KB-1 を読み込み中…')).toBeTruthy();
+
+    await act(() => fake.release([item({ id: 'entity-1', issueKey: 'KB-1', type: 'entity', title: 'Gateway' })]));
+    expect(screen.getByText('関連する主張')).toBeTruthy();
+    expect(screen.getByText('主張はまだありません。')).toBeTruthy();
+    resolver.dispose();
+  });
+
   it('renders quiet inline references as the full title, keeps the key for the peek, and strikes a missing key', async () => {
     const fake = fakeDataSource();
     const resolver = createTrackerReferenceResolver(fake.source, { schema: fakeSchema() });
@@ -201,12 +229,22 @@ describe('LiveTrackerReferenceRenderer', () => {
       lastModifiedBy: { email: 'karl@example.test', displayName: 'Karl', gitName: null, gitEmail: null },
     });
     const decision = item({ id: 'd-1', issueKey: 'KW-13', type: 'wiki-decision', title: 'Store pages as files', status: 'proposed' });
-    render(
+    const cards = (
       <TrackerReferenceResolverProvider resolver={resolver}>
         <LiveTrackerReferenceRenderer referenceKey="KW-14" nodeKey="n1" view="card" />
         <LiveTrackerReferenceRenderer referenceKey="KW-13" nodeKey="n2" view="card" />
-      </TrackerReferenceResolverProvider>,
+      </TrackerReferenceResolverProvider>
     );
+    const withLanguage = (language: 'en' | 'ja') => (
+      <UiLanguageProvider
+        i18n={language === 'ja' ? japaneseI18n : englishI18n}
+        preference={language}
+        systemLocale={language === 'ja' ? 'ja-JP' : 'en-US'}
+      >
+        {cards}
+      </UiLanguageProvider>
+    );
+    const { rerender } = render(withLanguage('en'));
     await act(() => fake.release([question, decision]));
     // The host directory wins over the actor's own name; item identities fill in the rest.
     expect([resolver.personName?.('sam@example.test'), resolver.personName?.('karl@example.test')]).toEqual(['Sam Lee', 'Karl']);
@@ -223,6 +261,10 @@ describe('LiveTrackerReferenceRenderer', () => {
       },
     });
     screen.getByText(/You answered/);
+    await act(async () => rerender(withLanguage('ja')));
+    await waitFor(() => screen.getByText(/ステータスを変更しました/));
+    await act(async () => rerender(withLanguage('en')));
+    await waitFor(() => screen.getByText(/You answered/));
 
     await act(async () => { screen.getByRole('button', { name: 'Proposed' }).click(); });
     await act(async () => { screen.getByRole('menuitem', { name: /Rejected/ }).click(); });

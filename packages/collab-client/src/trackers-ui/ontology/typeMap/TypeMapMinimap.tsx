@@ -5,6 +5,7 @@
  * `useMapViewport`, not by React.
  */
 import { memo, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TypeMapType } from '../ontologyLabelMap';
 import type { MapLayout } from './typeMapLayout';
 
@@ -19,6 +20,7 @@ export interface TypeMapMinimapProps {
 }
 
 export const TypeMapMinimap = memo(function TypeMapMinimap({ layout, types, zoneTone, viewRef, onJump, onShown }: TypeMapMinimapProps) {
+  const { t } = useTranslation('tracker');
   const [open, setOpen] = useState(true);
   useEffect(() => {
     if (open) onShown();
@@ -32,7 +34,7 @@ export const TypeMapMinimap = memo(function TypeMapMinimap({ layout, types, zone
           viewBox={`0 0 ${layout.width} ${layout.height}`}
           preserveAspectRatio="xMidYMid meet"
           role="button"
-          aria-label="Map overview: click to move there"
+          aria-label={t('type_map.minimap_aria')}
           onPointerDown={(event) => {
             event.stopPropagation();
             const svg = event.currentTarget;
@@ -54,11 +56,11 @@ export const TypeMapMinimap = memo(function TypeMapMinimap({ layout, types, zone
       <button
         type="button"
         className="type-map-minimap-toggle"
-        aria-label={open ? 'Hide the overview' : 'Show the overview'}
-        title={open ? 'Hide the overview' : 'Show the overview'}
+        aria-label={open ? t('type_map.minimap_hide') : t('type_map.minimap_show')}
+        title={open ? t('type_map.minimap_hide') : t('type_map.minimap_show')}
         onClick={() => setOpen((shown) => !shown)}
       >
-        {open ? '−' : 'Overview'}
+        {open ? '−' : t('type_map.minimap_overview')}
       </button>
     </div>
   );

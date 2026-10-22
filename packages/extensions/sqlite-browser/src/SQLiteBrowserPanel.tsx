@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import type { Database } from 'sql.js';
 import { SQLiteBrowserCore, getSqlJs, getFileName, type DatabaseInfo } from './SQLiteBrowserCore';
@@ -22,6 +23,7 @@ interface RecentDatabase {
 }
 
 export function SQLiteBrowserPanel({ host }: PanelHostProps) {
+  const { t, i18n } = useTranslation('sqliteBrowser');
   const [database, setDatabase] = useState<DatabaseInfo | null>(null);
   const [db, setDb] = useState<Database | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,12 +71,12 @@ export function SQLiteBrowserPanel({ host }: PanelHostProps) {
       // Read file content via Electron API
       const electronAPI = (window as any).electronAPI;
       if (!electronAPI) {
-        throw new Error('Electron API not available');
+        throw new Error(t('electron_api_unavailable'));
       }
 
       const result = await electronAPI.readFileContent(filePath, { binary: true });
       if (!result?.success) {
-        throw new Error(result?.error || 'Failed to read file');
+        throw new Error(result?.error || t('read_file_failed'));
       }
 
       // Convert base64 to Uint8Array
@@ -120,12 +122,12 @@ export function SQLiteBrowserPanel({ host }: PanelHostProps) {
       await addToRecentDatabases(filePath, fileName);
     } catch (err) {
       console.error('Failed to load database:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load database');
+      setError(err instanceof Error ? err.message : t('load_database_failed'));
       setDatabase(null);
     } finally {
       setLoading(false);
     }
-  }, [db, addToRecentDatabases, host.ai]);
+  }, [db, addToRecentDatabases, host.ai, t]);
 
   // Cleanup database on unmount
   useEffect(() => {
@@ -146,16 +148,16 @@ export function SQLiteBrowserPanel({ host }: PanelHostProps) {
     try {
       const electronAPI = (window as any).electronAPI;
       if (!electronAPI) {
-        setError('Electron API not available');
+        setError(t('electron_api_unavailable'));
         return;
       }
 
       const result = await electronAPI.openFileDialog({
-        title: 'Open SQLite Database',
-        buttonLabel: 'Open',
+        title: t('open_dialog_title'),
+        buttonLabel: t('open_dialog_button'),
         filters: [
-          { name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3', 'db3'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('sqlite_database_file_type'), extensions: ['db', 'sqlite', 'sqlite3', 'db3'] },
+          { name: t('all_files'), extensions: ['*'] },
         ],
       });
 
@@ -167,7 +169,7 @@ export function SQLiteBrowserPanel({ host }: PanelHostProps) {
       await loadDatabaseFromPath(filePath);
     } catch (err) {
       console.error('Failed to open file dialog:', err);
-      setError(err instanceof Error ? err.message : 'Failed to open file');
+      setError(err instanceof Error ? err.message : t('open_file_failed'));
     }
   };
 
@@ -197,17 +199,17 @@ export function SQLiteBrowserPanel({ host }: PanelHostProps) {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return new Date(timestamp).toLocaleDateString();
+    if (minutes < 1) return t('just_now');
+    if (minutes < 60) return t('minutes_ago', { count: minutes });
+    if (hours < 24) return t('hours_ago', { count: hours });
+    if (days < 7) return t('days_ago', { count: days });
+    return new Date(timestamp).toLocaleDateString(i18n.language);
   };
 
   // Recent databases UI for empty state
   const recentDatabasesUI = recentDatabases.length > 0 ? (
     <div className="mt-8 w-full max-w-[400px]">
-      <h4 className="m-0 mb-3 text-xs font-semibold text-nim-muted uppercase tracking-wider">Recent Databases</h4>
+      <h4 className="m-0 mb-3 text-xs font-semibold text-nim-muted uppercase tracking-wider">{t('recent_databases')}</h4>
       <div className="flex flex-col gap-1">
         {recentDatabases.map((recent) => (
           <div key={recent.path} className="flex items-center gap-1">
@@ -225,7 +227,7 @@ export function SQLiteBrowserPanel({ host }: PanelHostProps) {
                 e.stopPropagation();
                 removeFromRecentDatabases(recent.path);
               }}
-              title="Remove from recent"
+              title={t('remove_from_recent')}
               style={{ opacity: 1 }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
             >

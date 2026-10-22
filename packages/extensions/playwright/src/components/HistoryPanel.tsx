@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   AreaChart,
   Area,
@@ -22,6 +23,8 @@ interface HistoryPanelProps {
 }
 
 export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
+  const { t, i18n } = useTranslation('extensions');
+  const dateLocale = i18n.language.startsWith('ja') ? 'ja-JP' : 'en-US';
   const [history, setHistory] = useState<RunHistory>(store.getHistory());
   const [flakyTests, setFlakyTests] = useState<FlakyTestScore[]>([]);
   const [selectedRunIndex, setSelectedRunIndex] = useState<number | null>(null);
@@ -42,9 +45,9 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
         <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#666' }}>
           analytics
         </span>
-        <p>No test run history yet</p>
+        <p>{t('playwright.history.empty')}</p>
         <p className="pw-hint">
-          Run tests to start building analytics
+          {t('playwright.history.empty_hint')}
         </p>
       </div>
     );
@@ -53,7 +56,7 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
   const trendData = store.getDurationTrend();
   const passfailData = trendData.map((d) => ({
     ...d,
-    label: formatDate(d.timestamp),
+    label: formatDate(d.timestamp, dateLocale),
   }));
 
   const selectedRun =
@@ -63,7 +66,7 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
     <div className="pw-history">
       {/* Pass/Fail Trend */}
       <div className="pw-history-section">
-        <div className="pw-history-section-title">Pass / Fail Trend</div>
+        <div className="pw-history-section-title">{t('playwright.history.pass_fail_trend')}</div>
         <div className="pw-history-chart">
           <ResponsiveContainer width="100%" height={160}>
             <AreaChart data={passfailData}>
@@ -110,7 +113,7 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
 
       {/* Duration Trend */}
       <div className="pw-history-section">
-        <div className="pw-history-section-title">Duration Trend</div>
+        <div className="pw-history-section-title">{t('playwright.history.duration_trend')}</div>
         <div className="pw-history-chart">
           <ResponsiveContainer width="100%" height={120}>
             <LineChart data={passfailData}>
@@ -134,7 +137,7 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
                   borderRadius: 6,
                   fontSize: 12,
                 }}
-                formatter={(value) => [formatDuration(value as number), 'Duration']}
+                formatter={(value) => [formatDuration(value as number), t('playwright.history.duration')]}
               />
               <Line
                 type="monotone"
@@ -152,9 +155,9 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
       {flakyTests.length > 0 && (
         <div className="pw-history-section">
           <div className="pw-history-section-title">
-            Flakiest Tests
+            {t('playwright.history.flakiest_tests')}
             <span className="pw-history-section-subtitle">
-              (failed in {'>'}1 run)
+              {t('playwright.history.failed_in_multiple_runs')}
             </span>
           </div>
           <div className="pw-history-chart">
@@ -190,8 +193,8 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
                   formatter={(value) => {
                     const v = value as number;
                     return [
-                      `${Math.round(v * 100)}% (${flakyTests.find((t) => t.failureRate === v)?.failures ?? '?'} failures)`,
-                      'Failure Rate',
+                      `${Math.round(v * 100)}% (${t('playwright.history.failures', { count: flakyTests.find((item) => item.failureRate === v)?.failures ?? '?' })})`,
+                      t('playwright.history.failure_rate'),
                     ];
                   }}
                 />
@@ -211,16 +214,16 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
 
       {/* Run History Table */}
       <div className="pw-history-section pw-history-table-section">
-        <div className="pw-history-section-title">Recent Runs</div>
+        <div className="pw-history-section-title">{t('playwright.history.recent_runs')}</div>
         <div className="pw-history-table-container">
           <table className="pw-history-table">
             <thead>
               <tr>
-                <th>When</th>
-                <th>Passed</th>
-                <th>Failed</th>
-                <th>Skipped</th>
-                <th>Duration</th>
+                <th>{t('playwright.history.when')}</th>
+                <th>{t('playwright.history.passed')}</th>
+                <th>{t('playwright.history.failed')}</th>
+                <th>{t('playwright.history.skipped')}</th>
+                <th>{t('playwright.history.duration')}</th>
               </tr>
             </thead>
             <tbody>
@@ -230,7 +233,7 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
                   className={`pw-history-row ${selectedRunIndex === i ? 'pw-history-row-selected' : ''} ${run.failed > 0 ? 'pw-history-row-failed' : ''}`}
                   onClick={() => setSelectedRunIndex(selectedRunIndex === i ? null : i)}
                 >
-                  <td className="pw-history-cell-date">{formatDateTime(run.timestamp)}</td>
+                  <td className="pw-history-cell-date">{formatDateTime(run.timestamp, dateLocale)}</td>
                   <td>
                     <span className="pw-stat">
                       <span className="pw-stat-dot" style={{ background: '#4ade80' }} />
@@ -260,7 +263,7 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
         {selectedRun && (
           <div className="pw-history-run-detail">
             <div className="pw-section-label">
-              Run details -- {formatDateTime(selectedRun.timestamp)}
+              {t('playwright.history.run_details', { date: formatDateTime(selectedRun.timestamp, dateLocale) })}
             </div>
             <div className="pw-history-run-tests">
               {selectedRun.testResults
@@ -297,15 +300,15 @@ export function HistoryPanel({ store, onOpenFile }: HistoryPanelProps) {
   );
 }
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('en-US', {
+function formatDate(timestamp: number, locale: string): string {
+  return new Date(timestamp).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
   });
 }
 
-function formatDateTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleString('en-US', {
+function formatDateTime(timestamp: number, locale: string): string {
+  return new Date(timestamp).toLocaleString(locale, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

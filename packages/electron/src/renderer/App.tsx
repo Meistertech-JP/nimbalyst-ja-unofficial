@@ -9,6 +9,7 @@ import { revealWorkstreamEditorAtom } from './store/atoms/agentFileViewer';
 
 import React, { Activity, useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { usePostHog } from 'posthog-js/react';
 import { logger } from './utils/logger';
 import type { LexicalCommand } from '@nimbalyst/runtime';
@@ -359,6 +360,13 @@ if (!pluginsRegistered) {
 }
 
 export default function App() {
+  const { t: tAgents } = useTranslation('agents');
+  const { t: tDialogs } = useTranslation('dialogs');
+  const { t: tMenu } = useTranslation('menu');
+  const { t: tCommon } = useTranslation('common');
+  const { t: tSettings } = useTranslation('settings');
+  const { t: tAichat } = useTranslation('aichat');
+  const { t: tFiles } = useTranslation('files');
   // if (import.meta.env.DEV) console.log('[App] render');
 
    // IMPORTANT: This state must be declared before the useEffect that uses it
@@ -1258,12 +1266,12 @@ export default function App() {
     if (activeMode === 'files') {
       return {
         left: {
-          label: 'Files sidebar',
+          label: tMenu('top_bar.files_sidebar'),
           collapsed: filesSidebarCollapsed,
           onToggle: toggleActiveLeftPane,
         },
         right: {
-          label: 'AI chat',
+          label: tMenu('top_bar.ai_chat'),
           collapsed: filesAIChatCollapsed,
           onToggle: toggleActiveRightPane,
         },
@@ -1272,30 +1280,45 @@ export default function App() {
     if (activeMode === 'agent') {
       return {
         left: {
-          label: 'Session history',
+          label: tMenu('top_bar.session_history'),
           collapsed: agentHistoryCollapsed,
           onToggle: toggleActiveLeftPane,
         },
         right: agentPanelState.available ? {
-          label: 'Agent right panel',
+          label: tMenu('top_bar.agent_panel'),
           collapsed: !agentPanelState.visible,
           onToggle: toggleActiveRightPane,
           // No 'Hidden' entry: the split button's toggle half hides the panel,
           // and the selection stays marked while hidden so re-showing restores
           // the last-used mode.
-          options: agentRightPanelOptions(agentPanelState.mode, (mode) => agentModeRef.current?.showRightPanel(mode)),
+          options: agentRightPanelOptions(
+            agentPanelState.mode,
+            (mode) => agentModeRef.current?.showRightPanel(mode),
+            (mode) => {
+              switch (mode) {
+                case 'edited-files':
+                  return tMenu('top_bar.edited_files');
+                case 'review':
+                  return tMenu('top_bar.review');
+                case 'session-chat':
+                  return tMenu('top_bar.session_chat');
+                case 'file-viewer':
+                  return tFiles('workstream_viewer.title');
+              }
+            },
+          ),
         } : undefined,
       };
     }
     if (activeMode === 'collab') {
       return {
         left: {
-          label: 'Shared documents sidebar',
+          label: tMenu('top_bar.shared_docs_sidebar'),
           collapsed: collabPanelState.sidebarCollapsed,
           onToggle: toggleActiveLeftPane,
         },
         right: {
-          label: 'Shared documents chat',
+          label: tMenu('top_bar.shared_docs_chat'),
           collapsed: collabPanelState.chatCollapsed,
           onToggle: toggleActiveRightPane,
         },
@@ -1306,7 +1329,7 @@ export default function App() {
       // the main view.
       return {
         left: {
-          label: 'Tracker sidebar',
+          label: tMenu('top_bar.tracker_sidebar'),
           collapsed: trackerSidebarCollapsed,
           onToggle: toggleActiveLeftPane,
         },
@@ -1317,7 +1340,7 @@ export default function App() {
       // persisted right-side AI pane through the title-bar controls.
       return {
         right: {
-          label: 'Pull request chat',
+          label: tMenu('top_bar.pull_request_chat'),
           collapsed: prPanelState.chatCollapsed,
           onToggle: toggleActiveRightPane,
         },
@@ -1337,6 +1360,8 @@ export default function App() {
     toggleActiveLeftPane,
     toggleActiveRightPane,
     trackerSidebarCollapsed,
+    tMenu,
+    tFiles,
   ]);
 
   /**
@@ -1375,8 +1400,8 @@ export default function App() {
       }
     };
 
-    return { label: 'New session', onCreate: startSession, primaryIcon: 'forum' };
-  }, [activeFullscreenPanel?.aiSupported, activeMode, isFullscreenPanelActive, setActiveMode]);
+    return { label: tAichat('session_dropdown.new_session_action'), onCreate: startSession, primaryIcon: 'forum' };
+  }, [activeFullscreenPanel?.aiSupported, activeMode, isFullscreenPanelActive, setActiveMode, tAichat]);
 
   /**
    * The left end of the title bar, sitting over the tree column. What it makes
@@ -1433,16 +1458,16 @@ export default function App() {
 
   const activeModeLabel = useMemo(() => {
     const labels: Record<ContentMode, string> = {
-      files: 'Files',
-      agent: 'Agent',
-      tracker: 'Tracker',
-      collab: 'Wiki',
-      org: 'Organization',
-      'pr-review': 'PR Review',
-      settings: 'Settings',
+      files: tCommon('navigation.files'),
+      agent: tCommon('navigation.agent'),
+      tracker: tCommon('navigation.tracker'),
+      collab: tDialogs('keyboard_shortcuts.groups.wiki'),
+      org: tCommon('organization'),
+      'pr-review': tMenu('top_bar.pr_review'),
+      settings: tSettings('title'),
     };
     return labels[activeMode];
-  }, [activeMode]);
+  }, [activeMode, tCommon, tDialogs, tMenu, tSettings]);
 
   /**
    * `busyAction` is now only a re-entrancy guard and a label for the menu the
@@ -1461,13 +1486,13 @@ export default function App() {
     try {
       const result = await window.electronAPI.invoke(`git:${action}`, repoPath);
       if (!result?.success) {
-        throw new Error(result?.error || `Git ${action} failed`);
+        throw new Error(result?.error || (action === 'pull' ? tMenu('top_bar.pull_failed') : tMenu('top_bar.push_failed')));
       }
       setGitActionForRepo(repoPath, () => ({
         busyAction: null,
         feedback: {
           kind: 'success',
-          message: action === 'pull' ? 'Pull completed' : 'Push completed',
+          message: action === 'pull' ? tMenu('top_bar.pull_completed') : tMenu('top_bar.push_completed'),
         },
       }));
     } catch (error) {
@@ -1479,7 +1504,7 @@ export default function App() {
         },
       }));
     }
-  }, [gitActionByRepo, gitRepoPath, setGitActionForRepo]);
+  }, [gitActionByRepo, gitRepoPath, setGitActionForRepo, tMenu]);
 
   const handleOpenGitLog = useCallback((options?: { showOutput?: boolean }) => {
     const panelId = 'com.nimbalyst.git.git-log';
@@ -1490,7 +1515,7 @@ export default function App() {
           ...current,
           feedback: {
             kind: 'error',
-            message: 'Git Log is not available. Enable the Git extension to open it.',
+            message: tMenu('top_bar.git_log_unavailable'),
           },
         }));
       }
@@ -1507,7 +1532,7 @@ export default function App() {
         }),
       );
     }
-  }, [closeTerminalPanel, workspacePath, gitRepoPath, setGitActionForRepo]);
+  }, [closeTerminalPanel, workspacePath, gitRepoPath, setGitActionForRepo, tMenu]);
 
   const handleOpenGitActivity = useCallback(() => {
     handleOpenGitLog({ showOutput: true });
@@ -2068,12 +2093,20 @@ export default function App() {
   const showFigmaMcpMigrationToast = useCallback((force = false) => {
     const show = () => {
       errorNotificationService.showWarning(
-        'Figma MCP Server Needs Reconfiguration',
-        'Your current Figma MCP configuration will not work in Nimbalyst. Figma does not allow OAuth based MCP in certain apps.\n\nTo fix it, open the MCP settings and do the following:\n\n1. Remove the existing OAuth Figma MCP configuration.\n2. Add a new Figma MCP config from the Nimbalyst MCP template.\n3. Add your Personal Access Token to the MCP config.',
+        errorNotificationService.getLocalizedText(
+          'dialogs',
+          'figma_mcp.title',
+          'Figma MCP server needs reconfiguration',
+        ),
+        errorNotificationService.getLocalizedText(
+          'dialogs',
+          'figma_mcp.message',
+          'Your current Figma MCP configuration will not work in Nimbalyst. Figma does not allow OAuth-based MCP in certain apps.\n\nTo fix it, open MCP settings and follow these steps:\n\n1. Remove the existing OAuth Figma MCP configuration.\n2. Add a new Figma MCP configuration from the Nimbalyst MCP template.\n3. Add your Personal Access Token to the MCP configuration.',
+        ),
         {
           duration: 0,
           action: {
-            label: 'Open MCP Settings',
+            label: errorNotificationService.getLocalizedText('dialogs', 'figma_mcp.open_settings', 'Open MCP settings'),
             onClick: () => {
               store.set(openSettingsCommandAtom, { category: 'mcp-servers', timestamp: Date.now() });
             },
@@ -2336,8 +2369,12 @@ export default function App() {
       const commitFiles = mapSelectedCommitFiles(files);
       if (commitFiles.length === 0) {
         errorNotificationService.showWarning(
-          'Nothing to commit',
-          'The selected files cannot be committed (conflicted files are excluded).',
+          errorNotificationService.getLocalizedText('notifications', 'git.nothing_to_commit', 'Nothing to commit'),
+          errorNotificationService.getLocalizedText(
+            'notifications',
+            'git.nothing_to_commit_message',
+            'The selected files cannot be committed (conflicted files are excluded).',
+          ),
         );
         return;
       }
@@ -2378,7 +2415,7 @@ export default function App() {
       } catch (error) {
         console.error('[App] Commit with AI failed:', error);
         errorNotificationService.showError(
-          'Commit with AI failed',
+          errorNotificationService.getLocalizedText('notifications', 'git.commit_with_ai_failed', 'Commit with AI failed'),
           error instanceof Error ? error.message : String(error),
         );
       }
@@ -2613,7 +2650,7 @@ export default function App() {
           detail: {
             correlationId,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : tDialogs('error.unknown')
           }
         }));
       }
@@ -2624,7 +2661,7 @@ export default function App() {
     return () => {
       window.removeEventListener('aiToolRequest:createDocument', handleCreateDocument as unknown as EventListener);
     };
-  }, [handleWorkspaceFileSelect]);
+  }, [handleWorkspaceFileSelect, tDialogs]);
 
   logger.ui.info('Rendering App with config:', {
     currentFilePath: currentFilePathRef.current,
@@ -2663,12 +2700,12 @@ export default function App() {
 
       if (activeCollabUnsynced) {
         const confirmed = await confirmDialog.confirm({
-          title: 'Unsynced Collaborative Changes',
+          title: tDialogs('close_unsaved.unsynced_title'),
           message: activeCollabStatus === 'replaying'
-            ? 'This collaborative document is still replaying local changes to the server. Closing now may delay recovery until you reopen it.'
-            : 'This collaborative document has local changes that have not been confirmed by the server yet. Closing now will keep them queued locally, but they will not sync until you reopen the document and reconnect.',
-          confirmLabel: 'Close Anyway',
-          cancelLabel: 'Keep Editing',
+            ? tDialogs('close_unsaved.replaying_message')
+            : tDialogs('close_unsaved.unsynced_message'),
+          confirmLabel: tDialogs('close_unsaved.close_anyway'),
+          cancelLabel: tDialogs('close_unsaved.keep_editing'),
           destructive: true
         });
 
@@ -2679,10 +2716,10 @@ export default function App() {
       }
 
       const confirmed = await confirmDialog.confirm({
-        title: 'Unsaved Changes',
-        message: 'Do you want to save the changes you made? Your changes will be lost if you don\'t save them.',
-        confirmLabel: 'Save',
-        cancelLabel: 'Don\'t Save',
+        title: tDialogs('close_unsaved.title'),
+        message: tDialogs('close_unsaved.message'),
+        confirmLabel: tDialogs('close_unsaved.save'),
+        cancelLabel: tDialogs('close_unsaved.dont_save'),
         destructive: false
       });
 
@@ -2699,7 +2736,7 @@ export default function App() {
     };
 
     void handleConfirmClose();
-  }, [confirmCloseUnsavedVersion, confirmDialog]);
+  }, [confirmCloseUnsavedVersion, confirmDialog, tDialogs]);
 
   // React to close-active-tab from the menu. IPC subscription lives in
   // store/listeners/appCommandListeners.ts.
@@ -3083,8 +3120,8 @@ export default function App() {
               ) : (
                 <div className="flex-1 flex items-center justify-center text-nim-muted">
                   <div className="text-center">
-                    <p>Agent mode requires a workspace</p>
-                    <p className="mt-2 text-sm">Open a workspace to use agent features</p>
+                    <p>{tAgents('workspace_required.title')}</p>
+                    <p className="mt-2 text-sm">{tAgents('workspace_required.description')}</p>
                   </div>
                 </div>
               )}

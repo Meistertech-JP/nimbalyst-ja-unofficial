@@ -121,11 +121,14 @@ describe('formula errors', () => {
   });
 
   it('names the unknown function or name behind #NAME?', () => {
-    expect(describeFormulaError('#NAME?', '=SUMM(A1)+foo+TRUE').detail).toContain('SUMM, foo.');
+    const description = describeFormulaError('#NAME?', '=SUMM(A1)+foo+TRUE');
+    expect(description.titleKey).toBe('spreadsheet_ui.formula_errors.title_name');
+    expect(description.detailKey).toBe('spreadsheet_ui.formula_errors.detail_name_unknown');
+    expect(description.detailParams).toEqual({ names: 'SUMM, foo' });
   });
 
   it('tells a deleted reference apart from an out-of-sheet one', () => {
-    expect(describeFormulaError('#REF!', '=#REF!+1').detail).toMatch(/deleted/);
-    expect(describeFormulaError('#REF!').detail).not.toMatch(/deleted/);
+    expect(describeFormulaError('#REF!', '=#REF!+1').detailKey).toBe('spreadsheet_ui.formula_errors.detail_ref_deleted');
+    expect(describeFormulaError('#REF!').detailKey).toBe('spreadsheet_ui.formula_errors.detail_ref_outside');
   });
 });

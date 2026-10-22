@@ -27,6 +27,8 @@ export default defineConfig({
         'react-dom',
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
+        // The host supplies the shared i18n singleton through its extension import map.
+        '@nimbalyst/i18n/react',
         // Host-provided singletons -- must NOT be bundled. See the pdf-viewer
         // config for why bundling @nimbalyst/runtime breaks the browser build.
         'lexical',

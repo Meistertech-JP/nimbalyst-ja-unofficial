@@ -69,6 +69,7 @@ import { getClaudeCodeApiUpstreamUrl } from '../../utils/store';
 import { ClaudeSettingsManager } from '../ClaudeSettingsManager';
 import { resolveClaudeCliProxyUpstream } from './claudeCliObservation/proxyUpstream';
 import type { AssembledAssistantMessage } from './claudeCliObservation/claudeApiMessageAssembler';
+import { translateMainNotification } from '../../i18n/mainI18n';
 
 /**
  * Fire the completion sound + "Response Ready" OS notification (+ mobile push when
@@ -93,7 +94,9 @@ async function notifyClaudeCliTurnComplete(
     }
 
     await notificationService.showNotification({
-      title: composeNotificationTitle(title, 'Response Ready'),
+      title: composeNotificationTitle(title, translateMainNotification(
+        'agent.response_ready', 'Response Ready',
+      )),
       body,
       kind: 'agent-complete',
       sessionId,
@@ -282,17 +285,27 @@ export async function startClaudeCliProxyObservation(opts: {
       // but the user may be looking at the rich transcript, so raise an OS
       // notification (self-guards on focus/settings).
       console.warn(`[ClaudeCliObservation] upstream rate-limit ${statusCode} for ${sessionId}`, retryAfter ?? '');
-      const body =
-        statusCode === 529
-          ? 'Anthropic is overloaded. Claude will retry shortly.'
-          : `Rate limited by Anthropic${retryAfter ? ` (retry after ${retryAfter}s)` : ''}.`;
+      const body = statusCode === 529
+        ? translateMainNotification(
+          'agent.anthropic_overloaded_retry',
+          'Anthropic is overloaded. Claude will retry shortly.',
+        )
+        : retryAfter
+          ? translateMainNotification(
+            'agent.rate_limited_retry',
+            'Rate limited by Anthropic (retry after {{seconds}}s).',
+            { seconds: retryAfter },
+          )
+          : translateMainNotification('agent.rate_limited', 'Rate limited by Anthropic.');
       void (async () => {
         const session = await AISessionsRepository.get(sessionId).catch(() => null);
         const sourceLabel = session?.title || session?.provider || `Session ${sessionId.slice(0, 8)}`;
         await notificationService.showNotification({
           // A rate-limit pause is the agent stopping until something changes,
           // not a finished turn.
-          title: composeNotificationTitle(sourceLabel, 'Claude CLI paused'),
+          title: composeNotificationTitle(sourceLabel, translateMainNotification(
+            'agent.claude_cli_paused', 'Claude CLI paused',
+          )),
           body,
           kind: 'needs-input',
           sessionId,

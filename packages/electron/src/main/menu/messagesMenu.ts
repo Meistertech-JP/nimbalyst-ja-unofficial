@@ -1,6 +1,7 @@
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { sendOrgWindowCommand } from '../window/TeamManagementWindow';
 import { AnalyticsService } from '../services/analytics/AnalyticsService';
+import { translateMainMenuLabel } from '../i18n/mainI18n';
 import type { OrgWindowCommand } from '../../shared/orgWindowCommands';
 
 /**
@@ -38,17 +39,17 @@ export function buildMessagesMenu(): any {
     });
 
     return {
-        label: 'Messages',
+        label: translateMainMenuLabel('messages', 'Messages'),
         submenu: [
-            command('New Message...', KeyboardShortcuts.orgWindow.newMessage, 'newMessage', 'new_message'),
+            command(translateMainMenuLabel('new_message', 'New Message...'), KeyboardShortcuts.orgWindow.newMessage, 'newMessage', 'new_message'),
             { type: 'separator' },
-            command('Go to Inbox', KeyboardShortcuts.orgWindow.goToInbox, 'goToInbox', 'go_to_inbox'),
-            command('Search Messages', KeyboardShortcuts.orgWindow.searchMessages, 'searchMessages', 'search_messages'),
+            command(translateMainMenuLabel('go_to_inbox', 'Go to Inbox'), KeyboardShortcuts.orgWindow.goToInbox, 'goToInbox', 'go_to_inbox'),
+            command(translateMainMenuLabel('search_messages', 'Search Messages'), KeyboardShortcuts.orgWindow.searchMessages, 'searchMessages', 'search_messages'),
             { type: 'separator' },
-            command('Next Conversation', KeyboardShortcuts.orgWindow.nextConversation, 'nextConversation', 'next_conversation'),
-            command('Previous Conversation', KeyboardShortcuts.orgWindow.previousConversation, 'previousConversation', 'previous_conversation'),
+            command(translateMainMenuLabel('next_conversation', 'Next Conversation'), KeyboardShortcuts.orgWindow.nextConversation, 'nextConversation', 'next_conversation'),
+            command(translateMainMenuLabel('previous_conversation', 'Previous Conversation'), KeyboardShortcuts.orgWindow.previousConversation, 'previousConversation', 'previous_conversation'),
             { type: 'separator' },
-            command('Mark All as Read', KeyboardShortcuts.orgWindow.markAllRead, 'markAllRead', 'mark_all_read'),
+            command(translateMainMenuLabel('mark_all_as_read', 'Mark All as Read'), KeyboardShortcuts.orgWindow.markAllRead, 'markAllRead', 'mark_all_read'),
         ],
     };
 }

@@ -21,6 +21,7 @@ import { rejectEntry } from '../editor/rejectEntry';
 import { RangeIndex } from '../cells/sheetDecorations';
 import { readCellLink, writeCellLink, type CellLink } from '../format/linkCell';
 import { decodeHyperlink } from '../utils/format/parse';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface LinkTarget {
   readonly row: number;
@@ -76,6 +77,7 @@ function LinkDialog({ rect, initial, urlColumn, onSave, onClose }: {
   onSave: (link: CellLink) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('editor');
   const [text, setText] = useState(initial.text);
   const [url, setUrl] = useState(initial.url);
   // State, not refs: FloatingPortal mounts its children a render after this
@@ -125,17 +127,17 @@ function LinkDialog({ rect, initial, urlColumn, onSave, onClose }: {
         ref={panelRef}
         style={floatingStyles}
         className="csv-link-dialog z-[1000] w-[300px] p-3 flex flex-col gap-2 bg-nim border border-nim rounded-md shadow-[0_6px_20px_rgba(0,0,0,0.35)] text-[12px] text-nim"
-        aria-label={urlColumn ? 'Edit URL' : 'Insert link'}
+        aria-label={urlColumn ? t('spreadsheet_ui.link.edit_url') : t('spreadsheet_ui.link.insert')}
         {...getFloatingProps()}
       >
         {!urlColumn && (
           <label className="flex flex-col gap-1">
-            <span className="text-nim-muted">Text</span>
+            <span className="text-nim-muted">{t('spreadsheet_ui.link.text')}</span>
             <input className={`csv-link-text ${input}`} value={text} onChange={(event) => setText(event.target.value)} />
           </label>
         )}
         <label className="flex flex-col gap-1">
-          <span className="text-nim-muted">URL</span>
+          <span className="text-nim-muted">{t('spreadsheet_ui.link.url')}</span>
           <input
             ref={setUrlInput}
             className={`csv-link-url ${input}`}
@@ -144,17 +146,17 @@ function LinkDialog({ rect, initial, urlColumn, onSave, onClose }: {
             onChange={(event) => setUrl(event.target.value)}
           />
         </label>
-        {initial.editable === false && <span className="text-nim-muted">Saving replaces the cell's formula.</span>}
+        {initial.editable === false && <span className="text-nim-muted">{t('spreadsheet_ui.link.replaces_formula')}</span>}
         <div className="flex justify-end gap-2 pt-1">
           {initial.url && !urlColumn && (
             <button type="button" className="csv-link-remove mr-auto px-2 py-1 rounded text-nim-muted hover:text-nim hover:bg-nim-hover"
               onClick={() => onSave({ text, url: '' })}>
-              Remove link
+              {t('spreadsheet_ui.link.remove')}
             </button>
           )}
-          <button type="button" className="px-2 py-1 rounded text-nim-muted hover:text-nim hover:bg-nim-hover" onClick={onClose}>Cancel</button>
+          <button type="button" className="px-2 py-1 rounded text-nim-muted hover:text-nim hover:bg-nim-hover" onClick={onClose}>{t('spreadsheet_ui.link.cancel')}</button>
           <button type="button" className="csv-link-apply px-3 py-1 rounded bg-[var(--nim-primary)] text-white" onClick={() => onSave({ text, url })}>
-            Apply
+            {t('spreadsheet_ui.link.apply')}
           </button>
         </div>
       </div>

@@ -33,6 +33,9 @@ export interface Problem {
   level: "error" | "warning";
   /** Dotted path into the document, e.g. `steps[2].duration`. */
   path: string;
+  /** Optional UI translation key; `message` remains stable for non-UI callers. */
+  messageKey?: string;
+  messageParams?: Record<string, string | number | undefined>;
   message: string;
 }
 
@@ -117,6 +120,8 @@ function coerceTone(
   problems.push({
     level: "warning",
     path,
+    messageKey: "animation.issue.unknown_tone",
+    messageParams: { value: JSON.stringify(value), fallback: DEFAULT_TONE },
     message: `Unknown tone ${JSON.stringify(
       value
     )}; falling back to "${DEFAULT_TONE}".`,
@@ -143,6 +148,7 @@ function coerceVars(
     problems.push({
       level: "warning",
       path: `${path}.vars`,
+      messageKey: "animation.issue.vars_invalid_object",
       message: "Vars must be an object of strings; ignored.",
     });
     return undefined;
@@ -155,6 +161,7 @@ function coerceVars(
       problems.push({
         level: "warning",
         path: `${path}.vars.${key}`,
+        messageKey: "animation.issue.var_not_string",
         message: "Var is not a string; ignored.",
       });
       continue;
@@ -184,6 +191,7 @@ function coerceSubParts(
     problems.push({
       level: "warning",
       path: `${path}.subParts`,
+      messageKey: "animation.issue.sub_parts_invalid_object",
       message: "Sub-parts must be an object; ignored.",
     });
     return undefined;
@@ -195,6 +203,7 @@ function coerceSubParts(
       problems.push({
         level: "warning",
         path: `${path}.subParts.${subId}`,
+        messageKey: "animation.issue.sub_part_not_object",
         message: "Not an object; sub-part ignored.",
       });
       continue;
@@ -245,6 +254,7 @@ function coerceTheme(
     problems.push({
       level: "warning",
       path: "stage.theme",
+      messageKey: "animation.issue.theme_invalid_object",
       message: "Theme must be an object of colour strings; ignored.",
     });
     return undefined;
@@ -256,6 +266,7 @@ function coerceTheme(
       problems.push({
         level: "warning",
         path: `stage.theme.${key}`,
+        messageKey: "animation.issue.theme_value_not_string",
         message: "Theme value is not a string; ignored.",
       });
       continue;
@@ -278,6 +289,7 @@ function parseStage(
       problems.push({
         level: "warning",
         path: "stage",
+        messageKey: "animation.issue.stage_invalid_object_defaults",
         message: "Not an object; using defaults.",
       });
     }
@@ -309,6 +321,8 @@ function parseStage(
     problems.push({
       level: "warning",
       path: "stage.width",
+      messageKey: "animation.issue.clamped",
+      messageParams: { value: stage.width },
       message: `Clamped to ${stage.width}.`,
     });
   }
@@ -316,6 +330,8 @@ function parseStage(
     problems.push({
       level: "warning",
       path: "stage.height",
+      messageKey: "animation.issue.clamped",
+      messageParams: { value: stage.height },
       message: `Clamped to ${stage.height}.`,
     });
   }
@@ -323,6 +339,8 @@ function parseStage(
     problems.push({
       level: "warning",
       path: "stage.fps",
+      messageKey: "animation.issue.clamped",
+      messageParams: { value: stage.fps },
       message: `Clamped to ${stage.fps}.`,
     });
   }
@@ -342,6 +360,7 @@ function parsePart(
     problems.push({
       level: "error",
       path,
+      messageKey: "animation.issue.part_not_object_dropped",
       message: "Not an object; part dropped.",
     });
     return null;
@@ -370,6 +389,8 @@ function parsePart(
         problems.push({
           level: "warning",
           path: `${path}.${key}`,
+          messageKey: "animation.issue.number_invalid_fallback",
+          messageParams: { fallback },
           message: `Not a number; using ${fallback}.`,
         });
       }
@@ -385,6 +406,8 @@ function parsePart(
       problems.push({
         level: "warning",
         path: `${path}.${key}`,
+        messageKey: "animation.issue.dimension_clamped",
+        messageParams: { value, bounded },
         message: `Dimension ${value} is out of range; clamped to ${bounded}.`,
       });
     }
@@ -399,6 +422,7 @@ function parsePart(
         problems.push({
           level: "error",
           path,
+          messageKey: "animation.issue.edge_missing_endpoints",
           message: 'Edge needs both "from" and "to"; part dropped.',
         });
         return null;
@@ -419,6 +443,8 @@ function parsePart(
         problems.push({
           level: "warning",
           path: `${path}.packets`,
+          messageKey: "animation.issue.clamped",
+          messageParams: { value: packets },
           message: `Clamped to ${packets}.`,
         });
       }
@@ -527,6 +553,7 @@ function parsePart(
         problems.push({
           level: "warning",
           path: `${path}.props`,
+          messageKey: "animation.issue.props_invalid_object_unused",
           message: "Props must be an object; kept but not used.",
         });
         extras.parts[id].props = raw.props;
@@ -557,6 +584,7 @@ function parsePart(
           problems.push({
             level: "warning",
             path: `${path}.html`,
+            messageKey: "animation.issue.component_markup_missing",
             message:
               'Component part has no compiled markup yet; run the compiler.',
           });
@@ -564,6 +592,7 @@ function parsePart(
           problems.push({
             level: "error",
             path: `${path}.html`,
+            messageKey: "animation.issue.html_source_missing",
             message: 'Html part needs "html", "htmlFile" or "component"; part dropped.',
           });
           return null;
@@ -573,6 +602,7 @@ function parsePart(
         problems.push({
           level: "warning",
           path,
+          messageKey: "animation.issue.html_multiple_sources",
           message: 'Html part sets htmlFile and html; using "htmlFile".',
         });
       }
@@ -603,6 +633,10 @@ function parsePart(
         problems.push({
           level: declared === "" ? "warning" : "error",
           path: `${path}.type`,
+          messageKey: declared === ""
+            ? "animation.issue.part_type_missing_node"
+            : "animation.issue.part_type_unsupported",
+          ...(declared !== "" ? { messageParams: { type: JSON.stringify(raw.type) } } : {}),
           message:
             declared === ""
               ? 'Missing type; using "node".'
@@ -632,6 +666,7 @@ function parsePart(
             problems.push({
               level: "error",
               path: `${path}.rows[${index}]`,
+              messageKey: "animation.issue.row_not_object_omitted",
               message:
                 "Not an object; row omitted from the preview and saving is blocked.",
             });
@@ -642,6 +677,7 @@ function parsePart(
             problems.push({
               level: "error",
               path: `${path}.rows[${index}].key`,
+              messageKey: "animation.issue.row_key_missing_omitted",
               message:
                 "Missing row key; row omitted from the preview and saving is blocked.",
             });
@@ -655,6 +691,7 @@ function parsePart(
         problems.push({
           level: "error",
           path: `${path}.rows`,
+          messageKey: "animation.issue.rows_not_array_omitted",
           message:
             "Not an array; rows omitted from the preview and saving is blocked.",
         });
@@ -689,6 +726,7 @@ function parseStep(
     problems.push({
       level: "error",
       path,
+      messageKey: "animation.issue.step_not_object_dropped",
       message: "Not an object; step dropped.",
     });
     return null;
@@ -701,6 +739,8 @@ function parseStep(
     problems.push({
       level: "warning",
       path: `${path}.id`,
+      messageKey: "animation.issue.step_duplicate_id_renamed",
+      messageParams: { id, newId: `${id}-${n}` },
       message: `Duplicate step id "${id}"; renamed to "${id}-${n}".`,
     });
     id = `${id}-${n}`;
@@ -713,6 +753,7 @@ function parseStep(
     problems.push({
       level: "warning",
       path: `${path}.duration`,
+      messageKey: "animation.issue.duration_invalid_fallback",
       message: "Not a number; using 800ms.",
     });
   }
@@ -721,6 +762,8 @@ function parseStep(
     problems.push({
       level: "warning",
       path: `${path}.duration`,
+      messageKey: "animation.issue.duration_clamped",
+      messageParams: { duration, clamped },
       message: `Duration ${duration}ms out of range; clamped to ${clamped}ms.`,
     });
     duration = clamped;
@@ -734,6 +777,7 @@ function parseStep(
         problems.push({
           level: "error",
           path: `${path}.set.${partId}`,
+          messageKey: "animation.issue.assignment_not_object_omitted",
           message:
             "Not an object; assignment omitted from the preview and saving is blocked.",
         });
@@ -745,6 +789,8 @@ function parseStep(
         problems.push({
           level: "warning",
           path: `${path}.set.${partId}`,
+          messageKey: "animation.issue.assignment_unknown_part",
+          messageParams: { partId },
           message: `No part named "${partId}"; assignment kept but inert.`,
         });
       }
@@ -769,6 +815,7 @@ function parseStep(
     problems.push({
       level: "error",
       path: `${path}.set`,
+      messageKey: "animation.issue.assignments_not_object_omitted",
       message:
         "Not an object; assignments omitted from the preview and saving is blocked.",
     });
@@ -807,6 +854,8 @@ export function parseDocument(text: string): ParseResult {
     problems.push({
       level: "error",
       path: "",
+      messageKey: "animation.issue.json_invalid",
+      messageParams: { reason: err instanceof Error ? err.message : String(err) },
       message: `Not valid JSON: ${
         err instanceof Error ? err.message : String(err)
       }`,
@@ -818,6 +867,7 @@ export function parseDocument(text: string): ParseResult {
     problems.push({
       level: "error",
       path: "",
+      messageKey: "animation.issue.root_not_object",
       message: "Top level is not an object.",
     });
     return { doc: createEmptyDocument(), extras, problems };
@@ -829,6 +879,8 @@ export function parseDocument(text: string): ParseResult {
     problems.push({
       level: "error",
       path: "version",
+      messageKey: "animation.issue.version_unsupported",
+      messageParams: { version: JSON.stringify(raw.version) },
       message: `Unsupported version ${JSON.stringify(
         raw.version
       )}; previewed as version 1 but saving is blocked.`,
@@ -848,6 +900,7 @@ export function parseDocument(text: string): ParseResult {
     problems.push({
       level: "error",
       path: "parts",
+      messageKey: "animation.issue.parts_not_object_blocked",
       message: "Not an object; no parts previewed and saving is blocked.",
     });
   }
@@ -879,6 +932,7 @@ export function parseDocument(text: string): ParseResult {
     problems.push({
       level: "error",
       path: "steps",
+      messageKey: "animation.issue.steps_not_array_blocked",
       message: "Not an array; no steps previewed and saving is blocked.",
     });
   }

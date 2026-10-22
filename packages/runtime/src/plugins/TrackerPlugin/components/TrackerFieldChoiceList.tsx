@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import { UserAvatar } from './UserAvatar';
 import type { TeamMemberOption } from './TrackerFieldEditor';
@@ -37,6 +38,7 @@ export const TrackerFieldChoiceList: React.FC<{
   activeValue?: string;
   testId?: string;
 }> = ({ choices, value, allowNone, onPick, activeValue, testId }) => {
+  const { t } = useTranslation('tracker');
   const empty = value === undefined || value === null || value === '';
   const className = (selected: boolean, choiceValue: string) => [
     'tracker-field-choice',
@@ -57,7 +59,7 @@ export const TrackerFieldChoiceList: React.FC<{
           onClick={() => onPick('')}
         >
           <MaterialSymbol icon="remove" size={15} />
-          <span className="tracker-field-choice-label">None</span>
+          <span className="tracker-field-choice-label">{t('inline.none')}</span>
         </button>
       )}
       {choices.map((choice) => {

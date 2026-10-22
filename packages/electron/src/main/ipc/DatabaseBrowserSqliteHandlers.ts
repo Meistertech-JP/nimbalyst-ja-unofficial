@@ -410,7 +410,7 @@ export function registerDatabaseBrowserSqliteHandlers(deps: SqliteBrowserHandler
       if (!trimmed.startsWith('select') && !trimmed.startsWith('with')) {
         return {
           success: false,
-          error: 'Only SELECT (or WITH ... SELECT) queries are allowed.',
+          error: 'database.query_select_only',
         };
       }
       const result = await sqlite.queryReadOnly(sql);
@@ -490,7 +490,7 @@ export function registerDatabaseBrowserSqliteHandlers(deps: SqliteBrowserHandler
     ) => {
       try {
         if (!primaryKeys || primaryKeys.length === 0) {
-          return { success: false, error: 'Cannot update: table has no primary key' };
+          return { success: false, error: 'database.no_primary_key' };
         }
         const safeTable = sanitize(tableName);
         const safeColumn = sanitize(columnName);

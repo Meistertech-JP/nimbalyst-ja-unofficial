@@ -8,6 +8,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating,
   offset,
@@ -22,7 +23,6 @@ import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowCo
 import type { FieldDefinition } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import {
   opsForFieldType,
-  OP_LABELS,
   UNARY_OPS,
   type TrackerFieldFilter,
   type TrackerFilterOp,
@@ -96,6 +96,7 @@ export function TrackerColumnFilterPopover({
   onApply,
   onClose,
 }: TrackerColumnFilterPopoverProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const ops = useMemo(() => opsForFieldType(field?.type), [field?.type]);
   const [combinator, setCombinator] = useState<'and' | 'or'>(initialCombinator);
   const [drafts, setDrafts] = useState<DraftClause[]>(() =>
@@ -161,26 +162,26 @@ export function TrackerColumnFilterPopover({
         data-testid="tracker-column-filter-popover"
       >
         <div className="mb-2 text-[11px] font-medium text-nim-muted">
-          Filter: {columnLabel}
+          {t('filters.column_title', { column: columnLabel })}
         </div>
 
         <label className="mb-1 flex items-center justify-between gap-2 text-[11px] text-nim-muted">
-          Match
+          {t('filters.match')}
           <select
             className="rounded border border-nim bg-nim px-2 py-1 text-nim"
             value={combinator}
             onChange={(e) => setCombinator(e.target.value as 'and' | 'or')}
             data-testid="tracker-column-filter-combinator"
           >
-            <option value="and">all conditions</option>
-            <option value="or">any condition</option>
+            <option value="and">{t('filters.all_conditions')}</option>
+            <option value="or">{t('filters.any_condition')}</option>
           </select>
         </label>
         {/* The combinator is one setting for the whole grid, not per column, so
             say so -- otherwise flipping it here silently changes how every other
             column's filter combines too. */}
         <div className="mb-2 text-[10px] leading-tight text-nim-faint">
-          Applies across every column filter, not just this one.
+          {t('filters.column_combinator_hint')}
         </div>
 
         {drafts.map((draft, index) => {
@@ -202,7 +203,7 @@ export function TrackerColumnFilterPopover({
                 >
                   {ops.map((o) => (
                     <option key={o} value={o}>
-                      {OP_LABELS[o]}
+                      {t(`filters.operators.${o}`)}
                     </option>
                   ))}
                 </select>
@@ -214,7 +215,7 @@ export function TrackerColumnFilterPopover({
                         current.filter((_, i) => i !== index)
                       )
                     }
-                    aria-label={`Remove condition ${index + 1}`}
+                    aria-label={t('filters.remove_condition', { number: index + 1 })}
                   >
                     ×
                   </button>
@@ -231,7 +232,7 @@ export function TrackerColumnFilterPopover({
                     }
                     data-testid={`tracker-column-filter-value-${index}`}
                   >
-                    <option value="">Choose…</option>
+                    <option value="">{t('filters.choose')}</option>
                     {selectOptions.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
@@ -245,10 +246,10 @@ export function TrackerColumnFilterPopover({
                     autoFocus={index === 0}
                     placeholder={
                       isRange
-                        ? 'from, to'
+                        ? t('filters.range_placeholder')
                         : isList
-                        ? 'comma-separated values'
-                        : 'value'
+                        ? t('filters.comma_separated_values')
+                        : t('filters.value')
                     }
                     onChange={(e) =>
                       updateDraft(index, { text: e.target.value })
@@ -271,7 +272,7 @@ export function TrackerColumnFilterPopover({
           }
           data-testid="tracker-column-filter-add"
         >
-          + Add condition
+          {t('filters.add_condition')}
         </button>
 
         <div className="flex items-center justify-between gap-2">
@@ -280,14 +281,14 @@ export function TrackerColumnFilterPopover({
             onClick={clear}
             data-testid="tracker-column-filter-clear"
           >
-            Clear
+            {t('filters.clear_all')}
           </button>
           <button
             className="rounded bg-[var(--nim-primary)] px-2 py-1 text-[11px] font-medium text-white hover:opacity-90"
             onClick={apply}
             data-testid="tracker-column-filter-apply"
           >
-            Apply
+            {t('filters.apply')}
           </button>
         </div>
       </div>

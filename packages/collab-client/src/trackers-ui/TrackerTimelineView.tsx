@@ -13,6 +13,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { FloatingPortal, flip, offset, shift, useFloating, type VirtualElement } from '@floating-ui/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
@@ -52,21 +53,14 @@ const LABEL_WIDTH = 168;
 const UNDATED_WIDTH = 208;
 /** Enough width per bucket that its label is readable before scrolling starts. */
 const MIN_BUCKET_WIDTH = 60;
-
-const GRANULARITY_LABEL: Record<string, string> = {
-  day: 'Daily',
-  week: 'Weekly',
-  month: 'Monthly',
-};
-
-function humanizeFieldName(field: string): string {
-  if (field === TIMELINE_CREATED_FIELD) return 'Created';
+function humanizeFieldName(field: string, createdLabel: string): string {
+  if (field === TIMELINE_CREATED_FIELD) return createdLabel;
   const spaced = field.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[-_]/g, ' ');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }
 
-function formatDay(date: Date): string {
-  return date.toLocaleDateString(undefined, {
+function formatDay(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -99,10 +93,16 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
   selectedItemId,
   resolveRelationshipLabel,
 }) => {
+  const { t, i18n } = useTranslation('tracker');
   const timeline = useMemo(
     () => buildTrackerTimeline(items, groupBy, ordering, resolveRelationshipLabel, fields),
     [items, groupBy, ordering, resolveRelationshipLabel, fields],
   );
+  const granularityLabel = {
+    day: t('timeline.granularity_day'),
+    week: t('timeline.granularity_week'),
+    month: t('timeline.granularity_month'),
+  }[timeline.granularity] ?? t('timeline.title');
 
   const [hovered, setHovered] = useState<HoveredBar | null>(null);
 
@@ -139,7 +139,7 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
         className="tracker-timeline-view flex h-full items-center justify-center text-sm text-nim-muted"
         data-testid="tracker-timeline-empty"
       >
-        No items to place on a timeline.
+        {t('timeline.empty')}
       </div>
     );
   }
@@ -193,6 +193,7 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
               handleSelect(event, bar.item);
             }
           }}
+          aria-label={t('timeline.select_item', { title: getRecordTitle(bar.item) })}
           onMouseEnter={(event) =>
             setHovered({
               item: bar.item,
@@ -220,13 +221,13 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
       <div className="tracker-timeline-legend flex shrink-0 items-center gap-3 border-b border-nim px-3 py-1.5 text-[11px] text-nim-muted">
         <span className="inline-flex items-center gap-1">
           <MaterialSymbol icon="align_horizontal_left" size={13} />
-          {GRANULARITY_LABEL[timeline.granularity] ?? 'Timeline'}
+          {granularityLabel}
         </span>
-        <span>{timeline.datedCount} dated</span>
+        <span>{t('timeline.dated_count', { count: timeline.datedCount })}</span>
         {hasUndated ? (
-          <span data-testid="tracker-timeline-undated-count">{timeline.undatedCount} with no date</span>
+          <span data-testid="tracker-timeline-undated-count">{t('timeline.undated_count', { count: timeline.undatedCount })}</span>
         ) : null}
-        <span className="ml-auto">Read-only — dates are edited on the item</span>
+        <span className="ml-auto">{t('timeline.read_only')}</span>
       </div>
 
       <div className="tracker-timeline-scroll flex-1 overflow-auto">
@@ -237,14 +238,14 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
               className="sticky left-0 z-10 shrink-0 bg-nim-secondary px-3 py-1 text-[10px] font-medium uppercase tracking-[0.08em] text-nim-faint"
               style={{ width: `${LABEL_WIDTH}px` }}
             >
-              {groupBy === 'none' ? 'All items' : 'Group'}
+              {groupBy === 'none' ? t('timeline.all_items') : t('timeline.group')}
             </div>
             {hasUndated ? (
               <div
                 className="shrink-0 border-l border-nim px-2 py-1 text-[10px] font-medium uppercase tracking-[0.08em] text-nim-faint"
                 style={{ width: `${UNDATED_WIDTH}px` }}
               >
-                No dates
+                {t('timeline.no_dates')}
               </div>
             ) : null}
             <div className="relative min-w-0 flex-1 border-l border-nim">
@@ -265,7 +266,7 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
                   );
                 })
               ) : (
-                <div className="px-2 py-1 text-[10px] text-nim-faint">No dated items</div>
+                <div className="px-2 py-1 text-[10px] text-nim-faint">{t('timeline.no_dated_items')}</div>
               )}
             </div>
           </div>
@@ -306,7 +307,7 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
                 {row.bars.length > 0 ? (
                   row.bars.map(renderBar)
                 ) : (
-                  <div className="px-2 text-[11px] text-nim-faint">No dated items</div>
+                  <div className="px-2 text-[11px] text-nim-faint">{t('timeline.no_dated_items')}</div>
                 )}
               </div>
             </div>
@@ -323,11 +324,11 @@ export const TrackerTimelineView: React.FC<TrackerTimelineViewProps> = ({
           >
             <div className="mb-0.5 font-medium">{getRecordTitle(hovered.item)}</div>
             <div className="text-nim-muted">
-              {humanizeFieldName(hovered.dates.startField)}: {formatDay(hovered.dates.start)}
+              {humanizeFieldName(hovered.dates.startField, t('timeline.created'))}: {formatDay(hovered.dates.start, i18n.language)}
             </div>
             {hovered.dates.end && hovered.dates.endField ? (
               <div className="text-nim-muted">
-                {humanizeFieldName(hovered.dates.endField)}: {formatDay(hovered.dates.end)}
+                {humanizeFieldName(hovered.dates.endField, t('timeline.created'))}: {formatDay(hovered.dates.end, i18n.language)}
               </div>
             ) : null}
           </div>

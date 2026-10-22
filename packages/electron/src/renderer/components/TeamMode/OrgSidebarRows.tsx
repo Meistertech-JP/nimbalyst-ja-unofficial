@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useAtomValue } from 'jotai';
 
@@ -46,6 +47,7 @@ export const OrgSidebarRow = React.memo(function OrgSidebarRow({
   route: OrgWindowRoute;
   onNavigate: (route: OrgWindowRoute) => void;
 }) {
+  const { t } = useTranslation('common');
   const selected = useAtomValue(
     orgWindowRouteSelectedAtomFamily(
       orgWindowRouteSelectionKey(surfaceId, orgWindowRouteKey(route)),
@@ -78,7 +80,7 @@ export const OrgSidebarRow = React.memo(function OrgSidebarRow({
       {badge > 0 && (
         <span
           className="org-unread-pill shrink-0 rounded-full bg-nim-primary px-1.5 text-[10px] font-bold leading-4 text-nim-on-primary"
-          aria-label={`${badge} unread`}
+          aria-label={t('projects.unread', { count: badge })}
         >
           {badge}
         </span>
@@ -184,6 +186,7 @@ export function OrgDirectoryLoadError({
   testId: string;
   onRetry?: () => void;
 }) {
+  const { t } = useTranslation('collabSidebar', { keyPrefix: 'org_sidebar' });
   return (
     <div
       className="org-directory-error m-0 flex items-center gap-1.5 px-3 py-1 text-[11px] leading-relaxed text-nim-muted"
@@ -191,7 +194,7 @@ export function OrgDirectoryLoadError({
       role="status"
     >
       <MaterialSymbol icon="error" size={12} className="shrink-0" />
-      <span className="min-w-0 flex-1">Couldn&rsquo;t load {subject}.</span>
+      <span className="min-w-0 flex-1">{t(subject === 'rooms' ? 'could_not_load_rooms' : 'could_not_load_direct_messages')}</span>
       {onRetry && (
         <button
           type="button"
@@ -199,7 +202,7 @@ export function OrgDirectoryLoadError({
           data-testid={`${testId}-retry`}
           onClick={onRetry}
         >
-          Retry
+          {t('retry')}
         </button>
       )}
     </div>

@@ -5,12 +5,14 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { FloatingPortal, useFloatingMenu, virtualElement } from '../../hooks/useFloatingMenu';
 import { canShareTrackerTypeWithTeam, shareTrackerTypeWithTeam } from './teamTypeSharing';
 
 export function useTrackerTypeShareMenu(workspacePath: string | null | undefined, hasTeam: boolean) {
+  const { t } = useTranslation('tracker');
   const [target, setTarget] = useState<{ model: TrackerDataModel; x: number; y: number } | null>(null);
   const reference = useMemo(() => virtualElement(target?.x ?? 0, target?.y ?? 0), [target]);
   const menu = useFloatingMenu({
@@ -43,10 +45,10 @@ export function useTrackerTypeShareMenu(workspacePath: string | null | undefined
           onClick={() => {
             const { model } = target;
             setTarget(null);
-            void shareTrackerTypeWithTeam(workspacePath, model);
+            void shareTrackerTypeWithTeam(workspacePath, model, t);
           }}
         >
-          <MaterialSymbol icon="group_add" size={14} /> Share with team...
+          <MaterialSymbol icon="group_add" size={14} /> {t('sidebar.share_type_with_team')}
         </button>
       </div>
     </FloatingPortal>

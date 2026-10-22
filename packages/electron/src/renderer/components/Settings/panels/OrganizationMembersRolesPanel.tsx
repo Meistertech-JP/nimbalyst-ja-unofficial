@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useAtomValue } from 'jotai';
 import { ActionGuard } from './ActionGuard';
 import { OrganizationOnboardingChoices } from './OrganizationOnboardingChoices';
 import { AlphaBadge } from '../../common/AlphaBadge';
-import { TEAM_BETA_TOOLTIP } from '../../common/TeamBetaNotice';
 import {
   bucketMemberCount,
   categorizeTeamAnalyticsError,
@@ -44,6 +44,7 @@ export function OrganizationMembersRolesPanel({
   readOnlyRoles?: boolean;
   allowOrganizationCreation?: boolean;
 }) {
+  const { t } = useTranslation('settings');
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [callerRole, setCallerRole] = useState('member');
@@ -94,14 +95,14 @@ export function OrganizationMembersRolesPanel({
 
   const removeMember = useCallback(async (member: Member) => {
     if (!orgId) return;
-    const label = member.name || member.email || 'this member';
+    const label = member.name || member.email || t('organization_ui.this_member');
     const isPending = member.status === 'pending';
     const confirmed = await requestConfirmation({
-      title: isPending ? 'Revoke invitation' : 'Remove member',
+      title: isPending ? t('organization_ui.revoke_invitation') : t('organization_ui.remove_member'),
       message: isPending
-        ? `Revoke the pending invitation for ${label}?`
-        : `Remove ${label} from this organization? They lose access to its shared documents and trackers, and would have to be invited again.`,
-      confirmLabel: isPending ? 'Revoke' : 'Remove',
+        ? t('organization_ui.revoke_invitation_confirmation', { member: label })
+        : t('organization_ui.remove_member_confirmation', { member: label }),
+      confirmLabel: isPending ? t('organization_ui.revoke') : t('organization_ui.remove'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -109,7 +110,7 @@ export function OrganizationMembersRolesPanel({
     setError(null);
     try {
       const result = await window.electronAPI.organization.removeMember(orgId, member.memberId);
-      if (result?.success === false) throw new Error(result.error ?? 'Could not remove member');
+      if (result?.success === false) throw new Error(result.error ?? t('organization_ui.remove_member_failed'));
       trackTeamAnalyticsEvent('team_member_removed', {
         surface: 'desktop',
         callerRole: analyticsCallerRole,
@@ -126,7 +127,7 @@ export function OrganizationMembersRolesPanel({
       });
       setError(String(reason));
     }
-  }, [orgId, analyticsCallerRole, refresh]);
+  }, [orgId, analyticsCallerRole, refresh, t]);
 
   const selected = organizations.find((organization) => organization.orgId === orgId);
 
@@ -134,11 +135,11 @@ export function OrganizationMembersRolesPanel({
     <section className="organization-members-roles-panel" data-testid="organization-members-roles-panel" data-component="OrganizationMembersRolesPanel">
       <header className="mb-5 border-b border-[var(--nim-border)] pb-4">
         <h2 className="m-0 flex items-center gap-2 text-xl font-semibold">
-          Members &amp; Roles
-          <AlphaBadge size="sm" stage="beta" tooltip={TEAM_BETA_TOOLTIP} />
+          {t('organization_ui.members_roles')}
+          <AlphaBadge size="sm" stage="beta" tooltip={t('organization_ui.alpha_tooltip')} />
         </h2>
         <p className="m-0 mt-1 text-sm text-[var(--nim-text-muted)]">
-          {selected ? `${selected.name} · ${callerRole}${selected.sourceEmail ? ` · ${selected.sourceEmail}` : ''}` : 'Choose an organization.'}
+          {selected ? `${selected.name} · ${t(`organization_ui.role_${callerRole}`, { defaultValue: callerRole })}${selected.sourceEmail ? ` · ${selected.sourceEmail}` : ''}` : t('organization_ui.choose')}
         </p>
       </header>
 
@@ -161,7 +162,7 @@ export function OrganizationMembersRolesPanel({
                 </div>
                 {readOnlyRoles ? (
                   <span className="member-role-badge rounded-full bg-[var(--nim-bg-tertiary)] px-2.5 py-1 text-xs capitalize text-[var(--nim-text-muted)]">
-                    {member.role}
+                    {t(`organization_ui.role_${member.role}`, { defaultValue: member.role })}
                   </span>
                 ) : <select
                   value={member.role}
@@ -193,20 +194,20 @@ export function OrganizationMembersRolesPanel({
                       });
                   }}
                 >
-                  <option value="viewer">Viewer</option>
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                  <option value="owner">Owner</option>
+                  <option value="viewer">{t('organization_ui.role_viewer')}</option>
+                  <option value="member">{t('organization_ui.role_member')}</option>
+                  <option value="admin">{t('organization_ui.role_admin')}</option>
+                  <option value="owner">{t('organization_ui.role_owner')}</option>
                 </select>}
                 {canAdminister && (
                   <button
                     type="button"
                     className="member-remove-button rounded border border-[var(--nim-border)] bg-transparent p-1.5 text-[var(--nim-text-muted)] hover:border-[var(--nim-error)] hover:text-[var(--nim-error)]"
                     data-testid="organization-member-remove"
-                    title={member.status === 'pending' ? 'Revoke invitation' : 'Remove from organization'}
+                    title={member.status === 'pending' ? t('organization_ui.revoke_invitation') : t('organization_ui.remove_from_organization')}
                     aria-label={member.status === 'pending'
-                      ? `Revoke invitation for ${member.name || member.email}`
-                      : `Remove ${member.name || member.email} from this organization`}
+                      ? t('organization_ui.revoke_invitation_for', { member: member.name || member.email })
+                      : t('organization_ui.remove_member_from_organization', { member: member.name || member.email })}
                     onClick={() => { void removeMember(member); }}
                   >
                     <MaterialSymbol icon="person_remove" size={16} />
@@ -216,14 +217,14 @@ export function OrganizationMembersRolesPanel({
             ))}
           </div>
 
-          <ActionGuard allowed={canAdminister} reason="An organization owner or admin is required to invite members.">
+          <ActionGuard allowed={canAdminister} reason={t('organization_ui.invite_requires_admin')}>
             <button
               className="organization-invite-open mt-4 rounded bg-[var(--nim-primary)] px-3 py-2 text-sm font-semibold text-[var(--nim-on-primary)]"
               data-testid="organization-invite-open"
               type="button"
               onClick={() => setInviteOpen(true)}
             >
-              Invite people
+              {t('organization_ui.invite_people')}
             </button>
           </ActionGuard>
         </>
@@ -232,7 +233,7 @@ export function OrganizationMembersRolesPanel({
         <InviteToTeamDialog
           isOpen={inviteOpen}
           orgId={orgId}
-          orgName={organizations.find(team => team.orgId === orgId)?.name ?? 'your team'}
+          orgName={organizations.find(team => team.orgId === orgId)?.name ?? t('organization_ui.your_team')}
           projects={inviteProjects}
           workspacePath={workspacePath}
           onClose={() => setInviteOpen(false)}
@@ -248,7 +249,7 @@ export function OrganizationMembersRolesPanel({
             // and every folder landed.
             const problems = [
               ...result.failed.map(failure => `${failure.email}: ${failure.error}`),
-              ...result.projectGrantsFailed.map(id => `Project access could not be granted (${id})`),
+              ...result.projectGrantsFailed.map(id => t('organization_ui.project_access_failed', { project: id })),
               ...result.folderFailures,
             ];
             setError(problems.length > 0 ? problems.join('\n') : null);
@@ -277,6 +278,7 @@ function MemberPresenceDot({
   orgId: string;
   memberId: string;
 }) {
+  const { t } = useTranslation('settings');
   const presence = useAtomValue(teamPresenceAtomFamily({
     orgId,
     teamMemberId: memberId,
@@ -290,7 +292,7 @@ function MemberPresenceDot({
   return (
     <span
       className={`member-presence-dot size-2.5 shrink-0 rounded-full ${color}`}
-      aria-label={status}
+      aria-label={t(`organization_ui.presence_${status}`, { defaultValue: status })}
     />
   );
 }

@@ -1,11 +1,12 @@
 import { ClaudeRuntimeStatus } from './ClaudeRuntimeStatus';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { activeWorkspacePathAtom } from '../../../store/atoms/openProjects';
 import { ProviderConfig, Model } from '../../Settings/SettingsView';
 import { hiddenGutterItemsAtom, toggleGutterItemHiddenAtom } from '../../../store/atoms/appSettings';
 import { SettingsToggle, ToggleSwitch } from '../SettingsToggle';
-import { AlphaBadge, SETTINGS_ALPHA_TOOLTIP } from '../../common/AlphaBadge';
+import { SettingsAlphaBadge } from '../../common/AlphaBadge';
 import { errorNotificationService } from '../../../services/ErrorNotificationService';
 
 /** Props for the sibling Claude Code CLI subsection. */
@@ -58,28 +59,29 @@ function AvailableModelsSection({
   onVisibilityToggle: (modelId: string, visible: boolean) => void;
   onSetAllVisible: (visible: boolean) => void;
 }) {
+  const { t } = useTranslation('settings');
   return (
     <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-      <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Available models</h4>
+      <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.available_models')}</h4>
       {loading && (
-        <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">Loading models...</div>
+        <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">{t('provider.loading_models')}</div>
       )}
       {!loading && models.length > 0 && (
         <div className="models-section">
           <div className="models-header flex items-center justify-between mb-3">
-            <span className="text-sm text-[var(--nim-text-muted)]">Uncheck models to hide them from the picker:</span>
+            <span className="text-sm text-[var(--nim-text-muted)]">{t('claude_code_panel.hide_hint')}</span>
             <div className="models-actions flex gap-2">
               <button
                 className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                 onClick={() => onSetAllVisible(true)}
               >
-                Show all
+                {t('provider.select_all')}
               </button>
               <button
                 className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                 onClick={() => onSetAllVisible(false)}
               >
-                Hide all
+                {t('provider.deselect_all')}
               </button>
             </div>
           </div>
@@ -97,12 +99,12 @@ function AvailableModelsSection({
             ))}
           </div>
           <p className="text-[11px] text-[var(--nim-text-faint)] leading-relaxed mt-3">
-            Unchecked models are hidden from the session model picker. New models appear automatically.
+            {t('claude_code_panel.hidden_models_note')}
           </p>
         </div>
       )}
       {!loading && models.length === 0 && (
-        <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">No models available.</div>
+        <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">{t('provider.no_models')}</div>
       )}
     </div>
   );
@@ -123,6 +125,7 @@ export function ClaudeCodePanel({
   scope = 'user',
   workspacePath,
 }: ClaudeCodePanelProps) {
+  const { t } = useTranslation('settings');
   // Prefer the project override path; otherwise fall back to the workspace
   // currently focused in this window so the login terminal opens in the project.
   const activeWorkspacePath = useAtomValue(activeWorkspacePathAtom);
@@ -202,9 +205,9 @@ export function ClaudeCodePanel({
     } catch (error) {
       console.error('Failed to save env vars:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      errorNotificationService.showError('Failed to save environment variables', `Failed to save environment variables: ${errorMessage}`);
+      errorNotificationService.showError(t('claude_code_panel.save_env_failed'), t('claude_code_panel.save_env_failed_detail', { error: errorMessage }));
     }
-  }, []);
+  }, [t]);
 
   // Toggle agent teams env var
   const handleToggleAgentTeams = useCallback(async (enabled: boolean) => {
@@ -334,8 +337,8 @@ export function ClaudeCodePanel({
   const handleBrowseCustomClaudeCodePath = async () => {
     try {
       const result = await window.electronAPI.openFileDialog({
-        title: 'Select Claude Code Executable',
-        buttonLabel: 'Select',
+        title: t('claude_code_panel.select_executable'),
+        buttonLabel: t('claude_code_panel.select'),
       });
       if (result && !result.canceled && result.filePaths?.length > 0) {
         handleSaveCustomClaudeCodePath(result.filePaths[0]);
@@ -351,13 +354,13 @@ export function ClaudeCodePanel({
       const result = await window.electronAPI.invoke('claude-code:login', loginCwd);
       if (result.success) {
         errorNotificationService.showInfo(
-          'Claude Code login',
-          result.message || 'Login initiated! Please complete authentication in the Terminal window (you may have to type /login to complete the process), then click "Refresh Status" to verify.',
+          t('claude_code_panel.login_toast_title'),
+          result.message || t('claude_code_panel.login_started'),
           { duration: 0 },
         );
       }
     } catch (error: any) {
-      errorNotificationService.showError('Login failed', `Login failed: ${error.message || 'Unknown error'}`);
+      errorNotificationService.showError(t('claude_code_panel.login_failed_title'), t('claude_code_panel.login_failed', { error: error.message || t('claude_code_panel.unknown_error') }));
     } finally {
       setIsLoggingIn(false);
     }
@@ -368,29 +371,28 @@ export function ClaudeCodePanel({
       const result = await window.electronAPI.invoke('claude-code:logout');
       if (result.success) {
         errorNotificationService.showInfo(
-          'Claude Code logout',
-          result.message || 'Logout initiated! Please wait for the Terminal window to complete, then click "Refresh Status" to verify.',
+          t('claude_code_panel.logout_toast_title'),
+          result.message || t('claude_code_panel.logout_started'),
           { duration: 0 },
         );
       }
     } catch (error: any) {
-      errorNotificationService.showError('Logout failed', `Logout failed: ${error.message || 'Unknown error'}`);
+      errorNotificationService.showError(t('claude_code_panel.logout_failed_title'), t('claude_code_panel.logout_failed', { error: error.message || t('claude_code_panel.unknown_error') }));
     }
   };
 
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">Claude Agent</h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('claude_code_panel.title')}</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Agent mode uses the Claude Code SDK with a few extensions for added functionality in Nimbalyst.
-          Has full MCP support with file system access, multi-file operations, and session persistence.
+          {t('claude_code_panel.description')}
         </p>
       </div>
 
       <SettingsToggle
         variant="enable"
-        name="Enable Claude Agent"
+        name={t('claude_code_panel.enable')}
         checked={config.enabled || false}
         onChange={(checked) => {
           // console.log('[ClaudeCodePanel] Toggle changed to:', checked);
@@ -401,8 +403,8 @@ export function ClaudeCodePanel({
       {/* Usage Indicator Toggle */}
       <SettingsToggle
         variant="enable"
-        name="Show Usage Indicator"
-        description="Display API usage limits in the navigation gutter"
+        name={t('claude_code_panel.usage_indicator')}
+        description={t('claude_code_panel.usage_indicator_desc')}
         checked={usageIndicatorEnabled}
         onChange={setUsageIndicatorEnabled}
         testId="claude-agent-usage-indicator-toggle"
@@ -411,11 +413,11 @@ export function ClaudeCodePanel({
       {/* Custom Claude Installation */}
       <div className="provider-enable flex flex-col gap-2 py-4 mb-4 border-b border-[var(--nim-border)]">
         <div>
-          <span className="provider-enable-label text-sm font-medium text-[var(--nim-text)]">Custom Claude Installation</span>
+          <span className="provider-enable-label text-sm font-medium text-[var(--nim-text)]">{t('claude_code_panel.custom_installation')}</span>
           <p className="text-xs text-[var(--nim-text-muted)] mt-1">
             {scope === 'project'
-              ? 'Override the Claude executable path for this project only. Leave empty to inherit the global setting.'
-              : 'Override the default Claude executable path. Use this to point to a custom Claude CLI wrapper (e.g., for corporate SSO authentication).'}
+              ? t('claude_code_panel.custom_project_desc')
+              : t('claude_code_panel.custom_global_desc')}
           </p>
         </div>
         <div className="flex items-center gap-2 mt-1">
@@ -431,33 +433,33 @@ export function ClaudeCodePanel({
               }
             }}
             placeholder={scope === 'project' && globalCustomClaudeCodePath
-              ? `Inheriting: ${globalCustomClaudeCodePath}`
-              : '/usr/local/bin/claude'}
+              ? t('claude_code_panel.inheriting_path', { path: globalCustomClaudeCodePath })
+              : t('claude_code_panel.path_placeholder')}
             className="flex-1 py-1.5 px-2 rounded text-sm bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] font-mono focus:border-[var(--nim-primary)] outline-none"
           />
           <button
             onClick={handleBrowseCustomClaudeCodePath}
             className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] transition-colors whitespace-nowrap"
           >
-            Browse
+            {t('claude_code_panel.browse')}
           </button>
         </div>
         <p className="text-[11px] text-[var(--nim-text-faint)] leading-relaxed">
           {scope === 'project'
             ? hasProjectPathOverride
-              ? 'Project-specific path active. Clear the field to remove the override and inherit the global value.'
+              ? t('claude_code_panel.project_path_active')
               : globalCustomClaudeCodePath
-                ? `Inheriting global path: ${globalCustomClaudeCodePath}. Type a value to override for this project only.`
-                : 'No global path set. Type a value to use a custom executable for this project only.'
-            : 'Leave empty to use the built-in SDK. Changes take effect on the next agent session.'}
+                ? t('claude_code_panel.inheriting_global_path', { path: globalCustomClaudeCodePath })
+                : t('claude_code_panel.no_global_path')
+            : t('claude_code_panel.sdk_path_hint')}
         </p>
       </div>
 
       {/* Plan Tracking Toggle */}
       <SettingsToggle
         variant="enable"
-        name="Plan Tracking"
-        description="Save plans to nimbalyst-local/plans/ with tracking frontmatter. When disabled, plans use Claude Code's default behavior."
+        name={t('claude_code_panel.plan_tracking')}
+        description={t('claude_code_panel.plan_tracking_desc')}
         checked={planTrackingEnabled}
         onChange={handleSetPlanTrackingEnabled}
       />
@@ -465,8 +467,8 @@ export function ClaudeCodePanel({
       {/* Agent Teams Toggle (Experimental) */}
       <SettingsToggle
         variant="enable"
-        name="Agent Teams (Experimental)"
-        description="Allow Claude to coordinate multiple agents working together as a team. Uses more tokens but enables parallel work."
+        name={t('claude_code_panel.agent_teams')}
+        description={t('claude_code_panel.agent_teams_desc')}
         checked={agentTeamsEnabled}
         onChange={handleToggleAgentTeams}
       />
@@ -479,11 +481,11 @@ export function ClaudeCodePanel({
       {config.enabled && (
         <>
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Authentication</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('claude_code_panel.authentication')}</h4>
             <div className="api-key-section mt-4">
               {/* Authentication Method Selector */}
               <div className="auth-method-selector mb-4">
-                <label className="auth-method-label block text-[13px] font-semibold mb-2 text-[var(--nim-text)]">Authentication Method</label>
+                <label className="auth-method-label block text-[13px] font-semibold mb-2 text-[var(--nim-text)]">{t('claude_code_panel.authentication_method')}</label>
                 <div className="auth-method-buttons flex gap-2">
                   <button
                     className={`auth-method-button flex-1 py-2.5 px-4 rounded-md text-[13px] font-medium cursor-pointer transition-all border ${
@@ -496,7 +498,7 @@ export function ClaudeCodePanel({
                       onConfigChange({ authMethod: 'login' });
                     }}
                   >
-                    Claude Plan (Recommended)
+                    {t('claude_code_panel.claude_plan_recommended')}
                   </button>
                   <button
                     className={`auth-method-button flex-1 py-2.5 px-4 rounded-md text-[13px] font-medium cursor-pointer transition-all border ${
@@ -509,7 +511,7 @@ export function ClaudeCodePanel({
                       onConfigChange({ authMethod: 'api-key' });
                     }}
                   >
-                    API Key
+                    {t('claude_code_panel.api_key')}
                   </button>
                 </div>
               </div>
@@ -524,7 +526,7 @@ export function ClaudeCodePanel({
                         <div className="flex items-center gap-3 flex-1">
                           <span className="status-box-icon text-xl leading-none shrink-0 text-[var(--nim-success)]">✓</span>
                           <div className="status-box-content flex flex-col gap-1 flex-1">
-                            <span className="status-box-title font-semibold text-sm text-[var(--nim-text)]">Authenticated with Claude Plan</span>
+                            <span className="status-box-title font-semibold text-sm text-[var(--nim-text)]">{t('claude_code_panel.authenticated_plan')}</span>
                             {loginStatus.email && (
                               <span className="status-box-subtitle text-xs text-[var(--nim-text-muted)]">
                                 {loginStatus.email}
@@ -535,17 +537,17 @@ export function ClaudeCodePanel({
                         </div>
                         <div className="status-box-actions flex gap-2 shrink-0">
                           <button className="btn-small py-1.5 px-3 rounded text-xs font-medium cursor-pointer transition-all bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]" onClick={checkLoginStatus}>
-                            Refresh
+                            {t('claude_code_panel.refresh')}
                           </button>
                           <button className="btn-small py-1.5 px-3 rounded text-xs font-medium cursor-pointer transition-all bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]" onClick={handleLogout}>
-                            Logout
+                            {t('claude_code_panel.logout')}
                           </button>
                         </div>
                       </div>
 
                       {/* Switch Account Info */}
                       <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-4">
-                        Need to use a different Claude account? Logout above and login again.
+                        {t('claude_code_panel.different_account')}
                       </p>
                     </>
                   ) : (
@@ -553,7 +555,7 @@ export function ClaudeCodePanel({
                       {/* Not Logged In State */}
                       <div className="mb-4 p-4 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg">
                         <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-3">
-                          Authenticate with your Claude Pro or Team subscription. No API credits needed.
+                          {t('claude_code_panel.authenticate_plan')}
                         </p>
                         <div className="flex gap-2">
                           <button
@@ -561,14 +563,14 @@ export function ClaudeCodePanel({
                             onClick={handleLogin}
                             disabled={isLoggingIn}
                           >
-                            {isLoggingIn ? 'Opening Login...' : 'Login with Claude Plan'}
+                            {isLoggingIn ? t('claude_code_panel.opening_login') : t('claude_code_panel.login_plan')}
                           </button>
                           <button className="nim-btn-secondary" onClick={checkLoginStatus}>
-                            Refresh
+                            {t('claude_code_panel.refresh')}
                           </button>
                         </div>
                         <p className="text-[11px] leading-relaxed text-[var(--nim-text-faint)] mt-2">
-                          Opens Terminal for OAuth authentication. You may have to type /login to complete the process.
+                          {t('claude_code_panel.terminal_login_hint')}
                         </p>
                       </div>
                     </>
@@ -580,7 +582,7 @@ export function ClaudeCodePanel({
               {selectedAuthMethod === 'api-key' && (
                 <>
                   <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-3">
-                    Use an Anthropic API key. Pay-per-use with API credits from your Anthropic account.
+                    {t('claude_code_panel.api_key_desc')}
                   </p>
                   <div className="api-key-row flex gap-2 items-center">
                     <input
@@ -601,9 +603,9 @@ export function ClaudeCodePanel({
                         onClick={onTestConnection}
                         disabled={config.testStatus === 'testing'}
                       >
-                        {config.testStatus === 'testing' ? 'Testing...' :
-                         config.testStatus === 'success' ? '✓ Connected' :
-                         config.testStatus === 'error' ? '✗ Failed' : 'Test'}
+                        {config.testStatus === 'testing' ? t('provider.testing') :
+                         config.testStatus === 'success' ? t('provider.connected') :
+                         config.testStatus === 'error' ? t('provider.failed') : t('provider.test')}
                       </button>
                     ) : null}
                   </div>
@@ -624,14 +626,13 @@ export function ClaudeCodePanel({
           />
 
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Tool Permissions</h4>
+                      <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('claude_code_panel.tool_permissions')}</h4>
             <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-2">
-              Tool permissions are now managed per-project. When Claude Agent attempts to use a tool,
-              you'll be prompted to allow or deny the action.
+              {t('claude_code_panel.tool_permissions_desc')}
             </p>
             <p className="text-xs leading-relaxed text-[var(--nim-text-muted)]">
-              To view or modify allowed tools for a project, go to{' '}
-              <strong className="font-medium text-[var(--nim-text)]">Project Settings &gt; Permissions</strong>.
+              {t('claude_code_panel.project_permissions_hint')}{' '}
+              <strong className="font-medium text-[var(--nim-text)]">{t('claude_code_panel.project_permissions')}</strong>.
             </p>
           </div>
 
@@ -641,14 +642,13 @@ export function ClaudeCodePanel({
               changing global state. See issue #185. */}
           {scope === 'user' && (
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Environment Variables</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('claude_code_panel.environment_variables')}</h4>
             <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-3">
-              Configure environment variables that will be set for all Claude Code sessions.
-              These are stored in <code className="text-xs bg-[var(--nim-bg-tertiary)] px-1 py-0.5 rounded">~/.claude/settings.json</code> and apply to every project.
+              {t('claude_code_panel.environment_variables_desc')}{' '}<code className="text-xs bg-[var(--nim-bg-tertiary)] px-1 py-0.5 rounded">~/.claude/settings.json</code> {t('claude_code_panel.and_all_projects')}
             </p>
 
             {isLoadingEnv ? (
-              <div className="text-sm text-[var(--nim-text-muted)]">Loading...</div>
+              <div className="text-sm text-[var(--nim-text-muted)]">{t('claude_code_panel.loading')}</div>
             ) : (
               <>
                 {/* Existing env vars list */}
@@ -681,7 +681,7 @@ export function ClaudeCodePanel({
                               }}
                               className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)] transition-colors"
                             >
-                              Save
+                              {t('claude_code_panel.save')}
                             </button>
                             <button
                               onClick={() => {
@@ -690,7 +690,7 @@ export function ClaudeCodePanel({
                               }}
                               className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] transition-colors"
                             >
-                              Cancel
+                              {t('claude_code_panel.cancel')}
                             </button>
                           </>
                         ) : (
@@ -705,7 +705,7 @@ export function ClaudeCodePanel({
                               }}
                               className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] transition-colors"
                             >
-                              Edit
+                              {t('claude_code_panel.edit')}
                             </button>
                             <button
                               onClick={() => {
@@ -715,7 +715,7 @@ export function ClaudeCodePanel({
                               }}
                               className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] text-[var(--nim-error)] hover:bg-[rgba(239,68,68,0.1)] transition-colors"
                             >
-                              Delete
+                              {t('claude_code_panel.delete')}
                             </button>
                           </>
                         )}
@@ -730,7 +730,7 @@ export function ClaudeCodePanel({
                     type="text"
                     value={newEnvKey}
                     onChange={(e) => setNewEnvKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
-                    placeholder="VARIABLE_NAME"
+                    placeholder={t('claude_code_panel.variable_name')}
                     className="flex-1 py-1.5 px-2 rounded text-sm bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] font-mono focus:border-[var(--nim-primary)] outline-none"
                   />
                   <span className="text-[var(--nim-text-muted)]">=</span>
@@ -738,7 +738,7 @@ export function ClaudeCodePanel({
                     type="text"
                     value={newEnvValue}
                     onChange={(e) => setNewEnvValue(e.target.value)}
-                    placeholder="value"
+                    placeholder={t('claude_code_panel.variable_value')}
                     className="flex-[2] py-1.5 px-2 rounded text-sm bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] font-mono focus:border-[var(--nim-primary)] outline-none"
                   />
                   <button
@@ -753,7 +753,7 @@ export function ClaudeCodePanel({
                     disabled={!newEnvKey.trim()}
                     className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Add
+                    {t('claude_code_panel.add')}
                   </button>
                 </div>
               </>
@@ -769,16 +769,16 @@ export function ClaudeCodePanel({
           and trimmed independently of the SDK above. */}
       <div className="provider-panel-section py-4 mb-4 mt-2 border-t border-[var(--nim-border)] last:mb-0 last:pb-0">
         <h4 className="provider-panel-section-title text-base font-semibold mb-1 text-[var(--nim-text)] flex items-center gap-2">
-          Claude Code CLI
-          <AlphaBadge size="sm" tooltip={SETTINGS_ALPHA_TOOLTIP} />
+          {t('claude_code_panel.cli_title')}
+            <SettingsAlphaBadge size="sm" />
         </h4>
         <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-3">
-          For people who prefer working in the <code className="text-xs bg-[var(--nim-bg-tertiary)] px-1 py-0.5 rounded">claude</code> command-line tool itself. It runs the genuine CLI in a terminal instead of the agent above. You don&rsquo;t need this to use your Claude subscription: Claude Agent already runs on your subscription once you sign in with your Claude plan. Enable or disable this set independently of the SDK.
+          {t('claude_code_panel.cli_description')}
         </p>
 
         <SettingsToggle
           variant="enable"
-          name="Enable Claude Code CLI"
+          name={t('claude_code_panel.enable_cli')}
           checked={cli.config.enabled ?? false}
           onChange={(checked) => cli.onToggle(checked)}
         />

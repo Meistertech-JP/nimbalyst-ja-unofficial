@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { Provider, createStore } from 'jotai';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { stytchAuthAtom } from '../../../../store/atoms/stytchAuth';
 import type { PersonalAccountSummary } from '../../../../store/atoms/settingsDomains';
@@ -15,6 +17,15 @@ vi.mock('@nimbalyst/runtime', () => ({
 const sendMagicLink = vi.fn(async () => ({ success: true }));
 const signInWithGoogle = vi.fn(async () => ({ success: true }));
 const getAccounts = vi.fn(async (): Promise<PersonalAccountSummary[]> => []);
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+function render(ui: React.ReactElement) {
+  return rtlRender(
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      {ui}
+    </UiLanguageProvider>,
+  );
+}
 
 function storedAccount(overrides: Partial<PersonalAccountSummary> = {}): PersonalAccountSummary {
   return {
@@ -27,7 +38,8 @@ function storedAccount(overrides: Partial<PersonalAccountSummary> = {}): Persona
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  englishI18n = await createI18nInstance('en');
   sendMagicLink.mockClear();
   signInWithGoogle.mockClear();
   getAccounts.mockClear().mockResolvedValue([]);

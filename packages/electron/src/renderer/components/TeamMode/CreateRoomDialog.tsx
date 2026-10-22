@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import type { ConversationDirectoryEntry } from '../../../shared/conversationDirectory';
@@ -43,6 +44,7 @@ export function CreateRoomDialog({
   onClose: () => void;
   onCreated: (conversationId: string) => void;
 }) {
+  const { t } = useTranslation('collabSidebar');
   const [form, setForm] = useState<CreateRoomFormState>(EMPTY_CREATE_ROOM_FORM);
   const [idEdited, setIdEdited] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -79,34 +81,34 @@ export function CreateRoomDialog({
 
   return (
     <OrgDialog
-      title="Create a room"
-      description="Rooms are organization-wide conversations. Public rooms are open to everyone; private rooms are limited to the people you add."
+      title={t('create_room_dialog.title')}
+      description={t('create_room_dialog.description')}
       testId="create-room-dialog"
       error={error}
       onClose={onClose}
       footer={(
         <>
           <OrgDialogSecondaryButton testId="create-room-cancel" onClick={onClose}>
-            Cancel
+            {t('create_room_dialog.cancel')}
           </OrgDialogSecondaryButton>
           <OrgDialogPrimaryButton
             testId="create-room-submit"
             disabled={!result.canSubmit || submitting}
             onClick={() => { void submit(); }}
           >
-            {submitting ? 'Creating…' : 'Create room'}
+            {submitting ? t('create_room_dialog.creating') : t('create_room_dialog.create')}
           </OrgDialogPrimaryButton>
         </>
       )}
     >
-      <OrgDialogField label="Name" error={result.nameError && form.name ? result.nameError : null}>
+      <OrgDialogField label={t('create_room_dialog.name')} error={result.nameError && form.name ? result.nameError : null}>
         <input
           type="text"
           className={ORG_DIALOG_INPUT_CLASS}
           data-testid="create-room-name"
           value={form.name}
           autoFocus
-          placeholder="Design reviews"
+          placeholder={t('create_room_dialog.name_placeholder')}
           onChange={(event) => {
             const name = event.target.value;
             patch(idEdited ? { name } : { name, id: deriveRoomId(name) });
@@ -115,8 +117,8 @@ export function CreateRoomDialog({
       </OrgDialogField>
 
       <OrgDialogField
-        label="Room id"
-        hint="How the room is addressed. Letters, numbers, dots, dashes and underscores."
+        label={t('create_room_dialog.room_id')}
+        hint={t('create_room_dialog.room_id_hint')}
         error={result.idError}
       >
         <div className="flex items-center gap-1.5">
@@ -134,32 +136,32 @@ export function CreateRoomDialog({
         </div>
       </OrgDialogField>
 
-      <OrgDialogField label="Topic (optional)" hint="A one-line description shown in the room header.">
+      <OrgDialogField label={t('create_room_dialog.topic_optional')} hint={t('create_room_dialog.topic_hint')}>
         <input
           type="text"
           className={ORG_DIALOG_INPUT_CLASS}
           data-testid="create-room-topic"
           value={form.topic}
-          placeholder="What this room is for"
+          placeholder={t('create_room_dialog.topic_placeholder')}
           onChange={(event) => patch({ topic: event.target.value })}
         />
       </OrgDialogField>
 
-      <OrgDialogField label="Visibility">
+      <OrgDialogField label={t('create_room_dialog.visibility')}>
         <div className="create-room-visibility flex flex-col gap-2">
           <VisibilityOption
             id="public"
             icon="tag"
-            label="Public"
-            description="Everyone in the organization can find and join this room."
+            label={t('create_room_dialog.public')}
+            description={t('create_room_dialog.public_description')}
             selected={form.visibility === 'public'}
             onSelect={() => patch({ visibility: 'public' })}
           />
           <VisibilityOption
             id="private"
             icon="lock"
-            label="Private"
-            description="Only the people you add can see this room."
+            label={t('create_room_dialog.private')}
+            description={t('create_room_dialog.private_description')}
             selected={form.visibility === 'private'}
             onSelect={() => patch({ visibility: 'private' })}
           />
@@ -168,8 +170,8 @@ export function CreateRoomDialog({
 
       {form.visibility === 'private' && (
         <OrgDialogField
-          label="Members"
-          hint="You are added as the room admin. Anyone else has to be added here or later."
+          label={t('create_room_dialog.members')}
+          hint={t('create_room_dialog.members_hint')}
         >
           <MemberPicker
             testId="create-room-members"
@@ -195,10 +197,10 @@ export function CreateRoomDialog({
         />
         <span className="min-w-0">
           <span className="block text-[12px] font-medium text-[var(--nim-text)]">
-            Allow agents to post
+            {t('create_room_dialog.allow_agents')}
           </span>
           <span className="block text-[11px] text-[var(--nim-text-faint)]">
-            Mentioned agents can reply in this room. You can change this later in room settings.
+            {t('create_room_dialog.allow_agents_description')}
           </span>
         </span>
       </label>

@@ -7,17 +7,21 @@ import { useCrew, useCrewQuery } from './CrewContext';
 import { countLiveDelegated } from './crewDeskModel';
 import { errorMessage, formatWhen } from './crewFormat';
 import { CrewScheduleTab } from './CrewScheduleTab';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 type PanelTab = 'inbox' | 'schedule' | 'delegated' | 'notes';
 
-const TABS: ReadonlyArray<{ id: PanelTab; label: string }> = [
-  { id: 'inbox', label: 'Inbox' },
-  { id: 'schedule', label: 'Schedule' },
-  { id: 'delegated', label: 'Delegated' },
-  { id: 'notes', label: 'Notes' },
-];
+const TABS: ReadonlyArray<PanelTab> = ['inbox', 'schedule', 'delegated', 'notes'];
+
+const SESSION_STATUS_KEYS: Record<string, string> = {
+  running: 'crew.panel.session_running',
+  waiting: 'crew.panel.session_waiting',
+  waiting_for_input: 'crew.panel.session_waiting_for_input',
+  processing: 'crew.panel.session_processing',
+};
 
 export function CrewDeskPanel({ member, detail }: { member: CrewMemberSnapshot; detail: CrewMemberDetail | null }) {
+  const { t } = useTranslation('extensions');
   const [tab, setTab] = useState<PanelTab>('inbox');
   const delegated = detail?.delegated ?? null;
   const counts: Partial<Record<PanelTab, number>> = {
@@ -26,13 +30,13 @@ export function CrewDeskPanel({ member, detail }: { member: CrewMemberSnapshot; 
   };
 
   return (
-    <aside className="crew-desk-panel" aria-label={`${member.definition.name}'s desk`}>
+    <aside className="crew-desk-panel" aria-label={t('crew.panel.desk_aria', { name: member.definition.name })}>
       <div className="crew-tabs" role="tablist">
-        {TABS.map(({ id, label }) => {
+        {TABS.map((id) => {
           const count = counts[id] ?? 0;
           return (
             <button key={id} type="button" role="tab" aria-selected={tab === id} data-selected={tab === id} onClick={() => setTab(id)}>
-              {label}
+              {t(`crew.panel.${id}`)}
               {count > 0 && <span className="crew-tab-count">{count}</span>}
             </button>
           );
@@ -54,6 +58,7 @@ export function CrewDeskPanel({ member, detail }: { member: CrewMemberSnapshot; 
  */
 function CrewInboxTab({ member, delegated }: { member: CrewMemberSnapshot; delegated: CrewDelegatedSession[] | null }) {
   const { client, host, viewSession } = useCrew();
+  const { t } = useTranslation('extensions');
   const { definition, runtime } = member;
   const slug = definition.slug;
   const flags = useCrewQuery(() => client.call('feed', { slug, kinds: ['flag'], limit: 20 }), [slug]);
@@ -65,34 +70,34 @@ function CrewInboxTab({ member, delegated }: { member: CrewMemberSnapshot; deleg
       {waitingInChapter && (
         <div className="crew-inbox-row" data-tone="ask">
           <MaterialSymbol icon="help" size={15} />
-          <span className="crew-grow">{definition.name} asked you something in the current chapter. Answer it in the transcript.</span>
+          <span className="crew-grow">{t('crew.panel.asked', { name: definition.name })}</span>
         </div>
       )}
       {pendingSessions.map((session) => (
         <button key={session.sessionId} type="button" className="crew-inbox-row crew-inbox-row-button" data-tone="ask" onClick={() => viewSession(slug, session.sessionId)}>
           <MaterialSymbol icon="help" size={15} />
-          <span className="crew-grow">"{session.name}" is waiting on you</span>
+          <span className="crew-grow">{t('crew.panel.waiting_session', { name: session.name })}</span>
         </button>
       ))}
       {runtime.pendingInboxCount > 0 && (
         <div className="crew-inbox-row">
           <MaterialSymbol icon="inbox" size={15} />
           <span className="crew-grow">
-            {runtime.pendingInboxCount === 1 ? '1 wake is' : `${runtime.pendingInboxCount} wakes are`} held for the next shift.
+            {t(runtime.pendingInboxCount === 1 ? 'crew.panel.wakes_one' : 'crew.panel.wakes_other', { count: runtime.pendingInboxCount })}
           </span>
         </div>
       )}
 
-      <div className="crew-section-label">Recent flags</div>
+      <div className="crew-section-label">{t('crew.panel.recent_flags')}</div>
       {flags.data === null ? (
-        flags.error ? <CrewError message={flags.error} /> : <p className="crew-faint" role="status">Loading...</p>
+        flags.error ? <CrewError message={flags.error} /> : <p className="crew-faint" role="status">{t('crew.panel.loading')}</p>
       ) : flags.data.length === 0 ? (
-        <p className="crew-faint">No flags yet. Anything {definition.name} flags shows here and in the crew feed.</p>
+        <p className="crew-faint">{t('crew.panel.no_flags', { name: definition.name })}</p>
       ) : (
         flags.data.map((entry) => (
           <div key={entry.id} className="crew-inbox-flag">
             <div className="crew-row">
-              <CrewLevelChip level={entry.level ?? 'flag'} label={entry.level === 'note' ? 'Standup' : undefined} />
+              <CrewLevelChip level={entry.level ?? 'flag'} label={entry.level === 'note' ? t('crew.panel.standup') : undefined} />
               <span className="crew-grow crew-truncate crew-strong">{entry.title}</span>
               <span className="crew-faint">{formatWhen(entry.at)}</span>
             </div>
@@ -111,9 +116,14 @@ function CrewInboxTab({ member, delegated }: { member: CrewMemberSnapshot; deleg
 
 function CrewDelegatedTab({ member, sessions }: { member: CrewMemberSnapshot; sessions: CrewDelegatedSession[] | null }) {
   const { viewSession } = useCrew();
-  if (sessions === null) return <p className="crew-faint" role="status">Loading...</p>;
+  const { t } = useTranslation('extensions');
+  const statusLabel = (status: string) => {
+    const key = SESSION_STATUS_KEYS[status];
+    return key ? t(key) : status.replace(/_/g, ' ');
+  };
+  if (sessions === null) return <p className="crew-faint" role="status">{t('crew.panel.loading')}</p>;
   if (sessions.length === 0) {
-    return <p className="crew-faint">{member.definition.name} has not started any sessions.</p>;
+    return <p className="crew-faint">{t('crew.panel.no_sessions', { name: member.definition.name })}</p>;
   }
   return (
     <ul className="crew-stack" role="list">
@@ -125,10 +135,10 @@ function CrewDelegatedTab({ member, sessions }: { member: CrewMemberSnapshot; se
             onClick={() => viewSession(member.definition.slug, session.sessionId)}
             data-session-id={session.sessionId}
           >
-            <span className="crew-truncate crew-strong">{session.name || 'Untitled session'}</span>
+            <span className="crew-truncate crew-strong">{session.name || t('crew.panel.untitled')}</span>
             <span className="crew-row crew-small">
               <span className="crew-session-status" data-status={session.hasPendingPrompt ? 'waiting' : session.status}>
-                {session.hasPendingPrompt ? 'waiting on you' : session.status.replace(/_/g, ' ')}
+                {session.hasPendingPrompt ? t('crew.panel.waiting_on_you') : statusLabel(session.status)}
               </span>
               {session.createdAt && <span className="crew-faint crew-push-right">{formatWhen(session.createdAt)}</span>}
             </span>
@@ -145,6 +155,7 @@ function CrewDelegatedTab({ member, sessions }: { member: CrewMemberSnapshot; se
  */
 function CrewNotesTab({ member }: { member: CrewMemberSnapshot }) {
   const { client, revision } = useCrew();
+  const { t } = useTranslation('extensions');
   const slug = member.definition.slug;
   const [view, setView] = useState<'notes' | 'journal'>('notes');
   // `base` is the text the draft started from, which the save sends as
@@ -190,15 +201,13 @@ function CrewNotesTab({ member }: { member: CrewMemberSnapshot }) {
       <div className="crew-segmented crew-segmented-small" role="tablist">
         {(['notes', 'journal'] as const).map((id) => (
           <button key={id} type="button" role="tab" aria-selected={view === id} data-selected={view === id} onClick={() => setView(id)}>
-            {id === 'notes' ? 'Notes' : 'Journal'}
+            {id === 'notes' ? t('crew.panel.notes') : t('crew.panel.journal')}
           </button>
         ))}
       </div>
       {view === 'notes' ? (
         <>
-          <p className="crew-faint crew-small">
-            {member.definition.name} reads these at the start of every chapter. Edit them to correct what it has learned.
-          </p>
+          <p className="crew-faint crew-small">{t('crew.panel.notes_hint', { name: member.definition.name })}</p>
           <textarea
             className="crew-input crew-notes-editor"
             value={draft}
@@ -210,11 +219,11 @@ function CrewNotesTab({ member }: { member: CrewMemberSnapshot }) {
               }
             }}
             disabled={saved === null}
-            placeholder={saved === null ? 'Loading...' : 'No notes yet.'}
-            aria-label="Notes"
+            placeholder={saved === null ? t('crew.panel.notes_loading') : t('crew.panel.notes_empty')}
+            aria-label={t('crew.panel.notes_aria')}
           />
           {saved !== null && base !== null && saved !== base && (
-            <p className="crew-faint crew-small">{member.definition.name} changed these notes while you were editing. Saving will be refused; revert to see the new version.</p>
+            <p className="crew-faint crew-small">{t('crew.panel.changed_while_editing', { name: member.definition.name })}</p>
           )}
           <div className="crew-row">
             <span className="crew-grow"><CrewError message={status.error} /></span>
@@ -224,19 +233,19 @@ function CrewNotesTab({ member }: { member: CrewMemberSnapshot }) {
               disabled={!dirty && saved === base}
               onClick={() => setNotes((current) => ({ saved: current.saved, base: current.saved, draft: current.saved ?? '' }))}
             >
-              Revert
+              {t('crew.panel.revert')}
             </button>
             <button type="button" className="crew-btn crew-btn-primary crew-btn-small" disabled={!dirty || status.saving} onClick={() => void save()}>
-              Save
+              {t('crew.panel.save')}
             </button>
           </div>
         </>
       ) : journal === null ? (
-        <p className="crew-faint" role="status">Loading...</p>
+        <p className="crew-faint" role="status">{t('crew.panel.loading')}</p>
       ) : journal.trim() ? (
         <pre className="crew-journal crew-selectable">{journal}</pre>
       ) : (
-        <p className="crew-faint">The journal gets an entry at the end of every shift.</p>
+        <p className="crew-faint">{t('crew.panel.journal_empty')}</p>
       )}
     </div>
   );

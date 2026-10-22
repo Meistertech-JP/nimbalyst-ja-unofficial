@@ -1,10 +1,13 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   TrackerReferenceChip,
 } from '@nimbalyst/runtime/plugins/TrackerLinkPlugin';
 
 import { ResourcePill } from './ResourcePill';
+import { initialsFor } from './commentBodyParser';
+import { DISPLAY_NAME_FALLBACK_KEY } from './displayNameFallbackKeys';
 import type {
   BodySegment,
   MessageAttachmentView,
@@ -31,6 +34,10 @@ export function CommentBody({
   onOpenMention?: (userId: string) => void;
   onOpenSession?: (sessionId: string) => void;
 }) {
+  const { t: tEditor } = useTranslation('editor');
+  const { t: tCommon } = useTranslation('common');
+  const { t: tOrgSharing } = useTranslation('orgSharing');
+  const { t: tTracker } = useTranslation('tracker');
   return (
     <div className="comment-body select-text whitespace-pre-wrap break-words text-[13px] leading-[1.5] text-[var(--nim-text)]">
       {segments.map((segment, index) => (
@@ -40,6 +47,15 @@ export function CommentBody({
           onOpenResource={onOpenResource}
           onOpenMention={onOpenMention}
           onOpenSession={onOpenSession}
+          agentLabel={tCommon('floating_document_actions.agent')}
+          pendingDispatchLabel={tOrgSharing('inbox.context.pending_dispatch')}
+          unresolvedPlanLabel={tCommon('quick_open.tracker_type_plan')}
+          unresolvedTrackerLabel={tTracker('tool_widget.tool_labels.default')}
+          unknownMemberLabel={tEditor('comments.unknown_member')}
+          agentSessionLabel={tEditor('comments.agent_session')}
+          agentSessionTitle={(sessionName, ownerDisplayName) => ownerDisplayName
+            ? tEditor('comments.agent_session_owned_by', { name: sessionName, owner: ownerDisplayName })
+            : tEditor('comments.open_agent', { name: sessionName })}
         />
       ))}
     </div>
@@ -51,11 +67,25 @@ function Segment({
   onOpenResource,
   onOpenMention,
   onOpenSession,
+  agentLabel,
+  pendingDispatchLabel,
+  unresolvedPlanLabel,
+  unresolvedTrackerLabel,
+  unknownMemberLabel,
+  agentSessionLabel,
+  agentSessionTitle,
 }: {
   segment: BodySegment;
   onOpenResource?: ResourceOpenHandler;
   onOpenMention?: (userId: string) => void;
   onOpenSession?: (sessionId: string) => void;
+  agentLabel: string;
+  pendingDispatchLabel: string;
+  unresolvedPlanLabel: string;
+  unresolvedTrackerLabel: string;
+  unknownMemberLabel: string;
+  agentSessionLabel: string;
+  agentSessionTitle: (sessionName: string, ownerDisplayName?: string) => string;
 }) {
   switch (segment.type) {
     case 'text':
@@ -81,13 +111,17 @@ function Segment({
         </span>
       );
 
-    case 'mention':
+    case 'mention': {
+      // A directory miss keeps a stable English string on the segment for
+      // serialization; the marker is what picks the localized label here.
+      const displayName = segment.displayNameFallback ? unknownMemberLabel : segment.displayName;
+      const initials = segment.displayNameFallback ? initialsFor(unknownMemberLabel) : segment.initials;
       return (
         <button
           type="button"
           data-testid="comment-mention-person"
           data-user-id={segment.userId}
-          title={segment.displayName}
+          title={displayName}
           onClick={() => onOpenMention?.(segment.userId)}
           className={`comment-mention inline-flex items-center gap-1 rounded-[5px] px-1 align-baseline text-[12px] font-medium ${
             segment.isViewer
@@ -101,13 +135,15 @@ function Segment({
             data-testid="comment-mention-avatar"
             aria-hidden="true"
           >
-            {segment.initials}
+            {initials}
           </span>
-          @{segment.displayName}
+          @{displayName}
         </button>
       );
+    }
 
-    case 'agentMention':
+    case 'agentMention': {
+      const sessionName = segment.sessionNameFallback ? agentSessionLabel : segment.sessionName;
       return (
         <button
           type="button"
@@ -116,8 +152,8 @@ function Segment({
           data-pending={segment.pending ? 'true' : 'false'}
           title={
             segment.ownerDisplayName
-              ? `Agent session ${segment.sessionName}, owned by ${segment.ownerDisplayName}`
-              : `Agent session ${segment.sessionName}`
+              ? agentSessionTitle(sessionName, segment.ownerDisplayName)
+              : agentSessionTitle(sessionName)
           }
           onClick={() => onOpenSession?.(segment.sessionId)}
           className="comment-mention comment-mention-agent inline-flex items-center gap-1 rounded-[5px] border border-[color-mix(in_srgb,var(--nim-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--nim-primary)_14%,transparent)] px-1 align-baseline text-[12px] font-medium text-[var(--nim-text)] hover:bg-[color-mix(in_srgb,var(--nim-primary)_18%,transparent)]"
@@ -127,16 +163,17 @@ function Segment({
           <span
             className="comment-mention-agent-glyph flex size-[14px] shrink-0 items-center justify-center rounded-[4px] text-[var(--nim-primary)]"
             data-testid="comment-mention-agent-glyph"
-            aria-label="Agent"
+            aria-label={agentLabel}
           >
             <MaterialSymbol icon="smart_toy" size={11} />
           </span>
-          @{segment.sessionName}
+          @{sessionName}
           {segment.pending && (
-            <MaterialSymbol icon="hourglass_top" size={10} aria-label="Pending dispatch" />
+            <MaterialSymbol icon="hourglass_top" size={10} title={pendingDispatchLabel} />
           )}
         </button>
       );
+    }
 
     case 'resource':
       return (
@@ -144,6 +181,8 @@ function Segment({
           pill={segment.pill}
           label={segment.label}
           onOpenResource={onOpenResource}
+          unresolvedPlanLabel={unresolvedPlanLabel}
+          unresolvedTrackerLabel={unresolvedTrackerLabel}
         />
       );
 
@@ -166,10 +205,14 @@ function MessageResourceReference({
   pill,
   label,
   onOpenResource,
+  unresolvedPlanLabel,
+  unresolvedTrackerLabel,
 }: {
   pill: ResourcePillView;
   label?: string;
   onOpenResource?: ResourceOpenHandler;
+  unresolvedPlanLabel: string;
+  unresolvedTrackerLabel: string;
 }) {
   const trackerReferenceKey =
     pill.kind === 'tracker'
@@ -180,7 +223,7 @@ function MessageResourceReference({
     && pill.availability !== 'unavailable'
     && pill.availability !== 'notInWorkspace'
   ) {
-    const unresolvedLabel = label === 'Plan' ? 'Plan' : 'Tracker';
+    const unresolvedLabel = label === 'Plan' ? unresolvedPlanLabel : unresolvedTrackerLabel;
     return (
       <TrackerReferenceChip
         referenceKey={trackerReferenceKey}

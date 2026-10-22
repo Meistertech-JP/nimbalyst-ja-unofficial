@@ -29,6 +29,9 @@ export const REQUIRED_EXTERNALS = [
   // `instanceof Y.Doc` checks fail if an extension bundles its own yjs
   // copy, so this MUST be externalized (same constraint as React).
   'yjs',
+
+  // Shared localization hooks must use the host's react-i18next context.
+  '@nimbalyst/i18n/react',
 ] as const;
 
 /**

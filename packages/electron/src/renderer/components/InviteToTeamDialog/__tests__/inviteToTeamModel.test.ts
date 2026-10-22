@@ -57,9 +57,12 @@ describe('buildProjectGrants', () => {
 describe('the plan the admin reads before sending', () => {
   it('says plainly when an invitation shares nothing', () => {
     expect(summarizeInvitePlan({ people: 1, extraProjects: 0, folders: 0 }))
-      .toBe('1 person · nothing shared yet');
+      .toEqual([
+        { key: 'team_invite_dialog.summary.people_one', count: 1 },
+        { key: 'team_invite_dialog.summary.nothing_shared_yet' },
+      ]);
     expect(inviteActionLabel({ people: 1, extraProjects: 0, folders: 0 }))
-      .toBe('Send invitation only');
+      .toBe('team_invite_dialog.action_invite_only');
   });
 
   /**
@@ -70,12 +73,19 @@ describe('the plan the admin reads before sending', () => {
   it('does not claim nothing is shared when the team already has content', () => {
     expect(summarizeInvitePlan({
       people: 1, extraProjects: 0, folders: 0, teamHasSharedContent: true,
-    })).toBe('1 person · the team already has shared content');
+    })).toEqual([
+      { key: 'team_invite_dialog.summary.people_one', count: 1 },
+      { key: 'team_invite_dialog.summary.team_has_shared_content' },
+    ]);
   });
 
   it('counts both halves of what they get', () => {
     const plan = { people: 2, extraProjects: 1, folders: 3 };
-    expect(summarizeInvitePlan(plan)).toBe('2 people · 1 extra project · 3 folders published');
-    expect(inviteActionLabel(plan)).toBe('Send invitations and share');
+    expect(summarizeInvitePlan(plan)).toEqual([
+      { key: 'team_invite_dialog.summary.people_other', count: 2 },
+      { key: 'team_invite_dialog.summary.extra_projects_one', count: 1 },
+      { key: 'team_invite_dialog.summary.folders_published_other', count: 3 },
+    ]);
+    expect(inviteActionLabel(plan)).toBe('team_invite_dialog.action_invite_and_share');
   });
 });

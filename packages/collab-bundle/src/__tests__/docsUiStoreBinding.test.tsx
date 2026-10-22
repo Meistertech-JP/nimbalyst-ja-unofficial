@@ -1,6 +1,8 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import {
   CollabDocsUIProvider,
   CollabSidebar,
@@ -17,7 +19,7 @@ afterEach(() => {
 });
 
 describe('built Shared Docs UI store binding', () => {
-  it('renders a session snapshot written through the bundled runtime store', async () => {
+  it('binds the built UI to the host language provider while keeping its bundled store live', async () => {
     type CreateSessionArgs = Parameters<typeof createCollabDocsSession>;
     const scope: CreateSessionArgs[0] = {
       scopeKey: SCOPE_KEY,
@@ -78,12 +80,16 @@ describe('built Shared Docs UI store binding', () => {
       },
     } as unknown as CreateSessionArgs[2];
     const session = createCollabDocsSession(scope, dataSource, host);
+    const i18n = await createI18nInstance('en');
 
-    const surface = render(
-      <CollabDocsUIProvider session={session}>
-        <CollabSidebar />
-      </CollabDocsUIProvider>,
+    const renderWithLanguage = (preference: 'en' | 'ja') => (
+      <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="en">
+        <CollabDocsUIProvider session={session}>
+          <CollabSidebar />
+        </CollabDocsUIProvider>
+      </UiLanguageProvider>
     );
+    const surface = render(renderWithLanguage('en'));
 
     expect(surface.queryByText('Seeded document.md')).toBeNull();
     await act(async () => {
@@ -92,6 +98,14 @@ describe('built Shared Docs UI store binding', () => {
 
     fireEvent.click(await surface.findByText('Seeded folder'));
     surface.getByText('Seeded document.md');
-    surface.getByText('Team synced');
+    expect(surface.getByText('Team synced').textContent).toBe('Team synced');
+
+    surface.rerender(renderWithLanguage('ja'));
+    await waitFor(() => expect(surface.getByText('チームと同期済み').textContent).toBe('チームと同期済み'));
+    expect(surface.getByText('Seeded document.md').textContent).toBe('Seeded document.md');
+
+    surface.rerender(renderWithLanguage('en'));
+    await waitFor(() => expect(surface.getByText('Team synced').textContent).toBe('Team synced'));
+    expect(surface.getByText('Seeded document.md').textContent).toBe('Seeded document.md');
   });
 });

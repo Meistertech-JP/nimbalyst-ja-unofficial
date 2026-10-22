@@ -8,6 +8,7 @@
 import type { JSX, MouseEvent as ReactMouseEvent } from 'react';
 import * as React from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 
 import { trackerItemByReferenceKeyAtom } from '../TrackerPlugin/trackerDataAtoms';
 import {
@@ -199,6 +200,7 @@ export function TrackerReferencePreview({
   onGoTo,
   onOpenItem,
 }: TrackerReferencePreviewProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const record = useAtomValue(trackerItemByReferenceKeyAtom(referenceKey));
   const excerpt = React.useMemo(() => (record ? trackerReferenceExcerpt(record) : null), [record]);
   const keyFields = React.useMemo(() => (record ? trackerReferenceKeyFields(record) : []), [record]);
@@ -341,7 +343,7 @@ export function TrackerReferencePreview({
                   className="tracker-reference-preview-priority"
                   color={priorityColor}
                   icon="flag"
-                  label={`${displayLabel(resolved.priority)} priority`}
+                  label={t('reference.priority', { priority: displayLabel(resolved.priority) })}
                 />
               ) : null}
             </div>
@@ -382,9 +384,9 @@ export function TrackerReferencePreview({
                 schedule
               </span>
               {updatedLabel
-                ? `Updated ${updatedLabel}`
-                : 'Update time unavailable'}
-              {resolved.owner ? ` · ${resolved.owner}` : ''}
+                ? t('reference.updated', { display: updatedLabel })
+                : t('reference.updated_unavailable')}
+              {resolved.owner ? ` · ${t('reference.owner', { owner: resolved.owner })}` : ''}
             </div>
             {onGoTo ? <GoToItemButton onClick={onGoTo} /> : null}
           </div>
@@ -395,7 +397,7 @@ export function TrackerReferencePreview({
           <div style={{ fontWeight: 600, marginBottom: '4px' }}>
             {unresolvedDisplayLabel}
           </div>
-          <div>This tracker item couldn’t be resolved in this workspace.</div>
+          <div>{t('reference.unresolved')}</div>
           {onGoTo ? (
             <div
               style={{
@@ -416,6 +418,7 @@ export function TrackerReferencePreview({
 }
 
 function GoToItemButton({ onClick }: { onClick: (event: ReactMouseEvent) => void }): JSX.Element {
+  const { t } = useTranslation('tracker');
   return (
     <button
       type="button"
@@ -433,7 +436,7 @@ function GoToItemButton({ onClick }: { onClick: (event: ReactMouseEvent) => void
         cursor: 'pointer',
       }}
     >
-      Go to item
+      {t('reference.go_to_item')}
     </button>
   );
 }

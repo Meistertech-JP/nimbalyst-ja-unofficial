@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   DecoratorNode,
   type EditorConfig,
@@ -139,6 +140,7 @@ function ComposerPill({
   kind: ComposerPillKind;
   icon?: string;
 }) {
+  const { t } = useTranslation('feedback');
   if (kind === 'person') {
     return (
       <span
@@ -166,7 +168,7 @@ function ComposerPill({
         <span
           className="comment-mention-agent-glyph flex size-[14px] shrink-0 items-center justify-center rounded-[4px] text-[var(--nim-primary)]"
           data-testid="composer-pill-agent-glyph"
-          aria-label="Agent"
+          aria-label={t('composer.agent_label')}
         >
           <MaterialSymbol icon="smart_toy" size={11} />
         </span>

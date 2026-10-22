@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { ProviderIcon } from '@nimbalyst/runtime/ui/icons/ProviderIcons';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { getRelativeTimeString } from '../../utils/dateFormatting';
 
 /**
@@ -59,11 +60,13 @@ export function SessionAttentionRow({
   onSelect,
   rowRef,
 }: SessionAttentionRowProps) {
+  const { t } = useTranslation('agents');
+  const { t: tSessions } = useTranslation('sessions');
   const setRef = useCallback((node: HTMLDivElement | null) => {
     if (rowRef) rowRef.current = node;
   }, [rowRef]);
 
-  const resolvedTitle = title || 'Untitled Session';
+  const resolvedTitle = title || t('status.untitled_session');
   const modelLabel = displayModel(model, provider);
 
   return (
@@ -96,7 +99,9 @@ export function SessionAttentionRow({
           {statusSlot}
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-nim-faint">
-          <span className="shrink-0 whitespace-nowrap">{getRelativeTimeString(updatedAt)}</span>
+          <span className="shrink-0 whitespace-nowrap">
+            {getRelativeTimeString(updatedAt, (key, options) => tSessions(key, options))}
+          </span>
           {modelLabel && (
             <>
               <span aria-hidden>·</span>

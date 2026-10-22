@@ -13,6 +13,9 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import type { PropsWithChildren } from 'react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { Provider as JotaiProvider } from 'jotai';
 import { store } from '../../../../../store/store';
 import { setInteractiveWidgetHost } from '../../../../../store/atoms/interactiveWidgetHost';
@@ -21,6 +24,7 @@ import {
   requestUserInputDraftAtom,
 } from '../../../../../store/atoms/requestUserInputDraft';
 import { RequestUserInputWidget } from '../RequestUserInputWidget';
+import { ReorderList } from '../shared/ReorderList';
 import type { InteractiveWidgetHost } from '../InteractiveWidgetHost';
 
 const SESSION_ID = 'session-1418';
@@ -117,4 +121,29 @@ describe('RequestUserInputWidget closed states', () => {
     screen.getByTestId('request-user-input-cancelled');
     expect(screen.queryByTestId('request-user-input-skipped')).toBeNull();
   });
+});
+
+it('localizes the shared reorder controls and removed-item summary', async () => {
+  const i18n = await createI18nInstance('ja');
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+      {children}
+    </UiLanguageProvider>
+  );
+
+  render(
+    <ReorderList
+      items={[
+        { id: 'first', title: '最初', removable: true },
+        { id: 'second', title: '次', removable: true },
+      ]}
+      state={{ orderedIds: ['first', 'second'], removedIds: ['third'] }}
+      onChange={() => {}}
+    />,
+    { wrapper: Wrapper },
+  );
+
+  expect(screen.getAllByRole('button', { name: 'ドラッグして並べ替え' })).toHaveLength(2);
+  expect(screen.getAllByRole('button', { name: '項目を削除' })).toHaveLength(2);
+  expect(screen.getByText('削除済み: 1件').textContent).toBe('削除済み: 1件');
 });

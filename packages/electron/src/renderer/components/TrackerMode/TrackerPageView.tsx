@@ -9,6 +9,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { atom, useAtomValue, useSetAtom, type Atom } from 'jotai';
 import { selectAtom } from 'jotai/utils';
 import { NimbalystEditor } from '@nimbalyst/runtime/editor';
@@ -126,6 +127,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   collabScope,
   onOpenItem,
 }) => {
+  const { t } = useTranslation('tracker');
   const item = useAtomValue(trackerItemByIdAtom(itemId));
   const trackerDataLoaded = useAtomValue(trackerDataLoadedAtom);
   const model = useMemo(() => globalRegistry.get(item?.primaryType ?? ''), [item?.primaryType]);
@@ -179,16 +181,16 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   // A typed page is archived through the tracker, never moved to Pages Trash.
   const handleArchive = useCallback(() => {
     archiveTrackerItem(itemId).catch((error: unknown) => {
-      errorNotificationService.showError('Could not archive this page', error instanceof Error ? error.message : String(error));
+      errorNotificationService.showError(t('detail_extra.archive_page_failed'), error instanceof Error ? error.message : String(error));
     });
-  }, [itemId]);
+  }, [itemId, t]);
 
   const crumb = useTrackerPageCrumb(itemId, item?.primaryType ?? '', body.sharing, workspacePath, collabScope);
   const { teamScope } = crumb;
   const personal = body.sharing === 'personal';
   const collaborative = body.contentMode === 'collaborative';
   const menuSession = personal ? getPersonalCollabDocsSession(workspacePath) : teamScope ? getElectronCollabDocsSession(teamScope) : null;
-  const exportItems = useMemo(() => editorExportMenuItems(body.recoveryEditor, localTitle || 'Untitled'), [body.recoveryEditor, localTitle]);
+  const exportItems = useMemo(() => editorExportMenuItems(body.recoveryEditor, localTitle || t('collaboration_surface.untitled')), [body.recoveryEditor, localTitle, t]);
   const typedPageMenuItems = useTypedPageMenuItems(personal ? 'personal' : 'team', itemId, menuSession, exportItems);
   const headerBar = useMemo(() => ({
     onOpenAncestor: (ancestor: PageTreeAncestor) => {
@@ -229,7 +231,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
         <>
           {!body.hasSyncedOnce && (
             <div className="absolute inset-0 z-10 flex items-start justify-center bg-nim pt-6 pointer-events-none" data-testid="tracker-content-loading">
-              <span className="text-sm text-nim-muted">Loading content...</span>
+              <span className="text-sm text-nim-muted">{t('detail.loading_content')}</span>
             </div>
           )}
           <TrackerReferenceSourceProvider value={referenceSource}>
@@ -239,16 +241,16 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
       );
     }
     if ((contentMode === 'local-pglite' || contentMode === 'collaborative') && !body.contentLoaded) {
-      return <div className="tracker-page-view-gutter py-4 text-sm text-nim-faint">Loading...</div>;
+      return <div className="tracker-page-view-gutter py-4 text-sm text-nim-faint">{t('detail.loading')}</div>;
     }
     if (contentMode === 'collaborative' && body.collabLoading) {
-      return <div className="tracker-page-view-gutter py-4 text-sm text-nim-faint">Connecting...</div>;
+      return <div className="tracker-page-view-gutter py-4 text-sm text-nim-faint">{t('detail.connecting')}</div>;
     }
     if (item.system.documentPath) {
       // File-backed pages keep their body in the file; Pages mode does not edit it.
       return (
         <div className="tracker-page-view-gutter py-4 text-sm text-nim-muted">
-          This page&apos;s body lives in <span className="font-mono">{item.system.documentPath}</span>.
+          {t('detail_extra.page_body_prefix')} <span className="font-mono">{item.system.documentPath}</span>{t('detail_extra.page_body_suffix')}
         </div>
       );
     }

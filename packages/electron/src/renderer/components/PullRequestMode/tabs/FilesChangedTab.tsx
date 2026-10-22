@@ -10,6 +10,7 @@ import type { JSX } from 'react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { getMonacoTheme } from '@nimbalyst/runtime/editors';
 import { isDarkThemeAtom, themeIdAtom } from '@nimbalyst/runtime/store';
@@ -60,6 +61,7 @@ export function FilesChangedTab({
   pr,
   refreshToken,
 }: FilesChangedTabProps): JSX.Element {
+  const { t } = useTranslation('git');
   const isDark = useAtomValue(isDarkThemeAtom);
   const themeId = useAtomValue(themeIdAtom);
   const layout = useAtomValue(prModeLayoutAtom);
@@ -109,7 +111,7 @@ export function FilesChangedTab({
         );
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load files');
+        if (!cancelled) setError(err instanceof Error ? err.message : t('pull_request_files.failed_load_files'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -117,7 +119,7 @@ export function FilesChangedTab({
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, remote, pr.number, refreshToken]);
+  }, [workspaceId, remote, pr.number, refreshToken, t]);
 
   const directoryTree = useMemo(() => buildPrDirectoryTree(files), [files]);
 
@@ -189,7 +191,7 @@ export function FilesChangedTab({
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setContentError(err instanceof Error ? err.message : 'Failed to load file contents');
+          setContentError(err instanceof Error ? err.message : t('pull_request_files.failed_load_contents'));
         }
       })
       .finally(() => {
@@ -199,7 +201,7 @@ export function FilesChangedTab({
     return () => {
       cancelled = true;
     };
-  }, [layout.filesViewMode, selectedFile, loadFileDiffContents]);
+  }, [layout.filesViewMode, selectedFile, loadFileDiffContents, t]);
 
   const syncPatchViewport = useCallback(
     (offset: number) => {
@@ -303,7 +305,7 @@ export function FilesChangedTab({
             : 'text-nim-muted hover:bg-nim-tertiary hover:text-nim'
         }`}
         style={{ paddingLeft: `${depth * 14 + 10}px` }}
-        title={`${file.path} (${file.status})`}
+        title={`${file.path} (${t(`pull_request_files.status.${file.status}`)})`}
       >
         <span className="flex-1 min-w-0">
           <span className={`truncate block ${style.className}`}>{name}</span>
@@ -364,7 +366,7 @@ export function FilesChangedTab({
         <div className="px-3 py-2 border-b border-nim">
           <div className="flex items-center justify-between gap-2">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-nim-faint">
-              Files Changed
+              {t('pull_request_files.files_changed')}
             </div>
             <span className="text-[11px] text-nim-muted">{files.length}</span>
           </div>
@@ -374,14 +376,14 @@ export function FilesChangedTab({
               onClick={expandAll}
               className="text-[11px] text-nim-muted hover:text-nim transition-colors"
             >
-              Expand all
+              {t('pull_request_files.expand_all')}
             </button>
             <button
               type="button"
               onClick={collapseAll}
               className="text-[11px] text-nim-muted hover:text-nim transition-colors"
             >
-              Collapse all
+              {t('pull_request_files.collapse_all')}
             </button>
           </div>
         </div>
@@ -390,12 +392,12 @@ export function FilesChangedTab({
           {loading && files.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-6 text-nim-muted text-xs">
               <div className="spinner w-4 h-4 border-[2px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-              Loading…
+              {t('pull_request_files.loading')}
             </div>
           ) : error ? (
             <div className="text-nim-error text-xs p-3">{error}</div>
           ) : files.length === 0 ? (
-            <div className="text-nim-faint text-xs p-3">No changed files.</div>
+            <div className="text-nim-faint text-xs p-3">{t('pull_request_files.no_changed_files')}</div>
           ) : (
             <div className="py-1">{renderDirectoryNode(directoryTree)}</div>
           )}
@@ -406,12 +408,12 @@ export function FilesChangedTab({
         <div className="shrink-0 border-b border-nim px-3 py-2 flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-nim-faint">
-              Diff View
+              {t('pull_request_files.diff_view')}
             </div>
             <div className="text-xs text-nim-muted truncate" title={selectedFile?.path ?? ''}>
               {layout.filesViewMode === 'patch'
-                ? 'Scroll through all changed files'
-                : selectedFile?.path ?? 'Select a file to view its diff'}
+                ? t('pull_request_files.scroll_all_changed')
+                : selectedFile?.path ?? t('pull_request_files.select_file')}
             </div>
           </div>
           {layout.filesViewMode === 'patch' && (
@@ -426,7 +428,7 @@ export function FilesChangedTab({
                 }`}
                 data-testid="pr-patch-layout-unified"
               >
-                Unified
+                {t('pull_request_files.unified')}
               </button>
               <button
                 type="button"
@@ -438,7 +440,7 @@ export function FilesChangedTab({
                 }`}
                 data-testid="pr-patch-layout-split"
               >
-                Split
+                {t('pull_request_files.split')}
               </button>
             </div>
           )}
@@ -453,7 +455,7 @@ export function FilesChangedTab({
               }`}
               data-testid="pr-files-mode-full"
             >
-              Full files
+              {t('pull_request_files.full_files')}
             </button>
             <button
               type="button"
@@ -465,7 +467,7 @@ export function FilesChangedTab({
               }`}
               data-testid="pr-files-mode-patch"
             >
-              Collapsed diff
+              {t('pull_request_files.collapsed_diff')}
             </button>
           </div>
         </div>
@@ -474,7 +476,7 @@ export function FilesChangedTab({
           <div className="flex-1 min-h-0 overflow-hidden bg-nim-secondary">
             {files.length === 0 ? (
               <div className="flex items-center justify-center h-full text-nim-faint text-sm">
-                No changed files.
+                {t('pull_request_files.no_changed_files')}
               </div>
             ) : (
               <VList
@@ -505,12 +507,12 @@ export function FilesChangedTab({
           </div>
         ) : !selectedFile ? (
           <div className="flex items-center justify-center h-full text-nim-faint text-sm">
-            Select a file to view its diff.
+            {t('pull_request_files.select_file_diff')}
           </div>
         ) : selectedFile.patch === null ? (
           <div className="flex flex-col items-center justify-center h-full text-nim-faint text-sm gap-2">
             <MaterialSymbol icon="draft" size={32} className="opacity-50" />
-            Binary file — no text diff available.
+            {t('pull_request_files.binary_no_diff')}
           </div>
         ) : contentError ? (
           <div className="flex items-center justify-center h-full text-nim-error text-sm">
@@ -519,7 +521,7 @@ export function FilesChangedTab({
         ) : contentLoading ? (
           <div className="flex items-center justify-center gap-2 h-full text-nim-muted text-sm">
             <div className="spinner w-5 h-5 border-[3px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-            Loading diff…
+            {t('pull_request_files.loading_diff')}
           </div>
         ) : (
           <MonacoDiffViewer
@@ -557,6 +559,7 @@ function PatchStreamSection({
   showCollapsed: boolean;
   isFirst: boolean;
 }): JSX.Element {
+  const { t } = useTranslation('git');
   const style = STATUS_STYLE[file.status] ?? STATUS_STYLE.modified;
   const collapseLargeDiff = showCollapsed && !expanded;
 
@@ -582,11 +585,11 @@ function PatchStreamSection({
           </div>
           {file.previousPath && file.previousPath !== file.path && (
             <div className="text-[11px] text-nim-faint truncate" title={file.previousPath}>
-              renamed from {file.previousPath}
+              {t('pull_request_files.renamed_from', { path: file.previousPath })}
             </div>
           )}
         </div>
-        <span className={`text-xs font-mono font-semibold ${style.className}`}>{style.label}</span>
+        <span className={`text-xs font-mono font-semibold ${style.className}`} title={t(`pull_request_files.status.${file.status}`)}>{style.label}</span>
         {(file.additions > 0 || file.deletions > 0) && (
           <span className="text-xs font-mono text-nim-muted shrink-0">
             {file.additions > 0 && <span className="text-nim-success">+{file.additions}</span>}
@@ -599,7 +602,7 @@ function PatchStreamSection({
       {collapsed ? null : file.patch === null ? (
         <div className="px-4 py-6 text-sm text-nim-faint flex items-center gap-2">
           <MaterialSymbol icon="draft" size={18} />
-          Binary file — no text diff available.
+          {t('pull_request_files.binary_no_diff')}
         </div>
       ) : collapseLargeDiff ? (
         <div className="px-6 py-10 flex flex-col items-center justify-center gap-3 text-center">
@@ -608,17 +611,17 @@ function PatchStreamSection({
             onClick={onExpand}
             className="text-2xl font-semibold text-nim-primary hover:text-nim-primary-hover transition-colors"
           >
-            Load Diff
+            {t('pull_request_files.load_diff')}
           </button>
           <div className="text-sm text-nim-muted max-w-md">
-            Large diffs are not rendered by default.
+            {t('pull_request_files.large_diff_notice')}
           </div>
         </div>
       ) : file.patch ? (
         <PrFileDiff file={file} viewType={viewType} />
       ) : (
         <div className="px-4 py-6 text-sm text-nim-faint">
-          No patch preview available for this file.
+          {t('pull_request_files.no_patch_preview')}
         </div>
       )}
     </div>

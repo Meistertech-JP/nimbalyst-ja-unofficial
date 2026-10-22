@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import type { AnimDocument, ResolvedPartState } from "../core/types";
 import {
   applySelection,
@@ -35,6 +36,7 @@ export interface StageFrameProps {
   tokens: ThemeTokens;
   /** Markup for the document's `htmlFile` refs. */
   assets?: HtmlAssets;
+  sceneAriaLabel: string;
   onSelectPart: (partId: string | null) => void;
 }
 
@@ -47,8 +49,10 @@ export function StageFrame({
   selectedPartId,
   tokens,
   assets,
+  sceneAriaLabel,
   onSelectPart,
 }: StageFrameProps) {
+  const { t } = useTranslation("extensions");
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const onSelectRef = useRef(onSelectPart);
   onSelectRef.current = onSelectPart;
@@ -56,7 +60,7 @@ export function StageFrame({
   const writeScene = useCallback(() => {
     const frame = frameRef.current;
     if (!frame) return;
-    writeStageDocument(frame, doc, tokens, assets);
+    writeStageDocument(frame, doc, tokens, assets, sceneAriaLabel);
 
     const frameDoc = frame.contentDocument;
     if (!frameDoc) return;
@@ -73,7 +77,7 @@ export function StageFrame({
     // structural change, and reads whatever the current values are at that
     // moment. The effects below own the per-change updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc, tokens, assets, playing]);
+  }, [doc, tokens, assets, playing, sceneAriaLabel]);
 
   useEffect(() => {
     writeScene();
@@ -97,7 +101,7 @@ export function StageFrame({
     <iframe
       ref={frameRef}
       className="anim-stage-frame"
-      title="Animation stage"
+      title={t("animation.stage_title")}
       sandbox="allow-same-origin"
       style={{ aspectRatio: `${doc.stage.width} / ${doc.stage.height}` }}
     />

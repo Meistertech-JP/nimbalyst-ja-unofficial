@@ -35,6 +35,7 @@ import {
 } from '@nimbalyst/tracker-schema';
 import { LexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getNodeByKey } from 'lexical';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { $isTrackerReferenceNode } from './TrackerReferenceNodeCore';
 import {
@@ -200,6 +201,7 @@ export function TrackerReferenceChip({
   unresolvedLabel,
   onNavigate,
 }: TrackerReferenceChipProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const resolved = useResolvedTrackerReference(referenceKey);
   const source = useTrackerReferenceSource();
   const editor = React.useContext(LexicalComposerContext)?.[0] ?? null;
@@ -287,7 +289,7 @@ export function TrackerReferenceChip({
     ? `${label}${resolved.status ? ` · ${resolved.status}` : ''}${
         resolved.title ? ` — ${resolved.title}` : ''
       }`
-    : `${label} (not resolved locally)`;
+    : `${label} — ${t('reference.unresolved')}`;
   const relationLabel = relation
     ? trackerReferenceRelationLabel(globalRegistry, relation)
     : undefined;
@@ -351,7 +353,7 @@ export function TrackerReferenceChip({
           <span
             className="material-symbols-outlined tracker-reference-chip-type-icon"
             role="img"
-            aria-label={`${displayLabel(resolved?.type ?? '')} item`}
+            aria-label={t('reference.type_item', { type: displayLabel(resolved?.type ?? '') })}
             style={{
               color: typeColor,
               flexShrink: 0,
@@ -425,7 +427,7 @@ export function TrackerReferenceChip({
         {ownerInitials ? (
           <span
             className="tracker-reference-chip-owner"
-            aria-label={`Owner: ${resolved?.owner}`}
+            aria-label={t('reference.owner', { owner: resolved?.owner })}
             title={resolved?.owner}
             style={{
               display: 'inline-flex',

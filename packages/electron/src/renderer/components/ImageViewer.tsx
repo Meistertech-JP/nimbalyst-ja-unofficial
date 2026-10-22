@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { ZoomableImageSurface } from '@nimbalyst/runtime/ui/AgentTranscript/components/ZoomableImageSurface';
 import { nimAssetUrl } from '../utils/assetUrl';
 import { DiskChangeSubscription } from '../services/document-model/DiskChangeSubscription';
@@ -16,6 +17,7 @@ interface ImageViewerProps {
 }
 
 export const ImageViewer: React.FC<ImageViewerProps> = ({ filePath, fileName }) => {
+  const { t } = useTranslation('common');
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -37,14 +39,12 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ filePath, fileName }) 
       // text through DocumentModel just to invalidate their preview.
       async () => freshUrl(),
       ({ content }) => showImage(content as string),
-      () => setError('Image file no longer exists'),
+      () => setError(t('image_viewer.file_missing')),
     );
     return () => subscription.dispose();
-  }, [filePath]);
+  }, [filePath, t]);
 
-  const handleImageError = () => {
-    setError('Failed to load image');
-  };
+  const handleImageError = () => setError(t('image_viewer.load_failed'));
 
   if (error) {
     return (
@@ -61,7 +61,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ filePath, fileName }) 
   if (!imageSrc) {
     return (
       <div className="flex items-center justify-center h-full text-nim-muted">
-        Loading...
+        {t('image_viewer.loading')}
       </div>
     );
   }

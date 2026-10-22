@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown';
 import type { PluggableList } from 'unified';
 import remarkGfm from 'remark-gfm';
@@ -193,6 +194,7 @@ const COPY_LABEL_RESET_DELAY_MS = 1500;
 // Sized to fit inside a single-line block, which is only 27px tall - a larger
 // button would hang out of its bottom edge.
 const CodeBlockCopyButton: React.FC<{ codeString: string }> = ({ codeString }) => {
+  const { t } = useTranslation('aichat');
   const [copied, setCopied] = useState(false);
   const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
@@ -229,8 +231,8 @@ const CodeBlockCopyButton: React.FC<{ codeString: string }> = ({ codeString }) =
       className={`code-block-copy-button p-0.5 rounded-md bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)]`}
       data-testid="code-block-copy-button"
       onClick={handleCopy}
-      title="Copy code"
-      aria-label={copied ? 'Copied' : 'Copy code'}
+      title={t(copied ? 'code.copied' : 'code.copy')}
+      aria-label={t(copied ? 'code.copied' : 'code.copy')}
     >
       <MaterialSymbol
         icon={copied ? 'check' : 'content_copy'}
@@ -274,6 +276,7 @@ const OverflowWrapper: React.FC<{
   /** Raw code text for the hover-visible copy button. */
   codeString: string;
 }> = ({ children, persistKey, codeString }) => {
+  const { t } = useTranslation('aichat');
   // Freeze the key once per mount so the same wrap-preference slot is used
   // for the lifetime of this instance. Re-mounts re-evaluate useMemo and
   // pick up the persisted preference (if any) for the resolved key.
@@ -342,7 +345,7 @@ const OverflowWrapper: React.FC<{
               onChange={(e) => setWordWrap(e.target.checked)}
               className="w-3 h-3 m-0 cursor-pointer accent-[var(--nim-primary)]"
             />
-            <span className="leading-none">Wrap</span>
+            <span className="leading-none">{t('conversation_controls.wrap')}</span>
           </label>
         )}
         <CodeBlockCopyButton codeString={codeString} />

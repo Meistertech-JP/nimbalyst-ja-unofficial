@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useAtomValue } from 'jotai';
 
@@ -31,8 +32,10 @@ export const OrgSidebarHeader = React.memo(function OrgSidebarHeader({
   orgName?: string;
   chrome: OrgModeChrome;
 }) {
+  const { t } = useTranslation('collabSidebar', { keyPrefix: 'org_header' });
+  const { t: tCommon } = useTranslation('common');
   const menu = useFloatingMenu({ placement: 'bottom-end' });
-  const name = orgName?.trim() || 'Organization';
+  const name = orgName?.trim() || tCommon('organization');
 
   return (
     <header
@@ -66,7 +69,7 @@ export const OrgSidebarHeader = React.memo(function OrgSidebarHeader({
             {...menu.getReferenceProps()}
             className="org-sidebar-org-menu-trigger org-window-no-drag flex size-6 shrink-0 items-center justify-center rounded text-nim-faint hover:bg-nim-hover hover:text-nim"
             data-testid="org-sidebar-org-menu"
-            aria-label="Organization actions"
+            aria-label={t('actions')}
             aria-haspopup="menu"
             aria-expanded={menu.isOpen}
             onClick={() => menu.setIsOpen(!menu.isOpen)}
@@ -95,7 +98,7 @@ export const OrgSidebarHeader = React.memo(function OrgSidebarHeader({
                   }}
                 >
                   <MaterialSymbol icon="open_in_new" size={16} />
-                  Open another organization
+                  {t('open_another')}
                 </button>
               </div>
             </FloatingPortal>
@@ -106,14 +109,18 @@ export const OrgSidebarHeader = React.memo(function OrgSidebarHeader({
   );
 });
 
-const CONNECTION_LABELS: Record<
-  ReturnType<typeof orgConnectionStatus>,
-  { label: string; dotClass: string }
-> = {
-  ready: { label: 'Connected', dotClass: 'bg-nim-success' },
-  connecting: { label: 'Connecting…', dotClass: 'bg-nim-warning' },
-  offline: { label: 'Offline', dotClass: 'bg-nim-text-disabled' },
-  messagingUnavailable: { label: 'Messaging unavailable', dotClass: 'bg-nim-error' },
+const CONNECTION_LABEL_KEYS: Record<ReturnType<typeof orgConnectionStatus>, string> = {
+  ready: 'connection.connected',
+  connecting: 'connection.connecting',
+  offline: 'connection.offline',
+  messagingUnavailable: 'connection.messaging_unavailable',
+};
+
+const CONNECTION_DOT_CLASSES: Record<ReturnType<typeof orgConnectionStatus>, string> = {
+  ready: 'bg-nim-success',
+  connecting: 'bg-nim-warning',
+  offline: 'bg-nim-text-disabled',
+  messagingUnavailable: 'bg-nim-error',
 };
 
 /**
@@ -128,9 +135,11 @@ function OrgConnectionLine({
   orgId: string;
   chrome: OrgModeChrome;
 }) {
+  const { t } = useTranslation('collabSidebar', { keyPrefix: 'org_header' });
   const snapshot = useAtomValue(teamInboxSnapshotAtom);
   const status = orgConnectionStatus(snapshot, orgId);
-  const { label, dotClass } = CONNECTION_LABELS[status];
+  const label = t(CONNECTION_LABEL_KEYS[status]);
+  const dotClass = CONNECTION_DOT_CLASSES[status];
   return (
     <p
       className="org-sidebar-org-connection m-0 mt-0.5 flex items-center gap-1.5 text-[11px] text-nim-faint"
@@ -139,7 +148,7 @@ function OrgConnectionLine({
     >
       <span className={`org-sidebar-connection-dot size-[7px] shrink-0 rounded-full ${dotClass}`} aria-hidden="true" />
       <span className="min-w-0 truncate">
-        {chrome === 'mode' ? `${label} · this project` : label}
+        {chrome === 'mode' ? t('connection.this_project', { status: label }) : label}
       </span>
     </p>
   );

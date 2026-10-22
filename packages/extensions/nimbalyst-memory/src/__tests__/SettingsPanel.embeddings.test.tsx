@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { SettingsPanelProps } from '@nimbalyst/runtime';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NimbalystMemorySettings } from '../components/SettingsPanel';
 
 const LOCAL_STATUS = {
@@ -46,8 +46,34 @@ function renderSettings(callBackendTool: SettingsPanelProps['callBackendTool']) 
 }
 
 describe('Memory embedding settings', () => {
+  afterEach(() => {
+    cleanup();
+    document.documentElement.lang = 'en';
+  });
+
   beforeEach(() => {
+    document.documentElement.lang = 'en';
     delete (window as unknown as { electronAPI?: unknown }).electronAPI;
+  });
+
+  it('localizes the panel and updates when the host language changes', async () => {
+    const callBackendTool = vi.fn(async (name: string) => {
+      if (name === 'memory.status') {
+        return { ready: true, chunks: 0, sourceFiles: 0, retrieval: { mode: 'keyword-only' } };
+      }
+      if (name === 'memory.local_embeddings_status') return LOCAL_STATUS;
+      if (name === 'memory.list_facts') return { facts: [] };
+      return {};
+    });
+    document.documentElement.lang = 'ja';
+    renderSettings(callBackendTool);
+
+    expect(await screen.findByRole('heading', { name: 'プロジェクトナレッジ' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'メモリー検索' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '意味による検索' })).toBeTruthy();
+
+    document.documentElement.lang = 'en';
+    expect(await screen.findByRole('heading', { name: 'Project knowledge' })).toBeTruthy();
   });
 
   it('shows the active provider and applies a deliberate local-model choice', async () => {

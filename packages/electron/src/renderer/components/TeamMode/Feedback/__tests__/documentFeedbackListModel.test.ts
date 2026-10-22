@@ -23,7 +23,7 @@ const entry: DocumentFeedbackIndexEntry = {
   isRecipient: true,
   needsMyResponse: true,
 };
-const select = (question: DocumentFeedbackIndexEntry) =>
+const select = (question: DocumentFeedbackIndexEntry, locale?: string) =>
   selectUnifiedFeedbackRows({
     requests: [],
     questions: [question],
@@ -32,8 +32,14 @@ const select = (question: DocumentFeedbackIndexEntry) =>
     filter: "all",
     query: "",
     now: 2,
+    locale,
+    justNowLabel: locale === 'ja' ? 'たった今' : 'just now',
   });
 describe("document feedback lifecycle", () => {
+  it("formats the shared relative timestamp in the requested locale", () => {
+    expect(select(entry, "ja").rows[0].timeLabel).toBe("たった今");
+  });
+
   it("keeps an unanswered recipient pending after quorum and stops after their answer or settlement", () => {
     expect(select(entry).counts).toMatchObject({
       answered: 1,

@@ -9,6 +9,7 @@ import {
   useFloatingNodeId,
   type ReferenceElement,
 } from '@floating-ui/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { windowControlsClearance } from '../../../ui/floating/windowControlsClearance';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import type { SelectOption } from './CustomSelect';
@@ -29,6 +30,7 @@ export function CustomSelectPopover({
   required,
   onSelect,
 }: CustomSelectPopoverProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const nodeId = useFloatingNodeId();
   const { refs, floatingStyles } = useFloating({
     nodeId,
@@ -67,7 +69,7 @@ export function CustomSelectPopover({
             className="custom-select-option flex items-center gap-1.5 w-full py-2 px-2.5 border-none cursor-pointer text-[13px] text-[var(--nim-text)] text-left transition-colors duration-100 hover:bg-[var(--nim-bg-hover)]"
             onClick={() => onSelect('')}
           >
-            <span className="custom-select-option-label flex-1">None</span>
+            <span className="custom-select-option-label flex-1">{t('inline.none')}</span>
           </button>
         )}
         {options.map((option) => (

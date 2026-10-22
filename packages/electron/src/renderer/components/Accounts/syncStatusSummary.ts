@@ -24,6 +24,18 @@ export interface SyncSummary {
   tone: SyncTone;
   /** Right-hand text on the row: "Synced 5m ago", "Off for this project", … */
   detail: string;
+  /** Structured copy for rendering the fixed status text in the active UI language. */
+  localizedDetail?:
+    | { kind: 'disabled-project' }
+    | { kind: 'checking' }
+    | { kind: 'syncing' }
+    | { kind: 'connected' }
+    | { kind: 'disconnected' }
+    | { kind: 'synced-just-now' }
+    | { kind: 'synced-minutes-ago'; count: number }
+    | { kind: 'synced-hours-ago'; count: number }
+    | { kind: 'synced-days-ago'; count: number }
+    | { kind: 'update-required'; detail: string | null };
   /**
    * True when the user should notice without opening the popover. Drives the
    * avatar warning, which is also what an expired sign-in uses — one
@@ -53,7 +65,7 @@ export function summarizeSyncStatus(
 
   // A project the user deliberately opted out of is not a problem to flag.
   if (!status.projectEnabled) {
-    return { tone: 'idle', detail: 'Off for this project', needsAttention: false };
+    return { tone: 'idle', detail: 'Off for this project', localizedDetail: { kind: 'disabled-project' }, needsAttention: false };
   }
 
   if (status.error) {
@@ -62,22 +74,38 @@ export function summarizeSyncStatus(
 
   const gate = status.personalSyncWriteGate;
   if (gate?.state === 'blocked') {
-    return { tone: 'error', detail: describePersonalSyncWriteGate(gate) ?? 'Session sync is paused.', needsAttention: true };
+    return {
+      tone: 'error',
+      detail: describePersonalSyncWriteGate(gate) ?? 'Session sync is paused.',
+      localizedDetail: gate.reason === 'update-required'
+        ? { kind: 'update-required', detail: gate.detail }
+        : undefined,
+      needsAttention: true,
+    };
   }
   if (status.connected && gate?.state === 'unverified') {
-    return { tone: 'idle', detail: 'Checking session sync…', needsAttention: false };
+    return { tone: 'idle', detail: 'Checking session sync…', localizedDetail: { kind: 'checking' }, needsAttention: false };
   }
 
   if (status.syncing) {
-    return { tone: 'ok', detail: 'Syncing…', needsAttention: false };
+    return { tone: 'ok', detail: 'Syncing…', localizedDetail: { kind: 'syncing' }, needsAttention: false };
   }
 
   if (status.connected) {
     const age = formatLastSync(status.lastSyncedAt, now);
-    return { tone: 'ok', detail: age ? `Synced ${age}` : 'Connected', needsAttention: false };
+    const localizedDetail = !age
+      ? { kind: 'connected' as const }
+      : age === 'just now'
+        ? { kind: 'synced-just-now' as const }
+        : age.endsWith('m ago')
+          ? { kind: 'synced-minutes-ago' as const, count: Number.parseInt(age, 10) }
+          : age.endsWith('h ago')
+            ? { kind: 'synced-hours-ago' as const, count: Number.parseInt(age, 10) }
+            : { kind: 'synced-days-ago' as const, count: Number.parseInt(age, 10) };
+    return { tone: 'ok', detail: age ? `Synced ${age}` : 'Connected', localizedDetail, needsAttention: false };
   }
 
   // Enabled for this project but not connected — the case the old cloud icon
   // existed to make visible, so it has to keep reaching the user somehow.
-  return { tone: 'warning', detail: 'Disconnected', needsAttention: true };
+  return { tone: 'warning', detail: 'Disconnected', localizedDetail: { kind: 'disconnected' }, needsAttention: true };
 }

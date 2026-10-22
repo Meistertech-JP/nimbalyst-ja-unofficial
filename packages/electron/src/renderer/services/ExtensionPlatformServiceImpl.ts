@@ -19,6 +19,7 @@ import * as ReactDOM from 'react-dom';
 import * as ReactDOMClient from 'react-dom/client';
 import * as jsxRuntime from 'react/jsx-runtime';
 import * as jsxDevRuntime from 'react/jsx-dev-runtime';
+import * as i18nReact from '@nimbalyst/i18n/react';
 import * as ReactDataGrid from '@revolist/react-datagrid';
 import * as RevoGridCore from '@revolist/revogrid';
 import { createJsxDevRuntimeBridge } from './jsxDevRuntimeBridge';
@@ -193,6 +194,10 @@ ${exportNames.map((name) => `export const ${name} = __mod?.${name};`).join('\n')
     imports['@nimbalyst/runtime'] = createModuleUrl(
       '@nimbalyst/runtime',
       deps['@nimbalyst/runtime']
+    );
+    imports['@nimbalyst/i18n/react'] = createModuleUrl(
+      '@nimbalyst/i18n/react',
+      deps['@nimbalyst/i18n/react']
     );
 
     // Register the import map with es-module-shims
@@ -469,6 +474,7 @@ CHECK:
       '@nimbalyst/runtime/ui/icons/MaterialSymbol': { MaterialSymbol },
       '@nimbalyst/runtime/editor/commenting/ui': CollaborativeCommentUI,
       // Core services for extensions
+      '@nimbalyst/i18n/react': i18nReact,
       '@nimbalyst/screenshot-service': {
         screenshotService,
       },

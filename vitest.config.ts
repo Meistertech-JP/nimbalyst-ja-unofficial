@@ -26,6 +26,18 @@ const electronLogStub = path.resolve(__dirname, './test-utils/electronLogStub.ts
 
 const alias = [
   {
+    find: /^@nimbalyst\/i18n\/core$/,
+    replacement: path.resolve(__dirname, './packages/i18n/src/core.ts'),
+  },
+  {
+    find: /^@nimbalyst\/i18n\/react$/,
+    replacement: path.resolve(__dirname, './packages/i18n/src/react.tsx'),
+  },
+  {
+    find: /^@nimbalyst\/i18n\/resources$/,
+    replacement: path.resolve(__dirname, './packages/i18n/src/resources/index.ts'),
+  },
+  {
     find: '@nimbalyst/tracker-engine',
     replacement: path.resolve(__dirname, './packages/tracker-engine/src'),
   },

@@ -27,10 +27,12 @@ import {
 } from '../commentFixtures';
 import {
   messageUrn,
+  mentionUrn,
   parsePastedResourceLink,
   parseResourceUrn,
   resourceRefToUrn,
 } from '../resourceUrn';
+import { segmentsToPlainText } from '../commentBodyParser';
 import {
   createResourcePreviewResolver,
   type PreviewableSharedDocument,
@@ -620,5 +622,104 @@ describe('attachments in the comment view', () => {
 
   it('shows nothing for a deleted message, attachments included', () => {
     expect(viewOf({ deletedAt: NOW }).segments).toEqual([]);
+  });
+});
+
+describe('directory-miss fallback markers', () => {
+  const GHOST_USER_ID = 'user-ghost';
+  const GHOST_SESSION_ID = 'session-ghost';
+  const ghostBody = { version: 1 as const, format: 'nimbalystMarkdown' as const, text: 'hello' };
+
+  it('marks a missing member actor and leaves real names unmarked', () => {
+    const fixtures = createCommentFixtures({ now: NOW });
+    const ghost: Comment = {
+      ...fixtures.comments[0],
+      actor: { kind: 'user', userId: GHOST_USER_ID, onBehalfOfUserId: GHOST_USER_ID },
+      body: ghostBody,
+    };
+    const view = buildCommentView(ghost, {
+      viewerUserId: fixtures.viewerUserId,
+      directory: fixtures.directory,
+      previews: {},
+      reactionsSupported: true,
+      now: NOW,
+    });
+    expect(view.actor.displayName).toBe('Unknown member');
+    expect(view.actor.displayNameFallback).toBe('unknown_member');
+    expect(view.actor.initials).toBe('UM');
+
+    const real = buildCommentView(fixtures.comments[0], {
+      viewerUserId: fixtures.viewerUserId,
+      directory: fixtures.directory,
+      previews: {},
+      reactionsSupported: true,
+      now: NOW,
+    });
+    expect(real.actor.displayName).not.toBe('Unknown member');
+    expect(real.actor.displayNameFallback).toBeUndefined();
+    expect(real.actor.ownerDisplayNameFallback).toBeUndefined();
+  });
+
+  it('marks a missing agent session and a missing owner', () => {
+    const fixtures = createCommentFixtures({ now: NOW });
+    const ghost: Comment = {
+      ...fixtures.comments[0],
+      actor: { kind: 'agent', sessionId: GHOST_SESSION_ID, onBehalfOfUserId: 'user-ghost-owner' },
+      body: ghostBody,
+    };
+    const view = buildCommentView(ghost, {
+      viewerUserId: fixtures.viewerUserId,
+      directory: fixtures.directory,
+      previews: {},
+      reactionsSupported: true,
+      now: NOW,
+    });
+    expect(view.actor.displayName).toBe('Agent session');
+    expect(view.actor.sessionName).toBe('Agent session');
+    expect(view.actor.displayNameFallback).toBe('agent_session');
+    expect(view.actor.ownerDisplayName).toBe('a teammate');
+    expect(view.actor.ownerDisplayNameFallback).toBe('teammate');
+  });
+
+  it('keeps mention identifiers and marks only the missing display name', () => {
+    const fixtures = createCommentFixtures({ now: NOW });
+    const ghost: Comment = {
+      ...fixtures.comments[0],
+      body: { ...ghostBody, text: `Ping nimbalyst://user/${GHOST_USER_ID} here.` },
+      deliveryHints: { mentionedUserIds: [GHOST_USER_ID], mentionedAgentSessionIds: [], assignedUserIds: [] },
+    };
+    const view = buildCommentView(ghost, {
+      viewerUserId: fixtures.viewerUserId,
+      directory: fixtures.directory,
+      previews: {},
+      reactionsSupported: true,
+      now: NOW,
+    });
+    const mention = view.segments.find(
+      (segment): segment is Extract<typeof segment, { type: 'mention' }> => segment.type === 'mention',
+    );
+    expect(mention?.userId).toBe(GHOST_USER_ID);
+    expect(mention?.displayName).toBe('Unknown member');
+    expect(mention?.displayNameFallback).toBe('unknown_member');
+
+    // A labeled legacy token keeps its author-written label: that is user
+    // content, never a fixed fallback, so it wins over the marker.
+    const labeled: Comment = {
+      ...ghost,
+      body: { ...ghostBody, text: `Ping [@Ghost](${mentionUrn(GHOST_USER_ID)}) here.` },
+    };
+    const labeledView = buildCommentView(labeled, {
+      viewerUserId: fixtures.viewerUserId,
+      directory: fixtures.directory,
+      previews: {},
+      reactionsSupported: true,
+      now: NOW,
+    });
+    const labeledMention = labeledView.segments.find(
+      (segment): segment is Extract<typeof segment, { type: 'mention' }> => segment.type === 'mention',
+    );
+    expect(labeledMention?.displayName).toBe('@Ghost');
+    expect(labeledMention?.displayNameFallback).toBeUndefined();
+    expect(segmentsToPlainText(view.segments)).not.toContain('nimbalyst://');
   });
 });

@@ -46,6 +46,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import { useAtomValue } from "jotai";
 import { basename } from "pathe";
 
@@ -100,6 +101,7 @@ const CanvasFileCard: React.FC<CanvasCardRenderProps> = ({
   label,
   detail,
 }) => {
+  const { t } = useTranslation("common");
   const path = reference.kind === "file" ? reference.path : "";
   const absolutePath = useMemo(() => workspaceAbsolutePath(path), [path]);
   const registration = useMemo(
@@ -265,7 +267,7 @@ const CanvasFileCard: React.FC<CanvasCardRenderProps> = ({
       <CardNotice
         title={label || path}
         detail={path}
-        note="No workspace is open."
+        note={t("embed.canvas.no_workspace")}
       />
     );
   }
@@ -274,7 +276,7 @@ const CanvasFileCard: React.FC<CanvasCardRenderProps> = ({
       <CardNotice
         title={label || basename(absolutePath)}
         detail={path}
-        note={`No installed extension renders ${basename(absolutePath)}.`}
+        note={t("embed.canvas.no_extension", { file: basename(absolutePath) })}
       />
     );
   }
@@ -304,6 +306,7 @@ const CanvasDocCard: React.FC<CanvasCardRenderProps> = ({
   label,
   detail,
 }) => {
+  const { t } = useTranslation("common");
   const uri = reference.kind === "doc" ? reference.uri : "";
   const workspacePath = useAtomValue(activeWorkspacePathAtom);
   const activeOrgId = useAtomValue(activeTeamOrgIdAtom);
@@ -375,6 +378,28 @@ const CanvasDocCard: React.FC<CanvasCardRenderProps> = ({
     label,
   ]);
 
+  const getResolutionError = (error: string) => {
+    switch (error) {
+      case "This card does not name a shared document.":
+        return t("embed.canvas.shared_document_missing");
+      case "No workspace is open.":
+        return t("embed.canvas.no_workspace");
+      case "This card belongs to a different team.":
+        return t("embed.different_team");
+      case "The collaborative editor for this document is unavailable.":
+        return t("embed.collaborative_editor_unavailable");
+      case "Only collaborative custom-editor documents can be embedded.":
+        return t("embed.custom_editor_required");
+      case "The installed editor does not support collaborative embeds.":
+        return t("embed.collaborative_unsupported");
+      default:
+        return t("embed.unknown_error");
+    }
+  };
+  const resolutionError = resolution.error
+    ? getResolutionError(resolution.error)
+    : undefined;
+
   // A pinned card shows one stored revision, not the document. It holds no
   // socket -- one HTTP GET and then a detached Y.Doc -- so it takes no room
   // lease: charging it a slot would evict a live card to hold a static one.
@@ -390,7 +415,7 @@ const CanvasDocCard: React.FC<CanvasCardRenderProps> = ({
 
   if (resolution.ready === undefined) {
     return (
-      <CardNotice title={label || uri} detail={uri} note={resolution.error} />
+      <CardNotice title={label || uri} detail={uri} note={resolutionError ?? ""} />
     );
   }
   if (pinnedRevisionId !== null && parsed) {
@@ -408,7 +433,7 @@ const CanvasDocCard: React.FC<CanvasCardRenderProps> = ({
         <CardNotice
           title={label || uri}
           detail={uri}
-          note="Pinned revisions are not available for markdown cards yet."
+          note={t("embed.canvas.pinned_markdown_unavailable")}
         />
       );
     }
@@ -436,7 +461,7 @@ const CanvasDocCard: React.FC<CanvasCardRenderProps> = ({
         <CardNotice
           title={label || uri}
           detail={uri}
-          note="Waiting for an available shared-card connection."
+          note={t("embed.canvas.connection_waiting")}
         />
       </div>
     );

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { VList, type VListHandle, type CacheSnapshot } from 'virtua';
 import type { TranscriptViewMessage } from '../../../ai/server/types';
 import type { ToolCallDiffLoadResult } from '../../../ai/server/transcript';
@@ -227,6 +228,7 @@ const PromptAdditionsInline: React.FC<{
   attachments?: Array<{ type: string; filename: string; mimeType?: string; filepath?: string }>;
   timestamp: number;
 }> = ({ systemPromptAddition, userMessageAddition, attachments, timestamp }) => {
+  const { t } = useTranslation('aichat');
   const [isSystemExpanded, setIsSystemExpanded] = useState(false);
   const [isUserExpanded, setIsUserExpanded] = useState(false);
   const [isAttachmentsExpanded, setIsAttachmentsExpanded] = useState(false);
@@ -295,7 +297,7 @@ const PromptAdditionsInline: React.FC<{
         >
           Dev
         </span>
-        <span className="text-[var(--nim-text-muted)]">Prompt Additions</span>
+                    <span className="text-[var(--nim-text-muted)]">{t('rich_transcript.prompt_additions')}</span>
         <span className="ml-auto text-[11px] text-[var(--nim-text-faint)]">
           {formatTimestamp(timestamp)}
         </span>
@@ -335,10 +337,10 @@ const PromptAdditionsInline: React.FC<{
 
         {/* System Prompt Section */}
         {hasSystemPrompt && renderExpandableSection(
-          'System Prompt Addition',
+          t('rich_transcript.system_prompt_addition'),
           isSystemExpanded,
           setIsSystemExpanded,
-          `${systemPromptAddition!.length} chars`,
+          t('tracker_tool.chars', { count: systemPromptAddition!.length }),
           <pre
             className="m-0 p-2 bg-[var(--nim-bg)] rounded border border-[var(--nim-border)] text-[11px] leading-relaxed text-[var(--nim-text-muted)] overflow-auto"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '150px' }}
@@ -350,10 +352,10 @@ const PromptAdditionsInline: React.FC<{
 
         {/* User Message Addition Section */}
         {hasUserMessage && renderExpandableSection(
-          'User Message Addition',
+          t('rich_transcript.user_message_addition'),
           isUserExpanded,
           setIsUserExpanded,
-          `${userMessageAddition!.length} chars`,
+          t('tracker_tool.chars', { count: userMessageAddition!.length }),
           <pre
             className="m-0 p-2 bg-[var(--nim-bg)] rounded border border-[var(--nim-border)] text-[11px] leading-relaxed text-[var(--nim-text-muted)] overflow-auto"
             style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '150px' }}
@@ -523,6 +525,7 @@ export const RichTranscriptView = React.forwardRef<
   { scrollToMessage: (index: number) => void; scrollToTop: () => void },
   RichTranscriptViewProps
 >(({ sessionId, sessionStatus, isProcessing, hasPendingInteractivePrompt, messages, provider, settings: propsSettings, onSettingsChange, showSettings, documentContext, workspacePath, renderEmptyExtra, hideEmptyHelp, readFile, onOpenFile, onOpenSession, onCompact, promptAdditions, currentTeammates, waitingForNoun, backgroundTasks, appStartTime, renderEmbeddedFile, canEmbedFile, loadToolCallDiffs, onSearchBarVisibilityChange, persistScrollState = true }, ref) => {
+  const { t } = useTranslation('aichat');
   const [collapsedMessages, setCollapsedMessages] = useState<Set<number>>(new Set());
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const scrollButtonRef = useRef<HTMLDivElement>(null);
@@ -1070,7 +1073,7 @@ export const RichTranscriptView = React.forwardRef<
                   onChange={(e) => onSettingsChange({ ...settings, showToolCalls: e.target.checked })}
                   className="rich-transcript-settings-checkbox rounded border border-[var(--nim-border)]"
                 />
-                <span>Show Tool Calls</span>
+                <span>{t('rich_transcript.show_tools')}</span>
               </label>
               <label className="rich-transcript-settings-label flex items-center gap-2">
                 <input
@@ -1079,7 +1082,7 @@ export const RichTranscriptView = React.forwardRef<
                   onChange={(e) => onSettingsChange({ ...settings, compactMode: e.target.checked })}
                   className="rich-transcript-settings-checkbox rounded border border-[var(--nim-border)]"
                 />
-                <span>Compact Mode</span>
+                <span>{t('rich_transcript.compact')}</span>
               </label>
               <label className="rich-transcript-settings-label flex items-center gap-2">
                 <input
@@ -1088,7 +1091,7 @@ export const RichTranscriptView = React.forwardRef<
                   onChange={(e) => onSettingsChange({ ...settings, showThinking: e.target.checked })}
                   className="rich-transcript-settings-checkbox rounded border border-[var(--nim-border)]"
                 />
-                <span>Show Thinking</span>
+                <span>{t('rich_transcript.show_thinking')}</span>
               </label>
             </div>
           </div>
@@ -1179,7 +1182,7 @@ export const RichTranscriptView = React.forwardRef<
                       <div key="restart-bottom" className="flex items-center gap-3 my-2 px-3">
                         <div className="flex-1 h-px bg-[var(--nim-error)]" />
                         <span className="text-[11px] font-medium text-[var(--nim-error)] whitespace-nowrap">
-                          Nimbalyst restarted {formatMessageTime(appStartTime!)}
+                          {t('rich_transcript.restarted', { time: formatMessageTime(appStartTime!) })}
                         </span>
                         <div className="flex-1 h-px bg-[var(--nim-error)]" />
                       </div>
@@ -1217,7 +1220,7 @@ export const RichTranscriptView = React.forwardRef<
                 className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--nim-primary)] text-white rounded-full shadow-lg text-sm font-medium cursor-pointer border-none transition-all hover:brightness-110"
               >
                 <MaterialSymbol icon="shield" size={16} />
-                {pendingPermissionIndices.length} pending permission{pendingPermissionIndices.length > 1 ? 's' : ''} — click to review
+                {t('rich_transcript.pending_permissions', { count: pendingPermissionIndices.length })}
               </button>
             </div>
           )}
@@ -1230,7 +1233,7 @@ export const RichTranscriptView = React.forwardRef<
               ref={scrollButtonElementRef}
               onClick={scrollToBottom}
               className="rich-transcript-scroll-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] text-white rounded-full border-none shadow-lg cursor-pointer transition-all hover:bg-[var(--nim-primary-hover)] hover:scale-110"
-              title="Scroll to bottom"
+              title={t('rich_transcript.scroll_bottom')}
             >
               <MaterialSymbol icon="arrow_downward" size={20} />
             </button>
@@ -1240,11 +1243,11 @@ export const RichTranscriptView = React.forwardRef<
           <div className="rich-transcript-question-navigation shrink-0 flex justify-end border-t border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-2">
             <button
               onClick={() => jumpToQuestion(pendingQuestions[0])}
-              aria-label="Jump to question"
+              aria-label={t('rich_transcript.jump_to_question')}
               className="rich-transcript-question-button flex items-center gap-1.5 px-3 py-1.5 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] rounded-md text-xs font-medium cursor-pointer border-none hover:brightness-110"
             >
               <MaterialSymbol icon="help" size={16} />
-              Jump to question
+              {t('rich_transcript.jump_to_question')}
             </button>
           </div>
         )}

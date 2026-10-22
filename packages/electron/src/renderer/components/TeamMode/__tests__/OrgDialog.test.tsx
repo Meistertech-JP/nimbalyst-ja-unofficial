@@ -1,22 +1,32 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { OrgDialog, OrgDialogPrimaryButton } from '../OrgDialog';
 
-function renderDialog(onClose = vi.fn()) {
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function renderDialog(onClose = vi.fn(), i18n?: typeof japaneseI18n) {
   return {
     onClose,
     ...render(
-      <OrgDialog
-        title="Create a room"
-        testId="test-dialog"
-        onClose={onClose}
-        footer={<OrgDialogPrimaryButton testId="test-dialog-submit" onClick={vi.fn()}>Create</OrgDialogPrimaryButton>}
-      >
-        <input data-testid="test-dialog-input" />
-      </OrgDialog>,
+      <I18nextProvider i18n={i18n ?? japaneseI18n}>
+        <OrgDialog
+          title="Create a room"
+          testId="test-dialog"
+          onClose={onClose}
+          footer={<OrgDialogPrimaryButton testId="test-dialog-submit" onClick={vi.fn()}>Create</OrgDialogPrimaryButton>}
+        >
+          <input data-testid="test-dialog-input" />
+        </OrgDialog>
+      </I18nextProvider>,
     ),
   };
 }
@@ -40,7 +50,7 @@ describe('OrgDialog', () => {
 
   it('moves focus into the dialog on open', () => {
     renderDialog();
-    expect(document.activeElement).toBe(screen.getByTestId('test-dialog-close'));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '閉じる' }));
   });
 
   it('wraps Tab inside the dialog instead of walking into the window behind it', () => {

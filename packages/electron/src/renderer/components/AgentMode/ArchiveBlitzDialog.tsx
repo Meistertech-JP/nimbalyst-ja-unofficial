@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface ArchiveBlitzDialogProps {
@@ -16,6 +17,7 @@ export function ArchiveBlitzDialog({
   onArchiveWorktreeOnly,
   onKeep,
 }: ArchiveBlitzDialogProps) {
+  const { t } = useTranslation('dialogs');
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,21 +47,19 @@ export function ArchiveBlitzDialog({
       >
         <div className="archive-worktree-dialog-header flex items-center gap-3 px-6 pt-5 pb-4 text-[var(--nim-text)]">
           <MaterialSymbol icon="archive" size={24} />
-          <h2 className="m-0 text-lg font-semibold">Merge Successful</h2>
+          <h2 className="m-0 text-lg font-semibold">{t('archive.merge_success')}</h2>
         </div>
 
         <div className="archive-worktree-dialog-body px-6 pb-5">
           <div className="flex items-start gap-3 mb-4 p-3 rounded-lg bg-[var(--nim-success)]/10 border border-[var(--nim-success)]/30">
             <MaterialSymbol icon="check_circle" size={20} className="text-[var(--nim-success)] shrink-0 mt-0.5" />
             <p className="m-0 text-sm text-[var(--nim-text-muted)]">
-              Changes from <strong className="font-medium text-[var(--nim-text)]">{worktreeName}</strong> have been merged successfully.
+              {t('archive.merged_changes', { worktree: worktreeName })}
             </p>
           </div>
 
           <p className="mb-4 text-sm leading-relaxed text-[var(--nim-text-muted)]">
-            This worktree is part of the blitz{' '}
-            <strong className="font-medium text-[var(--nim-text)]">{blitzName}</strong>.
-            Would you like to archive the entire blitz or just this worktree?
+            {t('archive.blitz_question', { blitz: blitzName })}
           </p>
         </div>
 
@@ -69,7 +69,7 @@ export function ArchiveBlitzDialog({
             className="nim-btn-secondary"
             onClick={onKeep}
           >
-            Keep All
+            {t('archive.keep_all')}
           </button>
           <button
             type="button"
@@ -77,7 +77,7 @@ export function ArchiveBlitzDialog({
             onClick={onArchiveWorktreeOnly}
           >
             <MaterialSymbol icon="archive" size={16} />
-            <span>Archive Worktree Only</span>
+            <span>{t('archive.archive_worktree_only')}</span>
           </button>
           <button
             type="button"
@@ -85,7 +85,7 @@ export function ArchiveBlitzDialog({
             onClick={onArchiveBlitz}
           >
             <MaterialSymbol icon="archive" size={16} />
-            <span>Archive Blitz</span>
+            <span>{t('archive.archive_blitz')}</span>
           </button>
         </div>
       </div>

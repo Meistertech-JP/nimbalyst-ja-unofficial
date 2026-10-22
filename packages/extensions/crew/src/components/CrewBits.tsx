@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { MaterialSymbol, navigateToTrackerReference } from '@nimbalyst/extension-sdk';
 import type { CrewEvidenceRef, CrewLevel, CrewMemberDefinition, CrewMemberStatus } from '../shared/types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * A member's initial on their color, with an optional presence dot. The
@@ -36,18 +37,20 @@ export function CrewLevelChip({ level, label }: { level: CrewLevel; label?: stri
 }
 
 export function CrewAlphaBadge() {
-  return <span className="crew-alpha-badge">Alpha</span>;
+  const { t } = useTranslation('common');
+  return <span className="crew-alpha-badge">{t('alpha.badge')}</span>;
 }
 
 function basename(path: string): string {
   return path.split(/[\\/]/).pop() || path;
 }
 
-export function describeEvidence(ref: CrewEvidenceRef): string {
+export function describeEvidence(ref: CrewEvidenceRef, translate?: (key: string) => string): string {
   if (ref.label) return ref.label;
+  const label = (key: string, fallback: string) => (translate ? translate(key) : fallback);
   switch (ref.kind) {
-    case 'session': return 'Session';
-    case 'tracker': return ref.issueKey ?? 'Tracker item';
+    case 'session': return label('crew.feed.evidence_session', 'Session');
+    case 'tracker': return ref.issueKey ?? label('crew.feed.evidence_tracker', 'Tracker item');
     case 'file': return ref.line ? `${basename(ref.path)}:${ref.line}` : basename(ref.path);
     case 'url': return ref.url.replace(/^https?:\/\//, '');
   }
@@ -66,11 +69,12 @@ export function CrewEvidenceChips({
   onOpenSession: (sessionId: string) => void;
   onOpenFile: (path: string) => void;
 }) {
+  const { t } = useTranslation('extensions');
   if (!evidence || evidence.length === 0) return null;
   return (
     <div className="crew-evidence-chips">
       {evidence.map((ref, index) => {
-        const label = describeEvidence(ref);
+        const label = describeEvidence(ref, t);
         const key = `${ref.kind}-${index}`;
         if (ref.kind === 'url') {
           return (
@@ -107,6 +111,7 @@ export function CrewModal({
   footer,
   className = '',
   headerExtra,
+  closeLabel,
 }: {
   title: string;
   subtitle?: string;
@@ -115,6 +120,7 @@ export function CrewModal({
   footer?: ReactNode;
   className?: string;
   headerExtra?: ReactNode;
+  closeLabel?: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   // Callers pass an inline onClose, and the roster poll re-renders them every
@@ -148,7 +154,7 @@ export function CrewModal({
             {subtitle && <p className="crew-modal-subtitle">{subtitle}</p>}
           </div>
           {headerExtra}
-          <button type="button" className="crew-icon-button" aria-label="Close" onClick={onClose}>
+          <button type="button" className="crew-icon-button" aria-label={closeLabel ?? 'Close'} onClick={onClose}>
             <MaterialSymbol icon="close" size={18} />
           </button>
         </div>

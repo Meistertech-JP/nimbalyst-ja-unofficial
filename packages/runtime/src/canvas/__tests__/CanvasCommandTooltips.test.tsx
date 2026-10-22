@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import type { PropsWithChildren } from 'react';
 import {
   act,
   cleanup,
@@ -7,12 +8,24 @@ import {
   screen,
 } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { CanvasCommandTooltips } from '../CanvasCommandTooltips';
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
+
+async function renderInJapanese(element: React.ReactElement) {
+  const i18n = await createI18nInstance('ja');
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return render(element, { wrapper: Wrapper });
+}
 
 it('shows delayed hover and focus help, dismisses on click, and preserves the action', async () => {
   vi.useFakeTimers();
@@ -28,13 +41,16 @@ it('shows delayed hover and focus help, dismisses on click, and preserves the ac
       </div>
     );
   }
-  render(<Harness />);
+  await renderInJapanese(<Harness />);
   const button = screen.getByRole('button');
   fireEvent.mouseOver(button);
   await act(() => vi.advanceTimersByTimeAsync(499));
   expect(screen.queryByRole('tooltip')).toBeNull();
   await act(() => vi.advanceTimersByTimeAsync(2));
-  expect(screen.getByRole('tooltip').textContent).toContain('Pan the board');
+  expect(screen.getByRole('tooltip').textContent).toContain('ボードを移動');
+  expect(screen.getByRole('tooltip').textContent).toContain(
+    'ドラッグしてボードを移動します。Spaceキーを押すと一時的に移動できます。'
+  );
   expect(button.getAttribute('aria-describedby')).toBe(
     screen.getByRole('tooltip').id
   );

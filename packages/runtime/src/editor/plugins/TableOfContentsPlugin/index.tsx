@@ -10,6 +10,7 @@ import type {TableOfContentsEntry} from '@lexical/react/LexicalTableOfContentsPl
 import type {HeadingTagType} from '@lexical/rich-text';
 import type {NodeKey} from 'lexical';
 import type {JSX} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import './index.css';
 
@@ -34,6 +35,7 @@ function TableOfContentsDropdown({
   tableOfContents: Array<TableOfContentsEntry>;
   disabled?: boolean;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const [activeHeadingKey, setActiveHeadingKey] = useState<NodeKey | null>(null);
 
@@ -125,7 +127,7 @@ function TableOfContentsDropdown({
         <DropDownItem
           className="item toc-item-empty"
           onClick={() => {}}>
-          <span className="text">No headers found</span>
+          <span className="text">{t('toc.empty')}</span>
         </DropDownItem>
       )}
     </DropDown>

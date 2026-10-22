@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { sessionPendingReviewFilesAtom } from '../../store/atoms/sessionFiles';
@@ -9,6 +10,7 @@ interface PendingReviewBannerProps {
 }
 
 export function PendingReviewBanner({ workspacePath, sessionId }: PendingReviewBannerProps) {
+  const { t } = useTranslation('aichat');
   const effectiveSessionId = sessionId || '__no_session__';
   const pendingReviewFiles = useAtomValue(sessionPendingReviewFilesAtom(effectiveSessionId));
   const pendingCount = sessionId ? pendingReviewFiles.size : 0;
@@ -40,18 +42,23 @@ export function PendingReviewBanner({ workspacePath, sessionId }: PendingReviewB
       <div className="pending-review-banner__info flex items-center gap-2">
         <MaterialSymbol icon="rate_review" size={16} className="pending-review-banner__icon text-nim-warning" />
         <span className="pending-review-banner__text text-xs text-nim-warning font-medium">
-          <span className="pending-review-banner__count font-semibold">{pendingCount}</span>
-          {' '}file{pendingCount !== 1 ? 's' : ''} pending review
+          <Trans
+            ns="aichat"
+            i18nKey="pending_review.files"
+            count={pendingCount}
+            components={{ count: <span className="pending-review-banner__count font-semibold" /> }}
+          />
         </span>
       </div>
       <button
         className="pending-review-banner__clear-btn flex items-center gap-1 px-2.5 py-1 bg-transparent border border-nim-warning rounded text-nim-warning text-[11px] font-medium cursor-pointer transition-all duration-200 font-inherit hover:enabled:bg-amber-400/15 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={handleClearAll}
         disabled={isClearing}
-        title="Accept all pending AI changes"
+        title={t('pending_review.accept_all_title')}
+        aria-label={t('pending_review.keep_all')}
       >
         <MaterialSymbol icon="check_circle" size={14} />
-        {isClearing ? 'Keeping...' : 'Keep All'}
+        {isClearing ? t('pending_review.keeping') : t('pending_review.keep_all')}
       </button>
     </div>
   );

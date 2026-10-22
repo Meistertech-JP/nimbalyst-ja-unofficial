@@ -98,6 +98,7 @@ import { publishContextUsage } from './publishContextUsage';
 import { requestMobilePush } from './mobilePushRequest';
 import { createAskUserQuestionListeners } from './askUserQuestionListeners';
 import { createTeammateIdleWakeListener } from './teammateIdleWake';
+import { translateMainNotification } from '../../i18n/mainI18n';
 // The per-session pending-prompt bit is derived from the set of prompts still
 // open, so one prompt settling cannot clear the indicator for another that is
 // still waiting on the user. Refs #1549.
@@ -2604,7 +2605,7 @@ export class MessageStreamingHandler {
               const notificationText = lastTextSection.trim() || prevTextSection || fullResponse;
               const notificationBody = notificationText.length > 0
                 ? notificationText.substring(0, 100) + (notificationText.length > 100 ? '...' : '')
-                : 'Response complete';
+                : translateMainNotification('agent.response_complete', 'Response complete');
               const sessionLabel = session.title || session.provider;
 
               // logger.ai.info('[AIService] Notification content', {
@@ -2620,7 +2621,9 @@ export class MessageStreamingHandler {
               // });
 
               await notificationService.showNotification({
-                title: composeNotificationTitle(sessionLabel, 'Response Ready'),
+                title: composeNotificationTitle(sessionLabel, translateMainNotification(
+                  'agent.response_ready', 'Response Ready',
+                )),
                 body: notificationBody,
                 kind: 'agent-complete',
                 sessionId: session.id,

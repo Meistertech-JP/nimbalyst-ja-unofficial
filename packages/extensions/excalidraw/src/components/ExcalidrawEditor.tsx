@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState, forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { ExcalidrawImperativeAPI, AppState, BinaryFiles } from '@excalidraw/excalidraw/types';
@@ -87,6 +88,7 @@ function createEmptyFile(bgColor: string): ExcalidrawFile {
 }
 
 export const ExcalidrawEditor = forwardRef<any, EditorHostProps>(function ExcalidrawEditor({ host }, _ref) {
+  const { t, i18n } = useTranslation('extensions');
   const { filePath } = host;
 
   // The persisted background is always light-space; the app theme drives the
@@ -460,7 +462,7 @@ export const ExcalidrawEditor = forwardRef<any, EditorHostProps>(function Excali
   if (isLoading) {
     return (
       <div className="excalidraw-editor w-full h-full flex items-center justify-center" data-theme={theme}>
-        <div className="text-nim-muted">Loading diagram...</div>
+        <div className="text-nim-muted">{t('excalidraw_ui.loading')}</div>
       </div>
     );
   }
@@ -469,7 +471,7 @@ export const ExcalidrawEditor = forwardRef<any, EditorHostProps>(function Excali
     return (
       <div className="excalidraw-editor w-full h-full flex items-center justify-center" data-theme={theme}>
         <div className="text-nim-error">
-          Failed to load: {error.message}
+          {t('excalidraw_ui.load_failed', { error: error.message })}
         </div>
       </div>
     );
@@ -489,6 +491,7 @@ export const ExcalidrawEditor = forwardRef<any, EditorHostProps>(function Excali
     >
       <Excalidraw
         key={theme}
+        langCode={i18n.language.startsWith('ja') ? 'ja-JP' : 'en'}
         onChange={onChange}
         onPointerUpdate={isCollaborative ? onPointerUpdate : undefined}
         excalidrawAPI={(api: any) => {

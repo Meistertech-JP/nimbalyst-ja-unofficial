@@ -2,8 +2,6 @@
 
 import type { TrackerSyncConnectionState } from '../../store/atoms/trackerSync';
 
-export const TEAM_TYPES_NOT_SYNCING_MESSAGE = "Team types are not syncing: this project's tracker sync is not connected.";
-
 /** How long a lost connection is tolerated before it is called out; a reconnect usually lands well inside it. */
 export const TEAM_TYPES_NOT_SYNCING_GRACE_MS = 5_000;
 

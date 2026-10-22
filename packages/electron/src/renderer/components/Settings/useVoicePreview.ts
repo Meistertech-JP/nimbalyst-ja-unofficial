@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export function useVoicePreview(source: string | undefined) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<'playback_failed'>();
   const stop = useCallback(() => {
     const audio = audioRef.current;
     audioRef.current = null;
@@ -31,7 +31,7 @@ export function useVoicePreview(source: string | undefined) {
     const finish = (failed: boolean) => {
       if (audioRef.current !== audio) return;
       stop();
-      if (failed) setError('Could not play this voice preview.');
+      if (failed) setError('playback_failed');
     };
     audio.onended = () => finish(false);
     audio.onerror = () => finish(true);

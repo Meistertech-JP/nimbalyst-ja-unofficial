@@ -14,6 +14,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import type { FeedbackRequestIndexEntry } from '@nimbalyst/collab-protocol';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
@@ -32,8 +33,7 @@ import { selectedWorkstreamAtom } from '../../store/atoms/sessions';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
 import { getRelativeTimeString } from '../../utils/dateFormatting';
 import {
-  feedbackBacklinkAuthorLabel,
-  feedbackBacklinkProgressLabel,
+  feedbackBacklinkAuthor,
   feedbackBacklinkStatus,
   sortFeedbackBacklinks,
   type FeedbackBacklinkTone,
@@ -113,11 +113,18 @@ const FeedbackBacklinkRows: React.FC<FeedbackBacklinkRowsProps> = ({
   entries,
   teamMemberId,
   onOpen,
-}) => (
+}) => {
+  const { t } = useTranslation('feedback');
+  return (
   <div className="feedback-backlink-rows space-y-0.5">
     {entries.map((entry) => {
       const status = feedbackBacklinkStatus(entry);
-      const author = feedbackBacklinkAuthorLabel(entry, teamMemberId);
+      const authorFact = feedbackBacklinkAuthor(entry, teamMemberId);
+      const author = !authorFact
+        ? null
+        : authorFact.kind === 'you'
+          ? t('backlinks.asked_by_you')
+          : t('backlinks.asked_by_name', { name: authorFact.name });
       return (
         <button
           key={entry.requestId}
@@ -138,9 +145,12 @@ const FeedbackBacklinkRows: React.FC<FeedbackBacklinkRowsProps> = ({
               <span
                 className={`feedback-backlink-status rounded border px-1 py-[1px] uppercase tracking-wide ${TONE_CLASS[status.tone]}`}
               >
-                {status.label}
+                {t('list.status.' + status.code)}
               </span>
-              <span>{feedbackBacklinkProgressLabel(entry)}</span>
+              <span>{t('list.progress', {
+                answered: entry.progress.answeredRecipientCount,
+                total: entry.progress.totalRecipientCount,
+              })}</span>
               {author && <span>{author}</span>}
               <span>{getRelativeTimeString(entry.updatedAt)}</span>
             </span>
@@ -149,7 +159,8 @@ const FeedbackBacklinkRows: React.FC<FeedbackBacklinkRowsProps> = ({
       );
     })}
   </div>
-);
+  );
+};
 
 export interface FeedbackBacklinkSectionProps {
   /** The artifact this surface is showing, or null while it is unresolved. */
@@ -165,6 +176,7 @@ export const FeedbackBacklinkSection: React.FC<FeedbackBacklinkSectionProps> = (
   subject,
   className,
 }) => {
+  const { t } = useTranslation('feedback');
   const { entries, teamMemberId, open } = useFeedbackBacklinks(subject);
   if (entries.length === 0) return null;
 
@@ -172,7 +184,7 @@ export const FeedbackBacklinkSection: React.FC<FeedbackBacklinkSectionProps> = (
     <div className={`feedback-backlink-section space-y-2 ${className ?? ''}`}>
       <div className="feedback-backlink-header flex items-center gap-1.5">
         <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">
-          Feedback
+          {t('backlinks.title')}
         </h4>
         <span className="feedback-backlink-count rounded bg-[var(--nim-bg-tertiary)] px-1 text-[10px] text-[var(--nim-text-faint)]">
           {entries.length}
@@ -191,6 +203,7 @@ export const FeedbackBacklinkSection: React.FC<FeedbackBacklinkSectionProps> = (
 export const FeedbackBacklinkHeaderButton: React.FC<FeedbackBacklinkSectionProps> = ({
   subject,
 }) => {
+  const { t } = useTranslation('feedback');
   const { entries, teamMemberId, open } = useFeedbackBacklinks(subject);
   const menu = useFloatingMenu({ placement: 'bottom-end' });
 
@@ -209,7 +222,7 @@ export const FeedbackBacklinkHeaderButton: React.FC<FeedbackBacklinkSectionProps
           menu.isOpen ? 'active bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]' : ''
         }`}
         onClick={() => menu.setIsOpen(!menu.isOpen)}
-        title={`Feedback about this document (${entries.length})`}
+        title={t('backlinks.document_title', { count: entries.length })}
         {...menu.getReferenceProps()}
       >
         <MaterialSymbol icon="reviews" size={16} />
@@ -225,7 +238,7 @@ export const FeedbackBacklinkHeaderButton: React.FC<FeedbackBacklinkSectionProps
           >
             <div className="feedback-backlink-header mb-1 flex items-center gap-1.5 px-1">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--nim-text-faint)]">
-                Feedback
+                {t('backlinks.title')}
               </span>
               <span className="feedback-backlink-count rounded bg-[var(--nim-bg-tertiary)] px-1 text-[10px] text-[var(--nim-text-faint)]">
                 {entries.length}

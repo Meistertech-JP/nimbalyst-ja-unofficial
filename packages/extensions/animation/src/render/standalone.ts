@@ -200,6 +200,8 @@ export interface StandaloneOptions {
   captureHooks?: boolean;
   /** Markup for the document's `htmlFile` refs, resolved by the caller. */
   assets?: HtmlAssets;
+  /** Localized scene description for assistive technology. */
+  sceneAriaLabel?: string;
 }
 
 export function buildStandaloneDocument(
@@ -227,7 +229,7 @@ export function buildStandaloneDocument(
   )}${PAGE_CSS}</style>
 </head>
 <body>
-<div data-anim-stage style="width:100%;height:100%">${renderScene(doc, options.assets)}</div>
+<div data-anim-stage style="width:100%;height:100%">${renderScene(doc, options.assets, options.sceneAriaLabel)}</div>
 <script>
 var TIMELINE = ${embedJson(timeline)};
 var TOTAL = ${total};

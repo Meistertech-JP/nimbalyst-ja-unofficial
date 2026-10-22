@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { ProjectGraphNode } from '../types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface TimelineStripProps {
   nodes: ReadonlyArray<ProjectGraphNode>;
@@ -51,6 +52,7 @@ function speedLabel(msPerSec: number): string {
 }
 
 export function TimelineStrip(props: TimelineStripProps) {
+  const { t } = useTranslation('extensions');
   const { nodes, range, currentTime, onChange, playing, onTogglePlay, speed, onSpeedChange } = props;
 
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -155,8 +157,8 @@ export function TimelineStrip(props: TimelineStripProps) {
         type="button"
         className="pg-timeline-play"
         onClick={onTogglePlay}
-        title={playing ? 'Pause (space)' : 'Play (space)'}
-        aria-label={playing ? 'Pause' : 'Play'}
+        title={t('project_graph.ui.space_shortcut', { action: t(playing ? 'project_graph.ui.pause' : 'project_graph.ui.play') })}
+        aria-label={t(playing ? 'project_graph.ui.pause' : 'project_graph.ui.play')}
       >
         {playing ? (
           <svg width="14" height="14" viewBox="0 0 14 14"><rect x="3" y="2" width="3" height="10" fill="currentColor" /><rect x="8" y="2" width="3" height="10" fill="currentColor" /></svg>
@@ -177,7 +179,7 @@ export function TimelineStrip(props: TimelineStripProps) {
         aria-valuemin={range.min}
         aria-valuemax={range.max}
         aria-valuenow={currentTime}
-        aria-label="Project history timeline"
+        aria-label={t('project_graph.ui.timeline_history')}
       >
         <div className="pg-timeline-histogram" aria-hidden="true">
           {buckets.map((b, i) => {
@@ -213,7 +215,7 @@ export function TimelineStrip(props: TimelineStripProps) {
           className="pg-timeline-speed"
           value={speed}
           onChange={e => onSpeedChange(Number(e.target.value))}
-          title="Playback speed"
+          title={t('project_graph.ui.playback_speed')}
         >
           {[
             { v: 60 * 60 * 1000, l: '1h/s' },
@@ -221,7 +223,7 @@ export function TimelineStrip(props: TimelineStripProps) {
             { v: 24 * 60 * 60 * 1000, l: '1d/s' },
             { v: 3 * 24 * 60 * 60 * 1000, l: '3d/s' },
             { v: 7 * 24 * 60 * 60 * 1000, l: '1w/s' },
-            { v: (range.max - range.min) / 60, l: 'Fit 60s' },
+            { v: (range.max - range.min) / 60, l: t('project_graph.ui.fit_60_seconds') },
           ].map(opt => (
             <option key={opt.l} value={opt.v}>{opt.l}</option>
           ))}
@@ -230,12 +232,12 @@ export function TimelineStrip(props: TimelineStripProps) {
           type="button"
           className="pg-timeline-now"
           onClick={() => onChange(range.max)}
-          title="Snap to latest"
+          title={t('project_graph.ui.snap_latest')}
         >
-          Now
+          {t('project_graph.now')}
         </button>
       </div>
-      <div className="pg-timeline-speed-readout" title="Current speed">{speedLabel(speed)}</div>
+      <div className="pg-timeline-speed-readout" title={t('project_graph.ui.current_speed')}>{speedLabel(speed)}</div>
     </div>
   );
 }

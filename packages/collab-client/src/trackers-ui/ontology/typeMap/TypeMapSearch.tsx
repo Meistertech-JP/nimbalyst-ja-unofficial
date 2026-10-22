@@ -3,6 +3,7 @@
  * selects it. Arrow keys move through the results, Enter picks, Escape clears.
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { autoUpdate, flip, FloatingPortal, offset, shift, size, useFloating } from '@floating-ui/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import type { TypeMapRelationship, TypeMapType } from '../ontologyLabelMap';
@@ -18,6 +19,7 @@ export interface TypeMapSearchProps {
 interface Hit { selection: NonNullable<MapSelection>; label: string; verb?: string; tail?: string; count: number }
 
 export function TypeMapSearch({ types, relationships, typeById, onPick }: TypeMapSearchProps) {
+  const { t } = useTranslation('tracker');
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
@@ -55,8 +57,8 @@ export function TypeMapSearch({ types, relationships, typeById, onPick }: TypeMa
       <svg className="type-map-search-icon" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" /><path d="M11 11l4 4" /></svg>
       <input
         type="search"
-        placeholder="Find a type or relationship"
-        aria-label="Find a type or relationship"
+        placeholder={t('collaboration_surface.find_type_or_relationship')}
+        aria-label={t('collaboration_surface.find_type_or_relationship')}
         autoComplete="off"
         value={query}
         onChange={(event) => { setQuery(event.target.value); setActive(0); setOpen(true); }}

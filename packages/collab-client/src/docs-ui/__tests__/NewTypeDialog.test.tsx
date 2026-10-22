@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { CollabTypeTreeResolver } from '../../docs/collabTree';
 import type { CollabDocsSession } from '../../docs/session';
 import { NewTypeDialog } from '../NewTypeDialog';
@@ -19,6 +21,22 @@ vi.mock('../../trackers-ui/ontology/LazyOntologyTypes', () => ({ OntologyTypeMap
 
 afterEach(cleanup);
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function renderWithLocale(ui: React.ReactNode, i18n = englishI18n, preference: 'en' | 'ja' = 'en') {
+  return render(
+    <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="en-US">
+      {ui}
+    </UiLanguageProvider>,
+  );
+}
+
 const resolver: CollabTypeTreeResolver = {
   typeName: (typeId) => (typeId === 'competitor' ? 'Competitors' : null),
   itemsOfType: () => [],
@@ -28,7 +46,7 @@ const resolver: CollabTypeTreeResolver = {
 function setup(defineType = vi.fn(async () => undefined)) {
   const placeType = vi.fn(async () => ({ ok: true as const }));
   const onCreated = vi.fn();
-  render(
+  renderWithLocale(
     <NewTypeDialog
       lane="team"
       resolver={resolver}
@@ -91,7 +109,7 @@ describe('NewTypeDialog, while the team has not answered', () => {
   it('says the type is still syncing instead of claiming success, and keeps the form', async () => {
     const onClose = vi.fn();
     const placeType = vi.fn(async () => ({ ok: true as const }));
-    render(
+    renderWithLocale(
       <NewTypeDialog
         lane="team"
         resolver={resolver}
@@ -113,7 +131,7 @@ describe('NewTypeDialog, while the team has not answered', () => {
       () => fireEvent.keyDown(window, { key: 'Escape' }),
     ]) {
       const onClose = vi.fn();
-      render(
+    renderWithLocale(
         <NewTypeDialog
           lane="team"
           resolver={resolver}
@@ -135,7 +153,7 @@ describe('NewTypeDialog, while the team has not answered', () => {
 describe('NewTypeDialog inside the Types view', () => {
   it('keeps the dialog and its syncing notice open instead of opening a type the team has not confirmed', async () => {
     const onOpenType = vi.fn();
-    render(
+    renderWithLocale(
       <PagesTypesView
         lane="team"
         typePlacements={[]}
@@ -168,7 +186,7 @@ describe('NewTypeDialog, after Cancel', () => {
     const placeType = vi.fn(async () => ({ ok: true as const }));
     const onCreated = vi.fn();
     const onClose = vi.fn();
-    render(
+    renderWithLocale(
       <NewTypeDialog
         lane="team"
         resolver={resolver}
@@ -194,8 +212,46 @@ describe('Set type, in a section with no types', () => {
   it('offers New type when the host can write one', () => {
     const onNewType = vi.fn();
     const empty: CollabTypeTreeResolver = { typeName: () => null, itemsOfType: () => [], listedTypes: () => [] };
-    render(<SetPageTypeDialog pageTitle="Acme" resolver={empty} running={false} onPick={() => {}} onClose={() => {}} onNewType={onNewType} />);
+    renderWithLocale(<SetPageTypeDialog pageTitle="Acme" resolver={empty} running={false} onPick={() => {}} onClose={() => {}} onNewType={onNewType} />);
     fireEvent.click(screen.getByTestId('set-page-type-new-type'));
     expect(onNewType).toHaveBeenCalled();
+  });
+
+  it('renders fixed labels and the page title in Japanese', () => {
+    const empty: CollabTypeTreeResolver = { typeName: () => null, itemsOfType: () => [], listedTypes: () => [] };
+    renderWithLocale(
+      <SetPageTypeDialog pageTitle="Acme" resolver={empty} running={false} onPick={() => {}} onClose={() => {}} onNewType={() => {}} />,
+      japaneseI18n,
+      'ja',
+    );
+
+    expect(screen.getByRole('dialog', { name: 'タイプを設定' }).getAttribute('aria-label')).toBe('タイプを設定');
+    expect(screen.getByText('タイプを設定: Acme').textContent).toBe('タイプを設定: Acme');
+    expect(screen.getByText('ページの場所と本文を維持したまま、タイプを設定します。').textContent).toBe('ページの場所と本文を維持したまま、タイプを設定します。');
+    expect(screen.getByText('このセクションにはまだタイプがありません。作成すると、このページにタイプを設定できます。').textContent).toBe('このセクションにはまだタイプがありません。作成すると、このページにタイプを設定できます。');
+    expect(screen.getByRole('button', { name: '新しいタイプ...' }).textContent).toBe('新しいタイプ...');
+    expect(screen.getByRole('button', { name: 'キャンセル' }).textContent).toBe('キャンセル');
+  });
+});
+
+describe('NewTypeDialog localization', () => {
+  it('renders the fixed labels and validation messages in Japanese', () => {
+    renderWithLocale(
+      <NewTypeDialog
+        lane="team"
+        resolver={resolver}
+        session={{ placeType: vi.fn() } as unknown as CollabDocsSession}
+        defineType={vi.fn(async () => undefined)}
+        onClose={() => {}}
+      />,
+      japaneseI18n,
+      'ja',
+    );
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('新しいタイプ');
+    expect(screen.getByText('チーム · このプロジェクトと共有').textContent).toBe('チーム · このプロジェクトと共有');
+    expect(screen.getByTestId('new-type-plural').getAttribute('placeholder')).toBe('顧客');
+    screen.getByRole('button', { name: 'フィールドを追加' });
+    fireEvent.click(screen.getByTestId('new-type-create'));
+    expect(screen.getByText('複数形の名前を入力してください。').textContent).toBe('複数形の名前を入力してください。');
   });
 });

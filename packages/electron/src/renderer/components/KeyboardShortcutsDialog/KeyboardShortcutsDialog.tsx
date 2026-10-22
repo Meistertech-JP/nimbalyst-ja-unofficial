@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { KeyboardShortcuts, getShortcutDisplay } from '../../../shared/KeyboardShortcuts';
 import {
   getRegisteredKeybindings,
@@ -24,6 +25,155 @@ interface ShortcutGroup {
 }
 
 type TabId = 'general' | 'editor' | 'extensions';
+
+const shortcutGroupKeys: Record<string, string> = {
+  File: 'file',
+  Edit: 'edit',
+  View: 'view',
+  Window: 'window',
+  'Project Canvas': 'project_canvas',
+  'Organization Window — Messages': 'organization_window_messages',
+  Wiki: 'wiki',
+  'Tracker Grid': 'tracker_grid',
+  'Text Formatting': 'text_formatting',
+  'Paragraph Formatting': 'paragraph_formatting',
+  'Text Alignment': 'text_alignment',
+  'Text Case & Size': 'text_case_size',
+};
+
+const shortcutLabelKeys: Record<string, string> = {
+  'Select all': 'select_all',
+  Duplicate: 'canvas_duplicate',
+  Delete: 'canvas_delete',
+  Group: 'canvas_group',
+  Ungroup: 'canvas_ungroup',
+  'Lock / unlock': 'canvas_lock_unlock',
+  'Bring to front': 'canvas_bring_front',
+  'Send to back': 'canvas_send_back',
+  'Nudge left': 'canvas_nudge_left',
+  'Nudge right': 'canvas_nudge_right',
+  'Nudge up': 'canvas_nudge_up',
+  'Nudge down': 'canvas_nudge_down',
+  'Nudge left by 10': 'canvas_nudge_left_10',
+  'Nudge right by 10': 'canvas_nudge_right_10',
+  'Nudge up by 10': 'canvas_nudge_up_10',
+  'Nudge down by 10': 'canvas_nudge_down_10',
+  'Fit all': 'canvas_fit_all',
+  'Fit selection': 'canvas_fit_selection',
+  'Zoom in': 'zoom_in',
+  'Zoom out': 'zoom_out',
+  'Zoom to 100%': 'canvas_zoom_100',
+  'Restore saved view': 'canvas_restore_view',
+  'Select tool': 'canvas_select_tool',
+  'Hand tool': 'canvas_hand_tool',
+  'Sticky tool': 'canvas_sticky_tool',
+  'Text tool': 'canvas_text_tool',
+  'Frame tool': 'canvas_frame_tool',
+  'Comment tool': 'canvas_comment_tool',
+  'Cancel or step back': 'canvas_cancel_step_back',
+  'New File / New Session': 'new_file_session',
+  'Launch Session Popup': 'launch_session_popup',
+  'New Tracker Item': 'new_tracker_item',
+  'New Browser Tab': 'new_browser_tab',
+  'Open File': 'open_file',
+  Save: 'save',
+  'Close Tab': 'close_tab',
+  'Reopen Closed Tab': 'reopen_closed_tab',
+  'Close Project': 'close_project',
+  Quit: 'quit',
+  Undo: 'undo',
+  Redo: 'redo',
+  Cut: 'cut',
+  Copy: 'copy',
+  Paste: 'paste',
+  'Paste as Text': 'paste_as_text',
+  'Select All': 'select_all',
+  Find: 'find',
+  'Find Next': 'find_next',
+  'Find Previous': 'find_previous',
+  'View Local History': 'view_history',
+  'Approve Current Action': 'approve',
+  'Reject Current Action': 'reject',
+  'Toggle Plan Mode (Claude Code)': 'toggle_plan_mode',
+  'Fill in suggested next prompt (empty input)': 'fill_prompt_suggestion',
+  'Choose AI Model (AI input focused)': 'choose_ai_model',
+  'Next / Previous AI menu (model, effort, actions)': 'next_previous_ai_menu',
+  'Files Mode': 'files_mode',
+  'Agent Mode': 'agent_mode',
+  'Session Kanban View': 'session_kanban',
+  'Toggle AI Chat Panel': 'toggle_ai_chat',
+  'Toggle Bottom Panel': 'toggle_bottom_panel',
+  'Toggle Terminal Panel': 'toggle_terminal',
+  'Toggle Claude CLI Terminal Drawer': 'toggle_cli_drawer',
+  'Tracker Mode': 'tracker_mode',
+  Organization: 'organization',
+  'Toggle Sidebar': 'toggle_sidebar',
+  'Toggle Expanded Tab': 'toggle_expanded_tab',
+  'Navigate Back': 'navigate_back',
+  'Navigate Forward': 'navigate_forward',
+  'Next Tab': 'next_tab',
+  'Previous Tab': 'previous_tab',
+  'Actual Size': 'actual_size',
+  'Zoom In': 'zoom_in',
+  'Zoom Out': 'zoom_out',
+  'Toggle Full Screen': 'toggle_fullscreen',
+  'Project menu (focused rail icon)': 'project_menu',
+  'Project Manager': 'project_manager',
+  'Switch Project': 'switch_project',
+  'Session Quick Open': 'session_quick_open',
+  'Prompt Quick Open': 'prompt_quick_open',
+  'Content Search': 'content_search',
+  'Memory Search': 'memory_search',
+  'Team Quick Open': 'team_quick_open',
+  'Organization Messages': 'organization_messages',
+  'New Worktree': 'new_worktree',
+  Settings: 'settings',
+  Minimize: 'minimize',
+  'New Message': 'new_message',
+  'Go to Inbox': 'go_to_inbox',
+  'Search Messages': 'search_messages',
+  'Next Conversation': 'next_conversation',
+  'Previous Conversation': 'previous_conversation',
+  'Mark All as Read': 'mark_all_as_read',
+  'Back in the current tab': 'back_current_tab',
+  'Forward in the current tab': 'forward_current_tab',
+  'Open a page in a new tab': 'open_page_new_tab',
+  'Move between cells': 'move_between_cells',
+  'Edit focused cell': 'edit_focused_cell',
+  'Open focused item details': 'open_focused_item',
+  'Commit edit / next row': 'commit_edit',
+  'Cancel edit / close details': 'cancel_edit',
+  'Undo last grid edit': 'undo_grid_edit',
+  'Redo grid edit': 'redo_grid_edit',
+  Bold: 'bold',
+  Italic: 'italic',
+  Underline: 'underline',
+  Strikethrough: 'strikethrough',
+  'Insert Link': 'insert_link',
+  'Clear Formatting': 'clear_formatting',
+  'Normal Text': 'normal_text',
+  'Heading 1': 'heading_1',
+  'Heading 2': 'heading_2',
+  'Heading 3': 'heading_3',
+  'Numbered List': 'numbered_list',
+  'Bullet List': 'bullet_list',
+  'Check List': 'check_list',
+  'Code Block': 'code_block',
+  Quote: 'quote',
+  'Left Align': 'left_align',
+  'Center Align': 'center_align',
+  'Right Align': 'right_align',
+  Justify: 'justify',
+  Indent: 'indent',
+  Outdent: 'outdent',
+  Lowercase: 'lowercase',
+  Uppercase: 'uppercase',
+  Capitalize: 'capitalize',
+  'Increase Font Size': 'increase_font',
+  'Decrease Font Size': 'decrease_font',
+  Subscript: 'subscript',
+  Superscript: 'superscript',
+};
 
 const IS_MAC = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
@@ -102,6 +252,7 @@ function buildExtensionShortcutGroups(keybindings: RegisteredKeybinding[]): Shor
 }
 
 export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDialogProps) {
+  const { t } = useTranslation('dialogs');
   const [activeTab, setActiveTab] = useState<TabId>('general');
   const [extensionGroups, setExtensionGroups] = useState<ShortcutGroup[]>([]);
   const developerMode = useAtomValue(developerModeAtom);
@@ -317,24 +468,26 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
     : activeTab === 'editor'
     ? editorShortcuts
     : extensionGroups;
+  const closeHintParts = t('keyboard_shortcuts.press_to_close', { key: 'Esc' }).split('Esc');
 
   return (
-    <div
-      className="keyboard-shortcuts-dialog-overlay nim-overlay"
-      onClick={onClose}
-    >
+    <div className="keyboard-shortcuts-dialog-overlay nim-overlay" onClick={onClose}>
       <div
         className="keyboard-shortcuts-dialog flex flex-col w-[90vw] max-w-[900px] h-[85vh] rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg)] shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="keyboard-shortcuts-dialog-title"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="keyboard-shortcuts-dialog-header flex items-center justify-between px-6 py-5 border-b border-[var(--nim-border)]">
-          <h2 className="m-0 text-xl font-semibold text-[var(--nim-text)]">
-            Keyboard Shortcuts
+          <h2 id="keyboard-shortcuts-dialog-title" className="m-0 text-xl font-semibold text-[var(--nim-text)]">
+            {t('keyboard_shortcuts.title')}
           </h2>
           <button
             className="keyboard-shortcuts-dialog-close flex items-center justify-center w-8 h-8 p-0 bg-transparent border-none text-[32px] leading-none text-[var(--nim-text-muted)] cursor-pointer rounded transition-all duration-200 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('keyboard_shortcuts.close')}
+            title={t('keyboard_shortcuts.close')}
           >
             ×
           </button>
@@ -352,7 +505,11 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
                   : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
               }`}
             >
-              {tab === 'general' ? 'General' : tab === 'editor' ? 'Editor Formatting' : 'Extensions'}
+              {tab === 'general'
+                ? t('keyboard_shortcuts.tabs.general')
+                : tab === 'editor'
+                  ? t('keyboard_shortcuts.tabs.editor')
+                  : t('keyboard_shortcuts.tabs.extensions')}
             </button>
           ))}
         </div>
@@ -360,13 +517,15 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
         <div className="keyboard-shortcuts-dialog-content overflow-y-auto flex-1 p-6 grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-8 max-[900px]:grid-cols-1 max-[600px]:p-5 max-[600px]:gap-6">
           {shortcutGroups.length === 0 && activeTab === 'extensions' ? (
             <div className="text-[var(--nim-text-muted)] text-sm">
-              No extension keybindings registered. Extensions can contribute keybindings via their manifest.json.
+              {t('keyboard_shortcuts.no_extensions')}
             </div>
           ) : (
             shortcutGroups.map((group) => (
               <div key={group.title} className="keyboard-shortcuts-group flex flex-col gap-3">
                 <h3 className="keyboard-shortcuts-group-title m-0 text-sm font-semibold text-[var(--nim-text-muted)] uppercase tracking-[0.5px]">
-                  {group.title}
+                  {activeTab === 'extensions' || !shortcutGroupKeys[group.title]
+                    ? group.title
+                    : t(`keyboard_shortcuts.groups.${shortcutGroupKeys[group.title]}`)}
                 </h3>
                 <div className="keyboard-shortcuts-list flex flex-col gap-1">
                   {group.shortcuts.map((item) => (
@@ -375,7 +534,9 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
                       className="keyboard-shortcut-item flex items-center justify-between py-1.5 gap-4"
                     >
                       <span className="keyboard-shortcut-label text-[var(--nim-text)] text-sm flex-1">
-                        {item.label}
+                        {activeTab === 'extensions' || !shortcutLabelKeys[item.label]
+                          ? item.label
+                          : t(`keyboard_shortcuts.labels.${shortcutLabelKeys[item.label]}`)}
                       </span>
                       <kbd className="keyboard-shortcut-key bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-2.5 py-1 font-sans text-[13px] font-medium text-[var(--nim-text)] whitespace-nowrap shadow-[0_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3)] min-w-[60px] text-center">
                         {getShortcutDisplay(item.shortcut)}
@@ -389,7 +550,11 @@ export function KeyboardShortcutsDialog({ isOpen, onClose }: KeyboardShortcutsDi
         </div>
 
         <div className="px-6 py-3 border-t border-[var(--nim-border)] text-[var(--nim-text-muted)] text-xs">
-          Press <kbd className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 mx-1">Esc</kbd> to close
+          {closeHintParts[0]}
+          <kbd className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded px-1.5 py-0.5 mx-1">
+            Esc
+          </kbd>
+          {closeHintParts[1]}
         </div>
       </div>
     </div>

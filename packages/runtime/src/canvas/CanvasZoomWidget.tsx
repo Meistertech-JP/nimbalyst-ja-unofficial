@@ -17,6 +17,7 @@
  * from the bottom-right corner would be cut off if it rendered in place.
  */
 import { useState, type ReactElement, type ReactNode } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingFocusManager,
   FloatingPortal,
@@ -134,6 +135,7 @@ export function CanvasZoomWidget({
   hasSavedView,
   navigation,
 }: CanvasZoomWidgetProps): ReactElement {
+  const { t } = useTranslation('editor');
   const zoom = useStore((state) => state.transform[2]);
   const [open, setOpen] = useState(false);
 
@@ -165,27 +167,27 @@ export function CanvasZoomWidget({
       {navigation}
       <IconButton
         icon="map"
-        label="Minimap"
+        label={t('canvas.zoom.minimap')}
         pressed={minimap}
         onClick={() => onToggle('minimap')}
       />
       <span className="canvas-zoom-widget__separator" aria-hidden />
-      <IconButton icon="remove" label="Zoom out" onClick={onZoomOut} />
+      <IconButton icon="remove" label={t('canvas.zoom.zoom_out')} onClick={onZoomOut} />
       <button
         type="button"
         ref={refs.setReference}
         className="canvas-zoom-widget__readout"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Zoom ${percent}`}
+        aria-label={t('canvas.zoom.level', { percent })}
         data-canvas-help="canvas-zoom-options"
         data-testid="canvas-zoom-options"
         {...getReferenceProps()}
       >
         {percent}
       </button>
-      <IconButton icon="add" label="Zoom in" onClick={onZoomIn} />
-      <IconButton icon="fit_screen" label="Fit board" onClick={onFitAll} />
+      <IconButton icon="add" label={t('canvas.zoom.zoom_in')} onClick={onZoomIn} />
+      <IconButton icon="fit_screen" label={t('canvas.zoom.fit_board')} onClick={onFitAll} />
 
       {open && (
         <FloatingPortal>
@@ -208,35 +210,35 @@ export function CanvasZoomWidget({
               ))}
               <Separator />
               <MenuItem
-                label="Fit all"
+                label={t('canvas.zoom.fit_all')}
                 shortcut="Shift+1"
                 onSelect={choose(onFitAll)}
               />
               <MenuItem
-                label="Zoom to selection"
+                label={t('canvas.zoom.fit_selection')}
                 shortcut="Shift+2"
                 onSelect={choose(onFitSelection)}
               />
               {hasSavedView && (
                 <MenuItem
-                  label="Saved view"
+                  label={t('canvas.zoom.saved_view')}
                   shortcut="Shift+0"
                   onSelect={choose(onSavedView)}
                 />
               )}
               <Separator />
               <MenuItem
-                label="Snap to grid"
+                label={t('canvas.zoom.snap_to_grid')}
                 checked={gridSnap}
                 onSelect={choose(() => onToggle('gridSnap'))}
               />
               <MenuItem
-                label="Smart guides"
+                label={t('canvas.zoom.smart_guides')}
                 checked={smartGuides}
                 onSelect={choose(() => onToggle('smartGuides'))}
               />
               <MenuItem
-                label="Minimap"
+                label={t('canvas.zoom.minimap')}
                 checked={minimap}
                 onSelect={choose(() => onToggle('minimap'))}
               />

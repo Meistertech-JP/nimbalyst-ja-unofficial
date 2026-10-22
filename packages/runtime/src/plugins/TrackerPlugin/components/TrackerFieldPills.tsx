@@ -13,6 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   autoUpdate,
@@ -223,6 +224,7 @@ export const TrackerFieldPill: React.FC<TrackerFieldPillProps> = ({
   carried = false,
   testIdBase = DEFAULT_TEST_ID_BASE,
 }) => {
+  const { t } = useTranslation('git');
   const [isOpen, setIsOpen] = useState(false);
   const [localValue, setLocalValue] = useState(value);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -362,7 +364,7 @@ export const TrackerFieldPill: React.FC<TrackerFieldPillProps> = ({
         }}
         aria-expanded={togglesDirectly ? undefined : isOpen}
         aria-haspopup={togglesDirectly ? undefined : directChoiceField ? 'listbox' : 'dialog'}
-        aria-label={`${label}: ${empty ? 'Not set' : displayValue}`}
+        aria-label={`${label}: ${empty ? t('issues.local.not_set') : displayValue}`}
         title={pillTitle}
         data-testid={`${testIdBase}-pill-${field.name}`}
         data-field={field.name}

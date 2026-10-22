@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 
 import { SidebarSection } from '../common/SidebarSection';
@@ -96,6 +97,7 @@ export const OrgSidebar = React.memo(function OrgSidebar({
   /** Pinned footer below the scrolling sections — the signed-in identity. */
   bottomContent?: React.ReactNode;
 }) {
+  const { t } = useTranslation('collabSidebar');
   // Presentation gating only: an organization that turned rooms or DMs off
   // loses the sections, and the server rejects the disabled kinds regardless.
   const { gating } = model;
@@ -112,7 +114,9 @@ export const OrgSidebar = React.memo(function OrgSidebar({
   const isCollapsed = (sectionId: OrgSidebarSectionId) =>
     !searching && collapsedSections.includes(sectionId);
 
-  const inboxRows = INBOX_NAV_ROWS.filter((row) => matchesOrgSidebarQuery(row.label, query));
+  const inboxRows = INBOX_NAV_ROWS
+    .map((row) => ({ ...row, label: t(`org_sidebar.inbox_filter.${row.id}`) }))
+    .filter((row) => matchesOrgSidebarQuery(row.label, query));
 
   return (
     <nav
@@ -122,7 +126,7 @@ export const OrgSidebar = React.memo(function OrgSidebar({
       data-testid="org-sidebar"
       data-component="OrgSidebar"
       data-window-drag-region={chrome === 'window' ? 'true' : undefined}
-      aria-label="Organization"
+      aria-label={t('org_sidebar.organization')}
     >
       <OrgSidebarHeader orgId={orgId} orgName={orgName} chrome={chrome} />
 
@@ -135,8 +139,8 @@ export const OrgSidebar = React.memo(function OrgSidebar({
             type="text"
             value={query}
             data-testid="org-sidebar-search-input"
-            aria-label="Search conversations"
-            placeholder="Search conversations"
+            aria-label={t('org_sidebar.search_conversations')}
+            placeholder={t('org_sidebar.search_conversations')}
             className="org-sidebar-search-input org-window-no-drag min-w-0 flex-1 select-text border-none bg-transparent text-[12px] text-nim outline-none placeholder:text-nim-faint"
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -145,7 +149,7 @@ export const OrgSidebar = React.memo(function OrgSidebar({
               type="button"
               className="org-sidebar-search-clear org-window-no-drag shrink-0 rounded p-0.5 text-nim-faint hover:bg-nim-hover hover:text-nim"
               data-testid="org-sidebar-search-clear"
-              aria-label="Clear search"
+              aria-label={t('org_sidebar.clear_search')}
               onClick={() => setQuery('')}
             >
               <MaterialSymbol icon="close" size={12} />
@@ -157,7 +161,7 @@ export const OrgSidebar = React.memo(function OrgSidebar({
       <div className="org-sidebar-scroll min-h-0 flex-1 overflow-y-auto pb-2">
         <SidebarSection
           sectionId="inbox"
-          title="Inbox"
+          title={t('org_sidebar.inbox')}
           testId="org-inbox-section"
           collapsed={isCollapsed('inbox')}
           onToggleCollapsed={() => toggleSection('inbox')}
@@ -181,14 +185,14 @@ export const OrgSidebar = React.memo(function OrgSidebar({
             is the only source that holds a request this member sent (#3704).
             Folding it in with the six would make it read as a seventh filter
             over the same deliveries, which it is not. */}
-        {matchesOrgSidebarQuery('Feedback', query) && (
+        {matchesOrgSidebarQuery(t('org_sidebar.feedback'), query) && (
           <div className="org-feedback-nav mt-0.5">
             <OrgSidebarRow
               surfaceId={surfaceId}
               className="org-feedback-item"
               testId="org-feedback"
               icon="ballot"
-              label="Feedback"
+              label={t('org_sidebar.feedback')}
               route={FEEDBACK_ROUTE}
               onNavigate={onNavigate}
             />
@@ -198,7 +202,7 @@ export const OrgSidebar = React.memo(function OrgSidebar({
         {gating.roomsVisible && (
           <SidebarSection
             sectionId="rooms"
-            title="Rooms"
+            title={t('org_sidebar.rooms')}
             testId="org-rooms-section"
             collapsed={isCollapsed('rooms')}
             onToggleCollapsed={() => toggleSection('rooms')}
@@ -209,18 +213,18 @@ export const OrgSidebar = React.memo(function OrgSidebar({
               <OrgSidebarSectionAdd
                 surfaceId={surfaceId}
                 testId="org-rooms-section"
-                addLabel="Room actions"
+                addLabel={t('org_sidebar.room_actions')}
                 menuItems={[
                   {
                     testId: 'org-create-room',
-                    label: 'New room',
+                    label: t('org_sidebar.new_room'),
                     icon: 'add',
                     onSelect: gating.canCreateRoom ? onCreateRoom : undefined,
-                    disabledLabel: 'Only organization admins can create rooms',
+                    disabledLabel: t('org_sidebar.admin_create_room_only'),
                   },
                   {
                     testId: 'org-browse-rooms',
-                    label: 'Browse rooms',
+                    label: t('org_sidebar.browse_rooms'),
                     icon: 'search',
                     // The menu only exists while it is open, so reading the
                     // route here costs nothing between openings.
@@ -250,12 +254,12 @@ export const OrgSidebar = React.memo(function OrgSidebar({
               : filtered.rooms.length === 0 && (
                 <OrgSidebarSectionNote testId="org-rooms-empty" className="org-rooms-empty">
                   {searching
-                    ? 'No rooms match that search.'
+                    ? t('org_sidebar.no_rooms_match_search')
                     : directoryLoading
-                      ? 'Loading rooms…'
+                      ? t('org_sidebar.loading_rooms')
                       : gating.canCreateRoom
-                        ? 'No rooms yet. Create one with + or browse the directory.'
-                        : 'No rooms yet. Use + to browse the directory for one to join.'}
+                        ? t('org_sidebar.no_rooms_create_or_browse')
+                        : t('org_sidebar.no_rooms_browse_to_join')}
                 </OrgSidebarSectionNote>
               )}
           </SidebarSection>
@@ -264,7 +268,7 @@ export const OrgSidebar = React.memo(function OrgSidebar({
         {gating.dmsVisible && (
           <SidebarSection
             sectionId="dms"
-            title="Direct messages"
+            title={t('org_sidebar.direct_messages')}
             testId="org-dms-section"
             collapsed={isCollapsed('dms')}
             onToggleCollapsed={() => toggleSection('dms')}
@@ -272,7 +276,7 @@ export const OrgSidebar = React.memo(function OrgSidebar({
               <OrgSidebarSectionAdd
                 surfaceId={surfaceId}
                 testId="org-dms-section"
-                addLabel="New direct message"
+                addLabel={t('org_sidebar.new_direct_message')}
                 onAdd={onCreateDirectMessage}
               />
             }
@@ -296,10 +300,10 @@ export const OrgSidebar = React.memo(function OrgSidebar({
               : filtered.dms.length === 0 && (
                 <OrgSidebarSectionNote testId="org-dms-empty" className="org-dms-empty">
                   {searching
-                    ? 'No direct messages match that search.'
+                    ? t('org_sidebar.no_direct_messages_match_search')
                     : gating.canCreateDirectMessage
-                      ? 'No direct messages yet. Start one with +.'
-                      : 'No direct messages yet.'}
+                      ? t('org_sidebar.no_direct_messages_start')
+                      : t('org_sidebar.no_direct_messages')}
                 </OrgSidebarSectionNote>
               )}
           </SidebarSection>

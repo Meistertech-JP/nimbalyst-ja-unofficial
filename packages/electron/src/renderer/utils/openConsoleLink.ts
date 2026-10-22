@@ -105,10 +105,18 @@ export function openConsoleLinkInWindow(href: string, options?: CollabOpenOption
       return true;
     case 'missing':
       errorNotificationService.showWarning(
-        plan.what === 'view' ? 'View not available' : 'Page not in this project',
-        plan.what === 'view'
-          ? 'This list is not available to open on its own.'
-          : 'The page this link points at is not in this project.',
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          plan.what === 'view' ? 'collab.view_not_available' : 'collab.page_not_in_project',
+          plan.what === 'view' ? 'View not available' : 'Page not in this project',
+        ),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          plan.what === 'view' ? 'collab.view_not_available_message' : 'collab.page_not_in_project_message',
+          plan.what === 'view'
+            ? 'This list is not available to open on its own.'
+            : 'The page this link points at is not in this project.',
+        ),
         { duration: 6000 },
       );
       return true;

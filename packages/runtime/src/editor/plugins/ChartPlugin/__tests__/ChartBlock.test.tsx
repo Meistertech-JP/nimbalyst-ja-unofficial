@@ -6,6 +6,8 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 const testNode = vi.hoisted(() => ({
   source: '',
@@ -30,14 +32,23 @@ vi.mock('../../../../ui/chart/VegaChart', () => ({ VegaChart: () => null, DEFAUL
 
 import { ChartBlock } from '../ChartBlock';
 
-function renderBlock(source: string) {
+async function renderBlock(source: string) {
   testNode.source = source;
-  const view = render(<ChartBlock source={source} nodeKey="k" />);
+  const i18n = await createI18nInstance('en');
+  const view = render(
+    <I18nextProvider i18n={i18n}>
+      <ChartBlock source={source} nodeKey="k" />
+    </I18nextProvider>,
+  );
   return {
     ...view,
     remoteUpdate(next: string) {
       testNode.source = next;
-      view.rerender(<ChartBlock source={next} nodeKey="k" />);
+      view.rerender(
+        <I18nextProvider i18n={i18n}>
+          <ChartBlock source={next} nodeKey="k" />
+        </I18nextProvider>,
+      );
     },
   };
 }
@@ -47,8 +58,8 @@ describe('ChartBlock source editor', () => {
     testNode.writes = [];
   });
 
-  it('never saves an untouched draft over a teammate\'s update', () => {
-    const block = renderBlock('original');
+  it('never saves an untouched draft over a teammate\'s update', async () => {
+    const block = await renderBlock('original');
     fireEvent.click(screen.getByTestId('chart-block-edit'));
     block.remoteUpdate('remote edit');
     fireEvent.blur(screen.getByTestId('chart-block-source'));
@@ -56,16 +67,16 @@ describe('ChartBlock source editor', () => {
     expect(testNode.source).toBe('remote edit');
   });
 
-  it('saves an edited draft when the node has not changed underneath it', () => {
-    renderBlock('original');
+  it('saves an edited draft when the node has not changed underneath it', async () => {
+    await renderBlock('original');
     fireEvent.click(screen.getByTestId('chart-block-edit'));
     fireEvent.change(screen.getByTestId('chart-block-source'), { target: { value: 'mine' } });
     fireEvent.blur(screen.getByTestId('chart-block-source'));
     expect(testNode.writes).toEqual(['mine']);
   });
 
-  it('keeps an edited draft and asks when the node changed underneath it', () => {
-    const block = renderBlock('original');
+  it('keeps an edited draft and asks when the node changed underneath it', async () => {
+    const block = await renderBlock('original');
     fireEvent.click(screen.getByTestId('chart-block-edit'));
     fireEvent.change(screen.getByTestId('chart-block-source'), { target: { value: 'mine' } });
     block.remoteUpdate('remote edit');

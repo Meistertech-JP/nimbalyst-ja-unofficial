@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { InboxStatus } from './inboxTypes';
 
@@ -23,13 +24,14 @@ export function InboxStatePicker({
   status: InboxStatus;
   onChange: (status: InboxStatus) => void;
 }) {
+  const { t } = useTranslation('common');
   return (
     <div
       className="inbox-state-picker flex shrink-0 items-center gap-1.5 border-t border-dashed border-[var(--nim-border)] px-5 py-2"
       data-testid="inbox-state-picker"
       data-component="InboxStatePicker"
     >
-      <span className="text-[11px] uppercase tracking-wide text-[var(--nim-text-faint)]">Preview state</span>
+      <span className="text-[11px] uppercase tracking-wide text-[var(--nim-text-faint)]">{t('team_mode.preview_state')}</span>
       {STATES.map((state) => (
         <button
           key={state.id}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MAX_ATTACHMENTS_PER_MESSAGE,
   MAX_RICH_COMMENT_TEXT_BYTES,
@@ -9,6 +9,8 @@ import {
 import { act } from '@testing-library/react';
 import { DRAG_DROP_PASTE } from '@lexical/rich-text';
 import { PASTE_COMMAND } from 'lexical';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { CommentComposer } from '../CommentComposer';
 import {
@@ -22,25 +24,39 @@ import { composerEditor, composerText, type } from '../composerTestDriver';
 import type { ConversationContext, MessageAttachment } from '../commentTypes';
 
 const NOW = Date.parse('2026-07-26T18:00:00.000Z');
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
 
 function renderComposer(
   overrides: {
     capabilities?: typeof FULL_CAPABILITIES;
     context?: Partial<ConversationContext>;
   } = {},
+  language: 'en' | 'ja' = 'en',
 ) {
   const fixtures = createCommentFixtures({ now: NOW });
   const onSubmit = vi.fn().mockResolvedValue(undefined);
   const utils = render(
-    <CommentComposer
-      capabilities={overrides.capabilities ?? FULL_CAPABILITIES}
-      context={{ ...fixtures.context, ...overrides.context }}
-      directory={fixtures.directory}
-      orgId={fixtures.orgId}
-      resolver={createFixtureResolver()}
-      resourceCandidates={fixtures.candidates}
-      onSubmit={onSubmit}
-    />,
+    <UiLanguageProvider
+      i18n={language === 'ja' ? japaneseI18n : englishI18n}
+      preference={language}
+      systemLocale={language === 'ja' ? 'ja-JP' : 'en-US'}
+    >
+      <CommentComposer
+        capabilities={overrides.capabilities ?? FULL_CAPABILITIES}
+        context={{ ...fixtures.context, ...overrides.context }}
+        directory={fixtures.directory}
+        orgId={fixtures.orgId}
+        resolver={createFixtureResolver()}
+        resourceCandidates={fixtures.candidates}
+        onSubmit={onSubmit}
+      />
+    </UiLanguageProvider>,
   );
   return { fixtures, onSubmit, ...utils };
 }
@@ -166,6 +182,14 @@ describe('CommentComposer emoji', () => {
 
 describe('CommentComposer resource attachment', () => {
   afterEach(() => cleanup());
+
+  it('localizes the reference attachment trigger label and tooltip', () => {
+    renderComposer({}, 'ja');
+
+    const trigger = screen.getByTestId('composer-attach-trigger');
+    expect(trigger.getAttribute('aria-label')).toBe('参照を添付');
+    expect(trigger.getAttribute('title')).toBe('参照を添付');
+  });
 
   it('attaches a reference and shows it as a removable pill', async () => {
     renderComposer();
@@ -344,17 +368,19 @@ describe('CommentComposer attachments', () => {
     const fixtures = createCommentFixtures({ now: NOW });
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
-      <CommentComposer
-        capabilities={FULL_CAPABILITIES}
-        context={fixtures.context}
-        directory={fixtures.directory}
-        orgId={fixtures.orgId}
-        resolver={createFixtureResolver()}
-        resourceCandidates={fixtures.candidates}
-        attachmentHost={{ upload }}
-        initialAttachments={props.initialAttachments}
-        onSubmit={onSubmit}
-      />,
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        <CommentComposer
+          capabilities={FULL_CAPABILITIES}
+          context={fixtures.context}
+          directory={fixtures.directory}
+          orgId={fixtures.orgId}
+          resolver={createFixtureResolver()}
+          resourceCandidates={fixtures.candidates}
+          attachmentHost={{ upload }}
+          initialAttachments={props.initialAttachments}
+          onSubmit={onSubmit}
+        />
+      </UiLanguageProvider>,
     );
     return { fixtures, onSubmit };
   }
@@ -528,5 +554,46 @@ describe('CommentComposer attachments', () => {
     fireEvent.change(input);
 
     await waitFor(() => expect(upload).toHaveBeenCalledWith(file));
+  });
+});
+
+describe('CommentComposer localization', () => {
+  afterEach(() => cleanup());
+
+  it('localizes reply cancellation and file attachment accessibility labels', async () => {
+    const i18n = await createI18nInstance('ja');
+    const fixtures = createCommentFixtures({ now: NOW });
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+        <CommentComposer
+          capabilities={FULL_CAPABILITIES}
+          context={fixtures.context}
+          directory={fixtures.directory}
+          orgId={fixtures.orgId}
+          resolver={createFixtureResolver()}
+          replyingTo={{ commentId: 'comment-1', actorLabel: 'Dana', snippet: 'Earlier reply' }}
+          onCancelReply={() => {}}
+          onCancel={() => {}}
+          attachmentHost={{
+            upload: async () => ({
+              assetId: 'asset-1',
+              fileName: 'screenshot.png',
+              mimeType: 'image/png',
+              byteSize: 2048,
+            }),
+          }}
+          onSubmit={() => {}}
+        />
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByTestId('comment-composer-cancel-reply').getAttribute('aria-label')).toBe('キャンセル');
+    expect(screen.getByTestId('comment-composer-cancel').textContent).toBe('キャンセル');
+    expect(screen.getByTestId('comment-composer-attach-file').getAttribute('aria-label')).toBe('ファイルと画像を添付');
+    expect(screen.getByTestId('comment-composer-attach-file').getAttribute('title')).toBe('ファイルと画像を添付');
+    expect(screen.getByTestId('comment-composer-input').getAttribute('aria-label')).toBe('Generalへのメッセージ');
+    expect(screen.getByTestId('comment-composer-input').getAttribute('aria-placeholder')).toBe(
+      'Generalにメッセージを入力。@でメンションするユーザーまたはエージェントを指定できます。',
+    );
   });
 });

@@ -251,11 +251,17 @@ export const deleteSessionActionAtom = atom(null, async (get, set, sessionId: st
       }
     } else {
       console.error('[sessionHistoryActions] Failed to delete session:', result.error);
-      errorNotificationService.showError('Failed to delete session', result.error || 'Unknown error');
+      errorNotificationService.showError(
+        errorNotificationService.getLocalizedText('sessions', 'notifications.delete_failed', 'Failed to delete session'),
+        result.error || errorNotificationService.getLocalizedText('sessions', 'notifications.unknown_error', 'Unknown error'),
+      );
     }
   } catch (err) {
     console.error('[sessionHistoryActions] Error deleting session:', err);
-    errorNotificationService.showError('Failed to delete session', String(err));
+    errorNotificationService.showError(
+      errorNotificationService.getLocalizedText('sessions', 'notifications.delete_failed', 'Failed to delete session'),
+      String(err),
+    );
   }
 });
 
@@ -342,11 +348,17 @@ export const branchSessionActionAtom = atom(null, async (get, set, sessionId: st
       await set(openSessionInTabActionAtom, result.session.id);
     } else {
       console.error('[sessionHistoryActions] Failed to branch session:', result.error);
-      errorNotificationService.showError('Failed to branch conversation', result.error || 'Unknown error');
+      errorNotificationService.showError(
+        errorNotificationService.getLocalizedText('sessions', 'notifications.branch_failed', 'Failed to branch conversation'),
+        result.error || errorNotificationService.getLocalizedText('sessions', 'notifications.unknown_error', 'Unknown error'),
+      );
     }
   } catch (err) {
     console.error('[sessionHistoryActions] Error branching session:', err);
-    errorNotificationService.showError('Failed to branch conversation', String(err));
+    errorNotificationService.showError(
+      errorNotificationService.getLocalizedText('sessions', 'notifications.branch_failed', 'Failed to branch conversation'),
+      String(err),
+    );
   }
 });
 
@@ -371,7 +383,7 @@ export const createNewSessionActionAtom = atom(
       ? { initialDraft: input }
       : input ?? {};
     const model = options.model ?? get(defaultAgentModelAtom);
-    const title = options.title ?? 'New Session';
+    const title = options.title ?? errorNotificationService.getLocalizedText('sessions', 'new_session', 'New Session');
     const host = get(selectedMachineAtom(workspacePath));
     if (host) {
       try {
@@ -380,7 +392,13 @@ export const createNewSessionActionAtom = atom(
       set(machineSessionSelectionsAtom(workspacePath), previous => ({...previous, [host]: id}));
       if (options.selectSession !== false) window.dispatchEvent(new CustomEvent('open-ai-session', {detail: {sessionId: id, workspacePath}}));
       return id;
-      } catch (error) { errorNotificationService.showError("Could not create remote session", String(error)); return undefined; }
+      } catch (error) {
+        errorNotificationService.showError(
+          errorNotificationService.getLocalizedText('sessions', 'notifications.remote_create_failed', 'Could not create remote session'),
+          String(error),
+        );
+        return undefined;
+      }
     }
 
 
@@ -462,7 +480,10 @@ export const createNewWorktreeSessionActionAtom = atom(
     if (!workspacePath || typeof window === 'undefined' || !window.electronAPI) return undefined;
 
     if (get(selectedMachineAtom(workspacePath))) {
-      errorNotificationService.showError("Remote worktree unavailable", "Worktrees are not supported by this remote host yet.");
+      errorNotificationService.showError(
+        errorNotificationService.getLocalizedText('sessions', 'notifications.remote_worktree_unavailable', 'Remote worktree unavailable'),
+        errorNotificationService.getLocalizedText('sessions', 'notifications.remote_worktree_unavailable_message', 'Worktrees are not supported by this remote host yet.'),
+      );
       return undefined;
     }
     if (!get(worktreesFeatureAvailableAtom)) return undefined;
@@ -484,7 +505,7 @@ export const createNewWorktreeSessionActionAtom = atom(
         ipcOptions,
       );
       if (!worktreeResult.success || !worktreeResult.worktree) {
-        throw new Error(worktreeResult.error || 'Failed to create worktree');
+        throw new Error(worktreeResult.error || errorNotificationService.getLocalizedText('sessions', 'notifications.worktree_create_failed', 'Failed to create worktree'));
       }
 
       const worktree = worktreeResult.worktree;
@@ -495,7 +516,7 @@ export const createNewWorktreeSessionActionAtom = atom(
           id: sessionId,
           provider,
           model: defaultModel,
-          title: `Worktree: ${worktree.name}`,
+          title: errorNotificationService.getLocalizedText('sessions', 'worktree_session_title', 'Worktree: {{name}}', { name: worktree.name }),
           worktreeId: worktree.id,
         },
         workspaceId: workspacePath,
@@ -505,7 +526,7 @@ export const createNewWorktreeSessionActionAtom = atom(
       if (result.success && result.id) {
         set(addSessionFullAtom, {
           id: result.id,
-          title: `Worktree: ${worktree.name}`,
+          title: errorNotificationService.getLocalizedText('sessions', 'worktree_session_title', 'Worktree: {{name}}', { name: worktree.name }),
           createdAt: Date.now(),
           updatedAt: Date.now(),
           provider,
@@ -560,7 +581,9 @@ export const createWorktreeSessionCoreActionAtom = atom(
 
     const defaultModel = get(defaultAgentModelAtom);
     const worktreeResult = await window.electronAPI.invoke('worktree:get', worktreeId);
-    if (!worktreeResult?.worktree) throw new Error('Worktree not found');
+    if (!worktreeResult?.worktree) {
+      throw new Error(errorNotificationService.getLocalizedText('sessions', 'notifications.worktree_not_found', 'Worktree not found'));
+    }
 
     const worktree = worktreeResult.worktree;
     const sessionId = crypto.randomUUID();
@@ -570,7 +593,7 @@ export const createWorktreeSessionCoreActionAtom = atom(
         id: sessionId,
         provider,
         model: defaultModel,
-        title: 'New Session',
+        title: errorNotificationService.getLocalizedText('sessions', 'new_session', 'New Session'),
         worktreeId: worktree.id,
       },
       workspaceId: workspacePath,
@@ -580,7 +603,7 @@ export const createWorktreeSessionCoreActionAtom = atom(
     if (result.success && result.id) {
       set(addSessionFullAtom, {
         id: result.id,
-        title: 'New Session',
+        title: errorNotificationService.getLocalizedText('sessions', 'new_session', 'New Session'),
         createdAt: Date.now(),
         updatedAt: Date.now(),
         provider,
@@ -606,7 +629,7 @@ export const createWorktreeSessionCoreActionAtom = atom(
       return result.id;
     }
 
-    throw new Error(result.error || 'Failed to create session');
+    throw new Error(result.error || errorNotificationService.getLocalizedText('sessions', 'notifications.create_failed', 'Failed to create session'));
   },
 );
 
@@ -620,8 +643,14 @@ export const addSessionToWorktreeActionAtom = atom(null, async (_get, set, workt
     await set(createWorktreeSessionCoreActionAtom, worktreeId);
   } catch (error) {
     errorNotificationService.showError(
-      'Failed to Create Session',
-      error instanceof Error ? error.message : 'An unexpected error occurred while adding a session to the worktree.',
+      errorNotificationService.getLocalizedText('sessions', 'notifications.create_failed', 'Failed to create session'),
+      error instanceof Error
+        ? error.message
+        : errorNotificationService.getLocalizedText(
+            'sessions',
+            'notifications.create_failed_message',
+            'An unexpected error occurred while adding a session to the worktree.',
+          ),
       { duration: 5000 },
     );
   }

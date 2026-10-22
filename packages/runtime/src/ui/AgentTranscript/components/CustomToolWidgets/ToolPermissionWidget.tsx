@@ -27,6 +27,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom, getInteractiveWidgetHost } from '../../../../store/atoms/interactiveWidgetHost';
 import type { PermissionScope } from './InteractiveWidgetHost';
@@ -35,39 +36,39 @@ import { unwrapShellCommand } from '../../utils/unwrapShellCommand';
 /**
  * Get a human-readable display name for a tool pattern
  */
-function getPatternDisplayName(pattern: string): string {
+function getPatternDisplayName(pattern: string, t: (key: string, options?: Record<string, unknown>) => string): string {
   // Handle compound commands - these get unique patterns and shouldn't be cached
   if (pattern.startsWith('Bash:compound:')) {
-    return 'this compound command (one-time only)';
+    return t('permission.compound_once');
   }
 
   // Handle Bash patterns like "Bash(git commit:*)" -> "git commit commands"
   const bashMatch = pattern.match(/^Bash\(([^:]+):\*\)$/);
   if (bashMatch) {
-    return `${bashMatch[1]} commands`;
+    return t('permission.bash_commands', { command: bashMatch[1] });
   }
   if (pattern === 'Bash') {
-    return 'Run shell commands';
+    return t('permission.run_shell_commands');
   }
 
   // Handle WebFetch patterns like "WebFetch(domain:example.com)" -> "Fetch from example.com"
   const webfetchMatch = pattern.match(/^WebFetch\(domain:(.+)\)$/);
   if (webfetchMatch) {
-    return `Fetch from ${webfetchMatch[1]}`;
+    return t('permission.fetch_from_domain', { domain: webfetchMatch[1] });
   }
   if (pattern === 'WebFetch') {
-    return 'Fetch any web page';
+    return t('permission.fetch_any_web_page');
   }
 
   const displayNames: Record<string, string> = {
-    'Edit': 'Edit files in project',
-    'Write': 'Create files in project',
-    'Read': 'Read files',
-    'Glob': 'Search for files',
-    'Grep': 'Search file contents',
-    'WebSearch': 'Search the web',
-    'Task': 'Run background tasks',
-    'TodoWrite': 'Update task list',
+    Edit: t('permission.edit_files'),
+    Write: t('permission.create_files'),
+    Read: t('permission.read_files'),
+    Glob: t('permission.search_files'),
+    Grep: t('permission.search_file_contents'),
+    WebSearch: t('permission.search_web'),
+    Task: t('permission.run_background_tasks'),
+    TodoWrite: t('permission.update_task_list'),
   };
 
   if (displayNames[pattern]) {
@@ -101,6 +102,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
   message,
   sessionId,
 }) => {
+  const { t } = useTranslation('agents');
   const toolCall = message.toolCall;
   if (!toolCall) return null;
 
@@ -113,7 +115,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
   const toolName = (args.toolName || '') as string;
   const rawCommand = unwrapShellCommand((args.rawCommand || '') as string);
   const pattern = (args.pattern || toolName) as string;
-  const patternDisplayName = (args.patternDisplayName || getPatternDisplayName(pattern)) as string;
+  const patternDisplayName = (args.patternDisplayName || getPatternDisplayName(pattern, t)) as string;
   const isDestructive = (args.isDestructive || false) as boolean;
   const suppressAlwaysAllowRule = args.suppressAlwaysAllowRule === true;
   const warnings: string[] = (args.warnings || []) as string[];
@@ -273,10 +275,10 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
   // Show completed state
   if (displayResult || hasResponded) {
     const statusText = displayCancelled
-      ? 'Permission Cancelled'
+      ? t('permission.cancelled')
       : displayResult?.decision === 'allow'
-        ? 'Permission Granted'
-        : 'Permission Denied';
+        ? t('permission.granted')
+        : t('permission.denied');
 
     const statusColor = displayCancelled
       ? 'text-nim-muted'
@@ -285,12 +287,12 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
         : 'text-nim-error';
 
     const scopeText = displayResult?.scope === 'always-all'
-      ? 'All Domains'
+      ? t('permission.all_domains')
       : displayResult?.scope === 'always'
-        ? 'Always'
+        ? t('permission.always')
         : displayResult?.scope === 'session'
-          ? 'This Session'
-          : 'Once';
+          ? t('permission.this_session')
+          : t('permission.once');
 
     return (
       <div
@@ -314,7 +316,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
             {statusText}
             {teammateName && (
               <span className="ml-2 text-xs font-normal text-nim-muted">
-                (from teammate: {teammateName})
+                {t('permission.from_teammate', { name: teammateName })}
               </span>
             )}
           </span>
@@ -390,15 +392,16 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
           )}
         </span>
         <span className="text-sm font-semibold text-nim flex-1">
-          Allow this tool?
+          {t('permission.allow_tool')}
           {teammateName && (
             <span className="ml-2 text-xs font-normal text-nim-muted">
-              (from teammate: {teammateName})
+              {t('permission.from_teammate', { name: teammateName })}
             </span>
           )}
         </span>
         <span
           className="relative flex items-center cursor-pointer text-nim-faint hover:text-nim-muted"
+          aria-label={t('permission.options_title')}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
@@ -409,30 +412,30 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
           {showTooltip && (
             <div className="absolute bottom-full right-0 mb-2 p-3 w-[300px] rounded-md border border-nim bg-nim-tertiary text-[11px] leading-relaxed text-nim-muted shadow-lg z-[100]">
               <div className="font-semibold text-nim mb-2">
-                Permission Options
+                {t('permission.options_title')}
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-nim">Deny:</span> Block this request
+                <span className="font-semibold text-nim">{t('permission.deny')}:</span> {t('permission.block_request')}
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-nim">Allow Once:</span> Allow just this request
+                <span className="font-semibold text-nim">{t('permission.allow_once')}:</span> {t('permission.allow_just_this_request')}
               </div>
               {!suppressAlwaysAllowRule && <>
                 <div className="mb-2">
-                  <span className="font-semibold text-nim">Session:</span> Allow{' '}
+                  <span className="font-semibold text-nim">{t('permission.session')}:</span> {t('permission.allow')}{' '}
                   <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">
                     {patternDisplayName}
-                  </span> until you close the app
+                  </span>{' '}{t('permission.until_app_closes')}
                 </div>
                 <div className="mb-0">
-                  <span className="font-semibold text-nim">Always:</span> Save to{' '}
+                  <span className="font-semibold text-nim">{t('permission.always')}:</span> {t('permission.save_to')}{' '}
                   <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">
                     .claude/settings.local.json
                   </span>
                 </div>
               </>}
               <div className="mt-2 pt-2 border-t border-nim text-nim-faint">
-                Pattern: <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">{pattern}</span>
+                {t('permission.pattern')}: <span className="font-mono text-[10px] text-nim-faint bg-nim-secondary px-1 py-0.5 rounded">{pattern}</span>
               </div>
             </div>
           )}
@@ -472,8 +475,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
             data-testid="tool-permission-host-reconnecting"
             className="text-[11px] text-nim-muted bg-nim-tertiary border border-nim rounded px-2 py-1.5"
           >
-            Reconnecting to permission backend. Buttons will work once the
-            session view is fully loaded.
+            {t('permission.reconnecting')}
           </div>
         )}
 
@@ -487,7 +489,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isSubmitting}
             className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border border-nim bg-nim-tertiary text-nim whitespace-nowrap transition-all duration-150 hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Deny
+            {t('permission.deny')}
           </button>
           <button
             type="button"
@@ -496,7 +498,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isSubmitting}
             className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border border-nim bg-nim-tertiary text-nim whitespace-nowrap transition-all duration-150 hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Allow Once
+            {t('permission.allow_once')}
           </button>
           {!suppressAlwaysAllowRule && <>
             <div className="w-px h-5 bg-nim mx-1" />
@@ -505,20 +507,20 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
               data-testid="tool-permission-allow-session"
               onClick={handleAllowSession}
               disabled={isSubmitting}
-              title={`Allow ${patternDisplayName} for this session`}
+              title={t('permission.allow_for_session', { pattern: patternDisplayName })}
               className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border border-nim-primary bg-transparent text-nim-primary whitespace-nowrap transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Session
+              {t('permission.session')}
             </button>
             <button
               type="button"
               data-testid="tool-permission-allow-always"
               onClick={handleAllowAlways}
               disabled={isSubmitting}
-              title={`Save ${patternDisplayName} to .claude/settings.local.json`}
+              title={t('permission.save_rule_to_settings', { pattern: patternDisplayName })}
               className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border-none bg-nim-primary text-nim-on-primary whitespace-nowrap transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Always
+              {t('permission.always')}
             </button>
           </>}
           {isWebFetchRequest && !suppressAlwaysAllowRule && (
@@ -529,10 +531,10 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
                 data-testid="tool-permission-allow-all-domains"
                 onClick={handleAllowAllDomains}
                 disabled={isSubmitting || isAllowingAllDomains}
-                title="Allow fetching from any domain without asking"
+                title={t('permission.allow_any_domain')}
                 className="px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer border-none bg-nim-primary text-nim-on-primary whitespace-nowrap transition-all duration-150 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isAllowingAllDomains ? 'Saving...' : 'All Domains'}
+                {isAllowingAllDomains ? t('permission.saving') : t('permission.all_domains')}
               </button>
             </>
           )}
@@ -540,7 +542,7 @@ export const ToolPermissionWidget: React.FC<CustomToolWidgetProps> = ({
 
         {/* Pattern info */}
         {!suppressAlwaysAllowRule && <div className="text-[11px] text-nim-faint">
-          Session/Always will allow: <span className="font-medium text-nim-muted bg-nim-tertiary px-1.5 py-0.5 rounded text-[10px]">{patternDisplayName}</span>
+          {t('permission.session_always_allow')}: <span className="font-medium text-nim-muted bg-nim-tertiary px-1.5 py-0.5 rounded text-[10px]">{patternDisplayName}</span>
         </div>}
       </div>
     </div>

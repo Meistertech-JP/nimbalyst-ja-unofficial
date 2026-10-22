@@ -6,6 +6,7 @@
  * written back to the proposal, so a rejected change stays on record.
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingFocusManager,
   FloatingOverlay,
@@ -46,6 +47,7 @@ function text(record: OntologyRecordLike, field: string): string {
 }
 
 function PageLinks({ pages, onOpenItem, limit = PAGE_PREVIEW }: { pages: readonly OntologyRecordLike[]; onOpenItem?: (id: string) => void; limit?: number }) {
+  const { t } = useTranslation('tracker');
   if (!pages.length) return null;
   const shown = pages.slice(0, limit);
   return (
@@ -53,7 +55,7 @@ function PageLinks({ pages, onOpenItem, limit = PAGE_PREVIEW }: { pages: readonl
       {shown.map((page) => (onOpenItem
         ? <button key={page.id} type="button" className="ontology-link" onClick={() => onOpenItem(page.id)}>{ontologyRecordTitle(page)}</button>
         : <span key={page.id}>{ontologyRecordTitle(page)}</span>))}
-      {pages.length > shown.length && <span className="ontology-empty">and {pages.length - shown.length} more</span>}
+      {pages.length > shown.length && <span className="ontology-empty">{t('ontology_proposals.more_pages', { count: pages.length - shown.length })}</span>}
     </div>
   );
 }
@@ -69,6 +71,7 @@ export function OntologyProposalDrawer({ target, onClose, proposals, graph, env,
   /** Switch the drawer to a proposal, e.g. the request just written. */
   onOpenProposal: (id: string) => void;
 }) {
+  const { t } = useTranslation('tracker');
   const { refs, context: floating } = useFloating({ open: true, onOpenChange: (open) => { if (!open) onClose(); } });
   const dismiss = useDismiss(floating, { outsidePressEvent: 'mousedown' });
   const role = useRole(floating, { role: 'dialog' });
@@ -78,15 +81,15 @@ export function OntologyProposalDrawer({ target, onClose, proposals, graph, env,
     <FloatingPortal>
       <FloatingOverlay className="ontology-scrim" lockScroll>
         <FloatingFocusManager context={floating} initialFocus={-1}>
-          <aside ref={refs.setFloating} className="ontology-drawer" aria-label="Ontology proposal" {...getFloatingProps()}>
+          <aside ref={refs.setFloating} className="ontology-drawer" aria-label={t('ontology_proposals.drawer_label')} {...getFloatingProps()}>
             {target.kind === 'request' ? (
               <RequestPanel target={target} context={context} onClose={onClose} onOpenItem={onOpenItem} onCreated={onOpenProposal} />
             ) : proposal ? (
               <ProposalPanel key={proposal.id} proposal={proposal} graph={graph} env={env} context={context} onClose={onClose} onOpenItem={onOpenItem} />
             ) : (
               <>
-                <DrawerHead kicker="Proposal" title="Waiting for the proposal" onClose={onClose} />
-                <div className="ontology-drawer-body"><p className="ontology-empty">The request was sent. It appears here as soon as the project syncs it back.</p></div>
+                <DrawerHead kicker={t('ontology_proposals.proposal_kicker')} title={t('ontology_proposals.waiting_title')} onClose={onClose} />
+                <div className="ontology-drawer-body"><p className="ontology-empty">{t('ontology_proposals.waiting_body')}</p></div>
               </>
             )}
           </aside>
@@ -97,19 +100,18 @@ export function OntologyProposalDrawer({ target, onClose, proposals, graph, env,
 }
 
 function DrawerHead({ kicker, title, reason, onClose }: { kicker: string; title: string; reason?: string; onClose: () => void }) {
+  const { t } = useTranslation('common');
   return (
     <div className="ontology-drawer-head">
       <div className="ontology-drawer-kicker">
         <span>{kicker}</span>
-        <button type="button" className="ontology-drawer-close" aria-label="Close panel" onClick={onClose}>&#x2715;</button>
+        <button type="button" className="ontology-drawer-close" aria-label={t('close')} title={t('close')} onClick={onClose}>&#x2715;</button>
       </div>
       <h3>{title}</h3>
       {reason && <p>{reason}</p>}
     </div>
   );
 }
-
-const READ_ONLY = 'You can read this project but not write to it, so proposals cannot be created or decided here.';
 
 function RequestPanel({ target, context, onClose, onOpenItem, onCreated }: {
   target: Extract<DrawerTarget, { kind: 'request' }>;
@@ -118,6 +120,8 @@ function RequestPanel({ target, context, onClose, onOpenItem, onCreated }: {
   onOpenItem?: (itemId: string) => void;
   onCreated: (id: string) => void;
 }) {
+  const { t } = useTranslation('tracker');
+  const { t: tCommon } = useTranslation('common');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const send = async () => {
@@ -134,27 +138,27 @@ function RequestPanel({ target, context, onClose, onOpenItem, onCreated }: {
   };
   return (
     <>
-      <DrawerHead kicker="New proposal · an agent drafts the changes" title={target.draft.title.replace(/^Improve: /, '')} reason={target.detail} onClose={onClose} />
+      <DrawerHead kicker={t('ontology_proposals.new_kicker')} title={target.draft.title.replace(/^Improve: /, '')} reason={target.detail} onClose={onClose} />
       <div className="ontology-drawer-body">
         {target.pages.length > 0 && (
           <>
-            <div className="ontology-label">Affects {target.pages.length} {target.pages.length === 1 ? 'page' : 'pages'}</div>
+            <div className="ontology-label">{t(target.pages.length === 1 ? 'ontology_proposals.affects_one' : 'ontology_proposals.affects_other', { count: target.pages.length })}</div>
             <PageLinks pages={target.pages} onOpenItem={onOpenItem} />
           </>
         )}
         <div className="ontology-request">
-          <span>The request the agent receives:</span>
+          <span>{t('ontology_proposals.request_label')}</span>
           <pre>{target.draft.request}</pre>
         </div>
       </div>
       <div className="ontology-drawer-note">
-        Nothing changes until you apply. An agent with the wiki skills (/wiki:update) drafts the changes; you accept or reject each one here. Rejected changes are remembered so they are not suggested again.
+        {t('ontology_proposals.request_note')}
       </div>
       <div className="ontology-drawer-foot">
-        <span className="ontology-drawer-status">{context ? '' : READ_ONLY}</span>
-        <button type="button" className="ontology-button ontology-button-ghost" onClick={onClose}>Cancel</button>
+        <span className="ontology-drawer-status">{context ? '' : t('ontology_proposals.read_only')}</span>
+        <button type="button" className="ontology-button ontology-button-ghost" onClick={onClose}>{tCommon('cancel')}</button>
         <button type="button" className="ontology-button ontology-button-primary" disabled={!context || busy} onClick={() => { void send(); }}>
-          {busy ? 'Sending…' : 'Ask the agent to draft this'}
+          {busy ? t('ontology_proposals.sending') : t('ontology_proposals.send_request')}
         </button>
         {error && <div className="ontology-drawer-error" role="alert">{error}</div>}
       </div>
@@ -170,6 +174,8 @@ function ProposalPanel({ proposal, graph, env, context, onClose, onOpenItem }: {
   onClose: () => void;
   onOpenItem?: (itemId: string) => void;
 }) {
+  const { t } = useTranslation('tracker');
+  const { t: tCommon } = useTranslation('common');
   const parsed = useMemo(() => parseProposalChanges(ontologyFieldValue(proposal, 'changes')), [proposal]);
   const plans = useMemo(() => new Map(parsed.changes.map((change) => [change.id, planOntologyChange(change, graph, env)])), [parsed, graph, env]);
   const undoRecord = useMemo(() => parseUndoRecord(ontologyFieldValue(proposal, 'undo')), [proposal]);
@@ -186,6 +192,12 @@ function ProposalPanel({ proposal, graph, env, context, onClose, onOpenItem }: {
   const accepted = parsed.changes.filter((change) => decisionOf(change) === 'accepted').length;
   const rejected = parsed.changes.filter((change) => decisionOf(change) === 'rejected').length;
   const pending = parsed.changes.length - accepted - rejected;
+  const statusLabel = status === 'proposed' ? t('ontology_proposals.status_proposed')
+    : status === 'accepted' ? t('ontology_proposals.status_accepted')
+    : status === 'applied' ? t('ontology_proposals.status_applied')
+    : status === 'rejected' ? t('ontology_proposals.status_rejected')
+    : status === 'undone' ? t('ontology_proposals.status_undone')
+    : proposalStatusLabel(status);
 
   const run = async (work: () => Promise<string | null>) => {
     setBusy(true);
@@ -206,19 +218,21 @@ function ProposalPanel({ proposal, graph, env, context, onClose, onOpenItem }: {
   });
   const apply = () => context && run(async () => {
     const result = await applyAcceptedChanges(proposal, graph, env, context);
-    if (result.error) throw new Error(`Stopped: ${result.error}. The writes that ran are recorded and can be undone.`);
-    return `Applied ${result.applied.length} ${result.applied.length === 1 ? 'change' : 'changes'}.${result.blocked.length ? ` ${result.blocked.length} waiting on a schema change.` : ''}`;
+    if (result.error) throw new Error(t('ontology_proposals.apply_stopped', { error: result.error }));
+    const applied = t(result.applied.length === 1 ? 'ontology_proposals.applied_one' : 'ontology_proposals.applied_other', { count: result.applied.length });
+    const blocked = result.blocked.length ? ` ${t('ontology_proposals.blocked_suffix', { count: result.blocked.length })}` : '';
+    return `${applied}${blocked}`;
   });
   const undo = () => context && run(async () => {
     const result = await undoAppliedChanges(proposal, context);
-    if (result.error) throw new Error(`Undo stopped: ${result.error}.`);
-    return `Undid ${result.undone.length} ${result.undone.length === 1 ? 'change' : 'changes'}.`;
+    if (result.error) throw new Error(t('ontology_proposals.undo_stopped', { error: result.error }));
+    return t(result.undone.length === 1 ? 'ontology_proposals.undone_one' : 'ontology_proposals.undone_other', { count: result.undone.length });
   });
 
   return (
     <>
       <DrawerHead
-        kicker={`Proposal · ${proposalStatusLabel(status)}${proposal.issueKey ? ` · ${proposal.issueKey}` : ''}`}
+        kicker={`${t('ontology_proposals.proposal_kicker')} · ${statusLabel}${proposal.issueKey ? ` · ${proposal.issueKey}` : ''}`}
         title={ontologyRecordTitle(proposal).replace(/^Improve: /, '')}
         reason={reason || undefined}
         onClose={onClose}
@@ -226,8 +240,8 @@ function ProposalPanel({ proposal, graph, env, context, onClose, onOpenItem }: {
       <div className="ontology-drawer-body">
         {parsed.changes.length === 0 && (
           <div className="ontology-request">
-            <strong>Waiting for an agent to draft changes.</strong>
-            <div>In a Nimbalyst agent session with the wiki skills, run /wiki:update and ask it to draft the pending ontology proposals.</div>
+            <strong>{t('ontology_proposals.empty_waiting_title')}</strong>
+            <div>{t('ontology_proposals.empty_waiting_body')}</div>
             {request && <pre>{request}</pre>}
           </div>
         )}
@@ -246,28 +260,36 @@ function ProposalPanel({ proposal, graph, env, context, onClose, onOpenItem }: {
           />
         ))}
       </div>
-      <div className="ontology-drawer-note">Nothing changes until you apply. Applied proposals keep an undo record; rejected changes are remembered so they are not suggested again.</div>
+      <div className="ontology-drawer-note">{t('ontology_proposals.proposal_note')}</div>
       <div className="ontology-drawer-foot">
         <span className="ontology-drawer-status">
-          {!context ? READ_ONLY : busy ? 'Writing…' : message ?? (parsed.changes.length === 0 ? '' : pending ? `${pending} of ${parsed.changes.length} to decide` : `${accepted} accepted, ${rejected} rejected`)}
+          {!context ? t('ontology_proposals.read_only') : busy ? t('ontology_proposals.writing') : message ?? (parsed.changes.length === 0 ? '' : pending ? t('ontology_proposals.pending_count', { pending, total: parsed.changes.length }) : t('ontology_proposals.decisions_count', { accepted, rejected }))}
         </span>
         {confirming ? (
           <>
             <span className="ontology-drawer-status">
-              {confirming === 'apply' ? `Apply ${ready.length} ${ready.length === 1 ? 'change' : 'changes'} (${writes} ${writes === 1 ? 'write' : 'writes'})?` : 'Undo every applied change in this proposal?'}
+              {confirming === 'apply'
+                ? ready.length === 1
+                  ? writes === 1
+                    ? t('ontology_proposals.confirm_apply_one_one')
+                    : t('ontology_proposals.confirm_apply_one_other', { writes })
+                  : writes === 1
+                    ? t('ontology_proposals.confirm_apply_other_one', { changes: ready.length })
+                    : t('ontology_proposals.confirm_apply_other_other', { changes: ready.length, writes })
+                : t('ontology_proposals.confirm_undo')}
             </span>
-            <button type="button" className="ontology-button ontology-button-ghost" disabled={busy} onClick={() => setConfirming(null)}>Cancel</button>
+            <button type="button" className="ontology-button ontology-button-ghost" disabled={busy} onClick={() => setConfirming(null)}>{tCommon('cancel')}</button>
             <button type="button" className="ontology-button ontology-button-primary" disabled={busy} onClick={() => { void (confirming === 'apply' ? apply() : undo()); }}>
-              {confirming === 'apply' ? 'Apply' : 'Undo'}
+              {confirming === 'apply' ? t('ontology_proposals.apply') : t('ontology_proposals.undo')}
             </button>
           </>
         ) : (
           <>
-            <button type="button" className="ontology-button ontology-button-ghost" onClick={onClose}>Close</button>
-            {canUndo && <button type="button" className="ontology-button" disabled={!context || busy} onClick={() => setConfirming('undo')}>Undo applied</button>}
+            <button type="button" className="ontology-button ontology-button-ghost" onClick={onClose}>{tCommon('close')}</button>
+            {canUndo && <button type="button" className="ontology-button" disabled={!context || busy} onClick={() => setConfirming('undo')}>{t('ontology_proposals.undo_applied')}</button>}
             {parsed.changes.length > 0 && (
               <button type="button" className="ontology-button ontology-button-primary" disabled={!context || busy || ready.length === 0} onClick={() => setConfirming('apply')}>
-                {ready.length ? `Apply ${ready.length} ${ready.length === 1 ? 'change' : 'changes'}` : 'Apply'}
+                {ready.length ? t(ready.length === 1 ? 'ontology_proposals.apply_one' : 'ontology_proposals.apply_other', { count: ready.length }) : t('ontology_proposals.apply')}
               </button>
             )}
           </>
@@ -286,6 +308,8 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
   onDecide: (decision: ChangeDecision, rejectReason?: string) => void;
   onOpenItem?: (itemId: string) => void;
 }) {
+  const { t } = useTranslation('tracker');
+  const { t: tCommon } = useTranslation('common');
   const decision = decisionOf(change);
   const live = isLive(change);
   const schema = SCHEMA_CHANGE_TYPES.has(change.type);
@@ -300,10 +324,10 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
         <div>
           <div className="ontology-change-title">{plan.summary}</div>
           <div className="ontology-change-meta">
-            {schema ? 'Schema change, applied by an agent' : `Affects ${plan.pages.length} ${plan.pages.length === 1 ? 'page' : 'pages'}`}
-            {plan.pages.length > 0 && <> · <button type="button" className="ontology-link" onClick={() => setPreview(!preview)}>{preview ? 'hide pages' : 'preview'}</button></>}
-            {live && ' · applied'}
-            {change.undoneAt && !live && ' · undone'}
+            {schema ? t('ontology_proposals.schema_applied') : t(plan.pages.length === 1 ? 'ontology_proposals.affects_one' : 'ontology_proposals.affects_other', { count: plan.pages.length })}
+            {plan.pages.length > 0 && <> · <button type="button" className="ontology-link" onClick={() => setPreview(!preview)}>{preview ? t('ontology_proposals.hide_pages') : t('ontology_proposals.preview_pages')}</button></>}
+            {live && <> · {t('ontology_proposals.applied_status')}</>}
+            {change.undoneAt && !live && <> · {t('ontology_proposals.undone_status')}</>}
           </div>
           {change.reason && <div className="ontology-change-meta">{change.reason}</div>}
         </div>
@@ -311,12 +335,12 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
       {preview && <div className="ontology-change-indent"><PageLinks pages={plan.pages} onOpenItem={onOpenItem} limit={40} /></div>}
       {plan.example && (
         <div className="ontology-change-indent ontology-change-example">
-          {plan.example.before.map((line, i) => <div key={`b${i}`} className="ontology-change-before">Before: {line.label}: {line.value}</div>)}
-          {plan.example.after.map((line, i) => <div key={`a${i}`} className="ontology-change-after">After: {line.label}: {line.value}</div>)}
+          {plan.example.before.map((line, i) => <div key={`b${i}`} className="ontology-change-before">{t('ontology_proposals.before')}: {line.label}: {line.value}</div>)}
+          {plan.example.after.map((line, i) => <div key={`a${i}`} className="ontology-change-after">{t('ontology_proposals.after')}: {line.label}: {line.value}</div>)}
         </div>
       )}
       {decision === 'accepted' && !live && plan.blocked && <div className="ontology-change-indent ontology-change-blocked">{plan.blocked}</div>}
-      {decision === 'rejected' && change.rejectReason && <div className="ontology-change-indent ontology-change-meta">Rejected: {change.rejectReason}</div>}
+      {decision === 'rejected' && change.rejectReason && <div className="ontology-change-indent ontology-change-meta">{t('ontology_proposals.rejected_reason', { reason: change.rejectReason })}</div>}
       {!live && (
         <div className="ontology-change-indent ontology-change-actions">
           {rejecting === null ? (
@@ -328,7 +352,7 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
                 disabled={!canDecide}
                 onClick={() => onDecide(decision === 'accepted' ? 'pending' : 'accepted')}
               >
-                Accept
+                {t('ontology_proposals.accept')}
               </button>
               <button
                 type="button"
@@ -337,20 +361,20 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
                 disabled={!canDecide}
                 onClick={() => (decision === 'rejected' ? onDecide('pending') : setRejecting(''))}
               >
-                Reject
+                {t('ontology_proposals.reject')}
               </button>
             </>
           ) : (
             <form className="ontology-change-actions" onSubmit={(event) => { event.preventDefault(); onDecide('rejected', rejecting); setRejecting(null); }}>
               <input
-                placeholder="Why not? (optional, the agent reads this)"
-                aria-label="Reason for rejecting"
+                placeholder={t('ontology_proposals.reason_placeholder')}
+                aria-label={t('ontology_proposals.reason_aria')}
                 value={rejecting}
                 onChange={(event) => setRejecting(event.target.value)}
                 autoFocus
               />
-              <button type="submit" className="ontology-button ontology-button-sm" disabled={!canDecide}>Reject</button>
-              <button type="button" className="ontology-button ontology-button-sm ontology-button-ghost" onClick={() => setRejecting(null)}>Cancel</button>
+              <button type="submit" className="ontology-button ontology-button-sm" disabled={!canDecide}>{t('ontology_proposals.reject')}</button>
+              <button type="button" className="ontology-button ontology-button-sm ontology-button-ghost" onClick={() => setRejecting(null)}>{tCommon('cancel')}</button>
             </form>
           )}
         </div>

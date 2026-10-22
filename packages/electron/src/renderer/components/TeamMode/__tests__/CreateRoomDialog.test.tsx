@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConversationDirectoryEntry } from '../../../../shared/conversationDirectory';
 import { CreateRoomDialog } from '../CreateRoomDialog';
 
 const createDirectoryConversation = vi.fn();
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 vi.mock('../../../services/conversationDirectoryClient', () => ({
   createDirectoryConversation: (...args: unknown[]) =>
     createDirectoryConversation(...args),
@@ -32,20 +35,23 @@ const existing: ConversationDirectoryEntry[] = [{
 function renderDialog(onCreated = vi.fn()) {
   const onClose = vi.fn();
   render(
-    <CreateRoomDialog
-      orgId="org-a"
-      members={members}
-      viewerUserId="member-a"
-      existingConversations={existing}
-      onClose={onClose}
-      onCreated={onCreated}
-    />,
+    <I18nextProvider i18n={testI18n}>
+      <CreateRoomDialog
+        orgId="org-a"
+        members={members}
+        viewerUserId="member-a"
+        existingConversations={existing}
+        onClose={onClose}
+        onCreated={onCreated}
+      />
+    </I18nextProvider>,
   );
   return { onClose, onCreated };
 }
 
 describe('CreateRoomDialog', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    testI18n = await createI18nInstance('en');
     createDirectoryConversation.mockReset();
     createDirectoryConversation.mockResolvedValue({
       descriptor: { id: 'design-reviews' },
@@ -53,6 +59,16 @@ describe('CreateRoomDialog', () => {
     });
   });
   afterEach(() => cleanup());
+
+  it('shows the localized room creation form', async () => {
+    testI18n = await createI18nInstance('ja');
+    renderDialog();
+
+    expect(screen.getByText('ルームを作成', { selector: 'h3' })).toBeTruthy();
+    expect(screen.getByText('公開範囲')).toBeTruthy();
+    expect(screen.getByText('エージェントの投稿を許可')).toBeTruthy();
+    expect(screen.getByPlaceholderText('デザインレビュー')).toBeTruthy();
+  });
 
   it('derives the id from the name until the id is edited by hand', () => {
     renderDialog();

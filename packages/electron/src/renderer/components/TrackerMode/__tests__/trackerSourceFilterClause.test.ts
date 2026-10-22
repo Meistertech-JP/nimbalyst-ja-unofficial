@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import {
   SOURCE_FILTER_FIELD,
   sourceFilterField,
@@ -9,13 +10,20 @@ import {
 
 const SOURCES = ['native', 'github-issues', 'linear'];
 const STATUS = { field: 'status', op: '=' as const, value: 'open' };
+let t: Awaited<ReturnType<typeof createI18nInstance>>['t'];
+let tJa: Awaited<ReturnType<typeof createI18nInstance>>['t'];
+beforeAll(async () => {
+  const [english, japanese] = await Promise.all([createI18nInstance('en'), createI18nInstance('ja')]);
+  t = english.getFixedT('en', 'tracker');
+  tJa = japanese.getFixedT('ja', 'tracker');
+});
 
 describe('trackerSourceFilterClause', () => {
   it('round-trips the source list through the box as one clause after the column filters', () => {
     for (const sourceFilter of [[], ['github-issues'], ['github-issues', 'linear']]) {
       const merged = withSourceClause({ combinator: 'and', clauses: [STATUS] }, sourceFilter);
       expect(merged!.clauses[0]).toEqual(STATUS);
-      expect(splitSourceClause(merged!, SOURCES)).toEqual({
+      expect(splitSourceClause(merged!, SOURCES, t)).toEqual({
         columnFilters: { combinator: 'and', clauses: [STATUS] },
         sourceFilter,
       });
@@ -23,17 +31,20 @@ describe('trackerSourceFilterClause', () => {
   });
 
   it('reads typed and negated source clauses as the sources they select', () => {
-    const split = (clause: object) => splitSourceClause({ combinator: 'and', clauses: [{ field: SOURCE_FILTER_FIELD, ...clause } as never] }, SOURCES).sourceFilter;
+    const split = (clause: object) => splitSourceClause({ combinator: 'and', clauses: [{ field: SOURCE_FILTER_FIELD, ...clause } as never] }, SOURCES, t).sourceFilter;
     expect(split({ op: 'contains', value: 'git' })).toEqual(['github-issues']);
     expect(split({ op: '!=', value: 'native' })).toEqual(['github-issues', 'linear']);
     expect(split({ op: 'is-empty' })).toEqual([]);
   });
 
   it('counts items per source and labels known providers', () => {
-    const field = sourceFilterField(['native', 'native', 'github-issues']);
+    const field = sourceFilterField(['native', 'native', 'github-issues'], t);
     expect(field.options).toEqual([
       { value: 'native', label: 'Native', count: 2 },
       { value: 'github-issues', label: 'GitHub', count: 1 },
+    ]);
+    expect(sourceFilterField(['native'], tJa).options).toEqual([
+      { value: 'native', label: 'ネイティブ', count: 1 },
     ]);
   });
 });

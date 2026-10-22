@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { OrgProjectsSidebarSection, type OrgProjectLocalState } from '../OrgProjectsSidebarSection';
 
@@ -11,6 +13,33 @@ vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
 vi.mock('../../../help', () => ({
   HelpTooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function render(node: React.ReactNode) {
+  return renderWithLanguage(node, englishI18n, 'en');
+}
+
+function renderWithLanguage(
+  node: React.ReactNode,
+  i18n: Awaited<ReturnType<typeof createI18nInstance>>,
+  preference: 'en' | 'ja',
+) {
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return rtlRender(node, { wrapper: Wrapper });
+}
 
 function project(overrides: Partial<OrgProjectLocalState> = {}): OrgProjectLocalState {
   return {
@@ -127,5 +156,35 @@ describe('OrgProjectsSidebarSection', () => {
 
     expect(openProjectWorkspace).toHaveBeenCalledWith('/projects/notes');
     expect((window as any).electronAPI.invoke).not.toHaveBeenCalled();
+  });
+
+  it('renders project status and folder picker labels in Japanese', async () => {
+    const invoke = vi.fn(async () => ({ canceled: true, filePaths: [] }));
+    (window as any).electronAPI = {
+      invoke,
+      team: { openSharedProject: vi.fn(), openProjectWorkspace: vi.fn() },
+    };
+    const onReload = vi.fn();
+    renderWithLanguage(
+      <OrgProjectsSidebarSection
+        orgId="org-1"
+        projects={[project(), project({ projectId: 'p-2', name: 'Repo', gitRemoteHash: 'hash' })]}
+        loading={false}
+        error={null}
+        onReload={onReload}
+      />,
+      japaneseI18n,
+      'ja',
+    );
+
+    expect(screen.getByTestId('org-projects-sidebar-section').textContent).toContain('プロジェクト');
+    expect(screen.getAllByTestId('org-projects-sidebar-row')[0].textContent).toContain('ローカルで開く');
+    expect((screen.getAllByTestId('org-projects-sidebar-row')[1] as HTMLButtonElement).title)
+      .toBe('このプロジェクトのリポジトリをクローンしてから、開いてここで作業してください。');
+    fireEvent.click(screen.getAllByTestId('org-projects-sidebar-row')[0]);
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith('dialog:openDirectory', {
+      title: 'Notesのフォルダーを選択',
+      buttonLabel: 'プロジェクトを開く',
+    }));
   });
 });

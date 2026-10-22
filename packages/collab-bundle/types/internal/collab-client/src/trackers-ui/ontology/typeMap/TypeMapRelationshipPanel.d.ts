@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import type { OntologyInspectorWriter } from '../OntologyInspector';
 import { type TypeMapModel, type TypeMapRelationship, type TypeMapType } from '../ontologyLabelMap';
 import type { MapSelection } from './TypeMapCanvas';
@@ -15,6 +16,6 @@ interface Props extends RelationshipActions {
     onCenter: (selection: NonNullable<MapSelection>) => void;
 }
 /** A sentence about the shape of the statements, when one fact stands out. */
-export declare function relationshipNote(relationship: TypeMapRelationship, from: TypeMapType | undefined, to: TypeMapType | undefined, rangeNames: string): string | null;
+export declare function relationshipNote(relationship: TypeMapRelationship, from: TypeMapType | undefined, to: TypeMapType | undefined, rangeNames: string, t: TFunction<'tracker'>): string | null;
 export declare function TypeMapRelationshipPanel({ model, relationship, typeById, zoneTone, onCenter, onOpenPage, writer }: Props): import("react").JSX.Element;
 export {};

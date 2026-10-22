@@ -25,6 +25,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { createReadOnlyHost } from '@nimbalyst/extension-sdk';
 import type { EditorViewport } from '@nimbalyst/runtime';
 import { FeedbackOptionPlaceholderPreview } from '@nimbalyst/collab-client/feedback-ui';
@@ -54,6 +55,7 @@ export const FeedbackLocalArtifactPreview: React.FC<{
   optionLabel: string;
   onViewportRegistered?: (viewport: EditorViewport | null) => void;
 }> = ({ sourceId, workspacePath, label, optionLabel, onViewportRegistered }) => {
+  const { t } = useTranslation('common');
   const { theme } = useTheme();
   const filePath = React.useMemo(
     () => resolveAbsolutePath(sourceId, workspacePath),
@@ -123,7 +125,7 @@ export const FeedbackLocalArtifactPreview: React.FC<{
       <FeedbackOptionPlaceholderPreview
         label={optionLabel}
         artifactLabel={label}
-        note="This file is not on this machine, so there is nothing to preview."
+        note={t('embed.local_artifact_missing')}
       />
     );
   }

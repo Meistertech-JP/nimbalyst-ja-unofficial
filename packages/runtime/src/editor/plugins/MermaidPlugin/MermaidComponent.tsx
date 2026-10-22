@@ -9,6 +9,7 @@ import { $isMermaidNode } from './MermaidNode';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTheme } from '../../context/ThemeContext';
 import { renderMermaid } from './mermaidRender';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import './mermaidGantt.css';
 
 interface MermaidComponentProps {
@@ -18,6 +19,7 @@ interface MermaidComponentProps {
 }
 
 function MermaidDiagram({ content, id, renderKey }: { content: string; id: string; renderKey: number }) {
+  const { t } = useTranslation('editor');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,7 +58,7 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
         if (mounted) {
           console.error('Mermaid render error:', err);
           // Extract error message - mermaid errors can have various structures
-          let errorMessage = 'Failed to render diagram';
+          let errorMessage = t('mermaid.render_failed');
           if (typeof err === 'string') {
             errorMessage = err;
           } else if (err?.message) {
@@ -66,7 +68,7 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
             errorMessage = err.str;
           } else if (err?.hash?.text) {
             // Some mermaid errors have hash.text
-            errorMessage = `Parse error near: ${err.hash.text}`;
+            errorMessage = t('mermaid.parse_error', { text: err.hash.text });
           } else if (typeof err === 'object') {
             // Last resort: try to stringify the object for debugging
             try {
@@ -93,15 +95,15 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
         clearTimeout(renderTimeoutRef.current);
       }
     };
-  }, [content, id, isDarkTheme, renderKey]);
+  }, [content, id, isDarkTheme, renderKey, t]);
 
   return (
     <div className="mermaid-diagram p-6 min-h-[200px] flex flex-col items-center justify-center">
-      {loading && !error && <div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">Loading diagram...</div>}
+      {loading && !error && <div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">{t('mermaid.loading')}</div>}
       <div ref={containerRef} className="mermaid-render-container w-full overflow-x-auto" />
       {error && (
         <div className="mermaid-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))] border border-[color-mix(in_srgb,var(--nim-error)_30%,transparent)] rounded p-4 m-4 text-[var(--nim-error)]">
-          <strong className="block mb-2">Diagram Error:</strong>
+          <strong className="block mb-2">{t('mermaid.error_title')}</strong>
           <pre className="m-0 font-mono text-xs whitespace-pre-wrap break-words">{error}</pre>
         </div>
       )}
@@ -110,6 +112,7 @@ function MermaidDiagram({ content, id, renderKey }: { content: string; id: strin
 }
 
 function MermaidComponent({ content: initialContent, nodeKey, className }: MermaidComponentProps) {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(initialContent);
@@ -174,14 +177,14 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
   return (
     <div className={`mermaid-block my-4 border border-[var(--nim-border)] rounded-lg bg-[var(--nim-bg)] overflow-hidden ${className || ''}`}>
       <div className="mermaid-header flex items-center justify-between px-4 py-2 bg-[var(--nim-bg-secondary)] border-b border-[var(--nim-border)]">
-        <span className="mermaid-label font-medium text-[var(--nim-text)] text-sm flex items-center gap-2">Mermaid Diagram</span>
+        <span className="mermaid-label font-medium text-[var(--nim-text)] text-sm flex items-center gap-2">{t('mermaid.label')}</span>
         <div className="mermaid-header-buttons flex gap-2">
           <button
             className="mermaid-redraw-button py-1 px-3 text-xs border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-colors hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
             onClick={handleRedraw}
-            title="Redraw diagram"
+            title={t('mermaid.redraw_title')}
           >
-            Redraw
+            {t('mermaid.redraw')}
           </button>
           <button
             className={`mermaid-edit-button py-1 px-3 text-xs border rounded cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -191,7 +194,7 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
             }`}
             onClick={handleToggleEdit}
           >
-            {isEditing ? 'Done' : 'Edit'}
+            {isEditing ? t('mermaid.done') : t('mermaid.edit')}
           </button>
         </div>
       </div>
@@ -210,7 +213,7 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
               // Save when textarea loses focus
               saveToNode(editedContent);
             }}
-            placeholder="Enter Mermaid diagram code..."
+            placeholder={t('mermaid.placeholder')}
             autoFocus
           />
         </div>
@@ -219,11 +222,11 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
       <ErrorBoundary
         fallback={
           <div className="mermaid-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))] border border-[color-mix(in_srgb,var(--nim-error)_30%,transparent)] rounded p-4 m-4 text-[var(--nim-error)]">
-            Failed to render Mermaid diagram
+            {t('mermaid.boundary_failed')}
           </div>
         }
       >
-        <React.Suspense fallback={<div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">Loading...</div>}>
+        <React.Suspense fallback={<div className="mermaid-loading text-[var(--nim-text-muted)] text-sm p-8 text-center">{t('mermaid.loading')}</div>}>
           <MermaidDiagram content={content} id={nodeKey} renderKey={renderKey} />
         </React.Suspense>
       </ErrorBoundary>

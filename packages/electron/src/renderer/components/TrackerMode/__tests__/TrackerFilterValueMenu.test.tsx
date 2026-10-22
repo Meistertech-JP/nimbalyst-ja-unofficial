@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { TrackerFilterValueMenu } from '../../../../../../collab-client/src/trackers-ui/TrackerFilterValueMenu';
 import type { TrackerFilterField } from '@nimbalyst/collab-client/trackers-ui';
 
@@ -135,7 +137,7 @@ describe('TrackerFilterValueMenu keyboard navigation', () => {
   });
 
   it('still offers True/False for a boolean field with no named values', () => {
-    renderMenu({ id: 'archived', label: 'Archived', type: 'boolean' });
+    const onSelect = renderMenu({ id: 'archived', label: 'Archived', type: 'boolean' });
 
     expect(
       screen.getByTestId('tracker-filter-option-true').textContent
@@ -143,6 +145,29 @@ describe('TrackerFilterValueMenu keyboard navigation', () => {
     expect(
       screen.getByTestId('tracker-filter-option-false').textContent
     ).toContain('False');
+
+    fireEvent.click(screen.getByTestId('tracker-filter-option-true'));
+    expect(onSelect).toHaveBeenCalledWith('true', '=');
+  });
+
+  it('shows localized boolean labels without changing the filter values', async () => {
+    const i18n = await createI18nInstance('ja');
+    const onSelect = vi.fn();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <TrackerFilterValueMenu
+          field={{ id: 'archived', label: 'Archived', type: 'boolean' }}
+          anchorRect={null}
+          onSelect={onSelect}
+          onClose={vi.fn()}
+        />
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByTestId('tracker-filter-option-true').textContent).toContain('真');
+    expect(screen.getByTestId('tracker-filter-option-false').textContent).toContain('偽');
+    fireEvent.click(screen.getByTestId('tracker-filter-option-true'));
+    expect(onSelect).toHaveBeenCalledWith('true', '=');
   });
 
   it('filters a field with no option list on exactly what was typed', () => {

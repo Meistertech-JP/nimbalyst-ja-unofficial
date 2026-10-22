@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {INSERT_BOARD_COMMAND, INSERT_CONFIGURED_BOARD_COMMAND} from './BoardCommands';
 import { BoardConfigDialog, BoardConfig } from './BoardConfigDialog';
@@ -8,6 +9,7 @@ import { BoardConfigDialog, BoardConfig } from './BoardConfigDialog';
 // import { faColumns, faCog } from '@fortawesome/pro-light-svg-icons';
 
 export function BoardToolbar(): JSX.Element {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const [showConfigDialog, setShowConfigDialog] = useState(false);
 
@@ -31,14 +33,14 @@ export function BoardToolbar(): JSX.Element {
           onClick={insertKanbanBoard}
           className="flex align-items-center gap-2 p-button-secondary p-button-outlined p-button-sm"
         >
-          Insert Basic Board
+          {t('kanban.insert_basic')}
         </button>
         
         <button
           onClick={insertEntityBoard}
           className="flex align-items-center gap-2 p-button-primary p-button-sm"
         >
-          Insert Entity Board
+          {t('kanban.insert_entity')}
         </button>
       </div>
 

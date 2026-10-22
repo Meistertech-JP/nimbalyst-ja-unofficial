@@ -1,6 +1,7 @@
 import { documentFeedbackIndexAtomFamily } from '../../../store/atoms/documentFeedback';
 import { documentFeedbackDeepLink, selectUnifiedFeedbackRows } from './documentFeedbackListModel';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useAtomValue } from 'jotai';
 
@@ -51,6 +52,9 @@ export function FeedbackSection({
   /** Deterministic clock seam for relative-label tests. */
   now?: number;
 }) {
+  const { t, i18n } = useTranslation('feedback');
+  const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const justNowLabel = t('list.justNow');
   const [filter, setFilter] = useState<FeedbackListFilterId>('all');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -95,18 +99,25 @@ export function FeedbackSection({
 
   const effectiveViewer = documentIndex?.teamMemberId || viewerUserId || '';
   const { rows, counts } = useMemo(() => selectUnifiedFeedbackRows({
-    requests: viewerUserId === effectiveViewer ? entries : [], questions: documentIndex?.teamMemberId === effectiveViewer ? documentIndex.state.entries : [],
-    filter, query, viewerUserId: effectiveViewer, memberNames, now,
-  }), [entries, viewerUserId, documentIndex, filter, query, effectiveViewer, memberNames, now]);
+    requests: viewerUserId === effectiveViewer ? entries : [],
+    questions: documentIndex?.teamMemberId === effectiveViewer ? documentIndex.state.entries : [],
+    filter,
+    query,
+    viewerUserId: effectiveViewer,
+    memberNames,
+    now,
+    locale,
+    justNowLabel,
+  }), [entries, viewerUserId, documentIndex, filter, query, effectiveViewer, memberNames, now, locale, justNowLabel]);
   const selectRow = useCallback((id: string) => {
     const row = rows.find(row => row.id === id);
     if (!row) return;
     setOpenError('');
     if (row.target.kind === 'request') { setSelectedId(row.target.requestId); return; }
     void window.electronAPI.invoke('deep-link:open-inbox-source', documentFeedbackDeepLink(row.target.entry))
-      .then(opened => { if (!opened) setOpenError('This question could not be opened.'); })
-      .catch(error => setOpenError(error instanceof Error ? error.message : 'This question could not be opened.'));
-  }, [rows]);
+      .then(opened => { if (!opened) setOpenError(t('list.openQuestionError')); })
+      .catch(error => setOpenError(error instanceof Error ? error.message : t('list.openQuestionError')));
+  }, [rows, t]);
   // Resolved against the whole index rather than the filtered rows, unlike the
   // Inbox: answering the request you are reading moves it out of "Needs my
   // response", and the pane must not blank out underneath the person who just
@@ -133,7 +144,7 @@ export function FeedbackSection({
           <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--nim-purple)_16%,transparent)] text-[var(--nim-purple)]">
             <MaterialSymbol icon="ballot" size={14} />
           </span>
-          <h2 className="m-0 text-[15px] font-semibold text-[var(--nim-text)]">Feedback</h2>
+          <h2 className="m-0 text-[15px] font-semibold text-[var(--nim-text)]">{t('list.title')}</h2>
           {counts.all > 0 && (
             <span
               className="feedback-header-count rounded-full bg-[color-mix(in_srgb,var(--nim-purple)_20%,transparent)] px-1.5 text-[10px] font-semibold leading-4 text-[var(--nim-purple)]"
@@ -147,9 +158,9 @@ export function FeedbackSection({
             <input
               type="search"
               className="min-w-0 flex-1 border-none bg-transparent text-[12px] text-[var(--nim-text)] outline-none placeholder:text-[var(--nim-text-faint)]"
-              placeholder="Search requests…"
+              placeholder={t('list.searchPlaceholder')}
               data-testid="feedback-search-input"
-              aria-label="Search feedback requests"
+              aria-label={t('list.searchLabel')}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -159,7 +170,7 @@ export function FeedbackSection({
         <div
           className="feedback-filter-bar mt-3 flex flex-wrap items-center gap-1.5"
           role="tablist"
-          aria-label="Feedback filters"
+          aria-label={t('list.filtersLabel')}
           data-testid="feedback-filter-bar"
         >
           {FEEDBACK_LIST_FILTERS.map((entry) => (
@@ -182,7 +193,7 @@ export function FeedbackSection({
                 data-testid={`feedback-filter-${entry.id}`}
                 onClick={() => setFilter(entry.id)}
               >
-                {entry.label}
+                {t(`list.filters.${entry.id}`)}
                 {counts[entry.id] > 0 && (
                   <span
                     className={`feedback-filter-count rounded-full px-1.5 text-[10px] font-semibold leading-4 ${
@@ -203,10 +214,10 @@ export function FeedbackSection({
 
       {openError && <div role="alert" className="px-5 py-2 text-[var(--nim-text-muted)]">{openError}</div>}
       {documentIndex?.state.status !== 'ready' && <div role="status" className="px-5 py-2 text-[var(--nim-text-muted)]">
-        {documentIndex?.state.status === 'unsupported' ? 'Document questions require an updated collaboration server.'
-          : documentIndex?.state.status === 'error' ? 'Some document questions could not be loaded. Retrying…'
-          : documentIndex?.state.status === 'disconnected' ? 'Reconnect to load document questions.'
-          : 'Loading document questions…'}
+        {documentIndex?.state.status === 'unsupported' ? t('list.documentQuestionsUnsupported')
+          : documentIndex?.state.status === 'error' ? t('list.documentQuestionsRetrying')
+          : documentIndex?.state.status === 'disconnected' ? t('list.documentQuestionsReconnect')
+          : t('list.documentQuestionsLoading')}
       </div>}
       <div className="feedback-body flex min-h-0 flex-1">
         <div
@@ -220,7 +231,7 @@ export function FeedbackSection({
               <FeedbackNotice
                 testId="feedback-no-workspace"
                 icon="cloud_off"
-                message="Connecting to this project's shared area. Feedback requests appear once it resolves."
+                message={t('list.connectingWorkspace')}
               />
             )
             : !effectiveViewer
@@ -232,7 +243,7 @@ export function FeedbackSection({
                 <FeedbackNotice
                   testId="feedback-no-identity"
                   icon="sync_problem"
-                  message="No feedback requests have reached this device yet. They appear once your team connection is signed in and synced."
+                  message={t('list.waitingForSync')}
                 />
               )
               : rows.length === 0
@@ -242,12 +253,12 @@ export function FeedbackSection({
                     icon="ballot"
                     message={counts.all === 0
                       ? documentIndex?.state.status === 'ready'
-                        ? 'No feedback requests yet. When someone asks you for feedback — or you ask your team — the request lands here and stays after it is answered.'
-                        : 'Document questions will appear once the inventory is available.'
-                      : 'No requests match this filter.'}
+                        ? t('list.noRequests')
+                        : t('list.documentQuestionsUnavailable')
+                      : t('list.noMatches')}
                     action={counts.all === 0
                       ? undefined
-                      : { label: 'Clear filters', onClick: clearFilters }}
+                      : { label: t('list.clearFilters'), onClick: clearFilters }}
                   />
                 )
                 : (
@@ -282,7 +293,7 @@ export function FeedbackSection({
                   onClick={() => setSelectedId(null)}
                 >
                   <MaterialSymbol icon="arrow_back" size={14} />
-                  All requests
+                  {t('list.allRequests')}
                 </button>
                 <div className="feedback-detail-body min-h-0 flex-1 select-text overflow-y-auto p-3">
                   <FeedbackRequestSurface
@@ -305,7 +316,7 @@ export function FeedbackSection({
               >
                 <MaterialSymbol icon="ballot" size={22} className="text-[var(--nim-text-faint)]" />
                 <p className="m-0 max-w-[260px] text-[12px] leading-relaxed text-[var(--nim-text-muted)]">
-                  Select a request to answer it, or to read the answers it already has.
+                  {t('list.selectRequest')}
                 </p>
               </div>
             )}

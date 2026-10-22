@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import type { TeamInboxMaterializedDelivery } from '@nimbalyst/runtime/sync';
 
@@ -48,6 +50,33 @@ const model: OrgSidebarModel = {
   },
 };
 
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function render(node: React.ReactNode) {
+  return renderWithLanguage(node, englishI18n, 'en');
+}
+
+function renderWithLanguage(
+  node: React.ReactNode,
+  i18n: Awaited<ReturnType<typeof createI18nInstance>>,
+  preference: 'en' | 'ja',
+) {
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return rtlRender(node, { wrapper: Wrapper });
+}
+
 describe('OrgSidebar', () => {
   afterEach(() => {
     cleanup();
@@ -67,6 +96,26 @@ describe('OrgSidebar', () => {
     for (const tab of ['members', 'projects', 'settings', 'billing', 'danger']) {
       expect(screen.queryByTestId(`team-tab-${tab}`)).toBeNull();
     }
+  });
+
+  it('renders organization navigation labels in Japanese', () => {
+    renderWithLanguage(
+      <OrgSidebar
+        model={{ ...model, rooms: [], dms: [] }}
+        onNavigate={vi.fn()}
+      />,
+      japaneseI18n,
+      'ja',
+    );
+
+    expect(screen.getByTestId('org-sidebar').getAttribute('aria-label')).toBe('組織');
+    expect(screen.getByTestId('org-sidebar-search-input').getAttribute('placeholder')).toBe('会話を検索');
+    expect(screen.getByTestId('org-inbox-section').textContent).toContain('受信トレイ');
+    expect(screen.getByTestId('team-tab-inbox').textContent).toContain('すべて');
+    expect(screen.getByTestId('org-feedback').textContent).toContain('フィードバック');
+    expect(screen.getByTestId('org-rooms-section').textContent).toContain('ルーム');
+    expect(screen.getByTestId('org-rooms-empty').textContent).toContain('ルームはまだありません');
+    expect(screen.getByTestId('org-dms-empty').textContent).toContain('ダイレクトメッセージはまだありません');
   });
 
   it('pins bottomContent below the scrolling sections', () => {

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 
 import { HelpTooltip } from '../../help';
@@ -91,6 +92,7 @@ export function OrgProjectsSidebarSection({
   error: string | null;
   onReload: () => void;
 }) {
+  const { t } = useTranslation('collabSidebar');
   const [openError, setOpenError] = useState<string | null>(null);
   const collapsed = useAtomValue(orgSidebarCollapsedSectionsAtom);
   const toggleSection = useSetAtom(toggleOrgSidebarSectionAtom);
@@ -110,8 +112,10 @@ export function OrgProjectsSidebarSection({
   const openSharedProject = useCallback(async (project: OrgProjectLocalState) => {
     setOpenError(null);
     const selection = await window.electronAPI.invoke('dialog:openDirectory', {
-      title: `Choose a folder for ${project.name || project.slug || 'this project'}`,
-      buttonLabel: 'Open Project',
+      title: t('org_sidebar.choose_folder_for_project', {
+        project: project.name || project.slug || t('org_sidebar.untitled_project'),
+      }),
+      buttonLabel: t('org_sidebar.open_project'),
     });
     const directoryPath = selection?.filePaths?.[0];
     if (!directoryPath) return;
@@ -126,7 +130,7 @@ export function OrgProjectsSidebarSection({
       return;
     }
     onReload();
-  }, [orgId, onReload]);
+  }, [orgId, onReload, t]);
 
   return (
     // A section of the sidebar rather than a panel pinned under it: Projects
@@ -134,7 +138,7 @@ export function OrgProjectsSidebarSection({
     // permanently taking the bottom of the window.
     <SidebarSection
       sectionId="projects"
-      title="Projects"
+      title={t('org_sidebar.projects')}
       testId="org-projects-sidebar-section"
       className="org-projects-sidebar-section"
       collapsed={collapsed.includes('projects')}
@@ -146,24 +150,24 @@ export function OrgProjectsSidebarSection({
           data-testid="org-projects-sidebar-retry"
           onClick={onReload}
         >
-          Retry
+          {t('org_sidebar.retry')}
         </button>
       )}
     >
       <div className="org-projects-sidebar-list flex flex-col" data-testid="org-projects-sidebar-list" data-org-id={orgId}>
         {loading && (
           <div className="org-projects-sidebar-loading px-3 py-1 text-[11px] text-nim-muted">
-            Loading projects…
+            {t('org_sidebar.loading_projects')}
           </div>
         )}
         {!loading && !error && projects.length === 0 && (
           <div className="org-projects-sidebar-empty px-3 py-1 text-[11px] text-nim-muted">
-            No projects yet.
+            {t('org_sidebar.no_projects')}
           </div>
         )}
         {!loading && error && (
           <div className="org-projects-sidebar-error px-3 py-1 text-[11px] text-nim-error">
-            Couldn't load projects.
+            {t('org_sidebar.could_not_load_projects')}
           </div>
         )}
         {!loading && !error && projects.map((project) => (
@@ -196,7 +200,8 @@ function ProjectRow({
   onOpen: (workspacePath: string | null) => void;
   onOpenShared: (project: OrgProjectLocalState) => void;
 }) {
-  const name = project.name || project.slug || 'Untitled project';
+  const { t } = useTranslation('collabSidebar');
+  const name = project.name || project.slug || t('org_sidebar.untitled_project');
   const isLocal = project.localStatus !== 'notLocal' && !!project.workspacePath;
   // A project with no git remote can be attached to any folder on this machine.
   // One backed by a remote cannot: cloning the repository is what connects it,
@@ -204,12 +209,12 @@ function ProjectRow({
   const canAttachFolder = !isLocal && !project.gitRemoteHash;
   const disabled = !isLocal && !canAttachFolder;
   const label = project.localStatus === 'open'
-    ? 'Open locally'
+    ? t('org_sidebar.open_locally')
     : project.localStatus === 'closed'
-      ? 'Cloned locally'
+      ? t('org_sidebar.cloned_locally')
       : canAttachFolder
-        ? 'Choose a folder for this project'
-        : 'Not local';
+        ? t('org_sidebar.choose_project_folder')
+        : t('org_sidebar.not_local');
   const dotClass = project.localStatus === 'open'
     ? 'bg-nim-success border-nim-success'
     : project.localStatus === 'closed'
@@ -229,7 +234,7 @@ function ProjectRow({
       data-local-status={project.localStatus}
       disabled={disabled}
       title={disabled
-        ? 'Clone this project’s repository, then open it to work in it here.'
+        ? t('org_sidebar.clone_to_open_here')
         : label}
       onClick={() => (canAttachFolder ? onOpenShared(project) : onOpen(project.workspacePath))}
     >
@@ -238,7 +243,7 @@ function ProjectRow({
         <span className="block truncate text-[12.5px]">{name}</span>
         {project.localStatus === 'notLocal' && (
           <span className="block truncate text-[10px] text-nim-faint">
-            {canAttachFolder ? 'open locally…' : 'not local'}
+            {canAttachFolder ? t('org_sidebar.open_locally_lower') : t('org_sidebar.not_local_lower')}
           </span>
         )}
       </span>

@@ -1,7 +1,9 @@
 import React from "react";
 import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Doc as YDoc } from "yjs";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { UiLanguageProvider } from "@nimbalyst/i18n/react";
 import type { CollaborationCommentsService } from "@nimbalyst/extension-sdk";
 
 vi.mock("@nimbalyst/extension-sdk", async () => {
@@ -30,6 +32,12 @@ vi.mock("@nimbalyst/extension-sdk", async () => {
 });
 
 import { MockupEditor } from "../components/MockupEditor";
+import { MockupDiffViewer } from "../components/MockupDiffViewer";
+
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  japaneseI18n = await createI18nInstance("ja");
+});
 
 function stubHost(extra: Record<string, unknown> = {}) {
   return {
@@ -82,6 +90,22 @@ describe("MockupEditor editor API", () => {
   });
 });
 
+describe("MockupDiffViewer accessibility", () => {
+  it("names the comparison slider in the active UI language", () => {
+    const { getByRole } = render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <MockupDiffViewer
+          originalHtml="<h1>Before</h1>"
+          updatedHtml="<h1>After</h1>"
+          fileName="dashboard.mockup.html"
+        />
+      </UiLanguageProvider>
+    );
+
+    expect(getByRole("slider", { name: "比較位置" }).getAttribute("aria-valuenow")).toBe("50");
+  });
+});
+
 /**
  * The comments panel is the platform's, docked beside this editor by the host.
  * A mockup that mounts one of its own puts two identical panels on screen for
@@ -114,7 +138,11 @@ describe("MockupEditor comments surface", () => {
       },
     });
 
-    const { container } = render(<MockupEditor host={host} />);
+    const { container } = render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <MockupEditor host={host} />
+      </UiLanguageProvider>
+    );
 
     // Entering comment mode is the moment the editor's own pane used to appear.
     const toggle = container.querySelector<HTMLButtonElement>(
@@ -122,6 +150,7 @@ describe("MockupEditor comments surface", () => {
     );
     fireEvent.click(toggle!);
 
+    expect(toggle?.textContent).toContain("コメントを完了");
     expect(container.querySelectorAll(".nim-comments-panel")).toHaveLength(0);
     // The pins overlay is the extension's half and stays.
     expect(container.querySelector(".mockup-comment-overlay")).not.toBeNull();

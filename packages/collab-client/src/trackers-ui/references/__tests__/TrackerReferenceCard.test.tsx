@@ -1,5 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import type { TrackerDataCommand, TrackerItem } from '../../../trackers/dataSource';
 import { createTrackerReferenceResolver, type TrackerReferenceResolver } from '../trackerReferenceResolver';
@@ -9,13 +11,19 @@ import { fakeDataSource, fakeSchema, item } from './referenceFixtures';
 
 afterEach(cleanup);
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([createI18nInstance('en'), createI18nInstance('ja')]);
+});
+
 const actor = () => ({ email: 'sam@example.test', name: 'Sam' });
 
 /**
  * Renders one card per item. `command` answers every data-source write and,
  * like the real data source, publishes the updated item before resolving.
  */
-async function setup(items: TrackerItem[], options: { resolver?: (r: TrackerReferenceResolver) => TrackerReferenceResolver } = {}) {
+async function setup(items: TrackerItem[], options: { resolver?: (r: TrackerReferenceResolver) => TrackerReferenceResolver; language?: 'en' | 'ja' } = {}) {
   const fake = fakeDataSource();
   const current = new Map(items.map((entry) => [entry.id, entry]));
   const command = vi.spyOn(fake.source, 'command').mockImplementation(async (cmd: TrackerDataCommand) => {
@@ -29,11 +37,13 @@ async function setup(items: TrackerItem[], options: { resolver?: (r: TrackerRefe
   const base = createTrackerReferenceResolver(fake.source, { schema: fakeSchema(), onOpenItem: vi.fn(), currentActor: actor });
   const resolver = options.resolver ? options.resolver(base) : base;
   render(
-    <TrackerReferenceResolverProvider resolver={resolver}>
-      {items.map((entry) => (
-        <LiveTrackerReferenceRenderer key={entry.id} referenceKey={entry.issueKey!} nodeKey={entry.id} view="card" />
-      ))}
-    </TrackerReferenceResolverProvider>,
+    <UiLanguageProvider i18n={options.language === 'ja' ? japaneseI18n : englishI18n} preference={options.language ?? 'en'} systemLocale={options.language === 'ja' ? 'ja-JP' : 'en-US'}>
+      <TrackerReferenceResolverProvider resolver={resolver}>
+        {items.map((entry) => (
+          <LiveTrackerReferenceRenderer key={entry.id} referenceKey={entry.issueKey!} nodeKey={entry.id} view="card" />
+        ))}
+      </TrackerReferenceResolverProvider>
+    </UiLanguageProvider>,
   );
   await act(() => fake.release(items));
   const click = (element: HTMLElement) => act(async () => { element.click(); });
@@ -49,6 +59,27 @@ const decision = (overrides: Partial<TrackerItem> = {}) => item({
 });
 
 describe('embedded box writes', () => {
+  it('renders fixed card labels in Japanese while preserving item and proposal text', async () => {
+    const proposed = item({
+      id: 'q-ja', issueKey: 'KW-25', type: 'question', title: 'Built in?', status: 'open',
+      customFields: { position: '', agentProposal: { by: 'Claude', kind: 'create', reason: 'Create proposal reason' } },
+    });
+    const statusProposal = decision({
+      id: 'd-ja', issueKey: 'KW-26', title: 'Keep files?', status: 'proposed',
+      customFields: { agentProposal: { by: 'Claude', kind: 'status', toStatus: 'accepted', reason: 'Keep this proposal reason' } },
+    });
+    await setup([proposed, statusProposal], { language: 'ja' });
+
+    screen.getByText('Claudeによる提案');
+    screen.getByText(/Keep this proposal reason/);
+    screen.getByText('Built in?');
+    screen.getByRole('button', { name: '保持' });
+    screen.getByRole('button', { name: '削除' });
+    screen.getByRole('button', { name: '適用' });
+    screen.getByRole('button', { name: '却下' });
+    screen.getByText('立場はまだありません');
+  });
+
   it('Apply runs only a valid transition, and asks for its field before writing', async () => {
     const question = item({
       id: 'q-1', issueKey: 'KW-14', type: 'question', title: 'Built in?', status: 'open',

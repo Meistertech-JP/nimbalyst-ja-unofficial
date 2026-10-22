@@ -3,9 +3,11 @@
  * follows item changes as they stream in.
  */
 
-import { createElement } from 'react';
+import { createElement, type ReactNode } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as libraryRender, renderHook, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { trackerRecordToItem, type TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import {
@@ -21,6 +23,14 @@ import { createTypePageView } from '../typePageView';
 import { PlacedViewEmbed } from '../PlacedViewEmbed';
 import { MarksListEmbed } from '../MarksListEmbed';
 import { setPageMarksSource } from '../../../pages';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+function EnglishI18nWrapper({ children }: { children: ReactNode }) {
+  return <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">{children}</UiLanguageProvider>;
+}
+function render(ui: Parameters<typeof libraryRender>[0]) {
+  return libraryRender(ui, { wrapper: EnglishI18nWrapper });
+}
 
 // The real grid surface runs; only the web component is a bare element, so a
 // test can fire the `afteredit` RevoGrid would fire after a cell edit.
@@ -69,7 +79,8 @@ function fakeSource(): TrackerDataSource & { emit(change: TrackerDataChange): vo
   } as TrackerDataSource & { emit(change: TrackerDataChange): void };
 }
 
-beforeAll(() => {
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
   globalRegistry.register(model('ev-cap', [{ name: 'title', type: 'string' }]));
   globalRegistry.register(model('ev-target', [
     { name: 'title', type: 'string' },

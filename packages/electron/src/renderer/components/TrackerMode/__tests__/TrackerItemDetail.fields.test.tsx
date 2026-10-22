@@ -8,6 +8,8 @@
 import { Provider } from 'jotai';
 import { act, cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { store } from '@nimbalyst/runtime/store';
 
 // The file-backed body editor is only reachable in content focus, and it drags
@@ -16,6 +18,10 @@ vi.mock('../../TabEditor/TabEditor', () => ({ TabEditor: () => null }));
 // The page body editor: a stub that hands its config to the test, so a test
 // can type into the body by driving the config's save callbacks.
 const bodyEditor = vi.hoisted(() => ({ config: null as any }));
+const notificationMocks = vi.hoisted(() => ({ showInfo: vi.fn(), showError: vi.fn() }));
+vi.mock('../../../services/ErrorNotificationService', () => ({
+  errorNotificationService: notificationMocks,
+}));
 vi.mock('@nimbalyst/runtime/editor', () => ({
   NimbalystEditor: ({ config }: { config: unknown }) => {
     bodyEditor.config = config;
@@ -97,17 +103,25 @@ const createTrackerItem = vi.fn().mockResolvedValue({
   success: true,
   item: { id: 'mst_new', title: 'Gamma', issueKey: 'NIM-2' },
 });
+const setTrackerItemPublished = vi.fn().mockResolvedValue({
+  success: true,
+  item: { id: ITEM.id, issueKey: 'NIM-42' },
+});
 
 beforeAll(() => loadBuiltinTrackers());
 
 beforeEach(() => {
   updateTrackerItem.mockClear();
   createTrackerItem.mockClear();
+  setTrackerItemPublished.mockClear();
+  notificationMocks.showInfo.mockClear();
+  notificationMocks.showError.mockClear();
   (window as any).electronAPI = {
     invoke: vi.fn().mockResolvedValue(undefined),
     documentService: {
       updateTrackerItem,
       createTrackerItem,
+      setTrackerItemPublished,
       getTrackerCreationStatus: vi.fn().mockResolvedValue(null),
       updateTrackerItemInFile: vi.fn().mockResolvedValue({ success: true }),
       getTrackerItemContent: vi.fn().mockResolvedValue({ success: true, content: '' }),
@@ -142,6 +156,48 @@ function renderPage({ collabScope = { scopeKey: '/ws' } as unknown } = {}) {
 }
 
 describe('TrackerItemDetail metadata region', () => {
+  it('localizes tracker publication controls and notification text', async () => {
+    const i18n = await createI18nInstance('ja');
+    (window as any).electronAPI.invoke = vi.fn().mockImplementation((channel: string) => (
+      channel === 'team:find-for-workspace'
+        ? Promise.resolve({ success: true, team: { orgId: 'org-1' } })
+        : Promise.resolve(undefined)
+    ));
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <Provider store={store}>
+          <TrackerItemDetail itemId={ITEM.id} workspacePath="/ws" onClose={() => {}} />
+        </Provider>
+      </UiLanguageProvider>,
+    );
+
+    const publishButton = await screen.findByTestId('tracker-share-toggle');
+    expect(publishButton.textContent).toContain('公開');
+    expect(publishButton.getAttribute('title')).toBe('この項目をチームに公開します。公開時にキーが発行されます。');
+    fireEvent.click(publishButton);
+    await waitFor(() => expect(notificationMocks.showInfo).toHaveBeenCalledWith(
+      'チームに公開しました',
+      'チームからこの項目を確認できます。キーはNIM-42です。',
+      { duration: 3000 },
+    ));
+    expect(setTrackerItemPublished).toHaveBeenCalledWith({ itemId: ITEM.id, published: true });
+    cleanup();
+  });
+
+  it('localizes the linked-sessions heading when no sessions are linked yet', async () => {
+    const i18n = await createI18nInstance('ja');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <Provider store={store}>
+          <TrackerItemDetail itemId={ITEM.id} onClose={() => {}} onLaunchSession={() => {}} />
+        </Provider>
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByText('セッション', { selector: 'label' }).textContent).toBe('セッション');
+    cleanup();
+  });
+
   it('renders the schema fields as chips, with tags kept as an open row', () => {
     renderDetail();
 

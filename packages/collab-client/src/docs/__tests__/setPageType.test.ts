@@ -40,6 +40,21 @@ const run = (dependencies: SetPageTypeDependencies, lane: 'team' | 'personal' = 
   setPageType({ lane, page: PAGE, typeId: 'module' }, dependencies);
 
 describe('setPageType', () => {
+  it('uses host translations for notices while retaining dynamic operation errors', async () => {
+    const { dependencies } = harness({
+      createItem: vi.fn(async () => { throw new Error('同期に失敗'); }),
+      translate: (key, fallback, options) => key === 'could_not_create_item'
+        ? `項目を作成できませんでした: ${options?.error}`
+        : fallback,
+    });
+
+    expect(await run(dependencies)).toEqual({
+      status: 'failed',
+      message: '項目を作成できませんでした: 同期に失敗',
+      itemKept: false,
+    });
+  });
+
   it('flushes, copies, verifies, places, re-checks the page, then trashes it and opens the item', async () => {
     const { dependencies, calls } = harness();
 

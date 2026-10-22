@@ -10,6 +10,7 @@ import type {JSX} from 'react';
 
 import {isDOMNode} from 'lexical';
 import {ReactNode, useCallback, useEffect, useRef} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 import {createPortal} from 'react-dom';
 
 function PortalImpl({
@@ -23,6 +24,7 @@ function PortalImpl({
   onClose: () => void;
   title: string;
 }) {
+  const {t} = useTranslation('editor');
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,7 +82,7 @@ function PortalImpl({
         </h2>
         <button
           className="Modal__closeButton border-0 absolute right-5 rounded-[20px] flex justify-center items-center w-[30px] h-[30px] text-center cursor-pointer bg-nim-tertiary text-nim hover:bg-nim-hover"
-          aria-label="Close modal"
+          aria-label={t('shared_ui.close_modal')}
           type="button"
           onClick={onClose}>
           X

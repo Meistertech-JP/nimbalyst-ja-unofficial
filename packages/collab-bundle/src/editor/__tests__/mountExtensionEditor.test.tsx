@@ -85,6 +85,50 @@ describe('mounting an extension editor over a collaborative document', () => {
     expect(handle.getState().edit).toBe('dirty');
   });
 
+  it('marks only a generated fallback name on the local awareness payload', async () => {
+    const generatedUser = { memberId: asTeamMemberId('member-generated') };
+    const { observed } = await mount({ user: generatedUser });
+
+    expect(observed.host!.collaboration?.awareness.getLocalState()?.user).toMatchObject({
+      id: 'member-generated',
+      name: 'Teammate',
+      nimbalystNameSource: 'system-default',
+    });
+  });
+
+  it('does not mark a user-provided Teammate name as generated', async () => {
+    const { observed } = await mount({
+      user: { memberId: asTeamMemberId('member-real'), name: 'Teammate' },
+    });
+
+    const user = observed.host!.collaboration?.awareness.getLocalState()?.user;
+    expect(user?.name).toBe('Teammate');
+    expect(user?.nimbalystNameSource).toBeUndefined();
+  });
+
+  it('refreshes display names from the host language seam and unsubscribes on destroy', async () => {
+    let label = 'Teammate';
+    let languageChanged: (() => void) | undefined;
+    const unsubscribe = vi.fn();
+    const { handle, observed } = await mount({
+      user: { memberId: asTeamMemberId('member-generated') },
+      getUnnamedCollaboratorLabel: () => label,
+      subscribeToLanguageChanges: (listener) => {
+        languageChanged = listener;
+        return unsubscribe;
+      },
+    });
+
+    expect(observed.host!.collaboration?.awareness.getLocalState()?.user)
+      .toMatchObject({ name: 'Teammate', nimbalystNameSource: 'system-default' });
+    label = 'チームメンバー';
+    await act(async () => { languageChanged?.(); });
+    expect(handle.getPresence()).toEqual({ participants: [] });
+
+    await act(async () => { handle.destroy(); });
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
   it('surfaces a refused capability to the page instead of failing silently', async () => {
     const onCapabilityRefused = vi.fn();
     const { observed } = await mount({ onCapabilityRefused });

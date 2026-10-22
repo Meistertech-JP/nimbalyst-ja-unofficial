@@ -379,7 +379,7 @@ describe("shipped samples", () => {
     const { doc, extras, problems } = parseDocument(text);
 
     expect(problems).toEqual([]);
-    expect(serializeDocument(doc, extras)).toBe(text);
+    expect(serializeDocument(doc, extras)).toBe(text.replace(/\r\n/g, "\n"));
 
     // Every edge endpoint resolves; a typo'd `from`/`to` renders as nothing at
     // all, which reads as a broken renderer rather than a broken document.

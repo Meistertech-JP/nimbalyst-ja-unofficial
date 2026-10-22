@@ -12,6 +12,7 @@ import { CrewFeed } from './CrewFeed';
 import { CrewHireDialog } from './CrewHireDialog';
 import { CrewPaneResizer, CrewPanesContext, useCrewPaneState } from './CrewPanes';
 import { CrewRoster } from './CrewRoster';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export function CrewPanel({ host }: PanelHostProps) {
   return (
@@ -74,22 +75,21 @@ function CrewLayout() {
  * the idea in a few lines and offers exactly one action.
  */
 function CrewWelcome({ onHire }: { onHire: () => void }) {
+  const { t } = useTranslation('extensions');
   return (
     <div className="crew-welcome" data-testid="crew-welcome">
       <div className="crew-welcome-inner">
         <span className="crew-welcome-icon"><MaterialSymbol icon="groups" size={24} /></span>
-        <h2 className="crew-welcome-title">Hire your first crew member</h2>
-        <p className="crew-welcome-lede">
-          A crew member is an agent with a standing job: a PM who grooms the tracker every morning, an architect who reviews the day's changes each evening, a skeptic who tries to break what just landed.
-        </p>
+        <h2 className="crew-welcome-title">{t('crew.welcome.title')}</h2>
+        <p className="crew-welcome-lede">{t('crew.welcome.lede')}</p>
         <ul className="crew-welcome-points">
-          <li><MaterialSymbol icon="schedule" size={16} /><span>Works on a schedule you set, and can move its own runs within your limits.</span></li>
-          <li><MaterialSymbol icon="menu_book" size={16} /><span>Keeps a journal and notes across weeks, which you can read and correct.</span></li>
-          <li><MaterialSymbol icon="flag" size={16} /><span>Starts sessions to do real work, and flags you when something needs you.</span></li>
+          <li><MaterialSymbol icon="schedule" size={16} /><span>{t('crew.welcome.point_schedule')}</span></li>
+          <li><MaterialSymbol icon="menu_book" size={16} /><span>{t('crew.welcome.point_journal')}</span></li>
+          <li><MaterialSymbol icon="flag" size={16} /><span>{t('crew.welcome.point_flags')}</span></li>
         </ul>
         <button type="button" className="crew-btn crew-btn-primary" onClick={onHire} data-testid="crew-welcome-hire">
           <MaterialSymbol icon="person_add" size={16} />
-          Hire a crew member
+          {t('crew.welcome.hire')}
         </button>
       </div>
     </div>

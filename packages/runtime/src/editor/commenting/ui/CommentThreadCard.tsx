@@ -12,6 +12,7 @@
 
 import type { JSX, KeyboardEvent, Ref } from 'react';
 import { useCallback, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { Comment, Thread } from '../types';
 import { CommentActorLabel, commentActorName } from './CommentActorLabel';
@@ -22,9 +23,9 @@ import type {
   CommentThreadActions,
 } from './types';
 
-function formatTimestamp(ts: number): string {
+function formatTimestamp(ts: number, locale: string): string {
   try {
-    return new Date(ts).toLocaleString(undefined, {
+    return new Date(ts).toLocaleString(locale, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -35,37 +36,11 @@ function formatTimestamp(ts: number): string {
   }
 }
 
-function replyTargetName(thread: Thread, comment: Comment): string {
+function replyTargetName(thread: Thread, comment: Comment): string | null {
   const target = thread.comments.find(
     (candidate) => candidate.id === comment.replyToCommentId,
   );
-  return target ? commentActorName(target) : 'an earlier comment';
-}
-
-const DETACHED_EXPLANATION: Record<
-  Exclude<CommentAnchorState, 'attached'>,
-  string
-> = {
-  orphaned:
-    'What this comment was on is no longer in the document. The conversation is kept.',
-  unsupported:
-    'This comment is anchored to something this editor does not understand, likely written by a newer version. The conversation is kept.',
-};
-
-/** Accessible name for the card, so the list is navigable without sight. */
-function threadAccessibleLabel(
-  thread: Thread,
-  anchorState: CommentAnchorState,
-  anchorLabel: string,
-): string {
-  const count = thread.comments.length;
-  const parts = [
-    `Comment thread on ${anchorLabel || 'this document'}`,
-    `${count} ${count === 1 ? 'comment' : 'comments'}`,
-  ];
-  if (thread.resolved) parts.push('resolved');
-  if (anchorState !== 'attached') parts.push('detached');
-  return parts.join(', ');
+  return target ? commentActorName(target) : null;
 }
 
 export interface CommentThreadCardProps extends CommentThreadActions {
@@ -102,10 +77,17 @@ export function CommentThreadCard({
   onReply,
   onOpenAgentSession,
 }: CommentThreadCardProps): JSX.Element {
+  const { t, i18n } = useTranslation('editor');
   const localRef = useRef<HTMLDivElement | null>(null);
   const label = anchorLabel ?? thread.quote;
   const isDetached = anchorState !== 'attached';
   const isEmpty = thread.comments.length === 0;
+  const accessibleLabel = [
+    t('thread_card.thread_on', { anchor: label || t('comments.no_quote') }),
+    t('thread_card.comment_count', { count: thread.comments.length }),
+    ...(thread.resolved ? [t('thread_card.resolved')] : []),
+    ...(isDetached ? [t('thread_card.detached')] : []),
+  ].join(', ');
 
   const select = useCallback(
     () => onSelectThread(thread.id),
@@ -156,23 +138,23 @@ export function CommentThreadCard({
       role="listitem"
       tabIndex={tabIndex}
       aria-current={isActive ? 'true' : undefined}
-      aria-label={threadAccessibleLabel(thread, anchorState, label)}
+      aria-label={accessibleLabel}
       onClick={select}
       onKeyDown={handleKeyDown}
     >
       <div className="nim-comment-quote" title={label}>
         {thread.resolved && (
-          <span className="nim-comment-resolved-badge" title="Resolved">
+          <span className="nim-comment-resolved-badge" title={t('thread_card.resolved')}>
             <span className="material-symbols-outlined">check_circle</span>
           </span>
         )}
-        {label || '(no quote)'}
+        {label || t('comments.no_quote')}
       </div>
 
       {isDetached && (
         <div className="nim-comment-detached-notice" data-testid="comment-thread-detached">
           <span className="material-symbols-outlined">link_off</span>
-          <span>{DETACHED_EXPLANATION[anchorState]}</span>
+          <span>{t(anchorState === 'orphaned' ? 'thread_card.orphaned' : 'thread_card.unsupported')}</span>
         </div>
       )}
 
@@ -185,9 +167,8 @@ export function CommentThreadCard({
           onClick={(event) => event.stopPropagation()}
         >
           <span className="nim-comment-resolved-summary">
-            {thread.comments.length}{' '}
-            {thread.comments.length === 1 ? 'comment' : 'comments'}
-            {' · Resolved'}
+            {t('thread_card.comment_count', { count: thread.comments.length })}
+            {' · '}{t('thread_card.resolved')}
           </span>
           {canComment && (
             <>
@@ -199,18 +180,18 @@ export function CommentThreadCard({
                   onSetThreadResolved(thread, false);
                 }}
               >
-                Unresolve
+                {t('comments.unresolve')}
               </button>
               <button
                 type="button"
                 className="nim-comment-btn nim-comment-btn-delete-thread"
-                title="Delete thread"
+                title={t('comments.delete_thread')}
                 onClick={(event) => {
                   event.stopPropagation();
                   onDeleteThread(thread);
                 }}
               >
-                Delete
+                {t('thread_card.delete')}
               </button>
             </>
           )}
@@ -225,14 +206,14 @@ export function CommentThreadCard({
                   onOpenAgentSession={onOpenAgentSession}
                 />
                 <span className="nim-comment-time">
-                  {formatTimestamp(comment.timeStamp)}
+                  {formatTimestamp(comment.timeStamp, i18n.language)}
                 </span>
                 {canComment && (
                   <button
                     type="button"
                     className="nim-comment-delete"
-                    title="Delete comment"
-                    aria-label={`Delete comment by ${commentActorName(comment)}`}
+                    title={t('thread_card.delete_comment')}
+                    aria-label={t('thread_card.delete_comment_by', { name: commentActorName(comment) })}
                     onClick={(event) => {
                       event.stopPropagation();
                       onDeleteComment(comment, thread);
@@ -244,7 +225,7 @@ export function CommentThreadCard({
               </div>
               {comment.replyToCommentId && (
                 <div className="nim-comment-reply-target">
-                  Replying to {replyTargetName(thread, comment)}
+                {t('comments.replying_to', { name: replyTargetName(thread, comment) ?? t('comments.earlier_comment') })}
                 </div>
               )}
               <div className="nim-comment-content">{comment.content}</div>
@@ -257,14 +238,14 @@ export function CommentThreadCard({
             >
               <CommentComposer
                 getMembers={getMembers}
-                submitLabel={isEmpty ? 'Comment' : 'Reply'}
+                submitLabel={isEmpty ? t('thread_card.comment') : t('comments.reply')}
                 placeholder={
-                  isEmpty ? 'Add a comment... use @ to mention' : 'Reply...'
+                  isEmpty ? t('comments.add_placeholder') : t('comments.reply_placeholder')
                 }
                 label={
                   isEmpty
-                    ? `Comment on ${label || 'this document'}`
-                    : `Reply to the thread on ${label || 'this document'}`
+                    ? t('thread_card.comment_on', { anchor: label || t('comments.no_quote') })
+                    : t('thread_card.reply_to_thread', { anchor: label || t('comments.no_quote') })
                 }
                 autoFocus={isEmpty && autoFocusComposer}
                 onSubmit={(text, mentioned) => onReply(thread, text, mentioned)}
@@ -278,18 +259,18 @@ export function CommentThreadCard({
                   onSetThreadResolved(thread, true);
                 }}
               >
-                Resolve
+                {t('comments.resolve')}
               </button>
               <button
                 type="button"
                 className="nim-comment-btn nim-comment-btn-delete-thread"
-                title="Delete thread"
+                title={t('comments.delete_thread')}
                 onClick={(event) => {
                   event.stopPropagation();
                   onDeleteThread(thread);
                 }}
               >
-                Delete
+                {t('thread_card.delete')}
               </button>
             </div>
           )}

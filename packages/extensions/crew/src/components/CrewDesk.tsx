@@ -9,8 +9,9 @@ import { CrewAvatar, CrewError, CrewModal, CrewToggle } from './CrewBits';
 import { useCrew, useCrewAction, useCrewQuery } from './CrewContext';
 import { CrewDeskPanel } from './CrewDeskPanel';
 import { CrewPaneResizer, useCrewPanes } from './CrewPanes';
-import { deriveShiftAction, describeTrigger, splitChapters, STATUS_LABEL } from './crewDeskModel';
-import { formatDateRange, formatDay, formatTokens, formatWhen } from './crewFormat';
+import { deriveShiftAction, describeTrigger, splitChapters } from './crewDeskModel';
+import { formatChapterEndReason, formatDateRange, formatDay, formatTokens, formatWhen } from './crewFormat';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export function CrewDesk({ member }: { member: CrewMemberSnapshot }) {
   const { client } = useCrew();
@@ -39,12 +40,13 @@ export function CrewDesk({ member }: { member: CrewMemberSnapshot }) {
 function CrewDeskHeader({ member }: { member: CrewMemberSnapshot }) {
   const { client, host, select } = useCrew();
   const { busy, error, run } = useCrewAction();
+  const { t } = useTranslation('extensions');
   const [confirmRemove, setConfirmRemove] = useState(false);
   const { definition, runtime } = member;
   const usage = runtime.usage;
   const slug = definition.slug;
   const paused = definition.paused === true || runtime.status === 'paused';
-  const shift = deriveShiftAction(member);
+  const shift = deriveShiftAction(member, t);
   const limit = usage.tokensPerWeekLimit;
   const usedPct = limit > 0 ? Math.min(100, (usage.tokensThisWeek / limit) * 100) : 0;
 
@@ -56,40 +58,40 @@ function CrewDeskHeader({ member }: { member: CrewMemberSnapshot }) {
           <div className="crew-desk-name">
             {definition.name}
             <span className="crew-faint crew-desk-role">{definition.role}</span>
-            <span className="crew-status-pill" data-status={runtime.status}>{STATUS_LABEL[runtime.status]}</span>
+            <span className="crew-status-pill" data-status={runtime.status}>{t(`crew.status.${runtime.status.replace(/-/g, '_')}`)}</span>
           </div>
           <div className="crew-desk-meta">
-            <span><span className="crew-faint">Model</span> {definition.provider}:{definition.model}</span>
+            <span><span className="crew-faint">{t('crew.desk.model')}</span> {definition.provider}:{definition.model}</span>
             <span>
-              <span className="crew-faint">Next run</span>{' '}
-              {paused ? 'paused' : runtime.nextRunAt ? formatWhen(runtime.nextRunAt) : 'none scheduled'}
+              <span className="crew-faint">{t('crew.desk.next_run')}</span>{' '}
+              {paused ? t('crew.desk.paused') : runtime.nextRunAt ? formatWhen(runtime.nextRunAt) : t('crew.desk.none_scheduled')}
             </span>
             <span className="crew-desk-budget" data-over={usage.overBudget}>
-              <span className="crew-faint">Budget</span>
-              {formatTokens(usage.tokensThisWeek)} / {limit > 0 ? formatTokens(limit) : 'no cap'} this week
+              <span className="crew-faint">{t('crew.desk.budget')}</span>
+              {formatTokens(usage.tokensThisWeek)} / {limit > 0 ? formatTokens(limit) : t('crew.desk.no_cap')} {t('crew.desk.this_week')}
               {limit > 0 && (
-                <span className="crew-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(usedPct)} aria-label="Weekly token budget used">
+                <span className="crew-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(usedPct)} aria-label={t('crew.desk.budget_aria')}>
                   <span className="crew-meter-fill" data-warn={usage.overBudget || usedPct >= 90} style={{ width: `${usedPct}%` }} />
                 </span>
               )}
             </span>
-            <span><span className="crew-faint">Shifts today</span> {usage.shiftsToday} of {usage.shiftsPerDayLimit}</span>
+            <span><span className="crew-faint">{t('crew.desk.shifts_today')}</span> {usage.shiftsToday} / {usage.shiftsPerDayLimit}</span>
           </div>
         </div>
         <div className="crew-desk-actions">
           <span className="crew-inline-label">
             <CrewToggle
-              label="Pause"
+              label={t('crew.desk.pause')}
               checked={paused}
               disabled={busy !== null}
               onChange={(next) => void run('pause', () => client.call('setPaused', { slug, paused: next }))}
             />
-            Pause
+            {t('crew.desk.pause')}
           </span>
           {shift.kind === 'end' ? (
             <button type="button" className="crew-btn crew-btn-secondary" disabled={busy !== null} onClick={() => void run('shift', () => client.call('endShift', { slug }))}>
               <MaterialSymbol icon="stop" size={15} />
-              End shift
+              {t('crew.desk.end_shift')}
             </button>
           ) : (
             <button
@@ -100,10 +102,10 @@ function CrewDeskHeader({ member }: { member: CrewMemberSnapshot }) {
               onClick={() => void run('shift', () => client.call('startShift', { slug }))}
             >
               <MaterialSymbol icon="play_arrow" size={15} />
-              Start shift
+              {t('crew.desk.start_shift')}
             </button>
           )}
-          <button type="button" className="crew-icon-button" title="Remove from the crew" aria-label="Remove from the crew" onClick={() => setConfirmRemove(true)}>
+          <button type="button" className="crew-icon-button" title={t('crew.desk.remove_aria')} aria-label={t('crew.desk.remove_aria')} onClick={() => setConfirmRemove(true)}>
             <MaterialSymbol icon="person_remove" size={17} />
           </button>
         </div>
@@ -113,11 +115,11 @@ function CrewDeskHeader({ member }: { member: CrewMemberSnapshot }) {
         <MaterialSymbol icon="description" size={14} />
         <span className="crew-grow">
           {runtime.definitionChangedSinceChapter
-            ? <><b>The definition changed during this chapter.</b> The new personality, job and model take effect when the next chapter starts.</>
-            : 'Edits to the definition take effect when the next chapter starts.'}
+            ? <><b>{t('crew.desk.definition_changed')}</b>{t('crew.desk.definition_changed_tail')}</>
+            : t('crew.desk.definition_note')}
         </span>
         <button type="button" className="crew-link-button" onClick={() => host.openFile(definition.sourcePath)}>
-          Edit definition
+          {t('crew.desk.edit_definition')}
         </button>
       </div>
 
@@ -130,11 +132,12 @@ function CrewDeskHeader({ member }: { member: CrewMemberSnapshot }) {
 
       {confirmRemove && (
         <CrewModal
-          title={`Remove ${definition.name}?`}
+          title={t('crew.desk.remove_title', { name: definition.name })}
           onClose={() => setConfirmRemove(false)}
+          closeLabel={t('crew.modal.close')}
           footer={(
             <>
-              <button type="button" className="crew-btn crew-btn-secondary" onClick={() => setConfirmRemove(false)}>Cancel</button>
+              <button type="button" className="crew-btn crew-btn-secondary" onClick={() => setConfirmRemove(false)}>{t('crew.desk.cancel')}</button>
               <button
                 type="button"
                 className="crew-btn crew-btn-danger"
@@ -147,13 +150,13 @@ function CrewDeskHeader({ member }: { member: CrewMemberSnapshot }) {
                   }
                 }}
               >
-                Remove
+                {t('crew.desk.remove')}
               </button>
             </>
           )}
         >
           <p className="crew-modal-text">
-            {definition.name}'s definition, notes and journal move to <span className="crew-mono">nimbalyst-local/crew/.deleted/</span>. Their sessions stay where they are.
+            {t('crew.desk.removed_head', { name: definition.name })} <span className="crew-mono">nimbalyst-local/crew/.deleted/</span>{t('crew.desk.removed_tail')}
           </p>
         </CrewModal>
       )}
@@ -180,6 +183,7 @@ function CrewChapterTimeline({
   loadError: string | null;
 }) {
   const { host, viewingSessionId, viewSession } = useCrew();
+  const { t } = useTranslation('extensions');
   const [showAll, setShowAll] = useState(false);
   const { definition, runtime } = member;
   const slug = definition.slug;
@@ -201,7 +205,7 @@ function CrewChapterTimeline({
       <div className="crew-timeline-strip">
         {hiddenCount > 0 && (
           <button type="button" className="crew-link-button" onClick={() => setShowAll(true)}>
-            Show {hiddenCount} older {hiddenCount === 1 ? 'chapter' : 'chapters'}
+            {t(hiddenCount === 1 ? 'crew.desk.show_older_one' : 'crew.desk.show_older_other', { count: hiddenCount })}
           </button>
         )}
         {earlier.slice(hiddenCount).map((chapter) => (
@@ -218,22 +222,22 @@ function CrewChapterTimeline({
             <MaterialSymbol icon="history" size={15} />
             <span className="crew-grow">
               {viewedChapter
-                ? `Reading chapter ${viewedChapter.chapterIndex}. Messages sent here go to that chapter, not the current one.`
+                ? t('crew.desk.reading_chapter', { index: viewedChapter.chapterIndex })
                 : viewedDelegated
-                  ? `Reading "${viewedDelegated.name}", a session ${definition.name} started. Messages sent here go to that session.`
-                  : `Reading another session. Messages sent here go to that session.`}
+                  ? t('crew.desk.reading_session', { session: viewedDelegated.name, member: definition.name })
+                  : t('crew.desk.reading_other')}
             </span>
             {currentSessionId && (
-              <button type="button" className="crew-link-button" onClick={() => viewSession(slug, null)}>Back to current chapter</button>
+              <button type="button" className="crew-link-button" onClick={() => viewSession(slug, null)}>{t('crew.desk.back_to_current')}</button>
             )}
           </div>
         ) : current ? (
           <div className="crew-chapter-divider">
-            Chapter {current.chapterIndex}, started {formatDay(current.startedAt)}
+            {t('crew.desk.chapter_started', { index: current.chapterIndex, when: formatDay(current.startedAt) })}
             {runtime.onShift && runtime.shiftTrigger && (
               <span className="crew-wake-marker">
                 <MaterialSymbol icon="alarm" size={13} />
-                {describeTrigger(runtime.shiftTrigger)}{runtime.shiftStartedAt ? `, ${formatWhen(runtime.shiftStartedAt)}` : ''}
+                {t(describeTrigger(runtime.shiftTrigger))}{runtime.shiftStartedAt ? `, ${formatWhen(runtime.shiftStartedAt)}` : ''}
               </span>
             )}
           </div>
@@ -243,11 +247,11 @@ function CrewChapterTimeline({
 
       <div className="crew-timeline-transcript">
         {!Transcript ? (
-          <div className="crew-empty-note">This Nimbalyst build cannot show session transcripts inside extension panels.</div>
+          <div className="crew-empty-note">{t('crew.desk.transcript_unavailable')}</div>
         ) : transcriptSessionId ? (
           <Transcript key={transcriptSessionId} sessionId={transcriptSessionId} />
         ) : detail === null && !loadError ? (
-          <div className="crew-empty-note" role="status">Loading...</div>
+          <div className="crew-empty-note" role="status">{t('crew.desk.loading')}</div>
         ) : (
           <CrewFirstShift member={member} />
         )}
@@ -257,21 +261,22 @@ function CrewChapterTimeline({
 }
 
 function CrewChapterCard({ chapter, reading, onToggle }: { chapter: CrewChapterSummary; reading: boolean; onToggle: () => void }) {
+  const { t } = useTranslation('extensions');
   return (
     <div className="crew-chapter-card" data-reading={reading} data-chapter-index={chapter.chapterIndex}>
       <MaterialSymbol icon={reading ? 'expand_more' : 'chevron_right'} size={16} />
       <div className="crew-grow">
         <div className="crew-chapter-card-title">
-          Chapter {chapter.chapterIndex}
-          <span className="crew-faint"> {formatDateRange(chapter.startedAt, chapter.endedAt)}</span>
-          {chapter.endReason && <span className="crew-faint">, {chapter.endReason}</span>}
+          {t('crew.desk.chapter_label', { index: chapter.chapterIndex })}
+          <span className="crew-faint"> {formatDateRange(chapter.startedAt, chapter.endedAt, t)}</span>
+          {chapter.endReason && <span className="crew-faint">, {formatChapterEndReason(chapter.endReason, t)}</span>}
         </div>
         {chapter.handoffSummary && (
-          <p className="crew-chapter-card-summary crew-selectable" data-expanded={reading}>Handoff: {chapter.handoffSummary}</p>
+          <p className="crew-chapter-card-summary crew-selectable" data-expanded={reading}>{t('crew.desk.handoff')} {chapter.handoffSummary}</p>
         )}
       </div>
       <button type="button" className="crew-link-button" onClick={onToggle}>
-        {reading ? 'Close chapter' : 'Read chapter'}
+        {reading ? t('crew.desk.close_chapter') : t('crew.desk.read_chapter')}
       </button>
     </div>
   );
@@ -281,9 +286,10 @@ function CrewChapterCard({ chapter, reading, onToggle }: { chapter: CrewChapterS
 function CrewFirstShift({ member }: { member: CrewMemberSnapshot }) {
   const { client } = useCrew();
   const { busy, error, run } = useCrewAction();
+  const { t } = useTranslation('extensions');
   const [prompt, setPrompt] = useState('');
   const { definition } = member;
-  const shift = deriveShiftAction(member);
+  const shift = deriveShiftAction(member, t);
   const blocked = shift.kind === 'start' ? shift.blockedReason : undefined;
 
   const start = async () => {
@@ -295,11 +301,11 @@ function CrewFirstShift({ member }: { member: CrewMemberSnapshot }) {
     <div className="crew-first-shift">
       <div className="crew-first-shift-inner">
         <p className="crew-muted">
-          {definition.name} has not worked a shift yet. Start one now, optionally with a first task, or wait for the schedule.
+          {t('crew.desk.first_shift_body', { name: definition.name })}
         </p>
         <textarea
           className="crew-input crew-textarea"
-          placeholder={`What should ${definition.name} look at first?`}
+          placeholder={t('crew.desk.first_shift_placeholder', { name: definition.name })}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
@@ -312,7 +318,7 @@ function CrewFirstShift({ member }: { member: CrewMemberSnapshot }) {
         />
         <div className="crew-row">
           <button type="button" className="crew-btn crew-btn-primary" disabled={busy !== null || blocked !== undefined} onClick={() => void start()}>
-            Start first shift
+            {t('crew.desk.start_first_shift')}
           </button>
           {blocked && <span className="crew-faint">{blocked}</span>}
         </div>

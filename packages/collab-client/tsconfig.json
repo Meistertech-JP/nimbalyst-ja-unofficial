@@ -14,6 +14,9 @@
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "paths": {
+      "@nimbalyst/i18n/core": ["../i18n/src/core.ts"],
+      "@nimbalyst/i18n/react": ["../i18n/src/react.tsx"],
+      "@nimbalyst/i18n/resources": ["../i18n/src/resources/index.ts"],
       "@nimbalyst/tracker-core": ["../tracker-core/src/index.ts"],
       "@nimbalyst/tracker-core/*": ["../tracker-core/src/*"],
       "@nimbalyst/tracker-schema": ["../tracker-schema/src/index.ts"],

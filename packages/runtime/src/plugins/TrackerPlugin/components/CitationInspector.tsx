@@ -25,6 +25,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   describeCitationLocator,
   validateCitationLocator,
@@ -82,9 +83,9 @@ export interface CitationInspectorProps {
 }
 
 const RELATION_META: Record<CitationRelation, { label: string; icon: string; className: string }> = {
-  supports: { label: 'Supports', icon: 'thumb_up', className: 'citation-relation-supports' },
-  challenges: { label: 'Challenges', icon: 'thumb_down', className: 'citation-relation-challenges' },
-  context: { label: 'Context', icon: 'info', className: 'citation-relation-context' },
+  supports: { label: 'citation.relation.supports', icon: 'thumb_up', className: 'citation-relation-supports' },
+  challenges: { label: 'citation.relation.challenges', icon: 'thumb_down', className: 'citation-relation-challenges' },
+  context: { label: 'citation.relation.context', icon: 'info', className: 'citation-relation-context' },
 };
 
 function asString(value: unknown): string | null {
@@ -175,6 +176,7 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
 );
 
 export const CitationInspector: React.FC<CitationInspectorProps> = ({ entry, host, onOpenItem }) => {
+  const { t } = useTranslation('tracker');
   const citation = host.lookupItem(entry.itemId);
   const fields = citation?.fields ?? {};
 
@@ -205,7 +207,7 @@ export const CitationInspector: React.FC<CitationInspectorProps> = ({ entry, hos
           className={`citation-inspector-relation ${relationMeta.className} flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-[var(--nim-text-muted)]`}
         >
           <MaterialSymbol icon={relationMeta.icon} size={14} />
-          {relationMeta.label}
+          {t(relationMeta.label)}
         </span>
         <button
           type="button"
@@ -219,7 +221,7 @@ export const CitationInspector: React.FC<CitationInspectorProps> = ({ entry, hos
 
       {!citation && (
         <div className="citation-inspector-missing text-[12px] text-[var(--nim-text-muted)] select-text">
-          This citation item is not loaded here, so only the stored reference is shown.
+          {t('citation.item_not_loaded')}
         </div>
       )}
 
@@ -236,15 +238,15 @@ export const CitationInspector: React.FC<CitationInspectorProps> = ({ entry, hos
       )}
 
       <div className="citation-inspector-locator flex flex-col gap-1">
-        <SectionHeading>Locator</SectionHeading>
+        <SectionHeading>{t('citation.locator')}</SectionHeading>
         {fields.locator === undefined || fields.locator === null ? (
           <div className="citation-inspector-locator-absent text-[12px] text-[var(--nim-text-muted)] select-text">
-            No locator. This citation names a document, not a passage in it.
+            {t('citation.no_locator')}
           </div>
         ) : locatorResult.valid ? (
           <>
-            <Row label="Selector">{locatorResult.locator.selectorType}</Row>
-            <Row label="Address">{describeCitationLocator(locatorResult.locator)}</Row>
+            <Row label={t('citation.selector')}>{locatorResult.locator.selectorType}</Row>
+            <Row label={t('citation.address')}>{describeCitationLocator(locatorResult.locator)}</Row>
             {Object.entries(locatorResult.locator as unknown as Record<string, unknown>)
               .filter(([key]) => key !== 'selectorType' && key !== 'version')
               .map(([key, value]) => (
@@ -255,12 +257,12 @@ export const CitationInspector: React.FC<CitationInspectorProps> = ({ entry, hos
           // Shown, not hidden: an invalid locator and an absent one look
           // identical to a reader otherwise, and only one of them is a bug.
           <div className="citation-inspector-locator-invalid text-[12px] text-[var(--nim-danger,#dc2626)] select-text">
-            <div>This locator does not validate against contract 4.4.</div>
+            <div>{t('citation.invalid_locator')}</div>
             <ul className="mt-1 list-disc pl-4">
               {locatorResult.issues.map((locatorIssue, index) => (
                 <li key={`${locatorIssue.code}-${index}`}>
                   <code>{locatorIssue.code}</code>
-                  {locatorIssue.path ? ` at ${locatorIssue.path}` : ''}: {locatorIssue.message}
+                  {locatorIssue.path ? ` ${t('citation.at')} ${locatorIssue.path}` : ''}: {locatorIssue.message}
                 </li>
               ))}
             </ul>
@@ -269,39 +271,39 @@ export const CitationInspector: React.FC<CitationInspectorProps> = ({ entry, hos
       </div>
 
       <div className="citation-inspector-capture flex flex-col gap-1">
-        <SectionHeading>Capture</SectionHeading>
+        <SectionHeading>{t('citation.capture')}</SectionHeading>
         {!capture?.itemId ? (
           <div className="citation-inspector-capture-absent text-[12px] text-[var(--nim-text-muted)] select-text">
-            No capture. Nothing records when this passage was actually read.
+            {t('citation.no_capture')}
           </div>
         ) : (
           <>
-            <Row label="Capture">{captureItem?.title ?? capture.title ?? capture.itemId}</Row>
+            <Row label={t('citation.capture')}>{captureItem?.title ?? capture.title ?? capture.itemId}</Row>
             {asString(captureFields.capturedAt) && (
-              <Row label="Captured">{formatDateTimeDisplay(captureFields.capturedAt).display}</Row>
+              <Row label={t('citation.captured')}>{formatDateTimeDisplay(captureFields.capturedAt).display}</Row>
             )}
-            {asString(captureFields.outcome) && <Row label="Outcome">{asString(captureFields.outcome)}</Row>}
-            {source && <Row label="Source">{source.title ?? source.itemId ?? ''}</Row>}
-            {asString(captureFields.digest) && <Row label="Digest">{asString(captureFields.digest)}</Row>}
+            {asString(captureFields.outcome) && <Row label={t('citation.outcome')}>{asString(captureFields.outcome)}</Row>}
+            {source && <Row label={t('citation.source')}>{source.title ?? source.itemId ?? ''}</Row>}
+            {asString(captureFields.digest) && <Row label={t('citation.digest')}>{asString(captureFields.digest)}</Row>}
           </>
         )}
       </div>
 
       <div className="citation-inspector-revision flex flex-col gap-1">
-        <SectionHeading>Pinned revision</SectionHeading>
+        <SectionHeading>{t('citation.pinned_revision')}</SectionHeading>
         {revisionState.kind === 'unpinned' && (
           <div className="citation-inspector-revision-unpinned text-[12px] text-[var(--nim-text-muted)] select-text">
-            Not pinned. This citation follows the cited item as it changes.
+            {t('citation.not_pinned')}
           </div>
         )}
         {revisionState.kind === 'no-reader' && (
           <div className="citation-inspector-revision-unsupported text-[12px] text-[var(--nim-text-muted)] select-text">
-            This host keeps no revision log, so the pinned revision cannot be shown here.
+            {t('citation.no_revision_log')}
           </div>
         )}
         {revisionState.kind === 'loading' && (
           <div className="citation-inspector-revision-loading text-[12px] text-[var(--nim-text-muted)]">
-            Reading revision...
+            {t('citation.reading_revision')}
           </div>
         )}
         {revisionState.kind === 'failed' && (
@@ -311,20 +313,20 @@ export const CitationInspector: React.FC<CitationInspectorProps> = ({ entry, hos
         )}
         {revisionState.kind === 'loaded' && (
           <>
-            <Row label="Revision">
+            <Row label={t('citation.revision')}>
               <code>{revisionState.revision.revisionId}</code>
             </Row>
-            <Row label="Server no.">
+            <Row label={t('citation.server_number')}>
               {revisionState.revision.serverRevision === null
-                ? 'not synced'
+                ? t('citation.not_synced')
                 : String(revisionState.revision.serverRevision)}
             </Row>
-            <Row label="Recorded">{formatDateTimeDisplay(revisionState.revision.recordedAt).display}</Row>
+            <Row label={t('citation.recorded')}>{formatDateTimeDisplay(revisionState.revision.recordedAt).display}</Row>
             {revisionState.revision.deletedAt !== null && revisionState.revision.deletedAt !== undefined && (
-              <Row label="Deleted">{formatDateTimeDisplay(revisionState.revision.deletedAt).display}</Row>
+              <Row label={t('citation.deleted')}>{formatDateTimeDisplay(revisionState.revision.deletedAt).display}</Row>
             )}
             {asString(revisionState.revision.data.title) && (
-              <Row label="Title then">{asString(revisionState.revision.data.title)}</Row>
+              <Row label={t('citation.title_then')}>{asString(revisionState.revision.data.title)}</Row>
             )}
           </>
         )}

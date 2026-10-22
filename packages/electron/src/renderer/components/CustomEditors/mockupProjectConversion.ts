@@ -16,9 +16,9 @@ export type MockupProjectConversionErrorCode =
 export class MockupProjectConversionError extends Error {
   constructor(
     readonly code: MockupProjectConversionErrorCode,
-    message: string
+    readonly targetPath?: string
   ) {
-    super(message);
+    super(code);
     this.name = "MockupProjectConversionError";
   }
 }
@@ -32,8 +32,7 @@ export interface MockupProjectConversionResult {
 export function canvasPathForMockupProject(sourcePath: string): string {
   if (!/\.mockupproject$/i.test(sourcePath)) {
     throw new MockupProjectConversionError(
-      "invalid-source-path",
-      "Only .mockupproject files can be converted."
+      "invalid-source-path"
     );
   }
   return sourcePath.replace(/\.mockupproject$/i, ".canvas");
@@ -56,8 +55,7 @@ export function convertMockupProjectSource(source: string): string {
     (verified.edges?.length ?? 0) !== sourceEdgeCount
   ) {
     throw new MockupProjectConversionError(
-      "suspect-conversion",
-      "The converted canvas did not preserve every mockup and connection."
+      "suspect-conversion"
     );
   }
 
@@ -81,14 +79,13 @@ export async function convertMockupProjectFile(
 
   if (!source?.exists || source.content === null) {
     throw new MockupProjectConversionError(
-      "source-missing",
-      "The original mockup project could not be read. It was not modified."
+      "source-missing"
     );
   }
   if (target?.exists) {
     throw new MockupProjectConversionError(
       "target-exists",
-      `A canvas already exists at ${targetPath}. Neither file was changed.`
+      targetPath
     );
   }
 
@@ -108,8 +105,7 @@ export async function convertMockupProjectFile(
   const [written] = await fs.read([targetPath]);
   if (!written?.exists || written.content !== canvasContent) {
     throw new MockupProjectConversionError(
-      "verification-failed",
-      "The new canvas could not be verified. The original mockup project was not modified."
+      "verification-failed"
     );
   }
 

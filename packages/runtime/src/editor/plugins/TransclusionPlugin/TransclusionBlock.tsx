@@ -11,6 +11,7 @@
  */
 
 import React, { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import { $getNodeByKey, type LexicalEditor } from 'lexical';
@@ -58,18 +59,23 @@ function useSourceState(link: ParsedTransclusionHref | null, enabled: boolean): 
   return state;
 }
 
-function noticeFor(state: TransclusionSourceState | null, hasHost: boolean, anchor: string | null, sectionMissing: boolean): string | null {
-  if (!hasHost) return 'Transcluded content is not available here. Open the page to read it.';
+function noticeFor(
+  state: TransclusionSourceState | null,
+  hasHost: boolean,
+  sectionMissing: boolean,
+  messages: { unavailable: string; missingPage: string; noAccess: string; missingSection: string },
+): string | null {
+  if (!hasHost) return messages.unavailable;
   if (!state || state.status === 'loading') return null;
   switch (state.status) {
     case 'missing':
-      return state.message ?? 'This page no longer exists, or it is not on this device.';
+      return state.message ?? messages.missingPage;
     case 'no-access':
-      return state.message ?? 'You do not have access to this page.';
+      return state.message ?? messages.noAccess;
     case 'error':
       return state.message;
     case 'ready':
-      return sectionMissing ? `The section "#${anchor}" is no longer on this page.` : null;
+      return sectionMissing ? messages.missingSection : null;
   }
 }
 
@@ -106,6 +112,7 @@ function TransclusionBody({ markdown }: { markdown: string }): React.JSX.Element
 }
 
 export function TransclusionBlock({ href, label, title, nodeKey }: { href: string; label: string; title: string; nodeKey: string }): React.JSX.Element {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const editable = useLexicalEditable();
   const chain = useContext(TransclusionChainContext);
@@ -168,10 +175,15 @@ export function TransclusionBlock({ href, label, title, nodeKey }: { href: strin
   } : undefined;
   const heading = section?.status === 'ok' ? section.heading : null;
   const notice = guard === 'cycle'
-    ? 'This page is already shown above; it is not repeated here.'
+    ? t('transclusion.cycle')
     : guard === 'too-deep'
-      ? 'Transclusions nest too deeply to show here.'
-      : noticeFor(state, !!host, link?.anchor ?? null, section?.status === 'missing-section');
+      ? t('transclusion.too_deep')
+      : noticeFor(state, !!host, section?.status === 'missing-section', {
+          unavailable: t('transclusion.unavailable'),
+          missingPage: t('transclusion.missing_page'),
+          noAccess: t('transclusion.no_access'),
+          missingSection: t('transclusion.missing_section', { anchor: link?.anchor ?? '' }),
+        });
 
   return (
     <PlacedViewResizeFrame attrs={sizeAttrs} onAttrsChange={onSizeChange}>
@@ -189,12 +201,12 @@ export function TransclusionBlock({ href, label, title, nodeKey }: { href: strin
         </a>
         <span className="flex-1" />
         {editable ? (
-          <button type="button" className="transclusion-block-unlink text-nim-faint hover:text-nim" onClick={unlink} title="Show as a link">
+          <button type="button" className="transclusion-block-unlink text-nim-faint hover:text-nim" onClick={unlink} title={t('transclusion.show_as_link')}>
             <MaterialSymbol icon="link" size={16} />
           </button>
         ) : null}
         {host && link ? (
-          <button type="button" className="transclusion-block-open text-nim-faint hover:text-nim" onClick={open} title="Open the source page">
+          <button type="button" className="transclusion-block-open text-nim-faint hover:text-nim" onClick={open} title={t('transclusion.open_source_page')}>
             <MaterialSymbol icon="open_in_new" size={16} />
           </button>
         ) : null}
@@ -208,7 +220,7 @@ export function TransclusionBlock({ href, label, title, nodeKey }: { href: strin
           </TransclusionChainContext.Provider>
         </div>
       ) : (
-        <div className="transclusion-block-loading px-3 py-2 text-sm text-nim-faint">Loading...</div>
+        <div className="transclusion-block-loading px-3 py-2 text-sm text-nim-faint">{t('loading')}</div>
       )}
     </div>
     </PlacedViewResizeFrame>

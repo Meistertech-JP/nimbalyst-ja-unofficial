@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { copyImageToClipboard } from '../../../utils/clipboard';
 
 function clamp(value: number, min: number, max: number): number {
@@ -38,6 +39,7 @@ export const ZoomableImageSurface: React.FC<ZoomableImageSurfaceProps> = ({
   onImageLoad,
   onImageError,
 }) => {
+  const { t } = useTranslation('aichat');
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const scaleRef = useRef(1);
@@ -317,7 +319,7 @@ export const ZoomableImageSurface: React.FC<ZoomableImageSurfaceProps> = ({
               className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               onClick={() => setZoomMode('fit')}
             >
-              Fit
+              {t('media.fit')}
             </button>
             <button
               type="button"
@@ -354,12 +356,12 @@ export const ZoomableImageSurface: React.FC<ZoomableImageSurfaceProps> = ({
               disabled={copyState === 'copying'}
             >
               {copyState === 'copying'
-                ? 'Copying...'
+                ? t('media.copying')
                 : copyState === 'copied'
-                  ? 'Copied'
+                  ? t('code.copied')
                   : copyState === 'error'
-                    ? 'Copy failed'
-                    : 'Copy image'}
+                    ? t('media.copy_failed')
+                    : t('media.copy_image')}
             </button>
           </div>
         </div>

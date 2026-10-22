@@ -26,6 +26,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   Handle,
   NodeResizer,
@@ -188,6 +189,7 @@ export const CanvasCardNode = memo(function CanvasCardNode({
   data,
   selected,
 }: NodeProps<CanvasFlowNode>) {
+  const { t } = useTranslation('editor');
   const { node, kind, active, lod, readOnly } = data as CanvasCardData;
   const accent = canvasColorValue(node.color);
   const editable = active && !readOnly;
@@ -253,7 +255,7 @@ export const CanvasCardNode = memo(function CanvasCardNode({
       />
 
       {locked && (
-        <span className="canvas-card__lock" aria-label="Locked" title="Locked">
+          <span className="canvas-card__lock" aria-label={t('canvas.card.locked')} title={t('canvas.card.locked')}>
           &#128274;
         </span>
       )}
@@ -286,18 +288,18 @@ export const CanvasCardNode = memo(function CanvasCardNode({
                 style={{ background: claimant.color }}
               />
               {claimant.kind === 'agent'
-                ? `${claimant.name} is editing`
-                : `${claimant.name} is here`}
+                ? t('canvas.card.agent_editing', { name: claimant.name })
+                : t('canvas.card.person_here', { name: claimant.name })}
               {claimant.onBehalfOfName !== undefined && (
                 <span className="canvas-card-claims__on-behalf">
-                  for {claimant.onBehalfOfName}
+                  {t('canvas.card.on_behalf', { name: claimant.onBehalfOfName })}
                 </span>
               )}
             </span>
           ))}
           {claimants.length > MAX_CLAIM_RINGS && (
             <span className="canvas-card-claims__chip">
-              +{claimants.length - MAX_CLAIM_RINGS} more
+              {t('canvas.card.more_claimants', { count: claimants.length - MAX_CLAIM_RINGS })}
             </span>
           )}
         </NodeToolbar>
@@ -361,6 +363,7 @@ function CardBody({
   preferSharedReferences: boolean;
   onPatch: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation('editor');
   switch (kind) {
     case 'sticky':
     case 'text':
@@ -389,8 +392,8 @@ function CardBody({
       return (
         <Placeholder
           title={canvasCardLabel(node) || node.id}
-          detail={`type: ${node.type}`}
-          note="Unsupported card type. Its data is preserved when this board is saved."
+          detail={t('canvas.card.type_detail', { type: node.type })}
+          note={t('canvas.card.unsupported_type_note')}
         />
       );
   }
@@ -405,6 +408,7 @@ function TextBody({
   editable: boolean;
   onPatch: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation('editor');
   const text = canvasCardText(node);
   if (editable) {
     return (
@@ -413,14 +417,14 @@ function TextBody({
         value={text}
         autoFocus
         spellCheck
-        placeholder="Write something"
+        placeholder={t('canvas.card.write_placeholder')}
         onChange={(event) => onPatch({ text: event.target.value })}
       />
     );
   }
   return (
     <div className="canvas-card__text select-text">
-      {text || <span className="canvas-card__placeholder-text">Empty</span>}
+      {text || <span className="canvas-card__placeholder-text">{t('canvas.card.empty')}</span>}
     </div>
   );
 }
@@ -436,6 +440,7 @@ function ImageBody({
   canEditTitle: boolean;
   onPatch: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation('editor');
   const url = canvasCardUrl(node);
   if (url) {
     const screen = node['x-nimbalyst']?.screen;
@@ -447,15 +452,15 @@ function ImageBody({
           <div className="canvas-card__screen-caption">
             <CanvasScreenTitle label={canvasCardLabel(node)} readOnly={!canEditTitle} onRename={label => onPatch({ label })} />
             {historical && (
-              <span title="Historical staged capture; needs refreshing">
-                Historical
+              <span title={t('canvas.card.historical_capture_title')}>
+                {t('canvas.card.historical_capture')}
               </span>
             )}
           </div>
           <img
             className="canvas-card__image"
             src={url}
-            alt={canvasCardLabel(node) || 'Canvas image'}
+            alt={canvasCardLabel(node) || t('canvas.card.image_alt')}
             draggable={false}
           />
         </div>
@@ -465,7 +470,7 @@ function ImageBody({
       <img
         className="canvas-card__image"
         src={url}
-        alt={canvasCardLabel(node) || 'Canvas image'}
+        alt={canvasCardLabel(node) || t('canvas.card.image_alt')}
         draggable={false}
       />
     );
@@ -476,7 +481,7 @@ function ImageBody({
         className="canvas-card__url-input"
         type="url"
         autoFocus
-        placeholder="Image URL"
+        placeholder={t('canvas.card.image_url_placeholder')}
         defaultValue=""
         onBlur={(event) => onPatch({ url: event.target.value.trim() })}
         onKeyDown={(event) => {
@@ -489,7 +494,7 @@ function ImageBody({
   }
   return (
     <div className="canvas-card__placeholder-text canvas-card__image-empty">
-      Click to add an image URL
+      {t('canvas.card.add_image_url')}
     </div>
   );
 }
@@ -503,6 +508,7 @@ function FrameBody({
   editable: boolean;
   onPatch: (patch: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation('editor');
   const label = canvasCardLabel(node);
   return (
     <div className="canvas-card__frame">
@@ -512,7 +518,7 @@ function FrameBody({
           type="text"
           autoFocus
           value={label}
-          placeholder="Frame"
+          placeholder={t('canvas.tool_rail.frame')}
           onChange={(event) => onPatch({ label: event.target.value })}
         />
       ) : (
@@ -546,6 +552,7 @@ function ReferenceBody({
   lod: CanvasCardLod;
   preferSharedReference: boolean;
 }) {
+  const { t } = useTranslation('editor');
   const localReference = canvasCardReference(node);
   const reference = effectiveCanvasCardReference(localReference, {
     preferShared: preferSharedReference,
@@ -562,10 +569,10 @@ function ReferenceBody({
         detail={canvasCardTarget(node)}
         note={
           !reference
-            ? 'This card has no resolvable target.'
+            ? t('canvas.card.no_resolvable_target')
             : RenderCard
             ? undefined
-            : 'No card renderer is registered in this host.'
+            : t('canvas.card.renderer_not_registered')
         }
       />
     ) : (
@@ -582,7 +589,7 @@ function ReferenceBody({
   // revision card that could go hot would let an edit aimed at "v3" land on
   // head -- the one way this feature could destroy something.
   return (
-    <CanvasCardBoundary label={label}>
+    <CanvasCardBoundary label={label} renderErrorMessage={t('canvas.card.render_failed')}>
       {Preview && reference ? (
         <Preview
           nodeId={nodeId}
@@ -627,7 +634,7 @@ function ColdCard({
  * card, not the board they had it on.
  */
 class CanvasCardBoundary extends Component<
-  { label: string; children: ReactNode },
+  { label: string; children: ReactNode; renderErrorMessage: string },
   { error: Error | null }
 > {
   state = { error: null as Error | null };
@@ -650,7 +657,7 @@ class CanvasCardBoundary extends Component<
         <ColdCard
           title={this.props.label}
           detail={this.state.error.message}
-          note="This card failed to render. The board and its other cards are unaffected."
+          note={this.props.renderErrorMessage}
         />
       );
     }

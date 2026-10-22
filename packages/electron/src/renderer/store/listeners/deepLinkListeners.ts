@@ -242,8 +242,12 @@ function applyTeamInviteOutcome(outcome: TeamInviteOutcome): void {
   switch (outcome.status) {
     case 'accepted':
       errorNotificationService.showInfo(
-        `You joined ${outcome.teamName}`,
-        'Shared documents, trackers, and projects for this team are now available.',
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_joined_title', `You joined ${outcome.teamName}`, { teamName: outcome.teamName },
+        ),
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_joined_message', 'Shared documents, trackers, and projects for this team are now available.',
+        ),
         { duration: 8000 }
       );
       // A toast is where this used to stop, and the user was then told they had
@@ -255,8 +259,12 @@ function applyTeamInviteOutcome(outcome: TeamInviteOutcome): void {
       // Also the normal handoff path: the console accepted the invitation
       // before the app was reached, so this is a confirmation, not a no-op.
       errorNotificationService.showInfo(
-        `${outcome.teamName} is ready`,
-        'Shared documents, trackers, and projects for this team are available in Nimbalyst.',
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_ready_title', `${outcome.teamName} is ready`, { teamName: outcome.teamName },
+        ),
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_ready_message', 'Shared documents, trackers, and projects for this team are available in Nimbalyst.',
+        ),
         { duration: 6000 }
       );
       offerProjectWalk();
@@ -268,24 +276,42 @@ function applyTeamInviteOutcome(outcome: TeamInviteOutcome): void {
       // destination as a button — the navigation happens behind it, so without
       // one the warning reads as a dead end.
       errorNotificationService.showWarning(
-        'Sign in to accept this invitation',
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_sign_in_title', 'Sign in to accept this invitation',
+        ),
         outcome.email
-          ? `Sign in to Nimbalyst as ${outcome.email} to join this team.`
-          : 'Sign in to Nimbalyst with the address the invitation was sent to.',
-        { duration: 10000, action: { label: 'Sign in', onClick: openAccountSignIn } }
+          ? errorNotificationService.getLocalizedText(
+            'common', 'deep_links.invite_sign_in_email_message', `Sign in to Nimbalyst as ${outcome.email} to join this team.`, { email: outcome.email },
+          )
+          : errorNotificationService.getLocalizedText(
+            'common', 'deep_links.invite_sign_in_message', 'Sign in to Nimbalyst with the address the invitation was sent to.',
+          ),
+        {
+          duration: 10000,
+          action: {
+            label: errorNotificationService.getLocalizedText('common', 'deep_links.invite_sign_in_action', 'Sign in'),
+            onClick: openAccountSignIn,
+          },
+        }
       );
       openAccountSignIn();
       break;
     case 'not-found':
       errorNotificationService.showWarning(
-        'Invitation not available',
-        'This invitation is no longer pending for your account. Ask the team admin to send a new one.',
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_not_available_title', 'Invitation not available',
+        ),
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_not_available_message', 'This invitation is no longer pending for your account. Ask the team admin to send a new one.',
+        ),
         { duration: 8000 }
       );
       break;
     case 'error':
       errorNotificationService.showError(
-        'Could not accept the invitation',
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.invite_accept_failed_title', 'Could not accept the invitation',
+        ),
         outcome.message,
         { duration: 8000 }
       );
@@ -391,14 +417,18 @@ export function initDeepLinkListeners(): () => void {
     }) => {
       if (data?.reason === 'not-authenticated') {
         errorNotificationService.showWarning(
-          'Sign in required',
-          'Sign in to your Nimbalyst team account to open this tracker.',
+          errorNotificationService.getLocalizedText('common', 'deep_links.sign_in_required', 'Sign in required'),
+          errorNotificationService.getLocalizedText(
+            'common', 'deep_links.tracker_sign_in', 'Sign in to your Nimbalyst team account to open this tracker.',
+          ),
           { duration: 6000 }
         );
       } else {
         errorNotificationService.showWarning(
-          'No matching workspace',
-          'You do not have a workspace open for the team that owns this tracker.',
+          errorNotificationService.getLocalizedText('common', 'deep_links.no_matching_workspace', 'No matching workspace'),
+          errorNotificationService.getLocalizedText(
+            'common', 'deep_links.tracker_no_workspace', 'You do not have a workspace open for the team that owns this tracker.',
+          ),
           { duration: 6000 }
         );
       }

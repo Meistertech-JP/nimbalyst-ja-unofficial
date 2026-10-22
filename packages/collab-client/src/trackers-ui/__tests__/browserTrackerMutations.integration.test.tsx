@@ -3,7 +3,9 @@
 import React from 'react';
 import { indexedDB as fakeIndexedDB } from 'fake-indexeddb';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { asTeamJwt, asTeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 import type { TrackerIdentity } from '@nimbalyst/runtime/core/DocumentService';
 import { createFakeServer } from '../../../../tracker-engine/src/__tests__/fakeTrackerServer';
@@ -27,6 +29,11 @@ const identity: TrackerIdentity = {
 
 let databaseSequence = 0;
 const sources: BrowserTrackerDataSource[] = [];
+
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  japaneseI18n = await createI18nInstance('ja');
+});
 
 function createSource(connect: () => WebSocket): BrowserTrackerDataSource {
   const source = new BrowserTrackerDataSource({
@@ -120,6 +127,24 @@ afterEach(() => {
 });
 
 describe('browser tracker mutations', () => {
+  it('localizes the mutation rejection notice and preserves server detail', () => {
+    render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <TrackerMutationRejectionNotice
+          rejection={{
+            workspacePath: '/browser/team-project',
+            itemId: 'bug-a',
+            code: 'forbidden',
+            message: 'Request was rejected by policy.',
+          }}
+        />
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByText('サーバーが変更を拒否しました。')).toBeTruthy();
+    expect(screen.getByText(/変更を取り消しました。 この変更を行う権限がありません。 Request was rejected by policy\./)).toBeTruthy();
+  });
+
   it('round-trips bounded mutations to a second client, then visibly rolls a rejected drag back', async () => {
     const server = createFakeServer();
     const browser = createSource(server.connect);

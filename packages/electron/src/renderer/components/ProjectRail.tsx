@@ -10,6 +10,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getShowInFileBrowserLabel } from '@nimbalyst/runtime';
 import {
   useFloating,
@@ -84,6 +85,7 @@ function ProjectRailIcon({
   onDragStart,
   onDragEnd,
 }: ProjectRailIconProps) {
+  const { t } = useTranslation('project');
   // Hover tooltip via floating-ui. Renders through FloatingPortal so the
   // tooltip escapes the rail container's `overflow: hidden` clip — the
   // earlier CSS-only `:hover > .project-rail-tooltip` approach was clipped
@@ -165,14 +167,16 @@ function ProjectRailIcon({
           onContextMenu(project, rect.right, rect.top);
         }}
         aria-haspopup="menu"
-        aria-label={`Switch to project ${project.name}`}
+        aria-label={t('rail.switch_to_project', { name: project.name })}
         aria-current={isActive ? 'true' : undefined}
       >
         <ProjectIcon name={project.name} appearance={appearance} />
         {showBadge && (
           <span
             className="project-rail-item-badge"
-            aria-label={processingCount > 0 ? `${processingCount} streaming session(s)` : `${unreadCount} unread`}
+            aria-label={processingCount > 0
+              ? t('rail.streaming_sessions', { count: processingCount })
+              : t('rail.unread_sessions', { count: unreadCount })}
           >
             {badgeLabel}
           </span>
@@ -182,7 +186,7 @@ function ProjectRailIcon({
         type="button"
         className="project-rail-item-close"
         onClick={handleClose}
-        aria-label={`Close ${project.name}`}
+        aria-label={t('rail.close_project', { name: project.name })}
       >
         ×
       </button>
@@ -204,6 +208,7 @@ function ProjectRailIcon({
 }
 
 export function ProjectRail() {
+  const { t } = useTranslation('project');
   const openSettings = useSetAtom(openSettingsCommandAtom);
   const store = useStore();
   const isMultiProjectMode = useAtomValue(multiProjectModeAtom);
@@ -216,6 +221,11 @@ export function ProjectRail() {
   const sortProjects = useSetAtom(sortOpenProjectsAtom);
   const activity = useAtomValue(globalSessionActivityAtom);
   const activitySummary = useAtomValue(projectActivitySummaryAtom);
+  const revealLabel = t(REVEAL_LABEL === 'Show in Finder'
+    ? 'rail.show_in_finder'
+    : REVEAL_LABEL === 'Show in Explorer'
+      ? 'rail.show_in_explorer'
+      : 'rail.show_in_folder');
   const projectListRef = React.useRef<HTMLDivElement | null>(null);
   const drag = useProjectRailDrag(projectListRef, moveProject);
 
@@ -284,7 +294,7 @@ export function ProjectRail() {
     try {
       const result = await window.electronAPI.invoke('dialog-show-open-dialog', {
         properties: ['openDirectory'],
-        title: 'Open Project',
+        title: t('rail.open_project'),
       });
       if (result?.canceled) return;
       const picked: string | undefined = result?.filePaths?.[0];
@@ -293,7 +303,7 @@ export function ProjectRail() {
     } catch (err) {
       console.error('[ProjectRail] handlePickFolder failed:', err);
     }
-  }, [addProjectByPath]);
+  }, [addProjectByPath, t]);
 
   const refreshRecents = useCallback(async () => {
     if (!window.electronAPI?.invoke) return;
@@ -308,14 +318,14 @@ export function ProjectRail() {
   const handleOpenAddMenu = useCallback(() => {
     if (atCap) {
       errorNotificationService.showWarning(
-        'Project limit reached',
-        'The project limit is eight per window. Close a project or enable Allow unlimited projects in Settings > Advanced.',
+        t('rail.project_limit_reached'),
+        t('rail.project_limit_description'),
       );
       return;
     }
     refreshRecents();
     setAddMenuOpen(true);
-  }, [atCap, refreshRecents]);
+  }, [atCap, refreshRecents, t]);
 
   const handleClose = useCallback(
     async (project: OpenProject) => {
@@ -327,9 +337,9 @@ export function ProjectRail() {
       const streaming = activity.get(project.path)?.streaming.size ?? 0;
       if (streaming > 0) {
         const proceed = await requestConfirmation({
-          title: 'Close project',
-          message: `${project.name} has ${streaming} streaming session${streaming === 1 ? '' : 's'}. Close anyway? Sessions will be paused.`,
-          confirmLabel: 'Close project',
+          title: t('rail.close_project_title'),
+          message: t('rail.close_project_warning', { name: project.name, count: streaming }),
+          confirmLabel: t('rail.close_project_confirm'),
         });
         if (!proceed) return;
       }
@@ -355,7 +365,7 @@ export function ProjectRail() {
         }
       }
     },
-    [closeProject, activity, openProjects.length]
+    [closeProject, activity, openProjects.length, t]
   );
 
   // Right-click context menu state. Anchored to a virtual reference at the
@@ -491,7 +501,7 @@ export function ProjectRail() {
   if (!isMultiProjectMode) return null;
 
   return (
-    <nav className="project-rail" data-testid="project-rail" aria-label="Open projects">
+    <nav className="project-rail" data-testid="project-rail" aria-label={t('rail.open_projects')}>
       {/* Epic H1: org switcher sits above the project switcher. */}
       <OrgSwitcher />
       <div ref={projectListRef} className="project-rail-projects" data-testid="project-rail-projects" {...drag.listProps}>
@@ -524,7 +534,7 @@ export function ProjectRail() {
         onClick={handleOpenAddMenu}
         disabled={atCap}
         data-testid="project-rail-add"
-        aria-label="Add project to rail"
+        aria-label={t('rail.add_project_to_rail')}
         {...getAddTooltipRefProps()}
       >
         +
@@ -537,14 +547,14 @@ export function ProjectRail() {
             style={addTooltipFloatingStyles}
             {...getAddTooltipFloatingProps()}
           >
-            {atCap ? 'Eight-project limit reached. Enable Allow unlimited projects in Settings > Advanced.' : 'Add project'}
+            {atCap ? t('rail.project_limit_tooltip') : t('rail.add_project')}
           </div>
         </FloatingPortal>
       )}
 
       {addMenuOpen && (
         <FloatingPortal>
-          <div
+        <div
             ref={addRefs.setFloating}
             className="project-rail-context-menu project-rail-add-menu"
             style={addFloatingStyles}
@@ -559,12 +569,12 @@ export function ProjectRail() {
                 handlePickFolder();
               }}
             >
-              Open folder…
+              {t('rail.open_folder')}
             </button>
             {filteredRecents.length > 0 && (
               <>
                 <div className="project-rail-context-menu-divider" />
-                <div className="project-rail-context-menu-heading">Recent projects</div>
+                <div className="project-rail-context-menu-heading">{t('rail.recent_projects')}</div>
                 {filteredRecents.map((recent) => (
                   <button
                     key={recent.path}
@@ -609,15 +619,15 @@ export function ProjectRail() {
           >
             <button type="button" role="menuitem" className="project-rail-context-menu-item"
               disabled={menuIndex <= 0} onClick={() => moveMenuProject(-1)}>
-              Move up
+              {t('rail.move_up')}
             </button>
             <button type="button" role="menuitem" className="project-rail-context-menu-item"
               disabled={menuIndex < 0 || menuIndex === openProjects.length - 1} onClick={() => moveMenuProject(1)}>
-              Move down
+              {t('rail.move_down')}
             </button>
             <button type="button" role="menuitem" className="project-rail-context-menu-item"
               disabled={openProjects.length < 2} onClick={() => { sortProjects(); closeMenu(); }}>
-              Sort by name
+              {t('rail.sort_by_name')}
             </button>
             <div className="project-rail-context-menu-divider" />
             <button
@@ -630,14 +640,14 @@ export function ProjectRail() {
                 closeMenu();
               }}
             >
-              Customize appearance…
+              {t('rail.customize_appearance')}
             </button>
             <button
               type="button"
               className="project-rail-context-menu-item"
               onClick={() => handleOpenInNewWindow(menu.project)}
             >
-              Open in new window
+              {t('rail.open_in_new_window')}
             </button>
             <button
               type="button"
@@ -645,7 +655,7 @@ export function ProjectRail() {
               className="project-rail-context-menu-item"
               onClick={() => handleRevealInFinder(menu.project)}
             >
-              {REVEAL_LABEL}
+              {revealLabel}
             </button>
             <div className="project-rail-context-menu-divider" />
             <button
@@ -657,7 +667,7 @@ export function ProjectRail() {
                 handleClose(menu.project);
               }}
             >
-              Close project
+              {t('rail.close_project_confirm')}
             </button>
           </div>
           </FloatingFocusManager>

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import { MaterialSymbol } from "@nimbalyst/runtime/ui/icons/MaterialSymbol";
 import type { TrackerRecord } from "@nimbalyst/runtime/core/TrackerRecord";
 import { getRecordTitle } from "@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors";
@@ -101,8 +102,9 @@ function Avatar({ lane }: { lane: RadarLane }) {
 }
 
 function StatusTransition({ from, to }: { from?: string; to?: string }) {
-  const previous = from ?? "status";
-  const next = to ?? "updated";
+  const { t } = useTranslation("tracker");
+  const previous = from ?? t("radar.status");
+  const next = to ?? t("radar.updated");
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
@@ -141,6 +143,7 @@ function SectionHeading({
   count: number;
   actionable?: boolean;
 }) {
+  const { t } = useTranslation("tracker");
   return (
     <h2
       id={id}
@@ -175,22 +178,36 @@ export function TrackerRadarDigest({
   onItemSelect,
   onOpenDocument,
 }: TrackerRadarDigestProps) {
+  const { t } = useTranslation("tracker");
   const [expandedSweepId, setExpandedSweepId] = useState<string | null>(null);
   const openItem = (itemId: string) =>
     (onOpenDocument ?? onItemSelect)?.(itemId);
+  const translatedRunLabel = (label: string) => {
+    const match = /^(Moved|Commented on|Created|Set|Updated) (.+)$/.exec(label);
+    if (!match) return label;
+    const [, action, target] = match;
+    if (action === "Moved") return t("radar.run_moved", { target });
+    if (action === "Commented on") return t("radar.run_commented", { target });
+    if (action === "Created") return t("radar.run_created", { target });
+    if (action === "Set") return t("radar.run_set", { target });
+    return t("radar.run_updated", { target });
+  };
+  const actorLabel = (lane: RadarLane) =>
+    lane.isCurrentUser ? t("radar.you") : lane.actor.displayName;
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-8 pt-2">
       {filterLabel ? (
         <div className="mt-2 flex items-center gap-2 rounded-md bg-[var(--nim-primary)]/10 px-3 py-2 text-[11px] text-nim-muted">
-          Showing activity for{" "}
+          {t("radar.showing_activity_for")} {" "}
           <strong className="text-nim">{filterLabel}</strong>
           <button
             type="button"
             className="ml-auto text-[var(--nim-primary)] hover:underline"
             onClick={onClearFilter}
+            aria-label={t("radar.show_everyone")}
           >
-            Show everyone
+            {t("radar.show_everyone")}
           </button>
         </div>
       ) : null}
@@ -199,14 +216,13 @@ export function TrackerRadarDigest({
         <SectionHeading
           id="radar-needs-you"
           icon="inbox"
-          title="Needs you"
+          title={t("radar.needs_you")}
           count={needsYou.length}
           actionable
         />
         {needsYou.length === 0 ? (
           <div className="rounded-lg border border-dashed border-nim px-3 py-4 text-center text-[11px] text-nim-faint">
-            You are caught up. No teammate comments or status changes are
-            waiting on you.
+            {t("radar.caught_up")}
           </div>
         ) : (
           <div className="space-y-2">
@@ -232,13 +248,11 @@ export function TrackerRadarDigest({
                     onClick={() => onItemSelect?.(action.itemId)}
                   >
                     <span className="text-xs leading-5 text-nim">
-                      <strong>{action.actor.displayName}</strong>{" "}
-                      {action.reason === "commented" ? "commented on" : "moved"}{" "}
-                      your{" "}
-                      <span className="font-mono text-[10px] text-[var(--nim-primary)]">
-                        {action.issueKey ?? "item"}
-                      </span>{" "}
-                      <span className="text-nim-muted">{action.title}</span>
+                      {t(`radar.action_${action.reason}`, {
+                        actor: action.actor.displayName,
+                        itemKey: action.issueKey ?? t("radar.item"),
+                        title: action.title,
+                      })}
                     </span>
                     {event?.action === "commented" && event.body ? (
                       <span className="mt-2 block rounded-r-md border-l-2 border-nim bg-nim px-3 py-2 text-[11px] leading-5 text-nim-muted">
@@ -263,7 +277,7 @@ export function TrackerRadarDigest({
                       className="rounded border border-nim px-2 py-1 text-[10px] text-nim-muted hover:bg-nim-hover hover:text-nim"
                       onClick={() => openItem(action.itemId)}
                     >
-                      Open
+                      {t("radar.open")}
                     </button>
                   </div>
                 </article>
@@ -278,7 +292,7 @@ export function TrackerRadarDigest({
           <SectionHeading
             id="radar-moved"
             icon="swap_horiz"
-            title="Moved"
+            title={t("radar.moved")}
             count={moved.length}
           />
           <div className="overflow-hidden rounded-lg border border-nim bg-nim-secondary/35">
@@ -307,8 +321,8 @@ export function TrackerRadarDigest({
                     />
                   </span>
                   <span className="mt-1 block text-[10px] text-nim-faint">
-                    {lane.isCurrentUser ? "You" : lane.actor.displayName}
-                    {item.system.createdByAgent ? ", via an agent" : ""}
+                    {actorLabel(lane)}
+                    {item.system.createdByAgent ? `, ${t("radar.via_an_agent")}` : ""}
                   </span>
                 </span>
                 <span className="text-[10px] text-nim-faint">
@@ -325,7 +339,7 @@ export function TrackerRadarDigest({
           <SectionHeading
             id="radar-sweeps"
             icon="layers"
-            title="Sweeps"
+            title={t("radar.sweeps")}
             count={sweeps.length}
           />
           <div className="space-y-2">
@@ -350,13 +364,13 @@ export function TrackerRadarDigest({
                     <Avatar lane={lane} />
                     <span className="min-w-0 text-[11px] text-nim">
                       <strong>
-                        {lane.isCurrentUser ? "You" : lane.actor.displayName}
+                        {actorLabel(lane)}
                       </strong>{" "}
-                      {mark.label.toLowerCase()}{" "}
+                      {translatedRunLabel(mark.label)}{" "}
                       <span className="text-nim-faint">
                         · {examples}
                         {mark.items.length > 3
-                          ? ` and ${mark.items.length - 3} more`
+                          ? ` ${t("radar.and_more", { count: mark.items.length - 3 })}`
                           : ""}
                       </span>
                     </span>
@@ -403,7 +417,7 @@ export function TrackerRadarDigest({
           <SectionHeading
             id="radar-stalled"
             icon="schedule"
-            title="Stalled"
+            title={t("radar.stalled")}
             count={stalled.length}
           />
           <div className="overflow-hidden rounded-lg border border-nim bg-nim-secondary/35">
@@ -426,7 +440,7 @@ export function TrackerRadarDigest({
                   </span>{" "}
                   <span className="text-nim-muted">{item.title}</span>
                   <span className="mt-1 block text-[10px] text-nim-faint">
-                    {statusLabel(item.state)} · no activity for{" "}
+                    {statusLabel(item.state)} · {t("radar.no_activity_for")}{" "}
                     {formatRadarRelativeTime(
                       item.lastActivityAt,
                       radar.windowEnd
@@ -434,7 +448,7 @@ export function TrackerRadarDigest({
                   </span>
                 </span>
                 <span className="text-[10px] text-nim-faint">
-                  {lane.isCurrentUser ? "You" : lane.actor.displayName}
+                  {actorLabel(lane)}
                 </span>
               </button>
             ))}

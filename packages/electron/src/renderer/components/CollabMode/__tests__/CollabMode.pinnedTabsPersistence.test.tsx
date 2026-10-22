@@ -3,6 +3,8 @@ import React, { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { CollabScope } from '@nimbalyst/collab-client/core';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { asTeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 
 const SCOPE: CollabScope = {
@@ -25,7 +27,7 @@ const hostMocks = vi.hoisted(() => ({
   resolveScope: null as null | (() => Promise<CollabScope>),
 }));
 /** What a link can open: the current project's pages, then other projects'. */
-const linkable = vi.hoisted(() => ({ documents: [] as any[] }));
+const linkable = vi.hoisted(() => ({ documents: [] as any[], atom: null as any }));
 const PERSONAL_SCOPE: CollabScope = {
   scopeKey: 'personal:/workspace',
   orgId: 'local',
@@ -84,7 +86,10 @@ vi.mock('../../../store/atoms/collabDocuments', async () => {
     pendingCollabDocumentAtom: atom(null),
     sharedDocumentsAtom: atom([]),
     sharedFoldersAtom: atom([]),
-    linkableSharedDocumentsAtom: atom(() => linkable.documents),
+    linkableSharedDocumentsAtom: (() => {
+      linkable.atom = atom(linkable.documents);
+      return linkable.atom;
+    })(),
     getLinkableSharedDocumentsForScopeKey: () => linkable.documents,
   };
 });
@@ -183,6 +188,8 @@ function TabProbe() {
 describe('CollabMode pinned tab persistence', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    hostMocks.adapter = null;
+    hostMocks.personalAdapter = null;
     const { atom } = await import('jotai');
     personalSession.atoms.sharedDocuments = atom([]);
     personalSession.scope = PERSONAL_SCOPE;
@@ -219,12 +226,38 @@ describe('CollabMode pinned tab persistence', () => {
     });
   });
 
+  it('shows localized guidance when no page is open', async () => {
+    persistenceMocks.load.mockResolvedValue([]);
+    const i18n = await createI18nInstance('ja');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+        <TabsProvider workspacePath="/workspace" disablePersistence>
+          <CollabModeInner
+            workspacePath="/workspace"
+            teamScope={null}
+            teamUnavailable={null}
+            onRetryTeamScope={() => {}}
+            personalScope={PERSONAL_SCOPE}
+            isActive
+            onFileOpen={() => {}}
+          />
+        </TabsProvider>
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByTestId('pages-mode-empty').textContent)
+      .toBe('ページを開くか、サイドバーを右クリックして「新しいページ」を選択してください');
+    expect(screen.getByRole('separator').getAttribute('aria-label'))
+      .toBe('共有ドキュメントのサイドバーをリサイズ');
+  });
+
   afterEach(async () => {
     cleanup();
     delete (window as any).electronAPI;
     linkable.documents = [];
     // CollabMode clears a pending deep link through the mocked runtime store.
     const { getDefaultStore } = await import('jotai');
+    if (linkable.atom) getDefaultStore().set(linkable.atom, []);
     const { pendingCollabDocumentAtom } = await import('../../../store/atoms/collabDocuments');
     getDefaultStore().set(pendingCollabDocumentAtom as any, null);
   });
@@ -233,6 +266,10 @@ describe('CollabMode pinned tab persistence', () => {
   // still opens with its title and in its own editor.
   it("opens a link or deep link to another project's page with its metadata", async () => {
     persistenceMocks.load.mockResolvedValue([]);
+    const i18n = await createI18nInstance('en');
+    const withI18n = (children: React.ReactNode) => (
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">{children}</UiLanguageProvider>
+    );
     linkable.documents = [{
       documentId: 'their-diagram',
       teamProjectId: 'project-b',
@@ -251,12 +288,14 @@ describe('CollabMode pinned tab persistence', () => {
       createdAt: 1,
       updatedAt: 1,
     }];
-    render(
+    const { getDefaultStore } = await import('jotai');
+    getDefaultStore().set(linkable.atom, linkable.documents);
+    render(withI18n(
       <TabsProvider workspacePath="/workspace" disablePersistence>
         <CollabModeInner workspacePath="/workspace" teamScope={SCOPE} teamUnavailable={null} onRetryTeamScope={() => {}} personalScope={PERSONAL_SCOPE} isActive onFileOpen={() => {}} />
         <TabProbe />
       </TabsProvider>,
-    );
+    ));
     await waitFor(() => expect(hostMocks.adapter).not.toBeNull());
 
     act(() => {
@@ -267,7 +306,6 @@ describe('CollabMode pinned tab persistence', () => {
     })));
 
     openerMocks.open.mockClear();
-    const { getDefaultStore } = await import('jotai');
     const { pendingCollabDocumentAtom } = await import('../../../store/atoms/collabDocuments');
     act(() => {
       getDefaultStore().set(pendingCollabDocumentAtom as any, { scopeKey: SCOPE.scopeKey, orgId: SCOPE.orgId, documentId: 'their-mockup' });
@@ -279,6 +317,10 @@ describe('CollabMode pinned tab persistence', () => {
 
   it('holds a deep link until the index names the page, then opens it in its own editor; a missing page is an error', async () => {
     persistenceMocks.load.mockResolvedValue([]);
+    const i18n = await createI18nInstance('en');
+    const withI18n = (children: React.ReactNode) => (
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">{children}</UiLanguageProvider>
+    );
     const { getDefaultStore } = await import('jotai');
     const { sharedIndexLoadedForScopeAtom } = await import('@nimbalyst/collab-client/docs');
     const { pendingCollabDocumentAtom } = await import('../../../store/atoms/collabDocuments');
@@ -286,11 +328,11 @@ describe('CollabMode pinned tab persistence', () => {
     const { store: runtimeStore } = await import('@nimbalyst/runtime/store');
     const jotaiStore = getDefaultStore();
     jotaiStore.set(sharedIndexLoadedForScopeAtom(SCOPE.scopeKey), false);
-    const { rerender } = render(
+    const { rerender } = render(withI18n(
       <TabsProvider workspacePath="/workspace" disablePersistence>
         <CollabModeInner workspacePath="/workspace" teamScope={SCOPE} teamUnavailable={null} onRetryTeamScope={() => {}} personalScope={PERSONAL_SCOPE} isActive onFileOpen={() => {}} />
       </TabsProvider>,
-    );
+    ));
     act(() => {
       jotaiStore.set(pendingCollabDocumentAtom as any, { scopeKey: SCOPE.scopeKey, orgId: SCOPE.orgId, documentId: 'late-drawing' });
     });
@@ -302,6 +344,7 @@ describe('CollabMode pinned tab persistence', () => {
       documentId: 'late-drawing', teamProjectId: 'project-b', title: 'Late drawing', documentType: 'excalidraw',
       createdBy: 'u', createdAt: 1, updatedAt: 1,
     }];
+    act(() => { jotaiStore.set(linkable.atom, linkable.documents); });
     act(() => { jotaiStore.set(sharedIndexLoadedForScopeAtom(SCOPE.scopeKey), true); });
     await waitFor(() => expect(openerMocks.open).toHaveBeenCalledWith(expect.objectContaining({
       documentId: 'late-drawing', documentType: 'excalidraw',
@@ -335,7 +378,7 @@ describe('CollabMode pinned tab persistence', () => {
     act(() => {
       jotaiStore.set(pendingCollabDocumentAtom as any, { scopeKey: SCOPE.scopeKey, orgId: SCOPE.orgId, documentId: 'any' });
     });
-    rerender(
+    rerender(withI18n(
       <TabsProvider workspacePath="/workspace" disablePersistence>
         <CollabModeInner
           workspacePath="/workspace"
@@ -347,7 +390,7 @@ describe('CollabMode pinned tab persistence', () => {
           onFileOpen={() => {}}
         />
       </TabsProvider>,
-    );
+    ));
     await waitFor(() => expect(errorNotificationService.showError).toHaveBeenCalledWith(
       'Could not open shared page', 'Not authenticated. Sign in first.',
     ));
@@ -376,7 +419,11 @@ describe('CollabMode pinned tab persistence', () => {
   });
 
   it('restores persisted pin state and tab order, then writes both back', async () => {
-    render(
+    const i18n = await createI18nInstance('en');
+    const withI18n = (children: React.ReactNode) => (
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">{children}</UiLanguageProvider>
+    );
+    render(withI18n(
       <TabsProvider workspacePath="/workspace" disablePersistence>
         <CollabModeInner
           workspacePath="/workspace"
@@ -387,7 +434,7 @@ describe('CollabMode pinned tab persistence', () => {
         />
         <TabProbe />
       </TabsProvider>,
-    );
+    ));
 
     expect(screen.getByTestId('collab-sidebar')).toBeTruthy();
 
@@ -477,6 +524,10 @@ describe('CollabMode pinned tab persistence', () => {
   });
 
   it('runs the Personal section when signed out: personal tabs open, team doc tabs are held, no error logged', async () => {
+    const i18n = await createI18nInstance('en');
+    const withI18n = (children: React.ReactNode) => (
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">{children}</UiLanguageProvider>
+    );
     hostMocks.resolveScope = async () => {
       throw new CollabScopeResolutionError('Not authenticated', { retryable: false });
     };
@@ -485,7 +536,7 @@ describe('CollabMode pinned tab persistence', () => {
       { kind: 'personal', artifactId: 'pdoc-1', title: 'Reading list' },
       { documentId: 'team-doc', documentType: 'markdown', displayPath: 'Team doc' },
     ]);
-    render(<CollabMode workspacePath="/workspace" isActive onFileOpen={() => {}} />);
+    render(withI18n(<CollabMode workspacePath="/workspace" isActive onFileOpen={() => {}} />));
 
     expect(screen.getByTestId('collab-sidebar-personal')).toBeTruthy();
     expect(screen.queryByTestId('collab-sidebar')).toBeNull();

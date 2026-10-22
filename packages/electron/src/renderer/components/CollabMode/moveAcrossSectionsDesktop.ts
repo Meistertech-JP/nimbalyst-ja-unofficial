@@ -15,6 +15,7 @@ import {
   type MovePageNode,
 } from '@nimbalyst/collab-client/docs';
 import type { PageTypeLane } from '@nimbalyst/collab-client/docs/pageTypes';
+import type { TFunction } from 'i18next';
 import { createCollaborativeDocument } from '../../services/collaborativeDocumentCreationOrchestrator';
 import { getCollaborativeDocumentTypeCatalog } from '../../services/CollaborativeDocumentTypeCatalog';
 import { readHeadlessCollabDocContent } from '../../services/HeadlessCollabDocument';
@@ -33,9 +34,12 @@ export interface MoveAcrossSectionsRequest {
   /** The team's scope; a move to or from Team needs it. */
   teamScope: CollabScope;
   tabsActions: ReturnType<typeof useTabsActions>;
+  t: TFunction<'collabSidebar'>;
 }
 
-const sectionName = (lane: PageTypeLane) => (lane === 'team' ? 'Team' : 'Personal');
+const sectionName = (lane: PageTypeLane, t: TFunction<'collabSidebar'>) => (
+  t(lane === 'team' ? 'pages_section.team' : 'pages_section.local')
+);
 
 function countPages(node: MovePageNode): number {
   return 1 + node.children.reduce((total, child) => total + countPages(child), 0);
@@ -52,7 +56,7 @@ function hasFields(node: MovePageNode): boolean {
 
 /** Confirms, then moves; the result says what happened. Null when the person cancelled. */
 export async function movePageAcrossSections(request: MoveAcrossSectionsRequest): Promise<MoveAcrossSectionsResult | null> {
-  const { from, pageId, workspacePath, teamScope, tabsActions } = request;
+  const { from, pageId, workspacePath, teamScope, tabsActions, t } = request;
   const to: PageTypeLane = from === 'team' ? 'personal' : 'team';
   const sessionOf = (lane: PageTypeLane): CollabDocsSession => (lane === 'team'
     ? getElectronCollabDocsSession(teamScope)
@@ -70,14 +74,18 @@ export async function movePageAcrossSections(request: MoveAcrossSectionsRequest)
   const count = countPages(tree.root);
   const fieldsSupported = store.get(destination.atoms.pageFields);
   const accepted = await requestConfirmation({
-    title: `Move to ${sectionName(to)}?`,
+    title: t('pages_section.move_confirm_title', { section: sectionName(to, t) }),
     message: [
-      `"${tree.root.title}"${count > 1 ? ` and ${count - 1} page${count > 2 ? 's' : ''} under it` : ''} will move to the top of ${sectionName(to)}.`,
-      to === 'team' ? 'Everyone on the team will be able to read and edit it.' : 'It will be on this device only; teammates will no longer see it.',
-      `The original goes to ${sectionName(from)} Trash once the copy is confirmed.`,
-      ...(hasFields(tree.root) && !fieldsSupported ? [`Status, owner, summary and tags can't be kept in ${sectionName(to)} yet; they stay with the original.`] : []),
+      count > 1
+        ? t('pages_section.move_confirm_multiple', { title: tree.root.title, count: count - 1, section: sectionName(to, t) })
+        : t('pages_section.move_confirm_single', { title: tree.root.title, section: sectionName(to, t) }),
+      t(to === 'team' ? 'pages_section.move_confirm_team_access' : 'pages_section.move_confirm_local_access'),
+      t('pages_section.move_confirm_original_trashed', { section: sectionName(from, t) }),
+      ...(hasFields(tree.root) && !fieldsSupported
+        ? [t('pages_section.move_confirm_fields_not_supported', { section: sectionName(to, t) })]
+        : []),
     ].join(' '),
-    confirmLabel: 'Move',
+    confirmLabel: t('pages_section.move_confirm_action'),
   });
   if (!accepted) return null;
 

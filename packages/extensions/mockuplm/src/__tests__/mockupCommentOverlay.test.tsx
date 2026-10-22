@@ -5,6 +5,7 @@ import { useMockupComments } from "../components/comments/useMockupComments";
 import { useMockupInteractionMode } from "../components/useMockupInteractionMode";
 import { createInMemoryMockupPinStore } from "../comments/mockupPinStore";
 import type { MockupPin } from "../collab/seed";
+import { formatRelativeTime } from "../components/comments/relativeTime";
 
 const PIN: MockupPin = {
   id: "pin-1",
@@ -37,6 +38,28 @@ function mountFrame() {
 
 afterEach(() => {
   document.body.innerHTML = "";
+});
+
+describe("comment relative time", () => {
+  it("formats recent timestamps in the active UI language", () => {
+    const now = 1_000_000_000;
+    const timestamp = now - 4 * 60_000;
+
+    expect(formatRelativeTime(timestamp, "en", now)).toContain("ago");
+    expect(formatRelativeTime(timestamp, "ja", now)).not.toMatch(/[a-z]/i);
+  });
+
+  it("formats older dates using the active UI locale", () => {
+    const timestamp = new Date("2026-10-01T12:00:00Z").getTime();
+    const now = new Date("2026-10-20T12:00:00Z").getTime();
+
+    expect(formatRelativeTime(timestamp, "en-US", now)).toBe(
+      new Date(timestamp).toLocaleDateString("en-US"),
+    );
+    expect(formatRelativeTime(timestamp, "ja-JP", now)).toBe(
+      new Date(timestamp).toLocaleDateString("ja-JP"),
+    );
+  });
 });
 
 describe("pin overlay measurement", () => {

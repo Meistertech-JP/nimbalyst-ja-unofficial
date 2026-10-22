@@ -15,6 +15,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   autoUpdate,
@@ -54,8 +55,9 @@ interface TrackerCardMilestoneChipProps {
 function chipLabel(
   values: TrackerRelationshipValue[],
   resolveLabel: TrackerRelationshipLabelResolver,
+  noMilestoneLabel: string,
 ): string {
-  if (values.length === 0) return 'No milestone';
+  if (values.length === 0) return noMilestoneLabel;
   const first = resolveRelationshipLabel(values[0], resolveLabel);
   return values.length === 1 ? first : `${first} +${values.length - 1}`;
 }
@@ -64,11 +66,12 @@ export const TrackerCardMilestoneChip: React.FC<TrackerCardMilestoneChipProps> =
   item,
   onOpenItem,
 }) => {
+  const { t } = useTranslation('tracker');
   const [open, setOpen] = useState(false);
   const relationshipLabel = useAtomValue(trackerRelationshipLabelAtom);
   const values = cardMilestoneValues(item);
   const empty = values.length === 0;
-  const label = chipLabel(values, relationshipLabel);
+  const label = chipLabel(values, relationshipLabel, t('milestone_chip.no_milestone'));
 
   const floating = useFloating({
     open,
@@ -116,8 +119,8 @@ export const TrackerCardMilestoneChip: React.FC<TrackerCardMilestoneChipProps> =
         data-empty={empty}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={empty ? 'Assign a milestone' : `Milestone: ${label}`}
-        title={empty ? 'Assign a milestone' : `Milestone: ${label}`}
+        aria-label={empty ? t('milestone_chip.assign') : t('milestone_chip.label', { label })}
+        title={empty ? t('milestone_chip.assign') : t('milestone_chip.label', { label })}
         onClick={(event) => {
           // The card behind the chip selects on click and opens on double-click.
           event.stopPropagation();
@@ -153,7 +156,7 @@ export const TrackerCardMilestoneChip: React.FC<TrackerCardMilestoneChipProps> =
                   onClick={() => handleAssign({ itemId: null })}
                 >
                   <MaterialSymbol icon="remove" size={14} />
-                  Remove from milestone
+                  {t('milestone_chip.remove')}
                 </button>
               )}
             />

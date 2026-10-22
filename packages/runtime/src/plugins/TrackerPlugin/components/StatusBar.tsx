@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
 import type { TeamMemberOption } from './TrackerFieldEditor';
 import type { RelationshipCandidate } from './RelationshipFieldEditor';
@@ -49,6 +50,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   onOpenItem,
   onCreateCollection,
 }) => {
+  const { t } = useTranslation('tracker');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [localData, setLocalData] = useState<Record<string, any>>(data);
   // Label properties follow the type's fields; qualified values are edited bare.
@@ -87,7 +89,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         role="button"
         tabIndex={0}
         aria-expanded={!isCollapsed}
-        aria-label={isCollapsed ? 'Expand status bar' : 'Collapse status bar'}
+        aria-label={t(isCollapsed ? 'status_bar.expand' : 'status_bar.collapse')}
         onClick={toggle}
         onKeyDown={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -103,8 +105,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             <button
               type="button"
               className="status-bar-tracker-item-link inline-flex items-center gap-1 rounded-full border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--nim-text-muted)] transition-colors hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-              title={`Open tracker item: ${trackerItemLink.title}`}
-              aria-label={`Open tracker item ${trackerItemLink.label}`}
+              title={t('status_bar.open_item_title', { title: trackerItemLink.title })}
+              aria-label={t('status_bar.open_item_label', { label: trackerItemLink.label })}
               onClick={(event) => {
                 event.stopPropagation();
                 trackerItemLink.onOpen();
@@ -122,7 +124,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
               e.stopPropagation();
               onClose();
             }}
-            aria-label="Remove tracker"
+            aria-label={t('status_bar.remove_tracker')}
           >
             <MaterialSymbol icon="close" size={18} />
           </button>

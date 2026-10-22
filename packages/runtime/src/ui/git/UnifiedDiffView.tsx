@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { parseUnifiedDiffToHunks, toDisplayLines } from './unifiedDiffModel';
 
 interface UnifiedDiffViewProps {
@@ -11,19 +12,21 @@ interface UnifiedDiffViewProps {
 const PLACEHOLDER_BASE = 'p-4 text-center text-xs italic text-[var(--nim-text-faint)]';
 
 export function UnifiedDiffView({ diff, isBinary, loading, error }: UnifiedDiffViewProps) {
+  const { t: tAgents } = useTranslation('agents');
+  const { t: tCommon } = useTranslation('common');
   const lines = useMemo(() => (diff ? toDisplayLines(parseUnifiedDiffToHunks(diff)) : []), [diff]);
 
   if (loading) {
-    return <div className={PLACEHOLDER_BASE}>Loading diff...</div>;
+    return <div className={PLACEHOLDER_BASE}>{tAgents('review.loading_diff')}</div>;
   }
   if (error) {
     return <div className="p-4 text-center text-xs not-italic text-[var(--nim-error)]">{error}</div>;
   }
   if (isBinary) {
-    return <div className={PLACEHOLDER_BASE}>Binary file</div>;
+    return <div className={PLACEHOLDER_BASE}>{tAgents('review.binary_file')}</div>;
   }
   if (!diff || lines.length === 0) {
-    return <div className={PLACEHOLDER_BASE}>No textual changes</div>;
+    return <div className={PLACEHOLDER_BASE}>{tCommon('diff.no_textual_changes')}</div>;
   }
 
   return (

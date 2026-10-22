@@ -29,6 +29,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import * as Y from 'yjs';
+import { useTranslation } from 'react-i18next';
 
 import type { EditorHostProps } from '../extensions/editorHost';
 import { useCollaborativeEditor } from '../extensions/useCollaborativeEditor';
@@ -81,6 +82,7 @@ function isViewport(value: unknown): value is CanvasViewport {
 }
 
 export function CanvasEditor({ host }: EditorHostProps): ReactElement {
+  const { t } = useTranslation('common');
   const collaborative = host.collaboration !== undefined;
   const [document, setDocument] = useState<CanvasDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -471,11 +473,11 @@ export function CanvasEditor({ host }: EditorHostProps): ReactElement {
     return (
       <div className="canvas-editor canvas-editor--error">
         <div className="canvas-editor__error-title">
-          This canvas could not be opened
+          {t('mockup_compatibility.canvas_open_failed_title')}
         </div>
         <div className="canvas-editor__error-detail select-text">{error}</div>
         <div className="canvas-editor__error-note">
-          The file has not been modified. Open it in source mode to inspect it.
+          {t('mockup_compatibility.canvas_open_failed_note')}
         </div>
       </div>
     );

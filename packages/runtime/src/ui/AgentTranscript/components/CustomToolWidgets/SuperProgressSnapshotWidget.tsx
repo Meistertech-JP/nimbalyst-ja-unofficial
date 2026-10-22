@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CustomToolWidgetProps } from './index';
 
 interface ProgressSnapshot {
@@ -36,6 +37,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ message }) => {
+  const { t } = useTranslation('agents');
   const [showRawJson, setShowRawJson] = useState(false);
   const tool = message.toolCall;
   if (!tool?.arguments) return null;
@@ -46,11 +48,25 @@ export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ m
   if (!progress) return null;
 
   const isStart = timing === 'iteration-start';
-  const timingLabel = isStart ? 'Iteration Start' : 'Iteration End';
+  const timingLabel = isStart
+    ? t('super_loop_progress.iteration_start')
+    : t('super_loop_progress.iteration_end');
   const timingIcon = isStart ? '\u25B6' : '\u25A0'; // play / stop symbols
 
   const phaseStyle = PHASE_COLORS[progress.phase] ?? { bg: 'rgba(156,163,175,0.15)', text: 'var(--nim-text-faint)' };
   const statusStyle = STATUS_COLORS[progress.status] ?? { bg: 'rgba(156,163,175,0.15)', text: 'var(--nim-text-faint)' };
+  const phaseLabel = progress.phase === 'planning'
+    ? t('super_loop_progress.phase_planning')
+    : progress.phase === 'building'
+      ? t('super_loop_progress.phase_building')
+      : progress.phase;
+  const statusLabel = progress.status === 'running'
+    ? t('super_loop_progress.status_running')
+    : progress.status === 'completed'
+      ? t('super_loop_progress.status_completed')
+      : progress.status === 'blocked'
+        ? t('super_loop_progress.status_blocked')
+        : progress.status;
 
   return (
     <div
@@ -76,10 +92,10 @@ export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ m
         <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>
           {timingLabel} #{iterationNumber}
         </span>
-        <Badge label={progress.phase} bg={phaseStyle.bg} color={phaseStyle.text} />
-        <Badge label={progress.status} bg={statusStyle.bg} color={statusStyle.text} />
+        <Badge label={phaseLabel} bg={phaseStyle.bg} color={phaseStyle.text} />
+        <Badge label={statusLabel} bg={statusStyle.bg} color={statusStyle.text} />
         {progress.completionSignal && (
-          <Badge label="complete" bg="rgba(74,222,128,0.15)" color="#4ade80" />
+          <Badge label={t('super_loop_progress.completion_signal')} bg="rgba(74,222,128,0.15)" color="#4ade80" />
         )}
         <span
           style={{
@@ -89,7 +105,7 @@ export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ m
             fontFamily: 'monospace',
           }}
         >
-          iter {progress.currentIteration}
+        {t('super_loop_progress.iteration_count', { count: progress.currentIteration })}
         </span>
       </div>
 
@@ -98,7 +114,7 @@ export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ m
         {/* User feedback */}
         {progress.userFeedback && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '10px' }}>
-            <span style={{ color: 'var(--nim-primary)', flexShrink: 0 }}>feedback:</span>
+            <span style={{ color: 'var(--nim-primary)', flexShrink: 0 }}>{t('super_loop_progress.feedback_label')}</span>
             <span style={{ color: 'var(--nim-text)' }}>{progress.userFeedback}</span>
           </div>
         )}
@@ -128,7 +144,7 @@ export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ m
         {progress.learnings.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <span style={{ fontSize: '10px', fontWeight: 500, color: 'var(--nim-text-muted)' }}>
-              Learnings ({progress.learnings.length})
+              {t('super_loop_progress.learnings_count', { count: progress.learnings.length })}
             </span>
             {progress.learnings.map((learning, i) => (
               <div
@@ -160,7 +176,7 @@ export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ m
         {/* No data indicator when empty */}
         {progress.blockers.length === 0 && progress.learnings.length === 0 && !progress.userFeedback && (
           <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-            No learnings or blockers recorded yet
+            {t('super_loop_progress.no_learnings_or_blockers')}
           </span>
         )}
 
@@ -180,7 +196,7 @@ export const SuperProgressSnapshotWidget: React.FC<CustomToolWidgetProps> = ({ m
           }}
         >
           <span style={{ fontSize: '8px' }}>{showRawJson ? '\u25BC' : '\u25B6'}</span>
-          Raw JSON
+          {t('super_loop_progress.raw_json')}
         </button>
         {showRawJson && (
           <pre

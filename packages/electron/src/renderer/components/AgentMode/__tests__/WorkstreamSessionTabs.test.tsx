@@ -4,6 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkstreamSessionTabs } from '../WorkstreamSessionTabs';
 
 vi.mock('jotai', () => ({ useAtomValue: (value: unknown) => value, useSetAtom: () => vi.fn() }));
+vi.mock('@nimbalyst/i18n/react', () => ({
+  useTranslation: () => ({
+    t: (key: string) => ({
+      'session_tabs.untitled': '無題',
+      'session_tabs.new_session': 'ワークストリームに新しいセッション',
+      'session_tabs.loading': 'セッションを読み込み中…',
+    })[key] ?? key,
+  }),
+}));
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({ MaterialSymbol: () => null }));
 vi.mock('@nimbalyst/runtime/ui/icons/ProviderIcons', () => ({ ProviderIcon: () => null }));
 vi.mock('@nimbalyst/runtime/store', () => ({ store: { get: vi.fn() } }));
@@ -11,7 +20,7 @@ vi.mock('../../../store/atoms/sessions', () => ({
   sessionArchivedAtom: () => false, sessionRegistryAtom: null, convertToWorkstreamAtom: null,
 }));
 vi.mock('../../../store', () => ({
-  sessionTitleAtom: (id: string) => id, sessionProviderAtom: () => 'claude',
+  sessionTitleAtom: (id: string) => id === 'untitled' ? undefined : id, sessionProviderAtom: () => 'claude',
   sessionProcessingAtom: () => false, sessionUnreadAtom: () => false, createChildSessionAtom: null,
 }));
 vi.mock('../../../store/atoms/appSettings', () => ({ defaultAgentModelAtom: null }));
@@ -49,6 +58,16 @@ function setGeometry(container: HTMLElement) {
 }
 
 describe('workstream session tab navigation', () => {
+  it('shows the localized loading label when no session is active', () => {
+    const { getByText } = render(<WorkstreamSessionTabs {...props} activeSessionId={null} />);
+    expect(getByText('セッションを読み込み中…')).toBeTruthy();
+  });
+
+  it('shows a localized fallback for sessions without a title', () => {
+    const { getByText } = render(<WorkstreamSessionTabs {...props} sessions={['untitled']} activeSessionId="untitled" />);
+    expect(getByText('無題').textContent).toBe('無題');
+  });
+
   it('reveals externally selected tabs and keeps them visible after resizing without resetting manual scrolling on rerender', () => {
     const view = render(<WorkstreamSessionTabs {...props} activeSessionId="a" />);
     const { scroll, resize } = setGeometry(view.container);

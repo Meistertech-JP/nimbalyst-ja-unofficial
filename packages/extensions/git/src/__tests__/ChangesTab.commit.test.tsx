@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, beforeAll } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 // ChangesTab reads `window.electronAPI` at module scope, so the stub has to exist
 // before the import is evaluated.
@@ -15,19 +17,26 @@ const WORKSPACE = '/repo';
 // The panel's host workspace. Distinct from the repo, as in a workspace that
 // holds several checkouts: the commit session belongs to the host, not the repo.
 const HOST_WORKSPACE = '/workspace';
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
 
 function renderTab() {
   return render(
-    <ChangesTab
-      workspacePath={WORKSPACE}
-      hostWorkspacePath={HOST_WORKSPACE}
-      withLog={(_command, operation) => operation()}
-      onWorkspaceEvent={() => () => {}}
-      onShowOutput={() => {}}
-      fileMaskEnabled={false}
-      fileMaskInput=""
-      refreshToken={0}
-    />,
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <ChangesTab
+        workspacePath={WORKSPACE}
+        hostWorkspacePath={HOST_WORKSPACE}
+        withLog={(_command, operation) => operation()}
+        onWorkspaceEvent={() => () => {}}
+        onShowOutput={() => {}}
+        fileMaskEnabled={false}
+        fileMaskInput=""
+        refreshToken={0}
+      />
+    </UiLanguageProvider>,
   );
 }
 
@@ -100,5 +109,32 @@ describe('ChangesTab commit', () => {
       repoPath: WORKSPACE,
       files: [{ path: `${WORKSPACE}/src/picked.ts`, status: 'M', repo: WORKSPACE }],
     });
+  });
+
+  it('renders Japanese labels from the host i18n instance', async () => {
+    const i18n = await createI18nInstance('ja');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+        <ChangesTab
+          workspacePath={WORKSPACE}
+          hostWorkspacePath={HOST_WORKSPACE}
+          withLog={(_command, operation) => operation()}
+          onWorkspaceEvent={() => () => {}}
+          onShowOutput={() => {}}
+          fileMaskEnabled={false}
+          fileMaskInput=""
+          refreshToken={0}
+        />
+      </UiLanguageProvider>,
+    );
+
+    expect(await screen.findByText('変更（2件）')).not.toBeNull();
+    expect(screen.getByText('ファイルを選択すると、編集したセッションが表示されます。').textContent)
+      .toBe('ファイルを選択すると、編集したセッションが表示されます。');
+    expect(screen.getByRole('button', { name: '折りたたむ src/' }).getAttribute('aria-label'))
+      .toBe('折りたたむ src/');
+    expect(screen.getAllByTitle('変更済み')[0].textContent).toBe('picked.ts');
+    expect(screen.getByPlaceholderText('概要（必須）').getAttribute('placeholder')).toBe('概要（必須）');
+    expect(screen.getByRole('button', { name: /AIでコミット/ }).textContent).toContain('AIでコミット');
   });
 });

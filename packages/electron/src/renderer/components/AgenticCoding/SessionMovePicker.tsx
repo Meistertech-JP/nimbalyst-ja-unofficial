@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingFocusManager,
   offset,
@@ -24,6 +25,8 @@ export function SessionMovePicker({
   onMove: (parentId: string) => Promise<boolean>;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('sessions');
+  const { t: tCommon } = useTranslation('common');
   const registry = useAtomValue(sessionRegistryAtom);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
@@ -68,13 +71,13 @@ export function SessionMovePicker({
             onClick: (e: React.MouseEvent) => e.stopPropagation(),
             onKeyDown: (e: React.KeyboardEvent) => e.stopPropagation(),
           })}
-          aria-label="Move session under"
+          aria-label={t('move_picker.title')}
           className="session-move-picker z-[2000] w-96 max-w-[90vw] rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] p-3 shadow-xl"
         >
           <input
             autoFocus
-            aria-label="Search parent sessions"
-            placeholder="Search sessions…"
+            aria-label={t('move_picker.search_label')}
+            placeholder={t('search_placeholder')}
             value={query}
             disabled={pending}
             onChange={(e) => {
@@ -100,7 +103,7 @@ export function SessionMovePicker({
           <div
             id="session-move-options"
             role="listbox"
-            aria-label="Available parents"
+            aria-label={t('move_picker.available_parents')}
             className="session-move-picker-results max-h-72 overflow-auto mt-2"
           >
             {candidates.map((row, i) => (
@@ -115,15 +118,15 @@ export function SessionMovePicker({
                   i === index ? 'bg-[var(--nim-bg-selected)]' : ''
                 }`}
               >
-                {row.title || 'Untitled Session'}
+                {row.title || t('untitled')}
               </button>
             ))}
             {!candidates.length && (
-              <p className="p-2 text-[var(--nim-text-muted)]">No matching parent sessions</p>
+              <p className="p-2 text-[var(--nim-text-muted)]">{t('move_picker.no_matching_parents')}</p>
             )}
           </div>
           <button onClick={onClose} disabled={pending} className="mt-2 px-2 py-1">
-            Cancel
+            {tCommon('cancel')}
           </button>
         </div>
       </FloatingFocusManager>

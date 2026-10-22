@@ -14,6 +14,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   autoUpdate,
@@ -35,7 +36,6 @@ import {
   TRACKER_LOCAL_ISSUE_KEY_BRIEF_MESSAGE,
 } from '../models/trackerLifecycle';
 import {
-  describeUnresolvedBlockers,
   isOutOfScopeBlocker,
   projectBlockedBy,
   type BlockerVisibilityScope,
@@ -55,6 +55,7 @@ export const TrackerBlockedChip: React.FC<{
   scope?: BlockerVisibilityScope;
   className?: string;
 }> = ({ readiness, scope, className = '' }) => {
+  const { t } = useTranslation('tracker');
   const [open, setOpen] = React.useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open,
@@ -90,7 +91,7 @@ export const TrackerBlockedChip: React.FC<{
           className={`tracker-broken-link-chip inline-flex shrink-0 items-center rounded-[10px] px-[5px] py-[2px] text-[var(--nim-text-faint)] ${className}`}
           data-testid="tracker-broken-link-chip"
           data-unresolved-count={unresolvedCount}
-          aria-label={describeUnresolvedBlockers(unresolvedCount)}
+          aria-label={t(unresolvedCount === 1 ? 'blocked_chip.unresolved_one' : 'blocked_chip.unresolved_other', { count: unresolvedCount })}
         >
           <MaterialSymbol icon="link_off" size={11} />
         </span>
@@ -102,7 +103,7 @@ export const TrackerBlockedChip: React.FC<{
               {...getFloatingProps()}
               className="tracker-broken-link-chip-card z-50 w-[240px] select-text rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-2.5 text-[11px] text-[var(--nim-text-muted)] shadow-lg"
             >
-              {describeUnresolvedBlockers(unresolvedCount)}
+              {t(unresolvedCount === 1 ? 'blocked_chip.unresolved_one' : 'blocked_chip.unresolved_other', { count: unresolvedCount })}
             </div>
           </FloatingPortal>
         )}
@@ -125,7 +126,7 @@ export const TrackerBlockedChip: React.FC<{
         className={`tracker-blocked-chip inline-flex shrink-0 items-center gap-1 rounded-[10px] bg-[var(--nim-bg-tertiary)] px-[7px] py-[2px] text-[10px] font-semibold text-[var(--nim-warning)] ${className}`}
         data-testid="tracker-blocked-chip"
         data-blocker-count={blockers.length}
-        aria-label={`Blocked by ${blockers.length} ${blockers.length === 1 ? 'item' : 'items'}`}
+        aria-label={t(blockers.length === 1 ? 'blocked_chip.aria_one' : 'blocked_chip.aria_other', { count: blockers.length })}
       >
         <MaterialSymbol icon="block" size={11} />
         {blockers.length}
@@ -139,7 +140,7 @@ export const TrackerBlockedChip: React.FC<{
             className="tracker-blocked-chip-card z-50 w-[280px] select-text rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-2.5 text-[11px] text-[var(--nim-text-muted)] shadow-lg"
           >
             <div className="mb-1.5 font-semibold text-[var(--nim-text)]">
-              Blocked by {blockers.length} {blockers.length === 1 ? 'item' : 'items'}
+              {t(blockers.length === 1 ? 'blocked_chip.label_one' : 'blocked_chip.label_other', { count: blockers.length })}
             </div>
             <ul className="m-0 flex list-none flex-col gap-1 p-0">
               {blockers.map((blocker) => (
@@ -153,8 +154,8 @@ export const TrackerBlockedChip: React.FC<{
                       : 'min-w-0 flex-1 truncate text-[var(--nim-text)]'}
                   >
                     {isOutOfScopeBlocker(blocker)
-                      ? `A ${blocker.type} outside this view`
-                      : blocker.title ?? 'Untitled'}
+                    ? t('blocked_chip.out_of_scope', { type: blocker.type })
+                  : blocker.title ?? t('inline.untitled')}
                   </span>
                   <span className="shrink-0 text-[10px] text-[var(--nim-text-faint)]">
                     {blocker.status}
@@ -169,7 +170,7 @@ export const TrackerBlockedChip: React.FC<{
             )}
             {unresolvedCount > 0 && (
               <div className="mt-2 border-t border-[var(--nim-border)] pt-1.5">
-                {describeUnresolvedBlockers(unresolvedCount)}
+                {t(unresolvedCount === 1 ? 'blocked_chip.unresolved_one' : 'blocked_chip.unresolved_other', { count: unresolvedCount })}
               </div>
             )}
             {hasLocalRef && (

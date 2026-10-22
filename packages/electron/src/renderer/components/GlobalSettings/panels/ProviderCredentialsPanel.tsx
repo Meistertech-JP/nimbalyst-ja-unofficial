@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
+import { useTranslation } from "react-i18next";
 import {
   providerCredentialsAtom,
   providerCredentialErrorAtom,
@@ -19,10 +20,27 @@ export function ProviderCredentialsPanel({
   name?: string;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("settings");
   const snapshot = useAtomValue(providerCredentialsAtom);
   const error = useAtomValue(providerCredentialErrorAtom);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const translateMessage = (message?: string | null) => {
+    switch (message) {
+      case "Secure storage is unavailable. Unlock your keychain and retry; API-key authentication is paused.":
+        return t("provider_credentials.errors.unavailable");
+      case "Credential migration needs attention. API-key authentication is paused; retry or clear the affected key.":
+        return t("provider_credentials.errors.migration_pending");
+      case "Stored credentials could not be read. Unlock secure storage and retry; existing data has been preserved.":
+        return t("provider_credentials.errors.unreadable");
+      case "Could not load saved API keys. Retry when secure storage is available.":
+        return t("provider_credentials.errors.load_failed");
+      case "Could not confirm the API key change. Unlock secure storage, refresh, and retry.":
+        return t("provider_credentials.errors.change_failed");
+      default:
+        return message;
+    }
+  };
   useEffect(() => {
     void refreshProviderCredentials();
   }, []);
@@ -40,8 +58,8 @@ export function ProviderCredentialsPanel({
       });
       setNotice(
         credential.name === "openai" && !credential.workspacePath
-          ? "Cleared on this device. Mobile removal is requested and will be retried when devices reconnect."
-          : "API key cleared."
+          ? t("provider_credentials.mobile_key_cleared")
+          : t("provider_credentials.key_cleared")
       );
     } catch {
       /* The shared error atom exposes the failure. */
@@ -60,18 +78,18 @@ export function ProviderCredentialsPanel({
   return (
     <section className="provider-credentials-panel mb-5 rounded border border-[var(--nim-border)] p-4">
       <h3 className="font-semibold text-[var(--nim-text)]">
-        {compact ? "Saved API key" : "Saved API keys"}
+        {compact
+          ? t("provider_credentials.title_one")
+          : t("provider_credentials.title_other")}
       </h3>
       {!compact && (
         <p className="mt-2 text-sm text-[var(--nim-text-muted)]">
-          Manage keys for enabled, disabled, and removed providers. Clearing a
-          global OpenAI key also affects voice and its mobile copy; reconnect
-          mobile devices to receive the change.
+          {t("provider_credentials.description")}
         </p>
       )}
       {(error || snapshot?.message) && (
         <p role="alert" className="my-2 text-sm text-[var(--nim-error)]">
-          {error || snapshot?.message}
+          {translateMessage(error || snapshot?.message)}
         </p>
       )}
       {notice && (
@@ -89,7 +107,7 @@ export function ProviderCredentialsPanel({
             );
           }}
         >
-          Retry secure storage
+          {t("provider_credentials.retry")}
         </button>
       )}
       {entries.map((credential) => {
@@ -101,12 +119,16 @@ export function ProviderCredentialsPanel({
           >
             <div className="min-w-0">
               <p className="text-sm font-medium">
-                {credential.name} — API key saved
+                {t("provider_credentials.key_saved", {
+                  provider: credential.name,
+                })}
               </p>
               <p className="break-all text-xs text-[var(--nim-text-muted)]">
                 {credential.workspacePath
-                  ? `${credential.workspacePath} · Clearing restores global-key inheritance`
-                  : "Global key"}
+                  ? t("provider_credentials.workspace_key", {
+                      path: credential.workspacePath,
+                    })
+                  : t("provider_credentials.global_key")}
               </p>
             </div>
             <button
@@ -117,14 +139,16 @@ export function ProviderCredentialsPanel({
                 void clear(credential);
               }}
             >
-              {busy === id ? "Clearing…" : "Clear key"}
+              {busy === id
+                ? t("provider_credentials.clearing")
+                : t("provider_credentials.clear_key")}
             </button>
           </div>
         );
       })}
       {!compact && snapshot?.state === "available" && !entries.length && (
         <p className="mt-3 text-sm text-[var(--nim-text-muted)]">
-          No API keys saved.
+          {t("provider_credentials.empty")}
         </p>
       )}
     </section>

@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { CitationInspector, type CitationInspectorHost } from '../CitationInspector';
 
 /**
@@ -16,6 +18,14 @@ import { CitationInspector, type CitationInspectorHost } from '../CitationInspec
  */
 
 const REVISION_UUID = '9f2c1d4a-7b31-4e59-a0c8-5d6e2f1b3a77';
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+const render = (ui: React.ReactElement) =>
+  rtlRender(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
 
 function host(overrides: Partial<CitationInspectorHost> & {
   items?: Record<string, Record<string, unknown>>;

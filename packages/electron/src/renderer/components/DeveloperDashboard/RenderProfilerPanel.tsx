@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * Developer Dashboard > Renders.
@@ -88,6 +89,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
 }
 
 export function RenderProfilerPanel() {
+  const { t } = useTranslation('settings');
   const [snapshot, setSnapshot] = useState<ProfilerSnapshot | null>(null);
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,12 +99,12 @@ export function RenderProfilerPanel() {
     const next = await callProfiler('snapshot');
     if (!next) return;
     if (next.available === false) {
-      setError(next.reason ?? 'profiler unavailable');
+      setError(next.reason ?? t('developer_dashboard.render_profiler.profiler_unavailable'));
       return;
     }
     setError(null);
     setSnapshot(next);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!recording) {
@@ -120,13 +122,13 @@ export function RenderProfilerPanel() {
   const start = useCallback(async () => {
     const result = await callProfiler('start');
     if (result && (result as any).available === false) {
-      setError((result as any).reason ?? 'profiler unavailable');
+      setError((result as any).reason ?? t('developer_dashboard.render_profiler.profiler_unavailable'));
       return;
     }
     setError(null);
     setRecording(true);
     void poll();
-  }, [poll]);
+  }, [poll, t]);
 
   const stop = useCallback(async () => {
     const final = await callProfiler('stop');
@@ -149,23 +151,23 @@ export function RenderProfilerPanel() {
             onClick={stop}
             className="px-3 py-1.5 text-sm rounded bg-[var(--nim-error)] text-white"
           >
-            Stop recording
+            {t('developer_dashboard.render_profiler.stop_recording')}
           </button>
         ) : (
           <button
             onClick={start}
             className="px-3 py-1.5 text-sm rounded bg-[var(--nim-accent)] text-white"
           >
-            Start recording
+            {t('developer_dashboard.render_profiler.start_recording')}
           </button>
         )}
         <button
           onClick={reset}
           className="px-3 py-1.5 text-sm rounded border border-[var(--nim-border)] text-[var(--nim-text)]"
         >
-          Reset counters
+          {t('developer_dashboard.render_profiler.reset_counters')}
         </button>
-        {recording && <span className="text-xs text-[var(--nim-text-muted)] animate-pulse">Recording the main app window…</span>}
+        {recording && <span className="text-xs text-[var(--nim-text-muted)] animate-pulse">{t('developer_dashboard.render_profiler.recording_main_window')}</span>}
       </div>
 
       {error && (
@@ -176,27 +178,27 @@ export function RenderProfilerPanel() {
 
       {targetHidden && (
         <div className="px-3 py-2 rounded border border-[var(--nim-warning)] text-sm text-[var(--nim-warning)]">
-          The window being profiled is <strong>{snapshot?.window.visibilityState}</strong>. Chromium throttles
-          hidden windows, so these numbers understate what it does while you are looking at it. Bring it to the
-          front and record again.
+          {t('developer_dashboard.render_profiler.target_hidden_before')}{' '}
+          <strong>{snapshot?.window.visibilityState}</strong>
+          {t('developer_dashboard.render_profiler.target_hidden_after')}
         </div>
       )}
 
       {!snapshot && !error && (
         <div className="text-sm text-[var(--nim-text-muted)]">
-          Press Start, exercise the app (stream a few AI sessions, open a large transcript), then read the table.
+          {t('developer_dashboard.render_profiler.empty_state')}
         </div>
       )}
 
       {snapshot && (
         <>
           <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
-            <StatCard label="Commits/sec" value={String(snapshot.commitsPerSec)} hint={`${snapshot.commits} total`} />
-            <StatCard label="Renders/sec" value={String(snapshot.rendersPerSec)} hint={`${snapshot.totalRenders} total`} />
-            <StatCard label="Atom writes/sec" value={String(snapshot.atomsPerSec)} hint={`${snapshot.atomWrites} total`} />
-            <StatCard label="Duration" value={`${(snapshot.durationMs / 1000).toFixed(1)}s`} />
-            <StatCard label="Profiler overhead" value={`${snapshot.overheadMs}ms`} hint="cost of measuring" />
-            <StatCard label="Components" value={String(snapshot.components.length)} />
+            <StatCard label={t('developer_dashboard.render_profiler.commits_per_sec')} value={String(snapshot.commitsPerSec)} hint={t('developer_dashboard.render_profiler.hint_total', { count: snapshot.commits })} />
+            <StatCard label={t('developer_dashboard.render_profiler.renders_per_sec')} value={String(snapshot.rendersPerSec)} hint={t('developer_dashboard.render_profiler.hint_total', { count: snapshot.totalRenders })} />
+            <StatCard label={t('developer_dashboard.render_profiler.atom_writes_per_sec')} value={String(snapshot.atomsPerSec)} hint={t('developer_dashboard.render_profiler.hint_total', { count: snapshot.atomWrites })} />
+            <StatCard label={t('developer_dashboard.render_profiler.duration')} value={`${(snapshot.durationMs / 1000).toFixed(1)}s`} />
+            <StatCard label={t('developer_dashboard.render_profiler.profiler_overhead')} value={`${snapshot.overheadMs}ms`} hint={t('developer_dashboard.render_profiler.overhead_hint')} />
+            <StatCard label={t('developer_dashboard.render_profiler.components')} value={String(snapshot.components.length)} />
           </div>
 
           {snapshot.timeline.length > 1 && (
@@ -217,19 +219,19 @@ export function RenderProfilerPanel() {
 
           <div>
             <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">
-              Components by render count
-              {snapshot.truncated && <span className="ml-2 text-xs text-[var(--nim-warning)]">(tree walk truncated)</span>}
+              {t('developer_dashboard.render_profiler.components_by_render_count')}
+              {snapshot.truncated && <span className="ml-2 text-xs text-[var(--nim-warning)]">{t('developer_dashboard.render_profiler.tree_walk_truncated')}</span>}
             </h3>
             <div className="overflow-x-auto border border-[var(--nim-border)] rounded">
               <table className="w-full text-xs font-mono border-collapse">
                 <thead className="bg-[var(--nim-surface-raised)] text-[var(--nim-text-muted)] text-left">
                   <tr>
-                    <th className="px-2 py-1.5">Component</th>
-                    <th className="px-2 py-1.5 text-right">Renders</th>
-                    <th className="px-2 py-1.5 text-right">/sec</th>
-                    <th className="px-2 py-1.5 text-right">Commits</th>
-                    <th className="px-2 py-1.5 text-right">Mounts</th>
-                    <th className="px-2 py-1.5">Most common reason</th>
+                    <th className="px-2 py-1.5">{t('developer_dashboard.render_profiler.component')}</th>
+                    <th className="px-2 py-1.5 text-right">{t('developer_dashboard.render_profiler.renders')}</th>
+                    <th className="px-2 py-1.5 text-right">{t('developer_dashboard.render_profiler.per_sec')}</th>
+                    <th className="px-2 py-1.5 text-right">{t('developer_dashboard.render_profiler.commits')}</th>
+                    <th className="px-2 py-1.5 text-right">{t('developer_dashboard.render_profiler.mounts')}</th>
+                    <th className="px-2 py-1.5">{t('developer_dashboard.render_profiler.most_common_reason')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,7 +251,7 @@ export function RenderProfilerPanel() {
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">Atom writes (what is driving the commits)</h3>
+            <h3 className="text-sm font-medium text-[var(--nim-text)] mb-2">{t('developer_dashboard.render_profiler.atom_writes_heading')}</h3>
             {snapshot.atomTrackingUnavailable ? (
               <div className="text-xs text-[var(--nim-warning)]">{snapshot.atomTrackingUnavailable}</div>
             ) : (
@@ -257,9 +259,9 @@ export function RenderProfilerPanel() {
                 <table className="w-full text-xs font-mono border-collapse">
                   <thead className="bg-[var(--nim-surface-raised)] text-[var(--nim-text-muted)] text-left">
                     <tr>
-                      <th className="px-2 py-1.5">Atom</th>
-                      <th className="px-2 py-1.5 text-right">Writes</th>
-                      <th className="px-2 py-1.5 text-right">/sec</th>
+                      <th className="px-2 py-1.5">{t('developer_dashboard.render_profiler.atom')}</th>
+                      <th className="px-2 py-1.5 text-right">{t('developer_dashboard.render_profiler.writes')}</th>
+                      <th className="px-2 py-1.5 text-right">{t('developer_dashboard.render_profiler.per_sec')}</th>
                     </tr>
                   </thead>
                   <tbody>

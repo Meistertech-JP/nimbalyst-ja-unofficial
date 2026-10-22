@@ -3,7 +3,8 @@ import { MaterialSymbol } from '@nimbalyst/extension-sdk';
 import type { CrewMemberSnapshot } from '../shared/types';
 import { CrewAlphaBadge, CrewAvatar, CrewError } from './CrewBits';
 import { useCrew, useCrewAction } from './CrewContext';
-import { formatTokens } from './crewFormat';
+import { formatCrewStatus, formatTokens } from './crewFormat';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 function formatCount(count: number): string {
   return count > 99 ? '99+' : String(count);
@@ -11,6 +12,7 @@ function formatCount(count: number): string {
 
 export function CrewRoster() {
   const { rosterState, roster, selectedSlug, select, setHireOpen, client, refresh } = useCrew();
+  const { t } = useTranslation('extensions');
   const { busy, error, run } = useCrewAction();
   const members = roster?.members ?? [];
   // A persisted selection for a member who has since left falls back to the feed.
@@ -20,13 +22,13 @@ export function CrewRoster() {
   const usage = roster?.crewUsage;
 
   return (
-    <aside className="crew-roster" aria-label="Crew roster" data-testid="crew-roster">
+    <aside className="crew-roster" aria-label={t('crew.roster.roster_aria')} data-testid="crew-roster">
       <header className="crew-roster-header">
-        <div className="crew-roster-title">Crew <CrewAlphaBadge /></div>
+        <div className="crew-roster-title">{t('crew.roster.title')} <CrewAlphaBadge /></div>
         {members.length > 0 && (
           <div className="crew-roster-subtitle">
-            {members.length === 1 ? '1 member' : `${members.length} members`}
-            {onShift > 0 ? `, ${onShift} on shift` : ''}
+            {members.length === 1 ? t('crew.roster.one_member') : t('crew.roster.members', { count: members.length })}
+            {onShift > 0 ? t('crew.roster.on_shift_suffix', { count: onShift }) : ''}
           </div>
         )}
       </header>
@@ -39,14 +41,14 @@ export function CrewRoster() {
         onClick={() => select(null)}
       >
         <MaterialSymbol icon="view_agenda" size={16} />
-        <span className="crew-grow">Crew feed</span>
-        {unreadTotal > 0 && <span className="crew-roster-feed-count">{formatCount(unreadTotal)} waiting</span>}
+        <span className="crew-grow">{t('crew.roster.feed')}</span>
+        {unreadTotal > 0 && <span className="crew-roster-feed-count">{t('crew.roster.waiting_suffix', { count: formatCount(unreadTotal) })}</span>}
       </button>
 
       <div className="crew-roster-body">
         {members.length > 0 && (
           <>
-            <div className="crew-section-label">Members</div>
+            <div className="crew-section-label">{t('crew.roster.members_label')}</div>
             <ul className="crew-roster-list" role="list">
               {members.map((member) => (
                 <li key={member.definition.slug}>
@@ -60,12 +62,12 @@ export function CrewRoster() {
             </ul>
           </>
         )}
-        {rosterState.status === 'loading' && <div className="crew-muted-note" role="status">Loading crew...</div>}
+        {rosterState.status === 'loading' && <div className="crew-muted-note" role="status">{t('crew.roster.loading')}</div>}
         {rosterState.status === 'error' && (
           <div className="crew-roster-error" role="alert">
-            <span>The crew could not be loaded.</span>
+            <span>{t('crew.roster.load_failed')}</span>
             <span className="crew-selectable crew-faint">{rosterState.error}</span>
-            <button type="button" className="crew-btn crew-btn-secondary crew-btn-small" onClick={() => void refresh()}>Retry</button>
+            <button type="button" className="crew-btn crew-btn-secondary crew-btn-small" onClick={() => void refresh()}>{t('crew.roster.retry')}</button>
           </div>
         )}
       </div>
@@ -73,7 +75,7 @@ export function CrewRoster() {
       <footer className="crew-roster-footer">
         {usage && usage.tokensPerWeekLimit > 0 && (
           <div className="crew-roster-usage" data-over={usage.overBudget}>
-            Crew: {formatTokens(usage.tokensThisWeek)} / {formatTokens(usage.tokensPerWeekLimit)} tokens this week
+            {t('crew.roster.usage', { used: formatTokens(usage.tokensThisWeek), limit: formatTokens(usage.tokensPerWeekLimit) })}
           </div>
         )}
         {members.length > 0 && roster && (
@@ -84,12 +86,12 @@ export function CrewRoster() {
             onClick={() => void run('pause', () => client.call('setCrewPaused', { paused: !roster.allPaused }))}
           >
             <MaterialSymbol icon={roster.allPaused ? 'play_arrow' : 'pause'} size={15} />
-            {roster.allPaused ? 'Resume the crew' : 'Pause the crew'}
+            {roster.allPaused ? t('crew.roster.resume') : t('crew.roster.pause')}
           </button>
         )}
         <button type="button" className="crew-btn crew-btn-secondary crew-btn-block" onClick={() => setHireOpen(true)} data-testid="crew-roster-hire">
           <MaterialSymbol icon="person_add" size={15} />
-          Hire
+          {t('crew.roster.hire')}
         </button>
         <CrewError message={error} />
       </footer>
@@ -98,15 +100,18 @@ export function CrewRoster() {
 }
 
 function CrewRosterRow({ member, selected, onSelect }: { member: CrewMemberSnapshot; selected: boolean; onSelect: () => void }) {
+  const { t } = useTranslation('extensions');
   const { definition, runtime } = member;
   const unread = runtime.unreadCount;
+  const waiting = unread > 0 ? t('crew.roster.row_aria_waiting', { count: unread }) : '';
+  const statusDetail = formatCrewStatus(runtime.status, runtime.statusDetail, t);
   return (
     <button
       type="button"
       className="crew-roster-row"
       data-selected={selected}
       aria-current={selected ? 'page' : undefined}
-      aria-label={`${definition.name}, ${definition.role}, ${runtime.statusDetail}${unread > 0 ? `, ${unread} waiting` : ''}`}
+      aria-label={`${t('crew.roster.row_aria', { name: definition.name, role: definition.role, detail: statusDetail })}${waiting}`}
       onClick={onSelect}
       data-member-slug={definition.slug}
       data-status={runtime.status}
@@ -117,7 +122,7 @@ function CrewRosterRow({ member, selected, onSelect }: { member: CrewMemberSnaps
           <span className="crew-truncate">{definition.name}</span>
           <span className="crew-roster-row-role crew-truncate">{definition.role}</span>
         </span>
-        <span className="crew-roster-row-status crew-truncate" data-status={runtime.status}>{runtime.statusDetail}</span>
+        <span className="crew-roster-row-status crew-truncate" data-status={runtime.status}>{statusDetail}</span>
       </span>
       {unread > 0 && <span className="crew-count-badge">{formatCount(unread)}</span>}
     </button>

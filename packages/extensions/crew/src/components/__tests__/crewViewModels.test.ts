@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CrewFeedEntry, CrewMemberSnapshot } from '../../shared/types';
 import { buildCrewFeed, mergeFeedEntries } from '../crewFeedModel';
 import { crewGutterBadge, deriveShiftAction, nextSeenState, splitChapters } from '../crewDeskModel';
-import { formatScheduleTiming } from '../crewFormat';
+import { formatChapterEndReason, formatCrewStatus, formatScheduleTiming } from '../crewFormat';
 import { DESK_PANEL_WIDTH, readCrewPaneLayout, ROSTER_WIDTH } from '../crewPaneLayout';
 
 function entry(id: string, at: string, kind: CrewFeedEntry['kind'], level?: CrewFeedEntry['level']): CrewFeedEntry {
@@ -70,6 +70,36 @@ describe('buildCrewFeed', () => {
 });
 
 describe('desk derivations', () => {
+  it('localizes fixed roster status copy while retaining dynamic detail', () => {
+    const translated: Record<string, string> = {
+      'crew.status.sleeping_until': '{{when}}まで休止中',
+      'crew.status.definition_errors': '定義ファイルにエラーがあります: {{errors}}',
+      'crew.status.idle': '待機',
+      'crew.timing.thu': '木',
+    };
+    const t = (key: string, params?: Record<string, unknown>) =>
+      (translated[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(params?.[name] ?? `{{${name}}}`));
+
+    expect(formatCrewStatus('sleeping', 'Sleeping until Thu 09:30', t)).toBe('木 09:30まで休止中');
+    expect(formatCrewStatus('error', 'Definition file has errors: unknown provider', t))
+      .toBe('定義ファイルにエラーがあります: unknown provider');
+    expect(formatCrewStatus('idle', 'Idle', t)).toBe('待機');
+  });
+
+  it('localizes generated chapter end reasons without rewriting stored values', () => {
+    const t = (key: string, params?: Record<string, unknown>) =>
+      ({
+        'crew.desk.end_reason_rolled': '章が切り替わりました',
+        'crew.desk.end_reason_context': 'コンテキストが{{percent}}%に到達しました',
+        'crew.desk.end_reason_age': '章の開始から{{days}}日が経過しました',
+      }[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(params?.[name] ?? `{{${name}}}`));
+
+    expect(formatChapterEndReason('rolled', t)).toBe('章が切り替わりました');
+    expect(formatChapterEndReason('context is 70% full', t)).toBe('コンテキストが70%に到達しました');
+    expect(formatChapterEndReason('chapter is 7 days old', t)).toBe('章の開始から7日が経過しました');
+    expect(formatChapterEndReason('legacy custom reason', t)).toBe('legacy custom reason');
+  });
+
   it('always lets a member on shift be released, and names what blocks a start', () => {
     // On shift wins even over pause: pausing mid-shift must not strand the shift.
     expect(deriveShiftAction(member('ada', 'Ada', { onShift: true, status: 'on-shift' }, true))).toEqual({ kind: 'end' });

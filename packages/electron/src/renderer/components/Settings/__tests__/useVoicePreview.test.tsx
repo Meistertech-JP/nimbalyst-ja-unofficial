@@ -44,7 +44,7 @@ describe('bundled voice playback', () => {
     expect(result.current.error).toBeUndefined();
     act(() => { pending = result.current.toggle(); });
     await act(async () => { reject(new Error('decode failed')); await pending; });
-    expect(result.current.error).toBeDefined();
+    expect(result.current.error).toBe('playback_failed');
     expect(result.current.isPlaying).toBe(false);
   });
 });

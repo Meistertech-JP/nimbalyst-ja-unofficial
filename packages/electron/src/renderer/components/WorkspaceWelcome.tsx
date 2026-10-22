@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { FilesEmptyTipDisplay } from '../tips/FilesEmptyTipDisplay';
 
@@ -38,6 +39,7 @@ export function WorkspaceWelcome({
   onFocusAgent,
   onInsertAgentPrompt,
 }: WorkspaceWelcomeProps) {
+  const { t } = useTranslation('project');
   const seedAgentPrompt = useCallback((prompt: string) => {
     onInsertAgentPrompt?.(prompt);
   }, [onInsertAgentPrompt]);
@@ -64,7 +66,7 @@ export function WorkspaceWelcome({
         {hasWorkspace && workspacePath && (
           <>
             <p className="workspace-welcome-subtitle mb-8 mt-1.5 text-[13.5px] text-nim-faint">
-              Files are saved automatically as you work
+              {t('workspace_welcome.files_saved')}
             </p>
 
             <div className="workspace-welcome-actions grid grid-cols-1 gap-3 text-left">
@@ -72,7 +74,7 @@ export function WorkspaceWelcome({
                 className="workspace-welcome-action-card rounded-xl border border-nim bg-nim-secondary p-4 transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--nim-primary)_45%,var(--nim-border))] hover:bg-nim-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nim-primary)]"
                 role="button"
                 tabIndex={0}
-                aria-label="Create a new file"
+                aria-label={t('workspace_welcome.create_file_aria')}
                 onClick={() => onNewFile?.()}
                 onKeyDown={(event) => handleCardKeyDown(event, () => onNewFile?.())}
               >
@@ -80,19 +82,19 @@ export function WorkspaceWelcome({
                   <div className="workspace-welcome-action-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--nim-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)] text-[var(--nim-primary)]">
                     <MaterialSymbol icon="note_add" size={17} />
                   </div>
-                  <h2 className="m-0 text-sm font-semibold text-nim">New file</h2>
+                  <h2 className="m-0 text-sm font-semibold text-nim">{t('workspace_welcome.new_file')}</h2>
                   <kbd className="ml-auto rounded border border-nim bg-nim px-1.5 py-0.5 font-[inherit] text-[11px] font-normal text-nim-faint">
                     ⌘N
                   </kbd>
                 </div>
                 <p className="m-0 text-[12.5px] leading-5 text-nim-muted">
-                  Create a Markdown doc, mockup, diagram, spreadsheet, or code file.
+                  {t('workspace_welcome.new_file_description')}
                 </p>
                 <div className="workspace-welcome-quick-picks mt-2.5 flex flex-wrap gap-1.5">
                   {([
-                    ['markdown', 'Markdown'],
-                    ['mockup', 'Mockup'],
-                    ['diagram', 'Diagram'],
+                    ['markdown', t('workspace_welcome.markdown')],
+                    ['mockup', t('workspace_welcome.mockup')],
+                    ['diagram', t('workspace_welcome.diagram')],
                   ] as const).map(([fileType, label]) => (
                     <button
                       key={fileType}
@@ -113,7 +115,7 @@ export function WorkspaceWelcome({
                 className="workspace-welcome-action-card rounded-xl border border-nim bg-nim-secondary p-4 transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--nim-primary)_45%,var(--nim-border))] hover:bg-nim-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--nim-primary)]"
                 role="button"
                 tabIndex={0}
-                aria-label="Focus the agent chat"
+                aria-label={t('workspace_welcome.focus_agent_aria')}
                 onClick={onFocusAgent}
                 onKeyDown={(event) => handleCardKeyDown(event, () => onFocusAgent?.())}
               >
@@ -121,15 +123,15 @@ export function WorkspaceWelcome({
                   <div className="workspace-welcome-action-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--nim-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--nim-primary)_10%,transparent)] text-[var(--nim-primary)]">
                     <MaterialSymbol icon="auto_awesome" size={17} />
                   </div>
-                  <h2 className="m-0 text-sm font-semibold text-nim">Ask the agent</h2>
+                  <h2 className="m-0 text-sm font-semibold text-nim">{t('workspace_welcome.ask_agent')}</h2>
                 </div>
                 <p className="m-0 text-[12.5px] leading-5 text-nim-muted">
-                  Type into the chat on the right — it can read, edit, and create files for you.
+                  {t('workspace_welcome.ask_agent_description')}
                 </p>
                 <div className="workspace-welcome-prompt-picks mt-2.5 flex flex-wrap gap-1.5">
                   {([
-                    ['Summarize this project', 'Summarize this project'],
-                    ['Draft a plan for…', 'Draft a plan for '],
+                    [t('workspace_welcome.summarize_project'), t('workspace_welcome.summarize_project_prompt')],
+                    [t('workspace_welcome.draft_plan'), t('workspace_welcome.draft_plan_prompt')],
                   ] as const).map(([label, prompt]) => (
                     <button
                       key={label}

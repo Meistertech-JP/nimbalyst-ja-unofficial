@@ -9,6 +9,7 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   isClauseComplete,
@@ -59,6 +60,7 @@ export function TrackerAdvancedFilterBuilder({
   onBack,
   onClose,
 }: TrackerAdvancedFilterBuilderProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const [combinator, setCombinator] = useState<'and' | 'or'>(filters?.combinator ?? 'and');
   const [draftClauses, setDraftClauses] = useState<TrackerFieldFilter[]>(
     filters?.clauses.length ? filters.clauses : [firstClause(filterFields)],
@@ -78,22 +80,22 @@ export function TrackerAdvancedFilterBuilder({
             type="button"
             className="inline-flex h-7 w-7 items-center justify-center rounded text-nim-muted hover:bg-nim-tertiary hover:text-nim"
             onClick={onBack}
-            aria-label="Back to filter fields"
+            aria-label={t('filters.back_to_fields')}
           >
             <MaterialSymbol icon="arrow_back" size={16} />
           </button>
-          <span className="text-xs font-semibold text-nim">Advanced filter</span>
+          <span className="text-xs font-semibold text-nim">{t('filters.advanced_filter')}</span>
         </div>
         <label className="flex items-center gap-2 text-[11px] text-nim-muted">
-          Match
+          {t('filters.match')}
           <select
             className="rounded border border-nim bg-nim px-2 py-1 text-nim"
             value={combinator}
             onChange={event => setCombinator(event.target.value as 'and' | 'or')}
             data-testid="tracker-filter-builder-combinator"
           >
-            <option value="and">all filters</option>
-            <option value="or">any filter</option>
+            <option value="and">{t('filters.all_filters')}</option>
+            <option value="or">{t('filters.any_filter')}</option>
           </select>
         </label>
       </div>
@@ -125,10 +127,10 @@ export function TrackerAdvancedFilterBuilder({
                     value: undefined,
                   });
                 }}
-                aria-label={`Filter ${index + 1} field`}
+                aria-label={t('filters.filter_field', { number: index + 1 })}
                 data-testid={`tracker-filter-builder-field-${index}`}
               >
-                {!field ? <option value={clause.field}>{clause.field} (unavailable field)</option> : null}
+                {!field ? <option value={clause.field}>{clause.field} ({t('filters.unavailable_field')})</option> : null}
                 {filterFields.map(candidate => (
                   <option key={candidate.id} value={candidate.id}>{candidate.label}</option>
                 ))}
@@ -140,33 +142,33 @@ export function TrackerAdvancedFilterBuilder({
                   op: event.target.value as TrackerFilterOp,
                   value: undefined,
                 })}
-                aria-label={`Filter ${index + 1} operator`}
+                aria-label={t('filters.filter_operator', { number: index + 1 })}
                 data-testid={`tracker-filter-builder-op-${index}`}
               >
                 {operators.map(operator => (
-                  <option key={operator} value={operator}>{OP_LABELS[operator]}</option>
+                  <option key={operator} value={operator}>{t(`filters.operators.${operator}`)}</option>
                 ))}
               </select>
               <div className="min-w-0">
                 {isUnary ? (
-                  <span className="px-2 text-[11px] text-nim-faint">No value</span>
+                  <span className="px-2 text-[11px] text-nim-faint">{t('filters.no_value')}</span>
                 ) : isRange ? (
                   <div className="flex items-center gap-1">
                     <input
                       type={inputType(field, clause.op)}
                       className="min-w-0 flex-1 rounded border border-nim bg-nim-secondary px-2 py-1.5 text-xs text-nim outline-none focus:border-nim-focus"
                       value={valueAsText(range[0])}
-                      placeholder="From"
+                      placeholder={t('filters.from')}
                       onChange={event => updateClause(index, {
                         value: [event.target.value, range[1]],
                       })}
                     />
-                    <span className="text-[10px] text-nim-faint">to</span>
+                    <span className="text-[10px] text-nim-faint">{t('filters.to_separator')}</span>
                     <input
                       type={inputType(field, clause.op)}
                       className="min-w-0 flex-1 rounded border border-nim bg-nim-secondary px-2 py-1.5 text-xs text-nim outline-none focus:border-nim-focus"
                       value={valueAsText(range[1])}
-                      placeholder="To"
+                      placeholder={t('filters.to')}
                       onChange={event => updateClause(index, {
                         value: [range[0], event.target.value],
                       })}
@@ -179,7 +181,7 @@ export function TrackerAdvancedFilterBuilder({
                     onChange={event => updateClause(index, { value: event.target.value })}
                     data-testid={`tracker-filter-builder-value-${index}`}
                   >
-                    <option value="">Choose…</option>
+                    <option value="">{t('filters.choose')}</option>
                     {options.map(option => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
@@ -189,7 +191,7 @@ export function TrackerAdvancedFilterBuilder({
                     type={inputType(field, clause.op)}
                     className="w-full rounded border border-nim bg-nim-secondary px-2 py-1.5 text-xs text-nim outline-none focus:border-nim-focus"
                     value={valueAsText(clause.value)}
-                    placeholder={isList ? 'Comma-separated values' : 'Value'}
+                    placeholder={isList ? t('filters.comma_separated_values') : t('filters.value')}
                     onChange={event => updateClause(index, {
                       value: isList
                         ? event.target.value.split(',').map(value => value.trim()).filter(Boolean)
@@ -206,7 +208,7 @@ export function TrackerAdvancedFilterBuilder({
                   current.length === 1
                     ? [firstClause(filterFields)]
                     : current.filter((_, clauseIndex) => clauseIndex !== index))}
-                aria-label={`Remove filter ${index + 1}`}
+                aria-label={t('filters.remove_filter', { number: index + 1 })}
               >
                 <MaterialSymbol icon="close" size={14} />
               </button>
@@ -220,7 +222,7 @@ export function TrackerAdvancedFilterBuilder({
           data-testid="tracker-filter-builder-add"
         >
           <MaterialSymbol icon="add" size={13} />
-          Add filter
+          {t('filters.add_filter')}
         </button>
       </div>
 
@@ -234,7 +236,7 @@ export function TrackerAdvancedFilterBuilder({
           }}
           data-testid="tracker-filter-builder-clear"
         >
-          Clear all
+          {t('filters.clear_all')}
         </button>
         <button
           type="button"
@@ -245,7 +247,7 @@ export function TrackerAdvancedFilterBuilder({
           }}
           data-testid="tracker-filter-builder-apply"
         >
-          Apply filters
+          {t('filters.apply_filters')}
         </button>
       </div>
     </div>

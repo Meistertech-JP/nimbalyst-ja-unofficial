@@ -9,6 +9,7 @@
     "dev": "vite build --watch"
   },
   "dependencies": {
+    "@nimbalyst/i18n": "workspace:*",
     "sql.js": "^1.11.0"
   },
   "devDependencies": {

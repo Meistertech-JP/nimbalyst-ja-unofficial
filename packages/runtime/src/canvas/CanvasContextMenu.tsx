@@ -45,6 +45,7 @@ import {
   useRole,
   type VirtualElement,
 } from '@floating-ui/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { windowControlsClearance } from '../ui/floating/windowControlsClearance';
 
 import {
@@ -87,18 +88,18 @@ export interface CanvasContextMenuProps {
 }
 
 const ALIGN_ITEMS: ReadonlyArray<{ id: CanvasCommandId; label: string }> = [
-  { id: 'align-left', label: 'Left' },
-  { id: 'align-center-x', label: 'Center' },
-  { id: 'align-right', label: 'Right' },
-  { id: 'align-top', label: 'Top' },
-  { id: 'align-center-y', label: 'Middle' },
-  { id: 'align-bottom', label: 'Bottom' },
+  { id: 'align-left', label: 'left' },
+  { id: 'align-center-x', label: 'center' },
+  { id: 'align-right', label: 'right' },
+  { id: 'align-top', label: 'top' },
+  { id: 'align-center-y', label: 'middle' },
+  { id: 'align-bottom', label: 'bottom' },
 ];
 
 const DISTRIBUTE_ITEMS: ReadonlyArray<{ id: CanvasCommandId; label: string }> =
   [
-    { id: 'distribute-x', label: 'Horizontally' },
-    { id: 'distribute-y', label: 'Vertically' },
+    { id: 'distribute-x', label: 'horizontally' },
+    { id: 'distribute-y', label: 'vertically' },
   ];
 
 /** One rendered line, described before it is placed in the index space. */
@@ -164,6 +165,8 @@ export function CanvasContextMenu({
   onAddSticky,
   onAddComment,
 }: CanvasContextMenuProps) {
+  const { t } = useTranslation('editor');
+  const { t: tCommon } = useTranslation('common');
   const open = anchor !== null;
   const screen = ctx.selection.length === 1 ? ctx.selection[0]['x-nimbalyst']?.screen : null;
   const sourcePath = screen && typeof screen === 'object' && 'sourcePath' in screen && typeof screen.sourcePath === 'string' ? screen.sourcePath.trim() : '';
@@ -229,7 +232,12 @@ export function CanvasContextMenu({
     return {
       kind: 'item',
       key: id,
-      label: entry.label,
+      label:
+        id === 'fit-all'
+          ? t('canvas.zoom.fit_all')
+          : t(`canvas.selection.commands.${id.replaceAll('-', '_')}`, {
+              defaultValue: entry.label,
+            }),
       shortcut: entry.shortcut,
       danger,
       onSelect: () => {
@@ -280,17 +288,44 @@ export function CanvasContextMenu({
   const sections: Array<Array<MenuEntry | null>> =
     kind === 'selection'
       ? [
-          [callback('open-screenshot', 'Open original screenshot', sourcePath && onOpenScreenshot ? () => onOpenScreenshot(sourcePath) : undefined)],
           [
-            callback('copy', 'Copy', onCopy, 'Cmd+C'),
-            callback('cut', 'Cut', ctx.readOnly ? undefined : onCut, 'Cmd+X'),
+            callback(
+              'open-screenshot',
+              t('canvas.selection.context_menu.open_original_screenshot'),
+              sourcePath && onOpenScreenshot
+                ? () => onOpenScreenshot(sourcePath)
+                : undefined
+            ),
+          ],
+          [
+            callback('copy', tCommon('copy'), onCopy, 'Cmd+C'),
+            callback(
+              'cut',
+              t('canvas.selection.context_menu.cut'),
+              ctx.readOnly ? undefined : onCut,
+              'Cmd+X'
+            ),
             command('duplicate'),
           ],
           [
             command('group'),
             command('ungroup'),
-            submenu('align', 'Align', ALIGN_ITEMS),
-            submenu('distribute', 'Distribute', DISTRIBUTE_ITEMS),
+            submenu(
+              'align',
+              t('canvas.selection.align'),
+              ALIGN_ITEMS.map((entry) => ({
+                ...entry,
+                label: t(`canvas.selection.alignment.${entry.label}`),
+              }))
+            ),
+            submenu(
+              'distribute',
+              t('canvas.selection.distribute'),
+              DISTRIBUTE_ITEMS.map((entry) => ({
+                ...entry,
+                label: t(`canvas.selection.distribution.${entry.label}`),
+              }))
+            ),
             command('tidy'),
           ],
           [
@@ -305,16 +340,24 @@ export function CanvasContextMenu({
           [
             callback(
               'paste',
-              'Paste',
+              t('canvas.selection.context_menu.paste'),
               ctx.readOnly ? undefined : onPaste,
               'Cmd+V'
             ),
             ctx.readOnly
               ? null
-              : callback('add-sticky', 'Add sticky', () => onAddSticky(at)),
+              : callback(
+                  'add-sticky',
+                  t('canvas.selection.context_menu.add_sticky'),
+                  () => onAddSticky(at)
+                ),
             ctx.readOnly
               ? null
-              : callback('add-comment', 'Add comment', () => onAddComment(at)),
+              : callback(
+                  'add-comment',
+                  t('canvas.selection.context_menu.add_comment'),
+                  () => onAddComment(at)
+                ),
           ],
           [command('select-all'), command('fit-all')],
         ];

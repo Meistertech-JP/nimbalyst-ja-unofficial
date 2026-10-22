@@ -1,6 +1,8 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import type { TranscriptViewMessage } from '../../../../ai/server/transcript/TranscriptProjector';
 import { TranscriptImageGalleryProvider } from '../TranscriptImageGallery';
 import { collectTranscriptImages } from '../../utils/transcriptImages';
@@ -46,6 +48,12 @@ function attachment(id: string, filename: string) {
 
 const screenshotResult = [{ type: 'image', source: { type: 'base64', data: PIXEL, media_type: 'image/png' } }];
 
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('ja');
+});
+
 describe('collectTranscriptImages', () => {
   it('lists every image in transcript order, including sub-agent tool calls, and skips charts and failed screenshots', () => {
     const user = makeMessage({ type: 'user_message', attachments: [attachment('a1', 'one.png'), { ...attachment('pdf', 'doc.pdf'), type: 'pdf' as const }] });
@@ -71,15 +79,20 @@ describe('TranscriptImageGalleryProvider', () => {
     const shot = makeTool('capture_editor_screenshot', { file_path: '/w/third.mockup.html' }, screenshotResult);
 
     render(
-      <TranscriptImageGalleryProvider messages={[user, shot]}>
-        <MessageSegment message={user} isUser showToolCalls={false} showThinking={false} expandedTools={new Set()} onToggleToolExpand={() => {}} />
-        <EditorScreenshotWidget message={shot} isExpanded={false} onToggle={() => {}} sessionId="s" />
-      </TranscriptImageGalleryProvider>
+      <I18nextProvider i18n={testI18n}>
+        <TranscriptImageGalleryProvider messages={[user, shot]}>
+          <MessageSegment message={user} isUser showToolCalls={false} showThinking={false} expandedTools={new Set()} onToggleToolExpand={() => {}} />
+          <EditorScreenshotWidget message={shot} isExpanded={false} onToggle={() => {}} sessionId="s" />
+        </TranscriptImageGalleryProvider>
+      </I18nextProvider>
     );
 
     fireEvent.click(screen.getByAltText('second.png'));
     const position = () => screen.getByTestId('transcript-image-position').textContent;
     expect(position()).toBe('2 / 3');
+    expect(screen.getByRole('button', { name: '前の画像' }).getAttribute('title')).toBe('前の画像（左矢印）');
+    expect(screen.getByRole('button', { name: '次の画像' }).getAttribute('title')).toBe('次の画像（右矢印）');
+    expect(screen.getByRole('button', { name: '閉じる（Esc）' }).textContent).toBe('閉じる');
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(position()).toBe('3 / 3');

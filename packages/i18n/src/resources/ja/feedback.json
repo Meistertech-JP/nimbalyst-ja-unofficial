@@ -1,0 +1,163 @@
+{
+  "ask_hint": {
+    "pick_one": "1つ選択",
+    "pick_any": "複数選択可",
+    "drag_to_rank": "ドラッグして順位を変更（上が最優先）",
+    "free_text": "自由記述",
+    "yes_or_no": "はい／いいえ",
+    "rating": "評価"
+  },
+  "deadline": {
+    "past_due": "期限切れ",
+    "due": "期限：{{date}}"
+  },
+  "status": {
+    "answers_submitted": "回答を送信しました",
+    "one_ask_for_you": "あなたへの質問：1件",
+    "asks_for_you": "あなたへの質問：{{count}}件",
+    "nothing_for_you": "あなたへの質問はありません"
+  },
+  "artifact_subjects": {
+    "document": "ドキュメント",
+    "tracker": "トラッカー項目",
+    "file": "ファイル",
+    "session": "セッション",
+    "commit": "コミット",
+    "pull_request": "プルリクエスト",
+    "conversation": "会話",
+    "feedback_request": "フィードバック依頼",
+    "open": "開く",
+    "open_subject": "{{label}}を開く"
+  },
+  "request": {
+    "title": "フィードバック依頼",
+    "question_tag": "質問{{number}} · {{label}}",
+    "loading": "依頼を読み込んでいます…",
+    "submit_error": "回答を送信できませんでした。",
+    "unavailable": "このセッションではまだ回答できません。",
+    "answers_sent": "回答を送信しました。変更すると更新を送信できます。",
+    "recipient_note": "回答はルーム全体ではなく、依頼者に送信されます。",
+    "observer_note": "この依頼に割り当てられた質問はありません。ディスカッションは引き続き確認できます。",
+    "hidden_answers_note": "他の人の回答は、自分の回答を送信するまで表示されません。",
+    "add_comment": "コメントを追加",
+    "sending": "送信中…",
+    "update_answers": "回答を更新",
+    "submit_answers": "回答を送信",
+    "discussion": "ディスカッション",
+    "commenting_unavailable": "ここでは依頼にコメントできません。",
+    "blocked": {
+      "not_a_recipient": "この依頼に割り当てられた質問はありません。",
+      "request_not_open": "この依頼は終了しており、回答を受け付けていません。",
+      "incomplete": "送信する前に、すべての質問に回答してください。",
+      "rejected": "回答は送信前に却下されました。"
+    }
+  },
+  "detail": {
+    "unavailable": "このアーティファクトはここでは表示できません。",
+    "unavailableOpenHint": "開いて詳細を確認できます。",
+    "previousOption": "前の選択肢",
+    "nextOption": "次の選択肢",
+    "position": "{{current}} / {{total}}",
+    "openToComment": "コメントを開く",
+    "picked": "選択済み",
+    "pickThis": "これを選択"
+  },
+  "response": {
+    "something_else": "その他…",
+    "open_artifact": "{{label}}を開く",
+    "open": "開く",
+    "yes": "はい",
+    "no": "いいえ"
+  },
+  "list": {
+    "title": "フィードバック",
+    "searchPlaceholder": "依頼を検索…",
+    "searchLabel": "フィードバック依頼を検索",
+    "filtersLabel": "フィードバックの絞り込み",
+    "filters": {
+      "needsMyResponse": "自分の回答が必要",
+      "sentByMe": "自分が送信",
+      "open": "受付中",
+      "answered": "回答済み",
+      "closed": "終了",
+      "all": "すべて"
+    },
+    "documentQuestionsUnsupported": "ドキュメントの質問を利用するには、コラボレーションサーバーの更新が必要です。",
+    "documentQuestionsRetrying": "一部のドキュメントの質問を読み込めませんでした。再試行しています…",
+    "documentQuestionsReconnect": "ドキュメントの質問を読み込むには再接続してください。",
+    "documentQuestionsLoading": "ドキュメントの質問を読み込んでいます…",
+    "connectingWorkspace": "このプロジェクトの共有領域に接続しています。接続後にフィードバック依頼が表示されます。",
+    "waitingForSync": "このデバイスにはまだフィードバック依頼が届いていません。チームにサインインして同期すると表示されます。",
+    "noRequests": "フィードバック依頼はまだありません。チームから依頼された内容や、チームに依頼した内容がここに表示され、回答後も残ります。",
+    "documentQuestionsUnavailable": "ドキュメントの質問は、一覧の準備ができると表示されます。",
+    "noMatches": "この条件に一致する依頼はありません。",
+    "clearFilters": "絞り込みを解除",
+    "allRequests": "すべての依頼",
+    "selectRequest": "依頼を選択すると、回答したり、すでに届いている回答を確認したりできます。",
+      "openQuestionError": "質問を開けませんでした。",
+      "justNow": "たった今",
+      "yourAnswer": "あなたの回答",
+      "progress": "{{answered}}/{{total}} 件が回答済み",
+      "status": {
+        "open": "受付中",
+        "answered": "回答済み",
+        "closed": "終了",
+        "expired": "期限切れ",
+        "cancelled": "キャンセル済み"
+      }
+  },
+  "results_tab": {
+    "invalid": "このタブの参照先にフィードバック依頼がありません。"
+  },
+  "compose": {
+    "summary": {
+      "direct_message": "ダイレクトメッセージで送信",
+      "visibility_open": "依頼された全員に回答を公開",
+      "visibility_after_each_reply": "各ユーザーの回答後に回答を公開",
+      "no_deadline": "期限なし",
+      "due": "期限：{{date}}",
+      "wake_one_named": "{{name}}の返信後にこのセッションを再開",
+      "wake_one": "返信後にこのセッションを再開",
+      "wake_first_or_close": "最初の返信後、または依頼を閉じたときにこのセッションを再開",
+      "wake_all_or_close": "全員の返信後、または依頼を閉じたときにこのセッションを再開"
+    },
+    "delivery": {
+      "send_via": "送信方法",
+      "direct_message": "ダイレクトメッセージ",
+      "answers_visible": "回答の公開範囲",
+      "choose_visibility": "回答を公開するタイミングを選択",
+      "after_each_reply": "各ユーザーの回答後",
+      "to_everyone_asked": "依頼された全員に公開",
+      "due": "期限",
+      "choose_deadline": "期限を選択",
+      "no_deadline": "期限なし",
+      "today_5pm": "今日 17:00",
+      "tomorrow_5pm": "明日 17:00",
+      "in_3_days": "3日後",
+      "in_a_week": "1週間後",
+      "wake_session": "このセッションを再開",
+      "choose_wake": "セッションを再開するタイミングを選択",
+      "first_reply": "最初の回答時",
+      "everyone_replies": "全員の回答後",
+      "on_reply": "回答時"
+    }
+  },
+  "composer": {
+    "message_aria": "{{surfaceLabel}}へのメッセージ",
+    "message_placeholder": "{{surfaceLabel}}にメッセージを入力。@でメンションするユーザーまたはエージェントを指定できます。",
+    "remove_attachment": "{{label}}を削除",
+    "agent_label": "エージェント",
+    "attaching": "添付中…",
+    "failed": "失敗"
+  },
+  "backlinks": {
+    "title": "フィードバック",
+    "document_title": "このドキュメントへのフィードバック（{{count}}件）",
+    "asked_by_you": "あなたが依頼しました",
+    "asked_by_name": "{{name}}が依頼しました"
+  },
+  "results": {
+    "leading": "最多得票",
+    "rank_position": "{{count}}件の回答で{{total}}項目中{{position}}位"
+  }
+}

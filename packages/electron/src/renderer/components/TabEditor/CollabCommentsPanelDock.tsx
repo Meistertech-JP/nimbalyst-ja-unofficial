@@ -19,6 +19,7 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { CollaborativeCommentsPanel } from '@nimbalyst/runtime/editor/commenting/ui/CollaborativeCommentsPanel';
 import { useCollaborativeComments } from '@nimbalyst/runtime/editor/commenting/ui/useCollaborativeComments';
@@ -157,12 +158,12 @@ function newCommentMutationId(): string {
   return uuid ?? `collab-comment-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function reportRefusal(action: string, error: unknown): void {
+function reportRefusal(title: string, error: unknown): void {
   // A refused write must not vanish. The panel has no error surface of its
   // own, so it goes to the app's notification lane rather than a console line
   // nobody reads.
   errorNotificationService.showError(
-    `Could not ${action} this comment`,
+    title,
     error instanceof Error ? error.message : String(error),
   );
 }
@@ -171,6 +172,8 @@ export function CollabCommentsPanelDock({
   hosted,
   panel,
 }: CollabCommentsPanelDockProps): JSX.Element | null {
+  const { t } = useTranslation('collabSidebar');
+  const { t: tCommon } = useTranslation('common');
   const { panelSource, service } = hosted;
   const view = useCollaborativeComments(panelSource);
 
@@ -184,7 +187,7 @@ export function CollabCommentsPanelDock({
   return (
     <aside
       className="collab-comments-dock flex w-80 shrink-0 flex-col overflow-hidden border-l border-nim bg-nim"
-      aria-label="Document comments"
+      aria-label={tCommon('collab.document_comments')}
     >
       {panel.focusNotice && (
         <div
@@ -211,7 +214,9 @@ export function CollabCommentsPanelDock({
         onSetThreadResolved={(thread, resolved) => {
           void service
             .setResolved(thread.id, resolved)
-            .catch((error) => reportRefusal('resolve', error));
+            .catch((error) =>
+              reportRefusal(t('comments_panel.notifications.resolve_failed_title'), error),
+            );
         }}
         onReply={(thread, text, mentionedUserIds) => {
           void service
@@ -221,17 +226,23 @@ export function CollabCommentsPanelDock({
               clientMutationId: newCommentMutationId(),
               mentionedUserIds,
             })
-            .catch((error) => reportRefusal('reply to', error));
+            .catch((error) =>
+              reportRefusal(t('comments_panel.notifications.reply_failed_title'), error),
+            );
         }}
         onDeleteThread={(thread) => {
           void panelSource
             .deleteThread(thread.id)
-            .catch((error) => reportRefusal('delete', error));
+            .catch((error) =>
+              reportRefusal(t('comments_panel.notifications.delete_failed_title'), error),
+            );
         }}
         onDeleteComment={(comment, thread) => {
           void panelSource
             .deleteComment(thread.id, comment.id)
-            .catch((error) => reportRefusal('delete', error));
+            .catch((error) =>
+              reportRefusal(t('comments_panel.notifications.delete_failed_title'), error),
+            );
         }}
         onOpenAgentSession={(sessionId) => {
           window.dispatchEvent(

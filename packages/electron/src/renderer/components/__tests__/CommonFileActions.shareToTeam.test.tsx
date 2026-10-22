@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const mocks = vi.hoisted(() => ({
   resolveShareability: vi.fn(),
@@ -85,6 +87,8 @@ vi.mock('../../services/collaborativeDocumentCreationOrchestrator', () => ({
 }));
 vi.mock('../../services/ErrorNotificationService', () => ({
   errorNotificationService: {
+    getLocalizedText: (namespace: string, key: string, fallback: string, options?: Record<string, string | number>) =>
+      testI18n.t(key, { ...options, ns: namespace, defaultValue: fallback }),
     showError: mocks.showError,
     showInfo: mocks.showInfo,
     showWarning: mocks.showWarning,
@@ -93,6 +97,20 @@ vi.mock('../../services/ErrorNotificationService', () => ({
 
 import { CommonFileActions } from '../CommonFileActions';
 import { readShareToTeamSourceContent } from '../../services/shareToTeamSourceContent';
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+function renderWithI18n(ui: React.ReactNode) {
+  return render(
+    <UiLanguageProvider i18n={testI18n} preference={testI18n.language as 'en' | 'ja'} systemLocale="en-US">
+      {ui}
+    </UiLanguageProvider>,
+  );
+}
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
 
 const spreadsheetDescriptor = {
   documentType: 'csv',
@@ -117,7 +135,7 @@ afterEach(() => {
 });
 
 function renderActions(fileName: string) {
-  return render(
+  return renderWithI18n(
     <CommonFileActions
       filePath={`/workspace/${fileName}`}
       fileName={fileName}
@@ -130,6 +148,32 @@ function renderActions(fileName: string) {
 }
 
 describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
+  it('renders file actions in the selected language', async () => {
+    expect(testI18n.t('actions.open_default', { ns: 'files' })).toBe('Open in Default App');
+    mocks.resolveShareability.mockReturnValue({ state: 'ready', descriptor: spreadsheetDescriptor });
+    const { rerender } = renderActions('notes.md');
+    screen.getByRole('button', { name: 'Open in Default App' });
+    screen.getByRole('button', { name: 'Copy Path' });
+    screen.getByRole('button', { name: 'Copy to Wiki...' });
+
+    testI18n = await createI18nInstance('ja');
+    rerender(
+      <UiLanguageProvider i18n={testI18n} preference="ja" systemLocale="ja-JP">
+        <CommonFileActions
+          filePath="/workspace/notes.md"
+          fileName="notes.md"
+          onClose={() => {}}
+          menuItemClass="menu-item"
+          separatorClass="separator"
+          useButtons
+        />
+      </UiLanguageProvider>,
+    );
+    screen.getByRole('button', { name: '既定のアプリで開く' });
+    screen.getByRole('button', { name: 'パスをコピー' });
+    screen.getByRole('button', { name: 'Wikiにコピー...' });
+  });
+
   it('uses the platform-aware system file browser label', () => {
     mocks.resolveShareability.mockReturnValue({ state: 'unsupported', reason: 'Unsupported' });
     renderActions('index.ts');
@@ -218,7 +262,8 @@ describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
     }));
   });
 
-  it('adds a Copy Link action to the successful share toast', async () => {
+  it.each(['en', 'ja'] as const)('adds a localized Copy Link action to the successful %s share toast', async (language) => {
+    await testI18n.changeLanguage(language);
     mocks.resolveShareability.mockReturnValue({ state: 'ready', descriptor: spreadsheetDescriptor });
     mocks.resolveMetadata.mockReturnValue({ state: 'ready', descriptor: spreadsheetDescriptor });
     mocks.createCollaborativeDocument.mockResolvedValue({
@@ -241,7 +286,7 @@ describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
     });
 
     renderActions('people.csv');
-    fireEvent.click(screen.getByRole('button', { name: 'Copy to Wiki...' }));
+    fireEvent.click(screen.getByRole('button', { name: testI18n.t('actions.copy_to_wiki', { ns: 'files' }) }));
     const dialogData = mocks.openDialog.mock.calls[0]?.[1];
     await dialogData.onConfirm({
       folderId: null,
@@ -252,10 +297,10 @@ describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
 
     await vi.waitFor(() => {
       expect(mocks.showInfo).toHaveBeenCalledWith(
-        'Shared to team',
-        '"people.csv" is now a collaborative document.',
+        language === 'en' ? 'Shared to team' : 'チームに共有しました',
+        language === 'en' ? '"people.csv" is now a collaborative document.' : '「people.csv」を共同編集ドキュメントとして共有しました。',
         expect.objectContaining({
-          action: expect.objectContaining({ label: 'Copy Link' }),
+          action: expect.objectContaining({ label: language === 'en' ? 'Copy Link' : 'リンクをコピー' }),
         }),
       );
     });
@@ -305,7 +350,7 @@ describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
       state: 'unsupported',
       reason: 'No collaborative document type is registered for "design".',
     });
-    render(
+    renderWithI18n(
       <CommonFileActions
         filePath="/workspace/design"
         fileName="design"
@@ -326,7 +371,7 @@ describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
       expect(mocks.shareFolderToTeamFromContextMenu).toHaveBeenCalledWith({
         folderPath: '/workspace/design',
         folderName: 'design',
-      });
+      }, expect.any(Function));
     });
     // The single-file dialog is not the folder path.
     expect(mocks.openDialog).not.toHaveBeenCalled();
@@ -350,7 +395,7 @@ describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
 
   it('omits Copy Path for collaborative documents while keeping it for local files', () => {
     mocks.resolveShareability.mockReturnValue({ state: 'ready', descriptor: spreadsheetDescriptor });
-    const { rerender } = render(
+    const { rerender } = renderWithI18n(
       <CommonFileActions
         filePath="collab://org:team-a:doc:document-a"
         fileName="people.csv"
@@ -364,14 +409,16 @@ describe('CommonFileActions Copy to Wiki catalog eligibility', () => {
     expect(screen.queryByRole('button', { name: 'Copy Path' })).toBeNull();
 
     rerender(
-      <CommonFileActions
-        filePath="/workspace/people.csv"
-        fileName="people.csv"
-        onClose={() => {}}
-        menuItemClass="menu-item"
-        separatorClass="separator"
-        useButtons
-      />,
+      <UiLanguageProvider i18n={testI18n} preference="en" systemLocale="en-US">
+        <CommonFileActions
+          filePath="/workspace/people.csv"
+          fileName="people.csv"
+          onClose={() => {}}
+          menuItemClass="menu-item"
+          separatorClass="separator"
+          useButtons
+        />
+      </UiLanguageProvider>,
     );
 
     screen.getByRole('button', { name: 'Copy Path' });

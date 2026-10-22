@@ -12,6 +12,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CustomToolWidgetProps } from './index';
 import { FullscreenModal } from '../FullscreenModal';
 import { ZoomableImageSurface } from '../ZoomableImageSurface';
@@ -76,6 +77,7 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
   workspacePath,
   readFile
 }) => {
+  const { t } = useTranslation('aichat');
   const [showLightbox, setShowLightbox] = useState(false);
   const gallery = useTranscriptImageGallery();
   const { parsedResult, imageSrc, loading: loadingPersistedFile, persistedLoadError } = useEditorScreenshotImage(message, readFile);
@@ -97,21 +99,21 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
     <div className="editor-screenshot-widget rounded bg-nim-secondary border border-nim overflow-hidden">
       <div className="flex items-center gap-2 p-2">
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <span className="text-xs text-nim-faint font-medium">Editor Screenshot</span>
+          <span className="text-xs text-nim-faint font-medium">{t('media.editor_screenshot')}</span>
           <span className="font-mono text-sm text-nim font-semibold overflow-hidden text-ellipsis whitespace-nowrap" title={filePath}>
             {fileName}
           </span>
         </div>
         {/* Loading spinner when loading from persisted file */}
         {loadingPersistedFile && (
-          <div className="w-5 h-5 shrink-0 flex items-center justify-center" title="Loading image...">
+          <div className="w-5 h-5 shrink-0 flex items-center justify-center" title={t('media.loading_image')}>
             <div className="w-4 h-4 border-2 border-nim border-t-nim-primary rounded-full animate-spin" />
           </div>
         )}
         {/* Show error badge if there was an error */}
         {hasError && !loadingPersistedFile && (
           <span className="text-[0.7rem] font-semibold py-0.5 px-2 rounded-full uppercase tracking-wide shrink-0 text-nim-error bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]">
-            Failed
+            {t('media.failed')}
           </span>
         )}
       </div>
@@ -121,7 +123,7 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
         <button
           className="w-full p-0 m-0 border-0 border-t border-nim bg-nim-tertiary cursor-pointer overflow-hidden block transition-opacity duration-200 hover:opacity-90"
           onClick={openLightbox}
-          title="Click to enlarge"
+          title={t('media.enlarge')}
         >
           <img
             src={imageSrc}
@@ -143,7 +145,7 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
         <FullscreenModal
           isOpen={showLightbox}
           onClose={() => setShowLightbox(false)}
-          ariaLabel="Image preview"
+          ariaLabel={t('media.image_preview')}
           contentClassName="h-[92dvh] w-[96vw] max-w-[1400px] overflow-hidden rounded-lg border border-nim bg-nim shadow-2xl"
         >
             <ZoomableImageSurface
@@ -159,10 +161,10 @@ export const EditorScreenshotWidget: React.FC<CustomToolWidgetProps> = ({
                   type="button"
                   className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                   onClick={() => setShowLightbox(false)}
-                  aria-label="Close (Escape)"
-                  title="Close (Escape)"
+                  aria-label={t('media.close_escape')}
+                  title={t('media.close_escape')}
                 >
-                  Close
+                  {t('media.close')}
                 </button>
               )}
             />

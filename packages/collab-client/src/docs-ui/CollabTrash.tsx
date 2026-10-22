@@ -6,6 +6,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { listTrashEntries } from '../docs/collabTrash';
 import { useCollabDocsUI } from './CollabDocsUIProvider';
@@ -13,6 +14,7 @@ import { useCollabDocsUI } from './CollabDocsUIProvider';
 const CollabTrashDialog = React.lazy(() => import('./CollabTrashDialog'));
 
 export const CollabSidebarTrashEntry: React.FC<{ sectionLabel: string }> = ({ sectionLabel }) => {
+  const { t } = useTranslation('common');
   const { session } = useCollabDocsUI();
   const trashed = useAtomValue(session.atoms.trashedSharedDocuments);
   const count = useMemo(() => listTrashEntries(trashed).length, [trashed]);
@@ -22,11 +24,13 @@ export const CollabSidebarTrashEntry: React.FC<{ sectionLabel: string }> = ({ se
       <button
         type="button"
         className="collab-sidebar-trash-entry shrink-0 flex items-center gap-2 mx-1.5 mb-1.5 px-2 py-1 rounded border-none bg-transparent cursor-pointer text-left text-[12px] text-[var(--nim-text-faint)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-        aria-label={`${sectionLabel} Trash${count > 0 ? `, ${count} item${count === 1 ? '' : 's'}` : ''}`}
+        aria-label={count > 0
+          ? t('collab.section_trash_entry_aria_label', { section: sectionLabel, count })
+          : t('collab.section_trash_entry_aria_label', { section: sectionLabel })}
         onClick={() => setOpen(true)}
       >
         <MaterialSymbol icon="delete" size={16} />
-        <span className="flex-1">Trash</span>
+        <span className="flex-1">{t('collab.trash')}</span>
         {count > 0 && <span className="collab-sidebar-trash-count text-[11px] tabular-nums">{count}</span>}
       </button>
       {open && (

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useResizeDragShield } from '../../../hooks/useResizeDragShield';
 import {
@@ -31,6 +32,7 @@ export function InboxContextSlot({
   onWidthChange: (width: number) => void;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation('collabSidebar');
   const slotRef = useRef<HTMLDivElement | null>(null);
   const [dragWidth, setDragWidth] = useState(width);
   const [dragging, setDragging] = useState(false);
@@ -94,7 +96,7 @@ export function InboxContextSlot({
         role="separator"
         tabIndex={0}
         aria-orientation="vertical"
-        aria-label="Resize context pane"
+        aria-label={t('inbox_context_slot.resize')}
         aria-valuenow={dragWidth}
         aria-valuemin={INBOX_CONTEXT_PANE_MIN_WIDTH}
         aria-valuemax={INBOX_CONTEXT_PANE_MAX_WIDTH}

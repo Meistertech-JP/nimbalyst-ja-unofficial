@@ -7,6 +7,7 @@
  * reads from. The Cloudflare fields are saved together as one JSON credential.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 import type { SettingsPanelProps } from '@nimbalyst/runtime';
 
 const TYPESAFE_CREDENTIAL = 'typesafe';
@@ -36,7 +37,8 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
   const [cf, setCf] = useState({ accountId: '', apiToken: '', gatewayId: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState<{ section: 'typesafe' | 'cloudflare'; text: string } | null>(null);
+  const { t } = useTranslation('extensions');
+  const [notice, setNotice] = useState<{ section: 'typesafe' | 'cloudflare'; key: 'saved' | 'removed' } | null>(null);
 
   const refresh = useCallback(async (): Promise<CuratorStatus | null> => {
     if (!callBackendTool) return null;
@@ -48,10 +50,10 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
       setError(null);
       return next;
     } catch (err) {
-      setError(`The knowledge backend is not running: ${(err as Error).message}`);
+      setError(t('knowledge_ui.backend_not_running', { error: (err as Error).message }));
       return null;
     }
-  }, [callBackendTool]);
+  }, [callBackendTool, t]);
 
   useEffect(() => {
     void refresh();
@@ -67,10 +69,10 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
       if (section === 'typesafe') setDraft('');
       const next = await refresh();
       const saved = section === 'typesafe' ? next?.typesafeConfigured : next?.cloudflareConfigured;
-      if (value && !saved) setError('The credential was written but the curator cannot read it back. Check the main process log.');
-      else setNotice({ section, text: value ? 'Saved.' : 'Removed.' });
+      if (value && !saved) setError(t('knowledge_ui.credential_not_read_back'));
+      else setNotice({ section, key: value ? 'saved' : 'removed' });
     } catch (err) {
-      setError((err as Error).message);
+      setError(t('knowledge_ui.operation_failed', { error: (err as Error).message }));
     } finally {
       setSaving(false);
     }
@@ -90,24 +92,24 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
     <div className="knowledge-curator-settings" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 4, fontSize: 13 }}>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h3 style={HEADING}>
-          Jev provider
+          {t('knowledge_ui.jev_provider')}
           <span className="knowledge-curator-alpha-badge" style={ALPHA_BADGE}>
-            Alpha
+            {t('knowledge_ui.alpha')}
           </span>
         </h3>
         <p className="select-text" style={MUTED}>
-          The curator sends each commit, session summary, and tracker change it sorts to TypeSafe's Jev model to decide whether it belongs in the knowledge graph. Jev runs on TypeSafe (api.typesafe.ai) or on your Cloudflare account through Workers AI. Nothing is sent until one of them is saved here. If both are saved, TypeSafe is used.
+          {t('knowledge_ui.provider_description')}
         </p>
       </section>
 
       <section className="knowledge-curator-typesafe" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h4 style={SUBHEADING}>TypeSafe API key</h4>
+        <h4 style={SUBHEADING}>{t('knowledge_ui.typesafe_api_key')}</h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <input
             type="password"
             className="knowledge-curator-key-input"
             style={INPUT}
-            placeholder={status?.typesafeConfigured ? 'Saved. Enter a new key to replace it.' : 'TypeSafe API key'}
+            placeholder={status?.typesafeConfigured ? t('knowledge_ui.saved_enter_new_key') : t('knowledge_ui.typesafe_api_key')}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
@@ -118,37 +120,37 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
             disabled={!draft.trim() || saving}
             onClick={() => void save(TYPESAFE_CREDENTIAL, draft.trim())}
           >
-            Save
+            {t('knowledge_ui.save')}
           </button>
           {status?.typesafeConfigured ? (
             <button type="button" className="knowledge-curator-key-remove" style={BUTTON} disabled={saving} onClick={() => void save(TYPESAFE_CREDENTIAL, '')}>
-              Remove
+              {t('knowledge_ui.remove')}
             </button>
           ) : null}
         </div>
-        {notice?.section === 'typesafe' ? <span style={SUCCESS}>{notice.text}</span> : null}
+        {notice?.section === 'typesafe' ? <span style={SUCCESS}>{t(`knowledge_ui.${notice.key}`)}</span> : null}
       </section>
 
       <section className="knowledge-curator-cloudflare" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h4 style={SUBHEADING}>Cloudflare Workers AI</h4>
+        <h4 style={SUBHEADING}>{t('knowledge_ui.cloudflare_workers_ai')}</h4>
         <p className="select-text" style={MUTED}>
-          Runs Jev as <code>typesafe/jev</code>, billed to your Cloudflare account. The API token needs Workers AI permission. Jev is a third-party model, so it draws on prepaid AI Gateway credits (AI Gateway &gt; Credits Available &gt; Manage). An "Insufficient balance" error means those credits are empty. Name an AI Gateway to get its logs, caching, and rate limits. Cloudflare does not let the curator pin the Jev version, so it warns when a different version answers.
+          <Trans ns="extensions" i18nKey="knowledge_ui.cloudflare_description"><code>typesafe/jev</code></Trans>
         </p>
         {status?.cloudflareConfigured ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="select-text" style={{ flex: 1, ...MUTED }}>
-              Saved for account {status.cloudflareAccountId}
-              {status.cloudflareGatewayId ? ` through gateway ${status.cloudflareGatewayId}` : ''}. Re-enter the API token to change anything.
+              {t('knowledge_ui.saved_for_account', { accountId: status.cloudflareAccountId })}
+              {status.cloudflareGatewayId ? ` ${t('knowledge_ui.through_gateway', { gatewayId: status.cloudflareGatewayId })}` : ''}. {t('knowledge_ui.reenter_token_to_change')}
             </span>
             <button type="button" className="knowledge-curator-cloudflare-remove" style={BUTTON} disabled={saving} onClick={() => void save(CLOUDFLARE_CREDENTIAL, '')}>
-              Remove
+              {t('knowledge_ui.remove')}
             </button>
           </div>
         ) : null}
         <input
           className="knowledge-curator-cloudflare-account"
           style={INPUT}
-          placeholder="Account ID"
+          placeholder={t('knowledge_ui.account_id')}
           value={cf.accountId}
           onChange={(e) => setCf({ ...cf, accountId: e.target.value })}
         />
@@ -156,7 +158,7 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
           type="password"
           className="knowledge-curator-cloudflare-token"
           style={INPUT}
-          placeholder={status?.cloudflareConfigured ? 'API token (saved; enter it again to replace)' : 'API token'}
+          placeholder={status?.cloudflareConfigured ? t('knowledge_ui.saved_enter_new_token') : t('knowledge_ui.api_token')}
           value={cf.apiToken}
           onChange={(e) => setCf({ ...cf, apiToken: e.target.value })}
         />
@@ -164,7 +166,7 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
           <input
             className="knowledge-curator-cloudflare-gateway"
             style={INPUT}
-            placeholder="AI Gateway ID (optional)"
+            placeholder={t('knowledge_ui.gateway_id_optional')}
             value={cf.gatewayId}
             onChange={(e) => setCf({ ...cf, gatewayId: e.target.value })}
           />
@@ -175,18 +177,18 @@ export function KnowledgeCuratorSettings({ callBackendTool }: SettingsPanelProps
             disabled={!cf.accountId.trim() || !cf.apiToken.trim() || saving}
             onClick={() => void saveCloudflare()}
           >
-            Save
+            {t('knowledge_ui.save')}
           </button>
         </div>
-        {notice?.section === 'cloudflare' ? <span style={SUCCESS}>{notice.text}</span> : null}
+        {notice?.section === 'cloudflare' ? <span style={SUCCESS}>{t(`knowledge_ui.${notice.key}`)}</span> : null}
       </section>
 
       <section className="select-text" style={MUTED}>
         {status ? (
           <>
-            {status.provider === 'typesafe' ? 'Using TypeSafe.' : status.provider === 'cloudflare' ? 'Using Cloudflare Workers AI.' : 'No provider saved.'}{' '}
-            {status.decisionsLogged ?? 0} sorter decision(s) logged
-            {status.decisionLog ? ` in ${status.decisionLog}` : ''}.
+            {status.provider === 'typesafe' ? t('knowledge_ui.using_typesafe') : status.provider === 'cloudflare' ? t('knowledge_ui.using_cloudflare') : t('knowledge_ui.no_provider_saved')}{' '}
+            {t('knowledge_ui.decisions_logged', { count: status.decisionsLogged ?? 0 })}
+            {status.decisionLog ? ` ${t('knowledge_ui.decision_log_location', { path: status.decisionLog })}` : ''}.
           </>
         ) : null}
         {error ? <div style={{ color: 'var(--nim-error)' }}>{error}</div> : null}

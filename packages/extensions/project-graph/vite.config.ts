@@ -4,6 +4,7 @@ import { createExtensionConfig, mergeExtensionConfig } from '@nimbalyst/extensio
 
 const baseConfig = createExtensionConfig({
   entry: './src/index.tsx',
+  additionalExternals: ['@nimbalyst/i18n/react'],
   plugins: [
     react({
       jsxRuntime: 'automatic',

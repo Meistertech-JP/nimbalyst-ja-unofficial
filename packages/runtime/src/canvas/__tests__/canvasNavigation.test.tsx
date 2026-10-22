@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { CanvasDocument } from '../CanvasDocument';
 import { readCanvasNavigation } from '../canvasNavigation';
 import { CanvasNavigationPanel } from '../CanvasNavigationPanel';
@@ -9,6 +11,16 @@ vi.mock('@xyflow/react', () => ({
   Panel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 afterEach(cleanup);
+
+async function renderWithLanguage(element: ReactNode, language: 'en' | 'ja' = 'en') {
+  const i18n = await createI18nInstance(language);
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return render(element, { wrapper: Wrapper });
+}
 
 function board(navigation: unknown): CanvasDocument {
   return {
@@ -34,6 +46,25 @@ const navigation = [
 ];
 
 describe('canvas screen navigation', () => {
+  it('localizes navigation controls and live screen count', async () => {
+    await renderWithLanguage(
+      <CanvasNavigationPanel
+        document={board(navigation)}
+        onNavigate={vi.fn()}
+        onOverview={vi.fn()}
+      />,
+      'ja'
+    );
+
+    screen.getByRole('navigation', { name: '画面ナビゲーション' });
+    screen.getByRole('button', { name: '概要' });
+    screen.getByRole('combobox', { name: '画面へ移動' });
+    screen.getByRole('button', { name: '上へ' });
+    screen.getByRole('button', { name: '前の画面' });
+    screen.getByRole('button', { name: '次の画面' });
+    screen.getByText('2画面');
+  });
+
   it('ignores malformed, duplicate and removed references, preserving explicit order', () => {
     const result = readCanvasNavigation(
       board([
@@ -74,12 +105,12 @@ describe('canvas screen navigation', () => {
     expect(byId.get('editor')?.parentId).toBeNull();
     expect(byId.get('tree')?.parentId).toBeNull();
   });
-  it('steps through siblings, drills into children and returns through Up without editing the document', () => {
+  it('steps through siblings, drills into children and returns through Up without editing the document', async () => {
     const document = board(navigation),
       before = JSON.stringify(document);
     const onNavigate = vi.fn(),
       onOverview = vi.fn();
-    render(
+    await renderWithLanguage(
       <CanvasNavigationPanel
         document={document}
         onNavigate={onNavigate}
@@ -108,10 +139,10 @@ describe('canvas screen navigation', () => {
     expect(onOverview).toHaveBeenCalledOnce();
     expect(JSON.stringify(document)).toBe(before);
   });
-  it('recovers when the current screen is removed and keeps controls out of boards without a manifest', () => {
+  it('recovers when the current screen is removed and keeps controls out of boards without a manifest', async () => {
     const onNavigate = vi.fn(),
       onOverview = vi.fn();
-    const { rerender } = render(
+    const { rerender } = await renderWithLanguage(
       <CanvasNavigationPanel
         document={board(navigation)}
         onNavigate={onNavigate}
@@ -142,9 +173,9 @@ describe('canvas screen navigation', () => {
     );
     expect(screen.queryByRole('navigation')).toBeNull();
   });
-  it('does not bubble navigation keystrokes to board shortcuts', () => {
+  it('does not bubble navigation keystrokes to board shortcuts', async () => {
     const onKeyDown = vi.fn();
-    render(
+    await renderWithLanguage(
       <div onKeyDown={onKeyDown}>
         <CanvasNavigationPanel
           document={board(navigation)}

@@ -5,8 +5,10 @@ import {
   waitFor,
   cleanup,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { PanelHost } from "@nimbalyst/extension-sdk";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { UiLanguageProvider } from "@nimbalyst/i18n/react";
 import type { PrototypeViewProps } from "../contracts";
 import { PrototypeLab } from "../PrototypeLab";
 
@@ -122,10 +124,23 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance("en");
+});
+
+function renderLab(panelHost: PanelHost) {
+  return render(
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <PrototypeLab host={panelHost} />
+    </UiLanguageProvider>,
+  );
+}
+
 describe("prototype lab integration", () => {
   it("never substitutes illustrative data for a failed live source", async () => {
     loadSnapshot.mockRejectedValueOnce(new Error("Source unavailable"));
-    render(<PrototypeLab host={host()} />);
+    renderLab(host());
     await screen.findByRole("alert");
     expect(screen.queryByTestId("projection")).toBeNull();
     fireEvent.change(screen.getByLabelText("Prototype data source"), {
@@ -137,7 +152,7 @@ describe("prototype lab integration", () => {
   });
   it("carries area and artifact selection between views without reloading sources, and clears them when the corpus changes", async () => {
     loadSnapshot.mockResolvedValue(loaded);
-    render(<PrototypeLab host={host()} />);
+    renderLab(host());
     await screen.findByTestId("projection");
     fireEvent.click(screen.getByText("Follow evidence"));
     expect(screen.getByTestId("projection").textContent).toBe(
@@ -161,7 +176,7 @@ describe("prototype lab integration", () => {
           resolve = r;
         })
     );
-    render(<PrototypeLab host={host()} />);
+    renderLab(host());
     await waitFor(() => expect(loadSnapshot).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByLabelText("Prototype data source"), {
       target: { value: "sample" },
@@ -183,7 +198,7 @@ describe("prototype lab integration", () => {
 it("defaults to Pulse and persists range, comparison, filters and saved lenses without reloading metadata", async () => {
   loadSnapshot.mockResolvedValue(loaded);
   const h = host();
-  render(<PrototypeLab host={h} />);
+  renderLab(h);
   await screen.findByTestId("projection");
   expect(
     screen.getByRole("button", { name: "Pulse" }).getAttribute("aria-pressed")

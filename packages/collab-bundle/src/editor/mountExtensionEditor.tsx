@@ -15,6 +15,10 @@ import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 import { createExtensionAwarenessBridge } from '@nimbalyst/runtime/sync/extensionAwarenessBridge';
+import {
+  collaboratorDisplayIdentity,
+  UNNAMED_COLLABORATOR_LABEL,
+} from '@nimbalyst/runtime/sync/collaboratorDisplayName';
 import type {
   CollaborationStatus,
   EditorContext,
@@ -63,6 +67,10 @@ export interface ExtensionEditorMountOptions {
   element: HTMLElement;
   source: CollabEditorSource;
   user: CollabEditorUser;
+  /** Localized fallback used only for generated collaborator names. */
+  getUnnamedCollaboratorLabel?(): string;
+  /** Notify the mount when the host's display language changes. */
+  subscribeToLanguageChanges?(listener: () => void): () => void;
   /** The extension's editor component, already loaded by the page. */
   component: ExtensionEditorComponent;
 
@@ -228,6 +236,11 @@ export function mountExtensionEditor(
   options: ExtensionEditorMountOptions,
 ): ExtensionEditorHandle {
   const resolvedUser = resolveCollabEditorUser(options.user);
+  const identity = collaboratorDisplayIdentity({
+    name: options.user.name,
+    email: options.user.email,
+    memberId: options.user.memberId,
+  });
   const documentId = options.documentId
     ?? (options.source.kind === 'team-room'
       ? options.source.room.documentId
@@ -284,19 +297,39 @@ export function mountExtensionEditor(
     },
   });
 
+  let unnamedCollaboratorLabel = options.getUnnamedCollaboratorLabel?.()
+    || UNNAMED_COLLABORATOR_LABEL;
+  session.presence.setUnnamedCollaboratorLabel(unnamedCollaboratorLabel);
+  session.presence.setDisplayName(identity.name, identity.isSystemDefaultName);
+
   const awarenessBridge = createExtensionAwarenessBridge({
     syncProvider: session.presence,
     yDoc: session.sharedDocument,
     user: {
       id: resolvedUser.memberId,
-      name: resolvedUser.displayName,
+      name: identity.name,
+      ...(identity.isSystemDefaultName ? { nimbalystNameSource: 'system-default' as const } : {}),
       color: resolvedUser.cursorColor,
     },
+    getUnnamedCollaboratorLabel: () => options.getUnnamedCollaboratorLabel?.()
+      || unnamedCollaboratorLabel,
     // CollabPresenceSurface already re-announces on its own cadence and stamps
     // the freshness metadata bundle peers expire each other on. A second
     // heartbeat here would just double the traffic.
     heartbeatIntervalMs: 0,
   });
+
+  const refreshUnnamedCollaboratorLabel = (): void => {
+    const nextLabel = options.getUnnamedCollaboratorLabel?.()
+      || UNNAMED_COLLABORATOR_LABEL;
+    if (nextLabel === unnamedCollaboratorLabel) return;
+    unnamedCollaboratorLabel = nextLabel;
+    session.presence.setUnnamedCollaboratorLabel(nextLabel);
+    awarenessBridge.refreshRemoteDisplayNames();
+  };
+  const unsubscribeLanguageChanges = options.subscribeToLanguageChanges?.(
+    refreshUnnamedCollaboratorLabel,
+  ) ?? null;
 
   // Built only when the page supplied a comment seam. Everything it needs --
   // who the author is, who can be mentioned, whether this role may comment at
@@ -415,7 +448,17 @@ export function mountExtensionEditor(
     getEditorAPI: () => browserHost.getEditorAPI(),
     getMenuItems: () => browserHost.getMenuItems(),
     setPresenceActive: (active) => { session.presence.setActive(active); },
-    setUser: (user) => { session.presence.setDisplayName(resolveCollabEditorUser(user).displayName); },
+    setUser: (user) => {
+      const userIdentity = collaboratorDisplayIdentity({
+        name: user.name,
+        email: user.email,
+        memberId: user.memberId,
+      });
+      session.presence.setDisplayName(
+        userIdentity.name,
+        userIdentity.isSystemDefaultName,
+      );
+    },
     setTheme: (nextTheme) => {
       if (destroyed || theme === nextTheme) return;
       theme = nextTheme;
@@ -441,6 +484,7 @@ export function mountExtensionEditor(
       destroyed = true;
       statusListeners.clear();
       sourceModeListeners.clear();
+      unsubscribeLanguageChanges?.();
       hostedComments?.destroy();
       session.destroy({
         beforeTransportTeardown: () => {

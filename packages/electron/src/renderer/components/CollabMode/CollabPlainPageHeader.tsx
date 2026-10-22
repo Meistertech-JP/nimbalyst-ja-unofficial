@@ -5,6 +5,7 @@
  * Set type.
  */
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { atom, useAtomValue, useSetAtom, type Atom } from 'jotai';
 import type { CollabScope } from '@nimbalyst/collab-client/core';
 import { getSharedDocumentDisplayName, pageDisplayName, type SharedDocument } from '@nimbalyst/collab-client/docs';
@@ -22,6 +23,7 @@ export const CollabPlainPageHeader: React.FC<{
   documentId: string;
   lane?: PageTypeLane;
 }> = ({ scope, documentId, lane = 'team' }) => {
+  const { t } = useTranslation('collabSidebar');
   const session = useMemo(() => getElectronCollabDocsSession(scope), [scope]);
   const pageAtom = useMemo(
     () => atom((get) => get(session.atoms.allSharedDocuments ?? NO_DOCUMENTS).find((document) => document.documentId === documentId) ?? null),
@@ -36,15 +38,15 @@ export const CollabPlainPageHeader: React.FC<{
   const handleRename = useCallback((name: string) => {
     if (!page) return;
     void session.updateDocumentTitle(page.documentId, pageDisplayName(name, page.documentType)).catch((error: unknown) => {
-      errorNotificationService.showError('Could not rename this page', error instanceof Error ? error.message : String(error));
+      errorNotificationService.showError(t('pages_section.rename_page_failed'), error instanceof Error ? error.message : String(error));
     });
-  }, [page, session]);
+  }, [page, session, t]);
 
   const handleUpdateField = useCallback((name: string, value: unknown) => {
     void session.updateDocumentFields(documentId, { [name]: value }).then((result) => {
-      if (!result.ok) errorNotificationService.showError('Could not update this page', result.error);
+      if (!result.ok) errorNotificationService.showError(t('pages_section.update_page_failed'), result.error);
     });
-  }, [session, documentId]);
+  }, [session, documentId, t]);
 
   if (!page) return null;
   return (

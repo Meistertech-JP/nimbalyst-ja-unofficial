@@ -16,6 +16,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { activeCollabScopeAtom, createSharedFolder, getPersonalCollabDocsSession } from '../../store/atoms/collabDocuments';
 import { activeWorkspacePathAtom } from '../../store/atoms/openProjects';
@@ -43,9 +44,12 @@ export function SharedFolderPickerPanel({
   canCreateFolder,
   section = 'team',
 }: SharedFolderPickerPanelProps) {
+  const { t } = useTranslation('collabSidebar');
   const collabScope = useAtomValue(activeCollabScopeAtom);
   const workspacePath = useAtomValue(activeWorkspacePathAtom);
-  const rootLabel = section === 'personal' ? 'Top of Personal' : 'Top of Team';
+  const rootLabel = t(section === 'personal'
+    ? 'share_folder_picker.top_of_personal'
+    : 'share_folder_picker.top_of_team');
   const {
     isRefreshing,
     refreshFailed,
@@ -113,7 +117,7 @@ export function SharedFolderPickerPanel({
     <div className="shared-folder-picker-panel">
       <div className="flex items-center justify-between mb-1.5">
         <div className="text-[11px] uppercase tracking-wider font-semibold text-[var(--nim-text-faint)]">
-          Inside
+          {t('share_folder_picker.inside')}
         </div>
         <button
           type="button"
@@ -122,18 +126,18 @@ export function SharedFolderPickerPanel({
           className="text-[11px] text-[var(--nim-primary)] hover:underline inline-flex items-center gap-1 disabled:opacity-50 disabled:no-underline"
         >
           <MaterialSymbol icon="note_add" size={13} />
-          New page
+          {t('share_folder_picker.new_page')}
         </button>
       </div>
       <div className="share-to-team-tree bg-[var(--nim-bg-secondary)] border border-[var(--nim-border-subtle,var(--nim-border))] rounded-md p-1 mb-3 max-h-[240px] overflow-y-auto">
         {isRefreshing ? (
           <div className="flex items-center justify-center gap-2 px-3 py-6 text-[12px] text-[var(--nim-text-muted)]">
             <MaterialSymbol icon="progress_activity" size={16} className="animate-spin" />
-            Refreshing pages…
+            {t('share_folder_picker.refreshing_pages')}
           </div>
         ) : refreshFailed ? (
           <div className="px-3 py-6 text-center text-[12px] text-[var(--nim-text-muted)]">
-            The wiki could not be refreshed. Close this dialog and try again.
+            {t('share_folder_picker.refresh_failed')}
           </div>
         ) : (
           <>
@@ -168,7 +172,7 @@ export function SharedFolderPickerPanel({
               <span className="flex-1 truncate">{rootLabel}</span>
               {highlightFolderId === null && (
                 <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--nim-primary)]/15 text-[var(--nim-primary)]">
-                  last used
+                  {t('ui.last_used')}
                 </span>
               )}
             </div>
@@ -206,7 +210,7 @@ export function SharedFolderPickerPanel({
                     }
                   }}
                   onBlur={() => { void commitNewFolder(); }}
-                  placeholder="Page name"
+                  placeholder={t('share_folder_picker.page_name')}
                   className="flex-1 bg-[var(--nim-bg)] border border-[var(--nim-primary)] rounded text-[13px] text-[var(--nim-text)] px-2 py-1 outline-none"
                 />
               </div>

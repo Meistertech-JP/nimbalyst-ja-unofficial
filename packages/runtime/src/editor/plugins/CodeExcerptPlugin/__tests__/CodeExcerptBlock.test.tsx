@@ -5,10 +5,14 @@
 
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getRoot, type LexicalEditor } from 'lexical';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import type { PropsWithChildren } from 'react';
+import { afterEach } from 'vitest';
 
 const readExcerptFile = vi.fn(async () => ({ text: 'SECRET=hunter2\n', head: 'abc123def', absolutePath: '/repo/.env' }));
 vi.mock('../CodeExcerptCallbacks', () => ({
@@ -21,6 +25,8 @@ import { CodeExcerptBlock } from '../CodeExcerptBlock';
 import { $createCodeExcerptNode, CodeExcerptNode } from '../CodeExcerptNodeCore';
 
 const SHARED = 'path: .env\nlines: 1-100\n---\n';
+
+afterEach(cleanup);
 
 function Harness({ onEditor }: { onEditor: (editor: LexicalEditor) => void }) {
   const [editor] = useLexicalComposerContext();
@@ -37,8 +43,15 @@ function Harness({ onEditor }: { onEditor: (editor: LexicalEditor) => void }) {
 }
 
 describe('CodeExcerptBlock', () => {
-  it('does not write a received excerpt with an empty snapshot', async () => {
+  it('localizes the quote action and empty snapshot without writing a received excerpt', async () => {
     let editor: LexicalEditor | null = null;
+    const language = 'ja';
+    const i18n = await createI18nInstance(language);
+    const Wrapper = ({ children }: PropsWithChildren) => (
+      <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    );
     render(
       <LexicalComposer initialConfig={{
         namespace: 'excerpt',
@@ -47,8 +60,11 @@ describe('CodeExcerptBlock', () => {
       }}>
         <Harness onEditor={(value) => { editor = value; }} />
       </LexicalComposer>,
+      { wrapper: Wrapper },
     );
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(screen.getByRole('button', { name: '行を引用' })).not.toBeNull();
+    expect(screen.getByText('引用された行はありません。')).not.toBeNull();
     const source = editor!.getEditorState().read(() => ($getRoot().getChildren().find((node) => node instanceof CodeExcerptNode) as CodeExcerptNode).getSource());
     expect(source).toBe(SHARED);
   });

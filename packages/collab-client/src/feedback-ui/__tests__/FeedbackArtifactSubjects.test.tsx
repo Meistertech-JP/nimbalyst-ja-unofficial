@@ -9,9 +9,12 @@
  */
 
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { FeedbackArtifact } from '@nimbalyst/collab-protocol';
+import { createInstance } from 'i18next';
+import { I18nextProvider, initReactI18next } from 'react-i18next';
+import { resources } from '@nimbalyst/i18n/resources';
 
 import { FeedbackArtifactSubjects } from '../FeedbackArtifactSubjects';
 import {
@@ -25,13 +28,39 @@ const MOCKUP: FeedbackArtifact = {
   context: 'nimbalyst-local / mockups',
 };
 
+const testI18n = createInstance();
+const testI18nReady = testI18n.use(initReactI18next).init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'common',
+  interpolation: { escapeValue: false },
+});
+
+beforeAll(async () => { await testI18nReady; });
+beforeEach(async () => { await testI18n.changeLanguage('en'); });
+
+function renderWithI18n(ui: React.ReactNode) {
+  return render(ui, { wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider> });
+}
+
 describe('FeedbackArtifactSubjects previews', () => {
+  it('localizes subject kinds and the open action in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    renderWithI18n(<FeedbackArtifactSubjects subjects={[MOCKUP]} onOpen={() => {}} />);
+
+    expect(screen.getByText('ドキュメント · nimbalyst-local / mockups').textContent)
+      .toBe('ドキュメント · nimbalyst-local / mockups');
+    expect(screen.getByText('開く').textContent).toBe('開く');
+  });
+
   it('falls back to the row for every way a preview can be absent', () => {
     const rows = () => screen.queryAllByTestId('feedback-artifact-subject');
     const panels = () => screen.queryAllByTestId('feedback-artifact-subject-expand');
 
     // No renderer at all.
-    const bare = render(<FeedbackArtifactSubjects subjects={[MOCKUP]} />);
+    const bare = renderWithI18n(<FeedbackArtifactSubjects subjects={[MOCKUP]} />);
     expect(rows()).toHaveLength(1);
     expect(panels()).toHaveLength(0);
     screen.getByText('Share popover, team-first');
@@ -39,7 +68,7 @@ describe('FeedbackArtifactSubjects previews', () => {
 
     // A renderer that declines this subject -- "I could paint, this one has
     // nothing worth showing" -- which is not the same as having no renderer.
-    const declining = render(
+    const declining = renderWithI18n(
       <FeedbackArtifactSubjects subjects={[MOCKUP]} renderPreview={() => null} />,
     );
     expect(rows()).toHaveLength(1);
@@ -47,7 +76,7 @@ describe('FeedbackArtifactSubjects previews', () => {
     declining.unmount();
 
     // A renderer that paints: panel *and* row, not panel instead of row.
-    render(
+    renderWithI18n(
       <FeedbackArtifactSubjects
         subjects={[MOCKUP]}
         renderPreview={() => <div data-testid="painted" />}
@@ -62,13 +91,13 @@ describe('FeedbackArtifactSubjects previews', () => {
   it('keeps explaining a subject it cannot open, with a preview or without', () => {
     const resolveAction = () => ({ unavailableReason: 'Open the owning project.' });
 
-    const plain = render(
+    const plain = renderWithI18n(
       <FeedbackArtifactSubjects subjects={[MOCKUP]} resolveAction={resolveAction} />,
     );
     screen.getByText('Open the owning project.');
     plain.unmount();
 
-    render(
+    renderWithI18n(
       <FeedbackArtifactSubjects
         subjects={[MOCKUP]}
         resolveAction={resolveAction}
@@ -81,7 +110,7 @@ describe('FeedbackArtifactSubjects previews', () => {
 
   it('hands the clicked subject and its card to the expander', () => {
     const onExpand = vi.fn();
-    render(
+    renderWithI18n(
       <FeedbackArtifactSubjects
         subjects={[MOCKUP]}
         renderPreview={() => <div />}

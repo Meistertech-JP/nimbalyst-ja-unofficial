@@ -10,6 +10,8 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider, useAtomValue } from 'jotai';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import {
   resolveCollabEditorAvailability,
   collabEditorLookupName,
@@ -153,17 +155,20 @@ describe('MissingCollabEditorNotice', () => {
     });
   });
 
-  it('falls back to the raw document type when no extension is recorded', () => {
+  it('localizes the fallback when no extension is recorded', async () => {
+    const japaneseI18n = await createI18nInstance('ja');
     render(
-      <Provider>
-        <MissingCollabEditorNotice
-          availability={{ kind: 'extension-missing' }}
-          documentType="widget.json"
-        />
-      </Provider>,
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <Provider>
+          <MissingCollabEditorNotice
+            availability={{ kind: 'extension-missing' }}
+            documentType="widget.json"
+          />
+        </Provider>
+      </UiLanguageProvider>,
     );
 
-    expect(screen.getByText('No editor available for document type: widget.json')).toBeTruthy();
+    expect(screen.getByText('ドキュメント種別「widget.json」に対応するエディターがありません')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
   });
 });

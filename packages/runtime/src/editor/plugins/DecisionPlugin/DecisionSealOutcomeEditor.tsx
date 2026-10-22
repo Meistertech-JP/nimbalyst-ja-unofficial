@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { DecisionBlockSource, DecisionResolvedValue } from '@nimbalyst/collab-protocol';
 import { DecisionReorderControl } from './renderers/DecisionReorder';
 
@@ -7,17 +8,18 @@ export const SealOutcomeEditor: React.FC<{
   outcome: DecisionResolvedValue | undefined;
   onChange: (outcome: DecisionResolvedValue | undefined) => void;
 }> = ({ source, outcome, onChange }) => {
+  const { t } = useTranslation('editor');
   switch (source.type) {
     case "singleSelect":
       return (
         <label className="decision-seal-choice">
-          Outcome
+          {t('decision.actions.outcome')}
           <select
             value={typeof outcome === "string" ? outcome : ""}
             onChange={(event) => onChange(event.target.value || undefined)}
             data-testid="decision-seal-outcome"
           >
-            <option value="">Choose an outcome</option>
+            <option value="">{t('decision.actions.choose_outcome')}</option>
             {source.entries.map((entry) => (
               <option key={entry.id} value={entry.id}>
                 {entry.label ?? entry.title ?? entry.id}
@@ -33,7 +35,7 @@ export const SealOutcomeEditor: React.FC<{
           className="decision-seal-choices"
           data-testid="decision-seal-outcome"
         >
-          <legend>Outcome</legend>
+          <legend>{t('decision.actions.outcome')}</legend>
           {source.entries.map((entry) => (
             <label key={entry.id}>
               <input
@@ -79,7 +81,7 @@ export const SealOutcomeEditor: React.FC<{
     case "confirm":
       return (
         <label className="decision-seal-choice">
-          Outcome
+          {t('decision.actions.outcome')}
           <select
             value={typeof outcome === "boolean" ? String(outcome) : ""}
             onChange={(event) =>
@@ -91,9 +93,9 @@ export const SealOutcomeEditor: React.FC<{
             }
             data-testid="decision-seal-outcome"
           >
-            <option value="">Break the tie</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
+            <option value="">{t('decision.actions.break_tie')}</option>
+            <option value="true">{t('decision.confirm.yes')}</option>
+            <option value="false">{t('decision.confirm.no')}</option>
           </select>
         </label>
       );

@@ -1,15 +1,40 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
+import type React from "react";
+import { createInstance } from "i18next";
 import {
   cleanup,
   fireEvent,
-  render,
+  render as rtlRender,
   screen,
   waitFor,
 } from "@testing-library/react";
+import { I18nextProvider } from "react-i18next";
+import { resources } from "@nimbalyst/i18n/resources";
 import { DeviceInventoryPanel } from "../DeviceInventoryPanel";
-afterEach(cleanup);
+
+const testI18n = createInstance();
+const testI18nReady = testI18n.init({
+  lng: "en",
+  fallbackLng: "en",
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: "common",
+  interpolation: { escapeValue: false },
+});
+
+function render(ui: React.ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider>,
+  });
+}
+
+afterEach(async () => {
+  cleanup();
+  await testI18n.changeLanguage("en");
+});
 it("hides selected offline devices, restores them, and keeps the rendered account on writes", async () => {
+  await testI18nReady;
   let hidden = false;
   const invoke = vi.fn(async (channel, update) => {
     if (channel === "sync:update-devices") hidden = update.hidden;
@@ -71,6 +96,7 @@ it("hides selected offline devices, restores them, and keeps the rendered accoun
   );
 });
 it("keeps inventory readable when the server lacks mutation support", async () => {
+  await testI18nReady;
   window.electronAPI = {
     invoke: vi.fn(async () => ({
       success: true,
@@ -80,4 +106,13 @@ it("keeps inventory readable when the server lacks mutation support", async () =
   render(<DeviceInventoryPanel enabled />);
   await screen.findByText("Inventory changes require an updated sync server.");
   expect(screen.queryByRole("button", { name: "Hide" })).toBeNull();
+});
+
+it("renders the device inventory in Japanese", async () => {
+  await testI18nReady;
+  await testI18n.changeLanguage("ja");
+  window.electronAPI = { invoke: vi.fn(async () => ({ success: true, inventoryVersion: 1, devices: [] })) } as any;
+  render(<DeviceInventoryPanel enabled />);
+  expect(await screen.findByRole("heading", { name: "ペアリング済みデバイス" })).toBeTruthy();
+  expect(await screen.findByText("ペアリング済みのデバイスはありません。")).toBeTruthy();
 });

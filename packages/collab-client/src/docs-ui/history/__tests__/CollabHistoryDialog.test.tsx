@@ -1,5 +1,7 @@
-import { describe, expect, it, vi, type Mock } from 'vitest';
+import { beforeAll, describe, expect, it, vi, type Mock } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { DocRevisionMetadata } from '@nimbalyst/collab-protocol';
 import { CollabHistoryDialog, type CollabHistoryDiffProps } from '../CollabHistoryDialog';
 import { restoreCollabRevision, type CollabHistoryController } from '../collabHistoryController';
@@ -8,6 +10,11 @@ vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({ MaterialSymbol: (
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
 
 const rev = (revisionId: string, createdAt: number): DocRevisionMetadata => ({
   revisionId,
@@ -73,17 +80,54 @@ function renderDialog(controller: CollabHistoryController, onClose = vi.fn()) {
     <div data-testid="diff">{`${oldText} -> ${newText}`}</div>
   ));
   render(
-    <CollabHistoryDialog
-      controller={controller}
-      onClose={onClose}
-      previewRevision={(_format, bytes) => decoder.decode(bytes)}
-      renderDiff={renderDiff}
-    />,
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <CollabHistoryDialog
+        controller={controller}
+        onClose={onClose}
+        previewRevision={(_format, bytes) => decoder.decode(bytes)}
+        renderDiff={renderDiff}
+      />
+    </UiLanguageProvider>,
   );
   return { renderDiff, onClose };
 }
 
 describe('shared page history dialog', () => {
+  it('renders Japanese labels and accessible names when Japanese is selected', async () => {
+    const { controller } = controllerWith({ r1: 'first draft', r2: 'second draft' });
+    const i18n = await createI18nInstance('ja');
+    const previousDocumentLanguage = document.documentElement.lang;
+
+    try {
+      render(
+        <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+          <CollabHistoryDialog
+            controller={controller}
+            onClose={vi.fn()}
+            previewRevision={(_format, bytes) => decoder.decode(bytes)}
+            renderDiff={() => null}
+          />
+        </UiLanguageProvider>,
+      );
+
+      expect((await screen.findByRole('dialog', { name: 'ドキュメント履歴' })).getAttribute('aria-label'))
+        .toBe('ドキュメント履歴');
+      expect(screen.getByText('このドキュメントの共有履歴').textContent)
+        .toBe('このドキュメントの共有履歴');
+      expect(
+        screen.getAllByText('保存したバージョン').every((element) => element.textContent === '保存したバージョン'),
+      ).toBe(true);
+      expect(screen.getByRole('button', { name: '履歴ダイアログを閉じる' }).getAttribute('aria-label'))
+        .toBe('履歴ダイアログを閉じる');
+      expect(screen.getByTestId('collab-history-mode-previous').textContent).toBe('変更');
+      expect(
+        (screen.getByRole('button', { name: '現在のバージョンとして復元' }) as HTMLButtonElement).disabled
+      ).toBe(true);
+    } finally {
+      document.documentElement.lang = previousDocumentLanguage;
+    }
+  });
+
   it('lists versions and compares a version with the previous one or the current page', async () => {
     const { controller } = controllerWith({ r1: 'first draft', r2: 'second draft' });
     renderDialog(controller);

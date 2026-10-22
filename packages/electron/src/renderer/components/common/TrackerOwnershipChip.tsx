@@ -12,6 +12,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerOwnership } from '../TrackerMode/trackerNavigationTree';
 
@@ -69,8 +70,9 @@ export const TrackerOwnershipChip: React.FC<{
   draftByDefault?: boolean;
   className?: string;
 }> = ({ ownership, teamName, draftByDefault = false, className = '' }) => {
+  const { t } = useTranslation('tracker');
   const isTeam = ownership === 'team';
-  const label = trackerOwnershipLabel(ownership, teamName);
+  const label = isTeam ? teamName?.trim() || t('ownership.team') : t('ownership.personal');
   return (
     <span
       className={`tracker-ownership-chip inline-flex items-center gap-1 px-[7px] py-[2px] rounded-[10px] text-[10px] font-semibold ${
@@ -81,12 +83,12 @@ export const TrackerOwnershipChip: React.FC<{
       data-ownership={ownership}
       title={
         isTeam
-          ? `${label} owns this tracker — changing its fields changes them for everyone`
-          : 'Only on this machine'
+          ? t('ownership.team_tooltip', { teamName: label })
+          : t('ownership.personal_tooltip')
       }
     >
       <MaterialSymbol icon={trackerOwnershipIcon(ownership)} size={11} />
-      {isTeam && draftByDefault ? `${label} · drafts` : label}
+      {isTeam && draftByDefault ? t('ownership.team_drafts', { teamName: label }) : label}
     </span>
   );
 };
@@ -151,8 +153,20 @@ export const TrackerOwnershipSectionHeader: React.FC<{
   /** Controls that act on this group alone, e.g. "new folder". Kept outside the toggle button. */
   actions?: React.ReactNode;
 }> = ({ ownership, teamName, members = [], collapsed = false, onToggleCollapsed, actions }) => {
+  const { t } = useTranslation('tracker');
   const isTeam = ownership === 'team';
   const memberCount = isTeam ? members.length : undefined;
+  const label = isTeam ? teamName?.trim() || t('ownership.team') : t('ownership.personal');
+  const description = isTeam
+    ? memberCount && memberCount > 1
+      ? t('ownership.team_description_many', { count: memberCount })
+      : t('ownership.team_description')
+    : t('ownership.personal_description');
+  const shortDescription = isTeam
+    ? memberCount && memberCount > 1
+      ? t('ownership.team_shared_many', { count: memberCount })
+      : t('ownership.team_shared')
+    : t('ownership.personal_local');
   return (
     <div className="tracker-ownership-section-header pt-1" data-ownership={ownership}>
       {/* py-1.5 + leading-5 matches the 32px type rows so the click target is the same size. */}
@@ -160,13 +174,13 @@ export const TrackerOwnershipSectionHeader: React.FC<{
         <button
           className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-1 py-1.5 text-left text-[var(--nim-text-faint)] hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text-muted)]"
           onClick={onToggleCollapsed}
-          title={trackerOwnershipDescription(ownership, memberCount)}
+          title={description}
           aria-expanded={!collapsed}
           data-testid="tracker-ownership-section-toggle"
         >
           <MaterialSymbol icon={collapsed ? 'chevron_right' : 'expand_more'} size={15} className="shrink-0" />
           <span className="min-w-0 flex-1 truncate text-[10px] leading-5 font-semibold uppercase tracking-wider">
-            {trackerOwnershipLabel(ownership, teamName)}
+            {label}
           </span>
           {isTeam
             ? <TrackerOwnershipAvatars members={members} />
@@ -175,7 +189,7 @@ export const TrackerOwnershipSectionHeader: React.FC<{
         {actions}
       </div>
       <div className="pl-[25px] text-[10px] leading-snug text-[var(--nim-text-faint)]">
-        {trackerOwnershipShortDescription(ownership, memberCount)}
+        {shortDescription}
       </div>
     </div>
   );

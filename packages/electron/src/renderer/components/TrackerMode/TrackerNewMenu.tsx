@@ -3,6 +3,7 @@
  * should not hold a permanent toolbar slot beside the common one.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { ImportFromSourceDialog } from './ImportFromSourceDialog';
 
@@ -23,6 +24,7 @@ interface TrackerNewMenuProps {
 }
 
 export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerNewMenuProps): React.JSX.Element {
+  const { t } = useTranslation('tracker');
   const [menuOpen, setMenuOpen] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [externalImporters, setExternalImporters] = useState<TrackerExternalImporter[]>([]);
@@ -55,7 +57,7 @@ export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerN
 
   const handleBulkImport = useCallback(async (directory: string) => {
     setMenuOpen(false);
-    setImportStatus('Importing...');
+    setImportStatus(t('main_extra.importing_status'));
     try {
       const result = await window.electronAPI.documentService.bulkImportTrackerItems({
         directory,
@@ -64,19 +66,19 @@ export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerN
       });
       if (result.success) {
         const parts: string[] = [];
-        if (result.imported) parts.push(`${result.imported} imported`);
-        if (result.skipped) parts.push(`${result.skipped} skipped`);
-        if (result.errors?.length) parts.push(`${result.errors.length} errors`);
-        setImportStatus(parts.join(', ') || 'No items found');
+        if (result.imported) parts.push(t('main_extra.imported_count', { count: result.imported }));
+        if (result.skipped) parts.push(t('main_extra.skipped_count', { count: result.skipped }));
+        if (result.errors?.length) parts.push(t('main_extra.error_count', { count: result.errors.length }));
+        setImportStatus(parts.join('、') || t('main_extra.no_items_found'));
       } else {
-        setImportStatus(`Failed: ${result.error}`);
+        setImportStatus(t('main_extra.import_failed_detail', { error: result.error }));
       }
     } catch (error) {
-      setImportStatus('Import failed');
+      setImportStatus(t('main_extra.import_failed'));
       console.error('[TrackerNewMenu] Bulk import failed:', error);
     }
     setTimeout(() => setImportStatus(null), 4000);
-  }, []);
+  }, [t]);
 
   const itemClass = 'w-full flex items-center gap-2 px-3 py-1.5 text-xs text-nim-muted hover:bg-nim-tertiary hover:text-nim text-left';
 
@@ -94,12 +96,12 @@ export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerN
               data-testid="tracker-toolbar-new-button"
             >
               <MaterialSymbol icon="add" size={14} />
-              New
+              {t('main.new')}
             </button>
             <button
               className="inline-flex h-7 items-center rounded-r border-l border-white/25 bg-[var(--nim-primary)] px-1 text-white transition-opacity hover:opacity-90"
               onClick={() => setMenuOpen((open) => !open)}
-              aria-label="More ways to add items"
+              aria-label={t('main.more_ways_to_add_items')}
               aria-expanded={menuOpen}
               data-testid="tracker-toolbar-new-menu-button"
             >
@@ -114,7 +116,7 @@ export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerN
             data-testid="tracker-toolbar-new-menu-button"
           >
             <MaterialSymbol icon="upload_file" size={14} />
-            Import
+            {t('main.import')}
           </button>
         )}
         {menuOpen && (
@@ -122,7 +124,7 @@ export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerN
             {BULK_IMPORT_DIRECTORIES.map((directory) => (
               <button key={directory} className={itemClass} onClick={() => handleBulkImport(directory)}>
                 <MaterialSymbol icon="folder_open" size={14} />
-                Import from {directory === 'nimbalyst-local/plans' ? directory : `${directory}/`}
+                {t(directory === 'nimbalyst-local/plans' ? 'main.import_local_plans' : directory === 'plans' ? 'main.import_plans' : 'main.import_design')}
               </button>
             ))}
             {externalImporters.length > 0 && <div className="my-1 border-t border-nim" />}
@@ -137,7 +139,7 @@ export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerN
                 data-testid={`tracker-import-source-${importer.id}`}
               >
                 <MaterialSymbol icon={importer.icon || 'cloud_download'} size={14} />
-                Import from {importer.displayName}
+                {t('main.import_from_source', { source: importer.displayName })}
               </button>
             ))}
           </div>
@@ -152,7 +154,7 @@ export function TrackerNewMenu({ workspacePath, canCreate, onNewItem }: TrackerN
           onClose={() => setSourceDialog(null)}
           onImported={(count) => {
             if (count > 0) {
-              setImportStatus(`Imported ${count} item${count === 1 ? '' : 's'}`);
+              setImportStatus(t('main_extra.imported_items', { count }));
               setTimeout(() => setImportStatus(null), 4000);
             }
           }}

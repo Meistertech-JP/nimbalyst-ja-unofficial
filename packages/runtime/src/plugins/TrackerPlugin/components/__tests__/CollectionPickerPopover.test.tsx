@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { CollectionPickerPopover } from '../CollectionPickerPopover';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import type { RelationshipCandidate } from '../RelationshipFieldEditor';
@@ -20,6 +22,15 @@ const candidates: RelationshipCandidate[] = [
   { itemId: 'mst_2', title: 'Beta Hardening', issueKey: 'NIM-11', trackerType: 'milestone' },
   { itemId: 'rel_1', title: 'v2.0', issueKey: 'NIM-12', trackerType: 'release' },
 ];
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+const render = (ui: React.ReactElement) =>
+  rtlRender(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
 
 function renderPicker(
   overrides: Partial<React.ComponentProps<typeof CollectionPickerPopover>> = {},
@@ -224,5 +235,27 @@ describe('CollectionPickerPopover', () => {
     renderPicker({ candidates: [] });
 
     expect(screen.getByTestId('collection-picker-empty').textContent).toBe('No collections yet');
+  });
+
+  it('localizes the search and empty-state accessibility labels', async () => {
+    await testI18n.changeLanguage('ja');
+    renderPicker({ candidates: [] });
+
+    expect(screen.getByRole('textbox', { name: 'コレクションを検索' }).getAttribute('placeholder'))
+      .toBe('コレクションを検索…');
+    expect(screen.getByRole('listbox', { name: 'コレクション' })).toBeDefined();
+    expect(screen.getByTestId('collection-picker-empty').textContent).toBe('コレクションはまだありません');
+  });
+
+  it('localizes the inline collection creation controls', async () => {
+    await testI18n.changeLanguage('ja');
+    renderPicker({ candidates: [], onCreateCollection: vi.fn() });
+    const search = screen.getByRole('textbox', { name: 'コレクションを検索' });
+    fireEvent.change(search, { target: { value: 'Gamma' } });
+    fireEvent.click(screen.getByTestId('collection-picker-create'));
+
+    expect(screen.getByRole('radiogroup', { name: 'コレクションのタイプ' })).toBeDefined();
+    expect(screen.getByRole('radio', { name: 'マイルストーン' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDefined();
   });
 });

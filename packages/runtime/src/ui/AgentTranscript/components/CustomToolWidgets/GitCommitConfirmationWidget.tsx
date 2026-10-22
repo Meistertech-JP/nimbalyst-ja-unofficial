@@ -15,6 +15,7 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import { MaterialSymbol } from '../../../icons/MaterialSymbol';
@@ -327,6 +328,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
   workspacePath,
   sessionId,
 }) => {
+  const { t } = useTranslation('git');
   const posthog = usePostHog();
 
   // Get host from atom (set by SessionTranscript or SessionDetailScreen)
@@ -694,7 +696,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
         if (stalePaths.length > 0) {
           setIsCommitting(false);
           setStaleHunkNotice(
-            `${stalePaths.map(getFilePathBasename).join(', ')} changed since this proposal was created. The hunks below have been refreshed — check your selection and commit again.`
+            t('commit_confirmation.stale_hunks', { files: stalePaths.map(getFilePathBasename).join(', ') })
           );
           await Promise.all(stalePaths.map((p) => loadHunkState(p)));
           return;
@@ -742,7 +744,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
       };
       setLocalResult(errorResult);
     }
-  }, [stagedFiles, filesToStage, hunkStates, commitMessage, isPending, proposalId, host, loadHunkState]);
+  }, [stagedFiles, filesToStage, hunkStates, commitMessage, isPending, proposalId, host, loadHunkState, t]);
 
   const handleCancel = useCallback(() => {
     if (hasResponded || !isPending || !host) return; // Prevent double-response
@@ -787,12 +789,12 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
         >
           <div className="git-commit-widget__header flex items-center gap-2 p-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
             <MaterialSymbol icon="close" size={16} className="text-[var(--nim-text-muted)]" />
-            <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">Commit Proposal</span>
+            <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">{t('commit_confirmation.proposal_title')}</span>
             <span
               data-testid="git-commit-cancelled"
               className="flex items-center gap-1 text-xs font-medium text-[var(--nim-text-muted)] py-1 px-2 bg-[var(--nim-bg-tertiary)] rounded-full"
             >
-              Cancelled
+              {t('commit_confirmation.cancelled')}
             </span>
           </div>
         </div>
@@ -809,6 +811,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
           minute: '2-digit',
         })
       : null;
+    const errorMessage = result.error ?? '';
 
     return (
       <div
@@ -823,7 +826,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             className={result.success ? 'text-[var(--nim-success)]' : 'text-[var(--nim-error)]'}
           />
           <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">
-            {result.success ? 'Changes Committed' : 'Commit Failed'}
+            {result.success ? t('commit_confirmation.changes_committed') : t('commit_confirmation.commit_failed')}
           </span>
           {result.success && result.commitHash && (
             <span
@@ -840,7 +843,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             <div className="text-[0.8125rem] font-medium text-[var(--nim-text)] leading-normal whitespace-pre-wrap font-mono">{commitMessage}</div>
             <div className="mt-1 pt-2 border-t border-[var(--nim-border)]">
               <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)] mb-1.5">
-                {filesToStage.size} file{filesToStage.size !== 1 ? 's' : ''} committed
+                {t('commit_confirmation.files_committed', { count: filesToStage.size })}
               </div>
               <div className="flex flex-wrap gap-1">
                 {Array.from(filesToStage).map((filePath) => {
@@ -859,7 +862,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             {extraRepoResults.length > 0 && (
               <div className="git-commit-widget__repo-results mt-1 pt-2 border-t border-[var(--nim-border)]">
                 <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)] mb-1.5">
-                  Also committed
+                  {t('commit_confirmation.also_committed')}
                 </div>
                 {extraRepoResults.map((entry) => (
                   <div key={entry.repoPath} className="flex items-center gap-2 text-xs" title={entry.repoPath}>
@@ -867,7 +870,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
                       {entry.repoPath.split('/').filter(Boolean).pop()}
                     </span>
                     <span className={`font-mono ${entry.success ? 'text-[var(--nim-success)]' : 'text-[var(--nim-error)]'}`}>
-                      {entry.success ? entry.commitHash?.slice(0, 7) : (entry.error ?? 'failed')}
+                      {entry.success ? entry.commitHash?.slice(0, 7) : (entry.error ?? t('commit_confirmation.failed'))}
                     </span>
                   </div>
                 ))}
@@ -876,7 +879,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             {uncommittableFiles.length > 0 && (
               <div className="git-commit-widget__uncommittable mt-1 pt-2 border-t border-[var(--nim-border)]">
                 <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-warning)] mb-1.5">
-                  {uncommittableFiles.length} file{uncommittableFiles.length !== 1 ? 's' : ''} in no repository — not committed
+                  {t('commit_confirmation.files_not_committed', { count: uncommittableFiles.length })}
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {uncommittableFiles.map((filePath) => (
@@ -896,7 +899,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
                     host.trackEvent('auto_commit_disabled', { source: 'commit_success_widget' });
                   }}
                 >
-                  Disable auto-approve
+                  {t('commit_confirmation.disable_auto_approve')}
                 </button>
               </div>
             )}
@@ -906,7 +909,13 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             data-testid="git-commit-error"
             className="git-commit-widget__error-content p-2 bg-[color-mix(in_srgb,var(--nim-error)_8%,var(--nim-bg))] text-[var(--nim-error)] text-[0.8125rem]"
           >
-            {result.error}
+            {errorMessage === 'Cancelled'
+              ? t('commit_confirmation.cancelled')
+              : errorMessage === 'Commit failed'
+                ? t('commit_confirmation.commit_failed')
+                : errorMessage.startsWith('Error: ')
+                  ? `${t('commit_confirmation.commit_failed')}: ${errorMessage.slice('Error: '.length)}`
+                  : errorMessage}
           </div>
         )}
       </div>
@@ -934,13 +943,13 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
       >
         <div className="git-commit-widget__header flex items-center gap-2 p-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
           <MaterialSymbol icon="check_circle" size={16} className="text-[var(--nim-success)]" />
-          <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">Changes Committed</span>
+          <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">{t('commit_confirmation.changes_committed')}</span>
         </div>
         <div className="git-commit-widget__success-content p-2 bg-[color-mix(in_srgb,var(--nim-success)_8%,var(--nim-bg))] flex flex-col gap-2">
           <div className="text-[0.8125rem] font-medium text-[var(--nim-text)] leading-normal whitespace-pre-wrap font-mono">{initialCommitMessage}</div>
           <div className="mt-1 pt-2 border-t border-[var(--nim-border)]">
             <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)] mb-1.5">
-              {initialFilesToStage.length} file{initialFilesToStage.length !== 1 ? 's' : ''} committed
+              {t('commit_confirmation.files_committed', { count: initialFilesToStage.length })}
             </div>
             <div className="flex flex-wrap gap-1">
               {initialFilesToStage.map((filePath) => {
@@ -970,7 +979,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
                 }}
                 className="accent-[var(--nim-primary)] w-3.5 h-3.5 cursor-pointer"
               />
-              <span className="text-[0.75rem] text-[var(--nim-text-muted)]">Auto-approve future commits</span>
+              <span className="text-[0.75rem] text-[var(--nim-text-muted)]">{t('commit_confirmation.auto_approve_future_commits')}</span>
             </label>
           </div>
         </div>
@@ -988,7 +997,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
       {/* Header matching FileEditsSidebar controls bar */}
       <div className="git-commit-widget__header flex items-center gap-2 p-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
         <MaterialSymbol icon="commit" size={16} className="text-[var(--nim-primary)]" />
-        <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">Commit Proposal</span>
+        <span className="text-sm font-semibold text-[var(--nim-text)] flex-1">{t('commit_confirmation.proposal_title')}</span>
         {/* Which repo this commits into. A multi-root workspace can have a
             proposal per repo on screen at once; without this they are
             indistinguishable. */}
@@ -1009,7 +1018,11 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
           <div className="git-commit-widget__target-worktree flex items-start gap-1.5 p-2 rounded border border-[var(--nim-warning)] bg-[var(--nim-bg)] text-[0.8125rem] text-[var(--nim-text)] select-text">
             <MaterialSymbol icon="alt_route" size={14} className="text-[var(--nim-warning)] mt-0.5" />
             <span className="min-w-0 break-all">
-              Commits to another worktree{targetWorktree.branch ? <> on branch <code>{targetWorktree.branch}</code></> : ' (detached HEAD)'} at <code>{targetWorktree.path}</code>
+              {t('commit_confirmation.target_worktree')}{' '}
+              {targetWorktree.branch
+                ? <>{t('commit_confirmation.on_branch')} <code>{targetWorktree.branch}</code></>
+                : t('commit_confirmation.detached_head')}{' '}
+              {t('commit_confirmation.at_path')} <code>{targetWorktree.path}</code>
             </span>
           </div>
         )}
@@ -1017,7 +1030,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
         {/* Reasoning */}
         {reasoning && (
           <div className="git-commit-widget__reasoning flex flex-col gap-1.5">
-            <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">Analysis</div>
+            <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">{t('commit_confirmation.analysis')}</div>
             <div className="p-2 bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded text-[0.8125rem] text-[var(--nim-text-muted)] leading-normal">{reasoning}</div>
           </div>
         )}
@@ -1025,7 +1038,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
         {/* Files to Stage */}
         <div className="git-commit-widget__files flex flex-col gap-1.5">
           <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">
-            Files to Stage ({stagedFiles.length}/{initialFilesToStage.length})
+            {t('commit_confirmation.files_to_stage', { selected: stagedFiles.length, total: initialFilesToStage.length })}
           </div>
           {staleHunkNotice && (
             <div
@@ -1069,14 +1082,14 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
 
         {/* Commit Message */}
         <div className="git-commit-widget__message flex flex-col gap-1.5">
-          <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">Commit Message</div>
+          <div className="text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--nim-text-muted)]">{t('commit_confirmation.commit_message')}</div>
           <textarea
             data-testid="git-commit-message-input"
             className="w-full p-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[0.8125rem] font-mono resize-y leading-snug focus:outline-none focus:border-[var(--nim-border-focus)] placeholder:text-[var(--nim-text-faint)]"
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             rows={6}
-            placeholder="Enter commit message..."
+            placeholder={t('commit_confirmation.enter_commit_message')}
           />
         </div>
 
@@ -1100,7 +1113,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
               }}
               className="accent-[var(--nim-primary)] w-3.5 h-3.5 cursor-pointer"
             />
-            <span className="text-[0.75rem] text-[var(--nim-text-muted)]">Auto-approve commits</span>
+            <span className="text-[0.75rem] text-[var(--nim-text-muted)]">{t('commit_confirmation.auto_approve_commits')}</span>
           </label>
           <button
             data-testid="git-commit-cancel"
@@ -1108,7 +1121,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             onClick={handleCancel}
             disabled={isCommitting}
           >
-            Cancel
+            {t('commit_confirmation.cancel')}
           </button>
           <button
             data-testid="git-commit-confirm"
@@ -1117,7 +1130,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
             disabled={isCommitting || stagedFiles.length === 0 || !commitMessage.trim()}
           >
             <MaterialSymbol icon="check" size={14} />
-            {isCommitting ? 'Committing...' : 'Confirm & Commit'}
+            {isCommitting ? t('commit_confirmation.committing') : t('commit_confirmation.confirm_and_commit')}
           </button>
         </div>
       </div>

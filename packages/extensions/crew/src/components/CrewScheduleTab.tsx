@@ -8,12 +8,14 @@ import { MaterialSymbol } from '@nimbalyst/extension-sdk';
 import type { CrewMemberSnapshot, CrewScheduleSpec, CrewWeekday } from '../shared/types';
 import { CrewError, CrewToggle } from './CrewBits';
 import { useCrew, useCrewAction, useCrewQuery } from './CrewContext';
-import { formatScheduleTiming, formatTokens, formatWhen, WEEKDAYS } from './crewFormat';
+import { formatScheduleTiming, formatTokens, formatWhen, WEEKDAY_KEYS, WEEKDAYS } from './crewFormat';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 type Editing = { index: number | null; spec: CrewScheduleSpec } | null;
 
 export function CrewScheduleTab({ member }: { member: CrewMemberSnapshot }) {
   const { client } = useCrew();
+  const { t } = useTranslation('extensions');
   const { definition, runtime } = member;
   const slug = definition.slug;
   const schedule = useCrewQuery(() => client.call('scheduleGet', { slug }), [slug]);
@@ -36,10 +38,10 @@ export function CrewScheduleTab({ member }: { member: CrewMemberSnapshot }) {
     <div className="crew-stack crew-schedule-tab">
       <section>
         <div className="crew-section-label crew-row">
-          <span className="crew-grow">Schedule</span>
+          <span className="crew-grow">{t('crew.schedule.title')}</span>
           {!editing && (
             <button type="button" className="crew-link-button" onClick={() => setEditing({ index: null, spec: { daily: '09:00', prompt: '' } })}>
-              Add
+              {t('crew.schedule.add')}
             </button>
           )}
         </div>
@@ -52,9 +54,9 @@ export function CrewScheduleTab({ member }: { member: CrewMemberSnapshot }) {
           />
         )}
         {entries === null ? (
-          schedule.error ? <CrewError message={schedule.error} /> : <p className="crew-faint" role="status">Loading...</p>
+          schedule.error ? <CrewError message={schedule.error} /> : <p className="crew-faint" role="status">{t('crew.schedule.loading')}</p>
         ) : entries.length === 0 && !editing ? (
-          <p className="crew-faint">No schedule. {definition.name} only works when you start a shift or it wakes itself.</p>
+          <p className="crew-faint">{t('crew.schedule.empty', { name: definition.name })}</p>
         ) : (
           <div className="crew-stack">
             {entries.map((entry) => editing?.index === entry.index ? (
@@ -71,20 +73,20 @@ export function CrewScheduleTab({ member }: { member: CrewMemberSnapshot }) {
               <div key={entry.index} className="crew-schedule-row" data-enabled={entry.spec.enabled !== false}>
                 <div className="crew-row">
                   <MaterialSymbol icon={entry.spec.at ? 'event' : 'schedule'} size={14} />
-                  <span className="crew-grow crew-truncate crew-mono">{entry.description || formatScheduleTiming(entry.spec)}</span>
+                  <span className="crew-grow crew-truncate crew-mono">{entry.description || formatScheduleTiming(entry.spec, t)}</span>
                   <CrewToggle
-                    label="Enabled"
+                    label={t('crew.schedule.enabled')}
                     checked={entry.spec.enabled !== false}
                     disabled={busy !== null}
                     onChange={(enabled) => void save(specs.map((s, i) => (i === entry.index ? { ...s, enabled } : s)))}
                   />
-                  <button type="button" className="crew-icon-button" aria-label="Edit schedule entry" onClick={() => setEditing({ index: entry.index, spec: entry.spec })}>
+                  <button type="button" className="crew-icon-button" aria-label={t('crew.schedule.edit_aria')} onClick={() => setEditing({ index: entry.index, spec: entry.spec })}>
                     <MaterialSymbol icon="edit" size={14} />
                   </button>
                   <button
                     type="button"
                     className="crew-icon-button"
-                    aria-label="Remove schedule entry"
+                    aria-label={t('crew.schedule.remove_aria')}
                     disabled={busy !== null}
                     onClick={() => void save(specs.filter((_, i) => i !== entry.index))}
                   >
@@ -93,10 +95,10 @@ export function CrewScheduleTab({ member }: { member: CrewMemberSnapshot }) {
                 </div>
                 {entry.spec.prompt && <p className="crew-schedule-prompt crew-selectable">{entry.spec.prompt}</p>}
                 <div className="crew-row crew-small">
-                  {entry.nextRunAt && entry.spec.enabled !== false && <span className="crew-faint">Next {formatWhen(entry.nextRunAt)}</span>}
+                  {entry.nextRunAt && entry.spec.enabled !== false && <span className="crew-faint">{t('crew.schedule.next', { when: formatWhen(entry.nextRunAt) })}</span>}
                   {entry.spec.createdBy === 'member' && (
-                    <span className="crew-self-made" title={`${definition.name} added or changed this entry itself`}>
-                      Set by {definition.name}
+                    <span className="crew-self-made" title={t('crew.schedule.set_by_title', { name: definition.name })}>
+                      {t('crew.schedule.set_by', { name: definition.name })}
                     </span>
                   )}
                 </div>
@@ -108,18 +110,18 @@ export function CrewScheduleTab({ member }: { member: CrewMemberSnapshot }) {
       </section>
 
       <section>
-        <div className="crew-section-label">Limits</div>
+        <div className="crew-section-label">{t('crew.schedule.limits')}</div>
         <dl className="crew-limits">
-          <dt>Shifts today</dt>
-          <dd>{runtime.usage.shiftsToday} of {runtime.usage.shiftsPerDayLimit}</dd>
-          <dt>Tokens today</dt>
-          <dd>{formatTokens(runtime.usage.tokensToday)} of {formatTokens(runtime.usage.dailyCeiling)}</dd>
-          <dt>Quiet hours</dt>
-          <dd>{schedule.data?.quietHours ?? definition.notify.quietHours ?? 'None'}</dd>
-          <dt>Loudest level</dt>
+          <dt>{t('crew.schedule.shifts_today')}</dt>
+          <dd>{t('crew.schedule.amount_of', { used: runtime.usage.shiftsToday, limit: runtime.usage.shiftsPerDayLimit })}</dd>
+          <dt>{t('crew.schedule.tokens_today')}</dt>
+          <dd>{t('crew.schedule.amount_of', { used: formatTokens(runtime.usage.tokensToday), limit: formatTokens(runtime.usage.dailyCeiling) })}</dd>
+          <dt>{t('crew.schedule.quiet_hours')}</dt>
+          <dd>{schedule.data?.quietHours ?? definition.notify.quietHours ?? t('crew.schedule.none')}</dd>
+          <dt>{t('crew.schedule.loudest')}</dt>
           <dd>{definition.notify.maxLevel}</dd>
         </dl>
-        <p className="crew-faint crew-small">Limits live in the definition file.</p>
+        <p className="crew-faint crew-small">{t('crew.schedule.limits_note')}</p>
       </section>
     </div>
   );
@@ -153,6 +155,7 @@ function CrewScheduleEditor({
   onSave: (spec: CrewScheduleSpec) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation('extensions');
   const [kind, setKind] = useState<EditorKind>(kindOf(initial));
   const [time, setTime] = useState(initial.daily ?? initial.weekly?.time ?? '09:00');
   const [days, setDays] = useState<CrewWeekday[]>(initial.weekly?.days ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
@@ -171,24 +174,24 @@ function CrewScheduleEditor({
   return (
     <div className="crew-schedule-editor">
       <div className="crew-row">
-        <select className="crew-input crew-grow" value={kind} onChange={(e) => setKind(e.target.value as EditorKind)} aria-label="Repeat">
-          <option value="daily">Every day</option>
-          <option value="weekly">On days</option>
-          <option value="interval">Every N minutes</option>
-          <option value="at">Once</option>
+        <select className="crew-input crew-grow" value={kind} onChange={(e) => setKind(e.target.value as EditorKind)} aria-label={t('crew.schedule.repeat')}>
+          <option value="daily">{t('crew.schedule.every_day')}</option>
+          <option value="weekly">{t('crew.schedule.on_days')}</option>
+          <option value="interval">{t('crew.schedule.every_n_minutes')}</option>
+          <option value="at">{t('crew.schedule.once')}</option>
         </select>
         {(kind === 'daily' || kind === 'weekly') && (
-          <input type="time" className="crew-input crew-input-time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Time" />
+          <input type="time" className="crew-input crew-input-time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={t('crew.schedule.time')} />
         )}
         {kind === 'interval' && (
-          <input type="number" min={5} className="crew-input crew-input-number" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} aria-label="Minutes" />
+          <input type="number" min={5} className="crew-input crew-input-number" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} aria-label={t('crew.schedule.minutes')} />
         )}
         {kind === 'at' && (
-          <input type="datetime-local" className="crew-input crew-grow" value={at} onChange={(e) => setAt(e.target.value)} aria-label="When" />
+          <input type="datetime-local" className="crew-input crew-grow" value={at} onChange={(e) => setAt(e.target.value)} aria-label={t('crew.schedule.when')} />
         )}
       </div>
       {kind === 'weekly' && (
-        <div className="crew-day-picker" role="group" aria-label="Days">
+        <div className="crew-day-picker" role="group" aria-label={t('crew.schedule.days')}>
           {WEEKDAYS.map((day) => {
             const on = days.includes(day);
             return (
@@ -199,17 +202,17 @@ function CrewScheduleEditor({
                 data-on={on}
                 onClick={() => setDays(on ? days.filter((d) => d !== day) : WEEKDAYS.filter((d) => d === day || days.includes(d)))}
               >
-                {day.slice(0, 2).replace(/^./, (c) => c.toUpperCase())}
+                {t(`crew.timing.${WEEKDAY_KEYS[day]}`)}
               </button>
             );
           })}
         </div>
       )}
-      <textarea className="crew-input crew-textarea-small" placeholder="What should this run do?" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+      <textarea className="crew-input crew-textarea-small" placeholder={t('crew.schedule.prompt_placeholder')} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
       <div className="crew-row crew-row-end">
-        <button type="button" className="crew-btn crew-btn-ghost crew-btn-small" onClick={onCancel}>Cancel</button>
+        <button type="button" className="crew-btn crew-btn-ghost crew-btn-small" onClick={onCancel}>{t('crew.schedule.cancel')}</button>
         <button type="button" className="crew-btn crew-btn-primary crew-btn-small" disabled={!valid || busy} onClick={() => spec && onSave(spec)}>
-          Save
+          {t('crew.schedule.save')}
         </button>
       </div>
     </div>

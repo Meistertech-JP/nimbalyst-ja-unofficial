@@ -39,7 +39,7 @@ vi.mock('../../../../store/atoms/autoCommitAtoms', async () => {
   const { atom } = await import('jotai');
   return { autoCommitEnabledAtom: atom(false), setAutoCommitEnabledAtom: atom(null, () => {}) };
 });
-vi.mock('../../../common/AlphaBadge', () => ({ AlphaBadge: () => null, SETTINGS_ALPHA_TOOLTIP: '' }));
+vi.mock('../../../common/AlphaBadge', () => ({ AlphaBadge: () => null, SettingsAlphaBadge: () => null }));
 
 import { AgentFeaturesPanel } from '../../../Settings/AgentFeaturesPanel';
 import { AdvancedPanel } from '../AdvancedPanel';

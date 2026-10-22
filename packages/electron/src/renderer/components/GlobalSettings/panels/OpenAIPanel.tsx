@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ProviderConfig, Model } from '../../Settings/SettingsView';
 import { SettingsToggle } from '../SettingsToggle';
 
@@ -27,19 +28,19 @@ export function OpenAIPanel({
   onTestConnection,
   onConfigChange
 }: OpenAIPanelProps) {
+  const { t } = useTranslation('settings');
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">OpenAI</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Access to GPT-5.4, GPT-5.3 Chat, GPT-5 mini/nano, GPT-4.1, GPT-4o, and other current OpenAI models.
-          Requires an OpenAI API key from platform.openai.com.
+          {t('provider.openai.description')}
         </p>
       </div>
 
       <SettingsToggle
         variant="enable"
-        name="Enable OpenAI"
+        name={t('provider.openai.enable')}
         checked={config.enabled}
         onChange={onToggle}
       />
@@ -47,7 +48,7 @@ export function OpenAIPanel({
       {config.enabled && (
         <>
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">API Configuration</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.api_configuration')}</h4>
             <div className="api-key-section mt-4">
               <div className="api-key-row flex gap-2 items-center">
                 <input
@@ -67,9 +68,9 @@ export function OpenAIPanel({
                   onClick={onTestConnection}
                   disabled={config.testStatus === 'testing'}
                 >
-                  {config.testStatus === 'testing' ? 'Testing...' :
-                   config.testStatus === 'success' ? '✓ Connected' :
-                   config.testStatus === 'error' ? '✗ Failed' : 'Test'}
+                  {config.testStatus === 'testing' ? t('provider.testing') :
+                   config.testStatus === 'success' ? t('provider.connected') :
+                   config.testStatus === 'error' ? t('provider.failed') : t('provider.test')}
                 </button>
               </div>
               {config.testMessage && config.testStatus === 'error' && (
@@ -79,27 +80,27 @@ export function OpenAIPanel({
           </div>
 
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Available Models</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.available_models')}</h4>
             {loading && (
-              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">Loading models...</div>
+              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">{t('provider.loading_models')}</div>
             )}
 
             {!loading && availableModels.length > 0 && (
               <div className="models-section">
                 <div className="models-header flex items-center justify-between mb-3">
-                  <span className="text-sm text-[var(--nim-text-muted)]">Select models to enable:</span>
+                  <span className="text-sm text-[var(--nim-text-muted)]">{t('provider.select_models')}</span>
                   <div className="models-actions flex gap-2">
                     <button
                       className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                       onClick={() => onSelectAllModels(true)}
                     >
-                      Select All
+                      {t('provider.select_all')}
                     </button>
                     <button
                       className="models-action-btn text-xs py-1 px-2 rounded bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer transition-all"
                       onClick={() => onSelectAllModels(false)}
                     >
-                      Deselect All
+                      {t('provider.deselect_all')}
                     </button>
                   </div>
                 </div>
@@ -120,7 +121,7 @@ export function OpenAIPanel({
             )}
 
             {!loading && availableModels.length === 0 && apiKeys.openai && (
-              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">No models available. Check your API key and connection.</div>
+              <div className="models-loading text-sm text-[var(--nim-text-muted)] py-2">{t('provider.no_models')}</div>
             )}
           </div>
         </>

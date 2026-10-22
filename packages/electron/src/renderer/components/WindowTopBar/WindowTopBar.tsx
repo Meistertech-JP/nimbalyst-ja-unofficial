@@ -1,5 +1,7 @@
 import React from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import type { TFunction } from 'i18next';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { MAIN_WINDOW_TITLE_BAR_HEIGHT } from '../../../shared/windowChrome';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
@@ -220,19 +222,32 @@ export function clampGitActivityCommand(
  * because "who started this" is the question the menu bar cannot otherwise
  * answer -- a `git fetch` an agent launched looks identical to one the user did.
  */
-export function describeGitActivityEntry(entry: WindowTopBarGitActivityEntry): string {
-  const prefix = entry.source === 'agent' ? 'Agent session' : 'Nimbalyst';
-  const where = entry.repoLabel ? ` in ${entry.repoLabel}` : '';
-  return `${prefix}: ${entry.command.trim().replace(/\s+/g, ' ')}${where}`;
+export function describeGitActivityEntry(
+  entry: WindowTopBarGitActivityEntry,
+  t: TFunction<'menu'>,
+): string {
+  const prefix = entry.source === 'agent'
+    ? t('top_bar.agent_session')
+    : t('top_bar.nimbalyst');
+  return t('top_bar.git_activity_entry', {
+    source: prefix,
+    command: entry.command.trim().replace(/\s+/g, ' '),
+    where: entry.repoLabel ? t('top_bar.git_activity_repo', { repo: entry.repoLabel }) : '',
+  });
 }
 
 /** The tooltip line for the indicator: the newest command plus how many others. */
-export function describeGitActivity(activity: WindowTopBarGitActivity | undefined): string | null {
+export function describeGitActivity(
+  activity: WindowTopBarGitActivity | undefined,
+  t: TFunction<'menu'>,
+): string | null {
   const latest = activity?.latest;
   if (!latest) return null;
   const others = Math.max(0, (activity?.running.length ?? 0) - 1);
-  const suffix = others > 0 ? ` (+${others} more running)` : '';
-  return `${describeGitActivityEntry(latest)}${suffix}`;
+  return t('top_bar.git_activity', {
+    entry: describeGitActivityEntry(latest, t),
+    suffix: others > 0 ? t('top_bar.more_running', { count: others }) : '',
+  });
 }
 
 function PanelButton({
@@ -242,8 +257,11 @@ function PanelButton({
   side: 'left' | 'right';
   control: WindowTopBarPanelControl;
 }) {
+  const { t } = useTranslation('menu');
   const menu = useFloatingMenu({ placement: 'bottom-end' });
-  const action = control.collapsed ? 'Show' : 'Hide';
+  const actionLabel = t(control.collapsed ? 'top_bar.show_panel' : 'top_bar.hide_panel', {
+    label: control.label,
+  });
   const dockIcon = side === 'left' ? 'dock_to_right' : 'dock_to_left';
   const selectedOption = control.options?.find((option) => option.selected);
 
@@ -263,9 +281,9 @@ function PanelButton({
             className={`window-top-bar__panel-button window-top-bar__panel-split-toggle group w-9 px-1.5 rounded-r-none ${CONTROL_BASE} ${CONTROL_GHOST} ${PANEL_OPEN_TINT} ${NO_DRAG_REGION}`}
             data-testid={`window-top-bar-${side}-pane`}
             data-collapsed={control.collapsed}
-            aria-label={`${action} ${paneLabel}`}
+            aria-label={t(control.collapsed ? 'top_bar.show_panel' : 'top_bar.hide_panel', { label: paneLabel })}
             aria-pressed={!control.collapsed}
-            title={`${action} ${paneLabel}`}
+            title={t(control.collapsed ? 'top_bar.show_panel' : 'top_bar.hide_panel', { label: paneLabel })}
             onClick={control.onToggle}
           >
             <span className="relative inline-flex items-center justify-center">
@@ -294,10 +312,13 @@ function PanelButton({
             className={`window-top-bar__panel-button window-top-bar__panel-split-caret w-7 px-1 rounded-l-none ${CONTROL_BASE} ${CONTROL_GHOST} ${PANEL_OPEN_TINT} ${NO_DRAG_REGION}`}
             data-testid={`window-top-bar-${side}-pane-menu-button`}
             data-collapsed={control.collapsed}
-            aria-label={`Choose ${control.label}: ${selectedOption?.label ?? 'None'}`}
+            aria-label={t('top_bar.choose_panel', {
+              label: control.label,
+              selection: selectedOption?.label ?? t('top_bar.none'),
+            })}
             aria-haspopup="menu"
             aria-expanded={menu.isOpen}
-            title={`Choose ${control.label}`}
+            title={t('top_bar.choose_panel_title', { label: control.label })}
             onClick={() => menu.setIsOpen(!menu.isOpen)}
           >
             <MaterialSymbol icon="arrow_drop_down" size={16} />
@@ -344,8 +365,8 @@ function PanelButton({
       className={`window-top-bar__panel-button w-9 px-1.5 ${CONTROL_BASE} ${CONTROL_GHOST} ${PANEL_OPEN_TINT} ${NO_DRAG_REGION}`}
       data-testid={`window-top-bar-${side}-pane`}
       data-collapsed={control.collapsed}
-      aria-label={`${action} ${control.label}`}
-      title={`${action} ${control.label}`}
+      aria-label={actionLabel}
+      title={actionLabel}
       onClick={control.onToggle}
     >
       <MaterialSymbol icon={dockIcon} size={18} />
@@ -360,17 +381,18 @@ function GitStatusMenu({
   gitStatus: WindowTopBarGitStatus | null;
   actions: WindowTopBarGitActions;
 }) {
+  const { t } = useTranslation('menu');
   const menu = useFloatingMenu({ placement: 'bottom-end' });
-  const activityDescription = describeGitActivity(actions.activity);
+  const activityDescription = describeGitActivity(actions.activity, t);
   const branchTitle = gitStatus
     ? [
         gitStatus.branch,
-        gitStatus.hasUncommitted ? 'Modified' : null,
-        gitStatus.ahead > 0 ? `${gitStatus.ahead} ahead` : null,
-        gitStatus.behind > 0 ? `${gitStatus.behind} behind` : null,
+        gitStatus.hasUncommitted ? t('top_bar.modified') : null,
+        gitStatus.ahead > 0 ? t('top_bar.ahead', { count: gitStatus.ahead }) : null,
+        gitStatus.behind > 0 ? t('top_bar.behind', { count: gitStatus.behind }) : null,
         activityDescription,
       ].filter(Boolean).join(' · ')
-    : 'Git unavailable';
+    : t('top_bar.git_unavailable');
   // Only this window's own pull/push blocks the menu's actions. Observing an
   // agent's `git status` must not lock the user out of their own Git commands.
   const busy = actions.busyAction != null;
@@ -397,7 +419,7 @@ function GitStatusMenu({
         data-testid="window-top-bar-git-status"
         data-state={gitStatus ? 'available' : 'unavailable'}
         title={branchTitle}
-        aria-label={`Git actions: ${branchTitle}`}
+        aria-label={t('top_bar.git_actions', { branch: branchTitle })}
         aria-haspopup="menu"
         aria-expanded={menu.isOpen}
         onClick={openMenu}
@@ -418,14 +440,14 @@ function GitStatusMenu({
             </span>
             {gitStatus.hasUncommitted && (
               <span className={`window-top-bar__git-detail window-top-bar__dirty text-nim-warning ${GIT_DETAIL}`}>
-                Modified
+                {t('top_bar.modified')}
               </span>
             )}
             {gitStatus.ahead > 0 && (
               <span
                 className={`window-top-bar__git-detail window-top-bar__git-count inline-flex items-center gap-px text-nim-faint ${GIT_DETAIL}`}
-                title={`${gitStatus.ahead} ahead`}
-                aria-label={`${gitStatus.ahead} ahead`}
+                title={t('top_bar.ahead', { count: gitStatus.ahead })}
+                aria-label={t('top_bar.ahead', { count: gitStatus.ahead })}
               >
                 <MaterialSymbol icon="arrow_upward" size={14} />
                 {gitStatus.ahead}
@@ -434,8 +456,8 @@ function GitStatusMenu({
             {gitStatus.behind > 0 && (
               <span
                 className={`window-top-bar__git-detail window-top-bar__git-count inline-flex items-center gap-px text-nim-faint ${GIT_DETAIL}`}
-                title={`${gitStatus.behind} behind`}
-                aria-label={`${gitStatus.behind} behind`}
+                title={t('top_bar.behind', { count: gitStatus.behind })}
+                aria-label={t('top_bar.behind', { count: gitStatus.behind })}
               >
                 <MaterialSymbol icon="arrow_downward" size={14} />
                 {gitStatus.behind}
@@ -444,7 +466,7 @@ function GitStatusMenu({
           </>
         ) : (
           <span className={`window-top-bar__git-unavailable text-nim-faint ${GIT_DETAIL}`}>
-            Git unavailable
+            {t('top_bar.git_unavailable')}
           </span>
         )}
         {/* Additive: branch and counts above stay put so the indicator does not
@@ -484,7 +506,7 @@ function GitStatusMenu({
             {showRepos && (
               <>
                 <div className="window-top-bar__menu-heading px-2 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-nim-faint">
-                  Repositories
+                  {t('top_bar.repositories')}
                 </div>
                 {repos.map((repo) => (
                   <button
@@ -531,7 +553,7 @@ function GitStatusMenu({
                     data-testid="window-top-bar-git-activity-item"
                     data-source={entry.source}
                     disabled={actions.gitLogAvailable === false}
-                    title={describeGitActivityEntry(entry)}
+                    title={describeGitActivityEntry(entry, t)}
                     onClick={() => {
                       (actions.onOpenActivity ?? actions.onOpenLog)();
                       menu.setIsOpen(false);
@@ -539,7 +561,7 @@ function GitStatusMenu({
                   >
                     <MaterialSymbol icon="progress_activity" size={17} className="animate-spin" />
                     <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {describeGitActivityEntry(entry)}
+                      {describeGitActivityEntry(entry, t)}
                     </span>
                   </button>
                 ))}
@@ -554,7 +576,7 @@ function GitStatusMenu({
               onClick={actions.onPull}
             >
               <MaterialSymbol icon="arrow_downward" size={17} />
-              <span>{actions.busyAction === 'pull' ? 'Pulling…' : 'Pull'}</span>
+              <span>{t(actions.busyAction === 'pull' ? 'top_bar.pulling' : 'top_bar.pull')}</span>
             </button>
             <button
               type="button"
@@ -564,7 +586,7 @@ function GitStatusMenu({
               onClick={actions.onPush}
             >
               <MaterialSymbol icon="arrow_upward" size={17} />
-              <span>{actions.busyAction === 'push' ? 'Pushing…' : 'Push'}</span>
+              <span>{t(actions.busyAction === 'push' ? 'top_bar.pushing' : 'top_bar.push')}</span>
             </button>
             <div className="window-top-bar__menu-separator h-px my-1 mx-0.5 bg-[var(--nim-border)]" />
             <button
@@ -575,7 +597,7 @@ function GitStatusMenu({
               onClick={actions.onOpenLog}
             >
               <MaterialSymbol icon="history" size={17} />
-              <span>Open Git Log</span>
+              <span>{t('top_bar.open_git_log')}</span>
             </button>
             {actions.gitLogAvailable === false && actions.onOpenExtensionSettings && (
               <button
@@ -588,7 +610,7 @@ function GitStatusMenu({
                 }}
               >
                 <MaterialSymbol icon="extension" size={17} />
-                <span>Enable Git Extension…</span>
+                <span>{t('top_bar.enable_git_extension')}</span>
               </button>
             )}
             {actions.feedback && (
@@ -638,6 +660,7 @@ function CreateSplitButton({
   control: WindowTopBarCreateControl;
   side: 'left' | 'right';
 }) {
+  const { t } = useTranslation('menu');
   const menu = useFloatingMenu({ placement: side === 'left' ? 'bottom-start' : 'bottom-end' });
   const hasMenu = Boolean(control.menuItems && control.menuItems.length > 0);
   const primaryRef = React.useRef<HTMLButtonElement>(null);
@@ -687,10 +710,10 @@ function CreateSplitButton({
           type="button"
           className={`window-top-bar__create-caret w-6 px-1 rounded-l-none ${CONTROL_BASE} ${CONTROL_GHOST} ${NO_DRAG_REGION}`}
           data-testid={control.menuTestId ?? `window-top-bar-create-${side}-menu-button`}
-          aria-label={`Choose what to create: ${control.label}`}
+          aria-label={t('top_bar.choose_what_to_create', { label: control.label })}
           aria-haspopup="menu"
           aria-expanded={menu.isOpen}
-          title="Choose what to create"
+          title={t('top_bar.choose_what_to_create_title')}
           onClick={() => menu.setIsOpen(!menu.isOpen)}
         >
           <MaterialSymbol icon="arrow_drop_down" size={16} />
@@ -712,7 +735,7 @@ function CreateSplitButton({
               >
                 <MaterialSymbol icon="folder_open" size={13} />
                 <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                  in {control.destination}
+                  {t('top_bar.create_in_destination', { destination: control.destination })}
                 </span>
               </div>
             )}
@@ -783,6 +806,7 @@ function CreateSplitButton({
 }
 
 function ExitFullScreenButton() {
+  const { t } = useTranslation('menu');
   const fullScreen = useAtomValue(windowFullScreenAtom);
   if (!fullScreen) return null;
 
@@ -791,8 +815,8 @@ function ExitFullScreenButton() {
       type="button"
       className={`window-top-bar__exit-full-screen px-1.5 ${CONTROL_BASE} ${CONTROL_GHOST} ${NO_DRAG_REGION}`}
       data-testid="window-top-bar-exit-full-screen"
-      title="Exit Full Screen"
-      aria-label="Exit Full Screen"
+      title={t('top_bar.exit_full_screen')}
+      aria-label={t('top_bar.exit_full_screen')}
       onClick={() => window.electronAPI?.exitWindowFullScreen?.()}
     >
       <MaterialSymbol icon="fullscreen_exit" size={18} />
@@ -809,6 +833,7 @@ export function WindowTopBar({
   newSessionControl,
   newInTreeControl,
 }: WindowTopBarProps) {
+  const { t } = useTranslation('menu');
   const trackerDocumentItemId = useAtomValue(trackerModeDocumentItemIdAtom);
   const trackerLayout = useAtomValue(trackerModeLayoutAtom);
   const setTrackerLayout = useSetAtom(setTrackerModeLayoutAtom);
@@ -816,7 +841,7 @@ export function WindowTopBar({
   const visiblePanelControls: WindowTopBarPanelControls | undefined = trackerDocumentActive
     ? {
         left: {
-          label: 'Tracker list',
+          label: t('top_bar.tracker_list'),
           collapsed: !trackerLayout.documentListPaneVisible,
           onToggle: () => {
             setTrackerLayout({
@@ -825,7 +850,7 @@ export function WindowTopBar({
           },
         },
         right: {
-          label: 'Tracker document panel',
+          label: t('top_bar.tracker_document_panel'),
           collapsed: !trackerLayout.documentRightPanelVisible,
           onToggle: () => {
             setTrackerLayout({

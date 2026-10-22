@@ -11,14 +11,11 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { getRecordTitle } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import { isLocalKeyReference, resolveDisplayIssueKey } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/localIssueKey';
-import {
-  TRACKER_DEPENDENCY_CYCLE_MESSAGE,
-  TRACKER_LOCAL_ISSUE_KEY_BRIEF_MESSAGE,
-} from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerLifecycle';
 
 interface TrackerDependencyCycleBannerProps {
   /** Every open item the readiness model flagged as part of a cycle. */
@@ -30,6 +27,7 @@ export const TrackerDependencyCycleBanner: React.FC<TrackerDependencyCycleBanner
   items,
   onOpenItem,
 }) => {
+  const { t } = useTranslation('tracker');
   const signature = useMemo(
     () => items.map((item) => item.id).sort().join('|'),
     [items],
@@ -58,8 +56,8 @@ export const TrackerDependencyCycleBanner: React.FC<TrackerDependencyCycleBanner
       <div className="flex items-center gap-2">
         <MaterialSymbol icon="sync_problem" size={16} className="text-nim-warning" />
         <span className="flex-1">
-          {items.length} {items.length === 1 ? 'item is' : 'items are'} in a dependency cycle.
-          {' '}{TRACKER_DEPENDENCY_CYCLE_MESSAGE}
+          {t(items.length === 1 ? 'dependency_cycle.count_one' : 'dependency_cycle.count_other', { count: items.length })}
+          {' '}{t('dependency_cycle.explanation')}
         </span>
         <button
           type="button"
@@ -67,13 +65,13 @@ export const TrackerDependencyCycleBanner: React.FC<TrackerDependencyCycleBanner
           onClick={() => setExpanded((current) => !current)}
           data-testid="tracker-dependency-cycle-toggle"
         >
-          {expanded ? 'Hide items' : 'Show items'}
+          {expanded ? t('dependency_cycle.hide_items') : t('dependency_cycle.show_items')}
         </button>
         <button
           type="button"
           className="text-nim-faint hover:text-nim p-0.5"
           onClick={() => setDismissedSignature(signature)}
-          aria-label="Dismiss"
+          aria-label={t('dependency_cycle.dismiss')}
           data-testid="tracker-dependency-cycle-dismiss"
         >
           <MaterialSymbol icon="close" size={14} />
@@ -100,7 +98,7 @@ export const TrackerDependencyCycleBanner: React.FC<TrackerDependencyCycleBanner
       )}
       {expanded && hasLocalRef && (
         <p className="m-0 pl-6 text-nim-faint" data-testid="tracker-dependency-cycle-local-ref-note">
-          {TRACKER_LOCAL_ISSUE_KEY_BRIEF_MESSAGE}
+          {t('dependency_cycle.local_reference_note')}
         </p>
       )}
     </div>

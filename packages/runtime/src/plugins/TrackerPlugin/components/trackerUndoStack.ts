@@ -199,16 +199,31 @@ export function mergeUndoChanges(
  * Toast copy for a replayed entry. The verb lives in the title and never in the
  * body, so the notification does not read "Undone / Undone — ...".
  */
+export interface TrackerUndoToastCopy {
+  undone: string;
+  redone: string;
+  skippedChanges: (applied: number, total: number, skipped: number) => string;
+}
+
+const DEFAULT_TRACKER_UNDO_TOAST_COPY: TrackerUndoToastCopy = {
+  undone: 'Undone',
+  redone: 'Redone',
+  skippedChanges: (applied, total, skipped) => {
+    const noun = total === 1 ? 'change' : 'changes';
+    return `${applied} of ${total} ${noun} (${skipped} changed since)`;
+  },
+};
+
 export function formatTrackerUndoToast(
   direction: 'undo' | 'redo',
   label: string,
   applied: number,
-  skipped: number
+  skipped: number,
+  copy: TrackerUndoToastCopy = DEFAULT_TRACKER_UNDO_TOAST_COPY,
 ): { title: string; body: string } {
-  const title = direction === 'undo' ? 'Undone' : 'Redone';
+  const title = direction === 'undo' ? copy.undone : copy.redone;
   if (skipped === 0) return { title, body: label };
 
   const total = applied + skipped;
-  const noun = total === 1 ? 'change' : 'changes';
-  return { title, body: `${applied} of ${total} ${noun} (${skipped} changed since)` };
+  return { title, body: copy.skippedChanges(applied, total, skipped) };
 }

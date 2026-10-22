@@ -6,6 +6,8 @@ export interface TestConfig {
   id: string;
   /** Display label, e.g. 'E2E Tests' */
   label: string;
+  /** Translation key for built-in configuration labels */
+  labelKey?: 'playwright.config_labels.e2e' | 'playwright.config_labels.extensions';
   /** Path to playwright config file, relative to workspace root */
   configPath: string;
   /** Extra environment variables to pass when running tests */

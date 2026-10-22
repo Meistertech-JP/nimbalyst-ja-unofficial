@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TranscriptViewMessage } from '../../../ai/server/types';
 import type { ToolCallDiffLoadResult } from '../../../ai/server/transcript';
 import { MarkdownRenderer, type TranscriptFileLocation } from './MarkdownRenderer';
@@ -65,6 +66,17 @@ export const getToolExpandId = (toolMsg: TranscriptViewMessage, toolIndex: numbe
 
 const NO_EDITS: any[] = [];
 
+/** Formats provider-supplied sub-agent execution metadata for non-renderer callers. */
+export function formatSubagentAuditLabel(
+  model: string | null | undefined,
+  reasoningEffort: string | null | undefined,
+): string | null {
+  const parts: string[] = [];
+  if (model) parts.push(`Model: ${model}`);
+  if (reasoningEffort) parts.push(`Reasoning effort: ${reasoningEffort}`);
+  return parts.length > 0 ? parts.join('; ') : null;
+}
+
 // Lowercased tool names that should render with EditToolResultCard.
 // 'applypatch'/'apply_patch' covers Codex ACP's apply_patch tool, which
 // emits its diff via a `changes: { [path]: { type, unified_diff } }` shape
@@ -87,17 +99,6 @@ export const isEditToolName = (name?: string): boolean => {
   if (normalized.endsWith(':edit')) return true;
   return false;
 };
-
-/** Formats provider-supplied sub-agent execution metadata without normalizing it. */
-export function formatSubagentAuditLabel(
-  model: string | null | undefined,
-  reasoningEffort: string | null | undefined,
-): string | null {
-  const parts: string[] = [];
-  if (model) parts.push(`Model: ${model}`);
-  if (reasoningEffort) parts.push(`Reasoning effort: ${reasoningEffort}`);
-  return parts.length > 0 ? parts.join('; ') : null;
-}
 
 const safeParseJson = (value: string): any | null => {
   try {
@@ -580,6 +581,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
   shared,
   subagentContext,
 }: TranscriptToolCardProps): JSX.Element | null {
+  const { t } = useTranslation('agents');
   // The card is memoized, so it subscribes to the widget registry itself:
   // extension enable/disable must swap widgets without a session reload.
   useTranscriptToolWidgetRegistryVersion();
@@ -669,14 +671,21 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
     );
   }
 
-  const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || 'Tool';
+  const toolDisplayName = formatToolDisplayName(tool.toolName || '') || tool.toolName || t('aichat:rich_transcript.tool');
 
   // Extract description from arguments for sub-agents
   const toolArgs = tool.arguments as Record<string, any> | undefined;
   const description = (isSubAgent && toolArgs?.description ? toolArgs.description : null) as string | null;
   const prompt = (isSubAgent && toolArgs?.prompt ? toolArgs.prompt : null) as string | null;
   const subagentAuditLabel = isSubAgent
-    ? formatSubagentAuditLabel(toolMsg.subagent?.model, toolMsg.subagent?.reasoningEffort)
+    ? [
+        toolMsg.subagent?.model
+          ? t('aichat:rich_transcript.model', { model: toolMsg.subagent.model })
+          : null,
+        toolMsg.subagent?.reasoningEffort
+          ? t('aichat:rich_transcript.reasoning', { effort: toolMsg.subagent.reasoningEffort })
+          : null,
+      ].filter((label): label is string => Boolean(label)).join('; ') || null
     : null;
 
   // Extract result text
@@ -710,9 +719,11 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
           )}
           <span className="rich-transcript-tool-name font-mono text-sm text-[var(--nim-text)] font-medium" title={tool.toolName || undefined}>
             {isTeammate
-              ? (toolMsg.subagent?.teammateName || 'Teammate')
+              ? (toolMsg.subagent?.teammateName || t('aichat:rich_transcript.teammate'))
               : isSubAgent
-                ? (toolArgs?.run_in_background ? 'Background Agent' : 'Sub-Agent')
+                ? (toolArgs?.run_in_background
+                    ? t('aichat:rich_transcript.background_agent')
+                    : t('aichat:rich_transcript.subagent'))
                 : toolDisplayName}
             {isTeammate && toolMsg.subagent?.teammateMode && (
               <span className="rich-transcript-tool-subagent-type text-[var(--nim-text-muted)] font-normal text-xs ml-1">({toolMsg.subagent?.teammateMode})</span>
@@ -755,7 +766,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
                       onOpenFile(filePath);
                     }
                   }}
-                  title={`Open ${filePath}`}
+                  title={t('aichat:tool_call_changes.open_file', { filePath })}
                 >
                   {argStr}
                 </span>
@@ -779,7 +790,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
               return (
                 <span className="flex items-center gap-1 shrink-0">
                   <span className="inline-block w-3 h-3 border-2 border-[var(--nim-bg-tertiary)] border-t-[var(--nim-primary)] rounded-full animate-spin" />
-                  <span className="text-[11px] text-[var(--nim-text-muted)]">Running</span>
+                  <span className="text-[11px] text-[var(--nim-text-muted)]">{t('transcript_tool.running')}</span>
                 </span>
               );
             }
@@ -787,7 +798,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
               return (
                 <span className="flex items-center gap-1 shrink-0">
                   <span className="text-[var(--nim-primary)] text-[10px]">&#9675;</span>
-                  <span className="text-[11px] text-[var(--nim-text-muted)]">Idle</span>
+                  <span className="text-[11px] text-[var(--nim-text-muted)]">{t('meta.status.idle')}</span>
                 </span>
               );
             }
@@ -795,7 +806,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
               return (
                 <span className="flex items-center gap-1 shrink-0">
                   <MaterialSymbol icon="check_circle" size={14} className="text-[var(--nim-success)]" />
-                  <span className="text-[11px] text-[var(--nim-text-muted)]">Done</span>
+                  <span className="text-[11px] text-[var(--nim-text-muted)]">{t('aichat:rich_transcript.done')}</span>
                 </span>
               );
             }
@@ -803,7 +814,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
               return (
                 <span className="flex items-center gap-1 shrink-0">
                   <MaterialSymbol icon="cancel" size={14} className="text-[var(--nim-error)]" />
-                  <span className="text-[11px] text-[var(--nim-text-muted)]">Errored</span>
+                  <span className="text-[11px] text-[var(--nim-text-muted)]">{t('aichat:rich_transcript.errored')}</span>
                 </span>
               );
             }
@@ -812,7 +823,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
               return (
                 <span className="flex items-center gap-1 shrink-0">
                   <span className="inline-block w-3 h-3 border-2 border-[var(--nim-primary)] border-t-transparent rounded-full animate-spin" />
-                  <span className="text-[11px] text-[var(--nim-text-muted)]">Running</span>
+                  <span className="text-[11px] text-[var(--nim-text-muted)]">{t('transcript_tool.running')}</span>
                 </span>
               );
             }
@@ -842,7 +853,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
             {/* Show prompt for sub-agents (collapsable) */}
             {isSubAgent && prompt && (
               <details className="rich-transcript-tool-details my-2">
-                <summary className="rich-transcript-tool-details-summary text-xs text-[var(--nim-text-faint)] cursor-pointer py-1 select-none hover:text-[var(--nim-text-muted)]">View full prompt</summary>
+                <summary className="rich-transcript-tool-details-summary text-xs text-[var(--nim-text-faint)] cursor-pointer py-1 select-none hover:text-[var(--nim-text-muted)]">{t('transcript_tool.view_full_prompt')}</summary>
                 <div className="rich-transcript-tool-details-content mt-1 text-sm">
                   <MarkdownRenderer content={prompt} isUser={false} onOpenFile={onOpenFile} onOpenSession={onOpenSession} />
                 </div>
@@ -852,7 +863,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
             {/* Show regular tool arguments (not for sub-agents) */}
             {!isSubAgent && tool.arguments && Object.keys(tool.arguments).length > 0 && (
               <div className="rich-transcript-tool-section mb-1.5">
-                <div className="rich-transcript-tool-section-label text-[var(--nim-text-faint)] mb-0.5 text-xs">Arguments:</div>
+                <div className="rich-transcript-tool-section-label text-[var(--nim-text-faint)] mb-0.5 text-xs">{t('transcript_tool.arguments')}</div>
                 <JSONViewer data={tool.arguments} maxHeight="16rem" />
               </div>
             )}
@@ -861,7 +872,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
             {hasChildren && (
               <div className="rich-transcript-tool-section mb-1.5">
                 <div className="rich-transcript-tool-section-label text-[var(--nim-text-faint)] mb-0.5 text-xs">
-                  {isTeammate ? 'Teammate' : 'Sub-agent'} Actions ({(toolMsg.subagent?.childEvents ?? []).length}):
+                  {t(isTeammate ? 'transcript_tool.teammate_actions' : 'transcript_tool.sub_agent_actions', { count: (toolMsg.subagent?.childEvents ?? []).length })}
                 </div>
                 <div className="rich-transcript-subagent-children flex flex-col gap-1 mt-2">
                   {(toolMsg.subagent?.childEvents ?? []).map((childMsg: TranscriptViewMessage, childIdx: number) => {
@@ -888,7 +899,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
             {isSubAgent && !tool.result && tool.progress.length > 0 && (
               <div className="rich-transcript-tool-section mb-1.5 flex items-center gap-2 text-xs text-[var(--nim-text-muted)]">
                 <span className="inline-block w-3 h-3 border-2 border-[var(--nim-primary)] border-t-transparent rounded-full animate-spin" />
-                <span>Running <span className="font-mono text-[var(--nim-text)]">{tool.progress[tool.progress.length - 1]?.progressContent}</span></span>
+                <span>{t('transcript_tool.running')} <span className="font-mono text-[var(--nim-text)]">{tool.progress[tool.progress.length - 1]?.progressContent}</span></span>
                 <span>({Math.round(tool.progress[tool.progress.length - 1]?.elapsedSeconds ?? 0)}s)</span>
               </div>
             )}
@@ -897,7 +908,7 @@ export const TranscriptToolCard = React.memo(function TranscriptToolCard({
             {tool.result && (
               <details className="rich-transcript-tool-details my-2" open={!isSubAgent}>
                 <summary className="rich-transcript-tool-details-summary text-xs text-[var(--nim-text-faint)] cursor-pointer py-1 select-none hover:text-[var(--nim-text-muted)]">
-                  {isSubAgent ? 'View result' : 'Result'}
+                  {t(isSubAgent ? 'transcript_tool.view_result' : 'transcript_tool.result')}
                 </summary>
                 <div className="rich-transcript-tool-details-content mt-1 text-sm">
                   {resultText ? (

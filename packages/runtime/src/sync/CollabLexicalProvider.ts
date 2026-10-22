@@ -130,7 +130,7 @@ import * as Y from 'yjs';
 import type { Doc } from 'yjs';
 import { collaboratorDisplayName } from './collaboratorDisplayName';
 import { DocumentSyncProvider } from './DocumentSync';
-import type { DocumentSyncStatus } from './documentSyncTypes';
+import type { AwarenessState, DocumentSyncStatus } from './documentSyncTypes';
 import {
   COLLAB_CONNECTION_DIAGNOSTICS_COMPILED,
   emitCollabLexicalConnectionEvent,
@@ -179,6 +179,10 @@ export interface CollabLexicalProviderOptions {
    * local file is the source of truth.
    */
   deferInitialSync?: boolean;
+  /** Localized display-only label for collaborators whose name is unresolved. */
+  unnamedCollaboratorLabel?: string;
+  /** Mark the local awareness name as a generated default without changing its wire value. */
+  localNameSource?: 'system-default';
 }
 
 export class CollabLexicalProvider implements Provider {
@@ -191,6 +195,9 @@ export class CollabLexicalProvider implements Provider {
   private awarenessHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private transportConnected = false;
   private clientStates: Map<number, UserState> = new Map();
+  private remoteAwarenessStates: Map<string, AwarenessState> = new Map();
+  private unnamedCollaboratorLabel: string;
+  private localNameSource?: 'system-default';
   private nextClientId = 1;
   private userIdToClientId: Map<string, number> = new Map();
   private awarenessUnsubscribe: (() => void) | null = null;
@@ -270,6 +277,8 @@ export class CollabLexicalProvider implements Provider {
   constructor(syncProvider: DocumentSyncProvider, options: CollabLexicalProviderOptions = {}) {
     this.syncProvider = syncProvider;
     this.deferInitialSync = options.deferInitialSync ?? false;
+    this.unnamedCollaboratorLabel = options.unnamedCollaboratorLabel ?? 'Teammate';
+    this.localNameSource = options.localNameSource;
     if (COLLAB_CONNECTION_DIAGNOSTICS_COMPILED) {
       emitCollabLexicalConnectionEvent(this, syncProvider, 'construct', {
         deferInitialSync: this.deferInitialSync,
@@ -328,6 +337,13 @@ export class CollabLexicalProvider implements Provider {
    */
   getYDoc(): Doc {
     return this.editorDoc;
+  }
+
+  /** Update only rendered fallback labels; awareness names and real identities are untouched. */
+  setUnnamedCollaboratorLabel(label: string): void {
+    if (!label || label === this.unnamedCollaboratorLabel) return;
+    this.unnamedCollaboratorLabel = label;
+    this.updateRemoteAwareness(this.remoteAwarenessStates);
   }
 
   /**
@@ -420,30 +436,7 @@ export class CollabLexicalProvider implements Provider {
 
     // Subscribe to remote awareness changes
     this.awarenessUnsubscribe = this.syncProvider.onAwarenessChange((states) => {
-      // Convert DocumentSyncProvider's awareness (Map<userId, AwarenessState>)
-      // to Lexical's format (Map<clientId, UserState>)
-      this.clientStates.clear();
-
-      for (const [userId, state] of states) {
-        let clientId = this.userIdToClientId.get(userId);
-        if (clientId === undefined) {
-          clientId = this.nextClientId++;
-          this.userIdToClientId.set(userId, clientId);
-        }
-
-        this.clientStates.set(clientId, {
-          anchorPos: state.cursor ? JSON.parse(state.cursor.anchor) : null,
-          focusPos: state.cursor ? JSON.parse(state.cursor.head) : null,
-          color: state.user.color,
-          // Clients that fell back to the member id still broadcast it as a name.
-          name: collaboratorDisplayName({ name: state.user.name, memberId: userId }),
-          focusing: !!state.cursor,
-          awarenessData: {},
-        });
-      }
-
-      // Notify Lexical awareness listeners
-      this.notifyAwareness();
+      this.updateRemoteAwareness(states);
     });
 
     // Attach the doc bridge and hydrate the editor doc from the shared doc.
@@ -645,6 +638,7 @@ export class CollabLexicalProvider implements Provider {
     const announced = sendDeparture.call(this.syncProvider, {
       name: state.name,
       color: state.color,
+      ...(this.localNameSource ? { nimbalystNameSource: this.localNameSource } : {}),
     });
     if (announced) this.departureAnnounced = true;
     return announced;
@@ -666,6 +660,7 @@ export class CollabLexicalProvider implements Provider {
       user: {
         name: identityState?.name ?? '',
         color: identityState?.color ?? '',
+        ...(this.localNameSource ? { nimbalystNameSource: this.localNameSource } : {}),
       },
     });
   }
@@ -688,5 +683,36 @@ export class CollabLexicalProvider implements Provider {
 
   private notifyAwareness(): void {
     this.awarenessListeners.update?.forEach(cb => cb());
+  }
+
+  private updateRemoteAwareness(states: Map<string, AwarenessState>): void {
+    this.remoteAwarenessStates = new Map(states);
+    // Convert DocumentSyncProvider's awareness (Map<userId, AwarenessState>)
+    // to Lexical's format (Map<clientId, UserState>).
+    this.clientStates.clear();
+
+    for (const [userId, state] of states) {
+      let clientId = this.userIdToClientId.get(userId);
+      if (clientId === undefined) {
+        clientId = this.nextClientId++;
+        this.userIdToClientId.set(userId, clientId);
+      }
+
+      this.clientStates.set(clientId, {
+        anchorPos: state.cursor ? JSON.parse(state.cursor.anchor) : null,
+        focusPos: state.cursor ? JSON.parse(state.cursor.head) : null,
+        color: state.user.color,
+        name: state.user.nimbalystNameSource === 'system-default'
+          ? this.unnamedCollaboratorLabel
+          : collaboratorDisplayName(
+            { name: state.user.name, memberId: userId },
+            this.unnamedCollaboratorLabel,
+          ),
+        focusing: !!state.cursor,
+        awarenessData: {},
+      });
+    }
+
+    this.notifyAwareness();
   }
 }

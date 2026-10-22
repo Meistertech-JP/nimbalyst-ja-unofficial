@@ -76,6 +76,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactElement,
 } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   Background,
   BackgroundVariant,
@@ -378,6 +379,7 @@ function CanvasSurfaceInner({
   comments,
   readOnly = false,
 }: CanvasSurfaceProps): ReactElement {
+  const { t } = useTranslation('editor');
   const flow = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const documentRef = useRef(document);
@@ -1752,10 +1754,10 @@ function CanvasSurfaceInner({
       {(document.nodes ?? []).length === 0 && (
         <div className="canvas-surface__empty">
           {readOnly
-            ? 'This board is empty.'
+            ? t('canvas.empty_board_read_only')
             : pickCardReference !== undefined
-            ? 'Empty board. Add a sticky, text, image, frame, or an existing doc to start.'
-            : 'Empty board. Add a sticky, text, image, or frame to start.'}
+            ? t('canvas.empty_board_with_reference')
+            : t('canvas.empty_board')}
         </div>
       )}
     </div>

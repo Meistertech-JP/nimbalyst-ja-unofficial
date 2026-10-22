@@ -18,6 +18,7 @@
  * `canvasKeymap` resolves; a tool with no shortcut simply has no hint.
  */
 import type { ReactElement } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { Panel } from '@xyflow/react';
 
 import { MaterialSymbol } from '../ui/icons/MaterialSymbol';
@@ -83,18 +84,19 @@ export function CanvasToolRail({
   pinPlacement,
   onSaveView,
 }: CanvasToolRailProps): ReactElement {
+  const { t } = useTranslation('editor');
   return (
     <Panel position="top-left" className="canvas-tool-rail">
       <RailButton
         icon="arrow_selector_tool"
-        label="Select"
+        label={t('canvas.tool_rail.select')}
         hint="V"
         active={tool === 'select'}
         onClick={() => onToolChange('select')}
       />
       <RailButton
         icon="pan_tool"
-        label="Hand"
+        label={t('canvas.tool_rail.hand')}
         hint="H"
         active={tool === 'hand'}
         onClick={() => onToolChange('hand')}
@@ -104,38 +106,38 @@ export function CanvasToolRail({
           <span className="canvas-tool-rail__separator" aria-hidden />
           <RailButton
             icon="sticky_note_2"
-            label="Sticky"
+            label={t('canvas.tool_rail.sticky')}
             hint="N"
             onClick={() => onAddCard('sticky')}
           />
           <RailButton
             icon="title"
-            label="Text"
+            label={t('canvas.tool_rail.text')}
             hint="T"
             onClick={() => onAddCard('text')}
           />
           <RailButton
             icon="image"
-            label="Image"
+            label={t('canvas.tool_rail.image')}
             onClick={() => onAddCard('image')}
           />
           <RailButton
             icon="crop_square"
-            label="Frame"
+            label={t('canvas.tool_rail.frame')}
             hint="F"
             onClick={() => onAddCard('group')}
           />
           {onAddReference !== undefined && (
             <RailButton
               icon="description"
-              label="Put an existing file or shared document on the board"
+              label={t('canvas.tool_rail.add_reference')}
               onClick={onAddReference}
             />
           )}
           {onTogglePin !== undefined && (
             <RailButton
               icon="add_comment"
-              label="Drop a comment pin anywhere on the board"
+              label={t('canvas.tool_rail.add_comment_pin')}
               hint="M"
               active={pinPlacement}
               onClick={onTogglePin}
@@ -144,7 +146,7 @@ export function CanvasToolRail({
           <span className="canvas-tool-rail__separator" aria-hidden />
           <RailButton
             icon="bookmark_add"
-            label="Store the current position and zoom as this board's starting view"
+            label={t('canvas.tool_rail.save_view')}
             onClick={onSaveView}
           />
         </>

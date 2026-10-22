@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   flip,
@@ -10,12 +11,13 @@ import {
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { getProviderIcon } from '@nimbalyst/runtime/ui/icons/ProviderIcons';
-import { AlphaBadge, SETTINGS_ALPHA_TOOLTIP } from '../common/AlphaBadge';
-import { TEAM_BETA_TOOLTIP } from '../common/TeamBetaNotice';
+import { SettingsAlphaBadge } from '../common/AlphaBadge';
+import { TeamBetaBadge } from '../common/TeamBetaNotice';
 import { developerModeAtom } from '../../store/atoms/appSettings';
 import { teamsConfiguredAtom } from '../../store/atoms/settingsDomains';
 import {
   getSettingsRoutesForScope,
+  getSettingsRouteLabel,
   type SettingsCategory,
   type ExtensionSettingsRoute,
   type SettingsRoute,
@@ -33,10 +35,30 @@ interface SettingsSidebarProps {
   extensionRoutes?: readonly ExtensionSettingsRoute[];
 }
 
-const GROUP_DESCRIPTIONS: Record<string, string> = {
-  'Agent Providers': 'Agents can use tools and project files for multi-step work.',
-  'Chat Providers': 'Chat providers make direct model calls for focused conversations.',
+const GROUP_LABEL_KEYS: Record<string, string> = {
+  Application: 'sidebar.groups.application',
+  'Agent Providers': 'sidebar.groups.agent_providers',
+  'Chat Providers': 'sidebar.groups.chat_providers',
+  'Tools & Token Cost': 'sidebar.groups.tools_mcp',
+  'Installed Extensions': 'sidebar.groups.installed_extensions',
+  'Team / Org': 'sidebar.groups.team_org',
+  Organization: 'sidebar.groups.organization',
+  'Project Permissions': 'sidebar.groups.project_permissions',
+  Project: 'sidebar.groups.project',
+  Extensions: 'sidebar.groups.extensions',
 };
+
+const GROUP_DESCRIPTION_KEYS: Record<string, string> = {
+  'Agent Providers': 'sidebar.groups.agent_providers_tooltip',
+  'Chat Providers': 'sidebar.groups.chat_providers_tooltip',
+};
+
+function settingsRouteLabel(
+  route: SettingsRoute | { id: string; label: string; icon?: string; status: string },
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): string {
+  return 'source' in route ? getSettingsRouteLabel(route, t) : route.label;
+}
 
 function routeIcon(route: SettingsRoute): React.ReactNode {
   if (['claude-code', 'claude', 'openai', 'openai-codex', 'opencode', 'copilot-cli', 'grok-build', 'cursor-agent', 'antigravity-gemini-agent', 'lmstudio'].includes(route.id)) {
@@ -54,6 +76,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   showDirectChatProviders,
   extensionRoutes = [],
 }) => {
+  const { t } = useTranslation('settings');
   const developerMode = useAtomValue(developerModeAtom);
   const teamsConfigured = useAtomValue(teamsConfiguredAtom);
   const [extAgentProviders, setExtAgentProviders] = useState<
@@ -107,20 +130,20 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
         {groups.map(([group, routes]) => (
           <section key={group} className="settings-sidebar-group mb-4" data-testid={`settings-group-${group.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
             <div className="settings-sidebar-group-title flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--nim-text-muted)]">
-              {group}
-              {GROUP_DESCRIPTIONS[group] && (
+              {t(GROUP_LABEL_KEYS[group] ?? group, { defaultValue: group })}
+              {GROUP_DESCRIPTION_KEYS[group] && (
                 <button
                   type="button"
                   className="settings-sidebar-group-info inline-flex border-0 bg-transparent p-0 text-[var(--nim-text-faint)] hover:text-[var(--nim-text-muted)]"
-                  aria-label={`About ${group}`}
+                  aria-label={t('sidebar.about_group', { group: t(GROUP_LABEL_KEYS[group] ?? group, { defaultValue: group }) })}
                   onMouseEnter={(event) => {
                     refs.setReference(event.currentTarget);
-                    setTooltipText(GROUP_DESCRIPTIONS[group]);
+                    setTooltipText(t(GROUP_DESCRIPTION_KEYS[group]));
                   }}
                   onMouseLeave={() => setTooltipText(null)}
                   onFocus={(event) => {
                     refs.setReference(event.currentTarget);
-                    setTooltipText(GROUP_DESCRIPTIONS[group]);
+                    setTooltipText(t(GROUP_DESCRIPTION_KEYS[group]));
                   }}
                   onBlur={() => setTooltipText(null)}
                 >
@@ -152,15 +175,13 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                       ? routeIcon(route)
                       : route.icon ? <MaterialSymbol icon={route.icon} size={16} /> : getProviderIcon(id, { size: 16 })}
                   </span>
-                  <span className="settings-sidebar-item-name flex-1 truncate">{route.label}</span>
+                  <span className="settings-sidebar-item-name flex-1 truncate">{isSettingsRoute
+                    ? settingsRouteLabel(route, t)
+                    : t(`sidebar.item_${id.replace(/-/g, '_')}`, { defaultValue: route.label })}</span>
                   {isSettingsRoute && route.source === 'builtin' && route.isAlpha && (
-                    <AlphaBadge
-                      size="xs"
-                      // Sharing is the org/Teams entry point, so it is labelled
-                      // beta and gets the Teams-specific pricing disclosure.
-                      stage={route.id === 'project-sharing' ? 'beta' : 'alpha'}
-                      tooltip={route.id === 'project-sharing' ? TEAM_BETA_TOOLTIP : SETTINGS_ALPHA_TOOLTIP}
-                    />
+                    route.id === 'project-sharing'
+                      ? <TeamBetaBadge size="xs" />
+                      : <SettingsAlphaBadge size="xs" />
                   )}
                   {(status === 'success' || status === 'active' || status === 'error' || status === 'denied') && (
                     <span className={`settings-sidebar-item-status h-2 w-2 rounded-full ${status === 'success' || status === 'active' ? 'bg-[var(--nim-success)]' : 'bg-[var(--nim-error)]'}`} />

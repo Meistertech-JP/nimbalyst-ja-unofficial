@@ -15,6 +15,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import './TrackerDocumentView.css';
 
@@ -56,13 +57,16 @@ export const TrackerDocumentViewHeader: React.FC<TrackerDocumentViewHeaderProps>
   onCopyDocumentLink,
   onCollapseToTracker,
 }) => {
+  const { t: tTracker } = useTranslation('tracker');
+  const { t: tCommon } = useTranslation('common');
+
   return (
     <header
       className="tracker-document-view-header shrink-0 border-b border-nim bg-nim px-3 pt-2 pb-1.5"
       data-testid="tracker-document-view-header"
     >
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-nim-faint">
-        Expanded tracker content
+        {tTracker('document_view.expanded_content', { defaultValue: 'Expanded tracker content' })}
       </div>
 
       <div className="flex items-center gap-2 mt-0.5">
@@ -88,8 +92,8 @@ export const TrackerDocumentViewHeader: React.FC<TrackerDocumentViewHeaderProps>
             type="button"
             className="tracker-document-copy-link-button shrink-0 inline-flex items-center justify-center rounded p-1 text-nim-muted transition-colors hover:bg-nim-tertiary hover:text-nim"
             onClick={onCopyDocumentLink}
-            title="Copy collaborative tracker link"
-            aria-label="Copy collaborative tracker link"
+            title={tTracker('ui.copy_link', { defaultValue: 'Copy collaborative tracker link' })}
+            aria-label={tTracker('ui.copy_link', { defaultValue: 'Copy collaborative tracker link' })}
             data-testid="tracker-document-copy-link"
           >
             <MaterialSymbol icon="link" size={16} />
@@ -100,8 +104,8 @@ export const TrackerDocumentViewHeader: React.FC<TrackerDocumentViewHeaderProps>
           type="button"
           className="tracker-document-collapse-button shrink-0 inline-flex items-center justify-center rounded p-1 text-nim-muted transition-colors hover:bg-nim-tertiary hover:text-nim"
           onClick={onCollapseToTracker}
-          title="Collapse to tracker (Esc)"
-          aria-label="Collapse to tracker"
+          title={`${tTracker('document_view.collapse_to_tracker', { defaultValue: 'Collapse to tracker' })} (Esc)`}
+          aria-label={tTracker('document_view.collapse_to_tracker', { defaultValue: 'Collapse to tracker' })}
           data-testid="tracker-document-collapse"
         >
           <MaterialSymbol icon="close" size={16} />
@@ -134,46 +138,51 @@ export const TrackerDocumentListPaneHeader: React.FC<TrackerDocumentListPaneHead
   typeLabel,
   onCollapseToTracker,
   onNavigateToTypeList,
-}) => (
-  <header
-    className="tracker-document-list-pane-header flex min-h-[68px] shrink-0 flex-col items-start justify-center gap-1 border-b border-nim px-3 py-2"
-    data-testid="tracker-document-list-pane-header"
-  >
-    <button
-      type="button"
-      className="tracker-document-back-button inline-flex items-center gap-1.5 rounded border border-nim bg-transparent px-2 py-1 text-[11px] font-medium text-nim-muted transition-colors hover:bg-nim-hover hover:text-nim"
-      onClick={onCollapseToTracker}
-      title="Back to tracker (Esc)"
-      aria-label="Back to tracker"
-      data-testid="tracker-document-back"
-    >
-      <MaterialSymbol icon="arrow_back" size={15} />
-      <span>Back to tracker</span>
-    </button>
+}) => {
+  const { t: tTracker } = useTranslation('tracker');
+  const { t: tCommon } = useTranslation('common');
 
-    <nav
-      className="flex min-w-0 max-w-full items-center gap-1 text-[10px] font-medium text-nim-faint"
-      aria-label="Tracker collection"
-      data-testid="tracker-document-list-breadcrumb"
+  return (
+    <header
+      className="tracker-document-list-pane-header flex min-h-[68px] shrink-0 flex-col items-start justify-center gap-1 border-b border-nim px-3 py-2"
+      data-testid="tracker-document-list-pane-header"
     >
       <button
         type="button"
-        className="tracker-document-collection-navigation truncate rounded-sm border-0 bg-transparent p-0 font-[inherit] text-nim-faint cursor-pointer hover:text-nim hover:underline"
-        onClick={onNavigateToTypeList}
-        data-testid="tracker-document-collection-navigation"
+        className="tracker-document-back-button inline-flex items-center gap-1.5 rounded border border-nim bg-transparent px-2 py-1 text-[11px] font-medium text-nim-muted transition-colors hover:bg-nim-hover hover:text-nim"
+        onClick={onCollapseToTracker}
+        title={`${tTracker('document_view.back_to_tracker', { defaultValue: 'Back to tracker' })} (Esc)`}
+        aria-label={tTracker('document_view.back_to_tracker', { defaultValue: 'Back to tracker' })}
+        data-testid="tracker-document-back"
       >
-        {collectionLabel}
+        <MaterialSymbol icon="arrow_back" size={15} />
+        <span>{tTracker('document_view.back_to_tracker', { defaultValue: 'Back to tracker' })}</span>
       </button>
-      <span aria-hidden="true">/</span>
-      <button
-        type="button"
-        className="tracker-document-type-navigation truncate rounded-sm border-0 bg-transparent p-0 font-[inherit] text-nim-muted cursor-pointer hover:text-nim hover:underline"
-        onClick={onNavigateToTypeList}
-        title={`Back to ${typeLabel}`}
-        data-testid="tracker-document-type-navigation"
+
+      <nav
+        className="flex min-w-0 max-w-full items-center gap-1 text-[10px] font-medium text-nim-faint"
+        aria-label={tTracker('sidebar.trackers', { defaultValue: 'Trackers' })}
+        data-testid="tracker-document-list-breadcrumb"
       >
-        {typeLabel}
-      </button>
-    </nav>
-  </header>
-);
+        <button
+          type="button"
+          className="tracker-document-collection-navigation truncate rounded-sm border-0 bg-transparent p-0 font-[inherit] text-nim-faint cursor-pointer hover:text-nim hover:underline"
+          onClick={onNavigateToTypeList}
+          data-testid="tracker-document-collection-navigation"
+        >
+          {collectionLabel}
+        </button>
+        <span aria-hidden="true">/</span>
+        <button
+          type="button"
+          className="tracker-document-type-navigation truncate rounded-sm border-0 bg-transparent p-0 font-[inherit] text-nim-muted cursor-pointer hover:text-nim hover:underline"
+          onClick={onNavigateToTypeList}
+          title={tTracker('document_view.back_to_type', { typeLabel, defaultValue: `Back to ${typeLabel}` })}
+          data-testid="tracker-document-type-navigation"
+        >
+          {typeLabel}
+        </button>
+      </nav>
+    </header>
+  );
+};

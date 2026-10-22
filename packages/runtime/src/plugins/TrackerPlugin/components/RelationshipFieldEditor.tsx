@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FieldDefinition, TrackerRelationshipValue } from '@nimbalyst/tracker-schema';
 import {
   normalizeRelationshipValue,
@@ -56,6 +57,7 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
   onOpenItem,
   readOnly,
 }) => {
+  const { t } = useTranslation('tracker');
   const [draft, setDraft] = useState('');
   // The add control is collapsed to a "+" until the user opens it.
   const [adding, setAdding] = useState(false);
@@ -121,16 +123,16 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
       {relType && (
         <span
           className="relationship-type-badge inline-flex w-fit items-center gap-1 text-[10px] uppercase tracking-[0.5px] text-[var(--nim-text-faint)]"
-          title={relType.description || relType.displayName}
+          title={t(`relationship.${relType.key.replace(/-/g, '_')}`, { defaultValue: relType.displayName })}
         >
           {relType.icon && <span className="material-symbols-outlined text-[12px]">{relType.icon}</span>}
-          {relType.displayName}
-          {relType.symmetric && <span className="normal-case tracking-normal">(both ways)</span>}
+          {t(`relationship.${relType.key.replace(/-/g, '_')}`, { defaultValue: relType.displayName })}
+          {relType.symmetric && <span className="normal-case tracking-normal">{t('relationship.both_ways')}</span>}
         </span>
       )}
       <div className="flex flex-wrap gap-1">
         {current.length === 0 && (
-          <span className="text-[12px] text-[var(--nim-text-faint)] italic">No links</span>
+          <span className="text-[12px] text-[var(--nim-text-faint)] italic">{t('relationship.no_links')}</span>
         )}
         {current.map((v) => {
           const cand = candidateById.get(v.itemId);
@@ -153,8 +155,8 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
               <button
                 type="button"
                 className="relationship-pill-remove text-[var(--nim-text-faint)] hover:text-[var(--nim-error)]"
-                title="Remove link"
-                aria-label={`Remove ${label}`}
+                title={t('relationship.remove_link')}
+                aria-label={t('relationship.remove_label', { label })}
                 onClick={() => handleRemove(v.itemId)}
               >
                 ×
@@ -169,8 +171,8 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
         <button
           type="button"
           className="relationship-add-toggle inline-flex w-fit items-center text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]"
-          title="Add link"
-          aria-label="Add link"
+          title={t('relationship.add_link')}
+          aria-label={t('relationship.add_link')}
           onClick={() => setAdding(true)}
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
@@ -184,7 +186,7 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
             type="text"
             list={datalistId}
             value={draft}
-            placeholder="Link an item…"
+            placeholder={t('relationship.link_item_placeholder')}
             className="flex-1 py-1 px-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[12px] focus:outline-none focus:border-[var(--nim-primary)]"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -207,13 +209,13 @@ export const RelationshipFieldEditor: React.FC<RelationshipFieldEditorProps> = (
             disabled={!draft.trim()}
             onClick={handleAdd}
           >
-            Add
+            {t('relationship.add_link')}
           </button>
           <button
             type="button"
             className="relationship-add-cancel px-1.5 py-1 rounded text-[12px] text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]"
-            title="Cancel"
-            aria-label="Cancel adding link"
+            title={t('cancel', { ns: 'common' })}
+            aria-label={t('relationship.cancel_adding_link')}
             onClick={closeAdd}
           >
             ×

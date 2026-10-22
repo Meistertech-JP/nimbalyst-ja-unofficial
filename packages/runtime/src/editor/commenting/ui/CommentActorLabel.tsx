@@ -9,6 +9,7 @@
  */
 
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { normalizeCommentActor } from '../YDocCommentRepository';
 import type { Comment } from '../types';
@@ -55,6 +56,7 @@ export function CommentActorLabel({
   comment: Comment;
   onOpenAgentSession?: (sessionId: string) => void;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   const actor = normalizeCommentActor(comment.actor, comment.author);
 
   if (actor.kind === 'user') {
@@ -71,10 +73,10 @@ export function CommentActorLabel({
       <CommentActorAvatar comment={comment} />
       <span className="material-symbols-outlined">smart_toy</span>
       <span>{actor.sessionName}</span>
-      <span className="nim-comment-agent-badge">Agent</span>
+      <span className="nim-comment-agent-badge">{t('mentions.agent')}</span>
       {actor.onBehalfOfDisplayName && (
         <span className="nim-comment-agent-owner">
-          for {actor.onBehalfOfDisplayName}
+          {t('comments.on_behalf_of', { name: actor.onBehalfOfDisplayName })}
         </span>
       )}
     </>
@@ -90,7 +92,7 @@ export function CommentActorLabel({
     <button
       type="button"
       className="nim-comment-actor nim-comment-agent-author"
-      title={`Open agent session ${actor.sessionName}`}
+      title={t('comments.open_agent', { name: actor.sessionName })}
       onClick={(event) => {
         event.stopPropagation();
         onOpenAgentSession(actor.sessionId);

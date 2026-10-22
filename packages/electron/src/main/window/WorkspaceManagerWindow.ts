@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, app } from 'electron';
 import { join, basename } from 'path';
 import { getPreloadPath } from '../utils/appPaths';
 import { createUnresponsiveHandler } from './unresponsiveHandler';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import { existsSync, mkdirSync, statSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { resolveEntryType } from '../utils/FileTree';
@@ -258,7 +259,9 @@ export function createWorkspaceManagerWindow(options: WorkspaceManagerWindowOpti
 
   // Handle unresponsive renderer
   workspaceManagerWindow.webContents.on('unresponsive', createUnresponsiveHandler({
-    message: 'Project Manager is not responding',
+    message: translateMainDialogLabel('unresponsive.named_window_not_responding', 'Project Manager is not responding', {
+      name: 'Project Manager',
+    }),
     logLabel: '[WorkspaceManager]',
     getWindow: () => workspaceManagerWindow
   }));
@@ -409,9 +412,9 @@ export function setupWorkspaceManagerHandlers() {
   safeHandle('workspace-manager:create-workspace-dialog', async () => {
     const defaultPath = getDialogDefaultPath({ suggestedName: 'Untitled Workspace' });
     const result = await dialog.showSaveDialog({
-      title: 'Create New Workspace',
+      title: translateMainDialogLabel('main_process.create_workspace_title', 'Create New Workspace'),
       defaultPath,
-      buttonLabel: 'Create',
+      buttonLabel: translateMainDialogLabel('main_process.create_workspace_button', 'Create'),
       properties: ['createDirectory', 'showOverwriteConfirmation']
     });
 

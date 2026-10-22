@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { getDefaultStore } from 'jotai';
 import type { TrackerRecord } from '../../../../core/TrackerRecord';
 import { globalRegistry, loadBuiltinTrackers } from '../../models';
@@ -10,6 +13,16 @@ import { TrackerTable } from '../TrackerTable';
 vi.mock('posthog-js/react', () => ({
   usePostHog: () => ({ capture: vi.fn() }),
 }));
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
+
+function renderWithI18n(ui: ReactElement) {
+  return render(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+}
 
 function record(id: string): TrackerRecord {
   return {
@@ -40,7 +53,7 @@ describe('TrackerTable context menu trigger', () => {
   });
 
   it('preserves a multi-selection when its overflow action opens the shared menu', () => {
-    render(
+    renderWithI18n(
       <TrackerTable
         filterType="bug"
         hideTypeTabs
@@ -68,7 +81,7 @@ describe('TrackerTable delete confirmation', () => {
   });
 
   function renderSelected(props: Record<string, unknown>) {
-    render(
+    renderWithI18n(
       <TrackerTable
         filterType="bug"
         hideTypeTabs
@@ -142,7 +155,7 @@ describe('TrackerTable collection cell', () => {
     // would otherwise read as the raw item id.
     bug.fields.collection = [{ itemId: 'mst_1', trackerType: 'milestone' }];
 
-    render(
+    renderWithI18n(
       <TrackerTable
         filterType="bug"
         hideTypeTabs
@@ -190,7 +203,7 @@ describe('TrackerTable type column', () => {
 
   function renderTypeColumn(typeColumnDisplay?: 'icon' | 'label') {
     globalRegistry.register(customType as any);
-    const { container } = render(
+    const { container } = renderWithI18n(
       <TrackerTable
         filterType={'securityReview' as any}
         hideTypeTabs

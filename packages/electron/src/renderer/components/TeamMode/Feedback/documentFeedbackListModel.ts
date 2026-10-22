@@ -26,6 +26,8 @@ export function selectUnifiedFeedbackRows(input: {
   filter: FeedbackListFilterId;
   query: string;
   now: number;
+  locale?: string;
+  justNowLabel?: string;
 }): {
   rows: UnifiedFeedbackRow[];
   counts: Record<FeedbackListFilterId, number>;
@@ -37,6 +39,8 @@ export function selectUnifiedFeedbackRows(input: {
       viewerUserId: input.viewerUserId,
       memberNames: input.memberNames,
       now: input.now,
+      locale: input.locale,
+      justNowLabel: input.justNowLabel,
     }),
     id: `request:${entry.requestId}`,
     target: { kind: "request", requestId: entry.requestId },
@@ -88,7 +92,7 @@ export function selectUnifiedFeedbackRows(input: {
           : "Open",
       progressLabel: `${entry.answeredCount} of ${entry.recipientCount} answered`,
       awaitingFirstResponse: entry.answeredCount === 0,
-      timeLabel: formatFeedbackAge(entry.updatedAt, input.now),
+      timeLabel: formatFeedbackAge(entry.updatedAt, input.now, input.locale, input.justNowLabel),
       needsViewerResponse: entry.needsMyResponse,
       dimmed: entry.sealed || entry.availability === "blockRemoved",
       subjects: [],

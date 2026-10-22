@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating,
   offset,
@@ -52,6 +53,7 @@ export function DiffPeekPopover({
   height,
   onResize,
 }: DiffPeekPopoverProps) {
+  const { t } = useTranslation('git');
   const virtualRef = useMemo(() => ({
     getBoundingClientRect: () => anchorRect,
   }), [anchorRect]);
@@ -154,14 +156,14 @@ export function DiffPeekPopover({
             {stats.added > 0 && <span className="git-diff-stat-added">+{stats.added}</span>}
             {stats.removed > 0 && <span className="git-diff-stat-removed">−{stats.removed}</span>}
           </span>
-          {mode === 'peek' && <span className="git-diff-popover-mode-badge">Peeking</span>}
-          {mode === 'pinned' && <span className="git-diff-popover-mode-badge git-diff-popover-mode-badge--pinned">Pinned</span>}
+          {mode === 'peek' && <span className="git-diff-popover-mode-badge">{t('supplemental.diff_peek.peeking')}</span>}
+          {mode === 'pinned' && <span className="git-diff-popover-mode-badge git-diff-popover-mode-badge--pinned">{t('supplemental.diff_peek.pinned')}</span>}
           <button
             type="button"
             className="git-diff-popover-open-link"
             onClick={(e) => { e.stopPropagation(); onOpenInEditor(); }}
           >
-            Open in editor
+            {t('supplemental.diff_peek.open_in_editor')}
           </button>
         </div>
 
@@ -170,8 +172,8 @@ export function DiffPeekPopover({
         </div>
 
         <div className="git-diff-popover-footer">
-          <span><kbd>Esc</kbd> close</span>
-          {mode === 'peek' && <span><kbd>Enter</kbd> pin</span>}
+          <span><kbd>Esc</kbd> {t('supplemental.diff_peek.close')}</span>
+          {mode === 'peek' && <span><kbd>Enter</kbd> {t('supplemental.diff_peek.pin')}</span>}
         </div>
       </div>
     </FloatingPortal>

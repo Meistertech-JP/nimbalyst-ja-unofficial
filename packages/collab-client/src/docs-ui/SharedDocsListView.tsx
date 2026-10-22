@@ -21,6 +21,7 @@ import { SharedDocumentLink } from './SharedDocumentLink';
 
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating,
   offset,
@@ -105,13 +106,13 @@ interface FacetOption {
   color?: string;
 }
 
-const SEGMENTS: Array<{ id: Segment; label: string; icon: string }> = [
-  { id: 'all', label: 'All', icon: 'apps' },
-  { id: 'favorites', label: 'Favorites', icon: 'star' },
-  { id: 'review', label: 'Unread', icon: 'mark_email_unread' },
-  { id: 'recent', label: 'Recently opened', icon: 'history' },
-  { id: 'sharedWithMe', label: 'Shared with me', icon: 'call_received' },
-  { id: 'sharedByMe', label: 'Shared by me', icon: 'call_made' },
+const SEGMENTS: Array<{ id: Segment; labelKey: string; icon: string }> = [
+  { id: 'all', labelKey: 'list.segment.all', icon: 'apps' },
+  { id: 'favorites', labelKey: 'list.segment.favorites', icon: 'star' },
+  { id: 'review', labelKey: 'list.segment.unread', icon: 'mark_email_unread' },
+  { id: 'recent', labelKey: 'list.segment.recent', icon: 'history' },
+  { id: 'sharedWithMe', labelKey: 'list.segment.shared_with_me', icon: 'call_received' },
+  { id: 'sharedByMe', labelKey: 'list.segment.shared_by_me', icon: 'call_made' },
 ];
 
 /** Columns whose natural first click sorts high-to-low (time, flags). */
@@ -121,8 +122,8 @@ const DESC_FIRST_COLUMNS: ReadonlySet<SortColumn> = new Set<SortColumn>([
   'needsReview',
 ]);
 
-function docName(doc: SharedDocument): string {
-  return getCollabNodeName(doc.title) || doc.title || 'Untitled';
+function docName(doc: SharedDocument, untitled: string): string {
+  return getCollabNodeName(doc.title) || doc.title || untitled;
 }
 
 /**
@@ -137,16 +138,19 @@ function memberName(
   id: string | null | undefined,
   members: Map<string, MemberInfo>,
   myIds: ReadonlySet<string>,
+  unknown: string,
+  you: string,
 ): string {
-  if (!id) return 'Unknown';
-  if (myIds.has(id)) return 'You';
+  if (!id) return unknown;
+  if (myIds.has(id)) return you;
   const info = members.get(id);
   if (info?.name) return info.name;
   if (info?.email) return info.email.split('@')[0];
-  return 'Unknown';
+  return unknown;
 }
 
 export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId, onSelectFolder, onCreateDocument, title, headerActions }) => {
+  const { t } = useTranslation('collabSidebar');
   const { scope, host, session } = useCollabDocsUI();
 
   const documentTypesRevision = useSyncExternalStore(
@@ -176,10 +180,10 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
   const folderNames = useMemo(() => {
     const map = new Map<string, string>();
     for (const f of folders as SharedFolder[]) {
-      map.set(f.folderId, f.decryptFailed ? 'Locked' : f.name);
+      map.set(f.folderId, f.decryptFailed ? t('list.locked') : f.name);
     }
     return map;
-  }, [folders]);
+  }, [folders, t]);
 
   const [segment, setSegment] = useState<Segment>('all');
   const [query, setQuery] = useState('');
@@ -289,8 +293,13 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
   }, []);
 
   const typePresentation = useCallback(
-    (doc: SharedDocument) => resolveSharedDocumentTypePresentation(doc, descriptors),
-    [descriptors, documentTypesRevision],
+    (doc: SharedDocument) => {
+      const presentation = resolveSharedDocumentTypePresentation(doc, descriptors);
+      return presentation.state === 'unsupported' && !doc.decryptFailed && !presentation.descriptor
+        ? { ...presentation, typeLabel: t('list.unsupported_document') }
+        : presentation;
+    },
+    [descriptors, documentTypesRevision, t],
   );
 
   // --- Segment filtering ---
@@ -338,23 +347,23 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
     for (const doc of openableDocs) {
       if (!doc.createdBy) continue;
       if (!map.has(doc.createdBy)) {
-        map.set(doc.createdBy, { value: doc.createdBy, label: memberName(doc.createdBy, members, myMemberIds) });
+        map.set(doc.createdBy, { value: doc.createdBy, label: memberName(doc.createdBy, members, myMemberIds, t('list.unknown'), t('list.you')) });
       }
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [openableDocs, members, myMemberIds]);
+  }, [openableDocs, members, myMemberIds, t]);
 
   const folderOptions = useMemo<FacetOption[]>(() => {
     const map = new Map<string, FacetOption>();
     for (const doc of openableDocs) {
       const value = doc.parentFolderId ?? ROOT_FOLDER;
       if (!map.has(value)) {
-        const label = doc.parentFolderId ? folderNames.get(doc.parentFolderId) ?? 'Unknown folder' : 'No folder';
+        const label = doc.parentFolderId ? folderNames.get(doc.parentFolderId) ?? t('list.unknown_folder') : t('list.no_folder');
         map.set(value, { value, label });
       }
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [openableDocs, folderNames]);
+  }, [openableDocs, folderNames, t]);
 
   // --- Facet + search filtering ---
   const trimmedQuery = query.trim().toLowerCase();
@@ -384,13 +393,13 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
   }, [browsing, folderId, folders]);
   const filteredDocs = useMemo(() => {
     return segmentDocs.filter((d) => {
-      if (trimmedQuery && !docName(d).toLowerCase().includes(trimmedQuery)) return false;
+      if (trimmedQuery && !docName(d, t('list.untitled')).toLowerCase().includes(trimmedQuery)) return false;
       if (selectedTypes.size > 0 && !selectedTypes.has(typePresentation(d).typeLabel)) return false;
       if (selectedPeople.size > 0 && !(d.createdBy && selectedPeople.has(d.createdBy))) return false;
       if (scopedFolders.size > 0 && !scopedFolders.has(d.parentFolderId ?? ROOT_FOLDER)) return false;
       return true;
     });
-  }, [segmentDocs, trimmedQuery, selectedTypes, selectedPeople, scopedFolders, typePresentation]);
+  }, [segmentDocs, trimmedQuery, selectedTypes, selectedPeople, scopedFolders, typePresentation, t]);
 
   useEffect(() => {
     if (!trimmedQuery) {
@@ -427,11 +436,11 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
     const value = (doc: SharedDocument): string | number => {
       switch (sortColumn) {
         case 'name':
-          return docName(doc).toLowerCase();
+          return docName(doc, t('list.untitled')).toLowerCase();
         case 'type':
           return typePresentation(doc).typeLabel.toLowerCase();
         case 'createdBy':
-          return memberName(doc.createdBy, members, myMemberIds).toLowerCase();
+          return memberName(doc.createdBy, members, myMemberIds, t('list.unknown'), t('list.you')).toLowerCase();
         case 'lastEdited':
           return doc.updatedAt ?? 0;
         case 'viewedByMe':
@@ -457,7 +466,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
       if (cmp === 0) cmp = (a.updatedAt ?? 0) - (b.updatedAt ?? 0);
       return cmp * dir;
     });
-  }, [filteredDocs, sortColumn, sortDirection, typePresentation, members, myMemberIds, receipts, folderNames, unreadIds]);
+  }, [filteredDocs, sortColumn, sortDirection, typePresentation, members, myMemberIds, receipts, folderNames, unreadIds, t]);
 
   const handleSort = useCallback((column: SortColumn) => {
     setSortColumn((prevColumn) => {
@@ -499,7 +508,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
   }, [host, orgId, scope]);
 
   const totalOpenable = allDocs.filter((d) => !d.decryptFailed).length;
-  const sortLabel = SORT_LABELS[sortColumn];
+  const sortLabel = t(SORT_LABELS[sortColumn]);
 
   /**
    * "No shared documents here yet." used to cover three unrelated situations —
@@ -511,23 +520,24 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
     if (trimmedQuery) {
       return {
         icon: 'search_off',
-        title: `No matches for “${trimmedQuery}”`,
-        detail: 'Search covers document names. Clear the search to see everything shared with you.',
+        title: t('list.empty.search_title', { query: trimmedQuery }),
+        detail: t('list.empty.search_detail'),
       };
     }
     if (totalOpenable === 0) {
       return {
         icon: 'folder_shared',
-        title: 'No shared documents yet',
-        detail: 'Documents your team shares appear here, and stay live for everyone who has them open.',
+        title: t('list.empty.no_documents_title'),
+        detail: t('list.empty.no_documents_detail'),
       };
     }
-    const segmentLabel = visibleSegments.find((candidate) => candidate.id === segment)?.label;
+    const segmentKey = visibleSegments.find((candidate) => candidate.id === segment)?.labelKey;
+    const segmentLabel = segmentKey ? t(segmentKey) : undefined;
     if (segment !== 'all' && segmentLabel) {
       return {
         icon: 'filter_list_off',
-        title: `Nothing in ${segmentLabel}`,
-        detail: `There are ${totalOpenable} shared documents in All.`,
+        title: t('list.empty.segment_title', { segment: segmentLabel }),
+        detail: t('list.empty.segment_detail', { count: totalOpenable, all: t('list.segment.all') }),
       };
     }
     // On a routed folder page there is no folder filter left to clear, so
@@ -535,16 +545,16 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
     if (folderId) {
       return {
         icon: 'folder_open',
-        title: 'This folder is empty',
-        detail: `Nothing is filed here yet. ${totalOpenable} shared documents live elsewhere in this project.`,
+        title: t('list.empty.folder_title'),
+        detail: t('list.empty.folder_detail', { count: totalOpenable }),
       };
     }
     return {
       icon: 'filter_list_off',
-      title: 'No documents match these filters',
-      detail: `Clear a filter to see the other ${totalOpenable} shared documents.`,
+      title: t('list.empty.filters_title'),
+      detail: t('list.empty.filters_detail', { count: totalOpenable }),
     };
-  }, [folderId, segment, totalOpenable, trimmedQuery, visibleSegments]);
+  }, [folderId, segment, totalOpenable, trimmedQuery, visibleSegments, t]);
 
   return (
     <div className="shared-docs-list-view h-full flex flex-col min-h-0 bg-nim select-text">
@@ -554,7 +564,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
           {title ?? (
             <>
               <MaterialSymbol icon="groups" size={20} className="text-[var(--nim-text-muted)]" />
-              <span className="text-[15px] font-semibold text-[var(--nim-text)]">Shared</span>
+              <span className="text-[15px] font-semibold text-[var(--nim-text)]">{t('list.shared')}</span>
             </>
           )}
         </div>
@@ -563,10 +573,10 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
           <input
             ref={searchRef}
             className="flex-1 bg-transparent border-none outline-none text-[13px] text-[var(--nim-text)] placeholder:text-[var(--nim-text-faint)]"
-            placeholder="Search shared documents"
+            placeholder={t('list.search_placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search shared documents"
+            aria-label={t('list.search_placeholder')}
           />
           <kbd className="shrink-0 text-[10.5px] text-[var(--nim-text-faint)] border border-[var(--nim-border)] rounded px-1 py-0.5">⌘K</kbd>
         </div>
@@ -577,10 +587,10 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
             className="shared-docs-list-new flex items-center gap-1.5 shrink-0 px-2.5 py-1.5 rounded-md border border-[var(--nim-border)] bg-transparent text-[12px] text-[var(--nim-text)] cursor-pointer hover:bg-[var(--nim-bg-hover)]"
             data-testid="shared-docs-new-document"
             onClick={onCreateDocument}
-            title="New doc"
+            title={t('list.new_document')}
           >
             <MaterialSymbol icon="add" size={17} />
-            New doc
+            {t('list.new_document')}
           </button>
         ) : null}
         <div className="shared-docs-view-toggle flex items-center rounded-md border border-[var(--nim-border)] overflow-hidden shrink-0">
@@ -588,8 +598,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
             type="button"
             className={`flex items-center justify-center px-1.5 py-1 border-none cursor-pointer ${viewMode === 'list' ? 'bg-[var(--nim-bg-active)] text-[var(--nim-text)]' : 'bg-transparent text-[var(--nim-text-muted)]'}`}
             onClick={() => setViewMode('list')}
-            title="List view"
-            aria-label="List view"
+            title={t('list.list_view')}
+            aria-label={t('list.list_view')}
             aria-pressed={viewMode === 'list'}
           >
             <MaterialSymbol icon="format_list_bulleted" size={17} />
@@ -597,8 +607,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
           <button
             type="button"
             className="flex items-center justify-center px-1.5 py-1 border-none cursor-not-allowed bg-transparent text-[var(--nim-text-faint)] opacity-50"
-            title="Grid view (coming soon)"
-            aria-label="Grid view (coming soon)"
+            title={t('list.grid_view_coming_soon')}
+            aria-label={t('list.grid_view_coming_soon')}
             disabled
           >
             <MaterialSymbol icon="grid_view" size={17} />
@@ -627,7 +637,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                 <MaterialSymbol icon={seg.icon} size={15} fill={seg.id === 'favorites' && active} />
                 {/* Wrapped so a reader of the DOM can get the label without the
                     icon's ligature text, which textContent otherwise prepends. */}
-                <span className="shared-docs-segment-label">{seg.label}</span>
+                <span className="shared-docs-segment-label">{t(seg.labelKey)}</span>
                 {seg.id === 'review' && reviewCount > 0 && (
                   <span className="shared-docs-segment-badge text-[10.5px] font-semibold rounded-full px-1.5 py-px bg-[var(--nim-primary)] text-white">
                     {reviewCount}
@@ -639,7 +649,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <FacetDropdown
-            label="Type"
+            facet="type"
+            label={t('list.facet.type')}
             icon="category"
             options={typeOptions}
             selected={selectedTypes}
@@ -647,7 +658,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
             onClear={() => setSelectedTypes(new Set())}
           />
           <FacetDropdown
-            label="People"
+            facet="people"
+            label={t('list.facet.people')}
             icon="group"
             options={peopleOptions}
             selected={selectedPeople}
@@ -667,14 +679,15 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
               className="shared-docs-facet shared-docs-facet-scope flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] border whitespace-nowrap bg-[var(--nim-bg-active)] text-[var(--nim-text)] border-[var(--nim-border)]"
               data-facet="folder"
               data-facet-scope="route"
-              title="This page shows one folder. Use the breadcrumb to open another."
+              title={t('list.folder_breadcrumb_guidance')}
             >
               <MaterialSymbol icon="folder" size={15} />
-              {folderNames.get(folderId) ?? 'Unknown folder'}
+              {folderNames.get(folderId) ?? t('list.unknown_folder')}
             </span>
           ) : (
             <FacetDropdown
-              label="Folder"
+              facet="folder"
+              label={t('list.facet.folder')}
               icon="folder"
               options={folderOptions}
               selected={selectedFolders}
@@ -700,26 +713,26 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
             <thead>
               <tr className="shared-docs-thead sticky top-0 z-10 bg-nim border-b border-nim text-[11px] uppercase tracking-wide text-[var(--nim-text-muted)]">
                 {readReceiptsAvailable && (
-                  <HeaderCell label="Unread" column="needsReview" icon="mark_email_unread" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-8" />
+                  <HeaderCell label={t('list.segment.unread')} column="needsReview" icon="mark_email_unread" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} className="w-8" />
                 )}
                 {personalStateAvailable && <th className="w-8 px-2 py-2" />}
-                <HeaderCell label="Name" column="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Type" column="type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Created by" column="createdBy" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                <HeaderCell label="Last edited" column="lastEdited" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('list.sort.name')} column="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('list.sort.type')} column="type" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('list.sort.created_by')} column="createdBy" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                <HeaderCell label={t('list.sort.last_edited')} column="lastEdited" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                 {readReceiptsAvailable && (
-                  <HeaderCell label="Viewed by me" column="viewedByMe" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                  <HeaderCell label={t('list.sort.viewed_by_me')} column="viewedByMe" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                 )}
                 {/* Every row on a browsed level shares one folder; the column
                     would repeat the breadcrumb on every line. */}
                 {!browsing && (
-                  <HeaderCell label="Folder" column="folder" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                  <HeaderCell label={t('list.sort.folder')} column="folder" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                 )}
               </tr>
             </thead>
             <tbody>
               {folderRows.map((folder) => {
-                const folderLabel = folder.decryptFailed ? 'Locked folder' : folder.name;
+                const folderLabel = folder.decryptFailed ? t('list.locked_folder') : folder.name;
                 return (
                   <tr
                     key={folder.folderId}
@@ -743,13 +756,13 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                           {folderLabel}
                         </SharedDocumentLink>
                         <span className="shared-docs-row-actions ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 pl-2">
-                          <RowAction icon="more_horiz" title="More actions" onClick={(e) => openRowMenu(e, { kind: 'folder', folder }, e.currentTarget)} />
+                          <RowAction icon="more_horiz" title={t('list.more_actions')} onClick={(e) => openRowMenu(e, { kind: 'folder', folder }, e.currentTarget)} />
                         </span>
                       </div>
                     </td>
-                    <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px] text-[var(--nim-text-muted)]">Folder</td>
+                    <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px] text-[var(--nim-text-muted)]">{t('list.facet.folder')}</td>
                     <td className="px-2 py-2 align-middle whitespace-nowrap">
-                      <UserAvatar identity={memberName(folder.createdBy, members, myMemberIds)} showName size={20} />
+                      <UserAvatar identity={memberName(folder.createdBy, members, myMemberIds, t('list.unknown'), t('list.you'))} showName size={20} />
                     </td>
                     <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px] text-[var(--nim-text-muted)]">
                       {folder.updatedAt ? getRelativeTimeString(folder.updatedAt) : <span className="text-[var(--nim-text-faint)]">—</span>}
@@ -779,8 +792,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                         {needsReview ? (
                           <span
                             className="shared-docs-review-dot inline-block w-2 h-2 rounded-full bg-[var(--nim-primary)] align-middle"
-                            title="Changed since you last viewed"
-                            aria-label="Unread"
+                            title={t('list.changed_since_last_viewed')}
+                            aria-label={t('list.segment.unread')}
                           />
                         ) : null}
                       </td>
@@ -794,8 +807,8 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                               ? 'text-[var(--nim-warning)] opacity-100'
                               : 'text-[var(--nim-text-faint)] opacity-0 group-hover:opacity-80 hover:!opacity-100'
                           }`}
-                          title={favorited ? 'Unfavorite' : 'Favorite'}
-                          aria-label={favorited ? 'Unfavorite' : 'Favorite'}
+                          title={favorited ? t('ui.unfavorite') : t('ui.favorite')}
+                          aria-label={favorited ? t('ui.unfavorite') : t('ui.favorite')}
                           aria-pressed={favorited}
                           onClick={(e) => { e.stopPropagation(); session.toggleFavorite(doc.documentId); }}
                         >
@@ -809,12 +822,12 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                         <span className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center" style={{ color, backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` }}>
                           <MaterialSymbol icon={pres.icon} size={16} />
                         </span>
-                        <SharedDocumentLink className="truncate text-[13.5px] text-[var(--nim-text)] no-underline" href={host.surface === 'web_console' ? host.artifactUrl?.({ kind: 'document', scope, documentId: doc.documentId, teamProjectId: doc.teamProjectId }) : null} onClick={() => openDoc(doc)}>{docName(doc)}</SharedDocumentLink>
+                        <SharedDocumentLink className="truncate text-[13.5px] text-[var(--nim-text)] no-underline" href={host.surface === 'web_console' ? host.artifactUrl?.({ kind: 'document', scope, documentId: doc.documentId, teamProjectId: doc.teamProjectId }) : null} onClick={() => openDoc(doc)}>{docName(doc, t('list.untitled'))}</SharedDocumentLink>
                         {/* Row hover quick actions */}
                         <span className="shared-docs-row-actions ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 pl-2">
-                          <RowAction icon="open_in_new" title="Open" onClick={(e) => { e.stopPropagation(); openDoc(doc); }} />
-                          <RowAction icon="link" title="Copy link" onClick={(e) => { e.stopPropagation(); copyLink(doc); }} />
-                          <RowAction icon="more_horiz" title="More actions" onClick={(e) => openRowMenu(e, { kind: 'document', document: doc }, e.currentTarget)} />
+                          <RowAction icon="open_in_new" title={t('ui.open')} onClick={(e) => { e.stopPropagation(); openDoc(doc); }} />
+                          <RowAction icon="link" title={t('ui.copy_link')} onClick={(e) => { e.stopPropagation(); copyLink(doc); }} />
+                          <RowAction icon="more_horiz" title={t('list.more_actions')} onClick={(e) => openRowMenu(e, { kind: 'document', document: doc }, e.currentTarget)} />
                         </span>
                       </div>
                     </td>
@@ -830,7 +843,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                     </td>
                     {/* Created by */}
                     <td className="px-2 py-2 align-middle whitespace-nowrap">
-                      <UserAvatar identity={memberName(doc.createdBy, members, myMemberIds)} showName size={20} />
+                      <UserAvatar identity={memberName(doc.createdBy, members, myMemberIds, t('list.unknown'), t('list.you'))} showName size={20} />
                     </td>
                     {/* Last edited */}
                     <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px] text-[var(--nim-text-muted)]">
@@ -838,7 +851,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                         <span>
                           {getRelativeTimeString(doc.updatedAt)}
                           {lastWriter && (
-                            <span className="text-[var(--nim-text-faint)]"> · {memberName(lastWriter, members, myMemberIds)}</span>
+                            <span className="text-[var(--nim-text-faint)]"> · {memberName(lastWriter, members, myMemberIds, t('list.unknown'), t('list.you'))}</span>
                           )}
                         </span>
                       ) : (
@@ -852,7 +865,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                         ) : (
                           <span className="flex items-center gap-1 text-[var(--nim-warning)]">
                             <MaterialSymbol icon="visibility_off" size={14} />
-                            Never
+                            {t('list.never_viewed')}
                           </span>
                         )}
                       </td>
@@ -880,15 +893,15 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
 
       {/* Footer */}
       <div className="shared-docs-list-footer flex items-center gap-2 px-4 py-1.5 border-t border-nim shrink-0 text-[11.5px] text-[var(--nim-text-muted)]">
-        <span>{sortedDocs.length} of {totalOpenable} documents</span>
+        <span>{t('list.footer.documents', { shown: sortedDocs.length, total: totalOpenable })}</span>
         {readReceiptsAvailable && reviewCount > 0 && (
           <>
             <span className="text-[var(--nim-text-faint)]">·</span>
-            <span>{reviewCount} unread</span>
+            <span>{t('list.footer.unread', { count: reviewCount })}</span>
           </>
         )}
         <span className="text-[var(--nim-text-faint)]">·</span>
-        <span>Sorted by {sortLabel}</span>
+        <span>{t('list.footer.sorted_by', { column: sortLabel })}</span>
       </div>
       <React.Suspense fallback={null}>
         <SharedDocsItemMenu state={rowMenu} onClose={() => setRowMenu(null)} onOpenFolder={onSelectFolder} />
@@ -898,13 +911,13 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
 };
 
 const SORT_LABELS: Record<SortColumn, string> = {
-  name: 'name',
-  type: 'type',
-  createdBy: 'created by',
-  lastEdited: 'last edited',
-  viewedByMe: 'viewed by me',
-  folder: 'folder',
-  needsReview: 'unread',
+  name: 'list.sort.name_lower',
+  type: 'list.sort.type_lower',
+  createdBy: 'list.sort.created_by_lower',
+  lastEdited: 'list.sort.last_edited_lower',
+  viewedByMe: 'list.sort.viewed_by_me_lower',
+  folder: 'list.sort.folder_lower',
+  needsReview: 'list.sort.unread_lower',
 };
 
 const HeaderCell: React.FC<{
@@ -918,6 +931,7 @@ const HeaderCell: React.FC<{
   icon?: string;
   className?: string;
 }> = ({ label, column, sortColumn, sortDirection, onSort, align = 'left', icon, className }) => {
+  const { t } = useTranslation('collabSidebar');
   const active = sortColumn === column;
   const sortIcon = active ? (sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward') : 'unfold_more';
   return (
@@ -928,8 +942,8 @@ const HeaderCell: React.FC<{
           active ? 'text-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]'
         } ${align === 'right' ? 'flex-row-reverse' : ''}`}
         onClick={() => onSort(column)}
-        title={icon ? `Sort by ${label}` : undefined}
-        aria-label={icon ? `Sort by ${label}` : undefined}
+        title={icon ? t('list.sort_by', { column: label }) : undefined}
+        aria-label={icon ? t('list.sort_by', { column: label }) : undefined}
       >
         {icon ? (
           <MaterialSymbol icon={icon} size={15} fill={active} />
@@ -946,13 +960,15 @@ const HeaderCell: React.FC<{
 };
 
 const FacetDropdown: React.FC<{
+  facet: 'type' | 'people' | 'folder';
   label: string;
   icon: string;
   options: FacetOption[];
   selected: Set<string>;
   onToggle: (value: string) => void;
   onClear: () => void;
-}> = ({ label, icon, options, selected, onToggle, onClear }) => {
+}> = ({ facet, label, icon, options, selected, onToggle, onClear }) => {
+  const { t } = useTranslation('collabSidebar');
   const [open, setOpen] = useState(false);
   const count = selected.size;
 
@@ -979,8 +995,8 @@ const FacetDropdown: React.FC<{
             ? 'bg-[var(--nim-bg-active)] text-[var(--nim-text)] border-[var(--nim-border)]'
             : 'bg-transparent text-[var(--nim-text-muted)] border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]'
         }`}
-        data-facet={label.toLowerCase()}
-        aria-label={`Filter by ${label}`}
+        data-facet={facet}
+        aria-label={t('list.filter_by', { facet: label })}
       >
         <MaterialSymbol icon={icon} size={15} />
         {label}
@@ -1007,12 +1023,12 @@ const FacetDropdown: React.FC<{
                   className="text-[11px] text-[var(--nim-primary)] bg-transparent border-none cursor-pointer hover:underline"
                   onClick={onClear}
                 >
-                  Clear
+                  {t('list.clear')}
                 </button>
               )}
             </div>
             {options.length === 0 ? (
-              <div className="px-3 py-2 text-[12px] text-[var(--nim-text-faint)]">No options</div>
+              <div className="px-3 py-2 text-[12px] text-[var(--nim-text-faint)]">{t('list.no_options')}</div>
             ) : (
               options.map((opt) => {
                 const checked = selected.has(opt.value);

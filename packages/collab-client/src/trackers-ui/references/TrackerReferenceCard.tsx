@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX, MouseEvent, ReactNode } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { TrackerItem } from '../../trackers/dataSource';
 import {
@@ -18,10 +19,8 @@ import {
   isNormalState,
   personLabel,
   readAgentProposal,
-  shortDate,
   stateTone,
   transitionForProposal,
-  verbForStatus,
   type AgentProposal,
 } from './trackerReferenceLifecycle';
 import {
@@ -49,6 +48,14 @@ const RECENT_CHANGE_MS = 10_000;
 /** How long the ring shows after someone else changes the state. */
 const REMOTE_RING_MS = 1_600;
 
+function localizedShortDate(value: unknown, locale: string): string | null {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(date);
+}
+
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
 type Note =
@@ -59,23 +66,23 @@ function Lead({ children }: { children: ReactNode }): JSX.Element {
   return <span className="tracker-reference-card-lead">{children}</span>;
 }
 
-function CardContent({ resolver, item }: { resolver: TrackerReferenceResolver; item: TrackerItem }): JSX.Element | null {
+function CardContent({ resolver, item, t }: { resolver: TrackerReferenceResolver; item: TrackerItem; t: (key: string, options?: Record<string, unknown>) => string }): JSX.Element | null {
   switch (item.type) {
     case 'wiki-decision': {
       const whyNot = text(resolver, item, 'whyNot');
       if ((item.status === 'rejected' || item.status === 'superseded') && whyNot) {
-        return <div className="tracker-reference-card-content"><Lead>Why not</Lead>{whyNot}</div>;
+        return <div className="tracker-reference-card-content"><Lead>{t('reference_card.why_not')}</Lead>{whyNot}</div>;
       }
       const chosen = text(resolver, item, 'chosen');
       return chosen ? <div className="tracker-reference-card-content">{chosen}</div> : null;
     }
     case 'question': {
       const position = text(resolver, item, 'position');
-      if (!position) return <div className="tracker-reference-card-content" data-empty="true">No position yet</div>;
+      if (!position) return <div className="tracker-reference-card-content" data-empty="true">{t('reference_card.no_position')}</div>;
       const accepted = resolver.fieldValue(item, 'positionState') === 'accepted';
       return (
         <div className="tracker-reference-card-content" data-tentative={accepted ? undefined : 'true'}>
-          <Lead>{accepted ? 'Answer' : 'Proposed position'}</Lead>{position}
+          <Lead>{t(accepted ? 'reference_card.answer' : 'reference_card.proposed_position')}</Lead>{position}
         </div>
       );
     }
@@ -109,39 +116,40 @@ function joinMeta(parts: Array<string | null | undefined | false>): string | nul
 }
 
 /** The resting meta line: who, when, and the one thing that needs doing. */
-function restingMeta(resolver: TrackerReferenceResolver, item: TrackerItem): ReactNode {
+function restingMeta(resolver: TrackerReferenceResolver, item: TrackerItem, t: (key: string, options?: Record<string, unknown>) => string, formatDate: (value: unknown) => string | null): ReactNode {
   const field = (name: string) => resolver.fieldValue(item, name);
   const owner = personLabel(resolver, field('owner') ?? item.owner);
   const decidedBy = personLabel(resolver, field('decidedBy'));
-  const decidedAt = shortDate(field('decidedAt'));
-  const settledBy = (label: string) => (decidedBy ? `${label} by ${decidedBy}${decidedAt ? `, ${decidedAt}` : ''}` : null);
+  const decidedAt = formatDate(field('decidedAt'));
+  const dateSuffix = (value: string | null) => value ? t('reference_card.date_suffix', { date: value }) : '';
+  const settledBy = (key: string) => (decidedBy ? t(key, { person: decidedBy, date: dateSuffix(decidedAt) }) : null);
 
   if (item.type === 'wiki-decision') {
     switch (item.status) {
-      case 'accepted': return settledBy('Accepted');
-      case 'rejected': return settledBy('Rejected');
+      case 'accepted': return settledBy('reference_card.accepted_by');
+      case 'rejected': return settledBy('reference_card.rejected_by');
       case 'superseded': {
         const replacement = resolver.relationshipTargets(item, 'supersededBy')[0];
-        return replacement ? <>Replaced by <LiveChip resolver={resolver} referenceKey={replacement} /></> : 'Superseded';
+        return replacement ? <>{t('reference_card.superseded_by')}<LiveChip resolver={resolver} referenceKey={replacement} /></> : t('reference_card.superseded');
       }
       default:
-        return owner ? joinMeta([owner, shortDate(item.created) && `proposed ${shortDate(item.created)}`]) : 'No owner';
+        return owner ? joinMeta([owner, formatDate(item.created) && t('reference_card.proposed_on', { date: formatDate(item.created) })]) : t('reference_card.no_owner');
     }
   }
   if (item.type === 'question') {
     const revisit = text(resolver, item, 'revisitWhen');
     switch (item.status) {
-      case 'answered': return settledBy('Answered');
-      case 'deferred': return revisit ? `Revisit ${revisit}` : 'Deferred';
+      case 'answered': return settledBy('reference_card.answered_by');
+      case 'deferred': return revisit ? t('reference_card.revisit', { when: revisit }) : t('reference_card.deferred');
       case 'abandoned': return null;
       default: {
-        const due = shortDate(field('targetDate'));
-        return joinMeta([owner ? `${owner} owns` : 'No owner', due && `decide by ${due}`]);
+        const due = formatDate(field('targetDate'));
+        return joinMeta([owner ? t('reference_card.owner_owns', { owner }) : t('reference_card.no_owner_owns'), due && t('reference_card.decide_by', { date: due })]);
       }
     }
   }
   if (isNormalState(item.type, item.status)) return null;
-  return owner ? `${owner} owns` : null;
+  return owner ? t('reference_card.owner_owns', { owner }) : null;
 }
 
 /** What Delete did, so its stub can put the item back. */
@@ -166,6 +174,7 @@ function ProposalStrip({
   onRequest: (request: TrackerStateMenuRequest) => void;
   onDeleted: (deletion: Deletion) => void;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const transitions = useStateTransitions(resolver, item);
   const [error, setError] = useState<string | null>(null);
   const editable = Boolean(resolver.updateItem);
@@ -185,15 +194,15 @@ function ProposalStrip({
   let note: string | null = null;
   const actions: Array<{ label: string; negative?: boolean; onClick: () => void }> = [];
   if (proposal.kind === 'create') {
-    lead = <span className="tracker-reference-proposal-who">Proposed by {proposal.by}</span>;
-    actions.push({ label: 'Keep', onClick: () => commit(clear, 'kept it') });
+    lead = <span className="tracker-reference-proposal-who">{t('reference_card.proposed_by', { person: proposal.by })}</span>;
+    actions.push({ label: t('reference_card.keep'), onClick: () => commit(clear, 'kept it') });
     // Delete is recoverable: archive when the host can, else the type's cancelled
     // status. With neither, there is no honest Delete to offer.
     const cancelled = cancelledStatus(statusOptions);
     const { archiveItem } = resolver;
     if (archiveItem) {
       actions.push({
-        label: 'Delete',
+        label: t('reference_card.delete'),
         negative: true,
         onClick: () => run(async () => {
           await archiveItem(item.id, true);
@@ -202,7 +211,7 @@ function ProposalStrip({
       });
     } else if (cancelled) {
       actions.push({
-        label: 'Delete',
+        label: t('reference_card.delete'),
         negative: true,
         onClick: () => run(async () => {
           const change = await commitTrackerUpdates(resolver, item, { status: cancelled, ...clear }, 'deleted it', onPending);
@@ -215,7 +224,7 @@ function ProposalStrip({
     const toTone = stateTone(item.type, statusOptions.find((option) => option.value === toStatus) ?? { value: toStatus });
     lead = (
       <>
-        <span className="tracker-reference-proposal-who">{proposal.by} proposes</span>{' '}
+        <span className="tracker-reference-proposal-who">{proposal.by} {t('reference_card.proposes')}</span>{' '}
         {labelFor(item.status)} <span className="tracker-reference-proposal-why">{'->'}</span>{' '}
         <span className="tracker-state-word" data-tone={toTone}>{labelFor(toStatus)}</span>
       </>
@@ -224,16 +233,16 @@ function ProposalStrip({
     // field opens that prompt, prefilled from the reason, for a person to confirm.
     const transition = transitionForProposal(transitions, toStatus);
     if (!transition) {
-      note = 'Not applicable to this item as it stands';
+      note = t('reference_card.not_applicable');
     } else {
       actions.push({
-        label: 'Apply',
+        label: t('reference_card.apply'),
         onClick: () => (transition.prompt
           ? onRequest({ transitionId: transition.id, input: proposal.reason ?? '', extra: clear })
           : run(() => runStateTransition(resolver, item, transition, { extra: clear, onPending }).then(onChanged))),
       });
     }
-    actions.push({ label: 'Dismiss', negative: true, onClick: () => commit(clear, 'dismissed the proposal') });
+    actions.push({ label: t('reference_card.dismiss'), negative: true, onClick: () => commit(clear, 'dismissed the proposal') });
   }
 
   return (
@@ -259,7 +268,7 @@ function ProposalStrip({
           ))}
         </div>
       ) : null}
-      {error ? <div className="tracker-state-menu-error" role="alert">{error}</div> : null}
+      {error ? <div className="tracker-state-menu-error" role="alert">{t('reference_card.action_failed', { error })}</div> : null}
     </div>
   );
 }
@@ -269,6 +278,7 @@ function ProposalStrip({
  * Undo", or someone else's change with a brief ring on the box.
  */
 function useChangeNotes(resolver: TrackerReferenceResolver, item: TrackerItem) {
+  const { t } = useTranslation('tracker');
   const [note, setNote] = useState<Note | null>(null);
   const [ring, setRing] = useState(false);
   const expectedStatus = useRef<string | null>(null);
@@ -292,10 +302,10 @@ function useChangeNotes(resolver: TrackerReferenceResolver, item: TrackerItem) {
       return;
     }
     const option = resolver.statusInfo(item);
-    const who = item.lastModifiedBy?.displayName || 'Someone';
-    setNote({ kind: 'theirs', text: `${who} ${option ? verbForStatus(option.value, option.label) : 'changed this'}` });
+    const who = item.lastModifiedBy?.displayName || t('reference_card.someone');
+    setNote({ kind: 'theirs', text: t('reference_card.someone_changed', { person: who, status: option?.label ?? item.status }) });
     setRing(true);
-  }, [item, resolver]);
+  }, [item, resolver, t]);
 
   useEffect(() => {
     if (!ring) return;
@@ -326,11 +336,13 @@ function useChangeNotes(resolver: TrackerReferenceResolver, item: TrackerItem) {
 }
 
 function UndoButton({ onUndo }: { onUndo: () => void }): JSX.Element {
-  return <button type="button" className="tracker-reference-card-undo" onMouseDown={keepFocus} onClick={onUndo}>Undo</button>;
+  const { t } = useTranslation('tracker');
+  return <button type="button" className="tracker-reference-card-undo" onMouseDown={keepFocus} onClick={onUndo}>{t('reference_card.undo')}</button>;
 }
 
 /** The one line a deleted proposal collapses to. */
 function DeletedStub({ label, deletion, onRestored }: { label: string; deletion: Deletion | null; onRestored: () => void }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const [error, setError] = useState<string | null>(null);
   const restore = () => {
     if (!deletion) return;
@@ -340,15 +352,16 @@ function DeletedStub({ label, deletion, onRestored }: { label: string; deletion:
   return (
     <div className="tracker-reference-card" data-state="deleted" data-border="bare">
       <div className="tracker-reference-card-meta">
-        Deleted {label}
+        {t('reference_card.deleted', { label })}
         {deletion ? <>{' · '}<UndoButton onUndo={restore} /></> : null}
-        {error ? <span className="tracker-state-menu-error" role="alert"> {error}</span> : null}
+        {error ? <span className="tracker-state-menu-error" role="alert"> {t('reference_card.undo_failed', { error })}</span> : null}
       </div>
     </div>
   );
 }
 
 function ResolvedCard({ resolver, item, referenceKey }: { resolver: TrackerReferenceResolver; item: TrackerItem; referenceKey: string }): JSX.Element {
+  const { t, i18n } = useTranslation('tracker');
   const typeInfo = resolver.typeInfo(item.type);
   const status = resolver.statusInfo(item);
   const normal = isNormalState(item.type, item.status);
@@ -364,17 +377,17 @@ function ResolvedCard({ resolver, item, referenceKey }: { resolver: TrackerRefer
     return <DeletedStub label={displayKey(item, referenceKey)} deletion={deletion} onRestored={() => setDeletion(null)} />;
   }
 
-  let meta: ReactNode = restingMeta(resolver, item);
+  let meta: ReactNode = restingMeta(resolver, item, t, (value) => localizedShortDate(value, i18n.language === 'ja' ? 'ja-JP' : 'en-US'));
   if (note?.kind === 'mine') {
     meta = (
       <>
-        You {note.change.verb} <span className="tracker-reference-card-live">just now</span>
+        {i18n.language === 'ja' ? t('reference_card.you_changed') : `You ${note.change.verb}`} <span className="tracker-reference-card-live">{t('reference_card.just_now')}</span>
         {resolver.updateItem ? <>{' · '}<UndoButton onUndo={() => void undo()} /></> : null}
-        {note.error ? <span className="tracker-state-menu-error" role="alert"> Undo failed: {note.error}</span> : null}
+        {note.error ? <span className="tracker-state-menu-error" role="alert"> {t('reference_card.undo_failed', { error: note.error })}</span> : null}
       </>
     );
   } else if (note?.kind === 'theirs') {
-    meta = <>{note.text} <span className="tracker-reference-card-live">just now</span></>;
+    meta = <>{note.text} <span className="tracker-reference-card-live">{t('reference_card.just_now')}</span></>;
   }
 
   return (
@@ -403,12 +416,12 @@ function ResolvedCard({ resolver, item, referenceKey }: { resolver: TrackerRefer
             />
           </>
         ) : null}
-        <span className="tracker-reference-card-key">{creating ? 'not created' : displayKey(item, referenceKey)}</span>
+        <span className="tracker-reference-card-key">{creating ? t('reference_card.not_created') : displayKey(item, referenceKey)}</span>
       </div>
       <div className="tracker-reference-card-title" {...openHandlers(resolver, item.id)}>
         {item.title || displayKey(item, referenceKey)}
       </div>
-      <CardContent resolver={resolver} item={item} />
+      <CardContent resolver={resolver} item={item} t={t} />
       {meta ? <div className="tracker-reference-card-meta">{meta}</div> : null}
       {proposal ? (
         <ProposalStrip
@@ -426,12 +439,13 @@ function ResolvedCard({ resolver, item, referenceKey }: { resolver: TrackerRefer
 }
 
 export function LiveCard({ resolver, referenceKey }: ResolverProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const resolution = useTrackerReference(resolver, referenceKey);
   if (resolution.state !== 'resolved') {
     return (
       <div className="tracker-reference-card" data-issue-key={referenceKey} data-state={resolution.state} data-border="dashed">
         <div className="tracker-reference-card-empty">
-          {resolution.state === 'loading' ? `Loading ${referenceKey}...` : `${referenceKey} was not found`}
+          {resolution.state === 'loading' ? t('reference_card.loading', { key: referenceKey }) : t('reference_card.not_found', { key: referenceKey })}
         </div>
       </div>
     );

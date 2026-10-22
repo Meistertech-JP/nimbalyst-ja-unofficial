@@ -10,6 +10,9 @@
  * see by looking at the bar.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { PropsWithChildren, ReactElement } from 'react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CanvasSelectionBar } from '../CanvasSelectionBar';
@@ -43,13 +46,23 @@ function context(
   };
 }
 
-function renderBar(
+async function renderWithLanguage(element: ReactElement, language: 'en' | 'ja' = 'en') {
+  const i18n = await createI18nInstance(language);
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return render(element, { wrapper: Wrapper });
+}
+
+async function renderBar(
   selection: CanvasAnyNode[],
   overrides: Partial<CanvasCommandContext> = {},
   run = vi.fn()
 ) {
   const ctx = context(selection, overrides);
-  render(
+  await renderWithLanguage(
     <CanvasSelectionBar
       selection={selection}
       ctx={ctx}
@@ -63,8 +76,8 @@ function renderBar(
 }
 
 describe('CanvasSelectionBar', () => {
-  it('stays out of the way when there is nothing to act on', () => {
-    const { container } = render(
+  it('stays out of the way when there is nothing to act on', async () => {
+    const { container } = await renderWithLanguage(
       <CanvasSelectionBar
         selection={[]}
         ctx={context([])}
@@ -75,9 +88,9 @@ describe('CanvasSelectionBar', () => {
     expect(container.querySelector('.canvas-selection-bar')).toBeNull();
   });
 
-  it('stays out of the way on a read-only board and under a hot card', () => {
+  it('stays out of the way on a read-only board and under a hot card', async () => {
     const one = [node('a')];
-    const readOnly = render(
+    const readOnly = await renderWithLanguage(
       <CanvasSelectionBar
         selection={one}
         ctx={context(one, { readOnly: true })}
@@ -89,7 +102,7 @@ describe('CanvasSelectionBar', () => {
       readOnly.container.querySelector('.canvas-selection-bar')
     ).toBeNull();
 
-    const hot = render(
+    const hot = await renderWithLanguage(
       <CanvasSelectionBar
         selection={one}
         ctx={context(one, { activeCardId: 'a' })}
@@ -100,29 +113,29 @@ describe('CanvasSelectionBar', () => {
     expect(hot.container.querySelector('.canvas-selection-bar')).toBeNull();
   });
 
-  it('counts only a multi-selection, and gates align at two and distribute at three', () => {
-    renderBar([node('a')]);
+  it('counts only a multi-selection, and gates align at two and distribute at three', async () => {
+    await renderBar([node('a')]);
     expect(screen.queryByText(/selected$/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Align' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Distribute' })).toBeNull();
     screen.getByRole('button', { name: 'Duplicate' });
   });
 
-  it('shows align but not distribute at two cards', () => {
-    renderBar([node('a'), node('b')]);
+  it('shows align but not distribute at two cards', async () => {
+    await renderBar([node('a'), node('b')]);
     screen.getByText('2 selected');
     screen.getByRole('button', { name: 'Align' });
     expect(screen.queryByRole('button', { name: 'Distribute' })).toBeNull();
   });
 
-  it('shows distribute at three cards', () => {
-    renderBar([node('a'), node('b'), node('c')]);
+  it('shows distribute at three cards', async () => {
+    await renderBar([node('a'), node('b'), node('c')]);
     screen.getByText('3 selected');
     screen.getByRole('button', { name: 'Distribute' });
   });
 
-  it('runs the registry command behind Delete', () => {
-    const run = renderBar([node('a')]);
+  it('runs the registry command behind Delete', async () => {
+    const run = await renderBar([node('a')]);
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(run).toHaveBeenCalledWith('delete');
   });
@@ -130,7 +143,7 @@ describe('CanvasSelectionBar', () => {
   // A menu that opens without moving focus is unreachable from the keyboard:
   // the trigger keeps focus and arrows do nothing. Not visible on screen.
   it('moves focus into the Align menu on open and walks it with ArrowDown', async () => {
-    renderBar([node('a'), node('b')]);
+    await renderBar([node('a'), node('b')]);
     fireEvent.click(screen.getByRole('button', { name: 'Align' }));
 
     const items = screen.getAllByRole('menuitem');
@@ -145,7 +158,7 @@ describe('CanvasSelectionBar', () => {
   // Escape inside a portalled menu must put focus back on the trigger, or the
   // keyboard is stranded at the top of the document with the board behind it.
   it('returns focus to the trigger when Escape closes the menu', async () => {
-    renderBar([node('a'), node('b')]);
+    await renderBar([node('a'), node('b')]);
     const trigger = screen.getByRole('button', { name: 'Align' });
     fireEvent.click(trigger);
 
@@ -156,5 +169,27 @@ describe('CanvasSelectionBar', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+  });
+
+  it('shows Japanese selection actions and accessible color names', async () => {
+    const selection = [node('a'), node('b')];
+    await renderWithLanguage(
+      <CanvasSelectionBar
+        selection={selection}
+        ctx={context(selection)}
+        run={vi.fn()}
+        onColor={vi.fn()}
+        onComment={vi.fn()}
+      />,
+      'ja'
+    );
+
+    expect(screen.getByText('2件を選択中')).not.toBeNull();
+    expect(screen.getByRole('button', { name: '整列' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: '複製' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: '色' })).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '色' }));
+    expect(screen.getByRole('menuitem', { name: '色1' })).not.toBeNull();
+    expect(screen.getByRole('menuitem', { name: '色なし' })).not.toBeNull();
   });
 });

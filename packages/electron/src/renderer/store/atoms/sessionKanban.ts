@@ -50,6 +50,15 @@ export const SESSION_PHASE_COLUMNS: { value: SessionPhase; label: string; color:
   { value: 'complete', label: 'Complete', color: '#4ade80' },
 ];
 
+/** Translation keys for rendering the fixed phase labels in localized UI. */
+export const SESSION_PHASE_LABEL_KEYS: Record<SessionPhase, `status.phase_${SessionPhase}`> = {
+  backlog: 'status.phase_backlog',
+  planning: 'status.phase_planning',
+  implementing: 'status.phase_implementing',
+  validating: 'status.phase_validating',
+  complete: 'status.phase_complete',
+};
+
 const VALID_PHASES = new Set<string>(SESSION_PHASE_COLUMNS.map(c => c.value));
 
 /** Phase priority for deriving workstream phase from children (lower = more active) */

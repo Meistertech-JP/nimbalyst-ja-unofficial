@@ -10,12 +10,15 @@ import type {
   TrackerFilterSet,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import type { TrackerFilterField } from '@nimbalyst/collab-client/trackers-ui';
+import type { TFunction } from 'i18next';
 
 export const SOURCE_FILTER_FIELD = 'trackerSource';
 
 /** Human label for a source key without probing the importer (avoids backend start). */
-export function sourceKeyLabel(key: string): string {
-  if (key === 'native') return 'Native';
+type TrackerTranslator = TFunction<'tracker'>;
+
+export function sourceKeyLabel(key: string, t: TrackerTranslator): string {
+  if (key === 'native') return t('main_extra.source_native');
   const known: Record<string, string> = {
     'github-issues': 'GitHub',
     linear: 'Linear',
@@ -28,15 +31,15 @@ export function sourceKeyLabel(key: string): string {
 }
 
 /** The Source field the box offers, with a count per source key. */
-export function sourceFilterField(sourceKeys: readonly string[]): TrackerFilterField {
+export function sourceFilterField(sourceKeys: readonly string[], t: TrackerTranslator): TrackerFilterField {
   const counts = new Map<string, number>();
   for (const key of sourceKeys) counts.set(key, (counts.get(key) ?? 0) + 1);
   return {
     id: SOURCE_FILTER_FIELD,
-    label: 'Source',
+    label: t('detail.source'),
     type: 'multiselect',
     multiValue: true,
-    options: [...counts.entries()].map(([value, count]) => ({ value, label: sourceKeyLabel(value), count })),
+    options: [...counts.entries()].map(([value, count]) => ({ value, label: sourceKeyLabel(value, t), count })),
   };
 }
 
@@ -62,6 +65,7 @@ export function withSourceClause(
 export function splitSourceClause(
   filters: TrackerFilterSet,
   sourceOptions: readonly string[],
+  t: TrackerTranslator,
 ): { columnFilters: TrackerFilterSet; sourceFilter: string[] } {
   const sourceClauses = filters.clauses.filter((clause) => clause.field === SOURCE_FILTER_FIELD);
   const columnFilters = {
@@ -84,7 +88,7 @@ export function splitSourceClause(
       const needle = values[0]?.toLowerCase() ?? '';
       return {
         columnFilters,
-        sourceFilter: sourceOptions.filter((key) => key.toLowerCase().includes(needle) || sourceKeyLabel(key).toLowerCase().includes(needle)),
+        sourceFilter: sourceOptions.filter((key) => key.toLowerCase().includes(needle) || sourceKeyLabel(key, t).toLowerCase().includes(needle)),
       };
     }
     case '!=':

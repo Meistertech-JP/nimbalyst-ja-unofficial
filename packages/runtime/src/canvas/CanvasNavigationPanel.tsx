@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CanvasDocument } from './CanvasDocument';
 import { readCanvasNavigation } from './canvasNavigation';
 import './CanvasNavigationPanel.css';
@@ -12,6 +13,7 @@ export function CanvasNavigationPanel({
   onNavigate(nodeId: string): void;
   onOverview(): void;
 }) {
+  const { t } = useTranslation('editor');
   const items = useMemo(() => readCanvasNavigation(document), [document]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const current = items.find((item) => item.nodeId === currentId);
@@ -34,7 +36,7 @@ export function CanvasNavigationPanel({
   return (
     <div className="canvas-navigation nodrag nopan nowheel">
       <nav
-        aria-label="Screen navigation"
+        aria-label={t('canvas.navigation.label')}
         onKeyDown={(event) => event.stopPropagation()}
       >
         <div className="canvas-navigation__row">
@@ -43,15 +45,15 @@ export function CanvasNavigationPanel({
             onClick={overview}
             data-canvas-help="canvas-nav-overview"
           >
-            Overview
+            {t('canvas.navigation.overview')}
           </button>
           <select
-            aria-label="Go to screen"
+            aria-label={t('canvas.navigation.go_to_screen')}
             value={current?.nodeId ?? ''}
             onChange={(event) => go(event.target.value)}
           >
             <option value="" disabled>
-              Browse screens…
+              {t('canvas.navigation.browse_screens')}
             </option>
             {items.map((item) => (
               <option key={item.nodeId} value={item.nodeId}>
@@ -73,11 +75,11 @@ export function CanvasNavigationPanel({
             }
             data-canvas-help="canvas-nav-up"
           >
-            Up
+            {t('canvas.navigation.up')}
           </button>
           <button
             type="button"
-            aria-label="Previous screen"
+            aria-label={t('canvas.navigation.previous_screen')}
             disabled={index <= 0}
             onClick={() => go(siblings[index - 1].nodeId)}
             data-canvas-help="canvas-nav-previous"
@@ -86,12 +88,12 @@ export function CanvasNavigationPanel({
           </button>
           <span className="canvas-navigation__count" aria-live="polite">
             {current
-              ? `${index + 1} / ${siblings.length}`
-              : `${siblings.length} screens`}
+              ? t('canvas.navigation.position', { index: index + 1, count: siblings.length })
+              : t('canvas.navigation.screen_count', { count: siblings.length })}
           </span>
           <button
             type="button"
-            aria-label="Next screen"
+            aria-label={t('canvas.navigation.next_screen')}
             disabled={index >= siblings.length - 1}
             onClick={() => go(siblings[index + 1].nodeId)}
             data-canvas-help="canvas-nav-next"
@@ -101,12 +103,12 @@ export function CanvasNavigationPanel({
         </div>
         {children.length > 0 && (
           <select
-            aria-label="Explore child view"
+            aria-label={t('canvas.navigation.explore_child')}
             value=""
             onChange={(event) => go(event.target.value)}
           >
             <option value="" disabled>
-              Explore…
+              {t('canvas.navigation.explore')}
             </option>
             {children.map((item) => (
               <option key={item.nodeId} value={item.nodeId}>

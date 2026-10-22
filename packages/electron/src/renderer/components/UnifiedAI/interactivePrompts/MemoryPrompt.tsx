@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { errorNotificationService } from '../../../services/ErrorNotificationService';
 
 export type MemoryTarget = 'user' | 'project';
@@ -41,6 +42,7 @@ export function MemoryPromptIndicator({
   isSaving,
   workspacePath,
 }: Pick<MemoryPromptProps, 'target' | 'onTargetChange' | 'isSaving' | 'workspacePath'>) {
+  const { t } = useTranslation('agents', { keyPrefix: 'input.memory' });
   const toggleTarget = useCallback(() => {
     onTargetChange(target === 'user' ? 'project' : 'user');
   }, [target, onTargetChange]);
@@ -64,16 +66,16 @@ export function MemoryPromptIndicator({
           <MemoryIcon />
         </div>
         <span className="memory-prompt-label text-xs text-[var(--nim-text-muted)]">
-          {isSaving ? 'Saving...' : 'Adding to memory'}
+          {isSaving ? t('saving') : t('adding')}
         </span>
         <button
           className="memory-prompt-target-button nim-btn-secondary gap-1 px-2 py-1 text-xs font-medium"
           onClick={toggleTarget}
           disabled={isSaving}
-          title="Use arrow keys to switch"
+          title={t('switch_target')}
         >
           <span className="memory-target-name text-[var(--nim-primary)]">
-            {target === 'user' ? 'User Memory' : 'Project Memory'}
+            {target === 'user' ? t('user') : t('project')}
           </span>
           <span className="memory-target-hint flex items-center text-[var(--nim-text-faint)]">
             <ArrowsIcon />
@@ -82,18 +84,18 @@ export function MemoryPromptIndicator({
         <button
           className="memory-prompt-open-button flex items-center justify-center p-1 rounded text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-tertiary)] transition-colors"
           onClick={openMemoryFile}
-          title="Open memory file in editor"
-          aria-label="Open memory file"
+          title={t('open_file')}
+          aria-label={t('open_file')}
         >
           <OpenFileIcon />
         </button>
       </div>
       <div className="memory-prompt-shortcuts flex items-center gap-1 text-[11px] text-[var(--nim-text-faint)]">
-        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Enter</kbd> to save
+        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Enter</kbd> {t('to_save')}
         <span className="memory-shortcut-separator mx-1 text-[var(--nim-text-faint)]">&middot;</span>
-        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&uarr;</kbd><kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&darr;</kbd> to switch target
+        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&uarr;</kbd><kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">&darr;</kbd> {t('to_switch')}
         <span className="memory-shortcut-separator mx-1 text-[var(--nim-text-faint)]">&middot;</span>
-        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Esc</kbd> to cancel
+        <kbd className="inline-block px-1.5 py-0.5 font-inherit text-[10px] bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)] rounded">Esc</kbd> {t('to_cancel')}
       </div>
     </div>
   );
@@ -111,13 +113,14 @@ export function MemorySaveButton({
   disabled: boolean;
   isSaving?: boolean;
 }) {
+  const { t } = useTranslation('agents', { keyPrefix: 'input.memory' });
   return (
     <button
       className="memory-save-button flex items-center justify-center w-9 h-9 p-0 rounded-md border-none cursor-pointer text-white shrink-0 transition-all duration-150 bg-[var(--nim-primary)] hover:enabled:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
       onClick={onSave}
       disabled={disabled || isSaving}
-      title="Save to memory (Enter)"
-      aria-label="Save to memory"
+      title={t('save')}
+      aria-label={t('save_aria')}
     >
       {isSaving ? (
         <SpinnerIcon />
@@ -132,6 +135,7 @@ export function MemorySaveButton({
  * Hook to manage memory mode state
  */
 export function useMemoryMode(workspacePath?: string) {
+  const { t } = useTranslation('agents', { keyPrefix: 'input.memory' });
   const [isMemoryMode, setIsMemoryMode] = useState(false);
   const [memoryTarget, setMemoryTarget] = useState<MemoryTarget>('user');
   const [isSaving, setIsSaving] = useState(false);
@@ -163,31 +167,30 @@ export function useMemoryMode(workspacePath?: string) {
       });
 
       if (result.success) {
-        const targetLabel = memoryTarget === 'user' ? 'User Memory' : 'Project Memory';
         errorNotificationService.showInfo(
-          'Memory Updated',
-          `Added to ${targetLabel}`,
+          t('updated'),
+          t('added', { target: memoryTarget === 'user' ? t('user') : t('project') }),
           { duration: 2000 }
         );
         exitMemoryMode();
         return true;
       } else {
         errorNotificationService.showError(
-          'Failed to Save Memory',
-          result.error || 'Unknown error'
+          t('failed_save'),
+          result.error || t('unknown_error')
         );
         return false;
       }
     } catch (error) {
       errorNotificationService.showError(
-        'Failed to Save Memory',
-        error instanceof Error ? error.message : 'Unknown error'
+        t('failed_save'),
+        error instanceof Error ? error.message : t('unknown_error')
       );
       return false;
     } finally {
       setIsSaving(false);
     }
-  }, [memoryTarget, workspacePath, exitMemoryMode]);
+  }, [memoryTarget, workspacePath, exitMemoryMode, t]);
 
   return {
     isMemoryMode,

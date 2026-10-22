@@ -3,6 +3,8 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { UnifiedOnboarding } from '../UnifiedOnboarding';
 
 describe('UnifiedOnboarding completion intent', () => {
@@ -13,19 +15,22 @@ describe('UnifiedOnboarding completion intent', () => {
   it.each([
     ['Get started…', 'get-started'],
     ['Start tutorial', 'tutorial'],
-  ] as const)('passes the %s intent through onComplete', (buttonName, intent) => {
+  ] as const)('passes the %s intent through onComplete', async (buttonName, intent) => {
     (window as unknown as { electronAPI: unknown }).electronAPI = {
       invoke: vi.fn().mockResolvedValue({}),
     };
     const onComplete = vi.fn();
+    const i18n = await createI18nInstance('en');
 
     render(
-      <UnifiedOnboarding
-        isOpen
-        onComplete={onComplete}
-        onSkip={() => {}}
-        forcedMode="new"
-      />,
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+        <UnifiedOnboarding
+          isOpen
+          onComplete={onComplete}
+          onSkip={() => {}}
+          forcedMode="new"
+        />
+      </UiLanguageProvider>,
     );
 
     fireEvent.click(screen.getByText('Standard Mode'));

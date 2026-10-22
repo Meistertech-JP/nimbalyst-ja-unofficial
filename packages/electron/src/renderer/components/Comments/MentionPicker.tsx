@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { FloatingPortal, useFloating, autoUpdate, flip, offset, shift, type ReferenceElement } from '@floating-ui/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
@@ -32,6 +33,7 @@ export function MentionPicker({
   onSelect: (candidate: MentionCandidate) => void;
   onActiveIndexChange: (index: number) => void;
 }) {
+  const { t } = useTranslation('editor', { keyPrefix: 'mentions' });
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const virtualReference = useMemo<ReferenceElement>(
@@ -70,19 +72,19 @@ export function MentionPicker({
         ref={refs.setFloating}
         style={floatingStyles}
         role="listbox"
-        aria-label="Mention a person or agent"
+        aria-label={t('choose_person_or_agent')}
         data-testid="mention-picker"
         className="mention-picker z-[10000] max-h-[260px] w-[280px] overflow-y-auto rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] p-1 shadow-[0_6px_18px_rgba(0,0,0,0.22)]"
       >
         <div ref={listRef}>
           {candidates[0]?.kind === 'person' && (
-            <GroupLabel testId="mention-group-people" label="People" />
+            <GroupLabel testId="mention-group-people" label={t('people')} />
           )}
 
           {candidates.map((candidate, index) => (
             <React.Fragment key={candidate.kind === 'person' ? `p:${candidate.person.userId}` : `a:${candidate.agent.sessionId}`}>
               {index === firstAgentIndex && firstAgentIndex >= 0 && (
-                <GroupLabel testId="mention-group-agents" label="Agents in this conversation" separated={index > 0} />
+                <GroupLabel testId="mention-group-agents" label={t('agents_in_conversation')} separated={index > 0} />
               )}
               <CandidateRow
                 candidate={candidate}
@@ -122,6 +124,7 @@ function CandidateRow({
   onSelect: () => void;
   onHover: () => void;
 }) {
+  const { t } = useTranslation('editor', { keyPrefix: 'mentions' });
   const shared = `mention-picker-option flex w-full items-center gap-2 rounded px-2 py-1.5 text-left ${
     active ? 'bg-[var(--nim-bg-selected)]' : 'bg-transparent hover:bg-[var(--nim-bg-hover)]'
   }`;
@@ -172,7 +175,7 @@ function CandidateRow({
       <span
         className="mention-picker-agent-glyph flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-[color-mix(in_srgb,var(--nim-primary)_18%,transparent)] text-[var(--nim-primary)]"
         data-testid="mention-option-agent-glyph"
-        aria-label="Agent"
+        aria-label={t('agent')}
       >
         <MaterialSymbol icon="smart_toy" size={14} />
       </span>
@@ -181,7 +184,7 @@ function CandidateRow({
           {agent.sessionName}
         </span>
         <span className="mention-picker-handle block truncate text-[11px] text-[var(--nim-text-faint)]">
-          @{agent.handle} · session of {agent.ownerDisplayName}
+          @{agent.handle} · {t('session_of', { name: agent.ownerDisplayName })}
         </span>
       </span>
     </button>

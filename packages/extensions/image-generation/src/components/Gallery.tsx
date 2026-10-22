@@ -5,7 +5,8 @@
  * AI responses may include generated images, text, or both.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { Generation, GeneratedImage, SessionMessage } from '../types';
 import { STYLE_PRESETS } from '../types';
 
@@ -23,6 +24,7 @@ interface ExpandedImage {
 }
 
 export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: GalleryProps) {
+  const { t, i18n } = useTranslation('extensions');
   const isDark = theme === 'dark';
   const [expandedImage, setExpandedImage] = useState<ExpandedImage | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,9 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
   // Get style label from preset
   const getStyleLabel = (styleId: string): string => {
     const preset = STYLE_PRESETS.find((p) => p.id === styleId);
-    return preset?.label || styleId;
+    if (preset) return t(`image_generation_ui.styles.${preset.id}.label`);
+    if (styleId === 'custom') return t('image_generation_ui.styles.custom.label');
+    return styleId;
   };
 
   // Format timestamp for display
@@ -62,13 +66,15 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return `Today at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      return t('image_generation_ui.today_at', { time: date.toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' }) });
     } else if (diffDays === 1) {
-      return `Yesterday at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      return t('image_generation_ui.yesterday_at', { time: date.toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' }) });
     } else {
       return (
-        date.toLocaleDateString([], { month: 'short', day: 'numeric' }) +
-        ` at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+        t('image_generation_ui.date_at_time', {
+          date: date.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' }),
+          time: date.toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' }),
+        })
       );
     }
   };
@@ -95,10 +101,10 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
       <div className="flex-1 flex flex-col items-center justify-center text-nim-muted text-center p-10">
         <div className="text-[64px] mb-4 opacity-30">&#127912;</div>
         <div className="text-base font-medium text-nim mb-2">
-          Start a conversation
+          {t('image_generation_ui.empty_state_title')}
         </div>
         <div className="text-[13px] max-w-[300px] leading-normal">
-          Enter a prompt below to generate your first image, or ask a question about image creation
+          {t('image_generation_ui.empty_state_description')}
         </div>
       </div>
     );
@@ -139,13 +145,13 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
               }}
               className="px-3 py-1.5 bg-nim-hover border border-nim rounded text-nim cursor-pointer text-xs flex items-center gap-1.5"
             >
-              <span>&#8595;</span> Download
+              <span>&#8595;</span> {t('image_generation_ui.download')}
             </button>
             <button
               onClick={() => setExpandedImage(null)}
               className="px-3 py-1.5 bg-nim-hover border border-nim rounded text-nim cursor-pointer text-xs"
             >
-              Close
+              {t('image_generation_ui.close')}
             </button>
           </div>
         </div>
@@ -162,7 +168,7 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
 
         {/* Navigation hint */}
         <div className="px-4 py-2 text-center text-nim-faint text-[11px]">
-          Press Escape or click outside to close
+          {t('image_generation_ui.lightbox_close_hint')}
         </div>
       </div>
     );
@@ -210,7 +216,7 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
                         >
                           <img
                             src={`file://${imagesBasePath}/${result.file}`}
-                            alt={`Generated image ${index + 1}`}
+                            alt={t('image_generation_ui.generated_image_alt', { number: index + 1 })}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -228,7 +234,7 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
                           <div className="image-overlay absolute bottom-0 left-0 right-0 p-2.5 bg-gradient-to-t from-black/80 to-transparent opacity-0 transition-opacity duration-150">
                             <div className="flex gap-1.5 justify-end">
                               <button
-                                title="Download"
+                                title={t('image_generation_ui.download')}
                                 className="w-7 h-7 flex items-center justify-center bg-white/15 border-none rounded text-white cursor-pointer text-[13px]"
                               >
                                 &#8595;
@@ -252,7 +258,7 @@ export function Gallery({ messages, imagesBasePath, onEditPrompt, theme }: Galle
                         className="ml-auto px-2 py-1 bg-transparent border border-nim rounded text-nim-muted cursor-pointer flex items-center gap-1"
                       >
                         <span>&#9998;</span>
-                        Edit
+                        {t('image_generation_ui.edit_prompt')}
                       </button>
                     </div>
                   </div>

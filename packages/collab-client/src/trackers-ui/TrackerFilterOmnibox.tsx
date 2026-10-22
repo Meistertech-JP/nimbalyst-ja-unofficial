@@ -32,6 +32,7 @@ import {
   useState,
 } from 'react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   isClauseComplete,
   OP_LABELS,
@@ -136,10 +137,13 @@ export function TrackerFilterOmnibox({
   onPillClick,
   trailing,
   className = '',
-  placeholder = 'Search, # for tags, or a field name to filter…',
+  placeholder,
   size = 'default',
 }: TrackerFilterOmniboxProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const large = size === 'large';
+  const searchPlaceholder =
+    placeholder ?? t('omnibox.search_placeholder');
   // The token under composition. Everything before it is `searchQuery`, so the
   // two together are exactly what the input shows.
   const [draftToken, setDraftToken] = useState('');
@@ -419,7 +423,7 @@ export function TrackerFilterOmnibox({
           type="button"
           className={`tracker-filter-omnibox-tag-chip flex ${pillSize} shrink-0 items-center gap-1 rounded-full border border-blue-400/30 bg-blue-400/[0.12] px-1.5 text-blue-400 hover:bg-blue-400/[0.18]`}
           onClick={() => removeTag(tag)}
-          title={`Remove #${tag} filter`}
+          title={t('main_extra.remove_tag_filter', { tag })}
           data-testid={`tracker-filter-omnibox-tag-chip-${tag}`}
         >
           #{tag}
@@ -440,7 +444,9 @@ export function TrackerFilterOmnibox({
               onClick={() => {
                 if (onPillClick?.(index, clause) === false || !onPillClick) editClause(clause, index);
               }}
-              title={onPillClick ? 'Edit filters' : `Edit ${serializeClause(clause, fields)}`}
+              title={onPillClick
+                ? t('filters.edit_filters')
+                : t('filters.edit_clause', { clause: serializeClause(clause, fields) })}
             >
               <span className="shrink-0 font-medium text-nim">
                 {parts.field}
@@ -454,7 +460,7 @@ export function TrackerFilterOmnibox({
               type="button"
               className={`inline-flex h-full ${large && inlinePills ? 'w-5' : 'w-4'} shrink-0 items-center justify-center border-l border-nim text-nim-faint hover:bg-nim-tertiary hover:text-nim`}
               onClick={() => removeClause(index)}
-              aria-label={`Remove ${parts.field} filter`}
+              aria-label={t('filters.remove', { field: parts.field })}
             >
               <MaterialSymbol icon="close" size={pillIcon} />
             </button>
@@ -485,9 +491,9 @@ export function TrackerFilterOmnibox({
             role="combobox"
             aria-expanded={menuOpen && suggestions.length > 0}
             aria-controls="tracker-filter-omnibox-menu"
-            aria-label="Search or filter tracker items"
+            aria-label={t('omnibox.search_label')}
             className={`tracker-filter-omnibox-input min-w-[120px] flex-1 border-none bg-transparent p-0 text-nim placeholder:text-nim-faint focus:outline-none ${large ? 'h-7 text-[13.5px]' : 'text-xs'}`}
-            placeholder={hasPills ? undefined : placeholder}
+            placeholder={hasPills ? undefined : searchPlaceholder}
             value={inputValue}
             onChange={(event) => applyInput(event.target.value, true)}
             onPointerEnter={() => {
@@ -506,7 +512,7 @@ export function TrackerFilterOmnibox({
               type="button"
               className="shrink-0 text-nim-faint hover:text-nim"
               onClick={clearAll}
-              aria-label="Clear search and filters"
+              aria-label={t('omnibox.clear_label')}
               data-testid="tracker-filter-omnibox-clear"
             >
               <MaterialSymbol icon="close" size={large ? 16 : 13} />
@@ -526,9 +532,9 @@ export function TrackerFilterOmnibox({
           role="combobox"
           aria-expanded={menuOpen && suggestions.length > 0}
           aria-controls="tracker-filter-omnibox-menu"
-          aria-label="Search or filter tracker items"
+          aria-label={t('omnibox.search_label')}
           className={`tracker-filter-omnibox-input w-full border border-nim bg-nim-secondary text-nim placeholder:text-nim-faint focus:border-[var(--nim-primary)] focus:outline-none ${large ? 'h-9 rounded-md pl-10 pr-9 text-[13.5px]' : 'rounded py-1 pl-7 pr-6 text-xs'}`}
-          placeholder={placeholder}
+          placeholder={searchPlaceholder}
           value={inputValue}
           onChange={(event) => applyInput(event.target.value, true)}
           onPointerEnter={() => {
@@ -546,7 +552,7 @@ export function TrackerFilterOmnibox({
             type="button"
             className={`absolute ${large ? 'right-2.5' : 'right-1'} top-1/2 -translate-y-1/2 text-nim-faint hover:text-nim`}
             onClick={clearAll}
-            aria-label="Clear search and filters"
+            aria-label={t('omnibox.clear_label')}
             data-testid="tracker-filter-omnibox-clear"
           >
             <MaterialSymbol icon="close" size={large ? 16 : 13} />

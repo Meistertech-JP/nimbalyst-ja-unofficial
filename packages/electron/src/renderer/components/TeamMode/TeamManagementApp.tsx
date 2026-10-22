@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 
 import { DialogProvider } from '../../contexts/DialogContext';
@@ -70,6 +71,7 @@ function readTarget(): WindowTarget {
 }
 
 export function TeamManagementApp() {
+  const { t } = useTranslation('common');
   const setSelectedOrgId = useSetAtom(selectedOrgIdAtom);
   const setOrgWindowRoute = useSetAtom(
     orgWindowRouteAtomFamily(ORG_WINDOW_SURFACE_ID),
@@ -241,7 +243,7 @@ export function TeamManagementApp() {
           )
           : (
             <div className="team-management-resolving flex flex-1 items-center justify-center text-sm text-[var(--nim-text-muted)]">
-              Loading organization…
+              {t('account_ui.loading_organization')}
             </div>
           )}
       </div>

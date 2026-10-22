@@ -1,3 +1,5 @@
+import { useTranslation } from '@nimbalyst/i18n/react';
+
 interface ToolbarProps {
   totalPages: number;
   scale: number;
@@ -9,6 +11,7 @@ interface ToolbarProps {
 const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
 export function Toolbar({ totalPages, scale, fitToWidth, onScaleChange, onFitToWidthToggle }: ToolbarProps) {
+  const { t } = useTranslation('common');
   const currentZoomPercent = Math.round(scale * 100);
 
   const handleZoomIn = () => {
@@ -33,23 +36,23 @@ export function Toolbar({ totalPages, scale, fitToWidth, onScaleChange, onFitToW
     <div className="bg-nim border-b border-nim px-4 py-2 shrink-0">
       <div className="flex items-center justify-between max-w-[1200px] mx-auto">
         <div className="text-sm text-nim-muted">
-          <span>{totalPages} pages</span>
+          <span>{t('pdf_viewer.pages', { count: totalPages })}</span>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             className={`px-3 py-1 rounded cursor-pointer text-base font-semibold transition-all border border-nim ${fitToWidth ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)] hover:opacity-90' : 'bg-nim-tertiary text-nim hover:bg-nim-hover'}`}
             onClick={onFitToWidthToggle}
-            title="Fit to Width"
+            title={t('pdf_viewer.fit_to_width')}
           >
-            Fit
+            {t('pdf_viewer.fit')}
           </button>
 
           <button
             className="bg-nim-tertiary border border-nim text-nim px-3 py-1 rounded cursor-pointer text-base font-semibold transition-all hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleZoomOut}
             disabled={scale <= ZOOM_LEVELS[0]}
-            title="Zoom Out (Cmd+-)"
+            title={t('pdf_viewer.zoom_out')}
           >
             -
           </button>
@@ -57,7 +60,7 @@ export function Toolbar({ totalPages, scale, fitToWidth, onScaleChange, onFitToW
           <span
             className="min-w-[50px] text-center text-sm font-medium cursor-pointer select-none hover:text-[var(--nim-primary)]"
             onClick={handleZoomReset}
-            title="Click to reset zoom"
+            title={t('pdf_viewer.reset_zoom')}
           >
             {currentZoomPercent}%
           </span>
@@ -66,7 +69,7 @@ export function Toolbar({ totalPages, scale, fitToWidth, onScaleChange, onFitToW
             className="bg-nim-tertiary border border-nim text-nim px-3 py-1 rounded cursor-pointer text-base font-semibold transition-all hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleZoomIn}
             disabled={scale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-            title="Zoom In (Cmd++)"
+            title={t('pdf_viewer.zoom_in')}
           >
             +
           </button>

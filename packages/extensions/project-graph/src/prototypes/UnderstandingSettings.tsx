@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import type { ViewSettings, ViewLens } from "./viewSettings";
 import { SOURCES, lensMatches } from "./viewSettings";
 import type { ProjectIndexState } from "../indexing/projectIndex";
@@ -23,6 +24,7 @@ export function UnderstandingSettings({
   nodes: ProjectGraphNode[];
   onClose: () => void;
 }) {
+  const { t } = useTranslation("extensions");
   const [draft, setDraft] = useState(value);
   const [label, setLabel] = useState("");
   const [kind, setKind] = useState<"tag" | "path" | "anchor">("tag");
@@ -51,21 +53,19 @@ export function UnderstandingSettings({
   return (
     <section
       className="pg-understanding-settings"
-      aria-label="Project view settings"
+      aria-label={t("project_graph.project_view_settings")}
     >
       <header>
-        <h2>Project view settings</h2>
-        <button onClick={onClose}>Close settings</button>
+        <h2>{t("project_graph.project_view_settings")}</h2>
+        <button onClick={onClose}>{t("project_graph.close_settings")}</button>
       </header>
       <div className="pg-settings-columns">
         <section>
-          <h3>Indexed sources</h3>
+          <h3>{t("project_graph.indexed_sources")}</h3>
           <p>
-            Index lightweight records across each enabled source. Bodies load
-            when opened. Earlier view windows request additional event evidence;
-            viewing dates do not remove older contextual records.
+            {t("project_graph.indexed_sources_description")}
           </p>
-          {SOURCES.map(({ id, label }) => (
+          {SOURCES.map(({ id }) => (
             <label key={id}>
               <input
                 type="checkbox"
@@ -77,7 +77,7 @@ export function UnderstandingSettings({
                   })
                 }
               />
-              {label}
+              {t(`project_graph.source_${id}`)}
             </label>
           ))}
           <label>
@@ -88,10 +88,10 @@ export function UnderstandingSettings({
                 setDraft({ ...draft, includeArchived: e.target.checked })
               }
             />
-            Include archived records
+            {t("project_graph.include_archived_records")}
           </label>
           <label>
-            Event history{" "}
+            {t("project_graph.event_history")} {" "}
             <select
               value={draft.historyDays ?? "all"}
               onChange={(e) =>
@@ -102,19 +102,18 @@ export function UnderstandingSettings({
                 })
               }
             >
-              <option value={90}>90 days</option>
-              <option value={365}>1 year</option>
-              <option value="all">All available</option>
+              <option value={90}>{t("project_graph.days", { count: 90 })}</option>
+              <option value={365}>{t("project_graph.one_year")}</option>
+              <option value="all">{t("project_graph.all_available")}</option>
             </select>
           </label>
           <details>
-            <summary>Advanced loading</summary>
+            <summary>{t("project_graph.advanced_loading")}</summary>
             <p>
-              Batch size adapts to measured query latency. Limits below
-              deliberately truncate source coverage.
+              {t("project_graph.advanced_loading_description")}
             </p>
             <label>
-              Safety limit per source{" "}
+              {t("project_graph.safety_limit_per_source")} {" "}
               <select
                 value={draft.safetyLimit ?? "none"}
                 onChange={(e) =>
@@ -125,28 +124,30 @@ export function UnderstandingSettings({
                   })
                 }
               >
-                <option value="none">No record limit</option>
+                <option value="none">{t("project_graph.no_record_limit")}</option>
                 <option value={10000}>10,000</option>
                 <option value={50000}>50,000</option>
                 <option value={100000}>100,000</option>
               </select>
             </label>
             <ul>
-              {SOURCES.map(({ id, label }) => (
+              {SOURCES.map(({ id }) => (
                 <li key={id}>
-                  {label}: {Math.round(index.timings[id]?.totalMs ?? 0)} ms ·{" "}
-                  {index.timings[id]?.pages ?? 0} pages · slowest{" "}
-                  {Math.round(index.timings[id]?.slowestPageMs ?? 0)} ms
+                  {t("project_graph.source_timing", {
+                    source: t(`project_graph.source_${id}`),
+                    totalMs: Math.round(index.timings[id]?.totalMs ?? 0),
+                    pages: index.timings[id]?.pages ?? 0,
+                    slowestMs: Math.round(index.timings[id]?.slowestPageMs ?? 0),
+                  })}
                 </li>
               ))}
             </ul>
           </details>
         </section>
         <section>
-          <h3>View filters & saved lenses</h3>
+          <h3>{t("project_graph.view_filters_saved_lenses")}</h3>
           <p>
-            Filters change displayed evidence and counts. The index and area
-            positions remain intact.
+            {t("project_graph.view_filters_description")}
           </p>
           <div className="pg-settings-type-list">
             {types.map((type) => (
@@ -168,26 +169,26 @@ export function UnderstandingSettings({
             ))}
           </div>
           <label>
-            Lens name{" "}
+            {t("project_graph.lens_name")} {" "}
             <input
               value={lensName}
               onChange={(e) => setLensName(e.target.value)}
-              placeholder="My project lens"
+              placeholder={t("project_graph.lens_name_placeholder")}
             />
           </label>
           <button
             disabled={!lensName.trim() || draft.lenses.length >= 30}
             onClick={saveLens}
           >
-            Save current lens
+            {t("project_graph.save_current_lens")}
           </button>
           <ul>
             {draft.lenses.map((l) => (
               <li key={l.id}>
                 {l.name}
-                {lensMatches(draft, l) ? " · current" : ""}{" "}
+                {lensMatches(draft, l) ? ` · ${t("project_graph.current")}` : ""}{" "}
                 <button
-                  aria-label={`Remove lens ${l.name}`}
+                  aria-label={t("project_graph.remove_lens", { name: l.name })}
                   onClick={() =>
                     setDraft({
                       ...draft,
@@ -196,25 +197,23 @@ export function UnderstandingSettings({
                     })
                   }
                 >
-                  Remove
+                  {t("project_graph.remove")}
                 </button>
               </li>
             ))}
           </ul>
         </section>
         <section>
-          <h3>Stable areas</h3>
+          <h3>{t("project_graph.stable_areas")}</h3>
           <p>
-            Initial topics are seeded once. Refresh never promotes new tags or
-            moves existing areas. Edit rules here; hidden areas keep their
-            position.
+            {t("project_graph.stable_areas_description")}
           </p>
           <ul className="pg-area-rule-list">
             {registry.map((r) => (
               <li key={r.id}>
                 <label>
                   <input
-                    aria-label={`Show area ${r.label}`}
+                    aria-label={t("project_graph.show_area", { name: r.label })}
                     type="checkbox"
                     disabled={r.id === "unassigned"}
                     checked={!r.hidden}
@@ -229,7 +228,7 @@ export function UnderstandingSettings({
                     }
                   />
                   <input
-                    aria-label={`Area name ${r.label}`}
+                    aria-label={t("project_graph.area_name", { name: r.label })}
                     value={r.label}
                     onChange={(e) =>
                       onRegistry(
@@ -242,18 +241,18 @@ export function UnderstandingSettings({
                 </label>
                 <small>
                   {[
-                    ...(r.tags ?? []).map((t) => `tag: ${t}`),
-                    ...(r.paths ?? []).map((p) => `path: ${p}`),
+                    ...(r.tags ?? []).map((tag) => t("project_graph.tag_rule", { tag })),
+                    ...(r.paths ?? []).map((path) => t("project_graph.path_rule", { path })),
                     ...(r.anchorIds ?? []).map(
                       (id) => nodes.find((n) => n.id === id)?.label ?? id
                     ),
-                  ].join(" · ") || "Outside configured areas"}
+                  ].join(" · ") || t("project_graph.outside_configured_areas")}
                 </small>
                 {r.id !== "unassigned" && (
                   <details>
-                    <summary>Edit membership rules</summary>
+                    <summary>{t("project_graph.edit_membership_rules")}</summary>
                     <label>
-                      Tags (comma separated)
+                      {t('project_graph.tags_comma_separated')}
                       <input
                         defaultValue={r.tags?.join(", ") ?? ""}
                         onBlur={(e) =>
@@ -274,7 +273,7 @@ export function UnderstandingSettings({
                       />
                     </label>
                     <label>
-                      Paths (comma separated)
+                      {t('project_graph.paths_comma_separated')}
                       <input
                         defaultValue={r.paths?.join(", ") ?? ""}
                         onBlur={(e) =>
@@ -312,8 +311,9 @@ export function UnderstandingSettings({
                           )
                         }
                       >
-                        Remove anchor{" "}
-                        {nodes.find((n) => n.id === id)?.label ?? id}
+                        {t("project_graph.remove_anchor", {
+                          name: nodes.find((n) => n.id === id)?.label ?? id,
+                        })}
                       </button>
                     ))}
                   </details>
@@ -322,11 +322,11 @@ export function UnderstandingSettings({
             ))}
           </ul>
           <label>
-            New area name{" "}
+            {t("project_graph.new_area_name")} {" "}
             <input value={label} onChange={(e) => setLabel(e.target.value)} />
           </label>
           <label>
-            Membership rule{" "}
+            {t("project_graph.membership_rule")} {" "}
             <select
               value={kind}
               onChange={(e) => {
@@ -334,24 +334,24 @@ export function UnderstandingSettings({
                 setRule("");
               }}
             >
-              <option value="tag">Topic tag</option>
-              <option value="path">Path prefix</option>
-              <option value="anchor">Record and its direct neighbors</option>
+              <option value="tag">{t("project_graph.topic_tag")}</option>
+              <option value="path">{t("project_graph.path_prefix")}</option>
+              <option value="anchor">{t("project_graph.record_and_neighbors")}</option>
             </select>
           </label>
           {kind === "anchor" ? (
             <>
               <label>
-                Find anchor{" "}
+                {t("project_graph.find_anchor")} {" "}
                 <input
                   value={anchorSearch}
                   onChange={(e) => setAnchorSearch(e.target.value)}
                 />
               </label>
               <label>
-                Anchor record{" "}
+                {t("project_graph.anchor_record")} {" "}
                 <select value={rule} onChange={(e) => setRule(e.target.value)}>
-                  <option value="">Select record…</option>
+                  <option value="">{t("project_graph.select_record")}</option>
                   {anchors.map((n) => (
                     <option key={n.id} value={n.id}>
                       {n.label} · {n.type}
@@ -360,12 +360,12 @@ export function UnderstandingSettings({
                 </select>
               </label>
               <small>
-                Showing up to 40 matching records. Search to narrow.
+                {t("project_graph.showing_matching_records")}
               </small>
             </>
           ) : (
             <label>
-              {kind === "tag" ? "Topic tag" : "Path prefix"}
+              {kind === "tag" ? t("project_graph.topic_tag") : t("project_graph.path_prefix")}
               <input value={rule} onChange={(e) => setRule(e.target.value)} />
             </label>
           )}
@@ -387,11 +387,10 @@ export function UnderstandingSettings({
               setRule("");
             }}
           >
-            Add area
+            {t("project_graph.add_area")}
           </button>
           <p>
-            Area edits save immediately. Source records and tags are never
-            rewritten.
+            {t("project_graph.area_edits_save_immediately")}
           </p>
         </section>
       </div>
@@ -402,10 +401,10 @@ export function UnderstandingSettings({
             onClose();
           }}
         >
-          Apply settings
+          {t("project_graph.apply_settings")}
         </button>
         <span>
-          Source and history changes refresh the index; view filters reuse it.
+          {t("project_graph.settings_refresh_note")}
         </span>
       </footer>
     </section>

@@ -11,7 +11,9 @@
 import React from 'react';
 import { Provider, createStore } from 'jotai';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dialogRef } from '../../../contexts/DialogContext';
 import { DIALOG_IDS } from '../../../dialogs/registry';
@@ -30,6 +32,16 @@ const ACCOUNT = {
   isSyncAccount: true,
   sessionStatus: 'active' as const,
 };
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
 
 function installApi(overrides: Record<string, unknown> = {}) {
   const api = {
@@ -50,7 +62,10 @@ function snapshotWithPresence(status: 'online' | 'away' | 'offline' | null) {
   };
 }
 
-function renderIndicator(snapshot = snapshotWithPresence('online')) {
+function renderIndicator(
+  snapshot = snapshotWithPresence('online'),
+  i18n = englishI18n,
+) {
   const store = createStore();
   store.set(teamInboxSnapshotAtom, snapshot as never);
   // Both are hydrated (and emptied on sign-out) by initStytchAuthListeners,
@@ -60,15 +75,17 @@ function renderIndicator(snapshot = snapshotWithPresence('online')) {
   const onOpenWebConsole = vi.fn();
   const onOpenPreferences = vi.fn();
   render(
-    <Provider store={store}>
-      <OrgUserIndicator
-        selectedOrgId="org-1"
-        selectedTeamMemberId="member-1"
-        selectedEmail="ada@example.com"
-        onOpenWebConsole={onOpenWebConsole}
-        onOpenPreferences={onOpenPreferences}
-      />
-    </Provider>,
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}>
+        <OrgUserIndicator
+          selectedOrgId="org-1"
+          selectedTeamMemberId="member-1"
+          selectedEmail="ada@example.com"
+          onOpenWebConsole={onOpenWebConsole}
+          onOpenPreferences={onOpenPreferences}
+        />
+      </Provider>
+    </I18nextProvider>,
   );
   return { onOpenWebConsole, onOpenPreferences, store };
 }
@@ -194,5 +211,16 @@ describe('OrgUserIndicator profile menu', () => {
     await openMenu();
     fireEvent.click(screen.getByTestId('org-user-popover-web-console'));
     expect(onOpenWebConsole).toHaveBeenCalledTimes(1);
+  });
+
+  it('localizes the profile menu in Japanese', async () => {
+    installApi();
+    renderIndicator(snapshotWithPresence('away'), japaneseI18n);
+
+    expect(screen.getByRole('button', { name: 'アカウントと接続状態' })).toBeDefined();
+    await openMenu();
+
+    expect(screen.getByTestId('org-user-popover-preferences').textContent).toContain('組織の設定');
+    expect(screen.getByTestId('org-user-popover-account-row').textContent).toContain('離席中');
   });
 });

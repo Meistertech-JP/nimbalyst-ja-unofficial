@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { Provider, createStore } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import {
   cleanup,
   fireEvent,
-  render,
+  render as rtlRender,
   screen,
   waitFor,
 } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConversationDirectoryEntry } from '../../../../shared/conversationDirectory';
 import { RoomView } from '../RoomView';
@@ -51,6 +53,19 @@ vi.mock('../../../store/listeners/conversationDirectoryListeners', () => ({
 vi.mock('../../../hooks/useResourcePreviewResolver', () => ({
   useResourcePreviewResolver: () => ({ resolve: async () => ({}) }),
 }));
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function render(ui: React.ReactElement, i18n = englishI18n) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={i18n}>{children}</I18nextProvider>,
+  });
+}
 
 const entry: ConversationDirectoryEntry = {
   id: 'design',
@@ -266,5 +281,25 @@ describe('RoomView', () => {
     // without the room being told about it.
     void store.set(settingAtom('team.messages.density'), 'compact');
     await waitFor(() => expect(threadProps.current?.density).toBe('compact'));
+  });
+
+  it('localizes room controls and empty guidance while preserving the room name', () => {
+    render(
+      <Provider store={createStore()}>
+        <RoomView
+          orgId="org-a"
+          entry={{ ...entry, title: '日本語テスト', archivedAt: 1 }}
+          viewerUserId="member-a"
+          members={[]}
+        />
+      </Provider>,
+      japaneseI18n,
+    );
+
+    expect(screen.getByText('アーカイブ済み')).toBeDefined();
+    expect(screen.getByTestId('org-room-notifications').getAttribute('aria-label'))
+      .toContain('すべてのメッセージ');
+    expect(threadProps.current?.emptyLabel).toContain('日本語テスト');
+    expect(threadProps.current?.emptyLabel).toContain('アーカイブ');
   });
 });

@@ -27,6 +27,7 @@ import React, {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { RevoGrid, type RevoGridCustomEvent } from '@revolist/react-datagrid';
 import type {
   AfterEditEvent,
@@ -175,6 +176,7 @@ export function TrackerGridSurface({
   loaded,
   derivedColumns,
 }: TrackerGridSurfaceProps) {
+  const { t } = useTranslation('tracker');
   const [filterTarget, setFilterTarget] = useState<{
     columnId: string;
     rect: DOMRect;
@@ -553,7 +555,7 @@ export function TrackerGridSurface({
     return (
       <TrackerSurfaceMessage
         icon="table"
-        message="Loading tracker items..."
+        message={t('grid.loading')}
         testId="tracker-grid-loading"
       />
     );
@@ -592,7 +594,7 @@ export function TrackerGridSurface({
         {rows.length === 0 && !columnFiltersActive ? (
           <TrackerSurfaceMessage
             icon="table"
-            message="No tracker items yet."
+            message={t('grid.no_items_yet')}
             testId="tracker-grid-empty"
           />
         ) : (
@@ -615,14 +617,14 @@ export function TrackerGridSurface({
             className="absolute inset-x-0 top-10 flex flex-col items-center gap-2 pt-6 text-sm text-nim-muted"
             data-testid="tracker-grid-filtered-empty"
           >
-            <span>No items match these column filters.</span>
+            <span>{t('grid.no_items_match_column_filters')}</span>
             <button
               className="text-xs underline hover:text-nim"
               onClick={() =>
                 onColumnFiltersChange?.({ combinator: 'and', clauses: [] })
               }
             >
-              Clear column filters
+              {t('grid.clear_column_filters')}
             </button>
           </div>
         ) : null}

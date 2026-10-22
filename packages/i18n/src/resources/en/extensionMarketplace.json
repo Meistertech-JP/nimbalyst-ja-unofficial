@@ -1,0 +1,93 @@
+{
+  "title": "Extension Marketplace",
+  "description": "Browse, install, and manage extensions for Nimbalyst.",
+  "loading": "Loading extensions…",
+  "loading_marketplace": "Loading marketplace…",
+  "security": {
+    "title": "Extension security",
+    "description": "Extensions can run code on your computer and access the capabilities listed below. Install only extensions you trust.",
+    "risk_files": "Read and modify files in your workspace",
+    "risk_code": "Run code on your computer",
+    "risk_network": "Connect to the network",
+    "risk_extensions": "Access other installed extensions",
+    "trust_notice": "Extensions are third-party software and are not reviewed by Nimbalyst.",
+    "accept_risks": "I understand and accept these risks",
+    "reset_hint": "You can change this choice later in Settings."
+  },
+  "errors": {
+    "load_marketplace": "Could not load the extension marketplace.",
+    "load_marketplace_data": "Could not load marketplace data.",
+    "installation_failed": "Extension installation failed.",
+    "uninstall_failed": "Extension could not be uninstalled.",
+    "github_install_failed": "Could not install the extension from GitHub.",
+    "update_failed": "Extension update failed.",
+    "prefix": "Error:"
+  },
+  "actions": {
+    "retry": "Try again",
+    "updating": "Updating…",
+    "update_to_version": "Update to {{version}}",
+    "installing": "Installing…",
+    "install": "Install",
+    "install_extension": "Install extension",
+    "uninstall": "Uninstall",
+    "close_details": "Close extension details",
+    "view_on_github": "View on GitHub"
+  },
+  "status": {
+    "requested_extension_not_found": "Extension “{{extensionId}}” was not found in the marketplace.",
+    "review_before_install": "Review {{extension}} before installing.",
+    "installing": "Installing {{extension}}…",
+    "installed_successfully": "{{extension}} was installed successfully.",
+    "uninstalling": "Uninstalling {{extension}}…",
+    "uninstalled": "{{extension}} was uninstalled.",
+    "installing_from_github": "Installing extension from GitHub…",
+    "installed_from_github": "Extension installed from GitHub.",
+    "updating_to_version": "Updating {{extension}} to {{version}}…",
+    "updated_to_version": "{{extension}} updated to {{version}}.",
+    "updating_extensions_one": "Updating {{count}} extension…",
+    "updating_extensions_other": "Updating {{count}} extensions…",
+    "built_in": "Built-in",
+    "installed": "Installed",
+    "installed_count_one": "{{count}} installed",
+    "installed_count_other": "{{count}} installed",
+    "update_count_one": "{{count}} update",
+    "update_count_other": "{{count}} updates"
+  },
+  "progress": {
+    "checking-release": "Checking for a release…",
+    "downloading-release": "Downloading release…",
+    "cloning": "Cloning repository…",
+    "installing": "Installing extension…",
+    "done": "Installation complete."
+  },
+  "search": {
+    "placeholder": "Search extensions…",
+    "clear": "Clear search",
+    "no_results": "No extensions found for “{{query}}”."
+  },
+  "categories": {
+    "all": "All",
+    "featured": "Featured"
+  },
+  "github": {
+    "title": "Install from GitHub",
+    "description": "Enter a GitHub repository URL for an extension. Review its requested permissions before installing."
+  },
+  "metadata": {
+    "by_author": "by {{author}}",
+    "downloads_count_one": "{{count}} install",
+    "downloads_count_other": "{{count}} installs",
+    "version": "Version",
+    "current_and_latest_version": "{{currentVersion}} (latest: {{availableVersion}})",
+    "category": "Category",
+    "file_types": "File types",
+    "permissions": "Permissions",
+    "downloads": "Installs",
+    "repository": "Repository",
+    "changelog": "Changelog"
+  },
+  "updates": {
+    "available": "Update available: {{currentVersion}} → {{availableVersion}}"
+  }
+}

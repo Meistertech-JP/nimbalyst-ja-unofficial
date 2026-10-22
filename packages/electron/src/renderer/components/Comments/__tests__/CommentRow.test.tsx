@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CommentRow, formatClockTime, type CommentDensity } from '../CommentRow';
 import { buildCommentView } from '../commentViewModel';
@@ -38,6 +40,13 @@ vi.mock('@nimbalyst/runtime/plugins/TrackerLinkPlugin', () => ({
 }));
 
 const NOW = Date.parse('2026-07-26T18:00:00.000Z');
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
 
 async function previewsFor(comments: Comment[]): Promise<Record<string, ResourcePreviewState>> {
   const resolver = createFixtureResolver();
@@ -73,14 +82,16 @@ function renderRow(
   const onAction = vi.fn();
   const onToggleReaction = vi.fn();
   const utils = render(
-    <CommentRow
-      view={view}
-      onAction={onAction}
-      onToggleReaction={onToggleReaction}
-      density={options.density}
-      grouped={options.grouped}
-      timestampMs={options.timestampMs}
-    />,
+    <I18nextProvider i18n={englishI18n}>
+      <CommentRow
+        view={view}
+        onAction={onAction}
+        onToggleReaction={onToggleReaction}
+        density={options.density}
+        grouped={options.grouped}
+        timestampMs={options.timestampMs}
+      />
+    </I18nextProvider>,
   );
   return { fixtures, view, onAction, onToggleReaction, ...utils };
 }
@@ -91,6 +102,32 @@ function commentsOf(overrides: Parameters<typeof createCommentFixtures>[0] = {})
 
 describe('CommentRow capability-driven affordances', () => {
   afterEach(() => cleanup());
+
+  it('localizes fixed agent, reaction, and session labels while retaining names', () => {
+    const fixtures = createCommentFixtures({ now: NOW });
+    const comment = fixtures.comments.find((item) => item.actor.kind === 'agent');
+    expect(comment).toBeDefined();
+    const view = buildCommentView(comment!, {
+      viewerUserId: fixtures.viewerUserId,
+      directory: fixtures.directory,
+      previews: {},
+      reactionsSupported: true,
+      now: NOW,
+    });
+
+    render(
+      <I18nextProvider i18n={japaneseI18n}>
+        <CommentRow view={view} onAction={vi.fn()} onToggleReaction={vi.fn()} />
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByTestId('comment-row-agent-badge').textContent).toContain('エージェント');
+    expect(screen.getByTestId('comment-row-agent-owner').textContent).toContain('の代理');
+    expect(screen.getByLabelText('リアクションを追加')).toBeDefined();
+    const sessionChip = screen.getByTestId('comment-row-session-chip');
+    expect(sessionChip.textContent).toContain('Sync repro');
+    expect(sessionChip.getAttribute('title')).toBe('「Sync repro」セッションを開く');
+  });
 
   it('hides edit and delete when the viewer holds neither editOwn nor deleteOwn', () => {
     const [own] = commentsOf();
@@ -232,12 +269,14 @@ describe('CommentRow agent attribution', () => {
       now: NOW,
     });
     render(
-      <CommentRow
-        view={view}
-        onAction={vi.fn()}
-        onToggleReaction={vi.fn()}
-        onOpenSession={onOpenSession}
-      />,
+      <I18nextProvider i18n={englishI18n}>
+        <CommentRow
+          view={view}
+          onAction={vi.fn()}
+          onToggleReaction={vi.fn()}
+          onOpenSession={onOpenSession}
+        />
+      </I18nextProvider>,
     );
 
     screen.getByTestId('comment-row-agent-glyph');

@@ -48,6 +48,7 @@ const os = require('os');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { spawnSync } = require('child_process');
+const { withElectronAbiProbeExecutable } = require('./electron-abi-probe.js');
 
 function parseArgs(argv) {
   const out = { positional: [], platform: undefined, arch: undefined };
@@ -607,22 +608,21 @@ if (canBootCheck) {
 
     const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-worker-boot-'));
     try {
-      for (const wb of WORKER_BUNDLES) {
-        for (const spec of wb.externals) {
-          const probe = NATIVE_BOOT_PROBES[spec];
-          if (!probe) continue; // No probe defined; resolution check above is the floor.
-          // The harness chdir's into the packaged Resources/ so require()
-          // resolves the same way the worker does at runtime.
-          const harnessPath = path.join(tmpRoot, `boot-${wb.name}-${spec.replace(/[^a-z0-9]/gi, '_')}.js`);
-          // Key require() to the worker bundle's path so module resolution
-          // walks the same node_modules/ chain the worker_threads worker
-          // would at runtime. A bare `require()` from this temp harness
-          // would walk up from /tmp/... and miss the packaged tree. Use
-          // `req` (not `require`) so we don't shadow the harness's own
-          // require -- shadowing trips Electron's loader, which treats the
-          // redeclaration as an ESM signal.
-          const bundlePathLiteral = JSON.stringify(path.join(resourcesRoot, wb.bundle));
-          const harnessSource = `
+      withElectronAbiProbeExecutable(electronBin, (probeExecutable) => {
+        for (const wb of WORKER_BUNDLES) {
+          for (const spec of wb.externals) {
+            const probe = NATIVE_BOOT_PROBES[spec];
+            if (!probe) continue; // No probe defined; resolution check above is the floor.
+            // Key require() to the worker bundle's path so module resolution
+            // walks the same node_modules/ chain the worker_threads worker
+            // would at runtime. A bare `require()` from this temp harness
+            // would walk up from /tmp/... and miss the packaged tree. Use
+            // `req` (not `require`) so we don't shadow the harness's own
+            // require -- shadowing trips Electron's loader, which treats the
+            // redeclaration as an ESM signal.
+            const harnessPath = path.join(tmpRoot, `boot-${wb.name}-${spec.replace(/[^a-z0-9]/gi, '_')}.js`);
+            const bundlePathLiteral = JSON.stringify(path.join(resourcesRoot, wb.bundle));
+            const harnessSource = `
             'use strict';
             const req = require('module').createRequire(${bundlePathLiteral});
             try {
@@ -634,36 +634,37 @@ if (canBootCheck) {
               process.exit(1);
             }
           `;
-          fs.writeFileSync(harnessPath, harnessSource, 'utf8');
-          const result = spawnSync(electronBin, [harnessPath], {
-            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-            encoding: 'utf8',
-            timeout: 30_000,
-          });
-          if (result.status === 0 && result.stdout.includes('OK')) {
-            console.log(`  [ok] ${wb.bundle} require("${spec}") + dlopen (ABI matches Electron's Node)`);
-          } else {
-            const stderr = (result.stderr || '').trim();
-            // Distinguish a real probe failure from an environmental hang.
-            // Real failure: status=1 with stderr containing the thrown error.
-            // Environmental hang: status=null (killed by timeout) with empty
-            // stderr -- the binary never executed the harness JS, usually
-            // because afterPack runs before signing and macOS Gatekeeper
-            // blocks the unsigned Electron Framework on clean CI runners.
-            if (result.status === null && !stderr) {
-              console.log(
-                `  [skip] ${wb.bundle} require("${spec}"): Electron-as-Node spawn timed out before the harness produced output ` +
-                `(probably unsigned binary on a CI runner; path-resolution check above is the real gate)`,
-              );
+            fs.writeFileSync(harnessPath, harnessSource, 'utf8');
+            const result = spawnSync(probeExecutable, [harnessPath], {
+              env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+              encoding: 'utf8',
+              timeout: 30_000,
+            });
+            if (result.status === 0 && result.stdout.includes('OK')) {
+              console.log(`  [ok] ${wb.bundle} require("${spec}") + dlopen (ABI matches Electron's Node)`);
             } else {
-              bootWarnings.push({
-                target: `${wb.bundle} -> require("${spec}")`,
-                reason: `Electron-as-Node boot failed (status=${result.status}): ${stderr.split('\n').slice(0, 5).join(' | ') || '<no stderr>'}`,
-              });
+              const stderr = (result.stderr || '').trim();
+              // Distinguish a real probe failure from an environmental hang.
+              // Real failure: status=1 with stderr containing the thrown error.
+              // Environmental hang: status=null (killed by timeout) with empty
+              // stderr -- the binary never executed the harness JS, usually
+              // because afterPack runs before signing and macOS Gatekeeper
+              // blocks the unsigned Electron Framework on clean CI runners.
+              if (result.status === null && !stderr) {
+                console.log(
+                  `  [skip] ${wb.bundle} require("${spec}"): Electron-as-Node spawn timed out before the harness produced output ` +
+                  `(probably unsigned binary on a CI runner; path-resolution check above is the real gate)`,
+                );
+              } else {
+                bootWarnings.push({
+                  target: `${wb.bundle} -> require("${spec}")`,
+                  reason: `Electron-as-Node boot failed (status=${result.status}): ${stderr.split('\n').slice(0, 5).join(' | ') || '<no stderr>'}`,
+                });
+              }
             }
           }
         }
-      }
+      });
     } finally {
       try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
     }

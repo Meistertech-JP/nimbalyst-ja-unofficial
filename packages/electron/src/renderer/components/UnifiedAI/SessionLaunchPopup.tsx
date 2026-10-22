@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import type { ChatAttachment } from '@nimbalyst/runtime/ai/server/types';
 import { ModelIdentifier } from '@nimbalyst/runtime/ai/server/types';
@@ -47,6 +48,12 @@ interface LaunchPromptOptions {
   prompt: string;
   mode: 'agent' | 'planning';
   attachments: ChatAttachment[];
+  messages: {
+    cliNotInstalled: string;
+    cliStartFailed: string;
+    cliSubmitFailed: string;
+    startFailed: string;
+  };
 }
 
 /** Route the first turn through the same provider-specific seam as SessionTranscript. */
@@ -58,6 +65,7 @@ export async function launchSessionPrompt({
   prompt,
   mode,
   attachments,
+  messages,
 }: LaunchPromptOptions): Promise<void> {
   if (isClaudeCliTerminalSession(provider)) {
     const ensured = await window.electronAPI.terminal.ensureClaudeCliSession({
@@ -68,8 +76,8 @@ export async function launchSessionPrompt({
     if (!ensured.success) {
       throw new Error(
         ensured.claudeNotInstalled
-          ? 'Claude Code CLI is not installed.'
-          : ensured.error || 'Failed to start the Claude Code CLI session.',
+          ? messages.cliNotInstalled
+          : ensured.error || messages.cliStartFailed,
       );
     }
     const result = await window.electronAPI.terminal.submitClaudeCliPrompt({
@@ -78,7 +86,7 @@ export async function launchSessionPrompt({
       prompt,
       attachments,
     });
-    if (!result.success) throw new Error('Failed to submit the Claude Code CLI prompt.');
+    if (!result.success) throw new Error(messages.cliSubmitFailed);
     return;
   }
 
@@ -94,11 +102,12 @@ export async function launchSessionPrompt({
     workspacePath,
   );
   if (result?.success === false) {
-    throw new Error(result.error || 'Failed to start the session.');
+    throw new Error(result.error || messages.startFailed);
   }
 }
 
 export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspacePath }) => {
+  const { t } = useTranslation('aichat');
   const requestVersion = useAtomValue(sessionLaunchPopupRequestAtom);
   const workspaceKey = workspacePath ?? '';
   const draftAtom = useMemo(() => sessionLaunchDraftAtom(workspaceKey), [workspaceKey]);
@@ -216,7 +225,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
       launchMode = 'planning';
       prompt = prompt.slice(planCommand[0].length).trim();
       if (!prompt) {
-        setError('Add instructions after /plan before starting the session.');
+        setError(t('launch.plan_instructions'));
         blocked('slash_command_only');
         return;
       }
@@ -240,7 +249,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
             thinkingMode,
           },
         }) ?? null;
-        if (!sessionId) throw new Error('Failed to create the session.');
+        if (!sessionId) throw new Error(t('launch.create_failed'));
         setCreatedSessionId(sessionId);
       }
 
@@ -252,6 +261,12 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
         prompt,
         mode: launchMode,
         attachments: draft.attachments,
+        messages: {
+          cliNotInstalled: t('launch.cli_not_installed'),
+          cliStartFailed: t('launch.cli_start_failed'),
+          cliSubmitFailed: t('launch.cli_submit_failed'),
+          startFailed: t('launch.start_failed'),
+        },
       });
 
       setDraft(createEmptySessionLaunchDraft());
@@ -261,13 +276,13 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
       void backgroundLaunch.catch((backgroundError) => {
         console.error('[SessionLaunchPopup] Background session failed:', backgroundError);
         errorNotificationService.showError(
-          'Background session failed',
-          backgroundError instanceof Error ? backgroundError.message : 'Failed to start the session.',
+          t('launch.background_failed'),
+          backgroundError instanceof Error ? backgroundError.message : t('launch.start_failed'),
         );
       });
     } catch (launchError) {
       console.error('[SessionLaunchPopup] Failed to launch session:', launchError);
-      setError(launchError instanceof Error ? launchError.message : 'Failed to start the session.');
+      setError(launchError instanceof Error ? launchError.message : t('launch.start_failed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -282,6 +297,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
     sessionRegistry,
     setDraft,
     thinkingMode,
+    t,
     workspacePath,
   ]);
 
@@ -291,9 +307,9 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
     <LaunchPopupShell
       open={open}
       onOpenChange={setOpen}
-      title="Launch New Session"
-      ariaLabel="Launch new session"
-      closeLabel="Close session launch popup"
+      title={t('launch.title')}
+      ariaLabel={t('launch.aria')}
+      closeLabel={t('launch.close')}
       classPrefix="session-launch-popup"
       resetKey={workspacePath}
       onOpened={() => inputRef.current?.focus()}
@@ -305,7 +321,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
         onSend={() => void handleSend()}
         disabled={isSubmitting}
         isLoading={isSubmitting}
-        placeholder="Ask or instruct..."
+        placeholder={t('launch.placeholder')}
         workspacePath={workspacePath}
         sessionId={draft.pendingSessionId ?? undefined}
         attachments={draft.attachments}
@@ -317,7 +333,7 @@ export const SessionLaunchPopup: React.FC<SessionLaunchPopupProps> = ({ workspac
         currentModel={selectedModel}
         onModelChange={createdSessionId ? undefined : handleModelChange}
         readOnlyModel={Boolean(createdSessionId)}
-        readOnlyModelTitle="This session was already created; retry to submit the prompt"
+        readOnlyModelTitle={t('launch.created_retry')}
         sessionHasMessages={false}
         currentProvider={provider}
         effortLevel={effortLevel}

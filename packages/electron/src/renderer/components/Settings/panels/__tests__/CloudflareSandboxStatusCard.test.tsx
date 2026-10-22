@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import { resources } from '@nimbalyst/i18n/resources';
 import {
   CLOUDFLARE_SANDBOX_CHANNELS,
   type SandboxDeployment,
@@ -10,6 +14,15 @@ import { CloudflareSandboxStatusCard } from '../CloudflareSandboxStatusCard';
 type Handler = (payload?: unknown) => unknown;
 
 const invoke = vi.fn<(channel: string, payload?: unknown) => Promise<unknown>>();
+const testI18n = createInstance();
+const testI18nReady = testI18n.init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'cloudflareSandboxes',
+  interpolation: { escapeValue: false },
+});
 
 function deployment(overrides: Partial<SandboxDeployment> = {}): SandboxDeployment {
   return {
@@ -28,7 +41,9 @@ function deployment(overrides: Partial<SandboxDeployment> = {}): SandboxDeployme
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await testI18nReady;
+  await testI18n.changeLanguage('en');
   invoke.mockReset();
   invoke.mockResolvedValue({ success: true, data: deployment() });
   (window as unknown as { electronAPI: { invoke: Handler } }).electronAPI = {
@@ -38,14 +53,33 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+function render(ui: React.ReactElement) {
+  return rtlRender(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+}
+
 describe('CloudflareSandboxStatusCard', () => {
-  it('reports deployment and container state as separate facts', () => {
+  it('renders lifecycle state and controls in Japanese when Japanese is selected', async () => {
+    await testI18n.changeLanguage('ja');
     render(
       <CloudflareSandboxStatusCard
         deployment={deployment({ container: { status: 'unknown', observedAt: null, message: null } })}
         onDeploymentChange={vi.fn()}
         onRefresh={vi.fn()}
       />,
+    );
+
+    expect(screen.getByTestId('cloudflare-deployment-status').textContent).toContain('デプロイ済み');
+    expect(screen.getByTestId('cloudflare-container-status').textContent).toContain('未確認');
+    expect(screen.getByTestId('cloudflare-wake').textContent).toBe('サンドボックスを起動');
+  });
+
+  it('reports deployment and container state as separate facts', () => {
+    render(
+      <CloudflareSandboxStatusCard
+        deployment={deployment({ container: { status: 'unknown', observedAt: null, message: null } })}
+        onDeploymentChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />
     );
 
     // "Deployed" must never be rendered as evidence that a container is up.
@@ -133,15 +167,17 @@ describe('CloudflareSandboxStatusCard', () => {
 
     // A refresh (or another window's write) re-points the card mid-confirmation.
     rerender(
-      <CloudflareSandboxStatusCard
-        deployment={deployment({
-          deploymentId: 'dep-2',
-          revision: 'rev-9',
-          account: { id: 'account-c', name: 'Account C' },
-        })}
-        onDeploymentChange={vi.fn()}
-        onRefresh={vi.fn()}
-      />,
+      <I18nextProvider i18n={testI18n}>
+        <CloudflareSandboxStatusCard
+          deployment={deployment({
+            deploymentId: 'dep-2',
+            revision: 'rev-9',
+            account: { id: 'account-c', name: 'Account C' },
+          })}
+          onDeploymentChange={vi.fn()}
+          onRefresh={vi.fn()}
+        />
+      </I18nextProvider>,
     );
 
     // Consent for Account B is not consent for Account C.
@@ -173,11 +209,13 @@ describe('CloudflareSandboxStatusCard', () => {
       account: { id: 'account-c', name: 'Account C' },
     });
     rerender(
-      <CloudflareSandboxStatusCard
-        deployment={replacement}
-        onDeploymentChange={onDeploymentChange}
-        onRefresh={vi.fn()}
-      />,
+      <I18nextProvider i18n={testI18n}>
+        <CloudflareSandboxStatusCard
+          deployment={replacement}
+          onDeploymentChange={onDeploymentChange}
+          onRefresh={vi.fn()}
+        />
+      </I18nextProvider>,
     );
 
     await act(async () => {
@@ -222,7 +260,7 @@ describe('CloudflareSandboxStatusCard', () => {
 
     fireEvent.click(screen.getByTestId('cloudflare-wake'));
     await screen.findByRole('alert');
-    expect(screen.getByRole('alert').textContent).toContain('changed in another window');
+    expect(screen.getByRole('alert').textContent).toContain('changed since it was loaded');
     expect(onDeploymentChange).not.toHaveBeenCalled();
   });
 });

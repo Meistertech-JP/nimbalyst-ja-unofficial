@@ -1,7 +1,25 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import React from 'react';
+import { fireEvent, render as testingLibraryRender, screen } from '@testing-library/react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { TrackerViewTitle } from '../TrackerViewTitle';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function render(tree: React.ReactElement) {
+  return testingLibraryRender(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 function renderTitle(overrides: Partial<Parameters<typeof TrackerViewTitle>[0]> = {}) {
   const onSaveView = vi.fn();

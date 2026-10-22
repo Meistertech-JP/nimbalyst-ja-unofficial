@@ -328,11 +328,13 @@ function userMentionSegment(
   ctx: ParseBodyContext,
 ): BodySegment {
   const person = ctx.directory.people.find((entry) => entry.userId === userId);
-  const displayName = person?.displayName ?? ctx.directory.displayNames[userId] ?? label ?? 'Unknown member';
+  const resolvedName = person?.displayName ?? ctx.directory.displayNames[userId] ?? label;
+  const displayName = resolvedName ?? 'Unknown member';
   return {
     type: 'mention',
     userId,
     displayName,
+    displayNameFallback: resolvedName === undefined ? 'unknown_member' : undefined,
     initials: person?.avatarInitials ?? initialsFor(displayName),
     isViewer: userId === ctx.viewerUserId,
   };
@@ -344,10 +346,12 @@ function agentMentionSegment(
   ctx: ParseBodyContext,
 ): BodySegment {
   const agent = ctx.directory.agents.find((entry) => entry.sessionId === sessionId);
+  const resolvedName = agent?.sessionName ?? label;
   return {
     type: 'agentMention',
     sessionId,
-    sessionName: agent?.sessionName ?? label ?? 'Agent session',
+    sessionName: resolvedName ?? 'Agent session',
+    sessionNameFallback: resolvedName === undefined ? 'agent_session' : undefined,
     ownerDisplayName: agent?.ownerDisplayName,
     pending: ctx.pendingAgentSessionIds?.includes(sessionId) || undefined,
   };

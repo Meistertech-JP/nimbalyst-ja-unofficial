@@ -27,6 +27,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection';
 import { $isEmbeddedFileNode, MaterialSymbol } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { FilePathBreadcrumb } from '../common/FilePathBreadcrumb';
 
 export const DEFAULT_EMBED_HEIGHT_PX = 400;
@@ -49,8 +50,19 @@ export function parseOptionalPx(value: string | undefined, min: number): number 
   return Math.max(parsed, min);
 }
 
-export class EmbedErrorBoundary extends Component<
-  { children: ReactNode; onError: (err: Error) => void; absolutePath: string | null },
+interface EmbedErrorBoundaryProps {
+  children: ReactNode;
+  onError: (err: Error) => void;
+  absolutePath: string | null;
+}
+
+interface EmbedErrorBoundaryLabels {
+  renderFailedLabel: string;
+  unknownErrorLabel: string;
+}
+
+class EmbedErrorBoundaryImpl extends Component<
+  EmbedErrorBoundaryProps & EmbedErrorBoundaryLabels,
   { hasError: boolean; error: Error | null }
 > {
   state = { hasError: false, error: null as Error | null };
@@ -74,8 +86,8 @@ export class EmbedErrorBoundary extends Component<
         <div className="embed-frame__error" data-testid="embed-frame-error">
           <MaterialSymbol icon="error" size={20} />
           <span>
-            Failed to render embed:&nbsp;
-            {this.state.error?.message ?? 'unknown error'}
+            {this.props.renderFailedLabel}:&nbsp;
+            {this.state.error?.message ?? this.props.unknownErrorLabel}
           </span>
         </div>
       );
@@ -83,6 +95,17 @@ export class EmbedErrorBoundary extends Component<
     return this.props.children;
   }
 }
+
+export const EmbedErrorBoundary: React.FC<EmbedErrorBoundaryProps> = (props) => {
+  const { t } = useTranslation('common', { keyPrefix: 'embed' });
+  return (
+    <EmbedErrorBoundaryImpl
+      {...props}
+      renderFailedLabel={t('render_failed')}
+      unknownErrorLabel={t('unknown_error')}
+    />
+  );
+};
 
 // ---- Resize handles --------------------------------------------------------
 
@@ -418,6 +441,7 @@ export const EmbedChrome: React.FC<EmbedChromeProps> = ({
   onToggleReadOnly,
   onEditClick,
 }) => {
+  const { t } = useTranslation('common', { keyPrefix: 'embed' });
   // Show the label if it differs from the bare file name, so users can
   // tell at a glance why the link said one thing and the embed shows
   // another file.
@@ -439,13 +463,13 @@ export const EmbedChrome: React.FC<EmbedChromeProps> = ({
       {isDirty && (
         <span
           className="embed-frame__dirty-dot"
-          title="Unsaved changes -- autosaving"
+          title={t('unsaved_autosaving')}
           data-testid="embed-frame-dirty-dot"
-          aria-label="Unsaved changes"
+          aria-label={t('unsaved')}
         />
       )}
       {showLabel && (
-        <span className="embed-frame__label" title={`Link label: ${label}`}>
+        <span className="embed-frame__label" title={t('link_label', { label })}>
           {label}
         </span>
       )}
@@ -457,8 +481,8 @@ export const EmbedChrome: React.FC<EmbedChromeProps> = ({
           onClick={onToggleReadOnly}
           title={
             isReadOnly
-              ? 'Edit in place (autosaves to the embedded file)'
-              : 'Done editing -- back to view mode'
+              ? t('edit_in_place')
+              : t('done_editing')
           }
           data-testid="embed-frame-mode-toggle"
           data-mode={isReadOnly ? 'view' : 'edit'}
@@ -471,11 +495,11 @@ export const EmbedChrome: React.FC<EmbedChromeProps> = ({
         type="button"
         className="embed-frame__edit-btn"
         onClick={onEditClick}
-        title="Open file in a new tab"
+        title={t('open_new_tab')}
         data-testid="embed-frame-edit"
       >
         <MaterialSymbol icon="open_in_new" size={14} />
-        Open
+        {t('open_file')}
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -9,6 +9,8 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const startTutorial = vi.fn();
 const getTutorialStatus = vi.fn();
@@ -29,6 +31,21 @@ const getWorkspaceStats = vi.fn();
 };
 
 const { WorkspaceManager } = await import("../WorkspaceManager");
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderEnglish(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 beforeEach(() => {
   getRecentWorkspaces.mockResolvedValue([]);
@@ -53,7 +70,7 @@ afterEach(() => {
 
 describe("WorkspaceManager tutorial actions", () => {
   it("starts the tutorial from the welcome card CTA", async () => {
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
 
     fireEvent.click(
       await screen.findByTestId("workspace-manager-welcome-tutorial-cta")
@@ -74,7 +91,7 @@ describe("WorkspaceManager tutorial actions", () => {
       workspacePath: "/Documents/Nimbalyst Tutorial",
     });
 
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
 
     // Both buttons render immediately in their "no tutorial yet" state and only
     // relabel once `tutorial.getStatus()` resolves. Waiting for the *element*
@@ -111,7 +128,7 @@ describe("WorkspaceManager tutorial actions", () => {
       },
     ]);
 
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
 
     expect(
       await screen.findByTestId("workspace-manager-welcome-card")
@@ -133,7 +150,7 @@ describe("WorkspaceManager tutorial actions", () => {
       error: "Tutorial template directory does not exist",
     });
 
-    render(<WorkspaceManager />);
+    renderEnglish(<WorkspaceManager />);
     fireEvent.click(
       await screen.findByTestId("workspace-manager-sidebar-tutorial-button")
     );

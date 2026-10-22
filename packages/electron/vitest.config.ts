@@ -4,6 +4,9 @@ import path from 'path';
 // Mirror tsconfig.json paths so Vitest can resolve cross-package imports.
 // Use array form so we can match @nimbalyst/runtime/<deep-path> with a regex.
 const alias = [
+  { find: /^@nimbalyst\/i18n\/core$/, replacement: path.resolve(__dirname, '../i18n/src/core.ts') },
+  { find: /^@nimbalyst\/i18n\/react$/, replacement: path.resolve(__dirname, '../i18n/src/react.tsx') },
+  { find: /^@nimbalyst\/i18n\/resources$/, replacement: path.resolve(__dirname, '../i18n/src/resources/index.ts') },
   { find: /^@nimbalyst\/runtime$/, replacement: path.resolve(__dirname, '../runtime/src/index.ts') },
   { find: /^@nimbalyst\/runtime\/(.+)$/, replacement: path.resolve(__dirname, '../runtime/src') + '/$1' },
   { find: '@nimbalyst/tracker-core', replacement: path.resolve(__dirname, '../tracker-core/src') },

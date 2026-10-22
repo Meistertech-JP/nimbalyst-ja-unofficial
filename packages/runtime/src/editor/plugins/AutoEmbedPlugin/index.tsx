@@ -20,6 +20,7 @@ import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {COMMAND_PRIORITY_EDITOR} from 'lexical';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import * as ReactDOM from 'react-dom';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import {
   EXTERNAL_EMBED_PROVIDERS,
@@ -189,6 +190,7 @@ export function AutoEmbedDialog({
   embedConfig: PlaygroundEmbedConfig;
   onClose: () => void;
 }): JSX.Element {
+  const {t} = useTranslation('editor');
   const [text, setText] = useState('');
   const [editor] = useLexicalComposerContext();
   const [embedResult, setEmbedResult] = useState<EmbedMatchResult | null>(null);
@@ -254,7 +256,7 @@ export function AutoEmbedDialog({
           disabled={!embedResult}
           onClick={onClick}
           data-test-id={`${embedConfig.type}-embed-modal-submit-btn`}>
-          Embed
+          {t('embed.insert')}
         </Button>
       </DialogActions>
     </div>
@@ -262,15 +264,27 @@ export function AutoEmbedDialog({
 }
 
 export default function AutoEmbedPlugin(): JSX.Element {
+  const {t} = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const [modal, showModal] = useModal();
   const pasteEmbedConfigs = useMemo(() => createPasteEmbedConfigs(editor), [editor]);
 
+  const getContentName = useCallback((embedConfig: PlaygroundEmbedConfig) => {
+    switch (embedConfig.type) {
+      case 'link-preview': return t('embed.link_preview');
+      case 'embed-youtube': return t('embed.youtube_video');
+      case 'embed-vimeo': return t('embed.vimeo_video');
+      case 'embed-loom': return t('embed.loom_video');
+      case 'embed-figma': return t('embed.figma_document');
+      default: return embedConfig.contentName;
+    }
+  }, [t]);
+
   const openEmbedModal = useCallback((embedConfig: PlaygroundEmbedConfig) => {
-    showModal(embedConfig.contentName, (onClose) => (
+    showModal(t('embed.title', {name: getContentName(embedConfig)}), (onClose) => (
       <AutoEmbedDialog embedConfig={embedConfig} onClose={onClose} />
     ));
-  }, [showModal]);
+  }, [getContentName, showModal, t]);
 
   useEffect(
     () => editor.registerCommand(
@@ -294,14 +308,14 @@ export default function AutoEmbedPlugin(): JSX.Element {
       embedFn();
     };
     const options = [
-      new AutoEmbedOption('Keep as link', {
+      new AutoEmbedOption(t('embed.keep_as_link'), {
         onSelect: dismissFn,
       }),
     ];
     if (activeEmbedConfig.type !== LinkPreviewEmbedConfig.type) {
-      options.push(new AutoEmbedOption(`Embed ${activeEmbedConfig.contentName}`, { onSelect: pick('embed') }));
+      options.push(new AutoEmbedOption(t('embed.title', {name: getContentName(activeEmbedConfig)}), { onSelect: pick('embed') }));
     }
-    options.push(new AutoEmbedOption('Preview card', { onSelect: pick('card') }));
+    options.push(new AutoEmbedOption(t('embed.preview_card'), { onSelect: pick('card') }));
     return options;
   };
 

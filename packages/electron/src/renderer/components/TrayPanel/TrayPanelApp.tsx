@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
@@ -35,6 +36,8 @@ const UNREAD_COLLAPSE_AT = 6;
 const FOCUS_RING = 'focus:outline-none focus-visible:outline-2 focus-visible:outline-[var(--nim-border-focus)] focus-visible:outline-offset-[-2px]';
 
 export function TrayPanelApp() {
+  const { t: tSessions } = useTranslation('sessions');
+  const { t: tAgents } = useTranslation('agents');
   const feed = useAtomValue(trayPanelFeedAtom);
   const [showAllUnread, setShowAllUnread] = useState(false);
   // Re-render on a timer so the relative-time labels stay honest while the
@@ -101,12 +104,12 @@ export function TrayPanelApp() {
 
   const total = trayPanelFeedTotal(feed);
   const summary = total === 0
-    ? 'Nothing running'
+    ? tSessions('tray_panel.summary_nothing_running')
     : [
-      feed.needsAttention.length > 0 ? `${feed.needsAttention.length} need attention` : null,
-      feed.running.length > 0 ? `${feed.running.length} running` : null,
-      feed.stalled.length > 0 ? `${feed.stalled.length} not responding` : null,
-      feed.unread.length > 0 ? `${feed.unread.length} unread` : null,
+      feed.needsAttention.length > 0 ? tAgents('attention.need_attention', { count: feed.needsAttention.length }) : null,
+      feed.running.length > 0 ? tSessions('tray_panel.summary_running', { count: feed.running.length }) : null,
+      feed.stalled.length > 0 ? tSessions('tray_panel.summary_not_responding', { count: feed.stalled.length }) : null,
+      feed.unread.length > 0 ? tSessions('tray_panel.summary_unread', { count: feed.unread.length }) : null,
     ].filter(Boolean).join(' · ');
 
   return (
@@ -119,7 +122,7 @@ export function TrayPanelApp() {
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-nim px-3.5 py-2.5">
         <div className="min-w-0">
-          <div className="text-[13px] font-semibold text-nim">Sessions</div>
+          <div className="text-[13px] font-semibold text-nim">{tSessions('title')}</div>
           <div className="truncate text-[11px] text-nim-muted" data-testid="tray-panel-summary">{summary}</div>
         </div>
         <button
@@ -129,7 +132,7 @@ export function TrayPanelApp() {
           data-testid="tray-panel-new-session"
         >
           <MaterialSymbol icon="add" size={14} />
-          New Session
+          {tAgents('new_session')}
         </button>
       </div>
 
@@ -141,7 +144,7 @@ export function TrayPanelApp() {
           // header above already says "Nothing running"; this says what to do
           // about it.
           <div className="px-3.5 py-6 text-center text-[12px] text-nim-faint" data-testid="tray-panel-empty">
-            Nothing running. Start a session to get going.
+            {tSessions('tray_panel.empty_state')}
           </div>
         )}
         {sections.map(({ state, sessions }) => {
@@ -180,7 +183,7 @@ export function TrayPanelApp() {
                   onClick={() => setShowAllUnread(true)}
                   data-testid="tray-panel-show-all-unread"
                 >
-                  Show all {sessions.length}
+                  {tSessions('tray_panel.show_all', { count: sessions.length })}
                 </button>
               )}
             </section>
@@ -195,7 +198,7 @@ export function TrayPanelApp() {
           onClick={() => window.electronAPI.send(TRAY_PANEL_CHANNELS.openApp)}
           data-testid="tray-panel-open-app"
         >
-          Open Nimbalyst
+          {tSessions('tray_panel.open_app')}
         </button>
       </div>
     </div>

@@ -13,6 +13,7 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { createRoot } from 'react-dom/client';
 import {
   FloatingPortal,
@@ -64,6 +65,7 @@ export function filterTrackerFieldChoices(choices: readonly TrackerFieldChoice[]
 }
 
 export function TrackerGridChoicePopover({ anchor, choices, value, initialQuery = '', onPick, onCancel }: TrackerGridChoicePopoverProps) {
+  const { t } = useTranslation('tracker');
   const [query, setQuery] = useState(initialQuery);
   // Focus the filter when it attaches, not in a mount effect: `FloatingPortal`
   // mounts its children a render later, so an effect here finds no input and
@@ -139,8 +141,8 @@ export function TrackerGridChoicePopover({ anchor, choices, value, initialQuery 
           ref={focusOnAttach}
           type="text"
           className="tracker-grid-choice-filter"
-          placeholder="Filter..."
-          aria-label="Filter choices"
+          placeholder={t('collaboration_surface.filter_choices')}
+          aria-label={t('collaboration_surface.filter_choices')}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -148,7 +150,7 @@ export function TrackerGridChoicePopover({ anchor, choices, value, initialQuery 
           }}
         />
         {keys.length === 0 ? (
-          <div className="tracker-grid-choice-empty">No matches</div>
+          <div className="tracker-grid-choice-empty">{t('collaboration_surface.no_matches')}</div>
         ) : (
           <TrackerFieldChoiceList choices={filtered} value={value} allowNone={allowNone} activeValue={activeValue} onPick={onPick} />
         )}

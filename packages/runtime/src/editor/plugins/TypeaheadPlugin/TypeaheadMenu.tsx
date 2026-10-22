@@ -20,6 +20,7 @@
  */
 
 import React, {ReactNode, useCallback, useEffect, useMemo, useRef, useState,} from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   autoUpdate,
@@ -428,6 +429,7 @@ import {
     selectedOptionClassName = '',
     anchorElem,
   }) => {
+  const { t } = useTranslation('editor');
     const virtualReference = useMemo<VirtualElement>(() => ({
       getBoundingClientRect: resolution.getRect,
       contextElement: anchorElem ?? undefined,
@@ -569,7 +571,7 @@ import {
             )}
             {options.length === 0 && (
               <div className="p-4 text-center text-nim-faint italic">
-                No matches found
+                {t('typeahead.no_matches')}
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 # pnpm reads every non-auth setting from this file (pnpm 11+). `.npmrc` only
 # carries registry/auth.
 packages:
+  - packages/i18n
   - packages/electron
   - packages/runtime
   - packages/cli

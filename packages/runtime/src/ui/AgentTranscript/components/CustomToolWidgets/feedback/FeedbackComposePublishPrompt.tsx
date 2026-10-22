@@ -10,8 +10,10 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   describeDestination,
+  FEEDBACK_DEFAULT_DESTINATION_NAME,
   type FeedbackComposeDestination,
   type FeedbackComposeSubject,
 } from './feedbackComposeDraft';
@@ -56,6 +58,7 @@ export const FeedbackComposePublishPrompt: React.FC<FeedbackComposePublishPrompt
   destination,
   onChangeDestination,
 }) => {
+  const { t } = useTranslation('aichat');
   const [expanded, setExpanded] = useState(false);
   const isExpanded = expanded || forceExpanded === true;
 
@@ -63,12 +66,15 @@ export const FeedbackComposePublishPrompt: React.FC<FeedbackComposePublishPrompt
   const outstanding = subjects.filter((subject) => !confirmed.has(subject.ref.sourceId));
   const settled = outstanding.length === 0;
 
-  const who =
-    recipientNames.length === 0
-      ? 'the people you ask'
-      : recipientNames.length === 1
-        ? recipientNames[0]
-        : `${recipientNames.slice(0, -1).join(', ')} and ${recipientNames[recipientNames.length - 1]}`;
+  const who = recipientNames.length === 0
+    ? t('feedback_publish.default_recipients')
+    : recipientNames.join(', ');
+  const describedDestination = describeDestination(destination);
+  const destinationLabel = describedDestination === FEEDBACK_DEFAULT_DESTINATION_NAME
+    ? t('feedback_publish.default_destination')
+    : describedDestination === 'Team files'
+      ? t('feedback_publish.team_files')
+      : describedDestination;
 
   return (
     <div
@@ -86,21 +92,22 @@ export const FeedbackComposePublishPrompt: React.FC<FeedbackComposePublishPrompt
           {settled ? (
             <>
               <span className="font-semibold text-nim">
-                {subjects.length === 1
-                  ? '1 subject will be published to the team on send.'
-                  : `${subjects.length} subjects will be published to the team on send.`}
+                {t(subjects.length === 1 ? 'feedback_publish.settled_one' : 'feedback_publish.settled_other', {
+                  count: subjects.length,
+                })}
               </span>{' '}
-              Nothing has been published yet.
+              {t('feedback_publish.nothing_published_yet')}
             </>
           ) : (
             <>
               <span className="font-semibold text-nim">
-                {outstanding.length === 1
-                  ? '1 subject is not shared with your team yet.'
-                  : `${outstanding.length} subjects are not shared with your team yet.`}
+                {t(outstanding.length === 1 ? 'feedback_publish.unshared_one' : 'feedback_publish.unshared_other', {
+                  count: outstanding.length,
+                })}
               </span>{' '}
-              {who} cannot open {outstanding.length === 1 ? 'it' : 'them'} as-is. Sending will
-              publish {outstanding.length === 1 ? 'it' : 'them'} to the team.
+              {t(outstanding.length === 1 ? 'feedback_publish.explanation_one' : 'feedback_publish.explanation_other', {
+                who,
+              })}
             </>
           )}
         </p>
@@ -112,9 +119,9 @@ export const FeedbackComposePublishPrompt: React.FC<FeedbackComposePublishPrompt
             data-testid="feedback-compose-destination"
             className="feedback-compose-destination flex items-center gap-1.5 flex-wrap text-[0.6875rem] text-nim-muted"
           >
-            <span>Into</span>
+            <span>{t('feedback_publish.into')}</span>
             <span className="font-medium text-nim select-text">
-              {describeDestination(destination)}
+              {destinationLabel}
             </span>
             {onChangeDestination && (
               <button
@@ -124,7 +131,7 @@ export const FeedbackComposePublishPrompt: React.FC<FeedbackComposePublishPrompt
                 disabled={disabled}
                 className="text-nim-primary bg-transparent border-none p-0 cursor-pointer hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Change
+                {t('feedback_compose.change')}
               </button>
             )}
           </div>
@@ -137,7 +144,7 @@ export const FeedbackComposePublishPrompt: React.FC<FeedbackComposePublishPrompt
             onClick={() => setExpanded(true)}
             className="self-start text-xs text-nim-primary bg-transparent border-none p-0 cursor-pointer hover:underline"
           >
-            See exactly what becomes visible
+            {t('feedback_publish.disclose')}
           </button>
         )}
 
@@ -164,9 +171,9 @@ export const FeedbackComposePublishPrompt: React.FC<FeedbackComposePublishPrompt
               disabled={disabled}
               className="self-start px-3 py-1.5 rounded-md text-[13px] font-medium cursor-pointer border-none transition-colors duration-150 hover:opacity-90 bg-nim-primary text-nim-on-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {outstanding.length === 1
-                ? 'Publish this and send'
-                : `Publish these ${outstanding.length} and send`}
+              {t(outstanding.length === 1 ? 'feedback_publish.confirm_one' : 'feedback_publish.confirm_other', {
+                count: outstanding.length,
+              })}
             </button>
           </>
         )}

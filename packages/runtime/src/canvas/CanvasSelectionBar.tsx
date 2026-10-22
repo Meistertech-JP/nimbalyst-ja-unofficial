@@ -21,6 +21,7 @@
  * they arrive as callbacks and gate on the selection's own shape.
  */
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { Panel } from '@xyflow/react';
 import {
   FloatingFocusManager,
@@ -74,20 +75,20 @@ const COLORABLE_KINDS = new Set(['sticky', 'text', 'group']);
 const COLOR_GRID_COLUMNS = 4;
 
 const ALIGN_COMMANDS: ReadonlyArray<{ id: CanvasCommandId; label: string }> = [
-  { id: 'align-left', label: 'Left' },
-  { id: 'align-center-x', label: 'Center' },
-  { id: 'align-right', label: 'Right' },
-  { id: 'align-top', label: 'Top' },
-  { id: 'align-center-y', label: 'Middle' },
-  { id: 'align-bottom', label: 'Bottom' },
+  { id: 'align-left', label: 'left' },
+  { id: 'align-center-x', label: 'center' },
+  { id: 'align-right', label: 'right' },
+  { id: 'align-top', label: 'top' },
+  { id: 'align-center-y', label: 'middle' },
+  { id: 'align-bottom', label: 'bottom' },
 ];
 
 const DISTRIBUTE_COMMANDS: ReadonlyArray<{
   id: CanvasCommandId;
   label: string;
 }> = [
-  { id: 'distribute-x', label: 'Horizontally' },
-  { id: 'distribute-y', label: 'Vertically' },
+  { id: 'distribute-x', label: 'horizontally' },
+  { id: 'distribute-y', label: 'vertically' },
 ];
 
 export function CanvasSelectionBar({
@@ -98,6 +99,7 @@ export function CanvasSelectionBar({
   onComment,
   onHistory,
 }: CanvasSelectionBarProps) {
+  const { t } = useTranslation('editor');
   const enabled = useMemo(() => {
     const cache = new Map<CanvasCommandId, boolean>();
     return (id: CanvasCommandId): boolean => {
@@ -125,7 +127,7 @@ export function CanvasSelectionBar({
     <Panel position="top-center" className="canvas-selection-bar">
       {selection.length > 1 && (
         <span className="canvas-selection-bar__count">
-          {selection.length} selected
+          {t('canvas.selection.count', { count: selection.length })}
         </span>
       )}
 
@@ -146,28 +148,34 @@ export function CanvasSelectionBar({
       {(alignable || distributable || enabled('tidy')) && <Separator />}
       {alignable && (
         <MenuButton
-          label="Align"
-          items={ALIGN_COMMANDS.filter((entry) => enabled(entry.id))}
+          label={t('canvas.selection.align')}
+          items={ALIGN_COMMANDS.filter((entry) => enabled(entry.id)).map((entry) => ({
+            ...entry,
+            label: t(`canvas.selection.alignment.${entry.label}`),
+          }))}
           run={run}
         />
       )}
       {distributable && (
         <MenuButton
-          label="Distribute"
-          items={DISTRIBUTE_COMMANDS.filter((entry) => enabled(entry.id))}
+          label={t('canvas.selection.distribute')}
+          items={DISTRIBUTE_COMMANDS.filter((entry) => enabled(entry.id)).map((entry) => ({
+            ...entry,
+            label: t(`canvas.selection.distribution.${entry.label}`),
+          }))}
           run={run}
         />
       )}
-      <CommandButton id="tidy" enabled={enabled} run={run} />
-      <CommandButton id="group" enabled={enabled} run={run} />
-      <CommandButton id="ungroup" enabled={enabled} run={run} />
+      <CommandButton id="tidy" label={t('canvas.selection.commands.tidy')} enabled={enabled} run={run} />
+      <CommandButton id="group" label={t('canvas.selection.commands.group')} enabled={enabled} run={run} />
+      <CommandButton id="ungroup" label={t('canvas.selection.commands.ungroup')} enabled={enabled} run={run} />
 
       <Separator />
-      <CommandButton id="lock" enabled={enabled} run={run} />
-      <CommandButton id="unlock" enabled={enabled} run={run} />
-      <CommandButton id="duplicate" enabled={enabled} run={run} />
-      <CommandButton id="bring-front" enabled={enabled} run={run} />
-      <CommandButton id="send-back" enabled={enabled} run={run} />
+      <CommandButton id="lock" label={t('canvas.selection.commands.lock')} enabled={enabled} run={run} />
+      <CommandButton id="unlock" label={t('canvas.selection.commands.unlock')} enabled={enabled} run={run} />
+      <CommandButton id="duplicate" label={t('canvas.selection.commands.duplicate')} enabled={enabled} run={run} />
+      <CommandButton id="bring-front" label={t('canvas.selection.commands.bring_front')} enabled={enabled} run={run} />
+      <CommandButton id="send-back" label={t('canvas.selection.commands.send_back')} enabled={enabled} run={run} />
 
       {single !== null && onComment !== undefined && (
         <button
@@ -177,7 +185,7 @@ export function CanvasSelectionBar({
           data-canvas-help="canvas-selection-comment"
           data-testid="canvas-selection-comment"
         >
-          Comment
+          {t('canvas.selection.comment')}
         </button>
       )}
       {single !== null && singleKind === 'reference' && onHistory !== undefined && (
@@ -188,14 +196,14 @@ export function CanvasSelectionBar({
           data-canvas-help="canvas-selection-history"
           data-testid="canvas-selection-history"
         >
-          History
+          {t('canvas.selection.history')}
         </button>
       )}
 
       {enabled('delete') && (
         <>
           <Separator />
-          <CommandButton id="delete" enabled={enabled} run={run} danger />
+          <CommandButton id="delete" label={t('canvas.selection.commands.delete')} enabled={enabled} run={run} danger />
         </>
       )}
     </Panel>
@@ -238,17 +246,18 @@ export const CANVAS_MENU_NAVIGATION = {
  */
 function CommandButton({
   id,
+  label,
   enabled,
   run,
   danger = false,
 }: {
   id: CanvasCommandId;
+  label: string;
   enabled: (id: CanvasCommandId) => boolean;
   run: CanvasCommandRunner;
   danger?: boolean;
 }) {
   if (!enabled(id)) return null;
-  const command = getCommand(id);
   return (
     <button
       type="button"
@@ -259,7 +268,7 @@ function CommandButton({
       data-testid={`canvas-command-${id}`}
       onClick={() => run(id)}
     >
-      {command.label}
+      {label}
     </button>
   );
 }
@@ -383,6 +392,7 @@ function ColorControl({
   current: string | null;
   onColor(color: string | null): void;
 }) {
+  const { t } = useTranslation('editor');
   const [open, setOpen] = useState(false);
   const { listRef, activeIndex, setActiveIndex } = useCanvasMenuNavigation();
   const { refs, floatingStyles, context } = useFloating({
@@ -422,7 +432,7 @@ function ColorControl({
   }> = [
     ...Object.entries(CANVAS_PRESET_COLORS).map(([preset, hex]) => ({
       key: preset,
-      label: `Color ${preset}`,
+      label: t('canvas.selection.color_preset', { preset }),
       background: hex,
       selected: current === preset,
       onSelect: () => onColor(preset),
@@ -431,7 +441,7 @@ function ColorControl({
       ? [
           {
             key: 'custom',
-            label: `Custom color ${custom}`,
+            label: t('canvas.selection.custom_color', { color: custom }),
             background: custom,
             selected: true,
             onSelect: () => undefined,
@@ -440,7 +450,7 @@ function ColorControl({
       : []),
     {
       key: 'none',
-      label: 'No color',
+      label: t('canvas.selection.no_color'),
       background: null,
       selected: current === null,
       onSelect: () => onColor(null),
@@ -465,7 +475,7 @@ function ColorControl({
             swatch !== null ? { background: swatch } : undefined
           }
         />
-        Color
+        {t('canvas.selection.color')}
       </button>
       {open && (
         <FloatingPortal>

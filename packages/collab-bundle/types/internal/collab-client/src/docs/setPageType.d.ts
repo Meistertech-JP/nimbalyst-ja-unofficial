@@ -68,6 +68,8 @@ export interface ItemPosition {
     sortOrder: number | null;
 }
 export interface SetPageTypeDependencies {
+    /** Localizes user-facing sequence messages in hosts that have an i18n layer. */
+    translate?(key: string, fallback: string, options?: Record<string, string | number>): string;
     /** Pages, placed types and placed typed pages directly under the page. */
     listChildren(pageId: string): PageChild[];
     /** Resolves ok only once the child is stored under the typed page. */

@@ -30,6 +30,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { Awareness } from 'y-protocols/awareness';
 import type { Doc } from 'yjs';
 
@@ -63,6 +64,7 @@ export const CanvasRevisionCard: React.FC<CanvasRevisionCardProps> = ({
   title,
   renderNotice,
 }) => {
+  const { t } = useTranslation('common');
   const { theme } = useTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
@@ -143,7 +145,7 @@ export const CanvasRevisionCard: React.FC<CanvasRevisionCardProps> = ({
         className="canvas-card-host__notice select-text"
         data-canvas-card-state="revision-loading"
       >
-        <div className="canvas-card-host__notice-note">Loading revision...</div>
+        <div className="canvas-card-host__notice-note">{t('collab_history.loading_short')}</div>
       </div>
     );
   }

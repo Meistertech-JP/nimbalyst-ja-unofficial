@@ -11,48 +11,55 @@ export interface GroupedSessions<T> {
   [key: string]: T[];
 }
 
-export function getRelativeTimeString(timestamp: number): string {
+export type RelativeTimeTranslator = (key: string, options?: { count: number }) => string;
+
+export function getRelativeTimeString(timestamp: number, translate?: RelativeTimeTranslator): string {
   const now = Date.now();
   const diff = now - timestamp;
+  const relative = (key: string, count?: number) => {
+    const translationKey = `relative_time.${key}`;
+    const value = translate?.(translationKey, count === undefined ? undefined : { count });
+    return value === translationKey ? undefined : value;
+  };
 
   // Under a minute
   if (diff < 60 * 1000) {
-    return 'Just now';
+    return relative('just_now') ?? 'Just now';
   }
 
   // Under an hour - show minutes
   if (diff < 60 * 60 * 1000) {
     const minutes = Math.floor(diff / (60 * 1000));
-    return `${minutes} ${minutes === 1 ? 'min' : 'mins'} ago`;
+    return relative('minutes_ago', minutes) ?? `${minutes} ${minutes === 1 ? 'min' : 'mins'} ago`;
   }
 
   // Under a day - show hours
   if (diff < 24 * 60 * 60 * 1000) {
     const hours = Math.floor(diff / (60 * 60 * 1000));
-    return `${hours} ${hours === 1 ? 'hr' : 'hrs'} ago`;
+    return relative('hours_ago', hours) ?? `${hours} ${hours === 1 ? 'hr' : 'hrs'} ago`;
   }
 
   // Under a week - show days
   if (diff < 7 * 24 * 60 * 60 * 1000) {
     const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    return relative('days_ago', days) ?? `${days} ${days === 1 ? 'day' : 'days'} ago`;
   }
 
   // Under a month - show weeks
   if (diff < 30 * 24 * 60 * 60 * 1000) {
     const weeks = Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
-    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+    return relative('weeks_ago', weeks) ?? `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
   }
 
   // Under a year - show months
   if (diff < 365 * 24 * 60 * 60 * 1000) {
     const months = Math.floor(diff / (30 * 24 * 60 * 60 * 1000));
-    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+    return relative('months_ago', months) ?? `${months} ${months === 1 ? 'month' : 'months'} ago`;
   }
 
   // Over a year - show years
   const years = Math.floor(diff / (365 * 24 * 60 * 60 * 1000));
-  return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  return relative('years_ago', years) ?? `${years} ${years === 1 ? 'year' : 'years'} ago`;
 }
 
 export function getTimeGroupKey(timestamp: number): TimeGroupKey {

@@ -7,7 +7,7 @@ const baseConfig = createExtensionConfig({
   // RevoGrid self-registers <revo-grid> globally. The desktop and browser
   // extension hosts both provide one shared wrapper/runtime instance; bundling
   // a private copy here makes a later grid load throw or silently paint blank.
-  additionalExternals: ['@revolist/react-datagrid', '@revolist/revogrid'],
+  additionalExternals: ['@revolist/react-datagrid', '@revolist/revogrid', '@nimbalyst/i18n/react'],
   plugins: [
     react({
       jsxRuntime: 'automatic',

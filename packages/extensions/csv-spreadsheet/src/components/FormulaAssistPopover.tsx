@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   autoUpdate,
   flip,
@@ -68,6 +69,9 @@ export function FormulaAssistPopover({
   onAccept,
   onDismiss,
 }: FormulaAssistPopoverProps) {
+  const { t } = useTranslation('editor');
+  const descriptionFor = (entry: FunctionCatalogEntry) =>
+    t(`spreadsheet_ui.formula_assist.descriptions.${entry.name}`, { defaultValue: entry.description });
   const [highlighted, setHighlighted] = useState(0);
   const candidates = autocomplete?.candidates ?? [];
   const visible = anchor !== null && (candidates.length > 0 || signatureHelp !== null);
@@ -127,7 +131,7 @@ export function FormulaAssistPopover({
       >
         {candidates.length > 0 ? (
           <>
-            <div role="listbox" aria-label="Functions" className="csv-formula-assist-list flex flex-col py-1 max-h-60 overflow-y-auto">
+            <div role="listbox" aria-label={t('spreadsheet_ui.formula_assist.functions')} className="csv-formula-assist-list flex flex-col py-1 max-h-60 overflow-y-auto">
               {candidates.map((entry, index) => (
                 <div
                   key={entry.name}
@@ -142,21 +146,21 @@ export function FormulaAssistPopover({
                   onMouseEnter={() => setHighlighted(index)}
                 >
                   <span className="font-mono font-semibold">{entry.name}</span>
-                  <span className="text-nim-faint text-[11px] truncate">{entry.category === 'named range' ? entry.signature : entry.category}</span>
+                  <span className="text-nim-faint text-[11px] truncate">{entry.category === 'named range' ? entry.signature : t(`spreadsheet_ui.formula_assist.categories.${entry.category}`)}</span>
                 </div>
               ))}
             </div>
             {active && (
               <div className="csv-formula-assist-detail px-2.5 py-2 border-t border-nim">
                 {active.category !== 'named range' && <Signature entry={active} activeIndex={-1} />}
-                <div className="mt-1 text-[11.5px] text-nim-muted leading-snug">{active.description}</div>
+                <div className="mt-1 text-[11.5px] text-nim-muted leading-snug">{descriptionFor(active)}</div>
               </div>
             )}
           </>
         ) : signatureHelp && (
           <div className="csv-formula-assist-signature-help px-2.5 py-2">
             <Signature entry={signatureHelp.entry} activeIndex={signatureHelp.paramIndex} />
-            <div className="mt-1.5 text-[11.5px] text-nim-muted leading-snug">{signatureHelp.entry.description}</div>
+            <div className="mt-1.5 text-[11.5px] text-nim-muted leading-snug">{descriptionFor(signatureHelp.entry)}</div>
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type {
   BooleanStyle,
   CellAlignment,
@@ -20,14 +21,7 @@ import type {
 } from '../types';
 import {
   formatCellValue,
-  getBooleanStyleName,
-  getColumnTypeName,
-  getCurrencyName,
-  getDateFormatName,
   getDefaultFormatForType,
-  getNegativeStyleName,
-  getNumberStyleName,
-  getTimeFormatName,
   isNumericColumnType,
   isTemporalColumnType,
 } from '../utils/formatters';
@@ -51,6 +45,17 @@ const TIME_FORMATS: TimeFormat[] = ['h:mm A', 'h:mm:ss A', 'HH:mm', 'HH:mm:ss'];
 const NUMBER_STYLES: NumberStyle[] = ['standard', 'plain', 'scientific', 'accounting'];
 const NEGATIVE_STYLES: NegativeStyle[] = ['minus', 'parens', 'red', 'parens-red'];
 const BOOLEAN_STYLES: BooleanStyle[] = ['true-false', 'yes-no', 'check'];
+const NEGATIVE_STYLE_KEYS = {
+  minus: 'spreadsheet_ui.negative_style.minus',
+  parens: 'spreadsheet_ui.negative_style.parens',
+  red: 'spreadsheet_ui.negative_style.red',
+  'parens-red': 'spreadsheet_ui.negative_style.parens_red',
+} as const satisfies Record<NegativeStyle, string>;
+const BOOLEAN_STYLE_KEYS = {
+  'true-false': 'spreadsheet_ui.boolean_style.true_false',
+  'yes-no': 'spreadsheet_ui.boolean_style.yes_no',
+  check: 'spreadsheet_ui.boolean_style.check',
+} as const satisfies Record<BooleanStyle, string>;
 const ALIGNMENTS: (CellAlignment | 'auto')[] = ['auto', 'left', 'center', 'right'];
 
 /** Representative value used to render the live preview for each type. */
@@ -79,6 +84,7 @@ export function ColumnFormatDialog({
   onSave,
   onClose,
 }: ColumnFormatDialogProps) {
+  const { t } = useTranslation('editor');
   const [type, setType] = useState<ColumnType>(currentFormat?.type ?? 'text');
   const [decimals, setDecimals] = useState<number>(currentFormat?.decimals ?? 2);
   const [showThousandsSeparator, setShowThousandsSeparator] = useState<boolean>(
@@ -215,7 +221,7 @@ export function ColumnFormatDialog({
         onKeyDown={handleKeyDown}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-nim">
-          <h3 className="m-0 text-base font-semibold text-nim">Format Column {columnLetter}</h3>
+          <h3 className="m-0 text-base font-semibold text-nim">{t('spreadsheet_ui.column_format.title', { column: columnLetter })}</h3>
           <button className="bg-none border-none text-xl text-nim-muted cursor-pointer p-0 leading-none hover:text-nim" onClick={onClose}>
             &times;
           </button>
@@ -224,15 +230,15 @@ export function ColumnFormatDialog({
         <div className="px-5 py-5 flex flex-col gap-4">
           {/* Column Type */}
           <div className="flex flex-col gap-1.5">
-            <label className={LABEL_CLASS}>Type</label>
+            <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.type')}</label>
             <select
               value={type}
               onChange={(e) => handleTypeChange(e.target.value as ColumnType)}
               className={SELECT_CLASS}
             >
-              {COLUMN_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {getColumnTypeName(t)}
+              {COLUMN_TYPES.map((columnType) => (
+                <option key={columnType} value={columnType}>
+                  {t(`spreadsheet_ui.col_type.${columnType}`)}
                 </option>
               ))}
             </select>
@@ -241,14 +247,14 @@ export function ColumnFormatDialog({
           {/* Number style (number, currency) */}
           {(type === 'number' || type === 'currency') && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Style</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.style')}</label>
               <select
                 value={numberStyle}
                 onChange={(e) => setNumberStyle(e.target.value as NumberStyle)}
                 className={SELECT_CLASS}
               >
                 {NUMBER_STYLES.map((s) => (
-                  <option key={s} value={s}>{getNumberStyleName(s)}</option>
+                  <option key={s} value={s}>{t(`spreadsheet_ui.number_style.${s}`)}</option>
                 ))}
               </select>
             </div>
@@ -257,7 +263,7 @@ export function ColumnFormatDialog({
           {/* Decimal Places */}
           {showsDecimals && numberStyle !== 'plain' && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Decimal Places</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.decimal_places')}</label>
               <input
                 type="number"
                 min={0}
@@ -279,7 +285,7 @@ export function ColumnFormatDialog({
                   onChange={(e) => setShowThousandsSeparator(e.target.checked)}
                   className="w-4 h-4 accent-[var(--nim-primary)]"
                 />
-                Show thousands separator
+                {t('spreadsheet_ui.column_format.thousands')}
               </label>
             </div>
           )}
@@ -287,7 +293,7 @@ export function ColumnFormatDialog({
           {/* Currency */}
           {type === 'currency' && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Currency</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.currency')}</label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
@@ -295,7 +301,7 @@ export function ColumnFormatDialog({
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>
-                    {getCurrencyName(c)}
+                    {t(`spreadsheet_ui.currency_name.${c}`)}
                   </option>
                 ))}
               </select>
@@ -305,14 +311,14 @@ export function ColumnFormatDialog({
           {/* Percentage: how stored values are scaled */}
           {type === 'percentage' && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Stored values</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.stored_values')}</label>
               <select
                 value={valuesAreFractions ? 'fraction' : 'whole'}
                 onChange={(e) => setValuesAreFractions(e.target.value === 'fraction')}
                 className={SELECT_CLASS}
               >
-                <option value="fraction">Fractions (0.5 means 50%)</option>
-                <option value="whole">Whole percents (50 means 50%)</option>
+                <option value="fraction">{t('spreadsheet_ui.column_format.fractions')}</option>
+                <option value="whole">{t('spreadsheet_ui.column_format.whole')}</option>
               </select>
             </div>
           )}
@@ -320,14 +326,14 @@ export function ColumnFormatDialog({
           {/* Negative style */}
           {showsDecimals && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Negative numbers</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.negative')}</label>
               <select
                 value={negativeStyle}
                 onChange={(e) => setNegativeStyle(e.target.value as NegativeStyle)}
                 className={SELECT_CLASS}
               >
                 {NEGATIVE_STYLES.map((s) => (
-                  <option key={s} value={s}>{getNegativeStyleName(s)}</option>
+                  <option key={s} value={s}>{t(NEGATIVE_STYLE_KEYS[s])}</option>
                 ))}
               </select>
             </div>
@@ -336,7 +342,7 @@ export function ColumnFormatDialog({
           {/* Date Format */}
           {temporal && type !== 'time' && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Date Format</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.date_format')}</label>
               <select
                 value={dateFormat}
                 onChange={(e) => setDateFormat(e.target.value as DateFormat)}
@@ -345,7 +351,7 @@ export function ColumnFormatDialog({
               >
                 {DATE_FORMATS.map((f) => (
                   <option key={f} value={f}>
-                    {getDateFormatName(f)}
+                    {f}
                   </option>
                 ))}
               </select>
@@ -355,7 +361,7 @@ export function ColumnFormatDialog({
           {/* Time Format */}
           {temporal && type !== 'date' && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Time Format</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.time_format')}</label>
               <select
                 value={timeFormat}
                 onChange={(e) => setTimeFormat(e.target.value as TimeFormat)}
@@ -364,7 +370,7 @@ export function ColumnFormatDialog({
               >
                 {TIME_FORMATS.map((f) => (
                   <option key={f} value={f}>
-                    {getTimeFormatName(f)}
+                    {f}
                   </option>
                 ))}
               </select>
@@ -374,7 +380,7 @@ export function ColumnFormatDialog({
           {/* Custom pattern */}
           {temporal && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Custom pattern (optional)</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.custom_pattern')}</label>
               <input
                 type="text"
                 value={pattern}
@@ -391,14 +397,14 @@ export function ColumnFormatDialog({
           {/* Boolean style */}
           {type === 'boolean' && (
             <div className="flex flex-col gap-1.5">
-              <label className={LABEL_CLASS}>Display as</label>
+              <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.display_as')}</label>
               <select
                 value={booleanStyle}
                 onChange={(e) => setBooleanStyle(e.target.value as BooleanStyle)}
                 className={SELECT_CLASS}
               >
                 {BOOLEAN_STYLES.map((s) => (
-                  <option key={s} value={s}>{getBooleanStyleName(s)}</option>
+                  <option key={s} value={s}>{t(BOOLEAN_STYLE_KEYS[s])}</option>
                 ))}
               </select>
             </div>
@@ -406,13 +412,13 @@ export function ColumnFormatDialog({
 
           {type === 'tracker' && (
             <span className="text-[12px] text-nim-muted">
-              Cells holding a tracker key such as NIM-123 show the item&apos;s live title and status. Click one to open it.
+              {t('spreadsheet_ui.column_format.tracker_hint')}
             </span>
           )}
 
           {/* Alignment */}
           <div className="flex flex-col gap-1.5">
-            <label className={LABEL_CLASS}>Alignment</label>
+            <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.alignment')}</label>
             <select
               value={align}
               onChange={(e) => setAlign(e.target.value as CellAlignment | 'auto')}
@@ -420,14 +426,14 @@ export function ColumnFormatDialog({
             >
               {ALIGNMENTS.map((a) => (
                 <option key={a} value={a}>
-                  {a === 'auto' ? 'Automatic' : a.charAt(0).toUpperCase() + a.slice(1)}
+                  {a === 'auto' ? t('spreadsheet_ui.column_format.automatic') : t(`spreadsheet_ui.toolbar.align_${a}`)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={LABEL_CLASS}>Preview</label>
+            <label className={LABEL_CLASS}>{t('spreadsheet_ui.column_format.preview')}</label>
             <div className="csv-format-preview px-3 py-2 text-sm bg-nim-tertiary border border-nim rounded text-nim font-mono">
               {preview}
             </div>
@@ -439,13 +445,13 @@ export function ColumnFormatDialog({
             className="px-4 py-2 text-sm font-medium rounded cursor-pointer transition-all bg-nim-secondary border border-nim text-nim hover:bg-nim-hover"
             onClick={onClose}
           >
-            Cancel
+            {t('spreadsheet_ui.column_format.cancel')}
           </button>
           <button
             className="px-4 py-2 text-sm font-medium rounded cursor-pointer transition-all bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:opacity-90"
             onClick={handleSave}
           >
-            Apply
+            {t('spreadsheet_ui.column_format.apply')}
           </button>
         </div>
       </div>

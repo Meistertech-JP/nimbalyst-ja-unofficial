@@ -33,6 +33,11 @@ export interface OpenCodeRoleModelConflict {
   roleModelLabel: string;
 }
 
+export interface RolePermissionSummary {
+  key: string;
+  count?: number;
+}
+
 /**
  * Detect a role whose configured model is not the one this session will run.
  *
@@ -98,45 +103,48 @@ export interface OpenCodeRolePolicy {
  * with OpenCode's default: the server, not this process, resolves an unset
  * policy, so a claim here would be unverified.
  */
-export function summarizeRolePermissions(role: OpenCodeRolePolicy): string[] {
+export function summarizeRolePermissions(role: OpenCodeRolePolicy): RolePermissionSummary[] {
   const { permission } = role;
-  const summary: string[] = [];
+  const summary: RolePermissionSummary[] = [];
+  const add = (key: string, count?: number) => {
+    summary.push({ key: `open_code_role.permissions.${key}`, ...(count === undefined ? {} : { count }) });
+  };
 
-  if (permission.edit === 'deny') summary.push('no edits');
-  else if (permission.edit === 'ask') summary.push('edits on approval');
-  else summary.push('edits files');
+  if (permission.edit === 'deny') add('no_edits');
+  else if (permission.edit === 'ask') add('edits_on_approval');
+  else add('edits_files');
 
   const bashDecisions = Object.values(permission.bash ?? {});
   const wildcard = permission.bash?.['*'];
   if (bashDecisions.length === 0) {
     // No policy at all: OpenCode's own default applies, so claim nothing.
   } else if (wildcard === 'deny' && bashDecisions.every((d) => d === 'deny')) {
-    summary.push('no commands');
+    add('no_commands');
   } else if (wildcard === 'allow' && bashDecisions.every((d) => d === 'allow')) {
-    summary.push('runs commands');
+    add('runs_commands');
   } else if (wildcard === 'ask' && bashDecisions.every((d) => d === 'ask')) {
-    summary.push('commands on approval');
+    add('commands_on_approval');
   } else {
-    summary.push('commands vary by rule');
+    add('commands_vary');
   }
 
   // The workspace boundary: a role allowed outside it can read and write files
   // the user never opened this project to expose.
-  if (permission.external_directory === 'allow') summary.push('works outside the workspace');
-  else if (permission.external_directory === 'ask') summary.push('outside the workspace on approval');
-  else if (permission.external_directory === 'deny') summary.push('workspace only');
+  if (permission.external_directory === 'allow') add('works_outside_workspace');
+  else if (permission.external_directory === 'ask') add('outside_workspace_on_approval');
+  else if (permission.external_directory === 'deny') add('workspace_only');
 
-  if (permission.webfetch === 'deny') summary.push('no web access');
+  if (permission.webfetch === 'deny') add('no_web_access');
 
   // Named with OpenCode's own permission key rather than a paraphrase of what
   // the server does with it.
-  if (permission.doom_loop === 'allow') summary.push('doom loop allowed');
-  else if (permission.doom_loop === 'ask') summary.push('doom loop on approval');
-  else if (permission.doom_loop === 'deny') summary.push('no doom loop');
+  if (permission.doom_loop === 'allow') add('doom_loop_allowed');
+  else if (permission.doom_loop === 'ask') add('doom_loop_on_approval');
+  else if (permission.doom_loop === 'deny') add('no_doom_loop');
 
   const disabledTools = Object.values(role.tools ?? {}).filter((enabled) => enabled === false).length;
   if (disabledTools > 0) {
-    summary.push(`${disabledTools} tool${disabledTools === 1 ? '' : 's'} disabled`);
+    add('tools_disabled', disabledTools);
   }
 
   return summary;
@@ -148,16 +156,16 @@ export function summarizeRolePermissions(role: OpenCodeRolePolicy): string[] {
  * `.opencode/agent` or the user's own -- so this must not claim "project".
  */
 export function describeRoleOrigin(role: Pick<OpenCodeAgentSummary, 'builtIn'>): {
-  label: string;
-  title: string;
+  labelKey: string;
+  titleKey: string;
 } {
   return role.builtIn
     ? {
-      label: 'built-in',
-      title: 'Ships with OpenCode.',
+      labelKey: 'open_code_role.origin_built_in',
+      titleKey: 'open_code_role.origin_built_in_title',
     }
     : {
-      label: 'custom',
-      title: "Defined in OpenCode config -- this project's .opencode/agent or your own -- not shipped with OpenCode.",
+      labelKey: 'open_code_role.origin_custom',
+      titleKey: 'open_code_role.origin_custom_title',
     };
 }

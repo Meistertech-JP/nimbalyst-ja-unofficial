@@ -4,6 +4,8 @@ import { Provider } from 'jotai';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { store } from '@nimbalyst/runtime/store';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import {
   CLOUDFLARE_SANDBOX_CHANNELS,
@@ -16,6 +18,7 @@ import { CloudflareSandboxNodePanel } from '../CloudflareSandboxNodePanel';
 const WORKSPACE = '/Users/me/sources/stravu-editor';
 
 const invoke = vi.fn<(channel: string, payload?: unknown) => Promise<unknown>>();
+const i18n = await createI18nInstance('en');
 
 function connectedNode(overrides: Partial<SandboxNodeState> = {}): SandboxNodeState {
   return {
@@ -51,9 +54,11 @@ function deployment(node: SandboxNodeState | null): SandboxDeployment {
 function renderPanel(node: SandboxNodeState | null, workspacePath: string | null = WORKSPACE) {
   store.set(activeWorkspacePathAtom, workspacePath);
   return render(
-    <Provider store={store}>
-      <CloudflareSandboxNodePanel deployment={deployment(node)} onDeploymentChange={vi.fn()} />
-    </Provider>,
+    <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+      <Provider store={store}>
+        <CloudflareSandboxNodePanel deployment={deployment(node)} onDeploymentChange={vi.fn()} />
+      </Provider>
+    </UiLanguageProvider>,
   );
 }
 
@@ -88,7 +93,7 @@ describe('CloudflareSandboxNodePanel', () => {
       return value && <CloudflareSandboxNodePanel deployment={value} onDeploymentChange={setValue} />;
     }
     store.set(activeWorkspacePathAtom, WORKSPACE);
-    render(<Provider store={store}><Harness /></Provider>);
+    render(<UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US"><Provider store={store}><Harness /></Provider></UiLanguageProvider>);
     fireEvent.click(screen.getByTestId('cloudflare-connect-node'));
     await waitFor(() => expect(finishRefresh).toBeTypeOf('function'));
     expect(disabled('cloudflare-connect-node')).toBe(true);

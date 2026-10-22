@@ -27,6 +27,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerDataModel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import type { TrackerNavigationEntry } from '@nimbalyst/runtime/sync/trackerNavigation';
@@ -72,6 +73,7 @@ export function TrackerNavigation({
   onDeleteView,
   onToggleShareView,
 }: TrackerNavigationProps) {
+  const { t } = useTranslation('tracker');
   const { personalState } = useTrackerUICapabilities();
   const navigableTypes = useMemo(
     () => (personalState ? trackerTypes : trackerTypes.filter((model) => !isPersonalTrackerModel(model))),
@@ -102,7 +104,7 @@ export function TrackerNavigation({
 
         <div className="px-1.5 py-2 border-t border-nim mt-1">
           <div className="px-2 mb-1 text-[10px] font-semibold text-nim-faint uppercase tracking-wider">
-            Types
+            {t('sidebar.types')}
           </div>
 
           <TrackerNavTypeRow

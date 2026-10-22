@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TrackerItem } from '@nimbalyst/runtime/core/DocumentService';
 import { trackerItemToRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { replaceOrgTrackerItemsAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
@@ -79,6 +80,7 @@ export function OrgModeBody({
   sidebarCollapsed?: boolean;
   onSelectOrganization: (orgId: string) => void;
 }) {
+  const { t } = useTranslation('collabSidebar');
   const orgId = team.orgId;
   const trackerStore = useStore();
   const conversations = useAtomValue(conversationDirectoryAtomFamily(orgId));
@@ -358,7 +360,7 @@ export function OrgModeBody({
                       onNewMessage={gating.roomsVisible || gating.dmsVisible
                         ? openCompose
                         : undefined}
-                      composeUnavailableLabel="Rooms and direct messages are turned off for this organization"
+                      composeUnavailableLabel={t('inbox_surface.compose_unavailable_org_messaging')}
                     />
                   </InboxProviderContext.Provider>
                 </div>
@@ -423,8 +425,8 @@ export function OrgModeBody({
                       data-testid="org-conversation-missing"
                     >
                       {routedConversation.resolving
-                        ? 'Loading conversation…'
-                        : 'That conversation is no longer available.'}
+                        ? t('room_view.loading_conversation')
+                        : t('room_view.conversation_unavailable')}
                     </div>
                   )
               )}

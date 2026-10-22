@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface McpLockdownBannerProps {
@@ -36,6 +37,7 @@ function probeLockdown(): Promise<boolean> {
 }
 
 export function McpLockdownBanner({ provider }: McpLockdownBannerProps) {
+  const { t } = useTranslation('aichat', { keyPrefix: 'mcp_lockdown' });
   const [active, setActive] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -59,17 +61,16 @@ export function McpLockdownBanner({ provider }: McpLockdownBannerProps) {
       <div className="mcp-lockdown-banner__info flex items-start gap-2 select-text">
         <MaterialSymbol icon="policy" size={16} className="mcp-lockdown-banner__icon text-nim-warning mt-0.5" />
         <span className="mcp-lockdown-banner__text text-xs text-nim-warning leading-snug">
-          This machine has an enterprise Claude Code MCP policy, so Nimbalyst&apos;s own tools are unavailable in
-          this session — no interactive question widgets, session naming, tracker tools, or extension tools. Claude
-          Code itself runs normally on your organization&apos;s servers.
+          {t('message')}
         </span>
       </div>
       <button
         className="mcp-lockdown-banner__dismiss shrink-0 px-2 py-1 bg-transparent border-none text-nim-warning text-[11px] font-medium cursor-pointer hover:opacity-80"
         onClick={() => setDismissed(true)}
-        title="Dismiss"
+        title={t('dismiss')}
+        aria-label={t('dismiss')}
       >
-        Dismiss
+        {t('dismiss')}
       </button>
     </div>
   );

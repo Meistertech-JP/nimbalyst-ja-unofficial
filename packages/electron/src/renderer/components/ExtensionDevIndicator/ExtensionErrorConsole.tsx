@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 type LogSource = 'renderer' | 'main' | 'build';
@@ -37,6 +38,7 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { t, i18n } = useTranslation('common');
   const [logs, setLogs] = useState<ExtensionLogEntry[]>([]);
   const [installedExtensions, setInstalledExtensions] = useState<InstalledExtension[]>([]);
   const [stats, setStats] = useState<{
@@ -131,7 +133,7 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
   };
 
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
+    return new Date(timestamp).toLocaleTimeString(i18n.resolvedLanguage ?? i18n.language, {
       hour12: false,
       hour: '2-digit',
       minute: '2-digit',
@@ -178,7 +180,7 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
           className="extension-error-console-header flex items-center gap-4 px-5 py-4 rounded-t-xl border-b border-nim bg-nim-secondary"
         >
           <h2 className="m-0 text-base font-semibold text-nim">
-            Extension Logs
+            {t('extension_console.title')}
           </h2>
           <div className="extension-error-console-stats flex gap-3 ml-auto">
             {stats && (
@@ -201,7 +203,7 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
           <button
             className="extension-error-console-close flex items-center justify-center w-8 h-8 border-none bg-transparent rounded-md cursor-pointer transition-all duration-100 hover:bg-nim-hover hover:text-nim text-nim-muted"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('extension_console.close')}
           >
             <MaterialSymbol icon="close" size={20} />
           </button>
@@ -220,13 +222,13 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
                   logLevel: e.target.value as LogLevel | 'all',
                 }))
               }
-              aria-label="Filter by level"
+              aria-label={t('extension_console.filter_level')}
             >
-              <option value="all">All Levels</option>
-              <option value="error">Errors</option>
-              <option value="warn">Warnings</option>
-              <option value="info">Info</option>
-              <option value="debug">Debug</option>
+              <option value="all">{t('extension_console.all_levels')}</option>
+              <option value="error">{t('extension_console.errors')}</option>
+              <option value="warn">{t('extension_console.warnings')}</option>
+              <option value="info">{t('extension_console.info')}</option>
+              <option value="debug">{t('extension_console.debug')}</option>
             </select>
 
             <select
@@ -238,12 +240,12 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
                   source: e.target.value as LogSource | 'all',
                 }))
               }
-              aria-label="Filter by source"
+              aria-label={t('extension_console.filter_source')}
             >
-              <option value="all">All Sources</option>
-              <option value="renderer">Renderer</option>
-              <option value="main">Main</option>
-              <option value="build">Build</option>
+              <option value="all">{t('extension_console.all_sources')}</option>
+              <option value="renderer">{t('extension_console.renderer')}</option>
+              <option value="main">{t('extension_console.main')}</option>
+              <option value="build">{t('extension_console.build')}</option>
             </select>
 
             <select
@@ -252,9 +254,9 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
               onChange={(e) =>
                 setFilter((f) => ({ ...f, extensionId: e.target.value }))
               }
-              aria-label="Filter by extension"
+              aria-label={t('extension_console.filter_extension')}
             >
-              <option value="">All Extensions</option>
+              <option value="">{t('extension_console.all_extensions')}</option>
               {allExtensionOptions.map((ext) => (
                 <option key={ext.id} value={ext.id}>
                   {ext.name}
@@ -271,20 +273,20 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
                 checked={autoRefresh}
                 onChange={(e) => setAutoRefresh(e.target.checked)}
               />
-              Auto-refresh
+              {t('extension_console.auto_refresh')}
             </label>
             <button
               className="toolbar-button nim-btn-icon"
               onClick={fetchLogs}
               disabled={isLoading}
-              title="Refresh"
+              title={t('extension_console.refresh')}
             >
               <MaterialSymbol icon="refresh" size={18} />
             </button>
             <button
               className="toolbar-button nim-btn-icon"
               onClick={handleClearLogs}
-              title="Clear logs"
+              title={t('extension_console.clear_logs')}
             >
               <MaterialSymbol icon="delete" size={18} />
             </button>
@@ -297,10 +299,9 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
           {logs.length === 0 ? (
             <div className="extension-error-console-empty flex flex-col items-center justify-center h-full text-center text-nim-faint">
               <MaterialSymbol icon="check_circle" size={48} />
-              <p className="mt-2 mb-0">No logs to display</p>
+              <p className="mt-2 mb-0">{t('extension_console.no_logs')}</p>
               <p className="hint text-xs max-w-[300px]">
-                Extension logs will appear here when extensions emit console
-                messages or errors.
+                {t('extension_console.empty_hint')}
               </p>
             </div>
           ) : (
@@ -342,7 +343,7 @@ export const ExtensionErrorConsole: React.FC<ExtensionErrorConsoleProps> = ({
                         e.stopPropagation();
                         setFilter((f) => ({ ...f, extensionId: log.extensionId! }));
                       }}
-                      title={`Filter by ${log.extensionId}`}
+                      title={t('extension_console.filter_by_extension', { extension: log.extensionId })}
                     >
                       {log.extensionId}
                     </button>

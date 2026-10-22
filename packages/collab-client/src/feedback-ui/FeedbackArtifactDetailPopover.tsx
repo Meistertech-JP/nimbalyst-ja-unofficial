@@ -38,6 +38,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FeedbackAskArtifact } from '@nimbalyst/collab-protocol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingFocusManager,
   FloatingOverlay,
@@ -176,6 +177,7 @@ export const FeedbackArtifactDetailPopover: React.FC<FeedbackArtifactDetailPopov
   disabled = false,
   onOpenInTab,
 }) => {
+  const { t } = useTranslation('feedback');
   const activeIndex = entries.findIndex((entry) => entry.entryId === activeEntryId);
   const entry = activeIndex >= 0 ? entries[activeIndex] : undefined;
 
@@ -312,11 +314,11 @@ export const FeedbackArtifactDetailPopover: React.FC<FeedbackArtifactDetailPopov
               <button
                 type="button"
                 data-testid="feedback-artifact-detail-close"
-                aria-label="Close"
+                aria-label={t('close', { ns: 'common' })}
                 onClick={onDismiss}
                 className="shrink-0 rounded border border-nim bg-nim-secondary px-2 py-0.5 text-[0.6875rem] text-nim-muted cursor-pointer hover:text-nim"
               >
-                Close
+                {t('close', { ns: 'common' })}
               </button>
             </div>
 
@@ -328,8 +330,8 @@ export const FeedbackArtifactDetailPopover: React.FC<FeedbackArtifactDetailPopov
                   data-testid="feedback-artifact-detail-unavailable"
                   className="flex h-full w-full items-center justify-center px-6 text-center text-xs text-nim-muted"
                 >
-                  This artifact cannot be shown here.
-                  {onOpenInTab && ' Open it to take a closer look.'}
+                  {t('detail.unavailable')}
+                  {onOpenInTab && ` ${t('detail.unavailableOpenHint')}`}
                 </div>
               )}
             </div>
@@ -339,7 +341,7 @@ export const FeedbackArtifactDetailPopover: React.FC<FeedbackArtifactDetailPopov
                 <button
                   type="button"
                   data-testid="feedback-artifact-detail-previous"
-                  aria-label="Previous option"
+                  aria-label={t('detail.previousOption')}
                   disabled={!previous}
                   onClick={() => stepBy(-1)}
                   className="flex h-6 w-6 items-center justify-center rounded border border-nim bg-nim-secondary text-nim-muted cursor-pointer hover:text-nim disabled:cursor-not-allowed disabled:opacity-40"
@@ -347,12 +349,12 @@ export const FeedbackArtifactDetailPopover: React.FC<FeedbackArtifactDetailPopov
                   <StepIcon back />
                 </button>
                 <span className="px-1 text-[0.6875rem] tabular-nums text-nim-faint">
-                  {activeIndex + 1} of {entries.length}
+                  {t('detail.position', { current: activeIndex + 1, total: entries.length })}
                 </span>
                 <button
                   type="button"
                   data-testid="feedback-artifact-detail-next"
-                  aria-label="Next option"
+                  aria-label={t('detail.nextOption')}
                   disabled={!next}
                   onClick={() => stepBy(1)}
                   className="flex h-6 w-6 items-center justify-center rounded border border-nim bg-nim-secondary text-nim-muted cursor-pointer hover:text-nim disabled:cursor-not-allowed disabled:opacity-40"
@@ -370,7 +372,7 @@ export const FeedbackArtifactDetailPopover: React.FC<FeedbackArtifactDetailPopov
                   onClick={() => onOpenInTab(entry.artifact)}
                   className="rounded border border-nim bg-nim-secondary px-2.5 py-1 text-[0.6875rem] text-nim-muted cursor-pointer hover:text-nim"
                 >
-                  Open to comment
+                  {t('detail.openToComment')}
                 </button>
               )}
 
@@ -387,7 +389,7 @@ export const FeedbackArtifactDetailPopover: React.FC<FeedbackArtifactDetailPopov
                       : 'rounded border border-nim-primary bg-nim-secondary px-3 py-1 text-[0.6875rem] font-semibold text-nim-primary cursor-pointer hover:bg-nim-hover disabled:cursor-not-allowed disabled:opacity-50'
                   }
                 >
-                  {selected ? 'Picked' : 'Pick this'}
+                  {selected ? t('detail.picked') : t('detail.pickThis')}
                 </button>
               )}
             </div>

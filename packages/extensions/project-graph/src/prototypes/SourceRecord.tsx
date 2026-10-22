@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import type { ProjectGraphNode } from "../types";
 import type { PrototypeModel } from "./contracts";
 
@@ -21,6 +22,7 @@ export function SourceRecord({
   canOpen: boolean;
   onOpenOriginal: () => void;
 }) {
+  const { t } = useTranslation("extensions");
   const [tab, setTab] = useState<"record" | "graph" | "history">("record");
   const [limit, setLimit] = useState(12);
   const links = useMemo(
@@ -59,27 +61,27 @@ export function SourceRecord({
       className={`pg-prototype-source ${
         tab === "graph" ? "pg-source-wide" : ""
       }`}
-      aria-label="Source record"
+      aria-label={t("project_graph.source_record")}
     >
       <header>
         <strong>{record.label}</strong>
-        <button aria-label="Close source record" onClick={onClose}>
-          Close
+        <button aria-label={t("project_graph.close_source_record")} onClick={onClose}>
+          {t("project_graph.close")}
         </button>
       </header>
       <p>
         {sample
-          ? "Illustrative source record"
+          ? t("project_graph.illustrative_source_record")
           : `${record.source} · ${record.type} · ${record.visibility}`}
       </p>
-      <nav aria-label="Source exploration">
-        {(["record", "graph", "history"] as const).map((t) => (
-          <button key={t} aria-pressed={tab === t} onClick={() => setTab(t)}>
-            {t === "record"
-              ? "Record"
-              : t === "graph"
-              ? "Focused graph"
-              : "Recorded history"}
+      <nav aria-label={t("project_graph.source_exploration")}>
+        {(["record", "graph", "history"] as const).map((tabKey) => (
+          <button key={tabKey} aria-pressed={tab === tabKey} onClick={() => setTab(tabKey)}>
+            {tabKey === "record"
+              ? t("project_graph.record_tab")
+              : tabKey === "graph"
+              ? t("project_graph.focused_graph")
+              : t("project_graph.recorded_history")}
           </button>
         ))}
       </nav>
@@ -90,8 +92,10 @@ export function SourceRecord({
           </p>
           <code>{record.id}</code>
           <p>
-            Current status: {record.status ?? "Not recorded"}
-            {record.fields?.archived === true ? " · Archived" : ""}.{" "}
+            {t("project_graph.current_status", {
+              status: record.status ?? t("project_graph.not_recorded"),
+            })}
+            {record.fields?.archived === true ? ` · ${t("project_graph.archived")}` : ""}.{" "}
             {model.memberships
               .get(record.id)
               ?.map((m) => m.basis)
@@ -100,38 +104,39 @@ export function SourceRecord({
           {typeof record.fields?.body === "string" && (
             <details>
               <summary>
-                Source body{record.fields?.bodyTruncated ? " · excerpt" : ""}
+                {t("project_graph.source_body")}{record.fields?.bodyTruncated ? ` · ${t("project_graph.excerpt")}` : ""}
               </summary>
               <pre>{record.fields.body}</pre>
             </details>
           )}
           {canOpen ? (
             <button onClick={onOpenOriginal}>
-              Open original{" "}
-              {record.source === "session"
-                ? "session"
-                : record.source === "tracker"
-                ? "tracker"
-                : "file"}
+              {t("project_graph.open_original_type", {
+                type: record.source === "session"
+                  ? t("project_graph.session")
+                  : record.source === "tracker"
+                  ? t("project_graph.tracker")
+                  : t("project_graph.file"),
+              })}
             </button>
           ) : (
             <p>
               {sample
-                ? "Sample sources do not open real project artifacts."
-                : "Original navigation is unavailable for this source; its indexed evidence can be inspected here."}
+                ? t("project_graph.sample_sources_do_not_open")
+                : t("project_graph.original_navigation_unavailable")}
             </p>
           )}
         </>
       ) : tab === "history" ? (
         <>
           <p>
-            Current state is separate from the events below. Gaps do not imply
-            continued work or a known past state. Archive is independent of
-            completion.
+            {t("project_graph.history_state_explanation")}
           </p>
           <strong>
-            Now: {record.status ?? "status not recorded"}
-            {record.fields?.archived === true ? " · archived" : ""}
+            {t("project_graph.now_status", {
+              status: record.status ?? t("project_graph.status_not_recorded"),
+            })}
+            {record.fields?.archived === true ? ` · ${t("project_graph.archived_lower")}` : ""}
           </strong>
           {events.length ? (
             <ol>
@@ -141,8 +146,8 @@ export function SourceRecord({
                   <small>
                     (
                     {e.provenance === "recorded"
-                      ? "recorded event"
-                      : "last observed only"}
+                      ? t("project_graph.recorded_event")
+                      : t("project_graph.last_observed_only")}
                     )
                   </small>
                 </li>
@@ -150,22 +155,23 @@ export function SourceRecord({
             </ol>
           ) : (
             <p>
-              No dated events are available for this record in the loaded source
-              history.
+              {t("project_graph.no_dated_events")}
             </p>
           )}
         </>
       ) : (
         <>
           <p>
-            {shown.length} of {neighbors.length} neighboring records ·{" "}
-            {links.length} connections in the loaded snapshot. Arrows preserve
-            source direction. Select a record to recenter.
+            {t("project_graph.neighbor_summary", {
+              shown: shown.length,
+              total: neighbors.length,
+              connections: links.length,
+            })}
           </p>
           {shown.length > 0 ? (
             <svg
               role="group"
-              aria-label="Focused connection graph"
+              aria-label={t("project_graph.focused_connection_graph")}
               viewBox={`0 0 640 ${Math.max(180, shown.length * 66)}`}
             >
               <defs>
@@ -215,7 +221,7 @@ export function SourceRecord({
                     />
                     <g
                       role="button"
-                      aria-label={`Explore ${n?.label ?? id}`}
+                      aria-label={t("project_graph.explore_record", { name: n?.label ?? id })}
                       tabIndex={0}
                       onClick={() => navigate(id)}
                       onKeyDown={(e) => {
@@ -238,10 +244,10 @@ export function SourceRecord({
                         {n
                           ? `${related.length} ${
                               related.length === 1
-                                ? "connection"
-                                : "connections"
+                              ? t("project_graph.connection")
+                              : t("project_graph.connections")
                             }`
-                          : "Unresolved · try loading source"}
+                          : t("project_graph.unresolved_try_loading_source")}
                       </text>
                       <title>{n?.label ?? id}</title>
                     </g>
@@ -251,8 +257,7 @@ export function SourceRecord({
             </svg>
           ) : (
             <p>
-              No connections available in the loaded snapshot. This does not
-              establish that the source has no links.
+              {t("project_graph.no_connections_available")}
             </p>
           )}
           {shown.length < neighbors.length && (
@@ -261,8 +266,8 @@ export function SourceRecord({
               disabled={limit >= 60}
             >
               {limit >= 60
-                ? "60-neighbor display limit; use Evidence Trails to explore further"
-                : "Show 12 more neighbors"}
+                ? t("project_graph.neighbor_display_limit")
+                : t("project_graph.show_more_neighbors", { count: 12 })}
             </button>
           )}
           <ul>
@@ -282,7 +287,7 @@ export function SourceRecord({
                   <small>
                     {e.provenance?.kind ?? "unknown"} —{" "}
                     {e.provenance?.basis ??
-                      "The source did not declare this relationship’s basis."}
+                      t("project_graph.relationship_basis_undeclared")}
                   </small>
                 </li>
               ))}
@@ -291,8 +296,7 @@ export function SourceRecord({
             shown.includes(e.sourceId === record.id ? e.targetId : e.sourceId)
           ).length > 120 && (
             <p>
-              Showing the first 120 relationship details for the displayed
-              neighbors.
+            {t("project_graph.relationship_details_limit", { count: 120 })}
             </p>
           )}
         </>

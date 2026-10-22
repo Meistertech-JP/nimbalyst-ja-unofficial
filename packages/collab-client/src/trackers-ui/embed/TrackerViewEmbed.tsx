@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CollabOpenOptions } from '@nimbalyst/collab-client/core';
 import { computeReadiness } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerReadiness';
 import { globalRegistry, groupTrackerRecordsByAxis } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
@@ -43,15 +44,13 @@ const MODE_LABEL: Record<string, string> = {
   timeline: 'timeline', radar: 'list', 'tag-board': 'list', inbox: 'list',
 };
 
-function describeQuery(definition: SavedViewDefinition, mode: string): string {
+function describeQuery(definition: SavedViewDefinition, mode: string): { subject: string; mode: string; filters: number } {
   const model = definition.selectedType === 'all' ? null : globalRegistry.get(definition.selectedType);
-  const subject = definition.selectedType === 'all'
-    ? 'All items'
-    : model?.displayNamePlural || definition.selectedType;
+  const subject = definition.selectedType === 'all' ? '' : model?.displayNamePlural || definition.selectedType;
   const filters = definition.activeFilters.length
     + definition.tagFilter.length
     + (definition.columnFilters?.clauses.length ?? 0);
-  return `${subject} · ${MODE_LABEL[mode] ?? mode}${filters > 0 ? ` · ${filters} filter${filters === 1 ? '' : 's'}` : ''}`;
+  return { subject, mode: MODE_LABEL[mode] ?? mode, filters };
 }
 
 export interface TrackerViewEmbedProps {
@@ -214,6 +213,7 @@ function LoadedViewEmbed({
   onWidthsChange?: (widths: Record<string, number>) => void;
   onCreate?: (title: string, fields?: Record<string, unknown>, requestId?: string) => Promise<void>;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const { definition } = view;
   // Readiness is a property of the whole dependency graph, so it reads every record.
   const readinessByItemId = useMemo(() => computeReadiness(records, getRecordStatus), [records]);
@@ -329,12 +329,17 @@ function LoadedViewEmbed({
         <div className="tracker-saved-view-embed-head flex shrink-0 items-center gap-2.5 border-b border-nim px-3 py-1.5 text-xs">
           <span className="min-w-0 truncate font-medium text-nim" title={view.name}>{view.name}</span>
           <span className="placed-view-query min-w-0 truncate rounded bg-nim-tertiary px-2 py-0.5 font-mono text-[11px] text-nim-muted">
-            {describeQuery(definition, mode)}
+            {(() => {
+              const query = describeQuery(definition, mode);
+              const subject = query.subject || t('placed_view_embed.all_items');
+              const modeLabel = MODE_LABEL[mode] ? t(`placed_view_settings.layout_${query.mode}`) : query.mode;
+              return `${subject} · ${modeLabel}${query.filters > 0 ? ` · ${t('placed_view_embed.filter', { count: query.filters })}` : ''}`;
+            })()}
           </span>
           <div className="tracker-saved-view-embed-actions ml-auto flex shrink-0 items-center gap-2.5">
             <span className="placed-view-live flex shrink-0 items-center gap-1.5 text-[11px] text-nim-success">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--nim-success)]" aria-hidden />
-              live
+              {t('placed_view_embed.live')}
             </span>
             {headerActions}
           </div>
@@ -352,7 +357,7 @@ function LoadedViewEmbed({
       </div>
       {onCreate && mode !== 'kanban' ? <ViewNewItem onCreate={(title, requestId) => onCreate(title, undefined, requestId)} /> : null}
       <div className="tracker-saved-view-embed-foot flex items-center gap-3.5 px-3 py-1.5 text-[11px] text-nim-faint">
-        <span>{rows.length} {rows.length === 1 ? 'item' : 'items'}</span>
+        <span>{t('placed_view_embed.item', { count: rows.length })}</span>
         {onOpenAsTable ? (
           <button
             type="button"
@@ -360,7 +365,7 @@ function LoadedViewEmbed({
             data-testid="tracker-saved-view-embed-open"
             onClick={() => onOpenAsTable(view)}
           >
-            Open as table
+            {t('placed_view_embed.open_as_table')}
           </button>
         ) : null}
       </div>

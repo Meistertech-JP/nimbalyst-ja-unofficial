@@ -9,8 +9,13 @@
  */
 import { startOfLocalDay } from './pulseBuckets';
 
-export function formatStamp(ms: number): string {
-  return new Date(ms).toLocaleString(undefined, {
+export type PulseTranslate = (
+  key: string,
+  options?: Record<string, string | number>,
+) => string;
+
+export function formatStamp(ms: number, locale?: string): string {
+  return new Date(ms).toLocaleString(locale, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -37,30 +42,49 @@ export function calendarDaysBetween(fromMs: number, toMs: number): number {
  * only the dates there would read as two whole days it does not cover — and
  * printing a weekday name would imply a calendar week nobody aligned it to.
  */
-export function formatInterval(startMs: number, endMs: number): string {
+export function formatInterval(startMs: number, endMs: number, locale?: string): string {
   const endExclusive = endMs + 1;
   const dayAligned =
     startOfLocalDay(startMs) === startMs && startOfLocalDay(endExclusive) === endExclusive;
   const date: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
   if (dayAligned) {
     // The inclusive end names the last day covered, not the exclusive boundary.
-    return `${new Date(startMs).toLocaleDateString(undefined, date)} – ${new Date(
+    return `${new Date(startMs).toLocaleDateString(locale, date)} – ${new Date(
       endMs,
-    ).toLocaleDateString(undefined, date)}`;
+    ).toLocaleDateString(locale, date)}`;
   }
   const stamp: Intl.DateTimeFormatOptions = { ...date, hour: 'numeric', minute: '2-digit' };
-  return `${new Date(startMs).toLocaleString(undefined, stamp)} – ${new Date(
+  return `${new Date(startMs).toLocaleString(locale, stamp)} – ${new Date(
     endExclusive,
-  ).toLocaleString(undefined, stamp)}`;
+  ).toLocaleString(locale, stamp)}`;
 }
 
-export function formatRelative(ms: number, nowMs: number): string {
-  if (ms > nowMs) return 'ahead of now';
+export function formatRelative(
+  ms: number,
+  nowMs: number,
+  translate: PulseTranslate = defaultRelativeText,
+): string {
+  if (ms > nowMs) return translate('relative.ahead');
   const days = calendarDaysBetween(ms, nowMs);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 45) return `${days}d ago`;
+  if (days <= 0) return translate('relative.today');
+  if (days === 1) return translate('relative.yesterday');
+  if (days < 45) return translate('relative.days_ago', { count: days });
   const months = Math.round(days / 30);
-  if (months < 24) return `${months}mo ago`;
-  return `${Math.round(days / 365)}y ago`;
+  if (months < 24) return translate('relative.months_ago', { count: months });
+  return translate('relative.years_ago', { count: Math.round(days / 365) });
+}
+
+const DEFAULT_RELATIVE_TEXT: Record<string, string> = {
+  'relative.ahead': 'ahead of now',
+  'relative.today': 'today',
+  'relative.yesterday': 'yesterday',
+  'relative.days_ago': '{{count}}d ago',
+  'relative.months_ago': '{{count}}mo ago',
+  'relative.years_ago': '{{count}}y ago',
+};
+
+function defaultRelativeText(key: string, options?: Record<string, string | number>): string {
+  return (DEFAULT_RELATIVE_TEXT[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+    String(options?.[name] ?? ''),
+  );
 }

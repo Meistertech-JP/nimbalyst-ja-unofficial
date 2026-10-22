@@ -20,6 +20,8 @@ import { atom } from 'jotai';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Doc } from 'yjs';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import type { EditorHost } from '@nimbalyst/runtime';
 
@@ -91,6 +93,17 @@ vi.mock('../../TabEditor/collabExtensionHost', () => ({
 }));
 
 const { CanvasCardHost } = await import('../CanvasCardHost');
+const japaneseI18n = await createI18nInstance('ja');
+
+function renderJapanese(ui: React.ReactNode) {
+  const wrap = (content: React.ReactNode) => (
+    <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+      {content}
+    </UiLanguageProvider>
+  );
+  const view = render(wrap(ui));
+  return { ...view, rerender: (content: React.ReactNode) => view.rerender(wrap(content)) };
+}
 
 /** Renders whichever content its host makes reachable, and nothing else. */
 function BodyText({ host }: { host: EditorHost }) {
@@ -145,7 +158,7 @@ describe('pinned revision cards', () => {
       config: { teamMemberId: 'member-1', userName: 'Greg' },
     });
 
-    render(
+    renderJapanese(
       <CanvasCardHost
         nodeId="node-1"
         reference={{
@@ -173,7 +186,7 @@ describe('pinned revision cards', () => {
   });
 
   it('still follows head for a card that names no revision', () => {
-    render(
+    renderJapanese(
       <CanvasCardHost
         nodeId="node-1"
         reference={{ kind: 'doc', uri: 'nimbalyst://doc/org-1/doc-9' }}
@@ -191,7 +204,7 @@ describe('pinned revision cards', () => {
       new Error('Past revisions of markdown documents cannot be shown yet.'),
     );
 
-    render(
+    renderJapanese(
       <CanvasCardHost
         nodeId="node-1"
         reference={{
@@ -234,8 +247,25 @@ describe('file card autosave', () => {
     />
   );
 
+  it('shows the localized missing-extension notice', () => {
+    findRegistrationForFile.mockReturnValue(null);
+
+    renderJapanese(
+      <CanvasCardHost
+        nodeId="node-1"
+        reference={{ kind: 'file', path: 'report.csv' }}
+        label="Report"
+        detail="warm"
+      />,
+    );
+
+    expect(
+      screen.getByText('report.csvを表示できる拡張機能がインストールされていません。'),
+    ).toBeTruthy();
+  });
+
   it('lands the bytes when a dirty card cools inside the debounce window', async () => {
-    const view = render(fileCard('hot'));
+    const view = renderJapanese(fileCard('hot'));
     screen.getByTestId('file-card');
     // No two-second tick has fired: the edit exists only in the extension.
     expect(writeFileToDisk).not.toHaveBeenCalled();
@@ -248,7 +278,7 @@ describe('file card autosave', () => {
   });
 
   it('lands the bytes when the board closes on a dirty card', async () => {
-    const view = render(fileCard('hot'));
+    const view = renderJapanese(fileCard('hot'));
     expect(writeFileToDisk).not.toHaveBeenCalled();
 
     view.unmount();
@@ -262,7 +292,7 @@ describe('file card autosave', () => {
     findRegistrationForFile.mockReturnValue({
       component: () => <div data-testid="file-card" />,
     });
-    const view = render(fileCard('hot'));
+    const view = renderJapanese(fileCard('hot'));
     view.rerender(fileCard('warm'));
     view.unmount();
 

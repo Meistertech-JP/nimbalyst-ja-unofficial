@@ -13,6 +13,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 
 import { ReorderList } from './shared/ReorderList';
 
@@ -191,22 +192,23 @@ function parseFromUnknown(value: unknown): ParsedResult | null {
 
 interface VoiceHint {
   friendly: boolean;
-  reason: string;
+  reasonKey: 'voice_reorder' | 'voice_long_text' | 'voice_available';
+  count?: number;
 }
 
 function computeVoiceHint(args: RequestUserInputArgs): VoiceHint {
   for (const field of args.fields) {
     if (field.type === 'reorder' && field.items.length > 6) {
-      return { friendly: false, reason: `Voice will defer — too many items to reorder verbally (${field.items.length})` };
+      return { friendly: false, reasonKey: 'voice_reorder', count: field.items.length };
     }
     if (field.type === 'editText') {
       const len = (field.initialText ?? '').length;
       if (len > 240) {
-        return { friendly: false, reason: 'Voice will defer — text too long to dictate' };
+        return { friendly: false, reasonKey: 'voice_long_text' };
       }
     }
   }
-  return { friendly: true, reason: 'Voice can read this aloud' };
+  return { friendly: true, reasonKey: 'voice_available' };
 }
 
 // ============================================================
@@ -298,6 +300,7 @@ function SingleSelectRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputSingleSelectField>) {
+  const { t } = useTranslation('aichat');
   if (draft.type !== 'singleSelect') return null;
   const otherInputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -386,7 +389,7 @@ function SingleSelectRenderer({
             >
               {draft.state.otherSelected && <span className="w-2 h-2 rounded-full bg-white" />}
             </span>
-            <span className="text-[0.8125rem] font-medium text-nim leading-snug">Other</span>
+            <span className="text-[0.8125rem] font-medium text-nim leading-snug">{t('questions.other')}</span>
           </button>
           {draft.state.otherSelected && (
             <div className="px-2.5 pb-2">
@@ -395,7 +398,7 @@ function SingleSelectRenderer({
                 data-testid="request-user-input-singleselect-other-input"
                 value={draft.state.otherText}
                 onChange={(e) => setOtherText(e.target.value)}
-                placeholder="Type your answer..."
+                placeholder={t('questions.answer_placeholder')}
                 disabled={disabled}
                 rows={2}
                 className="w-full px-2.5 py-2 rounded border border-nim bg-nim text-sm text-nim placeholder-nim-faint resize-y focus:outline-none focus:border-nim-primary disabled:opacity-50"
@@ -476,6 +479,7 @@ interface FormatToolbarState {
 }
 
 function FormatToolbar({ disabled }: { disabled: boolean }) {
+  const { t } = useTranslation('aichat');
   const [editor] = useLexicalComposerContext();
   const [state, setState] = useState<FormatToolbarState>({ bold: false, italic: false, underline: false, code: false });
 
@@ -517,7 +521,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('bold')}
         disabled={disabled}
         className={`${baseBtn} ${state.bold ? activeBtn : ''}`}
-        aria-label="Bold"
+        aria-label={t('user_input.bold')}
       >
         <strong>B</strong>
       </button>
@@ -527,7 +531,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('italic')}
         disabled={disabled}
         className={`${baseBtn} ${state.italic ? activeBtn : ''}`}
-        aria-label="Italic"
+        aria-label={t('user_input.italic')}
       >
         <em>I</em>
       </button>
@@ -537,7 +541,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('underline')}
         disabled={disabled}
         className={`${baseBtn} ${state.underline ? activeBtn : 'underline'}`}
-        aria-label="Underline"
+        aria-label={t('user_input.underline')}
       >
         <span style={{ textDecoration: 'underline' }}>U</span>
       </button>
@@ -548,7 +552,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
         onClick={() => fmt('code')}
         disabled={disabled}
         className={`${baseBtn} ${state.code ? activeBtn : ''}`}
-        aria-label="Code"
+        aria-label={t('user_input.code')}
       >
         {'<>'}
       </button>
@@ -557,6 +561,7 @@ function FormatToolbar({ disabled }: { disabled: boolean }) {
 }
 
 function InlineLexicalEditor({ initialText, format, placeholder, onChange, disabled }: InlineLexicalEditorProps) {
+  const { t } = useTranslation('aichat');
   // Capture the seed text so we don't reseed the editor when the parent
   // re-renders. The editor owns its content state thereafter; the draft atom
   // mirrors it via OnChangePlugin. Callers must pass the draft's current text,
@@ -621,7 +626,7 @@ function InlineLexicalEditor({ initialText, format, placeholder, onChange, disab
               <ContentEditable
                 data-testid="request-user-input-edittext-content"
                 className="rui-lexical-content px-3.5 py-3 min-h-[6rem] text-sm text-nim leading-relaxed outline-none"
-                aria-label="Edit text"
+                aria-label={t('user_input.edit_text')}
               />
             }
             placeholder={
@@ -647,6 +652,7 @@ function EditTextRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputEditTextField>) {
+  const { t } = useTranslation('aichat');
   if (draft.type !== 'editText') return null;
   const format = field.format ?? 'markdown';
   const initial = field.initialText ?? '';
@@ -673,10 +679,10 @@ function EditTextRenderer({
         disabled={disabled}
       />
       <div className="flex items-center justify-between mt-1.5 text-[0.6875rem] text-nim-faint">
-        <span className={edited ? 'text-nim-warning' : ''}>{edited ? '• edited from draft' : '• unchanged'}</span>
+        <span className={edited ? 'text-nim-warning' : ''}>{edited ? `• ${t('user_input.edited')}` : `• ${t('user_input.unchanged')}`}</span>
         <span>
-          {charCount} chars · {format}
-          {field.maxLength ? ` · max ${field.maxLength}` : ''}
+          {t('user_input.char_count', { count: charCount })} · {format === 'plain' ? t('user_input.plain') : 'Markdown'}
+          {field.maxLength ? ` · ${t('user_input.max_length', { count: field.maxLength })}` : ''}
         </span>
       </div>
     </div>
@@ -689,6 +695,7 @@ function ConfirmRenderer({
   setDraft,
   disabled,
 }: FieldRendererProps<RequestUserInputConfirmField>) {
+  const { t } = useTranslation('aichat');
   if (draft.type !== 'confirm') return null;
   const value = draft.state.value;
 
@@ -734,7 +741,7 @@ function ConfirmRenderer({
             >
               {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
             </span>
-            <span className="text-[0.8125rem] font-medium text-nim leading-snug">{option ? 'Yes' : 'No'}</span>
+            <span className="text-[0.8125rem] font-medium text-nim leading-snug">{option ? t('user_input.yes') : t('user_input.no')}</span>
           </button>
         );
       })}
@@ -757,26 +764,27 @@ function FieldCard({
   setDraft: (next: RequestUserInputFieldDraft) => void;
   disabled: boolean;
 }) {
+  const { t } = useTranslation('aichat');
   const helper = (() => {
     switch (field.type) {
       case 'multiSelect': {
         const min = field.minSelected ?? 0;
         const max = field.maxSelected ?? field.items.length;
-        if (min > 0 && max < field.items.length) return `Pick ${min}-${max}`;
-        if (min > 0) return `Pick at least ${min}`;
-        if (max < field.items.length) return `Pick up to ${max}`;
-        return 'Pick any subset';
+        if (min > 0 && max < field.items.length) return t('user_input.pick_range', { min, max });
+        if (min > 0) return t('user_input.pick_min', { count: min });
+        if (max < field.items.length) return t('user_input.pick_max', { count: max });
+        return t('user_input.pick_any');
       }
       case 'singleSelect':
-        return field.allowOther ? 'Pick one or write your own' : 'Pick one';
+        return field.allowOther ? t('user_input.pick_or_write') : t('user_input.pick_one');
       case 'reorder':
         return field.minItems
-          ? `${field.items.length} items · minimum ${field.minItems}`
-          : `${field.items.length} items`;
+          ? t('user_input.item_minimum', { count: field.items.length, min: field.minItems })
+          : t('user_input.items', { count: field.items.length });
       case 'editText':
-        return field.format === 'plain' ? 'Plain text' : 'Markdown supported';
+        return field.format === 'plain' ? t('user_input.plain_text') : t('user_input.markdown_supported');
       case 'confirm':
-        return 'Answer yes or no';
+        return t('user_input.answer_yes_no');
     }
   })();
 
@@ -813,6 +821,7 @@ function FieldCard({
 // ============================================================
 
 export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ message, sessionId, superseded }) => {
+  const { t } = useTranslation('aichat');
   const toolCall = message.toolCall;
   const promptId = toolCall?.providerToolCallId || '';
 
@@ -914,8 +923,8 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
   // ---- Completed state ----
   if (displayResult || hasResponded) {
     const statusText = displaySkipped
-      ? 'Input Skipped'
-      : displayCancelled ? 'Input Cancelled' : 'Input Submitted';
+      ? t('user_input.skipped')
+      : displayCancelled ? t('user_input.cancelled') : t('user_input.submitted');
 
     return (
       <div
@@ -934,7 +943,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Submitted
+              {t('user_input.submitted_badge')}
             </span>
           )}
           {displaySkipped && (
@@ -942,7 +951,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               data-testid="request-user-input-skipped"
               className="flex items-center gap-1 text-xs font-medium text-nim-muted py-1 px-2 bg-nim-tertiary rounded-full"
             >
-              Skipped
+              {t('user_input.skipped')}
             </span>
           )}
           {displayCancelled && !displaySkipped && (
@@ -953,7 +962,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Cancelled
+              {t('user_input.cancelled_short')}
             </span>
           )}
         </div>
@@ -964,7 +973,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               data-testid="request-user-input-skipped-note"
               className="request-user-input-skipped-note text-xs text-nim-muted italic select-text"
             >
-              You sent a new message instead of answering.
+              {t('user_input.skipped_note')}
             </div>
           )}
           <CompletedSummary
@@ -988,9 +997,9 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
       >
         <div className="flex items-center gap-2 py-3 px-4 bg-nim-tertiary">
           <RequestUserInputIcon />
-          <span className="text-sm font-semibold text-nim flex-1">{args.title || 'Input requested'}</span>
+          <span className="text-sm font-semibold text-nim flex-1">{args.title || t('user_input.requested')}</span>
           <span data-testid="request-user-input-pending" className="text-xs text-nim-muted">
-            Waiting...
+            {t('user_input.waiting')}
           </span>
         </div>
       </div>
@@ -1006,9 +1015,9 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
     >
       <div className="flex items-center gap-2 py-3 px-4 border-b border-nim bg-nim-tertiary">
         <RequestUserInputIcon />
-        <span className="text-sm font-semibold text-nim flex-1">{args.title || 'Input requested'}</span>
+        <span className="text-sm font-semibold text-nim flex-1">{args.title || t('user_input.requested')}</span>
         <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_14%,transparent)] py-0.5 px-2 rounded-full">
-          Input requested
+          {t('user_input.requested')}
         </span>
       </div>
 
@@ -1038,7 +1047,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1v8M3 4v2M9 4v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            <span>{voiceHint.reason}</span>
+            <span>{t(`user_input.${voiceHint.reasonKey}`, voiceHint.count === undefined ? undefined : { count: voiceHint.count })}</span>
           </div>
           <div className="flex gap-2">
             <button
@@ -1048,7 +1057,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               disabled={isSubmitting}
               className="px-3 py-1.5 rounded-md text-[13px] cursor-pointer border border-nim transition-colors duration-150 hover:bg-nim-hover bg-nim-tertiary text-nim-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {args.cancelLabel ?? 'Cancel'}
+              {args.cancelLabel ?? t('user_input.cancel')}
             </button>
             <button
               type="button"
@@ -1057,7 +1066,7 @@ export const RequestUserInputWidget: React.FC<CustomToolWidgetProps> = ({ messag
               disabled={!allValid || isSubmitting}
               className="px-4 py-1.5 rounded-md text-[13px] font-medium cursor-pointer border-none transition-colors duration-150 hover:opacity-90 bg-nim-primary text-nim-on-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Submitting...' : args.submitLabel ?? 'Confirm'}
+              {isSubmitting ? t('user_input.submitting') : args.submitLabel ?? t('user_input.confirm')}
             </button>
           </div>
         </div>
@@ -1088,8 +1097,9 @@ function CompletedSummary({
   /** Show what was asked, with no answer line. */
   skipped: boolean;
 }) {
+  const { t } = useTranslation('aichat');
   if (cancelled) {
-    return <div className="text-xs text-nim-muted italic">User cancelled the request.</div>;
+    return <div className="text-xs text-nim-muted italic">{t('user_input.user_cancelled')}</div>;
   }
   return (
     <div className="flex flex-col gap-2">
@@ -1109,8 +1119,9 @@ function CompletedSummary({
 }
 
 function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer: RequestUserInputAnswer | undefined }) {
+  const { t } = useTranslation('aichat');
   if (!answer) {
-    return <div className="text-xs text-nim-faint italic">No answer recorded</div>;
+    return <div className="text-xs text-nim-faint italic">{t('user_input.no_answer')}</div>;
   }
 
   switch (field.type) {
@@ -1119,12 +1130,12 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
       const titles = answer.selectedIds
         .map((id) => field.items.find((i) => i.id === id)?.title ?? id)
         .join(', ');
-      return <div className="text-xs text-nim">{titles || '(none selected)'}</div>;
+      return <div className="text-xs text-nim">{titles || t('user_input.none_selected')}</div>;
     }
     case 'singleSelect': {
       if (answer.type !== 'singleSelect') return null;
       if (answer.selectedId === '__other__') {
-        return <div className="text-xs text-nim italic">{answer.otherText || '(empty)'}</div>;
+        return <div className="text-xs text-nim italic">{answer.otherText || t('user_input.empty')}</div>;
       }
       const opt = field.options.find((o) => o.id === answer.selectedId);
       return <div className="text-xs text-nim">{opt?.label ?? answer.selectedId}</div>;
@@ -1155,7 +1166,7 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
           </ol>
           {answer.removedIds.length > 0 && (
             <div className="text-[0.6875rem] text-nim-faint italic">
-              Removed: {answer.removedIds.length} item{answer.removedIds.length === 1 ? '' : 's'}
+              {t(answer.removedIds.length === 1 ? 'user_input.removed_one' : 'user_input.removed_other', { count: answer.removedIds.length })}
             </div>
           )}
         </div>
@@ -1168,13 +1179,13 @@ function SummaryAnswer({ field, answer }: { field: RequestUserInputField; answer
           <pre className="text-xs text-nim font-mono whitespace-pre-wrap break-words">
             {answer.text}
           </pre>
-          {answer.edited && <div className="text-[0.6875rem] text-nim-warning italic">edited from draft</div>}
+          {answer.edited && <div className="text-[0.6875rem] text-nim-warning italic">{t('user_input.edited')}</div>}
         </div>
       );
     }
     case 'confirm': {
       if (answer.type !== 'confirm') return null;
-      return <div className="text-xs text-nim">{answer.value ? 'Yes' : 'No'}</div>;
+      return <div className="text-xs text-nim">{answer.value ? t('user_input.yes') : t('user_input.no')}</div>;
     }
   }
 }

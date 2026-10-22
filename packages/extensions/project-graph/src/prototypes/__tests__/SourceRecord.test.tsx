@@ -1,10 +1,14 @@
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { afterEach, it, expect, vi } from "vitest";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { UiLanguageProvider } from "@nimbalyst/i18n/react";
 import { SourceRecord } from "../SourceRecord";
 import { buildPrototypeModel } from "../model";
 import type { ProjectGraphSnapshot } from "../../types";
 afterEach(cleanup);
-it("keeps archive/current state distinct from recorded history and exposes unresolved graph navigation", () => {
+
+const englishI18nPromise = createI18nInstance("en");
+it("keeps archive/current state distinct from recorded history and exposes unresolved graph navigation", async () => {
   const snapshot: ProjectGraphSnapshot = {
     generatedAt: Date.parse("2026-09-05"),
     nodes: [
@@ -33,17 +37,20 @@ it("keeps archive/current state distinct from recorded history and exposes unres
   };
   const model = buildPrototypeModel(snapshot);
   const resolve = vi.fn();
+  const englishI18n = await englishI18nPromise;
   render(
-    <SourceRecord
-      record={snapshot.nodes[0]!}
-      model={model}
-      sample={false}
-      onClose={vi.fn()}
-      onOpen={vi.fn()}
-      onResolve={resolve}
-      canOpen={false}
-      onOpenOriginal={vi.fn()}
-    />
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <SourceRecord
+        record={snapshot.nodes[0]!}
+        model={model}
+        sample={false}
+        onClose={vi.fn()}
+        onOpen={vi.fn()}
+        onResolve={resolve}
+        canOpen={false}
+        onOpenOriginal={vi.fn()}
+      />
+    </UiLanguageProvider>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Recorded history" }));
   screen.getByText("Now: in-review · archived");

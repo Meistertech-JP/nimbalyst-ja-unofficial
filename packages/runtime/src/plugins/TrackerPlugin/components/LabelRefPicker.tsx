@@ -13,6 +13,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { globalRegistry, type LabelRegistry } from '@nimbalyst/tracker-schema';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import { labelRefIds } from './labelRefValue';
@@ -78,6 +79,7 @@ export interface LabelRefPickerProps {
 }
 
 export const LabelRefPicker: React.FC<LabelRefPickerProps> = ({ value, onChange, readOnly = false, registry }) => {
+  const { t } = useTranslation('tracker');
   const [query, setQuery] = useState('');
   const selectedIds = useMemo(() => labelRefIds(value), [value]);
   const activeRegistry = registry ?? globalRegistry.getLabelRegistry();
@@ -97,7 +99,7 @@ export const LabelRefPicker: React.FC<LabelRefPickerProps> = ({ value, onChange,
         <input
           type="text"
           className="label-ref-picker-search py-1 px-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[12px] focus:outline-none focus:border-[var(--nim-primary)]"
-          placeholder="Filter labels"
+          placeholder={t('label_ref_picker.filter')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           autoFocus
@@ -105,7 +107,7 @@ export const LabelRefPicker: React.FC<LabelRefPickerProps> = ({ value, onChange,
       )}
       {rows.length === 0 && (
         <span className="label-ref-picker-empty text-[12px] text-[var(--nim-text-faint)] px-1 py-1">
-          This project has no labels yet.
+          {t('label_ref_picker.empty')}
         </span>
       )}
       <div className="label-ref-picker-list flex flex-col max-h-[280px] overflow-y-auto" role="listbox" aria-multiselectable="true">
@@ -118,7 +120,7 @@ export const LabelRefPicker: React.FC<LabelRefPickerProps> = ({ value, onChange,
             disabled={readOnly}
             className={`label-ref-picker-row flex items-center gap-1.5 py-1 pr-2 rounded text-left text-[12px] ${row.selected ? 'bg-[var(--nim-bg-selected)] text-[var(--nim-text)]' : 'bg-transparent text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]'}`}
             style={{ paddingLeft: 6 + row.depth * 14 }}
-            title={row.known ? row.description ?? row.label : `'${row.id}' is not in the label registry`}
+            title={row.known ? row.description ?? row.label : t('label_ref_picker.unknown_title', { id: row.id })}
             data-testid={`label-ref-picker-row-${row.id}`}
             data-unknown={row.known ? undefined : true}
             onClick={() => toggle(row.id)}
@@ -130,7 +132,7 @@ export const LabelRefPicker: React.FC<LabelRefPickerProps> = ({ value, onChange,
               <MaterialSymbol icon="warning" size={14} className="text-[var(--nim-warning)]" />
             )}
             <span className="label-ref-picker-row-label truncate">{row.label}</span>
-            {!row.known && <span className="label-ref-picker-unknown text-[10px] text-[var(--nim-warning)]">unknown</span>}
+            {!row.known && <span className="label-ref-picker-unknown text-[10px] text-[var(--nim-warning)]">{t('label_ref_picker.unknown')}</span>}
           </button>
         ))}
       </div>

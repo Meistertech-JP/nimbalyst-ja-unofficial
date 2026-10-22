@@ -14,6 +14,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type {
   DecisionBlockSource,
   DecisionReorderTally,
@@ -79,11 +80,12 @@ export const DecisionReorderControl: React.FC<ReorderProps> = ({
 /** "Ranked first by 3 of 4" is the only aggregate worth spelling out in words. */
 function firstPlaceNote(
   firstPlaceCount: number,
-  respondentCount: number
+  respondentCount: number,
+  t: (key: string, options?: Record<string, unknown>) => string
 ): string | undefined {
   if (respondentCount === 0 || firstPlaceCount === 0) return undefined;
-  if (firstPlaceCount === respondentCount) return 'Ranked first by everyone';
-  return `Ranked first by ${firstPlaceCount} of ${respondentCount}`;
+  if (firstPlaceCount === respondentCount) return t('decision.reorder.everyone_first');
+  return t('decision.reorder.first_by', { count: firstPlaceCount, total: respondentCount });
 }
 
 export const DecisionReorderTeamOrder: React.FC<{
@@ -92,6 +94,7 @@ export const DecisionReorderTeamOrder: React.FC<{
   members: readonly DecisionMember[];
   myAnswer: FeedbackAnswer | undefined;
 }> = ({ source, tally, members, myAnswer }) => {
+  const { t } = useTranslation('editor');
   const [view, setView] = useState<'team' | 'yours'>('team');
   const labelFor = (entryId: string): string => {
     const entry = source.entries.find((candidate) => candidate.id === entryId);
@@ -111,7 +114,7 @@ export const DecisionReorderTeamOrder: React.FC<{
       : tally.entries.map((entry) => ({
           entryId: entry.entryId,
           rank: entry.teamRank,
-          note: firstPlaceNote(entry.firstPlaceCount, tally.respondentCount),
+          note: firstPlaceNote(entry.firstPlaceCount, tally.respondentCount, t),
           viewerPosition: entry.viewerPosition,
           voterIds: entry.firstPlaceVoterIds,
         }));
@@ -119,13 +122,13 @@ export const DecisionReorderTeamOrder: React.FC<{
   return (
     <div className="decision-reorder-result">
       <div className="decision-view-toggle-row">
-        <span className="decision-view-toggle" role="group" aria-label="Ranking view">
+        <span className="decision-view-toggle" role="group" aria-label={t('decision.reorder.aria_label')}>
           <button
             type="button"
             className={view === 'team' ? 'decision-view-on' : undefined}
             onClick={() => setView('team')}
           >
-            Team order
+            {t('decision.reorder.team_order')}
           </button>
           <button
             type="button"
@@ -133,16 +136,14 @@ export const DecisionReorderTeamOrder: React.FC<{
             onClick={() => setView('yours')}
             disabled={yourOrder.length === 0}
           >
-            Yours
+            {t('decision.reorder.yours')}
           </button>
         </span>
         <span className="decision-grow" />
         <span className="decision-quiet">
           {view === 'team'
-            ? `mean position across ${tally.respondentCount} ${
-                tally.respondentCount === 1 ? 'ranking' : 'rankings'
-              }`
-            : 'the order you submitted'}
+            ? t('decision.reorder.mean_position', { count: tally.respondentCount, unit: t(tally.respondentCount === 1 ? 'decision.reorder.ranking_one' : 'decision.reorder.ranking_other') })
+            : t('decision.reorder.submitted_order')}
         </span>
       </div>
 
@@ -165,7 +166,7 @@ export const DecisionReorderTeamOrder: React.FC<{
                 }`}
               >
                 {/* The team moved it up relative to you, or down, or neither. */}
-                {row.viewerPosition === row.rank ? 'same' : `you had ${row.viewerPosition}`}
+                {row.viewerPosition === row.rank ? t('decision.reorder.same') : t('decision.reorder.you_had', { position: row.viewerPosition })}
               </span>
             ) : null}
             <AvatarStack voterIds={row.voterIds} members={members} />
@@ -181,7 +182,7 @@ export const DecisionReorderTeamOrder: React.FC<{
               <li key={entry.entryId}>
                 <s>{labelFor(entry.entryId)}</s>
                 <span className="decision-quiet">
-                  {` dropped by ${entry.removedByVoterIds.length}`}
+                  {t('decision.reorder.dropped_by', { count: entry.removedByVoterIds.length })}
                 </span>
               </li>
             ))}

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi, type Mock } from 'vitest';
 import * as os from 'os';
+import { createMainI18nController } from '../../i18n/mainI18n';
 import {
   actionForChoice,
   applyDatabaseFailureChoice,
@@ -17,6 +18,38 @@ const backup = (name: string, bytes: number): RestorableBackup => ({
 });
 
 describe('buildDatabaseFailureDialog', () => {
+  it('localizes recovery copy while keeping stable actions and data-loss warnings', async () => {
+    const controller = await createMainI18nController({
+      get: () => 'ja',
+      subscribe: () => () => {},
+    }, 'en-US', () => {});
+    try {
+      const content = buildDatabaseFailureDialog(
+        [backup('pglite-db.backup-current', 5_000_000)],
+        { rollbackSource: backup('pglite-db.migrated-recorded', 4_000_000), retryStartup: true, diagnostics: 'diagnostics' },
+      );
+
+      expect(content.title).toBe('Nimbalyst - データベースの初期化に失敗しました');
+      expect(content.message).toBe('データベースを起動できませんでした。');
+      expect(content.buttons).toEqual([
+        '起動を再試行',
+        'バックアップを復元',
+        'バックアップを表示',
+        '切り替え前のデータベースに戻す',
+        '診断情報をコピー',
+        '終了',
+      ]);
+      expect(content.buttonActions).toEqual(['retry', 'restore', 'reveal', 'rollback', 'diagnostics', 'quit']);
+      expect(content.defaultId).toBe(0);
+      expect(content.cancelId).toBe(5);
+      expect(actionForChoice(content, 3)).toBe('rollback');
+      expect(content.detail).toContain('切り替え後に保存した内容は含まれません');
+      expect(content.detail).toContain('新しいデータベースもディスク上に保持されます');
+    } finally {
+      controller.dispose();
+    }
+  });
+
   it('copies diagnostics without restoring and offers an explicit startup retry', async () => {
     const content = buildDatabaseFailureDialog([], { diagnostics: 'local failure details', retryStartup: true });
     const handlers = { restore: vi.fn(), reveal: vi.fn(), copyDiagnostics: vi.fn(), retryStartup: vi.fn() };

@@ -10,6 +10,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 /** Mirror of SchemaDriftEntry from the main-process trackerTypeDefStore. */
@@ -39,16 +40,17 @@ const DRIFT_WARNING_STATUSES: ReadonlySet<SchemaDriftStatus> = new Set([
   'db-only-orphan',
 ]);
 
-function describeDriftStatus(status: SchemaDriftStatus): string {
+function describeDriftStatus(status: SchemaDriftStatus, t: (key: string) => string): string {
   switch (status) {
-    case 'drifted': return 'definition differs from file';
-    case 'yaml-only': return 'in file, not yet in database';
-    case 'db-only-orphan': return 'in database, file missing';
+      case 'drifted': return t('config.definition_differs');
+      case 'yaml-only': return t('config.in_file_not_db');
+      case 'db-only-orphan': return t('config.in_db_file_missing');
     default: return '';
   }
 }
 
 export function TrackerSchemaDriftWarning({ workspacePath }: { workspacePath?: string }) {
+  const { t } = useTranslation('tracker');
   const [drift, setDrift] = useState<WorkspaceSchemaDrift | null>(null);
   const [resyncing, setResyncing] = useState(false);
 
@@ -102,16 +104,16 @@ export function TrackerSchemaDriftWarning({ workspacePath }: { workspacePath?: s
         <MaterialSymbol icon="sync_problem" size={14} className="text-[#f59e0b] shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-medium text-[var(--nim-text)] mb-1">
-            Schema files are out of sync
+          {t('config.schema_out_of_sync')}
           </div>
           <p className="text-[12px] text-[var(--nim-text-muted)] leading-relaxed mb-2">
-            The tracker schema files in <code className="text-[11px] text-[var(--nim-code-text)] bg-[var(--nim-code-bg)] px-1 py-[1px] rounded">.nimbalyst/trackers</code> differ from the local database mirror.
+          {t('config.schema_desc', { path: '.nimbalyst/trackers' })}
           </p>
           <ul className="text-[12px] text-[var(--nim-text-muted)] leading-relaxed mb-3 space-y-0.5">
             {warnings.map((e) => (
               <li key={e.type} className="flex items-center gap-1.5">
                 <span className="font-mono text-[11px] text-[var(--nim-text)]">{e.type}</span>
-                <span className="text-[var(--nim-text-faint)]">- {describeDriftStatus(e.status)}</span>
+                <span className="text-[var(--nim-text-faint)]">- {describeDriftStatus(e.status, t)}</span>
               </li>
             ))}
           </ul>
@@ -122,7 +124,7 @@ export function TrackerSchemaDriftWarning({ workspacePath }: { workspacePath?: s
             data-testid="tracker-schema-resync-button"
           >
             <MaterialSymbol icon="sync" size={12} />
-            {resyncing ? 'Resyncing...' : 'Resync from files'}
+            {resyncing ? t('config.resyncing') : t('config.resync')}
           </button>
         </div>
       </div>

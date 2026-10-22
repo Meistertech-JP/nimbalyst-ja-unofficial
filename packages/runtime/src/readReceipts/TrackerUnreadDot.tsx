@@ -11,6 +11,7 @@
 
 import React from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '../ui/icons/MaterialSymbol';
 import { trackerUnreadAtom } from './trackerUnreadAtoms';
 
@@ -20,6 +21,7 @@ interface TrackerUnreadDotProps {
 }
 
 export const TrackerUnreadDot: React.FC<TrackerUnreadDotProps> = ({ itemId, className }) => {
+  const { t } = useTranslation('tracker');
   const unread = useAtomValue(trackerUnreadAtom(itemId));
   if (!unread) return null;
   return (
@@ -27,8 +29,8 @@ export const TrackerUnreadDot: React.FC<TrackerUnreadDotProps> = ({ itemId, clas
       className={`tracker-unread-dot inline-flex items-center justify-center shrink-0 text-[var(--nim-primary)]${
         className ? ` ${className}` : ''
       }`}
-      title="Updated since you last viewed"
-      aria-label="Unread"
+      title={t('unread_dot.updated_since_viewed')}
+      aria-label={t('unread_dot.label')}
     >
       <MaterialSymbol icon="circle" size={8} fill />
     </span>

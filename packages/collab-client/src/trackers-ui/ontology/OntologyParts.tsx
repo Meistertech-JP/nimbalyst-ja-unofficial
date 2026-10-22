@@ -4,6 +4,7 @@
  * "Schema: how this is stored" disclosure.
  */
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { formatCount, singularVerb, type DomainCategory, type DomainGap, type DomainLine, type DomainModel, type DomainSchema, type MemberTable } from './ontologyDomain';
 
 export type OpenCategory = (categoryId: string) => void;
@@ -21,13 +22,6 @@ function targetLabel(line: DomainLine, name: string): string {
   return line.targetId === 'us' ? name : name.toLowerCase();
 }
 
-function lineValue(category: DomainCategory, line: DomainLine, targetName: string): string {
-  if (line.state === 'untracked') return 'not recorded';
-  if (category.us) return `${formatCount(line.links)} ${targetLabel(line, targetName)}`;
-  if (line.have === line.total) return `all ${formatCount(line.total)}`;
-  return `${formatCount(line.have)} of ${formatCount(line.total)}`;
-}
-
 /** One relationship: "Competitors sit in Markets", a meter, and "46 of 59". Dense is the card's version. */
 export function OntologyLineRow({ category, line, targetName, dense, onOpenCategory }: {
   category: DomainCategory;
@@ -36,19 +30,27 @@ export function OntologyLineRow({ category, line, targetName, dense, onOpenCateg
   dense?: boolean;
   onOpenCategory?: OpenCategory;
 }) {
+  const { t } = useTranslation('tracker');
+  const value = line.state === 'untracked'
+    ? t('ontology_parts.not_recorded')
+    : category.us
+      ? t('ontology_parts.recorded_count', { count: line.links, target: targetLabel(line, targetName ?? '') })
+      : line.have === line.total
+        ? t('ontology_parts.all_count', { count: line.total })
+        : t('ontology_parts.of_total', { have: line.have, total: line.total });
   if (dense) {
-    const value = line.state === 'untracked' ? 'not yet' : category.us ? formatCount(line.links) : `${Math.round(line.rate * 100)}%`;
+    const denseValue = line.state === 'untracked' ? t('ontology_parts.not_yet') : category.us ? formatCount(line.links) : `${Math.round(line.rate * 100)}%`;
     return (
       <div className="ontology-line-dense">
         <span>{category.us ? singularVerb(line.verb) : line.verb}{targetName && <> <b>{targetLabel(line, targetName)}</b></>}</span>
         <Meter line={line} />
-        <span className="ontology-line-value" data-state={line.state}>{value}</span>
+        <span className="ontology-line-value" data-state={line.state}>{denseValue}</span>
       </div>
     );
   }
   const verb = category.us ? singularVerb(line.verb) : line.verb;
   return (
-    <div className="ontology-line" title={`Recorded as ${line.via}`}>
+    <div className="ontology-line" title={t('ontology_parts.recorded_as', { via: line.via })}>
       <div className="ontology-line-text">
         {category.name} {verb}{' '}
         {targetName && line.targetId && (onOpenCategory
@@ -56,7 +58,7 @@ export function OntologyLineRow({ category, line, targetName, dense, onOpenCateg
           : <b>{targetLabel(line, targetName)}</b>)}
       </div>
       <Meter line={line} />
-      <div className="ontology-line-value" data-state={line.state}>{lineValue(category, line, targetName ?? '')}</div>
+      <div className="ontology-line-value" data-state={line.state}>{value}</div>
     </div>
   );
 }
@@ -77,10 +79,11 @@ export function OntologyGapRow({ gap, action }: { gap: DomainGap; action: GapAct
 }
 
 export function OntologySchemaDisclosure({ schema }: { schema: DomainSchema | null }) {
+  const { t } = useTranslation('tracker');
   if (!schema) return null;
   return (
     <details className="ontology-schema">
-      <summary>Schema: how this is stored</summary>
+      <summary>{t('ontology_parts.schema_disclosure')}</summary>
       <div className="ontology-schema-body">
         <p className="ontology-schema-stored">
           {schema.stored.map((part, index) => (part.code ? <code key={index}>{part.text}</code> : <span key={index}>{part.text}</span>))}
@@ -90,9 +93,9 @@ export function OntologySchemaDisclosure({ schema }: { schema: DomainSchema | nu
           const state = row.filled === null ? 'partial' : rate >= 0.98 ? 'full' : rate < 0.6 ? 'low' : 'partial';
           return (
             <div key={row.label} className="ontology-schema-row">
-              <span>{row.label}{row.retired && <span className="ontology-schema-retired">being retired</span>}</span>
+              <span>{row.label}{row.retired && <span className="ontology-schema-retired">{t('ontology_parts.being_retired')}</span>}</span>
               {row.filled === null ? <span /> : <div className="ontology-meter" data-state={state}><i style={{ width: `${Math.round(rate * 100)}%` }} /></div>}
-              <span>{row.filled === null ? 'in use' : `${formatCount(row.filled)}/${formatCount(row.total)}`}</span>
+              <span>{row.filled === null ? t('ontology_parts.in_use') : `${formatCount(row.filled)}/${formatCount(row.total)}`}</span>
             </div>
           );
         })}
@@ -108,8 +111,9 @@ export function OntologyMembersTable({ table, onOpenItem, limit = TABLE_PAGE }: 
   onOpenItem?: (itemId: string) => void;
   limit?: number;
 }) {
+  const { t } = useTranslation('tracker');
   const [shown, setShown] = useState(limit);
-  if (!table.rows.length) return <p className="ontology-empty">Nothing recorded yet.</p>;
+  if (!table.rows.length) return <p className="ontology-empty">{t('ontology_parts.nothing_recorded')}</p>;
   const rows = table.rows.slice(0, shown);
   // The "us" table lists what is recorded about us, not items, so its rows open nothing.
   const openable = Boolean(onOpenItem) && table.columns[0] !== 'Recorded';
@@ -133,7 +137,7 @@ export function OntologyMembersTable({ table, onOpenItem, limit = TABLE_PAGE }: 
       </table>
       {table.rows.length > shown && (
         <button type="button" className="ontology-link ontology-more" onClick={() => setShown(table.rows.length)}>
-          Show {formatCount(table.rows.length - shown)} more
+          {t('ontology_parts.show_more', { count: table.rows.length - shown })}
         </button>
       )}
     </>
@@ -150,10 +154,11 @@ export function categoryName(model: DomainModel, id: string | null): string | nu
 
 /** "How they connect" for one category, with its note. */
 export function CategoryLines({ model, category, onOpen, first }: { model: DomainModel; category: DomainCategory; onOpen: OpenCategory; first?: boolean }): ReactNode {
+  const { t } = useTranslation('tracker');
   if (!category.lines.length && !category.note) return null;
   return (
     <>
-      <div className={`ontology-label${first ? ' ontology-label-first' : ''}`}>How they connect</div>
+      <div className={`ontology-label${first ? ' ontology-label-first' : ''}`}>{t('ontology_parts.how_they_connect')}</div>
       {category.lines.map((line) => (
         <OntologyLineRow key={line.id} category={category} line={line} targetName={categoryName(model, line.targetId)} onOpenCategory={onOpen} />
       ))}

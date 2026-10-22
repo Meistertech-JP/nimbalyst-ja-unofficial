@@ -308,6 +308,20 @@ describe("sceneAriaLabel", () => {
     expect(label).toContain("2 steps");
     expect(label).toContain("It starts. It finishes.");
   });
+
+  it("uses translated accessible scene descriptions when the host supplies them", () => {
+    const doc = docOf(`{
+      "parts": { "a": { "type": "node", "x": 0, "y": 0, "w": 10, "h": 10 } },
+      "steps": [{ "id": "one", "duration": 100, "caption": "It starts." }]
+    }`);
+    const label = sceneAriaLabel(doc, {
+      diagram: (parts, steps) => `アニメーション図。要素${parts}個、ステップ${steps}件。`,
+      steps: (captions) => `ステップ: ${captions}`,
+    });
+
+    expect(label).toBe("アニメーション図。要素1個、ステップ1件。ステップ: It starts.");
+    expect(renderScene(doc, undefined, label)).toContain(`aria-label="${label}"`);
+  });
 });
 
 describe("escapeXml", () => {

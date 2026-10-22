@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import type { OrgWelcomeCardView } from './orgWelcomeModel';
@@ -16,6 +17,9 @@ export function OrgWelcomeCard({
   card: OrgWelcomeCardView;
   onDismiss: () => void;
 }) {
+  const { t } = useTranslation('collabSidebar', { keyPrefix: 'org_welcome' });
+  const organizationName = card.organizationName || t('your_organization');
+  const points = [t('points.inbox'), t('points.rooms'), t('points.admin')];
   return (
     <aside
       className="org-welcome-card mx-5 mt-3 flex items-start gap-3 rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3 py-2.5"
@@ -24,10 +28,16 @@ export function OrgWelcomeCard({
     >
       <MaterialSymbol icon="waving_hand" size={18} className="mt-0.5 shrink-0 text-[var(--nim-primary)]" />
       <div className="min-w-0 flex-1 select-text">
-        <div className="text-[13px] font-semibold text-[var(--nim-text)]">{card.title}</div>
-        <div className="mt-0.5 text-[11px] text-[var(--nim-text-muted)]">{card.subtitle}</div>
+        <div className="text-[13px] font-semibold text-[var(--nim-text)]">
+          {t('title', { organization: organizationName })}
+        </div>
+        <div className="mt-0.5 text-[11px] text-[var(--nim-text-muted)]">
+          {card.inviterName
+            ? t('invited_members', { name: card.inviterName, count: card.memberCount })
+            : t('members_so_far', { count: card.memberCount })}
+        </div>
         <ul className="org-welcome-points m-0 mt-1.5 flex list-none flex-col gap-1 p-0">
-          {card.points.map((point) => (
+          {points.map((point) => (
             <li key={point} className="flex items-start gap-1.5 text-[11px] text-[var(--nim-text-muted)]">
               <MaterialSymbol icon="chevron_right" size={12} className="mt-0.5 shrink-0 text-[var(--nim-text-disabled)]" />
               {point}
@@ -37,7 +47,7 @@ export function OrgWelcomeCard({
       </div>
       <button
         type="button"
-        aria-label="Dismiss welcome"
+        aria-label={t('dismiss')}
         className="org-welcome-dismiss shrink-0 rounded p-1 text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
         data-testid="org-welcome-dismiss"
         onClick={onDismiss}

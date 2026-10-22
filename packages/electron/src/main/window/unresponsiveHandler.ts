@@ -1,4 +1,5 @@
 import { dialog, type BrowserWindow } from 'electron';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 
 export interface UnresponsiveHandlerOptions {
     /** `message` line for the dialog (differs per window). */
@@ -38,11 +39,14 @@ export function createUnresponsiveHandler(
         try {
             const { response } = await dialog.showMessageBox(window, {
                 type: 'warning',
-                buttons: ['Reload', 'Keep Waiting'],
+                buttons: [
+                    translateMainDialogLabel('unresponsive.reload', 'Reload'),
+                    translateMainDialogLabel('unresponsive.keep_waiting', 'Keep Waiting'),
+                ],
                 defaultId: 0,
                 cancelId: 1,
                 message,
-                detail: 'Would you like to reload the window?'
+                detail: translateMainDialogLabel('unresponsive.reload_question', 'Would you like to reload the window?')
             });
 
             const current = getWindow();

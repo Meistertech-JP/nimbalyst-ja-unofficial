@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import type { CollabScope } from '@nimbalyst/collab-client/core';
 import { EditorBreadcrumb } from '@nimbalyst/collab-client/docs-ui/EditorHeaderBar';
@@ -23,6 +24,7 @@ function useCollabStatus(filePath: string) {
 }
 
 const CollabAvatars: React.FC<{ filePath: string }> = ({ filePath }) => {
+  const { t } = useTranslation('editor');
   const users = useAtomValue(collabAwarenessAtom(filePath));
   const status = useCollabStatus(filePath);
   if (!status.showPresence || users.size === 0) return null;
@@ -33,7 +35,10 @@ const CollabAvatars: React.FC<{ filePath: string }> = ({ filePath }) => {
       data-testid="collab-header-presence"
     >
       {[...users.entries()].map(([userId, user]) => {
-        const initials = user.name
+        const displayName = user.nimbalystNameSource === 'system-default'
+          ? t('collab.unnamed_collaborator')
+          : user.name;
+        const initials = displayName
           .split(/\s+/)
           .map(word => word[0])
           .join('')
@@ -48,7 +53,7 @@ const CollabAvatars: React.FC<{ filePath: string }> = ({ filePath }) => {
               color: '#fff',
               border: '1.5px solid var(--nim-bg)',
             }}
-            title={user.name}
+            title={displayName}
           >
             {initials}
           </div>
@@ -65,11 +70,16 @@ export const CollabDocumentHeaderMeta: React.FC<{
   scope?: CollabScope;
   documentId?: string;
 }> = ({ filePath, displayPath, scope, documentId }) => {
+  const { t } = useTranslation('editor');
   const status = useCollabStatus(filePath);
   const page = useSharedPagePath(scope ?? null, documentId ?? '');
-  const statusDescription = status.detail
-    ? `${status.label}: ${status.detail}`
-    : status.label;
+  const statusLabel = t(`collab_status.${status.kind}.label`);
+  const statusDetail = status.detail
+    ? t(`collab_status.${status.kind}.detail`)
+    : null;
+  const statusDescription = statusDetail
+    ? `${statusLabel}: ${statusDetail}`
+    : statusLabel;
   // Until the session lists the page, the stored display path stands in.
   const segments = displayPath.split('/').filter(Boolean);
   const crumbs = page.title !== null && scope
@@ -88,7 +98,7 @@ export const CollabDocumentHeaderMeta: React.FC<{
         data-testid="collab-sync-dot"
         data-status-kind={status.kind}
         role="status"
-        aria-label={`Sync status: ${statusDescription}`}
+        aria-label={t('collab.sync_status', { status: statusDescription })}
         title={statusDescription}
       />
       <CollabAvatars filePath={filePath} />
@@ -103,6 +113,7 @@ export const CollabDocumentHeaderMeta: React.FC<{
  * which is why this failure is normally only caught by comparing screens.
  */
 export const CollabRenderFailureBanner: React.FC<{ filePath: string }> = ({ filePath }) => {
+  const { t } = useTranslation('editor');
   const status = useCollabStatus(filePath);
   if (status.kind !== 'not-receiving-changes') return null;
 
@@ -113,7 +124,7 @@ export const CollabRenderFailureBanner: React.FC<{ filePath: string }> = ({ file
       role="alert"
     >
       <span className="min-w-0 flex-1 text-[var(--nim-error)]">
-        {status.label}{status.detail ? ` — ${status.detail}` : ''}
+        {t(`collab_status.${status.kind}.label`)}{status.detail ? ` — ${t(`collab_status.${status.kind}.detail`)}` : ''}
       </span>
     </div>
   );
@@ -124,6 +135,7 @@ export const CollabRecoveryBanner: React.FC<{
   onCopyCurrentDocument: () => Promise<void>;
   onDiscardLocalCopy: () => Promise<void>;
 }> = ({ filePath, onCopyCurrentDocument, onDiscardLocalCopy }) => {
+  const { t } = useTranslation('editor');
   const status = useCollabStatus(filePath);
   if (!status.showRejectedActions) return null;
 
@@ -133,21 +145,21 @@ export const CollabRecoveryBanner: React.FC<{
       data-testid="collab-recovery-banner"
     >
       <span className="min-w-0 flex-1 text-[var(--nim-error)]">
-        {status.label}{status.detail ? ` — ${status.detail}` : ''}
+        {t(`collab_status.${status.kind}.label`)}{status.detail ? ` — ${t(`collab_status.${status.kind}.detail`)}` : ''}
       </span>
       <button
         type="button"
         className="collab-copy-unsent-edits rounded border border-[var(--nim-border)] px-2 py-1 text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
         onClick={() => { void onCopyCurrentDocument(); }}
       >
-        Copy current document
+        {t('collab.copy_current_document')}
       </button>
       <button
         type="button"
         className="collab-discard-local-copy rounded border border-[var(--nim-error)] px-2 py-1 text-[var(--nim-error)] hover:bg-[var(--nim-bg-hover)]"
         onClick={() => { void onDiscardLocalCopy(); }}
       >
-        Discard local copy
+        {t('collab.discard_local_copy')}
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating,
   FloatingPortal,
@@ -18,6 +19,7 @@ interface ErrorDetailPopupProps {
 const COPY_FEEDBACK_MS = 1500;
 
 export function ErrorDetailPopup({ command, error, onClose }: ErrorDetailPopupProps) {
+  const { t } = useTranslation('git');
   const [copied, setCopied] = useState(false);
 
   const { refs, context } = useFloating({
@@ -60,7 +62,7 @@ export function ErrorDetailPopup({ command, error, onClose }: ErrorDetailPopupPr
           >
             <div className="git-error-popup-header">
               <div className="git-error-popup-title">
-                <span className="git-error-popup-label">Error</span>
+                <span className="git-error-popup-label">{t('supplemental.error_popup.title')}</span>
                 <code className="git-error-popup-command">{command}</code>
               </div>
               <div className="git-error-popup-actions">
@@ -69,13 +71,13 @@ export function ErrorDetailPopup({ command, error, onClose }: ErrorDetailPopupPr
                   className="git-error-popup-btn"
                   onClick={handleCopy}
                 >
-                  {copied ? 'Copied' : 'Copy'}
+                  {copied ? t('supplemental.output.copied') : t('supplemental.output.copy')}
                 </button>
                 <button
                   type="button"
                   className="git-error-popup-btn git-error-popup-btn--close"
                   onClick={onClose}
-                  aria-label="Close"
+                  aria-label={t('supplemental.error_popup.close')}
                 >
                   &times;
                 </button>

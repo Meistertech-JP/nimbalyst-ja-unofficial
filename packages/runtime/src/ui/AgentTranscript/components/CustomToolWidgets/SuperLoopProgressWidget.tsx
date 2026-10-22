@@ -10,6 +10,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 // Deep import, NOT the runtime barrel ('../../../..' resolves to
 // runtime/src/index.ts). The barrel re-exports ai/models.ts, which value-imports
 // the Anthropic SDK and drags node-only agent-toolset into the iOS transcript
@@ -38,6 +39,17 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   blocked: { bg: 'rgba(249,115,22,0.15)', text: '#f97316' },
 };
 
+const PHASE_LABEL_KEYS: Record<ProgressUpdateArgs['phase'], string> = {
+  planning: 'phase_planning',
+  building: 'phase_building',
+};
+
+const STATUS_LABEL_KEYS: Record<ProgressUpdateArgs['status'], string> = {
+  running: 'status_running',
+  completed: 'status_completed',
+  blocked: 'status_blocked',
+};
+
 // ============================================================
 // Badge Component (matches SuperProgressSnapshotWidget)
 // ============================================================
@@ -62,6 +74,7 @@ const Badge: React.FC<{ label: string; bg: string; color: string }> = ({ label, 
 // ============================================================
 
 const ReadOnlyProgressCard: React.FC<{ args: ProgressUpdateArgs }> = ({ args }) => {
+  const { t } = useTranslation('agents');
   const phaseStyle = PHASE_COLORS[args.phase] ?? { bg: 'rgba(156,163,175,0.15)', text: 'var(--nim-text-faint)' };
   const statusStyle = STATUS_COLORS[args.status] ?? { bg: 'rgba(156,163,175,0.15)', text: 'var(--nim-text-faint)' };
 
@@ -86,12 +99,12 @@ const ReadOnlyProgressCard: React.FC<{ args: ProgressUpdateArgs }> = ({ args }) 
         }}
       >
         <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>
-          Progress Update
+          {t('super_loop_progress.progress_update')}
         </span>
-        <Badge label={args.phase} bg={phaseStyle.bg} color={phaseStyle.text} />
-        <Badge label={args.status} bg={statusStyle.bg} color={statusStyle.text} />
+        <Badge label={t(`super_loop_progress.${PHASE_LABEL_KEYS[args.phase]}`)} bg={phaseStyle.bg} color={phaseStyle.text} />
+        <Badge label={t(`super_loop_progress.${STATUS_LABEL_KEYS[args.status]}`)} bg={statusStyle.bg} color={statusStyle.text} />
         {args.completionSignal && (
-          <Badge label="complete" bg="rgba(74,222,128,0.15)" color="#4ade80" />
+          <Badge label={t('super_loop_progress.status_completed')} bg="rgba(74,222,128,0.15)" color="#4ade80" />
         )}
         <span
           style={{
@@ -101,7 +114,7 @@ const ReadOnlyProgressCard: React.FC<{ args: ProgressUpdateArgs }> = ({ args }) 
             fontFamily: 'monospace',
           }}
         >
-          iter {args.currentIteration}
+          {t('super_loop_progress.iteration', { count: args.currentIteration })}
         </span>
       </div>
 
@@ -115,7 +128,7 @@ const ReadOnlyProgressCard: React.FC<{ args: ProgressUpdateArgs }> = ({ args }) 
         )}
         {args.learnings.length === 0 && (
           <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-            No learnings recorded
+            {t('super_loop_progress.no_learnings')}
           </span>
         )}
       </div>
@@ -128,6 +141,7 @@ const ReadOnlyProgressCard: React.FC<{ args: ProgressUpdateArgs }> = ({ args }) 
 // ============================================================
 
 const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: string }> = ({ args, sessionId }) => {
+  const { t } = useTranslation('agents');
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
 
   const [feedback, setFeedback] = useState('');
@@ -148,10 +162,10 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
         setHasSubmitted(true);
         setSubmittedFeedback(feedback.trim());
       } else {
-        setSubmitError(result.error || 'Failed to send feedback');
+        setSubmitError(result.error || t('super_loop_progress.failed_to_send'));
       }
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to send feedback');
+      setSubmitError(error instanceof Error ? error.message : t('super_loop_progress.failed_to_send'));
     } finally {
       setIsSubmitting(false);
     }
@@ -190,9 +204,9 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
           <MaterialSymbol icon="help" size={14} />
         </div>
         <span style={{ fontWeight: 600, color: '#f97316' }}>
-          Blocked
+          {t('super_loop_progress.status_blocked')}
         </span>
-        <Badge label={args.phase} bg={phaseStyle.bg} color={phaseStyle.text} />
+        <Badge label={t(`super_loop_progress.${PHASE_LABEL_KEYS[args.phase]}`)} bg={phaseStyle.bg} color={phaseStyle.text} />
         <span
           style={{
             marginLeft: 'auto',
@@ -201,7 +215,7 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
             fontFamily: 'monospace',
           }}
         >
-          iter {args.currentIteration}
+          {t('super_loop_progress.iteration', { count: args.currentIteration })}
         </span>
       </div>
 
@@ -240,7 +254,7 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#4ade80', fontSize: '10px' }}>
               <MaterialSymbol icon="check_circle" size={14} />
-              <span style={{ fontWeight: 500 }}>Feedback sent</span>
+              <span style={{ fontWeight: 500 }}>{t('super_loop_progress.feedback_sent')}</span>
             </div>
             <div
               style={{
@@ -274,7 +288,7 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
                 outline: 'none',
               }}
               rows={3}
-              placeholder="Provide guidance to help overcome the blockers..."
+              placeholder={t('super_loop_progress.guidance_placeholder')}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -303,11 +317,11 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
                 onClick={handleSubmit}
                 disabled={!feedback.trim() || isSubmitting || !host}
               >
-                {isSubmitting ? 'Sending...' : 'Send Feedback'}
+                {isSubmitting ? t('super_loop_progress.sending') : t('super_loop_progress.send_feedback')}
               </button>
               {!host && (
                 <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-                  Waiting for session...
+                  {t('super_loop_progress.waiting_for_session')}
                 </span>
               )}
             </div>

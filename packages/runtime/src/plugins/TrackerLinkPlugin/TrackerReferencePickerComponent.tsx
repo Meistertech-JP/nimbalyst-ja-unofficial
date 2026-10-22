@@ -15,6 +15,7 @@ import {
 } from '@floating-ui/react';
 import { windowControlsClearance } from '../../ui/floating/windowControlsClearance';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { trackerItemsArrayAtom } from '../TrackerPlugin/trackerDataAtoms';
 import { buildTrackerReferenceOptions } from './trackerReferencePicker';
@@ -43,10 +44,12 @@ export function TrackerReferencePicker({
   onChange,
   multiple = true,
   disabled = false,
-  placeholder = 'Link tracker item',
+  placeholder,
   className,
   maxResults = 25,
 }: TrackerReferencePickerProps): JSX.Element {
+  const { t } = useTranslation('tracker');
+  const triggerLabel = placeholder ?? t('reference.link_item');
   const trackerItems = useAtomValue(trackerItemsArrayAtom);
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -126,7 +129,7 @@ export function TrackerReferencePicker({
               {!disabled ? (
                 <button
                   type="button"
-                  aria-label={`Remove tracker reference ${referenceKey}`}
+                  aria-label={t('reference.remove', { key: referenceKey })}
                   onClick={() => removeReference(referenceKey)}
                   style={{
                     border: 0,
@@ -151,7 +154,7 @@ export function TrackerReferencePicker({
         aria-haspopup="listbox"
         aria-expanded={open}
         {...getReferenceProps()}
-        aria-label={placeholder}
+        aria-label={triggerLabel}
         className="tracker-reference-picker-trigger"
         style={{
           width: '100%',
@@ -165,7 +168,7 @@ export function TrackerReferencePicker({
           cursor: disabled ? 'default' : 'pointer',
         }}
       >
-        {placeholder}
+        {triggerLabel}
       </button>
 
       {open ? (
@@ -190,8 +193,8 @@ export function TrackerReferencePicker({
               autoFocus
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Search tracker items…"
-              aria-label="Search tracker items"
+              placeholder={t('reference.search')}
+              aria-label={t('reference.search_aria')}
               style={{
                 margin: '8px',
                 padding: '6px 8px',
@@ -260,7 +263,9 @@ export function TrackerReferencePicker({
                   className="tracker-reference-picker-empty"
                   style={{ padding: '12px', color: 'var(--nim-text-muted)', fontSize: '12px' }}
                 >
-                  {query ? `No tracker items match “${query}”` : 'No tracker items available'}
+                  {query
+                    ? t('reference.no_matches', { query })
+                    : t('reference.no_items')}
                 </div>
               )}
             </div>

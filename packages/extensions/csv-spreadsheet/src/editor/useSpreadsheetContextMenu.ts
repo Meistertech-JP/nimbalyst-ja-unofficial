@@ -6,6 +6,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { UseSpreadsheetMetadataResult } from '../hooks/useSpreadsheetMetadata';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   readHeaderColumnTarget,
   resolveHeaderColumnIndex,
@@ -39,6 +40,7 @@ export function useSpreadsheetContextMenu(
   { updateSelection }: Pick<Selection, 'updateSelection'>,
   formatting: Formatting,
 ) {
+  const { t } = useTranslation('editor');
   const { editingLockedRef, gridContainerRef, selectionRangeRef, selectedCellRef, gridOpsRef } = core;
   const { translateRowIndex } = rowView;
   const { columnCount, frozenColumnCount, headerRowCount, columnFormats } = spreadsheetMeta.metadata;
@@ -176,6 +178,7 @@ export function useSpreadsheetContextMenu(
       selectionRange: selectionRangeRef.current,
       hiddenRows: spreadsheetMeta.metadata.hiddenRows,
       hiddenCols: spreadsheetMeta.metadata.hiddenCols,
+      translate: t,
     };
     if (contextMenu.isColumnHeader && contextMenu.colIndex !== null) {
       return buildColumnHeaderMenuItems(contextMenu.colIndex, { frozenColumnCount, columnFormats }, deps);

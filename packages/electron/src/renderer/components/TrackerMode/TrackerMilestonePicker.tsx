@@ -28,6 +28,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { trackerItemsMapAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
 import { getRecordTitle } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
@@ -113,6 +114,7 @@ export const TrackerMilestonePickerPanel: React.FC<TrackerMilestonePickerPanelPr
   heading,
   testIdBase,
 }) => {
+  const { t } = useTranslation('tracker');
   const itemsMap = useAtomValue(trackerItemsMapAtom);
   const field = useMemo(() => resolveSelectionCollectionField(items), [items]);
   const selectedIds = useMemo(() => new Set(items.map(item => item.id)), [items]);
@@ -225,7 +227,7 @@ export const TrackerMilestonePickerPanel: React.FC<TrackerMilestonePickerPanelPr
   if (!field) {
     return (
       <div className="tracker-milestone-picker-unavailable" data-testid={`${testIdBase}-unavailable`}>
-        This item type has no milestone field.
+        {t('milestone_picker.unavailable')}
       </div>
     );
   }
@@ -238,8 +240,8 @@ export const TrackerMilestonePickerPanel: React.FC<TrackerMilestonePickerPanelPr
         ref={inputRef}
         type="text"
         className="tracker-milestone-picker-search"
-        placeholder="Search milestones…"
-        aria-label="Search milestones"
+        placeholder={t('milestone_picker.search_placeholder')}
+        aria-label={t('milestone_picker.search_aria')}
         value={query}
         disabled={creating}
         onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }}
@@ -250,12 +252,12 @@ export const TrackerMilestonePickerPanel: React.FC<TrackerMilestonePickerPanelPr
       <div
         className="tracker-milestone-picker-list"
         role="listbox"
-        aria-label="Milestones"
+        aria-label={t('milestone_picker.list_aria')}
         data-testid={`${testIdBase}-list`}
       >
         {results.length === 0 && !canCreate && (
           <div className="tracker-milestone-picker-empty" data-testid={`${testIdBase}-empty`}>
-            {options.length === 0 ? 'No milestones yet' : 'No matches'}
+            {options.length === 0 ? t('milestone_picker.no_milestones') : t('milestone_picker.no_matches')}
           </div>
         )}
 
@@ -271,7 +273,11 @@ export const TrackerMilestonePickerPanel: React.FC<TrackerMilestonePickerPanelPr
                 ? 'tracker-milestone-picker-option tracker-milestone-picker-option-active'
                 : 'tracker-milestone-picker-option'}
               aria-label={option.state === 'some'
-                ? `${option.label} — ${option.assignedCount} of ${items.length} selected; assign all`
+                ? t('milestone_picker.partial_assignment_aria', {
+                  label: option.label,
+                  assignedCount: option.assignedCount,
+                  totalCount: items.length,
+                })
                 : option.label}
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => assignTo(option)}
@@ -292,8 +298,8 @@ export const TrackerMilestonePickerPanel: React.FC<TrackerMilestonePickerPanelPr
               <button
                 type="button"
                 className="tracker-milestone-picker-option-open"
-                aria-label={`Open ${option.label}`}
-                title={`Open ${option.label}`}
+                aria-label={t('milestone_picker.open_item', { label: option.label })}
+                title={t('milestone_picker.open_item', { label: option.label })}
                 onClick={() => onOpenItem(option.itemId)}
               >
                 <MaterialSymbol icon="open_in_new" size={13} />
@@ -318,14 +324,18 @@ export const TrackerMilestonePickerPanel: React.FC<TrackerMilestonePickerPanelPr
           >
             <MaterialSymbol icon="add" size={15} className="tracker-milestone-picker-option-icon" />
             <span className="tracker-milestone-picker-option-label">
-              Create milestone &ldquo;{trimmedQuery}&rdquo;
+              {t('milestone_picker.create', { title: trimmedQuery })}
             </span>
           </button>
         )}
       </div>
 
       {createError && (
-        <div className="tracker-milestone-picker-error" role="alert">{createError}</div>
+        <div className="tracker-milestone-picker-error" role="alert">
+          {createError === 'Could not create the milestone.'
+            ? t('milestone_picker.create_failed')
+            : createError}
+        </div>
       )}
       {footer && <div className="tracker-milestone-picker-footer">{footer}</div>}
     </div>

@@ -12,6 +12,7 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { getGithubIssueService } from '../../../../services/RendererGithubIssueService';
 import type { GithubIssueRow } from '../../../../services/RendererGithubIssueService';
@@ -29,20 +30,20 @@ interface IssueReconcileSectionProps {
 }
 
 /** One human-readable line per axis the reducer reported. */
-function divergenceLines(copy: IssueDivergentCopy, issue: GithubIssueRow): string[] {
+function divergenceLines(copy: IssueDivergentCopy, issue: GithubIssueRow, t: (key: string, options?: Record<string, unknown>) => string): string[] {
   const lines: string[] = [];
   const { state, title, upstreamBodyChanged, addedUpstreamLabels } = copy.divergence;
   if (state) {
     lines.push(
       state.upstream === 'closed'
-        ? 'Closed on GitHub, still open locally'
-        : 'Reopened on GitHub, already closed locally',
+        ? t('issues.reconcile.closed_upstream_open_local')
+        : t('issues.reconcile.reopened_upstream_closed_local'),
     );
   }
-  if (title) lines.push(`Title is now "${issue.title}" (imported as "${title.snapshot}")`);
-  if (upstreamBodyChanged) lines.push('The issue body changed after the last snapshot');
+  if (title) lines.push(t('issues.reconcile.title_changed', { title: issue.title, snapshot: title.snapshot }));
+  if (upstreamBodyChanged) lines.push(t('issues.reconcile.body_changed'));
   if (addedUpstreamLabels.length > 0) {
-    lines.push(`Labels added upstream: ${addedUpstreamLabels.join(', ')}`);
+    lines.push(t('issues.reconcile.labels_added', { labels: addedUpstreamLabels.join(', ') }));
   }
   return lines;
 }
@@ -58,6 +59,7 @@ function CopyRow({
   copy: IssueDivergentCopy;
   label: string;
 }): JSX.Element {
+  const { t } = useTranslation('git');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
@@ -79,13 +81,13 @@ function CopyRow({
     run(async () => {
       const result = await getGithubIssueService().resnapshot(workspaceId, copy.urn);
       const changed = [
-        result.titleUpdated ? 'title' : null,
-        result.statusUpdated ? 'status' : null,
-        result.bodyChanged ? 'body (needs review)' : null,
+        result.titleUpdated ? t('issues.reconcile.fields.title') : null,
+        result.statusUpdated ? t('issues.reconcile.fields.status') : null,
+        result.bodyChanged ? t('issues.reconcile.fields.body_needs_review') : null,
       ].filter(Boolean);
       return changed.length > 0
-        ? `Re-snapshotted: ${changed.join(', ')}`
-        : 'Re-snapshotted; labels and snapshots are current';
+        ? t('issues.reconcile.resnapshotted', { fields: changed.join(', ') })
+        : t('issues.reconcile.resnapshotted_current');
     });
 
   const bodyAction = (action: 'applyBody' | 'dismissBody') =>
@@ -94,7 +96,7 @@ function CopyRow({
         workspacePath: workspaceId,
         urn: copy.urn,
       });
-      return action === 'applyBody' ? 'Local body replaced with the upstream one' : 'Body change dismissed';
+      return action === 'applyBody' ? t('issues.reconcile.local_body_replaced') : t('issues.reconcile.body_change_dismissed');
     });
 
   return (
@@ -107,15 +109,15 @@ function CopyRow({
           data-testid="issue-resnapshot"
           onClick={() => void resnapshot()}
           className="ml-auto inline-flex items-center gap-1 rounded border border-nim px-2 py-0.5 text-[11px] text-nim-muted hover:text-nim transition-colors disabled:opacity-60"
-          title="Pull the current upstream title, state and labels into the local item"
+          title={t('issues.reconcile.resnapshot_title')}
         >
           <MaterialSymbol icon="sync" size={13} />
-          Re-snapshot
+          {t('issues.reconcile.resnapshot')}
         </button>
       </div>
 
       <ul className="space-y-0.5 text-[11.5px] text-nim-muted">
-        {divergenceLines(copy, issue).map((line) => (
+        {divergenceLines(copy, issue, t).map((line) => (
           <li key={line} className="flex items-start gap-1.5">
             <MaterialSymbol icon="arrow_right" size={13} className="text-nim-faint mt-[1px] shrink-0" />
             <span className="select-text">{line}</span>
@@ -130,8 +132,7 @@ function CopyRow({
         >
           <MaterialSymbol icon="sync_problem" size={13} className="text-nim-warning" />
           <span className="flex-1 min-w-[180px]">
-            The source body changed upstream. Update to overwrite the local body, or dismiss to keep
-            yours.
+            {t('issues.reconcile.body_banner')}
           </span>
           <button
             type="button"
@@ -140,7 +141,7 @@ function CopyRow({
             onClick={() => void bodyAction('applyBody')}
             className="rounded bg-nim-primary px-2 py-0.5 text-nim-on-primary hover:bg-nim-primary-hover disabled:opacity-60"
           >
-            Update body
+            {t('issues.reconcile.update_body')}
           </button>
           <button
             type="button"
@@ -148,7 +149,7 @@ function CopyRow({
             onClick={() => void bodyAction('dismissBody')}
             className="rounded border border-nim px-2 py-0.5 text-nim-muted hover:text-nim disabled:opacity-60"
           >
-            Dismiss
+            {t('issues.reconcile.dismiss')}
           </button>
         </div>
       )}
@@ -165,12 +166,13 @@ export function IssueReconcileSection({
   divergentCopies,
   labelForItem,
 }: IssueReconcileSectionProps): JSX.Element | null {
+  const { t } = useTranslation('git');
   if (divergentCopies.length === 0) return null;
 
   return (
     <IssueLocalSection
-      heading="Upstream changes"
-      note="GitHub is authoritative"
+      heading={t('issues.reconcile.upstream_changes')}
+      note={t('issues.reconcile.github_authoritative')}
       testId="issue-reconcile"
     >
       <div className="space-y-3">

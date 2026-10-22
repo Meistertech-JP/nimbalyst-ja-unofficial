@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider as JotaiProvider, createStore } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { asTeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 import { activeWorkspacePathAtom } from '../../store/atoms/openProjects';
 import {
@@ -45,6 +47,21 @@ vi.mock('posthog-js/react', () => ({
 
 import { UnifiedQuickOpen } from '../UnifiedQuickOpen';
 import { NavigationDialogKeyboardHandler } from '../NavigationDialogKeyboardHandler';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderEnglish(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 const WORKSPACE = '/Users/ghinkle/sources/crystal';
 const TEAM_SCOPE = {
@@ -135,7 +152,7 @@ function renderQuickOpen(
   overrides: Partial<React.ComponentProps<typeof UnifiedQuickOpen>> = {},
   store = createStore(),
 ) {
-  return render(
+  return renderEnglish(
     <JotaiProvider store={store}>
       <UnifiedQuickOpen
         isOpen={true}
@@ -172,7 +189,7 @@ function typeSearch(value: string) {
 }
 
 function renderKeyboardHandler(store = createStore()) {
-  return render(
+  return renderEnglish(
     <JotaiProvider store={store}>
       <NavigationDialogKeyboardHandler
         workspaceMode={true}

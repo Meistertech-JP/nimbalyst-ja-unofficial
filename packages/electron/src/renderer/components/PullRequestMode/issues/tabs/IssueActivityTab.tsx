@@ -5,6 +5,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
@@ -43,6 +44,13 @@ const EVENT_ICONS: Record<string, string> = {
   commented: 'chat_bubble',
 };
 
+const EVENT_TRANSLATION_KEYS: Record<string, string> = {
+  labeled: 'labeled', unlabeled: 'unlabeled', assigned: 'assigned', unassigned: 'unassigned',
+  closed: 'closed', reopened: 'reopened', renamed: 'renamed', milestoned: 'milestoned',
+  demilestoned: 'demilestoned', referenced: 'referenced', 'cross-referenced': 'cross_referenced',
+  locked: 'locked', unlocked: 'unlocked', commented: 'commented',
+};
+
 /**
  * Event payloads vary per event type; pull the one detail that makes the line
  * readable (which label, which milestone, which referencing issue or PR).
@@ -74,6 +82,7 @@ export function IssueActivityTab({
   issue,
   refreshToken,
 }: IssueActivityTabProps): JSX.Element {
+  const { t } = useTranslation('git');
   const loaded = useAtomValue(githubIssueTimelineAtom);
   const setTimeline = useSetAtom(githubIssueTimelineAtom);
   const loading = useAtomValue(githubIssueDetailLoadingAtom);
@@ -93,7 +102,7 @@ export function IssueActivityTab({
       .catch((err: unknown) => {
         if (!cancelled) {
           setTimeline([]);
-          setError(err instanceof Error ? err.message : 'Failed to load activity');
+          setError(err instanceof Error ? err.message : t('issues.activity.load_error'));
         }
       })
       .finally(() => {
@@ -102,7 +111,7 @@ export function IssueActivityTab({
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, remote, issue.number, refreshToken, setTimeline, setLoading, setError]);
+  }, [workspaceId, remote, issue.number, refreshToken, setTimeline, setLoading, setError, t]);
 
   // The atom is global and still holds the previous selection's events while
   // this one loads; each event names the issue it was fetched for.
@@ -126,7 +135,7 @@ export function IssueActivityTab({
       {loading && timeline.length === 0 ? (
         <div className="flex items-center justify-center gap-2 py-6 text-nim-muted text-sm">
           <div className="spinner w-4 h-4 border-[2px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-          Loading activity…
+          {t('issues.activity.loading')}
         </div>
       ) : (
         timeline.map((entry) => {
@@ -142,7 +151,7 @@ export function IssueActivityTab({
                 className="text-nim-faint shrink-0"
               />
               {entry.actorLogin && <span className="font-medium text-nim">{entry.actorLogin}</span>}
-              <span>{entry.event.replace(/[-_]/g, ' ')}</span>
+              <span>{EVENT_TRANSLATION_KEYS[entry.event] ? t(`issues.activity.events.${EVENT_TRANSLATION_KEYS[entry.event]}`) : entry.event.replace(/[-_]/g, ' ')}</span>
               {detail && <span className="text-nim truncate">{detail}</span>}
               <span className="ml-auto shrink-0 text-nim-faint">
                 {formatRelative(entry.createdAt)}
@@ -153,7 +162,7 @@ export function IssueActivityTab({
       )}
 
       {!loading && timeline.length === 0 && !error && (
-        <div className="text-nim-faint text-sm text-center py-4">No activity recorded yet.</div>
+        <div className="text-nim-faint text-sm text-center py-4">{t('issues.activity.empty')}</div>
       )}
     </div>
   );

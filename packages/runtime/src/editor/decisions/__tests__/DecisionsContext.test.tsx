@@ -2,16 +2,36 @@ import React from "react";
 import {
   act,
   fireEvent,
-  render,
+  render as rtlRender,
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { RenderOptions } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import type { DocumentDecisionDeliveryState } from "@nimbalyst/collab-protocol";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { UiLanguageProvider } from "@nimbalyst/i18n/react";
 import { DecisionsProvider, useDecisionVotes } from "../DecisionsContext";
 import type { DecisionsConfig } from "../types";
 import { parseDecisionFence } from "../../plugins/DecisionPlugin/decisionFence";
+
+const i18n = await createI18nInstance("en");
+
+const DecisionTestProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
+  <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+    {children}
+  </UiLanguageProvider>
+);
+
+function render(
+  ui: React.ReactElement,
+  options?: Omit<RenderOptions, "wrapper">
+) {
+  return rtlRender(ui, { wrapper: DecisionTestProvider, ...options });
+}
 
 const authority = { loaded: true, privacyVersion: 1 as const };
 

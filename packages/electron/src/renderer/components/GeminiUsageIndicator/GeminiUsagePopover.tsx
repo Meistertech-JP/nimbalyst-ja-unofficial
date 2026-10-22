@@ -7,13 +7,13 @@
  */
 
 import React, { useEffect, RefObject } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   geminiUsageAtom,
   geminiUsageSessionColorAtom,
   geminiUsageWeeklyColorAtom,
-  formatResetTime,
 } from '../../store/atoms/geminiUsageAtoms';
 import { toggleGutterItemHiddenAtom } from '../../store/atoms/appSettings';
 import { useFloatingMenu, FloatingPortal } from '../../hooks/useFloatingMenu';
@@ -53,6 +53,7 @@ const UsageSection: React.FC<UsageSectionProps> = ({
   color,
   windowDurationMs,
 }) => {
+  const { t } = useTranslation('common');
   const colorClasses: Record<string, { text: string; bar: string }> = {
     green: { text: 'text-green-500', bar: 'bg-green-500' },
     yellow: { text: 'text-yellow-500', bar: 'bg-yellow-500' },
@@ -83,12 +84,12 @@ const UsageSection: React.FC<UsageSectionProps> = ({
         <div
           className={`absolute top-0 h-full w-0.5 transition-all duration-300 ${isOverPacing ? 'bg-red-400' : 'bg-nim-text-muted'}`}
           style={{ left: `${timeElapsedPercent}%` }}
-          title={`${Math.round(timeElapsedPercent)}% of window elapsed`}
+          title={t('usage_indicator.pace_elapsed', { percent: Math.round(timeElapsedPercent) })}
         />
       </div>
       <div className="flex items-center gap-1 text-[11px] text-nim-muted">
         <MaterialSymbol icon="schedule" size={12} className="opacity-70" />
-        <span>Resets in {formatResetTime(resetsAt)}</span>
+        <span>{t('usage_indicator.resets_in', { time: formatReset(resetsAt, t) })}</span>
       </div>
     </div>
   );
@@ -99,6 +100,7 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
   onClose,
   onRefresh,
 }) => {
+  const { t } = useTranslation('common');
   const usage = useAtomValue(geminiUsageAtom);
   const sessionColor = useAtomValue(geminiUsageSessionColorAtom);
   const weeklyColor = useAtomValue(geminiUsageWeeklyColorAtom);
@@ -154,21 +156,21 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
             <span className="text-blue-500 flex items-center">
               <MaterialSymbol icon="gemini" size={18} />
             </span>
-            <span className="text-[14px] font-semibold text-nim">Gemini Usage</span>
+            <span className="text-[14px] font-semibold text-nim">{t('usage_indicator.gemini_title')}</span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
               className="p-1 rounded hover:bg-nim-tertiary text-nim-muted hover:text-nim transition-colors disabled:opacity-50"
-              aria-label="Refresh usage"
+              aria-label={t('usage_indicator.refresh')}
             >
               <MaterialSymbol icon="refresh" size={14} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={onClose}
               className="p-1 rounded hover:bg-nim-tertiary text-nim-muted hover:text-nim transition-colors"
-              aria-label="Close"
+              aria-label={t('usage_indicator.close')}
             >
               <MaterialSymbol icon="close" size={14} />
             </button>
@@ -179,7 +181,7 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
         <div className="px-4 py-3">
           {usage.notStarted ? (
             <div className="text-[13px] text-nim-muted">
-              {usage.error || 'Gemini usage will appear after your first request.'}
+              {usage.error || t('usage_indicator.gemini_not_started')}
             </div>
           ) : usage.error ? (
             <div className="text-[13px] text-nim-error">{usage.error}</div>
@@ -187,20 +189,20 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
             <>
               {!limitsAvailable && (
                 <div className="mb-3 text-[12px] text-nim-muted">
-                  Usage detected, but Gemini limits are unavailable in recent session data.
+                  {t('usage_indicator.gemini_limits_unavailable')}
                 </div>
               )}
               <UsageSection
-                title="Session"
-                subtitle="Most-constrained model"
+                title={t('usage_indicator.session')}
+                subtitle={t('usage_indicator.most_constrained')}
                 utilization={usage.fiveHour.utilization}
                 resetsAt={usage.fiveHour.resetsAt}
                 color={sessionColor as 'green' | 'yellow' | 'red' | 'muted'}
                 windowDurationMs={sessionWindowMs}
               />
               <UsageSection
-                title="Secondary"
-                subtitle="Next-most-constrained model"
+                title={t('usage_indicator.secondary')}
+                subtitle={t('usage_indicator.next_constrained')}
                 utilization={usage.sevenDay.utilization}
                 resetsAt={usage.sevenDay.resetsAt}
                 color={weeklyColor as 'green' | 'yellow' | 'red' | 'muted'}
@@ -215,7 +217,7 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
           <div className="flex items-center justify-between">
             {usage.lastUpdated && (
               <span className="text-[10px] text-nim-faint">
-                Updated {formatLastUpdated(usage.lastUpdated)}
+                {t('usage_indicator.updated', { time: formatLastUpdated(usage.lastUpdated, t) })}
               </span>
             )}
             <button
@@ -225,7 +227,7 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
               }}
               className="text-[11px] text-nim-muted hover:text-nim transition-colors"
             >
-              Disable
+              {t('usage_indicator.disable')}
             </button>
           </div>
           <button
@@ -233,7 +235,7 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
             className="flex items-center gap-1 text-[11px] text-nim-muted hover:text-nim transition-colors"
           >
             <MaterialSymbol icon="open_in_new" size={12} />
-            <span>Google Cloud Status</span>
+            <span>{t('usage_indicator.google_status')}</span>
           </button>
         </div>
       </div>
@@ -241,18 +243,31 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
   );
 };
 
-function formatLastUpdated(timestamp: number): string {
+function formatLastUpdated(timestamp: number, t: (key: string, options?: Record<string, unknown>) => string): string {
   const now = Date.now();
   const diffMs = now - timestamp;
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
 
   if (diffSeconds < 60) {
-    return 'just now';
+    return t('usage_indicator.just_now');
   }
   if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+    return t('usage_indicator.minutes_ago', { count: diffMinutes });
   }
   const diffHours = Math.floor(diffMinutes / 60);
-  return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  return t('usage_indicator.hours_ago', { count: diffHours });
+}
+
+function formatReset(resetsAt: string | null, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (!resetsAt) return t('usage_indicator.reset_unknown');
+  const diffMs = new Date(resetsAt).getTime() - Date.now();
+  if (diffMs <= 0) return t('usage_indicator.reset_now');
+  const totalMinutes = Math.floor(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return t('usage_indicator.reset_days_hours', { days, hours });
+  if (hours > 0) return t('usage_indicator.reset_hours_minutes', { hours, minutes });
+  return t('usage_indicator.reset_minutes', { minutes });
 }

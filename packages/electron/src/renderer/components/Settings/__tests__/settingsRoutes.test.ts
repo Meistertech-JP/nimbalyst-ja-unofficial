@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getDefaultSettingsCategory,
+  getSettingsRouteLabel,
   getSettingsRoutesForScope,
   isExtensionSettingsRouteId,
   normalizeSettingsDestination,
@@ -36,6 +37,44 @@ const extensionRoutes: ExtensionSettingsRoute[] = [
 ];
 
 describe('settings route registry', () => {
+  it('localizes the built-in knowledge curator extension route label', () => {
+    const route: ExtensionSettingsRoute = {
+      source: 'extension',
+      id: 'ext:com.nimbalyst.knowledge:knowledge-curator',
+      extensionId: 'com.nimbalyst.knowledge',
+      scope: 'application',
+      group: 'Extensions',
+      label: 'Knowledge curator',
+      icon: 'hub',
+      componentName: 'KnowledgeCuratorSettings',
+      order: 85,
+    };
+    const translate = (key: string, options?: { defaultValue?: string }) =>
+      key === 'sidebar.item_knowledge_curator'
+        ? 'ナレッジキュレーター'
+        : options?.defaultValue ?? key;
+
+    expect(getSettingsRouteLabel(route, translate)).toBe('ナレッジキュレーター');
+  });
+
+  it('localizes the built-in memory extension route label', () => {
+    const route: ExtensionSettingsRoute = {
+      source: 'extension',
+      id: 'ext:com.nimbalyst.memory:memory',
+      extensionId: 'com.nimbalyst.memory',
+      scope: 'project',
+      group: 'Extensions',
+      label: 'Memory',
+      icon: 'psychology',
+      componentName: 'MemorySettings',
+      order: 50,
+    };
+    const translate = (key: string, options?: { defaultValue?: string }) =>
+      key === 'sidebar.item_memory' ? 'メモリ' : options?.defaultValue ?? key;
+
+    expect(getSettingsRouteLabel(route, translate)).toBe('メモリ');
+  });
+
   it('declares every route in exactly one scope', () => {
     const seen = new Map<string, string>();
     for (const scope of ['application', 'account', 'project'] as const) {

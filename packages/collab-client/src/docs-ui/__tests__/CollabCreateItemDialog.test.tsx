@@ -9,6 +9,34 @@ vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
 }));
 
+vi.mock('@nimbalyst/i18n/react', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { type?: string }) => {
+      const messages: Record<string, string> = {
+        cancel: 'Cancel',
+        close: 'Close',
+        'collab.collapse': 'Collapse',
+        'collab.create_document_type': 'Create {{type}}',
+        'collab.create_folder': 'Create Folder',
+        'collab.destination_folder': 'Destination folder',
+        'collab.document': 'Document',
+        'collab.document_name': '{{type}} name',
+        'collab.expand': 'Expand',
+        'collab.folder_name': 'Folder name',
+        'collab.location': 'Location',
+        'collab.new_shared_document': 'New Shared {{type}}',
+        'collab.new_shared_folder': 'New Shared Folder',
+        'collab.pick_document_location': 'Pick where this document should live in your team space.',
+        'collab.pick_folder_location': 'Pick where this folder should live in your team space.',
+        'collab.team_root': 'Team root',
+        'collab.untitled_document': 'Untitled {{type}}',
+        'collab.will_be_created_as': 'Will be created as',
+      };
+      return (messages[key] ?? key).replaceAll('{{type}}', options?.type ?? '');
+    },
+  }),
+}));
+
 const folders: SharedFolder[] = [
   {
     folderId: 'f-specs',

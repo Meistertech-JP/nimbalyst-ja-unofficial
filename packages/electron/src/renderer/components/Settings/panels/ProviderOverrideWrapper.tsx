@@ -6,6 +6,7 @@
  */
 
 import React, { ReactNode, useEffect, useMemo } from 'react';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 import { useAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
@@ -35,6 +36,7 @@ export function ProviderOverrideWrapper({
   children,
   onOverrideChange,
 }: ProviderOverrideWrapperProps) {
+  const { t } = useTranslation('settings');
   // Get the atom for this workspace
   const settingsAtom = useMemo(
     () => workspaceAISettingsAtomFamily(workspacePath),
@@ -92,7 +94,7 @@ export function ProviderOverrideWrapper({
   if (loading) {
     return (
       <div className="provider-override-wrapper flex flex-col h-full items-center justify-center text-[var(--nim-text-muted)]">
-        Loading...
+        {t('provider_override.loading')}
       </div>
     );
   }
@@ -117,16 +119,18 @@ export function ProviderOverrideWrapper({
               <>
                 <MaterialSymbol icon="tune" size={16} className="shrink-0" />
                 <span>
-                  Project override active for{' '}
-                  <strong className="font-medium text-[var(--nim-primary)]">{workspaceName}</strong>
+                  <Trans
+                    ns="settings"
+                    i18nKey="provider_override.active"
+                    values={{ workspace: workspaceName }}
+                    components={{ workspace: <strong className="font-medium text-[var(--nim-primary)]" /> }}
+                  />
                 </span>
               </>
             ) : (
               <>
                 <MaterialSymbol icon="info" size={16} className="shrink-0" />
-                <span>
-                  Using global {providerName} settings
-                </span>
+                <span>{t('provider_override.using_global', { provider: providerName })}</span>
               </>
             )}
           </div>
@@ -150,7 +154,7 @@ export function ProviderOverrideWrapper({
               isOverriding ? 'text-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)]'
             }`}
           >
-            Override
+            {t('provider_override.override')}
           </span>
         </label>
       </div>
@@ -162,8 +166,7 @@ export function ProviderOverrideWrapper({
 
       {!isOverriding && (
         <div className="override-hint px-4 py-3 text-xs text-center text-[var(--nim-text-faint)] bg-[var(--nim-bg-secondary)] border-t border-[var(--nim-border)]">
-          Enable override to customize {providerName} settings for this project only.
-          Changes will not affect your global settings.
+          {t('provider_override.hint', { provider: providerName })}
         </div>
       )}
     </div>

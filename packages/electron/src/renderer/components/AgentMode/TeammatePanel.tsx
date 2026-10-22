@@ -17,13 +17,14 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import type { TFunction } from 'i18next';
 import {
   teammatePanelCollapsedAtom, toggleTeammatePanelCollapsedAtom,
   agentPanelCollapsedAtom, toggleAgentPanelCollapsedAtom,
   sessionTeammatesAtom, scrollToTeammateAtom,
   sessionTasksAtom, type TaskInfo,
 } from '../../store/atoms/agentMode';
-import { taskKindLabel, taskOutcomeLabel } from './taskPresentation';
 
 export interface TeammateInfo {
   name: string;
@@ -114,6 +115,7 @@ const TeammateSection: React.FC<TeammateSectionProps> = React.memo(({
   onToggle,
   onTeammateClick,
 }) => {
+  const { t } = useTranslation('agents');
   const runningCount = entries.filter(t => t.status === 'running' || t.status === 'idle').length;
 
   return (
@@ -121,6 +123,7 @@ const TeammateSection: React.FC<TeammateSectionProps> = React.memo(({
       <button
         className="w-full flex items-center gap-2 px-3 py-2 bg-transparent border-none cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]"
         onClick={onToggle}
+        aria-expanded={!isCollapsed}
       >
         <MaterialSymbol
           icon={isCollapsed ? 'chevron_right' : 'expand_more'}
@@ -128,7 +131,7 @@ const TeammateSection: React.FC<TeammateSectionProps> = React.memo(({
           className="text-[var(--nim-text-muted)] shrink-0"
         />
         <MaterialSymbol icon="group" size={16} className="text-[var(--nim-text-muted)] shrink-0" />
-        <span className="text-xs font-medium text-[var(--nim-text)]">Teammates</span>
+        <span className="text-xs font-medium text-[var(--nim-text)]">{t('team.teammates')}</span>
         <span className="ml-auto text-[11px] text-[var(--nim-text-muted)] font-mono">
           {runningCount}/{entries.length}
         </span>
@@ -164,6 +167,7 @@ const TaskSection: React.FC<TaskSectionProps> = React.memo(({
   onToggle,
   className,
 }) => {
+  const { t } = useTranslation('agents');
   const runningCount = tasks.filter(t => t.status === 'running').length;
 
   return (
@@ -171,6 +175,7 @@ const TaskSection: React.FC<TaskSectionProps> = React.memo(({
       <button
         className="w-full flex items-center gap-2 px-3 py-2 bg-transparent border-none cursor-pointer text-left hover:bg-[var(--nim-bg-hover)]"
         onClick={onToggle}
+        aria-expanded={!isCollapsed}
       >
         <MaterialSymbol
           icon={isCollapsed ? 'chevron_right' : 'expand_more'}
@@ -178,7 +183,7 @@ const TaskSection: React.FC<TaskSectionProps> = React.memo(({
           className="text-[var(--nim-text-muted)] shrink-0"
         />
         <MaterialSymbol icon="swap_horiz" size={16} className="text-[var(--nim-text-muted)] shrink-0" />
-        <span className="text-xs font-medium text-[var(--nim-text)]">Agents &amp; commands</span>
+        <span className="text-xs font-medium text-[var(--nim-text)]">{t('team.sdk_tasks')}</span>
         <span className="ml-auto text-[11px] text-[var(--nim-text-muted)] font-mono">
           {runningCount}/{tasks.length}
         </span>
@@ -201,25 +206,35 @@ TaskSection.displayName = 'TaskSection';
 
 // ─── Elapsed time formatting ──────────────────────────────────────────────
 
-function formatElapsed(ms: number): string {
+function formatElapsed(ms: number, t: TFunction<'agents'>): string {
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 60) return t('team.seconds', { count: seconds });
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+  if (minutes < 60) return t('team.minutes_seconds', { minutes, seconds: remainingSeconds });
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return `${hours}h ${remainingMinutes}m`;
+  return t('team.hours_minutes', { hours, minutes: remainingMinutes });
 }
 
-function formatAgo(ms: number): string {
+function formatAgo(ms: number, t: TFunction<'agents'>): string {
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 5) return t('team.just_now');
+  if (seconds < 60) return t('team.seconds_ago', { count: seconds });
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t('team.minutes_ago', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  return t('team.hours_ago', { count: hours });
+}
+
+function taskKindTranslationKey(taskType: string | undefined) {
+  switch (taskType) {
+    case 'local_agent': return 'team.task_kind.sub_agent' as const;
+    case 'local_bash': return 'team.task_kind.command' as const;
+    case 'local_workflow': return 'team.task_kind.workflow' as const;
+    case 'mcp_task': return 'team.task_kind.mcp_task' as const;
+    default: return 'team.task_kind.task' as const;
+  }
 }
 
 // ─── Live clock hook ──────────────────────────────────────────────────────
@@ -242,27 +257,30 @@ interface TaskItemProps {
 }
 
 const TaskItem: React.FC<TaskItemProps> = React.memo(({ task }) => {
+  const { t } = useTranslation('agents');
   const isRunning = task.status === 'running';
   const now = useNow(isRunning);
   const isDone = task.status === 'completed' || task.status === 'failed' || task.status === 'stopped';
 
   // Build stats line. The kind rides in front rather than on a line of its own:
   // the section scrolls at 200px, and a third line per row costs a visible entry.
-  const stats: string[] = [taskKindLabel(task.taskType)];
+  const stats: string[] = [t(taskKindTranslationKey(task.taskType))];
   if (task.durationMs > 0) {
-    stats.push(formatElapsed(task.durationMs));
+    stats.push(formatElapsed(task.durationMs, t));
   } else if (isRunning && task.startedAt) {
-    stats.push(formatElapsed(now - task.startedAt));
+    stats.push(formatElapsed(now - task.startedAt, t));
   }
   if (task.toolCount > 0) {
-    stats.push(`${task.toolCount} tool${task.toolCount !== 1 ? 's' : ''}`);
+    stats.push(t('team.tools', { count: task.toolCount }));
   }
   if (task.lastToolName && isRunning) {
     stats.push(task.lastToolName);
   }
   // "ran and exited non-zero" vs "did not finish on its own" -- the icons alone
   // leave the two indistinguishable.
-  const outcome = taskOutcomeLabel(task.status);
+  const outcome = task.status === 'failed'
+    ? t('team.task_outcome.failed')
+    : task.status === 'stopped' ? t('team.task_outcome.stopped') : null;
   if (outcome) {
     stats.push(outcome);
   }
@@ -314,6 +332,7 @@ interface TeammateItemProps {
 }
 
 const TeammateItem: React.FC<TeammateItemProps> = React.memo(({ teammate, onClick }) => {
+  const { t } = useTranslation('agents');
   const isActive = teammate.status === 'running' || teammate.status === 'idle';
   const now = useNow(isActive);
 
@@ -331,14 +350,14 @@ const TeammateItem: React.FC<TeammateItemProps> = React.memo(({ teammate, onClic
   // Build stats line
   const stats: string[] = [];
   if (teammate.startedAt) {
-    stats.push(formatElapsed(now - teammate.startedAt));
+    stats.push(formatElapsed(now - teammate.startedAt, t));
   }
   // Only show "last active" when idle - when running, elapsed time is sufficient
   if (teammate.status === 'idle' && teammate.lastActiveAt) {
-    stats.push(formatAgo(now - teammate.lastActiveAt));
+    stats.push(formatAgo(now - teammate.lastActiveAt, t));
   }
   if (typeof teammate.toolCallCount === 'number' && teammate.toolCallCount > 0) {
-    stats.push(`${teammate.toolCallCount} tool${teammate.toolCallCount !== 1 ? 's' : ''}`);
+    stats.push(t('team.tools', { count: teammate.toolCallCount }));
   }
 
   return (
@@ -375,7 +394,7 @@ const TeammateItem: React.FC<TeammateItemProps> = React.memo(({ teammate, onClic
           {teammate.name}
         </div>
         <div className="text-[10px] text-[var(--nim-text-faint)] truncate">
-          {teammate.agentType}{teammate.status === 'idle' ? ' (idle)' : ''}
+          {teammate.agentType}{teammate.status === 'idle' ? ` (${t('team.idle')})` : ''}
         </div>
         {stats.length > 0 && (
           <div className="text-[10px] text-[var(--nim-text-faint)] truncate font-mono">

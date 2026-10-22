@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MarkdownRenderer, MaterialSymbol } from '@nimbalyst/runtime';
 import { useFloatingMenu, FloatingPortal } from '../../../hooks/useFloatingMenu';
 import { openFileInSessionEditorAtom } from '../../../store/atoms/sessionEditors';
@@ -41,6 +42,7 @@ export const CommandPillPopover: React.FC<CommandPillPopoverProps> = ({
   provider,
   onClose,
 }) => {
+  const { t } = useTranslation('aichat');
   const openFileInSessionEditor = useSetAtom(openFileInSessionEditorAtom);
   const [details, setDetails] = useState<CommandDetails>({
     content: command.content,
@@ -128,7 +130,9 @@ export const CommandPillPopover: React.FC<CommandPillPopoverProps> = ({
             <MarkdownRenderer content={details.content} />
           </div>
         ) : loading ? (
-          <div className="command-pill-popover-loading px-3 py-3 text-xs text-nim-faint">Loading…</div>
+          <div className="command-pill-popover-loading px-3 py-3 text-xs text-nim-faint">
+            {t('command_pill.loading')}
+          </div>
         ) : null}
 
         {details.filePath && sessionId && (
@@ -139,7 +143,7 @@ export const CommandPillPopover: React.FC<CommandPillPopoverProps> = ({
               onClick={handleOpenFile}
             >
               <MaterialSymbol icon="open_in_new" size={16} />
-              Open file
+              {t('command_pill.open_file')}
             </button>
           </div>
         )}

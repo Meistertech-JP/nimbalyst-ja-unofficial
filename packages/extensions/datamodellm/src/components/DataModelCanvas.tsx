@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useMemo, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   ReactFlow,
   Node,
@@ -63,6 +64,7 @@ export const DataModelCanvas = forwardRef<DataModelCanvasRef, DataModelCanvasPro
     { store, theme, screenshotMode = false, readOnly = false, presences = NO_PRESENCE },
     ref,
   ) {
+    const { t } = useTranslation('extensions');
     // `screenshotMode` is the legacy aggressive lock-down (pan/zoom off,
     // controls hidden, etc.); `readOnly` is the lighter "no edits but
     // still navigate" mode. Treat editing handlers as gated by either.
@@ -217,7 +219,15 @@ export const DataModelCanvas = forwardRef<DataModelCanvasRef, DataModelCanvasPro
 
   return (
     <div className="datamodel-canvas" ref={canvasRef}>
-      {layout.error && <div className="datamodel-layout-error" role="status">{layout.error}</div>}
+      {layout.error && (
+        <div className="datamodel-layout-error" role="status">
+          {layout.error === 'Open the diagram and wait for its cards to finish measuring.'
+            ? t('datamodellm_ui.layout_measurement_error')
+            : layout.error === 'Open the diagram before arranging its cards.'
+              ? t('datamodellm_ui.layout_diagram_not_ready')
+              : layout.error}
+        </div>
+      )}
       <ReactFlow
         nodes={localNodes}
         edges={localEdges}
@@ -245,6 +255,20 @@ export const DataModelCanvas = forwardRef<DataModelCanvasRef, DataModelCanvasPro
         zoomOnScroll={!screenshotMode}
         zoomOnPinch={!screenshotMode}
         zoomOnDoubleClick={!screenshotMode}
+        ariaLabelConfig={{
+          'node.a11yDescription.default': t('datamodellm_ui.node_a11y'),
+          'node.a11yDescription.keyboardDisabled': t('datamodellm_ui.node_keyboard_a11y'),
+          'node.a11yDescription.ariaLiveMessage': ({ x, y }) =>
+            t('datamodellm_ui.node_moved_aria_live', { x, y }),
+          'edge.a11yDescription.default': t('datamodellm_ui.edge_a11y'),
+          'controls.ariaLabel': t('datamodellm_ui.controls_aria_label'),
+          'controls.zoomIn.ariaLabel': t('datamodellm_ui.zoom_in'),
+          'controls.zoomOut.ariaLabel': t('datamodellm_ui.zoom_out'),
+          'controls.fitView.ariaLabel': t('datamodellm_ui.fit_view'),
+          'controls.interactive.ariaLabel': t('datamodellm_ui.toggle_interactivity'),
+          'minimap.ariaLabel': t('datamodellm_ui.minimap_aria_label'),
+          'handle.ariaLabel': t('datamodellm_ui.handle_aria_label'),
+        }}
       >
         {!screenshotMode && <Controls className="datamodel-controls" />}
         {!screenshotMode && (

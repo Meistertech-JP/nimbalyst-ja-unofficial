@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TodoItem } from '../types';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
 
@@ -11,6 +12,8 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
   todos,
   onTodoClick
 }) => {
+  const { t } = useTranslation('aichat');
+
   const getStatusIcon = (status: TodoItem['status']) => {
     switch (status) {
       case 'completed':
@@ -48,11 +51,11 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
   const getStatusLabel = (status: TodoItem['status']) => {
     switch (status) {
       case 'completed':
-        return 'Completed';
+        return t('transcript_sidebar.completed');
       case 'in_progress':
-        return 'In Progress';
+        return t('transcript_sidebar.in_progress');
       case 'pending':
-        return 'Pending';
+        return t('transcript_sidebar.pending');
     }
   };
 
@@ -64,12 +67,12 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
 
-      if (diffMins < 1) return 'just now';
-      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffMins < 1) return t('transcript_sidebar.just_now');
+      if (diffMins < 60) return t('transcript_sidebar.minutes_ago', { count: diffMins });
       const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffHours < 24) return t('transcript_sidebar.hours_ago', { count: diffHours });
       const diffDays = Math.floor(diffHours / 24);
-      return `${diffDays}d ago`;
+      return t('transcript_sidebar.days_ago', { count: diffDays });
     } catch {
       return '';
     }
@@ -91,11 +94,11 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
       <div className="p-4 border-b border-border-primary">
         <h3 className="font-semibold text-text-primary flex items-center gap-2">
           <MaterialSymbol icon="checklist" size={16} />
-          Tasks
+          {t('transcript_sidebar.tasks')}
         </h3>
         <div className="mt-2">
           <div className="flex items-center justify-between text-xs text-text-tertiary mb-1">
-            <span>{completedCount} of {totalCount} completed</span>
+            <span>{t('transcript_sidebar.completed_count', { completed: completedCount, total: totalCount })}</span>
             <span>{progressPercent}%</span>
           </div>
           <div className="w-full bg-nim-tertiary rounded-full h-1.5">
@@ -110,7 +113,7 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
       <div className="flex-1 overflow-y-auto">
         {todos.length === 0 ? (
           <div className="p-4 text-text-tertiary text-sm text-center">
-            No tasks yet
+            {t('transcript_sidebar.no_tasks')}
           </div>
         ) : (
           <div className="p-2 space-y-3">
@@ -118,7 +121,7 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
             {groupedTodos.in_progress.length > 0 && (
               <div>
                 <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider px-2 mb-1">
-                  In Progress ({groupedTodos.in_progress.length})
+                  {t('transcript_sidebar.in_progress')} ({groupedTodos.in_progress.length})
                 </div>
                 <div className="space-y-1">
                   {groupedTodos.in_progress.map(todo => (
@@ -153,7 +156,7 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
             {groupedTodos.pending.length > 0 && (
               <div>
                 <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider px-2 mb-1">
-                  Pending ({groupedTodos.pending.length})
+                  {t('transcript_sidebar.pending')} ({groupedTodos.pending.length})
                 </div>
                 <div className="space-y-1">
                   {groupedTodos.pending.map(todo => (
@@ -188,7 +191,7 @@ export const TodosSidebar: React.FC<TodosSidebarProps> = ({
             {groupedTodos.completed.length > 0 && (
               <div>
                 <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider px-2 mb-1">
-                  Completed ({groupedTodos.completed.length})
+                  {t('transcript_sidebar.completed')} ({groupedTodos.completed.length})
                 </div>
                 <div className="space-y-1">
                   {groupedTodos.completed.map(todo => (

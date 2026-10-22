@@ -23,6 +23,7 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CLOUDFLARE_SANDBOX_CHANNELS,
   type CloudflareSandboxError,
@@ -41,22 +42,6 @@ interface CloudflareSandboxStatusCardProps {
   onDeploymentChange: (deployment: SandboxDeployment | null) => void;
   onRefresh: () => void;
 }
-
-const DEPLOYMENT_STATUS_LABEL: Record<SandboxDeployment['status'], string> = {
-  'not-deployed': 'Not deployed',
-  deploying: 'Deploying…',
-  deployed: 'Deployed',
-  error: 'Deployment failed',
-  deleting: 'Deleting…',
-};
-
-const CONTAINER_STATUS_LABEL: Record<SandboxDeployment['container']['status'], string> = {
-  unknown: 'Not observed yet',
-  stopped: 'Stopped',
-  starting: 'Starting…',
-  running: 'Running',
-  stopping: 'Stopping…',
-};
 
 const buttonClass =
   'px-3 py-1.5 text-[13px] rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
@@ -82,6 +67,7 @@ export function CloudflareSandboxStatusCard({
   onDeploymentChange,
   onRefresh,
 }: CloudflareSandboxStatusCardProps): JSX.Element {
+  const { t } = useTranslation('cloudflareSandboxes');
   const [operation, setOperation] = useState<LifecycleOperation>('none');
   const [confirming, setConfirming] = useState<ConfirmKind | null>(null);
   const [error, setError] = useState<CloudflareSandboxError | null>(null);
@@ -151,33 +137,33 @@ export function CloudflareSandboxStatusCard({
 
   return (
     <section className="cloudflare-sandbox-status-card py-4" data-testid="cloudflare-status-section">
-      <h4 className="text-[13px] font-semibold text-[var(--nim-text)] mb-2">Deployed sandbox</h4>
+      <h4 className="text-[13px] font-semibold text-[var(--nim-text)] mb-2">{t('status_card.title')}</h4>
 
       <dl className="flex flex-col gap-1.5 text-[13px]">
         <div className="flex gap-2">
-          <dt className="text-[var(--nim-text-muted)] min-w-[92px]">Deployment</dt>
+          <dt className="text-[var(--nim-text-muted)] min-w-[92px]">{t('status_card.labels.deployment')}</dt>
           <dd className="text-[var(--nim-text)]" data-testid="cloudflare-deployment-status">
-            {DEPLOYMENT_STATUS_LABEL[deployment.status]} — {deployment.account.name} (profile{' '}
+            {t(`status_card.deployment_status.${deployment.status}`)} — {deployment.account.name} ({t('status_card.profile')}{' '}
             {deployment.profileName})
           </dd>
         </div>
         <div className="flex gap-2">
-          <dt className="text-[var(--nim-text-muted)] min-w-[92px]">Container</dt>
+          <dt className="text-[var(--nim-text-muted)] min-w-[92px]">{t('status_card.labels.container')}</dt>
           <dd className="text-[var(--nim-text)]" data-testid="cloudflare-container-status">
-            {CONTAINER_STATUS_LABEL[containerStatus]}
+            {t(`status_card.container_status.${containerStatus}`)}
             {deployment.container.observedAt && (
               <span className="text-[var(--nim-text-muted)]">
-                {' '}as of {new Date(deployment.container.observedAt).toLocaleTimeString()}
+                {' '}{t('status_card.as_of', { time: new Date(deployment.container.observedAt).toLocaleTimeString() })}
               </span>
             )}
           </dd>
         </div>
         <div className="flex gap-2">
-          <dt className="text-[var(--nim-text-muted)] min-w-[92px]">Access</dt>
+          <dt className="text-[var(--nim-text-muted)] min-w-[92px]">{t('status_card.labels.access')}</dt>
           <dd className="text-[var(--nim-text)] break-all" data-testid="cloudflare-access">
             {deployment.access === 'public-url' && deployment.url
               ? deployment.url
-              : 'Private — reached over a Worker binding, with no public endpoint.'}
+              : t('status_card.private_access')}
           </dd>
         </div>
       </dl>
@@ -191,7 +177,7 @@ export function CloudflareSandboxStatusCard({
 
       <div className="flex flex-wrap items-center gap-2 mt-3">
         <button className={buttonClass} onClick={onRefresh} data-testid="cloudflare-refresh-status">
-          Refresh
+          {t('status_card.refresh')}
         </button>
         <button
           className={buttonClass}
@@ -199,7 +185,7 @@ export function CloudflareSandboxStatusCard({
           onClick={() => void run(CLOUDFLARE_SANDBOX_CHANNELS.wake, { ...target }, 'waking')}
           data-testid="cloudflare-wake"
         >
-          {operation === 'waking' ? 'Waking…' : 'Wake sandbox'}
+          {operation === 'waking' ? t('status_card.waking') : t('status_card.wake')}
         </button>
         <button
           className={buttonClass}
@@ -207,7 +193,7 @@ export function CloudflareSandboxStatusCard({
           onClick={() => setConfirming('stop')}
           data-testid="cloudflare-stop"
         >
-          Stop sandbox
+          {t('status_card.stop')}
         </button>
         <button
           className={dangerButtonClass}
@@ -215,7 +201,7 @@ export function CloudflareSandboxStatusCard({
           onClick={() => setConfirming('delete')}
           data-testid="cloudflare-delete-deployment"
         >
-          Delete sandbox
+          {t('status_card.delete')}
         </button>
       </div>
 
@@ -225,8 +211,7 @@ export function CloudflareSandboxStatusCard({
           data-testid="cloudflare-stop-confirm"
         >
           <p className="text-[13px] text-[var(--nim-text)]">
-            Stopping the container ends every process running in it and discards files written
-            inside it. Nothing in the sandbox is kept.
+            {t('status_card.stop_warning')}
           </p>
           <div className="flex items-center gap-2 mt-3">
             <button
@@ -239,10 +224,10 @@ export function CloudflareSandboxStatusCard({
               )}
               data-testid="cloudflare-stop-confirmed"
             >
-              {operation === 'stopping' ? 'Stopping…' : 'Stop and discard'}
+              {operation === 'stopping' ? t('status_card.stopping') : t('status_card.stop_and_discard')}
             </button>
             <button className={buttonClass} onClick={() => setConfirming(null)}>
-              Cancel
+              {t('status_card.cancel')}
             </button>
           </div>
         </div>
@@ -254,9 +239,10 @@ export function CloudflareSandboxStatusCard({
           data-testid="cloudflare-delete-confirm"
         >
           <p className="text-[13px] text-[var(--nim-text)]">
-            Delete this sandbox from <strong>{deployment.account.name}</strong> using profile{' '}
-            <strong>{deployment.profileName}</strong>? The deployed Worker and its container are
-            removed, along with anything inside the container.
+            {t('status_card.delete_warning', {
+              account: deployment.account.name,
+              profile: deployment.profileName,
+            })}
           </p>
           <div className="flex items-center gap-2 mt-3">
             <button
@@ -269,10 +255,12 @@ export function CloudflareSandboxStatusCard({
               )}
               data-testid="cloudflare-delete-confirmed"
             >
-              {operation === 'deleting' ? 'Deleting…' : `Delete from ${deployment.account.name}`}
+              {operation === 'deleting'
+                ? t('status_card.deleting')
+                : t('status_card.delete_from', { account: deployment.account.name })}
             </button>
             <button className={buttonClass} onClick={() => setConfirming(null)}>
-              Cancel
+              {t('status_card.cancel')}
             </button>
           </div>
         </div>
@@ -280,7 +268,7 @@ export function CloudflareSandboxStatusCard({
 
       {error && (
         <p className="text-[12px] text-[var(--nim-error)] mt-2" role="alert">
-          {error.message}
+          {t(`errors.codes.${error.code.replace(/-/g, '_')}`, { defaultValue: error.message })}
         </p>
       )}
 

@@ -1,4 +1,5 @@
 import { lazy, Suspense, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TagBoardProps } from './TagBoard';
 import { TrackerSurfaceMessage } from './primitives/TrackerSurfaceMessage';
 
@@ -13,10 +14,11 @@ export function preloadTagBoard(): void {
 
 /** The tag board is a selected view mode, not part of the cold tracker route. */
 export function LazyTagBoard(props: TagBoardProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   return (
     <Suspense
       fallback={
-        <TrackerSurfaceMessage icon="sell" message="Loading tag board…" />
+        <TrackerSurfaceMessage icon="sell" message={t('view_modes.loading_tag_board')} />
       }
     >
       <TagBoardImpl {...props} />

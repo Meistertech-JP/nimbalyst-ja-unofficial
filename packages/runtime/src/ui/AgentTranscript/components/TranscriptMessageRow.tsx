@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TranscriptViewMessage } from '../../../ai/server/types';
 import { isInteractiveWidgetTool } from '../../../ai/server/interactivePromptTools';
 import { MessageSegment } from './MessageSegment';
@@ -25,29 +26,34 @@ import {
  * then re-renders only the row whose message (or info) actually changed.
  */
 
-const REMINDER_KIND_LABELS: Record<string, string> = {
-  session_naming: 'Session metadata reminder',
-  wakeup_resume: 'Resumed from scheduled wakeup',
+const REMINDER_KIND_KEYS: Record<string, string> = {
+  session_naming: 'session_reminder',
+  wakeup_resume: 'wakeup_reminder',
 };
 
 // Keyed by the known PermissionDeniedReasonType values from the SDK. Typed
 // here as a partial record so an unknown value (forward-compatible SDK
 // addition) falls back to the raw string or "SDK" in the renderer.
-const REASON_TYPE_LABELS: Partial<Record<string, string>> = {
-  classifier: 'Auto-mode classifier',
-  mode: 'Permission mode',
-  rule: 'Permission rule',
-  asyncAgent: 'Async agent',
+const REASON_TYPE_KEYS: Partial<Record<string, string>> = {
+  classifier: 'reason_classifier',
+  mode: 'reason_mode',
+  rule: 'reason_rule',
+  asyncAgent: 'reason_async',
 };
 
 const PermissionDeniedCard: React.FC<{
   message: TranscriptViewMessage;
 }> = ({ message }) => {
+  const { t } = useTranslation('aichat');
   const payload = message.systemMessage;
-  const toolName = payload?.deniedToolName ?? 'unknown tool';
+  const toolName = payload?.deniedToolName ?? t('rich_transcript.unknown_tool');
   const reason = payload?.deniedReason;
   const reasonType = payload?.deniedReasonType;
-  const reasonLabel = (reasonType && REASON_TYPE_LABELS[reasonType]) ?? reasonType ?? 'SDK';
+  const reasonLabel = reasonType
+    ? (REASON_TYPE_KEYS[reasonType]
+      ? t(`rich_transcript.${REASON_TYPE_KEYS[reasonType]}`)
+      : reasonType)
+    : 'SDK';
 
   return (
     <div
@@ -56,7 +62,7 @@ const PermissionDeniedCard: React.FC<{
     >
       <div className="flex items-center gap-2 text-xs text-[var(--nim-error)]">
         <MaterialSymbol icon="block" size={14} />
-        <span className="font-semibold uppercase tracking-[0.08em]">Tool denied</span>
+        <span className="font-semibold uppercase tracking-[0.08em]">{t('rich_transcript.tool_denied')}</span>
         <span className="text-[var(--nim-text-muted)]">·</span>
         <code className="text-[11px] font-mono text-[var(--nim-text)]">{toolName}</code>
         <span className="ml-auto text-[10px] text-[var(--nim-text-faint)]">
@@ -69,7 +75,7 @@ const PermissionDeniedCard: React.FC<{
         </p>
       )}
       <p className="m-0 mt-1 text-[10px] uppercase tracking-wide text-[var(--nim-text-faint)]">
-        Source: {reasonLabel}
+        {t('rich_transcript.source', { source: reasonLabel })}
       </p>
     </div>
   );
@@ -78,6 +84,7 @@ const PermissionDeniedCard: React.FC<{
 const SystemReminderCard: React.FC<{
   message: TranscriptViewMessage;
 }> = ({ message }) => {
+  const { t } = useTranslation('aichat');
   const [isExpanded, setIsExpanded] = useState(false);
 
   const content = (message.text ?? '')
@@ -95,8 +102,9 @@ const SystemReminderCard: React.FC<{
     (typeof message.metadata?.reminderKind === 'string'
       ? (message.metadata.reminderKind as string)
       : undefined);
-  const label =
-    (reminderKind && REMINDER_KIND_LABELS[reminderKind]) ?? 'System Reminder';
+  const label = (reminderKind && REMINDER_KIND_KEYS[reminderKind])
+    ? t(`rich_transcript.${REMINDER_KIND_KEYS[reminderKind]}`)
+    : t('rich_transcript.system_reminder');
 
   return (
     <div className="rich-transcript-system-reminder ml-6 mb-2 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-3 py-2">
@@ -233,7 +241,7 @@ const isLoginRequiredError = (message: TranscriptViewMessage): boolean => {
   );
 };
 
-const getProviderDisplayName = (provider?: string): string => {
+const getProviderDisplayName = (provider?: string): string | undefined => {
   switch (provider) {
     case 'claude':
       return 'Claude';
@@ -249,7 +257,7 @@ const getProviderDisplayName = (provider?: string): string => {
     case 'copilot-cli':
       return 'Copilot Agent';
     default:
-      return 'Agent';
+      return undefined;
   }
 };
 
@@ -604,6 +612,7 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
   onCopy,
   registerMessageRef,
 }: TranscriptMessageRowProps) {
+  const { t } = useTranslation('aichat');
   const setRef = useCallback(
     (el: HTMLDivElement | null) => registerMessageRef(index, el),
     [registerMessageRef, index]
@@ -626,8 +635,8 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
 
     case 'teammate': {
       // Teammate/sub-agent messages render as compact inline notifications
-      const teammateName = (message.metadata?.teammateName as string) || 'agent';
-      const label = `Received message from agent ${teammateName}`;
+      const teammateName = (message.metadata?.teammateName as string) || t('rich_transcript.agent_name');
+      const label = t('rich_transcript.received_message', { name: teammateName });
       const content = message.text?.trim();
       // Show first line as preview (truncated)
       const firstLine = content?.split('\n')[0] || '';
@@ -703,7 +712,7 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1 h-px bg-[var(--nim-error)]" />
           <span className="text-[11px] font-medium text-[var(--nim-error)] whitespace-nowrap">
-            Nimbalyst restarted {formatMessageTime(appStartTime!)}
+            {t('rich_transcript.restarted', { time: formatMessageTime(appStartTime!) })}
           </span>
           <div className="flex-1 h-px bg-[var(--nim-error)]" />
         </div>
@@ -719,14 +728,14 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
           </div>
           <div className="rich-transcript-message-meta flex-1 flex items-baseline gap-2">
             <span className="rich-transcript-message-sender font-medium text-[var(--nim-text)] text-sm">
-              {isUser ? 'You' : getProviderDisplayName(provider)}
+              {isUser ? t('rich_transcript.you') : (getProviderDisplayName(provider) || t('rich_transcript.agent_name'))}
             </span>
             {isUser && message.mode === 'planning' && (
               <span
                 className="text-[10px] rounded-full font-medium"
                 style={{ backgroundColor: '#3b82f6', color: 'white', padding: '2px 6px' }}
               >
-                Plan
+                {t('rich_transcript.plan_mode')}
               </span>
             )}
             <span className="rich-transcript-message-time text-xs text-[var(--nim-text-faint)]">
@@ -738,7 +747,7 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
               <button
                 onClick={() => onToggleCollapse(index)}
                 className="rich-transcript-collapse-button p-1 rounded-md bg-transparent border-none text-[var(--nim-text-faint)] cursor-pointer transition-colors hover:bg-[var(--nim-bg-secondary)] hover:text-[var(--nim-text-muted)]"
-                title={isCollapsed ? "Show full message" : "Collapse message"}
+                title={isCollapsed ? t('rich_transcript.full_message') : t('rich_transcript.collapse_message')}
               >
                 {isCollapsed ? (
                   <MaterialSymbol icon="visibility" size={16} />
@@ -763,7 +772,7 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
           <button
             onClick={() => onCopy(message, index)}
             className={`rich-transcript-copy-button p-1.5 rounded-md bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] ${isCopied ? 'copied' : ''}`}
-            title="Copy as Markdown"
+            title={t('rich_transcript.copy_markdown')}
           >
             {isCopied ? (
               <MaterialSymbol icon="check" size={16} className="text-[var(--nim-success)]" />
@@ -794,11 +803,11 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
 
       {turn && (
         <div className="rich-transcript-turn-elapsed text-xs text-[var(--nim-text-faint)] mt-2 ml-6">
-          Finished in {turn.duration}
-          {turn.finishedAt && <span> {turn.finishedAt}</span>}
+          {t('rich_transcript.finished_in', { duration: turn.duration })}
+          {turn.finishedAt && <span> {t('rich_transcript.finished_at', { time: turn.finishedAt })}</span>}
           {turn.fileStats && (
             <span>
-              {' · '}{turn.fileStats.filesModified} file{turn.fileStats.filesModified !== 1 ? 's' : ''}
+              {' · '}{t('rich_transcript.files', { count: turn.fileStats.filesModified })}
               {turn.fileStats.linesAdded > 0 && <span className="text-[var(--nim-success)] opacity-60"> +{turn.fileStats.linesAdded}</span>}
               {turn.fileStats.linesRemoved > 0 && <span className="text-[var(--nim-error)] opacity-60"> -{turn.fileStats.linesRemoved}</span>}
             </span>

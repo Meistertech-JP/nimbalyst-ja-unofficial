@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { SpreadsheetFind } from '../hooks/useSpreadsheetFind';
 import { shouldIsolateFromGrid } from '../editors/editorKeyActions';
 
@@ -41,16 +42,12 @@ function Chevron({ direction }: { direction: keyof typeof CHEVRON_PATHS }) {
   );
 }
 
-function counterText(count: number, index: number, query: string): string {
-  if (count > 0) return `${index + 1} of ${count}`;
-  return query ? 'No results' : '';
-}
-
 /**
  * `readOnly` keeps find (navigation only) and drops replace. Used during diff
  * review, where any write would land against phantom-row-shifted indices.
  */
 export function FindBar({ find, readOnly = false }: { find: SpreadsheetFind; readOnly?: boolean }) {
+  const { t } = useTranslation('editor');
   const queryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -74,6 +71,9 @@ export function FindBar({ find, readOnly = false }: { find: SpreadsheetFind; rea
   };
 
   const noMatches = find.cursor.count === 0;
+  const counterText = find.cursor.count > 0
+    ? t('spreadsheet_find.match_position', { current: find.cursor.index + 1, count: find.cursor.count })
+    : find.query ? t('spreadsheet_find.no_results') : '';
 
   return (
     <div className="csv-find-bar flex flex-col gap-2 px-3 py-2 bg-nim-secondary border-b border-nim">
@@ -87,9 +87,9 @@ export function FindBar({ find, readOnly = false }: { find: SpreadsheetFind; rea
           <button
             className={NAV_BUTTON_CLASS}
             onClick={find.toggleReplace}
-            aria-label="Toggle replace"
+            aria-label={t('spreadsheet_find.toggle_replace')}
             aria-expanded={find.showReplace}
-            title="Toggle replace"
+            title={t('spreadsheet_find.toggle_replace')}
           >
             <Chevron direction={find.showReplace ? 'down' : 'right'} />
           </button>
@@ -100,19 +100,19 @@ export function FindBar({ find, readOnly = false }: { find: SpreadsheetFind; rea
           value={find.query}
           onChange={(event) => find.setQuery(event.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Find in sheet"
-          aria-label="Find"
+          placeholder={t('spreadsheet_find.find_in_sheet')}
+          aria-label={t('spreadsheet_find.find')}
           autoFocus
         />
         <span className="csv-find-count text-[13px] text-nim-muted min-w-20 text-center select-none">
-          {counterText(find.cursor.count, find.cursor.index, find.query)}
+          {counterText}
         </span>
         <button
           className={NAV_BUTTON_CLASS}
           onClick={() => find.step('previous')}
           disabled={noMatches}
-          aria-label="Previous match"
-          title="Previous match (Shift+Enter)"
+          aria-label={t('spreadsheet_find.previous_match')}
+          title={t('spreadsheet_find.previous_match_shortcut')}
         >
           <Chevron direction="up" />
         </button>
@@ -120,26 +120,26 @@ export function FindBar({ find, readOnly = false }: { find: SpreadsheetFind; rea
           className={NAV_BUTTON_CLASS}
           onClick={() => find.step('next')}
           disabled={noMatches}
-          aria-label="Next match"
-          title="Next match (Enter)"
+          aria-label={t('spreadsheet_find.next_match')}
+          title={t('spreadsheet_find.next_match_shortcut')}
         >
           <Chevron direction="down" />
         </button>
         <button
           className={toggleClass(find.caseSensitive)}
           onClick={() => find.setCaseSensitive(!find.caseSensitive)}
-          title="Match case"
+          title={t('spreadsheet_find.match_case')}
         >
           Aa
         </button>
         <button
           className={toggleClass(find.wholeCell)}
           onClick={() => find.setWholeCell(!find.wholeCell)}
-          title="Match entire cell"
+          title={t('spreadsheet_find.match_entire_cell')}
         >
-          Cell
+          {t('spreadsheet_find.cell')}
         </button>
-        <button className={ACTION_BUTTON_CLASS} onClick={find.close} title="Close (Esc)" aria-label="Close find">
+        <button className={ACTION_BUTTON_CLASS} onClick={find.close} title={t('spreadsheet_find.close_shortcut')} aria-label={t('spreadsheet_find.close_find')}>
           &#10005;
         </button>
       </div>
@@ -153,22 +153,22 @@ export function FindBar({ find, readOnly = false }: { find: SpreadsheetFind; rea
             value={find.replacement}
             onChange={(event) => find.setReplacement(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Replace with"
-            aria-label="Replace with"
+            placeholder={t('spreadsheet_find.replace_with')}
+            aria-label={t('spreadsheet_find.replace_with')}
           />
           <button className={ACTION_BUTTON_CLASS} onClick={find.replaceCurrent} disabled={noMatches}>
-            Replace
+            {t('spreadsheet_find.replace')}
           </button>
           <button className={ACTION_BUTTON_CLASS} onClick={() => find.replaceAll('sheet')} disabled={noMatches}>
-            Replace all
+            {t('spreadsheet_find.replace_all')}
           </button>
           <button
             className={`csv-find-replace-selection ${ACTION_BUTTON_CLASS}`}
             onClick={() => find.replaceAll('selection')}
             disabled={noMatches || !find.hasSelection}
-            title="Replace every match inside the selected range"
+            title={t('spreadsheet_find.replace_in_selection')}
           >
-            In selection
+            {t('spreadsheet_find.in_selection')}
           </button>
         </div>
       )}

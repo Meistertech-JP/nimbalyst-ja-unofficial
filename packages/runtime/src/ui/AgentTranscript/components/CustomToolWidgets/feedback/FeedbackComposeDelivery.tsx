@@ -11,14 +11,15 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FeedbackRequestVisibility } from '@nimbalyst/collab-protocol';
 import { FeedbackComposeMenu, FeedbackComposeMenuItem } from './FeedbackComposeMenu';
 import type { FeedbackComposeQuorumMode } from './feedbackComposeDraft';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function formatDeadline(deadline: number): string {
-  return new Date(deadline).toLocaleString(undefined, {
+export function formatDeadline(deadline: number, locale?: string): string {
+  return new Date(deadline).toLocaleString(locale, {
     weekday: 'short',
     hour: 'numeric',
     minute: '2-digit',
@@ -26,25 +27,29 @@ export function formatDeadline(deadline: number): string {
 }
 
 /** End-of-day choices relative to `now`, so "Thursday" means Thursday evening. */
-export function deadlineChoices(now: number): Array<{ label: string; value: number | undefined }> {
+export function deadlineChoices(
+  now: number,
+  labels = {
+    none: 'No deadline',
+    today: 'Today, 5:00 PM',
+    tomorrow: 'Tomorrow, 5:00 PM',
+    days: 'In 3 days',
+    week: 'In a week',
+  },
+): Array<{ label: string; value: number | undefined }> {
   const endOfDay = (offsetDays: number): number => {
     const date = new Date(now + offsetDays * DAY_MS);
     date.setHours(17, 0, 0, 0);
     return date.getTime();
   };
   return [
-    { label: 'No deadline', value: undefined },
-    { label: 'Today, 5:00 PM', value: endOfDay(0) },
-    { label: 'Tomorrow, 5:00 PM', value: endOfDay(1) },
-    { label: 'In 3 days', value: endOfDay(3) },
-    { label: 'In a week', value: endOfDay(7) },
+    { label: labels.none, value: undefined },
+    { label: labels.today, value: endOfDay(0) },
+    { label: labels.tomorrow, value: endOfDay(1) },
+    { label: labels.days, value: endOfDay(3) },
+    { label: labels.week, value: endOfDay(7) },
   ];
 }
-
-const VISIBILITY_LABELS: Record<FeedbackRequestVisibility, string> = {
-  hiddenUntilAnswered: 'After each person responds',
-  open: 'To everyone asked',
-};
 
 const Setting: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="feedback-compose-setting flex items-center gap-2">
@@ -76,21 +81,35 @@ export const FeedbackComposeDelivery: React.FC<FeedbackComposeDeliveryProps> = (
   onDeadlineChange,
   onQuorumModeChange,
   disabled,
-}) => (
+}) => {
+  const { t, i18n } = useTranslation('feedback');
+  const visibilityLabels: Record<FeedbackRequestVisibility, string> = {
+    hiddenUntilAnswered: t('compose.delivery.after_each_reply'),
+    open: t('compose.delivery.to_everyone_asked'),
+  };
+  const choices = deadlineChoices(now, {
+    none: t('compose.delivery.no_deadline'),
+    today: t('compose.delivery.today_5pm'),
+    tomorrow: t('compose.delivery.tomorrow_5pm'),
+    days: t('compose.delivery.in_3_days'),
+    week: t('compose.delivery.in_a_week'),
+  });
+
+  return (
   <div className="feedback-compose-delivery grid grid-cols-2 gap-x-4 gap-y-2 @[max-460px]/feedback-compose:grid-cols-1">
-    <Setting label="Send via">
-      <span className="text-xs text-nim px-2 py-1">Direct message</span>
+    <Setting label={t('compose.delivery.send_via')}>
+      <span className="text-xs text-nim px-2 py-1">{t('compose.delivery.direct_message')}</span>
     </Setting>
 
-    <Setting label="Answers visible">
+    <Setting label={t('compose.delivery.answers_visible')}>
       <FeedbackComposeMenu
-        ariaLabel="Choose when answers become visible"
+        ariaLabel={t('compose.delivery.choose_visibility')}
         triggerTestId="feedback-compose-visibility"
         disabled={disabled}
-        trigger={VISIBILITY_LABELS[visibility]}
+        trigger={visibilityLabels[visibility]}
       >
         {(close) =>
-          (Object.keys(VISIBILITY_LABELS) as FeedbackRequestVisibility[]).map((option) => (
+          (Object.keys(visibilityLabels) as FeedbackRequestVisibility[]).map((option) => (
             <FeedbackComposeMenuItem
               key={option}
               selected={option === visibility}
@@ -99,22 +118,22 @@ export const FeedbackComposeDelivery: React.FC<FeedbackComposeDeliveryProps> = (
                 close();
               }}
             >
-              {VISIBILITY_LABELS[option]}
+              {visibilityLabels[option]}
             </FeedbackComposeMenuItem>
           ))
         }
       </FeedbackComposeMenu>
     </Setting>
 
-    <Setting label="Due">
+    <Setting label={t('compose.delivery.due')}>
       <FeedbackComposeMenu
-        ariaLabel="Choose a deadline"
+        ariaLabel={t('compose.delivery.choose_deadline')}
         triggerTestId="feedback-compose-deadline"
         disabled={disabled}
-        trigger={deadline === undefined ? 'No deadline' : formatDeadline(deadline)}
+        trigger={deadline === undefined ? t('compose.delivery.no_deadline') : formatDeadline(deadline, i18n.language)}
       >
         {(close) =>
-          deadlineChoices(now).map((choice) => (
+          choices.map((choice) => (
             <FeedbackComposeMenuItem
               key={choice.label}
               testId="feedback-compose-deadline-choice"
@@ -131,13 +150,13 @@ export const FeedbackComposeDelivery: React.FC<FeedbackComposeDeliveryProps> = (
       </FeedbackComposeMenu>
     </Setting>
 
-    <Setting label="Wake this session">
+    <Setting label={t('compose.delivery.wake_session')}>
       {recipientCount > 1 ? (
         <FeedbackComposeMenu
-          ariaLabel="Choose when this session wakes"
+          ariaLabel={t('compose.delivery.choose_wake')}
           triggerTestId="feedback-compose-wake"
           disabled={disabled}
-          trigger={quorumMode === 'first' ? 'On the first reply' : 'When everyone replies'}
+          trigger={quorumMode === 'first' ? t('compose.delivery.first_reply') : t('compose.delivery.everyone_replies')}
         >
           {(close) => (
             <>
@@ -148,7 +167,7 @@ export const FeedbackComposeDelivery: React.FC<FeedbackComposeDeliveryProps> = (
                   close();
                 }}
               >
-                On the first reply
+                {t('compose.delivery.first_reply')}
               </FeedbackComposeMenuItem>
               <FeedbackComposeMenuItem
                 selected={quorumMode === 'all'}
@@ -157,14 +176,15 @@ export const FeedbackComposeDelivery: React.FC<FeedbackComposeDeliveryProps> = (
                   close();
                 }}
               >
-                When everyone replies
+                {t('compose.delivery.everyone_replies')}
               </FeedbackComposeMenuItem>
             </>
           )}
         </FeedbackComposeMenu>
       ) : (
-        <span className="text-xs text-nim px-2 py-1">On the reply</span>
+        <span className="text-xs text-nim px-2 py-1">{t('compose.delivery.on_reply')}</span>
       )}
     </Setting>
   </div>
-);
+  );
+};

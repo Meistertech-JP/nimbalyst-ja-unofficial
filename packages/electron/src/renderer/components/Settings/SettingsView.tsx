@@ -4,6 +4,7 @@ import { ProviderCredentialsPanel } from '../GlobalSettings/panels/ProviderCrede
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { getExtensionLoader } from '@nimbalyst/runtime';
 import { store } from '@nimbalyst/runtime/store';
@@ -146,6 +147,7 @@ const ExtensionAgentSettingsPanel: React.FC<{
   scope: SettingsScope;
   onOpenInstalledExtensions: () => void;
 }> = ({ extEntry, commonProps, workspacePath, scope, onOpenInstalledExtensions }) => {
+  const { t } = useTranslation('settings');
   const loadedExt = getExtensionLoader().getExtension(extEntry.extensionId);
   const contributions = (loadedExt?.manifest?.contributions ?? {}) as Record<string, unknown>;
   const aiProviders = contributions.aiAgentProviders as
@@ -216,15 +218,14 @@ const ExtensionAgentSettingsPanel: React.FC<{
       <div className="settings-extension-provider-panel">
         <h2 className="text-lg font-semibold text-[var(--nim-text)] mb-2">{extEntry.name || extEntry.id}</h2>
         <p className="text-sm text-[var(--nim-text-muted)] mb-4 max-w-[60ch]">
-          This agent provider comes from an installed extension. Choose its models from the model
-          selector in the chat input. To configure or manage the extension, open Installed Extensions.
+          {t('view.extension_provider_description')}
         </p>
         <button
           type="button"
           className="px-3 py-1.5 rounded text-xs bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] border border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]"
           onClick={onOpenInstalledExtensions}
         >
-          Open Installed Extensions
+          {t('open_installed_extensions')}
         </button>
       </div>
     );
@@ -274,6 +275,7 @@ export function SettingsView({
   marketplaceInstallRequest = null,
   onMarketplaceInstallRequestHandled,
 }: SettingsViewProps) {
+  const { t } = useTranslation('settings');
   const posthog = usePostHog();
   const developerMode = useAtomValue(developerModeAtom);
   const teamsConfigured = useAtomValue(teamsConfiguredAtom);
@@ -870,7 +872,7 @@ export function SettingsView({
       if (!extensionRoute) {
         return (
           <p className="settings-extension-route-unavailable text-sm text-[var(--nim-text-muted)]">
-            This extension settings route is no longer available.
+            {t('view.extension_route_unavailable')}
           </p>
         );
       }
@@ -979,7 +981,7 @@ export function SettingsView({
       case 'project-mcp-servers':
         return workspacePath
           ? <MCPServersPanel scope="workspace" workspacePath={workspacePath} />
-          : <p className="text-sm text-[var(--nim-text-muted)]">Open a local project to configure MCP servers.</p>;
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.mcp_servers')}</p>;
       case 'mcp-servers':
         return (
           <>
@@ -988,9 +990,9 @@ export function SettingsView({
                 <MaterialSymbol icon="info" size={20} />
                 <div className="settings-project-indicator-text flex flex-col gap-1">
                   <strong className="text-sm font-semibold text-[var(--nim-text)]">
-                    There {workspaceMcpServerCount === 1 ? 'is' : 'are'} {workspaceMcpServerCount} additional MCP {workspaceMcpServerCount === 1 ? 'server' : 'servers'} configured just for this project.
+                    {t(workspaceMcpServerCount === 1 ? 'mcp.project_additional_servers_one' : 'mcp.project_additional_servers_other', { count: workspaceMcpServerCount })}
                   </strong>
-                  <span className="text-[13px] text-[var(--nim-text-muted)] leading-[1.4]">Switch to the Project tab above to view or edit project-specific MCP servers.</span>
+                  <span className="text-[13px] text-[var(--nim-text-muted)] leading-[1.4]">{t('project_required.switch_to_project_mcp')}</span>
                 </div>
               </div>
             )}
@@ -1039,21 +1041,21 @@ export function SettingsView({
       case 'project-appearance':
         return projectTarget?.kind === 'workspace'
           ? <ProjectAppearancePanel key={projectTarget.workspacePath} workspacePath={projectTarget.workspacePath} />
-          : <p className="text-sm text-[var(--nim-text-muted)]">Open a local project to customize its appearance.</p>;
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.project_appearance')}</p>;
       case 'project-sharing':
       case 'team':
         return <ProjectSharingPanel target={projectTarget} />;
       case 'project-agent-permissions':
         return workspacePath
           ? <ProjectPermissionsPanel workspacePath={workspacePath} workspaceName={workspaceName ?? 'this project'} />
-          : <p className="text-sm text-[var(--nim-text-muted)]">Open a local project to configure agent permissions.</p>;
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.agent_permissions')}</p>;
       case 'project-trackers':
       case 'tracker-config':
         return <TrackerConfigPanel workspacePath={workspacePath ?? undefined} />;
       case 'project-ai-providers':
         return workspacePath
           ? <ProjectAIProvidersPanel workspacePath={workspacePath} workspaceName={workspaceName ?? 'this project'} />
-          : <p className="text-sm text-[var(--nim-text-muted)]">Open a local project to configure provider overrides.</p>;
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.provider_overrides')}</p>;
       case 'project-extensions':
         return <InstalledExtensionsPanel scope="project" workspacePath={workspacePath ?? undefined} />;
       case 'project-github':
@@ -1104,16 +1106,14 @@ export function SettingsView({
           <div className="settings-extension-provider-panel">
             <h2 className="text-lg font-semibold text-[var(--nim-text)] mb-2">{label}</h2>
             <p className="text-sm text-[var(--nim-text-muted)] mb-4 max-w-[60ch]">
-              This agent provider comes from an installed extension. Choose its models from the
-              model selector in the chat input. To configure or manage the extension, open Installed
-              Extensions.
+              {t('view.extension_provider_description')}
             </p>
             <button
               type="button"
               className="px-3 py-1.5 rounded text-xs bg-[var(--nim-bg-secondary)] text-[var(--nim-text)] border border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]"
               onClick={() => setSelectedCategory('installed-extensions')}
             >
-              Open Installed Extensions
+              {t('open_installed_extensions')}
             </button>
           </div>
         );
@@ -1132,7 +1132,7 @@ export function SettingsView({
     <div className="settings-view flex flex-col h-full bg-[var(--nim-bg)] text-[var(--nim-text)]">
       {/* Settings Header */}
       <header className="settings-view-header h-[52px] bg-[var(--nim-bg-secondary)] border-b border-[var(--nim-border)] flex items-center px-5 gap-4 shrink-0">
-        <h1 className="settings-view-title text-base font-semibold text-[var(--nim-text)] m-0">Settings</h1>
+        <h1 className="settings-view-title text-base font-semibold text-[var(--nim-text)] m-0">{t('title')}</h1>
 
         <div className="settings-scope-container flex items-center gap-3">
           <div className="settings-scope-tabs flex bg-[var(--nim-bg-tertiary)] p-1 rounded-lg">
@@ -1145,7 +1145,7 @@ export function SettingsView({
               onClick={() => handleScopeChange('application')}
               data-testid="settings-scope-application"
             >
-              Application
+              {t('scope.application')}
             </button>
             <button
               className={`settings-scope-tab settings-scope-tab-account py-1.5 px-4 rounded-md text-xs font-medium cursor-pointer transition-all duration-150 border-none ${
@@ -1156,7 +1156,7 @@ export function SettingsView({
               onClick={() => handleScopeChange('account')}
               data-testid="settings-scope-account"
             >
-              Account
+              {t('scope.account')}
             </button>
             <button
               className={`settings-scope-tab py-1.5 px-4 rounded-md text-xs font-medium cursor-pointer transition-all duration-150 border-none disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -1166,18 +1166,18 @@ export function SettingsView({
               }`}
               onClick={() => handleScopeChange('project')}
               disabled={!workspacePath && !projectTarget}
-              title={!workspacePath && !projectTarget ? 'Open or select a project to access project settings' : undefined}
+              title={!workspacePath && !projectTarget ? t('project_required.open_project_title') : undefined}
               data-testid="settings-scope-project"
             >
-              Project
+              {t('scope.project')}
             </button>
           </div>
           <span className="settings-scope-hint text-[13px] text-[var(--nim-text-muted)]">
             {scope === 'application'
-              ? 'These settings apply to all projects'
+              ? t('view.application_hint')
               : scope === 'account'
-                ? 'Accounts, personal sync, devices, and shared links'
-                : `Settings for ${panelWorkspaceName || 'this project'}`}
+                ? t('view.account_hint')
+                : t('view.project_hint', { project: panelWorkspaceName || t('view.this_project') })}
           </span>
         </div>
 
@@ -1188,9 +1188,9 @@ export function SettingsView({
           saveStatus === 'error' ? 'text-[var(--nim-error)]' :
           'text-[var(--nim-text-faint)]'
         }`}>
-          {saveStatus === 'saving' && 'Saving...'}
-          {saveStatus === 'saved' && 'Saved'}
-          {saveStatus === 'error' && 'Error saving'}
+          {saveStatus === 'saving' && t('mcp.saving')}
+          {saveStatus === 'saved' && t('mcp.saved')}
+          {saveStatus === 'error' && t('mcp.error_saving')}
         </span>
       </header>
 

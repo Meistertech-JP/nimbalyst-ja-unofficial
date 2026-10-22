@@ -1,7 +1,8 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
-import { SOURCE_KIND_LABELS, hasScopeChoices, toggleScopeValue, typeIdentity } from './inboxViewModel';
+import { hasScopeChoices, toggleScopeValue, typeIdentity } from './inboxViewModel';
 import { InboxScopeMenu } from './InboxScopeMenu';
 import type { InboxScope, InboxScopeOptions, InboxSourceKind } from './inboxTypes';
 
@@ -39,6 +40,7 @@ export function InboxFilterBar({
   onUnreadOnlyChange: (unreadOnly: boolean) => void;
   onScopeChange: (scope: InboxScope) => void;
 }) {
+  const { t } = useTranslation('collabSidebar', { keyPrefix: 'org_sidebar.inbox_filter_bar' });
   const kinds = scopeOptions.sourceKinds;
   // Same rule the type chips follow below: an axis with nothing to choose
   // between is not rendered at all.
@@ -49,7 +51,7 @@ export function InboxFilterBar({
       <div
         className="inbox-filter-reasons flex flex-wrap items-center gap-2"
         data-testid="inbox-filter-bar"
-        aria-label="Inbox filters"
+        aria-label={t('aria_label')}
       >
         <button
           type="button"
@@ -67,7 +69,7 @@ export function InboxFilterBar({
           }`}
         >
           <MaterialSymbol icon={unreadOnly ? 'toggle_on' : 'toggle_off'} size={16} />
-          Unread only
+          {t('unread_only')}
           {unreadCount > 0 && (
             <span className="inbox-unread-toggle-count text-[10px] font-semibold" data-testid="inbox-unread-toggle-count">
               {unreadCount}
@@ -79,7 +81,7 @@ export function InboxFilterBar({
       {kinds.length > 1 && (
         <div className="inbox-filter-types flex flex-wrap items-center gap-1.5" data-testid="inbox-type-filters">
           <span className="inbox-filter-types-label mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">
-            Types
+            {t('types')}
           </span>
           {kinds.map((kind) => {
             // An unrestricted axis means every type is showing, so every chip
@@ -95,7 +97,7 @@ export function InboxFilterBar({
                 role="checkbox"
                 disabled={disabled}
                 aria-checked={on}
-                aria-label={SOURCE_KIND_LABELS[kind]}
+                aria-label={t(`source_types.${kind}`)}
                 data-testid={`inbox-type-filter-${kind}`}
                 onClick={() => onScopeChange({
                   ...scope,
@@ -116,7 +118,7 @@ export function InboxFilterBar({
                   className={on && !disabled ? undefined : 'opacity-60'}
                   style={on && !disabled ? { color: identity.accent } : undefined}
                 />
-                {SOURCE_KIND_LABELS[kind]}
+            {t(`source_types.${kind}`)}
                 {count > 0 && (
                   <span className="inbox-type-chip-count text-[10px] font-semibold text-[var(--nim-text-faint)]">
                     {count}

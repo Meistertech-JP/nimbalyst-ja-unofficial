@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import {
   normalizeTrackerGroupBy,
@@ -41,11 +42,6 @@ interface DisplayViewSettingsProps {
   onOrderingChange?: (ordering: TrackerOrdering) => void;
 }
 
-const GROUP_BY_OPTIONS: SelectOption[] = [
-  { value: 'none', label: 'No grouping' },
-  ...TRACKER_GROUPING_OPTIONS.map(option => ({ value: option.value, label: option.label })),
-];
-
 const SETTING_ROW = 'display-options-setting flex items-center gap-2 px-3 py-1.5';
 const SETTING_LABEL = 'w-16 shrink-0 text-[11px] text-[var(--nim-text-muted)]';
 
@@ -59,10 +55,27 @@ export const DisplayViewSettings: React.FC<DisplayViewSettingsProps> = ({
   ordering,
   onOrderingChange,
 }) => {
+  const { t } = useTranslation('tracker');
+  const groupByLabelKeys: Record<string, string> = {
+    status: 'group_status',
+    priority: 'group_priority',
+    assignee: 'group_assignee',
+    type: 'group_type',
+    tag: 'group_tag',
+    milestone: 'group_milestone',
+    goal: 'group_goal',
+  };
+  const groupByOptions: SelectOption[] = [
+    { value: 'none', label: t('display.no_grouping') },
+    ...TRACKER_GROUPING_OPTIONS.map(option => ({
+      value: option.value,
+      label: t(`display.${groupByLabelKeys[option.value]}`),
+    })),
+  ];
   // Ordering draws from the columns this type already declares sortable, so a
   // new schema field becomes orderable without a second list to keep in sync.
   const orderingOptions: SelectOption[] = [
-    { value: MANUAL_TRACKER_ORDERING, label: 'Manual' },
+    { value: MANUAL_TRACKER_ORDERING, label: t('display.manual') },
     ...getSupportedTrackerOrderingColumns(availableColumns)
       .map(column => ({ value: column.id, label: column.label })),
   ];
@@ -81,7 +94,7 @@ export const DisplayViewSettings: React.FC<DisplayViewSettingsProps> = ({
         <div
           className="display-options-view-modes grid grid-cols-3 gap-1 px-3 py-2"
           role="group"
-          aria-label="View mode"
+          aria-label={t('display.view_mode')}
         >
           {viewModes?.map(mode => (
             <button
@@ -103,11 +116,11 @@ export const DisplayViewSettings: React.FC<DisplayViewSettingsProps> = ({
 
       {showGroupBy && (
         <div className={SETTING_ROW}>
-          <span className={SETTING_LABEL}>Columns</span>
+          <span className={SETTING_LABEL}>{t('display.columns')}</span>
           <div className="min-w-0 flex-1" data-testid="tracker-display-group-by">
             <CustomSelect
               value={groupBy as string}
-              options={GROUP_BY_OPTIONS}
+              options={groupByOptions}
               onChange={value => onGroupByChange?.(normalizeTrackerGroupBy(value))}
               required
             />
@@ -117,7 +130,7 @@ export const DisplayViewSettings: React.FC<DisplayViewSettingsProps> = ({
 
       {showOrdering && (
         <div className={SETTING_ROW}>
-          <span className={SETTING_LABEL}>Ordering</span>
+            <span className={SETTING_LABEL}>{t('display.ordering')}</span>
           <div className="min-w-0 flex-1" data-testid="tracker-display-ordering">
             <CustomSelect
               value={ordering as string}

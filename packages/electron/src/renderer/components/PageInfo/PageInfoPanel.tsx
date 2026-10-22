@@ -5,6 +5,7 @@
  */
 
 import React, { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import type { LexicalEditor } from 'lexical';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
@@ -41,6 +42,7 @@ function Section({ title, count, children }: { title: string; count?: number; ch
 }
 
 export function PageInfoPanel({ editor, properties }: PageInfoPanelProps) {
+  const { t } = useTranslation('editor', { keyPrefix: 'page_info' });
   const [open, setOpen] = usePageInfoPanelOpen();
   const { citations } = useCitationIndex(open ? editor : null);
   const contentVersion = properties?.contentVersion;
@@ -80,7 +82,7 @@ export function PageInfoPanel({ editor, properties }: PageInfoPanelProps) {
       onPointerDown={handleResizePointerDown}
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize Page info"
+      aria-label={t('resize')}
       data-testid="page-info-panel-resize"
     >
       <div className="mx-auto h-full w-0.5 bg-nim-border transition-colors duration-200 hover:bg-nim-accent" />
@@ -92,22 +94,22 @@ export function PageInfoPanel({ editor, properties }: PageInfoPanelProps) {
       data-testid="page-info-panel"
     >
       <div className="page-info-header flex items-center border-b border-nim px-3.5 py-2 text-[13px] font-semibold text-nim">
-        Page info
+        {t('title')}
         <button
           type="button"
           className="ml-auto flex border-none bg-transparent p-0.5 text-nim-faint hover:text-nim"
           onClick={() => setOpen(false)}
-          aria-label="Close Page info"
+          aria-label={t('close')}
         >
           <MaterialSymbol icon="close" size={16} />
         </button>
       </div>
       {properties && showProperties && (
-        <Section title="Properties">
+        <Section title={t('properties')}>
           <FrontmatterProperties {...properties} />
         </Section>
       )}
-      <Section title="Sources" count={citations.length}>
+      <Section title={t('sources')} count={citations.length}>
         {editor ? (
           <Suspense fallback={null}>
             <CitationSourcesList editor={editor} />

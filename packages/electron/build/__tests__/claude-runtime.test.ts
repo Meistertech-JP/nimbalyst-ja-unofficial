@@ -24,7 +24,7 @@ describe('#1476 packaged Claude layout', () => {
     expect(fs.readFileSync(destination, 'utf8')).toBe('pinned bytes');
     expect(fs.existsSync(manifest)).toBe(true);
     expect(validateClaudeRuntime(root, platform, arch)).toBe(destination);
-    if (platform !== 'win32') {
+    if (process.platform !== 'win32' && platform !== 'win32') {
       fs.chmodSync(destination, 0o644);
       expect(() => validateClaudeRuntime(root, platform, arch)).toThrow(/Invalid packaged/);
       fs.chmodSync(destination, 0o755);

@@ -11,8 +11,10 @@ import type { FeedbackRequestIndexEntry } from '@nimbalyst/collab-protocol';
 import type { TeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 
 export type FeedbackBacklinkTone = 'open' | 'answered' | 'closed';
+export type FeedbackBacklinkStatusCode = 'open' | 'answered' | 'closed' | 'expired' | 'cancelled';
 
 export interface FeedbackBacklinkStatus {
+  code: FeedbackBacklinkStatusCode;
   label: string;
   tone: FeedbackBacklinkTone;
 }
@@ -28,14 +30,14 @@ export function feedbackBacklinkStatus(
   switch (entry.lifecycle.status) {
     case 'open':
       return entry.progress.quorumReached
-        ? { label: 'Answered', tone: 'answered' }
-        : { label: 'Open', tone: 'open' };
+        ? { code: 'answered', label: 'Answered', tone: 'answered' }
+        : { code: 'open', label: 'Open', tone: 'open' };
     case 'closed':
-      return { label: 'Closed', tone: 'closed' };
+      return { code: 'closed', label: 'Closed', tone: 'closed' };
     case 'expired':
-      return { label: 'Expired', tone: 'closed' };
+      return { code: 'expired', label: 'Expired', tone: 'closed' };
     case 'cancelled':
-      return { label: 'Cancelled', tone: 'closed' };
+      return { code: 'cancelled', label: 'Cancelled', tone: 'closed' };
   }
 }
 
@@ -46,6 +48,23 @@ export function feedbackBacklinkProgressLabel(
   return `${answeredRecipientCount}/${totalRecipientCount} responded`;
 }
 
+
+export type FeedbackBacklinkAuthor =
+  | { kind: 'you' }
+  | { kind: 'named'; name: string };
+
+export function feedbackBacklinkAuthor(
+  entry: Pick<FeedbackRequestIndexEntry, 'author'>,
+  teamMemberId: TeamMemberId | '',
+): FeedbackBacklinkAuthor | null {
+  if (teamMemberId && entry.author.onBehalfOfUserId === teamMemberId) {
+    return { kind: 'you' };
+  }
+  if (entry.author.kind === 'agent' && entry.author.sessionName) {
+    return { kind: 'named', name: entry.author.sessionName };
+  }
+  return null;
+}
 /**
  * Who asked, as far as the index can say. The entry carries the author as an
  * actor -- ids, plus a session name for agent authors -- and resolved names
@@ -56,12 +75,9 @@ export function feedbackBacklinkAuthorLabel(
   entry: Pick<FeedbackRequestIndexEntry, 'author'>,
   teamMemberId: TeamMemberId | '',
 ): string | null {
-  if (teamMemberId && entry.author.onBehalfOfUserId === teamMemberId) {
-    return 'Asked by you';
-  }
-  if (entry.author.kind === 'agent' && entry.author.sessionName) {
-    return `Asked by ${entry.author.sessionName}`;
-  }
+  const author = feedbackBacklinkAuthor(entry, teamMemberId);
+  if (author?.kind === 'you') return 'Asked by you';
+  if (author?.kind === 'named') return 'Asked by ' + author.name;
   return null;
 }
 

@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PDFDocumentProxy, PDFViewport } from '../hooks/usePDFDocument';
 
 // Get PDF.js from host for TextLayer class
@@ -26,6 +27,7 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 }
 
 export function PDFPage({ document, pageNumber, scale }: PDFPageProps) {
+  const { t } = useTranslation('extensions');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const renderTaskRef = useRef<any>(null);
@@ -148,7 +150,7 @@ export function PDFPage({ document, pageNumber, scale }: PDFPageProps) {
       />
       {rendering && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded text-sm">
-          Loading...
+          {t('pdf_viewer_ui.loading')}
         </div>
       )}
     </div>

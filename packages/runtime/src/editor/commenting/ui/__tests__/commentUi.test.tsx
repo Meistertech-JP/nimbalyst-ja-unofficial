@@ -9,9 +9,11 @@
  * keyboard-operable.
  */
 
-import { fireEvent, render, renderHook, screen, within } from '@testing-library/react';
-import type { ComponentProps } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render as rtlRender, renderHook, screen, within } from '@testing-library/react';
+import type { ComponentProps, ReactElement } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 import type { Comment, CommentMember, Thread } from '../../types';
 import { CollaborativeCommentsPanel } from '../CollaborativeCommentsPanel';
@@ -19,6 +21,16 @@ import { CommentComposer } from '../CommentComposer';
 import { filterMentionCandidates, useMentionRoster } from '../mentionRoster';
 import type { CollaborativeCommentsSource, CommentThreadView } from '../types';
 import { useCollaborativeComments } from '../useCollaborativeComments';
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+function render(ui: ReactElement) {
+  return rtlRender(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+}
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
 
 const alice: CommentMember = {
   userId: 'u-alice',
@@ -99,6 +111,26 @@ function renderPanel(
 }
 
 describe('CollaborativeCommentsPanel', () => {
+  it('localizes detached and resolved thread labels and actions', async () => {
+    testI18n = await createI18nInstance('ja');
+    const thread = threadView(
+      'ja-thread',
+      { resolved: true },
+      'orphaned',
+    );
+
+    renderPanel([thread]);
+
+    const card = screen.getByTestId('comment-thread');
+    expect(card.getAttribute('aria-label')).toContain('コメント1件');
+    expect(within(card).getByText(/コメント1件 · 解決済み/)).toBeTruthy();
+    expect(within(card).getByText(/このコメントの対象はドキュメント内にありません/)).toBeTruthy();
+    expect(within(card).getByTitle('スレッドを削除')).toBeTruthy();
+    expect(within(card).getByRole('button', {name: '未解決に戻す'})).toBeTruthy();
+    expect(screen.getByRole('button', { name: '解決済みスレッド1件を非表示' })).toBeTruthy();
+    expect(screen.getByTitle('解決済みスレッドを非表示')).toBeTruthy();
+  });
+
   // Access is revoked mid-session. The composer must go; every thread the
   // viewer could already read must stay, with its history intact.
   it('drops authoring on a capability downgrade without dropping threads', () => {
@@ -246,6 +278,23 @@ describe('CommentComposer', () => {
   function typeMention(field: HTMLTextAreaElement, value: string): void {
     fireEvent.change(field, { target: { value } });
   }
+
+  it('localizes the cancel action without changing its behavior', async () => {
+    await testI18n.changeLanguage('ja');
+    const onCancel = vi.fn();
+    render(
+      <CommentComposer
+        getMembers={() => []}
+        onSubmit={vi.fn()}
+        onCancel={onCancel}
+        submitLabel="コメント"
+        placeholder="コメントを追加"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
 
   // A member can leave the org while a comment is being drafted. Sending the
   // mention anyway is rejected downstream (`MENTION_FORBIDDEN`) and takes the

@@ -22,6 +22,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FeedbackArtifact, ResourceRef } from '@nimbalyst/collab-protocol';
 import { normalizeFeedbackArtifact } from '@nimbalyst/collab-protocol';
 
@@ -75,29 +76,30 @@ export interface FeedbackArtifactSubjectsProps {
   onExpand?: (subject: FeedbackArtifact, anchor: HTMLElement | null) => void;
 }
 
-const KIND_LABELS: Record<ResourceRef['kind'], string> = {
-  document: 'Document',
-  tracker: 'Tracker item',
-  file: 'File',
-  session: 'Session',
-  commit: 'Commit',
-  pullRequest: 'Pull request',
-  conversation: 'Conversation',
-  feedbackRequest: 'Feedback request',
+const KIND_LABEL_KEYS: Record<ResourceRef['kind'], string> = {
+  document: 'artifact_subjects.document',
+  tracker: 'artifact_subjects.tracker',
+  file: 'artifact_subjects.file',
+  session: 'artifact_subjects.session',
+  commit: 'artifact_subjects.commit',
+  pullRequest: 'artifact_subjects.pull_request',
+  conversation: 'artifact_subjects.conversation',
+  feedbackRequest: 'artifact_subjects.feedback_request',
 };
 
 const SubjectBody: React.FC<{
   subject: FeedbackArtifact;
+  kindLabel: string;
   unavailableReason?: string;
-}> = ({ subject, unavailableReason }) => (
+}> = ({ subject, kindLabel, unavailableReason }) => (
   <span className="feedback-artifact-subject-body flex min-w-0 flex-col gap-0.5 text-left">
     <span className="truncate text-xs font-semibold leading-snug text-nim">
       {subject.label}
     </span>
     <span className="truncate text-[0.6875rem] leading-snug text-nim-muted">
       {subject.context
-        ? `${KIND_LABELS[subject.ref.kind]} · ${subject.context}`
-        : KIND_LABELS[subject.ref.kind]}
+        ? `${kindLabel} · ${subject.context}`
+        : kindLabel}
     </span>
     {unavailableReason && (
       <span className="feedback-artifact-unavailable-reason text-[0.6875rem] leading-snug text-nim-faint">
@@ -114,6 +116,7 @@ export const FeedbackArtifactSubjects: React.FC<FeedbackArtifactSubjectsProps> =
   renderPreview,
   onExpand,
 }) => {
+  const { t } = useTranslation('feedback');
   if (!subjects?.length) return null;
 
   const previews = renderPreview
@@ -145,6 +148,7 @@ export const FeedbackArtifactSubjects: React.FC<FeedbackArtifactSubjectsProps> =
         const action = resolveAction?.(subject)
           ?? (onOpen ? { open: () => onOpen(subject) } : {});
         const preview = previews[index];
+        const kindLabel = t(KIND_LABEL_KEYS[subject.ref.kind]);
 
         if (preview != null) {
           /*
@@ -166,7 +170,7 @@ export const FeedbackArtifactSubjects: React.FC<FeedbackArtifactSubjectsProps> =
                 <button
                   type="button"
                   data-testid="feedback-artifact-subject-expand"
-                  aria-label={`Open ${subject.label}`}
+                  aria-label={t('artifact_subjects.open_subject', { label: subject.label })}
                   onClick={(event) => {
                     const anchor = event.currentTarget
                       .closest<HTMLElement>('.feedback-artifact-subject');
@@ -183,7 +187,7 @@ export const FeedbackArtifactSubjects: React.FC<FeedbackArtifactSubjectsProps> =
                 </div>
               )}
               <div className="flex items-center gap-2 px-2.5 py-2 select-text">
-                <SubjectBody subject={subject} unavailableReason={action.unavailableReason} />
+                <SubjectBody subject={subject} kindLabel={kindLabel} unavailableReason={action.unavailableReason} />
               </div>
             </div>
           );
@@ -199,8 +203,8 @@ export const FeedbackArtifactSubjects: React.FC<FeedbackArtifactSubjectsProps> =
             onClick={action.open}
             className={`feedback-artifact-subject ${shared} cursor-pointer text-left hover:bg-nim-hover`}
           >
-            <SubjectBody subject={subject} />
-            <span className="ml-auto shrink-0 text-[0.6875rem] text-nim-faint">Open</span>
+            <SubjectBody subject={subject} kindLabel={kindLabel} />
+            <span className="ml-auto shrink-0 text-[0.6875rem] text-nim-faint">{t('artifact_subjects.open')}</span>
           </button>
         ) : (
           <div
@@ -211,6 +215,7 @@ export const FeedbackArtifactSubjects: React.FC<FeedbackArtifactSubjectsProps> =
           >
             <SubjectBody
               subject={subject}
+              kindLabel={kindLabel}
               unavailableReason={action.unavailableReason}
             />
           </div>

@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FloatingPortal,
   autoUpdate,
@@ -52,6 +53,7 @@ export function MockupCommentPin({
   isActive = false,
   onSelect,
 }: MockupCommentPinProps) {
+  const { t, i18n } = useTranslation("extensions");
   const [isOpen, setIsOpen] = useState(false);
   const { pin } = placement;
   const authorUserId = thread?.authorUserId ?? pin.createdBy;
@@ -70,9 +72,11 @@ export function MockupCommentPin({
   ]);
 
   const label = useMemo(() => {
-    const author = thread?.authorName ?? "Unknown author";
-    return `Comment ${number} by ${author}`;
-  }, [number, thread?.authorName]);
+    return t("mockup_lm_ui.comment_pin_aria", {
+      number,
+      author: thread?.authorName ?? t("mockup_lm_ui.unknown_author"),
+    });
+  }, [number, thread?.authorName, t]);
 
   return (
     <>
@@ -163,23 +167,28 @@ export function MockupCommentPin({
                 {authorInitial(thread?.authorName ?? "", authorUserId)}
               </span>
               <span className="font-medium">
-                {thread?.authorName ?? "Unknown author"}
+                {thread?.authorName ?? t("mockup_lm_ui.unknown_author")}
               </span>
               <span className="text-nim-faint">
-                {formatRelativeTime(thread?.createdAt ?? pin.createdAt)}
+                {formatRelativeTime(thread?.createdAt ?? pin.createdAt, i18n.language)}
               </span>
             </div>
             <p className="mt-1 text-nim-muted">
-              {thread?.preview ?? "No comment text yet"}
+              {thread?.preview ?? t("mockup_lm_ui.no_comment_text")}
             </p>
             {thread && thread.replyCount > 0 && (
               <p className="mt-1 text-nim-faint">
-                {thread.replyCount} {thread.replyCount === 1 ? "reply" : "replies"}
+                {t("mockup_lm_ui.reply_count", { count: thread.replyCount })}
               </p>
             )}
             {pin.selector === null && (
               <p className="mt-1 text-nim-faint">
-                Placed at {pin.viewport.label} {pin.viewport.width}
+                {t("mockup_lm_ui.placed_at", {
+                  label: t(`mockup_lm_ui.viewport.${pin.viewport.label.toLowerCase()}`, {
+                    defaultValue: t("mockup_lm_ui.viewport.unknown"),
+                  }),
+                  width: pin.viewport.width,
+                })}
               </p>
             )}
           </div>

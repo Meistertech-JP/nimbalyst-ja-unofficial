@@ -31,13 +31,20 @@ describe('summarizeSyncStatus', () => {
     expect(summarizeSyncStatus(snapshot(), NOW)).toEqual({
       tone: 'ok',
       detail: 'Synced just now',
+      localizedDetail: { kind: 'synced-just-now' },
       needsAttention: false,
     });
     const detail = (lastSyncedAt: number | null) =>
       summarizeSyncStatus(snapshot({ lastSyncedAt }), NOW)?.detail;
     expect(detail(NOW - 5 * 60_000)).toBe('Synced 5m ago');
+    expect(summarizeSyncStatus(snapshot({ lastSyncedAt: NOW - 5 * 60_000 }), NOW)?.localizedDetail)
+      .toEqual({ kind: 'synced-minutes-ago', count: 5 });
     expect(detail(NOW - 3 * 3_600_000)).toBe('Synced 3h ago');
+    expect(summarizeSyncStatus(snapshot({ lastSyncedAt: NOW - 3 * 3_600_000 }), NOW)?.localizedDetail)
+      .toEqual({ kind: 'synced-hours-ago', count: 3 });
     expect(detail(NOW - 2 * 86_400_000)).toBe('Synced 2d ago');
+    expect(summarizeSyncStatus(snapshot({ lastSyncedAt: NOW - 2 * 86_400_000 }), NOW)?.localizedDetail)
+      .toEqual({ kind: 'synced-days-ago', count: 2 });
     // Connected but never synced must not read as "Synced null".
     expect(detail(null)).toBe('Connected');
   });
@@ -50,7 +57,12 @@ describe('summarizeSyncStatus', () => {
       snapshot({ projectEnabled: false, connected: false, error: 'stale error' }),
       NOW,
     );
-    expect(off).toEqual({ tone: 'idle', detail: 'Off for this project', needsAttention: false });
+    expect(off).toEqual({
+      tone: 'idle',
+      detail: 'Off for this project',
+      localizedDetail: { kind: 'disabled-project' },
+      needsAttention: false,
+    });
   });
 
   it('flags errors and silent disconnection, which is what the removed gutter icon did', () => {
@@ -62,6 +74,7 @@ describe('summarizeSyncStatus', () => {
     expect(summarizeSyncStatus(snapshot({ connected: false }), NOW)).toEqual({
       tone: 'warning',
       detail: 'Disconnected',
+      localizedDetail: { kind: 'disconnected' },
       needsAttention: true,
     });
   });
@@ -70,6 +83,7 @@ describe('summarizeSyncStatus', () => {
     expect(summarizeSyncStatus(snapshot({ syncing: true, connected: false }), NOW)).toEqual({
       tone: 'ok',
       detail: 'Syncing…',
+      localizedDetail: { kind: 'syncing' },
       needsAttention: false,
     });
   });

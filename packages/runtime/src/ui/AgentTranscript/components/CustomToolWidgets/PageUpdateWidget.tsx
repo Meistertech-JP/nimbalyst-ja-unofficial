@@ -12,6 +12,7 @@
 
 import React from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import { findCitations } from '../../../../core/citationSyntax';
 import type { CustomToolWidgetProps } from './index';
@@ -20,7 +21,7 @@ import type { CustomToolWidgetProps } from './index';
  * "cited to your answer", "cited to 3 inputs"; null when nothing was cited.
  * Reads citations through the shared syntax, which owns the URL scheme.
  */
-export function citationSummary(texts: string[]): string | null {
+export function citationSummary(texts: string[], t: (key: string, options?: Record<string, unknown>) => string): string | null {
   const kinds: string[] = [];
   for (const text of texts) {
     for (const { citation } of findCitations(text)) {
@@ -28,8 +29,15 @@ export function citationSummary(texts: string[]): string | null {
     }
   }
   if (kinds.length === 0) return null;
-  if (kinds.length === 1) return `cited to your ${kinds[0]}`;
-  return `cited to ${kinds.length} inputs`;
+  if (kinds.length === 1) {
+    const key = kinds[0] === 'prompt'
+      ? 'page_update.cited_prompt'
+      : kinds[0] === 'answer'
+        ? 'page_update.cited_answer'
+        : 'page_update.cited_comment';
+    return t(key);
+  }
+  return t('page_update.cited_inputs', { count: kinds.length });
 }
 
 /** The page title the main process reports: `Updated "<title>" (<uri>)`. */
@@ -38,10 +46,10 @@ export function pageTitleFromResult(resultText: string | null): string | null {
   return match ? match[1]! : null;
 }
 
-function fallbackTitle(uri: string): string {
-  if (uri.startsWith('personal://')) return 'a Personal page';
-  if (uri.startsWith('collab://tracker-content/') || uri.startsWith('tracker://')) return 'a typed page';
-  return 'a shared page';
+function fallbackTitle(uri: string, t: (key: string) => string): string {
+  if (uri.startsWith('personal://')) return t('page_update.personal_page');
+  if (uri.startsWith('collab://tracker-content/') || uri.startsWith('tracker://')) return t('page_update.typed_page');
+  return t('page_update.shared_page');
 }
 
 function resultText(result: unknown): string | null {
@@ -70,10 +78,15 @@ export interface PageUpdateLineProps {
 }
 
 export const PageUpdateLine: React.FC<PageUpdateLineProps> = ({ sessionId, uri, title, state, editCount, cited, error }) => {
+  const { t } = useTranslation('aichat');
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
-  const verb = state === 'running' ? 'Updating' : state === 'error' ? 'Could not update' : 'Updated';
+  const verb = state === 'running'
+    ? t('page_update.updating')
+    : state === 'error'
+      ? t('page_update.could_not_update')
+      : t('page_update.updated');
   const details = [
-    editCount && editCount > 1 ? `${editCount} edits` : null,
+    editCount && editCount > 1 ? t('page_update.edits', { count: editCount }) : null,
     state === 'done' ? cited : null,
   ].filter(Boolean);
   return (
@@ -99,13 +112,14 @@ export const PageUpdateLine: React.FC<PageUpdateLineProps> = ({ sessionId, uri, 
       ) : (
         <span className="page-update-line-title truncate text-nim">{title}</span>
       )}
-      {details.length > 0 && <span className="shrink-0">&middot; {details.join(', ')}</span>}
+      {details.length > 0 && <span className="shrink-0">&middot; {details.join(' · ')}</span>}
       {state === 'error' && error && <span className="truncate">&middot; {error}</span>}
     </div>
   );
 };
 
 export const PageUpdateWidget: React.FC<CustomToolWidgetProps> = ({ message, sessionId }) => {
+  const { t } = useTranslation('aichat');
   const tool = message.toolCall;
   if (!tool) return null;
   const args = (tool.arguments ?? {}) as { filePath?: unknown; replacements?: unknown };
@@ -120,10 +134,10 @@ export const PageUpdateWidget: React.FC<CustomToolWidgetProps> = ({ message, ses
     <PageUpdateLine
       sessionId={sessionId}
       uri={uri}
-      title={pageTitleFromResult(text) ?? fallbackTitle(uri)}
+      title={pageTitleFromResult(text) ?? fallbackTitle(uri, t)}
       state={state}
       editCount={replacements.length}
-      cited={citationSummary(newTexts)}
+      cited={citationSummary(newTexts, t)}
       error={state === 'error' ? text : null}
     />
   );

@@ -6,6 +6,7 @@
  * web console's docs-ui bundle.
  */
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { collabOpenOptions, type CollabOpenOptions } from '@nimbalyst/collab-client/core';
 import type {
@@ -48,24 +49,22 @@ export interface CollabRowDrop {
 const dropHandlers = (drop: CollabRowDrop | undefined) =>
   drop ? { onDragOver: drop.onDragOver, onDragLeave: drop.onDragLeave, onDrop: drop.onDrop } : {};
 
-/** Tooltip of a row whose type did not load: what is wrong, so the user can ask for a fix. */
-export function brokenTypeTitle(typeId: string, error: string): string {
-  return `The type '${typeId}' did not load: ${error}`;
-}
-
-const RowChevron: React.FC<{ expanded: boolean; onToggle: () => void }> = ({ expanded, onToggle }) => (
-  <span
-    className="file-tree-chevron"
-    role="button"
-    aria-label={expanded ? 'Collapse' : 'Expand'}
-    onClick={(event) => {
-      event.stopPropagation();
-      onToggle();
-    }}
-  >
-    <MaterialSymbol icon={expanded ? 'keyboard_arrow_down' : 'keyboard_arrow_right'} size={16} />
-  </span>
-);
+const RowChevron: React.FC<{ expanded: boolean; onToggle: () => void }> = ({ expanded, onToggle }) => {
+  const { t } = useTranslation('common');
+  return (
+    <span
+      className="file-tree-chevron"
+      role="button"
+      aria-label={expanded ? t('collab.collapse') : t('collab.expand')}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+    >
+      <MaterialSymbol icon={expanded ? 'keyboard_arrow_down' : 'keyboard_arrow_right'} size={16} />
+    </span>
+  );
+};
 
 export const CollabTypeNodeRow: React.FC<{
   node: CollabTreeTypeNode;
@@ -77,35 +76,38 @@ export const CollabTypeNodeRow: React.FC<{
   onDragStart: (event: React.DragEvent) => void;
   onDragEnd: () => void;
   drop?: CollabRowDrop;
-}> = ({ node, indent, expanded, onToggle, onOpen, onContextMenu, onDragStart, onDragEnd, drop }) => (
-  <button
-    type="button"
-    className={`collab-tree-type-row w-full flex items-center text-left file-tree-directory${React.useContext(CollabTreeActiveContext).typeId === node.typeId ? ' active' : ''}${node.error ? ' broken' : ''}${drop?.className ?? ''}`}
-    style={{ paddingLeft: indent }}
-    data-testid="collab-tree-type-row"
-    data-type-id={node.typeId}
-    // A broken type has no page to open and may have no placement to move: it
-    // only expands, to show what is filed under it.
-    draggable={!node.error}
-    {...dropHandlers(drop)}
-    onDragStart={node.error ? undefined : onDragStart}
-    onDragEnd={node.error ? undefined : onDragEnd}
-    onClick={(event) => (node.error ? onToggle() : onOpen(collabOpenOptions(event)))}
-    onContextMenu={node.error ? undefined : onContextMenu}
-    title={node.error ? brokenTypeTitle(node.typeId, node.error) : node.path}
-  >
-    <RowChevron expanded={expanded} onToggle={onToggle} />
-    <span className={`file-tree-icon ${node.error ? 'text-[var(--nim-error)]' : 'text-[var(--nim-purple)]'}`}>
-      <MaterialSymbol icon={node.error ? 'error' : 'table'} size={16} />
-    </span>
-    <span className="file-tree-name">{node.name}</span>
-    {node.count > 0 && (
-      <span className="collab-tree-type-count ml-1.5 mr-1 text-[11px] text-[var(--nim-text-faint)]">
-        {node.count}
+}> = ({ node, indent, expanded, onToggle, onOpen, onContextMenu, onDragStart, onDragEnd, drop }) => {
+  const { t } = useTranslation('common');
+  return (
+    <button
+      type="button"
+      className={`collab-tree-type-row w-full flex items-center text-left file-tree-directory${React.useContext(CollabTreeActiveContext).typeId === node.typeId ? ' active' : ''}${node.error ? ' broken' : ''}${drop?.className ?? ''}`}
+      style={{ paddingLeft: indent }}
+      data-testid="collab-tree-type-row"
+      data-type-id={node.typeId}
+      // A broken type has no page to open and may have no placement to move: it
+      // only expands, to show what is filed under it.
+      draggable={!node.error}
+      {...dropHandlers(drop)}
+      onDragStart={node.error ? undefined : onDragStart}
+      onDragEnd={node.error ? undefined : onDragEnd}
+      onClick={(event) => (node.error ? onToggle() : onOpen(collabOpenOptions(event)))}
+      onContextMenu={node.error ? undefined : onContextMenu}
+      title={node.error ? t('collab.broken_type_title', { typeId: node.typeId, error: node.error }) : node.path}
+    >
+      <RowChevron expanded={expanded} onToggle={onToggle} />
+      <span className={`file-tree-icon ${node.error ? 'text-[var(--nim-error)]' : 'text-[var(--nim-purple)]'}`}>
+        <MaterialSymbol icon={node.error ? 'error' : 'table'} size={16} />
       </span>
-    )}
-  </button>
-);
+      <span className="file-tree-name">{node.name}</span>
+      {node.count > 0 && (
+        <span className="collab-tree-type-count ml-1.5 mr-1 text-[11px] text-[var(--nim-text-faint)]">
+          {node.count}
+        </span>
+      )}
+    </button>
+  );
+};
 
 /** Move destination that sends a typed page back under its type node. */
 export const UNDER_TYPE = '__under_type__';
@@ -136,6 +138,7 @@ export const CollabTypeItemRow: React.FC<{
   onOpen: (options: CollabOpenOptions) => void;
   actions?: CollabItemRowActions;
 }> = ({ node, position, indent, onOpen, actions }) => {
+  const { t } = useTranslation('common');
   const drop = actions?.rowDrop?.(node);
   const hasChildren = (node.children?.length ?? 0) > 0 && !!actions?.renderChildren;
   const expanded = hasChildren && (actions?.isExpanded?.(node) ?? false);
@@ -158,7 +161,7 @@ export const CollabTypeItemRow: React.FC<{
       actions.onDragStart(node);
     } : undefined}
     onDragEnd={actions?.onDragEnd}
-    title={node.typeError ? brokenTypeTitle(node.typeId, node.typeError) : node.path}
+    title={node.typeError ? t('collab.broken_type_title', { typeId: node.typeId, error: node.typeError }) : node.path}
   >
     {node.typeLabel ? (
       <>
@@ -254,6 +257,7 @@ export const CollabPlaceTypeMenu: React.FC<{
   onPlace: (typeId: string) => void;
   onClose: () => void;
 }> = ({ x, y, types, onPlace, onClose }) => {
+  const { t } = useTranslation('collabSidebar');
   const reference = useMemo(() => virtualElement(x, y), [x, y]);
   const floating = useFloatingMenu({
     placement: 'right-start',
@@ -271,9 +275,9 @@ export const CollabPlaceTypeMenu: React.FC<{
         {...floating.getFloatingProps()}
         className="collab-place-type-menu min-w-[180px] max-h-[360px] overflow-y-auto rounded-md z-[10000] text-[13px] p-1 bg-nim-secondary border border-nim text-nim backdrop-blur-[10px] shadow-lg"
       >
-        <div className="px-3 pt-1 pb-0.5 text-[11px] text-[var(--nim-text-faint)]">Place type...</div>
+        <div className="px-3 pt-1 pb-0.5 text-[11px] text-[var(--nim-text-faint)]">{t('ui.place_type')}</div>
         {types.length === 0 ? (
-          <div className="px-3 py-1.5 text-[var(--nim-text-faint)]">Every type is placed</div>
+          <div className="px-3 py-1.5 text-[var(--nim-text-faint)]">{t('ui.every_type_placed')}</div>
         ) : types.map((type) => (
           <button
             key={type.typeId}

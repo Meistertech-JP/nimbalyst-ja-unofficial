@@ -16,6 +16,17 @@ function getWindowsPublisherNames() {
 }
 
 function validateWindowsUpdaterConfig() {
+  if (packageJson.build?.appId === 'jp.meistertech.nimbalyst.ja.unofficial') {
+    if (packageJson.build?.publish !== null) {
+      throw new Error(
+        'Unofficial Japanese Edition must set build.publish to null so electron-builder does not generate an official update feed.'
+      );
+    }
+
+    console.log('Unofficial Windows build verified: auto-update feed generation is disabled');
+    return;
+  }
+
   const publisherNames = getWindowsPublisherNames();
   const windowsConfig = packageJson.build?.win;
   const signtoolOptions = windowsConfig?.signtoolOptions;

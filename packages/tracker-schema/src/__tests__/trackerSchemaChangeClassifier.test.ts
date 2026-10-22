@@ -512,5 +512,17 @@ describe('destructive change copy', () => {
     expect(copy.options[0].label).toBe('Rename `severity` → `priority` (keeps values)');
     expect(copy.title).toBe('Change Bugs for Nimbalyst?');
     expect(copy.blastRadius).toBe('7 items have `severity`.');
+    expect(copy.presentation).toEqual({
+      trackerName: 'Bugs',
+      isTeam: true,
+      teamName: 'Nimbalyst',
+      removedFields: ['severity'],
+      blastRadius: [
+        entry(
+          { kind: 'field-removed', fieldName: 'severity', field: { name: 'severity', type: 'number' } },
+          7,
+        ),
+      ],
+    });
   });
 });

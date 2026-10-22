@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { MaterialSymbol, type NewFileMenuContribution } from '@nimbalyst/runtime';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useFloatingMenu, FloatingPortal, virtualElement } from '../hooks/useFloatingMenu';
 
 // Built-in file types
@@ -35,6 +36,7 @@ export function NewFileMenu({
   onClose,
   extensionFileTypes = []
 }: NewFileMenuProps) {
+  const { t } = useTranslation('files', { keyPrefix: 'new_file_menu' });
   const reference = useMemo(() => virtualElement(x, y), [x, y]);
   const menu = useFloatingMenu({
     placement: 'right-start',
@@ -65,10 +67,10 @@ export function NewFileMenu({
     ];
     rest.sort((a, b) => a.label.localeCompare(b.label));
     return [
-      { key: 'markdown', label: 'Markdown File', icon: 'description', fileType: 'markdown' as NewFileType },
+      { key: 'markdown', label: t('markdown_file'), icon: 'description', fileType: 'markdown' as NewFileType },
       ...rest,
     ];
-  }, [extensionFileTypes]);
+  }, [extensionFileTypes, t]);
 
   return (
     <FloatingPortal>
@@ -96,7 +98,7 @@ export function NewFileMenu({
           onClick={() => handleSelect('any')}
         >
           <MaterialSymbol icon="note_add" size={18} />
-          <span>New File...</span>
+          <span>{t('new_file')}</span>
         </div>
       </div>
     </FloatingPortal>

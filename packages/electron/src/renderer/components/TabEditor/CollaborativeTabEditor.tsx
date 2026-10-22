@@ -31,6 +31,7 @@
  */
 
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MarkdownEditor, MonacoEditor, DocumentPathProvider } from '@nimbalyst/runtime';
 import { $convertFromEnhancedMarkdownString, getEditorTransformers, type CommentsConfig } from '@nimbalyst/runtime/editor';
@@ -61,7 +62,7 @@ import { $getRoot, $setSelection, type LexicalEditor } from 'lexical';
 import type { EditorHost, ExtensionStorage } from '@nimbalyst/runtime';
 import type { CollabDocumentConfig } from '../../utils/collabDocumentOpener';
 import { resolveCollabConfigForUri } from '../../utils/collabDocumentOpener';
-import { collabPresenceName } from '../../utils/collabPresenceName';
+import { collabPresenceIdentity, collabPresenceName } from '../../utils/collabPresenceName';
 import { store, editorDirtyAtom, makeEditorKey, themeIdAtom } from '@nimbalyst/runtime/store';
 import type { Doc } from 'yjs';
 import type { Provider } from '@lexical/yjs';
@@ -208,6 +209,7 @@ const CollabHydrationOverlay: React.FC<{
   failure: CollabHydrationFailure | null;
   onRetry: () => void;
 }> = ({ filePath, failure, onRetry }) => {
+  const { t } = useTranslation('editor');
   const status = useAtomValue(collabProductStatusAtom(filePath));
   if (failure) {
     return (
@@ -220,13 +222,17 @@ const CollabHydrationOverlay: React.FC<{
         <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>
           {failure.kind === 'no-access' ? 'lock' : 'cloud_off'}
         </span>
-        <span className="text-sm text-nim select-text">{failure.message}</span>
+        <span className="text-sm text-nim select-text">
+          {failure.kind === 'open-failed'
+            ? t('collab.page_open_failed', { error: failure.message })
+            : t(`collab.hydration_failure.${failure.kind}`)}
+        </span>
         <button
           type="button"
           className="px-3 py-1 rounded border border-nim bg-transparent text-nim text-sm cursor-pointer hover:bg-nim-hover"
           onClick={onRetry}
         >
-          Retry
+          {t('collab.retry')}
         </button>
       </div>
     );
@@ -241,10 +247,10 @@ const CollabHydrationOverlay: React.FC<{
       <span className="material-symbols-outlined animate-spin" style={{ fontSize: '20px' }}>progress_activity</span>
       <span className="text-sm">
         {status.kind === 'local-copy-damaged'
-          ? status.label
+          ? t(`collab_status.${status.kind}.label`)
           : status.kind === 'local-saving-unavailable'
-            ? status.label
-            : 'Loading from server…'}
+            ? t(`collab_status.${status.kind}.label`)
+            : t('collab.loading_from_server')}
       </span>
     </div>
   );
@@ -264,6 +270,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
   onManualSaveReady,
   documentSessionActions,
 }) => {
+  const { t } = useTranslation('editor');
+  const unnamedCollaboratorLabel = t('collab.unnamed_collaborator');
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [activeConfig, setActiveConfig] = useState(initialCollabConfig);
   const activeConfigRef = useRef(initialCollabConfig);
@@ -271,6 +279,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
   const replicaRef = useRef<LocalDocumentReplica | null>(null);
   const replicaAcquisitionRef = useRef<DocumentReplicaAcquisition | null>(null);
   const collabProviderRef = useRef<CollabLexicalProvider | null>(null);
+  const unnamedCollaboratorLabelRef = useRef(unnamedCollaboratorLabel);
+  unnamedCollaboratorLabelRef.current = unnamedCollaboratorLabel;
   const getContentRef = useRef<(() => string) | null>(null);
   const lexicalEditorRef = useRef<LexicalEditor | null>(null);
   const monacoEditorRef = useRef<unknown>(null);
@@ -324,6 +334,10 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
   useEffect(() => {
     activeConfigRef.current = activeConfig;
   }, [activeConfig]);
+  useEffect(() => {
+    unnamedCollaboratorLabelRef.current = unnamedCollaboratorLabel;
+    collabProviderRef.current?.setUnnamedCollaboratorLabel(unnamedCollaboratorLabel);
+  }, [unnamedCollaboratorLabel]);
   // Captured Lexical editor instance -- needed by FixedTabHeader plugins
   // (search/replace, the unified diff header, etc.) when the agent applies edits.
   const [lexicalEditor, setLexicalEditor] = useState<any | null>(null);
@@ -675,12 +689,20 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
       const awarenessUnsub = syncProvider.onAwarenessChange((states) => {
         const users = new Map<string, RemoteUser>();
         for (const [userId, state] of states) {
-          users.set(userId, { name: state.user.name, color: state.user.color });
+          users.set(userId, {
+            name: state.user.name,
+            color: state.user.color,
+            ...(state.user.nimbalystNameSource === 'system-default'
+              ? { nimbalystNameSource: 'system-default' as const }
+              : {}),
+          });
         }
         store.set(collabAwarenessAtom(filePath), users);
       });
       const collabProvider = new CollabLexicalProvider(syncProvider, {
         deferInitialSync: true,
+        unnamedCollaboratorLabel: unnamedCollaboratorLabelRef.current,
+        localNameSource: collabPresenceIdentity(activeConfig).nimbalystNameSource,
       });
       syncProviderRef.current = syncProvider;
       collabProviderRef.current = collabProvider;
@@ -873,7 +895,13 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
       awarenessUnsub = nextAcquisition.syncProvider.onAwarenessChange((states) => {
         const users = new Map<string, RemoteUser>();
         for (const [userId, state] of states) {
-          users.set(userId, { name: state.user.name, color: state.user.color });
+          users.set(userId, {
+            name: state.user.name,
+            color: state.user.color,
+            ...(state.user.nimbalystNameSource === 'system-default'
+              ? { nimbalystNameSource: 'system-default' as const }
+              : {}),
+          });
         }
         store.set(collabAwarenessAtom(filePath), users);
       });
@@ -885,6 +913,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
           nextAcquisition.replica.wasHydratedFromStore() &&
           nextAcquisition.replica.getState() === 'ready'
         ),
+        unnamedCollaboratorLabel: unnamedCollaboratorLabelRef.current,
+        localNameSource: collabPresenceIdentity(activeConfig).nimbalystNameSource,
       });
       collabProviderRef.current = collabProvider;
       // A warm provider may already be connected before this new Lexical
@@ -902,7 +932,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         setCollabReplicaState(filePath, 'unavailable');
         setHydrationFailure({
           kind: 'open-failed',
-          message: `This page could not be opened: ${error instanceof Error ? error.message : String(error)}`,
+          message: error instanceof Error ? error.message : String(error),
         });
       }
     });
@@ -1300,14 +1330,14 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
             );
             if (!acked) {
               errorNotificationService.showError(
-                'Re-upload not confirmed',
-                'The push was sent but the server did not confirm persisting it. Check your connection and retry.',
+                t('collab.reupload_not_confirmed'),
+                t('collab.reupload_not_confirmed_message'),
               );
               return;
             }
             errorNotificationService.showInfo(
-              'Shared document updated',
-              'Pushed the current local file into the shared document.',
+              t('collab.document_updated'),
+              t('collab.document_updated_message'),
               { duration: 4000 },
             );
             await localOrigin.refresh();
@@ -1327,8 +1357,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
     const adapter = getCollabContentAdapter('code');
     if (!provider || !adapter) {
       errorNotificationService.showError(
-        'Could not save a copy',
-        'The collaborative code exporter is unavailable.',
+        t('collab.save_copy_failed'),
+        t('collab.code_exporter_unavailable'),
       );
       return;
     }
@@ -1349,8 +1379,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
 
     if (!result.success && !result.cancelled) {
       errorNotificationService.showError(
-        'Could not save a copy',
-        result.error ?? 'The file could not be exported.',
+        t('collab.save_copy_failed'),
+        result.error ?? t('collab.export_failed'),
       );
     }
   }, [activeConfig.fileExtension, activeConfig.title, fileName]);
@@ -1405,13 +1435,13 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
       if (plaintext === null) throw new Error('This editor cannot export UTF-8 text');
       await window.electronAPI.copyToClipboard(plaintext);
       errorNotificationService.showInfo(
-        'Current document copied',
-        'The complete current document was copied so the unsent edits can be preserved.',
+        t('collab.document_copied'),
+        t('collab.document_copied_message'),
         { duration: 4000 },
       );
     } catch (error) {
       errorNotificationService.showError(
-        'Could not copy current document',
+        t('collab.copy_failed'),
         error instanceof Error ? error.message : String(error),
       );
     }
@@ -1424,10 +1454,10 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
       return;
     }
     const confirmed = await confirm({
-      title: 'Discard local copy?',
-      message: 'This permanently deletes the local replica and its unuploaded edits, then closes the document. This cannot be undone.',
-      confirmLabel: 'Discard and close',
-      cancelLabel: 'Keep local copy',
+      title: t('collab.discard_confirm_title'),
+      message: t('collab.discard_confirm_message'),
+      confirmLabel: t('collab.discard_and_close'),
+      cancelLabel: t('collab.keep_local_copy'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -1438,11 +1468,11 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
       store.set(closeActiveTabRequestAtom, (value) => value + 1);
     } catch (error) {
       errorNotificationService.showError(
-        'Could not discard local copy',
+        t('collab.discard_failed'),
         error instanceof Error ? error.message : String(error),
       );
     }
-  }, []);
+  }, [t]);
 
   // Publish a per-tab history controller so the CollabHistoryDialog can
   // list / load / create revisions against the live document key without
@@ -1542,7 +1572,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
         )}
         {providerEpoch === 0 ? (
           <div className="flex items-center justify-center h-full text-nim-muted">
-            Connecting to document...
+            {t('collab.connecting_document')}
           </div>
         ) : documentType === 'markdown' ? (
           // Keyed by providerEpoch: a re-acquisition (HMR, key rotation) must
@@ -1586,6 +1616,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
             fileName={fileName}
             isActive={isActive}
             activeConfig={activeConfig}
+            unnamedCollaboratorLabel={unnamedCollaboratorLabel}
+            getUnnamedCollaboratorLabel={() => unnamedCollaboratorLabelRef.current}
             createHistoryClient={createHistoryClient}
             onHistoryControllerChange={(controller) => {
               historyControllerRef.current = controller;
@@ -1607,6 +1639,8 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
             fileName={fileName}
             isActive={isActive}
             activeConfig={activeConfig}
+            unnamedCollaboratorLabel={unnamedCollaboratorLabel}
+            getUnnamedCollaboratorLabel={() => unnamedCollaboratorLabelRef.current}
             createHistoryClient={createHistoryClient}
             onHistoryControllerChange={(controller) => {
               historyControllerRef.current = controller;
@@ -1623,7 +1657,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
           />
         ) : (
           <div className="flex items-center justify-center h-full text-nim-muted">
-            No editor available for document type: {documentType}
+            {t('collab.no_editor', { type: documentType })}
           </div>
         )}
       </div>
@@ -1641,6 +1675,8 @@ interface MonacoCollabBranchProps {
   fileName: string;
   isActive: boolean;
   activeConfig: CollabDocumentConfig;
+  unnamedCollaboratorLabel: string;
+  getUnnamedCollaboratorLabel: () => string;
   createHistoryClient: () => CollabHistoryClient;
   onHistoryControllerChange: (controller: CollabHistoryController | null) => void;
   onEditorReady?: (editor: unknown) => void;
@@ -1653,6 +1689,8 @@ const MonacoCollabBranch: React.FC<MonacoCollabBranchProps> = ({
   fileName,
   isActive,
   activeConfig,
+  unnamedCollaboratorLabel,
+  getUnnamedCollaboratorLabel,
   createHistoryClient,
   onHistoryControllerChange,
   onEditorReady,
@@ -1678,11 +1716,15 @@ const MonacoCollabBranch: React.FC<MonacoCollabBranchProps> = ({
       yDoc: syncProvider.getYDoc(),
       user: {
         id: activeConfig.teamMemberId,
-        name: collabPresenceName(activeConfig),
+        ...collabPresenceIdentity(activeConfig),
         color: '#3A8FD6',
       },
+      getUnnamedCollaboratorLabel,
     });
   }
+  useEffect(() => {
+    bridgeRef.current?.refreshRemoteDisplayNames();
+  }, [unnamedCollaboratorLabel]);
   useEffect(() => {
     return () => {
       bridgeRef.current?.destroy();
@@ -1797,6 +1839,8 @@ interface ExtensionCollabBranchProps {
   fileName: string;
   isActive: boolean;
   activeConfig: CollabDocumentConfig;
+  unnamedCollaboratorLabel: string;
+  getUnnamedCollaboratorLabel: () => string;
   createHistoryClient: () => CollabHistoryClient;
   onHistoryControllerChange: (controller: CollabHistoryController | null) => void;
   onDirtyChange?: (isDirty: boolean) => void;
@@ -1827,6 +1871,8 @@ const ExtensionCollabBranch: React.FC<ExtensionCollabBranchProps> = ({
   fileName,
   isActive,
   activeConfig,
+  unnamedCollaboratorLabel,
+  getUnnamedCollaboratorLabel,
   createHistoryClient,
   onHistoryControllerChange,
   onDirtyChange,
@@ -1886,11 +1932,15 @@ const ExtensionCollabBranch: React.FC<ExtensionCollabBranchProps> = ({
       yDoc: syncProvider.getYDoc(),
       user: {
         id: activeConfig.teamMemberId,
-        name: collabPresenceName(activeConfig),
+        ...collabPresenceIdentity(activeConfig),
         color: '#3A8FD6',
       },
+      getUnnamedCollaboratorLabel,
     });
   }
+  useEffect(() => {
+    bridgeRef.current?.refreshRemoteDisplayNames();
+  }, [unnamedCollaboratorLabel]);
   useEffect(() => {
     return () => {
       bridgeRef.current?.destroy();

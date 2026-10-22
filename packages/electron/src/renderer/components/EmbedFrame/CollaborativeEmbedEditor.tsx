@@ -1,5 +1,6 @@
 import type { LexicalEditor } from 'lexical';
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { EditorHost, EditorViewport } from "@nimbalyst/runtime";
 
@@ -58,6 +59,11 @@ export const CollaborativeEmbedEditor: React.FC<
   publishHistory,
   onEditorReady,
 }) => {
+  const { t } = useTranslation('common');
+  const { t: tEditor } = useTranslation('editor');
+  const unnamedCollaboratorLabel = tEditor('collab.unnamed_collaborator');
+  const unnamedCollaboratorLabelRef = useRef(unnamedCollaboratorLabel);
+  unnamedCollaboratorLabelRef.current = unnamedCollaboratorLabel;
   const { theme } = useTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
@@ -87,6 +93,10 @@ export const CollaborativeEmbedEditor: React.FC<
   requestRef.current = request;
 
   useEffect(() => {
+    acquisition?.resource.setUnnamedCollaboratorLabel?.(unnamedCollaboratorLabel);
+  }, [acquisition, unnamedCollaboratorLabel]);
+
+  useEffect(() => {
     let cancelled = false;
     let acquired: CollaborativeEmbedProviderAcquisition | null = null;
     let releaseNotified = false;
@@ -109,7 +119,7 @@ export const CollaborativeEmbedEditor: React.FC<
     setAcquisition(null);
     setError(null);
     void collaborativeEmbedProviderCache
-      .acquire(requestRef.current)
+      .acquire(requestRef.current, () => unnamedCollaboratorLabelRef.current)
       .then((next) => {
         if (cancelled) {
           next.release();
@@ -191,7 +201,7 @@ export const CollaborativeEmbedEditor: React.FC<
         className="embed-frame__body--placeholder"
         data-testid="collaborative-embed-error"
       >
-        <p>Could not load shared embed</p>
+        <p>{t('embed.shared_load_failed')}</p>
         <code>{error.message}</code>
       </div>
     );
@@ -203,7 +213,7 @@ export const CollaborativeEmbedEditor: React.FC<
         className="embed-frame__loading"
         data-testid="collaborative-embed-loading"
       >
-        Loading shared embed...
+        {t('embed.shared_loading')}
       </div>
     );
   }

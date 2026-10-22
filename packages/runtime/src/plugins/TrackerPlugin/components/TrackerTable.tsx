@@ -5,6 +5,7 @@
 
 import type { JSX } from 'react';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { Trans, useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import type {
   TrackerItemType,
@@ -135,78 +136,6 @@ interface TrackerTableProps {
 }
 
 /**
- * Get educational description for each tracker type
- */
-function getTypeDescription(type: TrackerItemType): { title: string; description: string; hints: string[] } {
-  const descriptions: Record<TrackerItemType, { title: string; description: string; hints: string[] }> = {
-    'plan': {
-      title: 'Plans',
-      description: 'Plans help you organize features, projects, and initiatives with AI assistance. Use /plan in chat to create a new plan document with status tracking.',
-      hints: [
-        'Use /plan in agent chat to create a new plan',
-        'Plans support progress tracking and status updates',
-        'Click "+ New" to start planning with AI',
-      ],
-    },
-    'bug': {
-      title: 'Bugs',
-      description: "Bugs track issues and defects that need fixing. They're stored as inline items in your markdown documents, making them easy to find alongside related notes.",
-      hints: [
-        'Type #bug in any markdown file to create a bug',
-        'Use /track bug in agent chat',
-        'Click "+ New" to quickly add a bug',
-      ],
-    },
-    'task': {
-      title: 'Tasks',
-      description: 'Tasks track work items and todos. Add them inline to any document or use the quick-add panel.',
-      hints: [
-        'Type #task in any markdown file to create a task',
-        'Use /track task in agent chat',
-        'Click "+ New" to quickly add a task',
-      ],
-    },
-    'idea': {
-      title: 'Ideas',
-      description: 'Ideas capture concepts and proposals to explore. Jot them down quickly and revisit later.',
-      hints: [
-        'Type #idea in any markdown file to capture an idea',
-        'Use /track idea in agent chat',
-        'Click "+ New" to quickly add an idea',
-      ],
-    },
-    'decision': {
-      title: 'Decisions',
-      description: 'Decisions document important choices and their rationale. Great for architectural decisions that need context preserved.',
-      hints: [
-        'Type #decision in any markdown file',
-        'Use /track decision in agent chat',
-        'Click "+ New" to document a decision',
-      ],
-    },
-    'automation': {
-      title: 'Automations',
-      description: 'Automations are scheduled AI-powered tasks. Create a markdown file in nimbalyst-local/automations/ with a schedule and prompt.',
-      hints: [
-        'Use /automation in agent chat to create one',
-        'Open an automation file to configure its schedule',
-        'Automations run on a daily, weekly, or interval schedule',
-      ],
-    },
-    'feature': {
-      title: 'Features',
-      description: 'Features track shippable capabilities with release versioning. Items can be tagged with both feature and task types for multi-dimensional tracking.',
-      hints: [
-        'Use /track feature in agent chat',
-        'Click "+ New" to add a feature',
-        'Features have release version and release notes fields',
-      ],
-    },
-  };
-  return descriptions[type] || descriptions['task'];
-}
-
-/**
  * Multi-select checkbox dropdown for filtering table columns.
  */
 const MultiSelectFilter: React.FC<{
@@ -214,6 +143,7 @@ const MultiSelectFilter: React.FC<{
   selected: Set<string>;
   onChange: (selected: Set<string>) => void;
 }> = ({ values, selected, onChange }) => {
+  const { t } = useTranslation('tracker');
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
@@ -243,7 +173,7 @@ const MultiSelectFilter: React.FC<{
         }`}
         onClick={() => setOpen(!open)}
       >
-        {activeCount > 0 ? `${activeCount} selected` : 'All'}
+        {activeCount > 0 ? t('table.selected_count', { count: activeCount }) : t('table.types.all')}
       </button>
       {open && (
         <div className="absolute top-full left-0 mt-0.5 w-40 max-h-48 overflow-auto bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded shadow-lg z-30">
@@ -252,7 +182,7 @@ const MultiSelectFilter: React.FC<{
               className="w-full px-2 py-1 text-xs text-[var(--nim-primary)] hover:bg-[var(--nim-bg-hover)] text-left border-b border-[var(--nim-border)]"
               onClick={() => onChange(new Set())}
             >
-              Clear all
+              {t('filters.clear_all')}
             </button>
           )}
           {values.map(val => (
@@ -266,7 +196,7 @@ const MultiSelectFilter: React.FC<{
                 checked={selected.has(val)}
                 onChange={() => toggle(val)}
               />
-              <span className="truncate">{val || '(empty)'}</span>
+              <span className="truncate">{val || t('table.empty_value')}</span>
             </label>
           ))}
         </div>
@@ -485,6 +415,8 @@ export function renderCell(
   titleInputRef: React.RefObject<HTMLInputElement | null>,
   handleFieldUpdate: (item: TrackerRecord, field: string, value: string) => void,
   resolveLabel?: TrackerRelationshipLabelResolver,
+  databaseLabel = 'Database',
+  databaseTitle = 'Stored in database',
 ): React.ReactNode {
   // Resolve field values via schema roles (generic for any schema)
   const title = getRecordTitle(item);
@@ -600,9 +532,9 @@ export function renderCell(
         return <span className="text-[var(--nim-text-muted)] text-xs font-mono whitespace-nowrap overflow-hidden text-ellipsis block">{module}</span>;
       }
       return (
-        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: '#6b728015', color: '#9ca3af' }} title="Stored in database" data-testid="tracker-source-db-badge">
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: '#6b728015', color: '#9ca3af' }} title={databaseTitle} data-testid="tracker-source-db-badge">
           <span className="material-symbols-outlined text-[11px]">storage</span>
-          Database
+          {databaseLabel}
         </span>
       );
 
@@ -764,6 +696,19 @@ export function TrackerTable({
   preserveItemOrder = false,
   hideToolbar = false,
 }: TrackerTableProps): JSX.Element {
+  const { t } = useTranslation('tracker');
+  const getTypeDisplayName = (type: string) => {
+    const builtInTypes: Record<string, string> = {
+      plan: t('table.types.plan'),
+      bug: t('table.types.bug'),
+      task: t('table.types.task'),
+      idea: t('table.types.idea'),
+      decision: t('table.types.decision'),
+      automation: t('table.types.automation'),
+      feature: t('table.types.feature'),
+    };
+    return builtInTypes[type] ?? type.charAt(0).toUpperCase() + type.slice(1);
+  };
   // Type filter: use prop filterType when hideTypeTabs is true, otherwise use internal state
   const [internalTypeFilter, setInternalTypeFilter] = useState<TrackerItemType | 'all'>('all');
   const activeTypeFilter = hideTypeTabs ? filterType : internalTypeFilter;
@@ -1001,7 +946,7 @@ export function TrackerTable({
   // Build status options from the active tracker model's field definition
   // (must be before early returns to maintain consistent hook order)
   const statusOptions = useMemo(() => {
-    const allOption = { value: 'all', label: 'All' };
+    const allOption = { value: 'all', label: t('table.types.all') };
 
     if (activeTypeFilter && activeTypeFilter !== 'all') {
       const model = globalRegistry.get(activeTypeFilter);
@@ -1022,13 +967,13 @@ export function TrackerTable({
     // Fallback for built-in types or 'all' view
     return [
       allOption,
-      { value: 'to-do', label: 'To Do' },
-      { value: 'in-progress', label: 'In Progress' },
-      { value: 'in-review', label: 'In Review' },
-      { value: 'done', label: 'Done' },
-      { value: 'blocked', label: 'Blocked' },
+      { value: 'to-do', label: t('table.statuses.to_do') },
+      { value: 'in-progress', label: t('table.statuses.in_progress') },
+      { value: 'in-review', label: t('table.statuses.in_review') },
+      { value: 'done', label: t('table.statuses.done') },
+      { value: 'blocked', label: t('table.statuses.blocked') },
     ];
-  }, [activeTypeFilter]);
+  }, [activeTypeFilter, t]);
 
   // Derive extra columns from the tracker model's tableView.defaultColumns
   const extraColumns = useMemo(() => {
@@ -1079,7 +1024,7 @@ export function TrackerTable({
     return (
       <div className="tracker-table-loading flex flex-col items-center justify-center py-[60px] px-5 text-[var(--nim-text-muted)] text-center gap-3">
         <div className="spinner w-8 h-8 border-[3px] border-[var(--nim-border)] border-t-[var(--nim-primary)] rounded-full animate-spin"></div>
-        <span>Loading tracker items...</span>
+        <span>{t('table.loading')}</span>
       </div>
     );
   }
@@ -1087,26 +1032,26 @@ export function TrackerTable({
   if (error) {
     return (
       <div className="tracker-table-error flex flex-col items-center justify-center py-[60px] px-5 text-[#ef4444] text-center gap-3">
-        <span>Warning: {error}</span>
+        <span>{t('table.warning', { message: error })}</span>
       </div>
     );
   }
 
   const priorityOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'critical', label: 'Critical' },
-    { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'low', label: 'Low' },
+    { value: 'all', label: t('table.types.all') },
+    { value: 'critical', label: t('main.critical') },
+    { value: 'high', label: t('main.high') },
+    { value: 'medium', label: t('main.medium') },
+    { value: 'low', label: t('main.low') },
   ];
 
   const typeOptions = [
-    { value: 'all', label: 'All', icon: 'list' },
-    { value: 'bug', label: 'Bugs', icon: 'bug_report' },
-    { value: 'task', label: 'Tasks', icon: 'check_box' },
-    { value: 'plan', label: 'Plans', icon: 'assignment' },
-    { value: 'idea', label: 'Ideas', icon: 'lightbulb' },
-    { value: 'decision', label: 'Decisions', icon: 'gavel' },
+    { value: 'all', label: t('table.types.all'), icon: 'list' },
+    { value: 'bug', label: t('table.types.bug_plural'), icon: 'bug_report' },
+    { value: 'task', label: t('table.types.task_plural'), icon: 'check_box' },
+    { value: 'plan', label: t('table.types.plan_plural'), icon: 'assignment' },
+    { value: 'idea', label: t('table.types.idea_plural'), icon: 'lightbulb' },
+    { value: 'decision', label: t('table.types.decision_plural'), icon: 'gavel' },
   ];
 
   return (
@@ -1156,7 +1101,7 @@ export function TrackerTable({
               onClick={() => setShowFilterMenu(!showFilterMenu)}
             >
               <span className="material-symbols-outlined text-xs">filter_list</span>
-              Filter
+              {t('filters.filter')}
               {hasActiveFilters && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--nim-primary)]" />
               )}
@@ -1164,7 +1109,7 @@ export function TrackerTable({
             {showFilterMenu && (
               <div className="absolute left-0 top-full mt-1 w-[200px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md shadow-lg z-50 py-1 text-[12px]">
                 {/* Status section */}
-                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">Status</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">{t('columns.status')}</div>
                 {statusOptions.map(option => (
                   <button
                     key={option.value}
@@ -1179,7 +1124,7 @@ export function TrackerTable({
                 ))}
                 <div className="border-t border-[var(--nim-border)] my-1" />
                 {/* Priority section */}
-                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">Priority</div>
+                <div className="px-2 py-1 text-[10px] font-semibold text-[var(--nim-text-faint)] uppercase tracking-wider">{t('columns.priority')}</div>
                 {priorityOptions.map(option => (
                   <button
                     key={option.value}
@@ -1199,7 +1144,7 @@ export function TrackerTable({
                       className="w-full text-left px-3 py-1 text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
                       onClick={clearAllFilters}
                     >
-                      Clear all filters
+                      {t('table.clear_all_filters')}
                     </button>
                   </>
                 )}
@@ -1211,13 +1156,13 @@ export function TrackerTable({
           {statusFilter !== 'all' && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
               {statusFilter.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-              <button className="hover:text-[var(--nim-text)]" onClick={() => setStatusFilter('all')}><span className="material-symbols-outlined" style={{ fontSize: '11px' }}>close</span></button>
+              <button className="hover:text-[var(--nim-text)]" aria-label={t('table.remove_status_filter')} onClick={() => setStatusFilter('all')}><span className="material-symbols-outlined" style={{ fontSize: '11px' }}>close</span></button>
             </span>
           )}
           {priorityFilter !== 'all' && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
               {priorityFilter.charAt(0).toUpperCase() + priorityFilter.slice(1)}
-              <button className="hover:text-[var(--nim-text)]" onClick={() => setPriorityFilter('all')}><span className="material-symbols-outlined" style={{ fontSize: '11px' }}>close</span></button>
+              <button className="hover:text-[var(--nim-text)]" aria-label={t('table.remove_priority_filter')} onClick={() => setPriorityFilter('all')}><span className="material-symbols-outlined" style={{ fontSize: '11px' }}>close</span></button>
             </span>
           )}
 
@@ -1229,13 +1174,13 @@ export function TrackerTable({
               ref={displayOptionsButtonRef}
               className="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] transition-colors"
               onClick={() => setShowDisplayOptions(!showDisplayOptions)}
-              title="Display options"
+              title={t('filters.display_options')}
             >
               <span className="material-symbols-outlined text-sm">tune</span>
             </button>
           )}
 
-          <span className="text-[11px] text-[var(--nim-text-faint)]">{sortedItems.length} item{sortedItems.length !== 1 ? 's' : ''}</span>
+          <span className="text-[11px] text-[var(--nim-text-faint)]">{t('filters.item_count', { count: sortedItems.length })}</span>
         </div>
       )}
 
@@ -1246,31 +1191,39 @@ export function TrackerTable({
             {loading ? (
               <div className="tracker-table-loading flex items-center justify-center gap-3 py-6 px-6 text-[var(--nim-text-muted)]">
                 <div className="w-5 h-5 border-2 border-[var(--nim-border)] border-t-[var(--nim-primary)] rounded-full animate-spin"></div>
-                <span className="text-sm">Loading...</span>
+                <span className="text-sm">{t('table.loading')}</span>
               </div>
             ) : hasAnyFilters ? (
               <div className="tracker-table-empty tracker-table-filtered-empty flex flex-col items-center justify-center gap-2 py-6 px-6 text-center">
-                <p className="text-sm text-[var(--nim-text-muted)] m-0">No tracker items match your filters</p>
+                <p className="text-sm text-[var(--nim-text-muted)] m-0">{t('table.no_matches')}</p>
                 <div className="flex items-center gap-2">
                   <button
                     className="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-[var(--nim-primary)] border-none cursor-pointer transition-colors hover:bg-[var(--nim-primary-hover)]"
                     onClick={clearAllFilters}
                   >
-                    Clear filters
+                    {t('table.clear_filters')}
                   </button>
                   {activeTypeFilter !== 'all' && onNewItem && globalRegistry.get(activeTypeFilter)?.creatable !== false && (
                     <button
                       className="px-3 py-1.5 rounded-md text-xs font-medium text-[var(--nim-text)] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] cursor-pointer transition-colors hover:bg-[var(--nim-bg-hover)]"
                       onClick={() => onNewItem(activeTypeFilter as TrackerItemType)}
                     >
-                      New {activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1)}
+                      {t('table.new_item', { type: getTypeDisplayName(activeTypeFilter) })}
                     </button>
                   )}
                 </div>
               </div>
             ) : activeTypeFilter !== 'all' ? (
               (() => {
-                const typeInfo = getTypeDescription(activeTypeFilter as TrackerItemType);
+                const typeDescriptionByType: Partial<Record<TrackerItemType, string>> = {
+                  plan: t('table.descriptions.plan'),
+                  bug: t('table.descriptions.bug'),
+                  task: t('table.descriptions.task'),
+                  idea: t('table.descriptions.idea'),
+                  decision: t('table.descriptions.decision'),
+                  automation: t('table.descriptions.automation'),
+                  feature: t('table.descriptions.feature'),
+                };
                 const typeColor = getTypeColor(activeTypeFilter as TrackerItemType);
                 const typeIcon = getTypeIcon(activeTypeFilter as TrackerItemType);
                 return (
@@ -1279,12 +1232,27 @@ export function TrackerTable({
                       <span className="material-symbols-outlined text-lg" style={{ color: typeColor }}>{typeIcon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[var(--nim-text-muted)] m-0">{typeInfo.description}</p>
+                      <p className="text-sm text-[var(--nim-text-muted)] m-0">
+                        {typeDescriptionByType[activeTypeFilter as TrackerItemType] ?? t('table.descriptions.task')}
+                      </p>
                       <p className="text-xs text-[var(--nim-text-faint)] m-0 mt-1">
                         {activeTypeFilter === 'plan' ? (
-                          <>Use <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]">/plan</code> in chat to create a new plan</>
+                          <Trans
+                            ns="tracker"
+                            i18nKey="table.plan_hint"
+                            values={{ command: '/plan' }}
+                            components={{ command: <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]" /> }}
+                          />
                         ) : (
-                          <>Type <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]">#{activeTypeFilter}</code> in markdown or use <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]">/track {activeTypeFilter}</code> in chat</>
+                          <Trans
+                            ns="tracker"
+                            i18nKey="table.type_hint"
+                            values={{ marker: `#${activeTypeFilter}`, command: `/track ${activeTypeFilter}` }}
+                            components={{
+                              marker: <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]" />,
+                              command: <code className="px-1 py-0.5 bg-[var(--nim-bg-secondary)] rounded text-[10px]" />,
+                            }}
+                          />
                         )}
                       </p>
                     </div>
@@ -1296,7 +1264,7 @@ export function TrackerTable({
                       >
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">add</span>
-                          New {activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1)}
+                          {t('table.new_item', { type: getTypeDisplayName(activeTypeFilter) })}
                         </span>
                       </button>
                     )}
@@ -1305,8 +1273,8 @@ export function TrackerTable({
               })()
             ) : (
               <div className="tracker-table-empty flex items-center justify-center gap-2 py-4 px-6">
-                <p className="text-sm text-[var(--nim-text-muted)] m-0">No tracker items found</p>
-                <p className="text-xs text-[var(--nim-text-faint)] m-0">Create items using #bug, #task, #plan, or #idea in any markdown file</p>
+                <p className="text-sm text-[var(--nim-text-muted)] m-0">{t('table.no_items')}</p>
+                <p className="text-xs text-[var(--nim-text-faint)] m-0">{t('table.creation_hint')}</p>
               </div>
             )}
           </div>
@@ -1407,15 +1375,15 @@ export function TrackerTable({
                         className={getTrackerTableCellClassName(col.id)}
                         data-column-id={col.id}
                       >
-                        {renderCell(col, item, value, editingCell, isItemEditable, setEditingCell, editingTitle, setEditingTitle, titleInputRef, handleFieldUpdate, relationshipLabel)}
+                        {renderCell(col, item, value, editingCell, isItemEditable, setEditingCell, editingTitle, setEditingTitle, titleInputRef, handleFieldUpdate, relationshipLabel, t('table.database'), t('table.stored_in_database'))}
                       </div>
                     );
                   })}
                 </div>
                 <button
                   type="button"
-                  aria-label={`Actions for ${item.issueKey ?? title}`}
-                  title="Item actions"
+                  aria-label={t('table.actions_for_item', { item: item.issueKey ?? title })}
+                  title={t('table.item_actions')}
                   data-testid="tracker-row-more-actions"
                   className="tracker-row-more-actions shrink-0 inline-flex h-6 w-6 items-center justify-center rounded border-none bg-transparent p-0 text-[var(--nim-text-faint)] opacity-0 transition-opacity hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--nim-border-focus)] group-hover:opacity-100"
                   onPointerDown={(event) => event.stopPropagation()}

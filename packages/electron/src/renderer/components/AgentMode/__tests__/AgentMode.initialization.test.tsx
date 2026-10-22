@@ -1,10 +1,34 @@
 import React, { useEffect } from 'react';
-import { act, cleanup, render } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { act, cleanup, render as testingLibraryRender, screen } from '@testing-library/react';
+import { Provider } from 'jotai';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { store } from '@nimbalyst/runtime/store';
+const { addSessionMock } = vi.hoisted(() => ({ addSessionMock: vi.fn() }));
+import { addSessionFullAtom, selectedWorkstreamAtom } from '../../../store';
+import { blitzAnalysisCreatedAtom } from '../../../store/atoms/blitz';
 import { workstreamStateAtom } from '../../../store/atoms/workstreamState';
 import { AgentMode } from '../AgentMode';
 import { activeWorkspacePathAtom } from '../../../store/atoms/openProjects';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function render(tree: React.ReactElement, language: 'en' | 'ja' = 'en') {
+  return testingLibraryRender(
+    tree,
+    { wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={language === 'ja' ? japaneseI18n : englishI18n} preference={language} systemLocale="en-US">
+        <Provider store={store}>{children}</Provider>
+      </UiLanguageProvider>
+    ) },
+  );
+}
 
 vi.mock('../../../store', async () => {
   const { atom } = await import('jotai');
@@ -22,14 +46,19 @@ vi.mock('../../../store', async () => {
     initAgentModeLayout: (path: string, options?: { setActive?: boolean }) => {
       if (options?.setActive !== false) store.set(activeWorkspacePathAtom, path);
     },
+    addSessionFullAtom: atom(null, (_get, _set, session) => addSessionMock(session)),
     registerWorkstreamSelectedHook: () => () => {},
     ...Object.fromEntries(['setSelectedWorkstreamAtom', 'setSessionHistoryWidthAtom',
-      'addSessionFullAtom', 'refreshSessionListAtom', 'pushNavigationEntryAtom',
+      'refreshSessionListAtom', 'pushNavigationEntryAtom',
       'setViewModeAtom', 'fetchSessionSharesAtom'].map(name => [name, atom(null, () => {})])),
   };
 });
 vi.mock('../../../store/atoms/agentFileViewer', async () => { const { atom } = await import('jotai'); return { moveWorkstreamEditorAtom: atom(null, () => {}) }; });
-vi.mock('../../../store/atoms/blitz', async () => { const { atom } = await import('jotai'); return { blitzAnalysisCreatedAtom: atom(null, () => {}) }; });
+vi.mock('../../../store/atoms/blitz', async () => {
+  const { atom } = await import('jotai');
+  const valueAtom = atom<unknown>(null);
+  return { blitzAnalysisCreatedAtom: atom<unknown, [unknown], void>(get => get(valueAtom), (_get, set, value) => set(valueAtom, value)) };
+});
 vi.mock('../../../store/atoms/agentMode', async () => { const { atom } = await import('jotai'); return { requestOpenSessionAtom: atom(null, () => {}), toggleSessionHistoryCollapsedAtom: atom(null, () => {}) }; });
 vi.mock('../../../tips/atoms', async () => { const { atom } = await import('jotai'); return { tipCreateWorktreeSessionRequestAtom: atom(null, () => {}) }; });
 vi.mock('../../../store/atoms/appSettings', async () => { const { atom } = await import('jotai'); return { defaultAgentModelAtom: atom(null, () => {}) }; });
@@ -59,7 +88,7 @@ vi.mock('../AgentWorkstreamPanel', () => ({
   },
 }));
 
-afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); addSessionMock.mockReset(); });
 
 it('initializes persistence before restored child effects and routes writes after a project switch', async () => {
   vi.useFakeTimers();
@@ -76,4 +105,26 @@ it('initializes persistence before restored child effects and routes writes afte
   await act(async () => { await vi.advanceTimersByTimeAsync(500); });
   expect(invoke).toHaveBeenCalledWith('workspace:set-workstream-state', expect.objectContaining({ workspacePath: '/project-01', workstreamId: 'restored-session' }));
   expect(invoke).not.toHaveBeenCalledWith('workspace:set-workstream-state', expect.objectContaining({ workspacePath: '/project-32' }));
+});
+
+it('localizes the empty state when no session is selected', () => {
+  store.set(selectedWorkstreamAtom('/project'), null);
+
+  render(<AgentMode workspacePath="/project" workspaceName="project" />, 'ja');
+
+  screen.getByText('セッションを選択するか、新しいセッションを作成して開始してください');
+  screen.getByRole('button', { name: '新しいセッション' });
+});
+
+it('localizes generated analysis session titles', async () => {
+  vi.stubGlobal('window', Object.assign(window, { electronAPI: { invoke: vi.fn(async () => true) } }));
+  render(<AgentMode workspacePath="/project" workspaceName="project" />, 'ja');
+
+  await act(async () => {
+    store.set(blitzAnalysisCreatedAtom, {
+      payload: { analysisSessionId: 'analysis-1', workspacePath: '/project', blitzId: 'blitz-1' },
+    } as never);
+  });
+
+  expect(addSessionMock).toHaveBeenCalledWith(expect.objectContaining({ title: '分析' }));
 });

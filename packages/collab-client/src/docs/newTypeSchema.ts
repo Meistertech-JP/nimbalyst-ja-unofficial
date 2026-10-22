@@ -45,6 +45,36 @@ export interface NewTypeValidationContext {
   existingTypeIds: ReadonlySet<string>;
 }
 
+export type NewTypeValidationMessageKey =
+  | 'plural_required'
+  | 'singular_required'
+  | 'singular_must_start_with_letter'
+  | 'type_exists'
+  | 'field_name_required'
+  | 'field_name_must_start_with_letter'
+  | 'field_name_reserved'
+  | 'field_name_duplicate'
+  | 'select_option_required'
+  | 'relation_type_required';
+
+export type NewTypeValidationMessage = (
+  key: NewTypeValidationMessageKey,
+  values?: Record<string, string>,
+) => string;
+
+const ENGLISH_VALIDATION_MESSAGES: Record<NewTypeValidationMessageKey, (values?: Record<string, string>) => string> = {
+  plural_required: () => 'Enter a plural name.',
+  singular_required: () => 'Enter a singular name.',
+  singular_must_start_with_letter: () => 'The singular name must start with a letter.',
+  type_exists: (values) => `A type named "${values?.name ?? ''}" already exists.`,
+  field_name_required: () => 'Every field needs a name.',
+  field_name_must_start_with_letter: (values) => `"${values?.label ?? ''}" needs a name that starts with a letter.`,
+  field_name_reserved: (values) => `"${values?.label ?? ''}" is a built-in field name.`,
+  field_name_duplicate: (values) => `Two fields are both named "${values?.name ?? ''}".`,
+  select_option_required: (values) => `"${values?.label ?? ''}" needs at least one option.`,
+  relation_type_required: (values) => `"${values?.label ?? ''}" needs a type to relate to.`,
+};
+
 const TYPE_ID_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 /** Field names the product owns on every typed page. */
 const RESERVED_FIELD_NAMES = new Set(['title', 'tags', 'id', 'type']);
@@ -82,16 +112,20 @@ function parseOptions(options: string | undefined): Array<{ value: string; label
 }
 
 /** Problems in reading order; empty when the draft can be written. */
-export function validateNewTypeDraft(draft: NewTypeDraft, context: NewTypeValidationContext): string[] {
+export function validateNewTypeDraft(
+  draft: NewTypeDraft,
+  context: NewTypeValidationContext,
+  formatMessage: NewTypeValidationMessage = (key, values) => ENGLISH_VALIDATION_MESSAGES[key](values),
+): string[] {
   const errors: string[] = [];
-  if (!draft.pluralName.trim()) errors.push('Enter a plural name.');
+  if (!draft.pluralName.trim()) errors.push(formatMessage('plural_required'));
   const typeId = newTypeIdFromName(draft.singularName);
   if (!draft.singularName.trim()) {
-    errors.push('Enter a singular name.');
+    errors.push(formatMessage('singular_required'));
   } else if (!TYPE_ID_PATTERN.test(typeId)) {
-    errors.push('The singular name must start with a letter.');
+    errors.push(formatMessage('singular_must_start_with_letter'));
   } else if (context.existingTypeIds.has(typeId)) {
-    errors.push(`A type named "${typeId}" already exists.`);
+    errors.push(formatMessage('type_exists', { name: typeId }));
   }
 
   const names = new Set<string>();
@@ -99,27 +133,27 @@ export function validateNewTypeDraft(draft: NewTypeDraft, context: NewTypeValida
     const label = field.label.trim();
     const name = newFieldNameFromLabel(label);
     if (!label) {
-      errors.push('Every field needs a name.');
+      errors.push(formatMessage('field_name_required'));
       continue;
     }
     if (!/^[a-z]/.test(name)) {
-      errors.push(`"${label}" needs a name that starts with a letter.`);
+      errors.push(formatMessage('field_name_must_start_with_letter', { label }));
       continue;
     }
     if (RESERVED_FIELD_NAMES.has(name)) {
-      errors.push(`"${label}" is a built-in field name.`);
+      errors.push(formatMessage('field_name_reserved', { label }));
       continue;
     }
     if (names.has(name)) {
-      errors.push(`Two fields are both named "${name}".`);
+      errors.push(formatMessage('field_name_duplicate', { name }));
       continue;
     }
     names.add(name);
     if (field.kind === 'select' && parseOptions(field.options).length === 0) {
-      errors.push(`"${label}" needs at least one option.`);
+      errors.push(formatMessage('select_option_required', { label }));
     }
     if (field.kind === 'relation' && !field.targetTypeId) {
-      errors.push(`"${label}" needs a type to relate to.`);
+      errors.push(formatMessage('relation_type_required', { label }));
     }
   }
   return errors;

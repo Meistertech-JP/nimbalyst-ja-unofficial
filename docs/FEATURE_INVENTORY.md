@@ -495,7 +495,7 @@ Companion app; pairs with a desktop over encrypted sync. Voice mode is not inclu
 
 ## Settings
 
-- Application: theme, AI providers, MCP servers, notifications, advanced, beta features, and extensions
+- Application: theme, UI language (system, English, or Japanese), AI providers, MCP servers, notifications, advanced, beta features, and extensions
 - Account: signed-in accounts, sync-account selection, active zero-knowledge mobile-sync profile, paired devices, and account-attributed shared links
 - Project: sharing/organization attachment, project access, AI provider overrides, agent permissions, tracker config, GitHub, and extensions
 - Tools & Token Cost panel: per-tool-group estimated context-token cost and load policy (eager / on-demand / conditional) across built-in, extension, and user MCP servers; trackers toggle inline; reachable from the AI panel's token meter ("Manage tools")

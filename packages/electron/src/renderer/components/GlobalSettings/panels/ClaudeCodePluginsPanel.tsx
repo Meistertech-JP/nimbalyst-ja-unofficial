@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
 import { ErrorBoundary } from '../../ErrorBoundary';
 import { useTheme } from '../../../hooks/useTheme';
@@ -84,18 +85,18 @@ const PLUGIN_ICON_CONFIG: Record<string, IconConfig> = {
 };
 
 // Category labels for display
-const CATEGORY_LABELS: Record<string, string> = {
-  development: 'Development',
-  productivity: 'Productivity',
-  database: 'Database',
-  testing: 'Testing',
-  security: 'Security',
-  learning: 'Learning',
-  design: 'Design',
-  monitoring: 'Monitoring',
-  deployment: 'Deployment',
-  external: 'External / Community',
-};
+const CATEGORY_LABEL_KEYS = {
+  development: 'claude_code_plugins_panel.categories.development',
+  productivity: 'claude_code_plugins_panel.categories.productivity',
+  database: 'claude_code_plugins_panel.categories.database',
+  testing: 'claude_code_plugins_panel.categories.testing',
+  security: 'claude_code_plugins_panel.categories.security',
+  learning: 'claude_code_plugins_panel.categories.learning',
+  design: 'claude_code_plugins_panel.categories.design',
+  monitoring: 'claude_code_plugins_panel.categories.monitoring',
+  deployment: 'claude_code_plugins_panel.categories.deployment',
+  external: 'claude_code_plugins_panel.categories.external',
+} as const;
 
 const CATEGORY_ORDER = [
   'development',
@@ -202,6 +203,7 @@ function extractMarketplaceSourceName(plugin: MarketplacePlugin): string {
 }
 
 function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCodePluginsPanelProps) {
+  const { t } = useTranslation('extensions');
   const posthog = usePostHog();
   const { theme } = useTheme();
   const isDark = theme === 'dark' || theme === 'crystal-dark';
@@ -215,6 +217,10 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   const [selectedPlugin, setSelectedPlugin] = useState<MarketplacePlugin | null>(null);
   const [installStatus, setInstallStatus] = useState<Record<string, 'idle' | 'installing' | 'installed' | 'error'>>({});
   const [installMessage, setInstallMessage] = useState<string>('');
+  const categoryLabel = (category: string) => {
+    const key = CATEGORY_LABEL_KEYS[category.toLowerCase() as keyof typeof CATEGORY_LABEL_KEYS];
+    return key ? t(key) : category;
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -230,20 +236,20 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
       if (marketplaceResult.success) {
         setMarketplace(marketplaceResult.data);
       } else {
-        setError(marketplaceResult.error || 'Failed to load marketplace');
+        setError(marketplaceResult.error || t('claude_code_plugins_panel.load_marketplace_failed'));
       }
 
       if (installedResult.success) {
         setInstalledPlugins(installedResult.data || []);
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load plugin data';
+      const errorMessage = err instanceof Error ? err.message : t('claude_code_plugins_panel.load_plugin_data_failed');
       console.error('Failed to load plugin data:', err);
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [workspacePath]);
+  }, [workspacePath, t]);
 
   // Reload when the active workspace changes so project-scoped plugins
   // appear or disappear with the current project.
@@ -253,7 +259,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
 
   const handleInstall = async (plugin: MarketplacePlugin) => {
     setInstallStatus(prev => ({ ...prev, [plugin.name]: 'installing' }));
-    setInstallMessage(`Installing ${plugin.name}...`);
+    setInstallMessage(t('claude_code_plugins_panel.installing_plugin', { name: plugin.name }));
 
     try {
       // Pass both plugin name and source to the install handler
@@ -261,7 +267,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
 
       if (result.success) {
         setInstallStatus(prev => ({ ...prev, [plugin.name]: 'installed' }));
-        setInstallMessage(`${plugin.name} installed successfully`);
+        setInstallMessage(t('claude_code_plugins_panel.installed_success', { name: plugin.name }));
 
         // Track analytics
         posthog?.capture('claude_plugin_installed', {
@@ -277,10 +283,10 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
         }
       } else {
         setInstallStatus(prev => ({ ...prev, [plugin.name]: 'error' }));
-        setInstallMessage(result.error || 'Installation failed');
+        setInstallMessage(result.error || t('claude_code_plugins_panel.install_failed'));
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Installation failed';
+      const errorMessage = err instanceof Error ? err.message : t('claude_code_plugins_panel.install_failed');
       setInstallStatus(prev => ({ ...prev, [plugin.name]: 'error' }));
       setInstallMessage(errorMessage);
     }
@@ -301,9 +307,9 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   const handleUninstall = async (target: UninstallTarget) => {
     const label = target.source ? `${target.name}@${target.source}` : target.name;
     const ok = await requestConfirmation({
-      title: 'Uninstall plugin',
-      message: `Uninstall ${label}?`,
-      confirmLabel: 'Uninstall',
+      title: t('claude_code_plugins_panel.uninstall_title'),
+      message: t('claude_code_plugins_panel.uninstall_confirm', { label }),
+      confirmLabel: t('claude_code_plugins_panel.uninstall'),
       destructive: true,
     });
     if (!ok) {
@@ -315,7 +321,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
 
       if (result.success) {
         setInstallStatus(prev => ({ ...prev, [target.name]: 'idle' }));
-        setInstallMessage(`${label} uninstalled`);
+        setInstallMessage(t('claude_code_plugins_panel.uninstalled', { label }));
 
         // Refresh installed plugins
         const installedResult = await window.electronAPI.invoke('claude-plugin:list-installed', { workspacePath });
@@ -323,10 +329,10 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
           setInstalledPlugins(installedResult.data || []);
         }
       } else {
-        setInstallMessage(result.error || 'Uninstall failed');
+        setInstallMessage(result.error || t('claude_code_plugins_panel.uninstall_failed'));
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Uninstall failed';
+      const errorMessage = err instanceof Error ? err.message : t('claude_code_plugins_panel.uninstall_failed');
       setInstallMessage(errorMessage);
     }
 
@@ -368,7 +374,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   if (loading) {
     return (
       <div className="provider-panel flex flex-col">
-        <div className="plugin-loading p-8 text-center text-[var(--nim-text-muted)]">Loading Claude Code plugins...</div>
+        <div className="plugin-loading p-8 text-center text-[var(--nim-text-muted)]">{t('claude_code_plugins_panel.loading')}</div>
       </div>
     );
   }
@@ -377,32 +383,32 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
     return (
       <div className="provider-panel flex flex-col">
         <div className="plugin-error p-8 text-center text-[#e74c3c]">
-          Error: {error}
-          <button onClick={loadData} className="plugin-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer">Retry</button>
+          {t('claude_code_plugins_panel.error', { error })}
+          <button onClick={loadData} className="plugin-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer">{t('claude_code_plugins_panel.retry')}</button>
         </div>
       </div>
     );
   }
 
   const renderDiscover = () => (
-    <div className="plugin-discover" role="main" aria-label="Plugin discovery">
+    <div className="plugin-discover" role="main" aria-label={t('claude_code_plugins_panel.discover_aria')}>
       {/* Search Bar */}
       <div className="plugin-search relative mb-6" role="search">
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search plugins..."
+          placeholder={t('claude_code_plugins_panel.search')}
           className="plugin-search-input w-full py-3 pl-4 pr-10 border border-[var(--nim-border)] rounded-lg bg-[var(--nim-bg)] text-[var(--nim-text)] text-[0.9375rem] outline-none focus:border-[var(--nim-primary)] placeholder:text-[var(--nim-text-faint)]"
-          aria-label="Search Claude Code plugins"
+          aria-label={t('claude_code_plugins_panel.search_aria')}
           autoFocus
         />
         {searchQuery && (
           <button
             className="plugin-search-clear absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-none rounded-full bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] text-xs cursor-pointer flex items-center justify-center hover:bg-[var(--nim-text-faint)] hover:text-[var(--nim-bg)]"
             onClick={() => setSearchQuery('')}
-            aria-label="Clear search"
-            title="Clear search"
+            aria-label={t('claude_code_plugins_panel.clear_search')}
+            title={t('claude_code_plugins_panel.clear_search')}
           >
             x
           </button>
@@ -416,8 +422,8 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
 
         return (
           <div key={category} className="plugin-category mb-6">
-            <h4 className="plugin-category-title text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">{CATEGORY_LABELS[category] || category}</h4>
-            <div className="plugin-grid grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 @container" role="list" aria-label={CATEGORY_LABELS[category] || category}>
+            <h4 className="plugin-category-title text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)] m-0 mb-3 pb-2 border-b border-[var(--nim-border)]">{categoryLabel(category)}</h4>
+            <div className="plugin-grid grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 @container" role="list" aria-label={categoryLabel(category)}>
               {plugins.map((plugin) => {
                 const installed = isPluginInstalled(plugin);
                 const status = installStatus[plugin.name] || 'idle';
@@ -435,7 +441,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                     }}
                     role="button"
                     tabIndex={0}
-                    aria-label={`${plugin.name} by ${plugin.author} - ${plugin.description}`}
+                    aria-label={t('claude_code_plugins_panel.plugin_aria', { name: plugin.name, author: plugin.author, description: plugin.description })}
                   >
                     <div className="plugin-card-header flex items-center gap-3 mb-2">
                       <div className="plugin-card-icon w-8 h-8 rounded-md bg-[var(--nim-bg-tertiary)] flex items-center justify-center text-base shrink-0 overflow-hidden" aria-hidden="true">
@@ -445,9 +451,9 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                     </div>
                     <div className="plugin-card-description text-[0.8125rem] text-[var(--nim-text-muted)] leading-relaxed mb-3 flex-1 line-clamp-2">{plugin.description}</div>
                     <div className="plugin-card-footer flex items-center justify-between gap-2">
-                      <span className="plugin-card-author text-xs text-[var(--nim-text-faint)]">by {plugin.author}</span>
+                      <span className="plugin-card-author text-xs text-[var(--nim-text-faint)]">{t('claude_code_plugins_panel.by_author', { author: plugin.author })}</span>
                       {installed ? (
-                        <span className="plugin-card-badge installed inline-flex items-center px-2 py-1 rounded text-[0.6875rem] font-semibold uppercase tracking-tight bg-[rgba(39,174,96,0.15)] text-[#27ae60]">Installed</span>
+                        <span className="plugin-card-badge installed inline-flex items-center px-2 py-1 rounded text-[0.6875rem] font-semibold uppercase tracking-tight bg-[rgba(39,174,96,0.15)] text-[#27ae60]">{t('claude_code_plugins_panel.installed')}</span>
                       ) : (
                         <button
                           className={`plugin-install-button py-1.5 px-3 border-none rounded bg-[var(--nim-primary)] text-white text-xs font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed ${status === 'installing' ? 'installing bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]' : ''}`}
@@ -457,7 +463,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                           }}
                           disabled={status === 'installing'}
                         >
-                          {status === 'installing' ? 'Installing...' : 'Install'}
+                          {status === 'installing' ? t('claude_code_plugins_panel.installing') : t('claude_code_plugins_panel.install')}
                         </button>
                       )}
                     </div>
@@ -472,23 +478,23 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
       {/* No results */}
       {filteredPlugins.length === 0 && searchQuery && (
         <div className="plugin-no-results p-8 text-center text-[var(--nim-text-faint)] text-[0.9375rem]" role="status" aria-live="polite">
-          No plugins match "{searchQuery}"
+          {t('claude_code_plugins_panel.no_match', { query: searchQuery })}
         </div>
       )}
     </div>
   );
 
   const renderInstalled = () => (
-    <div className="plugin-installed-view" role="main" aria-label="Installed plugins">
+    <div className="plugin-installed-view" role="main" aria-label={t('claude_code_plugins_panel.installed_aria')}>
       {installedPlugins.length === 0 ? (
         <div className="plugin-empty-state flex flex-col items-center justify-center py-12 px-6 text-center text-[var(--nim-text-faint)]">
           <span className="plugin-empty-icon material-symbols-outlined text-5xl mb-4 opacity-50">extension_off</span>
-          <p className="m-0 mb-6 text-[0.9375rem]">No plugins installed yet</p>
+          <p className="m-0 mb-6 text-[0.9375rem]">{t('claude_code_plugins_panel.empty')}</p>
           <button
             className="plugin-empty-cta py-2.5 px-5 rounded-md border-none bg-[var(--nim-primary)] text-white text-sm font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
             onClick={() => setViewState('discover')}
           >
-            Browse Plugins
+            {t('claude_code_plugins_panel.browse')}
           </button>
         </div>
       ) : (
@@ -514,13 +520,13 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                             ? 'bg-[rgba(52,152,219,0.15)] text-[#3498db]'
                             : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]'
                         }`}
-                        title={isProjectScope ? plugin.projectPath : 'Available in every workspace'}
+                        title={isProjectScope ? plugin.projectPath : t('claude_code_plugins_panel.available_workspaces')}
                       >
-                        {isProjectScope ? 'Project' : 'User'}
+                        {isProjectScope ? t('claude_code_plugins_panel.project') : t('claude_code_plugins_panel.user')}
                       </span>
                       {!plugin.enabled && (
-                        <span className="plugin-installed-disabled inline-flex items-center px-1.5 py-0.5 rounded text-[0.6875rem] font-semibold uppercase tracking-tight bg-[rgba(231,76,60,0.12)] text-[#e74c3c]" title="Not present in enabledPlugins for this scope">
-                          Disabled
+                        <span className="plugin-installed-disabled inline-flex items-center px-1.5 py-0.5 rounded text-[0.6875rem] font-semibold uppercase tracking-tight bg-[rgba(231,76,60,0.12)] text-[#e74c3c]" title={t('claude_code_plugins_panel.disabled_title')}>
+                          {t('claude_code_plugins_panel.disabled')}
                         </span>
                       )}
                     </div>
@@ -536,9 +542,9 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                       scope: plugin.scope,
                       projectPath: plugin.projectPath,
                     })}
-                    aria-label={`Uninstall ${plugin.name}`}
+                    aria-label={t('claude_code_plugins_panel.uninstall_aria', { name: plugin.name })}
                   >
-                    Uninstall
+                    {t('claude_code_plugins_panel.uninstall')}
                   </button>
                 </div>
               </div>
@@ -561,7 +567,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
           <button
             className="plugin-details-close absolute top-4 right-4 w-7 h-7 border-none rounded-full bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] text-base cursor-pointer flex items-center justify-center transition-all duration-150 hover:bg-[var(--nim-text-faint)] hover:text-[var(--nim-bg)]"
             onClick={() => setSelectedPlugin(null)}
-            aria-label="Close"
+            aria-label={t('claude_code_plugins_panel.close')}
           >
             x
           </button>
@@ -572,7 +578,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
             </div>
             <div className="plugin-details-title">
               <h3 className="m-0 mb-1 text-lg font-semibold text-[var(--nim-text)]">{selectedPlugin.name}</h3>
-              <span className="plugin-details-author text-[0.8125rem] text-[var(--nim-text-faint)]">by {selectedPlugin.author}</span>
+              <span className="plugin-details-author text-[0.8125rem] text-[var(--nim-text-faint)]">{t('claude_code_plugins_panel.by_author', { author: selectedPlugin.author })}</span>
             </div>
           </div>
 
@@ -580,12 +586,12 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
 
           <div className="plugin-details-meta flex flex-col gap-2 mb-6 p-3 bg-[var(--nim-bg-secondary)] rounded-lg">
             <div className="plugin-details-meta-item flex items-center gap-2 text-[0.8125rem]">
-              <span className="plugin-details-meta-label text-[var(--nim-text-faint)]">Category:</span>
-              <span className="plugin-details-meta-value text-[var(--nim-text)] font-medium">{CATEGORY_LABELS[selectedPlugin.category.toLowerCase()] || selectedPlugin.category}</span>
+              <span className="plugin-details-meta-label text-[var(--nim-text-faint)]">{t('claude_code_plugins_panel.category_label')}</span>
+              <span className="plugin-details-meta-value text-[var(--nim-text)] font-medium">{categoryLabel(selectedPlugin.category)}</span>
             </div>
             {selectedPlugin.homepage && (
               <div className="plugin-details-meta-item flex items-center gap-2 text-[0.8125rem]">
-                <span className="plugin-details-meta-label text-[var(--nim-text-faint)]">Homepage:</span>
+                <span className="plugin-details-meta-label text-[var(--nim-text-faint)]">{t('claude_code_plugins_panel.homepage_label')}</span>
                 <a
                   href={selectedPlugin.homepage}
                   target="_blank"
@@ -593,7 +599,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                   className="plugin-details-link text-[var(--nim-primary)] no-underline cursor-pointer hover:underline"
                   onClick={() => window.electronAPI.openExternal(selectedPlugin.homepage!)}
                 >
-                  View Documentation
+                  {t('claude_code_plugins_panel.view_documentation')}
                 </a>
               </div>
             )}
@@ -602,7 +608,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
           <div className="plugin-details-actions flex items-center gap-3">
             {installed ? (
               <>
-                <span className="plugin-details-installed-badge inline-flex items-center py-1.5 px-3 rounded bg-[rgba(39,174,96,0.15)] text-[#27ae60] text-[0.8125rem] font-medium">Installed</span>
+                <span className="plugin-details-installed-badge inline-flex items-center py-1.5 px-3 rounded bg-[rgba(39,174,96,0.15)] text-[#27ae60] text-[0.8125rem] font-medium">{t('claude_code_plugins_panel.installed')}</span>
                 <button
                   className="plugin-uninstall-button py-1.5 px-3 border border-[#e74c3c] rounded bg-transparent text-[#e74c3c] text-xs font-medium cursor-pointer transition-all duration-150 hover:bg-[#e74c3c] hover:text-white"
                   onClick={() => {
@@ -618,7 +624,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                     setSelectedPlugin(null);
                   }}
                 >
-                  Uninstall
+                  {t('claude_code_plugins_panel.uninstall')}
                 </button>
               </>
             ) : (
@@ -627,7 +633,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                 onClick={() => handleInstall(selectedPlugin)}
                 disabled={status === 'installing'}
               >
-                {status === 'installing' ? 'Installing...' : 'Install Plugin'}
+                {status === 'installing' ? t('claude_code_plugins_panel.installing') : t('claude_code_plugins_panel.install_plugin')}
               </button>
             )}
           </div>
@@ -639,9 +645,9 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   return (
     <div className="provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">Claude Code Plugins</h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('claude_code_plugins_panel.title')}</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Discover and install plugins to extend Claude Code's capabilities.
+          {t('claude_code_plugins_panel.description')}
         </p>
       </div>
 
@@ -655,7 +661,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
           }`}
           onClick={() => setViewState('discover')}
         >
-          Discover
+          {t('claude_code_plugins_panel.discover')}
         </button>
         <button
           className={`plugin-view-button py-2 px-4 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-150 ${
@@ -665,7 +671,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
           }`}
           onClick={() => setViewState('installed')}
         >
-          Installed ({installedPlugins.length})
+          {t('claude_code_plugins_panel.installed_count', { count: installedPlugins.length })}
         </button>
       </div>
 
@@ -689,21 +695,21 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
 }
 
 export function ClaudeCodePluginsPanel(props: ClaudeCodePluginsPanelProps) {
+  const { t } = useTranslation('extensions');
   return (
     <ErrorBoundary
       fallback={
         <div className="provider-panel flex flex-col" role="alert" aria-live="assertive">
           <div className="plugin-error p-8 text-center">
-            <h3 className="mt-0 mb-4">Unable to load Claude Code Plugins</h3>
+            <h3 className="mt-0 mb-4">{t('claude_code_plugins_panel.error_boundary_title')}</h3>
             <p className="mb-6 text-[var(--nim-text-muted)]">
-              An unexpected error occurred while loading the plugins panel.
-              Please try refreshing the application.
+              {t('claude_code_plugins_panel.error_boundary_body')}
             </p>
             <button
               onClick={() => window.location.reload()}
               className="plugin-retry-button py-2 px-4 bg-[var(--nim-primary)] text-white border-none rounded-md cursor-pointer"
             >
-              Reload Application
+              {t('claude_code_plugins_panel.reload_application')}
             </button>
           </div>
         </div>

@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useRef, useState, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { CanvasRevisionEntry, CanvasRevisionSource } from './canvasRevisions';
 import type { CanvasCardReference } from './canvasCallbacks';
@@ -51,6 +52,7 @@ export function CanvasRevisionRail({
   onClose,
   canPin,
 }: CanvasRevisionRailProps): JSX.Element {
+  const { t, i18n } = useTranslation('editor');
   const [state, setState] = useState<RailState>({ status: 'loading' });
 
   // The reference object is rebuilt whenever the board's document changes --
@@ -86,28 +88,30 @@ export function CanvasRevisionRail({
     <div className="canvas-revision-rail" data-canvas-revision-rail={nodeId}>
       <div className="canvas-revision-rail__header">
         <span className="canvas-revision-rail__title select-text">
-          History of {label}
+          {t('canvas.history.title', { label })}
         </span>
         <button
           type="button"
           className="canvas-revision-rail__close"
           onClick={onClose}
-          aria-label="Close history"
+          aria-label={t('canvas.history.close')}
         >
-          Close
+          {t('canvas.history.close')}
         </button>
       </div>
       {state.status === 'loading' && (
-        <div className="canvas-revision-rail__note">Loading history…</div>
+        <div className="canvas-revision-rail__note">
+          {t('canvas.history.loading')}
+        </div>
       )}
       {state.status === 'unavailable' && (
         <div className="canvas-revision-rail__note">
-          This card&apos;s history could not be loaded.
+          {t('canvas.history.unavailable')}
         </div>
       )}
       {state.status === 'ready' && state.entries.length === 0 && (
         <div className="canvas-revision-rail__note">
-          No revisions have been captured for this document yet.
+          {t('canvas.history.empty')}
         </div>
       )}
       {state.status === 'ready' && state.entries.length > 0 && (
@@ -120,13 +124,16 @@ export function CanvasRevisionRail({
             >
               <div className="canvas-revision-rail__entry-head">
                 <span className="canvas-revision-rail__version">
-                  v{entry.sequence}
+                  {t('canvas.history.version', { sequence: entry.sequence })}
                 </span>
                 <time
                   className="canvas-revision-rail__time"
                   dateTime={new Date(entry.createdAt).toISOString()}
                 >
-                  {formatRevisionTime(entry.createdAt)}
+                  {formatRevisionTime(
+                    entry.createdAt,
+                    i18n.resolvedLanguage ?? i18n.language
+                  )}
                 </time>
               </div>
               <RevisionProvenance entry={entry} />
@@ -136,7 +143,9 @@ export function CanvasRevisionRail({
                   className="canvas-revision-rail__pin"
                   onClick={() => onPin(entry)}
                 >
-                  Pin as card
+                  {t('canvas.history.pin_as_card', {
+                    sequence: entry.sequence,
+                  })}
                 </button>
               )}
             </li>
@@ -152,28 +161,29 @@ function RevisionProvenance({
 }: {
   entry: CanvasRevisionEntry;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   const { provenance } = entry;
   return (
     <dl className="canvas-revision-rail__provenance select-text">
       <div className="canvas-revision-rail__fact">
-        <dt>By</dt>
+        <dt>{t('canvas.history.by')}</dt>
         <dd>{provenance.authorName ?? provenance.authorUserId}</dd>
       </div>
       {provenance.sessionId !== null && (
         <div className="canvas-revision-rail__fact">
-          <dt>Session</dt>
+          <dt>{t('canvas.history.session')}</dt>
           <dd>{provenance.sessionName ?? provenance.sessionId}</dd>
         </div>
       )}
       {provenance.prompt !== null && (
         <div className="canvas-revision-rail__fact canvas-revision-rail__fact--prompt">
-          <dt>Prompt</dt>
+          <dt>{t('canvas.history.prompt')}</dt>
           <dd title={provenance.prompt}>{provenance.prompt}</dd>
         </div>
       )}
       {provenance.commit !== null && (
         <div className="canvas-revision-rail__fact">
-          <dt>Commit</dt>
+          <dt>{t('canvas.history.commit')}</dt>
           <dd title={provenance.commit.subject ?? undefined}>
             {provenance.commit.sha.slice(0, 7)}
           </dd>
@@ -183,8 +193,8 @@ function RevisionProvenance({
   );
 }
 
-function formatRevisionTime(createdAt: number): string {
-  return new Date(createdAt).toLocaleString(undefined, {
+function formatRevisionTime(createdAt: number, language: string): string {
+  return new Date(createdAt).toLocaleString(language, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });

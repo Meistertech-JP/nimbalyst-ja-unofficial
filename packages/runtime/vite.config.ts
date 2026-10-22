@@ -92,6 +92,8 @@ export default defineConfig(({ mode }) => ({
         /^@nimbalyst\/extension-sdk\//,
         '@nimbalyst/collab-adapters',
         /^@nimbalyst\/collab-adapters\//,
+        '@nimbalyst/i18n',
+        /^@nimbalyst\/i18n\//,
       ],
       output: {
         globals: {

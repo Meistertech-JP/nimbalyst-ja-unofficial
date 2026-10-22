@@ -16,6 +16,7 @@ import { RemoteSessionTranscript } from './RemoteSessionTranscript';
  */
 
 import React, { useCallback, useRef, useImperativeHandle, forwardRef, useEffect, useState, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { store, registerInteractiveWidgetHost, unregisterInteractiveWidgetHost } from '@nimbalyst/runtime/store';
 import type { SessionData, ChatAttachment, TranscriptViewMessage } from '@nimbalyst/runtime/ai/server/types';
@@ -295,20 +296,23 @@ function serializeDocumentContext(
 
 // Read transcript-linked files through the main process so file widgets can
 // open persisted outputs and generated artifacts consistently.
-const readFile = async (filePath: string): Promise<{ success: boolean; content?: string; error?: string }> => {
+const readFile = async (
+  filePath: string,
+  messages: { notFound: string; failed: string },
+): Promise<{ success: boolean; content?: string; error?: string }> => {
   try {
     const result = await window.electronAPI.readFileContent(filePath);
     if (!result) {
-      return { success: false, error: `File not found: ${filePath}` };
+      return { success: false, error: messages.notFound };
     }
     if (!result.success) {
-      return { success: false, error: result.error || 'Failed to read file' };
+      return { success: false, error: result.error || messages.failed };
     }
     return { success: true, content: result.content };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to read file'
+      error: err instanceof Error ? err.message : messages.failed
     };
   }
 };
@@ -373,6 +377,11 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
   additionalTeammates,
   waitingForNoun,
 }, ref) => {
+  const { t: tTerminal } = useTranslation('terminal');
+  const { t: tAIChat } = useTranslation('aichat');
+  const { t: tAgents } = useTranslation('agents');
+  const { t: tDialogs } = useTranslation('dialogs');
+  const { t: tCommon } = useTranslation('common');
   const posthog = usePostHog();
   const inputRef = useRef<AIInputRef>(null);
   // Guards the await between Enter and the composer clearing against a second send.
@@ -862,18 +871,9 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const settingsShortcut = isMac ? 'Cmd+,' : 'Ctrl+,';
         await confirm({
-          title: 'MCP Tool Configuration Required',
-          message: [
-            'Some alternative AI providers don\'t fully support deferred tool loading (tool search).',
-            '',
-            'To fix this:',
-            `1. Open Settings (${settingsShortcut})`,
-            '2. Go to "Claude Code" panel',
-            '3. In the "Environment Variables" section, add:',
-            '   ENABLE_TOOL_SEARCH = false',
-            '4. Save and retry your request'
-          ].join('\n'),
-          confirmLabel: 'OK',
+          title: tDialogs('mcp_tool_configuration.title'),
+          message: tDialogs('mcp_tool_configuration.message', { shortcut: settingsShortcut }),
+          confirmLabel: tDialogs('confirm.ok'),
           cancelLabel: ''
         });
       }
@@ -914,7 +914,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
     };
 
     handleError();
-  }, [sessionError, sessionId, provider, messages, updateSessionStore, setIsProcessing, confirm]);
+  }, [sessionError, sessionId, provider, messages, updateSessionStore, setIsProcessing, confirm, tDialogs, tCommon]);
 
   // Derived values
   const isLoading = isProcessing;
@@ -1227,7 +1227,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
         // Revert local state since persistence failed
         setAiMode(aiMode as AIMode);
         // Show error to user
-        const errorMessage = makeOptimisticError('Failed to switch to planning mode. Please try again.');
+        const errorMessage = makeOptimisticError(tAIChat('transcript.planning_failed'));
         updateSessionStore({
           sessionId,
           updates: {
@@ -1304,7 +1304,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
       console.error('[SessionTranscript] Failed to record submission:', error);
       updateSessionStore({
         sessionId,
-        updates: { messages: [...messages, makeOptimisticError('Could not save your message, so it was not sent. Your text is still in the composer.')] },
+        updates: { messages: [...messages, makeOptimisticError(tAIChat('transcript.submission_record_failed'))] },
       });
       blocked('submission_record_failed');
       return;
@@ -1357,7 +1357,9 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
       console.error('[SessionTranscript] Failed to send message:', error);
       // Show error in transcript so user knows what went wrong
       const errorMessage = makeOptimisticError(
-        `Error: ${error instanceof Error ? error.message : 'Failed to send message'}`,
+        tAIChat('transcript.error_message', {
+          message: error instanceof Error ? error.message : tAIChat('transcript.send_failed'),
+        }),
       );
       updateSessionStore({
         sessionId,
@@ -2087,7 +2089,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
           ) as { success: boolean; iteration?: { superLoopId: string } | null };
 
           if (!iterationResult?.success || !iterationResult.iteration) {
-            return { success: false, error: 'Could not find Super Loop for this session' };
+            return { success: false, error: tAgents('super_loop_progress.session_not_found') };
           }
 
           const superLoopId = iterationResult.iteration.superLoopId;
@@ -2160,7 +2162,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
             addGitignore,
           }) as { success: boolean; attachments?: ChatAttachment[]; error?: string };
           if (!result.success || !result.attachments) {
-            return { success: false, error: result.error ?? 'Failed to re-stage attachments' };
+            return { success: false, error: result.error ?? tAIChat('attachment_staging_denied.retry_failed') };
           }
 
           setDraftInput(prompt);
@@ -2517,7 +2519,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
         }}
         data-session-id={sessionId}
       >
-        {isDataLoading ? 'Loading session...' : 'Session not found'}
+        {isDataLoading ? tAIChat('transcript.loading') : tAIChat('transcript.not_found')}
       </div>
     );
   }
@@ -2580,7 +2582,10 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
             isArchived={isArchived}
             onCloseAndArchive={handleCloseAndArchive}
             onUnarchive={handleUnarchive}
-            readFile={readFile}
+                readFile={(path) => readFile(path, {
+                  notFound: tAIChat('read_file_failed_path', { path }),
+                  failed: tAIChat('read_file_failed'),
+                })}
             fileEdits={sessionFileEdits}
             renderFilesHeader={mode === 'agent' ? () => (
               <>
@@ -2692,12 +2697,12 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
               textAlign: 'left',
               flex: '0 0 auto',
             }}
-            title={cliTerminalExpanded ? 'Collapse raw terminal' : 'Expand raw terminal'}
+            title={cliTerminalExpanded ? tTerminal('collapse_raw') : tTerminal('expand_raw')}
           >
             <span style={{ transform: cliTerminalExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.1s' }}>
               ▶
             </span>
-            <span>Raw terminal</span>
+            <span>{tTerminal('raw_terminal')}</span>
           </button>
           {/* Keep the strip mounted always (PTY lifecycle); hide only its body when
               collapsed. The strip observes the always-on-screen drawer root
@@ -2769,10 +2774,8 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
         onNavigateHistory={enableHistoryNavigation ? handleNavigateHistory : undefined}
         placeholder={
           mode === 'chat'
-            ? "Ask a question. @ for files, @@ for sessions, / for commands"
-            : enableSlashCommands
-              ? "Type your message... (Enter to send, Shift+Enter for new line, @ for files, @@ for sessions, / for commands)"
-              : "Type your message... (Enter to send, Shift+Enter for new line, @ for files, @@ for sessions, / for commands)"
+            ? tAIChat('transcript.chat_placeholder')
+            : tAgents('input.placeholder')
         }
         mode={aiMode as AIMode}
         onModeChange={handleAIModeChange}
@@ -2789,7 +2792,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
         // AIInput.
         onModelChange={handleModelChange}
         readOnlyModel={isClaudeCliTerminalSession(provider) && cliSessionCommitted && isLoading}
-        readOnlyModelTitle="Wait for the current turn to finish before switching models"
+        readOnlyModelTitle={tAIChat('transcript.read_only_model_title')}
         sessionHasMessages={sessionHasMessages}
         currentProvider={provider ?? null}
         effortLevel={effortLevel}

@@ -21,6 +21,7 @@ import {
   useRole,
 } from '@floating-ui/react';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import { windowControlsClearance } from '../../../ui/floating/windowControlsClearance';
 import { globalRegistry } from '../models';
@@ -41,6 +42,7 @@ export interface TrackerAddFieldMenuProps {
 
 /** The faint "+" at the end of the row: the empty fields, one click to add. */
 export const TrackerAddFieldMenu: React.FC<TrackerAddFieldMenuProps> = ({ fields, onAdd, testIdBase = 'tracker-page' }) => {
+  const { t } = useTranslation('tracker');
   const [open, setOpen] = useState(false);
   const floating = useFloating({
     open,
@@ -63,8 +65,8 @@ export const TrackerAddFieldMenu: React.FC<TrackerAddFieldMenuProps> = ({ fields
         type="button"
         className="tracker-field-pill tracker-field-pill-empty tracker-page-view-add-field"
         onClick={() => setOpen((value) => !value)}
-        aria-label="Add field"
-        title="Add field"
+        aria-label={t('new_type_dialog.add_field')}
+        title={t('new_type_dialog.add_field')}
         data-testid={`${testIdBase}-add-field`}
       >
         <MaterialSymbol icon="add" size={14} className="tracker-field-pill-icon" />
@@ -78,7 +80,7 @@ export const TrackerAddFieldMenu: React.FC<TrackerAddFieldMenuProps> = ({ fields
             className="tracker-field-popover tracker-page-view-add-field-menu"
             data-testid={`${testIdBase}-add-field-menu`}
           >
-            <span className="tracker-field-popover-header">Add field</span>
+            <span className="tracker-field-popover-header">{t('new_type_dialog.add_field')}</span>
             <div className="tracker-field-choice-list">
               {fields.map((field) => (
                 <button

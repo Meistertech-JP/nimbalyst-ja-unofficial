@@ -2,7 +2,10 @@ import {
   asTeamMemberId,
   type TeamMemberId,
 } from '@nimbalyst/runtime/auth/jwtScopes';
-import { collaboratorDisplayName } from '@nimbalyst/runtime/sync/collaboratorDisplayName';
+import {
+  collaboratorDisplayName,
+  UNNAMED_COLLABORATOR_LABEL,
+} from '@nimbalyst/runtime/sync/collaboratorDisplayName';
 import type {
   AwarenessState,
   DocumentSyncStatus,
@@ -32,6 +35,7 @@ interface BundlePresenceMetadata {
 
 type PresenceAwareUserState = AwarenessState['user'] & {
   nimbalystPresence?: BundlePresenceMetadata;
+  nimbalystNameSource?: 'system-default';
 };
 
 export interface AwarenessSyncSurface {
@@ -49,6 +53,7 @@ interface CollabPresenceSurfaceOptions {
   staleAfterMs?: number;
   sweepIntervalMs?: number;
   now?: () => number;
+  getUnnamedCollaboratorLabel?: () => string;
 }
 
 function cursorColorForMember(memberId: TeamMemberId): string {
@@ -77,10 +82,14 @@ export function resolveCollabEditorUser(user: CollabEditorUser): ResolvedCollabE
 function participantFromAwareness(
   memberId: string,
   state: AwarenessState,
+  unnamedCollaboratorLabel: string,
 ): CollabEditorParticipant {
+  const user = state.user as PresenceAwareUserState;
   return {
     memberId: asTeamMemberId(memberId),
-    displayName: collaboratorDisplayName({ name: state.user.name, memberId }),
+    displayName: user.nimbalystNameSource === 'system-default'
+      ? unnamedCollaboratorLabel
+      : collaboratorDisplayName({ name: state.user.name, memberId }, unnamedCollaboratorLabel),
     cursorColor: state.user.color,
     hasSelection: Boolean(state.cursor),
   };
@@ -117,6 +126,8 @@ export class CollabPresenceSurface implements AwarenessSyncSurface {
   private localState: AwarenessState | null = null;
   /** Set once the host knows a better name than the one the editor mounted with. */
   private displayName: string | null = null;
+  private displayNameIsSystemDefault = false;
+  private unnamedCollaboratorLabel: string;
   private remoteStates = new Map<string, AwarenessState>();
   private lastPresenceFingerprint = '';
   private active = true;
@@ -130,6 +141,8 @@ export class CollabPresenceSurface implements AwarenessSyncSurface {
       ?? DEFAULT_HEARTBEAT_INTERVAL_MS;
     this.staleAfterMs = options.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
     this.now = options.now ?? Date.now;
+    this.unnamedCollaboratorLabel = options.getUnnamedCollaboratorLabel?.()
+      || UNNAMED_COLLABORATOR_LABEL;
     this.unsubscribeDelegate = delegate.onAwarenessChange((states) => {
       this.remoteStates = new Map(states);
       this.emitAwarenessAndPresence();
@@ -169,9 +182,14 @@ export class CollabPresenceSurface implements AwarenessSyncSurface {
    * publishing the name it mounted with; every state passing through here is
    * rewritten, and the current one is re-sent so peers see it now.
    */
-  setDisplayName(displayName: string): void {
-    if (this.destroyed || displayName === this.displayName) return;
+  setDisplayName(displayName: string, isSystemDefaultName = false): void {
+    if (
+      this.destroyed
+      || (displayName === this.displayName
+        && isSystemDefaultName === this.displayNameIsSystemDefault)
+    ) return;
     this.displayName = displayName;
+    this.displayNameIsSystemDefault = isSystemDefaultName;
     if (!this.localState) return;
     this.localState = this.withFreshness(this.localState);
     if (!this.active) return;
@@ -180,6 +198,13 @@ export class CollabPresenceSurface implements AwarenessSyncSurface {
     } else {
       this.delegate.setLocalAwareness(this.localState);
     }
+  }
+
+  /** Change the UI-only label for marked generated remote names. */
+  setUnnamedCollaboratorLabel(label: string): void {
+    if (this.destroyed || !label || label === this.unnamedCollaboratorLabel) return;
+    this.unnamedCollaboratorLabel = label;
+    this.emitAwarenessAndPresence();
   }
 
   /** Toggle whether this mounted editor is currently present in the room. */
@@ -214,7 +239,11 @@ export class CollabPresenceSurface implements AwarenessSyncSurface {
 
   getPresence(): CollabEditorPresence {
     const participants = [...this.getVisibleStates().entries()]
-      .map(([memberId, state]) => participantFromAwareness(memberId, state))
+      .map(([memberId, state]) => participantFromAwareness(
+        memberId,
+        state,
+        this.unnamedCollaboratorLabel,
+      ))
       .sort((left, right) => (
         left.displayName.localeCompare(right.displayName)
         || left.memberId.localeCompare(right.memberId)
@@ -236,16 +265,24 @@ export class CollabPresenceSurface implements AwarenessSyncSurface {
   }
 
   private withFreshness(state: AwarenessState): AwarenessState {
+    const user = {
+      ...state.user,
+      ...(this.displayName !== null ? { name: this.displayName } : {}),
+      nimbalystPresence: {
+        version: 1,
+        updatedAt: this.now(),
+      },
+    } as PresenceAwareUserState;
+    if (this.displayName !== null) {
+      if (this.displayNameIsSystemDefault) {
+        user.nimbalystNameSource = 'system-default';
+      } else {
+        delete user.nimbalystNameSource;
+      }
+    }
     return {
       ...state,
-      user: {
-        ...state.user,
-        ...(this.displayName !== null ? { name: this.displayName } : {}),
-        nimbalystPresence: {
-          version: 1,
-          updatedAt: this.now(),
-        },
-      } satisfies PresenceAwareUserState,
+      user,
     };
   }
 

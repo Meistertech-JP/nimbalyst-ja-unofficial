@@ -1,4 +1,5 @@
 import type { ComponentProps, MouseEvent, MouseEventHandler } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 /** A left click with no modifier: the one activation the host handles itself. */
@@ -23,6 +24,7 @@ function isPlainActivation(event: MouseEvent<HTMLElement>): boolean {
  * actions: on every row at once it read as clutter.
  */
 export function SharedDocumentLink({ href, onClick, onContextMenu, ...props }: Omit<ComponentProps<'a'>, 'href' | 'onClick' | 'onContextMenu'> & { href?: string | null; onClick?: MouseEventHandler<HTMLElement>; onContextMenu?: MouseEventHandler<HTMLElement> }) {
+  const { t } = useTranslation('collabSidebar');
   if (href) {
     const link = (
       <a
@@ -43,8 +45,8 @@ export function SharedDocumentLink({ href, onClick, onContextMenu, ...props }: O
       <button
         type="button"
         className="shared-document-actions absolute right-1 top-1/2 flex -translate-y-1/2 items-center justify-center rounded border-none bg-transparent p-0.5 text-[var(--nim-text-faint)] opacity-0 transition-opacity hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] focus-visible:opacity-100 group-hover:opacity-100"
-        aria-label="Document actions"
-        title="More actions"
+        aria-label={t('ui.shared_document_options')}
+        title={t('list.more_actions')}
         onClick={(event) => { event.preventDefault(); event.stopPropagation(); onContextMenu(event); }}
       >
         <MaterialSymbol icon="more_horiz" size={16} />

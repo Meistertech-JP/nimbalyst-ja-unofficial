@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FeedbackComposeSubject } from './feedbackComposeDraft';
 
 const ArtifactGlyph: React.FC = () => (
@@ -30,7 +31,9 @@ export interface FeedbackComposeSubjectsProps {
 export const FeedbackComposeSubjects: React.FC<FeedbackComposeSubjectsProps> = ({
   subjects,
   onRemove,
-}) => (
+}) => {
+  const { t } = useTranslation('aichat');
+  return (
   <div className="feedback-compose-subjects flex gap-2 flex-wrap">
     {subjects.map((subject) => (
       <div
@@ -46,7 +49,7 @@ export const FeedbackComposeSubjects: React.FC<FeedbackComposeSubjectsProps> = (
           <span className="text-xs font-medium text-nim truncate select-text">{subject.label}</span>
           <span className="text-[0.6875rem] text-nim-faint truncate">
             {subject.context ? `${subject.context} · ` : ''}
-            {subject.shared ? 'shared' : 'not shared'}
+            {t(subject.shared ? 'feedback_compose.shared' : 'feedback_compose.not_shared')}
           </span>
         </span>
         <span
@@ -58,7 +61,7 @@ export const FeedbackComposeSubjects: React.FC<FeedbackComposeSubjectsProps> = (
         {onRemove && (
           <button
             type="button"
-            aria-label={`Remove ${subject.label} from the subject`}
+            aria-label={t('feedback_compose.remove_subject', { name: subject.label })}
             onClick={() => onRemove(subject.ref.sourceId)}
             className="shrink-0 text-nim-faint hover:text-nim cursor-pointer bg-transparent border-none p-0 leading-none"
           >
@@ -69,5 +72,6 @@ export const FeedbackComposeSubjects: React.FC<FeedbackComposeSubjectsProps> = (
         )}
       </div>
     ))}
-  </div>
-);
+    </div>
+  );
+};

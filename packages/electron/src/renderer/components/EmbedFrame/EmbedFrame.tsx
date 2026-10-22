@@ -27,6 +27,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Trans } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { basename } from 'pathe';
 import { useEmbedFilePath } from './useEmbedFilePath';
@@ -35,6 +36,7 @@ import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
 import type { EmbedFrameProps } from '@nimbalyst/runtime';
 import { useDocumentPath, MaterialSymbol } from '@nimbalyst/runtime';
 import { store } from '@nimbalyst/runtime/store';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { customEditorRegistry } from '../CustomEditors/registry';
 import { fileChangedOnDiskAtomFamily } from '../../store/atoms/fileWatch';
@@ -92,6 +94,7 @@ const openSharedDocumentInTab = (documentId: string): void => {
 // ----------------------------------------------------------------------------
 
 export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
+  const { t } = useTranslation('common');
   const { src, label, attrs, nodeKey, detached = false } = props;
   const { documentDir, documentPath } = useDocumentPath();
   const { theme } = useTheme();
@@ -179,10 +182,10 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
   } | { error: string } | null>(() => {
     if (!collaborativeReference) return null;
     if (!activeWorkspacePath || !effectiveTeamOrgId) {
-      return { error: 'The active team workspace is unavailable.' };
+      return { error: t('embed.team_unavailable') };
     }
     if (collaborativeReference.orgId !== effectiveTeamOrgId) {
-      return { error: 'This embedded document belongs to a different team.' };
+      return { error: t('embed.different_team') };
     }
 
     const resolution = resolveCollaborativeEmbedRequest({
@@ -200,7 +203,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
     // Unreachable without `allowLexical`, which this caller deliberately does
     // not pass: an in-document embed is already inside a Lexical editor.
     if (resolution.editor.kind !== 'extension') {
-      return { error: 'Only collaborative custom-editor documents can be embedded.' };
+      return { error: t('embed.custom_editor_required') };
     }
     return {
       displayName: resolution.displayName,
@@ -217,6 +220,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
     sharedEditorId,
     sharedFileExtension,
     sharedTitle,
+    t,
   ]);
 
   const heightPx = parsePx(attrs.height, DEFAULT_EMBED_HEIGHT_PX, MIN_EMBED_HEIGHT_PX);
@@ -494,7 +498,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
           displayName={label || src}
           label={label}
           src={src}
-          error={collaborativeResolution?.error ?? 'Could not resolve shared embed.'}
+          error={collaborativeResolution?.error ?? t('embed.shared_unresolved')}
           onOpen={() => openSharedDocumentInTab(collaborativeReference.documentId)}
           testId="collaborative-embed-unresolved"
         />
@@ -511,7 +515,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
         displayName={displayName}
         onOpen={() => openSharedDocumentInTab(request.documentId)}
         markers={{ 'data-embed-extension': registration.extensionId ?? '', 'data-embed-collaborative': 'true' }}
-        loadingText="Loading shared embed..."
+        loadingText={t('embed.shared_loading')}
         interactive={registration.extensionId === HTML_PAGE_EDITOR_ID}
       >
         <CollaborativeEmbedEditor editor={{ kind: 'extension', registration }} request={request} />
@@ -520,7 +524,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
   }
 
   if (pathPending) {
-    return <div className="embed-frame" data-testid="embed-frame-loading">Resolving embedded file…</div>;
+    return <div className="embed-frame" data-testid="embed-frame-loading">{t('embed.resolving_file')}</div>;
   }
 
   if (!absolutePath) {
@@ -537,7 +541,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
         />
         <div className="embed-frame__body embed-frame__body--placeholder">
           <MaterialSymbol icon="link_off" size={28} />
-          <p>{pathError || 'Could not resolve embed path'}</p>
+          <p>{pathError || t('embed.unresolved')}</p>
           <code>{src}</code>
         </div>
       </div>
@@ -559,7 +563,12 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
         <div className="embed-frame__body embed-frame__body--placeholder">
           <MaterialSymbol icon="extension_off" size={28} />
           <p>
-            No installed extension can render <code>{basename(absolutePath)}</code> inline.
+            <Trans
+              i18nKey="embed.no_extension"
+              ns="common"
+              values={{ file: basename(absolutePath) }}
+              components={{ code: <code /> }}
+            />
           </p>
         </div>
       </div>
@@ -605,7 +614,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
             className="px-2 py-1 rounded border border-nim text-nim hover:bg-nim-active"
             data-testid="embed-save-failure-retry"
           >
-            Retry
+            {t('retry')}
           </button>
         </div>
       )}
@@ -640,7 +649,7 @@ export const EmbedFrame: React.FC<EmbedFrameProps> = (props) => {
           <EmbedErrorBoundary onError={setRenderError} absolutePath={absolutePath}>
             {host && (
               <React.Suspense
-                fallback={<div className="embed-frame__loading">Loading embed...</div>}
+                fallback={<div className="embed-frame__loading">{t('embed.loading')}</div>}
               >
                 <ExtensionComponent host={host} />
               </React.Suspense>

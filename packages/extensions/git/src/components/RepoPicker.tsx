@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating, offset, flip, shift, FloatingPortal,
   useDismiss, useRole, useInteractions, autoUpdate,
@@ -37,6 +38,7 @@ export function RepoPicker({
   branchByRepo,
   onRequestBranches,
 }: RepoPickerProps) {
+  const { t } = useTranslation('git');
   const [isOpen, setIsOpen] = useState(false);
 
   const { refs, floatingStyles, context } = useFloating({
@@ -66,7 +68,7 @@ export function RepoPicker({
   if (repos.length < 2) return null;
 
   const labels = repoLabels(repos);
-  const currentLabel = current === ALL_REPOS ? 'All repositories' : (labels[current] ?? current);
+  const currentLabel = current === ALL_REPOS ? t('supplemental.repo_picker.all_repositories') : (labels[current] ?? current);
 
   return (
     <>
@@ -74,8 +76,8 @@ export function RepoPicker({
         ref={refs.setReference}
         className="git-log-select git-repo-picker-trigger"
         onClick={toggle}
-        title={current === ALL_REPOS ? 'All repositories' : current}
-        aria-label={`Repository: ${currentLabel}`}
+        title={current === ALL_REPOS ? t('supplemental.repo_picker.all_repositories') : current}
+        aria-label={t('supplemental.repo_picker.aria_label', { repository: currentLabel })}
         {...getReferenceProps()}
       >
         {currentLabel}
@@ -90,16 +92,16 @@ export function RepoPicker({
             className="git-branch-menu git-repo-menu"
             {...getFloatingProps()}
           >
-            <div className="git-branch-menu-section">Repositories</div>
+            <div className="git-branch-menu-section">{t('supplemental.repo_picker.heading')}</div>
             {/* Changes shows every repo at once under this scope; Log and
                 Output stay on one repo, since a merged commit log across
                 repos is meaningless. */}
             <button
               className={`git-branch-menu-item${current === ALL_REPOS ? ' git-branch-menu-item--current' : ''}`}
               onClick={() => handleSelect(ALL_REPOS)}
-              title="Show changes from every repository"
+              title={t('supplemental.repo_picker.show_all_title')}
             >
-              <span className="git-branch-menu-item-name">All repositories</span>
+              <span className="git-branch-menu-item-name">{t('supplemental.repo_picker.all_repositories')}</span>
               {current === ALL_REPOS && <span className="git-branch-menu-item-check">✓</span>}
             </button>
             {repos.map(repoPath => (

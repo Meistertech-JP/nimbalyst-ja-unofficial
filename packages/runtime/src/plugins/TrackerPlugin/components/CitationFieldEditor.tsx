@@ -14,6 +14,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FloatingPortal,
   autoUpdate,
@@ -64,6 +65,7 @@ const CitationChip: React.FC<{
   onOpenItem?: (itemId: string) => void;
   onRemove?: () => void;
 }> = ({ entry, host, onOpenItem, onRemove }) => {
+  const { t } = useTranslation('tracker');
   const [open, setOpen] = useState(false);
   const floating = useFloating({
     open,
@@ -90,7 +92,7 @@ const CitationChip: React.FC<{
         className="citation-chip-open inline-flex items-center gap-1 text-left"
         onClick={() => setOpen((previous) => !previous)}
         aria-expanded={open}
-        title="Inspect this citation"
+        title={t('citation.field_editor.inspect_title')}
       >
         <MaterialSymbol icon="format_quote" size={14} />
         <span className="max-w-[220px] truncate">{label}</span>
@@ -100,7 +102,7 @@ const CitationChip: React.FC<{
           type="button"
           className="citation-chip-remove text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]"
           onClick={onRemove}
-          aria-label={`Remove citation ${label}`}
+          aria-label={t('citation.field_editor.remove_label', { label })}
         >
           <MaterialSymbol icon="close" size={14} />
         </button>
@@ -129,6 +131,7 @@ export const CitationFieldEditor: React.FC<CitationFieldEditorProps> = ({
   onOpenItem,
   readOnly,
 }) => {
+  const { t } = useTranslation('tracker');
   const entries = useMemo(() => readCitationEntries(value), [value]);
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState('');
@@ -170,7 +173,7 @@ export const CitationFieldEditor: React.FC<CitationFieldEditorProps> = ({
         ))}
         {entries.length === 0 && (
           <span className="citation-field-empty text-[12px] text-[var(--nim-text-muted)]">
-            No citations
+            {t('citation.field_editor.no_citations')}
           </span>
         )}
         {!readOnly && !adding && (
@@ -180,7 +183,7 @@ export const CitationFieldEditor: React.FC<CitationFieldEditorProps> = ({
             onClick={() => setAdding(true)}
           >
             <MaterialSymbol icon="add" size={14} />
-            Cite
+            {t('citation.field_editor.cite')}
           </button>
         )}
       </div>
@@ -194,12 +197,12 @@ export const CitationFieldEditor: React.FC<CitationFieldEditorProps> = ({
             onKeyDown={(event) => {
               if (event.key === 'Escape') setAdding(false);
             }}
-            placeholder="Find a citation..."
+            placeholder={t('citation.field_editor.search_placeholder')}
             className="citation-field-picker-input rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-[12px] text-[var(--nim-text)]"
           />
           {matches.length === 0 ? (
             <span className="citation-field-picker-empty text-[12px] text-[var(--nim-text-muted)]">
-              No citation items match. Create one first.
+              {t('citation.field_editor.no_matches')}
             </span>
           ) : (
             matches.map((candidate) => (

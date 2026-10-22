@@ -222,6 +222,50 @@ describe('atlas connections', () => {
     expect(noteFor('implements')).toMatch(/does not classify how it was produced/);
   });
 
+  it('uses localized model copy for notes, evidence details, explanations, and relation overflow', () => {
+    const calls: string[] = [];
+    const translate = (key: string, values?: Record<string, string | number>) => {
+      calls.push(key);
+      if (key === 'project_graph.atlas.snapshot_edge_detail') {
+        return `edge:${values?.relation}:${values?.note}`;
+      }
+      if (key === 'project_graph.atlas.shared_membership_detail') {
+        return `shared:${values?.basis}`;
+      }
+      if (key === 'project_graph.atlas.more_relations') return `more:${values?.count}`;
+      return `${key}:${values?.count ?? ''}`;
+    };
+    const { connections } = areaConnections(m, buildAreaIndex(m), 'a', { translate });
+
+    const recorded = connections.find((c) => c.family === 'recorded-link')!;
+    const derived = connections.find((c) => c.family === 'derived-link')!;
+    const shared = connections.find((c) => c.family === 'shared-membership')!;
+    expect(recorded.explanation).toContain('project_graph.atlas.connection_summary.recorded_link_other:2');
+    expect(recorded.evidence[0].detail).toContain('project_graph.atlas.source_record_note');
+    expect(derived.relationCounts.find((r) => r.relation === 'part_of')?.note).toContain(
+      'project_graph.atlas.relation_origin.part_of',
+    );
+    expect(derived.evidence[0].detail).toContain('project_graph.atlas.relation_origin.part_of');
+    expect(shared.evidence[0].detail).toContain('shared:tag:a / tag:c');
+    expect(calls).toEqual(expect.arrayContaining([
+      'project_graph.atlas.connection_summary.recorded_link_other',
+      'project_graph.atlas.connection_summary.derived_link_other',
+      'project_graph.atlas.connection_summary.unclassified_link_one',
+      'project_graph.atlas.connection_summary.shared_membership_one',
+      'project_graph.atlas.relation_origin.references',
+      'project_graph.atlas.relation_origin.part_of',
+      'project_graph.atlas.relation_origin.unknown',
+      'project_graph.atlas.snapshot_edge_detail',
+      'project_graph.atlas.shared_membership_detail',
+    ]));
+
+    expect(formatRelationSummary(
+      [{ relation: 'a', count: 3 }, { relation: 'b', count: 2 }, { relation: 'c', count: 1 }, { relation: 'd', count: 1 }],
+      3,
+      (count) => translate('project_graph.atlas.more_relations', { count }),
+    )).toBe('a ×3, b ×2, c ×1 +more:1');
+  });
+
   it('keeps shared membership separate and points evidence at the record in the other area', () => {
     const { connections } = areaConnections(m, buildAreaIndex(m), 'a');
     const recorded = connections.find((c) => c.family === 'recorded-link')!;

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.81.7-ja.1] — Source preview preparation
+
+- Added Japanese and English UI selection for the unofficial desktop edition based on Nimbalyst v0.81.7.
+- Disabled official automatic updates and the manual update-check action in this edition.
+- Kept Windows authentication on a nonce-protected localhost callback without registering the `nimbalyst://` protocol.
+- Prepared source-only distribution; packaged Windows launch, authentication, installation and uninstallation are not verified.
+- Some unnamed collaborators may still appear as “Teammate”. Full-suite test failures remain under review.
+- See [the bilingual preview notes](RELEASE_NOTES_v0.81.7-ja.1.md) for limitations and distribution details.
+
 ## [Unreleased]
 
 ### Added

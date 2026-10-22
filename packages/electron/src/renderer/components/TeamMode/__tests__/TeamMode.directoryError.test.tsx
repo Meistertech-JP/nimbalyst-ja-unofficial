@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 import React from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { createHydratedOrgStore } from './organizationTestStore';
 import { Provider } from 'jotai';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -15,6 +18,7 @@ import {
   resetOrgWindowPendingHandoff,
 } from '../onboarding/pendingRouteHandoff';
 import { OrgModeHost } from '../OrgModeHost';
+import { organizationDirectoryStateAtom } from '../../../store/atoms/settingsDomains';
 
 const orgWindowRouteAtom = orgWindowRouteAtomFamily(ORG_WINDOW_SURFACE_ID);
 
@@ -33,6 +37,7 @@ const team = {
   name: 'Acme',
   boundPersonalOrgId: 'account-1',
   membershipType: 'active_member',
+  role: 'member',
 };
 
 function installApi(invoke: ReturnType<typeof vi.fn>) {
@@ -68,6 +73,19 @@ function installApi(invoke: ReturnType<typeof vi.fn>) {
   });
 }
 
+async function renderHost(
+  store: Awaited<ReturnType<typeof createHydratedOrgStore>>,
+  host: ReactNode
+) {
+  const i18n = await createI18nInstance('ja');
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+      <Provider store={store}>{children}</Provider>
+    </UiLanguageProvider>
+  );
+  return render(host, { wrapper: Wrapper });
+}
+
 /**
  * A stale main process failed the directory IPC and the sidebar said "No rooms
  * yet. Create one with + or browse below." — an empty directory and a failed
@@ -89,10 +107,9 @@ describe('TeamMode directory load failure', () => {
       error: 'Conversation directory unavailable',
     });
 
-    render(
-      <Provider store={store}>
-        <OrgModeHost orgId="org-1" surfaceId={ORG_WINDOW_SURFACE_ID} chrome="window" />
-      </Provider>,
+    await renderHost(
+      store,
+      <OrgModeHost orgId="org-1" surfaceId={ORG_WINDOW_SURFACE_ID} chrome="window" />,
     );
 
     await waitFor(() => screen.getByTestId('org-rooms-error'));
@@ -120,10 +137,9 @@ describe('TeamMode directory load failure', () => {
     });
     recordOrgWindowPendingHandoff('org-1', route);
 
-    render(
-      <Provider store={store}>
-        <OrgModeHost orgId="org-1" surfaceId={ORG_WINDOW_SURFACE_ID} chrome="window" />
-      </Provider>,
+    await renderHost(
+      store,
+      <OrgModeHost orgId="org-1" surfaceId={ORG_WINDOW_SURFACE_ID} chrome="window" />,
     );
 
     await waitFor(() => expect(invoke).toHaveBeenCalledWith(
@@ -138,5 +154,23 @@ describe('TeamMode directory load failure', () => {
       'conversation:directory:list',
       { orgId: 'org-1' },
     );
+  });
+
+  it('localizes the refresh status while showing the existing organization', async () => {
+    const invoke = vi.fn().mockResolvedValue([]);
+    installApi(invoke);
+    const store = await createHydratedOrgStore();
+    store.set(organizationDirectoryStateAtom, {
+      entries: [team],
+      status: 'loading',
+      complete: false,
+    });
+
+    await renderHost(
+      store,
+      <OrgModeHost orgId="org-1" surfaceId={ORG_WINDOW_SURFACE_ID} chrome="window" />,
+    );
+
+    expect(screen.getByText('組織を更新中…')).not.toBeNull();
   });
 });

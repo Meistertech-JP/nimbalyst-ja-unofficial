@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import { formatRelativeTimestamp } from './inboxViewModel';
@@ -17,6 +18,7 @@ export function InboxStatusBanner({
   lastSyncedAt?: number;
   now: number;
 }) {
+  const { t, i18n } = useTranslation('collabSidebar', { keyPrefix: 'org_sidebar.inbox_status' });
   if (status === 'ready' || status === 'loading' || status === 'offlineWithoutCache') return null;
 
   const offline = status === 'offlineWithCache';
@@ -32,12 +34,12 @@ export function InboxStatusBanner({
       {offline
         ? (
           <>
-            Offline — showing cached deliveries
-            {lastSyncedAt ? ` from ${formatRelativeTimestamp(lastSyncedAt, now)} ago` : ''}
-            . Previews may be out of date and changes queue until you reconnect.
+            {t('offline_cached')}
+            {lastSyncedAt ? t('synced_ago', { time: formatRelativeTimestamp(lastSyncedAt, now, i18n.language) }) : ''}
+            {t('offline_queued_changes')}
           </>
         )
-        : 'Reconnecting — the list is paused until the canonical sequence is reconciled.'}
+        : t('reconnecting')}
     </p>
   );
 }

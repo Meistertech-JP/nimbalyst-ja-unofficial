@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   UnifiedOnboarding,
   type OnboardingData,
@@ -17,6 +18,7 @@ export const WorkspaceManagerOnboarding: React.FC<WorkspaceManagerOnboardingProp
   showOnboarding,
   safeMode = false,
 }) => {
+  const { t } = useTranslation('onboarding');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(showOnboarding);
 
   const handleComplete = useCallback(async (
@@ -46,8 +48,11 @@ export const WorkspaceManagerOnboarding: React.FC<WorkspaceManagerOnboardingProp
     <>
       {safeMode && (
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 border-b border-[var(--nim-warning)] bg-[var(--nim-bg-secondary)] px-4 py-2 text-sm text-[var(--nim-text)]">
-          <strong>Safe mode:</strong>
-          <span>Saved windows were not restored. Open a project to resume normal session saving, or relaunch without <code>--safe-mode</code>.</span>
+          <strong>{t('safe_mode_banner.label')}</strong>
+          <span>
+            {t('safe_mode_banner.message_before_command')}{' '}
+            <code>--safe-mode</code>{t('safe_mode_banner.message_after_command')}
+          </span>
         </div>
       )}
       <WorkspaceManager />

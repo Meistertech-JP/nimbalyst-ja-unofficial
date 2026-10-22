@@ -50,6 +50,7 @@ const EXTERNALS_MAP: Record<string, string> = {
   '@nimbalyst/editor-context': '@nimbalyst/editor-context',
   '@nimbalyst/runtime/ui/icons/MaterialSymbol': '@nimbalyst/runtime/ui/icons/MaterialSymbol',
   '@nimbalyst/screenshot-service': '@nimbalyst/screenshot-service',
+  '@nimbalyst/i18n/react': '@nimbalyst/i18n/react',
 
   // Shared libraries
   'pdfjs-dist': 'pdfjs-dist',
@@ -230,6 +231,8 @@ function generateCommonExports(externalKey: string): string {
     ];
   } else if (externalKey === '@nimbalyst/editor-context') {
     exports = ['useDocumentPath'];
+  } else if (externalKey === '@nimbalyst/i18n/react') {
+    exports = ['Trans', 'useTranslation', 'UiLanguageProvider'];
   } else if (externalKey === '@nimbalyst/runtime/ui/icons/MaterialSymbol') {
     exports = ['MaterialSymbol'];
   } else if (externalKey === '@nimbalyst/runtime') {

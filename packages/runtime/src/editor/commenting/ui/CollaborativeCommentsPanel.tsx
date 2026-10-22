@@ -21,6 +21,7 @@
 
 import type { JSX, KeyboardEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { CommentCountBadge } from './CommentCountBadge';
 import { CommentThreadCard } from './CommentThreadCard';
@@ -108,6 +109,7 @@ export function CollaborativeCommentsPanel({
   restoreFocusOnUnmount = true,
   ...actions
 }: CollaborativeCommentsPanelProps): JSX.Element {
+  const { t } = useTranslation('editor');
   const titleId = useId();
   const listRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement | null>());
@@ -216,8 +218,8 @@ export function CollaborativeCommentsPanel({
   const emptyText =
     emptyMessage ??
     (canComment
-      ? 'No comments yet. Select text in the document and add one.'
-      : 'No comments yet.');
+      ? t('comments.empty')
+      : t('comments.empty_read_only'));
 
   return (
     <section
@@ -245,11 +247,11 @@ export function CollaborativeCommentsPanel({
             className="nim-comments-panel-filter"
             data-testid="comments-panel-resolved-filter"
             aria-pressed={showResolved}
-            title={showResolved ? 'Hide resolved threads' : 'Show resolved threads'}
+            title={showResolved ? t('comments.hide_resolved') : t('comments.show_resolved')}
             aria-label={
               showResolved
-                ? `Hide ${resolvedCount} resolved threads`
-                : `Show ${resolvedCount} resolved threads`
+                ? t('comments.hide_resolved_count', { count: resolvedCount })
+                : t('comments.show_resolved_count', { count: resolvedCount })
             }
             onClick={() => setShowResolved(!showResolved)}
           >
@@ -263,8 +265,8 @@ export function CollaborativeCommentsPanel({
             type="button"
             className="nim-comments-panel-close"
             onClick={onClose}
-            aria-label="Close comments"
-            title="Close"
+            aria-label={t('comments.close')}
+            title={t('comments.close')}
           >
             <span aria-hidden="true" className="material-symbols-outlined">
               close
@@ -277,7 +279,7 @@ export function CollaborativeCommentsPanel({
           repeating a notice under every thread. */}
       {!canComment && (
         <div className="nim-comments-panel-notice" role="status">
-          You have read-only access to this document.
+          {t('comments.read_only_notice')}
         </div>
       )}
 

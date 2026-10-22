@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface ArchiveWorktreeDialogProps {
@@ -37,6 +38,7 @@ export function ArchiveWorktreeDialog({
   unmergedCommitCount,
   unmergedWorktreeCount,
 }: ArchiveWorktreeDialogProps) {
+  const { t } = useTranslation('dialogs');
   const isBulk = (worktreeCount ?? 1) > 1;
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +72,9 @@ export function ArchiveWorktreeDialog({
         <div className="archive-worktree-dialog-header flex items-center gap-3 px-6 pt-5 pb-4 text-[var(--nim-text)]">
           <MaterialSymbol icon="archive" size={24} />
           <h2 className="m-0 text-lg font-semibold">
-            {isBulk ? `Archive ${worktreeCount} Worktrees` : 'Archive Worktree'}
+            {isBulk
+              ? t('archive.archive_worktrees', { count: worktreeCount })
+              : t('archive.archive_worktree')}
           </h2>
         </div>
 
@@ -78,9 +82,8 @@ export function ArchiveWorktreeDialog({
           <p className="mb-4 text-sm leading-relaxed text-[var(--nim-text-muted)]">
             {contextMessage ? `${contextMessage} ` : ''}
             {isBulk
-              ? <>Are you sure you want to archive <strong className="font-medium text-[var(--nim-text)]">{worktreeCount} worktrees</strong>?</>
-              : <>Are you sure you want to archive{' '}<strong className="font-medium text-[var(--nim-text)]">{worktreeName}</strong>?</>
-            }
+              ? t('archive.confirm_all', { count: worktreeCount })
+              : t('archive.confirm_one', { name: worktreeName })}
           </p>
 
           {hasUncommittedChanges && (
@@ -88,13 +91,29 @@ export function ArchiveWorktreeDialog({
               <MaterialSymbol icon="warning" size={20} className="text-[var(--nim-warning)] shrink-0 mt-0.5" />
               <div>
                 <p className="m-0 text-sm font-medium text-[var(--nim-warning)]">
-                  Uncommitted changes will be lost
+                  {t('archive.uncommitted_lost')}
                 </p>
                 <p className="m-0 mt-1 text-[0.8125rem] text-[var(--nim-text-muted)]">
                   {isBulk
-                    ? <>{uncommittedWorktreeCount} {uncommittedWorktreeCount === 1 ? 'worktree has' : 'worktrees have'} uncommitted changes ({uncommittedFileCount} {uncommittedFileCount === 1 ? 'file' : 'files'} total). These changes will be permanently deleted.</>
-                    : <>This worktree has {uncommittedFileCount === 1 ? '1 file' : `${uncommittedFileCount} files`} with uncommitted changes. These changes will be permanently deleted.</>
-                  }
+                    ? t('archive.uncommitted_bulk', {
+                        worktrees: uncommittedWorktreeCount,
+                        worktreeWord:
+                          uncommittedWorktreeCount === 1
+                            ? t('archive.worktree_one')
+                            : t('archive.worktree_many'),
+                        files: uncommittedFileCount,
+                        fileWord:
+                          uncommittedFileCount === 1
+                            ? t('archive.file_one')
+                            : t('archive.file_many'),
+                      })
+                    : t('archive.uncommitted_one', {
+                        files: uncommittedFileCount,
+                        fileWord:
+                          uncommittedFileCount === 1
+                            ? t('archive.file_one')
+                            : t('archive.file_many'),
+                      })}
                 </p>
               </div>
             </div>
@@ -105,16 +124,34 @@ export function ArchiveWorktreeDialog({
               <MaterialSymbol icon="warning" size={20} className="text-[var(--nim-warning)] shrink-0 mt-0.5" />
               <div>
                 <p className="m-0 text-sm font-medium text-[var(--nim-warning)]">
-                  Unmerged commits will be lost
+                  {t('archive.unmerged_lost')}
                 </p>
                 <p className="m-0 mt-1 text-[0.8125rem] text-[var(--nim-text-muted)]">
                   {isBulk
-                    ? <>{unmergedWorktreeCount} {unmergedWorktreeCount === 1 ? 'worktree has' : 'worktrees have'} unmerged commits{(unmergedCommitCount ?? 0) > 0 ? ` (${unmergedCommitCount} ${unmergedCommitCount === 1 ? 'commit' : 'commits'} total)` : ''}.</>
+                    ? t('archive.unmerged_bulk', {
+                        worktrees: unmergedWorktreeCount,
+                        worktreeWord:
+                          unmergedWorktreeCount === 1
+                            ? t('archive.worktree_one')
+                            : t('archive.worktree_many'),
+                        details:
+                          (unmergedCommitCount ?? 0) > 0
+                            ? t(
+                                unmergedCommitCount === 1
+                                  ? 'archive.unmerged_total_one'
+                                  : 'archive.unmerged_total_other',
+                                { count: unmergedCommitCount },
+                              )
+                            : '',
+                      })
                     : (unmergedCommitCount ?? 0) > 0
-                      ? <>This branch has {unmergedCommitCount === 1 ? '1 commit' : `${unmergedCommitCount} commits`} that
-                        {unmergedCommitCount === 1 ? " hasn't" : " haven't"} been merged to the base branch.</>
-                      : <>This branch hasn&apos;t been merged to the base branch.</>
-                  }
+                      ? t(
+                          unmergedCommitCount === 1
+                            ? 'archive.unmerged_one_commits_one'
+                            : 'archive.unmerged_one_commits_other',
+                          { count: unmergedCommitCount },
+                        )
+                      : t('archive.unmerged_one_none')}
                 </p>
               </div>
             </div>
@@ -122,9 +159,8 @@ export function ArchiveWorktreeDialog({
 
           <p className="archive-worktree-dialog-info m-0 text-[0.8125rem] text-[var(--nim-text-faint)]">
             {isBulk
-              ? 'Archiving will remove all worktrees from disk and mark their associated sessions as archived.'
-              : 'Archiving will remove the worktree from disk and mark all associated sessions as archived.'
-            }
+              ? t('archive.archive_all_info')
+              : t('archive.archive_one_info')}
           </p>
         </div>
 
@@ -134,7 +170,7 @@ export function ArchiveWorktreeDialog({
             className="nim-btn-secondary"
             onClick={onKeep}
           >
-            {isBulk ? 'Cancel' : 'Keep Worktree'}
+            {isBulk ? t('archive.cancel') : t('archive.keep_worktree')}
           </button>
           <button
             type="button"
@@ -142,7 +178,7 @@ export function ArchiveWorktreeDialog({
             onClick={onArchive}
           >
             <MaterialSymbol icon="archive" size={16} />
-            <span>{isBulk ? 'Archive All' : 'Archive'}</span>
+            <span>{isBulk ? t('archive.archive_all') : t('archive.archive')}</span>
           </button>
         </div>
       </div>

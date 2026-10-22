@@ -5,6 +5,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TranscriptViewMessage } from '../../../ai/server/transcript/TranscriptProjector';
 import { FullscreenModal } from './FullscreenModal';
 import { ZoomableImageSurface } from './ZoomableImageSurface';
@@ -25,6 +26,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
 interface SlideProps {
   toolbarLabel: React.ReactNode;
   toolbarExtras: React.ReactNode;
+  loadingLabel: string;
+  noImageLabel: string;
 }
 
 const Slide: React.FC<SlideProps & { src: string | null; alt: string; copyFilePath?: string; status?: string }> = ({
@@ -46,12 +49,12 @@ const Slide: React.FC<SlideProps & { src: string | null; alt: string; copyFilePa
 
 const ScreenshotSlide: React.FC<SlideProps & { image: Extract<TranscriptImage, { kind: 'screenshot' }>; readFile?: ReadFile }> = ({ image, readFile, ...chrome }) => {
   const { imageSrc, loading, persistedLoadError } = useEditorScreenshotImage(image.message, readFile);
-  return <Slide {...chrome} src={imageSrc} alt={image.label} status={loading ? 'Loading...' : persistedLoadError ?? 'No image'} />;
+  return <Slide {...chrome} src={imageSrc} alt={image.label} status={loading ? chrome.loadingLabel : persistedLoadError ?? chrome.noImageLabel} />;
 };
 
 const DisplaySlide: React.FC<SlideProps & { image: Extract<TranscriptImage, { kind: 'display' }>; readFile?: ReadFile }> = ({ image, readFile, ...chrome }) => {
   const { imageData, loading, error } = useImageSource(image.image, readFile);
-  return <Slide {...chrome} src={imageData} alt={image.label} copyFilePath={image.image.path} status={loading ? 'Loading...' : error ?? 'No image'} />;
+  return <Slide {...chrome} src={imageData} alt={image.label} copyFilePath={image.image.path} status={loading ? chrome.loadingLabel : error ?? chrome.noImageLabel} />;
 };
 
 function renderSlide(image: TranscriptImage, readFile: ReadFile | undefined, chrome: SlideProps) {
@@ -59,7 +62,7 @@ function renderSlide(image: TranscriptImage, readFile: ReadFile | undefined, chr
     case 'attachment': {
       const filepath = image.attachment.filepath;
       const copyFilePath = filepath && !filepath.startsWith('data:') ? filepath.replace(/^file:\/\//, '') : undefined;
-      return <Slide {...chrome} src={attachmentImageSrc(image.attachment) || null} alt={image.label} copyFilePath={copyFilePath} status="No image" />;
+      return <Slide {...chrome} src={attachmentImageSrc(image.attachment) || null} alt={image.label} copyFilePath={copyFilePath} status={chrome.noImageLabel} />;
     }
     case 'screenshot':
       return <ScreenshotSlide {...chrome} image={image} readFile={readFile} />;
@@ -73,6 +76,7 @@ export const TranscriptImageGalleryProvider: React.FC<{
   readFile?: ReadFile;
   children: React.ReactNode;
 }> = ({ messages, readFile, children }) => {
+  const { t } = useTranslation('aichat');
   const [openKey, setOpenKey] = useState<string | null>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -125,11 +129,13 @@ export const TranscriptImageGalleryProvider: React.FC<{
         <FullscreenModal
           isOpen
           onClose={close}
-          ariaLabel="Image preview"
+          ariaLabel={t('visual.lightbox')}
           contentClassName="transcript-image-lightbox h-[92dvh] w-[96vw] max-w-[1400px] overflow-hidden rounded-lg border border-nim bg-nim shadow-2xl"
         >
           <React.Fragment key={current.key}>
             {renderSlide(current, readFile, {
+              loadingLabel: t('visual.loading'),
+              noImageLabel: t('visual.no_image'),
               toolbarLabel: (
                 <div className="min-w-0 truncate font-mono text-sm text-nim" title={current.label}>
                   {current.label}
@@ -139,19 +145,19 @@ export const TranscriptImageGalleryProvider: React.FC<{
                 <>
                   {images.length > 1 ? (
                     <div className="flex items-center gap-1">
-                      <button type="button" className={BUTTON_CLASS} onClick={() => go(-1)} disabled={index === 0} aria-label="Previous image" title="Previous image (Left arrow)">
-                        Prev
+                      <button type="button" className={BUTTON_CLASS} onClick={() => go(-1)} disabled={index === 0} aria-label={t('visual.previous_image')} title={t('visual.previous_image_shortcut')}>
+                        {t('visual.previous')}
                       </button>
                       <div className="min-w-[3.5rem] text-center font-mono text-xs text-[var(--nim-text-muted)]" data-testid="transcript-image-position">
                         {index + 1} / {images.length}
                       </div>
-                      <button type="button" className={BUTTON_CLASS} onClick={() => go(1)} disabled={index === images.length - 1} aria-label="Next image" title="Next image (Right arrow)">
-                        Next
+                      <button type="button" className={BUTTON_CLASS} onClick={() => go(1)} disabled={index === images.length - 1} aria-label={t('visual.next_image')} title={t('visual.next_image_shortcut')}>
+                        {t('visual.next')}
                       </button>
                     </div>
                   ) : null}
-                  <button type="button" className={BUTTON_CLASS} onClick={close} aria-label="Close (Escape)" title="Close (Escape)">
-                    Close
+                  <button type="button" className={BUTTON_CLASS} onClick={close} aria-label={t('media.close_escape')} title={t('media.close_escape')}>
+                    {t('media.close')}
                   </button>
                 </>
               ),

@@ -5,6 +5,7 @@
  * lands at the section root.
  */
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { FloatingPortal, useFloatingMenu, virtualElement } from '../ui-primitives/useFloatingMenu';
 
@@ -28,6 +29,7 @@ export const CollabSectionMenu: React.FC<{
   extraItems?: readonly CollabSectionMenuItem[];
   onClose: () => void;
 }> = ({ x, y, onNewPage, onPlaceType, extraItems, onClose }) => {
+  const { t } = useTranslation('collabSidebar');
   const reference = useMemo(() => virtualElement(x, y), [x, y]);
   const floating = useFloatingMenu({
     placement: 'right-start',
@@ -47,12 +49,12 @@ export const CollabSectionMenu: React.FC<{
       >
         <button type="button" className={`collab-section-new-page ${MENU_ENTRY_CLASS}`} onClick={onNewPage}>
           <MaterialSymbol icon="note_add" size={18} />
-          <span>New page</span>
+          <span>{t('share_folder_picker.new_page')}</span>
         </button>
         {onPlaceType && (
           <button type="button" className={`collab-section-place-type ${MENU_ENTRY_CLASS}`} onClick={onPlaceType}>
             <MaterialSymbol icon="table" size={18} />
-            <span>Place type...</span>
+            <span>{t('ui.place_type')}</span>
           </button>
         )}
         {extraItems?.map((item) => (
@@ -89,15 +91,16 @@ export const CollabTreeEmptyState: React.FC<{
   /** Absent when no page type can be created here. */
   onNewPage?: () => void;
 }> = ({ reason, personal, scopeAvailable, onNewPage }) => {
+  const { t } = useTranslation('common');
   const [title, hint] = reason === 'favorites'
-    ? ['No favorites yet.', 'Star a document to pin it here.']
+    ? [t('collab.no_favorites'), t('collab.star_to_pin')]
     : reason === 'updated'
-      ? ["You're all caught up.", 'No documents changed since you last viewed them.']
+      ? [t('collab.all_caught_up'), t('collab.no_recent_changes')]
       : personal
-        ? ['No personal pages yet.', null]
+        ? [t('collab.personal_pages_empty'), null]
         : scopeAvailable
-          ? ['No shared documents yet.', 'Create one here or share a local file to collaborate.']
-          : ['No team connected to this workspace.', null];
+          ? [t('collab.no_documents'), t('collab.create_or_share')]
+          : [t('collab.no_team_workspace'), null];
   return (
     <div className="collab-tree-empty px-2 py-4 text-center">
       <MaterialSymbol icon={EMPTY_ICON[reason]} size={32} className="text-nim-faint mb-2" />
@@ -110,7 +113,7 @@ export const CollabTreeEmptyState: React.FC<{
           onClick={onNewPage}
         >
           <MaterialSymbol icon="note_add" size={14} />
-          New page
+          {t('share_folder_picker.new_page', { ns: 'collabSidebar' })}
         </button>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { IDisposable } from 'monaco-editor';
 import type { EditorHostProps } from '@nimbalyst/extension-sdk';
 import { MonacoEditor, type MonacoEditorCollabConfig } from '@nimbalyst/runtime';
@@ -13,18 +14,24 @@ import {
 function lineTitle(
   line: ReturnType<typeof parseCalcSheetDocument>['lines'][number],
   evaluation: ReturnType<typeof evaluateCalcSheet>,
+  t: ReturnType<typeof useTranslation<'extensions'>>['t'],
 ): string | undefined {
   if (line.kind === 'binding' && line.binding) {
     const result = evaluation.bindings.get(line.binding.name);
     if (!result) return undefined;
     const parts = [
-      `${result.classification === 'constant' ? 'Constant' : 'Formula'}: ${line.binding.name}`,
+      t(
+        result.classification === 'constant'
+          ? 'calc_sheets.constant_tooltip'
+          : 'calc_sheets.formula_tooltip',
+        { name: line.binding.name },
+      ),
     ];
     if (result.dependencies.length > 0) {
-      parts.push(`Depends on: ${result.dependencies.join(', ')}`);
+      parts.push(t('calc_sheets.depends_tooltip', { dependencies: result.dependencies.join(', ') }));
     }
     if (result.error) {
-      parts.push(`Error: ${result.error}`);
+      parts.push(t('calc_sheets.error_tooltip', { error: result.error }));
     }
     return parts.join('\n');
   }
@@ -33,12 +40,12 @@ function lineTitle(
       (entry) => entry.expression === line.assertion?.expression,
     );
     if (!assertion) return undefined;
-    const parts = [`Assertion: ${line.assertion.expression}`];
+    const parts = [t('calc_sheets.assertion_tooltip', { expression: line.assertion.expression })];
     if (assertion.dependencies.length > 0) {
-      parts.push(`Depends on: ${assertion.dependencies.join(', ')}`);
+      parts.push(t('calc_sheets.depends_tooltip', { dependencies: assertion.dependencies.join(', ') }));
     }
     if (assertion.error) {
-      parts.push(`Error: ${assertion.error}`);
+      parts.push(t('calc_sheets.error_tooltip', { error: assertion.error }));
     }
     return parts.join('\n');
   }
@@ -49,6 +56,9 @@ function lineTitle(
 }
 
 export function CalcSheetEditor({ host }: EditorHostProps) {
+  const { t } = useTranslation('extensions');
+  const tRef = useRef(t);
+  tRef.current = t;
   const [rawContent, setRawContent] = useState<string | null>(null);
   const [readOnly, setReadOnly] = useState<boolean>(host.readOnly ?? false);
   const gutterRef = useRef<HTMLDivElement | null>(null);
@@ -130,7 +140,7 @@ export function CalcSheetEditor({ host }: EditorHostProps) {
       })
       .catch((error) => {
         if (!mounted) return;
-        setLoadError(error instanceof Error ? error : new Error('Failed to load content'));
+        setLoadError(error instanceof Error ? error : new Error(tRef.current('calc_sheets.load_failed')));
       });
     return () => {
       mounted = false;
@@ -315,13 +325,13 @@ export function CalcSheetEditor({ host }: EditorHostProps) {
   }, [host.theme, parsed]);
 
   if (rawContent === null && !loadError) {
-    return <div className="calc-sheets calc-sheets--loading">Loading calc sheet...</div>;
+    return <div className="calc-sheets calc-sheets--loading">{t('calc_sheets.loading')}</div>;
   }
 
   if (loadError) {
     return (
       <div className="calc-sheets calc-sheets--error">
-        Failed to load calc sheet: {loadError.message}
+        {t('calc_sheets.load_error', { error: loadError.message })}
       </div>
     );
   }
@@ -330,7 +340,7 @@ export function CalcSheetEditor({ host }: EditorHostProps) {
     <div className="calc-sheets">
       {parsed.frontmatterError ? (
         <div className="calc-sheets__banner calc-sheets__banner--error">
-          Frontmatter error: {parsed.frontmatterError}
+          {t('calc_sheets.frontmatter_error', { error: parsed.frontmatterError })}
         </div>
       ) : null}
 
@@ -349,7 +359,7 @@ export function CalcSheetEditor({ host }: EditorHostProps) {
           <div
             className="calc-sheets__results"
             role="table"
-            aria-label="Calculated results"
+            aria-label={t('calc_sheets.calculated_results')}
             style={{ height: Math.max(contentHeight, lineTops.length * editorLineHeight) }}
           >
             {parsed.lines.map((line) => {
@@ -368,7 +378,7 @@ export function CalcSheetEditor({ host }: EditorHostProps) {
                 <div
                   key={line.index}
                   className={className}
-                  title={lineTitle(line, evaluation)}
+                  title={lineTitle(line, evaluation, t)}
                   style={{ top: lineTops[gutterLineOffset + line.index] ?? (gutterLineOffset + line.index) * editorLineHeight, height: editorLineHeight }}
                 >
                   <span className="calc-sheets__result-value">

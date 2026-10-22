@@ -86,6 +86,11 @@ function setting<S extends z.ZodTypeAny>(
  *     ai.showMcpSessionStatus, ai.trackerAutomation, ai.diffPeekSize
  */
 export const SETTINGS_REGISTRY = {
+  'app.uiLanguage': setting(
+    z.enum(['system', 'en', 'ja']),
+    { store: 'app-settings', path: 'uiLanguage' },
+    'system',
+  ),
   // The default cap applies to additions, not current or restored projects.
   'projects.allowUnlimited': setting(
     z.boolean(),

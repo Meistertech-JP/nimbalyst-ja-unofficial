@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { sessionLastActivityAtom } from '../../store';
 import { getRelativeTimeString } from '../../utils/dateFormatting';
 
@@ -18,6 +19,7 @@ export const SessionRelativeTime = memo<SessionRelativeTimeProps>(({
   sessionId,
   fallbackTimestamp,
 }) => {
+  const { t } = useTranslation('sessions');
   const liveActivity = useAtomValue(sessionLastActivityAtom(sessionId));
   const timestamp = liveActivity > 0 ? liveActivity : fallbackTimestamp;
 
@@ -30,7 +32,7 @@ export const SessionRelativeTime = memo<SessionRelativeTimeProps>(({
     return () => clearInterval(timer);
   }, []);
 
-  return <>{getRelativeTimeString(timestamp)}</>;
+  return <>{getRelativeTimeString(timestamp, (key, options) => t(key, options))}</>;
 });
 
 SessionRelativeTime.displayName = 'SessionRelativeTime';

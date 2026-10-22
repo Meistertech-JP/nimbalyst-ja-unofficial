@@ -212,6 +212,7 @@ export function describeComposerRestriction(
       title: 'You do not have access to this conversation',
       detail: 'Ask an organization admin or a room admin to add you.',
       icon: 'lock',
+      reason: 'no_access',
     };
   }
   if (context.archived) {
@@ -219,6 +220,8 @@ export function describeComposerRestriction(
       title: `${context.surfaceLabel} is archived`,
       detail: 'Archived conversations are readable but closed to new messages.',
       icon: 'inventory_2',
+      reason: 'archived',
+      surfaceLabel: context.surfaceLabel,
     };
   }
   if (!capabilities.comment) {
@@ -226,6 +229,8 @@ export function describeComposerRestriction(
       title: 'You have read-only access here',
       detail: `Posting needs the "comment" permission on ${context.surfaceLabel}. Your role grants read access only.`,
       icon: 'visibility_lock',
+      reason: 'read_only',
+      surfaceLabel: context.surfaceLabel,
     };
   }
   return null;
@@ -374,10 +379,10 @@ export function isOwnComment(comment: Comment, viewerUserId: string): boolean {
 
 function buildActorView(comment: Comment, directory: MentionDirectory, viewerUserId: string): ActorView {
   const { actor } = comment;
-  const ownerName =
+  const ownerResolved =
     directory.displayNames[actor.onBehalfOfUserId] ??
-    directory.people.find((person) => person.userId === actor.onBehalfOfUserId)?.displayName ??
-    'a teammate';
+    directory.people.find((person) => person.userId === actor.onBehalfOfUserId)?.displayName;
+  const ownerName = ownerResolved ?? 'a teammate';
 
   if (actor.kind === 'agent') {
     const sessionName = actor.sessionName ?? 'Agent session';
@@ -388,17 +393,21 @@ function buildActorView(comment: Comment, directory: MentionDirectory, viewerUse
       sessionId: actor.sessionId,
       sessionName,
       ownerDisplayName: ownerName,
+      ownerDisplayNameFallback: ownerResolved === undefined ? 'teammate' : undefined,
+      displayNameFallback: actor.sessionName === undefined ? 'agent_session' : undefined,
       isViewer: actor.onBehalfOfUserId === viewerUserId,
     };
   }
 
   const userId = actor.userId ?? actor.onBehalfOfUserId;
   const person = directory.people.find((entry) => entry.userId === userId);
-  const displayName = person?.displayName ?? directory.displayNames[userId] ?? 'Unknown member';
+  const resolvedName = person?.displayName ?? directory.displayNames[userId];
+  const displayName = resolvedName ?? 'Unknown member';
   return {
     kind: 'user',
     displayName,
     initials: person?.avatarInitials ?? initialsFor(displayName),
+    displayNameFallback: resolvedName === undefined ? 'unknown_member' : undefined,
     isViewer: userId === viewerUserId,
   };
 }
@@ -416,14 +425,26 @@ function buildReplyParent(
   if (!comment.replyToCommentId) return undefined;
 
   if (ctx.replyParentUnavailable || (ctx.replyParent === null && ctx.replyParent !== undefined)) {
-    return { commentId: comment.replyToCommentId, unavailableLabel: 'Replying to a message you cannot see' };
+    return {
+      commentId: comment.replyToCommentId,
+      unavailableLabel: 'Replying to a message you cannot see',
+      unavailableReason: 'restricted',
+    };
   }
   const parent = ctx.replyParent;
   if (!parent) {
-    return { commentId: comment.replyToCommentId, unavailableLabel: 'Replying to an earlier message' };
+    return {
+      commentId: comment.replyToCommentId,
+      unavailableLabel: 'Replying to an earlier message',
+      unavailableReason: 'earlier',
+    };
   }
   if (parent.deletedAt !== undefined) {
-    return { commentId: comment.replyToCommentId, unavailableLabel: 'Replying to a deleted message' };
+    return {
+      commentId: comment.replyToCommentId,
+      unavailableLabel: 'Replying to a deleted message',
+      unavailableReason: 'deleted',
+    };
   }
 
   const parentActor = buildActorView(parent, directory, ctx.viewerUserId);
@@ -443,6 +464,7 @@ function buildReplyParent(
   return {
     commentId: comment.replyToCommentId,
     actorLabel: parentActor.displayName,
+    actorLabelFallback: parentActor.displayNameFallback,
     snippet: snippet.length > 140 ? `${snippet.slice(0, 139)}…` : snippet,
   };
 }

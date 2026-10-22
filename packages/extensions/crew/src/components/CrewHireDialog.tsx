@@ -8,7 +8,8 @@ import { useMemo, useState } from 'react';
 import type { CrewHireRequest, CrewMemberDraft, CrewMemberSnapshot, CrewTemplate } from '../shared/types';
 import { CrewAvatar, CrewModal } from './CrewBits';
 import { useCrew, useCrewAction, useCrewQuery } from './CrewContext';
-import { formatScheduleTiming, formatTokens, freeSlug, slugifyCrewName } from './crewFormat';
+import { formatScheduleTiming, formatTokens, freeSlug, slugifyCrewName, type CrewTranslate } from './crewFormat';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 type Source = 'template' | 'clone';
 type Picked =
@@ -16,15 +17,17 @@ type Picked =
   | { source: 'clone'; member: CrewMemberSnapshot }
   | null;
 
-function rhythmOf(draft: Pick<CrewMemberDraft, 'schedule'>): string {
+function rhythmOf(draft: Pick<CrewMemberDraft, 'schedule'>, translate?: CrewTranslate): string {
   const first = draft.schedule?.[0];
-  if (!first) return 'On demand';
+  if (!first) return translate ? translate('crew.hire.on_demand') : 'On demand';
   const more = draft.schedule.length - 1;
-  return more > 0 ? `${formatScheduleTiming(first)} +${more}` : formatScheduleTiming(first);
+  const timing = formatScheduleTiming(first, translate);
+  return more > 0 ? `${timing} ${translate ? translate('crew.hire.plus_more', { more }) : `+${more}`}` : timing;
 }
 
 export function CrewHireDialog({ onClose }: { onClose: () => void }) {
   const { client, roster, select } = useCrew();
+  const { t } = useTranslation('extensions');
   const members = roster?.members ?? [];
   const templates = useCrewQuery(() => client.call('templates', {}), []);
   const { busy, error, run } = useCrewAction();
@@ -71,17 +74,19 @@ export function CrewHireDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const hireLabel = busy ? 'Hiring...' : form.name.trim() ? `Hire ${form.name.trim()}` : 'Hire';
+  const trimmedName = form.name.trim();
+  const hireLabel = busy ? t('crew.hire.hiring') : trimmedName ? t('crew.hire.hire_name', { name: trimmedName }) : t('crew.hire.hire');
 
   return (
     <CrewModal
       className="crew-hire-dialog"
-      title="Hire a crew member"
-      subtitle="Each member gets a definition file in nimbalyst-local/crew that you can edit at any time."
+      title={t('crew.hire.title')}
+      subtitle={t('crew.hire.subtitle')}
+      closeLabel={t('crew.modal.close')}
       onClose={onClose}
       headerExtra={(
         <div className="crew-segmented" role="tablist">
-          {([['template', 'Templates'], ['clone', 'Clone']] as const).map(([id, label]) => (
+          {([['template', 'crew.hire.templates'], ['clone', 'crew.hire.clone']] as const).map(([id, label]) => (
             <button
               key={id}
               type="button"
@@ -91,14 +96,14 @@ export function CrewHireDialog({ onClose }: { onClose: () => void }) {
               disabled={id === 'clone' && members.length === 0}
               onClick={() => switchSource(id)}
             >
-              {label}
+              {t(label)}
             </button>
           ))}
         </div>
       )}
       footer={(
         <>
-          <button type="button" className="crew-btn crew-btn-secondary" onClick={onClose} disabled={busy !== null}>Cancel</button>
+          <button type="button" className="crew-btn crew-btn-secondary" onClick={onClose} disabled={busy !== null}>{t('crew.hire.cancel')}</button>
           <button type="button" className="crew-btn crew-btn-primary" onClick={() => void hire()} disabled={!valid || busy !== null}>
             {hireLabel}
           </button>
@@ -117,12 +122,12 @@ export function CrewHireDialog({ onClose }: { onClose: () => void }) {
         {source === 'template' && (
           templates.data === null ? (
             templates.error
-              ? <div className="crew-empty-note" role="alert">Templates could not be loaded. <span className="crew-selectable crew-faint">{templates.error}</span></div>
-              : <div className="crew-empty-note" role="status">Loading templates...</div>
+              ? <div className="crew-empty-note" role="alert">{t('crew.hire.templates_failed')} <span className="crew-selectable crew-faint">{templates.error}</span></div>
+              : <div className="crew-empty-note" role="status">{t('crew.hire.templates_loading')}</div>
           ) : templates.data.length === 0 ? (
-            <div className="crew-empty-note">No templates are available.</div>
+            <div className="crew-empty-note">{t('crew.hire.templates_empty')}</div>
           ) : (
-            <div className="crew-hire-gallery" role="listbox" aria-label="Templates">
+            <div className="crew-hire-gallery" role="listbox" aria-label={t('crew.hire.gallery_templates')}>
               {templates.data.map((template) => (
                 <HireCard
                   key={template.id}
@@ -138,12 +143,12 @@ export function CrewHireDialog({ onClose }: { onClose: () => void }) {
         )}
 
         {source === 'clone' && (
-          <div className="crew-hire-gallery" role="listbox" aria-label="Crew members">
+          <div className="crew-hire-gallery" role="listbox" aria-label={t('crew.hire.gallery_members')}>
             {members.map((member) => (
               <HireCard
                 key={member.definition.slug}
                 draft={member.definition}
-                blurb={`Same job, schedule and limits as ${member.definition.name}.`}
+                blurb={t('crew.hire.clone_blurb', { name: member.definition.name })}
                 personality={member.definition.personality}
                 selected={picked?.source === 'clone' && picked.member.definition.slug === member.definition.slug}
                 onSelect={() => choose({ source: 'clone', member })}
@@ -156,21 +161,21 @@ export function CrewHireDialog({ onClose }: { onClose: () => void }) {
           <div className="crew-hire-form">
             <div className="crew-hire-form-grid">
               <label className="crew-field">
-                Name
-                <input className="crew-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ada" autoFocus />
+                {t('crew.hire.name')}
+                <input className="crew-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('crew.hire.name_placeholder')} autoFocus />
               </label>
               <label className="crew-field">
-                Role
-                <input className="crew-input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Architect" />
+                {t('crew.hire.role')}
+                <input className="crew-input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder={t('crew.hire.role_placeholder')} />
               </label>
             </div>
             <label className="crew-field">
-              Personality
-              <textarea className="crew-input crew-textarea-small" value={form.personality} onChange={(e) => setForm({ ...form, personality: e.target.value })} placeholder="Calm, dry, speaks in short paragraphs." />
+              {t('crew.hire.personality')}
+              <textarea className="crew-input crew-textarea-small" value={form.personality} onChange={(e) => setForm({ ...form, personality: e.target.value })} placeholder={t('crew.hire.personality_placeholder')} />
             </label>
             <p className="crew-faint crew-small">
-              {slug ? <>Saved as <span className="crew-mono">nimbalyst-local/crew/{slug}.md</span>. </> : null}
-              Model, schedule and limits come from the source and can be changed in the definition file after hiring.
+              {slug ? <>{t('crew.hire.saved_as')} <span className="crew-mono">nimbalyst-local/crew/{slug}.md</span>. </> : null}
+              {t('crew.hire.saved_note')}
             </p>
           </div>
         )}
@@ -178,7 +183,7 @@ export function CrewHireDialog({ onClose }: { onClose: () => void }) {
         {error && <div className="crew-error-box crew-selectable" role="alert">{error}</div>}
 
         <p className="crew-hire-command-hint crew-faint crew-small">
-          To design a new member from scratch, run <span className="crew-mono">/crew:hire</span> in any agent session and describe the job.
+          {t('crew.hire.command_head')} <span className="crew-mono">/crew:hire</span> {t('crew.hire.command_tail')}
         </p>
       </div>
     </CrewModal>
@@ -198,6 +203,7 @@ function HireCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation('extensions');
   return (
     <button type="button" role="option" aria-selected={selected} data-selected={selected} className="crew-hire-card" onClick={onSelect}>
       <span className="crew-row">
@@ -211,8 +217,8 @@ function HireCard({
       {personality && <span className="crew-hire-card-personality">{personality}</span>}
       <span className="crew-hire-card-meta">
         {draft.model && <span>{draft.model}</span>}
-        <span>{rhythmOf(draft)}</span>
-        {draft.budget?.tokensPerWeek > 0 && <span>{formatTokens(draft.budget.tokensPerWeek)}/wk</span>}
+        <span>{rhythmOf(draft, t)}</span>
+        {draft.budget?.tokensPerWeek > 0 && <span>{t('crew.hire.per_week', { tokens: formatTokens(draft.budget.tokensPerWeek) })}</span>}
       </span>
     </button>
   );

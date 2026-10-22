@@ -8,6 +8,7 @@
  */
 
 import React, { useLayoutEffect, useMemo, useRef, useState, type JSX, type MutableRefObject } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { QuadrantLabels, QuadrantPoint } from '../../core/quadrantModel';
 import {
@@ -52,6 +53,7 @@ const measureText: MeasureText = (text, fontSize, bold) => {
 export function QuadrantChart({
   points, xLabel, yLabel, quadrants, height: frameHeight = DEFAULT_QUADRANT_HEIGHT, frameRef, onOpenPoint,
 }: QuadrantChartProps): JSX.Element {
+  const { t } = useTranslation('editor');
   const ownRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = frameRef ?? ownRef;
   const [{ width, height }, setSize] = useState({ width: FALLBACK_WIDTH, height: frameHeight });
@@ -89,7 +91,7 @@ export function QuadrantChart({
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={[yLabel, xLabel].filter(Boolean).join(' by ') || '2x2 chart'}
+        aria-label={yLabel && xLabel ? t('quadrant.chart_aria_labels', { yLabel, xLabel }) : yLabel || xLabel || t('quadrant.chart_aria_label')}
         data-testid="quadrant-chart"
       >
         <line x1={plot.x + plot.w / 2} y1={plot.y} x2={plot.x + plot.w / 2} y2={plot.y + plot.h} style={{ stroke: 'var(--nim-border)' }} />

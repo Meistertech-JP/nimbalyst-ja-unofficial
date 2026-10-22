@@ -6,6 +6,7 @@ import type { TypeMapModel, TypeMapRelationship, TypeMapType } from '../ontology
 import type { MapSelection } from './TypeMapCanvas';
 import { BarRow, Section, Stat, StatusTag, TypeBadge, lower } from './TypeMapParts';
 import { TypeMapRelationshipPanel, type RelationshipActions } from './TypeMapRelationshipPanel';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface TypeMapInspectorProps extends RelationshipActions {
   model: TypeMapModel;
@@ -22,11 +23,12 @@ export interface TypeMapInspectorProps extends RelationshipActions {
 }
 
 export function TypeMapInspector(props: TypeMapInspectorProps) {
+  const { t } = useTranslation('tracker', { keyPrefix: 'type_map_inspector' });
   const { selection, typeById, model } = props;
   const type = selection?.kind === 'type' ? typeById.get(selection.id) : undefined;
   const relationship = selection?.kind === 'relationship' ? model.relationships.find((entry) => entry.id === selection.id) : undefined;
   return (
-    <aside className="type-map-inspector select-text" aria-label="Details" data-testid="type-map-inspector">
+    <aside className="type-map-inspector select-text" aria-label={t('details')} data-testid="type-map-inspector">
       {type ? <TypePanel {...props} type={type} />
         : relationship ? <TypeMapRelationshipPanel {...props} relationship={relationship} />
           : <Overview {...props} />}
@@ -60,42 +62,43 @@ function RelationshipRow({ relationship, typeById, zoneTone, side, onPick }: {
 }
 
 function Overview({ model, relationships, typeById, zoneTone, onPick, onOpenLabel, onOpenUnlabeled }: TypeMapInspectorProps) {
+  const { t } = useTranslation('tracker', { keyPrefix: 'type_map_inspector' });
   const used = relationships.filter((relationship) => relationship.statements > 0);
   const unused = model.relationships.filter((relationship) => relationship.statements === 0).length;
   const statements = used.reduce((sum, relationship) => sum + relationship.statements, 0);
   const decisions = model.relationships.filter((relationship) => relationship.statements > 0 && (relationship.status === 'off-label' || relationship.status === 'range-violation'));
   return (
     <div className="type-map-overview">
-      <h2>All types</h2>
+      <h2>{t('all_types')}</h2>
       <p>
-        {`${model.types.length} types in ${model.zones.length} ${model.zones.length === 1 ? 'domain' : 'domains'}. `}
-        {`${statements} statements link pages to each other through ${used.length} ${used.length === 1 ? 'relationship' : 'relationships'}`}
-        {unused ? `; ${unused} more ${unused === 1 ? 'is' : 'are'} declared but unused.` : '.'}
+        {t('types_summary', { typeCount: model.types.length, domainCount: model.zones.length, domainLabel: model.zones.length === 1 ? t('domain') : t('domains') })}
+        {t('links_summary', { statementCount: statements, relationshipCount: used.length, relationshipLabel: used.length === 1 ? t('relationship') : t('relationships') })}
+        {unused ? t(unused === 1 ? 'unused_one' : 'unused_other', { count: unused }) : '.'}
       </p>
       {used.length > 0 && (
-        <Section title="Most used relationships">
+        <Section title={t('most_used_relationships')}>
           <div className="type-map-list">
             {used.slice(0, 6).map((relationship) => <RelationshipRow key={relationship.id} relationship={relationship} typeById={typeById} zoneTone={zoneTone} side="both" onPick={onPick} />)}
           </div>
         </Section>
       )}
       {decisions.length > 0 && (
-        <Section title="Needs a decision">
+        <Section title={t('needs_decision')}>
           <div className="type-map-list">
             {decisions.map((relationship) => <RelationshipRow key={relationship.id} relationship={relationship} typeById={typeById} zoneTone={zoneTone} side="both" onPick={onPick} />)}
           </div>
         </Section>
       )}
-      <Section title="Key">
+      <Section title={t('key')}>
         <div className="type-map-legend">
-          <span><i data-style="used" data-thick="true" />Declared and used; thicker means more statements</span>
-          <span><i data-style="unused" />Declared, nobody uses it yet</span>
-          <span><i data-style="off-label" />Used, but not declared on that type</span>
-          <span><i data-style="violation" />Points at a type outside its range</span>
+          <span><i data-style="used" data-thick="true" />{t('legend_declared_used')}</span>
+          <span><i data-style="unused" />{t('legend_declared_unused')}</span>
+          <span><i data-style="off-label" />{t('legend_off_label')}</span>
+          <span><i data-style="violation" />{t('legend_range_violation')}</span>
         </div>
       </Section>
       {(model.structure.length > 0 || (onOpenUnlabeled && model.unlabeled > 0)) && (
-        <Section title="Page structure and triage">
+        <Section title={t('page_structure_triage')}>
           <div className="type-map-list">
             {model.structure.map((entry) => (
               <button key={entry.id} type="button" className="type-map-row" onClick={() => onOpenLabel(entry.id)}>
@@ -104,7 +107,7 @@ function Overview({ model, relationships, typeById, zoneTone, onPick, onOpenLabe
             ))}
             {onOpenUnlabeled && model.unlabeled > 0 && (
               <button type="button" className="type-map-row type-map-unlabeled" onClick={onOpenUnlabeled}>
-                <span className="type-map-row-text">Unlabeled pages</span><span className="type-map-count">{model.unlabeled}</span>
+                <span className="type-map-row-text">{t('unlabeled_pages')}</span><span className="type-map-count">{model.unlabeled}</span>
               </button>
             )}
           </div>
@@ -115,6 +118,7 @@ function Overview({ model, relationships, typeById, zoneTone, onPick, onOpenLabe
 }
 
 function TypePanel({ type, relationships, typeById, zoneTone, onPick, onCenter, onOpenLabel }: TypeMapInspectorProps & { type: TypeMapType }) {
+  const { t } = useTranslation('tracker', { keyPrefix: 'type_map_inspector' });
   const out = relationships.filter((relationship) => relationship.from === type.id);
   const into = relationships.filter((relationship) => relationship.to === type.id && relationship.from !== type.id);
   const total = (list: readonly TypeMapRelationship[]) => list.reduce((sum, relationship) => sum + relationship.statements, 0);
@@ -123,34 +127,34 @@ function TypePanel({ type, relationships, typeById, zoneTone, onPick, onCenter, 
       <h2><TypeBadge type={type} tone={zoneTone.get(type.zone) ?? 0} />{type.plural}</h2>
       <p>
         {type.description}
-        {type.broader.length > 0 && ` Kind of ${type.broader.join(', ')}.`}
-        {!type.declared && ' Pages carry this label, but the registry does not declare it.'}
+        {type.broader.length > 0 && ` ${t('kind_of', { names: type.broader.join(', ') })}`}
+        {!type.declared && ` ${t('undeclared_type')}`}
       </p>
       <div className="type-map-stats">
-        <Stat value={type.count} label={type.count === 1 ? 'page' : 'pages'} />
-        <Stat value={total(out)} label="links out" />
-        <Stat value={total(into)} label="links in" />
+        <Stat value={type.count} label={type.count === 1 ? t('page') : t('pages')} />
+        <Stat value={total(out)} label={t('links_out')} />
+        <Stat value={total(into)} label={t('links_in')} />
       </div>
       {type.properties.length > 0 && (
-        <Section title="How complete">
+        <Section title={t('how_complete')}>
           {type.properties.map((property) => (
             <BarRow key={property.id} label={property.name} value={property.filled} of={type.count} text={type.count ? `${property.filled}/${type.count}` : '-'} />
           ))}
         </Section>
       )}
-      <Section title="Links to">
+      <Section title={t('links_to')}>
         <div className="type-map-list">
-          {out.length ? out.map((relationship) => <RelationshipRow key={relationship.id} relationship={relationship} typeById={typeById} zoneTone={zoneTone} side="out" onPick={onPick} />) : <p>Nothing yet.</p>}
+          {out.length ? out.map((relationship) => <RelationshipRow key={relationship.id} relationship={relationship} typeById={typeById} zoneTone={zoneTone} side="out" onPick={onPick} />) : <p>{t('nothing_yet')}</p>}
         </div>
       </Section>
-      <Section title="Linked from">
+      <Section title={t('linked_from')}>
         <div className="type-map-list">
-          {into.length ? into.map((relationship) => <RelationshipRow key={relationship.id} relationship={relationship} typeById={typeById} zoneTone={zoneTone} side="in" onPick={onPick} />) : <p>Nothing yet.</p>}
+          {into.length ? into.map((relationship) => <RelationshipRow key={relationship.id} relationship={relationship} typeById={typeById} zoneTone={zoneTone} side="in" onPick={onPick} />) : <p>{t('nothing_yet')}</p>}
         </div>
       </Section>
       <div className="type-map-actions">
-        <button type="button" className="type-map-primary" onClick={() => onOpenLabel(type.id)}>{`Open ${lower(type.plural)} table`}</button>
-        <button type="button" onClick={() => onCenter({ kind: 'type', id: type.id })}>Center</button>
+        <button type="button" className="type-map-primary" onClick={() => onOpenLabel(type.id)}>{t('open_table', { name: lower(type.plural) })}</button>
+        <button type="button" onClick={() => onCenter({ kind: 'type', id: type.id })}>{t('center')}</button>
       </div>
     </div>
   );

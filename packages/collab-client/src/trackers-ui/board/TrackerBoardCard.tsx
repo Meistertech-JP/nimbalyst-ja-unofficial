@@ -15,6 +15,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { TrackerIdentity } from '@nimbalyst/runtime/core/DocumentService';
@@ -86,6 +87,7 @@ export const TrackerBoardCard: React.FC<TrackerBoardCardProps> = ({
   favoriteSlot,
   currentIdentity,
 }) => {
+  const { t } = useTranslation('tracker');
   const priority = getRecordPriority(item);
   const typeColor = TYPE_COLORS[item.primaryType] || NEUTRAL_SWATCH;
   const owner = getFieldByRole(item, 'assignee') as string | undefined;
@@ -129,8 +131,8 @@ export const TrackerBoardCard: React.FC<TrackerBoardCardProps> = ({
           data-testid="tracker-card-select-checkbox"
           role="checkbox"
           aria-checked={selected}
-          aria-label={selected ? 'Deselect card' : 'Select card'}
-          title={selected ? 'Deselect' : 'Select for a bulk action'}
+          aria-label={selected ? t('board_card.deselect') : t('board_card.select')}
+          title={selected ? t('board_card.deselect_title') : t('board_card.select_for_bulk_action')}
           onClick={(event) => {
             event.stopPropagation();
             onToggleSelected(item.id);

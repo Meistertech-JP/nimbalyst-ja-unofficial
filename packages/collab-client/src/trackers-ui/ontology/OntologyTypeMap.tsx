@@ -10,6 +10,7 @@
  * import.
  */
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { OntologyInspectorWriter } from './OntologyInspector';
 import type { TypeMapModel, TypeMapRelationship } from './ontologyLabelMap';
 import { OTHER_ZONE } from './typeMap/typeMapZones';
@@ -51,6 +52,7 @@ export function litIds(selection: MapSelection, relationships: readonly TypeMapR
 }
 
 export function OntologyTypeMap({ model, onOpenLabel, onOpenPage, onOpenUnlabeled, writer = null, inspector = true }: OntologyTypeMapProps) {
+  const { t } = useTranslation('tracker');
   const [showEmpty, setShowEmpty] = useState(true);
   const [showUnused, setShowUnused] = useState(true);
   const [selection, setSelection] = useState<MapSelection>(null);
@@ -156,15 +158,15 @@ export function OntologyTypeMap({ model, onOpenLabel, onOpenPage, onOpenUnlabele
       <div className="type-map-toolbar">
         <TypeMapSearch types={types} relationships={relationships} typeById={typeById} onPick={pick} />
         <div className="type-map-toggles">
-          <label><input type="checkbox" checked={showEmpty} onChange={(event) => setShowEmpty(event.target.checked)} /> Types with no pages</label>
-          <label><input type="checkbox" checked={showUnused} onChange={(event) => setShowUnused(event.target.checked)} /> Relationships nobody uses yet</label>
+          <label><input type="checkbox" checked={showEmpty} onChange={(event) => setShowEmpty(event.target.checked)} /> {t('type_map.show_empty_types')}</label>
+          <label><input type="checkbox" checked={showUnused} onChange={(event) => setShowUnused(event.target.checked)} /> {t('type_map.show_unused_relationships')}</label>
         </div>
-        <span className="type-map-summary">{`${types.length} types · ${relationships.length} relationships · ${statements} linking statements`}</span>
-        <div className="type-map-zoom" role="group" aria-label="Zoom">
-          <button type="button" title="Zoom out (-)" aria-label="Zoom out" onClick={() => viewport.zoomBy(0.8)}>&minus;</button>
+        <span className="type-map-summary">{t('type_map.summary', { typeCount: types.length, relationshipCount: relationships.length, statementCount: statements })}</span>
+        <div className="type-map-zoom" role="group" aria-label={t('type_map.zoom')}>
+          <button type="button" title={t('type_map.zoom_out_title')} aria-label={t('type_map.zoom_out')} onClick={() => viewport.zoomBy(0.8)}>&minus;</button>
           <span className="type-map-zoom-percent" ref={viewport.percentRef}>100%</span>
-          <button type="button" title="Zoom in (+)" aria-label="Zoom in" onClick={() => viewport.zoomBy(1.25)}>+</button>
-          <button type="button" title="Fit the map (0)" onClick={() => viewport.fit()}>Fit</button>
+          <button type="button" title={t('type_map.zoom_in_title')} aria-label={t('type_map.zoom_in')} onClick={() => viewport.zoomBy(1.25)}>+</button>
+          <button type="button" title={t('type_map.fit_title')} onClick={() => viewport.fit()}>{t('type_map.fit')}</button>
         </div>
       </div>
       <div className={`type-map-work${inspector ? '' : ' type-map-work-full'}`}>
@@ -173,7 +175,7 @@ export function OntologyTypeMap({ model, onOpenLabel, onOpenPage, onOpenUnlabele
           ref={viewport.canvasRef}
           tabIndex={0}
           role="application"
-          aria-label="Type map. Drag or scroll to pan. Pinch or Control-scroll to zoom."
+          aria-label={t('type_map.canvas_aria')}
           onClick={() => { if (!viewport.dragged()) setSelection(null); }}
         >
           <svg className="type-map-svg" ref={viewport.svgRef} data-zoom="fit">
@@ -193,7 +195,7 @@ export function OntologyTypeMap({ model, onOpenLabel, onOpenPage, onOpenUnlabele
             </g>
           </svg>
           <TypeMapMinimap layout={layout} types={typeById} zoneTone={zoneTone} viewRef={viewport.miniViewRef} onJump={viewport.centerOn} onShown={viewport.refresh} />
-          <div className="type-map-hint">{`Drag or scroll to pan · pinch or Ctrl+scroll to zoom · ${inspector ? 'click a type or a relationship' : 'click a type to open it'} · zoom in for properties`}</div>
+          <div className="type-map-hint">{t('type_map.hint', { clickAction: t(inspector ? 'type_map.click_type_or_relationship' : 'type_map.click_type_to_open') })}</div>
         </div>
         {inspector && <TypeMapInspector
           model={model}

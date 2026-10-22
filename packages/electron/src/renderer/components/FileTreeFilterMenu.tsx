@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useFloatingMenu, FloatingPortal, virtualElement } from '../hooks/useFloatingMenu';
 
@@ -43,6 +44,7 @@ export function FileTreeFilterMenu({
   gitWorktreeCount,
   onClose
 }: FileTreeFilterMenuProps) {
+  const { t } = useTranslation('files');
   const reference = useMemo(() => virtualElement(x, y), [x, y]);
   const menu = useFloatingMenu({
     placement: 'right-start',
@@ -67,14 +69,14 @@ export function FileTreeFilterMenu({
         {...menu.getFloatingProps()}
         className="file-tree-filter-menu min-w-[200px] p-1 rounded-md text-[13px] z-[10000] backdrop-blur-[10px] bg-[var(--nim-bg)] border border-[var(--nim-border)] shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       >
-        <div className="filter-menu-section-label nim-section-label px-3 pt-2 pb-1">Show Files</div>
+        <div className="filter-menu-section-label nim-section-label px-3 pt-2 pb-1">{t('filter.show_files')}</div>
 
         <div
           className={`filter-menu-item flex items-center gap-2.5 px-3 py-2 rounded cursor-pointer relative transition-colors text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] ${currentFilter === 'all' ? 'active bg-[var(--nim-bg-selected)]' : ''}`}
           onClick={() => handleFilterSelect('all')}
         >
           <MaterialSymbol icon="folder_open" size={18} />
-          <span>All Files</span>
+          <span>{t('filter.all_files')}</span>
           {currentFilter === 'all' && (
             <MaterialSymbol icon="check" size={16} className="filter-menu-check ml-auto text-[var(--nim-primary)]" />
           )}
@@ -85,7 +87,7 @@ export function FileTreeFilterMenu({
           onClick={() => handleFilterSelect('markdown')}
         >
           <MaterialSymbol icon="description" size={18} />
-          <span>Markdown Only</span>
+          <span>{t('filter.markdown_only')}</span>
           {currentFilter === 'markdown' && (
             <MaterialSymbol icon="check" size={16} className="filter-menu-check ml-auto text-[var(--nim-primary)]" />
           )}
@@ -96,20 +98,20 @@ export function FileTreeFilterMenu({
           onClick={() => handleFilterSelect('known')}
         >
           <MaterialSymbol icon="filter_list" size={18} />
-          <span>Known Files</span>
+          <span>{t('filter.known_files')}</span>
           {currentFilter === 'known' && (
             <MaterialSymbol icon="check" size={16} className="filter-menu-check ml-auto text-[var(--nim-primary)]" />
           )}
         </div>
 
-        <div className="filter-menu-section-label nim-section-label px-3 pt-2 pb-1">Git</div>
+        <div className="filter-menu-section-label nim-section-label px-3 pt-2 pb-1">{t('filter.git')}</div>
 
         <div
           className={`filter-menu-item flex items-center gap-2.5 px-3 py-2 rounded relative transition-colors text-[var(--nim-text)] ${!isGitRepo ? 'disabled opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--nim-bg-hover)]'} ${currentFilter === 'git-uncommitted' ? 'active bg-[var(--nim-bg-selected)]' : ''}`}
           onClick={() => handleFilterSelect('git-uncommitted', !isGitRepo)}
         >
           <MaterialSymbol icon="difference" size={18} />
-          <span>Uncommitted Changes</span>
+          <span>{t('filter.uncommitted_changes')}</span>
           {gitUncommittedCount > 0 && (
             <span className="filter-menu-pill ml-auto rounded-full px-2 text-[11px] font-semibold leading-[18px] bg-[var(--nim-accent-subtle)] text-[var(--nim-primary)]">{gitUncommittedCount}</span>
           )}
@@ -124,7 +126,7 @@ export function FileTreeFilterMenu({
             onClick={() => handleFilterSelect('git-worktree')}
           >
             <MaterialSymbol icon="account_tree" size={18} />
-            <span>Worktree Changes</span>
+            <span>{t('filter.worktree_changes')}</span>
             {gitWorktreeCount > 0 && (
               <span className="filter-menu-pill ml-auto rounded-full px-2 text-[11px] font-semibold leading-[18px] bg-[var(--nim-accent-subtle)] text-[var(--nim-primary)]">{gitWorktreeCount}</span>
             )}
@@ -136,18 +138,18 @@ export function FileTreeFilterMenu({
 
         {!isGitRepo && (
           <div className="filter-menu-hint text-[11px] text-[var(--nim-text-faint)] px-3 pb-1.5">
-            Not a git repository.
+            {t('filter.not_git')}
           </div>
         )}
 
-        <div className="filter-menu-section-label nim-section-label px-3 pt-2 pb-1">Claude Agent Session</div>
+        <div className="filter-menu-section-label nim-section-label px-3 pt-2 pb-1">{t('filter.claude_session')}</div>
 
         <div
           className={`filter-menu-item flex items-center gap-2.5 px-3 py-2 rounded relative transition-colors text-[var(--nim-text)] ${!hasActiveClaudeSession ? 'disabled opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--nim-bg-hover)]'} ${currentFilter === 'ai-read' ? 'active bg-[var(--nim-bg-selected)]' : ''}`}
           onClick={() => handleFilterSelect('ai-read', !hasActiveClaudeSession)}
         >
           <MaterialSymbol icon="visibility" size={18} />
-          <span>Files Read</span>
+          <span>{t('filter.files_read')}</span>
           {claudeSessionFileCounts.read > 0 && (
             <span className="filter-menu-pill ml-auto rounded-full px-2 text-[11px] font-semibold leading-[18px] bg-[var(--nim-accent-subtle)] text-[var(--nim-primary)]">{claudeSessionFileCounts.read}</span>
           )}
@@ -161,7 +163,7 @@ export function FileTreeFilterMenu({
           onClick={() => handleFilterSelect('ai-written', !hasActiveClaudeSession)}
         >
           <MaterialSymbol icon="edit_note" size={18} />
-          <span>Files Written</span>
+          <span>{t('filter.files_written')}</span>
           {claudeSessionFileCounts.written > 0 && (
             <span className="filter-menu-pill ml-auto rounded-full px-2 text-[11px] font-semibold leading-[18px] bg-[var(--nim-accent-subtle)] text-[var(--nim-primary)]">{claudeSessionFileCounts.written}</span>
           )}
@@ -172,7 +174,7 @@ export function FileTreeFilterMenu({
 
         {!hasActiveClaudeSession && (
           <div className="filter-menu-hint text-[11px] text-[var(--nim-text-faint)] px-3 pb-1.5">
-            Open a Claude Agent session to enable these filters.
+            {t('filter.open_claude')}
           </div>
         )}
 
@@ -183,7 +185,7 @@ export function FileTreeFilterMenu({
           onClick={() => onShowIconsChange(!showIcons)}
         >
           <MaterialSymbol icon={showIcons ? 'check_box' : 'check_box_outline_blank'} size={18} />
-          <span>Show Icons</span>
+          <span>{t('filter.show_icons')}</span>
         </div>
 
         <div
@@ -191,7 +193,7 @@ export function FileTreeFilterMenu({
           onClick={() => onShowGitStatusChange(!showGitStatus)}
         >
           <MaterialSymbol icon={showGitStatus ? 'check_box' : 'check_box_outline_blank'} size={18} />
-          <span>Show Git Status</span>
+          <span>{t('filter.show_git')}</span>
         </div>
 
         <div
@@ -199,7 +201,7 @@ export function FileTreeFilterMenu({
           onClick={() => onEnableAutoScrollChange(!enableAutoScroll)}
         >
           <MaterialSymbol icon={enableAutoScroll ? 'check_box' : 'check_box_outline_blank'} size={18} />
-          <span>Auto-Scroll to Active File</span>
+          <span>{t('filter.auto_scroll')}</span>
         </div>
       </div>
     </FloatingPortal>

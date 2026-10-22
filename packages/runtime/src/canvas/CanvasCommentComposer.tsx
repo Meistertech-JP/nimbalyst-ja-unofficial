@@ -18,6 +18,7 @@
 
 import type { JSX } from 'react';
 import { useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { CommentComposer } from '../editor/commenting/ui/CommentComposer';
 import type { CommentMember } from '../editor/commenting/types';
@@ -40,6 +41,7 @@ export function CanvasCommentComposer({
   onSubmit,
   onCancel,
 }: CanvasCommentComposerProps): JSX.Element {
+  const { t } = useTranslation('editor');
   const submit = useCallback(
     (text: string, mentionedUserIds: string[]) => {
       onSubmit(text, mentionedUserIds);
@@ -58,9 +60,9 @@ export function CanvasCommentComposer({
         getMembers={getMembers}
         onSubmit={submit}
         onCancel={onCancel}
-        submitLabel="Comment"
-        placeholder="Add a comment. Mention @agent to hand it to a session."
-        label="New canvas comment"
+        submitLabel={t('canvas.comments.submit')}
+        placeholder={t('canvas.comments.placeholder')}
+        label={t('canvas.comments.label')}
         autoFocus
       />
     </div>

@@ -1,7 +1,9 @@
 import React, { createRef, type ReactNode } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Provider, createStore } from "jotai";
-import { afterEach, expect, it, vi } from "vitest";
+import { I18nextProvider } from "react-i18next";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import {
   WorkstreamEditorTabs,
   type WorkstreamEditorTabsRef,
@@ -12,6 +14,17 @@ import {
   workstreamStatesLoadedAtom,
 } from "../../../store/atoms/workstreamState";
 import { revealEditorPosition } from "../../TabEditor/editorRevealCommand";
+import { agentFilePlacementAtom } from "../../../store/atoms/agentFilePlacement";
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance("en"),
+    createI18nInstance("ja"),
+  ]);
+});
 
 const { actions, tabs, openDialog } = vi.hoisted(() => ({
   openDialog: vi.fn(),
@@ -21,7 +34,7 @@ const { actions, tabs, openDialog } = vi.hoisted(() => ({
     findTabByPath: vi.fn(),
     removeTab: vi.fn(),
   },
-  tabs: [],
+  tabs: [] as Array<{ id: string; filePath: string; kind: "file" }>,
 }));
 vi.mock("../../../contexts/DialogContext", () => ({
   useDialog: () => ({ open: openDialog, close: vi.fn(), activeDialogs: [] }),
@@ -44,6 +57,7 @@ vi.mock("../../TabEditor/editorRevealCommand", () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  tabs.splice(0);
 });
 
 it("opens file quick open in the worktree and routes the selection into this viewer", () => {
@@ -52,11 +66,13 @@ it("opens file quick open in the worktree and routes the selection into this vie
   const id = "quick-open-editor";
   render(
     <Provider store={store}>
-      <WorkstreamEditorTabs
-        workstreamId={id}
-        workspacePath="/project"
-        basePath="/project-worktree"
-      />
+      <I18nextProvider i18n={englishI18n}>
+        <WorkstreamEditorTabs
+          workstreamId={id}
+          workspacePath="/project"
+          basePath="/project-worktree"
+        />
+      </I18nextProvider>
     </Provider>
   );
   fireEvent.click(screen.getByRole("button", { name: "Open file…" }));
@@ -88,12 +104,14 @@ it("does not mirror an empty hidden editor before hydration, forwards file locat
   const ref = createRef<WorkstreamEditorTabsRef>();
   render(
     <Provider store={store}>
-      <WorkstreamEditorTabs
-        ref={ref}
-        workstreamId={id}
-        workspacePath="/placement-test"
-        isActive={false}
-      />
+      <I18nextProvider i18n={englishI18n}>
+        <WorkstreamEditorTabs
+          ref={ref}
+          workstreamId={id}
+          workspacePath="/placement-test"
+          isActive={false}
+        />
+      </I18nextProvider>
     </Provider>
   );
   expect(store.get(workstreamStateAtom(id)).openResources).toEqual(saved);
@@ -114,4 +132,47 @@ it("does not mirror an empty hidden editor before hydration, forwards file locat
   expect(event.defaultPrevented).toBe(true);
   expect(actions.addTab).toHaveBeenCalledWith("tracker://tracker-1");
   expect(store.get(workstreamStateAtom(id)).layoutMode).toBe("split");
+});
+
+it("localizes the workstream file viewer and its maximize control", () => {
+  initWorkstreamState("/localized-viewer");
+  const store = createStore();
+  store.set(agentFilePlacementAtom, "right");
+  tabs.push({ id: "tab-1", filePath: "/notes.md", kind: "file" });
+  render(
+    <Provider store={store}>
+      <I18nextProvider i18n={japaneseI18n}>
+        <WorkstreamEditorTabs
+          workstreamId="localized-viewer"
+          workspacePath="/localized-viewer"
+        />
+      </I18nextProvider>
+    </Provider>,
+  );
+
+  expect(screen.getByText("ファイルビューア")).toBeDefined();
+  const maximizeButton = screen.getByRole("button", {
+    name: "ファイルビューアを最大化または元に戻す",
+  });
+  expect(maximizeButton.getAttribute("title")).toBe(
+    "ファイルビューアを最大化または元に戻す",
+  );
+});
+
+it("localizes the empty viewer prompt and open-file action", () => {
+  initWorkstreamState("/localized-empty-viewer");
+  const store = createStore();
+  render(
+    <Provider store={store}>
+      <I18nextProvider i18n={japaneseI18n}>
+        <WorkstreamEditorTabs
+          workstreamId="localized-empty-viewer"
+          workspacePath="/localized-empty-viewer"
+        />
+      </I18nextProvider>
+    </Provider>,
+  );
+
+  expect(screen.getByText("表示するファイルを開いてください")).toBeDefined();
+  expect(screen.getByRole("button", { name: "ファイルを開く…" })).toBeDefined();
 });

@@ -1,7 +1,14 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
-import type { ResourcePillView } from './commentTypes';
+import type { ResourceKind, ResourcePillView } from './commentTypes';
+
+const PILL_KIND_KEY: Partial<Record<ResourceKind, string>> = {
+  file: 'comments.kind_file',
+  commit: 'comments.kind_commit',
+  pullRequest: 'comments.kind_pull_request',
+};
 
 /**
  * One inline resource reference.
@@ -21,6 +28,21 @@ export function ResourcePill({
   pill: ResourcePillView;
   onOpen?: (pill: ResourcePillView) => void;
 }) {
+  const { t } = useTranslation('editor');
+  const kindKey = PILL_KIND_KEY[pill.kind];
+  const label = pill.availability === 'loading'
+    ? t('comments.pill_loading')
+    : pill.availability === 'unavailable'
+      ? t('comments.pill_unavailable')
+      : pill.label;
+  const secondary = pill.availability === 'notInWorkspace'
+    ? t('comments.pill_not_in_workspace')
+    : pill.secondary;
+  const hint = pill.availability === 'unavailable'
+    ? t('comments.pill_unavailable_hint')
+    : pill.availability === 'notInWorkspace' && kindKey
+      ? t('comments.pill_not_in_workspace_hint', { kind: t(kindKey) })
+      : pill.hint;
   const shared =
     'resource-pill inline-flex max-w-full items-baseline gap-1 rounded-[5px] border px-1.5 py-px align-baseline text-[12px] leading-[1.35]';
 
@@ -33,9 +55,9 @@ export function ResourcePill({
   const content = (
     <>
       <MaterialSymbol icon={pill.icon} size={13} />
-      <span className="resource-pill-label truncate">{pill.label}</span>
-      {pill.secondary && (
-        <span className="resource-pill-secondary truncate text-[var(--nim-text-faint)]">{pill.secondary}</span>
+      <span className="resource-pill-label truncate">{label}</span>
+      {secondary && (
+        <span className="resource-pill-secondary truncate text-[var(--nim-text-faint)]">{secondary}</span>
       )}
       {pill.state && (
         <span className="resource-pill-state rounded-[3px] bg-[var(--nim-bg-tertiary)] px-1 text-[10px] uppercase tracking-wide text-[var(--nim-text-muted)]">
@@ -48,7 +70,7 @@ export function ResourcePill({
   const markers = {
     'data-testid': `resource-pill-${pill.kind}`,
     'data-availability': pill.availability,
-    title: pill.hint,
+    title: hint,
   } as const;
 
   if (!pill.actionable) {

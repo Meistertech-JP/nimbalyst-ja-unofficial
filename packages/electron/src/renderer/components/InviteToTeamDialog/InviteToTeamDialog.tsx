@@ -14,6 +14,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   buildProjectGrants,
@@ -26,11 +27,11 @@ import {
 import { WorkspaceFolderPicker } from './WorkspaceFolderPicker';
 import { useTeamSharedContent } from './useTeamSharedContent';
 
-const ROLE_OPTIONS: Array<{ value: InviteRole; label: string }> = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'member', label: 'Member' },
-  { value: 'viewer', label: 'Viewer' },
-];
+const ROLE_OPTIONS = [
+  { value: 'admin', labelKey: 'organization_switcher.roles.admin' },
+  { value: 'member', labelKey: 'organization_switcher.roles.member' },
+  { value: 'viewer', labelKey: 'organization_switcher.roles.viewer' },
+] as const satisfies ReadonlyArray<{ value: InviteRole; labelKey: string }>;
 
 export interface InviteToTeamResult {
   invited: string[];
@@ -62,6 +63,11 @@ export function InviteToTeamDialog({
   onClose,
   onInvited,
 }: InviteToTeamDialogProps) {
+  const { t: tProject } = useTranslation('project');
+  const { t: tCommon } = useTranslation('common');
+  const { t: tDialogs } = useTranslation('dialogs');
+  const { t: tSettings } = useTranslation('settings');
+  const { t: tCollab } = useTranslation('collabSidebar');
   const [emailText, setEmailText] = useState('');
   const [role, setRole] = useState<InviteRole>('member');
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
@@ -133,7 +139,10 @@ export function InviteToTeamDialog({
           extraProjects.length > 0 ? extraProjects : undefined,
         );
         if (outcome?.success === false) {
-          failed.push({ email, error: outcome.error ?? 'Could not send invitation' });
+          failed.push({
+            email,
+            error: outcome.error ?? tSettings('organization_ui.invite_failed'),
+          });
           continue;
         }
         invited.push(email);
@@ -152,14 +161,14 @@ export function InviteToTeamDialog({
     const folderFailures: string[] = [];
     if (invited.length > 0 && selectedFolders.length > 0) {
       const { publishFoldersForInvite } = await import('./publishFoldersForInvite');
-      const outcome = await publishFoldersForInvite(selectedFolders);
+      const outcome = await publishFoldersForInvite(selectedFolders, tCollab);
       foldersPublished = outcome.published;
       folderFailures.push(...outcome.failures);
     }
 
     setBusy(false);
     if (invited.length === 0) {
-      setError(failed[0]?.error ?? 'Could not send the invitations.');
+      setError(failed[0]?.error ?? tSettings('organization_ui.invite_failed'));
       return;
     }
     onInvited({
@@ -170,7 +179,7 @@ export function InviteToTeamDialog({
       folderFailures,
     });
     onClose();
-  }, [busy, emails, extraProjects, onClose, onInvited, orgId, role, selectedFolders]);
+  }, [busy, emails, extraProjects, onClose, onInvited, orgId, role, selectedFolders, tCollab, tSettings]);
 
   if (!isOpen) return null;
 
@@ -183,18 +192,20 @@ export function InviteToTeamDialog({
         className="invite-to-team-dialog flex max-h-full w-[38rem] flex-col overflow-hidden rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg)] shadow-xl"
         role="dialog"
         aria-modal="true"
-        aria-label={`Invite to ${orgName}`}
+        aria-label={tProject('team_invite_dialog.title', { orgName })}
       >
         <header className="shrink-0 border-b border-[var(--nim-border)] px-5 py-4">
-          <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">Invite to {orgName}</h2>
+          <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">
+            {tProject('team_invite_dialog.title', { orgName })}
+          </h2>
           <p className="m-0 mt-1 text-sm text-[var(--nim-text-muted)]">
-            People you invite get access to what you pick here as soon as they accept.
+            {tProject('team_invite_dialog.description')}
           </p>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
           <label className="mt-4 block text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)]" htmlFor="invite-emails">
-            Email addresses
+            {tProject('team_invite_dialog.email_addresses')}
           </label>
           <textarea
             id="invite-emails"
@@ -205,14 +216,18 @@ export function InviteToTeamDialog({
           />
           {invalid.length > 0 && (
             <p className="mt-1 text-xs text-[var(--nim-warning)]">
-              Not an email address: {invalid.join(', ')}
+              {tProject('team_invite_dialog.invalid_email', { addresses: invalid.join(', ') })}
             </p>
           )}
 
           <span className="mt-5 block text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)]">
-            Role
+            {tProject('team_invite_dialog.role_label')}
           </span>
-          <div className="mt-2 inline-flex overflow-hidden rounded border border-[var(--nim-border)]" role="group" aria-label="Role">
+          <div
+            className="mt-2 inline-flex overflow-hidden rounded border border-[var(--nim-border)]"
+            role="group"
+            aria-label={tProject('team_invite_dialog.role_label')}
+          >
             {ROLE_OPTIONS.map((option) => (
               <button
                 key={option.value}
@@ -225,20 +240,22 @@ export function InviteToTeamDialog({
                 }`}
                 onClick={() => setRole(option.value)}
               >
-                {option.label}
+                {tCommon(option.labelKey)}
               </button>
             ))}
           </div>
 
           <span className="mt-5 block text-xs font-semibold uppercase tracking-wider text-[var(--nim-text-faint)]">
-            What they get
+            {tProject('team_invite_dialog.what_they_get')}
           </span>
 
           <div className="mt-2 rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3">
             <p className="m-0 flex items-center gap-2 text-sm text-[var(--nim-text)]">
               <MaterialSymbol icon="check_circle" size={16} className="text-[var(--nim-success)]" />
-              {primary?.name || 'The team project'}
-              <span className="text-xs text-[var(--nim-text-faint)]">granted automatically</span>
+              {primary?.name || tProject('team_invite_dialog.team_project')}
+              <span className="text-xs text-[var(--nim-text-faint)]">
+                {tProject('team_invite_dialog.granted_automatically')}
+              </span>
             </p>
             {grantableProjects.length > 0 && (
               <div className="mt-2 grid gap-1 border-t border-[var(--nim-border)] pt-2">
@@ -266,20 +283,20 @@ export function InviteToTeamDialog({
                   onClick={() => setPublishOpen(open => !open)}
                 >
                   <MaterialSymbol icon={publishOpen ? 'expand_more' : 'chevron_right'} size={16} />
-                  Publish folders from this workspace too
+                  {tProject('team_invite_dialog.publish_folders_toggle')}
                 </button>
               ) : (
                 <p className="m-0 mb-2 text-xs text-[var(--nim-text-muted)]">
                   {teamIsEmpty
-                    ? 'Publish folders from this workspace so there is something to open. A publish is a one-time copy; files added later stay local.'
-                    : 'A publish is a one-time copy; files added later stay local.'}
+                    ? tProject('team_invite_dialog.publish_folders_empty_team')
+                    : tProject('team_invite_dialog.publish_folders_copy_note')}
                 </p>
               )}
               {(!teamHasContent || publishOpen) && (
                 <div className={teamHasContent ? 'mt-2' : undefined}>
                   {teamHasContent && (
                     <p className="m-0 mb-2 text-xs text-[var(--nim-text-muted)]">
-                      A publish is a one-time copy; files added later stay local.
+                      {tProject('team_invite_dialog.publish_folders_copy_note')}
                     </p>
                   )}
                   <WorkspaceFolderPicker
@@ -305,21 +322,30 @@ export function InviteToTeamDialog({
           */}
           {teamIsEmpty && plan.people > 0 && plan.extraProjects === 0 && plan.folders === 0 && (
             <p className="mt-3 text-xs text-[var(--nim-warning)]">
-              They will arrive to an empty workspace. You can share folders with them later.
+              {tProject('team_invite_dialog.empty_workspace_warning')}
             </p>
           )}
           {error && <p className="mt-3 text-xs text-[var(--nim-error)]" role="alert">{error}</p>}
         </div>
 
         <footer className="flex shrink-0 items-center gap-3 border-t border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-5 py-3">
-          <span className="flex-1 text-sm text-[var(--nim-text-muted)]">{summarizeInvitePlan(plan)}</span>
+          <span className="flex-1 text-sm text-[var(--nim-text-muted)]">
+            {summarizeInvitePlan(plan).map((part, index) => (
+              <React.Fragment key={`${part.key}-${index}`}>
+                {index > 0 ? ' · ' : null}
+                {part.count === undefined
+                  ? tProject(part.key)
+                  : tProject(part.key, { count: part.count })}
+              </React.Fragment>
+            ))}
+          </span>
           <button
             type="button"
             className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-3 py-2 text-sm text-[var(--nim-text-muted)]"
             onClick={onClose}
             disabled={busy}
           >
-            Cancel
+            {tCommon('cancel')}
           </button>
           <button
             type="button"
@@ -327,7 +353,9 @@ export function InviteToTeamDialog({
             onClick={() => void send()}
             disabled={busy || emails.length === 0}
           >
-            {busy ? 'Sending…' : inviteActionLabel(plan)}
+            {busy
+              ? tDialogs('share.sending')
+              : tProject(inviteActionLabel(plan))}
           </button>
         </footer>
       </section>

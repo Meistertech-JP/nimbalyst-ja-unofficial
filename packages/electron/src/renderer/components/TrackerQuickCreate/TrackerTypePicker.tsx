@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { getTypeIcon } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import type { TrackerTypeChoice } from './rankTrackerTypes';
@@ -51,6 +52,7 @@ export const TrackerTypePicker: React.FC<TrackerTypePickerProps> = ({
   inputRef,
   footer,
 }) => {
+  const { t } = useTranslation('tracker');
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,7 +103,7 @@ export const TrackerTypePicker: React.FC<TrackerTypePickerProps> = ({
         aria-activedescendant={choices[activeIndex] ? `tracker-quick-create-type-option-${choices[activeIndex].model.type}` : undefined}
         data-testid="tracker-quick-create-type-search"
         className="tracker-quick-create-type-search select-text bg-transparent px-3 py-2 text-sm text-[var(--nim-text)] outline-none placeholder:text-[var(--nim-text-muted)]"
-        placeholder="What kind of item?"
+        placeholder={t('quick_create.type_placeholder')}
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
         onKeyDown={handleKeyDown}
@@ -111,12 +113,14 @@ export const TrackerTypePicker: React.FC<TrackerTypePickerProps> = ({
         ref={listRef}
         id="tracker-quick-create-type-list"
         role="listbox"
-        aria-label="Tracker types"
+        aria-label={t('quick_create.type_list_label')}
         className="tracker-quick-create-type-list max-h-[260px] overflow-y-auto border-t border-[var(--nim-border)] py-1"
       >
         {choices.length === 0 && (
           <div className="px-3 py-2 text-xs text-[var(--nim-text-muted)]">
-            {query.trim() ? `No tracker type matches “${query.trim()}”.` : 'No creatable tracker types.'}
+            {query.trim()
+              ? t('quick_create.no_type_matches', { query: query.trim() })
+              : t('quick_create.no_creatable_types')}
           </div>
         )}
         {choices.map((choice, index) => (
@@ -141,7 +145,7 @@ export const TrackerTypePicker: React.FC<TrackerTypePickerProps> = ({
             </span>
             {choice.model.type === selectedType && (
               <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-[var(--nim-text-muted)]">
-                current
+                {t('quick_create.current_type')}
               </span>
             )}
           </button>

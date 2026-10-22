@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { NewFileDialog } from '../NewFileDialog';
 
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
@@ -21,16 +23,22 @@ describe('NewFileDialog', () => {
 
   afterEach(cleanup);
 
-  it('renders an explicit dropdown affordance for the file type selector', () => {
-    render(
-      <NewFileDialog
-        isOpen={true}
-        onClose={() => {}}
-        currentDirectory="/workspace"
-        workspacePath="/workspace"
-        onCreateFile={() => {}}
-      />,
-    );
+  it('renders an explicit dropdown affordance for the file type selector', async () => {
+    const i18n = await createI18nInstance('en');
+    await act(async () => {
+      render(
+        <I18nextProvider i18n={i18n}>
+          <NewFileDialog
+            isOpen={true}
+            onClose={() => {}}
+            currentDirectory="/workspace"
+            workspacePath="/workspace"
+            onCreateFile={() => {}}
+          />
+        </I18nextProvider>,
+      );
+      await Promise.resolve();
+    });
 
     expect(screen.getByLabelText('Type').tagName).toBe('SELECT');
     screen.getByTestId('new-file-type-chevron');

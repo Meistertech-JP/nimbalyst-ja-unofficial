@@ -13,6 +13,7 @@
  */
 
 import React from "react";
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type {
   DecisionBlockSource,
   DecisionRatingTally,
@@ -35,6 +36,7 @@ export const DecisionRating: React.FC<RatingProps> = ({
   disabled,
   tally,
 }) => {
+  const { t } = useTranslation('editor');
   const steps = decisionRatingScaleValues(source);
   const value = draft?.type === "rating" ? draft.value : undefined;
   const peak = tally
@@ -93,10 +95,10 @@ export const DecisionRating: React.FC<RatingProps> = ({
             ))}
           </div>
           <div className="decision-avg">
-            <b>{`${tally.mean.toFixed(1)} average`}</b>
-            {` · ${tally.respondentCount} rated`}
+            <b>{t('decision.rating.average', { mean: tally.mean.toFixed(1) })}</b>
+            {` · ${t('decision.rating.count', { count: tally.respondentCount })}`}
             {tally.viewerValue !== undefined
-              ? ` · you rated ${tally.viewerValue}`
+              ? ` · ${t('decision.rating.you_rated', { value: tally.viewerValue })}`
               : ""}
           </div>
         </>

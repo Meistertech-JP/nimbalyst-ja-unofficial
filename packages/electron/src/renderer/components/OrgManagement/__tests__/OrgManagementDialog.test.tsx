@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@nimbalyst/runtime', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
@@ -83,6 +85,12 @@ vi.mock('../../Settings/panels/ProjectSharingPanel', () => ({
 
 import { OrgManagementDialog } from '../OrgManagementDialog';
 
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  testI18n = await createI18nInstance('en');
+});
+
 interface RosterResponse {
   success: boolean;
   callerRole?: string;
@@ -139,12 +147,14 @@ function tabIds(): string[] {
 
 function renderDialog(props: { initialTab?: 'members' | 'projects' | 'settings' | 'billing' | 'danger' } = {}) {
   return render(
-    <OrgManagementDialog
-      isOpen
-      onClose={() => {}}
-      orgId="org-a"
-      initialTab={props.initialTab}
-    />,
+    <I18nextProvider i18n={testI18n}>
+      <OrgManagementDialog
+        isOpen
+        onClose={() => {}}
+        orgId="org-a"
+        initialTab={props.initialTab}
+      />
+    </I18nextProvider>,
   );
 }
 

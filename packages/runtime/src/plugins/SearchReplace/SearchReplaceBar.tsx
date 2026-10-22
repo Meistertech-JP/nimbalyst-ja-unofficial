@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LexicalEditor } from 'lexical';
 import { $getRoot, $getNodeByKey, $isTextNode, $createRangeSelection, $setSelection } from 'lexical';
 import { SearchReplaceStateManager, type SearchNavigateDirection } from './SearchReplaceStateManager';
@@ -171,6 +172,7 @@ class HighlightManager {
 }
 
 export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
+  const { t } = useTranslation('editor');
   // console.log('[SearchReplaceBar] RENDER - filePath:', filePath);
 
   // Use filePath as the tabId for consistency with the registry's shouldRender check
@@ -685,7 +687,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             ref={searchInputRef}
             type="text"
             className={`search-replace-input ${inputStyles}`}
-            placeholder="Find..."
+            placeholder={t('search.find_placeholder')}
             value={searchString}
             tabIndex={1}
             onChange={(e) => handleSearchChange(e.target.value)}
@@ -716,7 +718,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
               setCaseInsensitive(newValue);
               performSearch(searchString, !newValue, useRegex);
             }}
-            title="Match case"
+            title={t('search.match_case')}
             data-testid="case-toggle"
           >
             Aa
@@ -729,7 +731,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
               setUseRegex(newValue);
               performSearch(searchString, !caseInsensitive, newValue);
             }}
-            title="Use regular expression"
+            title={t('search.use_regex')}
             data-testid="regex-toggle"
           >
             .*
@@ -742,7 +744,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             onClick={handlePrevious}
             disabled={matches.length === 0}
             tabIndex={-1}
-            aria-label="Previous match"
+            aria-label={t('search.previous_match')}
             className={`search-nav-button ${navButtonStyles}`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -750,13 +752,15 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             </svg>
           </button>
           <span className="search-match-counter text-[13px] text-[var(--nim-text-muted)] min-w-20 text-center select-none" data-testid="match-counter">
-            {matches.length > 0 ? `${currentMatchIndex + 1} of ${matches.length}` : searchString ? 'No results' : ''}
+            {matches.length > 0
+              ? t('search.match_position', { current: currentMatchIndex + 1, total: matches.length })
+              : searchString ? t('search.no_results') : ''}
           </span>
           <button
             onClick={handleNext}
             disabled={matches.length === 0}
             tabIndex={-1}
-            aria-label="Next match"
+            aria-label={t('search.next_match')}
             className={`search-nav-button ${navButtonStyles}`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -770,8 +774,8 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
           className="search-replace-close bg-transparent border border-[var(--nim-border)] rounded w-7 h-7 flex items-center justify-center cursor-pointer text-[var(--nim-text-muted)] p-0 transition-all duration-150 shrink-0 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
           onClick={handleClose}
           tabIndex={-1}
-          aria-label="Close search"
-          title="Close (Esc)"
+          aria-label={t('search.close_search')}
+          title={t('search.close_shortcut', { shortcut: 'Esc' })}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M10 4L4 10M4 4L10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -794,7 +798,7 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
           <input
             type="text"
             className={`search-replace-input ${inputStyles}`}
-            placeholder="Replace..."
+            placeholder={t('search.replace_placeholder')}
             value={replaceString}
             tabIndex={2}
             onChange={(e) => handleReplaceChange(e.target.value)}
@@ -822,18 +826,18 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
             onClick={handleReplace}
             disabled={currentMatchIndex < 0}
             tabIndex={3}
-            title="Replace (Cmd+Enter)"
+            title={t('search.replace_shortcut', { shortcut: 'Cmd+Enter' })}
           >
-            Replace
+            {t('search.replace')}
           </button>
           <button
             className="search-replace-button px-3 py-1.5 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 bg-transparent border border-[var(--nim-border)] text-[var(--nim-text)] whitespace-nowrap hover:enabled:bg-[var(--nim-bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleReplaceAll}
             disabled={matches.length === 0}
             tabIndex={4}
-            title="Replace All (Cmd+Shift+Enter)"
+            title={t('search.replace_all_shortcut', { shortcut: 'Cmd+Shift+Enter' })}
           >
-            Replace All
+            {t('search.replace_all')}
           </button>
         </div>
       </div>

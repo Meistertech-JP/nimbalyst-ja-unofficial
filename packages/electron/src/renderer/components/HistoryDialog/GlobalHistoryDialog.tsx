@@ -41,7 +41,7 @@ export const GlobalHistoryDialog: React.FC<GlobalHistoryDialogProps> = ({ theme,
     } catch (error) {
       console.error('[GlobalHistoryDialog] Failed to restore content:', error);
       errorNotificationService.showError(
-        'Version not restored',
+        errorNotificationService.getLocalizedText('dialogs', 'history.restore_failed_title', 'Restore failed'),
         error instanceof Error ? error.message : String(error),
       );
     }

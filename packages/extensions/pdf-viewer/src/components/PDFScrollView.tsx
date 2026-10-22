@@ -1,4 +1,5 @@
 import { forwardRef, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CSSProperties, ReactNode } from 'react';
 import { PDFPage } from './PDFPage';
 import type { PDFDocumentProxy } from '../hooks/usePDFDocument';
@@ -36,6 +37,7 @@ export function PDFScrollView({
   theme: _theme,
   onFitWidthScaleChange,
 }: PDFScrollViewProps) {
+  const { t } = useTranslation('extensions');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Calculate fit-to-width scale based on container width
@@ -75,7 +77,7 @@ export function PDFScrollView({
         className="pdf-scroll-view flex-1 overflow-y-auto overflow-x-hidden scroll-smooth"
         style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
-        <div>No document loaded</div>
+        <div>{t('pdf_viewer_ui.no_document')}</div>
       </div>
     );
   }

@@ -13,6 +13,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { copyToClipboard } from '../../../../../utils/clipboard';
 
@@ -29,10 +30,11 @@ const COPIED_LABEL_MS = 2000;
 
 export const FeedbackCopyLinkButton: React.FC<FeedbackCopyLinkButtonProps> = ({
   url,
-  label = 'Copy link',
+  label,
   testId = 'feedback-copy-link',
   rootClassName = 'feedback-copy-link',
 }) => {
+  const { t } = useTranslation('common');
   const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,7 +65,7 @@ export const FeedbackCopyLinkButton: React.FC<FeedbackCopyLinkButtonProps> = ({
       onClick={() => { void handleCopy(); }}
       className={`${rootClassName} px-3 py-1.5 rounded-md text-[13px] cursor-pointer border border-nim transition-colors duration-150 hover:bg-nim-hover bg-nim-tertiary text-nim-muted`}
     >
-      {status === 'copied' ? 'Link copied' : status === 'failed' ? 'Copy failed' : label}
+      {status === 'copied' ? t('collab.link_copied_title') : status === 'failed' ? t('collab.copy_failed_title') : label ?? t('collab.copy_link')}
     </button>
   );
 };

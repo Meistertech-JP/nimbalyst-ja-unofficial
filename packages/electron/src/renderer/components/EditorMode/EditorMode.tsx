@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSetAtom, useAtomValue, useAtom } from 'jotai';
 import type { ConfigTheme } from '@nimbalyst/runtime';
 import { asTeamJwt } from '@nimbalyst/runtime/auth/jwtScopes';
@@ -94,6 +95,9 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
   onOpenQuickSearch,
   onSwitchToAgentMode
 }, ref) {
+  const { t } = useTranslation('editor');
+  const { t: tCommon } = useTranslation('common');
+  const { t: tFiles, i18n } = useTranslation('files');
   // Sidebar state — kept in per-workspace atom families so each open
   // project preserves its own width / collapse state when the project rail
   // hides and re-shows it.
@@ -380,11 +384,11 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
 
     if (isCollabUri(tab.filePath) && hasCollabUnsyncedChanges(collabStatus)) {
       const confirmed = await requestConfirmation({
-        title: 'Close document?',
+        title: tCommon('collab.close_document_title'),
         message: collabStatus === 'replaying'
-          ? 'This collaborative document is still replaying local changes to the server. Close it anyway?'
-          : 'This collaborative document still has local changes that have not been confirmed by the server. Close it anyway?',
-        confirmLabel: 'Close Anyway',
+          ? tCommon('collab.close_replaying_confirm')
+          : tCommon('collab.close_unsynced_confirm'),
+        confirmLabel: tCommon('collab.close_anyway'),
         destructive: true,
       });
       if (!confirmed) {
@@ -396,7 +400,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
       await saveTabByIdRef.current(tabId);
     }
     currentTabs.removeTab(tabId);
-  }, []); // No dependencies - uses refs for all mutable state
+  }, [tCommon]); // Uses refs for mutable editor state; translation function is stable.
 
 
   // Get current file info imperatively from tabsActions
@@ -656,6 +660,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
         workspacePath,
         params.documentId,
         syntheticUnsupported as any,
+        tCommon,
         params.force === true,
       );
       // Strip non-serializable/noisy fields for the test bridge.
@@ -673,7 +678,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
       delete (window as any).__exportCollabDocTest;
       delete (window as any).__reuploadCollabDocTest;
     };
-  }, [workspacePath, tabsActions]);
+  }, [workspacePath, tabsActions, tCommon]);
 
   // Update MCP document state for custom editors (non-markdown files)
   // Markdown files update MCP state via useIPCHandlers when content changes,
@@ -1213,35 +1218,13 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
         const directory = selectedFolderPath || workspacePath;
         const filePath = `${directory}/${fileName}`;
 
-        // Create basic mockup HTML content
-        const content = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mockup</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #333;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>New Mockup</h1>
-        <p>Edit this mockup using the AI chat or edit the HTML directly.</p>
-    </div>
-</body>
-</html>`;
+        // Create localized mockup HTML content, matching the New File flow.
+        const content = createMockupContent({
+          language: i18n.resolvedLanguage || 'en',
+          title: tFiles('mockup.template_title'),
+          heading: tFiles('mockup.new_title'),
+          description: tFiles('mockup.start_designing'),
+        });
 
         await window.electronAPI.createFile(filePath, content);
 
@@ -1253,7 +1236,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
     };
 
     void handleNewMockup();
-  }, [newMockupVersion, workspacePath, selectedFolderPath, handleWorkspaceFileSelect]);
+  }, [newMockupVersion, workspacePath, selectedFolderPath, handleWorkspaceFileSelect, i18n.resolvedLanguage, tFiles]);
 
   // React to the "New Browser Tab" command (Cmd+Shift+B) from the menu. The IPC
   // subscription lives in store/listeners/appCommandListeners.ts; here we watch
@@ -1297,7 +1280,12 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
       } else if (fileType === 'mockup') {
         // Add .mockup.html extension if not present
         fullFileName = fileName.endsWith('.mockup.html') ? fileName : `${fileName}.mockup.html`;
-        content = createMockupContent();
+        content = createMockupContent({
+          language: i18n.resolvedLanguage || 'en',
+          title: tFiles('mockup.template_title'),
+          heading: tFiles('mockup.new_title'),
+          description: tFiles('mockup.start_designing'),
+        });
       } else if (fileType?.startsWith('ext:')) {
         // Extension-provided file type
         const extName = fileType.slice(4); // Remove 'ext:' prefix
@@ -1366,7 +1354,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
               className="editor-mode-sidebar-resize-handle w-1 cursor-col-resize shrink-0 relative z-10 bg-nim-secondary"
               data-testid="editor-mode-sidebar-resize-handle"
               role="separator"
-              aria-label="Resize file sidebar"
+              aria-label={t('tooltips.resize_sidebar')}
               aria-orientation="vertical"
             >
               <div

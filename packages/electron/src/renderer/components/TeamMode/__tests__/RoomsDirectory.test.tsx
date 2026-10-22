@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConversationDirectoryEntry } from '../../../../shared/conversationDirectory';
 import { RoomsDirectory } from '../RoomsDirectory';
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+function render(ui: React.ReactElement) {
+  return rtlRender(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+}
 
 vi.mock('@nimbalyst/runtime', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span>{icon}</span>,
@@ -29,7 +36,10 @@ const room: ConversationDirectoryEntry = {
 };
 
 describe('RoomsDirectory', () => {
-  beforeEach(() => listConversationDirectory.mockReset());
+  beforeEach(async () => {
+    listConversationDirectory.mockReset();
+    testI18n = await createI18nInstance('en');
+  });
   afterEach(() => cleanup());
 
   it('lists the rooms it can see', async () => {
@@ -82,5 +92,15 @@ describe('RoomsDirectory', () => {
 
     await waitFor(() => expect(screen.getByTestId('org-rooms-directory-empty').textContent)
       .toContain('archived ones included'));
+  });
+
+  it('renders the directory controls in Japanese', async () => {
+    listConversationDirectory.mockResolvedValue([]);
+    await testI18n.changeLanguage('ja');
+    render(
+      <RoomsDirectory orgId="org-a" viewerUserId="member-a" onOpenConversation={vi.fn()} />,
+    );
+    expect(await screen.findByRole('heading', { name: 'ルームを閲覧' })).toBeDefined();
+    expect(screen.getByText('公開ルームは組織の全員が利用できます。非公開ルームは参加している場合にのみ表示されます。')).toBeDefined();
   });
 });

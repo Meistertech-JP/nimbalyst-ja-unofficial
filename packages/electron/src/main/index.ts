@@ -25,7 +25,8 @@ import {
 } from './window/WindowManager';
 import { beginStartupActivation, finishStartupWindowCreation } from './window/StartupActivation';
 import { loadFileIntoWindow } from './file/FileOperations';
-import { createApplicationMenu } from './menu/ApplicationMenu';
+import { createApplicationMenu, updateApplicationMenu } from './menu/ApplicationMenu';
+import { createMainI18nController, translateMainDialogLabel } from './i18n/mainI18n';
 import { updateNativeTheme, updateWindowTitleBars } from './theme/ThemeManager';
 import { restoreSessionState, saveSessionState } from './session/SessionState';
 import { createRestartShutdown } from './session/restartShutdown';
@@ -384,7 +385,7 @@ if (process.env.ELECTRON_RUN_AS_NODE === '1' && process.platform === 'darwin') {
 
 // Windows notifications require a stable AppUserModelID.
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.nimbalyst.electron');
+  app.setAppUserModelId('jp.meistertech.nimbalyst.ja.unofficial');
 }
 
 // Issue #146: register the `nim-asset://` scheme as standard/secure BEFORE
@@ -417,6 +418,7 @@ let safeModeRequested = false;
 // Session save interval
 let sessionSaveInterval: NodeJS.Timeout | null = null;
 let menuUpdateInterval: NodeJS.Timeout | null = null;
+let applicationMenuInitialized = false;
 let memoryMonitorInterval: NodeJS.Timeout | null = null;
 
 // Track if app is quitting
@@ -1694,6 +1696,41 @@ app.whenReady().then(async () => {
     registerWorkspaceHandlers();
     registerWorkspaceWatcherHandlers();
     registerSettingsHandlers();
+    await createMainI18nController(
+        getSettingsService(),
+        app.getLocale(),
+        async () => {
+            if (applicationMenuInitialized) {
+                await updateApplicationMenu();
+            }
+        },
+    );
+    if (
+        process.platform === 'win32' &&
+        !app.isDefaultProtocolClient('nimbalyst')
+    ) {
+        const registeredHandler = app.getApplicationNameForProtocol('nimbalyst://protocol-association-check');
+        if (registeredHandler && registeredHandler !== app.getName()) {
+            await dialog.showMessageBox({
+                type: 'warning',
+                title: translateMainDialogLabel(
+                    'main_process.windows_protocol_association_title',
+                    'Check URL protocol association',
+                ),
+                message: translateMainDialogLabel(
+                    'main_process.windows_protocol_association_message',
+                    'nimbalyst:// links are currently handled by another application.',
+                ),
+                detail: translateMainDialogLabel(
+                    'main_process.windows_protocol_association_detail',
+                    'Current handler: {{handler}}\n\nThis app will not change the Windows nimbalyst:// association. Links opened through this protocol will be sent to the current handler.',
+                    { handler: registeredHandler },
+                ),
+                buttons: [translateMainDialogLabel('main_process.ok_button', 'OK')],
+                defaultId: 0,
+            });
+        }
+    }
     registerWindowHandlers();
     registerWindowChromeHandlers();
     registerEditorStateHandlers();
@@ -3159,6 +3196,7 @@ app.whenReady().then(async () => {
 
     // Create application menu
     await createApplicationMenu();
+    applicationMenuInitialized = true;
 
     // Set initial native theme
     updateNativeTheme();
@@ -3324,9 +3362,14 @@ app.on('before-quit', async (event) => {
             await shutdownForRestart(event);
         } catch (error) {
             console.error('[QUIT] Error saving session state for restart:', error);
-            dialog.showErrorBox('Unable to restart Nimbalyst',
-                'Restart stopped before closing your project windows. Please try restarting again.\n\n' +
-                (error instanceof Error ? error.message : String(error)));
+            dialog.showErrorBox(
+                translateMainDialogLabel('main_process.restart_failed_title', 'Unable to restart Nimbalyst'),
+                translateMainDialogLabel(
+                    'main_process.restart_failed_message',
+                    'Restart stopped before closing your project windows. Please try restarting again.\n\n{{error}}',
+                    { error: error instanceof Error ? error.message : String(error) },
+                ),
+            );
         }
         // Don't delete the file here - dev-loop.sh needs it to know to restart
         return;
@@ -3348,10 +3391,16 @@ app.on('before-quit', async (event) => {
 
         const response = await dialog.showMessageBox({
             type: 'warning',
-            title: 'AI Session in Progress',
-            message: 'An AI session is currently running.',
-            detail: 'If you quit now, the current AI response will be lost. Are you sure you want to quit?',
-            buttons: ['Quit Anyway', 'Cancel'],
+            title: translateMainDialogLabel('main_process.quit_active_title', 'AI Session in Progress'),
+            message: translateMainDialogLabel('main_process.quit_active_message', 'An AI session is currently running.'),
+            detail: translateMainDialogLabel(
+                'main_process.quit_active_detail',
+                'If you quit now, the current AI response will be lost. Are you sure you want to quit?',
+            ),
+            buttons: [
+                translateMainDialogLabel('main_process.quit_active_confirm', 'Quit Anyway'),
+                translateMainDialogLabel('main_process.cancel', 'Cancel'),
+            ],
             defaultId: 1,
             cancelId: 1
         });

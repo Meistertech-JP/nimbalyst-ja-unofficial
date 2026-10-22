@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { shouldIsolateFromGrid } from '../editors/editorKeyActions';
 import type { NormalizedSelectionRange } from '../types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { FormulaAssistPopover } from './FormulaAssistPopover';
 import { cycleAbsoluteIn, FORMULA_BAR_INPUT_CLASS, useEditSnapshot, useFormulaAssist } from '../formula/editSurface';
 import { parseNameBoxReference, referenceHighlights } from '../formula/pointMode';
@@ -58,6 +59,7 @@ function MirrorText({ text }: { text: string }) {
 
 export const FormulaBar = forwardRef<FormulaBarHandle, FormulaBarProps>(
   function FormulaBar({ onChange, readOnly = false, onNavigate, getNamedRanges }, ref) {
+    const { t } = useTranslation('editor');
     const [cellRef, setCellRef] = useState('');
     const [displayValue, setDisplayValue] = useState('');
     const [localValue, setLocalValue] = useState('');
@@ -151,7 +153,7 @@ export const FormulaBar = forwardRef<FormulaBarHandle, FormulaBarProps>(
       <div className="csv-formula-bar flex flex-1 min-w-0 items-center gap-2 px-3 py-1 min-h-[32px]">
         <input
           type="text"
-          aria-label="Name box"
+          aria-label={t('spreadsheet_ui.formula_bar.name_box')}
           aria-invalid={nameInvalid || undefined}
           spellCheck={false}
           className={`csv-formula-bar-ref font-mono text-[12px] font-semibold w-[84px] px-2 py-0.5 bg-nim-tertiary rounded text-center text-nim-muted border outline-none focus:text-nim focus:border-[var(--nim-primary)] ${

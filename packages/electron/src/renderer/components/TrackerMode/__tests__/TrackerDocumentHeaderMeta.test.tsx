@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { Provider } from 'jotai';
-import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { store } from '@nimbalyst/runtime/store';
 import {
   collabDocumentStateAtom,
@@ -18,23 +20,34 @@ import {
 
 const ITEM_ID = 'item-1';
 const COLLAB_KEY = trackerContentCollabKey(ITEM_ID);
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
-function renderMeta(props: Partial<Parameters<typeof TrackerDocumentHeaderMeta>[0]> = {}) {
+beforeAll(async () => {
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function renderMeta(
+  props: Partial<Parameters<typeof TrackerDocumentHeaderMeta>[0]> = {},
+  i18n = japaneseI18n,
+  preference: 'en' | 'ja' = 'ja',
+) {
   render(
-    <Provider store={store}>
-      <TrackerDocumentHeaderMeta
-        itemId={ITEM_ID}
-        title="Pill item"
-        breadcrumb={{
-          kind: 'file',
-          segments: ['Features', 'plan.md'],
-          dirty: false,
-          fullPath: '/ws/Features/plan.md',
-        }}
-        showCollabChrome={false}
-        {...props}
-      />
-    </Provider>,
+    <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="en-US">
+      <Provider store={store}>
+        <TrackerDocumentHeaderMeta
+          itemId={ITEM_ID}
+          title="Pill item"
+          breadcrumb={{
+            kind: 'file',
+            segments: ['Features', 'plan.md'],
+            dirty: false,
+            fullPath: '/ws/Features/plan.md',
+          }}
+          showCollabChrome={false}
+          {...props}
+        />
+      </Provider>
+    </UiLanguageProvider>,
   );
 }
 
@@ -62,6 +75,7 @@ describe('trackerBreadcrumbSegments', () => {
 
 describe('TrackerDocumentHeaderMeta', () => {
   afterEach(() => {
+    cleanup();
     store.set(collabDocumentStateAtom(COLLAB_KEY), DEFAULT_COLLAB_DOCUMENT_STATE);
     store.set(collabAwarenessAtom(COLLAB_KEY), new Map());
   });
@@ -73,7 +87,7 @@ describe('TrackerDocumentHeaderMeta', () => {
     expect(screen.queryByTestId('tracker-document-breadcrumb-dirty')).toBeNull();
   });
 
-  it('marks the breadcrumb dirty when the backing file has unsaved edits', () => {
+  it('marks the breadcrumb dirty with a Japanese tooltip when the backing file has unsaved edits', () => {
     renderMeta({
       breadcrumb: {
         kind: 'file',
@@ -83,7 +97,7 @@ describe('TrackerDocumentHeaderMeta', () => {
       },
     });
 
-    screen.getByTestId('tracker-document-breadcrumb-dirty');
+    expect(screen.getByTestId('tracker-document-breadcrumb-dirty').getAttribute('title')).toBe('未保存の変更');
   });
 
   it('falls back to collection and type for a DB-only item', () => {
@@ -103,5 +117,33 @@ describe('TrackerDocumentHeaderMeta', () => {
 
     renderMeta({ showCollabChrome: true });
     expect(screen.getAllByTestId('tracker-collab-sync-dot').length).toBe(1);
+    expect(screen.getAllByTestId('tracker-collab-sync-dot')[0].getAttribute('title'))
+      .toBe('ローカルコピーを開いています…');
+  });
+
+  it('localizes only marked fallback tracker presence and preserves real and legacy Teammate names', async () => {
+    const i18n = await createI18nInstance('en');
+    store.set(collabDocumentStateAtom(COLLAB_KEY), {
+      replica: 'ready',
+      transport: 'connected',
+      outbox: 'clean',
+    });
+    store.set(collabAwarenessAtom(COLLAB_KEY), new Map([
+      ['generated-default', { name: 'Teammate', color: '#336699', nimbalystNameSource: 'system-default' }],
+      ['real-name', { name: 'Teammate', color: '#663399' }],
+      ['legacy-peer', { name: 'Teammate', color: '#996633' }],
+      ['email-fallback', { name: 'rowan@example.test', color: '#339966' }],
+    ]));
+    renderMeta({ showCollabChrome: true }, i18n, 'en');
+
+    const getTitles = () => Array.from(
+      screen.getByTestId('tracker-collab-presence').querySelectorAll('[title]'),
+    ).map((element) => element.getAttribute('title'));
+    expect(getTitles()).toEqual(['Teammate', 'Teammate', 'Teammate', 'rowan@example.test']);
+
+    await act(async () => {
+      await i18n.changeLanguage('ja');
+    });
+    expect(getTitles()).toEqual(['チームメンバー', 'Teammate', 'Teammate', 'rowan@example.test']);
   });
 });

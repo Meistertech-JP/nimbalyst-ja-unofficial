@@ -1,8 +1,8 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
-import { AlphaBadge } from '../common/AlphaBadge';
-import { TEAM_BETA_TOOLTIP } from '../common/TeamBetaNotice';
+import { TeamBetaBadge } from '../common/TeamBetaNotice';
 
 /**
  * The window's title bar: one full-width strip above the rail, the sidebar and
@@ -25,6 +25,7 @@ export const OrgWindowTitleBar = React.memo(function OrgWindowTitleBar({
   name?: string;
   onOpenPreferences?: () => void;
 }) {
+  const { t } = useTranslation('collabSidebar');
   return (
     <header
       className="org-window-titlebar org-sidebar-header org-window-drag-region flex shrink-0 items-center gap-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] pr-3"
@@ -39,7 +40,7 @@ export const OrgWindowTitleBar = React.memo(function OrgWindowTitleBar({
           <span className="org-sidebar-header-name min-w-0 flex-1 truncate text-[13px] font-semibold text-[var(--nim-text)]">
             {name}
           </span>
-          <AlphaBadge size="xs" stage="beta" tooltip={TEAM_BETA_TOOLTIP} className="org-window-no-drag shrink-0" />
+          <TeamBetaBadge size="xs" className="org-window-no-drag shrink-0" />
           {onOpenPreferences && (
             // Inside the drag strip, so it has to opt out by hand or the OS
             // eats the click as a window drag.
@@ -47,8 +48,8 @@ export const OrgWindowTitleBar = React.memo(function OrgWindowTitleBar({
               type="button"
               className="org-window-preferences org-window-no-drag flex size-6 shrink-0 items-center justify-center rounded text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
               data-testid="org-window-preferences"
-              aria-label="Preferences"
-              title="Preferences"
+              aria-label={t('org_preferences.title')}
+              title={t('org_preferences.title')}
               onClick={onOpenPreferences}
             >
               <MaterialSymbol icon="settings" size={15} />

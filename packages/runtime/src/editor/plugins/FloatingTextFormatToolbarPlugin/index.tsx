@@ -30,6 +30,7 @@ import {
 } from 'lexical';
 import {Dispatch, useCallback, useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import {blockTypeToBlockName, useToolbarState} from '../../context/ToolbarContext';
 import DropDown, {DropDownItem} from '../../ui/DropDown';
@@ -63,12 +64,14 @@ function BlockFormatDropDown({
   blockType: keyof typeof blockTypeToBlockName;
   editor: LexicalEditor;
 }): JSX.Element {
+  const {t} = useTranslation('editor');
+
   return (
     <DropDown
       buttonClassName="popup-item block-controls"
       buttonIconClassName={'icon block-type ' + blockType}
       buttonLabel=""
-      buttonAriaLabel="Formatting options for text style">
+      buttonAriaLabel={t('formatting.text_style_options')}>
       <DropDownItem
         className={
           'item wide ' + dropDownActiveClass(blockType === 'paragraph')
@@ -76,7 +79,7 @@ function BlockFormatDropDown({
         onClick={() => formatParagraph(editor)}>
         <div className="icon-text-container">
           <i className="icon paragraph" />
-          <span className="text">Normal</span>
+          <span className="text">{t('formatting.normal')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.NORMAL}</span>
       </DropDownItem>
@@ -85,7 +88,7 @@ function BlockFormatDropDown({
         onClick={() => formatHeading(editor, blockType, 'h1')}>
         <div className="icon-text-container">
           <i className="icon h1" />
-          <span className="text">Heading 1</span>
+          <span className="text">{t('formatting.heading_level', {level: 1})}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.HEADING1}</span>
       </DropDownItem>
@@ -94,7 +97,7 @@ function BlockFormatDropDown({
         onClick={() => formatHeading(editor, blockType, 'h2')}>
         <div className="icon-text-container">
           <i className="icon h2" />
-          <span className="text">Heading 2</span>
+          <span className="text">{t('formatting.heading_level', {level: 2})}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.HEADING2}</span>
       </DropDownItem>
@@ -103,7 +106,7 @@ function BlockFormatDropDown({
         onClick={() => formatHeading(editor, blockType, 'h3')}>
         <div className="icon-text-container">
           <i className="icon h3" />
-          <span className="text">Heading 3</span>
+          <span className="text">{t('formatting.heading_level', {level: 3})}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.HEADING3}</span>
       </DropDownItem>
@@ -112,7 +115,7 @@ function BlockFormatDropDown({
         onClick={() => formatNumberedList(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon numbered-list" />
-          <span className="text">Numbered List</span>
+          <span className="text">{t('formatting.numbered_list')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.NUMBERED_LIST}</span>
       </DropDownItem>
@@ -121,7 +124,7 @@ function BlockFormatDropDown({
         onClick={() => formatBulletList(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon bullet-list" />
-          <span className="text">Bullet List</span>
+          <span className="text">{t('formatting.bullet_list')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.BULLET_LIST}</span>
       </DropDownItem>
@@ -130,7 +133,7 @@ function BlockFormatDropDown({
         onClick={() => formatCheckList(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon check-list" />
-          <span className="text">Check List</span>
+          <span className="text">{t('formatting.check_list')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.CHECK_LIST}</span>
       </DropDownItem>
@@ -139,7 +142,7 @@ function BlockFormatDropDown({
         onClick={() => formatQuote(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon quote" />
-          <span className="text">Quote</span>
+          <span className="text">{t('formatting.quote')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.QUOTE}</span>
       </DropDownItem>
@@ -148,7 +151,7 @@ function BlockFormatDropDown({
         onClick={() => formatCode(editor, blockType)}>
         <div className="icon-text-container">
           <i className="icon code" />
-          <span className="text">Code Block</span>
+          <span className="text">{t('formatting.code_block')}</span>
         </div>
         <span className="shortcut">{SHORTCUTS.CODE_BLOCK}</span>
       </DropDownItem>
@@ -191,6 +194,7 @@ function TextFormatFloatingToolbar({
   setIsLinkEditMode: Dispatch<boolean>;
   actions: ReadonlyArray<FloatingTextToolbarAction>;
 }): JSX.Element {
+  const {t} = useTranslation('editor');
   const popupCharStylesEditorRef = useRef<HTMLDivElement | null>(null);
 
   const insertLink = useCallback(() => {
@@ -330,8 +334,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
             }}
             className={'popup-item spaced ' + (isBold ? 'active' : '')}
-            title="Bold"
-            aria-label="Format text as bold">
+            title={t('formatting.bold')}
+            aria-label={t('formatting.bold_description')}>
             <i className="format bold" />
           </button>
           <button
@@ -340,8 +344,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
             }}
             className={'popup-item spaced ' + (isItalic ? 'active' : '')}
-            title="Italic"
-            aria-label="Format text as italics">
+            title={t('formatting.italic')}
+            aria-label={t('formatting.italic_description')}>
             <i className="format italic" />
           </button>
           <button
@@ -350,8 +354,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
             }}
             className={'popup-item spaced ' + (isUnderline ? 'active' : '')}
-            title="Underline"
-            aria-label="Format text to underlined">
+            title={t('formatting.underline')}
+            aria-label={t('formatting.underline_description')}>
             <i className="format underline" />
           </button>
           <button
@@ -360,8 +364,8 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough');
             }}
             className={'popup-item spaced ' + (isStrikethrough ? 'active' : '')}
-            title="Strikethrough"
-            aria-label="Format text with a strikethrough">
+            title={t('formatting.strikethrough')}
+            aria-label={t('formatting.strikethrough_description')}>
             <i className="format strikethrough" />
           </button>
           {/* Commented out non-markdown focused formatting options
@@ -422,16 +426,16 @@ function TextFormatFloatingToolbar({
               editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
             }}
             className={'popup-item spaced ' + (isCode ? 'active' : '')}
-            title="Insert code block"
-            aria-label="Insert code block">
+            title={t('formatting.insert_code')}
+            aria-label={t('formatting.insert_code')}>
             <i className="format code" />
           </button>
           <button
             type="button"
             onClick={insertLink}
             className={'popup-item spaced ' + (isLink ? 'active' : '')}
-            title="Insert link"
-            aria-label="Insert link">
+            title={t('formatting.insert_link')}
+            aria-label={t('formatting.insert_link')}>
             <i className="format link" />
           </button>
           {actions.length > 0 && <div className="divider" />}

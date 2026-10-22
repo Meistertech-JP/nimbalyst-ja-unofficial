@@ -6,12 +6,12 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import {
   claudeUsageAtom,
   claudeUsageAvailableAtom,
   claudeUsageSessionColorAtom,
-  formatResetTime,
 } from '../../store/atoms/claudeUsageAtoms';
 import { ClaudeUsagePopover } from './ClaudeUsagePopover';
 import { refreshClaudeUsage } from '../../store/listeners/claudeUsageListeners';
@@ -24,6 +24,7 @@ interface ClaudeUsageIndicatorProps {
 }
 
 export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ className }) => {
+  const { t } = useTranslation('common');
   const usage = useAtomValue(claudeUsageAtom);
   const isAvailable = useAtomValue(claudeUsageAvailableAtom);
   const sessionColor = useAtomValue(claudeUsageSessionColorAtom);
@@ -59,15 +60,18 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
   const strokeColor = colorClasses[effectiveSessionColor] || colorClasses.muted;
 
   const tooltipContent = usage?.error
-    ? `Claude usage unavailable: ${usage.error}`
+    ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.claude_name'), error: usage.error })
     : usage
       ? [
-          `Session: ${Math.round(utilization)}% used (resets ${formatResetTime(usage.fiveHour.resetsAt)})`,
+          t('usage_indicator.session_tooltip', {
+            percent: Math.round(utilization),
+            time: formatReset(usage.fiveHour.resetsAt, t),
+          }),
           ...(usage.weeklyModelLimits ?? []).map(limit =>
-            `${limit.model}: ${Math.round(limit.utilization)}% used this week (resets ${formatResetTime(limit.resetsAt)})`
+            `${limit.model}: ${Math.round(limit.utilization)}% ${t('usage_indicator.usage')} (${t('usage_indicator.resets_in', { time: formatReset(limit.resetsAt, t) })})`
           ),
         ].join('\n')
-      : 'Claude usage unavailable';
+      : t('usage_indicator.unavailable', { provider: t('usage_indicator.claude_name') });
 
   return (
     <div className={`relative ${className || ''}`}>
@@ -76,7 +80,7 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
         onClick={handleClick}
         title={tooltipContent}
         className="relative w-9 h-9 flex items-center justify-center bg-transparent border-none rounded-md cursor-pointer transition-all duration-150 p-0 hover:bg-nim-tertiary active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2"
-        aria-label="Claude Usage"
+        aria-label={t('usage_indicator.claude_title')}
         data-testid="claude-usage-indicator"
       >
         <svg
@@ -125,3 +129,16 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
     </div>
   );
 };
+
+function formatReset(resetsAt: string | null, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (!resetsAt) return t('usage_indicator.reset_unknown');
+  const diffMs = new Date(resetsAt).getTime() - Date.now();
+  if (diffMs <= 0) return t('usage_indicator.reset_now');
+  const totalMinutes = Math.floor(diffMs / 60_000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return t('usage_indicator.reset_days_hours', { days, hours });
+  if (hours > 0) return t('usage_indicator.reset_hours_minutes', { hours, minutes });
+  return t('usage_indicator.reset_minutes', { minutes });
+}

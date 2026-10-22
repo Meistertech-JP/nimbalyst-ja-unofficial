@@ -9,6 +9,7 @@
  * only raises them. Pages mode only: outside it no sidebar is shown to answer.
  */
 import { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import type { CollabDocsSession, SharedDocument } from '@nimbalyst/collab-client/docs';
 import type { PageTypeLane } from '@nimbalyst/collab-client/docs/pageTypes';
@@ -23,8 +24,10 @@ const NO_ITEM_PLACEMENTS = atom<readonly { itemId: string }[]>([]);
 const useInPages = () => useAtomValue(windowModeAtom) === 'collab';
 
 /** Opens the Copy to Pages dialog on a file the author picks, inside this page. Loaded on use: tabs import this hook. */
-function addFromFiles(section: PageTypeLane, parentId: string): void {
-  void import('../../services/addFileToPages').then(({ addFileToPages }) => addFileToPages({ section, parentId }));
+function addFromFiles(section: PageTypeLane, parentId: string, dialogTitle: string, buttonLabel: string): void {
+  void import('../../services/addFileToPages').then(({ addFileToPages }) => addFileToPages({
+    section, parentId, dialogTitle, buttonLabel,
+  }));
 }
 
 /** Marks the first item of each group after the first, for the menu's rules. */
@@ -54,6 +57,7 @@ export interface PageMenuInput {
 }
 
 export function usePageMenuItems({ lane, session, page, canMoveAcross, exportItems = [] }: PageMenuInput): PageHeaderMenuItem[] {
+  const { t } = useTranslation('collabSidebar');
   const inPages = useInPages();
   const favorites = useAtomValue(session?.atoms.favorites ?? NO_FAVORITES);
   const requestAction = useRequestAction(lane);
@@ -66,28 +70,33 @@ export function usePageMenuItems({ lane, session, page, canMoveAcross, exportIte
     const favorited = favorites.includes(pageId);
     const markdown = page.documentType === 'markdown';
     return grouped(exportItems, [
-      { id: 'new-page-inside', label: 'New Page Inside', icon: 'note_add', onSelect: () => requestAction(pageId, 'newPageInside') },
-      { id: 'add-from-files', label: 'Add from Files...', icon: 'upload_file', onSelect: () => addFromFiles(lane, pageId) },
+      { id: 'new-page-inside', label: t('ui.new_page_inside'), icon: 'note_add', onSelect: () => requestAction(pageId, 'newPageInside') },
+      {
+        id: 'add-from-files',
+        label: t('ui.add_from_files'),
+        icon: 'upload_file',
+        onSelect: () => addFromFiles(lane, pageId, t('ui.add_from_files_title'), t('ui.add')),
+      },
       // A drawing or other editor page keeps its editor: no page type, no move across sections (it copies markdown).
-      ...(markdown ? [{ id: 'set-type', label: 'Set Type...', icon: 'category', onSelect: () => requestType({ lane, page }) }] : []),
-      { id: 'rename', label: 'Rename...', icon: 'edit', onSelect: () => requestAction(pageId, 'rename') },
-      { id: 'move-to', label: 'Move to...', icon: 'drive_file_move', onSelect: () => requestAction(pageId, 'moveTo') },
+      ...(markdown ? [{ id: 'set-type', label: t('set_page_type_dialog.title'), icon: 'category', onSelect: () => requestType({ lane, page }) }] : []),
+      { id: 'rename', label: t('ui.rename'), icon: 'edit', onSelect: () => requestAction(pageId, 'rename') },
+      { id: 'move-to', label: t('ui.move_to'), icon: 'drive_file_move', onSelect: () => requestAction(pageId, 'moveTo') },
       ...(canMoveAcross && markdown ? [{
         id: 'move-across',
-        label: lane === 'team' ? 'Move to Personal...' : 'Move to Team...',
+        label: lane === 'team' ? t('ui.move_to_personal') : t('ui.move_to_team'),
         icon: lane === 'team' ? 'person' : 'group',
         onSelect: () => requestMove({ from: lane, pageId }),
       }] : []),
       ...(canFavorite && session ? [{
         id: 'favorite',
-        label: favorited ? 'Unfavorite' : 'Favorite',
+        label: favorited ? t('ui.unfavorite') : t('ui.favorite'),
         icon: 'star',
         onSelect: () => session.toggleFavorite(pageId),
       }] : []),
     ], [
-      { id: 'trash', label: 'Move to Trash', icon: 'delete', destructive: true, onSelect: () => requestAction(pageId, 'trash') },
+      { id: 'trash', label: t('ui.move_to_trash'), icon: 'delete', destructive: true, onSelect: () => requestAction(pageId, 'trash') },
     ]);
-  }, [inPages, page, favorites, canFavorite, session, lane, canMoveAcross, exportItems, requestAction, requestType, requestMove]);
+  }, [inPages, page, favorites, canFavorite, session, lane, canMoveAcross, exportItems, requestAction, requestType, requestMove, t]);
 }
 
 /**
@@ -100,15 +109,16 @@ export function useTypedPageMenuItems(
   session: CollabDocsSession | null,
   exportItems: PageHeaderMenuItem[] = [],
 ): PageHeaderMenuItem[] {
+  const { t } = useTranslation('collabSidebar');
   const inPages = useInPages();
   const requestAction = useRequestAction(lane);
   const placements = useAtomValue<readonly { itemId: string }[]>(session?.atoms.itemPlacements ?? NO_ITEM_PLACEMENTS);
   const placed = placements.some((placement) => placement.itemId === itemId);
   return useMemo(() => (inPages ? grouped(exportItems, [
-    { id: 'new-page-inside', label: 'New Page Inside', icon: 'note_add', onSelect: () => requestAction(itemId, 'newPageInside') },
-    { id: 'move-to', label: 'Move to...', icon: 'drive_file_move', onSelect: () => requestAction(itemId, 'moveTo') },
-    ...(placed ? [{ id: 'back-under-type', label: 'Back Under Its Type', icon: 'table', onSelect: () => requestAction(itemId, 'backUnderType') }] : []),
-  ]) : exportItems), [inPages, exportItems, itemId, placed, requestAction]);
+    { id: 'new-page-inside', label: t('ui.new_page_inside'), icon: 'note_add', onSelect: () => requestAction(itemId, 'newPageInside') },
+    { id: 'move-to', label: t('ui.move_to'), icon: 'drive_file_move', onSelect: () => requestAction(itemId, 'moveTo') },
+    ...(placed ? [{ id: 'back-under-type', label: t('ui.back_under_type'), icon: 'table', onSelect: () => requestAction(itemId, 'backUnderType') }] : []),
+  ]) : exportItems), [inPages, exportItems, itemId, placed, requestAction, t]);
 }
 
 /** A type page's: move its row, or take it out of the tree (the type and its pages stay). */
@@ -118,11 +128,12 @@ export function useTypePageMenuItems(
   placed: boolean,
   exportItems: PageHeaderMenuItem[] = [],
 ): PageHeaderMenuItem[] {
+  const { t } = useTranslation('collabSidebar');
   const inPages = useInPages();
   const requestAction = useRequestAction(lane);
   return useMemo(() => (inPages ? grouped(exportItems, placed ? [
-    { id: 'move-to', label: 'Move to...', icon: 'drive_file_move', onSelect: () => requestAction(typeId, 'moveTo', 'type') },
+    { id: 'move-to', label: t('ui.move_to'), icon: 'drive_file_move', onSelect: () => requestAction(typeId, 'moveTo', 'type') },
   ] : [], placed ? [
-    { id: 'remove-from-tree', label: 'Remove from Tree', icon: 'playlist_remove', onSelect: () => requestAction(typeId, 'removeFromTree', 'type') },
-  ] : []) : exportItems), [inPages, exportItems, placed, typeId, requestAction]);
+    { id: 'remove-from-tree', label: t('ui.remove_from_tree'), icon: 'playlist_remove', onSelect: () => requestAction(typeId, 'removeFromTree', 'type') },
+  ] : []) : exportItems), [inPages, exportItems, placed, typeId, requestAction, t]);
 }

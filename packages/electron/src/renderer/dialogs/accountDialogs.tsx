@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { AccountLoginForm, type AccountLoginMode } from '../components/Accounts/AccountLoginForm';
 import type { PersonalAccountSummary } from '../store/atoms/settingsDomains';
@@ -12,11 +13,12 @@ export interface AccountLoginData {
 }
 
 function AccountLoginDialog({ isOpen, onClose, data }: { isOpen: boolean; onClose: () => void; data: AccountLoginData }) {
+  const { t } = useTranslation('common');
   if (!isOpen) return null;
   return (
     <div className="account-login-dialog fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4" data-component="AccountLoginDialog" data-testid="account-login-dialog" onClick={onClose}>
       <div className="relative w-[390px] max-w-[90vw]" onClick={(event) => event.stopPropagation()}>
-        <button type="button" aria-label="Close sign-in" className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-md text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]" onClick={onClose}>×</button>
+        <button type="button" aria-label={t('account_ui.close_sign_in')} className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-md text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]" onClick={onClose}>×</button>
         <AccountLoginForm mode={data.mode} account={data.account} />
       </div>
     </div>

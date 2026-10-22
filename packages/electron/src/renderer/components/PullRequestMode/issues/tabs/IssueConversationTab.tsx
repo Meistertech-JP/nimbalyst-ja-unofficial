@@ -6,6 +6,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { MarkdownRenderer } from '@nimbalyst/runtime/ui/AgentTranscript/components/MarkdownRenderer';
@@ -34,6 +35,7 @@ export function IssueConversationTab({
   issue,
   refreshToken,
 }: IssueConversationTabProps): JSX.Element {
+  const { t } = useTranslation('git');
   const loaded = useAtomValue(githubIssueCommentsAtom);
   const setComments = useSetAtom(githubIssueCommentsAtom);
   const loading = useAtomValue(githubIssueDetailLoadingAtom);
@@ -53,7 +55,7 @@ export function IssueConversationTab({
       .catch((err: unknown) => {
         if (!cancelled) {
           setComments([]);
-          setError(err instanceof Error ? err.message : 'Failed to load comments');
+          setError(err instanceof Error ? err.message : t('issues.conversation.load_error'));
         }
       })
       .finally(() => {
@@ -62,7 +64,7 @@ export function IssueConversationTab({
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, remote, issue.number, refreshToken, setComments, setLoading, setError]);
+  }, [workspaceId, remote, issue.number, refreshToken, setComments, setLoading, setError, t]);
 
   // The atom is global and still holds the previous selection's comments while
   // this one loads. Each row names the issue it was fetched for, so gate on
@@ -81,14 +83,14 @@ export function IssueConversationTab({
       <div className="border border-nim rounded-md overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 bg-nim-secondary border-b border-nim text-xs text-nim-muted">
           {issue.authorLogin && <span className="font-medium text-nim">{issue.authorLogin}</span>}
-          <span>opened this issue</span>
+          <span>{t('issues.conversation.opened_this_issue')}</span>
           <span className="ml-auto">{formatRelative(issue.createdAt)}</span>
         </div>
         <div className="px-3 py-2 text-sm text-nim select-text">
           {issue.body?.trim() ? (
             <MarkdownRenderer content={issue.body} />
           ) : (
-            <span className="text-nim-faint italic">No description provided.</span>
+            <span className="text-nim-faint italic">{t('issues.conversation.no_description')}</span>
           )}
         </div>
       </div>
@@ -103,7 +105,7 @@ export function IssueConversationTab({
       {loading && comments.length === 0 ? (
         <div className="flex items-center justify-center gap-2 py-6 text-nim-muted text-sm">
           <div className="spinner w-4 h-4 border-[2px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-          Loading comments…
+          {t('issues.conversation.loading_comments')}
         </div>
       ) : (
         comments.map((comment) => (
@@ -112,7 +114,7 @@ export function IssueConversationTab({
               {comment.authorLogin && (
                 <span className="font-medium text-nim">{comment.authorLogin}</span>
               )}
-              <span>commented</span>
+              <span>{t('issues.conversation.commented')}</span>
               {comment.authorAssociation && comment.authorAssociation !== 'NONE' && (
                 <span className="text-nim-faint">{comment.authorAssociation.toLowerCase()}</span>
               )}
@@ -128,7 +130,7 @@ export function IssueConversationTab({
       )}
 
       {!loading && comments.length === 0 && !error && (
-        <div className="text-nim-faint text-sm text-center py-4">No comments yet.</div>
+        <div className="text-nim-faint text-sm text-center py-4">{t('issues.conversation.no_comments')}</div>
       )}
     </div>
   );

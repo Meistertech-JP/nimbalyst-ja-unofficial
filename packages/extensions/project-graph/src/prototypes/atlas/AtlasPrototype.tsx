@@ -11,9 +11,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PrototypeViewProps } from '../contracts';
 import {
-  CONNECTION_FAMILY_SHORT,
   areaActivityInRange,
   areaConnections,
   areaStandings,
@@ -21,7 +21,6 @@ import {
   connectorPath,
   layoutTerritories,
   moveTerritoryFocus,
-  plural,
   type TerritoryBox,
 } from './atlasModel';
 import { AreaDetailPanel, type RelationLens } from './AreaDetailPanel';
@@ -35,6 +34,8 @@ const EVIDENCE_CAP = 200;
 const FALLBACK_MAP_WIDTH = 880;
 
 export function AtlasPrototype(props: PrototypeViewProps) {
+  const { t } = useTranslation('extensions');
+  const recordCount = (count: number) => t('project_graph.atlas.record_count', { count: count.toLocaleString() });
   const {
     model, range, selectedAreaId, selectedNodeId,
     onSelectArea, onSelectNode, onOpenNode, onNavigate, onRenameArea,
@@ -66,9 +67,12 @@ export function AtlasPrototype(props: PrototypeViewProps) {
   const connectionResult = useMemo(
     () =>
       selectedAreaId
-        ? areaConnections(model, index, selectedAreaId, { evidenceCap: EVIDENCE_CAP })
+        ? areaConnections(model, index, selectedAreaId, {
+            evidenceCap: EVIDENCE_CAP,
+            translate: (key, values) => t(key, values),
+          })
         : { connections: [], internalEdges: { total: 0, byFamily: {} } },
-    [model, index, selectedAreaId],
+    [model, index, selectedAreaId, t],
   );
 
   // Each drawn connection carries its place in the bundle its pair of areas
@@ -143,8 +147,7 @@ export function AtlasPrototype(props: PrototypeViewProps) {
     return (
       <div className="pga-root">
         <p className="pga-empty pga-empty-page">
-          This model has no areas. Nothing is mapped, so the Atlas shows nothing rather than
-          inventing territories. {totalRecords.toLocaleString()} records are loaded.
+          {t('project_graph.atlas.empty_model', { count: totalRecords.toLocaleString() })}
         </p>
       </div>
     );
@@ -154,18 +157,16 @@ export function AtlasPrototype(props: PrototypeViewProps) {
     <div className="pga-root">
       <header className="pga-header">
         <div>
-          <h1 className="pga-title">A project you can navigate</h1>
-          <p className="pga-subtitle">
-            Stable areas first. Select one to reveal only the relationships that explain it.
-          </p>
+          <h1 className="pga-title">{t('project_graph.atlas_title')}</h1>
+          <p className="pga-subtitle">{t('project_graph.atlas.subtitle')}</p>
         </div>
         <p className="pga-header-stats">
-          {index.order.length} areas · {totalRecords.toLocaleString()} records loaded
+          {t('project_graph.atlas.header_stats', { areas: index.order.length, records: totalRecords.toLocaleString() })}
           {index.unclaimedNodeCount > 0
-            ? ` · ${index.unclaimedNodeCount.toLocaleString()} in no area`
+            ? ` · ${t('project_graph.atlas.unassigned_count', { count: index.unclaimedNodeCount.toLocaleString() })}`
             : ''}
           {model.coverage.length > 0
-            ? ` · ${model.coverage.length} source limitation${model.coverage.length === 1 ? '' : 's'} apply`
+            ? ` · ${t('project_graph.atlas.source_limitations', { count: model.coverage.length })}`
             : ''}
         </p>
       </header>
@@ -215,8 +216,8 @@ export function AtlasPrototype(props: PrototypeViewProps) {
               const recordedShare = touched > 0 ? (stats?.touchedRecorded ?? 0) / touched : 0;
               const activityText =
                 events > 0
-                  ? `${touched.toLocaleString()} of ${(stats?.members ?? 0).toLocaleString()} records active (${Math.round(share * 100)}%) · ${events.toLocaleString()} events in range`
-                  : 'No activity recorded in range';
+                  ? t('project_graph.atlas.area_activity_summary', { touched: touched.toLocaleString(), members: (stats?.members ?? 0).toLocaleString(), percent: Math.round(share * 100), events: events.toLocaleString() })
+                  : t('project_graph.atlas.no_activity_in_range');
 
               return (
                 <button
@@ -234,15 +235,14 @@ export function AtlasPrototype(props: PrototypeViewProps) {
                   ].filter(Boolean).join(' ')}
                   style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
                   aria-pressed={isSelected}
-                  aria-label={`${area.label}. ${plural(standing?.total ?? 0, 'record')}. ${activityText}.`}
+                  aria-label={t('project_graph.atlas.area_accessible_label', { name: area.label, records: recordCount(standing?.total ?? 0), activity: activityText })}
                   onClick={() => onSelectArea(isSelected ? null : area.id)}
                   onKeyDown={(e) => onTileKeyDown(e, area.id)}
                 >
                   <span className="pga-territory-name">{area.label}</span>
                   <span className="pga-territory-basis" title={area.basis}>{area.basis}</span>
                   <span className="pga-territory-counts">
-                    {plural(standing?.total ?? 0, 'record')} · {(standing?.open ?? 0).toLocaleString()} with
-                    no recorded close
+                    {t('project_graph.atlas.open_records_count', { records: recordCount(standing?.total ?? 0), count: (standing?.open ?? 0).toLocaleString() })}
                   </span>
                   <span className="pga-activity-bar" aria-hidden="true">
                     {touched > 0 ? (
@@ -281,13 +281,17 @@ export function AtlasPrototype(props: PrototypeViewProps) {
                       connection.id === openConnectionId ? 'is-open' : '',
                     ].filter(Boolean).join(' ')}
                     style={{ left: path.midX, top: path.midY }}
-                    aria-label={`${selectedArea.label} to ${connection.otherAreaLabel}: ${connection.explanation}`}
+                    aria-label={t('project_graph.atlas.connection_accessible_label', {
+                      from: selectedArea.label,
+                      to: connection.otherAreaLabel,
+                      explanation: connection.explanation,
+                    })}
                     onClick={() => {
                       setTab('connections');
                       setOpenConnectionId(openConnectionId === connection.id ? null : connection.id);
                     }}
                   >
-                    {connection.count.toLocaleString()} {CONNECTION_FAMILY_SHORT[connection.family]}
+                    {t('project_graph.atlas.connection_count', { count: connection.count.toLocaleString(), family: t(`project_graph.atlas.family_short.${connection.family.replace('-', '_')}`) })}
                   </button>
                 );
               })}
@@ -318,20 +322,19 @@ export function AtlasPrototype(props: PrototypeViewProps) {
             onRenameArea={onRenameArea}
           />
         ) : (
-          <aside className="pga-detail pga-detail-empty" aria-label="Area detail">
-            <div className="pga-eyebrow">No area selected</div>
+          <aside className="pga-detail pga-detail-empty" aria-label={t('project_graph.atlas.area_detail_label')}>
+            <div className="pga-eyebrow">{t('project_graph.atlas.no_area_selected')}</div>
             <p>
-              Select a territory to see its records, its activity in the selected range, and the
-              connections that explain it.
+              {t('project_graph.atlas.select_area_hint')}
             </p>
             <p className="pga-hint">
-              Areas can overlap. Counts deduplicate inside an area and are not additive across areas.
+              {t('project_graph.atlas.overlapping_areas_hint')}
             </p>
             {activity.totalEvents > 0 && (
               <p className="pga-detail-counts">
-                {activity.totalEvents.toLocaleString()} events in the selected range
+                {t('project_graph.atlas.events_in_range', { count: activity.totalEvents.toLocaleString() })}
                 {activity.unmappedEvents > 0
-                  ? ` · ${activity.unmappedEvents.toLocaleString()} belong to records in no area`
+                  ? ` · ${t('project_graph.atlas.unmapped_events', { count: activity.unmappedEvents.toLocaleString() })}`
                   : ''}
               </p>
             )}
@@ -339,7 +342,7 @@ export function AtlasPrototype(props: PrototypeViewProps) {
                 coverage; restating all of it here just crowds the map. */}
             {model.coverage.length > 0 && (
               <p className="pga-hint">
-                Every count here inherits the source limitations listed under Sources &amp; limitations.
+                {t('project_graph.atlas.source_limitations_inherited')}
               </p>
             )}
           </aside>
@@ -348,12 +351,11 @@ export function AtlasPrototype(props: PrototypeViewProps) {
 
       <footer className="pga-footer">
         <span className="pga-legend">
-          <i className="pga-swatch pga-swatch-recorded" /> Record with a recorded event
-          <i className="pga-swatch pga-swatch-observed" /> Last-observed only
+          <i className="pga-swatch pga-swatch-recorded" /> {t('project_graph.atlas.recorded_event_legend')}
+          <i className="pga-swatch pga-swatch-observed" /> {t('project_graph.atlas.last_observed_legend')}
         </span>
         <span className="pga-footer-note">
-          Bar length is the share of an area&apos;s own records active in range. Geography is fixed; the date range
-          moves the overlay only.
+          {t('project_graph.atlas.bar_explanation')}
         </span>
         <span className="pga-footer-spacer" />
         {index.unassigned ? (
@@ -362,10 +364,10 @@ export function AtlasPrototype(props: PrototypeViewProps) {
             className="pga-mini-btn"
             onClick={() => onSelectArea(index.unassigned!.id)}
           >
-            Unassigned: {plural(index.unassigned.nodeIds.length, 'record')}
+            {t('project_graph.atlas.unassigned_area', { records: recordCount(index.unassigned.nodeIds.length) })}
           </button>
         ) : (
-          <span className="pga-footer-note">No Unassigned area in this model.</span>
+          <span className="pga-footer-note">{t('project_graph.atlas.no_unassigned_area')}</span>
         )}
       </footer>
     </div>

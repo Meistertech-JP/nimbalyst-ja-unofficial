@@ -11,6 +11,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { DEFAULT_TRACKER_TYPE_COLORS } from '@nimbalyst/tracker-schema';
 import type { CustomToolWidgetProps } from './index';
 import { PageUpdateLine } from './PageUpdateWidget';
@@ -265,11 +266,39 @@ const Arrow: React.FC = () => (
   </span>
 );
 
-const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '50px' }}>
-    {children}
-  </span>
-);
+const TOOL_WIDGET_LABEL_KEYS: Record<string, string> = {
+  Type: 'columns.type',
+  Key: 'columns.key',
+  Updated: 'columns.updated',
+  Viewed: 'columns.viewed',
+  'Created By': 'columns.createdBy',
+  'Updated By': 'columns.updatedBy',
+  Source: 'columns.module',
+  Shared: 'columns.shared',
+  Created: 'columns.created',
+  Title: 'columns.title',
+  Status: 'columns.status',
+  Priority: 'columns.priority',
+  Tags: 'columns.tags',
+  Owner: 'columns.owner',
+  Assignee: 'columns.assignee',
+  Reporter: 'columns.reporter',
+  'Start Date': 'columns.startDate',
+  'Due Date': 'columns.dueDate',
+  Description: 'tool_widget.fields.description',
+  Archived: 'detail.archived',
+  Progress: 'columns.progress',
+};
+
+const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t } = useTranslation('tracker');
+  const key = typeof children === 'string' ? TOOL_WIDGET_LABEL_KEYS[children] : undefined;
+  return (
+    <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '50px' }}>
+      {key ? t(key) : children}
+    </span>
+  );
+};
 
 const ClickableTitle: React.FC<{ title: string; itemId: string }> = ({ title, itemId }) => (
   <span
@@ -356,12 +385,13 @@ const SecondaryTypeBadges: React.FC<{ typeTags?: string[]; primaryType: string }
 };
 
 const CreatedView: React.FC<{ data: StructuredCreated }> = ({ data }) => {
+  const { t } = useTranslation('tracker');
   const { item } = data;
   return (
     <WidgetShell
       header={
         <>
-          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Tracker Created</span>
+          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('tool_widget.created')}</span>
           <span style={{ fontFamily: 'monospace', fontSize: '9px', color: 'var(--nim-text-faint)', marginLeft: 'auto' }}>
             {item.id}
           </span>
@@ -369,28 +399,28 @@ const CreatedView: React.FC<{ data: StructuredCreated }> = ({ data }) => {
       }
     >
       <Row>
-        <Label>Type</Label>
+        <Label>{t('tool_widget.fields.type')}</Label>
         <TypeBadge type={item.type} />
         <SecondaryTypeBadges typeTags={item.typeTags} primaryType={item.type} />
       </Row>
       <Row>
-        <Label>Title</Label>
+        <Label>{t('tool_widget.fields.title')}</Label>
         <ClickableTitle title={item.title} itemId={item.id} />
       </Row>
       <Row>
-        <Label>Status</Label>
+        <Label>{t('tool_widget.fields.status')}</Label>
         {item.status && <StatusBadge status={item.status} />}
         {item.priority && (
           <>
             <span style={{ width: '12px' }} />
-            <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500 }}>Priority</span>
+            <Label>{t('tool_widget.fields.priority')}</Label>
             <PriorityBadge priority={item.priority} />
           </>
         )}
       </Row>
       {Array.isArray(item.tags) && item.tags.length > 0 && (
         <Row>
-          <Label>Tags</Label>
+          <Label>{t('tool_widget.fields.tags')}</Label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
             {item.tags.map((t) => (
               <TagPill key={t} tag={t} variant="kept" />
@@ -408,10 +438,10 @@ const SPECIAL_CHANGE_KEYS = new Set([
   'status', 'priority', 'title', 'owner', 'archived', 'progress', 'tags', 'description',
 ]);
 
-function formatChangeValue(value: any): string {
-  if (value === null || value === undefined || value === '') return 'none';
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (Array.isArray(value)) return value.length === 0 ? 'none' : value.map((v) => String(v)).join(', ');
+function formatChangeValue(value: any, labels: { none: string; trueValue: string; falseValue: string }): string {
+  if (value === null || value === undefined || value === '') return labels.none;
+  if (typeof value === 'boolean') return value ? labels.trueValue : labels.falseValue;
+  if (Array.isArray(value)) return value.length === 0 ? labels.none : value.map((v) => String(v)).join(', ');
   if (typeof value === 'object') {
     try { return JSON.stringify(value); } catch { return String(value); }
   }
@@ -443,37 +473,47 @@ function normalizeTagList(value: unknown): string[] {
   return [];
 }
 
-const GenericChangeRow: React.FC<{ field: string; change: { from: any; to: any } }> = ({ field, change }) => (
-  <Row>
-    <Label>{humanizeFieldName(field)}</Label>
-    <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', textDecoration: 'line-through' }}>
-      {formatChangeValue(change.from)}
-    </span>
-    <Arrow />
-    <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)' }}>
-      {formatChangeValue(change.to)}
-    </span>
-  </Row>
-);
+const GenericChangeRow: React.FC<{ field: string; change: { from: any; to: any } }> = ({ field, change }) => {
+  const { t } = useTranslation('tracker');
+  const valueLabels = {
+    none: t('tool_widget.none'),
+    trueValue: t('tool_widget.true'),
+    falseValue: t('tool_widget.false'),
+  };
+  return (
+    <Row>
+      <Label>{humanizeFieldName(field)}</Label>
+      <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', textDecoration: 'line-through' }}>
+        {formatChangeValue(change.from, valueLabels)}
+      </span>
+      <Arrow />
+      <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)' }}>
+        {formatChangeValue(change.to, valueLabels)}
+      </span>
+    </Row>
+  );
+};
 
 const DescriptionChangeRow: React.FC<{ change: { from: any; to: any } }> = ({ change }) => {
+  const { t } = useTranslation('tracker');
   const fromLen = typeof change.from === 'string' ? change.from.length : 0;
   const toLen = typeof change.to === 'string' ? change.to.length : 0;
   return (
     <Row>
-      <Label>Description</Label>
+      <Label>{t('tool_widget.fields.description')}</Label>
       <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>
-        {fromLen.toLocaleString()} chars
+        {t('tool_widget.chars', { count: fromLen.toLocaleString() })}
       </span>
       <Arrow />
       <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)' }}>
-        {toLen.toLocaleString()} chars
+        {t('tool_widget.chars', { count: toLen.toLocaleString() })}
       </span>
     </Row>
   );
 };
 
 const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
+  const { t } = useTranslation('tracker');
   const { changes } = data;
   const changedKeys = Object.keys(changes);
   if (changedKeys.length === 0) return null;
@@ -498,7 +538,7 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
     <WidgetShell
       header={
         <>
-          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Tracker Updated</span>
+          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('tool_widget.updated')}</span>
           <TypeBadge type={data.type} />
           <SecondaryTypeBadges typeTags={data.typeTags} primaryType={data.type} />
           <span
@@ -522,7 +562,7 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
     >
       {changes.status && (
         <Row>
-          <Label>Status</Label>
+          <Label>{t('tool_widget.fields.status')}</Label>
           <StatusBadge status={String(changes.status.from || 'none')} />
           <Arrow />
           <StatusBadge status={String(changes.status.to)} />
@@ -530,7 +570,7 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
       )}
       {changes.priority && (
         <Row>
-          <Label>Priority</Label>
+          <Label>{t('tool_widget.fields.priority')}</Label>
           <PriorityBadge priority={String(changes.priority.from || 'none')} />
           <Arrow />
           <PriorityBadge priority={String(changes.priority.to)} />
@@ -538,7 +578,7 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
       )}
       {changes.title && (
         <Row>
-          <Label>Title</Label>
+          <Label>{t('tool_widget.fields.title')}</Label>
           <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', textDecoration: 'line-through' }}>
             {String(changes.title.from)}
           </span>
@@ -550,7 +590,7 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
       )}
       {changes.owner && (
         <Row>
-          <Label>Owner</Label>
+          <Label>{t('tool_widget.fields.owner')}</Label>
           <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>{String(changes.owner.from || 'none')}</span>
           <Arrow />
           <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)' }}>{String(changes.owner.to)}</span>
@@ -558,15 +598,15 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
       )}
       {changes.archived !== undefined && (
         <Row>
-          <Label>Archived</Label>
+          <Label>{t('tool_widget.fields.archived')}</Label>
           <span style={{ fontSize: '10px', color: changes.archived.to ? '#fbbf24' : '#4ade80' }}>
-            {changes.archived.to ? 'archived' : 'unarchived'}
+            {changes.archived.to ? t('tool_widget.archived_value') : t('tool_widget.unarchived_value')}
           </span>
         </Row>
       )}
       {changes.progress !== undefined && (
         <Row>
-          <Label>Progress</Label>
+          <Label>{t('tool_widget.fields.progress')}</Label>
           <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>{String(changes.progress.from ?? 0)}%</span>
           <Arrow />
           <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)' }}>{String(changes.progress.to)}%</span>
@@ -574,7 +614,7 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
       )}
       {tagDiff && (tagDiff.kept.length > 0 || tagDiff.added.length > 0 || tagDiff.removed.length > 0) && (
         <Row>
-          <Label>Tags</Label>
+          <Label>{t('tool_widget.fields.tags')}</Label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
             {tagDiff.kept.map((t) => <TagPill key={`k-${t}`} tag={t} variant="kept" />)}
             {tagDiff.added.map((t) => <TagPill key={`a-${t}`} tag={t} variant="added" />)}
@@ -591,6 +631,7 @@ const UpdatedView: React.FC<{ data: StructuredUpdated }> = ({ data }) => {
 };
 
 const ListedView: React.FC<{ data: StructuredListed }> = ({ data }) => {
+  const { t } = useTranslation('tracker');
   const filterSummary = Object.entries(data.filters)
     .map(([k, v]) => `${k}: ${v}`)
     .join(', ');
@@ -599,7 +640,7 @@ const ListedView: React.FC<{ data: StructuredListed }> = ({ data }) => {
     <WidgetShell
       header={
         <>
-          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Tracker List</span>
+          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('tool_widget.list')}</span>
           {filterSummary && (
             <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>{filterSummary}</span>
           )}
@@ -609,7 +650,7 @@ const ListedView: React.FC<{ data: StructuredListed }> = ({ data }) => {
     >
       {data.items.length === 0 ? (
         <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-          No items found
+          {t('tool_widget.no_items')}
         </span>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
@@ -654,35 +695,36 @@ const ListedView: React.FC<{ data: StructuredListed }> = ({ data }) => {
 };
 
 const RetrievedView: React.FC<{ data: StructuredRetrieved }> = ({ data }) => {
+  const { t } = useTranslation('tracker');
   const { item } = data;
   return (
     <WidgetShell
       header={
         <>
-          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Tracker Item</span>
+          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('tool_widget.item')}</span>
           <span style={{ flex: 1 }} />
           <TypeBadge type={item.type} />
         </>
       }
     >
       <Row>
-        <Label>Title</Label>
+        <Label>{t('tool_widget.fields.title')}</Label>
         <ClickableTitle title={item.title} itemId={item.id} />
       </Row>
       <Row>
-        <Label>Status</Label>
+        <Label>{t('tool_widget.fields.status')}</Label>
         {item.status && <StatusBadge status={item.status} />}
         {item.priority && (
           <>
             <span style={{ width: '12px' }} />
-            <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500 }}>Priority</span>
+            <Label>{t('tool_widget.fields.priority')}</Label>
             <PriorityBadge priority={item.priority} />
           </>
         )}
       </Row>
       {Array.isArray(item.tags) && item.tags.length > 0 && (
         <Row>
-          <Label>Tags</Label>
+          <Label>{t('tool_widget.fields.tags')}</Label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
             {item.tags.map((t) => <TagPill key={t} tag={t} variant="kept" />)}
           </div>
@@ -690,7 +732,7 @@ const RetrievedView: React.FC<{ data: StructuredRetrieved }> = ({ data }) => {
       )}
       {item.owner && (
         <Row>
-          <Label>Owner</Label>
+          <Label>{t('tool_widget.fields.owner')}</Label>
           <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)' }}>{item.owner}</span>
         </Row>
       )}
@@ -698,40 +740,42 @@ const RetrievedView: React.FC<{ data: StructuredRetrieved }> = ({ data }) => {
   );
 };
 
-const LinkedView: React.FC<{ data: StructuredLinked }> = ({ data }) => (
-  <WidgetShell
-    header={
-      <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Tracker Linked</span>
-    }
-  >
-    <Row>
-      <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>Linked to</span>
-      <TypeBadge type={data.type} />
-      <ClickableTitle title={data.title} itemId={data.trackerId} />
-      <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>
-        ({data.linkedCount} session{data.linkedCount !== 1 ? 's' : ''})
-      </span>
-    </Row>
-  </WidgetShell>
-);
+const LinkedView: React.FC<{ data: StructuredLinked }> = ({ data }) => {
+  const { t } = useTranslation('tracker');
+  return (
+    <WidgetShell
+      header={<span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('tool_widget.linked')}</span>}
+    >
+      <Row>
+        <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>{t('tool_widget.linked_to')}</span>
+        <TypeBadge type={data.type} />
+        <ClickableTitle title={data.title} itemId={data.trackerId} />
+        <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>
+          {t('tool_widget.linked_sessions', { count: data.linkedCount })}
+        </span>
+      </Row>
+    </WidgetShell>
+  );
+};
 
-const LinkedFileView: React.FC<{ data: StructuredLinkedFile }> = ({ data }) => (
-  <WidgetShell
-    header={
-      <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>File Linked</span>
-    }
-  >
-    <Row>
-      <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>Linked</span>
-      <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)', fontFamily: 'monospace' }}>
-        {data.filePath}
-      </span>
-      <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>
-        ({data.linkedCount} total link{data.linkedCount !== 1 ? 's' : ''})
-      </span>
-    </Row>
-  </WidgetShell>
-);
+const LinkedFileView: React.FC<{ data: StructuredLinkedFile }> = ({ data }) => {
+  const { t } = useTranslation('tracker');
+  return (
+    <WidgetShell
+      header={<span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('tool_widget.file_linked')}</span>}
+    >
+      <Row>
+        <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>{t('tool_widget.linked')}</span>
+        <span style={{ fontSize: '11px', color: 'var(--nim-text-muted)', fontFamily: 'monospace' }}>
+          {data.filePath}
+        </span>
+        <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)' }}>
+          {t('tool_widget.total_links', { count: data.linkedCount })}
+        </span>
+      </Row>
+    </WidgetShell>
+  );
+};
 
 // ---------- Fallback for old text results ----------
 
@@ -739,16 +783,16 @@ function getBaseName(toolName: string): string {
   return toolName.replace(/^mcp__[^_]+__/, '');
 }
 
-function getToolLabel(toolName: string): string {
+function getToolLabelKey(toolName: string): string {
   const base = getBaseName(toolName);
   switch (base) {
-    case 'tracker_list': return 'Tracker List';
-    case 'tracker_get': return 'Tracker Get';
-    case 'tracker_create': return 'Tracker Create';
-    case 'tracker_update': return 'Tracker Update';
-    case 'tracker_link_session': return 'Tracker Link';
-    case 'tracker_link_file': return 'File Link';
-    default: return 'Tracker';
+    case 'tracker_list': return 'list';
+    case 'tracker_get': return 'get';
+    case 'tracker_create': return 'create';
+    case 'tracker_update': return 'update';
+    case 'tracker_link_session': return 'link';
+    case 'tracker_link_file': return 'file_link';
+    default: return 'default';
   }
 }
 
@@ -757,7 +801,8 @@ const FallbackView: React.FC<{ toolName: string; resultText: string | null; args
   resultText,
   args,
 }) => {
-  const label = getToolLabel(toolName);
+  const { t } = useTranslation('tracker');
+  const label = t(`tool_widget.tool_labels.${getToolLabelKey(toolName)}`);
 
   if (!resultText) {
     // Pending state
@@ -831,6 +876,7 @@ const UpdatedWithBodyView: React.FC<{ data: StructuredUpdated; sessionId: string
 };
 
 export const TrackerToolWidget: React.FC<CustomToolWidgetProps> = ({ message, sessionId }) => {
+  const { t } = useTranslation('tracker');
   const tool = message.toolCall;
   if (!tool) return null;
 
@@ -862,7 +908,7 @@ export const TrackerToolWidget: React.FC<CustomToolWidgetProps> = ({ message, se
   // Error state
   const resultText = getResultText(tool.result);
   if (isError) {
-    const label = getToolLabel(tool.toolName);
+    const label = t(`tool_widget.tool_labels.${getToolLabelKey(tool.toolName)}`);
     return (
       <div
         style={{

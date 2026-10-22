@@ -21,6 +21,7 @@ import React, {
   useState,
   useSyncExternalStore,
 } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import {
   isValidDecisionAnswer,
   isValidStoredDecisionAnswer,
@@ -64,6 +65,7 @@ export const DecisionsProvider: React.FC<{
   config?: DecisionsConfig;
   children: React.ReactNode;
 }> = ({ config, children }) => {
+  const { t } = useTranslation("editor");
   const [repository, setRepository] = useState<YDocDecisionRepository | null>(
     null
   );
@@ -104,10 +106,10 @@ export const DecisionsProvider: React.FC<{
           ready,
           error: ready
             ? ""
-            : "Private answer status is unavailable. Reconnect to refresh it.",
+            : t("decision.status.private_unavailable"),
         });
     },
-    [config]
+    [config, t]
   );
   useEffect(() => {
     setDelivery({ owner: config, states: [], ready: false, error: "" });
@@ -207,6 +209,7 @@ const NO_MEMBERS: readonly DecisionMember[] = Object.freeze([]);
 export function useDecisionVotes(
   source: DecisionBlockSource
 ): DecisionVotingState {
+  const { t } = useTranslation("editor");
   const {
     repository,
     config,
@@ -316,17 +319,17 @@ export function useDecisionVotes(
   const unavailableReason = !privateMode
     ? ready
       ? ""
-      : deliveryError || "Loading answer status…"
+      : deliveryError || t("decision.status.loading_answer")
     : !(config?.isHydrated?.() ?? true)
-    ? "Loading private answer status…"
+    ? t("decision.status.loading_private")
     : !config?.requestDecision
-    ? "Send this question before collecting private answers. Private answer delivery is unavailable in this connection."
+    ? t("decision.status.private_send_required")
     : !deliveryReady
-    ? deliveryError || "Loading private answer status…"
+    ? deliveryError || t("decision.status.loading_private")
     : !privateResponses
     ? privacy.current.pinned
-      ? "Private answer status is unavailable. Reconnect to refresh it."
-      : "Send this question before collecting private answers."
+      ? t("decision.status.private_unavailable")
+      : t("decision.status.send_required")
     : "";
 
   const mutatePrivate = async (
@@ -384,7 +387,7 @@ export function useDecisionVotes(
       let error =
         cause instanceof Error
           ? cause.message
-          : "Your answer could not be saved. Try again.";
+          : t("decision.status.answer_save_failed");
       // A timeout may have committed, and a conflict means our version is old.
       // Refresh once, never replay the user's mutation automatically.
       setMutation({
@@ -402,8 +405,7 @@ export function useDecisionVotes(
       } catch {
         if (current !== generation.current) return false;
         if (!config.onDecisionState) setDeliveryStates([]);
-        error +=
-          " Answer status could not be refreshed. Reconnect before retrying.";
+        error += ` ${t("decision.status.refresh_before_retry")}`;
       }
       setMutation({
         owner: config,

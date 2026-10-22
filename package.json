@@ -22,8 +22,8 @@
     "url": "https://github.com/nimbalyst/nimbalyst.git"
   },
   "scripts": {
-    "build": "pnpm --dir packages/runtime run build",
-    "build:workspace-deps": "pnpm --filter @nimbalyst/tracker-core --filter @nimbalyst/extension-sdk --filter @nimbalyst/collab-protocol --filter @nimbalyst/tracker-schema --filter @nimbalyst/tracker-engine run build",
+    "build": "pnpm --filter @nimbalyst/i18n run build && pnpm --dir packages/runtime run build",
+    "build:workspace-deps": "pnpm --filter @nimbalyst/i18n --filter @nimbalyst/tracker-core --filter @nimbalyst/extension-sdk --filter @nimbalyst/collab-protocol --filter @nimbalyst/tracker-schema --filter @nimbalyst/tracker-engine run build",
     "typecheck": "node scripts/run-workspace-script.mjs typecheck",
     "typecheck:prepush": "node scripts/run-validation.mjs typecheck",
     "test": "pnpm run test:unit",

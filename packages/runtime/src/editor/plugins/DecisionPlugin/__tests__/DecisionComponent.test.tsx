@@ -8,6 +8,8 @@
  */
 
 import React from "react";
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { describe, expect, it, vi } from "vitest";
 import {
   render,
@@ -52,6 +54,17 @@ import DecisionComponent from "../DecisionComponent";
 import { DecisionsProvider, YDocDecisionRepository } from "../../../decisions";
 import type { DecisionsConfig } from "../../../decisions/types";
 
+const i18n = await createI18nInstance('en');
+
+function renderWithEnglish(ui: React.ReactNode) {
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return render(ui, { wrapper: Wrapper });
+}
+
 const authority = { loaded: true, privacyVersion: 1 as const };
 
 function renderBlock(
@@ -86,10 +99,10 @@ function renderBlock(
     ...options.config,
   };
 
-  render(
+  renderWithEnglish(
     <DecisionsProvider config={config}>
       <DecisionComponent className="" content={fence} nodeKey="k1" />
-    </DecisionsProvider>
+    </DecisionsProvider>,
   );
   return { doc };
 }
@@ -290,10 +303,10 @@ type: confirm`);
       getYDoc: () => null,
       currentUser: { id: "greg", name: "Greg" },
     };
-    render(
+    renderWithEnglish(
       <DecisionsProvider config={config}>
         <DecisionComponent className="" content={SINGLE} nodeKey="k1" />
-      </DecisionsProvider>
+      </DecisionsProvider>,
     );
 
     // Solo is not an error state, but it must not pretend to be a poll.
@@ -332,7 +345,7 @@ type: confirm`);
   });
 
   it("shows a sealed block as one collapsed row that expands to the tally", () => {
-    render(
+    renderWithEnglish(
       <DecisionsProvider>
         <DecisionComponent
           className=""
@@ -345,7 +358,7 @@ votes:
   - greg: gutter
   - karl: topbar`}
         />
-      </DecisionsProvider>
+      </DecisionsProvider>,
     );
 
     expect(screen.getByText("Icon gutter")).toBeTruthy();
@@ -374,10 +387,10 @@ describe("decision delivery approval", () => {
       getMembers: () => [{ id: "karl", name: "Karl" }],
       requestDecision,
     };
-    render(
+    renderWithEnglish(
       <DecisionsProvider config={config}>
         <DecisionComponent className="" content={SINGLE} nodeKey="k1" />
-      </DecisionsProvider>
+      </DecisionsProvider>,
     );
     fireEvent.click(screen.getByText("Ask teammates"));
     fireEvent.click(screen.getByLabelText("Karl"));
@@ -416,10 +429,10 @@ describe("decision delivery approval", () => {
       getMembers: () => [{ id: "karl", name: "Karl" }],
       requestDecision,
     };
-    render(
+    renderWithEnglish(
       <DecisionsProvider config={config}>
         <DecisionComponent className="" content={SINGLE} nodeKey="k1" />
-      </DecisionsProvider>
+      </DecisionsProvider>,
     );
     fireEvent.click(screen.getByText("Ask teammates"));
     fireEvent.click(screen.getByLabelText("Karl"));
@@ -567,7 +580,7 @@ it("keeps private answering disabled through hydration and unsupported or unsent
     isHydrated: () => false,
   };
   testNode.content = fence;
-  const view = render(
+  const view = renderWithEnglish(
     <DecisionsProvider config={base}>
       <DecisionComponent className="" content={fence} nodeKey="k1" />
     </DecisionsProvider>

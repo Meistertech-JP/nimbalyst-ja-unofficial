@@ -7,6 +7,8 @@ import { ModelSelector } from '../ModelSelector';
 import { AIInputControls } from '../AIInputControls';
 import { isOpenModelPickerShortcut } from '../AIInput';
 import { advancedSettingsAtom } from '../../../store/atoms/appSettings';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
   MaterialSymbol: () => null,
@@ -46,6 +48,33 @@ function renderModelSelector(ui: React.ReactElement, showDirectChatProviders = f
 }
 
 describe('AI model picker keyboard controls', () => {
+  it('localizes picker labels and accessibility names in Japanese', async () => {
+    const aiGetModels = vi.fn().mockResolvedValue({
+      success: true,
+      grouped: {
+        claude: [{ id: 'claude:haiku', name: 'Haiku', provider: 'claude' }],
+      },
+    });
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { aiGetModels },
+    });
+    const i18n = await createI18nInstance('ja');
+
+    renderModelSelector(
+      <I18nextProvider i18n={i18n}>
+        <ModelSelector currentModel="claude:haiku" onModelChange={() => {}} />
+      </I18nextProvider>,
+      true,
+    );
+
+    await waitFor(() => expect(aiGetModels).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('model-picker').getAttribute('aria-label')).toContain('現在のモデル:');
+    fireEvent.click(screen.getByTestId('model-picker'));
+    expect(await screen.findByText('開いているドキュメントについてチャット')).toBeDefined();
+    expect(screen.getByText('モデルを設定')).toBeDefined();
+  });
+
   it('recognizes Cmd/Ctrl+Shift+M as the model-picker shortcut', () => {
     expect(isOpenModelPickerShortcut({ key: 'm', metaKey: true, ctrlKey: false, shiftKey: true })).toBe(true);
     expect(isOpenModelPickerShortcut({ key: 'M', metaKey: false, ctrlKey: true, shiftKey: true })).toBe(true);

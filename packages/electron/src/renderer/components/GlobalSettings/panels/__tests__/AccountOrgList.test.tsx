@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
@@ -23,6 +26,15 @@ const openManagementWindow = vi.fn();
 const acceptInvite = vi.fn();
 const openDialog = vi.fn();
 const invoke = vi.fn();
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderWithI18n(ui: ReactNode) {
+  return render(<I18nextProvider i18n={englishI18n}>{ui}</I18nextProvider>);
+}
 
 function group(overrides: Partial<AccountOrganizationGroup> = {}): AccountOrganizationGroup {
   return {
@@ -47,7 +59,7 @@ describe('AccountOrgList', () => {
   afterEach(() => cleanup());
 
   it('administers a newly discovered membership here, queuing the #general hand-off for its messages', async () => {
-    render(
+    renderWithI18n(
       <AccountOrgList
         group={group({
           organizations: [
@@ -84,7 +96,7 @@ describe('AccountOrgList', () => {
         : undefined
     ));
 
-    render(
+    renderWithI18n(
       <AccountOrgList
         group={group({
           organizations: [
@@ -115,7 +127,7 @@ describe('AccountOrgList', () => {
       return undefined;
     });
 
-    render(
+    renderWithI18n(
       <AccountOrgList
         group={group({
           organizations: [
@@ -143,7 +155,7 @@ describe('AccountOrgList', () => {
     const changed = vi.fn();
     window.addEventListener('nimbalyst:organizations-changed', changed);
 
-    render(
+    renderWithI18n(
       <AccountOrgList
         group={group({
           organizations: [
@@ -170,7 +182,7 @@ describe('AccountOrgList', () => {
   });
 
   it('offers a per-account empty state that launches the creation wizard', () => {
-    render(<AccountOrgList group={group()} />);
+    renderWithI18n(<AccountOrgList group={group()} />);
 
     expect(screen.getByTestId('account-org-empty').textContent).toContain('No organizations');
     screen.getByTestId('account-org-new').click();
@@ -182,7 +194,7 @@ describe('AccountOrgList', () => {
   });
 
   it('credits the other signed-in login for a merged organization', () => {
-    render(
+    renderWithI18n(
       <AccountOrgList
         group={group({
           organizations: [

@@ -31,6 +31,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerIdentity } from '@nimbalyst/runtime/core/DocumentService';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
@@ -120,10 +121,12 @@ export function TrackerItemDetailPanel({
   compact = false,
   editing = false,
   onEditingChange,
-  backLabel = 'Back to trackers',
+  backLabel,
   commentDraft,
   onCommentDraftChange,
 }: TrackerItemDetailPanelProps) {
+  const { t } = useTranslation('tracker');
+  const effectiveBackLabel = backLabel ?? t('collaboration_surface.back_to_trackers');
   const fields = detailFields(item.primaryType);
   const readOnly = !onFieldChange;
   const [propertiesOpen, setPropertiesOpen] = useState(false);
@@ -139,8 +142,8 @@ export function TrackerItemDetailPanel({
       data-editing={editing}
     >
       {compact || (onEditingChange && !editing) ? <div className="tracker-phone-reader-bar">
-        <button type="button" onClick={onClose}>{backLabel}</button>
-        {!readOnly && onEditingChange ? <button type="button" onClick={() => onEditingChange(!editing)}>{editing ? 'Done' : 'Edit'}</button> : null}
+        <button type="button" onClick={onClose}>{effectiveBackLabel}</button>
+        {!readOnly && onEditingChange ? <button type="button" onClick={() => onEditingChange(!editing)}>{editing ? t('collaboration_surface.done') : t('collaboration_surface.edit')}</button> : null}
       </div> : null}
       <div className="tracker-item-detail-header border-b border-nim px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -163,7 +166,7 @@ export function TrackerItemDetailPanel({
             <button
               type="button"
               className="flex size-6 items-center justify-center rounded text-nim-faint hover:bg-nim-hover hover:text-nim"
-              aria-label="Close item"
+              aria-label={t('collaboration_surface.close_item')}
               onClick={onClose}
             >
               <MaterialSymbol icon="close" size={16} />
@@ -173,13 +176,13 @@ export function TrackerItemDetailPanel({
         <h2 className={`mt-1 text-base font-semibold text-nim select-text${compact ? ' tracker-phone-title' : ' truncate'}`}>
           {getRecordTitle(item)}
         </h2>
-        {compact ? <div className="tracker-phone-summary"><span>{getRecordStatus(item)}</span>{typeof progress === 'number' ? <span>{progress}%</span> : null}{editing ? <span>Live edits</span> : null}</div> : null}
+        {compact ? <div className="tracker-phone-summary"><span>{getRecordStatus(item)}</span>{typeof progress === 'number' ? <span>{progress}%</span> : null}{editing ? <span>{t('collaboration_surface.live_edits')}</span> : null}</div> : null}
       </div>
 
       <div className="tracker-item-detail-scroll min-h-0 flex-1 overflow-y-auto">
         <div className="tracker-item-detail-fields grid gap-3 border-b border-nim px-4 py-3">
           {compact ? <>
-            <button type="button" className="tracker-phone-properties-toggle" aria-expanded={propertiesOpen || editing} onClick={() => setPropertiesOpen(!propertiesOpen)} disabled={editing}>Properties{editing ? ' · Editing' : propertiesOpen ? ' −' : ' +'}</button>
+            <button type="button" className="tracker-phone-properties-toggle" aria-expanded={propertiesOpen || editing} onClick={() => setPropertiesOpen(!propertiesOpen)} disabled={editing}>{t('collaboration_surface.properties')}{editing ? ` · ${t('collaboration_surface.editing')}` : propertiesOpen ? ' −' : ' +'}</button>
             {propertiesOpen || editing ? <TrackerPhoneProperties fields={editing ? model?.fields ?? fields : fields} values={item.fields} editing={editing && !readOnly} onChange={onFieldChange} teamMembers={teamMembers} /> : null}
           </> : null}
           {!compact && onEditingChange && !editing ? <TrackerPhoneProperties fields={fields} values={item.fields} editing={false} teamMembers={teamMembers} /> : null}
@@ -201,7 +204,7 @@ export function TrackerItemDetailPanel({
 
         <div className="px-4 py-3">
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-nim-faint">
-            Comments
+            {t('detail.comments')}
           </div>
           <TrackerCommentsSection
             comments={item.system.comments}

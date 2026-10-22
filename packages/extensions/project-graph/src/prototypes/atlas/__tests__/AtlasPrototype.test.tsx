@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { createEvent, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ProjectGraphEdge } from '../../../types';
 import type { PrototypeViewProps } from '../../contracts';
@@ -41,7 +43,17 @@ function defaultModel() {
   });
 }
 
-function renderAtlas(over: Partial<PrototypeViewProps> = {}) {
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function renderAtlas(
+  over: Partial<PrototypeViewProps> = {},
+  i18n = englishI18n,
+) {
   const props: PrototypeViewProps = {
     model: defaultModel(),
     range: { startMs: 100, endMs: 200 },
@@ -54,15 +66,31 @@ function renderAtlas(over: Partial<PrototypeViewProps> = {}) {
     onRenameArea: vi.fn(),
     ...over,
   };
-  return { props, ...render(<AtlasPrototype {...props} />) };
+  return {
+    props,
+    ...render(
+      <UiLanguageProvider i18n={i18n} preference={i18n.language === 'ja' ? 'ja' : 'en'} systemLocale="en-US">
+        <AtlasPrototype {...props} />
+      </UiLanguageProvider>,
+    ),
+  };
 }
 
 describe('AtlasPrototype', () => {
+  it('localizes fixed connective text in connection accessible labels while preserving area labels', () => {
+    renderAtlas({ selectedAreaId: 'collab' }, japaneseI18n);
+
+    const connection = screen.getByRole('button', { name: /CollaborationからDelivery：/ });
+    const label = connection.getAttribute('aria-label')!;
+    expect(label).toContain('CollaborationからDelivery：');
+    expect(label).not.toContain(' to ');
+  });
+
   it('separates recorded, derived, and shared-membership connections in the panel', () => {
     renderAtlas({ selectedAreaId: 'collab' });
     const panel = screen.getByLabelText('Area detail: Collaboration');
     // The view opens on recorded links; this test is about all four families.
-    fireEvent.change(within(panel).getByLabelText('Relation lens'), { target: { value: 'all' } });
+    fireEvent.change(within(panel).getByLabelText('Relation type'), { target: { value: 'all' } });
 
     expect(
       within(panel).getByText('2 links recorded in source records between Collaboration and Delivery.'),
@@ -85,7 +113,7 @@ describe('AtlasPrototype', () => {
     expect(
       within(panel).getByText('Snapshot worked_on_in edge · link recorded in a source record'),
     ).toBeTruthy();
-    expect(within(panel).getByText('Showing 2 of 2 evidence rows')).toBeTruthy();
+    expect(within(panel).getByText('Showing 2 of 2 evidence items')).toBeTruthy();
   });
 
   it('routes evidence rows to selection, opening, and the Trails view', () => {
@@ -100,23 +128,23 @@ describe('AtlasPrototype', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Open' }));
     expect(props.onOpenNode).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }));
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Trail' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Evidence Trails' }));
     expect(props.onNavigate).toHaveBeenCalledWith('trails', 'b1', 'collab');
 
-    fireEvent.click(within(panel).getByRole('button', { name: 'See this area in Pulse' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'View this area in Pulse' }));
     expect(props.onNavigate).toHaveBeenCalledWith('pulse', undefined, 'collab');
   });
 
   it('narrows both the drawn bridges and the list to the chosen relation lens', () => {
     renderAtlas({ selectedAreaId: 'collab' });
     const panel = screen.getByLabelText('Area detail: Collaboration');
-    fireEvent.change(within(panel).getByLabelText('Relation lens'), { target: { value: 'all' } });
+    fireEvent.change(within(panel).getByLabelText('Relation type'), { target: { value: 'all' } });
 
     expect(screen.getByRole('button', { name: /Collaboration to Delivery: 2 links recorded/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Collaboration to Delivery: 1 link the loader derived/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Collaboration to Delivery: 1 record is filed in both areas/ })).toBeTruthy();
 
-    fireEvent.change(within(panel).getByLabelText('Relation lens'), { target: { value: 'recorded-link' } });
+    fireEvent.change(within(panel).getByLabelText('Relation type'), { target: { value: 'recorded-link' } });
 
     expect(screen.queryByRole('button', { name: /filed in both areas/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /the loader derived/ })).toBeNull();
@@ -144,22 +172,22 @@ describe('AtlasPrototype', () => {
   it('states quiet areas honestly and reports selection upward', () => {
     const { props } = renderAtlas();
 
-    expect(screen.getByRole('button', { name: /^Docs\./ }).getAttribute('aria-label')).toBe(
-      'Docs. 1 record. No activity recorded in range.',
+    expect(screen.getByRole('button', { name: /^Docs ·/ }).getAttribute('aria-label')).toBe(
+      'Docs · 1 records · No recorded activity in this range.',
     );
-    expect(screen.getByRole('button', { name: /^Collaboration\./ }).getAttribute('aria-label')).toContain(
-      '2 of 2 records active (100%) · 2 events in range',
+    expect(screen.getByRole('button', { name: /^Collaboration ·/ }).getAttribute('aria-label')).toContain(
+      '2 of 2 records (100%) · 2 events',
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /^Collaboration\./ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Collaboration ·/ }));
     expect(props.onSelectArea).toHaveBeenCalledWith('collab');
   });
 
   it('moves focus across territories with bare arrows and yields modified chords to the app', () => {
     renderAtlas();
     // Territories are ordered by area id: collab, delivery, docs, unassigned.
-    const collab = screen.getByRole('button', { name: /^Collaboration\./ });
-    const delivery = screen.getByRole('button', { name: /^Delivery\./ });
+    const collab = screen.getByRole('button', { name: /^Collaboration ·/ });
+    const delivery = screen.getByRole('button', { name: /^Delivery ·/ });
     collab.focus();
 
     fireEvent.keyDown(collab, { key: 'ArrowRight' });
@@ -174,7 +202,7 @@ describe('AtlasPrototype', () => {
   it('keeps Unassigned reachable from the footer', () => {
     const { props } = renderAtlas();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Unassigned: 1 record' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unassigned · 1 records · No recorded activity in this range.' }));
     expect(props.onSelectArea).toHaveBeenCalledWith('unassigned');
   });
 
@@ -198,11 +226,11 @@ describe('AtlasPrototype', () => {
     const panel = screen.getByLabelText('Area detail: Home');
     fireEvent.click(within(panel).getByRole('button', { name: /Home ↔ Far Recorded links/ }));
 
-    expect(within(panel).getByText('Showing 25 of 40 evidence rows')).toBeTruthy();
-    expect(within(panel).getAllByRole('button', { name: 'Trail' })).toHaveLength(25);
+    expect(within(panel).getByText('Showing 25 of 40 evidence items')).toBeTruthy();
+    expect(within(panel).getAllByRole('button', { name: 'Evidence Trails' })).toHaveLength(25);
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Show 25 more' }));
-    expect(within(panel).getByText('Showing 40 of 40 evidence rows')).toBeTruthy();
+    expect(within(panel).getByText('Showing 40 of 40 evidence items')).toBeTruthy();
   });
 
   it('opens on recorded links, which volume sorting otherwise buries', () => {
@@ -212,12 +240,12 @@ describe('AtlasPrototype', () => {
     const { container } = renderAtlas({ selectedAreaId: 'collab' });
     const panel = screen.getByLabelText('Area detail: Collaboration');
 
-    expect((within(panel).getByLabelText('Relation lens') as HTMLSelectElement).value).toBe(
+    expect((within(panel).getByLabelText('Relation type') as HTMLSelectElement).value).toBe(
       'recorded-link',
     );
 
     const bridges = [...container.querySelectorAll('.pga-bridge')].map((b) => b.textContent);
-    expect(bridges).toEqual(['2 recorded links']);
+    expect(bridges).toEqual(['2 · recorded links']);
     expect(within(panel).queryByText(/the loader derived/)).toBeNull();
     expect(within(panel).queryByText(/Co-membership is not a dependency/)).toBeNull();
   });
@@ -231,10 +259,10 @@ describe('AtlasPrototype', () => {
     });
     renderAtlas({ model: derivedOnly, selectedAreaId: 'side' });
     const panel = screen.getByLabelText('Area detail: Side');
-    const lens = within(panel).getByLabelText('Relation lens') as HTMLSelectElement;
+    const lens = within(panel).getByLabelText('Relation type') as HTMLSelectElement;
 
     expect(lens.value).toBe('recorded-link');
-    expect(within(panel).getByText(/No recorded links between this area and any other area/)).toBeTruthy();
+    expect(within(panel).getByText('No recorded links connect this area to another area.')).toBeTruthy();
     // The option is still offered even though it currently matches nothing,
     // so the reader can tell an empty family from a missing control.
     expect([...lens.options].map((o) => o.value)).toContain('recorded-link');
@@ -246,7 +274,7 @@ describe('AtlasPrototype', () => {
   it('keeps every family between one pair of areas separately reachable on the map', () => {
     const { container } = renderAtlas({ selectedAreaId: 'collab' });
     fireEvent.change(
-      within(screen.getByLabelText('Area detail: Collaboration')).getByLabelText('Relation lens'),
+      within(screen.getByLabelText('Area detail: Collaboration')).getByLabelText('Relation type'),
       { target: { value: 'all' } },
     );
 
@@ -284,6 +312,6 @@ describe('AtlasPrototype', () => {
   it('renders an honest empty state instead of inventing territories', () => {
     renderAtlas({ model: model({ nodes: [node('n1'), node('n2')], areas: [] }) });
 
-    expect(screen.getByText(/This model has no areas.*2 records are loaded/s)).toBeTruthy();
+    expect(screen.getByText('No records are available for this view (2 total).')).toBeTruthy();
   });
 });

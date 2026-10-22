@@ -12,6 +12,8 @@ import {
 import { Provider, createStore } from 'jotai';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { asTeamJwt, asTeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { FeedbackRequestService } from '../../../../../main/services/FeedbackRequestService';
 import {
@@ -180,6 +182,7 @@ describe('Inbox conversation posting', () => {
   });
 
   it('posts feedback discussion comments through sync and keeps a failed send retryable', async () => {
+    const japaneseI18n = await createI18nInstance('ja');
     const target = {
       workspacePath: '/workspace/acme',
       orgId: 'org-acme',
@@ -303,12 +306,14 @@ describe('Inbox conversation posting', () => {
     );
 
     render(
-      <Provider store={jotaiStore}>
-        <InboxSection
-          provider={createFixtureInboxProvider({ deliveries: [delivery] })}
-          workspacePath={target.workspacePath}
-        />
-      </Provider>,
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <Provider store={jotaiStore}>
+          <InboxSection
+            provider={createFixtureInboxProvider({ deliveries: [delivery] })}
+            workspacePath={target.workspacePath}
+          />
+        </Provider>
+      </UiLanguageProvider>,
     );
     fireEvent.click(screen.getByTestId('inbox-row-delivery-feedback'));
     fireEvent.click(await screen.findByTestId('feedback-respond-add-comment'));
@@ -317,7 +322,7 @@ describe('Inbox conversation posting', () => {
     fireEvent.click(screen.getByTestId('comment-composer-send'));
 
     const failed = await screen.findByTestId('comment-row-failed');
-    expect(failed.textContent).toContain('Not sent');
+    expect(failed.textContent).toContain('未送信');
     fireEvent.click(screen.getByTestId('comment-row-retry'));
     await screen.findByTestId('comment-row-feedback-comment-1');
 

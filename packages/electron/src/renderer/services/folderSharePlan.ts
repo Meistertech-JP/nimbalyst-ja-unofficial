@@ -9,6 +9,26 @@
  */
 
 import type { FolderShareCandidate } from "./folderShareCandidates";
+import type { TFunction } from "i18next";
+
+export type FolderShareTranslator = TFunction<"collabSidebar">;
+
+export function formatFolderShareFileWarnings(input: {
+  linkedDocumentFailures: number;
+  attachmentFailures: number;
+  attachmentsUnavailable: boolean;
+}, t: FolderShareTranslator): string[] {
+  const warnings: string[] = [];
+  if (input.linkedDocumentFailures > 0) {
+    warnings.push(t("share_folder.notifications.linked_document_failure", { count: input.linkedDocumentFailures }));
+  }
+  if (input.attachmentFailures > 0) {
+    warnings.push(t("share_folder.notifications.attachment_failure", { count: input.attachmentFailures }));
+  } else if (input.attachmentsUnavailable) {
+    warnings.push(t("share_folder.notifications.attachments_migration_unavailable"));
+  }
+  return warnings;
+}
 
 /**
  * Share the files that embed nothing in this batch first, so an embedder always
@@ -56,6 +76,7 @@ type NotifyFn = (
  * -- can be asserted without a live collab scope.
  */
 export function reportFolderShareOutcome(input: {
+  t: FolderShareTranslator;
   folderName: string;
   sharedFolderPath: string;
   sharedCount: number;
@@ -67,56 +88,55 @@ export function reportFolderShareOutcome(input: {
   showWarning: NotifyFn;
   showInfo: NotifyFn;
 }): void {
+  const { t } = input;
   const details = [
     ...input.failures.map((failure) => `${failure.relativePath}: ${failure.error}`),
     ...input.skipped.map((file) => `${file.relativePath}: ${file.reason}`),
     ...input.warnings,
   ].join("\n");
-  const destination = input.sharedFolderPath || "the team root";
+  const destination = input.sharedFolderPath || t("share_folder.team_root");
 
   if (input.sharedCount === 0) {
     input.showError(
-      "Nothing was shared",
+      t("share_folder.notifications.nothing_shared_title"),
       input.failures.length > 0
-        ? `No document in "${input.folderName}" could be shared.`
-        : `No file in "${input.folderName}" has a collaborative document type.`,
+        ? t("share_folder.notifications.nothing_shared_failure_body", { folderName: input.folderName })
+        : t("share_folder.notifications.nothing_shared_unsupported_body", { folderName: input.folderName }),
       { details: details || undefined, duration: 10000 }
     );
     return;
   }
 
-  const documentLabel = `${input.sharedCount} document${
-    input.sharedCount === 1 ? "" : "s"
-  }`;
+  const documentCount = t("share_folder.document_count", { count: input.sharedCount });
   const leftovers: string[] = [];
   if (input.failures.length > 0) {
     leftovers.push(
-      `${input.failures.length} failed to share`
+      t("share_folder.notifications.failed_count", { count: input.failures.length })
     );
   }
   if (input.skippedCount > 0) {
     leftovers.push(
-      `${input.skippedCount} file${
-        input.skippedCount === 1 ? "" : "s"
-      } had no collaborative document type`
+      t("share_folder.notifications.unsupported_count", { count: input.skippedCount })
     );
   }
 
   if (leftovers.length === 0 && input.warnings.length === 0) {
     input.showInfo(
-      "Folder shared to team",
-      `Shared ${documentLabel} from "${input.folderName}" to ${destination}.`,
+      t("share_folder.notifications.folder_shared_title"),
+      t("share_folder.notifications.folder_shared_body", { documentCount, folderName: input.folderName, destination }),
       { duration: 5000 }
     );
     return;
   }
 
   input.showWarning(
-    "Folder shared with exceptions",
-    `Shared ${documentLabel} from "${input.folderName}" to ${destination}. ${[
-      ...leftovers,
-      ...input.warnings,
-    ].join("; ")}.`,
+    t("share_folder.notifications.folder_shared_exceptions_title"),
+    t("share_folder.notifications.folder_shared_exceptions_body", {
+      documentCount,
+      folderName: input.folderName,
+      destination,
+      leftovers: [...leftovers, ...input.warnings].join("; "),
+    }),
     { details: details || undefined, duration: 10000 }
   );
 }

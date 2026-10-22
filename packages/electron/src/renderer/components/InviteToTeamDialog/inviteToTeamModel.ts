@@ -103,31 +103,66 @@ export interface InvitePlanSummary {
 }
 
 /**
- * The sentence above the send button.
+ * The localized summary shown above the send button.
  *
  * It names the empty case explicitly rather than staying silent, because
  * sending an invitation that shares nothing is exactly how a teammate ends up
  * in an empty organization — the failure this whole dialog exists to prevent.
  */
-export function summarizeInvitePlan(plan: InvitePlanSummary): string {
-  if (plan.people === 0) return 'Add an email address to invite someone.';
-  const parts = [`${plan.people} ${plan.people === 1 ? 'person' : 'people'}`];
+export type InviteSummaryMessage = {
+  key:
+    | 'team_invite_dialog.summary.add_email'
+    | 'team_invite_dialog.summary.people_one'
+    | 'team_invite_dialog.summary.people_other'
+    | 'team_invite_dialog.summary.extra_projects_one'
+    | 'team_invite_dialog.summary.extra_projects_other'
+    | 'team_invite_dialog.summary.folders_published_one'
+    | 'team_invite_dialog.summary.folders_published_other'
+    | 'team_invite_dialog.summary.team_has_shared_content'
+    | 'team_invite_dialog.summary.nothing_shared_yet';
+  count?: number;
+};
+
+export function summarizeInvitePlan(plan: InvitePlanSummary): InviteSummaryMessage[] {
+  if (plan.people === 0) return [{ key: 'team_invite_dialog.summary.add_email' }];
+  const parts: InviteSummaryMessage[] = [{
+    key: plan.people === 1
+      ? 'team_invite_dialog.summary.people_one'
+      : 'team_invite_dialog.summary.people_other',
+    count: plan.people,
+  }];
   if (plan.extraProjects > 0) {
-    parts.push(`${plan.extraProjects} extra ${plan.extraProjects === 1 ? 'project' : 'projects'}`);
+    parts.push({
+      key: plan.extraProjects === 1
+        ? 'team_invite_dialog.summary.extra_projects_one'
+        : 'team_invite_dialog.summary.extra_projects_other',
+      count: plan.extraProjects,
+    });
   }
   if (plan.folders > 0) {
-    parts.push(`${plan.folders} ${plan.folders === 1 ? 'folder' : 'folders'} published`);
+    parts.push({
+      key: plan.folders === 1
+        ? 'team_invite_dialog.summary.folders_published_one'
+        : 'team_invite_dialog.summary.folders_published_other',
+      count: plan.folders,
+    });
   }
   if (parts.length === 1) {
-    parts.push(plan.teamHasSharedContent
-      ? 'the team already has shared content'
-      : 'nothing shared yet');
+    parts.push({
+      key: plan.teamHasSharedContent
+        ? 'team_invite_dialog.summary.team_has_shared_content'
+        : 'team_invite_dialog.summary.nothing_shared_yet',
+    });
   }
-  return parts.join(' · ');
+  return parts;
 }
 
-/** The primary action's label, so the outcome is legible before the click. */
-export function inviteActionLabel(plan: InvitePlanSummary): string {
-  if (plan.extraProjects === 0 && plan.folders === 0) return 'Send invitation only';
-  return 'Send invitations and share';
+/** The translation key for the primary action label. */
+export function inviteActionLabel(plan: InvitePlanSummary):
+  | 'team_invite_dialog.action_invite_only'
+  | 'team_invite_dialog.action_invite_and_share' {
+  if (plan.extraProjects === 0 && plan.folders === 0) {
+    return 'team_invite_dialog.action_invite_only';
+  }
+  return 'team_invite_dialog.action_invite_and_share';
 }

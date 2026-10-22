@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { EditorHostProps } from '@nimbalyst/extension-sdk';
 import { useEditorLifecycle } from '@nimbalyst/extension-sdk';
 import { usePDFDocument } from './hooks/usePDFDocument';
@@ -18,6 +19,7 @@ import { PDFScrollView } from './components/PDFScrollView';
 import { Toolbar } from './components/Toolbar';
 
 export function PDFViewerEditor({ host }: EditorHostProps) {
+  const { t } = useTranslation('extensions');
   const { filePath, isActive } = host;
 
   // useEditorLifecycle handles theme reactivity. PDF loading is delegated
@@ -87,7 +89,7 @@ export function PDFViewerEditor({ host }: EditorHostProps) {
     return (
       <div className={`flex flex-col h-full w-full bg-nim-secondary text-nim theme-${theme}`}>
         <div className="flex items-center justify-center h-full">
-          <div className="text-base text-nim-muted">Loading PDF...</div>
+          <div className="text-base text-nim-muted">{t('pdf_viewer_ui.loading')}</div>
         </div>
       </div>
     );
@@ -98,7 +100,7 @@ export function PDFViewerEditor({ host }: EditorHostProps) {
       <div className={`flex flex-col h-full w-full bg-nim-secondary text-nim theme-${theme}`}>
         <div className="flex items-center justify-center h-full p-8">
           <div className="text-center max-w-[500px]">
-            <h3 className="text-nim mb-2">Error loading PDF</h3>
+            <h3 className="text-nim mb-2">{t('pdf_viewer_ui.load_error')}</h3>
             <p className="text-nim-muted text-sm">{error}</p>
           </div>
         </div>

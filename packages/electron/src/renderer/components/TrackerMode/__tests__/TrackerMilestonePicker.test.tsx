@@ -19,9 +19,11 @@
  * uses, and asserts the field value that lands.
  */
 
-import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import {
   loadBuiltinTrackers,
@@ -33,6 +35,10 @@ import { resolveMilestoneAssignmentWrites, type MilestoneAssignTarget } from '..
 
 beforeAll(() => {
   loadBuiltinTrackers();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 function record(id: string, primaryType: string, title: string, fields = {}): TrackerRecord {
@@ -167,5 +173,53 @@ describe('milestone picker panel', () => {
 
     expect(createTrackerItem.mock.calls[0][0]).toMatchObject({ type: 'milestone' });
     expect(onAssign.mock.calls[0][0]).toMatchObject({ itemId: 'mst_new' });
+  });
+
+  it('localizes the search, empty state, partial assignment, and create action', async () => {
+    const i18n = await createI18nInstance('ja');
+    const emptyStore = createStore();
+    emptyStore.set(trackerItemsMapAtom, new Map());
+    const emptyItem = record('empty_plan', 'plan', '空の計画');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <Provider store={emptyStore}>
+          <TrackerMilestonePickerPanel
+            items={[emptyItem]}
+            onAssign={vi.fn()}
+            onRequestClose={vi.fn()}
+            testIdBase="milestone-empty-ja"
+          />
+        </Provider>
+      </UiLanguageProvider>,
+    );
+    expect(screen.getByText('マイルストーンはまだありません')).toBeDefined();
+    cleanup();
+
+    const item = record('plan_1', 'plan', '計画', { collection: [ALPHA] });
+    const store = createStore();
+    store.set(trackerItemsMapAtom, new Map([[item.id, item], [alpha.id, alpha]]));
+    const onAssign = vi.fn();
+
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <Provider store={store}>
+          <TrackerMilestonePickerPanel
+            items={[item, record('plan_2', 'plan', '別の計画')]}
+            onAssign={onAssign}
+            onRequestClose={vi.fn()}
+            testIdBase="milestone-ja"
+          />
+        </Provider>
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'マイルストーンを検索' }).getAttribute('placeholder'))
+      .toBe('マイルストーンを検索…');
+    expect(screen.getByRole('option', {
+      name: 'Alpha — 2件中1件が選択済み。すべてに割り当て',
+    })).toBeDefined();
+
+    fireEvent.change(screen.getByTestId('milestone-ja-search'), { target: { value: '新規' } });
+    expect(screen.getByTestId('milestone-ja-create').textContent).toContain('マイルストーン「新規」を作成');
   });
 });

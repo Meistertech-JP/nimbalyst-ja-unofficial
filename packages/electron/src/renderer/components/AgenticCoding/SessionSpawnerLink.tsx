@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { sessionRegistryAtom } from '../../store/atoms/sessions';
 import { selectSessionActionAtom } from '../../store/actions/sessionHistoryActions';
 
 /** Cross-container management remains navigable without implying a tree edge. */
 export function SessionSpawnerLink({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation('agents');
   const spawnerId = useAtomValue(
     useMemo(
       () =>
@@ -28,7 +30,7 @@ export function SessionSpawnerLink({ sessionId }: { sessionId: string }) {
   const select = useSetAtom(selectSessionActionAtom);
   return spawnerId ? (
     <div className="session-tree-from text-xs text-[var(--nim-text-muted)]">
-      from{' '}
+      {t('session_tree.spawner_from')}{' '}
       <button
         className="underline"
         onClick={(e) => {
@@ -36,7 +38,7 @@ export function SessionSpawnerLink({ sessionId }: { sessionId: string }) {
           void select(spawnerId);
         }}
       >
-        {title || 'session'}
+        {title || t('session_tree.unnamed_session')}
       </button>
     </div>
   ) : null;

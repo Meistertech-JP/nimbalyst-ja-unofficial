@@ -12,12 +12,41 @@ import {
   latestEvent,
   recordedCreation,
   type NeighborhoodOptions,
+  type TrailsTranslate,
 } from '../trailsModel';
 import { makeModel, NOW, RANGE } from './fixture';
 
 const OPTIONS: NeighborhoodOptions = { perLane: () => 5, laneLimit: 6, includePathDerived: true };
+const japanese: TrailsTranslate = (key, options) => {
+  const values: Record<string, string> = {
+    'project_graph.trails.relations.worked_on_in.label': '作業セッション',
+    'project_graph.trails.relations.worked_on_in.basis': 'トラッカー項目またはセッションに記録された明示的なリンクです。',
+    'project_graph.trails.relations.part_of.label': '一部',
+    'project_graph.trails.relations.part_of.basis': '記録のファイルパスがこのディレクトリにまとめられています。ファイルの格納場所を示すもので、内容を表すものではありません。',
+    'project_graph.trails.relations.rollup_basis': `${String(options?.basis)} このディレクトリへのリンクは、記録の明示的な指定ではなく、アダプターがファイル一覧を集約して作成しました。`,
+    'project_graph.trails.gaps.verification_unknown': 'このビューでは検証状況を評価しません。状態は失敗ではなく不明です。',
+    'project_graph.trails.events.created_on': `作成日: ${String(options?.date)}`,
+    'project_graph.trails.events.creation_date_not_recorded': '作成日は記録されていません',
+    'project_graph.trails.events.recorded_on': `${String(options?.label)} · 記録日 ${String(options?.date)}`,
+    'project_graph.trails.events.last_observed_on': `${String(options?.label)} · 最終確認日 ${String(options?.date)}`,
+    'project_graph.trails.events.no_dated_event': '日付付きイベントは記録されていません',
+  };
+  return values[key] ?? key;
+};
 
 describe('trails neighborhood', () => {
+  it('uses localized labels and basis copy without changing relation identity', () => {
+    const model = makeModel();
+    const index = buildTrailsIndex(model);
+    const hood = buildNeighborhood(model, index, 'tracker:bug1', RANGE, { ...OPTIONS, translate: japanese });
+    const lane = hood.lanes.find(l => l.key === 'worked_on_in:out');
+
+    expect(lane?.type).toBe('worked_on_in');
+    expect(lane?.descriptor.label).toBe('作業セッション');
+    expect(lane?.descriptor.basis).toBe('トラッカー項目またはセッションに記録された明示的なリンクです。');
+    expect(hood.lanes.find(l => l.key === 'part_of:out')?.descriptor.basis).toContain('記録のファイルパスがこのディレクトリにまとめられています');
+  });
+
   it('groups connections by relation name and direction, and counts endpoints it cannot resolve', () => {
     const model = makeModel();
     const index = buildTrailsIndex(model);
@@ -224,12 +253,34 @@ describe('starting artifacts', () => {
 });
 
 describe('date provenance', () => {
+  it('localizes event copy and formats dates in the selected UI locale', () => {
+    const model = makeModel();
+    const index = buildTrailsIndex(model);
+    const creation = recordedCreation(index, 'plan:tracker-body')!;
+    const expectedDate = new Intl.DateTimeFormat('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(creation.at));
+
+    expect(describeCreation(index, 'plan:tracker-body', japanese, 'ja-JP')).toBe(`作成日: ${expectedDate}`);
+    expect(describeCreation(index, 'session:s1', japanese, 'ja-JP')).toBe('作成日は記録されていません');
+    expect(describeEvent(latestEvent(index, 'session:s1'), japanese, 'ja-JP')).toContain('最終確認日');
+    expect(describeEvent(null, japanese, 'ja-JP')).toBe('日付付きイベントは記録されていません');
+  });
+
   it('reports a creation date only when an event recorded one', () => {
     const model = makeModel();
     const index = buildTrailsIndex(model);
 
-    expect(recordedCreation(index, 'plan:tracker-body')?.id).toBe('ev4');
-    expect(describeCreation(index, 'plan:tracker-body')).toMatch(/^Created \w+ \d+, \d+$/);
+    const creation = recordedCreation(index, 'plan:tracker-body');
+    expect(creation?.id).toBe('ev4');
+    const expectedDate = new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(creation!.at));
+    expect(describeCreation(index, 'plan:tracker-body')).toBe(`Created ${expectedDate}`);
   });
 
   it('will not print node.createdAt, which the loader may have inferred from a neighbor', () => {
@@ -269,6 +320,14 @@ describe('date provenance', () => {
 });
 
 describe('gaps', () => {
+  it('localizes assessed-gap explanations', () => {
+    const model = makeModel();
+    const index = buildTrailsIndex(model);
+    const hood = buildNeighborhood(model, index, 'tracker:bug1', RANGE, OPTIONS);
+
+    expect(describeGaps(model, hood, japanese)).toContain('このビューでは検証状況を評価しません。状態は失敗ではなく不明です。');
+  });
+
   it('says verification is unassessed rather than claiming no verification evidence exists', () => {
     const model = makeModel();
     const index = buildTrailsIndex(model);

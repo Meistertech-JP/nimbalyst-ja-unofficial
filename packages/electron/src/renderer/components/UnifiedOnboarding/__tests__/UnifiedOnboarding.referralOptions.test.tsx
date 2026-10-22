@@ -3,6 +3,8 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { UnifiedOnboarding } from '../UnifiedOnboarding';
 
 const NEW_REFERRAL_OPTIONS = [
@@ -18,19 +20,22 @@ describe('UnifiedOnboarding referral options', () => {
     delete (window as any).electronAPI;
   });
 
-  it('shows and submits each discovery source', () => {
+  it('shows and submits each discovery source', async () => {
     (window as any).electronAPI = {
       invoke: vi.fn().mockResolvedValue({}),
     };
     const onComplete = vi.fn();
+    const i18n = await createI18nInstance('en');
 
     render(
-      <UnifiedOnboarding
-        isOpen={true}
-        onComplete={onComplete}
-        onSkip={() => {}}
-        forcedMode="new"
-      />,
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+        <UnifiedOnboarding
+          isOpen={true}
+          onComplete={onComplete}
+          onSkip={() => {}}
+          forcedMode="new"
+        />
+      </UiLanguageProvider>,
     );
 
     fireEvent.click(screen.getByText('Standard Mode'));
@@ -48,19 +53,22 @@ describe('UnifiedOnboarding referral options', () => {
     }
   });
 
-  it('asks what the user searched for and submits the detail', () => {
+  it('asks what the user searched for and submits the detail', async () => {
     (window as any).electronAPI = {
       invoke: vi.fn().mockResolvedValue({}),
     };
     const onComplete = vi.fn();
+    const i18n = await createI18nInstance('en');
 
     render(
-      <UnifiedOnboarding
-        isOpen={true}
-        onComplete={onComplete}
-        onSkip={() => {}}
-        forcedMode="new"
-      />,
+      <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+        <UnifiedOnboarding
+          isOpen={true}
+          onComplete={onComplete}
+          onSkip={() => {}}
+          forcedMode="new"
+        />
+      </UiLanguageProvider>,
     );
 
     fireEvent.click(screen.getByText('Standard Mode'));

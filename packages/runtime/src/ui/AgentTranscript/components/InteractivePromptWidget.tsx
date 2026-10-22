@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtom } from 'jotai';
 import type {
   PermissionRequestContent,
@@ -91,6 +92,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
   onSubmit,
   isSubmitting,
 }) => {
+  const { t } = useTranslation('agents');
   const [showDetails, setShowDetails] = useState(false);
 
   if (content.status !== 'pending') {
@@ -102,7 +104,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
               <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">Permission Resolved</span>
+          <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('interactive_prompt.permission_resolved')}</span>
         </div>
         <div className="interactive-prompt__command bg-[var(--nim-bg-tertiary)] rounded p-2 px-3 mb-3 overflow-x-auto">
           <code className="font-mono text-xs text-[var(--nim-text)] whitespace-pre-wrap break-all">{unwrapShellCommand(content.rawCommand || content.toolName)}</code>
@@ -129,12 +131,12 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
             </svg>
           )}
         </span>
-        <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">Allow this tool?</span>
+        <span className="interactive-prompt__title font-semibold text-sm text-[var(--nim-text)]">{t('permission.allow_tool')}</span>
         <button
           className="interactive-prompt__details-toggle ml-auto text-xs text-[var(--nim-text-faint)] bg-transparent border-none cursor-pointer py-0.5 px-1.5 rounded hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text-muted)]"
           onClick={() => setShowDetails(!showDetails)}
         >
-          {showDetails ? 'Hide details' : 'Show details'}
+          {showDetails ? t('interactive_prompt.hide_details') : t('interactive_prompt.show_details')}
         </button>
       </div>
 
@@ -162,11 +164,11 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
       {showDetails && (
         <div className="interactive-prompt__details bg-[var(--nim-bg-tertiary)] rounded p-2 px-3 mb-3">
           <div className="interactive-prompt__detail-row flex gap-2 text-xs py-0.5">
-            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">Tool:</span>
+            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('interactive_prompt.tool')}</span>
             <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{content.toolName}</span>
           </div>
           <div className="interactive-prompt__detail-row flex gap-2 text-xs py-0.5">
-            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">Pattern:</span>
+            <span className="interactive-prompt__detail-label text-[var(--nim-text-faint)] shrink-0">{t('permission.pattern')}</span>
             <span className="interactive-prompt__detail-value text-[var(--nim-text-muted)] break-all">{content.patternDisplayName}</span>
           </div>
         </div>
@@ -180,14 +182,14 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
           onClick={() => onSubmit('deny', 'once')}
           disabled={isSubmitting}
         >
-          Deny
+          {t('permission.deny')}
         </button>
         <button
           className="interactive-prompt__button interactive-prompt__button--allow px-3 py-1.5 text-xs font-medium rounded-md border border-transparent cursor-pointer transition-all bg-[var(--nim-primary)] text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'once')}
           disabled={isSubmitting}
         >
-          Allow Once
+          {t('permission.allow_once')}
         </button>
         {!content.suppressAlwaysAllowRule && <>
           <div className="interactive-prompt__separator w-px bg-[var(--nim-border)] mx-1" />
@@ -195,24 +197,24 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
             className="interactive-prompt__button interactive-prompt__button--session px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => onSubmit('allow', 'session')}
             disabled={isSubmitting}
-            title={`Allow ${content.patternDisplayName} for this session`}
+            title={t('permission.allow_for_session', { pattern: content.patternDisplayName })}
           >
-            Session
+            {t('permission.session')}
           </button>
           <button
             className="interactive-prompt__button interactive-prompt__button--always px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => onSubmit('allow', 'always')}
             disabled={isSubmitting}
-            title={`Save ${content.patternDisplayName} to settings`}
+            title={t('interactive_prompt.save_pattern_to_settings', { pattern: content.patternDisplayName })}
           >
-            Always
+            {t('permission.always')}
           </button>
         </>}
       </div>
 
       {/* Pattern info */}
       {!content.suppressAlwaysAllowRule && <div className="interactive-prompt__pattern-info text-[11px] text-[var(--nim-text-faint)]">
-        Session/Always will allow: <span className="interactive-prompt__pattern-badge inline-block px-1.5 py-0.5 bg-[var(--nim-bg-tertiary)] rounded font-mono text-[10px]">{content.patternDisplayName}</span>
+        {t('permission.session_always_allow')} <span className="interactive-prompt__pattern-badge inline-block px-1.5 py-0.5 bg-[var(--nim-bg-tertiary)] rounded font-mono text-[10px]">{content.patternDisplayName}</span>
       </div>}
     </div>
   );
@@ -242,6 +244,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
   onCancel,
   isSubmitting,
 }) => {
+  const { t } = useTranslation('agents');
   const anonymousKeyRef = useRef<string | null>(null);
   if (!content.questionId && !anonymousKeyRef.current) {
     anonymousKeyRef.current = `anonymous-question-${++anonymousDraftKeySeq}`;
@@ -333,7 +336,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
               <path d="M13 4L6 11L3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className="interactive-prompt__title">Questions Answered</span>
+          <span className="interactive-prompt__title">{t('interactive_prompt.questions_answered')}</span>
         </div>
       </div>
     );
@@ -349,7 +352,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             <path d="M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </span>
-        <span className="interactive-prompt__title">Claude has questions for you</span>
+        <span className="interactive-prompt__title">{t('interactive_prompt.questions_title')}</span>
       </div>
 
       <div className="interactive-prompt__questions">
@@ -358,7 +361,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             <div className="interactive-prompt__question-header">
               <span className="interactive-prompt__question-chip">{question.header}</span>
               {question.multiSelect && (
-                <span className="interactive-prompt__multi-hint">Select multiple</span>
+                <span className="interactive-prompt__multi-hint">{t('interactive_prompt.select_multiple')}</span>
               )}
             </div>
             <div className="interactive-prompt__question-text">
@@ -410,7 +413,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
                       </svg>
                     )}
                   </div>
-                  <span className="interactive-prompt__option-label">Other</span>
+                  <span className="interactive-prompt__option-label">{t('interactive_prompt.other')}</span>
                 </button>
                 {otherSelected[question.question] && (
                   <textarea
@@ -423,7 +426,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
                         handleSubmit();
                       }
                     }}
-                    placeholder="Type your answer..."
+                    placeholder={t('interactive_prompt.answer_placeholder')}
                     disabled={isSubmitting}
                     rows={2}
                     style={{
@@ -451,7 +454,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
           onClick={handleSubmit}
           disabled={isSubmitting || !allAnswered}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Answers'}
+          {isSubmitting ? t('interactive_prompt.submitting') : t('interactive_prompt.submit_answers')}
         </button>
         {onCancel && (
           <button
@@ -459,7 +462,7 @@ const AskUserQuestionWidgetInteractive: React.FC<AskUserQuestionWidgetProps> = (
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('interactive_prompt.cancel')}
           </button>
         )}
       </div>

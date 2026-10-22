@@ -6,6 +6,7 @@
  */
 
 import React, { useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { atom, useAtomValue } from 'jotai';
 import type { EmbedFrameProps } from '@nimbalyst/runtime';
 import { getSharedDocumentDisplayName, pageDisplayName } from '@nimbalyst/collab-client/docs';
@@ -19,6 +20,7 @@ import { HTML_PAGE_DOCUMENT_TYPE } from '@nimbalyst/runtime/ui/htmlEmbed/htmlPag
 const NO_DOCUMENTS_ATOM = atom<SharedDocument[]>([]);
 
 export const PersonalPageEmbedFrame: React.FC<EmbedFrameProps & { pageId: string }> = ({ pageId, src, label, attrs, nodeKey, detached }) => {
+  const { t } = useTranslation('common');
   const workspacePath = useAtomValue(activeWorkspacePathAtom);
   const documents = useAtomValue(workspacePath ? personalPagesDocumentsAtomFamily(workspacePath) : NO_DOCUMENTS_ATOM);
   const page = documents.find((doc) => doc.documentId === pageId);
@@ -32,7 +34,7 @@ export const PersonalPageEmbedFrame: React.FC<EmbedFrameProps & { pageId: string
         displayName={label || src}
         label={label}
         src={src}
-        error="This Personal page is not on this device, or it is in Trash."
+        error={t('embed.personal_page_unavailable')}
         onOpen={onOpen}
         testId="personal-page-embed-unresolved"
       />
@@ -48,7 +50,7 @@ export const PersonalPageEmbedFrame: React.FC<EmbedFrameProps & { pageId: string
       displayName={title}
       onOpen={onOpen}
       markers={{ 'data-embed-personal': 'true', 'data-embed-page-id': pageId }}
-      loadingText="Loading page..."
+      loadingText={t('embed.loading_page')}
       interactive={page.documentType === HTML_PAGE_DOCUMENT_TYPE}
     >
       <PersonalExtensionPageView

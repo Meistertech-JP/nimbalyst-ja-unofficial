@@ -10,8 +10,11 @@
  */
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Doc } from 'yjs';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
+import { errorNotificationService } from '../../../services/ErrorNotificationService';
 
 import {
   collabCommentAnchorAdapterRegistry,
@@ -39,6 +42,16 @@ vi.mock('../../../services/ErrorNotificationService', () => ({
 }));
 
 const DOCUMENT_URI = 'collab://org:org-1:doc:mockup-1';
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeEach(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
 const PIN_ANCHOR: CommentAnchor = {
   kind: 'entity',
   entityType: 'mockup-pin',
@@ -52,6 +65,17 @@ function Harness({ hosted }: { hosted: HostedCollaborationComments }) {
     panelSource: hosted.panelSource,
   });
   return <CollabCommentsPanelDock hosted={hosted} panel={panel} />;
+}
+
+function renderHarness(
+  hosted: HostedCollaborationComments,
+  i18n = englishI18n,
+) {
+  return render(
+    <I18nextProvider i18n={i18n}>
+      <Harness hosted={hosted} />
+    </I18nextProvider>,
+  );
 }
 
 describe('host-owned collaborative comments pane', () => {
@@ -127,7 +151,7 @@ describe('host-owned collaborative comments pane', () => {
   });
 
   it('opens on openPanel with that thread selected and its anchor focused', async () => {
-    const { container } = render(<Harness hosted={hosted} />);
+    const { container } = renderHarness(hosted);
 
     await act(async () => {
       hosted.service.openPanel({ threadId });
@@ -142,19 +166,46 @@ describe('host-owned collaborative comments pane', () => {
     ).toBeNull();
   });
 
+  it('localizes the comments landmark label in Japanese', async () => {
+    renderHarness(hosted, japaneseI18n);
+    await act(async () => {
+      hosted.service.openPanel({});
+    });
+
+    expect(screen.getByRole('complementary', { name: 'ドキュメントのコメント' })).toBeDefined();
+  });
+
+  it('localizes a refused comment resolution and preserves the server error detail', async () => {
+    vi.clearAllMocks();
+    vi.spyOn(hosted.service, 'setResolved').mockRejectedValue(new Error('server refused'));
+    renderHarness(hosted, japaneseI18n);
+    await act(async () => {
+      hosted.service.openPanel({});
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: '解決済みにする' }));
+
+    await waitFor(() =>
+      expect(errorNotificationService.showError).toHaveBeenCalledWith(
+        'コメントを解決済みにできませんでした',
+        'server refused',
+      ),
+    );
+  });
+
   it('drains a deep-link request queued before the pane mounted', async () => {
     // The notification is clicked while the document is still opening, so the
     // request has to outlive the click and be picked up when the tab mounts.
     requestCommentPanel(DOCUMENT_URI, { threadId, source: 'deep-link' });
 
-    const { container } = render(<Harness hosted={hosted} />);
+    const { container } = renderHarness(hosted);
 
     await waitFor(() => expect(focusCalls).toEqual(['pin-1']));
     expect(cards(container)[0].getAttribute('aria-current')).toBe('true');
   });
 
   it('keeps an orphaned thread visible and explains why focus is unavailable', async () => {
-    const { container } = render(<Harness hosted={hosted} />);
+    const { container } = renderHarness(hosted);
     // A teammate deletes the element the thread hangs off. Losing the target
     // must not lose the conversation.
     livePins.delete('pin-1');
@@ -176,7 +227,7 @@ describe('host-owned collaborative comments pane', () => {
   });
 
   it('drops the composer on a capability downgrade without losing threads', async () => {
-    const { container } = render(<Harness hosted={hosted} />);
+    const { container } = renderHarness(hosted);
     await act(async () => {
       hosted.service.openPanel({});
     });

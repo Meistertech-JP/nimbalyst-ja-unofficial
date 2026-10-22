@@ -78,9 +78,6 @@ export function getActionButtonHost(): ActionButtonHost | null {
   return host;
 }
 
-export const SESSION_UNAVAILABLE_REASON = 'Starting a session needs the Nimbalyst desktop app.';
-export const NEW_ITEM_UNAVAILABLE_REASON = 'Creating pages from a button needs the Nimbalyst desktop app.';
-
 /**
  * The page an element sits on, read from the host's DOM: the editor tab's
  * `data-file-path`, or a typed page view's item id.

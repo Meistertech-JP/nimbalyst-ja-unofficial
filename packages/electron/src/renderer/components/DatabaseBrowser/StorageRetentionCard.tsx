@@ -8,6 +8,7 @@
  * message table, against 5.5% for user prompts and agent text combined.
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface MaintenanceSettings {
   backupCopiesKept: number;
@@ -24,9 +25,15 @@ interface RetentionEstimate {
   /** Independent points in the id range the sample was drawn from. */
   probesTaken: number;
   lowConfidence: boolean;
-  /** Caveat to speak out loud when the number needs one. */
-  note?: string;
+  /** Structured caveat, localized by this renderer. */
+  note?: RetentionEstimateNote;
 }
+
+type RetentionEstimateNote =
+  | { kind: 'no_eligible_rows' }
+  | { kind: 'sample_empty'; candidateRows: number }
+  | { kind: 'sample_floor'; sampledRows: number; coveragePct: string; candidateRows: number; probesTaken: number }
+  | { kind: 'thin_sample'; sampledRows: number; coveragePct: string; candidateRows: number };
 
 interface RetentionRunResult {
   scanned: number;
@@ -47,32 +54,53 @@ function formatBytes(n: number): string {
   return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-const RETENTION_CHOICES = [
-  { value: 0, label: 'Keep everything' },
-  { value: 30, label: '30 days' },
-  { value: 90, label: '90 days' },
-  { value: 180, label: '180 days' },
-];
+const RETENTION_CHOICES = [30, 90, 180];
 
 const COPIES_CHOICES = [1, 2, 3];
 
 const INTERVAL_CHOICES = [
-  { value: 0, label: 'On quit only' },
-  { value: 4, label: 'Every 4 hours' },
-  { value: 12, label: 'Every 12 hours' },
-  { value: 24, label: 'Daily' },
+  { value: 0, key: 'on_quit_only' },
+  { value: 4, key: 'every_hours', count: 4 },
+  { value: 12, key: 'every_hours', count: 12 },
+  { value: 24, key: 'daily' },
 ];
 
 const selectClass =
   'text-xs bg-nim-primary border border-[var(--nim-border)] rounded px-2 py-1 text-[var(--nim-text)]';
 
 export function StorageRetentionCard() {
+  const { t } = useTranslation('common');
   const [settings, setSettings] = useState<MaintenanceSettings | null>(null);
   const [estimate, setEstimate] = useState<RetentionEstimate | null>(null);
   const [result, setResult] = useState<RetentionRunResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingDays, setPendingDays] = useState(30);
+  const estimateNoteText = (() => {
+    const note = estimate?.note;
+    if (!note) return null;
+    switch (note.kind) {
+      case 'no_eligible_rows':
+        return t('database.storage_retention.estimate_no_eligible_rows');
+      case 'sample_empty':
+        return t('database.storage_retention.estimate_sample_empty', {
+          candidateRows: note.candidateRows.toLocaleString(),
+        });
+      case 'sample_floor':
+        return t('database.storage_retention.estimate_sample_floor', {
+          sampledRows: note.sampledRows.toLocaleString(),
+          coveragePct: note.coveragePct,
+          candidateRows: note.candidateRows.toLocaleString(),
+          probesTaken: note.probesTaken.toLocaleString(),
+        });
+      case 'thin_sample':
+        return t('database.storage_retention.estimate_thin_sample', {
+          sampledRows: note.sampledRows.toLocaleString(),
+          coveragePct: note.coveragePct,
+          candidateRows: note.candidateRows.toLocaleString(),
+        });
+    }
+  })();
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +116,7 @@ export function StorageRetentionCard() {
             setPendingDays(res.settings.toolOutputRetentionDays);
           }
         } else {
-          setError(res.error || 'Could not read maintenance settings');
+          setError(res.error || t('database.storage_retention.read_settings_failed'));
         }
       } catch (err) {
         if (!cancelled) setError(String(err));
@@ -102,7 +130,7 @@ export function StorageRetentionCard() {
     try {
       const res = await window.electronAPI.invoke('database:maintenance:set', next);
       if (res.success) setSettings(res.settings);
-      else setError(res.error || 'Could not save settings');
+      else setError(res.error || t('database.storage_retention.save_settings_failed'));
     } catch (err) {
       setError(String(err));
     }
@@ -116,7 +144,7 @@ export function StorageRetentionCard() {
         retentionDays: pendingDays,
       });
       if (res.success) setEstimate(res.estimate);
-      else setError(res.error || 'Estimate failed');
+      else setError(res.error || t('database.storage_retention.estimate_failed'));
     } catch (err) {
       setError(String(err));
     }
@@ -130,7 +158,7 @@ export function StorageRetentionCard() {
         retentionDays: pendingDays,
       });
       if (res.success) setResult(res.result);
-      else setError(res.error || 'Reclaim failed');
+      else setError(res.error || t('database.reclaim_failed'));
     } catch (err) {
       setError(String(err));
     } finally {
@@ -140,25 +168,21 @@ export function StorageRetentionCard() {
 
   return (
     <div className="p-4 rounded-lg border border-[var(--nim-border)] bg-nim-secondary storage-retention-card">
-      <div className="text-sm font-semibold mb-1">Storage retention</div>
+      <div className="text-sm font-semibold mb-1">{t('database.storage_retention.title')}</div>
       <div className="text-xs text-[var(--nim-text-muted)] mb-3">
-        Tool output (command results, file reads, search output) is the bulk of the database.
-        New messages are already trimmed as they are written, so this is a one-time cleanup of
-        older history rather than an ongoing policy. Discarding aged tool output never touches
-        your prompts, the agent&apos;s replies, or what the agent did — tool names, arguments,
-        and file edits are all preserved.
+        {t('database.storage_retention.description')}
       </div>
 
       <div className="flex flex-col gap-3">
         <label className="flex items-center justify-between gap-3">
-          <span className="text-xs">Clean up tool output older than</span>
+          <span className="text-xs">{t('database.storage_retention.cleanup_older_than')}</span>
           <select
             className={selectClass}
             value={pendingDays}
             onChange={(e) => setPendingDays(Number(e.target.value))}
           >
-            {RETENTION_CHOICES.filter((c) => c.value > 0).map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
+            {RETENTION_CHOICES.map((days) => (
+              <option key={days} value={days}>{t('database.storage_retention.days', { count: days })}</option>
             ))}
           </select>
         </label>
@@ -170,7 +194,7 @@ export function StorageRetentionCard() {
             onClick={runEstimate}
             disabled={running}
           >
-            Estimate savings
+            {t('database.storage_retention.estimate_savings')}
           </button>
           <button
             type="button"
@@ -178,7 +202,7 @@ export function StorageRetentionCard() {
             onClick={runPass}
             disabled={running}
           >
-            {running ? 'Reclaiming…' : 'Discard older tool output'}
+            {running ? t('database.storage_retention.reclaiming') : t('database.storage_retention.discard_older_output')}
           </button>
         </div>
 
@@ -189,21 +213,25 @@ export function StorageRetentionCard() {
           <div className="text-xs text-[var(--nim-text-muted)] retention-estimate">
             {estimate.estimatedBytesSaved > 0 ? (
               <>
-                About {formatBytes(estimate.estimatedBytesSaved)} across{' '}
-                {estimate.candidateRows.toLocaleString()} messages.
+                {t('database.storage_retention.estimated_savings', {
+                  bytes: formatBytes(estimate.estimatedBytesSaved),
+                  count: estimate.candidateRows.toLocaleString(),
+                })}
               </>
             ) : (
-              <>No reclaimable tool output found in the sample.</>
+              <>{t('database.storage_retention.no_reclaimable_output')}</>
             )}{' '}
             <span className="opacity-75">
-              Sampled {estimate.sampledRows.toLocaleString()} of{' '}
-              {estimate.candidateRows.toLocaleString()} candidate messages
+              {t('database.storage_retention.sampled_candidates', {
+                sampled: estimate.sampledRows.toLocaleString(),
+                count: estimate.candidateRows.toLocaleString(),
+              })}
               {estimate.probesTaken > 0
-                ? ` from ${estimate.probesTaken.toLocaleString()} points in the table`
+                ? ` ${t('database.storage_retention.from_sample_points', { count: estimate.probesTaken.toLocaleString() })}`
                 : ''}
               .
             </span>
-            {estimate.note && (
+            {estimateNoteText && (
               <div
                 className={
                   estimate.lowConfidence
@@ -211,7 +239,7 @@ export function StorageRetentionCard() {
                     : 'mt-1 retention-estimate-note'
                 }
               >
-                {estimate.note}
+                {estimateNoteText}
               </div>
             )}
           </div>
@@ -219,21 +247,23 @@ export function StorageRetentionCard() {
 
         {result && (
           <div className="text-xs text-[var(--nim-text-muted)]">
-            Reclaimed {formatBytes(result.bytesSaved)} from{' '}
-            {result.rewritten.toLocaleString()} of {result.scanned.toLocaleString()} messages
-            {result.stoppedEarly ? ' (stopped early; run again to continue)' : ''}. Run VACUUM
-            above to return the freed pages to disk.
+            {t('database.storage_retention.reclaimed_result', {
+              bytes: formatBytes(result.bytesSaved),
+              rewritten: result.rewritten.toLocaleString(),
+              scanned: result.scanned.toLocaleString(),
+            })}
+            {result.stoppedEarly ? ` (${t('database.storage_retention.stopped_early')})` : ''}. {t('database.storage_retention.vacuum_hint')}
           </div>
         )}
 
         <hr className="border-[var(--nim-border)]" />
 
         <div className="text-xs text-[var(--nim-text-muted)]">
-          Each backup is a full copy of the database, so keeping more multiplies disk usage.
+          {t('database.storage_retention.backup_copy_hint')}
         </div>
 
         <label className="flex items-center justify-between gap-3">
-          <span className="text-xs">Backup copies kept</span>
+          <span className="text-xs">{t('database.storage_retention.backup_copies_kept')}</span>
           <select
             className={selectClass}
             value={settings?.backupCopiesKept ?? 2}
@@ -246,20 +276,20 @@ export function StorageRetentionCard() {
         </label>
 
         <label className="flex items-center justify-between gap-3">
-          <span className="text-xs">Back up</span>
+          <span className="text-xs">{t('database.storage_retention.back_up')}</span>
           <select
             className={selectClass}
             value={settings?.backupIntervalHours ?? 12}
             onChange={(e) => void patch({ backupIntervalHours: Number(e.target.value) })}
           >
             {INTERVAL_CHOICES.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
+              <option key={c.value} value={c.value}>{t(`database.storage_retention.${c.key}`, { count: c.count })}</option>
             ))}
           </select>
         </label>
 
         <div className="text-xs text-[var(--nim-text-muted)]">
-          Backup cadence changes take effect on the next restart.
+          {t('database.storage_retention.restart_hint')}
         </div>
       </div>
 

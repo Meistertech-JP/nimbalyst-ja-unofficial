@@ -14,6 +14,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import { $getNodeByKey, type NodeKey } from 'lexical';
@@ -22,9 +23,7 @@ import { useBlockActions } from '../DraggableBlockPlugin/useBlockActions';
 import { $isActionButtonNode } from './ActionButtonNodeCore';
 import {
   getActionButtonHost,
-  NEW_ITEM_UNAVAILABLE_REASON,
   pagePathOf,
-  SESSION_UNAVAILABLE_REASON,
   type ActionButtonHost,
   type SessionLaunch,
 } from './actionButtonHost';
@@ -56,6 +55,7 @@ const primaryButton = 'action-button-primary cursor-pointer rounded-md border-no
 const secondaryButton = 'cursor-pointer rounded-md border border-nim bg-transparent px-3 py-1.5 text-sm text-nim hover:bg-nim-hover';
 
 function SourceEditor({ source, onSave, onClose }: { source: string; onSave: (text: string) => void; onClose: () => void }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [text, setText] = useState(source);
   const baseline = useRef(source);
   const [conflict, setConflict] = useState(false);
@@ -78,9 +78,9 @@ function SourceEditor({ source, onSave, onClose }: { source: string; onSave: (te
     <div className="mt-2">
       {conflict ? (
         <div role="alert" className="action-button-conflict mb-1 flex items-center gap-3 rounded border border-nim bg-nim-tertiary px-2 py-1 text-xs text-nim-warning">
-          <span>This button changed while you were editing it.</span>
-          <button type="button" className={`ml-auto ${linkButton}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { onSave(text); onClose(); }}>Keep mine</button>
-          <button type="button" className={linkButton} onMouseDown={(e) => e.preventDefault()} onClick={onClose}>Use theirs</button>
+          <span>{t('action_button.edit_conflict')}</span>
+          <button type="button" className={`ml-auto ${linkButton}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { onSave(text); onClose(); }}>{t('action_button.keep_mine')}</button>
+          <button type="button" className={linkButton} onMouseDown={(e) => e.preventDefault()} onClick={onClose}>{t('action_button.use_theirs')}</button>
         </div>
       ) : null}
       <textarea
@@ -107,6 +107,7 @@ type Review =
   | { status: 'failed' };
 
 function PromptPreview({ prompt, escaped }: { prompt: string; escaped: boolean }): JSX.Element {
+  const { t } = useTranslation('editor');
   const lines = prompt.split('\n').length;
   return (
     <>
@@ -114,8 +115,8 @@ function PromptPreview({ prompt, escaped }: { prompt: string; escaped: boolean }
         {escaped ? escapeHiddenCharacters(prompt) : prompt}
       </pre>
       <div className="mt-0.5 text-[11px] text-nim-faint" data-testid="action-button-review-length">
-        {lines} {lines === 1 ? 'line' : 'lines'}, {prompt.length} characters
-        {lines > PREVIEW_LINES ? <span className="text-nim-warning">{` -- ${lines - PREVIEW_LINES} more lines below; scroll the box to read them all`}</span> : null}
+        {t('action_button.prompt_length', { count: lines, characters: prompt.length })}
+        {lines > PREVIEW_LINES ? <span className="text-nim-warning">{t('action_button.more_prompt_lines', { count: lines - PREVIEW_LINES })}</span> : null}
       </div>
     </>
   );
@@ -127,38 +128,39 @@ function SessionReview({ review, running, onStart, onCancel }: {
   onStart: () => void;
   onCancel: () => void;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   return (
     <div className="action-button-review mt-2 rounded border border-nim bg-nim-tertiary p-2 text-sm" data-testid="action-button-review">
       {review.status === 'hidden' ? (
         <>
           <div role="alert" className="font-semibold text-nim-error" data-testid="action-button-hidden">
-            This prompt contains {review.count} hidden {review.count === 1 ? 'character' : 'characters'} and cannot be run.
+            {t('action_button.hidden_characters', { count: review.count })}
           </div>
           <div className="mt-0.5 text-xs text-nim-muted">
-            Invisible characters can carry instructions you cannot read. They are shown escaped below; remove them from the button to run it.
+            {t('action_button.hidden_characters_help')}
           </div>
           <PromptPreview prompt={review.prompt} escaped />
         </>
       ) : (
         <>
-          <div className="font-semibold text-nim">Start an agent session with this prompt?</div>
+          <div className="font-semibold text-nim">{t('action_button.confirm_session_title')}</div>
           <div className="mt-0.5 text-xs text-nim-muted">
-            It runs as you, with this page as context. Anyone who can edit the page can change this prompt, so read it first.
+            {t('action_button.confirm_session_help')}
           </div>
-          {review.status === 'resolving' ? <div className="mt-2 text-xs text-nim-muted">Checking the model...</div> : null}
+          {review.status === 'resolving' ? <div className="mt-2 text-xs text-nim-muted">{t('action_button.checking_model')}</div> : null}
           {review.status === 'ready' ? (
             <>
               <PromptPreview prompt={review.launch.prompt} escaped={false} />
               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
-                <dt className="text-nim-muted">Model</dt>
+                <dt className="text-nim-muted">{t('action_button.model')}</dt>
                 <dd className="m-0 text-nim select-text" data-testid="action-button-review-model">
                   {review.launch.modelName} <span className="font-mono text-nim-faint">({review.launch.model})</span>
-                  {review.launch.usesDefaultModel ? <span className="text-nim-muted"> -- your default model</span> : null}
+                  {review.launch.usesDefaultModel ? <span className="text-nim-muted"> — {t('action_button.default_model')}</span> : null}
                 </dd>
-                <dt className="text-nim-muted">Effort</dt>
+                <dt className="text-nim-muted">{t('action_button.effort')}</dt>
                 <dd className="m-0 font-mono text-nim select-text" data-testid="action-button-review-effort">
                   {review.launch.effort}
-                  {review.launch.effortClamped ? <span className="font-sans text-nim-warning">{` -- lowered from ${review.launch.requestedEffort}, the highest this model supports is ${review.launch.effort}`}</span> : null}
+                  {review.launch.effortClamped ? <span className="font-sans text-nim-warning">{t('action_button.effort_lowered', { requested: review.launch.requestedEffort, supported: review.launch.effort })}</span> : null}
                 </dd>
               </dl>
             </>
@@ -168,10 +170,10 @@ function SessionReview({ review, running, onStart, onCancel }: {
       <div className="mt-2 flex gap-2">
         {review.status === 'ready' ? (
           <button type="button" className={primaryButton} disabled={running} onClick={onStart} data-testid="action-button-confirm">
-            {running ? 'Starting...' : 'Start session'}
+            {running ? t('action_button.starting') : t('action_button.start_session')}
           </button>
         ) : null}
-        <button type="button" className={secondaryButton} disabled={running} onClick={onCancel} data-testid="action-button-cancel">Cancel</button>
+        <button type="button" className={secondaryButton} disabled={running} onClick={onCancel} data-testid="action-button-cancel">{t('common:cancel')}</button>
       </div>
     </div>
   );
@@ -183,6 +185,7 @@ function NewItemTitle({ action, running, onCreate, onCancel }: {
   onCreate: (title: string, newTab: boolean) => void;
   onCancel: () => void;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [title, setTitle] = useState(action.title ?? '');
   const create = (newTab: boolean) => { if (title.trim()) onCreate(title.trim(), newTab); };
   return (
@@ -190,7 +193,7 @@ function NewItemTitle({ action, running, onCreate, onCancel }: {
       <input
         className="min-w-0 flex-1 rounded border border-nim bg-nim px-2 py-1 text-sm text-nim focus:border-[var(--nim-border-focus)] focus:outline-none disabled:opacity-60"
         value={title}
-        placeholder={`Title of the new ${action.type}`}
+        placeholder={t('action_button.new_item_title', { type: action.type })}
         autoFocus
         disabled={running}
         onChange={(event) => setTitle(event.target.value)}
@@ -202,15 +205,31 @@ function NewItemTitle({ action, running, onCreate, onCancel }: {
         data-testid="action-button-title"
       />
       <button type="button" className={primaryButton} disabled={running || !title.trim()} onClick={(event) => create(event.metaKey || event.ctrlKey)} data-testid="action-button-create">
-        {running ? 'Creating...' : 'Create'}
+        {running ? t('action_button.creating') : t('common:create')}
       </button>
-      <button type="button" className={secondaryButton} disabled={running} onClick={onCancel}>Cancel</button>
+      <button type="button" className={secondaryButton} disabled={running} onClick={onCancel}>{t('common:cancel')}</button>
     </div>
   );
 }
 
 export function ActionButtonView({ kind, source, editable, host, onSaveSource, getPagePath, readTemplate = resolveTemplateBody, editRequest = 0 }: ActionButtonViewProps): JSX.Element {
+  const { t } = useTranslation('editor');
   const parsed = useMemo(() => (kind === 'session' ? parseSessionAction(source) : parseNewItemAction(source)), [kind, source]);
+  const parsedError = !parsed.ok
+    ? parsed.error.startsWith('Not valid YAML')
+      ? t('action_button.invalid_yaml')
+      : parsed.error === 'Expected "key: value" lines.'
+        ? t('action_button.invalid_mapping')
+        : parsed.error === 'Add a "prompt:" for the session to run.'
+          ? t('action_button.missing_prompt')
+          : parsed.error === 'Add a "type:" naming the page type to create.'
+            ? t('action_button.missing_type')
+            : /^"([^"]+)" must be text\.$/.test(parsed.error)
+              ? t('action_button.not_text', { key: parsed.error.match(/^"([^"]+)"/)?.[1] })
+              : parsed.error.startsWith('"effort" must be one of ')
+                ? t('action_button.invalid_effort', { values: parsed.error.slice('"effort" must be one of '.length).replace(/\.$/, '') })
+                : parsed.error
+    : null;
   /** The source the open review or title step was opened against. */
   const [openedFor, setOpenedFor] = useState<string | null>(null);
   const [review, setReview] = useState<Review | null>(null);
@@ -231,12 +250,12 @@ export function ActionButtonView({ kind, source, editable, host, onSaveSource, g
     if (openedFor !== null && openedFor !== source && !running) {
       setOpenedFor(null);
       setReview(null);
-      setNotice('This button changed while it was open. Review it again before running it.');
+      setNotice(t('action_button.changed_while_open'));
     }
-  }, [source, openedFor, running]);
+  }, [source, openedFor, running, t]);
 
   const available = kind === 'session' ? !!(host?.resolveSession && host.startSession) : !!host?.createItem;
-  const unavailable = available ? null : kind === 'session' ? SESSION_UNAVAILABLE_REASON : NEW_ITEM_UNAVAILABLE_REASON;
+  const unavailable = available ? null : kind === 'session' ? t('action_button.session_unavailable') : t('action_button.new_item_unavailable');
   const close = () => {
     setOpenedFor(null);
     setReview(null);
@@ -318,20 +337,20 @@ export function ActionButtonView({ kind, source, editable, host, onSaveSource, g
           <span className="min-w-0 flex-1 truncate text-xs text-nim-muted">
             {unavailable ?? (kind === 'session'
               ? escapeHiddenCharacters((parsed.value as SessionAction).prompt.split('\n')[0])
-              : `Creates a ${(parsed.value as NewItemAction).type} page under this page`)}
+              : t('action_button.creates_page', { type: (parsed.value as NewItemAction).type }))}
           </span>
           {editable ? (
             <button type="button" className={linkButton} onClick={() => setEditing(!editing)} data-testid="action-button-edit">
-              {editing ? 'Done' : 'Edit'}
+              {editing ? t('action_button.done') : t('action_button.edit')}
             </button>
           ) : null}
         </div>
       ) : (
         <div className="flex items-center gap-2">
           <div role="alert" className="action-button-error flex-1 rounded border border-nim bg-nim-tertiary px-3 py-1 font-mono text-xs text-nim-error select-text" data-testid="action-button-error">
-            {parsed.error}
+            {parsedError}
           </div>
-          {editable ? <button type="button" className={linkButton} onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit'}</button> : null}
+          {editable ? <button type="button" className={linkButton} onClick={() => setEditing(!editing)}>{editing ? t('action_button.done') : t('action_button.edit')}</button> : null}
         </div>
       )}
       {notice ? <div className="mt-1 text-xs text-nim-warning" role="status" data-testid="action-button-notice">{notice}</div> : null}

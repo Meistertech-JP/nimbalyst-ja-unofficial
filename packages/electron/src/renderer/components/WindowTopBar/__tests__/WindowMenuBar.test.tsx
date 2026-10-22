@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { Provider, createStore } from 'jotai';
 import { WindowMenuBar } from '../WindowMenuBar';
 import { windowMenuBarAtom } from '../../../store/atoms/windowMenu';
@@ -49,13 +51,23 @@ const MENU_BAR: SerializedMenuBar = {
   ],
 };
 
-function renderMenuBar(menuBar: SerializedMenuBar = MENU_BAR) {
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function renderMenuBar(menuBar: SerializedMenuBar = MENU_BAR, i18n = englishI18n) {
   const store = createStore();
   store.set(windowMenuBarAtom, menuBar);
   return render(
-    <Provider store={store}>
-      <WindowMenuBar />
-    </Provider>,
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}>
+        <WindowMenuBar />
+      </Provider>
+    </I18nextProvider>,
   );
 }
 
@@ -67,6 +79,11 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('WindowMenuBar', () => {
+  it('localizes the navigation accessibility label', () => {
+    renderMenuBar(MENU_BAR, japaneseI18n);
+    expect(screen.getByRole('navigation', { name: 'アプリケーションメニュー' })).toBeTruthy();
+  });
+
   it('renders nothing when the model is empty', () => {
     renderMenuBar(EMPTY_MENU_BAR);
     expect(screen.queryByTestId('window-menu-bar')).toBeNull();
@@ -85,6 +102,17 @@ describe('WindowMenuBar', () => {
     expect(screen.getByTestId('window-menu-top-0').textContent).toBe('File');
     expect(screen.getByTestId('window-menu-top-1').textContent).toBe('View');
     expect(screen.queryByTestId('window-menu-dropdown-0')).toBeNull();
+  });
+
+  it('localizes the default Help menu label', () => {
+    const menuBar: SerializedMenuBar = {
+      ...MENU_BAR,
+      items: [...MENU_BAR.items, { id: '2', label: 'Help', type: 'submenu', enabled: true, submenu: [] }],
+    };
+
+    renderMenuBar(menuBar, japaneseI18n);
+
+    expect(screen.getByTestId('window-menu-top-2').textContent).toBe('ヘルプ');
   });
 
   it('opens a menu on click and shows labels, accelerators, and separators', () => {

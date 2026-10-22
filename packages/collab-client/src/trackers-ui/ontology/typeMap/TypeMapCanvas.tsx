@@ -5,6 +5,7 @@
  * the svg's `data-zoom`.
  */
 import { memo, useId } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TypeMapRelationship, TypeMapType } from '../ontologyLabelMap';
 import { DETAIL_ROWS, DETAIL_ROW_H as ROW_H, detailRows, expandedHeight, isMajor, pairStrokeWidth, type MapLayout, type MapPair, type PairStyle } from './typeMapLayout';
 
@@ -32,6 +33,7 @@ export interface TypeMapCanvasProps {
 }
 
 export const TypeMapCanvas = memo(function TypeMapCanvas({ layout, types, pairs, relationships, zoneTone, maxCount, lit, selection, onSelect, onHover }: TypeMapCanvasProps) {
+  const { t } = useTranslation('tracker');
   const uid = useId().replace(/:/g, '');
   const marker = (style: PairStyle) => `type-map-arrow-${uid}-${style}`;
   const focus = lit.size > 0;
@@ -95,7 +97,12 @@ export const TypeMapCanvas = memo(function TypeMapCanvas({ layout, types, pairs,
               onMouseEnter={() => onHover({ kind: 'relationship', id: relationship.id })}
               onMouseLeave={() => onHover(null)}
             >
-              <title>{`${types.get(relationship.from)?.plural ?? relationship.from} ${relationship.verb} ${types.get(relationship.to)?.plural ?? relationship.to}: ${relationship.statements} statements`}</title>
+              <title>{t('type_map.relationship_title', {
+                from: types.get(relationship.from)?.plural ?? relationship.from,
+                verb: relationship.verb,
+                to: types.get(relationship.to)?.plural ?? relationship.to,
+                count: relationship.statements,
+              })}</title>
               <rect width={pill.w} height={pill.h} rx={pill.h / 2} />
               <text className="type-map-pill-verb" x={9} y={14}>{relationship.verb}</text>
               {relationship.statements > 0 && <text className="type-map-pill-count" x={pill.w - 9} y={14} textAnchor="end">{relationship.statements}</text>}
@@ -109,7 +116,9 @@ export const TypeMapCanvas = memo(function TypeMapCanvas({ layout, types, pairs,
           if (!type) return null;
           const full = expandedHeight(type);
           const bar = type.count ? Math.max(6, (box.w - 24) * Math.sqrt(type.count / Math.max(maxCount, 1))) : 0;
-          const caption = type.broader.length ? `kind of ${type.broader.join(', ')}` : '';
+          const caption = type.broader.length
+            ? t('type_map.kind_of', { types: type.broader.join(', ') })
+            : '';
           const nameY = caption ? 25 : 32;
           return (
             <g
@@ -126,7 +135,7 @@ export const TypeMapCanvas = memo(function TypeMapCanvas({ layout, types, pairs,
               onMouseEnter={() => onHover({ kind: 'type', id })}
               onMouseLeave={() => onHover(null)}
             >
-              <title>{`${type.plural}: ${type.count} ${type.count === 1 ? 'page' : 'pages'}${type.declared ? '' : ' (not in the registry)'}`}</title>
+              <title>{t('type_map.node_title', { name: type.plural, count: type.count })}{type.declared ? '' : ` (${t('type_map.not_in_registry')})`}</title>
               <rect className="type-map-node-box type-map-node-compact" width={box.w} height={box.h} rx={10} />
               <rect className="type-map-node-box type-map-node-full" width={box.w} height={full} rx={10} />
               <rect className="type-map-node-badge" x={10} y={(box.h - 24) / 2 - (caption ? 1 : 0)} width={24} height={24} rx={6} />
@@ -148,7 +157,7 @@ export const TypeMapCanvas = memo(function TypeMapCanvas({ layout, types, pairs,
                     </g>
                   );
                 })}
-                {type.properties.length > DETAIL_ROWS && <text x={12} y={box.h + 8 + DETAIL_ROWS * ROW_H + 9}>{`${type.properties.length - DETAIL_ROWS} more in the panel`}</text>}
+                {type.properties.length > DETAIL_ROWS && <text x={12} y={box.h + 8 + DETAIL_ROWS * ROW_H + 9}>{t('type_map.more_in_panel', { count: type.properties.length - DETAIL_ROWS })}</text>}
               </g>}
             </g>
           );

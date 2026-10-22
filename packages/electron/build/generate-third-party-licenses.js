@@ -128,9 +128,12 @@ function getWorkspaceRoots() {
 // install path -> manifest fields) from the installed tree. The hoisted
 // node_modules layout means dependency lookup walks up directories exactly as
 // Node resolves them at runtime. Workspace symlinks are recorded without
-// descending; each packaged workspace is walked from its own root instead.
-function loadInstalledPackages(workspaceRoots) {
+// descending because each workspace is scanned from its own root. Symlinks to
+// installed node_modules packages retain their alias but resolve children from
+// the canonical target, with each target's nested node_modules scanned once.
+function loadInstalledPackages(workspaceRoots, rootDirectory = repoRoot) {
   const packages = {};
+  const scannedPackageDirectories = new Set();
 
   function readManifest(dir) {
     try {
@@ -140,18 +143,25 @@ function loadInstalledPackages(workspaceRoots) {
     }
   }
 
-  function addEntry(key, manifest) {
+  function addEntry(key, manifest, linkTargetKey) {
     packages[key] = {
       version: manifest.version,
       license: typeof manifest.license === 'string' ? manifest.license : undefined,
       dependencies: manifest.dependencies,
       optionalDependencies: manifest.optionalDependencies,
+      ...(linkTargetKey ? { linkTargetKey } : {}),
     };
+  }
+
+  function scanPackageDependencies(key) {
+    if (scannedPackageDirectories.has(key)) return;
+    scannedPackageDirectories.add(key);
+    scanNodeModules(key);
   }
 
   function scanNodeModules(ownerKey) {
     const nodeModulesKey = ownerKey ? `${ownerKey}/node_modules` : 'node_modules';
-    const nodeModulesDir = path.join(repoRoot, nodeModulesKey);
+    const nodeModulesDir = path.join(rootDirectory, nodeModulesKey);
     if (!fs.existsSync(nodeModulesDir)) return;
     for (const entry of fs.readdirSync(nodeModulesDir, { withFileTypes: true })) {
       if (entry.name.startsWith('.')) continue;
@@ -168,24 +178,41 @@ function loadInstalledPackages(workspaceRoots) {
   function scanPackage(key, dirent) {
     if (dirent.isSymbolicLink()) {
       // pnpm links workspace packages, and also links duplicate nested copies
-      // to one another (packages/a/node_modules/x -> ../../b/node_modules/x).
-      // The second kind is a real dependency; its target is scanned on its own.
-      const realDir = fs.realpathSync(path.join(repoRoot, key));
+      // to another install location. Keep the alias entry for the consumer, but
+      // resolve its dependencies from the real install path, as Node does.
+      const realDir = fs.realpathSync(path.join(rootDirectory, key));
       const manifest = realDir.includes(`${path.sep}node_modules${path.sep}`) ? readManifest(realDir) : null;
-      if (manifest) addEntry(key, manifest);
-      else packages[key] = { link: true };
+      if (manifest) {
+        const relativeTarget = path.relative(rootDirectory, realDir);
+        const isInsideRoot = relativeTarget !== ''
+          && relativeTarget !== '..'
+          && !relativeTarget.startsWith(`..${path.sep}`)
+          && !path.isAbsolute(relativeTarget);
+        const targetKey = isInsideRoot ? relativeTarget.split(path.sep).join('/') : null;
+        addEntry(key, manifest, targetKey && targetKey !== key ? targetKey : undefined);
+        if (targetKey && targetKey !== key) {
+          // pnpm virtual-store targets may not have been found by the top-level
+          // node_modules scan; registering the canonical path makes both the
+          // manifest and its nested install paths resolvable without rescanning
+          // a canonical directory already visited through another alias.
+          addEntry(targetKey, manifest);
+          scanPackageDependencies(targetKey);
+        }
+      } else {
+        packages[key] = { link: true };
+      }
       return;
     }
     if (!dirent.isDirectory()) return;
-    const manifest = readManifest(path.join(repoRoot, key));
+    const manifest = readManifest(path.join(rootDirectory, key));
     if (!manifest) return;
     addEntry(key, manifest);
-    scanNodeModules(key);
+    scanPackageDependencies(key);
   }
 
   scanNodeModules('');
   for (const rootKey of workspaceRoots) {
-    const manifest = readManifest(path.join(repoRoot, rootKey));
+    const manifest = readManifest(path.join(rootDirectory, rootKey));
     if (!manifest) continue;
     addEntry(rootKey, manifest);
     scanNodeModules(rootKey);
@@ -242,6 +269,11 @@ function walkDependencyTree(
 
 function resolveDependencyKey(fromKey, dependencyName, packages) {
   let current = fromKey;
+  const followedLinks = new Set();
+  while (packages[current]?.linkTargetKey && !followedLinks.has(current)) {
+    followedLinks.add(current);
+    current = packages[current].linkTargetKey;
+  }
   while (true) {
     const candidate = `${current ? `${current}/` : ''}node_modules/${dependencyName}`;
     if (packages[candidate]) return candidate;
@@ -614,4 +646,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { walkDependencyTree };
+module.exports = { loadInstalledPackages, walkDependencyTree };

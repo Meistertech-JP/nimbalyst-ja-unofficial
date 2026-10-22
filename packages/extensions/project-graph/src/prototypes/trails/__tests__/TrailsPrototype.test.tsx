@@ -1,8 +1,16 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import type { ReactNode } from 'react';
 import type { PrototypeViewProps } from '../../contracts';
 import { TrailsPrototype } from '../TrailsPrototype';
 import { makeLargeModel, makeModel, RANGE } from './fixture';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
 
 function renderTrails(overrides: Partial<PrototypeViewProps> = {}) {
   const props: PrototypeViewProps = {
@@ -17,17 +25,22 @@ function renderTrails(overrides: Partial<PrototypeViewProps> = {}) {
     onRenameArea: vi.fn(),
     ...overrides,
   };
-  const utils = render(<TrailsPrototype {...props} />);
+  const withEnglishUi = (ui: ReactNode) => (
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      {ui}
+    </UiLanguageProvider>
+  );
+  const utils = render(withEnglishUi(<TrailsPrototype {...props} />));
   const focusCard = () => utils.container.querySelector('.pg-trails-focus') as HTMLElement;
   const focusTitle = () => within(focusCard()).getByRole('heading', { level: 2 }).textContent;
-  return { ...utils, props, focusTitle };
+  return { ...utils, props, focusTitle, withEnglishUi };
 }
 
 describe('TrailsPrototype', () => {
   it('starts a trail from the keyboard and publishes the selection to the shell', () => {
     const { props, focusTitle } = renderTrails();
 
-    const list = screen.getByRole('listbox', { name: 'Starting artifacts' });
+    const list = screen.getByRole('listbox', { name: 'Starting records' });
     // Records with evidence in the window lead: the session, then the commit.
     fireEvent.keyDown(list, { key: 'ArrowDown' });
     fireEvent.keyDown(list, { key: 'Enter' });
@@ -39,7 +52,7 @@ describe('TrailsPrototype', () => {
   it('lets a modified arrow through to the application instead of moving the list', () => {
     const { props, focusTitle } = renderTrails();
 
-    const list = screen.getByRole('listbox', { name: 'Starting artifacts' });
+    const list = screen.getByRole('listbox', { name: 'Starting records' });
     // fireEvent returns false when the handler called preventDefault.
     expect(fireEvent.keyDown(list, { key: 'ArrowDown', metaKey: true })).toBe(true);
     expect(fireEvent.keyDown(list, { key: 'ArrowDown', altKey: true })).toBe(true);
@@ -51,18 +64,22 @@ describe('TrailsPrototype', () => {
     expect(props.onSelectNode).toHaveBeenCalledWith('session:s1');
     expect(focusTitle()).toBe('Body cache repair session');
 
-    const search = screen.getByLabelText('Search starting artifacts');
+    const search = screen.getByLabelText('Search starting records');
     expect(fireEvent.keyDown(search, { key: 'ArrowDown', metaKey: true })).toBe(true);
   });
 
   it('filters starting artifacts by name so an unlinked record stays reachable', () => {
     renderTrails();
 
-    fireEvent.change(screen.getByLabelText('Search starting artifacts'), { target: { value: 'use one' } });
+    fireEvent.change(screen.getByLabelText('Search starting records'), { target: { value: 'use one' } });
 
     expect(screen.getByRole('listbox').textContent).toContain('Use one write coordinator');
-    expect(screen.getByRole('listbox').textContent).toContain('no recorded connections');
-    expect(screen.getByText(/1 match of 7 records/)).toBeTruthy();
+    expect(screen.getByRole('listbox').textContent).toContain('No recorded connections');
+    const resultSummary = [...document.querySelectorAll('.pg-trails-start .pg-trails-note')]
+      .map((element) => element.textContent ?? '')
+      .find((text) => text.includes('matches'));
+    expect(resultSummary).toContain('1 of 1 matches');
+    expect(resultSummary).toContain('7 in scope');
   });
 
   it('names each relation, states its basis, and separates path containment from explicit links', () => {
@@ -73,12 +90,12 @@ describe('TrailsPrototype', () => {
     expect(lanes.some(text => text?.includes('→ part of'))).toBe(true);
     expect(screen.getByText(/Where a file is filed, not what it is about/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: /Path containment shown/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Containment relations shown/ }));
 
     expect(container.querySelectorAll('.pg-trails-lane')).toHaveLength(2);
-    expect(screen.getByRole('button', { name: /Path containment hidden \(1\)/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Show 1 hidden containment relations/ })).toBeTruthy();
     // The census keeps reporting every resolved connection while a lane is hidden.
-    expect(screen.getByText(/2 explicit · 1 path containment/)).toBeTruthy();
+    expect(screen.getByText(/2 explicit · 1 derived/)).toBeTruthy();
   });
 
   it('inspects a connection, walks to the second hop, and comes back', () => {
@@ -91,43 +108,43 @@ describe('TrailsPrototype', () => {
     // Second hop, with the record we are standing on left out.
     expect(within(inspector).getByRole('button', { name: /edited in.*electron/s })).toBeTruthy();
 
-    fireEvent.click(within(inspector).getByRole('button', { name: 'Recenter trail' }));
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Center trail on this record' }));
 
     expect(props.onSelectNode).toHaveBeenLastCalledWith('session:s1');
     expect(focusTitle()).toBe('Body cache repair session');
 
-    fireEvent.click(screen.getByRole('button', { name: '← Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(focusTitle()).toBe('NIM-1 tracker body lost on reload');
     expect(props.onSelectNode).toHaveBeenLastCalledWith('tracker:bug1');
   });
 
   it('captions dates from recorded events, never from an inferred node.createdAt', () => {
-    const { container, rerender, props } = renderTrails({ selectedNodeId: 'session:s1' });
+    const { container, rerender, props, withEnglishUi } = renderTrails({ selectedNodeId: 'session:s1' });
 
     const focus = container.querySelector('.pg-trails-focus') as HTMLElement;
     expect(within(focus).getByText(/Creation date not recorded/)).toBeTruthy();
     expect(focus.textContent).not.toMatch(/Created \w+ \d/);
     expect(focus.textContent).toContain('Session activity · last observed');
 
-    rerender(<TrailsPrototype {...props} selectedNodeId="plan:tracker-body" />);
+    rerender(withEnglishUi(<TrailsPrototype {...props} selectedNodeId="plan:tracker-body" />));
 
     const planFocus = container.querySelector('.pg-trails-focus') as HTMLElement;
-    expect(within(planFocus).getByText(/Created \w+ \d+, \d+/)).toBeTruthy();
+    expect(within(planFocus).getByText(/Created \w+ \d{1,2}, 2026/)).toBeTruthy();
   });
 
   it('reports an unlinked record as an absence of links, not as an unrelated one', () => {
     renderTrails({ selectedNodeId: 'tracker:lonely' });
 
-    expect(screen.getByText(/a record carrying a link to it may simply not have been loaded/)).toBeTruthy();
-    expect(screen.getByText(/no area membership, so there is no grouping/)).toBeTruthy();
-    expect(screen.getByText(/is present in the loaded snapshot/)).toBeTruthy();
+    expect(screen.getByText(/No connection to this artifact is present in the loaded snapshot/)).toBeTruthy();
+    expect(screen.getByText(/No area membership is recorded for this item/)).toBeTruthy();
+    expect(screen.getByText(/a link may exist in a record that was not loaded/)).toBeTruthy();
   });
 
   it('presents area membership as a grouping rather than a recorded relation', () => {
     const { props } = renderTrails({ selectedNodeId: 'tracker:bug1' });
 
-    expect(screen.getByText(/a grouping, not a recorded relation/)).toBeTruthy();
+    expect(screen.getByText('Area membership')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Delivery' }));
 
     expect(props.onSelectArea).toHaveBeenCalledWith('area:delivery');
@@ -148,12 +165,12 @@ describe('TrailsPrototype', () => {
   });
 
   it('follows the shell when it selects a different node', () => {
-    const { rerender, props, focusTitle } = renderTrails({ selectedNodeId: 'tracker:bug1' });
+    const { rerender, props, focusTitle, withEnglishUi } = renderTrails({ selectedNodeId: 'tracker:bug1' });
 
-    rerender(<TrailsPrototype {...props} selectedNodeId="commit:c1" />);
+    rerender(withEnglishUi(<TrailsPrototype {...props} selectedNodeId="commit:c1" />));
 
     expect(focusTitle()).toBe('fix: persist tracker body');
-    expect(screen.getByRole('button', { name: '← Back' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Back' })).toHaveProperty('disabled', true);
   });
 
   it('shows a dangling link as an unresolved endpoint and offers to resolve it', () => {
@@ -168,8 +185,7 @@ describe('TrailsPrototype', () => {
     // Resolve opens the source drawer whether the record was never indexed or
     // is only filtered out of this view, so the affordance does not promise a
     // load and the copy does not claim which of the two it is.
-    expect(unresolved.textContent).toMatch(/not in this view/i);
-    expect(unresolved.textContent).not.toMatch(/did not load|was not loaded/i);
+    expect(unresolved.textContent).toMatch(/referenced records are unavailable in the loaded sources/i);
 
     fireEvent.click(within(unresolved).getByRole('button', { name: /Open this record/ }));
     expect(onResolveNode).toHaveBeenCalledWith('issue:999');

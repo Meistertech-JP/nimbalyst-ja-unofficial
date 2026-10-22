@@ -81,11 +81,13 @@
     "lexical": "^0.44.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.9",
     "y-protocols": "^1.0.6",
     "yjs": ">=13.5.42"
   },
   "devDependencies": {
     "@nimbalyst/collab-client": "workspace:*",
+    "@nimbalyst/i18n": "workspace:*",
     "@nimbalyst/runtime": "workspace:*",
     "@revolist/react-datagrid": "4.21.4",
     "@revolist/revogrid": "4.21.4",
@@ -97,6 +99,7 @@
     "jsdom": "^26.1.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.9",
     "typescript": "^6.0.3",
     "vite": "^7.1.12",
     "vitest": "4.1.11",

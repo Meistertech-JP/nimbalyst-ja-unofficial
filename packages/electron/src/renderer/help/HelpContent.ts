@@ -443,6 +443,27 @@ export function hasHelpContent(testId: string): boolean {
   return getExtensionPanelHelpContent(testId) !== undefined;
 }
 
+type HelpTranslator = (key: string, options?: { defaultValue?: string }) => string;
+
+/**
+ * Resolve help copy when it is displayed.
+ * Static registry text stays English so module initialization does not pin a locale.
+ */
+export function localizeHelpEntry(
+  testId: string,
+  entry: HelpEntry,
+  translate: HelpTranslator,
+): HelpEntry {
+  if (typeof entry.title !== 'string' || typeof entry.body !== 'string') {
+    return entry;
+  }
+  return {
+    ...entry,
+    title: translate(`help.${testId}.title`, { defaultValue: entry.title }),
+    body: translate(`help.${testId}.body`, { defaultValue: entry.body }),
+  };
+}
+
 /**
  * Dynamically look up help content from extension panel tooltips.
  * Extension gutter buttons use the testId pattern:

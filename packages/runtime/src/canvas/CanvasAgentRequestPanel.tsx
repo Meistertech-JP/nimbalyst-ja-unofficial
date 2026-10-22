@@ -10,6 +10,7 @@
  */
 import type { ReactElement } from 'react';
 import { Panel } from '@xyflow/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { CanvasAgentThreadRequest } from './canvasComments';
 
@@ -24,6 +25,8 @@ export function CanvasAgentRequestPanel({
   onConfirm,
   onDismiss,
 }: CanvasAgentRequestPanelProps): ReactElement {
+  const { t } = useTranslation('editor');
+
   return (
     <Panel
       position="bottom-center"
@@ -31,16 +34,14 @@ export function CanvasAgentRequestPanel({
       data-canvas-agent-request={request.commentId}
     >
       <div className="canvas-agent-request__title">
-        Start a session for this comment?
+        {t('canvas.agent_request.title')}
       </div>
       <div className="canvas-agent-request__where">{request.anchorLabel}</div>
       <blockquote className="canvas-agent-request__body select-text">
         {request.body.trim()}
       </blockquote>
       <p className="canvas-agent-request__warning">
-        This comment came from the shared board and nothing has verified who
-        wrote it. A session runs here, in this workspace, with your permissions.
-        Start it only if you recognise the request.
+        {t('canvas.agent_request.warning')}
       </p>
       <div className="canvas-agent-request__actions">
         <button
@@ -48,14 +49,14 @@ export function CanvasAgentRequestPanel({
           className="canvas-agent-request__button canvas-agent-request__button--dismiss"
           onClick={() => onDismiss(request.commentId)}
         >
-          Not now
+          {t('canvas.agent_request.dismiss')}
         </button>
         <button
           type="button"
           className="canvas-agent-request__button canvas-agent-request__button--confirm"
           onClick={() => onConfirm(request.commentId)}
         >
-          Start session
+          {t('canvas.agent_request.start')}
         </button>
       </div>
     </Panel>

@@ -19,6 +19,7 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { createPortal } from 'react-dom';
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -117,6 +118,7 @@ export default function CommentsPlugin({
   config: CommentsConfig;
   anchorElem: HTMLElement;
 }): JSX.Element | null {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   // The comments toggle + side panel dock to the right of the editor pane
   // (the `.editor-container`, the anchor's positioned parent) rather than
@@ -595,8 +597,8 @@ export default function CommentsPlugin({
             type="button"
             className="nim-comments-toggle"
             data-testid="comments-toggle"
-            title="Comments"
-            aria-label="Toggle comments"
+            title={t('comments.toggle')}
+            aria-label={t('comments.toggle')}
             onClick={() => setPanelOpen(true)}
           >
             <span aria-hidden="true" className="material-symbols-outlined">

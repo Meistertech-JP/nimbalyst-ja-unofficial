@@ -30,6 +30,7 @@
  */
 
 import { BrowserWindow, dialog } from 'electron';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import {
   TrackerSyncEngine,
   applyLabelDiff,
@@ -932,14 +933,28 @@ export function registerTrackerSyncHandlers(): void {
     }
     const result = await setTrackerIssueKeyPrefix(payload.workspacePath, payload.value);
     if (!result.success) {
+      const fixedError = result.error
+        ?? translateMainDialogLabel(
+          result.suggestedPrefix
+            ? 'main_process.tracker_prefix_unavailable'
+            : 'main_process.tracker_prefix_rejected',
+          result.suggestedPrefix ? 'That prefix is unavailable' : 'The server rejected that prefix.',
+        );
       const detail = result.suggestedPrefix
-        ? `${result.error ?? 'That prefix is unavailable'} Suggested prefix: ${result.suggestedPrefix}.`
-        : result.error ?? 'The server rejected that prefix.';
+        ? `${fixedError} ${translateMainDialogLabel(
+          'main_process.tracker_prefix_suggested',
+          'Suggested prefix: {{prefix}}.',
+          { prefix: result.suggestedPrefix },
+        )}`
+        : fixedError;
       const parent = BrowserWindow.fromWebContents(event.sender);
       const options = {
         type: 'warning',
-        title: 'Issue Key Prefix Unavailable',
-        message: 'That issue-key prefix could not be assigned.',
+        title: translateMainDialogLabel('main_process.tracker_prefix_title', 'Issue Key Prefix Unavailable'),
+        message: translateMainDialogLabel(
+          'main_process.tracker_prefix_message',
+          'That issue-key prefix could not be assigned.',
+        ),
         detail,
       } as const;
       if (parent) await dialog.showMessageBox(parent, options);

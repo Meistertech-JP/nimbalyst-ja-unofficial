@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { GraphNodeTypeSchema, ProjectGraphSnapshot } from '../types';
 import { getTypeSchema } from '../schema';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface MinimapProps {
   snapshot: ProjectGraphSnapshot;
@@ -10,6 +11,7 @@ interface MinimapProps {
 }
 
 export function Minimap({ snapshot, types, viewport, worldBounds }: MinimapProps) {
+  const { t } = useTranslation('extensions');
   const dots = useMemo(() => {
     return snapshot.nodes
       .filter(n => typeof n.x === 'number' && typeof n.y === 'number')
@@ -39,8 +41,8 @@ export function Minimap({ snapshot, types, viewport, worldBounds }: MinimapProps
   return (
     <div className="pg-minimap">
       <div className="pg-minimap-header">
-        <span>Minimap</span>
-        <span>{snapshot.stats.nodeCount} nodes</span>
+        <span>{t('project_graph.ui.minimap')}</span>
+        <span>{t('project_graph.ui.nodes_count', { count: snapshot.stats.nodeCount })}</span>
       </div>
       <div className="pg-minimap-canvas">
         <svg viewBox={`${worldBounds.minX} ${worldBounds.minY} ${w} ${h}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>

@@ -7,6 +7,7 @@ it('retains external source and activity without changing provider or workspace 
     id: 'external', provider: 'openai-codex', workspaceId: '/parent', externalSource: 'openai-codex', externalLastActivityAt: 3,
   });
   expect(sessionListMetadata({ id: 'local', createdAt: 1, updatedAt: 2 }, '/parent').externalSource).toBeUndefined();
+  expect(sessionListMetadata({ id: 'untitled', createdAt: 1, updatedAt: 2 }, '/parent').title).toBe('');
 });
 
 vi.mock('../../index', async () => {

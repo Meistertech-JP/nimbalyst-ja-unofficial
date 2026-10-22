@@ -13,6 +13,7 @@ import {
 } from '@floating-ui/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   resolvePlanStatusDriftPresentation,
   shortSha,
@@ -30,6 +31,7 @@ export function TrackerCardStalenessPopover({
   reference,
   onClose,
 }: TrackerCardStalenessPopoverProps): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   const drift = resolvePlanStatusDriftPresentation(item);
   const floating = useFloating({
     open: true,
@@ -68,8 +70,7 @@ export function TrackerCardStalenessPopover({
       >
         <div className="tracker-card-drift-headline">{drift.headline}</div>
         <div className="tracker-card-drift-note">
-          Nothing has been changed. Read the commits and decide for yourself --
-          a linked session committing is not proof that this plan shipped.
+          {t('board_card_staleness.guidance')}
         </div>
 
         <div className="tracker-card-drift-evidence-label">

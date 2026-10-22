@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, createEvent, fireEvent, render, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, createEvent, fireEvent, render, waitFor } from '@testing-library/react';
+import { createInstance } from 'i18next';
+import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { atom, createStore, Provider } from 'jotai';
+import { resources } from '@nimbalyst/i18n/resources';
 import type { CollabHost } from '@nimbalyst/collab-client/core';
 import {
   projectPagesAsFolders,
@@ -14,6 +17,7 @@ import {
 } from '@nimbalyst/collab-client/docs';
 import { CollabDocsUIProvider } from '../CollabDocsUIProvider';
 import { CollabSidebar } from '../CollabSidebar';
+import { CollabPageDeleteEntry, CollabPageMenuHead } from '../CollabPageMenu';
 import { SharedDocsListView } from '../SharedDocsListView';
 
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
@@ -54,6 +58,15 @@ const documents: SharedDocument[] = [
 // re-render forever if the getter mints a new value each call.
 const documentTypes = [] as const;
 const notUnread = atom(false);
+const testI18n = createInstance();
+const testI18nReady = testI18n.use(initReactI18next).init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'common',
+  interpolation: { escapeValue: false },
+});
 
 function renderDocsUI(children: React.ReactNode) {
   return renderDocsUIWithHost(children);
@@ -120,15 +133,22 @@ function renderDocsUIWithHost(
   } as unknown as CollabDocsSession;
 
   const result = render(
-    <Provider store={createStore()}>
-      <CollabDocsUIProvider session={session}>{children}</CollabDocsUIProvider>
-    </Provider>,
+    <I18nextProvider i18n={testI18n}>
+      <Provider store={createStore()}>
+        <CollabDocsUIProvider session={session}>{children}</CollabDocsUIProvider>
+      </Provider>
+    </I18nextProvider>,
   );
   return { ...result, host, session };
 }
 
-afterEach(() => {
+beforeAll(async () => {
+  await testI18nReady;
+});
+
+afterEach(async () => {
   cleanup();
+  await testI18n.changeLanguage('en');
 });
 
 const found = <T,>(lookup: () => T | null | undefined) => waitFor(() => {
@@ -333,6 +353,53 @@ describe('one page tree', () => {
     const entries = [...document.querySelectorAll('button')].map((button) => button.textContent);
     expect(entries).toEqual(expect.arrayContaining(['New pageinside', 'Set type', 'Rename', 'Move to...', 'Copy link', 'Move to Trash1 child page']));
     expect(document.querySelector<HTMLButtonElement>('.collab-page-set-type')!.disabled).toBe(true);
+  });
+
+  it('localizes page-menu labels and formats one/two child pages without changing actions', async () => {
+    const onNewPageInside = vi.fn();
+    const onSetType = vi.fn();
+    const onRename = vi.fn();
+    const onMoveTo = vi.fn();
+    const onCopyLink = vi.fn();
+    const onDelete = vi.fn();
+    const menu = (childCount: number) => (
+      <I18nextProvider i18n={testI18n}>
+        <>
+          <CollabPageMenuHead
+            onNewPageInside={onNewPageInside}
+            onSetType={onSetType}
+            onRename={onRename}
+            onMoveTo={onMoveTo}
+            onCopyLink={onCopyLink}
+          />
+          <CollabPageDeleteEntry childCount={childCount} onDelete={onDelete} />
+        </>
+      </I18nextProvider>
+    );
+    const view = render(menu(1));
+
+    expect(view.container.querySelector('.collab-page-new-inside')?.textContent).toBe('New pageinside');
+    expect(view.container.querySelector('.collab-page-delete')?.textContent).toBe('Move to Trash1 child page');
+    fireEvent.click(view.container.querySelector('.collab-page-new-inside')!);
+    fireEvent.click(view.container.querySelector('.collab-page-delete')!);
+    fireEvent.click(view.getByRole('button', { name: 'Copy link' }));
+    expect(onNewPageInside).toHaveBeenCalledOnce();
+    expect(onDelete).toHaveBeenCalledOnce();
+    expect(onCopyLink).toHaveBeenCalledOnce();
+
+    view.rerender(menu(2));
+    expect(view.container.querySelector('.collab-page-delete')?.textContent).toBe('Move to Trash2 child pages');
+
+    await act(async () => {
+      await testI18n.changeLanguage('ja');
+    });
+    expect(view.getByRole('button', { name: 'リンクをコピー' })).toBeDefined();
+    expect(view.container.querySelector('.collab-page-delete')?.textContent).toBe('ゴミ箱に移動子ページ2件');
+    fireEvent.click(view.getByRole('button', { name: 'リンクをコピー' }));
+    expect(onCopyLink).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await testI18n.changeLanguage('en');
+    });
   });
 
   it('shows a page that holds pages but was never written as a folder', async () => {

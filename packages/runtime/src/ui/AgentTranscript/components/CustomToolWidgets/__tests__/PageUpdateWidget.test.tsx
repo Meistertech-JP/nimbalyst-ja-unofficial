@@ -8,22 +8,27 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider as JotaiProvider } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { store } from '../../../../../store/store';
 import { setInteractiveWidgetHost } from '../../../../../store/atoms/interactiveWidgetHost';
 import type { InteractiveWidgetHost } from '../InteractiveWidgetHost';
 import { getCustomToolWidget } from '../index';
+import { PageUpdateLine } from '../PageUpdateWidget';
 import { createHumanCitation, formatCitationMarkdown } from '../../../../../core/citationSyntax';
 
 const SESSION = 'session-page-edit';
 
-function renderTool(toolCall: Record<string, unknown>) {
+async function renderTool(toolCall: Record<string, unknown>) {
   const Widget = getCustomToolWidget(String(toolCall.toolName));
   if (!Widget) throw new Error(`no widget for ${String(toolCall.toolName)}`);
-  return render(
-    <JotaiProvider store={store}>
-      <Widget message={{ toolCall } as any} sessionId={SESSION} isExpanded={false} onToggle={() => {}} />
-    </JotaiProvider>,
+  const i18n = await createI18nInstance('en');
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+      <JotaiProvider store={store}>{children}</JotaiProvider>
+    </UiLanguageProvider>
   );
+  return render(<Widget message={{ toolCall } as any} sessionId={SESSION} isExpanded={false} onToggle={() => {}} />, { wrapper: Wrapper });
 }
 
 function installHost(): { openPage: ReturnType<typeof vi.fn> } {
@@ -35,9 +40,32 @@ function installHost(): { openPage: ReturnType<typeof vi.fn> } {
 afterEach(() => setInteractiveWidgetHost(SESSION, null));
 
 describe('page update line', () => {
-  it('shows one line per shared-page edit that opens the page', () => {
+  it('localizes page update status and citation summary in Japanese', async () => {
+    const japaneseI18n = await createI18nInstance('ja');
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="en-US">
+        <JotaiProvider store={store}>{children}</JotaiProvider>
+      </UiLanguageProvider>
+    );
+    const { container } = render(
+      <PageUpdateLine
+        sessionId={SESSION}
+        uri="personal://page/1"
+        title="対象ページ"
+        state="done"
+        editCount={2}
+        cited="回答を引用"
+      />,
+      { wrapper: Wrapper },
+    );
+    expect(container.textContent).toContain('更新しました');
+    expect(container.textContent).toContain('2件の編集');
+    expect(container.textContent).toContain('回答を引用');
+  });
+
+  it('shows one line per shared-page edit that opens the page', async () => {
     const host = installHost();
-    const { container } = renderTool({
+    const { container } = await renderTool({
       toolName: 'mcp__nimbalyst-situational__applyCollabDocEdit',
       status: 'completed',
       arguments: {
@@ -65,7 +93,7 @@ describe('page update line', () => {
     expect(container.textContent).toContain('cited to your answer');
   });
 
-  it('adds the line to a tracker_update that changed the typed page body', () => {
+  it('adds the line to a tracker_update that changed the typed page body', async () => {
     const host = installHost();
     const structured = {
       action: 'updated',
@@ -74,7 +102,7 @@ describe('page update line', () => {
       title: 'TanStack Table',
       changes: { description: { from: 'old', to: 'new body' } },
     };
-    const { container } = renderTool({
+    const { container } = await renderTool({
       toolName: 'mcp__nimbalyst-trackers__tracker_update',
       status: 'completed',
       arguments: { id: 'item-7', description: 'new body' },

@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nimbalyst/i18n": "workspace:*",
     "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {

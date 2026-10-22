@@ -15,6 +15,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type * as Y from 'yjs';
 import { MonacoCodeEditor } from './MonacoCodeEditor';
 import { createMonacoCollabBinding } from './monacoCollabBinding';
@@ -120,6 +121,7 @@ export function MonacoEditor({
   onGetContent: onGetContentProp,
   onDiffChangeCountUpdate,
 }: MonacoEditorProps): React.ReactElement {
+  const { t } = useTranslation('editor');
   const transformLoadContent = config.transformLoadContent;
   const transformSaveContent = config.transformSaveContent;
 
@@ -317,7 +319,7 @@ export function MonacoEditor({
         height: '100%',
         color: 'var(--nim-text-muted)'
       }}>
-        <span>Loading...</span>
+        <span>{t('loading')}</span>
       </div>
     );
   }
@@ -332,7 +334,7 @@ export function MonacoEditor({
         height: '100%',
         color: 'var(--nim-error)'
       }}>
-        <span>Failed to load: {loadError.message}</span>
+        <span>{t('load_failed', { error: loadError.message })}</span>
       </div>
     );
   }

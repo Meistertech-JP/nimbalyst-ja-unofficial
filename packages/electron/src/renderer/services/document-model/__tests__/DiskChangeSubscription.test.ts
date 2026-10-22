@@ -2,6 +2,12 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { store } from "@nimbalyst/runtime/store";
 import { DiskChangeSubscription } from "../DiskChangeSubscription";
+const notificationMocks = vi.hoisted(() => ({
+  showWarning: vi.fn(),
+  getLocalizedText: vi.fn(
+    (_namespace: string, _key: string, fallback: string) => fallback
+  ),
+}));
 import {
   activeFileReconciliations,
   fileChangedOnDiskAtomFamily,
@@ -9,7 +15,7 @@ import {
 } from "../../../store/atoms/fileWatch";
 
 vi.mock("../../ErrorNotificationService", () => ({
-  errorNotificationService: { showWarning: vi.fn() },
+  errorNotificationService: notificationMocks,
 }));
 const subscriptions: DiskChangeSubscription[] = [];
 beforeEach(() => vi.useFakeTimers());
@@ -106,4 +112,38 @@ it("retries transient registration failure and cancels future retries on dispose
   ).toHaveLength(2);
   subscription.dispose();
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it("localizes the delayed file-update warning and keeps the affected file name", async () => {
+  const path = "/workspace/notes.md";
+  subscriptions.push(
+    new DiskChangeSubscription(
+      path,
+      vi.fn().mockRejectedValue(new Error("read failed")),
+      vi.fn(),
+      vi.fn()
+    )
+  );
+  store.set(fileChangedOnDiskAtomFamily(path), 1);
+
+  await vi.advanceTimersByTimeAsync(50);
+  await vi.advanceTimersByTimeAsync(250);
+  await vi.advanceTimersByTimeAsync(1000);
+
+  expect(notificationMocks.getLocalizedText).toHaveBeenCalledWith(
+    "files",
+    "notifications.disk_updates_delayed_title",
+    "File updates delayed"
+  );
+  expect(notificationMocks.getLocalizedText).toHaveBeenCalledWith(
+    "files",
+    "notifications.disk_updates_delayed_message",
+    "Could not refresh notes.md. Your unsaved edits are preserved.",
+    { fileName: "notes.md" }
+  );
+  expect(notificationMocks.showWarning).toHaveBeenCalledWith(
+    "File updates delayed",
+    "Could not refresh notes.md. Your unsaved edits are preserved.",
+    { duration: 10_000 }
+  );
 });

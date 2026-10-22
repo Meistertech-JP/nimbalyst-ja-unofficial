@@ -214,18 +214,20 @@ function truncatePreview(snippet: string): string {
   return `${collapsed.slice(0, INBOX_PREVIEW_MAX_CHARS - 1).trimEnd()}…`;
 }
 
-export function formatRelativeTimestamp(createdAt: number, now: number): string {
+export function formatRelativeTimestamp(createdAt: number, now: number, locale = 'en'): string {
   const seconds = Math.max(0, Math.round((now - createdAt) / 1000));
-  if (seconds < 45) return 'now';
+  const japanese = locale.toLowerCase().startsWith('ja');
+  if (seconds < 45) return japanese ? '今' : 'now';
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${Math.max(1, minutes)}m`;
+  if (minutes < 60) return japanese ? `${Math.max(1, minutes)}分` : `${Math.max(1, minutes)}m`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return japanese ? `${hours}時間` : `${hours}h`;
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days}d`;
+  if (days < 7) return japanese ? `${days}日` : `${days}d`;
   const weeks = Math.round(days / 7);
-  if (days < 365) return `${weeks}w`;
-  return `${Math.round(days / 365)}y`;
+  if (days < 365) return japanese ? `${weeks}週間` : `${weeks}w`;
+  const years = Math.round(days / 365);
+  return japanese ? `${years}年` : `${years}y`;
 }
 
 /**
@@ -264,8 +266,8 @@ function toActorView(delivery: HydratedInboxDelivery): InboxActorView | undefine
  *   source it was. Only the delivery's own metadata (reason, timestamp, org)
  *   remains, so the user can understand and dismiss the row.
  */
-export function toRowView(delivery: HydratedInboxDelivery, options: { now: number; stalePreviews?: boolean }): InboxRowView {
-  const { now, stalePreviews = false } = options;
+export function toRowView(delivery: HydratedInboxDelivery, options: { now: number; stalePreviews?: boolean; locale?: string }): InboxRowView {
+  const { now, stalePreviews = false, locale = 'en' } = options;
   const revoked = delivery.availability === 'accessRemoved';
   const deleted = delivery.availability === 'deletedSource';
   const unavailable = revoked || deleted;
@@ -318,7 +320,7 @@ export function toRowView(delivery: HydratedInboxDelivery, options: { now: numbe
     preview,
     previewStale: stalePreviews && !!preview,
     createdAt: delivery.createdAt,
-    timestampLabel: formatRelativeTimestamp(delivery.createdAt, now),
+    timestampLabel: formatRelativeTimestamp(delivery.createdAt, now, locale),
     // Same rule `isUnreadDelivery` applies to the fan-in, dismissal included —
     // now that Archived is a list you can stand in, a row that still read as
     // unread there would put a count in the header the nav row denies.
@@ -513,6 +515,7 @@ export interface SelectRowsInput {
   query: string;
   now: number;
   stalePreviews?: boolean;
+  locale?: string;
   /**
    * Pin the list to one organization. Set by a surface that belongs to a single
    * organization (the project window's Org mode); absent in the standalone
@@ -541,7 +544,7 @@ export interface SelectRowsResult {
 }
 
 export function selectRows(input: SelectRowsInput): SelectRowsResult {
-  const { deliveries, filter, unreadOnly = false, query, now, stalePreviews, restrictToOrgId } = input;
+  const { deliveries, filter, unreadOnly = false, query, now, stalePreviews, restrictToOrgId, locale } = input;
 
   // The pin is applied to the pool itself rather than as one more scope axis:
   // it is not the user's to turn off, and every count below is derived from the
@@ -550,7 +553,7 @@ export function selectRows(input: SelectRowsInput): SelectRowsResult {
   const scope = scopeWithinOrg(input.scope, restrictToOrgId, pool);
 
   const all = pool
-    .map((delivery) => toRowView(delivery, { now, stalePreviews }))
+    .map((delivery) => toRowView(delivery, { now, stalePreviews, locale }))
     .sort((a, b) => b.createdAt - a.createdAt);
 
   // The archived and live pools are disjoint, and only the active filter's pool

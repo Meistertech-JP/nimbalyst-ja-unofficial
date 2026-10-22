@@ -39,7 +39,9 @@ import {
 } from "./folderShareCandidates";
 import {
   orderCandidatesByEmbedDependency,
+  formatFolderShareFileWarnings,
   reportFolderShareOutcome,
+  type FolderShareTranslator,
 } from "./folderSharePlan";
 import { ensureSharedFolderSegments } from "./sharedFolderPath";
 import {
@@ -94,13 +96,13 @@ export async function collectFolderShareTargets(
 export async function askShareFolderToTeam(
   target: ShareFolderToTeamTarget,
   candidateSet: FolderShareCandidateSet,
-  options: { truncated?: boolean } = {}
+  options: { truncated?: boolean; t: FolderShareTranslator }
 ): Promise<ShareFolderToTeamAsk> {
   const dialogs = dialogRef.current;
   if (!dialogs) {
     return {
       status: "unavailable",
-      reason: "The share dialog is not available in this window.",
+      reason: options.t("share_folder.notifications.dialog_unavailable"),
     };
   }
 
@@ -138,16 +140,21 @@ export async function shareFolderToTeam(params: {
   target: ShareFolderToTeamTarget;
   candidateSet: FolderShareCandidateSet;
   answers: ShareFolderToTeamAnswers;
+  t: FolderShareTranslator;
 }): Promise<ShareFolderToTeamResult | { status: "failed"; error: string }> {
-  const { target, candidateSet, answers } = params;
+  const { target, candidateSet, answers, t } = params;
   const { errorNotificationService } = await import("./ErrorNotificationService");
 
   // The dialog disables its button past the cap; this is the same rule where it
   // cannot be routed around, because publishing the first 100 of 340 is the one
   // outcome this feature must never produce silently.
   if (candidateSet.candidates.length > MAX_FOLDER_SHARE_DOCUMENTS) {
-    const error = `"${target.folderName}" holds ${candidateSet.candidates.length} shareable documents, more than the ${MAX_FOLDER_SHARE_DOCUMENTS} one promote can publish. Share its subfolders separately.`;
-    errorNotificationService.showError("Folder is too large to share", error, {
+    const error = t("share_folder.notifications.too_large_body", {
+      folderName: target.folderName,
+      count: candidateSet.candidates.length,
+      limit: MAX_FOLDER_SHARE_DOCUMENTS,
+    });
+    errorNotificationService.showError(t("share_folder.notifications.too_large_title"), error, {
       duration: 10000,
     });
     return { status: "failed", error };
@@ -158,8 +165,8 @@ export async function shareFolderToTeam(params: {
     ? (await resolveDesktopCollabScope(workspacePath)).scope
     : null;
   if (!scope) {
-    const error = "The active team collaboration scope is unavailable.";
-    errorNotificationService.showError("Could not share folder to team", error);
+    const error = t("share_folder.notifications.scope_unavailable_body");
+    errorNotificationService.showError(t("share_folder.notifications.scope_unavailable_title"), error);
     return { status: "failed", error };
   }
 
@@ -193,8 +200,8 @@ export async function shareFolderToTeam(params: {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     errorNotificationService.showError(
-      "Could not share folder to team",
-      `The shared folder tree could not be created: ${message}`
+      t("share_folder.notifications.tree_failed_title"),
+      t("share_folder.notifications.tree_failed_body", { error: message })
     );
     return { status: "failed", error: message };
   }
@@ -279,6 +286,7 @@ export async function shareFolderToTeam(params: {
       openAfterCreate: false,
       persistLastSharedFolder: false,
       showNotifications: false,
+      t,
     });
 
     if (result.status === "shared") {
@@ -295,11 +303,7 @@ export async function shareFolderToTeam(params: {
   }
 
   if (unresolvedInBatchLinks > 0) {
-    warnings.push(
-      `${unresolvedInBatchLinks} embedded link${
-        unresolvedInBatchLinks === 1 ? "" : "s"
-      } between files in this folder stayed local (the files embed each other).`
-    );
+    warnings.push(t("share_folder.notifications.embed_cycle_warning", { count: unresolvedInBatchLinks }));
   }
 
   // The destination is recorded once for the whole promote, not once per file.
@@ -322,6 +326,7 @@ export async function shareFolderToTeam(params: {
   const sharedCount = sharedByAbsolutePath.size;
   const skippedCount = candidateSet.skipped.length;
   reportFolderShareOutcome({
+    t,
     folderName: target.folderName,
     sharedFolderPath,
     sharedCount,
@@ -344,7 +349,8 @@ export async function shareFolderToTeam(params: {
 }
 
 export async function shareFolderToTeamFromContextMenu(
-  target: ShareFolderToTeamTarget
+  target: ShareFolderToTeamTarget,
+  t: FolderShareTranslator,
 ): Promise<void> {
   const { errorNotificationService } = await import("./ErrorNotificationService");
   let collected: Awaited<ReturnType<typeof collectFolderShareTargets>>;
@@ -352,18 +358,19 @@ export async function shareFolderToTeamFromContextMenu(
     collected = await collectFolderShareTargets(target.folderPath);
   } catch (error) {
     errorNotificationService.showError(
-      "Could not share folder to team",
-      `"${target.folderName}" could not be read: ${
-        error instanceof Error ? error.message : String(error)
-      }`
+      t("share_folder.notifications.read_failed_title"),
+      t("share_folder.notifications.read_failed_body", {
+        folderName: target.folderName,
+        error: error instanceof Error ? error.message : String(error),
+      })
     );
     return;
   }
 
   if (collected.set.candidates.length === 0) {
     errorNotificationService.showWarning(
-      "Nothing to share",
-      `No file in "${target.folderName}" has a collaborative document type.`,
+      t("share_folder.notifications.nothing_to_share_title"),
+      t("share_folder.notifications.nothing_to_share_body", { folderName: target.folderName }),
       { duration: 6000 }
     );
     return;
@@ -371,9 +378,10 @@ export async function shareFolderToTeamFromContextMenu(
 
   const ask = await askShareFolderToTeam(target, collected.set, {
     truncated: collected.truncated,
+    t,
   });
   if (ask.status === "unavailable") {
-    errorNotificationService.showError("Could not share folder to team", ask.reason);
+    errorNotificationService.showError(t("share_folder.notifications.scope_unavailable_title"), ask.reason);
     return;
   }
   if (ask.status !== "answered") return;
@@ -382,5 +390,6 @@ export async function shareFolderToTeamFromContextMenu(
     target,
     candidateSet: collected.set,
     answers: ask.answers,
+    t,
   });
 }

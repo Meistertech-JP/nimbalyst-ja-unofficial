@@ -13,6 +13,7 @@
 
 import type { JSX, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { RevoGrid, type RevoGridCustomEvent } from '@revolist/react-datagrid';
 import { expandSvgIconVNode, GROUP_EXPAND_BTN } from '@revolist/revogrid';
 import type {
@@ -162,6 +163,7 @@ export function TrackerGridView({
   favoriteItemIds,
   onToggleFavorite,
 }: TrackerGridViewProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const [filterTarget, setFilterTarget] = useState<{ columnId: string; rect: DOMRect } | null>(null);
   const activeTypeFilter = filterType;
   const schemaType = activeTypeFilter === 'all' ? '' : activeTypeFilter;
@@ -264,7 +266,7 @@ export function TrackerGridView({
     activeTypeFilter,
     onItemSelect,
     onDeleteItems,
-    confirmDelete: confirmTrackerItemDelete,
+    confirmDelete: (itemCount) => confirmTrackerItemDelete(itemCount, t),
     onArchiveItems: onArchiveItems ? archiveThroughRecorder : undefined,
     onSwitchToFilesMode,
     resolveRecordById,
@@ -342,11 +344,15 @@ export function TrackerGridView({
     // Cmd+Z would unarchive rows from a view the user has left.
     const generation = captureUndoGeneration();
     await onArchiveItems(itemIds, archive);
+    const itemCountLabel = t(
+      changes.length === 1 ? 'filters.item_count_one' : 'filters.item_count_other',
+      { count: changes.length },
+    );
     recordUndoEntry({
-      label: `${archive ? 'Archive' : 'Unarchive'} ${changes.length} item${changes.length === 1 ? '' : 's'}`,
+      label: `${t(archive ? 'kanban.archive' : 'ui.unarchive')} ${itemCountLabel}`,
       changes,
     }, generation);
-  }, [captureUndoGeneration, itemsById, onArchiveItems, recordUndoEntry]);
+  }, [captureUndoGeneration, itemsById, onArchiveItems, recordUndoEntry, t]);
   useEffect(() => {
     archiveRecorderRef.current = archiveWithUndo;
   }, [archiveWithUndo]);
@@ -623,9 +629,17 @@ export function TrackerGridView({
       result.label,
       result.applied,
       result.skipped,
+      {
+        undone: t('undo_toast.undone'),
+        redone: t('undo_toast.redone'),
+        skippedChanges: (applied, total, skipped) => t(
+          total === 1 ? 'undo_toast.skipped_changes_one' : 'undo_toast.skipped_changes_other',
+          { count: total, applied, skipped },
+        ),
+      },
     );
     errorNotificationService.showInfo(title, body, { duration: 2500 });
-  }, [redo, undo]);
+  }, [redo, t, undo]);
 
   // RevoGrid's document-level keydown listener acts on keys typed anywhere in the
   // app while a cell is selected. Decline the ones that did not start in here.
@@ -833,7 +847,7 @@ export function TrackerGridView({
   if (loading) {
     return (
       <div className="tracker-grid-view h-full flex items-center justify-center text-sm text-nim-muted" data-testid="tracker-grid-loading">
-        Loading tracker items...
+        {t('grid.loading')}
       </div>
     );
   }
@@ -858,11 +872,11 @@ export function TrackerGridView({
       >
         {sortedItems.length === 0 && !columnFiltersActive ? (
           <div className="tracker-grid-empty flex h-full flex-col items-center justify-center gap-2 text-sm text-nim-muted" data-testid="tracker-grid-empty">
-            <span>{hasAnyFilters ? 'No items match these filters.' : 'No tracker items yet.'}</span>
+            <span>{t(hasAnyFilters ? 'grid.no_items_match_filters' : 'grid.no_items_yet')}</span>
             <div className="flex items-center gap-2">
               {hasAnyFilters && onClearFilters && (
                 <button className="text-xs underline hover:text-nim" onClick={onClearFilters}>
-                  Clear filters
+                  {t('grid.clear_filters')}
                 </button>
               )}
               {activeTypeFilter !== 'all'
@@ -874,7 +888,9 @@ export function TrackerGridView({
                   data-testid="tracker-grid-new-item"
                   onClick={() => onNewItem(activeTypeFilter as TrackerItemType)}
                 >
-                  New {activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1)}
+                  {t('grid.new_item', {
+                    type: activeTypeFilter.charAt(0).toUpperCase() + activeTypeFilter.slice(1),
+                  })}
                 </button>
               )}
             </div>
@@ -900,12 +916,12 @@ export function TrackerGridView({
           className="absolute inset-x-0 top-10 flex flex-col items-center gap-2 pt-6 text-sm text-nim-muted"
           data-testid="tracker-grid-filtered-empty"
         >
-          <span>No items match these column filters.</span>
+          <span>{t('grid.no_items_match_column_filters')}</span>
           <button
             className="text-xs underline hover:text-nim"
             onClick={() => onColumnFiltersChange?.({ combinator: 'and', clauses: [] })}
           >
-            Clear column filters
+            {t('grid.clear_column_filters')}
           </button>
         </div>
         )}
@@ -976,7 +992,7 @@ export function TrackerGridView({
         onLaunchWorktree={onLaunchWorktree}
         onArchiveItems={onArchiveItems ? archiveWithUndo : undefined}
         onDeleteItems={onDeleteItems}
-        confirmDelete={confirmTrackerItemDelete}
+        confirmDelete={(itemCount) => confirmTrackerItemDelete(itemCount, t)}
         closeContextMenu={closeContextMenu}
         clearSelection={() => setSelectedIds(new Set())}
       />

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { Provider } from 'jotai';
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render as rtlRender, renderHook, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({ MaterialSymbol: () => null }));
 vi.mock('../SessionProviderIcon', () => ({ SessionProviderIcon: () => null }));
 vi.mock('../SessionSpawnerLink', () => ({ SessionSpawnerLink: () => null }));
@@ -25,6 +27,15 @@ import {
   loadWorkstreamStates,
 } from '../../../store/atoms/workstreamState';
 import { errorNotificationService } from '../../../services/ErrorNotificationService';
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+function render(ui: React.ReactElement, language: 'en' | 'ja' = 'en') {
+  return rtlRender(<I18nextProvider i18n={language === 'ja' ? japaneseI18n : englishI18n}>{ui}</I18nextProvider>);
+}
 const row = (
   id: string,
   parentSessionId: string | null = null,
@@ -107,7 +118,9 @@ describe('tree interactions', () => {
   it('flattens each tree to one entry per visible row so a virtual list never holds a whole tree', () => {
     const trees = [{ key: 'root', rows: rows.slice(0, 3) }];
     const { result } = renderHook(() => useVisibleSessionTreeRows(trees, null, '/project'), {
-      wrapper: ({ children }) => <Provider store={store}>{children}</Provider>,
+      wrapper: ({ children }) => (
+        <I18nextProvider i18n={englishI18n}><Provider store={store}>{children}</Provider></I18nextProvider>
+      ),
     });
     const visible = () => result.current.get('root')!.map((r) => [r.node.session.id, r.node.depth - r.baseDepth]);
     expect(visible()).toEqual([['root', 0]]);
@@ -154,6 +167,17 @@ describe('tree interactions', () => {
     expect(screen.queryByText('leaf')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Expand middle' }));
     screen.getByText('leaf');
+  });
+  it('localizes session tree labels and accessible controls', () => {
+    const wrapper = row('wrapper', null, { sessionType: 'workstream', childCount: 1 });
+    const child = row('child', 'wrapper', { childCount: 1 });
+    const leaf = row('leaf', 'child');
+    store.set(sessionRegistryAtom, new Map([wrapper, child, leaf].map((session) => [session.id, session])));
+    store.set(sessionProcessingAtom('leaf'), true);
+    render(<Provider store={store}><SessionTree root={wrapper} sessions={[child, leaf]} activeSessionId={null} onSessionSelect={vi.fn()} /></Provider>, 'ja');
+    expect(screen.getByRole('tree', { name: 'セッションツリー' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '折りたたみ child' })).toBeDefined();
+    expect(screen.getByText('実行中1件')).toBeDefined();
   });
   it('filters invalid parents and accepts a searched parent with the keyboard', async () => {
     const move = vi.fn().mockResolvedValue(true);

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface SquashCommitModalProps {
@@ -18,6 +19,8 @@ export function SquashCommitModal({
   onConfirm,
   onCancel
 }: SquashCommitModalProps) {
+  const { t } = useTranslation('git');
+  const { t: tCommon } = useTranslation('common');
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -65,13 +68,14 @@ export function SquashCommitModal({
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
           <div className="squash-commit-modal-header flex items-center justify-between px-5 py-4 border-b border-[var(--nim-border)]">
             <h3 className="squash-commit-modal-title m-0 text-base font-semibold text-[var(--nim-text)]">
-              Squash {commitCount} Commits
+              {t('squash_count', { count: commitCount })}
             </h3>
             <button
               type="button"
               className="squash-commit-modal-close nim-btn-icon"
               onClick={onCancel}
-              title="Close"
+              title={tCommon('close')}
+              aria-label={tCommon('close')}
             >
               <MaterialSymbol icon="close" size={20} />
             </button>
@@ -89,20 +93,20 @@ export function SquashCommitModal({
               htmlFor="commit-message"
               className="squash-commit-modal-label text-sm font-medium text-[var(--nim-text-muted)] block"
             >
-              Commit Message
+            {t('commit_confirmation.commit_message')}
             </label>
             <textarea
               ref={textareaRef}
               id="commit-message"
               className="squash-commit-modal-textarea nim-input font-mono text-sm leading-relaxed resize-y min-h-[120px] p-3 rounded-md"
-              placeholder="Enter commit message for squashed commit..."
+              placeholder={t('squash_modal.placeholder')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={5}
             />
             <div className="squash-commit-modal-hint text-xs text-[var(--nim-text-faint)] italic">
-              Press {submitShortcut} to submit
+              {t('squash_modal.submit_hint', { shortcut: submitShortcut })}
             </div>
           </div>
 
@@ -112,14 +116,14 @@ export function SquashCommitModal({
               className="squash-commit-modal-button squash-commit-modal-cancel nim-btn-secondary"
               onClick={onCancel}
             >
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               type="submit"
               className="squash-commit-modal-button squash-commit-modal-confirm nim-btn-primary"
               disabled={!message.trim() || isChecking}
             >
-              {isChecking ? 'Checking...' : 'Squash Commits'}
+              {isChecking ? t('squash_modal.checking') : t('squash_count', { count: commitCount })}
             </button>
           </div>
         </form>

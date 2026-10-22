@@ -34,6 +34,7 @@ import {
   TableSelection,
 } from '@lexical/table';
 import {mergeRegister} from '@lexical/utils';
+import {useTranslation} from '@nimbalyst/i18n/react';
 import {
   $getSelection,
   $isElementNode,
@@ -122,6 +123,7 @@ function TableActionMenu({
   showColorPickerModal,
   anchorElem,
 }: TableCellActionMenuProps) {
+  const {t} = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const dropDownRef = useRef<HTMLDivElement | null>(null);
   const [tableCellNode, updateTableCellNode] = useState(_tableCellNode);
@@ -495,7 +497,7 @@ function TableActionMenu({
           className="item"
           onClick={() => mergeTableCellsAtSelection()}
           data-test-id="table-merge-cells">
-          <span className="text">Merge cells</span>
+          <span className="text">{t('table_actions.merge_cells')}</span>
         </button>
       );
     } else if (canUnmergeCell) {
@@ -505,7 +507,7 @@ function TableActionMenu({
           className="item"
           onClick={() => unmergeTableCellsAtSelection()}
           data-test-id="table-unmerge-cells">
-          <span className="text">Unmerge cells</span>
+          <span className="text">{t('table_actions.unmerge_cells')}</span>
         </button>
       );
     }
@@ -524,7 +526,7 @@ function TableActionMenu({
         type="button"
         className="item"
         onClick={() =>
-          showColorPickerModal('Cell background color', () => (
+          showColorPickerModal(t('table_actions.cell_background'), () => (
             <ColorPicker
               color={backgroundColor}
               onChange={handleCellBackgroundColor}
@@ -532,19 +534,19 @@ function TableActionMenu({
           ))
         }
         data-test-id="table-background-color">
-        <span className="text">Background color</span>
+        <span className="text">{t('table_actions.background_color')}</span>
       </button>
       <button
         type="button"
         className="item"
         onClick={() => toggleRowStriping()}
         data-test-id="table-row-striping">
-        <span className="text">Toggle Row Striping</span>
+        <span className="text">{t('table_actions.row_striping')}</span>
       </button>
       <DropDown
-        buttonLabel="Vertical Align"
+        buttonLabel={t('table_actions.vertical_align')}
         buttonClassName="item"
-        buttonAriaLabel="Formatting options for vertical alignment">
+        buttonAriaLabel={t('table_actions.vertical_align_options')}>
         <DropDownItem
           onClick={() => {
             formatVerticalAlign('top');
@@ -552,7 +554,7 @@ function TableActionMenu({
           className="item wide">
           <div className="icon-text-container">
             <i className="icon vertical-top" />
-            <span className="text">Top Align</span>
+            <span className="text">{t('table_actions.top_align')}</span>
           </div>
         </DropDownItem>
         <DropDownItem
@@ -562,7 +564,7 @@ function TableActionMenu({
           className="item wide">
           <div className="icon-text-container">
             <i className="icon vertical-middle" />
-            <span className="text">Middle Align</span>
+            <span className="text">{t('table_actions.middle_align')}</span>
           </div>
         </DropDownItem>
         <DropDownItem
@@ -572,7 +574,7 @@ function TableActionMenu({
           className="item wide">
           <div className="icon-text-container">
             <i className="icon vertical-bottom" />
-            <span className="text">Bottom Align</span>
+            <span className="text">{t('table_actions.bottom_align')}</span>
           </div>
         </DropDownItem>
       </DropDown>
@@ -581,14 +583,14 @@ function TableActionMenu({
         className="item"
         onClick={() => toggleFirstRowFreeze()}
         data-test-id="table-freeze-first-row">
-        <span className="text">Toggle First Row Freeze</span>
+        <span className="text">{t('table_actions.freeze_first_row')}</span>
       </button>
       <button
         type="button"
         className="item"
         onClick={() => toggleFirstColumnFreeze()}
         data-test-id="table-freeze-first-column">
-        <span className="text">Toggle First Column Freeze</span>
+        <span className="text">{t('table_actions.freeze_first_column')}</span>
       </button>
       <hr />
       <button
@@ -597,9 +599,11 @@ function TableActionMenu({
         onClick={() => insertTableRowAtSelection(false)}
         data-test-id="table-insert-row-above">
         <span className="text">
-          Insert{' '}
-          {selectionCounts.rows === 1 ? 'row' : `${selectionCounts.rows} rows`}{' '}
-          above
+          {selectionCounts.rows === 1
+            ? t('table_actions.insert_rows_above_one')
+            : t('table_actions.insert_rows_above_other', {
+                count: selectionCounts.rows,
+              })}
         </span>
       </button>
       <button
@@ -608,9 +612,11 @@ function TableActionMenu({
         onClick={() => insertTableRowAtSelection(true)}
         data-test-id="table-insert-row-below">
         <span className="text">
-          Insert{' '}
-          {selectionCounts.rows === 1 ? 'row' : `${selectionCounts.rows} rows`}{' '}
-          below
+          {selectionCounts.rows === 1
+            ? t('table_actions.insert_rows_below_one')
+            : t('table_actions.insert_rows_below_other', {
+                count: selectionCounts.rows,
+              })}
         </span>
       </button>
       <hr />
@@ -620,11 +626,11 @@ function TableActionMenu({
         onClick={() => insertTableColumnAtSelection(false)}
         data-test-id="table-insert-column-before">
         <span className="text">
-          Insert{' '}
           {selectionCounts.columns === 1
-            ? 'column'
-            : `${selectionCounts.columns} columns`}{' '}
-          left
+            ? t('table_actions.insert_columns_left_one')
+            : t('table_actions.insert_columns_left_other', {
+                count: selectionCounts.columns,
+              })}
         </span>
       </button>
       <button
@@ -633,11 +639,11 @@ function TableActionMenu({
         onClick={() => insertTableColumnAtSelection(true)}
         data-test-id="table-insert-column-after">
         <span className="text">
-          Insert{' '}
           {selectionCounts.columns === 1
-            ? 'column'
-            : `${selectionCounts.columns} columns`}{' '}
-          right
+            ? t('table_actions.insert_columns_right_one')
+            : t('table_actions.insert_columns_right_other', {
+                count: selectionCounts.columns,
+              })}
         </span>
       </button>
       <hr />
@@ -646,21 +652,21 @@ function TableActionMenu({
         className="item"
         onClick={() => deleteTableColumnAtSelection()}
         data-test-id="table-delete-columns">
-        <span className="text">Delete column</span>
+        <span className="text">{t('table_actions.delete_column')}</span>
       </button>
       <button
         type="button"
         className="item"
         onClick={() => deleteTableRowAtSelection()}
         data-test-id="table-delete-rows">
-        <span className="text">Delete row</span>
+        <span className="text">{t('table_actions.delete_row')}</span>
       </button>
       <button
         type="button"
         className="item"
         onClick={() => deleteTableAtSelection()}
         data-test-id="table-delete">
-        <span className="text">Delete table</span>
+        <span className="text">{t('table_actions.delete_table')}</span>
       </button>
       <hr />
       <button
@@ -671,9 +677,8 @@ function TableActionMenu({
         <span className="text">
           {(tableCellNode.__headerState & TableCellHeaderStates.ROW) ===
           TableCellHeaderStates.ROW
-            ? 'Remove'
-            : 'Add'}{' '}
-          row header
+            ? t('table_actions.remove_row_header')
+            : t('table_actions.add_row_header')}
         </span>
       </button>
       <button
@@ -684,9 +689,8 @@ function TableActionMenu({
         <span className="text">
           {(tableCellNode.__headerState & TableCellHeaderStates.COLUMN) ===
           TableCellHeaderStates.COLUMN
-            ? 'Remove'
-            : 'Add'}{' '}
-          column header
+            ? t('table_actions.remove_column_header')
+            : t('table_actions.add_column_header')}
         </span>
       </button>
     </div>,
@@ -701,6 +705,7 @@ function TableCellActionMenuContainer({
   anchorElem: HTMLElement;
   cellMerge: boolean;
 }): JSX.Element {
+  const {t} = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
 
   const menuButtonRef = useRef<HTMLDivElement | null>(null);
@@ -920,6 +925,7 @@ function TableCellActionMenuContainer({
           <button
             type="button"
             className="table-cell-action-button chevron-down"
+            aria-label={t('table_actions.cell_actions')}
             onClick={(e) => {
               e.stopPropagation();
               setIsMenuOpen(!isMenuOpen);

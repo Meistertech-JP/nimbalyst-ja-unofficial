@@ -11,6 +11,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX, KeyboardEvent, MouseEvent } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { TrackerItem } from '../../trackers/dataSource';
 import { FloatingPortal, useTrackerFloatingMenu } from '../useTrackerFloatingMenu';
@@ -147,6 +148,7 @@ export function TrackerStateMenu({
   readOnly,
   className,
 }: TrackerStateMenuProps): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   const status = resolver.statusInfo(item);
   const transitions = useStateTransitions(resolver, item);
   const restoreEditorFocus = useContext(TrackerStateMenuFocusContext);
@@ -219,7 +221,9 @@ export function TrackerStateMenu({
   if (prompt?.prompt?.field === 'supersededBy' && value) {
     const target = resolver.resolve(value);
     value = target.state === 'resolved' && target.item.id !== item.id ? target.item.id : null;
-    if (!value) hint = target.state === 'loading' ? 'Looking it up...' : `No other item ${input.trim()}`;
+    if (!value) hint = target.state === 'loading'
+      ? t('state_menu.looking_up')
+      : t('state_menu.no_other_item', { value: input.trim() });
   }
 
   const onPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -305,7 +309,7 @@ export function TrackerStateMenu({
                     {hint ? <span className="tracker-state-menu-description">{hint}</span> : null}
                     <div className="tracker-state-menu-actions">
                       <button type="button" className="tracker-state-menu-button" onClick={() => setPrompt(null)}>
-                        Cancel
+                        {t('state_menu.cancel')}
                       </button>
                       <button
                         type="button"
@@ -323,7 +327,7 @@ export function TrackerStateMenu({
             ))}
             {error ? <div className="tracker-state-menu-error" role="alert">{error}</div> : null}
             <div className="tracker-state-menu-footer">
-              Changes {item.issueKey ?? item.title} for everyone.
+              {t('state_menu.change_for_everyone', { item: item.issueKey ?? item.title })}
             </div>
           </div>
         </FloatingPortal>

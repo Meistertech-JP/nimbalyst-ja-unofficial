@@ -12,6 +12,8 @@
  * they can most easily move things out of afterwards.
  */
 
+import type { FolderShareTranslator } from '../../services/folderSharePlan';
+
 export interface PublishFoldersOutcome {
   published: number;
   /** Folder names that could not be published, with the reason attached. */
@@ -25,6 +27,7 @@ function folderName(folderPath: string): string {
 
 export async function publishFoldersForInvite(
   folderPaths: readonly string[],
+  t: FolderShareTranslator,
 ): Promise<PublishFoldersOutcome> {
   const { collectFolderShareTargets, shareFolderToTeam } = await import(
     '../../services/shareFolderToTeamFlow'
@@ -40,13 +43,14 @@ export async function publishFoldersForInvite(
       if (collected.set.candidates.length === 0) {
         // Not a failure worth alarming anyone about, but not a success either:
         // reporting it as published would inflate the count the inviter reads.
-        failures.push(`${name} (nothing shareable in it)`);
+        failures.push(t('share_folder.notifications.invite_empty_folder_failure', { folderName: name }));
         continue;
       }
       const result = await shareFolderToTeam({
         target: { folderPath, folderName: name },
         candidateSet: collected.set,
         answers: { folderId: null, folderPath: '', sharedFolderName: name },
+        t,
       });
       if ('status' in result) {
         failures.push(`${name} (${result.error})`);

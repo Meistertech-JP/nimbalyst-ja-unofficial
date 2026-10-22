@@ -15,6 +15,7 @@ import type {
 } from '../contracts';
 import type { ProjectGraphNode } from '../../types';
 import { bucketIndexFor, resolveBuckets, type PulseBucket, type PulseBucketUnit } from './pulseBuckets';
+import type { PulseTranslate } from './pulseFormat';
 
 export type PulseRowKind = 'area' | 'artifact' | 'unassigned';
 export type PulseSortMode = 'recent' | 'volume' | 'name';
@@ -85,6 +86,8 @@ export interface BuildMatrixOptions {
   maxRows?: number;
   /** View-only display names supplied by the shell's rename affordance. */
   areaLabelOverrides?: Record<string, string>;
+  /** Translation callback supplied by the React view; this module stays pure. */
+  translate?: PulseTranslate;
 }
 
 export const UNASSIGNED_ROW_ID = '__pulse_unassigned__';
@@ -207,6 +210,7 @@ export function buildPulseMatrix(
   const maxRows = Math.max(1, options.maxRows ?? DEFAULT_MAX_ROWS);
   const sort = options.sort ?? 'recent';
   const overrides = options.areaLabelOverrides ?? {};
+  const translate = options.translate ?? defaultModelText;
 
   let earliestLoadedEventAt: number | null = null;
   for (const event of model.events) {
@@ -289,9 +293,9 @@ export function buildPulseMatrix(
       specs.push({
         id: UNASSIGNED_ROW_ID,
         kind: 'unassigned',
-        label: 'Unassigned',
-        sublabel: 'no area membership',
-        basis: 'records with no area membership in the loaded model',
+        label: translate('row.unassigned'),
+        sublabel: translate('row.no_area_membership'),
+        basis: translate('row.unassigned_basis'),
         memberIds: null,
         memberCount: 0,
       });
@@ -574,22 +578,11 @@ export interface PulseSelectionSummary {
   includesOutsideLoaded: boolean;
 }
 
-const KIND_NOUNS: Record<PrototypeEvent['kind'], [string, string]> = {
-  created: ['record created', 'records created'],
-  commit: ['commit', 'commits'],
-  status: ['status change', 'status changes'],
-  'last-activity': ['last-observed timestamp', 'last-observed timestamps'],
-};
-
-function plural(count: number, kind: PrototypeEvent['kind']): string {
-  const [one, many] = KIND_NOUNS[kind];
-  return `${count} ${count === 1 ? one : many}`;
-}
-
 export function summarizeSelection(
   matrix: PulseMatrix,
   selection: PulseSelection,
   nodeById: Map<string, ProjectGraphNode>,
+  translate: PulseTranslate = defaultModelText,
 ): PulseSelectionSummary {
   const { colStart, colEnd } = selectionColumns(selection);
   const wanted = new Set(selection.rowIds);
@@ -662,12 +655,16 @@ export function summarizeSelection(
   const episodes = [...byNode.values()].sort((a, b) => b.lastAt - a.lastAt);
   const parts = (Object.keys(kindCounts) as Array<PrototypeEvent['kind']>)
     .filter((kind) => kindCounts[kind] > 0)
-    .map((kind) => plural(kindCounts[kind], kind));
+    .map((kind) =>
+      translate(`selection.kind.${kind}.${kindCounts[kind] === 1 ? 'one' : 'many'}`, {
+        count: kindCounts[kind],
+      }),
+    );
   const artifacts = byNode.size;
   const heading =
     artifacts === 0
-      ? 'No loaded events in this selection'
-      : `${artifacts} ${artifacts === 1 ? 'artifact' : 'artifacts'} · ${parts.join(' · ')}`;
+      ? translate('selection.none_loaded')
+      : `${translate(`selection.artifact.${artifacts === 1 ? 'one' : 'many'}`, { count: artifacts })} · ${parts.join(' · ')}`;
 
   return {
     colStart,
@@ -1016,8 +1013,9 @@ export function comparePeriods(
   model: PrototypeModel,
   range: PrototypeRange,
   comparisonRange: PrototypeRange,
-  options: { selectedAreaId?: string | null } = {},
+  options: { selectedAreaId?: string | null; translate?: PulseTranslate } = {},
 ): PeriodComparison {
+  const translate = options.translate ?? defaultModelText;
   const scopeArea = options.selectedAreaId
     ? model.areas.find((area) => area.id === options.selectedAreaId) ?? null
     : null;
@@ -1051,26 +1049,29 @@ export function comparePeriods(
 
   let note: string;
   if (!equalDuration) {
-    note = `The two periods are not the same length (${Math.round(currentSpan / 86_400_000)}d against ${Math.round(previousSpan / 86_400_000)}d), so no delta is shown.`;
+    note = translate('comparison.unequal_duration', {
+      currentDays: Math.round(currentSpan / 86_400_000),
+      precedingDays: Math.round(previousSpan / 86_400_000),
+    });
   } else if (eitherUnloaded) {
-    const which =
-      currentCoverage === 'unloaded' && previousCoverage === 'unloaded'
-        ? 'Both periods are'
-        : currentCoverage === 'unloaded'
-          ? 'This period is'
-          : 'The preceding period is';
-    note = `${which} outside what the sources loaded, so the counts below are not a measure of what happened then.`;
+    const which = currentCoverage === 'unloaded' && previousCoverage === 'unloaded'
+      ? 'comparison.unloaded_both'
+      : currentCoverage === 'unloaded'
+        ? 'comparison.unloaded_current'
+        : 'comparison.unloaded_preceding';
+    note = translate(which);
   } else if (deltaBasis === 'observed') {
     // Counts are still shown, and still a fact about what was loaded. What is
     // withheld is the claim that they cover everything that happened.
-    note =
+    note = translate(
       currentCoverage === 'unknown' || previousCoverage === 'unknown'
-        ? 'Retrieval bounds are not established for every source, so this compares the records that were loaded rather than everything that happened.'
-        : 'Only part of one period is inside the loaded retrieval bounds, so this compares the records that were loaded rather than everything that happened.';
+        ? 'comparison.observed_unknown'
+        : 'comparison.observed_partial',
+    );
   } else if (previous.events === 0) {
-    note = 'No loaded events fall in the preceding period. That is an absence of records, not a statement that the period was quiet.';
+    note = translate('comparison.preceding_empty');
   } else {
-    note = 'Both periods are the same length and inside the loaded retrieval bounds.';
+    note = translate('comparison.covered');
   }
   if (reason && !comparable) note = `${note} ${reason}`;
 
@@ -1087,6 +1088,37 @@ export function comparePeriods(
     note,
     scopeAreaId: scopeArea ? scopeArea.id : null,
   };
+}
+
+const DEFAULT_MODEL_TEXT: Record<string, string> = {
+  'row.unassigned': 'Unassigned',
+  'row.no_area_membership': 'no area membership',
+  'row.unassigned_basis': 'records with no area membership in the loaded model',
+  'selection.none_loaded': 'No loaded events in this selection',
+  'selection.artifact.one': '{{count}} artifact',
+  'selection.artifact.many': '{{count}} artifacts',
+  'selection.kind.created.one': '{{count}} record created',
+  'selection.kind.created.many': '{{count}} records created',
+  'selection.kind.commit.one': '{{count}} commit',
+  'selection.kind.commit.many': '{{count}} commits',
+  'selection.kind.status.one': '{{count}} status change',
+  'selection.kind.status.many': '{{count}} status changes',
+  'selection.kind.last-activity.one': '{{count}} last-observed timestamp',
+  'selection.kind.last-activity.many': '{{count}} last-observed timestamps',
+  'comparison.unequal_duration': 'The two periods are not the same length ({{currentDays}}d against {{precedingDays}}d), so no delta is shown.',
+  'comparison.unloaded_both': 'Both periods are outside what the sources loaded, so the counts below are not a measure of what happened then.',
+  'comparison.unloaded_current': 'This period is outside what the sources loaded, so the counts below are not a measure of what happened then.',
+  'comparison.unloaded_preceding': 'The preceding period is outside what the sources loaded, so the counts below are not a measure of what happened then.',
+  'comparison.observed_unknown': 'Retrieval bounds are not established for every source, so this compares the records that were loaded rather than everything that happened.',
+  'comparison.observed_partial': 'Only part of one period is inside the loaded retrieval bounds, so this compares the records that were loaded rather than everything that happened.',
+  'comparison.preceding_empty': 'No loaded events fall in the preceding period. That is an absence of records, not a statement that the period was quiet.',
+  'comparison.covered': 'Both periods are the same length and inside the loaded retrieval bounds.',
+};
+
+function defaultModelText(key: string, options?: Record<string, string | number>): string {
+  return (DEFAULT_MODEL_TEXT[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+    String(options?.[name] ?? ''),
+  );
 }
 
 export interface GridPosition {

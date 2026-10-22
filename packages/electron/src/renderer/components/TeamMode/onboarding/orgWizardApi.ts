@@ -5,8 +5,9 @@
  */
 
 import type { OrgWizardApi } from './orgWizardRunner';
+import type { FolderShareTranslator } from '../../../services/folderSharePlan';
 
-export function createOrgWizardApi(): OrgWizardApi {
+export function createOrgWizardApi(t: FolderShareTranslator): OrgWizardApi {
   return {
     async findPendingInvitation(email) {
       const result = await window.electronAPI.organization.findPendingInvitation(email);
@@ -57,7 +58,7 @@ export function createOrgWizardApi(): OrgWizardApi {
       const { publishFoldersForInvite } = await import(
         '../../InviteToTeamDialog/publishFoldersForInvite'
       );
-      const outcome = await publishFoldersForInvite([folderPath]);
+      const outcome = await publishFoldersForInvite([folderPath], t);
       return outcome.published > 0;
     },
   };

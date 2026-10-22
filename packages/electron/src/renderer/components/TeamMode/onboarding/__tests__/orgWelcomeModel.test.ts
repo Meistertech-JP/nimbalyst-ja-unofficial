@@ -79,20 +79,16 @@ describe('welcome card', () => {
 
   it('names the organization, the member count and the window sections', () => {
     const card = buildOrgWelcomeCard(input());
-    expect(card.title).toBe('Welcome to Acme');
-    expect(card.subtitle).toBe('4 members so far.');
-    expect(card.points.join(' ')).toContain('#general');
-    expect(card.points.join(' ')).toContain('Inbox');
+    expect(card).toEqual({ organizationName: 'Acme', memberCount: 4, inviterName: null });
   });
 
   it('credits the inviter when one is known', () => {
-    expect(buildOrgWelcomeCard(input({ inviterName: 'Karl' })).subtitle)
-      .toBe('Karl invited you. 4 members so far.');
+    expect(buildOrgWelcomeCard(input({ inviterName: 'Karl' })).inviterName)
+      .toBe('Karl');
   });
 
   it('reads naturally for a single member and an unnamed organization', () => {
     const card = buildOrgWelcomeCard(input({ memberCount: 1, orgName: '  ' }));
-    expect(card.title).toBe('Welcome to your organization');
-    expect(card.subtitle).toBe('1 member so far.');
+    expect(card).toEqual({ organizationName: '', memberCount: 1, inviterName: null });
   });
 });

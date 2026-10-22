@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { WorktreeBaseBranchPicker } from '../WorktreeBaseBranchPicker';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
 
 const BRANCHES = [
   'main',
@@ -15,13 +22,15 @@ const BRANCHES = [
 ];
 
 function renderPicker() {
-  return render(
-    <WorktreeBaseBranchPicker
-      isOpen
-      repoPath="/workspace"
-      onCreate={vi.fn().mockResolvedValue(undefined)}
-      onCancel={vi.fn()}
-    />,
+  return testingLibraryRender(
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <WorktreeBaseBranchPicker
+        isOpen
+        repoPath="/workspace"
+        onCreate={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+      />
+    </UiLanguageProvider>,
   );
 }
 
@@ -108,6 +117,6 @@ describe('WorktreeBaseBranchPicker branch search', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('worktree-base-branch-item-main')).toBeNull();
     });
-    expect(screen.getByTestId('worktree-branch-preview').textContent).toContain('from main');
+    expect(screen.getByTestId('worktree-branch-preview').textContent).toContain('main');
   });
 });

@@ -17,11 +17,13 @@ import {
   type CrewFeedFilter,
 } from './crewFeedModel';
 import { errorMessage, formatWhen } from './crewFormat';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 const FEED_PAGE_SIZE = 100;
 
 export function CrewFeed() {
   const { client, roster, revision } = useCrew();
+  const { t } = useTranslation('extensions');
   const [entries, setEntries] = useState<CrewFeedEntry[]>([]);
   const [load, setLoad] = useState<{ status: 'loading' | 'ready' } | { status: 'error'; error: string }>({ status: 'loading' });
   const [filter, setFilter] = useState<CrewFeedFilter>('all');
@@ -63,12 +65,12 @@ export function CrewFeed() {
   return (
     <section className="crew-feed" data-testid="crew-feed">
       <header className="crew-feed-header">
-        <h2 className="crew-feed-title">Crew feed</h2>
+        <h2 className="crew-feed-title">{t('crew.feed.title')}</h2>
         <span className="crew-faint">{today}</span>
-        <div className="crew-segmented crew-push-right" role="tablist" aria-label="Filter the feed">
-          {CREW_FEED_FILTERS.map(({ id, label }) => (
+        <div className="crew-segmented crew-push-right" role="tablist" aria-label={t('crew.feed.filter_aria')}>
+          {CREW_FEED_FILTERS.map(({ id }) => (
             <button key={id} type="button" role="tab" aria-selected={filter === id} data-selected={filter === id} onClick={() => setFilter(id)}>
-              {label}
+              {t(`crew.feed.filter_${id}`)}
             </button>
           ))}
         </div>
@@ -76,34 +78,34 @@ export function CrewFeed() {
 
       <div className="crew-feed-scroll">
         <div className="crew-feed-column">
-          {load.status === 'loading' && <div className="crew-empty-note" role="status">Loading the feed...</div>}
+          {load.status === 'loading' && <div className="crew-empty-note" role="status">{t('crew.feed.loading')}</div>}
           {load.status === 'error' && (
             <div className="crew-empty-note" role="alert">
-              The feed could not be loaded.
+              {t('crew.feed.load_failed')}
               <span className="crew-selectable crew-faint">{load.error}</span>
             </div>
           )}
           {load.status === 'ready' && isEmpty && (
             <div className="crew-empty-note">
               {filter === 'all'
-                ? 'Nothing from the crew yet. Flags, standups and shift summaries collect here.'
-                : 'Nothing here under this filter.'}
+                ? t('crew.feed.empty_all')
+                : t('crew.feed.empty_filter')}
             </div>
           )}
 
           {feed.waiting.length > 0 && (
             <>
-              <div className="crew-section-label"><MaterialSymbol icon="push_pin" size={13} /> Waiting on you</div>
+              <div className="crew-section-label"><MaterialSymbol icon="push_pin" size={13} /> {t('crew.feed.waiting_on_you')}</div>
               {feed.waiting.map((member) => <CrewWaitingCard key={member.definition.slug} member={member} />)}
             </>
           )}
           {feed.stream.length > 0 && (
             <>
-              {feed.waiting.length > 0 && <div className="crew-section-label">Latest</div>}
+              {feed.waiting.length > 0 && <div className="crew-section-label">{t('crew.feed.latest')}</div>}
               {feed.stream.map((entry) => <CrewFeedCard key={entry.id} entry={entry} />)}
               {olderState !== 'exhausted' && entries.length >= FEED_PAGE_SIZE && (
                 <button type="button" className="crew-link-button crew-feed-older" disabled={olderState === 'loading'} onClick={() => void loadOlder()}>
-                  {olderState === 'loading' ? 'Loading...' : 'Show older'}
+                  {olderState === 'loading' ? t('crew.feed.loading_more') : t('crew.feed.show_older')}
                 </button>
               )}
             </>
@@ -127,6 +129,7 @@ function useMemberIdentity(slug: string): Pick<CrewMemberDefinition, 'name' | 'r
  */
 function CrewWaitingCard({ member }: { member: CrewMemberSnapshot }) {
   const { viewSession } = useCrew();
+  const { t } = useTranslation('extensions');
   const { definition, runtime } = member;
   return (
     <article className="crew-card" data-tone="ask">
@@ -136,7 +139,7 @@ function CrewWaitingCard({ member }: { member: CrewMemberSnapshot }) {
           {definition.name}
           {definition.role && <span className="crew-faint"> {definition.role}</span>}
         </span>
-        <CrewLevelChip level="ask" label="Waiting on you" />
+        <CrewLevelChip level="ask" label={t('crew.feed.waiting_on_you')} />
       </div>
       <p className="crew-card-body crew-selectable">{runtime.statusDetail}</p>
       <div className="crew-card-actions">
@@ -145,7 +148,7 @@ function CrewWaitingCard({ member }: { member: CrewMemberSnapshot }) {
           className="crew-btn crew-btn-primary crew-btn-small"
           onClick={() => viewSession(definition.slug, null)}
         >
-          Answer on {definition.name}'s desk
+          {t('crew.feed.answer_desk', { name: definition.name })}
         </button>
       </div>
     </article>
@@ -154,11 +157,12 @@ function CrewWaitingCard({ member }: { member: CrewMemberSnapshot }) {
 
 function CrewFeedCard({ entry }: { entry: CrewFeedEntry }) {
   const { host, select, viewSession } = useCrew();
+  const { t } = useTranslation('extensions');
   const who = useMemberIdentity(entry.memberSlug);
   const tone = entry.kind === 'flag' && entry.level === 'page' ? 'page' : entry.kind === 'flag' && entry.level === 'flag' ? 'flag' : 'plain';
   const chip = entry.kind === 'flag'
-    ? <CrewLevelChip level={entry.level ?? 'flag'} label={entry.level === 'note' ? 'Standup' : undefined} />
-    : <CrewLevelChip level="note" label={KIND_LABEL[entry.kind]} />;
+    ? <CrewLevelChip level={entry.level ?? 'flag'} label={entry.level === 'note' ? t('crew.feed.standup') : undefined} />
+    : <CrewLevelChip level="note" label={t(`crew.feed.kind_${entry.kind}`)} />;
 
   return (
     <article className="crew-card" data-tone={tone} data-kind={entry.kind}>
@@ -173,7 +177,7 @@ function CrewFeedCard({ entry }: { entry: CrewFeedEntry }) {
       </div>
       {entry.title && <h3 className="crew-card-title crew-selectable">{entry.title}</h3>}
       {entry.body && <p className="crew-card-body crew-selectable">{entry.body}</p>}
-      {entry.trigger && entry.kind === 'shift' && <p className="crew-card-meta">{describeTrigger(entry.trigger)}</p>}
+      {entry.trigger && entry.kind === 'shift' && <p className="crew-card-meta">{t(describeTrigger(entry.trigger))}</p>}
       <CrewEvidenceChips
         evidence={entry.evidence}
         onOpenSession={(sessionId) => viewSession(entry.memberSlug, sessionId)}
@@ -182,20 +186,10 @@ function CrewFeedCard({ entry }: { entry: CrewFeedEntry }) {
       {entry.sessionId && (
         <div className="crew-card-actions">
           <button type="button" className="crew-btn crew-btn-ghost crew-btn-small" onClick={() => viewSession(entry.memberSlug, entry.sessionId ?? null)}>
-            {entry.chapterIndex !== undefined ? `Read chapter ${entry.chapterIndex}` : 'Read the session'}
+            {entry.chapterIndex !== undefined ? t('crew.feed.read_chapter', { index: entry.chapterIndex }) : t('crew.feed.read_session')}
           </button>
         </div>
       )}
     </article>
   );
 }
-
-const KIND_LABEL: Record<CrewFeedEntry['kind'], string> = {
-  shift: 'Shift',
-  flag: 'Flag',
-  journal: 'Journal',
-  handoff: 'Handoff',
-  'schedule-change': 'Schedule',
-  budget: 'Budget',
-  system: 'System',
-};

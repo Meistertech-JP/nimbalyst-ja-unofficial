@@ -66,6 +66,7 @@ import {getImagePluginCallbacks} from './index';
 import {resolveKnownImageSrc} from './resolveKnownImageSrc';
 import {localAssetUrl} from '../../../utils/localAssetUrl';
 import {copyImageToClipboard} from '../../../utils/clipboard';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 const imageCache = new Map<string, Promise<boolean> | boolean>();
 
@@ -219,6 +220,7 @@ function LazyImage({
 }
 
 function BrokenImage(): JSX.Element {
+  const {t} = useTranslation('editor');
   return (
     <div
       className="collab-asset-unavailable-placeholder"
@@ -233,7 +235,7 @@ function BrokenImage(): JSX.Element {
         minWidth: 200,
       }}
       role="img"
-      aria-label="Image unavailable"
+      aria-label={t('image_node.unavailable')}
     >
       <img
         src={brokenImage}
@@ -241,7 +243,7 @@ function BrokenImage(): JSX.Element {
         draggable="false"
         alt=""
       />
-      <span style={{fontSize: 12}}>Image unavailable</span>
+      <span style={{fontSize: 12}}>{t('image_node.unavailable')}</span>
     </div>
   );
 }
@@ -268,6 +270,7 @@ export function ImageContextMenu({
   onCopy: () => void;
   onClose: () => void;
 }): JSX.Element {
+  const {t} = useTranslation('editor');
   const {refs, floatingStyles, context} = useFloating({
     open: true,
     onOpenChange: (open) => {
@@ -303,7 +306,7 @@ export function ImageContextMenu({
           className="image-context-menu__item"
           onClick={onCopy}
         >
-          Copy image
+          {t('image_node.copy_image')}
         </button>
       </div>
     </FloatingPortal>
@@ -333,6 +336,7 @@ export default function ImageComponent({
   width: 'inherit' | number;
   captionsEnabled: boolean;
 }): JSX.Element {
+  const {t} = useTranslation('editor');
   const imageRef = useRef<null | HTMLImageElement>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -687,7 +691,7 @@ export default function ImageComponent({
     <Suspense fallback={null}>
       <div ref={setContainerRef}>
         {!resolvedSrc ? (
-          <div style={{ width, height, minHeight: 100 }}>Loading...</div>
+          <div style={{ width, height, minHeight: 100 }}>{t('image_node.loading')}</div>
         ) : (
           <>
             <div draggable={draggable}>
@@ -731,7 +735,7 @@ export default function ImageComponent({
                   <RichTextPlugin
                     contentEditable={
                       <ContentEditable
-                        placeholder="Enter a caption..."
+                        placeholder={t('image_node.caption_placeholder')}
                         placeholderClassName="ImageNode__placeholder"
                         className="ImageNode__contentEditable"
                       />

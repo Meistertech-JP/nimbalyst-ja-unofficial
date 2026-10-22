@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { SettingsPanelProps } from '@nimbalyst/runtime';
 import { AVAILABLE_MODELS, DEFAULT_MODEL, type GeminiImageModel } from '../types';
 
@@ -14,13 +15,14 @@ const GOOGLE_AI_KEY_STORAGE_KEY = 'google_ai_api_key';
 const SELECTED_MODEL_STORAGE_KEY = 'selected_model';
 
 export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) {
+  const { t } = useTranslation('extensions');
   const isDark = theme === 'dark' || theme === 'crystal-dark';
   const [apiKey, setApiKey] = useState('');
   const [hasStoredKey, setHasStoredKey] = useState(false);
   const [selectedModel, setSelectedModel] = useState<GeminiImageModel>(DEFAULT_MODEL);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; key: string } | null>(null);
 
   // Load existing settings on mount
   useEffect(() => {
@@ -49,7 +51,7 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
 
   const handleSave = async () => {
     if (!apiKey.trim()) {
-      setMessage({ type: 'error', text: 'Please enter an API key' });
+      setMessage({ type: 'error', key: 'image_generation_ui.enter_api_key_error' });
       return;
     }
 
@@ -60,10 +62,10 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
       await storage.setSecret(GOOGLE_AI_KEY_STORAGE_KEY, apiKey.trim());
       setHasStoredKey(true);
       setApiKey(''); // Clear the input after saving
-      setMessage({ type: 'success', text: 'API key saved successfully' });
+      setMessage({ type: 'success', key: 'image_generation_ui.api_key_saved' });
     } catch (error) {
       console.error('[ImageGenSettings] Failed to save API key:', error);
-      setMessage({ type: 'error', text: 'Failed to save API key' });
+      setMessage({ type: 'error', key: 'image_generation_ui.api_key_save_failed' });
     } finally {
       setIsSaving(false);
     }
@@ -77,10 +79,10 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
       await storage.deleteSecret(GOOGLE_AI_KEY_STORAGE_KEY);
       setHasStoredKey(false);
       setApiKey('');
-      setMessage({ type: 'success', text: 'API key removed' });
+      setMessage({ type: 'success', key: 'image_generation_ui.api_key_removed' });
     } catch (error) {
       console.error('[ImageGenSettings] Failed to clear API key:', error);
-      setMessage({ type: 'error', text: 'Failed to remove API key' });
+      setMessage({ type: 'error', key: 'image_generation_ui.api_key_remove_failed' });
     } finally {
       setIsSaving(false);
     }
@@ -90,17 +92,17 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
     setSelectedModel(model);
     try {
       await storage.set(SELECTED_MODEL_STORAGE_KEY, model);
-      setMessage({ type: 'success', text: 'Model preference saved' });
+      setMessage({ type: 'success', key: 'image_generation_ui.model_preference_saved' });
     } catch (error) {
       console.error('[ImageGenSettings] Failed to save model:', error);
-      setMessage({ type: 'error', text: 'Failed to save model preference' });
+      setMessage({ type: 'error', key: 'image_generation_ui.model_preference_save_failed' });
     }
   };
 
   if (isLoading) {
     return (
       <div className="p-5 text-nim-muted">
-        Loading settings...
+        {t('image_generation_ui.loading_settings')}
       </div>
     );
   }
@@ -108,24 +110,24 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
   return (
     <div className="p-5">
       <h3 className="m-0 mb-2 text-base font-semibold">
-        Google AI API Key
+        {t('image_generation_ui.google_ai_api_key')}
       </h3>
       <p className="m-0 mb-4 text-[13px] text-nim-muted leading-normal">
-        Required for image generation using Google's Imagen model.{' '}
+        {t('image_generation_ui.api_key_description')}{' '}
         <a
           href="https://aistudio.google.com/app/apikey"
           target="_blank"
           rel="noopener noreferrer"
           className="text-nim-link"
         >
-          Get your API key
+          {t('image_generation_ui.get_api_key')}
         </a>
       </p>
 
       {hasStoredKey && (
         <div className="px-3 py-2 mb-3 bg-[rgba(34,197,94,0.1)] border border-nim-success rounded-md text-[13px] text-nim-success flex items-center gap-2">
           <span>&#10003;</span>
-          <span>API key is configured</span>
+          <span>{t('image_generation_ui.api_key_configured')}</span>
         </div>
       )}
 
@@ -134,7 +136,7 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder={hasStoredKey ? 'Enter new key to replace...' : 'Enter your Google AI API key'}
+          placeholder={hasStoredKey ? t('image_generation_ui.enter_new_key') : t('image_generation_ui.enter_google_ai_api_key')}
           className="flex-1 px-3 py-2 rounded-md border border-nim bg-nim text-nim text-sm"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && apiKey.trim()) {
@@ -147,7 +149,7 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
           disabled={isSaving || !apiKey.trim()}
           className={`px-4 py-2 rounded-md border-none font-medium text-sm ${apiKey.trim() ? 'bg-nim-primary text-nim-on-primary cursor-pointer' : 'bg-nim-secondary text-nim-muted cursor-not-allowed'}`}
         >
-          {isSaving ? 'Saving...' : 'Save'}
+          {isSaving ? t('image_generation_ui.saving') : t('image_generation_ui.save')}
         </button>
         {hasStoredKey && (
           <button
@@ -155,7 +157,7 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
             disabled={isSaving}
             className="px-3 py-2 rounded-md border border-nim bg-transparent text-nim-muted cursor-pointer text-sm"
           >
-            Clear
+            {t('image_generation_ui.clear')}
           </button>
         )}
       </div>
@@ -164,18 +166,17 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
         <div
           className={`px-3 py-2 rounded-md text-[13px] ${message.type === 'success' ? 'bg-[rgba(34,197,94,0.1)] text-nim-success' : 'bg-[rgba(239,68,68,0.1)] text-nim-error'}`}
         >
-          {message.text}
+          {t(message.key)}
         </div>
       )}
 
       {/* Model Selection */}
       <div className="mt-6 pt-4 border-t border-nim">
         <h3 className="m-0 mb-2 text-base font-semibold">
-          Model
+          {t('image_generation_ui.model')}
         </h3>
         <p className="m-0 mb-4 text-[13px] text-nim-muted leading-normal">
-          Select which Google AI model to use for image generation.
-          Model availability depends on your API access level.
+          {t('image_generation_ui.model_description')}
         </p>
 
         <div className="flex flex-col gap-2">
@@ -198,15 +199,17 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
               />
               <div className="flex-1">
                 <div className="text-sm font-medium text-nim">
-                  {model.label}
+                      {model.label}
                   {!model.supportsConversation && (
                     <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-nim-tertiary text-nim-muted">
-                      Single-shot only
+                      {t('image_generation_ui.single_shot_only')}
                     </span>
                   )}
                 </div>
                 <div className="text-[12px] text-nim-muted mt-0.5">
-                  {model.description}
+               {t(model.id === 'gemini-2.5-flash-image'
+                 ? 'image_generation_ui.models.flash_image.description'
+                 : 'image_generation_ui.models.pro_image.description')}
                 </div>
               </div>
             </label>
@@ -216,11 +219,10 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
 
       <div className="mt-6 pt-4 border-t border-nim">
         <h4 className="m-0 mb-2 text-sm font-medium">
-          About Image Generation
+          {t('image_generation_ui.about_title')}
         </h4>
         <p className="m-0 text-[13px] text-nim-muted leading-normal">
-          This extension uses Google's Gemini and Imagen models to generate images from text prompts.
-          Create architecture diagrams, UI wireframes, illustrations, and more directly in Nimbalyst.
+          {t('image_generation_ui.about_description')}
         </p>
       </div>
     </div>

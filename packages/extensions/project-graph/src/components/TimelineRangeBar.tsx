@@ -6,6 +6,7 @@ import {
   recentHoursRange,
   type TimelineDateRange,
 } from '../timeline/dateRange';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface TimelineRangeBarProps {
   range: TimelineDateRange | null;
@@ -23,6 +24,7 @@ function rangeLabel(range: TimelineDateRange): string {
 }
 
 export function TimelineRangeBar({ range, onChange, onClose }: TimelineRangeBarProps) {
+  const { t } = useTranslation('extensions');
   const fallback = recentDateRange(30);
   const [start, setStart] = useState(() => formatDateInput(range?.startMs ?? fallback.startMs));
   const [end, setEnd] = useState(() => formatDateInput(range?.endMs ?? fallback.endMs));
@@ -44,45 +46,45 @@ export function TimelineRangeBar({ range, onChange, onClose }: TimelineRangeBarP
   const applyCustom = (): void => {
     const next = dateRangeFromInputs(start, end);
     if (!next) {
-      setError('Choose a valid start date on or before the end date.');
+      setError(t('project_graph.ui.invalid_range'));
       return;
     }
     applyRange(next);
   };
 
   return (
-    <section className="pg-time-range-bar" aria-label="Timeline date range">
-      <span className="pg-time-range-heading">Time range</span>
-      <div className="pg-time-range-presets" aria-label="Time range presets">
+    <section className="pg-time-range-bar" aria-label={t('project_graph.ui.timeline_range')}>
+      <span className="pg-time-range-heading">{t('project_graph.ui.time_range')}</span>
+      <div className="pg-time-range-presets" aria-label={t('project_graph.ui.time_range_presets')}>
         <button
           type="button"
           onClick={() => { setError(null); onChange(null); }}
           className={!range ? 'is-active' : ''}
         >
-          All time
+          {t('project_graph.ui.all_time')}
         </button>
         <button type="button" onClick={() => applyRange(recentHoursRange(24))}>
-          24 hours
+          {t('project_graph.ui.hours', { count: 24 })}
         </button>
         {[7, 30, 90].map(days => (
           <button key={days} type="button" onClick={() => applyRange(recentDateRange(days))}>
-            {days} days
+            {t('project_graph.ui.days', { count: days })}
           </button>
         ))}
       </div>
       <span className="pg-time-range-divider" />
       <label>
-        From
+        {t('project_graph.ui.from')}
         <input type="date" value={start} onChange={event => { setStart(event.target.value); setError(null); }} />
       </label>
       <label>
-        To
+        {t('project_graph.ui.to')}
         <input type="date" value={end} onChange={event => { setEnd(event.target.value); setError(null); }} />
       </label>
-      <button type="button" className="pg-time-range-apply" onClick={applyCustom}>Apply</button>
+      <button type="button" className="pg-time-range-apply" onClick={applyCustom}>{t('project_graph.ui.apply')}</button>
       {range && <span className="pg-time-range-current" title={rangeLabel(range)}>{rangeLabel(range)}</span>}
       {error && <span className="pg-time-range-error" role="alert">{error}</span>}
-      <button type="button" className="pg-time-range-close" onClick={onClose} aria-label="Close time range filter">×</button>
+      <button type="button" className="pg-time-range-close" onClick={onClose} aria-label={t('project_graph.ui.close_time_range')}>×</button>
     </section>
   );
 }

@@ -10,8 +10,10 @@
  */
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { createStore, Provider as JotaiProvider } from 'jotai';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { McpSessionStatusSnapshot } from '@nimbalyst/runtime/types/MCPServerConfig';
 import { mcpSessionStatusAtomFamily } from '../../../store/atoms/mcpStatus';
 import { sessionStoreAtom } from '../../../store/atoms/sessions';
@@ -55,6 +57,13 @@ vi.mock('@floating-ui/react', () => ({
 }));
 
 const SESSION_ID = 'session-1';
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
 
 function snapshot(overrides: Partial<McpSessionStatusSnapshot> = {}): McpSessionStatusSnapshot {
   return {
@@ -70,13 +79,16 @@ function snapshot(overrides: Partial<McpSessionStatusSnapshot> = {}): McpSession
 function renderChip(
   initial: McpSessionStatusSnapshot | null,
   provider = 'claude-code',
+  i18n: typeof englishI18n = englishI18n,
 ) {
   const store = createStore();
   if (initial) store.set(mcpSessionStatusAtomFamily(SESSION_ID), initial);
   const result = render(
-    <JotaiProvider store={store}>
-      <McpSessionStatusChip sessionId={SESSION_ID} provider={provider} />
-    </JotaiProvider>,
+    <I18nextProvider i18n={i18n}>
+      <JotaiProvider store={store}>
+        <McpSessionStatusChip sessionId={SESSION_ID} provider={provider} />
+      </JotaiProvider>
+    </I18nextProvider>,
   );
   return { store, ...result };
 }
@@ -209,6 +221,36 @@ describe('McpSessionStatusChip', () => {
 
     const popover = await screen.findByTestId('mcp-session-status-popover');
     expect(popover.textContent).toContain('not checked yet');
+  });
+
+  it('localizes the status popover, details, tooltip, and accessible labels', async () => {
+    renderChip(snapshot({
+      lastCheckedAt: null,
+      servers: [
+        { name: 'google-drive', state: 'absent' },
+        { name: 'atlassian', state: 'needs-auth' },
+        { name: 'trackers', state: 'connected', scope: 'local', toolCount: 2 },
+      ],
+    }), 'claude-code', japaneseI18n);
+
+    const chip = screen.getByRole('button', { name: 'MCPサーバーの状態：MCP 1/3' });
+    expect(chip.getAttribute('title')).toBe('このセッションのMCPサーバー');
+
+    await act(async () => {
+      fireEvent.click(chip);
+    });
+
+    const popover = await screen.findByTestId('mcp-session-status-popover');
+    expect(popover.getAttribute('aria-label')).toBe('MCPサーバーの状態');
+    expect(popover.textContent).toContain('MCPサーバー');
+    expect(popover.textContent).toContain('未確認');
+    expect(popover.textContent).toContain('利用不可');
+    expect(popover.textContent).toContain('設定されていますが、このセッションでは一度も接続されていません');
+    expect(popover.textContent).toContain('認証が必要です');
+    expect(popover.textContent).toContain('接続済み');
+    expect(popover.textContent).toContain('2個のツール');
+    expect(popover.textContent).toContain('この一覧には、Nimbalystがこのセッションに渡したサーバーが表示されます。');
+    expect(popover.textContent).toContain('CLIが独自の設定から読み込むサーバーは表示されない場合があります。');
   });
 });
 

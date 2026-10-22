@@ -1,9 +1,23 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeAll, describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as testingRender, screen, fireEvent } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { globalRegistry } from '../../models';
 import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { StatusBar } from '../StatusBar';
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  testI18n = await createI18nInstance('en');
+});
+
+function render(ui: React.ReactNode) {
+  return testingRender(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider>,
+  });
+}
 
 const model: TrackerDataModel = {
   type: 'statusBarPlan',
@@ -49,6 +63,25 @@ function renderStatusBar(data: Record<string, unknown> = {}) {
 }
 
 describe('StatusBar', () => {
+  it('localizes accessibility labels in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    testingRender(
+      <I18nextProvider i18n={i18n}>
+        <StatusBar
+          model={model}
+          data={{}}
+          onChange={() => {}}
+          onClose={() => {}}
+          trackerItemLink={{ label: 'NIM-42', title: 'Roadmap', onOpen: () => {} }}
+        />
+      </I18nextProvider>,
+    );
+
+    screen.getByRole('button', { name: 'ステータスバーを折りたたむ' });
+    screen.getByRole('button', { name: 'トラッカー項目NIM-42を開く' });
+    screen.getByRole('button', { name: 'トラッカーを削除' });
+  });
+
   it('renders the tracker fields as a chip row and writes one field per change', () => {
     const { onChange } = renderStatusBar({ status: 'draft', progress: 40 });
 

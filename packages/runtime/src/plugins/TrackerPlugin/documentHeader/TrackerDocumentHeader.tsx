@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
@@ -65,6 +66,7 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
   editor,
   trackerFieldCapabilities,
 }) => {
+  const { t } = useTranslation('files');
   const [dataModel, setDataModel] = useState<TrackerDataModel | null>(null);
   const [trackerType, setTrackerType] = useState<string | null>(null);
   const trackerItems = useAtomValue(trackerItemsMapAtom);
@@ -173,20 +175,20 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
   const handleOpenItem = useCallback((itemId: string) => {
     const related = trackerItems.get(itemId);
     if (!related) return;
-    const title = getRecordTitle(related) || related.issueKey || 'Tracker item';
+    const title = getRecordTitle(related) || related.issueKey || t('tracker_item.generic_label');
     navigateToTrackerReference({
       id: related.id,
       issueKey: related.issueKey,
       title,
       type: related.primaryType,
     });
-  }, [trackerItems]);
+  }, [t, trackerItems]);
 
   const trackerItemLink = useMemo(() => {
     if (!associatedItem) return undefined;
-    const title = getRecordTitle(associatedItem) || associatedItem.issueKey || 'Tracker item';
+    const title = getRecordTitle(associatedItem) || associatedItem.issueKey || t('tracker_item.generic_label');
     return {
-      label: associatedItem.issueKey ?? 'Tracker item',
+      label: associatedItem.issueKey ?? t('tracker_item.generic_label'),
       title,
       onOpen: () => navigateToTrackerReference({
         id: associatedItem.id,
@@ -195,7 +197,7 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
         type: associatedItem.primaryType,
       }),
     };
-  }, [associatedItem]);
+  }, [associatedItem, t]);
 
   // Don't render if no tracker data or no data model
   if (!trackerData || !dataModel) {
@@ -221,8 +223,8 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
           <button
             type="button"
             className="tracker-document-header-item-link ml-auto inline-flex shrink-0 items-center gap-1 rounded border-none bg-transparent px-1 text-xs text-[var(--nim-text-muted)] cursor-pointer hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
-            title={`Open tracker item: ${trackerItemLink.title}`}
-            aria-label={`Open tracker item ${trackerItemLink.label}`}
+            title={t('tracker_item.open_title', { title: trackerItemLink.title })}
+            aria-label={t('tracker_item.open_aria_label', { label: trackerItemLink.label })}
             onClick={trackerItemLink.onOpen}
           >
             <MaterialSymbol icon="tag" size={13} />
@@ -236,7 +238,7 @@ export const TrackerDocumentHeader: React.FC<DocumentHeaderComponentProps> = ({
           style={{ color: 'var(--nim-error)' }}
           role="alert"
         >
-          {`Could not update this file's frontmatter: ${writeError}`}
+          {t('tracker_frontmatter_update_failed', { error: writeError })}
         </div>
       )}
     </div>

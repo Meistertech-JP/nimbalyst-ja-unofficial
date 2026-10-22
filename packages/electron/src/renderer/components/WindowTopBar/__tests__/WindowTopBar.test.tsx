@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render as renderBase, screen } from '@testing-library/react';
 import { getDefaultStore } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { WindowTopBar, clampGitFeedbackMessage } from '../WindowTopBar';
 import { windowFullScreenAtom } from '../../../store/atoms/windowFullScreen';
 import { NO_DRAG_REGION } from '../dragRegion';
@@ -21,7 +23,70 @@ afterEach(() => {
   getDefaultStore().set(windowFullScreenAtom, false);
 });
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+const render = (ui: React.ReactElement) => renderBase(
+  <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+    {ui}
+  </UiLanguageProvider>,
+);
+
 describe('WindowTopBar', () => {
+  it('renders fixed title-bar labels in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    getDefaultStore().set(windowFullScreenAtom, true);
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <WindowTopBar
+          workspaceName="Repo"
+          activeModeLabel="Tracker"
+          gitStatus={{ branch: 'main', hasUncommitted: true, ahead: 2, behind: 3 }}
+          gitActions={{
+            onPull: () => {},
+            onPush: () => {},
+            onOpenLog: () => {},
+            activity: {
+              running: [{ id: 'git-1', source: 'agent', command: 'git fetch' }],
+              latest: { id: 'git-1', source: 'agent', command: 'git fetch' },
+            },
+          }}
+          panelControls={{ left: { label: 'ファイル', collapsed: false, onToggle: () => {} } }}
+          newSessionControl={{
+            label: '新しいセッション',
+            onCreate: () => {},
+            destination: '作業スペース',
+            menuItems: [{ id: 'type', label: 'テンプレート', icon: 'description', onSelect: () => {} }],
+          }}
+        />
+      </UiLanguageProvider>,
+    );
+
+    expect(screen.getByTestId('window-top-bar-exit-full-screen').getAttribute('aria-label'))
+      .toBe('全画面表示を終了');
+    expect(screen.getByTestId('window-top-bar-git-status').textContent).toContain('変更あり');
+    expect(screen.getByTestId('window-top-bar-git-status').getAttribute('title'))
+      .toContain('2コミット先行');
+    expect(screen.getByTestId('window-top-bar-left-pane').getAttribute('aria-label'))
+      .toBe('ファイルを非表示');
+    expect(screen.getByTestId('window-top-bar-create-right-menu-button').getAttribute('title'))
+      .toBe('作成する項目を選択');
+
+    fireEvent.click(screen.getByTestId('window-top-bar-git-status'));
+    expect(screen.getByRole('menuitem', { name: 'プル' })).not.toBeNull();
+    expect(screen.getByRole('menuitem', { name: 'プッシュ' })).not.toBeNull();
+    expect(screen.getByRole('menuitem', { name: 'Gitログを開く' })).not.toBeNull();
+    expect(screen.getByTestId('window-top-bar-git-activity-item').getAttribute('title'))
+      .toContain('エージェントセッション: git fetch');
+
+    fireEvent.click(screen.getByTestId('window-top-bar-create-right-menu-button'));
+    expect(screen.getByTestId('window-top-bar-create-right-destination').textContent)
+      .toContain('作業スペースに作成');
+  });
+
   it('renders stable markers, workspace identity, and active mode', () => {
     render(
       <WindowTopBar

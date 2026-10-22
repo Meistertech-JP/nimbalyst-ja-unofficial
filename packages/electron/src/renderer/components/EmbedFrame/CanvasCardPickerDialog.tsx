@@ -25,6 +25,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 
 import type { CanvasCardPick } from '@nimbalyst/runtime/canvas';
@@ -65,6 +66,7 @@ export function CanvasCardPickerDialog({
   onClose: () => void;
   data: CanvasCardPickerData;
 }): React.ReactElement | null {
+  const { t } = useTranslation('common');
   const { workspacePath, onPick } = data;
 
   const [query, setQuery] = useState('');
@@ -123,11 +125,11 @@ export function CanvasCardPickerDialog({
       )
       .slice(0, MAX_ROWS_PER_SOURCE)
       .map((document) => {
-        const label = document.title || 'Untitled';
+        const label = document.title || t('collab.untitled');
         return {
           key: `doc:${document.documentId}`,
           label,
-          detail: 'Shared document',
+          detail: t('collab.shared_document'),
           icon: 'group',
           pick: {
             reference: {
@@ -142,7 +144,7 @@ export function CanvasCardPickerDialog({
       });
 
     return [...docs, ...files];
-  }, [fileOptions, orgId, query, sharedDocuments]);
+  }, [fileOptions, orgId, query, sharedDocuments, t]);
 
   // A shrinking result list must not leave the highlight past its end, or Enter
   // resolves nothing and the dialog reads as broken rather than as empty.
@@ -195,7 +197,8 @@ export function CanvasCardPickerDialog({
             className="canvas-card-picker__input flex-1 bg-transparent outline-none text-nim placeholder:text-nim-faint"
             type="text"
             value={query}
-            placeholder="Search files and shared documents"
+            aria-label={t('canvas_card_picker.search')}
+            placeholder={t('canvas_card_picker.search')}
             onChange={(event) => {
               setQuery(event.target.value);
               setHighlighted(0);
@@ -237,7 +240,7 @@ export function CanvasCardPickerDialog({
           ))}
           {rows.length === 0 && (
             <li className="canvas-card-picker__empty px-3 py-8 text-center text-nim-faint">
-              {searching ? 'Searching…' : 'Nothing matches that.'}
+              {searching ? t('quick_open.searching') : t('noResults')}
             </li>
           )}
         </ul>

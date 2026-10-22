@@ -7,6 +7,7 @@
  */
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FloatingPortal,
   autoUpdate,
@@ -34,6 +35,7 @@ export function MockupCommentComposer({
   onSubmit,
   onDiscard,
 }: MockupCommentComposerProps) {
+  const { t } = useTranslation("extensions");
   const [body, setBody] = useState("");
   const bodyRef = useRef(body);
   bodyRef.current = body;
@@ -105,8 +107,8 @@ export function MockupCommentComposer({
             }
           }}
           rows={3}
-          placeholder={`Comment as ${authorName}`}
-          aria-label="New mockup comment"
+          placeholder={t("mockup_lm_ui.comment_as", { authorName })}
+          aria-label={t("mockup_lm_ui.new_comment")}
           className="mockup-comment-composer-input w-full resize-none rounded border border-nim bg-nim p-2 text-xs text-nim outline-none select-text"
         />
         <div className="mt-2 flex items-center justify-end gap-2">
@@ -115,7 +117,7 @@ export function MockupCommentComposer({
             onClick={onDiscard}
             className="rounded border border-nim bg-nim px-2 py-1 text-xs text-nim cursor-pointer"
           >
-            Cancel
+            {t("mockup_lm_ui.cancel")}
           </button>
           <button
             type="button"
@@ -125,7 +127,7 @@ export function MockupCommentComposer({
               body.trim() ? "cursor-pointer opacity-100" : "cursor-default opacity-50"
             }`}
           >
-            Comment
+            {t("mockup_lm_ui.comment")}
           </button>
         </div>
       </div>

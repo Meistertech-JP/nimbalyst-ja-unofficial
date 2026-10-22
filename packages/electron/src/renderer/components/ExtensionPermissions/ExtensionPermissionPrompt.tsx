@@ -12,6 +12,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { extensionPermissionPromptQueueAtom } from '../../store/atoms/extensionPermissions';
 
@@ -26,12 +27,6 @@ interface PermissionDescriptor {
 
 const RISK_ORDER: RiskTier[] = ['high', 'elevated', 'low'];
 
-const RISK_LABEL: Record<RiskTier, string> = {
-  high: 'High risk',
-  elevated: 'Elevated',
-  low: 'Low risk',
-};
-
 const RISK_TEXT_CLASS: Record<RiskTier, string> = {
   high: 'text-[var(--nim-error)]',
   elevated: 'text-[var(--nim-warning)]',
@@ -45,6 +40,7 @@ const RISK_ICON: Record<RiskTier, string> = {
 };
 
 export const ExtensionPermissionPrompt: React.FC = () => {
+  const { t } = useTranslation('extensions');
   const [queue, setQueue] = useAtom(extensionPermissionPromptQueueAtom);
   const [descriptors, setDescriptors] = useState<PermissionDescriptor[] | null>(null);
 
@@ -128,8 +124,8 @@ export const ExtensionPermissionPrompt: React.FC = () => {
 
   const title =
     current.reason.kind === 'first-use'
-      ? `Enable ${current.extensionName}?`
-      : `${current.extensionName} needs new permissions`;
+      ? t('permission_prompt.enable_title', { name: current.extensionName })
+      : t('permission_prompt.needs_permissions', { name: current.extensionName });
 
   return (
     <div className="ext-permission-prompt-overlay nim-overlay" onClick={() => respond('not-now')}>
@@ -147,8 +143,7 @@ export const ExtensionPermissionPrompt: React.FC = () => {
           <div className="ext-permission-prompt-update-banner mb-4 flex items-start gap-2 rounded border border-[var(--nim-warning)] bg-[rgba(245,158,11,0.08)] p-3 text-xs text-nim">
             <MaterialSymbol icon="upgrade" size={16} />
             <span>
-              This extension updated and now requires {current.reason.addedPermissions.length} additional{' '}
-              {current.reason.addedPermissions.length === 1 ? 'permission' : 'permissions'}, marked NEW below.
+              {t('permission_prompt.updated_notice', { count: current.reason.addedPermissions.length })}
             </span>
           </div>
         )}
@@ -162,10 +157,9 @@ export const ExtensionPermissionPrompt: React.FC = () => {
         <div className="ext-permission-prompt-native-banner mb-4 flex items-start gap-2 rounded border border-[var(--nim-error)] bg-[rgba(239,68,68,0.08)] p-3 text-xs text-nim">
           <MaterialSymbol icon="warning" size={16} />
           <div className="flex-1 leading-relaxed">
-            <div className="font-semibold mb-1">This extension will run native code on your computer.</div>
+            <div className="font-semibold mb-1">{t('permission_prompt.native_title')}</div>
             <div className="text-nim-muted">
-              Enabling this module lets it spawn processes, open network connections, and read or write files
-              with the same access your user account has. Only enable extensions from sources you trust.
+              {t('permission_prompt.native_description')}
             </div>
           </div>
         </div>
@@ -180,7 +174,7 @@ export const ExtensionPermissionPrompt: React.FC = () => {
                   className={`ext-permission-prompt-group-title flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-2 ${RISK_TEXT_CLASS[tier]}`}
                 >
                   <MaterialSymbol icon={RISK_ICON[tier]} size={14} />
-                  {RISK_LABEL[tier]}
+                  {t(`permission_prompt.risk_${tier}`)}
                 </div>
                 <ul className="ext-permission-prompt-list m-0 p-0 list-none flex flex-col gap-2">
                   {items.map((d) => {
@@ -192,15 +186,15 @@ export const ExtensionPermissionPrompt: React.FC = () => {
                       >
                         <div className="flex-1">
                           <div className="ext-permission-prompt-item-label flex items-center gap-2 text-sm font-medium text-nim">
-                            {d.label}
+                            {t(`permission_catalog.${d.id}.label`, { defaultValue: d.label })}
                             {isNew && (
                               <span className="ext-permission-prompt-item-new text-[10px] font-semibold uppercase tracking-wider rounded bg-[var(--nim-warning)] px-1.5 py-0.5 text-[var(--nim-bg)]">
-                                New
+                                {t('permission_prompt.new')}
                               </span>
                             )}
                           </div>
                           <div className="ext-permission-prompt-item-description mt-0.5 text-xs text-nim-muted leading-relaxed">
-                            {d.description}
+                            {t(`permission_catalog.${d.id}.description`, { defaultValue: d.description })}
                           </div>
                         </div>
                       </li>
@@ -213,7 +207,7 @@ export const ExtensionPermissionPrompt: React.FC = () => {
         </div>
 
         <p className="ext-permission-prompt-footnote m-0 mb-4 text-xs text-nim-muted leading-relaxed">
-          You can revoke this at any time from Settings &rarr; Extensions.
+          {t('permission_prompt.footnote')}
         </p>
 
         {/* Consent to run native code is a per-module trust decision, not a
@@ -226,13 +220,13 @@ export const ExtensionPermissionPrompt: React.FC = () => {
             className="ext-permission-prompt-button-decline nim-btn-secondary"
             onClick={() => respond('not-now')}
           >
-            Not now
+            {t('permission_prompt.not_now')}
           </button>
           <button
             className="ext-permission-prompt-button-enable nim-btn-primary"
             onClick={() => respond('enable-global')}
           >
-            Enable
+            {t('permission_prompt.enable')}
           </button>
         </div>
       </div>

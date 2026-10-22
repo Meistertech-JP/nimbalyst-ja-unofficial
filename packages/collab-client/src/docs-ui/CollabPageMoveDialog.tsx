@@ -6,6 +6,7 @@
  * Lazy-loaded by the sidebar so it stays out of the docs-ui eager bundle.
  */
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { CollabTreeNode } from '@nimbalyst/collab-client/docs';
 import { treeMoveRefused, type PageTreeDestination } from '../docs/collabPageTree';
@@ -51,6 +52,7 @@ export default function CollabPageMoveDialog({
   onConfirm,
   onCancel,
 }: CollabPageMoveDialogProps) {
+  const { t } = useTranslation('common');
   const current = useMemo(() => currentDestination(tree, movingNodeId), [movingNodeId, tree]);
   const [selected, setSelected] = useState<CollabMoveDestination>(current);
   const options = useMemo(() => {
@@ -86,16 +88,16 @@ export default function CollabPageMoveDialog({
         className="collab-page-move-dialog w-[420px] max-w-[92%] bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-xl shadow-2xl overflow-hidden"
         role="dialog"
         aria-modal="true"
-        aria-label={`Move ${name}`}
+        aria-label={t('collab.move_dialog_title', { name })}
         onKeyDown={(event) => { if (event.key === 'Escape') onCancel(); }}
       >
         <h2 className="m-0 px-5 pt-4 pb-3 border-b border-[var(--nim-border)] text-[14px] font-semibold text-[var(--nim-text)] truncate">
-          Move “{name}”
+          {t('collab.move_dialog_title', { name })}
         </h2>
         <div
           className="nim-scrollbar m-4 max-h-[260px] overflow-y-auto rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-1"
           role="listbox"
-          aria-label="Destination page"
+          aria-label={t('collab.destination_page')}
         >
           {options.map((option) => {
             const isSelected = option.id === selected;
@@ -132,7 +134,7 @@ export default function CollabPageMoveDialog({
             onClick={onCancel}
             className="px-3 py-1.5 bg-transparent rounded-md text-[var(--nim-text-muted)] text-[13px] hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -145,7 +147,7 @@ export default function CollabPageMoveDialog({
                 parentKind: selected?.startsWith('item:') ? 'item' : 'page',
               })}
           >
-            Move
+            {t('collab.move')}
           </button>
         </div>
       </div>

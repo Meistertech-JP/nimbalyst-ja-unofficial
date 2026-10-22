@@ -1,0 +1,147 @@
+{
+  "title": "Cloudflare Sandboxes",
+  "description": "Configure and deploy an isolated sandbox using your Wrangler authentication.",
+  "actions": {
+    "checking": "Checking…",
+    "recheck": "Check again",
+    "retrying": "Retrying…",
+    "retry": "Retry"
+  },
+  "errors": {
+    "selection_save": "Could not save the selected Cloudflare profile and account.",
+    "selection_load": "Could not load the saved Cloudflare profile and account.",
+    "codes": {
+      "wrangler_missing": "Wrangler was not found. Install the Cloudflare Wrangler CLI and make sure it is on your PATH.",
+      "wrangler_unsupported": "This version of Wrangler does not support named auth profiles. Update Wrangler to 4.125.0 or newer.",
+      "not_authenticated": "This Wrangler profile is not signed in. Sign in again to continue.",
+      "profile_exists": "A Wrangler profile with that name already exists. Re-authenticate it instead of creating it again.",
+      "login_cancelled": "Sign-in was cancelled before it completed.",
+      "account_required": "Choose which Cloudflare account to use. Nimbalyst will not pick one for you.",
+      "plan_stale": "This deployment plan is out of date. Review the plan again before deploying.",
+      "deploy_failed": "Wrangler could not finish the deployment. Some resources may already have been created in your Cloudflare account — Nimbalyst kept this sandbox listed so you can retry or delete it.",
+      "deployment_stale": "This sandbox has changed since it was loaded. Reload it before continuing.",
+      "worker_missing": "The Worker for this sandbox no longer exists in your Cloudflare account.",
+      "confirmation_required": "This action needs an explicit confirmation before it can run.",
+      "container_unavailable": "The sandbox is deployed, but its container could not be reached.",
+      "node_not_provisioned": "This sandbox has no agent node in it. Connect the node again. The container discards its files whenever it sleeps.",
+      "node_provision_failed": "Nimbalyst could not prepare the sandbox agent. Check the sandbox status before connecting again.",
+      "node_start_failed": "The agent node could not start in this sandbox. Check its recent output and try connecting again.",
+      "grant_failed": "Nimbalyst could not authorize this sandbox with the sync server, so the node was not started.",
+      "unknown": "Something went wrong talking to Wrangler."
+    }
+  },
+  "profile_errors": {
+    "reserved": "“{{profileName}}” is reserved by Wrangler. Choose another profile name.",
+    "invalid_characters": "Use only letters, numbers, hyphens, and underscores in profile names."
+  },
+  "prerequisites": {
+    "title": "Prerequisites",
+    "wrangler_missing": "Wrangler is not installed.",
+    "wrangler_unsupported": "Wrangler {{version}} does not support profiles. Update Wrangler to continue.",
+    "install_wrangler_hint": "Install Wrangler and make sure it is available on your PATH.",
+    "checking_machine": "Checking this machine…"
+  },
+  "profile": {
+    "title": "Wrangler profile",
+    "description": "Choose an authenticated Wrangler profile, or create one through Cloudflare sign-in. Authentication is managed by Wrangler; this panel does not collect API tokens.",
+    "loading": "Loading profiles…",
+    "aria_label": "Wrangler profiles",
+    "signed_out": "Signed out",
+    "empty": "No Wrangler profiles found. Sign in or create a profile below.",
+    "waiting_for_browser": "Waiting for browser…",
+    "sign_in_again": "Sign in to {{profile}} again",
+    "new_name_placeholder": "New profile name",
+    "sign_in_cloudflare": "Sign in to Cloudflare"
+  },
+  "account": {
+    "title": "Cloudflare account",
+    "description": "Select the account where the sandbox will be deployed. An account is never selected automatically.",
+    "select_profile_first": "Select an authenticated Wrangler profile first.",
+    "loading": "Loading accounts…",
+    "aria_label": "Cloudflare account",
+    "select": "Select an account…"
+  },
+  "deploy": {
+    "title": "Review and deploy",
+    "description": "Review the resources and possible costs before deploying. Nothing is created until you confirm the plan.",
+    "preparing_review": "Preparing review…",
+    "review": "Review deployment plan",
+    "deploying_to": "Deploying to ",
+    "using_profile": " using profile ",
+    "resource_create": "Create",
+    "resource_update": "Update",
+    "resource_reuse": "Reuse",
+    "container": "Container",
+    "at_most": "up to",
+    "instance_count_one": "instance",
+    "instance_count_other": "instances",
+    "sleeping_after": "sleeps after",
+    "minutes_idle": "minutes idle",
+    "paid_plan_required": "This deployment requires a paid plan for the {{account}} account.",
+    "cost_note_paid": "Containers require the Workers Paid plan, which is $5/month. Deploying on a free account will fail.",
+    "cost_note_runtime": "The {{instanceType}} container is billed for every 10ms it is actively running. CPU is charged on active use, while memory and disk are charged on the resources provisioned for the instance type, so they accrue whenever the container is running rather than only when it is busy.",
+    "cost_note_resources": "Workers and Durable Objects are billed separately from the container, because requests reach the sandbox through a Worker and each container has its own Durable Object.",
+    "cost_note_limits": "Nimbalyst limits this to {{maxInstances}} container instance and sleeps it after {{sleepAfterMinutes}} minutes idle. That bounds how fast charges accrue; it is not a spending cap, so check your Cloudflare billing.",
+    "acknowledgement": "I have reviewed the deployment plan and understand that Cloudflare may charge for these resources.",
+    "deploying": "Deploying…",
+    "deploy_sandbox": "Deploy sandbox"
+  },
+  "deployment": {
+    "refresh_failed": "Could not refresh the sandbox: {{error}}",
+    "read_failed": "Could not read the sandbox: {{error}}"
+  },
+  "status_card": {
+    "title": "Deployed sandbox",
+    "labels": { "deployment": "Deployment", "container": "Container", "access": "Access" },
+    "profile": "profile",
+    "as_of": "as of {{time}}",
+    "deployment_status": {
+      "not-deployed": "Not deployed", "deploying": "Deploying…", "deployed": "Deployed",
+      "error": "Deployment failed", "deleting": "Deleting…"
+    },
+    "container_status": {
+      "unknown": "Not observed yet", "stopped": "Stopped", "starting": "Starting…",
+      "running": "Running", "stopping": "Stopping…"
+    },
+    "private_access": "Private — reached over a Worker binding, with no public endpoint.",
+    "refresh": "Refresh",
+    "waking": "Waking…",
+    "wake": "Wake sandbox",
+    "stop": "Stop sandbox",
+    "delete": "Delete sandbox",
+    "stop_warning": "Stopping the container ends every process running in it and discards files written inside it. Nothing in the sandbox is kept.",
+    "stopping": "Stopping…",
+    "stop_and_discard": "Stop and discard",
+    "cancel": "Cancel",
+    "delete_warning": "Delete this sandbox from {{account}} using profile {{profile}}? The deployed Worker and its container are removed, along with anything inside the container.",
+    "deleting": "Deleting…",
+    "delete_from": "Delete from {{account}}"
+  },
+  "node": {
+    "title": "Agent node",
+    "description": "Connecting installs a Nimbalyst agent in the sandbox and signs it in as one of your devices. Your Claude Code subscription login is copied into the sandbox so the agent can use it. The sandbox discards everything inside it whenever it sleeps, so anything the agent has not pushed to git is lost and the node has to be connected again.",
+    "labels": { "node": "Node", "working_in": "Working in" },
+    "status": {
+      "not_connected": "Not connected",
+      "running_since": "Running since {{time}}",
+      "running": "Running",
+      "stopped_exit_code": "Stopped, exit code {{exitCode}}",
+      "stopped": "Stopped"
+    },
+    "workspace": "{{project}} on branch {{branch}}",
+    "no_workspace": "Open a workspace first. The node clones that workspace's repository and branch.",
+    "disconnect_warning": "Disconnecting asks the agent to stop, ending any session it is running, and revokes its sync credential so reconnecting issues a new one. Anything it wrote and has not pushed stays in the sandbox until the sandbox next sleeps, and is then lost.",
+    "actions": {
+      "connecting": "Connecting…", "connect": "Connect node", "checking": "Checking…", "check": "Check node",
+      "disconnect": "Disconnect node", "disconnecting": "Disconnecting…", "disconnect_discard": "Disconnect and discard", "cancel": "Cancel"
+    },
+    "errors": { "refresh_failed": "{{message}} The sandbox status could not be refreshed. Refresh the sandbox before retrying." },
+    "session": {
+      "title": "Start a session on the sandbox",
+      "description": "The agent runs in the sandbox, on {{branch}} in {{project}}. Its sessions appear in your session list, where you can follow progress and send more prompts.",
+      "description_connected_workspace": "The agent runs in the sandbox, on the connected workspace. Its sessions appear in your session list, where you can follow progress and send more prompts.",
+      "prompt_placeholder": "What should the sandbox agent do?",
+      "starting": "Starting…", "start": "Start remote session", "started": "Started session {{sessionId}} on the sandbox.", "open": "Open session"
+    }
+  }
+}

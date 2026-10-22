@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ToolCallDiffLoadResult, ToolCallDiffResult } from '../../../ai/server/transcript';
 import { DiffViewer } from './DiffViewer';
 import { NewFilePreview } from './NewFilePreview';
@@ -32,29 +33,32 @@ interface ToolCallChangesProps {
   loadDiffs?: () => Promise<ToolCallDiffLoadResult>;
 }
 
-function getOperationBadge(operation: string): { label: string; colorClass: string; bgClass: string } {
+function getOperationBadge(
+  operation: string,
+  labels: { created: string; deleted: string; shell: string; edited: string },
+): { label: string; colorClass: string; bgClass: string } {
   switch (operation) {
     case 'create':
       return {
-        label: 'Created',
+        label: labels.created,
         colorClass: 'text-nim-success',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-success)_15%,transparent)]',
       };
     case 'delete':
       return {
-        label: 'Deleted',
+        label: labels.deleted,
         colorClass: 'text-nim-error',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]',
       };
     case 'bash':
       return {
-        label: 'Shell',
+        label: labels.shell,
         colorClass: 'text-nim-faint',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-text-faint)_15%,transparent)]',
       };
     default:
       return {
-        label: 'Edited',
+        label: labels.edited,
         colorClass: 'text-nim-primary',
         bgClass: 'bg-[color-mix(in_srgb,var(--nim-primary)_15%,transparent)]',
       };
@@ -70,6 +74,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
   canEmbedFile,
   loadDiffs,
 }) => {
+  const { t } = useTranslation('aichat');
   const [changesExpanded, setChangesExpanded] = useState(false);
   const [loadResult, setLoadResult] = useState<ToolCallDiffLoadResult | null>(
     diffs && diffs.length > 0
@@ -126,8 +131,8 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
   const primaryFilePath = resolvedDiffs[0]?.filePath;
   const primarySupportsEmbeddedPreview = !!primaryFilePath && !!canEmbedFile?.(primaryFilePath);
   const summaryParts = fileCount > 0
-    ? [`${fileCount} file${fileCount !== 1 ? 's' : ''} changed`]
-    : ['View diff'];
+    ? [t('tool_call_changes.files_changed', { count: fileCount })]
+    : [t('tool_call_changes.view_diff')];
   if (totalAdded > 0) summaryParts.push(`+${totalAdded}`);
   if (totalRemoved > 0) summaryParts.push(`-${totalRemoved}`);
   const summary = summaryParts.join(' ');
@@ -150,7 +155,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
             </svg>
           </div>
           <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">
-            File Changes
+            {t('tool_call_changes.title')}
           </span>
           <span className="text-[0.65rem] text-nim-faint font-sans">
             ({summary})
@@ -168,30 +173,35 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
       {changesExpanded && (
         <div className="flex flex-col">
           {loading && (
-            <div className="px-3 py-2 text-xs text-nim-muted">Computing a safe diff…</div>
+            <div className="px-3 py-2 text-xs text-nim-muted">{t('tool_call_changes.computing')}</div>
           )}
           {!loading && loadResult?.state === 'none' && (
-            <div className="px-3 py-2 text-xs text-nim-muted">No attributable file changes were found.</div>
+            <div className="px-3 py-2 text-xs text-nim-muted">{t('tool_call_changes.none')}</div>
           )}
           {!loading && loadResult?.state === 'failed' && (
             <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-nim-muted">
-              <span>File changes could not be loaded safely.</span>
-              <button className="text-nim-primary hover:underline" type="button" onClick={() => void requestDiffs()}>Retry</button>
+              <span>{t('tool_call_changes.failed')}</span>
+              <button className="text-nim-primary hover:underline" type="button" onClick={() => void requestDiffs()}>{t('tool_call_changes.retry')}</button>
             </div>
           )}
           {!loading && loadResult?.omissions.map((omission) => (
             <div key={`${omission.filePath}-${omission.reason}`} className="px-3 py-2 text-xs text-nim-muted border-t border-nim first:border-t-0">
               <code>{toProjectRelative(omission.filePath, workspacePath)}</code>: {' '}
               {omission.reason === 'input-too-large'
-                ? 'Diff omitted because this file is too large to compare safely.'
+                ? t('tool_call_changes.omission_too_large')
                 : omission.reason === 'edit-distance-limit'
-                  ? 'Diff omitted because the files differ too extensively.'
-                  : 'Diff omitted because comparison exceeded the safe time limit.'}
+                  ? t('tool_call_changes.omission_too_different')
+                  : t('tool_call_changes.omission_timeout')}
             </div>
           ))}
           {resolvedDiffs.map((diff, idx) => {
             const relPath = toProjectRelative(diff.filePath, workspacePath);
-            const badge = getOperationBadge(diff.operation);
+            const badge = getOperationBadge(diff.operation, {
+              created: t('tool_call_changes.created'),
+              deleted: t('tool_call_changes.deleted'),
+              shell: t('tool_call_changes.shell'),
+              edited: t('tool_call_changes.edited'),
+            });
             const hasDiffContent = diff.diffs.length > 0;
             const hasNewContent = !hasDiffContent && !!diff.content;
             const isSecondaryEmbeddableFile =
@@ -218,7 +228,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
                     <button
                       className="text-[0.75rem] text-nim-muted flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap hover:text-nim-primary hover:underline cursor-pointer bg-transparent border-none p-0 m-0 font-[inherit] text-left"
                       onClick={() => onOpenFile(diff.filePath)}
-                      title={`Open ${relPath}`}
+                      title={t('tool_call_changes.open_file', { filePath: relPath })}
                       type="button"
                     >
                       <code>{relPath}</code>

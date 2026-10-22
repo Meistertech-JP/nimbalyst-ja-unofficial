@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { SessionInfo } from './DiffCapabilities';
 
@@ -19,7 +20,7 @@ export interface CustomEditorAIEditedBarProps {
 /**
  * Format a timestamp as a relative time string
  */
-function formatRelativeTime(timestamp: number): string {
+function formatRelativeTime(timestamp: number, locale: string, justNow: string): string {
   const now = Date.now();
   const diff = now - timestamp;
 
@@ -28,16 +29,11 @@ function formatRelativeTime(timestamp: number): string {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 0) {
-    return days === 1 ? '1 day ago' : `${days} days ago`;
-  }
-  if (hours > 0) {
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
-  }
-  if (minutes > 0) {
-    return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
-  }
-  return 'just now';
+  const relativeTime = new Intl.RelativeTimeFormat(locale, { numeric: 'always' });
+  if (days > 0) return relativeTime.format(-days, 'day');
+  if (hours > 0) return relativeTime.format(-hours, 'hour');
+  if (minutes > 0) return relativeTime.format(-minutes, 'minute');
+  return justNow;
 }
 
 export const CustomEditorAIEditedBar: React.FC<CustomEditorAIEditedBarProps> = ({
@@ -46,6 +42,8 @@ export const CustomEditorAIEditedBar: React.FC<CustomEditorAIEditedBarProps> = (
   onGoToSession,
   onViewHistory,
 }) => {
+  const { t, i18n } = useTranslation('editor');
+
   const handleGoToSession = () => {
     if (sessionInfo?.sessionId && onGoToSession) {
       onGoToSession(sessionInfo.sessionId);
@@ -63,11 +61,11 @@ export const CustomEditorAIEditedBar: React.FC<CustomEditorAIEditedBarProps> = (
               <div className="unified-diff-header-session-details flex items-center gap-1.5 min-w-0">
                 <span className="unified-diff-header-label flex items-center gap-2 text-[13px] font-medium text-[var(--nim-text)]">
                   <span className="unified-diff-header-session-name font-semibold text-[var(--nim-primary)] overflow-hidden text-ellipsis whitespace-nowrap">{sessionInfo.sessionTitle}</span>
-                  {' '}edited {fileName || 'file'}
+                  {' '}{t('diff.edited', { file: fileName || t('diff.file') })}
                 </span>
                 {sessionInfo.editedAt && (
                   <span className="unified-diff-header-timestamp text-[var(--nim-text-faint)] shrink-0 before:content-['\00b7'] before:mr-1.5">
-                    {formatRelativeTime(sessionInfo.editedAt)}
+                    {formatRelativeTime(sessionInfo.editedAt, i18n.resolvedLanguage ?? i18n.language, t('diff.just_now'))}
                   </span>
                 )}
               </div>
@@ -77,7 +75,7 @@ export const CustomEditorAIEditedBar: React.FC<CustomEditorAIEditedBarProps> = (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="unified-diff-header-sparkle shrink-0">
                 <path d="M8 1L9 5L13 6L9 7L8 11L7 7L3 6L7 5L8 1Z" fill="currentColor"/>
               </svg>
-              AI edited {fileName || 'file'}
+              {t('diff.ai_edited', { file: fileName || t('diff.file') })}
             </span>
           )}
           {sessionInfo?.sessionId && onGoToSession && (
@@ -85,10 +83,10 @@ export const CustomEditorAIEditedBar: React.FC<CustomEditorAIEditedBarProps> = (
               className="unified-diff-header-goto flex items-center gap-1 px-2 py-1 bg-transparent border-none rounded text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
               onClick={handleGoToSession}
               type="button"
-              title="Open the AI session that made these changes"
+              title={t('tooltips.open_ai_session')}
             >
               <MaterialSymbol icon="open_in_new" size={14} />
-              Go to Session
+              {t('tooltips.go_to_session')}
             </button>
           )}
         </div>
@@ -100,10 +98,10 @@ export const CustomEditorAIEditedBar: React.FC<CustomEditorAIEditedBarProps> = (
               className="unified-diff-header-button unified-diff-header-button-accept py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-white hover:enabled:opacity-90 active:enabled:scale-[0.98]"
               onClick={onViewHistory}
               type="button"
-              title="View changes in history"
+              title={t('tooltips.view_history')}
             >
               <MaterialSymbol icon="history" size={16} />
-              View History
+              {t('diff.view_history')}
             </button>
           )}
         </div>

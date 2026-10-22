@@ -6,6 +6,7 @@
  *
  */
 import type {JSX} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import './index.css';
 
@@ -26,6 +27,8 @@ export default function DraggableBlockPlugin({
 }: {
   anchorElem?: HTMLElement;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
+  const { t: tCommon } = useTranslation('common');
   const [editor] = useLexicalComposerContext();
   const menuRef = useRef<HTMLDivElement>(null);
   const targetLineRef = useRef<HTMLDivElement>(null);
@@ -132,7 +135,7 @@ export default function DraggableBlockPlugin({
       menuComponent={
         <div ref={menuRef} className="icon draggable-block-menu">
           <button
-            title="Click to add below"
+            title={t('shared_ui.add_block_below')}
             className="icon icon-plus"
             onClick={insertBlock}
           />
@@ -141,7 +144,7 @@ export default function DraggableBlockPlugin({
             <div ref={dropdownRef} className="draggable-dropdown">
               <button onClick={deleteNode} className="dropdown-item">
                 <span className="material-symbols-outlined">delete</span>
-                Delete
+                {tCommon('delete')}
               </button>
               {menuItems.length > 0 && (
                 <>

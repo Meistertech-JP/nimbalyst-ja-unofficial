@@ -8,6 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface ImporterBinding {
@@ -44,6 +45,7 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
   onClose,
   onImported,
 }) => {
+  const { t } = useTranslation('tracker');
   const [bindings, setBindings] = useState<ImporterBinding[] | null>(null);
   const [bindingId, setBindingId] = useState<string | null>(null);
   const [primaryType, setPrimaryType] = useState<string>(importsAs?.[0] ?? 'bug');
@@ -185,12 +187,12 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-nim shrink-0">
           <MaterialSymbol icon="cloud_download" size={18} className="text-nim-muted" />
-          <span className="text-sm font-semibold text-nim">Import from {providerLabel}</span>
+          <span className="text-sm font-semibold text-nim">{t('import.title', { provider: providerLabel })}</span>
           <div className="flex-1" />
           <button
             className="p-1 rounded hover:bg-nim-tertiary text-nim-muted"
             onClick={onClose}
-            title="Close"
+            title={t('ui.close')}
           >
             <MaterialSymbol icon="close" size={18} />
           </button>
@@ -219,9 +221,9 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value as StateFilter)}
           >
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-            <option value="all">All</option>
+            <option value="open">{t('detail.open')}</option>
+            <option value="closed">{t('ui.closed')}</option>
+            <option value="all">{t('sidebar.all')}</option>
           </select>
           <div className="relative flex-1 min-w-[140px]">
             <MaterialSymbol
@@ -233,12 +235,12 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
+              placeholder={t('ui.search')}
               className="w-full pl-7 pr-2 py-1 text-xs bg-nim-secondary border border-nim rounded text-nim placeholder:text-nim-faint focus:outline-none focus:border-[var(--nim-primary)]"
             />
           </div>
           <label className="flex items-center gap-1 text-xs text-nim-muted">
-            Import as
+            {t('import.import_as')}
             <select
               className="text-xs bg-nim-secondary border border-nim rounded px-2 py-1 text-nim"
               value={primaryType}
@@ -260,24 +262,24 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
           )}
           {bindings && bindings.length === 0 && !loading && (
             <div className="px-4 py-8 text-center text-sm text-nim-faint">
-              No {providerLabel} repositories found for this workspace.
+              {t('import.no_repositories', { provider: providerLabel })}
               <div className="text-xs mt-1">
-                Open a project whose git remote points at GitHub, and sign in with{' '}
+                {t('import.no_repositories_hint')}{' '}
                 <span className="font-mono">gh auth login</span>.
               </div>
             </div>
           )}
           {loading && (
-            <div className="px-4 py-8 text-center text-sm text-nim-faint">Loading...</div>
+            <div className="px-4 py-8 text-center text-sm text-nim-faint">{t('detail.loading')}</div>
           )}
           {!loading && bindings && bindings.length > 0 && items.length === 0 && !error && (
-            <div className="px-4 py-8 text-center text-sm text-nim-faint">No items found.</div>
+            <div className="px-4 py-8 text-center text-sm text-nim-faint">{t('ui.no_items')}</div>
           )}
           {items.length > 0 && (
             <>
               <label className="flex items-center gap-2 px-4 py-1.5 border-b border-nim text-xs text-nim-muted sticky top-0 bg-nim">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-                Select all ({items.length})
+                {t('import.select_all', { count: items.length })}
               </label>
               {items.map((item) => (
                 <label
@@ -305,8 +307,8 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
         {/* Footer */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-nim shrink-0">
           <span className="text-xs text-nim-faint">
-            {selected.size > 0 ? `${selected.size} selected` : ''}
-            {progress ? ` · imported ${progress.done}/${progress.total}` : ''}
+            {selected.size > 0 ? t('import.selected', { count: selected.size }) : ''}
+            {progress ? t('import.progress', { done: progress.done, total: progress.total }) : ''}
           </span>
           <div className="flex-1" />
           <button
@@ -314,7 +316,7 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
             onClick={onClose}
             disabled={importing}
           >
-            Cancel
+            {t('detail.cancel')}
           </button>
           <button
             className="px-3 py-1 text-xs font-medium text-white bg-[var(--nim-primary)] rounded hover:opacity-90 disabled:opacity-50"
@@ -322,7 +324,7 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
             disabled={importing || selected.size === 0}
             data-testid="import-from-source-confirm"
           >
-            {importing ? 'Importing...' : `Import ${selected.size || ''}`}
+            {importing ? t('import.importing') : t('import.confirm', { count: selected.size })}
           </button>
         </div>
       </div>

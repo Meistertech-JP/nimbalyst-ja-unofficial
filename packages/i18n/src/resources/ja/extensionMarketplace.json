@@ -1,0 +1,93 @@
+{
+  "title": "拡張機能マーケットプレイス",
+  "description": "Nimbalystの拡張機能を探し、インストールして管理します。",
+  "loading": "拡張機能を読み込み中…",
+  "loading_marketplace": "マーケットプレイスを読み込み中…",
+  "security": {
+    "title": "拡張機能のセキュリティ",
+    "description": "拡張機能はコンピューター上でコードを実行し、以下の機能にアクセスする場合があります。信頼できる拡張機能のみインストールしてください。",
+    "risk_files": "ワークスペース内のファイルの読み取りと変更",
+    "risk_code": "コンピューター上でのコード実行",
+    "risk_network": "ネットワークへの接続",
+    "risk_extensions": "インストール済みの他の拡張機能へのアクセス",
+    "trust_notice": "拡張機能はサードパーティ製ソフトウェアであり、Nimbalystによる審査を受けていません。",
+    "accept_risks": "これらのリスクを理解し、同意します",
+    "reset_hint": "この設定は後から設定画面で変更できます。"
+  },
+  "errors": {
+    "load_marketplace": "拡張機能マーケットプレイスを読み込めませんでした。",
+    "load_marketplace_data": "マーケットプレイスのデータを読み込めませんでした。",
+    "installation_failed": "拡張機能をインストールできませんでした。",
+    "uninstall_failed": "拡張機能をアンインストールできませんでした。",
+    "github_install_failed": "GitHubから拡張機能をインストールできませんでした。",
+    "update_failed": "拡張機能を更新できませんでした。",
+    "prefix": "エラー："
+  },
+  "actions": {
+    "retry": "再試行",
+    "updating": "更新中…",
+    "update_to_version": "{{version}}に更新",
+    "installing": "インストール中…",
+    "install": "インストール",
+    "install_extension": "拡張機能をインストール",
+    "uninstall": "アンインストール",
+    "close_details": "拡張機能の詳細を閉じる",
+    "view_on_github": "GitHubで表示"
+  },
+  "status": {
+    "requested_extension_not_found": "マーケットプレイスに拡張機能「{{extensionId}}」が見つかりません。",
+    "review_before_install": "インストールする前に{{extension}}の内容を確認してください。",
+    "installing": "{{extension}}をインストール中…",
+    "installed_successfully": "{{extension}}をインストールしました。",
+    "uninstalling": "{{extension}}をアンインストール中…",
+    "uninstalled": "{{extension}}をアンインストールしました。",
+    "installing_from_github": "GitHubから拡張機能をインストール中…",
+    "installed_from_github": "GitHubから拡張機能をインストールしました。",
+    "updating_to_version": "{{extension}}を{{version}}に更新中…",
+    "updated_to_version": "{{extension}}を{{version}}に更新しました。",
+    "updating_extensions_one": "拡張機能{{count}}件を更新中…",
+    "updating_extensions_other": "拡張機能{{count}}件を更新中…",
+    "built_in": "組み込み",
+    "installed": "インストール済み",
+    "installed_count_one": "インストール済み {{count}}件",
+    "installed_count_other": "インストール済み {{count}}件",
+    "update_count_one": "更新 {{count}}件",
+    "update_count_other": "更新 {{count}}件"
+  },
+  "progress": {
+    "checking-release": "リリースを確認中…",
+    "downloading-release": "リリースをダウンロード中…",
+    "cloning": "リポジトリを複製中…",
+    "installing": "拡張機能をインストール中…",
+    "done": "インストールが完了しました。"
+  },
+  "search": {
+    "placeholder": "拡張機能を検索…",
+    "clear": "検索をクリア",
+    "no_results": "「{{query}}」に一致する拡張機能はありません。"
+  },
+  "categories": {
+    "all": "すべて",
+    "featured": "おすすめ"
+  },
+  "github": {
+    "title": "GitHubからインストール",
+    "description": "拡張機能のGitHubリポジトリURLを入力してください。インストール前に要求される権限を確認してください。"
+  },
+  "metadata": {
+    "by_author": "{{author}} 作",
+    "downloads_count_one": "インストール {{count}}件",
+    "downloads_count_other": "インストール {{count}}件",
+    "version": "バージョン",
+    "current_and_latest_version": "{{currentVersion}}（最新版：{{availableVersion}}）",
+    "category": "カテゴリ",
+    "file_types": "ファイル形式",
+    "permissions": "権限",
+    "downloads": "インストール数",
+    "repository": "リポジトリ",
+    "changelog": "変更履歴"
+  },
+  "updates": {
+    "available": "更新があります：{{currentVersion}} → {{availableVersion}}"
+  }
+}

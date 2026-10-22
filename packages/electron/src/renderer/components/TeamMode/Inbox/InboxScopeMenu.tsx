@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import { FloatingPortal, useFloatingMenu } from '../../../hooks/useFloatingMenu';
@@ -25,6 +26,7 @@ export function InboxScopeMenu({
   disabled: boolean;
   onChange: (scope: InboxScope) => void;
 }) {
+  const { t } = useTranslation('collabSidebar', { keyPrefix: 'inbox_scope_menu' });
   const menu = useFloatingMenu({ placement: 'bottom-end' });
   // Only the axes this menu owns. The source-kind axis lives in the type chips,
   // so it must not light this trigger up or be swept away by "Reset scope".
@@ -34,11 +36,17 @@ export function InboxScopeMenu({
   const projectIds = options.projects.map((project) => project.id);
 
   const summary = () => {
-    if (!active) return 'All orgs & projects';
+    if (!active) return t('all_orgs_projects');
     const parts: string[] = [];
-    if (scope.orgIds) parts.push(`${scope.orgIds.length} org${scope.orgIds.length === 1 ? '' : 's'}`);
-    if (scope.projectIds) parts.push(`${scope.projectIds.length} project${scope.projectIds.length === 1 ? '' : 's'}`);
-    return parts.join(', ');
+    if (scope.orgIds) {
+      const count = scope.orgIds.length;
+      parts.push(t(count === 1 ? 'organization_one' : 'organization_plural', { count }));
+    }
+    if (scope.projectIds) {
+      const count = scope.projectIds.length;
+      parts.push(t(count === 1 ? 'project_one' : 'project_plural', { count }));
+    }
+    return parts.join(t('separator'));
   };
 
   const renderCheck = (checked: boolean, label: string, onClick: () => void, key: string) => (
@@ -61,6 +69,7 @@ export function InboxScopeMenu({
         type="button"
         disabled={disabled}
         data-testid="inbox-scope-trigger"
+        aria-label={`${t('aria_label')}: ${summary()}`}
         onClick={() => menu.setIsOpen(!menu.isOpen)}
         className={`inbox-scope-trigger org-window-no-drag flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] ${
           disabled
@@ -86,7 +95,7 @@ export function InboxScopeMenu({
           >
             {options.orgs.length > 1 && (
               <>
-                <div className="inbox-scope-section-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">Organization</div>
+                <div className="inbox-scope-section-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">{t('organization')}</div>
                 {options.orgs.map((org) => renderCheck(
                   !scope.orgIds || scope.orgIds.includes(org.id),
                   org.name,
@@ -98,7 +107,7 @@ export function InboxScopeMenu({
 
             {options.projects.length > 0 && (
               <>
-                <div className="inbox-scope-section-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">Project</div>
+                <div className="inbox-scope-section-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">{t('project')}</div>
                 {options.projects.map((project) => renderCheck(
                   !scope.projectIds || scope.projectIds.includes(project.id),
                   project.name,
@@ -117,7 +126,7 @@ export function InboxScopeMenu({
                   data-testid="inbox-scope-reset"
                   onClick={() => onChange({ ...scope, orgIds: null, projectIds: null })}
                 >
-                  <MaterialSymbol icon="restart_alt" size={16} /> Reset scope
+                  <MaterialSymbol icon="restart_alt" size={16} /> {t('reset_scope')}
                 </button>
               </>
             )}

@@ -12,6 +12,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { TrackerCollabAvatars, TrackerCollabSyncDot } from './trackerCollabChrome';
 import type { TrackerDocumentBreadcrumb } from './TrackerDocumentViewHeader';
 
@@ -47,6 +48,7 @@ export const TrackerDocumentHeaderMeta: React.FC<TrackerDocumentHeaderMetaProps>
   title,
   showCollabChrome,
 }) => {
+  const { t } = useTranslation('common');
   const { segments, tooltip } = trackerBreadcrumbSegments(breadcrumb, title);
 
   return (
@@ -83,7 +85,7 @@ export const TrackerDocumentHeaderMeta: React.FC<TrackerDocumentHeaderMetaProps>
         {breadcrumb.kind === 'file' && breadcrumb.dirty && (
           <span
             className="ml-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--nim-warning)]"
-            title="Unsaved changes"
+            title={t('tab.unsaved_changes')}
             data-testid="tracker-document-breadcrumb-dirty"
           />
         )}

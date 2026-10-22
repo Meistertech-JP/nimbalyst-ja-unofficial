@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtom, useAtomValue } from 'jotai';
 import type { FeedbackAsk, ResourceRef } from '@nimbalyst/collab-protocol';
 import type { CustomToolWidgetProps } from '../index';
@@ -44,9 +45,7 @@ import {
 import {
   addRecipient,
   confirmPublish,
-  describeComposeDefaults,
   destinationSubjects,
-  FEEDBACK_COMPOSE_BLOCKED_MESSAGES,
   feedbackComposeSendPayload,
   feedbackComposeSubmitPlan,
   feedbackComposeTier,
@@ -90,25 +89,25 @@ const FeedbackIcon: React.FC = () => (
   </svg>
 );
 
-const ASK_TYPE_HINTS: Record<FeedbackAsk['type'], string> = {
-  singleSelect: 'pick one',
-  multiSelect: 'pick any',
-  reorder: 'drag to rank',
-  editText: 'free text',
-  confirm: 'yes or no',
-  rating: 'rating',
-};
-
-function joinNames(names: string[]): string {
-  if (names.length === 0) return 'nobody yet';
-  if (names.length <= 2) return names.join(' and ');
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+function joinNames(
+  names: string[],
+  pairSeparator: string,
+  finalSeparator: string,
+  listSeparator: string,
+  emptyValue: string
+): string {
+  if (names.length === 0) return emptyValue;
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return names.join(pairSeparator);
+  return `${names.slice(0, -1).join(listSeparator)}${finalSeparator}${names[names.length - 1]}`;
 }
 
 export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
   message,
   sessionId,
 }) => {
+  const { t } = useTranslation('aichat');
+  const { t: tFeedback } = useTranslation('feedback');
   const toolCall = message.toolCall;
   const draftId = toolCall?.providerToolCallId || '';
 
@@ -119,17 +118,16 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
 
   const parsedArgs = useMemo(
     () => (toolCall && draftId ? parseFeedbackComposeArgs(toolCall.arguments, draftId) : null),
-    [toolCall, draftId],
+    [toolCall, draftId]
   );
   const parsedResult = useMemo(
-    () => (toolCall && draftId
-      ? parseRequestFeedbackToolResult(toolCall.result, draftId)
-      : null),
-    [toolCall, draftId],
+    () => (toolCall && draftId ? parseRequestFeedbackToolResult(toolCall.result, draftId) : null),
+    [toolCall, draftId]
   );
-  const parsed = parsedResult?.status === 'draftReady'
-    ? parsedResult.draft
-    : parsedArgs?.recipients.length
+  const parsed =
+    parsedResult?.status === 'draftReady'
+      ? parsedResult.draft
+      : parsedArgs?.recipients.length
       ? parsedArgs
       : null;
 
@@ -151,7 +149,7 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
       setDraft((current) => (current ? next(current) : current));
       setSendError(null);
     },
-    [setDraft],
+    [setDraft]
   );
 
   const send = useCallback(
@@ -163,7 +161,7 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
       setSendError(null);
       try {
         const result = await host.feedbackRequestSend(
-          feedbackComposeSendPayload(draft, refsToPublish),
+          feedbackComposeSendPayload(draft, refsToPublish)
         );
         if (result.success) {
           // The draft deliberately stays. Removing it empties the atom, which
@@ -176,16 +174,16 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
             ...(result.warning ? { warning: result.warning } : {}),
           });
         } else {
-          setSendError(result.error ?? 'The request could not be sent.');
+          setSendError(result.error ?? t('feedback_compose.send_failed'));
         }
       } catch (error) {
         console.error('[FeedbackRequestComposeWidget] Failed to send:', error);
-        setSendError(error instanceof Error ? error.message : 'The request could not be sent.');
+        setSendError(error instanceof Error ? error.message : t('feedback_compose.send_failed'));
       } finally {
         setIsSending(false);
       }
     },
-    [draft, hasSent, host, setSent],
+    [draft, hasSent, host, setSent, t]
   );
 
   const handleChangeDestination = useCallback(async () => {
@@ -223,14 +221,20 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
       >
         <InteractiveWidgetHeader
           icon={<FeedbackIcon />}
-          title={parsedResult.status === 'ambiguousRecipient'
-            ? 'Choose a recipient'
-            : 'Feedback request not drafted'}
-          trailing={<WidgetStatusPill tone="muted">Not sent</WidgetStatusPill>}
+          title={
+            parsedResult.status === 'ambiguousRecipient'
+              ? t('feedback_compose.choose_recipient')
+              : t('feedback_compose.not_drafted')
+          }
+          trailing={
+            <WidgetStatusPill tone="muted">{t('feedback_compose.not_sent')}</WidgetStatusPill>
+          }
         />
         <InteractiveWidgetBody>
           <div className="text-xs text-nim-muted leading-relaxed select-text">
-            {parsedResult.message}
+            {parsedResult.message === 'The feedback request draft could not be prepared.'
+              ? t('feedback_compose.draft_prepare_failed')
+              : parsedResult.message}
           </div>
         </InteractiveWidgetBody>
       </InteractiveWidgetCard>
@@ -244,7 +248,7 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
   const pendingPublish = unsharedSubjects(draft);
   const recipientNames = draft.recipients.map((recipient) => recipient.name);
   const candidates = directory.filter(
-    (candidate) => !draft.recipients.some((recipient) => recipient.userId === candidate.userId),
+    (candidate) => !draft.recipients.some((recipient) => recipient.userId === candidate.userId)
   );
   const canSend = Boolean(host?.feedbackRequestSend) && !isSending;
 
@@ -259,14 +263,28 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
       >
         <InteractiveWidgetHeader
           icon={<FeedbackIcon />}
-          title={`Asked ${joinNames(recipientNames)}`}
-          trailing={<WidgetStatusPill tone="muted">Waiting on reply</WidgetStatusPill>}
+          title={t('feedback_compose.asked', {
+            names: joinNames(
+              recipientNames,
+              t('feedback_compose.names_pair_separator'),
+              t('feedback_compose.names_final_separator'),
+              t('feedback_compose.names_list_separator'),
+              t('feedback_compose.nobody_yet')
+            ),
+          })}
+          trailing={
+            <WidgetStatusPill tone="muted">{t('feedback_compose.waiting_reply')}</WidgetStatusPill>
+          }
         />
         <InteractiveWidgetBody>
           <div className="text-xs text-nim-muted leading-relaxed select-text">
             {draft.asks.map((ask) => ask.description || ask.label).join(' · ')}
           </div>
-          {sent.warning && <div role="status" className="text-xs text-nim-muted">{sent.warning}</div>}
+          {sent.warning && (
+            <div role="status" className="text-xs text-nim-muted">
+              {sent.warning}
+            </div>
+          )}
           {shareUrl && (
             <div
               className="feedback-compose-share flex flex-wrap items-center gap-2"
@@ -280,12 +298,11 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
           )}
           {shareUrl && (
             <div className="text-[0.6875rem] text-nim-faint">
-              Paste that anywhere you already talk to them — it opens in a browser,
-              so they do not need Nimbalyst installed.
+              {t('feedback_compose.share_link_hint')}
             </div>
           )}
           <div className="text-[0.6875rem] text-nim-faint">
-            This session resumes when the questions reach quorum or are settled.
+            {t('feedback_compose.session_resumes')}
           </div>
         </InteractiveWidgetBody>
       </InteractiveWidgetCard>
@@ -295,10 +312,10 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
   // ---------- primary action ----------
   const primaryLabel =
     pendingPublish.length > 0
-      ? 'Publish & send'
+      ? t('feedback_compose.publish_and_send')
       : tier === 'quick' && draft.recipients.length === 1
-        ? `Ask ${draft.recipients[0].name}`
-        : 'Send request';
+      ? t('feedback_compose.ask_person', { name: draft.recipients[0].name })
+      : t('feedback_compose.send_request');
 
   const handlePrimary = () => {
     if (plan.kind === 'blocked') return;
@@ -320,18 +337,36 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
 
   const footerNote =
     plan.kind === 'blocked'
-      ? FEEDBACK_COMPOSE_BLOCKED_MESSAGES[plan.reason]
+      ? t(`feedback_compose.blocked.${plan.reason}`)
       : sendError
-        ? sendError
-        : !host?.feedbackRequestSend
-          ? 'Team delivery is not available in this session yet.'
-          : pendingPublish.length > 0
-            ? 'Sending publishes the unshared subjects to your team.'
-            : draft.subjects.length > 0
-              ? 'Sending saves the questions in the shared document and notifies the selected teammates.'
-              : 'Sending creates a shared decision document. Your session continues when enough answers arrive or a person settles it.';
+      ? sendError
+      : !host?.feedbackRequestSend
+      ? t('feedback_compose.delivery_unavailable')
+      : pendingPublish.length > 0
+      ? t('feedback_compose.sending_publishes')
+      : draft.subjects.length > 0
+      ? t('feedback_compose.sending_saves_questions')
+      : t('feedback_compose.sending_creates_document');
 
   const showDelivery = tier === 'full' || draft.settingsExpanded;
+  const composeDefaults = [
+    tFeedback('compose.summary.direct_message'),
+    tFeedback(
+      draft.visibility === 'open'
+        ? 'compose.summary.visibility_open'
+        : 'compose.summary.visibility_after_each_reply'
+    ),
+    draft.deadline === undefined
+      ? tFeedback('compose.summary.no_deadline')
+      : tFeedback('compose.summary.due', { date: formatDeadline(draft.deadline) }),
+    draft.recipients.length <= 1
+      ? draft.recipients[0]?.name
+        ? tFeedback('compose.summary.wake_one_named', { name: draft.recipients[0].name })
+        : tFeedback('compose.summary.wake_one')
+      : draft.quorumMode === 'first'
+        ? tFeedback('compose.summary.wake_first_or_close')
+        : tFeedback('compose.summary.wake_all_or_close'),
+  ].join(' · ');
 
   return (
     <InteractiveWidgetCard
@@ -342,12 +377,18 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
     >
       <InteractiveWidgetHeader
         icon={<FeedbackIcon />}
-        title={tier === 'full' ? 'Feedback request' : 'Ask someone'}
+        title={
+          tier === 'full'
+            ? t('feedback_compose.title_request')
+            : t('feedback_compose.title_ask_someone')
+        }
         trailing={
           <WidgetStatusPill tone="primary">
             {tier === 'full' && draft.recipients.length > 1
-              ? `${draft.recipients.length} recipients`
-              : 'Draft — not sent'}
+              ? t('feedback_compose.recipients_count', {
+                  count: draft.recipients.length,
+                })
+              : t('feedback_compose.draft_not_sent')}
           </WidgetStatusPill>
         }
       />
@@ -355,15 +396,19 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
       <InteractiveWidgetBody>
         <div className="feedback-compose-document-host text-xs text-nim-muted mb-3">
           {draft.hostDocumentId
-            ? `Document: ${draft.subjects.find((subject) => subject.ref.sourceId === draft.hostDocumentId)?.label ?? draft.hostDocumentId}`
-            : 'Document: new shared decision document'}
+            ? t('feedback_compose.document', {
+                name:
+                  draft.subjects.find((subject) => subject.ref.sourceId === draft.hostDocumentId)
+                    ?.label ?? draft.hostDocumentId,
+              })
+            : t('feedback_compose.new_shared_document')}
         </div>
         {/* Subject — Tier 2 only; a one-person quick ask does not need a
             subject row, and showing one implies ceremony the ask lacks. */}
         {tier === 'full' && draft.subjects.length > 0 && (
           <WidgetBlock
-            tag="Subject"
-            hint="what reviewers will look at"
+            tag={t('feedback_compose.subject')}
+            hint={t('feedback_compose.subject_hint')}
             rootClassName="feedback-compose-subject-block"
             testId="feedback-compose-subject-block"
           >
@@ -377,8 +422,8 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
         {/* Recipients — one inline row at Tier 1, the assignable list at Tier 2. */}
         {tier === 'full' ? (
           <WidgetBlock
-            tag="Recipients"
-            hint="each person answers only the asks assigned to them"
+            tag={t('feedback_compose.recipients')}
+            hint={t('feedback_compose.recipients_hint')}
             rootClassName="feedback-compose-recipient-block"
             testId="feedback-compose-recipient-block"
           >
@@ -400,7 +445,7 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
             data-testid="feedback-compose-quick-recipients"
             className="feedback-compose-quick-recipients flex items-center gap-2 flex-wrap"
           >
-            <span className="text-xs text-nim-faint">Ask</span>
+            <span className="text-xs text-nim-faint">{t('feedback_compose.ask_label')}</span>
             {draft.recipients.map((recipient) => (
               <span
                 key={recipient.userId}
@@ -412,12 +457,19 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
                 <button
                   type="button"
                   data-testid="feedback-compose-remove-recipient"
-                  aria-label={`Remove ${recipient.name}`}
+                  aria-label={t('feedback_compose.remove_person', {
+                    name: recipient.name,
+                  })}
                   onClick={() => update((current) => removeRecipient(current, recipient.userId))}
                   className="text-nim-faint hover:text-nim cursor-pointer bg-transparent border-none p-0 leading-none"
                 >
                   <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    <path
+                      d="M2 2l6 6M8 2l-6 6"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                    />
                   </svg>
                 </button>
               </span>
@@ -438,11 +490,20 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
               key={ask.id}
               testId="feedback-compose-ask"
               rootClassName="feedback-compose-ask"
-              tag={`Q${index + 1} · ${ask.label}`}
+              tag={t('feedback_compose.question_label', {
+                index: index + 1,
+                label: ask.label,
+              })}
               hint={
                 tier === 'full'
-                  ? `${ASK_TYPE_HINTS[ask.type]} · ${joinNames(assigned)}`
-                  : ASK_TYPE_HINTS[ask.type]
+                  ? `${t(`feedback_compose.ask_type.${ask.type}`)} · ${joinNames(
+                      assigned,
+                      t('feedback_compose.names_pair_separator'),
+                      t('feedback_compose.names_final_separator'),
+                      t('feedback_compose.names_list_separator'),
+                      t('feedback_compose.nobody_yet')
+                    )}`
+                  : t(`feedback_compose.ask_type.${ask.type}`)
               }
               question={ask.description || ask.label}
               selectableQuestion
@@ -459,7 +520,7 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
         {/* Delivery — a collapsed line at Tier 1, fields at Tier 2. */}
         {showDelivery ? (
           <WidgetBlock
-            tag="Delivery"
+            tag={t('feedback_compose.delivery')}
             tagTone="neutral"
             rootClassName="feedback-compose-delivery-block"
             testId="feedback-compose-delivery-block"
@@ -483,15 +544,15 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
             data-testid="feedback-compose-defaults"
             className="feedback-compose-defaults flex items-center gap-2 flex-wrap rounded-md border border-dashed border-nim px-3 py-2 text-[0.6875rem] text-nim-muted"
           >
-            <span className="font-medium text-nim-faint">Defaults:</span>
-            <span className="select-text">{describeComposeDefaults(draft, formatDeadline)}</span>
+            <span className="font-medium text-nim-faint">{t('feedback_compose.defaults')}</span>
+            <span className="select-text">{composeDefaults}</span>
             <button
               type="button"
               data-testid="feedback-compose-more-options"
               onClick={() => update((current) => setSettingsExpanded(current, true))}
               className="ml-auto text-xs text-nim-primary bg-transparent border-none p-0 cursor-pointer hover:underline"
             >
-              More options
+              {t('feedback_compose.more_options')}
             </button>
           </div>
         )}
@@ -519,7 +580,7 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
             onClick={handleCancel}
             disabled={isSending}
           >
-            Cancel
+            {t('feedback_compose.cancel')}
           </WidgetActionButton>
           <WidgetActionButton
             variant="primary"
@@ -527,7 +588,7 @@ export const FeedbackRequestComposeWidget: React.FC<CustomToolWidgetProps> = ({
             onClick={handlePrimary}
             disabled={plan.kind === 'blocked' || !canSend}
           >
-            {isSending ? 'Sending…' : primaryLabel}
+            {isSending ? t('feedback_compose.sending') : primaryLabel}
           </WidgetActionButton>
         </WidgetFooter>
       </InteractiveWidgetBody>

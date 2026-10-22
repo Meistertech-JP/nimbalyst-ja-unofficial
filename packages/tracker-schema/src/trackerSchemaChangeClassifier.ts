@@ -581,6 +581,14 @@ export interface TrackerSchemaDestructiveConfirmCopy {
    */
   options: TrackerSchemaChangeOption[];
   confirmLabel: string;
+  /** Structured values for localizing the confirmation at the UI boundary. */
+  presentation: {
+    trackerName: string;
+    isTeam: boolean;
+    teamName: string;
+    removedFields: string[];
+    blastRadius: TrackerSchemaBlastRadiusEntry[];
+  };
 }
 
 /**
@@ -647,5 +655,12 @@ export function describeTrackerSchemaDestructiveChange(input: {
       : `Nothing is deleted: values already in items are kept and simply stop being shown.`,
     options,
     confirmLabel: 'Apply change',
+    presentation: {
+      trackerName: displayNamePlural,
+      isTeam,
+      teamName: teamName?.trim() || '',
+      removedFields,
+      blastRadius: [...blastRadius],
+    },
   };
 }

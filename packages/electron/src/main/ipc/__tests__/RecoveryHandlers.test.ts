@@ -185,6 +185,7 @@ describe('db:recovery:delete-migrated', () => {
     };
     expect(shown.detail).toContain(ROLLBACK_SOURCE);
     expect(shown.detail).toContain('rolled back');
+    expect(shown.buttons).toEqual(['Cancel', 'Delete Permanently']);
     // Neither Enter nor Escape may delete anything.
     expect(shown.buttons[shown.defaultId]).toBe('Cancel');
     expect(shown.buttons[shown.cancelId]).toBe('Cancel');

@@ -5,5 +5,5 @@
  * help text across walkthroughs and hover tooltips.
  */
 
-export { HelpContent, getHelpContent, hasHelpContent, type HelpEntry } from './HelpContent';
+export { HelpContent, getHelpContent, hasHelpContent, localizeHelpEntry, type HelpEntry } from './HelpContent';
 export { HelpTooltip } from './HelpTooltip';

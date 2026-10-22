@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { OpenCodeModelsSection } from '../OpenCodeModelsSection';
 import type { OpenCodeModelCatalogSnapshot } from '../../../../../shared/openCodeModelCatalog';
@@ -22,6 +24,12 @@ const readyCatalog: OpenCodeModelCatalogSnapshot = {
   ],
 };
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
 function renderSection(props: Partial<React.ComponentProps<typeof OpenCodeModelsSection>> = {}) {
   const handlers = {
     onSelectModel: vi.fn(),
@@ -29,13 +37,15 @@ function renderSection(props: Partial<React.ComponentProps<typeof OpenCodeModels
     onSetVisibilityForModels: vi.fn(),
   };
   render(
-    <OpenCodeModelsSection
-      workspacePath="/tmp/project"
-      hiddenModels={[]}
-      selectedModelId=""
-      {...handlers}
-      {...props}
-    />
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <OpenCodeModelsSection
+        workspacePath="/tmp/project"
+        hiddenModels={[]}
+        selectedModelId=""
+        {...handlers}
+        {...props}
+      />
+    </UiLanguageProvider>
   );
   return handlers;
 }

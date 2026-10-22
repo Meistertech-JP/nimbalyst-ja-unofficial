@@ -17,9 +17,13 @@ import { installUserTimingTrimmer } from './devtools/userTimingTrimmer';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { Provider as JotaiProvider } from 'jotai';
+import { Provider as JotaiProvider, useAtomValue } from 'jotai';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { createI18nInstance, resolveUiLocale, type I18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { errorNotificationService } from './services/ErrorNotificationService';
+import { setLocalWikiTranslator } from './services/localWikiUiText';
 import './index.css';
 import './styles/components.css';
 import posthog from "posthog-js";
@@ -76,10 +80,30 @@ import {
 import {
   hydrateSettingsAtoms,
   registerSettingsChangeListener,
+  settingAtom,
 } from './store/atoms/settingAtomFamily';
 import { registerGutterCustomizationListener } from './store/listeners/gutterCustomizationListeners';
 import { registerDeveloperModeListener } from './store/listeners/developerModeListeners';
 import { waitForMaterialSymbols } from './utils/materialSymbolsReady';
+
+function RendererUiLanguageProvider({
+  i18n,
+  children,
+}: {
+  i18n: I18nInstance;
+  children: React.ReactNode;
+}) {
+  const preference = useAtomValue(settingAtom('app.uiLanguage'));
+  return (
+    <UiLanguageProvider
+      i18n={i18n}
+      preference={preference}
+      systemLocale={navigator.language}
+    >
+      {children}
+    </UiLanguageProvider>
+  );
+}
 
 // console.log('[RENDERER] Imports complete at', new Date().toISOString());
 
@@ -162,8 +186,15 @@ if (new URLSearchParams(window.location.search).get('mode') === 'tray-panel') {
 // broadcast listener keeps every window in lockstep on subsequent writes.
 // See nimbalyst-local/plans/settings-atomwithstorage-rewrite.md for the
 // design and shared/settings/keys.ts for the registry of keys.
+let rendererI18n: I18nInstance | undefined;
 try {
   const snapshot = await window.electronAPI.settingsGetAll();
+  const initialLocale = resolveUiLocale(
+    (snapshot as Record<string, unknown>)['app.uiLanguage'],
+    navigator.language,
+  );
+  rendererI18n = await createI18nInstance(initialLocale);
+  document.documentElement.lang = initialLocale;
   hydrateSettingsAtoms(snapshot as any);
   registerSettingsChangeListener();
 } catch (err) {
@@ -174,6 +205,14 @@ try {
   console.error('[renderer] settings:getAll failed at startup; refusing to mount React', err);
   throw err;
 }
+if (!rendererI18n) {
+  throw new Error('[renderer] UI language initialization did not complete');
+}
+errorNotificationService.setTitleTranslator((key) => rendererI18n!.t(`error.${key}`, { ns: 'dialogs' }));
+errorNotificationService.setTextTranslator((namespace, key, fallback, options) =>
+  rendererI18n!.t(key, { ns: namespace, defaultValue: fallback, ...options }),
+);
+setLocalWikiTranslator((key, options) => rendererI18n!.t(key, { ns: 'common', ...options }));
 
 // Initialize legacy app settings atoms from main process.
 // These still drive most settings UI today; the flat-key SettingsService above
@@ -349,7 +388,9 @@ root.render(
     <ErrorBoundary>
       <JotaiProvider store={store}>
         <PostHogProvider client={posthogClient}>
-          <App />
+          <RendererUiLanguageProvider i18n={rendererI18n}>
+            <App />
+          </RendererUiLanguageProvider>
         </PostHogProvider>
       </JotaiProvider>
     </ErrorBoundary>

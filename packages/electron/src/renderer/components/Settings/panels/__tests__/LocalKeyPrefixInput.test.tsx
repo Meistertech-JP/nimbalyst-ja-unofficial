@@ -1,12 +1,26 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
 import { LocalKeyPrefixInput, type LocalKeyPrefixConfig } from '../LocalKeyPrefixInput';
 import { requestConfirmation } from '../../../../dialogs/requestConfirmation';
 
 vi.mock('../../../../dialogs/requestConfirmation', () => ({ requestConfirmation: vi.fn() }));
 
 const confirm = vi.mocked(requestConfirmation);
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function render(ui: React.ReactElement, i18n = englishI18n) {
+  return rtlRender(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
+}
 
 afterEach(() => {
   cleanup();
@@ -66,8 +80,10 @@ describe('LocalKeyPrefixInput', () => {
     fireEvent.blur(input);
 
     expect(confirm).toHaveBeenCalledWith(expect.objectContaining({
-      message: expect.stringContaining('LOC. to NIC.'),
+      title: 'Rename local numbers?',
+      message: expect.stringContaining('LOC.'),
     }));
+    expect(confirm.mock.calls[0][0].message).toContain('NIC.');
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('NIC'));
   });
 
@@ -107,5 +123,16 @@ describe('LocalKeyPrefixInput', () => {
 
     expect(screen.getByText('Must be 2-5 uppercase letters')).toBeTruthy();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('localizes the field and keeps the example key recognizable in Japanese', () => {
+    render(
+      <LocalKeyPrefixInput config={config({ prefix: 'NIM' })} teamPrefix="NIM" onChange={vi.fn()} />,
+      japaneseI18n,
+    );
+
+    expect(screen.getByRole('heading', { name: 'ローカル番号の接頭辞' })).toBeDefined();
+    expect(screen.getByLabelText('ローカルトラッカー番号の接頭辞')).toBeDefined();
+    expect(screen.getByText(/NIM\.42/)).toBeDefined();
   });
 });

@@ -3,6 +3,8 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { atom, createStore, Provider } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CanvasCardPreviewProps } from "@nimbalyst/runtime/canvas/canvasCallbacks";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
+import { UiLanguageProvider } from "@nimbalyst/i18n/react";
 
 const readFile = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>());
 const version = atom(0);
@@ -40,6 +42,21 @@ afterEach(() => {
 });
 
 describe("canvas mockup previews", () => {
+  it("shows the localized loading status while a preview is being read", async () => {
+    let resolveRead!: (value: string) => void;
+    readFile.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveRead = resolve; })
+    );
+    const i18n = await createI18nInstance("ja");
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+        <CanvasCardPreview {...props} />
+      </UiLanguageProvider>
+    );
+    expect(screen.getByRole("status").textContent).toContain("プレビューを読み込み中…");
+    await act(async () => resolveRead("<h1>Preview</h1>"));
+  });
+
   it("does not read offscreen cards until they first approach the viewport", async () => {
     let observe!: (entries: { isIntersecting: boolean }[]) => void;
     const disconnect = vi.fn();

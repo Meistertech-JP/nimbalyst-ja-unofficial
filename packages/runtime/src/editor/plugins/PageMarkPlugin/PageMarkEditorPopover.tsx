@@ -8,6 +8,7 @@ import './PageMarkEditor.css';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import type { LexicalEditor, NodeKey } from 'lexical';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   flip,
@@ -33,6 +34,7 @@ function PageMarkForm({
   initial: PageMarkAttrs;
   onClose: () => void;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [kind, setKind] = useState<PageMarkKind>(initial.kind);
   const [by, setBy] = useState(initial.by ?? '');
   const [email, setEmail] = useState(initial.email ?? '');
@@ -56,7 +58,7 @@ function PageMarkForm({
         save();
       }}
     >
-      <div className="page-mark-editor-kinds" role="radiogroup" aria-label="Mark">
+      <div className="page-mark-editor-kinds" role="radiogroup" aria-label={t('page_mark.mark')}>
         {(['decided', 'open'] as const).map((option) => (
           <button
             key={option}
@@ -66,16 +68,16 @@ function PageMarkForm({
             className={`page-mark-editor-kind page-mark-editor-kind--${option}${kind === option ? ' is-active' : ''}`}
             onClick={() => setKind(option)}
           >
-            {option === 'decided' ? 'Decided' : 'Open question'}
+            {option === 'decided' ? t('page_mark.decided') : t('page_mark.open_question')}
           </button>
         ))}
       </div>
       <label className="page-mark-editor-field">
-        <span>{kind === 'decided' ? 'Decided by' : 'Owner'}</span>
-        <input autoFocus value={by} onChange={(event) => setBy(event.target.value)} placeholder="Name" />
+        <span>{kind === 'decided' ? t('page_mark.decided_by') : t('page_mark.owner')}</span>
+        <input autoFocus value={by} onChange={(event) => setBy(event.target.value)} placeholder={t('page_mark.name_placeholder')} />
       </label>
       <label className="page-mark-editor-field">
-        <span>Email</span>
+        <span>{t('page_mark.email')}</span>
         <input
           type="email"
           value={email}
@@ -84,21 +86,21 @@ function PageMarkForm({
         />
       </label>
       <label className="page-mark-editor-field">
-        <span>On</span>
+        <span>{t('page_mark.date')}</span>
         <input type="date" value={on} onChange={(event) => setOn(event.target.value)} />
       </label>
       {kind === 'decided' ? (
         <label className="page-mark-editor-field">
-          <span>Not chosen</span>
-          <input value={over} onChange={(event) => setOver(event.target.value)} placeholder="What was set aside" />
+          <span>{t('page_mark.not_chosen')}</span>
+          <input value={over} onChange={(event) => setOver(event.target.value)} placeholder={t('page_mark.set_aside_placeholder')} />
         </label>
       ) : null}
       <div className="page-mark-editor-actions">
         <button type="button" className="page-mark-editor-remove" onClick={remove}>
-          Remove mark
+          {t('page_mark.remove')}
         </button>
         <button type="submit" className="page-mark-editor-save" data-testid="page-mark-editor-save">
-          Done
+          {t('chart_block.done')}
         </button>
       </div>
     </form>

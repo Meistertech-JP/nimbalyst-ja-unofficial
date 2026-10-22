@@ -780,6 +780,10 @@ export interface ExtensionEditorMountOptions {
   element: HTMLElement;
   source: CollabEditorSource;
   user: CollabEditorUser;
+  /** Localized fallback used only for generated collaborator names. */
+  getUnnamedCollaboratorLabel?(): string;
+  /** Notify the mount when the host's display language changes. */
+  subscribeToLanguageChanges?(listener: () => void): () => void;
   component: ExtensionEditorComponent;
   fileName: string;
   documentId?: string;

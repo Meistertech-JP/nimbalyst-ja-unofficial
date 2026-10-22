@@ -10,18 +10,19 @@ import type {JSX} from 'react';
 
 import {LexicalEditor} from 'lexical';
 import {useState} from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import Button from '../../ui/Button';
 import DropDown, {DropDownItem} from '../../ui/DropDown';
 import {INSERT_LAYOUT_COMMAND} from './LayoutPlugin';
 
 const LAYOUTS = [
-  {label: '2 columns (equal width)', value: '1fr 1fr'},
-  {label: '2 columns (25% - 75%)', value: '1fr 3fr'},
-  {label: '3 columns (equal width)', value: '1fr 1fr 1fr'},
-  {label: '3 columns (25% - 50% - 25%)', value: '1fr 2fr 1fr'},
-  {label: '4 columns (equal width)', value: '1fr 1fr 1fr 1fr'},
-];
+  {labelKey: 'formatting.layout_two_columns_equal', value: '1fr 1fr'},
+  {labelKey: 'formatting.layout_two_columns_25_75', value: '1fr 3fr'},
+  {labelKey: 'formatting.layout_three_columns_equal', value: '1fr 1fr 1fr'},
+  {labelKey: 'formatting.layout_three_columns_25_50_25', value: '1fr 2fr 1fr'},
+  {labelKey: 'formatting.layout_four_columns_equal', value: '1fr 1fr 1fr 1fr'},
+] as const;
 
 export default function InsertLayoutDialog({
   activeEditor,
@@ -30,8 +31,9 @@ export default function InsertLayoutDialog({
   activeEditor: LexicalEditor;
   onClose: () => void;
 }): JSX.Element {
-  const [layout, setLayout] = useState(LAYOUTS[0].value);
-  const buttonLabel = LAYOUTS.find((item) => item.value === layout)?.label;
+  const {t} = useTranslation('editor');
+  const [layout, setLayout] = useState<string>(LAYOUTS[0].value);
+  const selectedLayout = LAYOUTS.find((item) => item.value === layout);
 
   const onClick = () => {
     activeEditor.dispatchCommand(INSERT_LAYOUT_COMMAND, layout);
@@ -42,17 +44,17 @@ export default function InsertLayoutDialog({
     <>
       <DropDown
         buttonClassName="toolbar-item dialog-dropdown"
-        buttonLabel={buttonLabel}>
-        {LAYOUTS.map(({label, value}) => (
+        buttonLabel={selectedLayout ? t(selectedLayout.labelKey) : undefined}>
+        {LAYOUTS.map(({labelKey, value}) => (
           <DropDownItem
             key={value}
             className="item"
             onClick={() => setLayout(value)}>
-            <span className="text">{label}</span>
+            <span className="text">{t(labelKey)}</span>
           </DropDownItem>
         ))}
       </DropDown>
-      <Button onClick={onClick}>Insert</Button>
+      <Button onClick={onClick}>{t('formatting.insert')}</Button>
     </>
   );
 }

@@ -8,9 +8,10 @@
  * if it were activity, and current state is reported separately from it.
  */
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PrototypeRange, PrototypeViewProps } from '../contracts';
 import { bucketRangeLabel, type PulseBucketUnit } from './pulseBuckets';
-import { formatInterval } from './pulseFormat';
+import { formatInterval, type PulseTranslate } from './pulseFormat';
 import {
   bucketSignature,
   buildPulseMatrix,
@@ -31,17 +32,17 @@ import {
 import { PulseInspector, formatRelative } from './PulseInspector';
 import './pulse.css';
 
-const UNIT_OPTIONS: Array<{ value: PulseBucketUnit | 'auto'; label: string }> = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
+const UNIT_OPTIONS: Array<{ value: PulseBucketUnit | 'auto' }> = [
+  { value: 'auto' },
+  { value: 'day' },
+  { value: 'week' },
+  { value: 'month' },
 ];
 
-const SORT_OPTIONS: Array<{ value: PulseSortMode; label: string }> = [
-  { value: 'recent', label: 'Most recent' },
-  { value: 'volume', label: 'Most events' },
-  { value: 'name', label: 'Name' },
+const SORT_OPTIONS: Array<{ value: PulseSortMode }> = [
+  { value: 'recent' },
+  { value: 'volume' },
+  { value: 'name' },
 ];
 
 /**
@@ -61,12 +62,6 @@ function gridMetrics(colCount: number): { cellMin: string; cellHeight: string; c
   return { cellMin: '26px', cellHeight: '28px', cellFont: '11px' };
 }
 
-const UNIT_NOUN: Record<PulseBucketUnit, string> = {
-  day: 'day',
-  week: 'week (Mon–Sun)',
-  month: 'month',
-};
-
 export function PulsePrototype({
   model,
   range,
@@ -79,6 +74,11 @@ export function PulsePrototype({
   onNavigate,
   onRenameArea,
 }: PrototypeViewProps) {
+  const { t, i18n } = useTranslation('extensions');
+  const translatePulse = React.useCallback<PulseTranslate>(
+    (key, options) => String(t(`project_graph.pulse.${key}`, options)),
+    [t],
+  );
   const [unitChoice, setUnitChoice] = React.useState<PulseBucketUnit | 'auto'>('auto');
   const [sort, setSort] = React.useState<PulseSortMode>('recent');
   const [selection, setSelection] = React.useState<PulseSelection | null>(null);
@@ -100,8 +100,9 @@ export function PulsePrototype({
         selectedAreaId,
         unit: unitChoice === 'auto' ? null : unitChoice,
         sort,
+        translate: translatePulse,
       }),
-    [model, range, selectedAreaId, unitChoice, sort],
+    [model, range, selectedAreaId, unitChoice, sort, translatePulse],
   );
 
   const rowCount = matrix.rows.length;
@@ -150,8 +151,8 @@ export function PulsePrototype({
   }, [dragging]);
 
   const summary = React.useMemo(
-    () => (selection ? summarizeSelection(matrix, selection, model.nodeById) : null),
-    [matrix, selection, model.nodeById],
+    () => (selection ? summarizeSelection(matrix, selection, model.nodeById, translatePulse) : null),
+    [matrix, selection, model.nodeById, translatePulse],
   );
 
   const columns = selection ? selectionColumns(selection) : null;
@@ -163,8 +164,8 @@ export function PulsePrototype({
   const metrics = gridMetrics(colCount);
   const comparison = React.useMemo(
     () =>
-      comparisonRange ? comparePeriods(model, range, comparisonRange, { selectedAreaId }) : null,
-    [model, range, comparisonRange, selectedAreaId],
+      comparisonRange ? comparePeriods(model, range, comparisonRange, { selectedAreaId, translate: translatePulse }) : null,
+    [model, range, comparisonRange, selectedAreaId, translatePulse],
   );
 
   // A focus whose row has left the display (a scope change, or the row cap)
@@ -299,38 +300,38 @@ export function PulsePrototype({
       <header className="pgp-header">
         <div className="pgp-header-titles">
           <h2 className="pgp-title">
-            {matrix.scopeAreaLabel ? `Pulse · ${matrix.scopeAreaLabel}` : 'Pulse'}
+            {matrix.scopeAreaLabel ? `${t('project_graph.pulse.title')} · ${matrix.scopeAreaLabel}` : t('project_graph.pulse.title')}
           </h2>
           <p className="pgp-subtitle">
-            Unit: distinct artifacts with a recorded event loaded for that {UNIT_NOUN[matrix.unit]}.
-            {matrix.scopeAreaBasis ? ` Area membership: ${matrix.scopeAreaBasis}.` : ''}
+            {t('project_graph.pulse.subtitle', { unit: t(`project_graph.pulse.unit.${matrix.unit}`) })}
+            {matrix.scopeAreaBasis ? ` ${t('project_graph.pulse.area_membership', { basis: matrix.scopeAreaBasis })}` : ''}
           </p>
         </div>
         <div className="pgp-header-controls">
           {selectedAreaId && (
             <>
               <button type="button" className="pgp-btn" onClick={() => onSelectArea(null)}>
-                All areas
+                {t('project_graph.pulse.all_areas')}
               </button>
               <button
                 type="button"
                 className="pgp-btn"
                 onClick={() => onNavigate('atlas', undefined, selectedAreaId)}
               >
-                Show in Atlas
+                {t('project_graph.pulse.show_in_atlas')}
               </button>
               {renaming ? (
                 <span className="pgp-rename">
                   <input
                     className="pgp-input"
-                    aria-label="Area display name"
+                    aria-label={t('project_graph.pulse.area_display_name')}
                     value={renameDraft}
                     autoFocus
                     onChange={(event) => setRenameDraft(event.target.value)}
                     onKeyDown={onRenameKeyDown}
                   />
                   <button type="button" className="pgp-btn" onClick={commitRename}>
-                    Save
+                    {t('project_graph.pulse.save')}
                   </button>
                 </span>
               ) : (
@@ -342,13 +343,13 @@ export function PulsePrototype({
                     setRenaming(true);
                   }}
                 >
-                  Rename
+                  {t('project_graph.pulse.rename')}
                 </button>
               )}
             </>
           )}
           <label className="pgp-field">
-            <span>Buckets</span>
+            <span>{t('project_graph.pulse.buckets')}</span>
             <select
               className="pgp-select"
               value={unitChoice}
@@ -356,13 +357,13 @@ export function PulsePrototype({
             >
               {UNIT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(`project_graph.pulse.unit.${option.value}`)}
                 </option>
               ))}
             </select>
           </label>
           <label className="pgp-field">
-            <span>Rows by</span>
+            <span>{t('project_graph.pulse.rows_by')}</span>
             <select
               className="pgp-select"
               value={sort}
@@ -370,7 +371,7 @@ export function PulsePrototype({
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(`project_graph.pulse.sort.${option.value}`)}
                 </option>
               ))}
             </select>
@@ -380,21 +381,21 @@ export function PulsePrototype({
 
       <div className="pgp-facts">
         <span className="pgp-fact">
-          <strong>{matrix.eventsInRange.toLocaleString()}</strong> loaded events
+          <strong>{matrix.eventsInRange.toLocaleString()}</strong> {t('project_graph.pulse.loaded_events')}
         </span>
         <span className="pgp-fact">
-          <strong>{matrix.distinctArtifactsInRange.toLocaleString()}</strong> distinct artifacts
+          <strong>{matrix.distinctArtifactsInRange.toLocaleString()}</strong> {t('project_graph.pulse.distinct_artifacts')}
         </span>
         <span className="pgp-fact">
-          {matrix.buckets.length} {matrix.unit} bucket{matrix.buckets.length === 1 ? '' : 's'}
+          {t('project_graph.pulse.bucket_count', { count: matrix.buckets.length, unit: t(`project_graph.pulse.unit.${matrix.unit}`) })}
         </span>
         {matrix.lastObservedOnlyArtifacts > 0 && (
           <span className="pgp-fact pgp-fact-observed">
-            {matrix.lastObservedOnlyArtifacts} seen only as a last-observed timestamp
+            {t('project_graph.pulse.last_observed_only_count', { count: matrix.lastObservedOnlyArtifacts })}
           </span>
         )}
         <span className="pgp-fact pgp-fact-quiet">
-          Counts are per row and non-additive: a record in two areas is counted in both.
+          {t('project_graph.pulse.non_additive_counts')}
         </span>
       </div>
 
@@ -403,6 +404,7 @@ export function PulsePrototype({
           comparison={comparison}
           comparisonRange={comparisonRange!}
           scopeLabel={matrix.scopeAreaLabel}
+          locale={i18n.language}
         />
       )}
 
@@ -410,19 +412,17 @@ export function PulsePrototype({
         <div className="pgp-coverage">
           {matrix.escalatedFrom && (
             <span>
-              Widened from {matrix.escalatedFrom} to {matrix.unit} buckets: the selected range is
-              too long to scan by {matrix.escalatedFrom}.
+              {t('project_graph.pulse.range_widened', { from: t(`project_graph.pulse.unit.${matrix.escalatedFrom}`), to: t(`project_graph.pulse.unit.${matrix.unit}`) })}
             </span>
           )}
           {matrix.hasPartialEdgeBucket && (
             <span>
-              An edge bucket is clipped by the toolbar range, so it covers less time than the
-              buckets beside it and its count is not comparable with theirs.
+              {t('project_graph.pulse.partial_edge_bucket')}
             </span>
           )}
           {matrix.rowsTotal > rowCount && (
             <span>
-              Showing {rowCount} of {matrix.rowsTotal} rows.
+              {t('project_graph.pulse.showing_rows', { shown: rowCount, total: matrix.rowsTotal })}
             </span>
           )}
         </div>
@@ -433,14 +433,14 @@ export function PulsePrototype({
           {colCount === 0 || rowCount === 0 ? (
             <div className="pgp-grid-empty">
               {colCount === 0
-                ? 'The selected range produced no buckets.'
-                : 'No areas are defined in the loaded model, so there are no rows to show.'}
+                ? t('project_graph.pulse.no_buckets')
+                : t('project_graph.pulse.no_areas')}
             </div>
           ) : (
             <div
               className="pgp-grid"
               role="grid"
-              aria-label="Loaded events by area and time bucket"
+              aria-label={t('project_graph.pulse.loaded_events_grid')}
               aria-rowcount={rowCount + 1}
               aria-colcount={colCount + 1}
               style={
@@ -455,7 +455,7 @@ export function PulsePrototype({
             >
               <div className="pgp-row pgp-row-head" role="row">
                 <div className="pgp-rowlabel pgp-corner" role="columnheader">
-                  {selectedAreaId ? 'Artifact' : 'Area'}
+                  {selectedAreaId ? t('project_graph.pulse.artifact') : t('project_graph.pulse.area')}
                 </div>
                 {matrix.buckets.map((bucket) => (
                   <button
@@ -465,7 +465,7 @@ export function PulsePrototype({
                     className={
                       bucket.partial ? 'pgp-colhead pgp-colhead-partial' : 'pgp-colhead'
                     }
-                    title={`${bucket.fullLabel}${bucket.partial ? ' · clipped by the selected range' : ''}`}
+                    title={`${bucket.fullLabel}${bucket.partial ? ` · ${t('project_graph.pulse.clipped_by_range')}` : ''}`}
                     onClick={() => selectColumn(bucket.index)}
                   >
                     <span className="pgp-colhead-sub">{bucket.sublabel}</span>
@@ -501,8 +501,8 @@ export function PulsePrototype({
             </div>
           )}
 
-          <div className="pgp-legend" aria-label="Legend">
-            <span className="pgp-legend-title">Artifacts active per {matrix.unit}</span>
+          <div className="pgp-legend" aria-label={t('project_graph.pulse.legend')}>
+            <span className="pgp-legend-title">{t('project_graph.pulse.artifacts_active_per', { unit: t(`project_graph.pulse.unit.${matrix.unit}`) })}</span>
             {legend.map((entry) => (
               <span key={entry.step} className="pgp-legend-item">
                 <i className={`pgp-swatch pgp-heat-${entry.step}`} aria-hidden="true" />
@@ -511,23 +511,23 @@ export function PulsePrototype({
             ))}
             <span className="pgp-legend-item">
               <i className="pgp-swatch pgp-heat-0" aria-hidden="true" />
-              no loaded events
+              {t('project_graph.pulse.no_loaded_events')}
             </span>
             <span className="pgp-legend-item">
               <i className="pgp-swatch pgp-swatch-unknown" aria-hidden="true" />
-              earlier than the earliest loaded event
+              {t('project_graph.pulse.before_earliest_loaded_event')}
             </span>
             <span className="pgp-legend-item">
               <i className="pgp-swatch pgp-swatch-observed" aria-hidden="true" />
-              last-observed only
+              {t('project_graph.pulse.last_observed_only')}
             </span>
           </div>
           <p className="pgp-legend-caveat">
-            An empty cell means no events were loaded for that bucket, not that nothing happened.
+            {t('project_graph.pulse.empty_cell_explanation')}
             {matrix.earliestLoadedEventAt !== null
-              ? ` The earliest event anywhere in the loaded model is ${new Date(
+              ? ` ${t('project_graph.pulse.earliest_event_bound', { date: new Date(
                   matrix.earliestLoadedEventAt,
-                ).toLocaleDateString()}; that is a single global bound, not per-source coverage, and each adapter has its own caps and horizons.`
+                ).toLocaleDateString(i18n.language) })}`
               : ''}
           </p>
         </div>
@@ -549,11 +549,11 @@ export function PulsePrototype({
         <span>
           {selection
             ? bucketRangeLabel(matrix.buckets, columns!.colStart, columns!.colEnd)
-            : 'Drag across cells, or use the arrow keys with Shift, to explain a period.'}
+            : t('project_graph.pulse.drag_select_help')}
         </span>
         <span className="pgp-footer-right">
-          {model.source === 'sample' ? 'Sample records' : 'Live records'} ·{' '}
-          {model.coverage.length} source limitation{model.coverage.length === 1 ? '' : 's'} noted
+          {model.source === 'sample' ? t('project_graph.pulse.sample_records') : t('project_graph.pulse.live_records')} ·{' '}
+          {t('project_graph.pulse.source_limitations_count', { count: model.coverage.length })}
         </span>
       </footer>
      </div>
@@ -561,15 +561,13 @@ export function PulsePrototype({
   );
 }
 
-function countPhrase(totals: { events: number; artifacts: number }): string {
-  return `${totals.events} event${totals.events === 1 ? '' : 's'}, ${totals.artifacts} artifact${
-    totals.artifacts === 1 ? '' : 's'
-  }`;
+function countPhrase(t: ReturnType<typeof useTranslation>['t'], totals: { events: number; artifacts: number }): string {
+  return t('project_graph.pulse.count_phrase', totals);
 }
 
-function signed(value: number, noun: string): string {
+function signed(t: ReturnType<typeof useTranslation>['t'], value: number, noun: string): string {
   const sign = value > 0 ? '+' : value < 0 ? '−' : '±';
-  return `${sign}${Math.abs(value)} ${noun}${Math.abs(value) === 1 ? '' : 's'}`;
+  return t('project_graph.pulse.signed_count', { sign, count: Math.abs(value), noun });
 }
 
 /**
@@ -582,24 +580,27 @@ function ComparisonStrip({
   comparison,
   comparisonRange,
   scopeLabel,
+  locale,
 }: {
   comparison: NonNullable<ReturnType<typeof comparePeriods>>;
   comparisonRange: PrototypeRange;
   scopeLabel: string | null;
+  locale: string;
 }) {
+  const { t } = useTranslation('extensions');
   return (
-    <div className="pgp-compare" aria-label="Comparison with the preceding period">
+    <div className="pgp-compare" aria-label={t('project_graph.pulse.comparison_label')}>
       <span className="pgp-compare-cell">
-        <strong>This period{scopeLabel ? ` · ${scopeLabel}` : ''}:</strong>{' '}
-        {countPhrase(comparison.current)}
+        <strong>{t('project_graph.pulse.this_period')}{scopeLabel ? ` · ${scopeLabel}` : ''}:</strong>{' '}
+        {countPhrase(t, comparison.current)}
       </span>
       <span className="pgp-compare-cell">
-        <strong>Preceding period:</strong> {countPhrase(comparison.previous)}
+        <strong>{t('project_graph.pulse.preceding_period')}:</strong> {countPhrase(t, comparison.previous)}
       </span>
       {/* The window is the exact interval before this one, so it is named
           outright: it is not a calendar week and must not read as one. */}
-      <span className="pgp-compare-cell" aria-label="Preceding interval">
-        {formatInterval(comparisonRange.startMs, comparisonRange.endMs)}
+      <span className="pgp-compare-cell" aria-label={t('project_graph.pulse.preceding_interval')}>
+        {formatInterval(comparisonRange.startMs, comparisonRange.endMs, locale)}
       </span>
       {/* An observed delta is still shown — the counts are a fact about what
           was loaded. What the label withholds is the comprehensive claim. */}
@@ -613,14 +614,14 @@ function ComparisonStrip({
               : 'pgp-compare-delta pgp-compare-delta-observed'
           }
         >
-          {signed(comparison.deltaEvents, 'event')} · {signed(comparison.deltaArtifacts, 'artifact')}
-          {comparison.deltaBasis === 'observed' ? ' in loaded records' : ''}
+          {signed(t, comparison.deltaEvents, t('project_graph.pulse.event_noun'))} · {signed(t, comparison.deltaArtifacts, t('project_graph.pulse.artifact_noun'))}
+          {comparison.deltaBasis === 'observed' ? ` ${t('project_graph.pulse.in_loaded_records')}` : ''}
         </span>
       ) : null}
       {/* Never `pgp-fact-quiet`: that class is hidden on a narrow container,
           and the caveat is the part of this strip that must not disappear. */}
       <span className="pgp-compare-note">
-        An exact preceding interval of the same length, not a calendar period.{' '}
+        {t('project_graph.pulse.exact_preceding_interval')}{' '}
         {comparison.note}
       </span>
     </div>
@@ -660,6 +661,7 @@ function MatrixRow({
   onCellDown,
   onCellEnter,
 }: MatrixRowProps) {
+  const { t } = useTranslation('extensions');
   return (
     <div className="pgp-row" role="row">
       <div className="pgp-rowlabel">
@@ -667,20 +669,20 @@ function MatrixRow({
           <span className="pgp-rowlabel-text">{row.label}</span>
           <span className="pgp-rowlabel-meta">
             {row.eventsInRange > 0
-              ? `${row.activeArtifactsInRange} artifact${row.activeArtifactsInRange === 1 ? '' : 's'} · ${row.eventsInRange} event${row.eventsInRange === 1 ? '' : 's'}`
-              : 'no loaded events in range'}
+              ? t('project_graph.pulse.row_event_summary', { artifacts: row.activeArtifactsInRange, events: row.eventsInRange })
+              : t('project_graph.pulse.no_loaded_events_in_range')}
             {row.lastEventAt !== null && !row.lastEventInRange
-              ? ` · last seen ${formatRelative(row.lastEventAt, nowMs)}`
+              ? ` · ${t('project_graph.pulse.last_seen', { time: formatRelative(row.lastEventAt, nowMs, (key, options) => String(t(`project_graph.pulse.${key}`, options))) })}`
               : ''}
-            {row.lastEventAt === null ? ' · no dated event' : ''}
+            {row.lastEventAt === null ? ` · ${t('project_graph.pulse.no_dated_event')}` : ''}
           </span>
         </button>
         {!scoped && row.areaId && (
           <button
             type="button"
             className="pgp-scope-btn"
-            title={`Scope Pulse to ${row.label}`}
-            aria-label={`Scope Pulse to ${row.label}`}
+            title={t('project_graph.pulse.scope_to_area', { area: row.label })}
+            aria-label={t('project_graph.pulse.scope_to_area', { area: row.label })}
             onClick={() => onScopeArea(row.areaId!)}
           >
             ›
@@ -706,11 +708,9 @@ function MatrixRow({
         const description =
           cell.eventCount === 0
             ? cell.coverage === 'outside-loaded'
-              ? 'no loaded events; earlier than the earliest event in the loaded model'
-              : 'no loaded events'
-            : `${cell.activeArtifacts} artifact${cell.activeArtifacts === 1 ? '' : 's'} active${
-                cell.lastObservedOnly > 0 ? `, ${cell.lastObservedOnly} last-observed only` : ''
-              }, ${cell.eventCount} event${cell.eventCount === 1 ? '' : 's'}`;
+              ? t('project_graph.pulse.cell_outside_loaded')
+              : t('project_graph.pulse.no_loaded_events')
+            : t('project_graph.pulse.cell_event_summary', { artifacts: cell.activeArtifacts, lastObserved: cell.lastObservedOnly, events: cell.eventCount });
 
         return (
           <div

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { notificationDedupKey } from '../ErrorNotificationService';
+import { errorNotificationService, notificationDedupKey } from '../ErrorNotificationService';
 
 describe('notificationDedupKey', () => {
   it('collapses a SQLite worker stall onto one key regardless of title or request', () => {
@@ -23,5 +23,48 @@ describe('notificationDedupKey', () => {
     expect(notificationDedupKey('error', 'Save failed', 'disk full')).not.toBe(
       notificationDedupKey('error', 'Save failed', 'permission denied'),
     );
+  });
+});
+
+describe('error notification titles', () => {
+  it('uses the active UI translator for default error titles', () => {
+    const notifications: Array<{ title: string }> = [];
+    const removeListener = errorNotificationService.addListener((notification) => {
+      notifications.push(notification);
+    });
+    errorNotificationService.setTitleTranslator((key) => ({
+      generic_title: 'エラーが発生しました',
+      uncaught_title: '未捕捉のエラー',
+      unhandled_rejection_title: '未処理のPromise拒否',
+    })[key]);
+
+    errorNotificationService.showFromError(new Error('details'));
+    expect(notifications.at(-1)?.title).toBe('エラーが発生しました');
+
+    removeListener();
+    errorNotificationService.setTitleTranslator(null);
+  });
+
+  it('translates fixed notification copy and interpolates dynamic values', () => {
+    errorNotificationService.setTextTranslator((namespace, key, fallback, options) => {
+      if (namespace === 'sessions' && key === 'notifications.delete_failed') {
+        return `削除失敗: ${options?.session ?? ''}`;
+      }
+      return fallback;
+    });
+
+    expect(errorNotificationService.getLocalizedText(
+      'sessions',
+      'notifications.delete_failed',
+      'Failed to delete session',
+      { session: 'session-1' },
+    )).toBe('削除失敗: session-1');
+    expect(errorNotificationService.getLocalizedText(
+      'sessions',
+      'notifications.missing_key',
+      'Fallback copy',
+    )).toBe('Fallback copy');
+
+    errorNotificationService.setTextTranslator(null);
   });
 });

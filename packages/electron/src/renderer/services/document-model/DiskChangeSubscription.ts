@@ -149,10 +149,19 @@ export class DiskChangeSubscription {
     if (this.warningShown) return;
     this.warningShown = true;
     errorNotificationService.showWarning(
-      "File updates delayed",
-      `Could not refresh ${this.path
+      errorNotificationService.getLocalizedText(
+        "files",
+        "notifications.disk_updates_delayed_title",
+        "File updates delayed"
+      ),
+      errorNotificationService.getLocalizedText(
+        "files",
+        "notifications.disk_updates_delayed_message",
+        `Could not refresh ${this.path
         .split(/[\\/]/)
         .pop()}. Your unsaved edits are preserved.`,
+        { fileName: this.path.split(/[\\/]/).pop() ?? this.path }
+      ),
       { duration: 10_000 }
     );
   }

@@ -48,6 +48,7 @@ import { clearWorkspaceRepoCache } from '../services/workspaceRepos';
 import { addNimAssetRoot } from '../protocols/nimAssetProtocol';
 import { addNimPreviewWorkspaceRoot } from '../protocols/nimPreviewProtocol';
 import { getMcpConfigService } from '../index';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import {
   addToRecentItems,
   attachFolderToWorkspace,
@@ -339,14 +340,22 @@ export function registerMultiProjectRailHandlers(): void {
             // drag-drop / command routes never open a picker at all.
             const consent = await dialog.showMessageBox(window, {
                 type: 'question',
-                buttons: ['Attach Folder', 'Cancel'],
+                buttons: [
+                    translateMainDialogLabel('main_process.attach_folder_button', 'Attach Folder'),
+                    translateMainDialogLabel('main_process.cancel', 'Cancel'),
+                ],
                 defaultId: 0,
                 cancelId: 1,
-                title: 'Attach Folder to Workspace',
-                message: `Attach "${basename(folderPath)}" to "${basename(workspacePath)}"?`,
-                detail:
-                    'The attached folder becomes part of this project and inherits its agent '
-                    + 'trust level. Agents in this project will be able to read and write it.',
+                title: translateMainDialogLabel('main_process.attach_folder_title', 'Attach Folder to Workspace'),
+                message: translateMainDialogLabel(
+                    'main_process.attach_folder_confirm',
+                    'Attach "{{folder}}" to "{{workspace}}"?',
+                    { folder: basename(folderPath), workspace: basename(workspacePath) },
+                ),
+                detail: translateMainDialogLabel(
+                    'main_process.attach_folder_detail',
+                    'The attached folder becomes part of this project and inherits its agent trust level. Agents in this project will be able to read and write it.',
+                ),
             });
             if (consent.response !== 0) {
                 return { success: false, reason: 'declined', error: undefined };

@@ -12,7 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "js-yaml": "^4.3.2"
+    "js-yaml": "^4.3.2",
+    "@nimbalyst/i18n": "workspace:*"
   },
   "devDependencies": {
     "@nimbalyst/extension-sdk": "workspace:*",

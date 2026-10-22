@@ -7,11 +7,36 @@ import {
   $createTextNode,
 } from 'lexical';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TrackerSavedDescription } from '../TrackerSavedDescription';
 
+async function renderInEnglish(ui: React.ReactNode) {
+  const i18n = await createI18nInstance('en');
+  return render(
+    <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+      {ui}
+    </UiLanguageProvider>,
+  );
+}
+
 describe('saved description recovery', () => {
-  it('does not mutate on opening and inserts without replacing selected text', () => {
+  it('renders recovery controls in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    const editor = createEditor({ namespace: 'recovery-ja', onError: (error) => { throw error; } });
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <TrackerSavedDescription description="Saved text" editor={editor} canInsert />
+      </UiLanguageProvider>,
+    );
+    screen.getByText('保存済みの説明');
+    expect(screen.getByText(/項目の作成時に入力した内容/)).toBeDefined();
+    screen.getByRole('button', { name: 'コピー' });
+    screen.getByRole('button', { name: '本文に挿入' });
+  });
+
+  it('does not mutate on opening and inserts without replacing selected text', async () => {
     const editor = createEditor({
       namespace: 'recovery-test',
       onError: (error) => {
@@ -29,7 +54,7 @@ describe('saved description recovery', () => {
     );
     const body = () =>
       editor.getEditorState().read(() => $getRoot().getTextContent());
-    render(
+    await renderInEnglish(
       <TrackerSavedDescription
         description="Recovered text"
         editor={editor}
@@ -44,10 +69,10 @@ describe('saved description recovery', () => {
     expect(screen.getByText('Recovered text')).toBeDefined();
   });
 
-  it('stays hidden when the description is already the body', () => {
+  it('stays hidden when the description is already the body', async () => {
     // Agent-created and imported items store the same text in both fields;
     // offering it back would duplicate the body on Insert.
-    const { container } = render(
+    const { container } = await renderInEnglish(
       <TrackerSavedDescription
         description={'Same text\n'}
         currentBody="Same text"
@@ -58,8 +83,8 @@ describe('saved description recovery', () => {
     expect(container.querySelector('.tracker-saved-description')).toBeNull();
   });
 
-  it('leaves insertion disabled when a shared body is not ready', () => {
-    render(
+  it('leaves insertion disabled when a shared body is not ready', async () => {
+    await renderInEnglish(
       <TrackerSavedDescription
         description="Original text"
         editor={null}

@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $getNodeByKey } from "lexical";
 import {
@@ -68,19 +69,19 @@ interface DecisionComponentProps {
 function askVerb(source: DecisionBlockSource): string {
   switch (source.type) {
     case "singleSelect":
-      return "pick one";
+      return "decision.ask_types.singleSelect";
     case "multiSelect":
       return source.maxSelected
-        ? `pick up to ${source.maxSelected}`
-        : "pick any";
+        ? "decision.ask_types.multiSelect_limited"
+        : "decision.ask_types.multiSelect";
     case "reorder":
-      return `rank ${source.entries.length}`;
+      return "decision.ask_types.reorder";
     case "editText":
-      return "edit the draft";
+      return "decision.ask_types.editText";
     case "confirm":
-      return "yes or no";
+      return "decision.ask_types.confirm";
     case "rating":
-      return `rate ${source.min ?? 1}–${source.max ?? 5}`;
+      return "decision.ask_types.rating";
   }
 }
 
@@ -88,24 +89,24 @@ function askVerb(source: DecisionBlockSource): string {
 function sealVerb(source: DecisionBlockSource): string {
   switch (source.type) {
     case "reorder":
-      return "Seal this order";
+      return "decision.actions.seal_order";
     case "rating":
-      return "Seal with a conclusion";
+      return "decision.actions.seal_conclusion";
     default:
-      return "Seal decision";
+      return "decision.actions.seal";
   }
 }
 
 function respondentNoun(source: DecisionBlockSource): string {
   switch (source.type) {
     case "reorder":
-      return "ranked";
+      return "decision.respondents.ranked";
     case "rating":
-      return "rated";
+      return "decision.respondents.rated";
     case "editText":
-      return "proposed";
+      return "decision.respondents.proposed";
     default:
-      return "answered";
+      return "decision.respondents.answered";
   }
 }
 
@@ -186,17 +187,18 @@ const CheckGlyph: React.FC = () => (
  * A fence that does not parse still renders as a decision rather than
  * disappearing, and shows its body verbatim so the author can fix it.
  */
-const BrokenDecision: React.FC<{ content: string }> = ({ content }) => (
-  <div className="decision-block decision-block--broken">
+const BrokenDecision: React.FC<{ content: string }> = ({ content }) => {
+  const { t } = useTranslation('editor');
+  return <div className="decision-block decision-block--broken">
     <div className="decision-eyebrow">
       <DecisionGlyph />
-      <span>Decision</span>
+      <span>{t('decision.labels.decision')}</span>
       <span className="decision-dot">&middot;</span>
-      <span className="decision-broken-note">could not be read</span>
+      <span className="decision-broken-note">{t('decision.labels.unreadable')}</span>
     </div>
     <pre className="decision-broken-body">{content}</pre>
-  </div>
-);
+  </div>;
+};
 
 function formatSealedDate(iso: string): string {
   const parsed = new Date(iso);
@@ -210,6 +212,7 @@ function formatSealedDate(iso: string): string {
 const SealedDecision: React.FC<{ source: DecisionBlockSource }> = ({
   source,
 }) => {
+  const { t } = useTranslation('editor');
   const [expanded, setExpanded] = useState(false);
   const sealed = source.sealed;
   if (!sealed) return null;
@@ -234,15 +237,13 @@ const SealedDecision: React.FC<{ source: DecisionBlockSource }> = ({
           {sealed.resolvedBy ? (
             <>
               <span className="decision-sep">&middot;</span>
-              {`Decided by ${sealed.resolvedBy}`}
+              {t('decision.labels.decided_by', { name: sealed.resolvedBy })}
             </>
           ) : null}
           {sealed.votes.length > 0 ? (
             <>
               <span className="decision-sep">&middot;</span>
-              {`${sealed.votes.length} ${
-                sealed.votes.length === 1 ? "vote" : "votes"
-              }`}
+              {t(sealed.votes.length === 1 ? 'decision.labels.vote_one' : 'decision.labels.vote_other', { count: sealed.votes.length })}
             </>
           ) : null}
           {date ? (
@@ -277,7 +278,7 @@ const SealedDecision: React.FC<{ source: DecisionBlockSource }> = ({
         <div className="decision-sealed-detail">
           <div className="decision-sealed-ask">{source.ask}</div>
           {sealed.score !== undefined ? (
-            <div className="decision-quiet">{`Mean ${sealed.score}`}</div>
+            <div className="decision-quiet">{t('decision.labels.mean', { score: sealed.score })}</div>
           ) : null}
           <ul className="decision-sealed-votes">
             {sealed.votes.map((vote, index) => (
@@ -298,6 +299,7 @@ const DecisionBlock: React.FC<{
   nodeKey: string;
   voting: DecisionVotingState;
 }> = ({ source, nodeKey, voting }) => {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const { $getFrontmatter, $setFrontmatter } = useFrontmatterUtils();
   const [draft, setDraft] = useState<FeedbackAnswer | undefined>(() =>
@@ -361,7 +363,7 @@ const DecisionBlock: React.FC<{
       voteOverride?: readonly DecisionVote[]
     ) => {
       if (!voting.canSeal) return;
-      const resolvedBy = voting.viewer?.name ?? voting.viewer?.id ?? "unknown";
+      const resolvedBy = voting.viewer?.name ?? voting.viewer?.id ?? t('decision.labels.unknown');
       if (voting.canRecordVotes) {
         persistBlockId();
         voting.claimSeal({
@@ -382,7 +384,7 @@ const DecisionBlock: React.FC<{
       editor.update(() => {
         const node = $getNodeByKey(nodeKey);
         if (!$isDecisionNode(node)) {
-          failure = "This decision is no longer in the document.";
+          failure = t('decision.errors.decision_removed');
           return;
         }
 
@@ -402,12 +404,12 @@ const DecisionBlock: React.FC<{
         if (!result.ok) {
           failure =
             result.reason === "alreadySealed"
-              ? "Someone else already sealed this decision."
+              ? t('decision.errors.already_sealed')
               : result.reason === "conclusionRequired"
-              ? "Write what the team is doing about the rating."
+              ? t('decision.errors.conclusion_required')
               : result.reason === "unparseable"
-              ? "This block could not be read, so it was not sealed."
-              : "Pick an outcome to seal.";
+              ? t('decision.errors.unreadable')
+              : t('decision.errors.outcome_required');
           return;
         }
 
@@ -435,7 +437,7 @@ const DecisionBlock: React.FC<{
       setSealing(false);
       setSealError(null);
     },
-    [editor, nodeKey, voting, $getFrontmatter, $setFrontmatter, effectiveVotes, persistBlockId]
+    [editor, nodeKey, voting, $getFrontmatter, $setFrontmatter, effectiveVotes, persistBlockId, t]
   );
 
   const proposed = useMemo(
@@ -463,7 +465,7 @@ const DecisionBlock: React.FC<{
     if (!voting.canRecordVotes) {
       const vote: DecisionVote = {
         voterId: voting.viewer?.id ?? "local",
-        voterName: voting.viewer?.name ?? "You",
+        voterName: voting.viewer?.name ?? t('decision.proposal.you'),
         answer: draft,
         at: Date.now(),
       };
@@ -596,34 +598,29 @@ const DecisionBlock: React.FC<{
   const footerLeft =
     voting.privateMode && !tallyVisible ? (
       <span className="decision-blind">
-        {hasAnswered ? "Your answer is saved. " : ""}Results stay hidden until
-        all your assigned questions are answered.
+        {hasAnswered ? `${t('decision.labels.your_answer_saved')} ` : ""}{t('decision.labels.results_hidden')}
       </span>
     ) : showControl ? (
       tallyVisible ? (
         <span className="decision-foot-progress">
-          {progress.asked > 0
-            ? `${progress.answered} of ${progress.asked} ${respondentNoun(
-                source
-              )}`
-            : `${progress.answered} ${respondentNoun(source)}`}
+        {progress.asked > 0
+            ? t('decision.progress.asked_answered', { answered: progress.answered, asked: progress.asked, noun: t(respondentNoun(source)) })
+            : t('decision.progress.answered', { count: progress.answered, noun: t(respondentNoun(source)) })}
         </span>
       ) : (
         <HiddenTallyNote
           count={progress.answered}
-          noun={respondentNoun(source)}
+          noun={t(respondentNoun(source))}
         />
       )
     ) : (
       <>
-        <AnsweredMark>You answered</AnsweredMark>
+        <AnsweredMark>{t('decision.labels.you_answered')}</AnsweredMark>
         <span className="decision-sep">&middot;</span>
         <span className="decision-foot-progress">
           {progress.asked > 0
-            ? `${progress.answered} of ${progress.asked} ${respondentNoun(
-                source
-              )}`
-            : `${progress.answered} ${respondentNoun(source)}`}
+            ? t('decision.progress.asked_answered', { answered: progress.answered, asked: progress.asked, noun: t(respondentNoun(source)) })
+            : t('decision.progress.answered', { count: progress.answered, noun: t(respondentNoun(source)) })}
         </span>
       </>
     );
@@ -636,11 +633,11 @@ const DecisionBlock: React.FC<{
     >
       <div className="decision-eyebrow">
         <DecisionGlyph />
-        <span>Decision</span>
+        <span>{t('decision.labels.decision')}</span>
         <span className="decision-dot">&middot;</span>
         <span className="decision-id">{source.id}</span>
         <span className="decision-dot">&middot;</span>
-        <span>{askVerb(source)}</span>
+        <span>{t(askVerb(source), source.type === 'multiSelect' && source.maxSelected ? { count: source.maxSelected } : source.type === 'reorder' ? { count: source.entries.length } : source.type === 'rating' ? { min: source.min ?? 1, max: source.max ?? 5 } : {})}</span>
       </div>
       <div className="decision-ask">{source.ask}</div>
       {source.description ? (
@@ -672,7 +669,7 @@ const DecisionBlock: React.FC<{
                 {recommendation.agentName ?? recommendation.agentId}
               </span>
               <span className="decision-agent-not-counted">
-                recommends · not counted
+                {t('decision.labels.recommendation_not_counted')}
               </span>
               {recommendation.rationale ? (
                 <span className="decision-agent-text">
@@ -690,7 +687,7 @@ const DecisionBlock: React.FC<{
             <input
               className="decision-conclusion"
               value={conclusion}
-              placeholder="What is the team doing about this?"
+              placeholder={t('decision.rating.conclusion_placeholder')}
               onChange={(event) => setConclusion(event.target.value)}
               data-testid="decision-conclusion-input"
             />
@@ -710,7 +707,7 @@ const DecisionBlock: React.FC<{
               setSealError(null);
             }}
           >
-            Cancel
+            {t('decision.actions.cancel')}
           </button>
           <button
             type="button"
@@ -734,7 +731,7 @@ const DecisionBlock: React.FC<{
             }
             data-testid="decision-seal-confirm"
           >
-            Confirm
+            {t('decision.actions.confirm')}
           </button>
         </div>
       ) : null}
@@ -746,8 +743,8 @@ const DecisionBlock: React.FC<{
       {voting.pending ? (
         <div role="status" className="decision-quiet">
           {voting.refreshing
-            ? "Refreshing answer status…"
-            : "Saving your answer…"}
+            ? t('decision.labels.refreshing')
+            : t('decision.labels.saving')}
         </div>
       ) : null}
       {voting.error ? (
@@ -769,7 +766,7 @@ const DecisionBlock: React.FC<{
             disabled={!voting.canVote || !answerIsComplete(source, draft)}
             data-testid="decision-answer"
           >
-            {hasAnswered ? "Save" : "Answer"}
+            {hasAnswered ? t('decision.actions.save') : t('decision.actions.answer')}
           </button>
         ) : (
           <>
@@ -783,7 +780,7 @@ const DecisionBlock: React.FC<{
               disabled={!voting.canVote}
               data-testid="decision-change"
             >
-              Change
+              {t('decision.actions.change')}
             </button>
             {/* editText seals by accepting a specific proposal, so a generic
                 seal button there would have no outcome to point at. */}
@@ -794,7 +791,7 @@ const DecisionBlock: React.FC<{
                 onClick={beginSealing}
                 data-testid="decision-seal"
               >
-                {sealVerb(source)}
+                {t(sealVerb(source))}
               </button>
             ) : null}
           </>
@@ -809,15 +806,13 @@ const DecisionBlock: React.FC<{
             onClick={beginSealing}
             data-testid="decision-seal"
           >
-            {sealVerb(source)}
+            {t(sealVerb(source))}
           </button>
         ) : null}
       </DecisionFooter>
 
       {!voting.canRecordVotes ? (
-        <div className="decision-solo-note">
-          Not shared — your answer seals straight to the file.
-        </div>
+        <div className="decision-solo-note">{t('decision.labels.not_shared')}</div>
       ) : null}
 
       {tallyVisible && voting.votes.length > 0 && showControl ? (
@@ -837,6 +832,7 @@ const ParsedDecisionComponent: React.FC<
     source: DecisionBlockSource;
   }
 > = ({ className, content, nodeKey, source }) => {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const { $getFrontmatter, $setFrontmatter } = useFrontmatterUtils();
   const voting = useDecisionVotes(source);
@@ -905,12 +901,12 @@ const ParsedDecisionComponent: React.FC<
               );
               if (!changed)
                 throw new Error(
-                  "The question changed while you were editing. Reopen it to continue."
+                  t('decision.errors.question_changed_edit')
                 );
             }}
           />
         ) : (
-          <div className="decision-quiet">Draft question: {source.ask}</div>
+          <div className="decision-quiet">{t('decision.authoring.draft_question')}: {source.ask}</div>
         )
       ) : source.sealed ? (
         <SealedDecision

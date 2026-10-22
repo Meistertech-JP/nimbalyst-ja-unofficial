@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface Props {
   children: React.ReactNode;
@@ -10,8 +11,19 @@ interface State {
   showDetails: boolean;
 }
 
-export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
-  constructor(props: Props) {
+interface Labels {
+  unknownTool: string;
+  showDetails: string;
+  hideDetails: string;
+  copy: string;
+  retry: string;
+  unknownError: string;
+}
+
+type InnerProps = Props & { failedLabel: string; labels: Labels };
+
+class ToolWidgetErrorBoundaryInner extends React.Component<InnerProps, State> {
+  constructor(props: InnerProps) {
     super(props);
     this.state = { error: null, showDetails: false };
   }
@@ -64,10 +76,10 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontWeight: 600, color: 'var(--nim-error, #ef4444)' }}>
-            Widget failed to render
+            {this.props.failedLabel}
           </span>
           <span style={{ color: 'var(--nim-text-muted)', fontFamily: 'monospace', fontSize: '11px' }}>
-            {this.props.toolName ?? 'unknown tool'}
+            {this.props.toolName ?? this.props.labels.unknownTool}
           </span>
           <span style={{ flex: 1 }} />
           <button
@@ -83,7 +95,7 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            {showDetails ? 'Hide details' : 'Show details'}
+            {showDetails ? this.props.labels.hideDetails : this.props.labels.showDetails}
           </button>
           <button
             type="button"
@@ -98,7 +110,7 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            Copy
+            {this.props.labels.copy}
           </button>
           <button
             type="button"
@@ -113,11 +125,11 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            Retry
+            {this.props.labels.retry}
           </button>
         </div>
         <div style={{ marginTop: '4px', color: 'var(--nim-text-muted)' }}>
-          {error.message || 'Unknown error'}
+          {error.message || this.props.labels.unknownError}
         </div>
         {showDetails && error.stack && (
           <pre
@@ -140,4 +152,23 @@ export class ToolWidgetErrorBoundary extends React.Component<Props, State> {
       </div>
     );
   }
+}
+
+export function ToolWidgetErrorBoundary(props: Props): React.ReactElement {
+  const { t: tAichat } = useTranslation('aichat');
+  const { t: tCommon } = useTranslation('common');
+  return (
+    <ToolWidgetErrorBoundaryInner
+      {...props}
+      failedLabel={tAichat('tool_widget.failed_to_render')}
+      labels={{
+        unknownTool: tAichat('rich_transcript.unknown_tool'),
+        showDetails: tAichat('interactive.show_details'),
+        hideDetails: tAichat('widget_error.hide_details'),
+        copy: tCommon('copy'),
+        retry: tCommon('retry'),
+        unknownError: tCommon('embed.unknown_error'),
+      }}
+    />
+  );
 }

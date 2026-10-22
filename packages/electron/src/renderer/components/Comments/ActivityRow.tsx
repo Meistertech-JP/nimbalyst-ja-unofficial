@@ -1,6 +1,8 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
+import { localizeCommentRelativeTime } from './displayNameFallbackKeys';
 import type { ActivityView, Comment, TimelineEntry } from './commentTypes';
 
 /**
@@ -12,6 +14,7 @@ import type { ActivityView, Comment, TimelineEntry } from './commentTypes';
  * unreadable.
  */
 export function ActivityRow({ activity }: { activity: ActivityView }) {
+  const { t } = useTranslation('editor');
   return (
     <div
       className="activity-row flex items-center gap-2 px-3 py-1 text-[12px] text-[var(--nim-text-faint)]"
@@ -26,7 +29,7 @@ export function ActivityRow({ activity }: { activity: ActivityView }) {
       </span>
       <span className="activity-row-summary min-w-0 truncate">{activity.summary}</span>
       <span className="activity-row-timestamp ml-auto shrink-0" title={activity.timestampTitle}>
-        {activity.timestampLabel}
+        {localizeCommentRelativeTime(activity.timestampLabel, t)}
       </span>
     </div>
   );

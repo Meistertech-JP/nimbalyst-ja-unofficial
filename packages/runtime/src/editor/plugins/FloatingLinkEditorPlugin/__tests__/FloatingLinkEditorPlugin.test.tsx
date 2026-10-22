@@ -10,6 +10,8 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { $getRoot, $isTextNode, type LexicalEditor } from 'lexical';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { CORE_TRANSFORMERS } from '../../../markdown/core-transformers';
 import { setWorkspaceFileLinkOpener } from '../../../utils/workspaceLinkNavigation';
@@ -39,7 +41,13 @@ function Harness() {
   );
 }
 
-function renderMarkdown(markdown: string) {
+async function renderMarkdown(markdown: string, language: 'en' | 'ja' = 'en') {
+  const i18n = await createI18nInstance(language);
+  const Wrapper = ({ children }: React.PropsWithChildren) => (
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
   return render(
     <LexicalComposer
       initialConfig={{
@@ -61,6 +69,7 @@ function renderMarkdown(markdown: string) {
       <LinkPlugin />
       <Harness />
     </LexicalComposer>,
+    { wrapper: Wrapper },
   );
 }
 
@@ -83,7 +92,7 @@ describe('FloatingLinkEditorPlugin', () => {
   it('opens a web link on a plain click in an editable editor, without a card', async () => {
     const open = vi.fn();
     vi.stubGlobal('open', open);
-    renderMarkdown('Read the [docs](https://docs.example.com/).\n');
+    await renderMarkdown('Read the [docs](https://docs.example.com/).\n');
 
     fireEvent.click(await screen.findByRole('link', { name: 'docs' }));
 
@@ -96,7 +105,7 @@ describe('FloatingLinkEditorPlugin', () => {
     const opener = vi.fn();
     vi.stubGlobal('open', open);
     setWorkspaceFileLinkOpener(opener);
-    renderMarkdown('See [notes](./notes.md).\n');
+    await renderMarkdown('See [notes](./notes.md).\n');
 
     fireEvent.click(await screen.findByRole('link', { name: 'notes' }));
 
@@ -105,7 +114,7 @@ describe('FloatingLinkEditorPlugin', () => {
   });
 
   it('edits the hovered link text and URL from its card', async () => {
-    renderMarkdown('Read the [docs](https://docs.example.com/).\n');
+    await renderMarkdown('Read the [docs](https://docs.example.com/).\n');
 
     fireEvent.mouseOver(await screen.findByRole('link', { name: 'docs' }));
     const card = await screen.findByTestId('link-hover-card');
@@ -124,8 +133,21 @@ describe('FloatingLinkEditorPlugin', () => {
     expect(screen.queryByTestId('link-hover-card')).toBeNull();
   });
 
+  it('localizes link fields, actions, and accessible names', async () => {
+    await renderMarkdown('Read the [docs](https://docs.example.com/).\n', 'ja');
+
+    fireEvent.mouseOver(await screen.findByRole('link', { name: 'docs' }));
+    fireEvent.click(await screen.findByRole('button', { name: '編集' }));
+
+    expect(screen.getByRole('textbox', { name: 'リンクテキスト' })).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: 'リンクURL' })).not.toBeNull();
+    expect(screen.getByPlaceholderText('リンクを貼り付けまたは入力')).not.toBeNull();
+    expect(screen.getByRole('button', { name: /リンクを削除/ })).not.toBeNull();
+    expect(screen.getByRole('button', { name: '保存' })).not.toBeNull();
+  });
+
   it('keeps the hover card open while the pointer travels from the link to its buttons', async () => {
-    renderMarkdown('Read the [docs](https://docs.example.com/).\n');
+    await renderMarkdown('Read the [docs](https://docs.example.com/).\n');
     const link = await screen.findByRole('link', { name: 'docs' });
     link.getBoundingClientRect = () => new DOMRect(100, 100, 40, 16);
 
@@ -145,7 +167,7 @@ describe('FloatingLinkEditorPlugin', () => {
   });
 
   it('opens the form, unfocused, when the keyboard moves the caret into a link', async () => {
-    renderMarkdown('Read the [docs](https://docs.example.com/).\n');
+    await renderMarkdown('Read the [docs](https://docs.example.com/).\n');
     await screen.findByRole('link', { name: 'docs' });
 
     // A click never opens the form; a key press re-enables it.
@@ -163,7 +185,7 @@ describe('FloatingLinkEditorPlugin', () => {
   });
 
   it('cancelling a toolbar-started link leaves no placeholder link behind', async () => {
-    renderMarkdown('Plain words here.\n');
+    await renderMarkdown('Plain words here.\n');
     await screen.findByText('Plain words here.');
 
     await act(async () => {

@@ -8,6 +8,7 @@
  */
 
 import type { MockupSelection } from "@nimbalyst/runtime";
+import { useTranslation } from "react-i18next";
 import type { MockupTheme } from "../utils/themeEngine";
 
 export interface MockupToolbarProps {
@@ -55,6 +56,7 @@ export function MockupToolbar({
   isCapturing,
   onCaptureScreenshot,
 }: MockupToolbarProps) {
+  const { t } = useTranslation("extensions");
   return (
     <div className="mockup-toolbar px-4 py-2 border-b border-nim bg-nim-secondary flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -68,23 +70,23 @@ export function MockupToolbar({
           }`}
           title={
             isInteractive
-              ? "Switch to Select mode (click to select elements)"
-              : "Switch to Interactive mode (click to interact with mockup)"
+              ? t("mockup_lm_ui.switch_to_select")
+              : t("mockup_lm_ui.switch_to_interactive")
           }
         >
-          {isInteractive ? "Interactive" : "Select"}
+          {isInteractive ? t("mockup_lm_ui.interactive") : t("mockup_lm_ui.select")}
         </button>
         {selectedElement && (
           <div className="flex items-center gap-2 px-2 py-1 bg-[rgba(0,122,255,0.1)] rounded border border-[rgba(0,122,255,0.3)]">
             <span className="text-xs text-nim">
-              Selected: {selectedElement.tagName}
+              {t("mockup_lm_ui.selected_element", { tagName: selectedElement.tagName })}
             </span>
             <button
               onClick={onDeselect}
               className="px-1.5 py-0.5 text-[11px] bg-transparent border border-nim rounded-sm text-nim cursor-pointer"
-              title="Deselect element"
+              title={t("mockup_lm_ui.deselect_element")}
             >
-              Clear
+              {t("mockup_lm_ui.clear")}
             </button>
           </div>
         )}
@@ -95,8 +97,8 @@ export function MockupToolbar({
           className="px-2 py-1 text-xs bg-nim border border-nim rounded text-nim cursor-pointer"
           title={
             mockupTheme === "dark"
-              ? "Switch to light theme"
-              : "Switch to dark theme"
+              ? t("mockup_lm_ui.switch_to_light_theme")
+              : t("mockup_lm_ui.switch_to_dark_theme")
           }
         >
           {mockupTheme === "dark" ? (
@@ -145,12 +147,12 @@ export function MockupToolbar({
             }`}
             title={
               isCommentMode
-                ? "Exit comment mode"
-                : "Comment on a spot in this mockup"
+                ? t("mockup_lm_ui.exit_comment_mode")
+                : t("mockup_lm_ui.comment_on_mockup")
             }
             aria-pressed={isCommentMode}
           >
-            {isCommentMode ? "Done Commenting" : "Comment"}
+            {isCommentMode ? t("mockup_lm_ui.done_commenting") : t("mockup_lm_ui.comment")}
           </button>
         )}
         <button
@@ -160,9 +162,9 @@ export function MockupToolbar({
               ? "bg-nim-primary text-nim-on-primary font-bold"
               : "bg-nim text-nim font-normal"
           }`}
-          title={isDrawingMode ? "Exit drawing mode" : "Draw annotations for AI"}
+          title={isDrawingMode ? t("mockup_lm_ui.exit_drawing_mode") : t("mockup_lm_ui.draw_annotations")}
         >
-          {isDrawingMode ? "Done Drawing" : "Draw"}
+          {isDrawingMode ? t("mockup_lm_ui.done_drawing") : t("mockup_lm_ui.draw")}
         </button>
         {isDrawingMode && (
           <>
@@ -171,14 +173,14 @@ export function MockupToolbar({
               value={drawingColor}
               onChange={(e) => onDrawingColorChange(e.target.value)}
               className="w-8 h-6 border border-nim rounded cursor-pointer"
-              title="Choose drawing color"
+              title={t("mockup_lm_ui.choose_drawing_color")}
             />
             <button
               onClick={onClearDrawing}
               className="px-3 py-1 text-xs bg-nim border border-nim rounded text-nim cursor-pointer"
-              title="Clear all drawings"
+              title={t("mockup_lm_ui.clear_drawings")}
             >
-              Clear
+              {t("mockup_lm_ui.clear")}
             </button>
           </>
         )}
@@ -188,9 +190,9 @@ export function MockupToolbar({
           className={`px-3 py-1 text-xs bg-nim border border-nim rounded text-nim ${
             isCapturing ? "cursor-wait opacity-60" : "cursor-pointer opacity-100"
           }`}
-          title="Capture screenshot of mockup"
+          title={t("mockup_lm_ui.capture_screenshot_title")}
         >
-          {isCapturing ? "Capturing..." : "Screenshot"}
+          {isCapturing ? t("mockup_lm_ui.capturing") : t("mockup_lm_ui.screenshot")}
         </button>
       </div>
     </div>

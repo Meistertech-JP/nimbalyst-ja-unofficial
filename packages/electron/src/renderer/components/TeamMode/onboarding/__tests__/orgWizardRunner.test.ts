@@ -8,6 +8,13 @@ import {
   type OrgWizardApi,
 } from '../orgWizardRunner';
 
+const messages = {
+  organizationNameRequired: () => 'Enter a name for the organization.',
+  organizationNotCreated: () => 'The organization has not been created yet.',
+  invitationFailures: (details: string) => `Some invitations failed — ${details}`,
+  folderPublishFailures: (details: string) => `Some folders were not published — ${details}`,
+};
+
 function fakeApi(overrides: Partial<OrgWizardApi> = {}): OrgWizardApi {
   return {
     findPendingInvitation: vi.fn(async () => null),
@@ -31,7 +38,7 @@ function created(overrides: Partial<OrgWizardState> = {}): OrgWizardState {
 describe('runCreateOrganization', () => {
   it('creates the organization and records its id', async () => {
     const api = fakeApi();
-    const state = await runCreateOrganization(createOrgWizardState({ orgName: 'Acme' }), api);
+    const state = await runCreateOrganization(createOrgWizardState({ orgName: 'Acme' }), api, messages);
     expect(state.createdOrgId).toBe('org-1');
     expect(api.createOrganization).toHaveBeenCalledWith({
       name: 'Acme',
@@ -41,8 +48,8 @@ describe('runCreateOrganization', () => {
 
   it('never creates a second organization when the step re-runs', async () => {
     const api = fakeApi();
-    const once = await runCreateOrganization(createOrgWizardState({ orgName: 'Acme' }), api);
-    const twice = await runCreateOrganization(once, api);
+    const once = await runCreateOrganization(createOrgWizardState({ orgName: 'Acme' }), api, messages);
+    const twice = await runCreateOrganization(once, api, messages);
     expect(twice.createdOrgId).toBe('org-1');
     expect(api.createOrganization).toHaveBeenCalledTimes(1);
   });
@@ -51,14 +58,14 @@ describe('runCreateOrganization', () => {
     const api = fakeApi({
       createOrganization: vi.fn(async () => { throw new Error('alpha is invite-only'); }),
     });
-    const state = await runCreateOrganization(createOrgWizardState({ orgName: 'Acme' }), api);
+    const state = await runCreateOrganization(createOrgWizardState({ orgName: 'Acme' }), api, messages);
     expect(state.createdOrgId).toBeNull();
     expect(state.error).toContain('invite-only');
   });
 
   it('refuses an empty name', async () => {
     const api = fakeApi();
-    const state = await runCreateOrganization(createOrgWizardState({ orgName: '  ' }), api);
+    const state = await runCreateOrganization(createOrgWizardState({ orgName: '  ' }), api, messages);
     expect(api.createOrganization).not.toHaveBeenCalled();
     expect(state.error).toBeTruthy();
   });
@@ -70,6 +77,7 @@ describe('runSendInvites', () => {
     const state = await runSendInvites(
       created({ emails: ['karl@example.com', 'josh@example.com'] }),
       api,
+      messages,
     );
     expect(api.inviteMember).toHaveBeenCalledTimes(2);
     expect(state.invitedEmails).toEqual(['karl@example.com', 'josh@example.com']);
@@ -78,8 +86,8 @@ describe('runSendInvites', () => {
 
   it('re-sends nothing when the step runs again', async () => {
     const api = fakeApi();
-    const once = await runSendInvites(created({ emails: ['karl@example.com'] }), api);
-    await runSendInvites(once, api);
+    const once = await runSendInvites(created({ emails: ['karl@example.com'] }), api, messages);
+    await runSendInvites(once, api, messages);
     expect(api.inviteMember).toHaveBeenCalledTimes(1);
   });
 
@@ -93,12 +101,13 @@ describe('runSendInvites', () => {
     const once = await runSendInvites(
       created({ emails: ['karl@example.com'], publishFolders: ['/w/docs', '/w/specs'] }),
       api,
+      messages,
     );
     expect(api.publishFolder).toHaveBeenCalledTimes(2);
     expect(once.publishedFolders).toEqual(['/w/docs', '/w/specs']);
     expect(once.error).toBeNull();
 
-    await runSendInvites(once, api);
+    await runSendInvites(once, api, messages);
     expect(api.publishFolder).toHaveBeenCalledTimes(2);
   });
 
@@ -110,6 +119,7 @@ describe('runSendInvites', () => {
     const state = await runSendInvites(
       created({ emails: ['karl@example.com'], publishFolders: ['/w/docs'] }),
       api,
+      messages,
     );
     expect(api.publishFolder).not.toHaveBeenCalled();
     expect(state.publishedFolders).toEqual([]);
@@ -125,6 +135,7 @@ describe('runSendInvites', () => {
     const state = await runSendInvites(
       created({ emails: ['karl@example.com'], publishFolders: ['/w/docs'] }),
       api,
+      messages,
     );
     expect(state.invitedEmails).toEqual(['karl@example.com']);
     expect(state.error).toBe('Some folders were not published — /w/docs');
@@ -139,12 +150,13 @@ describe('runSendInvites', () => {
     const state = await runSendInvites(
       created({ emails: ['karl@example.com', 'josh@example.com'] }),
       api,
+      messages,
     );
     expect(state.invitedEmails).toEqual(['karl@example.com']);
     expect(state.error).toContain('josh@example.com');
 
     // The retry only covers the address that never went out.
-    await runSendInvites({ ...state, error: null }, api);
+    await runSendInvites({ ...state, error: null }, api, messages);
     expect(api.inviteMember).toHaveBeenCalledTimes(3);
   });
 
@@ -153,6 +165,7 @@ describe('runSendInvites', () => {
     const state = await runSendInvites(
       { ...createOrgWizardState(), emails: ['karl@example.com'] },
       api,
+      messages,
     );
     expect(api.inviteMember).not.toHaveBeenCalled();
     expect(state.error).toBeTruthy();

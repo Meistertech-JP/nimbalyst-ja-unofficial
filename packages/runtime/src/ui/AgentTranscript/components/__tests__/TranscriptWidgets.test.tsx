@@ -19,11 +19,60 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import * as rtl from '@testing-library/react';
+import type { RenderOptions } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { createStore, Provider as JotaiProvider } from 'jotai';
 import type { TranscriptViewMessage } from '../../../../ai/server/transcript/TranscriptProjector';
+import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
+import { ApiServiceErrorWidget } from '../ApiServiceErrorWidget';
+import { CodexAuthRequiredWidget } from '../CodexAuthRequiredWidget';
+import { SuperLoopProgressWidget } from '../CustomToolWidgets/SuperLoopProgressWidget';
 import type { CustomToolWidgetProps } from '../CustomToolWidgets/index';
 
-const { render, screen, fireEvent, waitFor } = rtl;
+const { screen, fireEvent, waitFor } = rtl;
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+const render = (ui: React.ReactElement, options?: RenderOptions) =>
+  rtl.render(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>, options);
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
+
+describe('Super Loop blocked feedback', () => {
+  it('displays a localized host error when feedback cannot be submitted', async () => {
+    await testI18n.changeLanguage('ja');
+    const sessionId = 'super-loop-error-session';
+    const error = testI18n.t('super_loop_progress.session_not_found', { ns: 'agents' });
+    const host = {
+      superLoopBlockedFeedback: vi.fn().mockResolvedValue({ success: false, error }),
+    };
+    const store = createStore();
+    store.set(interactiveWidgetHostAtom(sessionId), host as never);
+    const message = makeToolMessage('super_loop_progress_update', {
+      phase: 'building',
+      status: 'blocked',
+      completionSignal: false,
+      learnings: [],
+      blockers: ['Waiting for feedback'],
+      currentIteration: 1,
+    });
+
+    render(
+      <JotaiProvider store={store}>
+        <SuperLoopProgressWidget message={message} sessionId={sessionId} isExpanded={false} onToggle={() => {}} />
+      </JotaiProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('ブロッカーの解消に役立つ案内を入力してください...'), {
+      target: { value: '続行してください' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'フィードバックを送信' }));
+
+    expect(await screen.findByText('このセッションのSuper Loopが見つかりません')).toBeTruthy();
+    expect(host.superLoopBlockedFeedback).toHaveBeenCalledWith('続行してください');
+  });
+});
 
 // Mock clipboard
 vi.mock('../../../../utils/clipboard', () => ({
@@ -208,6 +257,15 @@ describe('MessageSegment', () => {
       window.removeEventListener('nimbalyst:open-codex-auth-settings', listener);
     }
     expect(events).toEqual([{ anchor: 'codex-auth-section' }]);
+  });
+
+  it('renders the Codex authentication prompt in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    render(<CodexAuthRequiredWidget />);
+
+    expect(screen.getByText('続行するにはOpenAI Codexにログインしてください')).toBeDefined();
+    expect(screen.getByText(/このセッションにはOpenAI Codexへのログインが必要です/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'ログイン' })).toBeDefined();
   });
 
   it('suppresses the Codex auth CTA when shouldShowLoginWidget is false', () => {
@@ -1255,6 +1313,33 @@ describe('GitCommitConfirmationWidget', () => {
     expect(screen.getByTestId('git-commit-error').textContent).toContain('HOOK_DETAIL: lint failed');
   });
 
+  it('localizes the extracted error prefix in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('git_commit_proposal', {
+      commitMessage: 'feat: failing commit',
+      filesToStage: ['src/file.ts'],
+    });
+    if (!message.toolCall) throw new Error('Expected a tool call in the test message');
+    const runtimeToolCall = message.toolCall as unknown as { result: unknown };
+    runtimeToolCall.result = [{ error: 'HOOK_DETAIL: lint failed' }];
+
+    render(
+      <Wrapper>
+        <GitCommitConfirmationWidget
+          message={message}
+          isExpanded={false}
+          onToggle={() => {}}
+          sessionId="error-commit-ja"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('コミットに失敗しました')).toBeDefined();
+    const errorText = screen.getByTestId('git-commit-error').textContent ?? '';
+    expect(errorText).toContain('コミットに失敗しました: HOOK_DETAIL: lint failed');
+    expect(errorText).not.toContain('Error:');
+  });
+
   it('sends cancel through the interactive host', async () => {
     const { interactiveWidgetHostAtom } = await import('../../../../store/atoms/interactiveWidgetHost');
 
@@ -1625,6 +1710,65 @@ describe('ContextLimitWidget', () => {
     rerender(<ContextLimitWidget isLastMessage={true} variant="context-limit" detail={detail} />);
     expect(screen.queryByText(detail)).toBeNull();
   });
+
+  it('renders localized context-limit and compaction copy', async () => {
+    await testI18n.changeLanguage('ja');
+    const { rerender } = render(<ContextLimitWidget isLastMessage={true} />);
+
+    expect(screen.getByText('コンテキストの上限に達しました')).toBeDefined();
+    expect(screen.getByText('このプロバイダーではNimbalystから会話を要約できません。続行するには新しいセッションを開始してください。')).toBeDefined();
+
+    rerender(
+      <I18nextProvider i18n={testI18n}>
+        <ContextLimitWidget isLastMessage={true} variant="compaction-failed" onCompact={() => {}} />
+      </I18nextProvider>
+    );
+    expect(screen.getByText('会話の要約に失敗しました')).toBeDefined();
+    expect(screen.getByRole('button', { name: '再試行' })).toBeDefined();
+  });
+});
+
+describe('OpenAIAuthWidget', () => {
+  it('renders localized authentication guidance and actions', async () => {
+    await testI18n.changeLanguage('ja');
+    const { OpenAIAuthWidget } = await import('../OpenAIAuthWidget');
+    render(<OpenAIAuthWidget />);
+
+    expect(screen.getByText('OpenAI Codexの認証が必要です')).toBeDefined();
+    expect(screen.getByText(/初回ログイン前に~\/\.codex\/auth\.jsonが存在しないのは正常です/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'ログイン' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '状態を確認' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'セットアップ手順を開く' })).toBeDefined();
+    expect(await screen.findByText('Electron APIにアクセスできません。アプリケーションを再起動してください。')).toBeDefined();
+  });
+
+  it('localizes fixed authentication status returned by the host', async () => {
+    await testI18n.changeLanguage('ja');
+    const previousDescriptor = Object.getOwnPropertyDescriptor(window, 'electronAPI');
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        invoke: vi.fn().mockResolvedValue({
+          installed: true,
+          isLoggedIn: true,
+          authMethod: 'chatgpt',
+          message: 'Signed in with ChatGPT (Pro).',
+        }),
+      },
+    });
+
+    try {
+      const { OpenAIAuthWidget } = await import('../OpenAIAuthWidget');
+      render(<OpenAIAuthWidget />);
+      expect(await screen.findByText('ChatGPTでログインしています（Pro）。')).toBeDefined();
+    } finally {
+      if (previousDescriptor) {
+        Object.defineProperty(window, 'electronAPI', previousDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'electronAPI');
+      }
+    }
+  });
 });
 
 // ============================================================================
@@ -1739,6 +1883,55 @@ describe('FileChangeWidget', () => {
     // Should show dot pulse animation
     expect(container.querySelector('.animate-bash-dot-pulse')).not.toBeNull();
   });
+
+  it('renders fixed file-change labels in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('file_change', {
+      changes: [
+        { path: '/workspace/src/new-file.ts', kind: 'create' },
+        { path: '/workspace/src/deleted.ts', kind: 'delete' },
+      ],
+    }, { status: 'completed' });
+    render(
+      <Wrapper>
+        <FileChangeWidget
+          message={message}
+          isExpanded={true}
+          onToggle={() => {}}
+          sessionId="fc-ja"
+          workspacePath="/workspace"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('ファイルの変更')).toBeDefined();
+    expect(screen.getByText('作成')).toBeDefined();
+    expect(screen.getByText('削除')).toBeDefined();
+    expect(screen.getByTitle('src/new-file.tsを開く')).toBeDefined();
+  });
+
+  it('renders the collapsed summary in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('file_change', {
+      changes: [
+        { path: '/workspace/src/app.ts', kind: 'update' },
+        { path: '/workspace/src/utils.ts', kind: 'update' },
+      ],
+    }, { status: 'completed' });
+    render(
+      <Wrapper>
+        <FileChangeWidget
+          message={message}
+          isExpanded={false}
+          onToggle={() => {}}
+          sessionId="fc-ja-summary"
+          workspacePath="/workspace"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('ファイル2件を更新')).toBeDefined();
+  });
 });
 
 // ============================================================================
@@ -1747,15 +1940,21 @@ describe('FileChangeWidget', () => {
 
 describe('InteractivePromptWidget', () => {
   let InteractivePromptWidget: React.FC<any>;
+  let promptI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+  const renderPrompt = (ui: React.ReactElement) => render(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={promptI18n}>{children}</I18nextProvider>,
+  });
 
   beforeEach(async () => {
+    promptI18n = await createI18nInstance('en');
     const mod = await import('../InteractivePromptWidget');
     InteractivePromptWidget = mod.InteractivePromptWidget;
   });
 
   it('renders permission request in pending state with action buttons', () => {
     const onSubmit = vi.fn();
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -1781,7 +1980,7 @@ describe('InteractivePromptWidget', () => {
   });
 
   it('renders resolved permission state', () => {
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -1802,7 +2001,7 @@ describe('InteractivePromptWidget', () => {
   });
 
   it('renders destructive permission with warning icon', () => {
-    const { container } = render(
+    const { container } = renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -1826,7 +2025,7 @@ describe('InteractivePromptWidget', () => {
   });
 
   it('renders ask_user_question prompt with options', () => {
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="ask_user_question_request"
         content={{
@@ -1880,7 +2079,7 @@ describe('InteractivePromptWidget', () => {
     };
     const typed = 'Ten minutes of carefully written user input.';
 
-    const first = render(
+    const first = renderPrompt(
       <InteractivePromptWidget
         promptType="ask_user_question_request"
         content={questionContent}
@@ -1897,7 +2096,7 @@ describe('InteractivePromptWidget', () => {
 
     // Scrolled out of view, then back.
     first.unmount();
-    const second = render(
+    const second = renderPrompt(
       <InteractivePromptWidget
         promptType="ask_user_question_request"
         content={questionContent}
@@ -1916,7 +2115,7 @@ describe('InteractivePromptWidget', () => {
 
   it('calls onSubmitResponse with correct permission response', () => {
     const onSubmit = vi.fn();
-    render(
+    renderPrompt(
       <InteractivePromptWidget
         promptType="permission_request"
         content={{
@@ -2244,6 +2443,62 @@ describe('UpdateSessionMetaWidget', () => {
     // Should show the "set" badge since name changed from null
     expect(container.textContent).toContain('set');
   });
+
+  it('renders translated labels in Japanese without translating metadata values or states', async () => {
+    await testI18n.changeLanguage('ja');
+    const unchangedNameResult: StructuredSessionMetaResult = {
+      summary: 'Name already set and phase removed',
+      before: { name: '既存のセッション名', tags: ['既存タグ'], phase: 'planning' },
+      after: { name: '既存のセッション名', tags: ['既存タグ', 'new-tag'], phase: null },
+    };
+    const setNameResult: StructuredSessionMetaResult = {
+      summary: 'Set name',
+      before: { name: null, tags: [], phase: null },
+      after: { name: '新しいセッション名', tags: [], phase: null },
+    };
+    const emptyResult: StructuredSessionMetaResult = {
+      summary: 'No changes',
+      before: { name: null, tags: [], phase: null },
+      after: { name: null, tags: [], phase: null },
+    };
+
+    render(
+      <Wrapper>
+        <>
+          <UpdateSessionMetaWidget
+            message={makeToolMessage('update_session_meta', { name: '別の名前' }, JSON.stringify(unchangedNameResult))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="meta-ja-already-set"
+          />
+          <UpdateSessionMetaWidget
+            message={makeToolMessage('update_session_meta', { name: '新しいセッション名' }, JSON.stringify(setNameResult))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="meta-ja-set"
+          />
+          <UpdateSessionMetaWidget
+            message={makeToolMessage('update_session_meta', {}, JSON.stringify(emptyResult))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="meta-ja-empty"
+          />
+        </>
+      </Wrapper>
+    );
+
+    expect(screen.getAllByText('セッション情報')).toHaveLength(3);
+    expect(screen.getAllByText('名前')).toHaveLength(2);
+    expect(screen.getByText('フェーズ')).toBeDefined();
+    expect(screen.getByText('タグ')).toBeDefined();
+    expect(screen.getByText('（設定済みのため変更なし）')).toBeDefined();
+    expect(screen.getByText('設定済み')).toBeDefined();
+    expect(screen.getByText('なし')).toBeDefined();
+    expect(screen.getByText('情報は設定されていません')).toBeDefined();
+    expect(screen.getByText('既存のセッション名')).toBeDefined();
+    expect(screen.getByText('planning')).toBeDefined();
+    expect(screen.getByText('#new-tag')).toBeDefined();
+  });
 });
 
 describe('TrackerToolWidget', () => {
@@ -2287,6 +2542,61 @@ describe('TrackerToolWidget', () => {
     expect(screen.getByText('#alpha')).toBeDefined();
     expect(screen.getByText('#beta')).toBeDefined();
     expect(screen.getByText('#gamma')).toBeDefined();
+  });
+
+  it('renders built-in tracker field labels in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    const created = {
+      summary: 'Created tracker item',
+      structured: {
+        action: 'created',
+        item: {
+          id: 'bug_ja_1',
+          type: 'bug',
+          title: '日本語ラベルの確認',
+          status: 'open',
+          priority: 'high',
+          tags: ['確認'],
+        },
+      },
+    };
+    const updated = {
+      summary: 'Updated tracker item',
+      structured: {
+        action: 'updated',
+        id: 'bug_ja_1',
+        type: 'bug',
+        title: '日本語ラベルの確認',
+        changes: {
+          owner: { from: 'alice', to: 'bob' },
+          archived: { from: false, to: true },
+          progress: { from: 10, to: 50 },
+        },
+      },
+    };
+
+    render(
+      <Wrapper>
+        <>
+          <TrackerToolWidget
+            message={makeToolMessage('tracker_create', {}, JSON.stringify(created))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="tracker-fields-ja-created"
+          />
+          <TrackerToolWidget
+            message={makeToolMessage('tracker_update', { id: 'bug_ja_1' }, JSON.stringify(updated))}
+            isExpanded={false}
+            onToggle={() => {}}
+            sessionId="tracker-fields-ja-updated"
+          />
+        </>
+      </Wrapper>
+    );
+
+    for (const label of ['タイプ', 'タイトル', 'ステータス', '優先度', 'タグ', '担当者', 'アーカイブ済み', '進捗']) {
+      expect(screen.getByText(label)).toBeDefined();
+    }
   });
 });
 
@@ -2365,5 +2675,45 @@ describe('VisualDisplayWidget', () => {
     const enlarged = await screen.findByTestId('zoomable-image');
     await waitFor(() => expect(enlarged.getAttribute('src')).toBe(`data:image/png;base64,${pixel}`));
     expect(readFile).toHaveBeenCalledWith('/tmp/arch-mock/b.png');
+  });
+});
+
+describe('ApiServiceErrorWidget', () => {
+  it('renders the fixed service-error guidance in Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    render(
+      <ApiServiceErrorWidget
+        content={'API Error: 529 {"type":"error","error":{"type":"overloaded_error","message":"busy"},"request_id":"req_1234567890"}'}
+      />
+    );
+
+    expect(screen.getByText('Claude APIが一時的に混雑しています').textContent).toBe('Claude APIが一時的に混雑しています');
+    expect(screen.getByText('エラーの原文を表示').textContent).toBe('エラーの原文を表示');
+    expect(screen.getByRole('button', { name: 'コピー' }).textContent).toBe('コピー');
+  });
+});
+
+describe('MemoryToolWidget', () => {
+  it('renders fixed memory labels in Japanese', async () => {
+    const { MemoryToolWidget } = await import('../CustomToolWidgets/MemoryToolWidget');
+    await testI18n.changeLanguage('ja');
+    const message = makeToolMessage('memory_recall', { query: '設計方針' }, '{"chunks":[]}');
+
+    render(
+      <Wrapper>
+        <MemoryToolWidget
+          message={message}
+          isExpanded={false}
+          onToggle={() => {}}
+          sessionId="memory-widget-ja"
+          workspacePath="/workspace"
+        />
+      </Wrapper>
+    );
+
+    expect(screen.getByText('メモリーの参照').textContent).toBe('メモリーの参照');
+    expect(screen.getByTestId('memory-tool-query').textContent).toContain('検索文:');
+    expect(screen.getByText('この検索文に一致するメモリーは見つかりませんでした。').textContent)
+      .toBe('この検索文に一致するメモリーは見つかりませんでした。');
   });
 });

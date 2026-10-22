@@ -6,12 +6,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { EditorHostProps } from '@nimbalyst/extension-sdk';
 import { useEditorLifecycle } from '@nimbalyst/extension-sdk';
 import type { Database } from 'sql.js';
 import { SQLiteBrowserCore, getSqlJs, getFileName, type DatabaseInfo } from './SQLiteBrowserCore';
 
 export function SQLiteEditor({ host }: EditorHostProps) {
+  const { t } = useTranslation('sqliteBrowser');
   const [database, setDatabase] = useState<DatabaseInfo | null>(null);
   const [db, setDb] = useState<Database | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,12 +66,12 @@ export function SQLiteEditor({ host }: EditorHostProps) {
       });
     } catch (err) {
       console.error('Failed to load database:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load database');
+      setError(err instanceof Error ? err.message : t('load_database_failed'));
       setDatabase(null);
     } finally {
       setLoading(false);
     }
-  }, [host.filePath]);
+  }, [host.filePath, t]);
 
   // useEditorLifecycle handles initial load, file change detection, and theme.
   // applyContent triggers async database loading.

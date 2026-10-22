@@ -15,6 +15,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   NimbalystEditor,
   type EditorConfig,
@@ -198,6 +199,7 @@ export function MarkdownEditor({
   commentsConfig,
   decisionsConfig,
 }: MarkdownEditorProps): React.ReactElement {
+  const { t } = useTranslation('editor');
   const isCollabMode = !!collaborationConfig;
   // Personal sync: collab is active but disk operations continue
   const isPersonalSync = collaborationConfig?.personalSync === true;
@@ -448,7 +450,7 @@ export function MarkdownEditor({
   if (isLoading) {
     return (
       <div className="markdown-editor-loading">
-        <span>Loading...</span>
+        <span>{t('loading')}</span>
       </div>
     );
   }
@@ -457,7 +459,7 @@ export function MarkdownEditor({
   if (loadError) {
     return (
       <div className="markdown-editor-error">
-        <span>Failed to load: {loadError.message}</span>
+        <span>{t('load_failed', { error: loadError.message })}</span>
       </div>
     );
   }

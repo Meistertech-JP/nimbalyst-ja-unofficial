@@ -1,5 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { TrackerRecord } from '../../../../core/TrackerRecord';
@@ -40,8 +42,9 @@ describe('TrackerDocumentHeader tracker item link', () => {
     expect(findAssociatedTrackerItem([record({ source: 'native' })], '/workspace/plans/roadmap.md', 'plan')).toBeNull();
   });
 
-  it('renders a pill that opens the tracker item without collapsing the header', () => {
+  it('renders a pill that opens the tracker item without collapsing the header', async () => {
     const onOpen = vi.fn();
+    const i18n = await createI18nInstance('en');
     const model: TrackerDataModel = {
       type: 'plan',
       displayName: 'Plan',
@@ -55,12 +58,14 @@ describe('TrackerDocumentHeader tracker item link', () => {
     };
 
     render(
-      <StatusBar
-        model={model}
-        data={{}}
-        onChange={() => {}}
-        trackerItemLink={{ label: 'NIM-42', title: 'Roadmap', onOpen }}
-      />,
+      <I18nextProvider i18n={i18n}>
+        <StatusBar
+          model={model}
+          data={{}}
+          onChange={() => {}}
+          trackerItemLink={{ label: 'NIM-42', title: 'Roadmap', onOpen }}
+        />
+      </I18nextProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Open tracker item NIM-42' }));

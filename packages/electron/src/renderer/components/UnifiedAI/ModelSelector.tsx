@@ -25,6 +25,7 @@ import { AlphaBadge } from '../common/AlphaBadge';
 import { HelpTooltip } from '../../help';
 import { isDirectChatProvider, isProviderVisible } from '../../utils/chatProviderVisibility';
 import { useMenuTypeahead } from '../../hooks/useMenuTypeahead';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 const ALPHA_PROVIDERS = new Set(['opencode', 'copilot-cli', 'grok-build', 'cursor-agent', 'antigravity-gemini-agent']);
 
@@ -72,6 +73,7 @@ export function ModelSelector({
   openRequest,
   onKeyboardDismiss,
 }: ModelSelectorProps) {
+  const { t } = useTranslation('aichat');
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open ?? internalOpen;
   const setIsOpen = React.useCallback((value: boolean) => {
@@ -254,7 +256,7 @@ export function ModelSelector({
     // provider so the chip doesn't misreport e.g. "Sonnet 4.6".
     if (currentProvider === 'openai-realtime') return 'OpenAI Voice Agent';
 
-    if (!currentModel) return 'Select Model';
+    if (!currentModel) return t('picker.select_model');
 
     // Find the model in our list
     for (const providerModels of Object.values(models)) {
@@ -365,7 +367,7 @@ export function ModelSelector({
       <div className="model-selector inline-block">
         <span
           className="model-selector-button model-selector-readonly flex items-center gap-1 px-2 py-[3px] rounded-xl text-[11px] font-medium whitespace-nowrap max-w-[200px] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] border border-[var(--nim-border)] cursor-default"
-          aria-label={`Current model: ${getCurrentModelName()}`}
+          aria-label={t('picker.current_model', { model: getCurrentModelName() })}
           data-testid="model-picker"
           title={readOnlyTitle}
         >
@@ -380,7 +382,7 @@ export function ModelSelector({
       <button
         ref={refs.setReference}
         className="model-selector-button flex items-center gap-1 px-2 py-[3px] rounded-xl text-[11px] font-medium cursor-pointer transition-all duration-200 outline-none whitespace-nowrap max-w-[200px] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] border border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)]"
-        aria-label={`Current model: ${getCurrentModelName()}`}
+        aria-label={t('picker.current_model', { model: getCurrentModelName() })}
         data-testid="model-picker"
         {...getReferenceProps({
           onClick: () => setIsOpen(!isOpen),
@@ -400,18 +402,18 @@ export function ModelSelector({
             {...getFloatingProps({ onKeyDown: handleMenuKeyDown })}
           >
           {loading ? (
-            <div className="model-selector-loading p-3 text-center text-xs text-[var(--nim-text-faint)]">Loading models...</div>
+            <div className="model-selector-loading p-3 text-center text-xs text-[var(--nim-text-faint)]">{t('picker.loading_models')}</div>
           ) : Object.keys(visibleModels).length === 0 ? (
-            <div className="model-selector-empty p-3 text-center text-xs text-[var(--nim-text-faint)]">No models available</div>
+            <div className="model-selector-empty p-3 text-center text-xs text-[var(--nim-text-faint)]">{t('picker.no_models')}</div>
           ) : (
             <>
               {/* Agents Section */}
               {groupedProviders.agents && Object.keys(groupedProviders.agents).length > 0 && (
                 <>
-                  <div className="model-selector-section-header px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--nim-text-faint)]">Agents</div>
+                  <div className="model-selector-section-header px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--nim-text-faint)]">{t('picker.agents')}</div>
                   {isSectionDisabled('agent') && (
                     <div className="model-selector-disabled-notice px-2 pt-1 pb-1.5 text-[11px] italic text-[var(--nim-text-faint)]">
-                      Start a new session to use agents
+                      {t('picker.new_session_for_agents')}
                     </div>
                   )}
                   {Object.entries(groupedProviders.agents).map(([provider, providerModels]) => (
@@ -427,13 +429,13 @@ export function ModelSelector({
                         >
                           {renderProviderIcon(provider, 12)}
                           <span>{getProviderLabel(provider)}</span>
-                          {ALPHA_PROVIDERS.has(provider) && <AlphaBadge size="xs" />}
+                          {ALPHA_PROVIDERS.has(provider) && <AlphaBadge size="xs" tooltip={t('common:alpha.tooltip')} />}
                         </div>
                       </HelpTooltip>
                       {providerModels.map(model => {
                         const isCurrent = model.id === currentModel;
                         const isDisabled = isProviderSwitchDisabled(provider);
-                        const disabledTooltip = 'Start a new session to switch providers after the session has started';
+                        const disabledTooltip = t('picker.new_session_to_switch_provider');
                         return (
                           <button
                             key={model.id}
@@ -465,10 +467,10 @@ export function ModelSelector({
                   {groupedProviders.agents && Object.keys(groupedProviders.agents).length > 0 && (
                     <div className="model-selector-divider h-px my-1 bg-[var(--nim-border)]" />
                   )}
-                  <div className="model-selector-section-header px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--nim-text-faint)]">Chat with open document</div>
+                  <div className="model-selector-section-header px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--nim-text-faint)]">{t('picker.chat_with_open_document')}</div>
                   {isSectionDisabled('model') && (
                     <div className="model-selector-disabled-notice px-2 pt-1 pb-1.5 text-[11px] italic text-[var(--nim-text-faint)]">
-                      Start a new session to use chat models
+                      {t('picker.new_session_for_chat_models')}
                     </div>
                   )}
                   {Object.entries(groupedProviders.models).map(([provider, providerModels]) => (
@@ -480,7 +482,7 @@ export function ModelSelector({
                       {providerModels.map(model => {
                         const isCurrent = model.id === currentModel;
                         const isDisabled = isProviderSwitchDisabled(provider);
-                        const disabledTooltip = 'Start a new session to switch providers after the session has started';
+                        const disabledTooltip = t('picker.new_session_to_switch_provider');
                         return (
                           <button
                             key={model.id}
@@ -513,7 +515,7 @@ export function ModelSelector({
                 onClick={handleConfigureModels}
               >
                 <MaterialSymbol icon="settings" size={14} />
-                <span>Configure models</span>
+                <span>{t('picker.configure_models')}</span>
               </button>
             </>
           )}

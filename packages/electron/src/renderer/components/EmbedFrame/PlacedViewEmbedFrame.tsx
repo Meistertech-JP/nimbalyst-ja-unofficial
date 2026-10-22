@@ -15,6 +15,7 @@
  */
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useStore } from 'jotai';
 import type { PlacedViewTarget } from '@nimbalyst/runtime/core/placedViewUrl';
 import { DESKTOP_TRACKER_UI_CAPABILITIES, TrackersUIProvider } from '@nimbalyst/collab-client/trackers-ui';
@@ -43,9 +44,10 @@ export interface PlacedViewEmbedFrameProps {
 }
 
 export const PlacedViewEmbedFrame: React.FC<PlacedViewEmbedFrameProps> = (props) => {
+  const { t } = useTranslation('tracker', { keyPrefix: 'placed_view' });
   const workspacePath = useAtomValue(activeWorkspacePathAtom);
   if (!workspacePath) {
-    return <PlacedViewNote>{props.label || 'View'}: open a project to see this view.</PlacedViewNote>;
+    return <PlacedViewNote>{props.label || t('view')}: {t('open_project')}</PlacedViewNote>;
   }
   return <WorkspacePlacedView workspacePath={workspacePath} {...props} />;
 };
@@ -57,6 +59,7 @@ const WorkspacePlacedView: React.FC<PlacedViewEmbedFrameProps & { workspacePath:
   attrs,
   onAttrsChange,
 }) => {
+  const { t } = useTranslation('tracker', { keyPrefix: 'placed_view' });
   const store = useStore();
   const identity = useDesktopTrackerIdentity(workspacePath);
   const teamMembers = useTrackerTeamMembers(workspacePath);
@@ -106,12 +109,12 @@ const WorkspacePlacedView: React.FC<PlacedViewEmbedFrameProps & { workspacePath:
             onOpenFullView={(typeId, view) => {
               const personal = target.scope === 'local' || !isTeamTrackerSharing(globalRegistry.get(typeId)?.sharing ?? 'personal');
               const host = personal ? getPersonalCollabHost(workspacePath) : collabScope ? getElectronCollabHost(collabScope) : null;
-              if (!host) { errorNotificationService.showError('Could not open view', 'Open the team project first.'); return; }
+              if (!host) { errorNotificationService.showError(t('open_failed'), t('open_team_project_first')); return; }
               void host.resolveScope().then(scope => {
                 store.set(temporaryTypeViewAtom(temporaryTypeViewKey(workspacePath, scope.scopeKey, typeId)), view);
                 store.set(setWindowModeAtom, 'collab');
                 host.openArtifact({ kind: 'type', scope, typeId }, 'embedded_document', { newTab: true });
-              }).catch(error => errorNotificationService.showFromError(error, 'Could not open full view'));
+              }).catch(error => errorNotificationService.showFromError(error, t('open_full_view_failed')));
             }}
             onOpenLink={openLink}
           />

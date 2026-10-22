@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import type { CellColor, HexColor } from '../../types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 const THEME_SWATCHES: readonly Exclude<CellColor, 'default'>[] = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray'];
 
@@ -35,19 +36,20 @@ export function ColorPalette({ value, onPick, kind }: {
   onPick: (color: CellColor | HexColor) => void;
   kind: 'text' | 'fill';
 }) {
+  const { t } = useTranslation('editor');
   const [custom, setCustom] = useState(value?.startsWith('#') ? value : '');
   const customHex = normalizeHex(custom);
 
   return (
     <div className="sheet-color-palette" data-palette={kind}>
-      <button type="button" className="sheet-color-reset" onClick={() => onPick('default')}>Reset</button>
+      <button type="button" className="sheet-color-reset" onClick={() => onPick('default')}>{t('spreadsheet_ui.status_bar.reset')}</button>
       <div className="sheet-color-row">
         {THEME_SWATCHES.map((color) => (
           <button
             key={color}
             type="button"
-            title={`Theme ${color}`}
-            aria-label={`Theme ${color}`}
+            title={t('spreadsheet_ui.colors.theme', { color: t(`spreadsheet_ui.colors.color_${color}`) })}
+            aria-label={t('spreadsheet_ui.colors.theme', { color: t(`spreadsheet_ui.colors.color_${color}`) })}
             className={`sheet-color-swatch csv-swatch ${kind === 'text' ? `csv-text-swatch-${color}` : `csv-fill-${color}`} ${value === color ? 'sheet-color-swatch-on' : ''}`}
             onClick={() => onPick(color)}
           />
@@ -80,10 +82,10 @@ export function ColorPalette({ value, onPick, kind }: {
           className="sheet-color-input"
           value={custom}
           placeholder="#1a73e8"
-          aria-label="Custom color"
+          aria-label={t('spreadsheet_ui.colors.custom')}
           onChange={(event) => setCustom(event.target.value)}
         />
-        <button type="submit" className="sheet-color-apply" disabled={!customHex}>Apply</button>
+        <button type="submit" className="sheet-color-apply" disabled={!customHex}>{t('spreadsheet_ui.colors.apply')}</button>
       </form>
     </div>
   );

@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { collabOpenOptions, type CollabOpenOptions } from '@nimbalyst/collab-client/core';
 import { decodeViewAttrValue, type PlacedViewMarksKind } from '@nimbalyst/runtime/core/placedViewUrl';
 import {
@@ -95,22 +96,17 @@ function useMarks(source: PageMarksSource | null, queryKey: string): { marks: Pa
   return { marks: state.marks, error: state.error, status: state.status };
 }
 
-function metaLine(mark: PageMarkRecord): string {
-  return [mark.by, mark.on, mark.over ? `over ${mark.over}` : null].filter(Boolean).join(', ');
+function metaLine(mark: PageMarkRecord, overLabel: string): string {
+  return [mark.by, mark.on, mark.over ? `${overLabel} ${mark.over}` : null].filter(Boolean).join(', ');
 }
 
-const EMPTY: Record<PlacedViewMarksKind, string> = {
-  decided: 'No sentences are marked decided yet.',
-  open: 'No sentences are marked open yet.',
-  all: 'No sentences are marked yet.',
-};
-
 export function MarksListEmbed({ kind, label, attrs, onOpenPage }: MarksListEmbedProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const source = useMarksSource();
   const queryKey = JSON.stringify(marksQuery(kind, attrs));
   const { marks, error, status } = useMarks(source, queryKey);
-  const name = label || (kind === 'open' ? 'Open questions' : 'Decisions');
-  if (!source) return <PlacedViewNote>{name}: this host cannot read page marks yet.</PlacedViewNote>;
+  const name = label || t(kind === 'open' ? 'placed_view_marks.open_questions' : 'placed_view_marks.decisions');
+  if (!source) return <PlacedViewNote>{t('placed_view_marks.source_unavailable', { name })}</PlacedViewNote>;
 
   return (
     <div
@@ -122,9 +118,9 @@ export function MarksListEmbed({ kind, label, attrs, onOpenPage }: MarksListEmbe
       <div className="marks-list-embed-head border-b border-nim px-3 py-2 text-xs font-medium text-nim">{name}</div>
       <div className="marks-list-embed-body flex flex-col bg-nim text-sm">
         {error ? <div className="px-3 py-2 text-xs text-nim-error" role="alert">{error}</div> : null}
-        {marks === null && !error ? <div className="px-3 py-2 text-xs text-nim-muted">Loading...</div> : null}
-        {status === 'partial' ? <div className="px-3 py-2 text-xs text-nim-muted" role="status">Results are incomplete. Some pages may still be indexing, offline, or unsupported by this server.</div> : null}
-        {marks?.length === 0 && status !== 'partial' && !error ? <div className="px-3 py-2 text-xs text-nim-muted">{EMPTY[kind]}</div> : null}
+        {marks === null && !error ? <div className="px-3 py-2 text-xs text-nim-muted">{t('placed_view_marks.loading')}</div> : null}
+        {status === 'partial' ? <div className="px-3 py-2 text-xs text-nim-muted" role="status">{t('placed_view_marks.partial_results')}</div> : null}
+        {marks?.length === 0 && status !== 'partial' && !error ? <div className="px-3 py-2 text-xs text-nim-muted">{t(`placed_view_marks.empty_${kind}`)}</div> : null}
         {marks?.map((mark) => (
           <div key={mark.id} className="marks-list-row flex items-baseline gap-2 border-b border-nim px-3 py-1.5 last:border-b-0">
             <span
@@ -132,11 +128,11 @@ export function MarksListEmbed({ kind, label, attrs, onOpenPage }: MarksListEmbe
                 ? 'marks-list-chip shrink-0 rounded border border-[var(--nim-purple)] px-1 text-[10px] font-semibold uppercase text-[var(--nim-purple)]'
                 : 'marks-list-chip shrink-0 rounded border border-[var(--nim-warning)] px-1 text-[10px] font-semibold uppercase text-[var(--nim-warning)]'}
             >
-              {mark.kind === 'decided' ? 'Decided' : 'Open'}
+              {t(mark.kind === 'decided' ? 'placed_view_marks.decided' : 'placed_view_marks.open')}
             </span>
             <span className="marks-list-text min-w-0 flex-1 select-text">
               <span className="text-nim">{mark.plainText}</span>
-              {metaLine(mark) ? <span className="ml-2 text-xs text-nim-faint" data-testid="marks-list-meta">{metaLine(mark)}</span> : null}
+              {metaLine(mark, t('placed_view_marks.over')) ? <span className="ml-2 text-xs text-nim-faint" data-testid="marks-list-meta">{metaLine(mark, t('placed_view_marks.over'))}</span> : null}
             </span>
             {onOpenPage ? (
               <button

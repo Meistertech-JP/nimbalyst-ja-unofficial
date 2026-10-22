@@ -20,6 +20,7 @@ import React, {
   useCallback,
   forwardRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useEditorLifecycle,
   useCollaborativeEditor,
@@ -64,6 +65,7 @@ function clearSelectionOutline(frame: Document | null | undefined): void {
 
 export const MockupEditor = forwardRef<any, EditorHostProps>(
   function MockupEditor({ host }, ref) {
+    const { t } = useTranslation("extensions");
     const { filePath, fileName, isActive } = host;
     // Reactive read-only state so the inline embed's View/Edit chrome toggle
     // can flip us between the bare iframe viewer and the full editing UI
@@ -616,7 +618,7 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
     if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full text-nim-muted">
-          Loading mockup...
+          {t("mockup_lm_ui.loading")}
         </div>
       );
     }
@@ -625,9 +627,9 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
     if (error) {
       return (
         <div className="p-5 text-nim bg-nim">
-          <h3 className="text-nim">Error Loading Mockup</h3>
+          <h3 className="text-nim">{t("mockup_lm_ui.load_error")}</h3>
           <p className="text-nim-muted">{error.message}</p>
-          <p className="text-sm text-nim-faint mt-3">File: {fileName}</p>
+          <p className="text-sm text-nim-faint mt-3">{t("mockup_lm_ui.file_name", { fileName })}</p>
         </div>
       );
     }
@@ -653,7 +655,7 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
             ref={attachFrame}
             className="w-full h-full border-none absolute top-0 left-0"
             sandbox="allow-scripts allow-same-origin"
-            title={`Mockup: ${fileName}`}
+            title={t("mockup_lm_ui.mockup_title", { fileName })}
           />
           <MockupCommentOverlay
             iframeRef={iframeRef}
@@ -699,7 +701,7 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
             ref={attachFrame}
             className="w-full h-full border-none absolute top-0 left-0"
             sandbox="allow-scripts allow-same-origin"
-            title={`Mockup: ${fileName}`}
+            title={t("mockup_lm_ui.mockup_title", { fileName })}
           />
           {/* Drawing Canvas Overlay */}
           <canvas
@@ -726,14 +728,13 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
 
           {drawing.isDrawingMode && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-nim-secondary border border-nim rounded-md px-4 py-2 shadow-lg z-[1001] text-xs text-nim">
-              Drawing mode active - Circle elements, draw arrows, or annotate
-              for AI
+              {t("mockup_lm_ui.drawing_hint")}
             </div>
           )}
 
           {isCommentMode && (
             <div className="mockup-comment-mode-hint absolute bottom-4 left-1/2 -translate-x-1/2 bg-nim-secondary border border-nim rounded-md px-4 py-2 shadow-lg z-[1001] text-xs text-nim">
-              Click anywhere on the mockup to leave a comment
+              {t("mockup_lm_ui.comment_hint")}
             </div>
           )}
 
@@ -742,8 +743,7 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
               className="mockup-scripts-blocked-notice absolute bottom-4 left-4 z-[1000] max-w-xs rounded-md border border-nim bg-nim-secondary px-3 py-2 text-xs text-nim-secondary shadow-lg select-text"
               role="status"
             >
-              This mockup&rsquo;s scripts are not running here. Its layout and styles are
-              unaffected; anything driven by script stays in its starting state.
+              {t("mockup_lm_ui.scripts_blocked")}
             </div>
           )}
 
@@ -752,7 +752,7 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
               ref={sourceTextareaRef}
               onInput={handleSourceInput}
               spellCheck={false}
-              aria-label={`Mockup source: ${fileName}`}
+              aria-label={t("mockup_lm_ui.source_aria", { fileName })}
               className="mockup-source-editor absolute inset-0 w-full h-full z-20 resize-none border-none outline-none p-3 font-mono text-xs leading-relaxed bg-nim text-nim select-text"
             />
           )}
@@ -762,9 +762,9 @@ export const MockupEditor = forwardRef<any, EditorHostProps>(
             <button
               onClick={handleToggleSource}
               className="mockup-view-source-button px-3 py-2 text-xs bg-nim-secondary border border-nim rounded text-nim cursor-pointer hover:bg-nim-hover"
-              title={isInlineSourceOpen ? "Hide Source" : "View Source"}
+              title={isInlineSourceOpen ? t("mockup_lm_ui.hide_source") : t("mockup_lm_ui.view_source")}
             >
-              {isInlineSourceOpen ? "Hide Source" : "View Source"}
+              {isInlineSourceOpen ? t("mockup_lm_ui.hide_source") : t("mockup_lm_ui.view_source")}
             </button>
           </div>
         </div>

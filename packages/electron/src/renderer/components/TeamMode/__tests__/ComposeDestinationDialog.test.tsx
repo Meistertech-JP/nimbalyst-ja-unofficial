@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConversationDirectoryEntry } from '../../../../shared/conversationDirectory';
 import { ComposeDestinationDialog } from '../ComposeDestinationDialog';
@@ -29,6 +31,14 @@ const conversations: ConversationDirectoryEntry[] = [{
   createdAt: 1,
   capabilities: ['read', 'comment'],
 }];
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
 
 describe('ComposeDestinationDialog', () => {
   beforeEach(() => {
@@ -184,14 +194,16 @@ describe('NewDirectMessageDialog', () => {
   it('requires at least one other participant before it will start', async () => {
     const onOpened = vi.fn();
     render(
-      <NewDirectMessageDialog
-        orgId="org-a"
-        members={members}
-        viewerUserId="member-a"
-        conversations={conversations}
-        onClose={vi.fn()}
-        onOpened={onOpened}
-      />,
+      <I18nextProvider i18n={englishI18n}>
+        <NewDirectMessageDialog
+          orgId="org-a"
+          members={members}
+          viewerUserId="member-a"
+          conversations={conversations}
+          onClose={vi.fn()}
+          onOpened={onOpened}
+        />
+      </I18nextProvider>,
     );
 
     expect((screen.getByTestId('new-dm-submit') as HTMLButtonElement).disabled).toBe(true);
@@ -204,5 +216,26 @@ describe('NewDirectMessageDialog', () => {
 
     fireEvent.click(screen.getByTestId('new-dm-submit'));
     await waitFor(() => expect(onOpened).toHaveBeenCalledWith('dm-new'));
+  });
+
+  it('localizes the direct-message dialog and member picker in Japanese', () => {
+    render(
+      <I18nextProvider i18n={japaneseI18n}>
+        <NewDirectMessageDialog
+          orgId="org-a"
+          members={members}
+          viewerUserId="member-a"
+          conversations={conversations}
+          onClose={vi.fn()}
+          onOpened={vi.fn()}
+        />
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByRole('dialog', { name: 'ダイレクトメッセージを作成' })).toBeDefined();
+    expect(screen.getByText(/最大7人を選択してください/)).toBeDefined();
+    expect(screen.getByPlaceholderText('メンバーを検索')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDefined();
+    expect(screen.getByText('1人以上選択してください。')).toBeDefined();
   });
 });

@@ -8,6 +8,7 @@
  * once a tree is a page tree) to keep it out of the docs-ui eager bundle.
  */
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { CollabMenuButton } from './primitives/CollabMenuButton';
 
 export { CollabMenuButton };
@@ -24,48 +25,55 @@ export const CollabPageMenuHead: React.FC<{
   onMoveTo: () => void;
   onCopyLink: () => void;
   copyLinkDisabled?: boolean;
-}> = ({ onNewPageInside, onSetType, onPlaceType, onRename, onMoveTo, onCopyLink, copyLinkDisabled }) => (
-  <>
-    <CollabMenuButton className="collab-page-new-inside" icon="note_add" label="New page" trailing="inside" onClick={onNewPageInside} />
-    {onPlaceType && (
-      <CollabMenuButton className="collab-place-type-action" icon="table" label="Place type..." trailing="inside" onClick={onPlaceType} />
-    )}
-    <CollabMenuButton
-      className="collab-page-set-type"
-      icon="category"
-      label="Set type"
-      disabled={!onSetType}
-      onClick={() => onSetType?.()}
-    />
-    <CollabMenuButton icon="edit" label="Rename" onClick={onRename} />
-    <CollabMenuButton className="collab-page-move-to" icon="drive_file_move" label="Move to..." onClick={onMoveTo} />
-    <Separator />
-    <CollabMenuButton icon="link" label="Copy link" disabled={copyLinkDisabled} onClick={onCopyLink} />
-  </>
-);
+}> = ({ onNewPageInside, onSetType, onPlaceType, onRename, onMoveTo, onCopyLink, copyLinkDisabled }) => {
+  const { t } = useTranslation('collabSidebar');
+  return (
+    <>
+      <CollabMenuButton className="collab-page-new-inside" icon="note_add" label={t('share_folder_picker.new_page')} trailing={t('share_folder_picker.inside').toLocaleLowerCase()} onClick={onNewPageInside} />
+      {onPlaceType && (
+        <CollabMenuButton className="collab-place-type-action" icon="table" label={t('ui.place_type')} trailing={t('share_folder_picker.inside')} onClick={onPlaceType} />
+      )}
+      <CollabMenuButton
+        className="collab-page-set-type"
+        icon="category"
+        label={t('set_page_type_dialog.title')}
+        disabled={!onSetType}
+        onClick={() => onSetType?.()}
+      />
+      <CollabMenuButton icon="edit" label={t('ui.rename')} onClick={onRename} />
+      <CollabMenuButton className="collab-page-move-to" icon="drive_file_move" label={t('ui.move_to')} onClick={onMoveTo} />
+      <Separator />
+      <CollabMenuButton icon="link" label={t('editor:collab.copy_link')} disabled={copyLinkDisabled} onClick={onCopyLink} />
+    </>
+  );
+};
 
 /** A page goes to Trash, with its subtree when it has children. */
-export const CollabPageDeleteEntry: React.FC<{ childCount: number; onDelete: () => void }> = ({ childCount, onDelete }) => (
-  <>
-    <Separator />
-    <CollabMenuButton
-      className="collab-page-delete"
-      icon="delete"
-      danger
-      label="Move to Trash"
-      trailing={childCount > 0 ? `${childCount} child page${childCount === 1 ? '' : 's'}` : undefined}
-      onClick={onDelete}
-    />
-  </>
-);
+export const CollabPageDeleteEntry: React.FC<{ childCount: number; onDelete: () => void }> = ({ childCount, onDelete }) => {
+  const { t } = useTranslation('collabSidebar');
+  return (
+    <>
+      <Separator />
+      <CollabMenuButton
+        className="collab-page-delete"
+        icon="delete"
+        danger
+        label={t('ui.move_to_trash')}
+        trailing={childCount > 0 ? t('confirmation.child_pages', { count: childCount }) : undefined}
+        onClick={onDelete}
+      />
+    </>
+  );
+};
 
 /**
  * A typed page's body or a type page's prose history. Agent edits land in
  * pages directly, so this is how a person reverts one.
  */
-export const CollabPageHistoryEntry: React.FC<{ onClick: () => void }> = ({ onClick }) => (
-  <CollabMenuButton className="collab-page-history" icon="history" label="Page history" onClick={onClick} />
-);
+export const CollabPageHistoryEntry: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { t } = useTranslation('collabSidebar');
+  return <CollabMenuButton className="collab-page-history" icon="history" label={t('tracker:collaboration_surface.page_history')} onClick={onClick} />;
+};
 
 /** A typed page's row: pages and types inside it, move it anywhere, back under its type, its history, or archive it. */
 export const CollabItemMenu: React.FC<{
@@ -79,28 +87,31 @@ export const CollabItemMenu: React.FC<{
   onHistory?: () => void;
   /** Absent where the host cannot write trackers. */
   onArchive?: () => void;
-}> = ({ placed, onNewPageInside, onPlaceType, onMoveTo, onBackUnderType, onHistory, onArchive }) => (
-  <>
-    <CollabMenuButton className="collab-item-new-inside" icon="note_add" label="New page" trailing="inside" onClick={onNewPageInside} />
-    {onPlaceType && (
-      <CollabMenuButton className="collab-item-place-type" icon="table" label="Place type..." trailing="inside" onClick={onPlaceType} />
-    )}
-    <Separator />
-    <CollabMenuButton className="collab-item-move-to" icon="drive_file_move" label="Move to..." onClick={onMoveTo} />
-    {placed && (
-      <CollabMenuButton className="collab-item-back-under-type" icon="table" label="Back under its type" onClick={onBackUnderType} />
-    )}
-    {onHistory && (
-      <>
-        <Separator />
-        <CollabPageHistoryEntry onClick={onHistory} />
-      </>
-    )}
-    {onArchive && (
-      <>
-        <Separator />
-        <CollabMenuButton className="collab-item-archive" icon="archive" label="Archive" onClick={onArchive} />
-      </>
-    )}
-  </>
-);
+}> = ({ placed, onNewPageInside, onPlaceType, onMoveTo, onBackUnderType, onHistory, onArchive }) => {
+  const { t } = useTranslation('collabSidebar');
+  return (
+    <>
+      <CollabMenuButton className="collab-item-new-inside" icon="note_add" label={t('share_folder_picker.new_page')} trailing={t('share_folder_picker.inside').toLocaleLowerCase()} onClick={onNewPageInside} />
+      {onPlaceType && (
+        <CollabMenuButton className="collab-item-place-type" icon="table" label={t('ui.place_type')} trailing={t('share_folder_picker.inside')} onClick={onPlaceType} />
+      )}
+      <Separator />
+      <CollabMenuButton className="collab-item-move-to" icon="drive_file_move" label={t('ui.move_to')} onClick={onMoveTo} />
+      {placed && (
+        <CollabMenuButton className="collab-item-back-under-type" icon="table" label={t('ui.back_under_type')} onClick={onBackUnderType} />
+      )}
+      {onHistory && (
+        <>
+          <Separator />
+          <CollabPageHistoryEntry onClick={onHistory} />
+        </>
+      )}
+      {onArchive && (
+        <>
+          <Separator />
+          <CollabMenuButton className="collab-item-archive" icon="archive" label={t('confirmation.archive')} onClick={onArchive} />
+        </>
+      )}
+    </>
+  );
+};

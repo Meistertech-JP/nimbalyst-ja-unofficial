@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { FeedbackRequestServiceTarget } from '../../../shared/feedbackRequest';
 import { FeedbackRequestResults } from './FeedbackRequestResults';
@@ -32,6 +33,7 @@ export const FeedbackRequestResultsTab: React.FC<FeedbackRequestResultsTabProps>
   tabUri,
   workspacePath,
 }) => {
+  const { t } = useTranslation('feedback', { keyPrefix: 'results_tab' });
   const ref = useMemo(() => parseFeedbackRequestTabUri(tabUri), [tabUri]);
   const target = useMemo<FeedbackRequestServiceTarget | null>(
     () => (ref && workspacePath
@@ -58,7 +60,7 @@ export const FeedbackRequestResultsTab: React.FC<FeedbackRequestResultsTabProps>
         data-testid="feedback-request-results-tab-invalid"
         className="feedback-request-results-tab-invalid select-text p-4 text-xs text-nim-muted"
       >
-        This tab does not point at a feedback request any more.
+        {t('invalid')}
       </div>
     );
   }

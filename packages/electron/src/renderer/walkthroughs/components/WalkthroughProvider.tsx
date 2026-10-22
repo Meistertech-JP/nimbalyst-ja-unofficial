@@ -411,8 +411,13 @@ export function WalkthroughProvider({
     const walkthrough = walkthroughs.find((w) => w.id === walkthroughId);
     if (!walkthrough) {
       errorNotificationService.showInfo(
-        'Walkthrough Not Found',
-        `Unknown walkthrough: ${walkthroughId}`,
+        errorNotificationService.getLocalizedText('notifications', 'guidance.walkthrough_not_found', 'Walkthrough Not Found'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.unknown_walkthrough',
+          'Unknown walkthrough: {{id}}',
+          { id: walkthroughId },
+        ),
         { duration: 3000 }
       );
       return;
@@ -424,8 +429,20 @@ export function WalkthroughProvider({
 
     if (!targetElement) {
       errorNotificationService.showInfo(
-        'Cannot Show Walkthrough',
-        `"${walkthrough.name}" requires UI elements that aren't visible on this screen. Try switching to ${walkthrough.trigger.screen === 'agent' ? 'Agent Mode' : 'Files Mode'} first.`,
+        errorNotificationService.getLocalizedText('notifications', 'guidance.cannot_show_walkthrough', 'Cannot Show Walkthrough'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.walkthrough_target_missing',
+          '"{{name}}" requires UI elements that aren\'t visible on this screen. Try switching to {{mode}} first.',
+          {
+            name: walkthrough.name,
+            mode: errorNotificationService.getLocalizedText(
+              'common',
+              `help.${walkthrough.trigger.screen === 'agent' ? 'agent-mode-button' : 'files-mode-button'}.title`,
+              walkthrough.trigger.screen === 'agent' ? 'Agent Mode' : 'Files Mode',
+            ),
+          },
+        ),
         { duration: 5000 }
       );
       return;
@@ -434,8 +451,20 @@ export function WalkthroughProvider({
     // Check if walkthrough's condition is met
     if (walkthrough.trigger.condition && !walkthrough.trigger.condition()) {
       errorNotificationService.showInfo(
-        'Cannot Show Walkthrough',
-        `"${walkthrough.name}" conditions aren't met. Try switching to ${walkthrough.trigger.screen === 'agent' ? 'Agent Mode' : 'Files Mode'} first.`,
+        errorNotificationService.getLocalizedText('notifications', 'guidance.cannot_show_walkthrough', 'Cannot Show Walkthrough'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.walkthrough_conditions_unmet',
+          '"{{name}}" conditions aren\'t met. Try switching to {{mode}} first.',
+          {
+            name: walkthrough.name,
+            mode: errorNotificationService.getLocalizedText(
+              'common',
+              `help.${walkthrough.trigger.screen === 'agent' ? 'agent-mode-button' : 'files-mode-button'}.title`,
+              walkthrough.trigger.screen === 'agent' ? 'Agent Mode' : 'Files Mode',
+            ),
+          },
+        ),
         { duration: 5000 }
       );
       return;
@@ -458,8 +487,12 @@ export function WalkthroughProvider({
       setState(newState);
       lastTriggeredModeRef.current = null;
       errorNotificationService.showInfo(
-        'Walkthroughs Reset',
-        'All walkthrough guides will show again.',
+        errorNotificationService.getLocalizedText('notifications', 'guidance.walkthroughs_reset', 'Walkthroughs Reset'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.walkthroughs_reset_message',
+          'All walkthrough guides will show again.',
+        ),
         { duration: 3000 }
       );
     })();

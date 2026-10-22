@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { extractProperties, EDITABLE_CSS_PROPERTIES, type ExtractedProperties } from '../utils/cssPropertyExtractor';
 
 interface PropertyPanelProps {
@@ -20,6 +21,7 @@ export const PropertyPanel = memo(function PropertyPanel({
   selectedElement,
   onPropertyChange,
 }: PropertyPanelProps) {
+  const { t } = useTranslation('extensions');
   const [props, setProps] = useState<ExtractedProperties | null>(null);
 
   // Extract properties when selection changes
@@ -88,7 +90,7 @@ export const PropertyPanel = memo(function PropertyPanel({
         fontSize: 12,
         textAlign: 'center',
       }}>
-        Select an element to edit its properties
+        {t('mockup_lm_ui.select_element_to_edit')}
       </div>
     );
   }
@@ -115,7 +117,7 @@ export const PropertyPanel = memo(function PropertyPanel({
 
       {/* Text content */}
       {props.textContent && (
-        <FieldGroup label="Text">
+        <FieldGroup label={t('mockup_lm_ui.text')}>
           <input
             type="text"
             value={props.textContent}
@@ -128,7 +130,7 @@ export const PropertyPanel = memo(function PropertyPanel({
       {/* Component attributes */}
       {Object.keys(props.componentAttrs).length > 0 && (
         <>
-          <SectionHeader>Component</SectionHeader>
+          <SectionHeader>{t('mockup_lm_ui.component')}</SectionHeader>
           {Object.entries(props.componentAttrs).map(([attr, value]) => (
             <FieldGroup key={attr} label={attr}>
               <input
@@ -143,11 +145,11 @@ export const PropertyPanel = memo(function PropertyPanel({
       )}
 
       {/* CSS properties */}
-      <SectionHeader>Style</SectionHeader>
+      <SectionHeader>{t('mockup_lm_ui.style')}</SectionHeader>
       {EDITABLE_CSS_PROPERTIES.map((prop) => {
         const value = (props as any)[prop.key] || '';
         return (
-          <FieldGroup key={prop.key} label={prop.label}>
+          <FieldGroup key={prop.key} label={t(`mockup_lm_ui.css.${prop.key}`)}>
             {prop.type === 'color' ? (
               <div style={{ display: 'flex', gap: 4 }}>
                 <input
@@ -188,53 +190,53 @@ export const PropertyPanel = memo(function PropertyPanel({
       {/* Layout */}
       {(props.display === 'flex' || props.display === 'inline-flex') && (
         <>
-          <SectionHeader>Layout</SectionHeader>
-          <FieldGroup label="Direction">
+          <SectionHeader>{t('mockup_lm_ui.layout')}</SectionHeader>
+          <FieldGroup label={t('mockup_lm_ui.direction')}>
             <select
               value={props.flexDirection}
               onChange={(e) => handleCssChange('flexDirection', e.target.value)}
               style={inputStyle}
             >
-              <option value="row">Row</option>
-              <option value="column">Column</option>
-              <option value="row-reverse">Row Reverse</option>
-              <option value="column-reverse">Column Reverse</option>
+              <option value="row">{t('mockup_lm_ui.row')}</option>
+              <option value="column">{t('mockup_lm_ui.column')}</option>
+              <option value="row-reverse">{t('mockup_lm_ui.row_reverse')}</option>
+              <option value="column-reverse">{t('mockup_lm_ui.column_reverse')}</option>
             </select>
           </FieldGroup>
-          <FieldGroup label="Align">
+          <FieldGroup label={t('mockup_lm_ui.align')}>
             <select
               value={props.alignItems}
               onChange={(e) => handleCssChange('alignItems', e.target.value)}
               style={inputStyle}
             >
-              <option value="stretch">Stretch</option>
-              <option value="flex-start">Start</option>
-              <option value="center">Center</option>
-              <option value="flex-end">End</option>
+              <option value="stretch">{t('mockup_lm_ui.stretch')}</option>
+              <option value="flex-start">{t('mockup_lm_ui.start')}</option>
+              <option value="center">{t('mockup_lm_ui.center')}</option>
+              <option value="flex-end">{t('mockup_lm_ui.end')}</option>
             </select>
           </FieldGroup>
-          <FieldGroup label="Justify">
+          <FieldGroup label={t('mockup_lm_ui.justify')}>
             <select
               value={props.justifyContent}
               onChange={(e) => handleCssChange('justifyContent', e.target.value)}
               style={inputStyle}
             >
-              <option value="flex-start">Start</option>
-              <option value="center">Center</option>
-              <option value="flex-end">End</option>
-              <option value="space-between">Space Between</option>
-              <option value="space-around">Space Around</option>
+              <option value="flex-start">{t('mockup_lm_ui.start')}</option>
+              <option value="center">{t('mockup_lm_ui.center')}</option>
+              <option value="flex-end">{t('mockup_lm_ui.end')}</option>
+              <option value="space-between">{t('mockup_lm_ui.space_between')}</option>
+              <option value="space-around">{t('mockup_lm_ui.space_around')}</option>
             </select>
           </FieldGroup>
         </>
       )}
 
       {/* Dimensions */}
-      <SectionHeader>Size</SectionHeader>
-      <FieldGroup label="Width">
+      <SectionHeader>{t('mockup_lm_ui.size')}</SectionHeader>
+      <FieldGroup label={t('mockup_lm_ui.width')}>
         <input type="text" value={props.width} onChange={(e) => handleCssChange('width', e.target.value)} style={inputStyle} />
       </FieldGroup>
-      <FieldGroup label="Height">
+      <FieldGroup label={t('mockup_lm_ui.height')}>
         <input type="text" value={props.height} onChange={(e) => handleCssChange('height', e.target.value)} style={inputStyle} />
       </FieldGroup>
     </div>

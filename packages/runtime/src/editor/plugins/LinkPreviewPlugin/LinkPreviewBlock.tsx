@@ -16,6 +16,7 @@
  */
 
 import React, { useEffect, useRef, useState, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection';
@@ -77,6 +78,7 @@ export interface LinkPreviewBlockProps {
 }
 
 export function LinkPreviewBlock({ src, label, attrs, nodeKey }: LinkPreviewBlockProps): JSX.Element {
+  const { t } = useTranslation('common');
   const [editor] = useLexicalComposerContext();
   const editable = useLexicalEditable();
   const [isSelected, setSelected, clearSelection] = useLexicalNodeSelection(nodeKey);
@@ -130,7 +132,7 @@ export function LinkPreviewBlock({ src, label, attrs, nodeKey }: LinkPreviewBloc
       data-testid="link-preview-mode"
       onClick={() => setMode(embed ? 'card' : 'embed')}
     >
-      {embed ? 'Show as card' : 'Show player'}
+      {t(embed ? 'embed.show_as_card' : 'embed.show_player')}
     </button>
   ) : null;
 
@@ -202,7 +204,7 @@ export function LinkPreviewBlock({ src, label, attrs, nodeKey }: LinkPreviewBloc
             <MaterialSymbol icon="link" size={14} />
           )}
           <span className="truncate">{siteName}</span>
-          {metadata === undefined ? <span className="shrink-0">Loading preview...</span> : null}
+          {metadata === undefined ? <span className="shrink-0">{t('embed.loading_preview')}</span> : null}
           {switchButton}
         </div>
       </div>

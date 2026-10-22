@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   PersonalSyncDevice,
   PersonalSyncDevicesResult,
   DeviceInventoryUpdate,
 } from "../../../../main/services/PersonalSyncDevicesService";
 
-function lastSeen(device: PersonalSyncDevice): string {
+function lastSeen(device: PersonalSyncDevice, unknown: string): string {
   const time = device.lastSeenAt ?? device.lastActiveAt ?? device.connectedAt;
-  return time ? new Date(time).toLocaleString() : "Unknown";
+  return time ? new Date(time).toLocaleString() : unknown;
 }
 
 export function DeviceInventoryPanel({ enabled }: { enabled: boolean }) {
+  const { t } = useTranslation("settings");
   const [result, setResult] = useState<PersonalSyncDevicesResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,7 +46,7 @@ export function DeviceInventoryPanel({ enabled }: { enabled: boolean }) {
     } catch (cause) {
       if (mounted.current && request === generation.current)
         setError(
-          cause instanceof Error ? cause.message : "Could not update devices"
+          cause instanceof Error ? cause.message : t("sync.device_inventory.update_failed")
         );
     } finally {
       if (mounted.current && request === generation.current) {
@@ -82,13 +84,13 @@ export function DeviceInventoryPanel({ enabled }: { enabled: boolean }) {
   return (
     <section className="device-inventory-panel provider-panel-section py-4">
       <div className="flex items-center gap-2 mb-3">
-        <h4 className="text-[15px] font-semibold text-nim">Paired devices</h4>
+        <h4 className="text-[15px] font-semibold text-nim">{t("sync.paired_devices")}</h4>
         <button
           className="px-2 py-1 border border-nim rounded text-nim-muted"
           disabled={busy || !enabled}
           onClick={() => void load()}
         >
-          Refresh
+          {t("sync.device_inventory.refresh")}
         </button>
         {canEdit && (
           <button
@@ -96,17 +98,12 @@ export function DeviceInventoryPanel({ enabled }: { enabled: boolean }) {
             disabled={busy || !hideIds.length}
             onClick={() => void load({ deviceIds: hideIds, hidden: true })}
           >
-            Hide selected
+            {t("sync.device_inventory.hide_selected")}
           </button>
         )}
       </div>
       <p className="text-[12px] text-nim-muted mb-3">
-        Offline computers without history in this project leave the execution
-        picker automatically. Hiding a computer keeps its sessions and
-        credentials. Older sessions stay associated with that computer; hiding
-        it does not move sessions or repair sync keys. It reappears if it reconnects.
-        Restoring app data from a backup or moving it to another volume registers
-        a new computer.
+        {t("sync.device_inventory.description")}
       </p>
       {error && (
         <p role="alert" className="text-nim-error text-[12px] select-text">
@@ -115,15 +112,15 @@ export function DeviceInventoryPanel({ enabled }: { enabled: boolean }) {
       )}
       {!enabled && (
         <p className="text-nim-muted text-[12px]">
-          Enable personal sync to view paired devices.
+          {t("sync.device_inventory.enable_personal_sync")}
         </p>
       )}
       {enabled && !busy && !devices.length && (
-        <p className="text-nim-muted text-[12px]">No paired devices.</p>
+        <p className="text-nim-muted text-[12px]">{t("sync.device_inventory.no_devices")}</p>
       )}
       {enabled && result?.success && !canEdit && (
         <p className="text-nim-muted text-[12px]">
-          Inventory changes require an updated sync server.
+          {t("sync.device_inventory.server_update_required")}
         </p>
       )}
       {devices.map((device) => (
@@ -167,13 +164,14 @@ function DeviceRow({
     update: Omit<DeviceInventoryUpdate, "deviceIds" | "accountId">
   ): void;
 }) {
+  const { t } = useTranslation("settings");
   const [name, setName] = useState(device.name);
   return (
     <div className="device-inventory-row flex items-center gap-2 px-2.5 py-2 bg-nim-secondary rounded mb-1.5">
       {canEdit && (
         <input
           type="checkbox"
-          aria-label={`Select ${device.name}`}
+          aria-label={t("sync.device_inventory.select_device", { name: device.name })}
           checked={selected}
           disabled={busy || !!device.isOnline || !!device.inventoryHidden}
           onChange={(e) => onSelect(e.target.checked)}
@@ -181,7 +179,7 @@ function DeviceRow({
       )}
       <div className="flex-1 min-w-0">
         <input
-          aria-label={`Name for ${device.name}`}
+          aria-label={t("sync.device_inventory.device_name", { name: device.name })}
           className="w-full bg-transparent text-nim text-[13px]"
           value={name}
           maxLength={80}
@@ -190,12 +188,12 @@ function DeviceRow({
         />
         <div className="text-[11px] text-nim-faint">
           {device.isOnline
-            ? "Online"
+            ? t("sync.device_inventory.online")
             : device.inventoryHidden
-            ? "Hidden · Offline"
-            : "Offline"}{" "}
+            ? t("sync.device_inventory.hidden_offline")
+            : t("sync.device_inventory.offline")}{" "}
           · {device.platform} · {device.deviceId.slice(-6)}
-          {!device.isOnline && ` · Last seen ${lastSeen(device)}`}
+          {!device.isOnline && ` · ${t("sync.device_inventory.last_seen", { time: lastSeen(device, t("sync.device_inventory.unknown")) })}`}
         </div>
       </div>
       {canEdit && name.trim() !== device.name && (
@@ -204,7 +202,7 @@ function DeviceRow({
           disabled={busy || !name.trim()}
           onClick={() => onUpdate({ label: name.trim() })}
         >
-          Save name
+          {t("sync.device_inventory.save_name")}
         </button>
       )}
       {canEdit && !device.isOnline && (
@@ -213,7 +211,7 @@ function DeviceRow({
           disabled={busy}
           onClick={() => onUpdate({ hidden: !device.inventoryHidden })}
         >
-          {device.inventoryHidden ? "Restore" : "Hide"}
+          {device.inventoryHidden ? t("sync.device_inventory.restore") : t("sync.device_inventory.hide")}
         </button>
       )}
     </div>

@@ -14,6 +14,7 @@
  */
 
 import React, { useEffect, useMemo, useState, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
@@ -56,14 +57,15 @@ type Check =
   | { status: 'loading' }
   | { status: 'done'; source: string; file: CodeExcerptFile; drift: ExcerptDrift | null };
 
-const BADGE: Record<ExcerptDrift['state'], { label: string; tone: string }> = {
-  unchanged: { label: 'Up to date', tone: 'text-nim-success' },
-  moved: { label: 'Moved', tone: 'text-nim-warning' },
-  changed: { label: 'Changed', tone: 'text-nim-warning' },
-  missing: { label: 'Not in the repo at HEAD', tone: 'text-nim-error' },
+const BADGE: Record<ExcerptDrift['state'], { tone: string }> = {
+  unchanged: { tone: 'text-nim-success' },
+  moved: { tone: 'text-nim-warning' },
+  changed: { tone: 'text-nim-warning' },
+  missing: { tone: 'text-nim-error' },
 };
 
 function NewExcerptForm({ onSubmit }: { onSubmit: (path: string, range: LineRange) => Promise<string | null> }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const ref = parseExcerptRef(text);
@@ -78,7 +80,7 @@ function NewExcerptForm({ onSubmit }: { onSubmit: (path: string, range: LineRang
     >
       <input
         className="min-w-0 flex-1 rounded border border-nim bg-nim-tertiary px-2 py-1 font-mono text-xs text-nim focus:border-[var(--nim-border-focus)] focus:outline-none"
-        placeholder="path/to/file.ts#L10-L40"
+        placeholder={t('code_excerpt.reference_placeholder')}
         value={text}
         autoFocus
         spellCheck={false}
@@ -87,7 +89,7 @@ function NewExcerptForm({ onSubmit }: { onSubmit: (path: string, range: LineRang
         data-testid="code-excerpt-ref-input"
       />
       <button type="submit" disabled={!valid} className="rounded border border-nim bg-nim-tertiary px-2 py-1 text-xs text-nim disabled:opacity-50">
-        Quote lines
+        {t('code_excerpt.quote_lines')}
       </button>
       {error ? <div role="alert" className="w-full text-xs text-nim-error">{error}</div> : null}
     </form>
@@ -95,6 +97,7 @@ function NewExcerptForm({ onSubmit }: { onSubmit: (path: string, range: LineRang
 }
 
 export function CodeExcerptBlock({ source, nodeKey }: { source: string; nodeKey: NodeKey }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const editable = useLexicalEditable();
   const excerpt = useMemo(() => parseExcerptSource(source), [source]);
@@ -138,9 +141,9 @@ export function CodeExcerptBlock({ source, nodeKey }: { source: string; nodeKey:
   const quoteNew = async (newPath: string, newRange: LineRange): Promise<string | null> => {
     const startedFrom = source;
     const file = await readExcerptFile(newPath);
-    if (!file) return 'The repo is not available here.';
+    if (!file) return t('code_excerpt.repo_unavailable');
     if (file.refused) return file.refused;
-    if (file.text === null) return `${newPath} is not in the repo at HEAD.`;
+    if (file.text === null) return t('code_excerpt.path_not_in_repo_at_head', { path: newPath });
     writeIfUnchanged(startedFrom, buildExcerptSource({ path: newPath, range: newRange, commit: file.head, snapshot: sliceLines(file.text, newRange) }));
     return null;
   };
@@ -158,6 +161,12 @@ export function CodeExcerptBlock({ source, nodeKey }: { source: string; nodeKey:
   }
 
   const drift = check.status === 'done' ? check.drift : null;
+  const driftLabels: Record<ExcerptDrift['state'], string> = {
+    unchanged: t('code_excerpt.up_to_date'),
+    moved: t('code_excerpt.moved'),
+    changed: t('code_excerpt.changed'),
+    missing: t('code_excerpt.not_in_repo_at_head'),
+  };
   const file = check.status === 'done' ? check.file : null;
   const canQuote = editable && !!file?.text && !!range && !file.refused;
   const updateToCurrent = () => {
@@ -181,32 +190,32 @@ export function CodeExcerptBlock({ source, nodeKey }: { source: string; nodeKey:
       <div className="code-excerpt-header flex min-w-0 items-center gap-2 border-b border-nim px-3 py-1.5 text-[11px] text-nim-muted">
         <span className="truncate font-mono text-nim select-text" title={path}>{path || 'excerpt'}</span>
         {range ? <span className="shrink-0 font-mono">L{formatLineRange(range)}</span> : null}
-        {excerpt.commit ? <span className="shrink-0 font-mono text-nim-faint" title={`Quoted at ${excerpt.commit}`}>@{excerpt.commit.slice(0, 9)}</span> : null}
+        {excerpt.commit ? <span className="shrink-0 font-mono text-nim-faint" title={t('code_excerpt.quoted_at', { commit: excerpt.commit })}>@{excerpt.commit.slice(0, 9)}</span> : null}
         {drift ? (
           <span className={`code-excerpt-drift shrink-0 font-medium ${BADGE[drift.state].tone}`} data-testid="code-excerpt-drift">
-            {drift.state === 'moved' ? `Moved to L${formatLineRange(drift.movedTo)}` : BADGE[drift.state].label}
+            {drift.state === 'moved' ? t('code_excerpt.moved_to', { range: formatLineRange(drift.movedTo) }) : driftLabels[drift.state]}
           </span>
         ) : null}
         {file?.refused ? (
-          <span className="code-excerpt-drift shrink-0 text-nim-faint" title={file.refused} data-testid="code-excerpt-drift">Not checked</span>
+          <span className="code-excerpt-drift shrink-0 text-nim-faint" title={file.refused} data-testid="code-excerpt-drift">{t('code_excerpt.not_checked')}</span>
         ) : null}
         <span className="ml-auto flex shrink-0 items-center gap-3">
           {canQuote && !snapshot ? (
-            <button type="button" className={action} onClick={updateToCurrent} data-testid="code-excerpt-update">Quote lines</button>
+            <button type="button" className={action} onClick={updateToCurrent} data-testid="code-excerpt-update">{t('code_excerpt.quote_lines')}</button>
           ) : null}
           {drift?.state === 'changed' ? (
-            <button type="button" className={action} onClick={() => setShowDiff(!showDiff)}>{showDiff ? 'Hide changes' : 'Show changes'}</button>
+            <button type="button" className={action} onClick={() => setShowDiff(!showDiff)}>{showDiff ? t('code_excerpt.hide_changes') : t('code_excerpt.show_changes')}</button>
           ) : null}
           {canQuote && (drift?.state === 'changed' || drift?.state === 'moved') ? (
             <button type="button" className={action} onClick={updateToCurrent} data-testid="code-excerpt-update">
-              {drift.state === 'moved' ? 'Update range' : 'Update to current'}
+              {drift.state === 'moved' ? t('code_excerpt.update_range') : t('code_excerpt.update_to_current')}
             </button>
           ) : null}
           {file && drift?.state !== 'missing' && range ? (
-            <button type="button" className={action} onClick={() => openExcerptFile(file.absolutePath, drift?.state === 'moved' ? drift.movedTo.start : range.start)}>Open file</button>
+            <button type="button" className={action} onClick={() => openExcerptFile(file.absolutePath, drift?.state === 'moved' ? drift.movedTo.start : range.start)}>{t('code_excerpt.open_file')}</button>
           ) : null}
           {file ? (
-            <button type="button" className={action} title="Check again" onClick={() => setRefresh((n) => n + 1)}>Recheck</button>
+            <button type="button" className={action} title={t('code_excerpt.check_again')} onClick={() => setRefresh((n) => n + 1)}>{t('code_excerpt.recheck')}</button>
           ) : null}
         </span>
       </div>
@@ -238,7 +247,7 @@ export function CodeExcerptBlock({ source, nodeKey }: { source: string; nodeKey:
           </SyntaxHighlighter>
         </div>
       )}
-      {!snapshot ? <div className="px-3 py-2 text-xs text-nim-faint">No lines quoted yet.</div> : null}
+      {!snapshot ? <div className="px-3 py-2 text-xs text-nim-faint">{t('code_excerpt.no_lines_quoted')}</div> : null}
     </div>
     </PlacedViewResizeFrame>
   );

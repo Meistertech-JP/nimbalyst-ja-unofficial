@@ -46,6 +46,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { LexicalEditor } from 'lexical';
 import type { Doc } from 'yjs';
 import type { Provider } from '@lexical/yjs';
@@ -74,6 +75,7 @@ interface CollaborativeMarkdownEmbedProps {
 export const CollaborativeMarkdownEmbed: React.FC<
   CollaborativeMarkdownEmbedProps
 > = ({ host, resource, toolbar = true, publishHistory = false, onEditorReady }) => {
+  const { t } = useTranslation('common');
   const [readOnly, setReadOnly] = useState(host.readOnly !== false);
   useEffect(() => {
     // `onReadOnlyChanged` invokes the callback immediately with the current
@@ -166,7 +168,7 @@ export const CollaborativeMarkdownEmbed: React.FC<
   if (epoch === 0) {
     return (
       <div className="embed-frame__loading" data-testid="collab-markdown-loading">
-        Loading shared document...
+        {t('embed.shared_loading')}
       </div>
     );
   }

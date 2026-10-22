@@ -33,6 +33,7 @@ export default defineConfig({
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
         /^@nimbalyst\/runtime/,
+        '@nimbalyst/i18n/react',
       ],
       output: {
         globals: {

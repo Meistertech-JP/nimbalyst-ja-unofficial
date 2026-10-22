@@ -13,7 +13,10 @@ import { trackerQuickCreateRequestAtom } from '../../../store/atoms/appCommands'
 import { createEmptyTrackerQuickCreateDraft, trackerQuickCreateDraftAtom } from '../../../store/atoms/trackerQuickCreate';
 import { trackerModeLayoutAtom } from '../../../store/atoms/trackers';
 import { windowModeAtom } from '../../../store/atoms/windowMode';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { TrackerQuickCreatePopup } from '../TrackerQuickCreatePopup';
+import { MemorySuggestionHint } from '../MemorySuggestionHint';
 
 const bug: TrackerDataModel = {
   type: 'qc-bug',
@@ -60,16 +63,54 @@ class ResizeObserverStub {
   disconnect() {}
 }
 
-function renderPopup(store: ReturnType<typeof createStore>) {
-  return render(
+function renderPopup(store: ReturnType<typeof createStore>, i18n?: Awaited<ReturnType<typeof createI18nInstance>>) {
+  const popup = (
     <Provider store={store}>
       <TrackerQuickCreatePopup workspacePath="/workspace" />
-    </Provider>,
+    </Provider>
+  );
+  return render(
+    i18n
+      ? <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">{popup}</UiLanguageProvider>
+      : popup,
   );
 }
 
 describe('TrackerQuickCreatePopup', () => {
   let createTrackerItem: ReturnType<typeof vi.fn>;
+
+  it('renders quick-create controls in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    const store = createStore();
+    renderPopup(store, i18n);
+    act(() => store.set(trackerQuickCreateRequestAtom, 1));
+    const search = await screen.findByTestId('tracker-quick-create-type-search');
+    expect((search as HTMLInputElement).placeholder).toBe('どの種類の項目ですか？');
+    screen.getByRole('listbox', { name: 'トラッカーの種類' });
+    fireEvent.change(search, { target: { value: 'no-such-tracker-type' } });
+    expect(screen.getByText('「no-such-tracker-type」に一致するトラッカーの種類はありません。')).toBeDefined();
+    fireEvent.change(search, { target: { value: 'qc-bug' } });
+    fireEvent.keyDown(search, { key: 'Enter' });
+    const title = (await screen.findByTestId('tracker-quick-create-title')) as HTMLInputElement;
+    expect(title.getAttribute('placeholder')).toBe('タイトル');
+    const modifier = navigator.platform.startsWith('Mac') ? 'Cmd' : 'Ctrl';
+    expect(screen.getByTestId('tracker-quick-create-type-chip').getAttribute('title'))
+      .toBe(`種類を変更（${modifier}+T）`);
+    expect(screen.getByTestId('tracker-quick-create-submit').textContent).toBe('追加');
+    expect(screen.getByText(new RegExp(`${modifier}\\+Enterで作成`))).toBeDefined();
+  });
+
+  it('renders the memory suggestion and its actions in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <MemorySuggestionHint workspacePath="/workspace" />
+      </UiLanguageProvider>,
+    );
+    expect(await screen.findByText(/Project Memoryを使うと/)).toBeDefined();
+    screen.getByRole('button', { name: '有効にする' });
+    screen.getByRole('button', { name: '後で' });
+  });
 
   it('sends Content as the body and retains the draft until creation is acknowledged', async () => {
     let finish!: (value: unknown) => void;

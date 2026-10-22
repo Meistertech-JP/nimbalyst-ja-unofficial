@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import type { GraphNodeTypeSchema, GraphViewDefinition, ProjectGraphNode, ProjectGraphSnapshot } from '../types';
 import { BUILTIN_NODE_TYPES, BUILTIN_VIEWS, TRACKER_CATEGORY } from '../schema';
@@ -80,6 +81,30 @@ const EMPTY_SNAPSHOT: ProjectGraphSnapshot = {
 };
 
 export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { active?: boolean }) {
+  const { t } = useTranslation('extensions');
+  const builtinViewNames: Record<string, string> = {
+    everything: t('project_graph.ui.view_everything'),
+    'pm-big-picture': t('project_graph.ui.view_pm_big_picture'),
+    architecture: t('project_graph.ui.view_architecture'),
+    quality: t('project_graph.ui.view_quality'),
+    delivery: t('project_graph.ui.view_delivery'),
+    'customer-impact': t('project_graph.ui.view_customer_impact'),
+    'recent-execution': t('project_graph.ui.view_recent_execution'),
+  };
+  const builtinViewDescriptions: Record<string, string> = {
+    everything: t('project_graph.ui.view_desc_everything'),
+    'pm-big-picture': t('project_graph.ui.view_desc_pm_big_picture'),
+    architecture: t('project_graph.ui.view_desc_architecture'),
+    quality: t('project_graph.ui.view_desc_quality'),
+    delivery: t('project_graph.ui.view_desc_delivery'),
+    'customer-impact': t('project_graph.ui.view_desc_customer_impact'),
+    'recent-execution': t('project_graph.ui.view_desc_recent_execution'),
+  };
+  const getViewName = (view: GraphViewDefinition) =>
+    view.builtin ? builtinViewNames[view.id] ?? view.name : view.name;
+  const getViewDescription = (view: GraphViewDefinition) =>
+    view.builtin ? builtinViewDescriptions[view.id] ?? view.description : view.description;
+
   // Snapshot is loaded from the adapter pipeline (git, plans, docs, github).
   // Until adapters resolve, we render an empty graph with a loading badge.
   const [snapshot, setSnapshot] = useState<ProjectGraphSnapshot>(EMPTY_SNAPSHOT);
@@ -163,6 +188,9 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
     for (const v of stored) byId.set(v.id, v);
     return Array.from(byId.values());
   }, [host.storage, config.views]);
+  const displayViews = allViews.map(view => view.builtin
+    ? { ...view, name: builtinViewNames[view.id] ?? view.name, description: builtinViewDescriptions[view.id] ?? view.description }
+    : view);
 
   const [activeViewId, setActiveViewId] = useState<string>(() => {
     return host.storage.get<string>(STORAGE_KEYS.activeView) ?? 'everything';
@@ -431,12 +459,12 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
           <div className="pg-crumb-icon">
             <IconGraph stroke="white" strokeWidth={2.4} />
           </div>
-          <span className="pg-crumb-title">Project Graph</span>
+          <span className="pg-crumb-title">{t('project_graph.ui.project_graph')}</span>
           <span className="pg-crumb-sep">/</span>
-          <span className="pg-crumb-scope">{host.workspacePath.split('/').filter(Boolean).pop() ?? 'workspace'}</span>
+          <span className="pg-crumb-scope">{host.workspacePath.split('/').filter(Boolean).pop() ?? t('project_graph.ui.workspace')}</span>
         </div>
 
-        <div className="pg-mode-switch" role="tablist" aria-label="View mode">
+        <div className="pg-mode-switch" role="tablist" aria-label={t('project_graph.ui.view_mode')}>
           <button
             type="button"
             role="tab"
@@ -444,7 +472,7 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
             className={`pg-mode-tab${mode === 'graph' ? ' is-active' : ''}`}
             onClick={() => setMode('graph')}
           >
-            Graph
+            {t('project_graph.ui.graph')}
           </button>
           <button
             type="button"
@@ -453,7 +481,7 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
             className={`pg-mode-tab${mode === 'timeline' ? ' is-active' : ''}`}
             onClick={() => setMode('timeline')}
           >
-            Timeline
+            {t('project_graph.ui.timeline')}
           </button>
         </div>
 
@@ -468,10 +496,10 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
               aria-selected={view.id === activeViewId}
               className={`pg-view-tab${view.id === activeViewId ? ' is-active' : ''}`}
               onClick={() => onSelectView(view.id)}
-              title={view.description}
+              title={getViewDescription(view)}
             >
               <span className="pg-dot" />
-              {view.name}
+              {getViewName(view)}
             </button>
           ))}
         </div>
@@ -482,8 +510,8 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
           <button
             type="button"
             className={`pg-icon-btn${timelineDateRange ? ' is-active' : ''}`}
-            title={timelineDateRange ? 'Edit timeline time range' : 'Filter timeline by time range'}
-            aria-label="Filter timeline by time range"
+            title={timelineDateRange ? t('project_graph.ui.edit_time_range') : t('project_graph.ui.filter_time_range')}
+            aria-label={t('project_graph.ui.filter_time_range')}
             aria-expanded={isTimeRangeOpen}
             onClick={() => {
               setMode('timeline');
@@ -492,8 +520,8 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
           >
             <IconClock />
           </button>
-          <button className="pg-icon-btn" title="Layout"><IconLayout /></button>
-          <button className="pg-icon-btn" title="Share view"><IconShare /></button>
+          <button className="pg-icon-btn" title={t('project_graph.ui.layout')}><IconLayout /></button>
+          <button className="pg-icon-btn" title={t('project_graph.ui.share_view')}><IconShare /></button>
         </div>
       </header>
       {isTimeRangeOpen && (
@@ -515,7 +543,7 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
           onToggleType={onToggleType}
           onSetGroupHidden={onSetGroupHidden}
           onSetAllHidden={onSetAllHidden}
-          views={allViews}
+          views={displayViews}
           activeViewId={activeViewId}
           onSelectView={onSelectView}
           searchQuery={searchQuery}
@@ -529,24 +557,26 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
           {/* canvas controls (top-left) */}
           <div className="pg-canvas-toolbar">
             <div className="pg-toolbar-group">
-              <button className="pg-icon-btn" title="Select"><IconArrow /></button>
-              <button className="pg-icon-btn" title="Pan"><IconHand /></button>
-              <button className="pg-icon-btn" title="Lasso"><IconLasso /></button>
+              <button className="pg-icon-btn" title={t('project_graph.ui.select_tool')}><IconArrow /></button>
+              <button className="pg-icon-btn" title={t('project_graph.ui.pan_tool')}><IconHand /></button>
+              <button className="pg-icon-btn" title={t('project_graph.ui.lasso_tool')}><IconLasso /></button>
             </div>
             <div className="pg-label-pill">
               <span className="pg-dot" />
-              {selectedNodeId ? `Focus: ${snapshot.nodes.find(n => n.id === selectedNodeId)?.label ?? 'node'}` : `View: ${activeView.name}`}
+              {selectedNodeId
+                ? t('project_graph.ui.focus', { name: snapshot.nodes.find(n => n.id === selectedNodeId)?.label ?? t('project_graph.ui.unknown_node') })
+                : t('project_graph.ui.view', { name: getViewName(activeView) })}
             </div>
-            <div className="pg-layout-switch" role="tablist" aria-label="Layout">
+            <div className="pg-layout-switch" role="tablist" aria-label={t('project_graph.ui.layout_mode')}>
               <button
                 type="button"
                 role="tab"
                 aria-selected={layoutMode === 'map'}
                 className={`pg-layout-tab${layoutMode === 'map' ? ' is-active' : ''}`}
                 onClick={() => setLayoutMode('map')}
-                title="Force-directed map of the connected graph"
+                title={t('project_graph.ui.force_layout_title')}
               >
-                Map
+                {t('project_graph.ui.map')}
               </button>
               <button
                 type="button"
@@ -554,9 +584,9 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
                 aria-selected={layoutMode === 'inventory'}
                 className={`pg-layout-tab${layoutMode === 'inventory' ? ' is-active' : ''}`}
                 onClick={() => setLayoutMode('inventory')}
-                title="Deterministic per-type grid"
+                title={t('project_graph.ui.inventory_layout_title')}
               >
-                Inventory
+                {t('project_graph.ui.inventory')}
               </button>
             </div>
           </div>
@@ -564,18 +594,18 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
           {/* legend (top-right) */}
           <div className="pg-legend">
             <div className="pg-legend-title">
-              <span>Rollup</span>
-              <span>Quality health</span>
+              <span>{t('project_graph.ui.rollup')}</span>
+              <span>{t('project_graph.ui.quality_health')}</span>
             </div>
             <div className="pg-legend-row">
-              <span style={{ width: 64, color: 'var(--pg-text-mute)' }}>Critical</span>
+              <span style={{ width: 64, color: 'var(--pg-text-mute)' }}>{t('project_graph.ui.critical')}</span>
               <span className="pg-legend-bar" />
-              <span style={{ width: 50, color: 'var(--pg-text-mute)', textAlign: 'right' }}>Healthy</span>
+              <span style={{ width: 50, color: 'var(--pg-text-mute)', textAlign: 'right' }}>{t('project_graph.ui.healthy')}</span>
             </div>
             <div className="pg-legend-pills">
-              <span className="pg-pill is-bug">{snapshot.stats.countsByType.bug ?? 0} open</span>
-              <span className="pg-pill is-warn">4 high</span>
-              <span className="pg-pill is-good">68% solved</span>
+              <span className="pg-pill is-bug">{t('project_graph.ui.open_count', { count: snapshot.stats.countsByType.bug ?? 0 })}</span>
+              <span className="pg-pill is-warn">{t('project_graph.ui.high_count', { count: 4 })}</span>
+              <span className="pg-pill is-good">{t('project_graph.ui.solved_percent', { percent: 68 })}</span>
             </div>
           </div>
 
@@ -597,10 +627,10 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
 
           {/* zoom controls (bottom-left) */}
           <div className="pg-canvas-zoom">
-            <button className="pg-icon-btn" onClick={() => canvasRef.current?.zoomIn()} title="Zoom in"><IconPlus /></button>
+            <button className="pg-icon-btn" onClick={() => canvasRef.current?.zoomIn()} title={t('project_graph.ui.zoom_in')}><IconPlus /></button>
             <div className="pg-zoom-level">{zoomPercent}%</div>
-            <button className="pg-icon-btn" onClick={() => canvasRef.current?.zoomOut()} title="Zoom out"><IconMinus /></button>
-            <button className="pg-icon-btn" onClick={handleFit} title="Fit"><IconFit /></button>
+            <button className="pg-icon-btn" onClick={() => canvasRef.current?.zoomOut()} title={t('project_graph.ui.zoom_out')}><IconMinus /></button>
+            <button className="pg-icon-btn" onClick={handleFit} title={t('project_graph.ui.fit')}><IconFit /></button>
           </div>
 
           <Minimap
@@ -611,13 +641,13 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
           />
 
           <div className="pg-canvas-tip">
-            <kbd>Space</kbd> pan
+            <kbd>Space</kbd> {t('project_graph.ui.pan_help')}
             <span>·</span>
-            <kbd>⌘ scroll</kbd> zoom
+            <kbd>{t('project_graph.ui.command_scroll')}</kbd> {t('project_graph.ui.zoom_help')}
             <span>·</span>
-            <kbd>F</kbd> fit
+            <kbd>F</kbd> {t('project_graph.ui.fit_help')}
             <span>·</span>
-            <kbd>E</kbd> expand children
+            <kbd>E</kbd> {t('project_graph.ui.expand_children_help')}
           </div>
         </main>
         ) : (
@@ -660,21 +690,21 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
       <footer className="pg-statusbar">
         <div className="pg-seg">
           <span className="pg-live-dot" style={{ background: isLoading ? 'var(--pg-warn)' : 'var(--pg-good)' }} />
-          {isLoading ? 'loading adapters…' : 'live · last updated just now'}
+          {isLoading ? t('project_graph.ui.loading_adapters') : t('project_graph.ui.live_updated')}
         </div>
         <div className="pg-seg">
-          <span className="pg-badge">{snapshot.stats.nodeCount} nodes</span>
-          <span className="pg-badge">{snapshot.stats.edgeCount} edges</span>
-          <span className="pg-badge">{activeView.name}</span>
-          {timelineDateRange && mode === 'timeline' && <span className="pg-badge">time range filtered</span>}
+          <span className="pg-badge">{t('project_graph.ui.nodes_count', { count: snapshot.stats.nodeCount })}</span>
+          <span className="pg-badge">{t('project_graph.ui.edges_count', { count: snapshot.stats.edgeCount })}</span>
+          <span className="pg-badge">{getViewName(activeView)}</span>
+          {timelineDateRange && mode === 'timeline' && <span className="pg-badge">{t('project_graph.ui.time_range_filtered')}</span>}
           {config.hasProjectConfig && (
-            <span className="pg-badge" title={config.configPath}>+ project config</span>
+            <span className="pg-badge" title={config.configPath}>+ {t('project_graph.ui.project_config')}</span>
           )}
           {diagnostics?.adapters.map(a => (
             <span
               key={a.id}
               className="pg-badge"
-              title={a.message ?? `${a.nodes} nodes · ${a.edges} edges`}
+              title={a.message ?? `${t('project_graph.ui.nodes_count', { count: a.nodes })} · ${t('project_graph.ui.edges_count', { count: a.edges })}`}
               style={a.status === 'error'
                 ? { color: 'var(--pg-bad)' }
                 : a.status === 'unavailable'
@@ -691,11 +721,11 @@ export function ProjectGraphPanel({ host, active = true }: PanelHostProps & { ac
             disabled={isLoading}
             style={{ cursor: 'pointer' }}
           >
-            ⟳ refresh
+            ⟳ {t('project_graph.ui.refresh')}
           </button>
         </div>
         <div className="pg-spacer" />
-        <div className="pg-seg">workspace: {host.workspacePath.split('/').slice(-2).join('/')}</div>
+        <div className="pg-seg">{t('project_graph.ui.workspace_path', { path: host.workspacePath.split('/').slice(-2).join('/') })}</div>
       </footer>
     </div>
   );

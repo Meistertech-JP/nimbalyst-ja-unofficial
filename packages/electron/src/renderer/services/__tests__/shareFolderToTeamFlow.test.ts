@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
 
 const mocks = vi.hoisted(() => ({
   shareFileToTeam: vi.fn(),
@@ -48,6 +49,12 @@ vi.mock("../ErrorNotificationService", () => ({
 
 import { shareFolderToTeam } from "../shareFolderToTeamFlow";
 import type { FolderShareCandidateSet } from "../folderShareCandidates";
+
+let t: Awaited<ReturnType<typeof createI18nInstance>>["t"];
+beforeAll(async () => {
+  const i18n = await createI18nInstance("en");
+  t = i18n.getFixedT("en", "collabSidebar");
+});
 
 const markdown = { documentType: "markdown" } as never;
 
@@ -100,6 +107,7 @@ describe("shareFolderToTeam", () => {
       target: { folderPath: "/workspace/design", folderName: "design" },
       candidateSet,
       answers,
+      t,
     });
 
     // Root folder first, then each mirrored segment under its own parent.
@@ -156,6 +164,7 @@ describe("shareFolderToTeam", () => {
       target: { folderPath: "/workspace/design", folderName: "design" },
       candidateSet,
       answers,
+      t,
     });
 
     const order = mocks.shareFileToTeam.mock.calls.map((call) => call[0].fileName);
@@ -184,6 +193,7 @@ describe("shareFolderToTeam", () => {
         subfolderPaths: [],
       },
       answers,
+      t,
     });
 
     expect(result).toMatchObject({ status: "failed" });
@@ -210,6 +220,7 @@ describe("shareFolderToTeam", () => {
         subfolderPaths: [],
       },
       answers,
+      t,
     });
 
     expect(result).toMatchObject({

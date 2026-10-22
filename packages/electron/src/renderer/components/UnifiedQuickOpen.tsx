@@ -20,6 +20,7 @@ import React, {
 } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { ProviderIcon } from '@nimbalyst/runtime/ui/icons/ProviderIcons';
 import { getFileName, getRelativeDir } from '../utils/pathUtils';
@@ -341,6 +342,7 @@ function ScopeBubbles<T extends string>({
   defaultScope,
   onChange,
 }: ScopeBubblesProps<T>) {
+  const { t } = useTranslation('agents');
   return (
     <div
       className={`${rootClassName} shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-nim bg-nim-secondary`}
@@ -363,7 +365,7 @@ function ScopeBubbles<T extends string>({
             onClick={() => onChange(active ? defaultScope : candidate.id)}
             tabIndex={-1}
           >
-            {candidate.label}
+            {t(`quick_open.scope_options.${candidate.id}`, { defaultValue: candidate.label })}
           </button>
         );
       })}
@@ -387,6 +389,7 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
   onPromptSelect,
   onTrackerSelect,
 }) => {
+  const { t } = useTranslation('agents');
   const [activeTab, setActiveTab] = useState<UnifiedQuickOpenTab>(initialTab);
   const [query, setQuery] = useState('');
   // Per-tab Sessions sub-filter: when the user picks a file via @typeahead, we
@@ -636,26 +639,27 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
   const showSessionContentHint =
     activeTab === 'sessions' && !!query.trim() && !query.startsWith('@');
 
-  const placeholder =
+  const placeholderKey =
     activeTab === 'search'
       ? memoryScope === 'trackers'
-        ? 'Search trackers by title, key, or meaning...'
+        ? 'quick_open.placeholders.search_trackers'
         : memoryScope === 'docs'
-          ? 'Search indexed docs by meaning...'
+          ? 'quick_open.placeholders.search_indexed_docs'
           : memoryScope === 'sessions'
-            ? 'Search indexed sessions by meaning...'
-            : 'Search project memory — docs, trackers, sessions...'
+            ? 'quick_open.placeholders.search_indexed_sessions'
+            : 'quick_open.placeholders.search_memory'
       : activeTab === 'team'
-        ? 'Search shared team documents...'
+        ? 'quick_open.placeholders.search_team_documents'
       : activeTab === 'projects'
-        ? 'Search projects...'
+        ? 'quick_open.placeholders.search_projects'
         : activeTab === 'in-files'
-          ? 'Search in file contents...'
+          ? 'quick_open.placeholders.search_file_contents'
           : activeTab === 'sessions'
-            ? 'Search sessions... (@ to filter by file edited)'
+            ? 'quick_open.placeholders.search_sessions'
             : activeTab === 'prompts'
-              ? 'Search prompts...'
-              : 'Search files...';
+              ? 'quick_open.placeholders.search_prompts'
+              : 'quick_open.placeholders.search_files';
+  const placeholder = t(placeholderKey);
 
   return (
     <>
@@ -674,17 +678,18 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
         >
           {visibleTabs.map((tab) => {
             const active = tab.id === activeTab;
+            const tabLabel = t(`quick_open.tabs.${tab.id}`, { defaultValue: tab.label });
             return (
               <button
                 key={tab.id}
                 role="tab"
                 aria-selected={active}
-                aria-label={tab.label}
+                aria-label={tabLabel}
                 data-tab={tab.id}
                 title={
                   tab.shortcut
-                    ? `${tab.label} (${getShortcutDisplay(tab.shortcut)})`
-                    : tab.label
+                    ? `${tabLabel} (${getShortcutDisplay(tab.shortcut)})`
+                    : tabLabel
                 }
                 className={`unified-quick-open-tab flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[13px] font-medium whitespace-nowrap border-b-2 cursor-pointer transition-colors duration-100 ${
                   active
@@ -694,7 +699,7 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
                 onClick={() => switchTab(tab.id)}
                 tabIndex={-1}
               >
-                <span>{tab.label}</span>
+                <span>{tabLabel}</span>
                 {tab.shortcut && (
                   <kbd
                     className={`unified-quick-open-tab-shortcut inline-flex shrink-0 items-center justify-center rounded border text-center leading-none ${
@@ -741,11 +746,11 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
             <div
               key={tab.id}
               className="unified-quick-open-tab future flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[13px] font-medium whitespace-nowrap border-b-2 border-transparent text-nim-faint italic cursor-not-allowed opacity-60"
-              title="Coming soon"
+              title={t('quick_open.coming_soon')}
             >
               <span>{tab.label}</span>
               <span className="text-[9px] uppercase tracking-wide text-nim-faint not-italic">
-                soon
+                {t('quick_open.soon')}
               </span>
             </div>
           ))}
@@ -771,17 +776,17 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
                 (sessionContentStatus === 'searching' ? (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-nim-faint pointer-events-none">
                     <MaterialSymbol icon="progress_activity" size={13} className="animate-spin" />
-                    Searching messages...
+                    {t('quick_open.searching_messages')}
                   </span>
                 ) : sessionContentStatus === 'results' ? (
                   <button
                     type="button"
                     className="unified-quick-open-content-search-active absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-[var(--nim-primary)] bg-transparent border-none cursor-pointer px-2 py-1 rounded transition-colors duration-150 hover:bg-nim-hover"
                     onClick={() => setSessionContentClearNonce((n) => n + 1)}
-                    title="Back to title search"
+                    title={t('quick_open.back_to_title_search')}
                   >
                     <MaterialSymbol icon="manage_search" size={13} />
-                    Message matches
+                    {t('quick_open.message_matches')}
                     <MaterialSymbol icon="close" size={12} />
                   </button>
                 ) : (
@@ -789,18 +794,25 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
                     type="button"
                     className="unified-quick-open-content-search-hint absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-nim-muted bg-transparent border-none cursor-pointer px-2 py-1 rounded transition-colors duration-150 hover:bg-nim-hover hover:text-[var(--nim-primary)]"
                     onClick={() => setSessionContentNonce((n) => n + 1)}
-                    title="Press Shift+Tab to search message contents"
+                    title={t('quick_open.search_messages_shortcut')}
                   >
-                    ⇧⇥ Search contents
+                    ⇧⇥ {t('quick_open.search_contents')}
                   </button>
                 ))}
             </div>
             {(activeTab === 'files' || activeTab === 'in-files') && (
               <FilterChip
-                label="Mask"
+                label={t('quick_open.mask')}
                 value={fileExtFilter}
                 onChange={setFileExtFilter}
-                options={FILE_EXT_OPTIONS}
+                options={FILE_EXT_OPTIONS.map((option) => ({
+                  ...option,
+                  label: option.value === '*.css,*.scss,*.less'
+                    ? t('quick_open.file_type_labels.styles')
+                    : option.value === '*.yaml,*.yml,*.toml'
+                      ? t('quick_open.file_type_labels.config')
+                      : option.label,
+                }))}
                 history={fileExtHistory.history}
                 onAddToHistory={fileExtHistory.remember}
                 onRemoveFromHistory={fileExtHistory.forget}
@@ -812,10 +824,13 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
               (activeTab === 'search' && memoryScope === 'trackers')) && (
               <FilterChip
                 ref={trackerTypeFilterRef}
-                label="Type"
+                label={t('quick_open.type')}
                 value={trackerTypeFilter}
                 onChange={setTrackerTypeFilter}
-                options={DEFAULT_TRACKER_TYPE_OPTIONS}
+                options={DEFAULT_TRACKER_TYPE_OPTIONS.map((option) => ({
+                  ...option,
+                  label: t(`quick_open.tracker_types.${option.value}`, { defaultValue: option.label }),
+                }))}
                 history={trackerTypeHistory.history}
                 onAddToHistory={trackerTypeHistory.remember}
                 onRemoveFromHistory={trackerTypeHistory.forget}
@@ -866,7 +881,7 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
                 <ScopeBubbles
                   rootClassName="files-source-scopes"
                   itemClassName="files-source-scope"
-                  label="Show"
+                  label={t('quick_open.show')}
                   scopes={FILE_SOURCE_SCOPES}
                   scope={fileSourceScope}
                   defaultScope="all"
@@ -967,17 +982,17 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
         {/* Footer */}
         <div className="unified-quick-open-footer flex justify-between gap-3 px-4 py-2 border-t border-nim bg-nim-secondary">
           <div className="flex gap-4 flex-wrap">
-            <FooterHint kbd="↑↓" label="Navigate" />
+            <FooterHint kbd="↑↓" label={t('quick_open.footer.navigate')} />
             <FooterHint
               kbd="Enter"
-              label={activeTab === 'prompts' ? 'Open at this prompt' : 'Open'}
+              label={activeTab === 'prompts' ? t('quick_open.footer.open_prompt') : t('quick_open.footer.open')}
             />
-            <FooterHint kbd="Tab" label="Next tab" />
+            <FooterHint kbd="Tab" label={t('quick_open.footer.next_tab')} />
             {(activeTab === 'trackers' ||
               (activeTab === 'search' && memoryScope === 'trackers')) && (
-              <FooterHint kbd="Ctrl+T" label="Type" />
+              <FooterHint kbd="Ctrl+T" label={t('quick_open.type')} />
             )}
-            <FooterHint kbd="Esc" label="Close" />
+            <FooterHint kbd="Esc" label={t('quick_open.footer.close')} />
           </div>
         </div>
       </div>
@@ -1011,6 +1026,7 @@ const SharedDocsPane: React.FC<SharedDocsPaneProps> = memo(({
   query,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const documents = useAtomValue(sharedDocumentsAtom);
   const folders = useAtomValue(sharedFoldersAtom);
   const favorites = useAtomValue(collabFavoritesAtom);
@@ -1132,7 +1148,7 @@ const SharedDocsPane: React.FC<SharedDocsPaneProps> = memo(({
     >
       {displayDocuments.length === 0 ? (
         <div className="p-10 text-center text-nim-faint">
-          {query ? 'No matching team documents' : 'No shared team documents yet'}
+          {query ? t('quick_open.empty.no_matching_team_documents') : t('quick_open.empty.no_shared_team_documents')}
         </div>
       ) : (
         <ul
@@ -1171,15 +1187,15 @@ const SharedDocsPane: React.FC<SharedDocsPaneProps> = memo(({
                 {isChanged && (
                   <span
                     className="shared-docs-quick-open-unread w-2 h-2 rounded-full bg-[var(--nim-primary)] shrink-0"
-                    aria-label="New or changed"
-                    title="New or changed"
+                    aria-label={t('quick_open.new_or_changed')}
+                    title={t('quick_open.new_or_changed')}
                   />
                 )}
                 {isFavorite && (
                   <span
                     className="shared-docs-quick-open-favorite shrink-0 text-[var(--nim-warning)]"
-                    aria-label="Favorite"
-                    title="Favorite"
+                    aria-label={t('quick_open.favorite')}
+                    title={t('quick_open.favorite')}
                   >
                     <MaterialSymbol icon="star" size={16} fill />
                   </span>
@@ -1238,6 +1254,7 @@ const FilesPane: React.FC<FilesPaneProps> = memo(({
   onShowFileSessions,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const posthog = usePostHog();
   const revealFolder = useSetAtom(revealFolderAtom);
   const sharedDocuments = useAtomValue(sharedDocumentsAtom);
@@ -1459,10 +1476,10 @@ const FilesPane: React.FC<FilesPaneProps> = memo(({
       {displayFiles.length === 0 ? (
         <div className="p-10 text-center text-nim-faint">
           {isSearching
-            ? 'Searching...'
+            ? t('quick_open.searching')
             : sourceScope === 'shared'
-              ? query ? 'No shared documents found' : 'No shared documents'
-              : query ? 'No files found' : 'No recent files'}
+              ? query ? t('quick_open.empty.no_shared_documents_found') : t('quick_open.empty.no_shared_documents')
+              : query ? t('quick_open.empty.no_files_found') : t('quick_open.empty.no_recent_files')}
         </div>
       ) : (
         <ul
@@ -1497,7 +1514,7 @@ const FilesPane: React.FC<FilesPaneProps> = memo(({
                       : file.path;
                     onShowFileSessions(relativePath);
                   }}
-                  title="Show sessions that edited this file"
+                  title={t('quick_open.show_file_sessions')}
                 >
                   <MaterialSymbol icon="history" size={16} />
                 </button>
@@ -1514,15 +1531,15 @@ const FilesPane: React.FC<FilesPaneProps> = memo(({
                 )}
                 {file.type === 'directory' ? file.name + '/' : file.name}
                 {file.source === 'shared' && (
-                  <span className="nim-badge-primary text-[10px]">Shared</span>
+                  <span className="nim-badge-primary text-[10px]">{t('status.shared')}</span>
                 )}
                 {file.isRecent && !query && (
-                  <span className="nim-badge-primary text-[10px]">Recent</span>
+                  <span className="nim-badge-primary text-[10px]">{t('quick_open.recent')}</span>
                 )}
               </div>
               <div className="text-xs mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-nim-faint">
                 {file.source === 'shared'
-                  ? getCollabParentPath(file.path) || 'Team'
+                  ? getCollabParentPath(file.path) || t('quick_open.team')
                   : getRelativeDir(file.path, workspacePath)}
               </div>
             </li>
@@ -1557,6 +1574,7 @@ const InFilesPane: React.FC<InFilesPaneProps> = memo(({
   onFileSelect,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const posthog = usePostHog();
   const [results, setResults] = useState<FileItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -1718,12 +1736,12 @@ const InFilesPane: React.FC<InFilesPaneProps> = memo(({
       {displayResults.length === 0 ? (
         <div className="p-10 text-center text-nim-faint">
           {isSearching
-            ? 'Searching file contents...'
+            ? t('quick_open.searching_file_contents')
             : query
               ? extFilter
-                ? `No matches with ${extFilter}`
-                : 'No matches'
-              : 'Type to search file contents'}
+                ? t('quick_open.empty.no_matches_with_filter', { filter: extFilter })
+                : t('quick_open.empty.no_matches')
+              : t('quick_open.empty.type_to_search_contents')}
         </div>
       ) : (
         <ul
@@ -1747,7 +1765,7 @@ const InFilesPane: React.FC<InFilesPaneProps> = memo(({
                 {file.name}
                 {file.matches && file.matches.length > 0 && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded text-white font-semibold uppercase bg-[var(--nim-accent-purple)]">
-                    {file.matches.length} match{file.matches.length > 1 ? 'es' : ''}
+                    {t('quick_open.match_count', { count: file.matches.length })}
                   </span>
                 )}
               </div>
@@ -1761,7 +1779,7 @@ const InFilesPane: React.FC<InFilesPaneProps> = memo(({
                       key={i}
                       className="text-xs leading-snug mb-1 block overflow-hidden text-ellipsis whitespace-nowrap text-nim-muted"
                     >
-                      <span className="mr-2 font-medium text-nim-faint">Line {m.line}:</span>
+                      <span className="mr-2 font-medium text-nim-faint">{t('quick_open.line_number', { line: m.line })}</span>
                       <span>
                         {m.text.substring(0, m.start)}
                         <mark className="px-0.5 rounded font-semibold bg-[var(--nim-highlight-bg)] text-[var(--nim-highlight-text)]">
@@ -1773,7 +1791,7 @@ const InFilesPane: React.FC<InFilesPaneProps> = memo(({
                   ))}
                   {file.matches.length > 2 && (
                     <div className="text-[11px] italic mt-1 text-nim-faint">
-                      ...and {file.matches.length - 2} more
+                      {t('quick_open.more_matches', { count: file.matches.length - 2 })}
                     </div>
                   )}
                 </div>
@@ -1791,27 +1809,28 @@ const InFilesPane: React.FC<InFilesPaneProps> = memo(({
 // =============================================================================
 
 const SessionStatusIndicator = memo<{ sessionId: string }>(({ sessionId }) => {
+  const { t } = useTranslation('agents');
   const isProcessing = useAtomValue(sessionOrChildProcessingAtom(sessionId));
   const hasPendingPrompt = useAtomValue(sessionPendingPromptAtom(sessionId));
   const hasUnread = useAtomValue(sessionUnreadAtom(sessionId));
 
   if (isProcessing) {
     return (
-      <div className="flex items-center justify-center w-5 h-5 text-[var(--nim-primary)] opacity-80" title="Processing...">
+      <div className="flex items-center justify-center w-5 h-5 text-[var(--nim-primary)] opacity-80" title={t('status.processing_ellipsis')}>
         <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />
       </div>
     );
   }
   if (hasPendingPrompt) {
     return (
-      <div className="flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title={t('status.waiting')}>
         <MaterialSymbol icon="help" size={14} />
       </div>
     );
   }
   if (hasUnread) {
     return (
-      <div className="flex items-center justify-center w-5 h-5 text-[var(--nim-primary)]" title="Unread response">
+      <div className="flex items-center justify-center w-5 h-5 text-[var(--nim-primary)]" title={t('status.unread')}>
         <MaterialSymbol icon="circle" size={8} fill />
       </div>
     );
@@ -1848,6 +1867,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
   onSessionSelect,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const [allSessions, setAllSessions] = useState<SessionItem[]>([]);
   const [fileFilteredIds, setFileFilteredIds] = useState<string[] | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -2101,7 +2121,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
     <div className="sessions-pane flex-1 flex flex-col overflow-hidden">
       {fileFilter && (
         <div className="flex items-center gap-2 px-4 py-1.5 text-xs text-nim-muted border-b border-nim bg-[var(--nim-accent-subtle)]">
-          <span className="text-nim-faint">Filtered to sessions that edited:</span>
+          <span className="text-nim-faint">{t('quick_open.filtered_sessions')}</span>
           <span
             className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[rgba(0,122,255,0.15)] text-[var(--nim-primary)] text-xs max-w-[60%]"
             title={fileFilter}
@@ -2114,7 +2134,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
                 setFileFilter(null);
                 setQuery('');
               }}
-              title="Clear file filter"
+              title={t('quick_open.clear_file_filter')}
             >
               <MaterialSymbol icon="close" size={12} />
             </button>
@@ -2126,7 +2146,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
           <ul className={`list-none m-0 p-0 ${mouseHasMoved ? '' : 'pointer-events-none'}`}>
             {fileOptions.length === 0 ? (
               <li className="py-6 px-4 text-center text-nim-faint text-sm">
-                {fileSearchQuery ? 'No files found' : 'Type to search files...'}
+                {fileSearchQuery ? t('quick_open.empty.no_files_found') : t('quick_open.empty.type_to_search_files')}
               </li>
             ) : (
               fileOptions.slice(0, 20).map((option, index) => (
@@ -2164,10 +2184,10 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
         ) : displaySessions.length === 0 ? (
           <div className="p-10 text-center text-nim-faint">
             {fileFilter
-              ? `No sessions edited ${fileFilter}`
+              ? t('quick_open.empty.no_sessions_edited_file', { file: fileFilter })
               : query
-                ? 'No sessions found'
-                : 'No recent sessions'}
+                ? t('quick_open.empty.no_sessions_found')
+                : t('quick_open.empty.no_recent_sessions')}
           </div>
         ) : (
           <ul
@@ -2192,20 +2212,20 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-nim flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {session.title || 'New conversation'}
+                    {session.title || t('quick_open.new_conversation')}
                     {session.parentSessionId && (
                       <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-primary)] text-white">
-                        In Workstream
+                        {t('quick_open.in_workstream')}
                       </span>
                     )}
                     {session.worktreeId && (
                       <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-success)] text-white">
-                        Worktree
+                        {t('quick_open.worktree')}
                       </span>
                     )}
                     {session.messageCount > 0 && (
                       <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-nim-faint text-white">
-                        {session.messageCount} msg{session.messageCount !== 1 ? 's' : ''}
+                        {t('quick_open.message_count', { count: session.messageCount })}
                       </span>
                     )}
                   </div>
@@ -2217,7 +2237,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
                   {session.uncommittedCount !== undefined && session.uncommittedCount > 0 && (
                     <span
                       className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]"
-                      title={`${session.uncommittedCount} uncommitted change${session.uncommittedCount !== 1 ? 's' : ''}`}
+                      title={t('status.uncommitted', { count: session.uncommittedCount })}
                     >
                       {session.uncommittedCount}
                     </span>
@@ -2264,13 +2284,15 @@ interface PromptActorBubblesProps {
 const PromptActorBubbles: React.FC<PromptActorBubblesProps> = memo(({
   scope,
   onChange,
-}) => (
+}) => {
+  const { t } = useTranslation('agents');
+  return (
   <div
     className="prompt-actor-scopes shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-nim bg-nim-secondary"
     role="group"
-    aria-label="Prompts from"
+    aria-label={t('quick_open.prompts_from')}
   >
-    <span className="mr-1 text-xs text-nim-faint">Prompts from</span>
+    <span className="mr-1 text-xs text-nim-faint">{t('quick_open.prompts_from')}</span>
     {PROMPT_ACTOR_SCOPES.map((candidate) => {
       const active = candidate.id === scope;
       return (
@@ -2286,12 +2308,13 @@ const PromptActorBubbles: React.FC<PromptActorBubblesProps> = memo(({
           onClick={() => onChange(active ? 'all' : candidate.id)}
           tabIndex={-1}
         >
-          {candidate.label}
+          {t(`quick_open.prompt_actor.${candidate.id}`)}
         </button>
       );
     })}
   </div>
-));
+  );
+});
 
 const extractPromptText = (content: string): string => {
   try {
@@ -2329,6 +2352,7 @@ const PromptsPane: React.FC<PromptsPaneProps> = memo(({
   onPromptSelect,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const [allPrompts, setAllPrompts] = useState<PromptItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -2458,16 +2482,16 @@ const PromptsPane: React.FC<PromptsPaneProps> = memo(({
             className="absolute top-2 left-1/2 -translate-x-1/2 z-10 py-1 px-3 rounded-full text-[11px] font-medium bg-[var(--nim-success)] text-white shadow"
             data-testid="prompt-quick-open-copied-toast"
           >
-            Copied to clipboard
+            {t('quick_open.copied_to_clipboard')}
           </div>
         )}
         {displayPrompts.length === 0 ? (
           <div className="p-10 text-center text-nim-faint">
             {isLoading
-              ? 'Loading...'
+              ? t('quick_open.loading')
               : query || actorScope !== 'all'
-                ? 'No prompts found'
-                : 'No recent prompts'}
+                ? t('quick_open.empty.no_prompts_found')
+                : t('quick_open.empty.no_recent_prompts')}
           </div>
         ) : (
           <ul
@@ -2499,7 +2523,7 @@ const PromptsPane: React.FC<PromptsPaneProps> = memo(({
                     {prompt.sessionTitle}
                     {prompt.parentSessionId && (
                       <span className="shrink-0 text-[10px] py-0.5 px-1.5 bg-[var(--nim-primary)] text-white rounded font-semibold">
-                        In Workstream
+                        {t('quick_open.in_workstream')}
                       </span>
                     )}
                   </span>
@@ -2560,6 +2584,7 @@ const ProjectsPane: React.FC<ProjectsPaneProps> = memo(({
   currentWorkspacePath,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mouseHasMoved, setMouseHasMoved] = useState(false);
@@ -2679,7 +2704,7 @@ const ProjectsPane: React.FC<ProjectsPaneProps> = memo(({
     <div className="projects-pane flex-1 overflow-y-auto">
       {rows.length === 0 ? (
         <div className="p-10 text-center text-nim-faint">
-          {query ? 'No projects found' : 'No recent projects'}
+          {query ? t('quick_open.empty.no_projects_found') : t('quick_open.empty.no_recent_projects')}
         </div>
       ) : (
         <ul
@@ -2704,10 +2729,10 @@ const ProjectsPane: React.FC<ProjectsPaneProps> = memo(({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-nim overflow-hidden text-ellipsis whitespace-nowrap">
-                  Attach Folder to Workspace...
+                  {t('quick_open.attach_folder')}
                 </div>
                 <div className="text-xs text-nim-faint mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">
-                  Browse it here and let agents read it, without leaving this project
+                  {t('quick_open.attach_folder_description')}
                 </div>
               </div>
             </li>
@@ -2735,6 +2760,7 @@ const ProjectRow: React.FC<{
   onSelect: () => void;
   onHover: () => void;
 }> = memo(({ project, isSelected, onSelect, onHover }) => {
+  const { t } = useTranslation('agents');
   return (
     <li
       className={`unified-quick-open-item flex items-center gap-3 py-2.5 px-4 cursor-pointer border-l-[3px] transition-all duration-100 ${
@@ -2753,12 +2779,12 @@ const ProjectRow: React.FC<{
                   {project.name}
                   {project.isCurrent && (
                     <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-primary)] text-white">
-                      Current
+                      {t('quick_open.current')}
                     </span>
                   )}
                   {project.isOpen && !project.isCurrent && (
                     <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-success)] text-white">
-                      Open
+                      {t('quick_open.open')}
                     </span>
                   )}
                 </div>
@@ -2777,17 +2803,20 @@ const ProjectRow: React.FC<{
 const MemoryScopeBubbles: React.FC<{
   scope: SemanticSearchScope;
   onChange: (scope: SemanticSearchScope) => void;
-}> = memo(({ scope, onChange }) => (
-  <ScopeBubbles
-    rootClassName="memory-search-scopes"
-    itemClassName="memory-search-scope"
-    label="Search in"
-    scopes={SEMANTIC_SEARCH_SCOPES}
-    scope={scope}
-    defaultScope="all"
-    onChange={onChange}
-  />
-));
+}> = memo(({ scope, onChange }) => {
+  const { t } = useTranslation('agents');
+  return (
+    <ScopeBubbles
+      rootClassName="memory-search-scopes"
+      itemClassName="memory-search-scope"
+      label={t('quick_open.search_in')}
+      scopes={SEMANTIC_SEARCH_SCOPES}
+      scope={scope}
+      defaultScope="all"
+      onChange={onChange}
+    />
+  );
+});
 
 interface SearchPaneProps {
   isOpen: boolean;
@@ -2839,6 +2868,7 @@ const SearchPane: React.FC<SearchPaneProps> = memo(({
   onSessionSelect,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -2985,22 +3015,17 @@ const SearchPane: React.FC<SearchPaneProps> = memo(({
   }, [isOpen, isActive, results, selectedIndex, handleSelect, onClose]);
 
   const hasQuery = !!visibleQuery.trim();
-  const emptySearchLabel =
-    scope === 'all'
-      ? 'trackers, documents, and sessions'
-      : scope === 'docs'
-        ? 'indexed documents'
-        : scope;
+  const emptySearchLabel = t(`quick_open.scope_descriptions.${scope}`);
 
   return (
     <div className="search-pane flex-1 overflow-y-auto">
       {results.length === 0 ? (
         <div className="p-10 text-center text-nim-faint">
           {!hasQuery
-            ? `Search ${emptySearchLabel} by meaning`
+            ? t('quick_open.search_by_meaning', { scope: emptySearchLabel })
             : isLoading
-              ? 'Searching...'
-              : `No semantic matches in ${emptySearchLabel}`}
+              ? t('quick_open.searching')
+              : t('quick_open.empty.no_semantic_matches', { scope: emptySearchLabel })}
         </div>
       ) : (
         <ul
@@ -3026,7 +3051,7 @@ const SearchPane: React.FC<SearchPaneProps> = memo(({
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-nim flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
                   <span className="shrink-0 text-[10px] uppercase tracking-wide py-0.5 px-1.5 rounded bg-nim-secondary text-nim-faint">
-                    {refTypeLabel(result)}
+                    {t(`quick_open.reference_types.${result.refType}`, { defaultValue: refTypeLabel(result) })}
                   </span>
                   <span className="truncate">
                     {result.title || result.sourcePath || result.refId}
@@ -3039,7 +3064,7 @@ const SearchPane: React.FC<SearchPaneProps> = memo(({
               {result.signals?.dense && (
                 <div
                   className="shrink-0 mt-0.5 text-nim-faint"
-                  title="Semantic match"
+                  title={t('quick_open.semantic_match')}
                 >
                   <MaterialSymbol icon="auto_awesome" size={13} />
                 </div>
@@ -3079,6 +3104,7 @@ const TrackersPane: React.FC<TrackersPaneProps> = memo(({
   onTrackerSelect,
   onClose,
 }) => {
+  const { t } = useTranslation('agents');
   const [items, setItems] = useState<TrackerItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [semanticResultIds, setSemanticResultIds] = useState<string[]>([]);
@@ -3231,12 +3257,12 @@ const TrackersPane: React.FC<TrackersPaneProps> = memo(({
       {displayItems.length === 0 ? (
         <div className="p-10 text-center text-nim-faint">
           {isLoading
-            ? 'Loading trackers...'
+            ? t('quick_open.loading_trackers')
             : isSemanticSearching
-              ? 'Searching trackers...'
+              ? t('quick_open.searching_trackers')
             : query || typeFilter
-              ? 'No matching trackers'
-              : 'No trackers yet'}
+              ? t('quick_open.empty.no_matching_trackers')
+              : t('quick_open.empty.no_trackers')}
         </div>
       ) : (
         <ul

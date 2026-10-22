@@ -131,7 +131,7 @@ function tabFieldsForPath(filePath: string, displayName?: string): Pick<
     : isType
       ? displayName?.trim() || filePath.slice(TYPE_TAB_PREFIX.length)
       : isPersonalPage
-        ? displayName?.trim() || 'Untitled'
+        ? displayName?.trim() || ''
         : resolveTabDisplayName(filePath, displayName);
   return {
     filePath,

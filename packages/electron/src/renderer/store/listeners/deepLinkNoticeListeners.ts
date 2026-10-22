@@ -15,35 +15,53 @@ import {
 import { feedbackRequestConsoleUrl } from '../../../shared/feedbackRequestLinks';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
 
-const WHAT: Record<DeepLinkNotice['kind'], string> = {
-  'shared-document': 'shared document',
-  'shared-folder': 'shared folder',
-  'feedback-request': 'feedback request',
-};
-
 function showNotice(notice: DeepLinkNotice): void {
-  const what = WHAT[notice.kind];
-  if (!what) throw new Error(`Unknown deep-link notice kind: ${(notice as { kind?: string }).kind}`);
+  if (!['shared-document', 'shared-folder', 'feedback-request'].includes(notice.kind)) {
+    throw new Error(`Unknown deep-link notice kind: ${(notice as { kind?: string }).kind}`);
+  }
   if (notice.reason === 'not-authenticated') {
     errorNotificationService.showWarning(
-      'Sign in required',
-      `Sign in to your Nimbalyst team account to open this ${what}.`,
+      errorNotificationService.getLocalizedText('common', 'deep_links.sign_in_required', 'Sign in required'),
+      errorNotificationService.getLocalizedText(
+        'common',
+        notice.kind === 'shared-document'
+          ? 'deep_links.document_sign_in'
+          : notice.kind === 'shared-folder'
+            ? 'deep_links.folder_sign_in'
+            : 'deep_links.invite_feedback_sign_in',
+        notice.kind === 'shared-document'
+          ? 'Sign in to your Nimbalyst team account to open this shared document.'
+          : notice.kind === 'shared-folder'
+            ? 'Sign in to your Nimbalyst team account to open this shared folder.'
+            : 'Sign in to your Nimbalyst team account to open this feedback request.',
+      ),
       { duration: 8000 },
     );
   } else if (notice.kind === 'feedback-request') {
     const consoleUrl = feedbackRequestConsoleUrl(notice.orgId, notice.requestId);
     errorNotificationService.showWarning(
-      'No matching project',
-      'None of your projects belongs to the team that sent this feedback request. You can answer it in the web console.',
+      errorNotificationService.getLocalizedText('common', 'deep_links.no_matching_project', 'No matching project'),
+      errorNotificationService.getLocalizedText(
+        'common', 'deep_links.invite_feedback_no_project_message',
+        'None of your projects belongs to the team that sent this feedback request. You can answer it in the web console.',
+      ),
       {
         duration: 10000,
-        action: { label: 'Open in browser', onClick: () => { void window.electronAPI.openInBrowser(consoleUrl); } },
+        action: {
+          label: errorNotificationService.getLocalizedText('common', 'deep_links.invite_open_browser_action', 'Open in browser'),
+          onClick: () => { void window.electronAPI.openInBrowser(consoleUrl); },
+        },
       },
     );
   } else {
     errorNotificationService.showWarning(
-      'No matching project',
-      `None of your projects belongs to the team that owns this ${notice.kind === 'shared-folder' ? 'folder' : 'document'}.`,
+      errorNotificationService.getLocalizedText('common', 'deep_links.no_matching_project', 'No matching project'),
+      errorNotificationService.getLocalizedText(
+        'common', notice.kind === 'shared-folder' ? 'deep_links.invite_shared_folder_project_missing' : 'deep_links.invite_shared_document_project_missing',
+        notice.kind === 'shared-folder'
+          ? 'None of your projects belongs to the team that owns this folder.'
+          : 'None of your projects belongs to the team that owns this document.',
+      ),
       { duration: 8000 },
     );
   }

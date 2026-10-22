@@ -10,6 +10,7 @@
 
 import type { JSX } from 'react';
 import * as React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   relationsForPair,
   type PageRelationOption,
@@ -58,11 +59,12 @@ export function TrackerReferenceRelationMenu({
   relationLabel,
   onChoose,
 }: TrackerReferenceRelationMenuProps): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   if (!onChoose) {
     if (!relation) return null;
     return (
       <div className="tracker-reference-relation" style={sectionStyle}>
-        <span style={{ color: 'var(--nim-text-muted)' }}>Linked as </span>
+        <span style={{ color: 'var(--nim-text-muted)' }}>{t('relationship.linked_as')} </span>
         <span style={{ color: 'var(--nim-text)', fontWeight: 500 }}>{relationLabel ?? relation}</span>
       </div>
     );
@@ -79,15 +81,15 @@ export function TrackerReferenceRelationMenu({
   if (relation && !options.some(option => option.predicateId === relation)) {
     rows.push({ id: relation, label: relationLabel ?? relation, hint: '' });
   }
-  rows.push({ id: null, label: 'Plain link', hint: 'no relation' });
+  rows.push({ id: null, label: t('relationship.plain_link'), hint: t('relationship.no_relation') });
 
   return (
     <div className="tracker-reference-relation" style={sectionStyle}>
-      <div style={{ color: 'var(--nim-text-muted)', marginBottom: '6px' }}>Link as</div>
+      <div style={{ color: 'var(--nim-text-muted)', marginBottom: '6px' }}>{t('relationship.link_as')}</div>
       <div
         className="tracker-reference-relation-menu"
         role="radiogroup"
-        aria-label="Link as"
+        aria-label={t('relationship.link_as')}
         style={{
           padding: '4px',
           borderRadius: '6px',

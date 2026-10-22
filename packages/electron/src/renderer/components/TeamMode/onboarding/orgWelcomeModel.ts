@@ -93,9 +93,9 @@ export interface OrgWelcomeCardInput {
 }
 
 export interface OrgWelcomeCardView {
-  title: string;
-  subtitle: string;
-  points: string[];
+  organizationName: string;
+  memberCount: number;
+  inviterName: string | null;
 }
 
 export function shouldShowOrgWelcome(input: OrgWelcomeCardInput): boolean {
@@ -105,19 +105,9 @@ export function shouldShowOrgWelcome(input: OrgWelcomeCardInput): boolean {
 export function buildOrgWelcomeCard(
   input: OrgWelcomeCardInput,
 ): OrgWelcomeCardView {
-  const name = input.orgName.trim() || 'your organization';
-  const members = input.memberCount === 1
-    ? '1 member'
-    : `${input.memberCount} members`;
   return {
-    title: `Welcome to ${name}`,
-    subtitle: input.inviterName
-      ? `${input.inviterName} invited you. ${members} so far.`
-      : `${members} so far.`,
-    points: [
-      'Inbox collects mentions, replies and activity addressed to you.',
-      'Rooms and direct messages are in the sidebar — #general has everyone in it.',
-      'Administration lives under Admin at the bottom of the sidebar.',
-    ],
+    organizationName: input.orgName.trim(),
+    memberCount: input.memberCount,
+    inviterName: input.inviterName?.trim() || null,
   };
 }

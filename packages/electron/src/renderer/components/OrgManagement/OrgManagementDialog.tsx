@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import { useOrgRoster } from '../../hooks/useOrgRoster';
@@ -87,6 +88,7 @@ export function OrgManagementDialog({
   orgId: string;
   initialTab?: AdminTab;
 }) {
+  const { t } = useTranslation('orgSharing');
   const roster = useOrgRoster(orgId);
   const identity = useOrgIdentity(orgId);
   const [renamedTo, setRenamedTo] = useState<string | null>(null);
@@ -145,7 +147,7 @@ export function OrgManagementDialog({
         <div className="org-management-dialog-header flex items-center justify-between border-b border-[var(--nim-border)] px-4 py-3">
           <div className="org-management-dialog-title flex min-w-0 flex-1 flex-col gap-0.5">
             <h2 className="m-0 overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold text-[var(--nim-text)]">
-              {orgName ? `${orgName} · Organization` : 'Organization'}
+              {orgName ? `${orgName} · ${t('labels.organization')}` : t('labels.organization')}
             </h2>
             {identity.boundEmail && (
               <span className="org-management-dialog-account overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-[var(--nim-text-muted)]">
@@ -156,7 +158,7 @@ export function OrgManagementDialog({
           <button
             type="button"
             className="org-management-dialog-close nim-btn-icon"
-            aria-label="Close"
+            aria-label={t('management_dialog.close')}
             data-testid="org-management-dialog-close"
             onClick={onClose}
           >
@@ -189,7 +191,7 @@ export function OrgManagementDialog({
                 <span className="org-management-tab-icon flex size-5 shrink-0 items-center justify-center text-[var(--nim-text-muted)]">
                   <MaterialSymbol icon={tab.icon} size={16} />
                 </span>
-                <span className="min-w-0 flex-1 truncate">{tab.label}</span>
+                <span className="min-w-0 flex-1 truncate">{t(`management_dialog.tabs.${tab.id}`)}</span>
               </button>
             ))}
           </nav>
@@ -207,7 +209,7 @@ export function OrgManagementDialog({
                   className="org-management-dialog-resolving m-0 text-sm text-[var(--nim-text-muted)]"
                   data-testid="org-management-dialog-resolving"
                 >
-                  Loading organization…
+                  {t('management_dialog.loading')}
                 </p>
               )}
               {allowedTab === 'members' && (
@@ -226,7 +228,7 @@ export function OrgManagementDialog({
                         data-testid="org-management-project-access-back"
                         onClick={() => setAccessProjectId(null)}
                       >
-                        <MaterialSymbol icon="arrow_back" size={14} /> All projects
+                        <MaterialSymbol icon="arrow_back" size={14} /> {t('management_dialog.all_projects')}
                       </button>
                       <ProjectSharingPanel
                         target={{

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createStore, Provider } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 vi.mock('posthog-js/react', () => ({
   usePostHog: () => undefined,
@@ -50,6 +52,12 @@ import {
 } from '../../../../store/atoms/settingsDomains';
 import { SyncPanel } from '../SyncPanel';
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
 function account(overrides: Partial<PersonalAccountSummary> = {}): PersonalAccountSummary {
   return {
     personalOrgId: 'personal-1',
@@ -75,9 +83,11 @@ function renderAccounts(accounts: PersonalAccountSummary[], configOverrides: Rec
   store.set(stytchAuthAtom, { isAuthenticated: true, user: { user_id: 'user-1' } });
   store.set(personalAccountsAtom, accounts);
   render(
-    <Provider store={store}>
-      <SyncPanel section="accounts" />
-    </Provider>,
+    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+      <Provider store={store}>
+        <SyncPanel section="accounts" />
+      </Provider>
+    </UiLanguageProvider>,
   );
   return store;
 }

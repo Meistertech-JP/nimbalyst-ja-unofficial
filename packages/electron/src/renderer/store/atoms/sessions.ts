@@ -877,7 +877,7 @@ export const sessionTitleAtom = atomFamily((sessionId: string) =>
     // Fall back to registry for sessions that haven't been fully loaded yet
     const registry = get(sessionRegistryAtom);
     const meta = registry.get(sessionId);
-    return meta?.title || 'Untitled';
+    return meta?.title;
   })
 );
 
@@ -2383,7 +2383,7 @@ export const addSessionFullAtom = atom(
     if (!existingStore) {
       set(sessionStoreAtom(session.id), {
         id: session.id,
-        title: session.title || 'Untitled Session',
+        title: session.title || '',
         provider: session.provider || 'claude-code',
         model: session.model || 'claude-code:sonnet',
         mode: 'agent',
@@ -2675,7 +2675,7 @@ export const workstreamTitleAtom = atomFamily((workstreamId: string) =>
     // Fallback to registry if session data not loaded yet
     const registry = get(sessionRegistryAtom);
     const meta = registry.get(workstreamId);
-    return meta?.title || 'Untitled';
+    return meta?.title;
   })
 );
 

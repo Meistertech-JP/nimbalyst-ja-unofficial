@@ -146,12 +146,13 @@ export const searchSessionMentionAtom = atom(
 
       return {
         id: s.id,
-        label: s.title || 'Untitled',
+        label: s.title || '',
         description: buildDescription(s.updatedAt, s.phase),
         icon,
         data: {
           id: s.id,
-          title: s.title || 'Untitled',
+          title: s.title || '',
+          isUntitledSession: !s.title,
           shortId: s.id.substring(0, 5),
         },
       };

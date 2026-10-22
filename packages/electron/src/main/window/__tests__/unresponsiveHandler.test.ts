@@ -48,6 +48,13 @@ describe('createUnresponsiveHandler', () => {
     // The whole point of the fix: showMessageBoxSync blocks the main process.
     expect(showMessageBox).toHaveBeenCalledTimes(1);
     expect(showMessageBoxSync).not.toHaveBeenCalled();
+    expect(showMessageBox).toHaveBeenCalledWith(
+      window,
+      expect.objectContaining({
+        buttons: ['Reload', 'Keep Waiting'],
+        detail: 'Would you like to reload the window?',
+      }),
+    );
   });
 
   it('reloads when the user chooses Reload (response 0)', async () => {

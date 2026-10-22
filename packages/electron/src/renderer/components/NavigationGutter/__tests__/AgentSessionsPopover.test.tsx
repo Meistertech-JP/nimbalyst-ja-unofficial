@@ -14,6 +14,28 @@ import {
 import { settingAtom } from '../../../store/atoms/settingAtomFamily';
 import { AgentSessionsPopover } from '../AgentSessionsPopover';
 
+vi.mock('@nimbalyst/i18n/react', () => ({
+  useTranslation: (namespace: string) => ({
+    t: (key: string, values?: Record<string, string | number>) => {
+      const translations: Record<string, string> = {
+        'common.agent_sessions.awaiting': 'Awaiting input',
+        'common.agent_sessions.running': 'Running',
+        'common.agent_sessions.unread': 'Unread',
+        'common.agent_sessions.untitled': 'Untitled Session',
+        'common.agent_sessions.sessions': 'Sessions',
+        'common.agent_sessions.need_attention_count': '{{count}} need attention',
+        'common.agent_sessions.count_label': '{{count}} {{state}} session(s)',
+        'common.agent_sessions.mark_all_read': 'Mark all as read',
+        'sessions.preview_transcript': 'Preview transcript',
+        'sessions.preview_transcript_for': 'Preview transcript for {{title}}',
+        'sessions.resize_history_panel': 'Resize session history panel',
+      };
+      const template = translations[`${namespace}.${key}`] ?? `${namespace}.${key}`;
+      return template.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(values?.[name] ?? `{{${name}}}`));
+    },
+  }),
+}));
+
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span>{icon}</span>,
 }));

@@ -68,6 +68,7 @@ import {
   toStableAnalyticsCategory,
 } from "../../shared/analytics/teamAnalytics";
 import { trackTeamAnalyticsEvent } from "../utils/teamAnalytics";
+import { formatFolderShareFileWarnings, type FolderShareTranslator } from "./folderSharePlan";
 
 /** The Pages section a copy lands in. */
 export type PagesSection = "team" | "personal";
@@ -351,11 +352,12 @@ export async function shareFileToTeam(params: {
    * batch once from the results.
    */
   showNotifications?: boolean;
+  /** Locale-aware degradation labels when a batch caller collects warnings. */
+  t?: FolderShareTranslator;
 }): Promise<ShareFileToTeamResult> {
   const { filePath, fileName, answers } = params;
   const showNotifications = params.showNotifications !== false;
   const personal = answers.section === "personal";
-  const failTitle = personal ? "Could not copy to Personal" : "Could not share to team";
   const {
     folderId,
     folderPath,
@@ -365,6 +367,32 @@ export async function shareFileToTeam(params: {
   } = answers;
   const { errorNotificationService } = await import(
     "./ErrorNotificationService"
+  );
+  const localizedText = (
+    key: string,
+    fallback: string,
+    options?: Record<string, string | number>
+  ) =>
+    errorNotificationService.getLocalizedText(
+      "files",
+      `notifications.${key}`,
+      fallback,
+      options
+    );
+  const localizedCollabText = (
+    key: string,
+    fallback: string,
+    options?: Record<string, string | number>
+  ) =>
+    errorNotificationService.getLocalizedText(
+      "collabSidebar",
+      key,
+      fallback,
+      options
+    );
+  const failTitle = localizedText(
+    personal ? "personal_copy_failed_title" : "share_failed_title",
+    personal ? "Could not copy to Personal" : "Could not share to team"
   );
   const documentTypeCatalog = getCollaborativeDocumentTypeCatalog();
 
@@ -649,7 +677,7 @@ export async function shareFileToTeam(params: {
   const teamOrgId = personal ? null : store.get(activeTeamOrgIdAtom);
   const copyLinkAction = teamOrgId
     ? {
-        label: "Copy Link",
+        label: localizedText("copy_link_action", "Copy Link"),
         onClick: () => {
           const deepLink = buildSharedDocumentDeepLink(
             createdDocument.documentId,
@@ -661,8 +689,16 @@ export async function shareFileToTeam(params: {
               error
             );
             errorNotificationService.showError(
-              "Copy failed",
-              "Could not write the link to the clipboard."
+              errorNotificationService.getLocalizedText(
+                "collabSidebar",
+                "notification.copy_failed",
+                "Copy failed"
+              ),
+              errorNotificationService.getLocalizedText(
+                "collabSidebar",
+                "notification.clipboard_write_failed",
+                "Could not write the link to the clipboard."
+              )
             );
           });
         },
@@ -723,14 +759,22 @@ export async function shareFileToTeam(params: {
   const linkedParts: string[] = [];
   if (linkedCount > 0) {
     linkedParts.push(
-      `Shared ${linkedCount} linked document${linkedCount === 1 ? "" : "s"}.`
+      localizedText(
+        "linked_shared",
+        `Shared ${linkedCount} linked document${linkedCount === 1 ? "" : "s"}.`,
+        { count: linkedCount }
+      )
     );
   }
   if (linkedFailureCount > 0) {
     linkedParts.push(
-      `${linkedFailureCount} linked document${
-        linkedFailureCount === 1 ? "" : "s"
-      } could not be shared and remain local links.`
+      localizedText(
+        "linked_failed",
+        `${linkedFailureCount} linked document${
+          linkedFailureCount === 1 ? "" : "s"
+        } could not be shared and remain local links.`,
+        { count: linkedFailureCount }
+      )
     );
   }
   const linkedSummary =
@@ -745,19 +789,40 @@ export async function shareFileToTeam(params: {
   // A share can succeed and still lose something. A caller that suppressed the
   // toasts has no other way to learn that, so the degradations ride back on the
   // result rather than only existing as pixels.
-  const warnings: string[] = [];
-  if (linkedFailureCount > 0) {
-    warnings.push(
-      `${linkedFailureCount} linked document${
-        linkedFailureCount === 1 ? "" : "s"
-      } could not be shared`
-    );
-  }
-  if (migrationToast.kind === "partial") {
-    warnings.push(`${migrationToast.failedCount} attachment(s) failed to upload`);
-  } else if (migrationToast.kind === "unavailable") {
-    warnings.push("attachments could not be migrated");
-  }
+  const warnings = params.t
+    ? formatFolderShareFileWarnings({
+        linkedDocumentFailures: linkedFailureCount,
+        attachmentFailures: migrationToast.kind === "partial" ? migrationToast.failedCount ?? 0 : 0,
+        attachmentsUnavailable: migrationToast.kind === "unavailable",
+      }, params.t)
+    : [
+        ...(linkedFailureCount > 0
+          ? [
+              localizedCollabText(
+                "share_folder.notifications.linked_document_failure",
+                `${linkedFailureCount} linked document${linkedFailureCount === 1 ? "" : "s"} could not be shared and remains a local link`,
+                { count: linkedFailureCount }
+              ),
+            ]
+          : []),
+        ...(migrationToast.kind === "partial"
+          ? [
+              localizedCollabText(
+                "share_folder.notifications.attachment_failure",
+                `${migrationToast.failedCount} attachment${migrationToast.failedCount === 1 ? "" : "s"} failed to upload`,
+                { count: migrationToast.failedCount ?? 0 }
+              ),
+            ]
+          : []),
+        ...(migrationToast.kind === "unavailable"
+          ? [
+              localizedCollabText(
+                "share_folder.notifications.attachments_migration_unavailable",
+                "Attachments could not be migrated"
+              ),
+            ]
+          : []),
+      ];
 
   if (!showNotifications) {
     return {
@@ -775,45 +840,70 @@ export async function shareFileToTeam(params: {
     default: {
       const body =
         migrationToast.kind === "ok"
-          ? `"${finalTitle}" is now a collaborative document. Migrated ${
-              migrationToast.okCount
-            } attachment${
-              migrationToast.okCount === 1 ? "" : "s"
-            }.${linkedSummary}`
+          ? localizedText(
+              "success_message",
+              `"${finalTitle}" is now a collaborative document. Migrated ${migrationToast.okCount} attachments.`,
+              { title: finalTitle, count: migrationToast.okCount ?? 0 }
+            ) + linkedSummary
           : personal
-          ? `"${finalTitle}" is now a page in Personal.`
-          : `"${finalTitle}" is now a collaborative document.${linkedSummary}`;
+          ? localizedText(
+              "personal_shared_message",
+              `"${finalTitle}" is now a page in Personal.`,
+              { title: finalTitle }
+            ) + linkedSummary
+          : localizedText(
+              "shared_message",
+              `"${finalTitle}" is now a collaborative document.`,
+              { title: finalTitle }
+            ) + linkedSummary;
       if (linkedFailureCount > 0) {
         errorNotificationService.showWarning(
-          "Shared with missing linked documents",
+          localizedText(
+            "linked_partial_title",
+            "Shared with missing linked documents"
+          ),
           body,
           { details: linkedDetails, duration: 10000, action: copyLinkAction }
         );
       } else {
-        errorNotificationService.showInfo(personal ? "Copied to Personal" : "Shared to team", body, {
+        errorNotificationService.showInfo(
+          localizedText(
+            personal ? "copied_to_personal_title" : "shared_title",
+            personal ? "Copied to Personal" : "Shared to team"
+          ),
+          body,
+          {
           duration: 4000,
           action: copyLinkAction,
-        });
+          }
+        );
       }
       break;
     }
     case "partial":
       errorNotificationService.showWarning(
-        "Shared with missing attachments",
-        `"${finalTitle}" was shared but ${
-          migrationToast.failedCount
-        } attachment${
-          migrationToast.failedCount === 1 ? "" : "s"
-        } failed to upload.${linkedSummary}`,
+        localizedText(
+          "partial_title",
+          "Shared with missing attachments"
+        ),
+        localizedText(
+          "partial_message",
+          `"${finalTitle}" was shared, but ${migrationToast.failedCount} attachments failed to upload.`,
+          { title: finalTitle, count: migrationToast.failedCount ?? 0 }
+        ) + linkedSummary,
         { details: linkedDetails, duration: 8000, action: copyLinkAction }
       );
       break;
     case "unavailable":
       errorNotificationService.showWarning(
-        "Shared to team",
-        `"${finalTitle}" is now collaborative, but image attachments could not be migrated${
-          migrationToast.message ? `: ${migrationToast.message}` : "."
-        }${linkedSummary}`,
+        localizedText("shared_title", "Shared to team"),
+        localizedText(
+          "unavailable_message",
+          `"${finalTitle}" is now collaborative, but image attachments could not be migrated.`,
+          { title: finalTitle }
+        ) +
+          (migrationToast.message ? `: ${migrationToast.message}` : "") +
+          linkedSummary,
         { details: linkedDetails, duration: 8000, action: copyLinkAction }
       );
       break;

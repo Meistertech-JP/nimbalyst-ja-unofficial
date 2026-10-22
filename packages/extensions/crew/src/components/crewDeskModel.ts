@@ -3,7 +3,6 @@ import type {
   CrewChapterSummary,
   CrewDelegatedSession,
   CrewMemberSnapshot,
-  CrewMemberStatus,
   CrewRosterSnapshot,
   CrewShiftTrigger,
 } from '../shared/types';
@@ -17,17 +16,25 @@ export type CrewShiftAction =
  * Otherwise starting is blocked by pause, budget, or a definition file that
  * does not validate; the reason is shown on the button.
  */
-export function deriveShiftAction(member: CrewMemberSnapshot): CrewShiftAction {
+export function deriveShiftAction(
+  member: CrewMemberSnapshot,
+  translate?: (key: string, params?: Record<string, unknown>) => string,
+): CrewShiftAction {
   const { definition, runtime } = member;
   if (runtime.onShift || runtime.status === 'on-shift') return { kind: 'end' };
   if (definition.paused === true || runtime.status === 'paused') {
-    return { kind: 'start', blockedReason: `Unpause ${definition.name} to start a shift` };
+    return {
+      kind: 'start',
+      blockedReason: translate
+        ? translate('crew.desk.unpause_to_start', { name: definition.name })
+        : `Unpause ${definition.name} to start a shift`,
+    };
   }
   if (runtime.status === 'error') {
-    return { kind: 'start', blockedReason: 'Fix the definition file first' };
+    return { kind: 'start', blockedReason: translate ? translate('crew.desk.fix_definition_first') : 'Fix the definition file first' };
   }
   if (runtime.status === 'over-budget' || runtime.usage.overBudget) {
-    return { kind: 'start', blockedReason: runtime.usage.overBudgetReason ?? 'Over budget' };
+    return { kind: 'start', blockedReason: runtime.usage.overBudgetReason ?? (translate ? translate('crew.status.over_budget') : 'Over budget') };
   }
   return { kind: 'start' };
 }
@@ -64,13 +71,14 @@ export function countLiveDelegated(sessions: readonly CrewDelegatedSession[]): n
   return sessions.filter((s) => s.hasPendingPrompt || ACTIVE_SESSION_STATUSES.has(s.status)).length;
 }
 
+/** Translation key for why a shift started; callers resolve it with t(). */
 export function describeTrigger(trigger: CrewShiftTrigger): string {
   switch (trigger) {
-    case 'user': return 'You started this shift';
-    case 'schedule': return 'Scheduled run';
-    case 'self': return 'Its own wake-up';
-    case 'child-session': return 'A delegated session reported back';
-    case 'launch-catchup': return 'Missed run while Nimbalyst was closed';
+    case 'user': return 'crew.trigger.user';
+    case 'schedule': return 'crew.trigger.schedule';
+    case 'self': return 'crew.trigger.self';
+    case 'child-session': return 'crew.trigger.child_session';
+    case 'launch-catchup': return 'crew.trigger.launch_catchup';
   }
 }
 
@@ -108,13 +116,3 @@ export function nextSeenState(
   const changedView = previous === null || previous.view !== view;
   return { markSeen: changedView || unread > previous.unread, state: { view, unread } };
 }
-
-export const STATUS_LABEL: Record<CrewMemberStatus, string> = {
-  idle: 'Idle',
-  'on-shift': 'On shift',
-  sleeping: 'Sleeping',
-  'waiting-on-user': 'Waiting on you',
-  'over-budget': 'Over budget',
-  paused: 'Paused',
-  error: 'Definition error',
-};

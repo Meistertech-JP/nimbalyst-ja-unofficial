@@ -9,6 +9,7 @@
  */
 
 import React, { useCallback, useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { setTitleBarCreateMenuAtom } from '../../store/atoms/titleBarCreate';
 import { CollabScopeResolutionError, type CollabOpenOptions, type CollabScope } from '@nimbalyst/collab-client/core';
@@ -273,6 +274,8 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
   onFileOpen,
   onPanelStateChange,
 }, ref) {
+  const { t } = useTranslation('collabSidebar');
+  const { t: tCommon } = useTranslation('common');
   const tabsActions = useTabsActions();
   usePublishPagesTabStrip(workspacePath, tabsActions);
   const { tabs, activeTabId } = useTabs();
@@ -306,11 +309,24 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
   }>({ team: null, personal: null });
   const publishCreateMenu = useCallback(() => {
     const menu = composePagesCreateMenu(createMenusRef.current.team, createMenusRef.current.personal, (section) => {
-      void import('../../services/addFileToPages').then(({ addFileToPages }) => addFileToPages({ section, parentId: null, workspacePath }));
+      void import('../../services/addFileToPages').then(({ addFileToPages }) => addFileToPages({
+        section,
+        parentId: null,
+        workspacePath,
+        dialogTitle: t('ui.add_from_files_title'),
+        buttonLabel: t('ui.add'),
+      }));
+    }, {
+      addFromFiles: t('ui.add_from_files'),
+      personalHeading: t('ui.personal'),
+      sharedWithTeam: t('ui.shared_with_team'),
+      newFolder: tCommon('collab.new_folder'),
+      newPersonalPage: t('ui.new_personal_page'),
+      newPersonalFolder: t('ui.new_personal_folder'),
     });
     createPrimaryRef.current = menu?.onPrimary ?? null;
     setTitleBarCreateMenu('collab', menu);
-  }, [setTitleBarCreateMenu, workspacePath]);
+  }, [setTitleBarCreateMenu, workspacePath, t, tCommon]);
   const registerTeamCreateMenu = useCallback((menu: CollabSidebarCreateMenu | null) => {
     createMenusRef.current.team = menu;
     publishCreateMenu();
@@ -600,12 +616,12 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
         error,
       });
       errorNotificationService.showError(
-        'Failed to open shared document',
+        tCommon('collab.open_shared_failed'),
         message,
         { details: doc.title || doc.documentId }
       );
     }
-  }, [teamScope, tabs, activeTabId, tabsActions, addTabFor, sharedFolders, unreadDocumentIds]);
+  }, [teamScope, tabs, activeTabId, tabsActions, addTabFor, sharedFolders, unreadDocumentIds, tCommon]);
 
   useEffect(() => teamScope ? getElectronCollabHost(teamScope).setOpenArtifactAdapter((ref, source, options) => {
     if (ref.scope.scopeKey !== teamScope.scopeKey) return;
@@ -732,7 +748,7 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
     const failure = pendingCollabDocumentFailure(pendingDoc, { teamScope, teamUnavailable, startError: teamStartError });
     if (failure) {
       store.set(pendingCollabDocumentAtom, null);
-      errorNotificationService.showError('Could not open shared page', failure);
+      errorNotificationService.showError(t('pages_section.open_shared_page_failed'), failure);
       return;
     }
     if (!isActive || !teamScope) return;
@@ -748,19 +764,19 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
     if (resolution.action === 'wait') return;
     store.set(pendingCollabDocumentAtom, null);
     if (resolution.action === 'failed') {
-      errorNotificationService.showError('Could not open shared page', resolution.message, { details: pendingDoc.documentId });
+      errorNotificationService.showError(t('pages_section.open_shared_page_failed'), resolution.message, { details: pendingDoc.documentId });
       return;
     }
     if (resolution.action === 'not-found') {
       errorNotificationService.showError(
-        'Could not open shared page',
-        "This page was not found, or you don't have access to it.",
+        t('pages_section.open_shared_page_failed'),
+        t('pages_section.page_not_found_or_no_access'),
         { details: pendingDoc.documentId },
       );
       return;
     }
     handleDocumentSelect(resolution.document, pendingDoc.initialContent, pendingDoc.analyticsSource ?? 'deep_link', pendingDoc.openOptions);
-  }, [pendingDoc, isActive, handleDocumentSelect, teamScope, workspacePath, teamUnavailable, teamStartError, indexLoaded, indexUnavailable, linkableDocuments]);
+  }, [pendingDoc, isActive, handleDocumentSelect, teamScope, workspacePath, teamUnavailable, teamStartError, indexLoaded, indexUnavailable, linkableDocuments, t]);
 
   // With nothing open once restore settles, Pages lands on a Home page: the
   // team's with a team (waiting for it to sync), else Personal's. Closing the
@@ -878,7 +894,7 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
             className="collab-mode-sidebar-resize-handle w-1 cursor-col-resize shrink-0 relative z-10 bg-nim-secondary"
             data-testid="collab-mode-sidebar-resize-handle"
             role="separator"
-            aria-label="Resize shared documents sidebar"
+            aria-label={t('ui.resize_shared_documents_sidebar')}
             aria-orientation="vertical"
           >
             <div className="w-0.5 h-full mx-auto bg-nim-border transition-colors duration-200 hover:bg-nim-accent" />
@@ -892,13 +908,13 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
       <div ref={tabContentAreaRef} className="relative flex-1 flex flex-col overflow-hidden min-h-0">
         {teamScope && teamStartError ? (
           <TeamPagesErrorBanner
-            title="Team pages could not be loaded"
+            title={t('pages_section.team_pages_error.load_title')}
             message={teamStartError}
             onRetry={() => { void initSharedDocuments(teamScope); }}
           />
         ) : !teamScope && teamUnavailable?.retryable ? (
           <TeamPagesErrorBanner
-            title="Team pages could not be reached"
+            title={t('pages_section.team_pages_error.unavailable_title')}
             message={teamUnavailable.message}
             onRetry={onRetryTeamScope}
           />
@@ -909,7 +925,7 @@ export const CollabModeInner = forwardRef<CollabModeRef, CollabModeInnerProps>(f
             className="pages-mode-empty flex-1 flex items-center justify-center text-sm text-nim-faint"
             data-testid="pages-mode-empty"
           >
-            Open a page, or right-click in the sidebar and choose New page
+            {t('pages_section.empty.select_or_create_page')}
           </div>
         )}
         {hasTabs && (

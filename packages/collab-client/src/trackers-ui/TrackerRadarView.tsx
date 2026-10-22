@@ -1,6 +1,8 @@
 /** Team activity as a ranked, since-you-left digest. */
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
+import type { TFunction } from "i18next";
 import { MaterialSymbol } from "@nimbalyst/runtime/ui/icons/MaterialSymbol";
 import type { TrackerIdentity } from "@nimbalyst/runtime/core/DocumentService";
 import type { TrackerRecord } from "@nimbalyst/runtime/core/TrackerRecord";
@@ -56,36 +58,38 @@ function latestMark(lane: RadarLane) {
   );
 }
 
-function personStory(lane: RadarLane): string {
+function personStory(lane: RadarLane, t: TFunction<"tracker">): string {
   const latest = latestMark(lane);
   const live = lane.enrichment?.liveSessions;
-  const prefix = live
-    ? `${live} session${live === 1 ? "" : "s"} live`
-    : latest
-    ? "Last active"
-    : "No recent activity";
-  if (!latest) return `${prefix} · ${lane.summary}`;
+  if (live) return t("radar.person_live", { count: live, summary: lane.summary });
+  if (!latest) return t("radar.person_no_recent_activity", { summary: lane.summary });
   const work =
     latest.kind === "run"
       ? latest.label
       : `${itemKey(latest.items[0]!)} ${latest.label}`;
-  return `${prefix} on ${work} · ${lane.summary}`;
+  return t("radar.person_last_active", { work, summary: lane.summary });
 }
 
-function windowContext(radar: ReturnType<typeof buildTrackerRadar>): string {
+function windowContext(
+  radar: ReturnType<typeof buildTrackerRadar>,
+  t: TFunction<"tracker">
+): string {
   if (radar.windowSource === "since-left") {
     const leftAt = new Date(radar.windowStart).toLocaleString(undefined, {
       weekday: "short",
       hour: "numeric",
       minute: "2-digit",
     });
-    return `Since you left ${leftAt} · ${Math.round(radar.windowHours)}h`;
+    return t("radar.since_left_context", {
+      time: leftAt,
+      hours: Math.round(radar.windowHours),
+    });
   }
   const duration =
     radar.windowHours < 24
-      ? `${radar.windowHours}h`
-      : `${radar.windowHours / 24}d`;
-  return `Last ${duration}`;
+      ? t("radar.hours", { count: radar.windowHours })
+      : t("radar.days", { count: radar.windowHours / 24 });
+  return t("radar.last_window", { duration });
 }
 
 export function TrackerRadarView({
@@ -98,6 +102,7 @@ export function TrackerRadarView({
   onItemSelect,
   onOpenDocument,
 }: TrackerRadarViewProps) {
+  const { t } = useTranslation("tracker");
   const [windowChoice, setWindowChoice] = useState<WindowChoice>(() =>
     lastSeenAt ? "since-left" : 24
   );
@@ -209,9 +214,9 @@ export function TrackerRadarView({
         data-testid="tracker-radar-empty"
       >
         <MaterialSymbol icon="radar" size={28} className="text-nim-faint" />
-        <span>No activity in this window.</span>
+        <span>{t("radar.empty_title")}</span>
         <span className="text-xs text-nim-faint">
-          Try a wider range to catch up on the team.
+          {t("radar.empty_hint")}
         </span>
       </div>
     );
@@ -230,22 +235,22 @@ export function TrackerRadarView({
             size={16}
             className="text-[var(--nim-primary)]"
           />
-          Radar
+          {t("radar.title")}
         </div>
         <span className="text-[11px] text-nim-muted">
-          {windowContext(radar)}
+          {windowContext(radar, t)}
         </span>
         <div
           className="ml-auto flex items-center rounded-md border border-nim bg-nim-secondary p-0.5"
-          aria-label="Radar window"
+          aria-label={t("radar.window_label")}
         >
           {(
             [
-              ["since-left", "Since you left"],
-              [2, "2h"],
-              [8, "8h"],
-              [24, "24h"],
-              [72, "3d"],
+              ["since-left", t("radar.since_left")],
+              [2, t("radar.hours", { count: 2 })],
+              [8, t("radar.hours", { count: 8 })],
+              [24, t("radar.hours", { count: 24 })],
+              [72, t("radar.days", { count: 3 })],
             ] as const
           ).map(([value, label]) => {
             if (value === "since-left" && !lastSeenAt) return null;
@@ -274,7 +279,7 @@ export function TrackerRadarView({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <section
           className="border-b border-nim bg-nim-secondary/35 px-4 py-3"
-          aria-label="People"
+          aria-label={t("radar.people_label")}
         >
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2.5">
             {radar.lanes.map((lane) => {
@@ -303,7 +308,7 @@ export function TrackerRadarView({
                       )}`}
                     />
                     <strong className="truncate text-xs text-nim">
-                      {lane.isCurrentUser ? "You" : lane.actor.displayName}
+                      {lane.isCurrentUser ? t("radar.you") : lane.actor.displayName}
                     </strong>
                     <span className="ml-auto shrink-0 text-[10px] text-nim-faint">
                       {formatRadarRelativeTime(
@@ -313,12 +318,13 @@ export function TrackerRadarView({
                     </span>
                   </span>
                   <span className="mt-1.5 block text-[11px] leading-4 text-nim-muted">
-                    {personStory(lane)}
+                    {personStory(lane, t)}
                   </span>
                   {lane.enrichment?.unpushedCommits ? (
                     <span className="mt-1 block text-[10px] text-nim-faint">
-                      {lane.enrichment.unpushedCommits} unpushed ·{" "}
-                      {lane.enrichment.divergence ?? "local"}
+                      {t("radar.unpushed_commits", {
+                        count: lane.enrichment.unpushedCommits,
+                      })} · {lane.enrichment.divergence ?? t("radar.local")}
                     </span>
                   ) : null}
                 </button>

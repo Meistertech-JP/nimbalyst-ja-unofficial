@@ -322,6 +322,9 @@ export function useTrackerContentCollab({
           users.set(userId, {
             name: state.user.name,
             color: state.user.color,
+            ...(state.user.nimbalystNameSource === 'system-default'
+              ? { nimbalystNameSource: 'system-default' as const }
+              : {}),
           });
         }
         store.set(collabAwarenessAtom(collabStateKey), users);

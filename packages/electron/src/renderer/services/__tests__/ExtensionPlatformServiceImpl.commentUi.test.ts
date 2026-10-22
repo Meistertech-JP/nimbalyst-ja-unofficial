@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ExtensionPlatformServiceImpl } from '../ExtensionPlatformServiceImpl';
 
 const COMMENT_UI_SPECIFIER = '@nimbalyst/runtime/editor/commenting/ui';
+const I18N_REACT_SPECIFIER = '@nimbalyst/i18n/react';
 
 class CapturingBlob {
   readonly source: string;
@@ -53,9 +54,15 @@ describe('ExtensionPlatformServiceImpl comment UI external', () => {
     const registry = (window as any).__nimbalyst_extensions?.[
       COMMENT_UI_SPECIFIER
     ];
+    const i18nRegistry = (window as any).__nimbalyst_extensions?.[
+      I18N_REACT_SPECIFIER
+    ];
     const wrapperUrl = importMap?.[COMMENT_UI_SPECIFIER];
+    const i18nWrapperUrl = importMap?.[I18N_REACT_SPECIFIER];
     expect(registry).toBeDefined();
+    expect(i18nRegistry).toEqual(expect.objectContaining({ useTranslation: expect.any(Function) }));
     expect(wrapperUrl).toBeDefined();
+    expect(i18nWrapperUrl).toBeDefined();
 
     const wrapperSource = moduleSources.get(wrapperUrl!);
     expect(wrapperSource).toBeDefined();

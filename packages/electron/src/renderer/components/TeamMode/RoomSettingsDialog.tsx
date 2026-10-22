@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   FloatingPortal,
@@ -68,6 +69,7 @@ export function RoomSettingsDialog({
   onClose: () => void;
   onArchived: () => void;
 }) {
+  const { t } = useTranslation('project');
   const [section, setSection] = useState<RoomSettingsSection>(initialSection);
   const [name, setName] = useState(entry.title ?? '');
   const [topic, setTopic] = useState(entry.topic ?? '');
@@ -120,7 +122,7 @@ export function RoomSettingsDialog({
       conversationId: entry.id,
       input: update.input,
     });
-    setNotice('Room details saved.');
+    setNotice(t('team.room_settings.saved'));
   });
 
   const setMembership = (
@@ -154,7 +156,7 @@ export function RoomSettingsDialog({
 
   return (
     <OrgDialog
-      title="Room settings"
+      title={t('team.room_settings.title')}
       description={`#${entry.title?.trim() || entry.id}`}
       testId="room-settings-dialog"
       width="w-[520px]"
@@ -163,7 +165,7 @@ export function RoomSettingsDialog({
       footer={(
         <>
           <OrgDialogSecondaryButton testId="room-settings-close" onClick={onClose}>
-            Done
+            {t('team.done')}
           </OrgDialogSecondaryButton>
           {section === 'details' && (
             <OrgDialogPrimaryButton
@@ -171,7 +173,7 @@ export function RoomSettingsDialog({
               disabled={!update.input || busy === 'details'}
               onClick={saveDetails}
             >
-              {busy === 'details' ? 'Saving…' : 'Save changes'}
+              {busy === 'details' ? t('common.saving') : t('common.save_changes')}
             </OrgDialogPrimaryButton>
           )}
         </>
@@ -190,7 +192,7 @@ export function RoomSettingsDialog({
             data-testid={`room-settings-tab-${id}`}
             onClick={() => setSection(id)}
           >
-            {id === 'details' ? 'Details' : 'Members'}
+            {id === 'details' ? t('team.room_settings.details') : t('team.members')}
           </button>
         ))}
       </div>
@@ -207,7 +209,7 @@ export function RoomSettingsDialog({
 
       {section === 'details' && (
         <>
-          <OrgDialogField label="Name" error={update.error}>
+          <OrgDialogField label={t('team.room_settings.name')} error={update.error}>
             <input
               type="text"
               className={ORG_DIALOG_INPUT_CLASS}
@@ -218,8 +220,8 @@ export function RoomSettingsDialog({
           </OrgDialogField>
 
           <OrgDialogField
-            label="Topic"
-            hint="Shown under the room name. Clearing it removes the topic."
+            label={t('team.room_settings.topic')}
+            hint={t('team.room_settings.topic_hint')}
           >
             <input
               type="text"
@@ -241,19 +243,18 @@ export function RoomSettingsDialog({
             />
             <span className="min-w-0">
               <span className="block text-[12px] font-medium text-[var(--nim-text)]">
-                Allow agents to post
+                {t('team.room_settings.allow_agents_to_post')}
               </span>
               <span className="block text-[11px] text-[var(--nim-text-faint)]">
-                Mentioned agents can reply in this room.
+                {t('team.room_settings.agent_posting_description')}
               </span>
             </span>
           </label>
 
           <div className="room-settings-archive rounded-md border border-[var(--nim-border)] p-3">
-            <p className="m-0 text-[12px] font-medium text-[var(--nim-text)]">Archive room</p>
+            <p className="m-0 text-[12px] font-medium text-[var(--nim-text)]">{t('team.room_settings.archive_room')}</p>
             <p className="m-0 mt-0.5 text-[11px] text-[var(--nim-text-faint)]">
-              The room leaves everyone&apos;s sidebar and stops accepting messages. Its history stays
-              readable from the rooms directory.
+              {t('team.room_settings.archive_description')}
             </p>
             {/* Every member is auto-joined to the general room and the server
                 rejects archiving it; offering the button only to answer with a
@@ -264,7 +265,7 @@ export function RoomSettingsDialog({
                   className="m-0 mt-2 text-[11px] text-[var(--nim-text-muted)]"
                   data-testid="room-settings-archive-blocked"
                 >
-                  The general room is the organization&apos;s default room and cannot be archived.
+                  {t('team.room_settings.general_archive_blocked')}
                 </p>
               )
               : entry.archivedAt !== undefined
@@ -273,7 +274,7 @@ export function RoomSettingsDialog({
                   className="m-0 mt-2 text-[11px] text-[var(--nim-text-muted)]"
                   data-testid="room-settings-already-archived"
                 >
-                  This room is already archived.
+                  {t('team.room_settings.already_archived')}
                 </p>
               )
               : confirmArchive
@@ -286,14 +287,14 @@ export function RoomSettingsDialog({
                       disabled={busy === 'archive'}
                       onClick={archive}
                     >
-                      {busy === 'archive' ? 'Archiving…' : 'Archive room'}
+                      {busy === 'archive' ? t('team.room_settings.archiving') : t('team.room_settings.archive_room')}
                     </button>
                     <button
                       type="button"
                       className="rounded-md border border-[var(--nim-border)] px-2.5 py-1 text-[12px] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]"
                       onClick={() => setConfirmArchive(false)}
                     >
-                      Cancel
+                      {t('team.cancel')}
                     </button>
                   </div>
                 )
@@ -304,7 +305,7 @@ export function RoomSettingsDialog({
                     data-testid="room-settings-archive"
                     onClick={() => setConfirmArchive(true)}
                   >
-                    Archive room
+                    {t('team.room_settings.archive_room')}
                   </button>
                 )}
           </div>
@@ -318,19 +319,18 @@ export function RoomSettingsDialog({
               className="m-0 mb-2 text-[11px] text-[var(--nim-text-muted)]"
               data-testid="room-settings-members-unknown"
             >
-              Loading current room roles…
+              {t('team.room_settings.loading_roles')}
             </p>
           )}
           {entry.visibility === 'public' && (
             <p className="m-0 mb-2 text-[11px] text-[var(--nim-text-faint)]">
-              Everyone in the organization can read this public room. Membership here only changes
-              who follows it and who can manage it.
+              {t('team.room_settings.public_room_description')}
             </p>
           )}
           <div className="room-settings-member-list rounded-md border border-[var(--nim-border)]">
             {rows.length === 0 && (
               <p className="m-0 px-3 py-2 text-[12px] text-[var(--nim-text-muted)]">
-                No members in this organization yet.
+                {t('team.room_settings.no_members')}
               </p>
             )}
             {rows.map((row) => (
@@ -364,6 +364,7 @@ function MemberRow({
     role?: ConversationMembership['role'],
   ) => void;
 }) {
+  const { t } = useTranslation('project');
   const [open, setOpen] = useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open,
@@ -381,7 +382,7 @@ function MemberRow({
   if (!membershipsKnown || row.roomRole === null) {
     items.push({
       id: 'add',
-      label: 'Add to room',
+      label: t('team.room_settings.add_to_room'),
       icon: 'person_add',
       run: () => onSetMembership(row.memberId, true, 'member'),
     });
@@ -389,7 +390,7 @@ function MemberRow({
   if (row.roomRole !== 'roomAdmin') {
     items.push({
       id: 'promote',
-      label: 'Make room admin',
+      label: t('team.room_settings.make_room_admin'),
       icon: 'shield_person',
       run: () => onSetMembership(row.memberId, true, 'roomAdmin'),
     });
@@ -397,7 +398,7 @@ function MemberRow({
   if (row.roomRole === 'roomAdmin') {
     items.push({
       id: 'demote',
-      label: 'Remove room admin',
+      label: t('team.room_settings.remove_room_admin'),
       icon: 'person',
       run: () => onSetMembership(row.memberId, true, 'member'),
     });
@@ -405,7 +406,7 @@ function MemberRow({
   if (!membershipsKnown || row.roomRole !== null) {
     items.push({
       id: 'remove',
-      label: 'Remove from room',
+      label: t('team.room_settings.remove_from_room'),
       icon: 'person_remove',
       run: () => onSetMembership(row.memberId, false),
     });
@@ -414,10 +415,10 @@ function MemberRow({
   const roleLabel = !membershipsKnown
     ? ''
     : row.roomRole === 'roomAdmin'
-      ? 'Room admin'
+      ? t('team.room_settings.role_room_admin')
       : row.roomRole === 'member'
-        ? 'Member'
-        : 'Not in room';
+        ? t('team.role_member')
+        : t('team.room_settings.role_not_in_room');
 
   return (
     <div
@@ -427,7 +428,7 @@ function MemberRow({
     >
       <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--nim-text)]">
         {row.label}
-        {row.isViewer && <span className="ml-1 text-[var(--nim-text-faint)]">(you)</span>}
+        {row.isViewer && <span className="ml-1 text-[var(--nim-text-faint)]">({t('team.you')})</span>}
       </span>
       {roleLabel && (
         <span className="shrink-0 text-[11px] text-[var(--nim-text-faint)]">{roleLabel}</span>
@@ -437,7 +438,7 @@ function MemberRow({
         type="button"
         className="room-settings-member-actions flex size-6 shrink-0 items-center justify-center rounded text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:cursor-not-allowed"
         data-testid={`room-settings-member-actions-${row.memberId}`}
-        aria-label={`Room membership for ${row.label}`}
+        aria-label={t('team.room_settings.membership_for_member', { member: row.label })}
         disabled={busy}
         {...getReferenceProps({ onClick: () => setOpen((value) => !value) })}
       >

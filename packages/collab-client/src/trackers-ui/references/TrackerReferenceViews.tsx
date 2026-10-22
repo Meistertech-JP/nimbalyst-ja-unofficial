@@ -15,6 +15,7 @@
 
 import type { JSX, ReactNode } from 'react';
 import { useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TrackerReferenceNodeRendererProps } from '@nimbalyst/runtime/plugins/TrackerLinkPlugin/TrackerReferenceNodeRenderer';
 import {
   useTrackerReferenceEditorFocus,
@@ -70,15 +71,16 @@ function StatementsFor({ resolver, item, referenceKey }: {
   item: TrackerItem;
   referenceKey: string;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const groups = useTrackerStatements(resolver, item.id);
   return (
     <div className="tracker-reference-statements" data-issue-key={referenceKey} data-state="resolved">
       <div className="tracker-reference-statements-header">
-        <span className="tracker-reference-statements-heading">Statements about</span>
+        <span className="tracker-reference-statements-heading">{t('references.statements_heading')}</span>
         <LiveChip resolver={resolver} referenceKey={item.id} />
       </div>
       {groups.length === 0 ? (
-        <div className="tracker-reference-statements-empty">No statements yet.</div>
+        <div className="tracker-reference-statements-empty">{t('references.statements_empty')}</div>
       ) : (
         groups.map((group) => (
           <section className="tracker-reference-statements-group" key={group.predicateId ?? ''}>
@@ -117,12 +119,15 @@ function StatementsFor({ resolver, item, referenceKey }: {
 }
 
 function LiveStatements({ resolver, referenceKey }: ResolverProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const resolution = useTrackerReference(resolver, referenceKey);
   if (resolution.state !== 'resolved') {
     return (
       <div className="tracker-reference-statements" data-issue-key={referenceKey} data-state={resolution.state}>
         <div className="tracker-reference-statements-empty">
-          {resolution.state === 'loading' ? `Loading ${referenceKey}...` : `${referenceKey} was not found`}
+          {resolution.state === 'loading'
+            ? t('references.loading', { referenceKey })
+            : t('references.not_found', { referenceKey })}
         </div>
       </div>
     );

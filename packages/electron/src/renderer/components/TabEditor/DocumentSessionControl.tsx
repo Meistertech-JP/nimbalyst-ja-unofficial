@@ -16,6 +16,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import { fileSessionLinkKey, fileSessionLinksRevisionAtom } from '../../store/atoms/fileSessionLinks';
 import { loadFileSessions } from '../../services/fileSessionsLoader';
@@ -58,17 +59,18 @@ export interface DocumentSessionControlProps {
   actions?: DocumentSessionActions;
 }
 
-function formatRelativeTime(timestamp: number): string {
+function formatRelativeTime(timestamp: number, locale: string): string {
   const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
+  const relativeTime = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' });
 
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString();
+  if (minutes < 1) return relativeTime.format(0, 'minute');
+  if (minutes < 60) return relativeTime.format(-minutes, 'minute');
+  if (hours < 24) return relativeTime.format(-hours, 'hour');
+  if (days < 7) return relativeTime.format(-days, 'day');
+  return new Date(timestamp).toLocaleDateString(locale);
 }
 
 const GroupHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -80,9 +82,13 @@ const GroupHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const SessionRow: React.FC<{
   session: FileSession;
   isPrimary?: boolean;
+  relativeTime: string;
   onClick?: () => void;
   onOpenInAgentMode?: () => void;
-}> = ({ session, isPrimary, onClick, onOpenInAgentMode }) => (
+}> = ({ session, isPrimary, relativeTime, onClick, onOpenInAgentMode }) => {
+  const { t } = useTranslation('editor');
+  const { t: tCommon } = useTranslation('common');
+  return (
   <div
     className={`document-session-row py-2 px-3 flex items-center gap-2 ${onClick ? 'cursor-pointer hover:bg-[var(--nim-bg-hover)]' : ''}`}
     data-testid="document-session-row"
@@ -96,20 +102,20 @@ const SessionRow: React.FC<{
     </div>
     {isPrimary && (
       <span className="document-session-row-current text-[10px] uppercase tracking-wider text-[var(--nim-text-faint)] shrink-0">
-        Current
+        {tCommon('quick_open.current')}
       </span>
     )}
     {session.fileAttribution === 'inferred' && (
-      <span className="text-xs text-[var(--nim-text-faint)]" title="Inferred from a shell command and a file change during its execution. Other external writers may not be detected.">
-        Inferred edit
+      <span className="text-xs text-[var(--nim-text-faint)]" title={t('ai_sessions.inferred_edit_help')}>
+        {t('ai_sessions.inferred_edit')}
       </span>
     )}
-    <div className="document-session-row-time text-xs text-[var(--nim-text-faint)] shrink-0">{formatRelativeTime(session.lastFileEditAt ?? session.updatedAt)}</div>
+    <div className="document-session-row-time text-xs text-[var(--nim-text-faint)] shrink-0">{relativeTime}</div>
     {onOpenInAgentMode && (
       <button
         className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-tertiary)] transition-colors duration-150 bg-transparent border-none cursor-pointer"
-        title="Open in Agent mode"
-        aria-label="Open in Agent mode"
+        title={tCommon('floating_document_actions.open_in_agent_mode')}
+        aria-label={tCommon('floating_document_actions.open_in_agent_mode')}
         onClick={(e) => { e.stopPropagation(); onOpenInAgentMode(); }}
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,13 +125,15 @@ const SessionRow: React.FC<{
       </button>
     )}
   </div>
-);
+  );
+};
 
 export const DocumentSessionControl: React.FC<DocumentSessionControlProps> = ({
   filePath,
   workspaceId,
   actions,
 }) => {
+  const { t, i18n } = useTranslation('editor');
   const menu = useFloatingMenu({ placement: 'bottom-end' });
   const { isOpen, setIsOpen } = menu;
 
@@ -207,6 +215,7 @@ export const DocumentSessionControl: React.FC<DocumentSessionControlProps> = ({
       key={session.id}
       session={session}
       isPrimary={session.id === primarySession?.id}
+      relativeTime={formatRelativeTime(session.lastFileEditAt ?? session.updatedAt, i18n.resolvedLanguage || i18n.language)}
       onClick={canOpen ? () => openSession(session.id) : undefined}
       onOpenInAgentMode={actions?.openInAgentMode ? () => openSessionInAgentMode(session.id) : undefined}
     />
@@ -218,8 +227,8 @@ export const DocumentSessionControl: React.FC<DocumentSessionControlProps> = ({
       ref={menu.refs.setReference}
       {...menu.getReferenceProps()}
       data-testid="document-session-caret"
-      aria-label="AI sessions for this document"
-      title="AI sessions for this document"
+      aria-label={t('ai_sessions.edited_file')}
+      title={t('ai_sessions.edited_file')}
       className={`document-session-caret w-4 h-5 rounded-r border-none bg-transparent cursor-pointer flex items-center justify-center transition-colors duration-150 text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] ${
         isOpen ? 'text-[var(--nim-text)]' : ''
       }`}
@@ -255,7 +264,7 @@ export const DocumentSessionControl: React.FC<DocumentSessionControlProps> = ({
         isOpen ? 'active bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]' : ''
       }`}
       onClick={() => setIsOpen(!isOpen)}
-      title="AI Sessions"
+      title={t('tooltips.ai_sessions')}
     >
       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" opacity="0.8" />
@@ -279,14 +288,14 @@ export const DocumentSessionControl: React.FC<DocumentSessionControlProps> = ({
           >
             {loading ? (
               <div className="document-session-loading p-4 text-center text-[13px] text-[var(--nim-text-muted)]">
-                Loading sessions...
+                {t('ai_sessions.loading')}
               </div>
             ) : sessions.length > 0 ? (
               hasGroups ? (
                 <>
-                  <GroupHeader>{isInWorktree ? 'This worktree' : 'This project'}</GroupHeader>
+                  <GroupHeader>{isInWorktree ? t('ai_sessions.this_worktree') : t('ai_sessions.this_project')}</GroupHeader>
                   {renderRows(currentWorkspaceSessions)}
-                  <GroupHeader>Other sessions</GroupHeader>
+                  <GroupHeader>{t('ai_sessions.other_sessions')}</GroupHeader>
                   {renderRows(otherSessions)}
                 </>
               ) : (
@@ -294,7 +303,7 @@ export const DocumentSessionControl: React.FC<DocumentSessionControlProps> = ({
               )
             ) : (
               <div className="document-session-empty p-4 text-center text-[13px] text-[var(--nim-text-muted)]">
-                No AI sessions have opened this file yet
+                {t('ai_sessions.empty')}
               </div>
             )}
 
@@ -310,7 +319,7 @@ export const DocumentSessionControl: React.FC<DocumentSessionControlProps> = ({
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
-                  Start new session on this file
+                  {t('ai_sessions.start_new_for_file')}
                 </button>
               </div>
             )}

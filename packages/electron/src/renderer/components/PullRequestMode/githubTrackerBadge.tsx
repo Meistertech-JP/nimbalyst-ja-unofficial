@@ -10,6 +10,7 @@
  */
 
 import type { CSSProperties, JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import {
@@ -63,6 +64,7 @@ export function GithubTrackerBadge({
   title,
   markerClass,
 }: GithubTrackerBadgeProps): JSX.Element | null {
+  const { t } = useTranslation('git');
   const option = statusOptionFor(record);
   if (!option) return null;
   const priority = getRecordPriority(record);
@@ -76,7 +78,7 @@ export function GithubTrackerBadge({
         <span
           className="w-1.5 h-1.5 rounded-full shrink-0"
           style={{ backgroundColor: priorityColor }}
-          title={`${priority} priority`}
+          title={t('pull_request.tracker.priority', { priority: t(`pull_request.tracker.priorities.${priority}`, { defaultValue: priority }) })}
         />
       )}
     </>

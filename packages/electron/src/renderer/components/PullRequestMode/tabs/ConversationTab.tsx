@@ -13,6 +13,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol, MarkdownRenderer } from '@nimbalyst/runtime';
 import {
   getPullRequestService,
@@ -36,6 +37,7 @@ export function ConversationTab({
   pr,
   refreshToken,
 }: ConversationTabProps): JSX.Element {
+  const { t } = useTranslation('git');
   const [timeline, setTimeline] = useState<PullRequestTimelineEntry[]>([]);
   const [threads, setThreads] = useState<ReviewThread[]>([]);
   const [threadsTruncated, setThreadsTruncated] = useState(false);
@@ -55,7 +57,7 @@ export function ConversationTab({
         if (!cancelled) setTimeline(entries);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load conversation');
+        if (!cancelled) setError(err instanceof Error ? err.message : t('pull_request.conversation.load_error'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -63,7 +65,7 @@ export function ConversationTab({
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, remote, pr.number, refreshToken]);
+  }, [workspaceId, remote, pr.number, refreshToken, t]);
 
   // Review threads load independently — a GraphQL failure shouldn't blank the
   // rest of the tab.
@@ -105,7 +107,7 @@ export function ConversationTab({
       setTimeline(refreshed);
       setDraftComment('');
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to post comment');
+      setSubmitError(err instanceof Error ? err.message : t('pull_request.conversation.submit_error'));
     } finally {
       setSubmitting(false);
     }
@@ -114,18 +116,18 @@ export function ConversationTab({
   return (
     <div className="pr-conversation-tab block p-4 space-y-3 overflow-y-auto flex-1 min-h-0" data-testid="pr-conversation-tab">
       {/* ---- Description (the PR body) ---- */}
-      <SectionHeader label="Description" icon="description" />
+      <SectionHeader label={t('pull_request.conversation.description')} icon="description" />
       <div className="border border-nim rounded-md overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 bg-nim-secondary border-b border-nim text-xs text-nim-muted">
           {pr.authorLogin && <span className="font-medium text-nim">{pr.authorLogin}</span>}
-          <span>opened this pull request</span>
+          <span>{t('pull_request.conversation.opened_this_pull_request')}</span>
           <span className="ml-auto">{formatRelative(pr.createdAt)}</span>
         </div>
         <div className="px-3 py-2 text-sm text-nim select-text">
           {pr.body?.trim() ? (
             <MarkdownRenderer content={pr.body} />
           ) : (
-            <span className="text-nim-faint italic">No description provided.</span>
+            <span className="text-nim-faint italic">{t('pull_request.conversation.no_description')}</span>
           )}
         </div>
       </div>
@@ -134,17 +136,17 @@ export function ConversationTab({
       {threads.length > 0 && (
         <>
           <SectionHeader
-            label="Review threads"
+            label={t('pull_request.conversation.review_threads')}
             icon="rate_review"
             count={threads.length}
-            note={unresolvedCount > 0 ? `${unresolvedCount} open` : 'all resolved'}
+            note={unresolvedCount > 0 ? t('pull_request.conversation.open_count', { count: unresolvedCount }) : t('pull_request.conversation.all_resolved')}
           />
           {threads.map((thread) => (
             <ReviewThreadCard key={thread.id} thread={thread} />
           ))}
           {threadsTruncated && (
             <div className="text-nim-faint text-[11px] italic">
-              Showing the first page of review threads.
+              {t('pull_request.conversation.first_page_threads')}
             </div>
           )}
         </>
@@ -152,7 +154,7 @@ export function ConversationTab({
 
       {/* ---- Conversation (comments + reviews) ---- */}
       <SectionHeader
-        label="Conversation"
+        label={t('pull_request.conversation.title')}
         icon="forum"
         count={timeline.length > 0 ? timeline.length : undefined}
       />
@@ -160,13 +162,13 @@ export function ConversationTab({
       <div className="border border-nim rounded-md bg-nim-secondary">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-nim text-xs text-nim-muted">
           <MaterialSymbol icon="add_comment" size={14} />
-          Add comment
+          {t('pull_request.conversation.add_comment')}
         </div>
         <div className="p-3 space-y-3">
           <textarea
             value={draftComment}
             onChange={(e) => setDraftComment(e.target.value)}
-            placeholder="Leave a comment on this pull request"
+            placeholder={t('pull_request.conversation.comment_placeholder')}
             rows={4}
             data-testid="pr-comment-input"
             className="nim-input w-full resize-y text-sm min-h-[96px]"
@@ -190,7 +192,7 @@ export function ConversationTab({
               ) : (
                 <MaterialSymbol icon="send" size={14} />
               )}
-              Comment
+              {t('pull_request.conversation.comment')}
             </button>
           </div>
         </div>
@@ -206,7 +208,7 @@ export function ConversationTab({
       {loading && timeline.length === 0 ? (
         <div className="flex items-center justify-center gap-2 py-6 text-nim-muted text-sm">
           <div className="spinner w-4 h-4 border-[2px] border-nim-secondary border-t-nim-primary rounded-full animate-spin" />
-          Loading conversation…
+          {t('pull_request.conversation.loading')}
         </div>
       ) : (
         timeline.map((entry) => (
@@ -215,8 +217,8 @@ export function ConversationTab({
               {entry.authorLogin && <span className="font-medium text-nim">{entry.authorLogin}</span>}
               <span>
                 {entry.type === 'review'
-                  ? `reviewed${entry.state ? ` (${entry.state.toLowerCase()})` : ''}`
-                  : 'commented'}
+                  ? `${t('pull_request.conversation.reviewed')}${entry.state ? ` (${t(`pull_request.conversation.review_state.${entry.state.toLowerCase()}`, { defaultValue: entry.state.toLowerCase() })})` : ''}`
+                  : t('pull_request.conversation.commented')}
               </span>
               <span className="ml-auto">{formatRelative(entry.createdAt)}</span>
             </div>
@@ -230,7 +232,7 @@ export function ConversationTab({
       )}
 
       {!loading && timeline.length === 0 && !error && (
-        <div className="text-nim-faint text-sm text-center py-4">No comments yet.</div>
+        <div className="text-nim-faint text-sm text-center py-4">{t('pull_request.conversation.no_comments')}</div>
       )}
     </div>
   );
@@ -242,10 +244,11 @@ export function ConversationTab({
  * as Markdown.
  */
 function ReviewThreadCard({ thread }: { thread: ReviewThread }): JSX.Element {
+  const { t } = useTranslation('git');
   const [expanded, setExpanded] = useState(!thread.isResolved);
   const location = thread.path
     ? `${thread.path}${thread.line != null ? `:${thread.line}` : ''}`
-    : 'general';
+    : t('pull_request.conversation.general');
 
   return (
     <div className="border border-nim rounded-md overflow-hidden">
@@ -259,7 +262,7 @@ function ReviewThreadCard({ thread }: { thread: ReviewThread }): JSX.Element {
         <span className="font-mono text-nim truncate flex-1" title={location}>
           {location}
         </span>
-        {thread.isOutdated && <span className="text-nim-faint shrink-0">outdated</span>}
+        {thread.isOutdated && <span className="text-nim-faint shrink-0">{t('pull_request.conversation.outdated')}</span>}
         <span
           className={`flex items-center gap-1 shrink-0 ${
             thread.isResolved ? 'text-nim-success' : 'text-nim-primary'
@@ -269,7 +272,7 @@ function ReviewThreadCard({ thread }: { thread: ReviewThread }): JSX.Element {
             icon={thread.isResolved ? 'check_circle' : 'radio_button_unchecked'}
             size={13}
           />
-          {thread.isResolved ? 'Resolved' : 'Open'}
+          {thread.isResolved ? t('pull_request.conversation.resolved') : t('pull_request.conversation.open')}
         </span>
         <span className="shrink-0">{thread.comments.length}</span>
       </button>

@@ -15,6 +15,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, act } from '@testing-library/react';
 import { Provider, useAtomValue } from 'jotai';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 const mocks = vi.hoisted(() => ({ storageThrows: false }));
 
@@ -43,6 +45,15 @@ import { extensionPanelAIContextAtom } from '../../../store/atoms/extensionPanel
 import type { RegisteredPanel } from '../PanelRegistry';
 
 let hostsSeen: unknown[] = [];
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+function withProviders(children: React.ReactNode): React.ReactElement {
+  return (
+    <I18nextProvider i18n={englishI18n}>
+      <Provider>{children}</Provider>
+    </I18nextProvider>
+  );
+}
 
 function RecordingPanel({ host }: { host: unknown }): React.JSX.Element {
   hostsSeen.push(host);
@@ -75,9 +86,10 @@ function AppLike(): React.JSX.Element {
 }
 
 describe('PanelContainer error containment', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     hostsSeen = [];
     mocks.storageThrows = false;
+    englishI18n = await createI18nInstance('en');
   });
 
   it('contains a failure in its own host wiring instead of blanking the window', async () => {
@@ -87,13 +99,9 @@ describe('PanelContainer error containment', () => {
     try {
       // If the throw escapes PanelContainer, render() rethrows and the window
       // is gone in the real app.
-      const view = render(
-        <Provider>
-          <AppLike />
-        </Provider>
-      );
+      const view = render(withProviders(<AppLike />));
 
-      expect(view.getByText('Panel Error')).toBeTruthy();
+      expect(view.getByText('Something went wrong')).toBeTruthy();
       expect(view.queryByTestId('recording-panel')).toBeNull();
     } finally {
       consoleError.mockRestore();
@@ -102,18 +110,15 @@ describe('PanelContainer error containment', () => {
 });
 
 describe('PanelContainer host stability', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     hostsSeen = [];
     mocks.storageThrows = false;
+    englishI18n = await createI18nInstance('en');
   });
 
   it('does not loop when the parent subscribes to the AI-context atom', async () => {
     await act(async () => {
-      render(
-        <Provider>
-          <AppLike />
-        </Provider>
-      );
+      render(withProviders(<AppLike />));
     });
 
     // With the bug this never settles: React aborts at its nested-update limit.
@@ -139,19 +144,11 @@ describe('PanelContainer host stability', () => {
 
     let view: ReturnType<typeof render>;
     await act(async () => {
-      view = render(
-        <Provider>
-          <Parent tick={0} />
-        </Provider>
-      );
+      view = render(withProviders(<Parent tick={0} />));
     });
 
     await act(async () => {
-      view.rerender(
-        <Provider>
-          <Parent tick={1} />
-        </Provider>
-      );
+      view.rerender(withProviders(<Parent tick={1} />));
     });
 
     expect(new Set(hostsSeen).size).toBe(1);

@@ -1,14 +1,17 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
 import type { CommentActionKind, CommentView } from './commentTypes';
 
-const ACTION_META: Record<CommentActionKind, { label: string; icon: string; testId: string; danger?: boolean }> = {
-  reply: { label: 'Reply', icon: 'reply', testId: 'comment-action-reply' },
-  edit: { label: 'Edit message', icon: 'edit', testId: 'comment-action-edit' },
-  copyLink: { label: 'Copy link to message', icon: 'link', testId: 'comment-action-copy-link' },
-  delete: { label: 'Delete message', icon: 'delete', testId: 'comment-action-delete', danger: true },
+type CommentActionLabelKey = 'action_reply' | 'action_edit' | 'action_copy_link' | 'action_delete';
+
+const ACTION_META: Record<CommentActionKind, { labelKey: CommentActionLabelKey; icon: string; testId: string; danger?: boolean }> = {
+  reply: { labelKey: 'action_reply', icon: 'reply', testId: 'comment-action-reply' },
+  edit: { labelKey: 'action_edit', icon: 'edit', testId: 'comment-action-edit' },
+  copyLink: { labelKey: 'action_copy_link', icon: 'link', testId: 'comment-action-copy-link' },
+  delete: { labelKey: 'action_delete', icon: 'delete', testId: 'comment-action-delete', danger: true },
 };
 
 /** Menu order, independent of the order capabilities resolved in. */
@@ -30,6 +33,7 @@ export function CommentActionMenu({
   view: CommentView;
   onAction: (action: CommentActionKind, view: CommentView) => void;
 }) {
+  const { t } = useTranslation('editor', { keyPrefix: 'thread_card' });
   const menu = useFloatingMenu({ placement: 'bottom-end' });
   const items = ORDER.filter((action) => view.actions.includes(action));
   if (items.length === 0) return null;
@@ -41,9 +45,9 @@ export function CommentActionMenu({
         {...menu.getReferenceProps()}
         type="button"
         data-testid="comment-action-trigger"
-        aria-label="Message actions"
+        aria-label={t('message_actions')}
         aria-expanded={menu.isOpen}
-        title="Message actions"
+        title={t('message_actions')}
         onClick={() => menu.setIsOpen(!menu.isOpen)}
         className={`comment-action-trigger flex size-6 items-center justify-center rounded border text-[var(--nim-text-muted)] ${
           menu.isOpen
@@ -79,7 +83,7 @@ export function CommentActionMenu({
                   }}
                 >
                   <MaterialSymbol icon={meta.icon} size={16} />
-                  {meta.label}
+                  {t(meta.labelKey)}
                 </button>
               );
             })}

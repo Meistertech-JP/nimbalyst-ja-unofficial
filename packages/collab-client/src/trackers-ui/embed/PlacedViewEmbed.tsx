@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type JSX, type ReactNode } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CollabOpenOptions } from '@nimbalyst/collab-client/core';
 import { createPlacedViewUrl, type PlacedViewTarget } from '@nimbalyst/runtime/core/placedViewUrl';
 import { QuadrantChart } from '@nimbalyst/runtime/ui/quadrant/QuadrantChart';
@@ -75,18 +76,19 @@ function OutOfScopeViewNote({ target, label, onOpenLink }: {
   label: string;
   onOpenLink?: (href: string) => void;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const href = createPlacedViewUrl(target);
   const name = label || (target.kind === 'type' ? target.typeId : 'View');
   const open = onOpenLink
-    ? <button type="button" className="ml-1 text-nim-link hover:underline" data-testid="placed-view-open-link" onClick={() => onOpenLink(href)}>Open</button>
-    : <a className="ml-1 text-nim-link hover:underline" data-testid="placed-view-open-link" href={href} target="_blank" rel="noreferrer">Open</a>;
+    ? <button type="button" className="ml-1 text-nim-link hover:underline" data-testid="placed-view-open-link" onClick={() => onOpenLink(href)}>{t('placed_view_embed.open')}</button>
+    : <a className="ml-1 text-nim-link hover:underline" data-testid="placed-view-open-link" href={href} target="_blank" rel="noreferrer">{t('placed_view_embed.open')}</a>;
   return (
     <div
       className="placed-view-out-of-scope my-3 rounded-lg border border-nim bg-nim-secondary px-3 py-2 text-xs text-nim-muted"
       contentEditable={false}
       data-testid="placed-view-out-of-scope"
     >
-      {name}: a view from another project, so it is not shown here.{open}
+      {t('placed_view_embed.out_of_scope', { name })}{open}
     </div>
   );
 }
@@ -102,6 +104,7 @@ function TypeViewEmbed({ typeId, label, attrs: savedAttrs, onAttrsChange, onOpen
   variant?: 'card' | 'page';
   settingsTemporary?: boolean;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const [day, setDay] = useState(() => new Date().toDateString());
   useEffect(() => {
     const timer = setInterval(() => setDay(new Date().toDateString()), 60_000);
@@ -117,7 +120,7 @@ function TypeViewEmbed({ typeId, label, attrs: savedAttrs, onAttrsChange, onOpen
       placedViewDefinition(typeId, label, next, model ? createTrackerFilterFields(resolveColumnsForType(typeId), typeId, [model]) : undefined);
       if (onAttrsChange) onAttrsChange(patch);
       else setTemporary(current => ({ ...current, ...patch }));
-    } catch (error) { setWriteError(error instanceof Error ? error.message : 'Could not save view settings'); }
+    } catch (error) { setWriteError(error instanceof Error ? error.message : t('placed_view_embed.save_failed')); }
   };
   const loaded = useTrackerDataSelector((state) => state.loaded);
   const model = useSyncExternalStore(subscribeSchema, () => globalRegistry.get(typeId), () => globalRegistry.get(typeId));
@@ -129,18 +132,18 @@ function TypeViewEmbed({ typeId, label, attrs: savedAttrs, onAttrsChange, onOpen
       const fields = model ? createTrackerFilterFields(resolveColumnsForType(typeId), typeId, [model]) : undefined;
       return { placed: placedViewDefinition(typeId, label, attrs, fields) };
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Invalid view definition.' };
+      return { error: error instanceof Error ? error.message : t('placed_view_embed.invalid_definition') };
     }
   }, [typeId, label, attrsKey, model, day]);
 
   if (loaded && !model) {
-    return <PlacedViewNote>{label || typeId}: there is no {typeId} type in this project.</PlacedViewNote>;
+    return <PlacedViewNote>{t('placed_view_embed.no_type', { name: label || typeId, type: typeId })}</PlacedViewNote>;
   }
-  if (!model) return <PlacedViewNote>Loading {label || typeId}…</PlacedViewNote>;
+  if (!model) return <PlacedViewNote>{t('placed_view_embed.loading_type', { name: label || typeId })}</PlacedViewNote>;
   const fields = createTrackerFilterFields(resolveColumnsForType(typeId), typeId, [model]);
   const actions = <div className="placed-view-actions flex shrink-0 items-center gap-1">
     <PlacedViewSettings availableColumns={resolveColumnsForType(typeId)} defaultColumns={getDefaultColumnConfig(typeId).visibleColumns} attrs={attrs} fields={fields} temporary={settingsTemporary || !onAttrsChange} onChange={change} />
-    {onOpenFullView && parsed.placed ? <button type="button" className="whitespace-nowrap rounded border-none bg-transparent px-2 py-1 text-xs text-nim-muted hover:bg-nim-hover hover:text-nim focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => onOpenFullView(typeId, { label, attrs: { ...attrs } })}>Open full view</button> : null}
+    {onOpenFullView && parsed.placed ? <button type="button" className="whitespace-nowrap rounded border-none bg-transparent px-2 py-1 text-xs text-nim-muted hover:bg-nim-hover hover:text-nim focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => onOpenFullView(typeId, { label, attrs: { ...attrs } })}>{t('placed_view_embed.open_full_view')}</button> : null}
   </div>;
   const notice = writeError ? <div role="alert" className="px-3 py-2 text-xs text-nim-error">{writeError}</div> : null;
   const wrap = (view: JSX.Element) => <div className={variant === 'page' ? "placed-view-configurable flex min-h-0 flex-1 flex-col" : "placed-view-configurable"}>{view}</div>;
@@ -177,6 +180,7 @@ function QuadrantViewEmbed({ view, quadrant, height, onOpenItem, headerActions, 
   height?: number;
   onOpenItem?: (itemId: string, options?: CollabOpenOptions) => void;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const { identity } = useTrackersUI();
   // The chart frame is the sized body a page's resize grip drags; the chart
   // re-lays itself out as the frame changes.
@@ -195,7 +199,7 @@ function QuadrantViewEmbed({ view, quadrant, height, onOpenItem, headerActions, 
       <div className="placed-view-quadrant-head flex shrink-0 items-center gap-2.5 border-b border-nim px-3 py-1.5 text-xs">
         <span className="min-w-0 truncate font-medium text-nim" title={view.name}>{view.name}</span>
         <span className="placed-view-query min-w-0 truncate rounded bg-nim-tertiary px-2 py-0.5 font-mono text-[11px] text-nim-muted">
-          {quadrant.xField} by {quadrant.yField}
+          {t('placed_view_embed.quadrant_fields', { x: quadrant.xField, y: quadrant.yField })}
         </span>
         <div className="ml-auto shrink-0">{headerActions}</div>
       </div>
@@ -212,8 +216,8 @@ function QuadrantViewEmbed({ view, quadrant, height, onOpenItem, headerActions, 
         />
       </div>
       <div className="placed-view-quadrant-foot flex items-center gap-3.5 px-3 py-1.5 text-[11px] text-nim-faint">
-        <span>{placedCount} placed</span>
-        {data.skipped > 0 ? <span>{data.skipped} without both values</span> : null}
+        <span>{t('placed_view_embed.placed_count', { count: placedCount })}</span>
+        {data.skipped > 0 ? <span>{t('placed_view_embed.missing_axis_values', { count: data.skipped })}</span> : null}
       </div>
     </div>
   );

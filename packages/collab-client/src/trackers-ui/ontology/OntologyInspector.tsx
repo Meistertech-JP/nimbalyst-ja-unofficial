@@ -11,6 +11,7 @@
  * desktop settings tab mount the same component.
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { LabelRegistry, PredicateDefinition, TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { buildDomainModel, suggestStructureRequest, type DomainGap } from './ontologyDomain';
 import { buildKnowledgeGraph, entityKind, ENTITY_TYPE } from './ontologyKnowledge';
@@ -57,6 +58,7 @@ const OPEN_STATUSES: ReadonlySet<string> = new Set(['proposed', 'accepted']);
 const SUGGEST_CHECK = 'suggest-structure';
 
 export function OntologyInspector({ types, predicates = null, labels = null, records, writer, loaded = true, onOpenItem, onOpenTypes, now: fixedNow }: OntologyInspectorProps) {
+  const { t } = useTranslation('tracker');
   const [openedAt] = useState(() => Date.now());
   const now = fixedNow ?? openedAt;
   const [trackSelected, setTrackSelected] = useState<string | null>(null);
@@ -97,9 +99,9 @@ export function OntologyInspector({ types, predicates = null, labels = null, rec
   const openProposal = (id: string) => setDrawer({ kind: 'proposal', id });
   const gapAction = (gap: DomainGap): GapAction => {
     const existing = openByCheck.get(gap.id);
-    if (existing) return { label: 'View proposal', open: () => openProposal(existing.id) };
+    if (existing) return { label: t('ontology_inspector.view_proposal'), open: () => openProposal(existing.id) };
     return {
-      label: gap.tone === 'opportunity' ? 'Propose' : 'Fix',
+      label: gap.tone === 'opportunity' ? t('ontology_inspector.propose') : t('ontology_inspector.fix'),
       open: () => setDrawer({ kind: 'request', draft: proposalRequestFor(gap), detail: gap.detail, pages: gap.items }),
     };
   };
@@ -110,18 +112,18 @@ export function OntologyInspector({ types, predicates = null, labels = null, rec
       return;
     }
     const draft = suggestStructureRequest(model);
-    setDrawer({ kind: 'request', draft, detail: 'The agent reviews what you track and drafts the changes with the most effect, each as its own proposal.', pages: [] });
+    setDrawer({ kind: 'request', draft, detail: t('ontology_inspector.suggest_detail'), pages: [] });
   };
 
   return (
     <div className="ontology-inspector" data-view="track">
       <div className="ontology-toolbar">
-        <span className="ontology-toolbar-note">Read-only. Changes go through proposals.</span>
-        {onOpenTypes && <button type="button" className="ontology-link" onClick={onOpenTypes}>Browse labels in the wiki's Types</button>}
-        <button type="button" className="ontology-button" onClick={suggest}>Ask the agent to suggest improvements</button>
+        <span className="ontology-toolbar-note">{t('ontology_inspector.read_only_note')}</span>
+        {onOpenTypes && <button type="button" className="ontology-link" onClick={onOpenTypes}>{t('ontology_inspector.browse_types')}</button>}
+        <button type="button" className="ontology-button" onClick={suggest}>{t('ontology_inspector.suggest_improvements')}</button>
       </div>
       {!loaded ? (
-        <p className="ontology-empty ontology-loading">Loading what this project tracks…</p>
+        <p className="ontology-empty ontology-loading">{t('ontology_inspector.loading')}</p>
       ) : (
         <OntologyWhatWeTrack
           model={model}

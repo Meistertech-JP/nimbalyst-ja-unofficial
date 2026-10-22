@@ -1,0 +1,54 @@
+{
+  "context": {
+    "menu_label": "File actions",
+    "open_in_files": "Open in Files",
+    "view_diff": "View Diff",
+    "open_in_external_editor": "Open in {{editor}}",
+    "copy_path": "Copy Path",
+    "show_in_finder": "Show in Finder",
+    "show_in_explorer": "Show in Explorer",
+    "show_in_folder": "Show in Folder"
+  },
+  "status": {
+    "deleted_and_committed": "{{path}} - Deleted and committed",
+    "committed": "{{path}} - Committed",
+    "operation": "{{path}} - {{operation}}{{gitStatus}}",
+    "created": "Created",
+    "edited": "Edited",
+    "deleted": "Deleted",
+    "deleted_suffix": "(deleted)",
+    "renamed": "Renamed",
+    "modified": "Modified",
+    "pending_review": "Pending review - changes not yet committed"
+  },
+  "shell_tracking_notice": {
+    "unavailable": "File tracking status unavailable",
+    "interrupted": "File tracking interrupted",
+    "earlier_gaps": "Earlier file tracking gaps",
+    "incomplete": "File tracking incomplete",
+    "resumed_with_gaps": "Tracking has resumed. Earlier edits may be missing from this list.",
+    "missing_edits": "Some edits may be missing from this list.",
+    "review_before_commit": "Review your changes before committing."
+  },
+  "diff": {
+    "show": "Show diff",
+    "hide": "Hide diff"
+  },
+  "controls": {
+    "group_by_directory": "Group by directory",
+    "expand_all": "Expand all",
+    "collapse_all": "Collapse all"
+  },
+  "selection": {
+    "select_all_uncommitted": "Select all ({{count}} uncommitted)"
+  },
+  "empty": {
+    "no_uncommitted_changes": "No uncommitted changes",
+    "show_all_session_edits": "Show all session edits ({{count}})",
+    "show_all_uncommitted_files": "Show all uncommitted files ({{count}})",
+    "no_files_edited_yet": "No files edited yet",
+    "no_files_edited_this_session": "No files edited in this session",
+    "no_uncommitted_files": "No uncommitted files",
+    "show_session_edits": "Show session edits ({{count}})"
+  }
+}

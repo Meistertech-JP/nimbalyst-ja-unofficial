@@ -18,6 +18,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerIdentity } from '@nimbalyst/runtime/core/DocumentService';
 import type { TrackerCommentEntry } from '@nimbalyst/tracker-engine';
@@ -76,6 +77,7 @@ export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({
   draft,
   onDraftChange,
 }) => {
+  const { t } = useTranslation('tracker');
   const [localDraft, setLocalDraft] = useState('');
   const newComment = draft ?? localDraft;
   const setNewComment = onDraftChange ?? setLocalDraft;
@@ -130,8 +132,8 @@ export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({
     if (!rejectedPending) return;
     restoreDraft(rejectedPending.body);
     setPending((previous) => previous.filter((comment) => comment.clientMutationId !== clientMutationId));
-    setError(formatTrackerMutationRejection(mutationRejection));
-  }, [mutationRejection, pending, restoreDraft]);
+    setError(formatTrackerMutationRejection(mutationRejection, t));
+  }, [mutationRejection, pending, restoreDraft, t]);
 
   const handleSubmit = useCallback(async () => {
     const body = newComment.trim();
@@ -181,22 +183,22 @@ export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({
           >
             <div className="flex items-center gap-2 text-[11px]">
               <span className="font-medium text-nim-muted">
-                {(!pendingEntry && comment.authorIdentity?.displayName) || 'You'}
+                {(!pendingEntry && comment.authorIdentity?.displayName) || t('detail_extra.you')}
               </span>
               <span className="text-nim-faint">{formatTimestamp(comment.createdAt)}</span>
-              {!pendingEntry && comment.updatedAt ? <span className="text-nim-faint">(edited)</span> : null}
+              {!pendingEntry && comment.updatedAt ? <span className="text-nim-faint">{t('detail.edited')}</span> : null}
               {isAuthor && !isEditing && (
                 <span className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     className="tracker-comment-edit text-nim-faint hover:text-nim"
-                    title="Edit comment"
+                    title={t('ui.edit_comment')}
                     onClick={() => { setEditingId(comment.id); setEditBody(comment.body); }}
                   >
                     <MaterialSymbol icon="edit" size={13} />
                   </button>
                   <button
                     className="tracker-comment-delete text-nim-faint hover:text-nim-error"
-                    title="Delete comment"
+                    title={t('ui.delete_comment')}
                     onClick={() => run({ kind: 'delete', commentId: comment.id })}
                   >
                     <MaterialSymbol icon="delete" size={13} />
@@ -222,13 +224,13 @@ export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({
                   disabled={!editBody.trim()}
                   className="px-2 py-1 rounded text-xs bg-nim-primary text-nim-on-primary disabled:opacity-40"
                 >
-                  Save
+                  {t('detail.save')}
                 </button>
                 <button
                   onClick={() => setEditingId(null)}
                   className="px-2 py-1 rounded text-xs text-nim-muted hover:text-nim"
                 >
-                  Cancel
+                  {t('detail.cancel')}
                 </button>
               </div>
             ) : (
@@ -238,16 +240,16 @@ export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({
         );
       })}
       {readOnly ? null : collapsedComposer && !composerOpen && !newComment ? (
-        <button type="button" className="tracker-add-comment" onClick={() => setComposerOpen(true)}>Add comment</button>
+        <button type="button" className="tracker-add-comment" onClick={() => setComposerOpen(true)}>{t('ui.add_comment_button')}</button>
       ) : (
         <div className="tracker-comment-composer flex gap-1">
           <Composer
             {...(collapsedComposer ? { rows: 3 } : { type: 'text' })}
-            aria-label="Comment"
+            aria-label={t('ui.comment_input_label')}
             value={newComment}
             onChange={e => setNewComment(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && ((!collapsedComposer && !e.shiftKey) || e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSubmit(); } }}
-            placeholder="Add a comment..."
+            placeholder={t('ui.add_comment')}
             className="min-w-0 flex-1 bg-nim-secondary border border-nim rounded px-2 py-1 text-xs text-nim placeholder:text-nim-faint outline-none focus:border-nim-primary"
             data-testid="tracker-comment-input"
           />
@@ -256,7 +258,7 @@ export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({
             disabled={!newComment.trim() || submitting}
             className="px-2 py-1 rounded text-xs bg-nim-primary text-nim-on-primary disabled:opacity-40 hover:opacity-90 transition-opacity"
           >
-            Post
+            {t('detail.post')}
           </button>
         </div>
       )}

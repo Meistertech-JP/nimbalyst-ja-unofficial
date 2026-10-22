@@ -1,9 +1,20 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as rtl from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 
-const { render, screen, fireEvent, waitFor, act } = rtl;
+const { render: rtlRender, screen, fireEvent, waitFor, act } = rtl;
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+function render(ui: React.ReactElement) {
+  return rtlRender(<I18nextProvider i18n={testI18n}>{ui}</I18nextProvider>);
+}
+
+beforeEach(async () => {
+  testI18n = await createI18nInstance('en');
+});
 
 const { copyToClipboard } = vi.hoisted(() => ({ copyToClipboard: vi.fn() }));
 vi.mock('../../../../utils/clipboard', () => ({ copyToClipboard }));

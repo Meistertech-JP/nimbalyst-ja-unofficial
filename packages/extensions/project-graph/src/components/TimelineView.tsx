@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { GraphNodeTypeSchema, ProjectGraphNode } from '../types';
 import { getTypeSchema } from '../schema';
 import {
@@ -60,24 +61,40 @@ function getActivity(node: ProjectGraphNode): PhaseActivityEntry[] | undefined {
   return undefined;
 }
 
-function fmtDate(ms: number, withTime = false): string {
+function fmtDate(ms: number, locale: string, withTime = false): string {
   return withTime
-    ? new Date(ms).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-    : new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    ? new Date(ms).toLocaleString(locale, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : new Date(ms).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function fmtDuration(ms: number): string {
+function fmtDuration(ms: number, isJapanese: boolean): string {
   const d = ms / DAY;
-  if (ms < 60 * 60 * 1000) return `${Math.max(1, Math.round(ms / (60 * 1000)))}m`;
-  if (d < 1) return `${Math.round(ms / (60 * 60 * 1000))}h`;
-  if (d < 21) return `${Math.round(d)}d`;
-  if (d < 90) return `${Math.round(d / 7)}w`;
-  if (d < 730) return `${Math.round(d / 30)}mo`;
-  return `${(d / 365).toFixed(1)}y`;
+  if (ms < 60 * 60 * 1000) return `${Math.max(1, Math.round(ms / (60 * 1000)))}${isJapanese ? '分' : 'm'}`;
+  if (d < 1) return `${Math.round(ms / (60 * 60 * 1000))}${isJapanese ? '時間' : 'h'}`;
+  if (d < 21) return `${Math.round(d)}${isJapanese ? '日' : 'd'}`;
+  if (d < 90) return `${Math.round(d / 7)}${isJapanese ? '週' : 'w'}`;
+  if (d < 730) return `${Math.round(d / 30)}${isJapanese ? 'か月' : 'mo'}`;
+  return `${(d / 365).toFixed(1)}${isJapanese ? '年' : 'y'}`;
 }
 
 export function TimelineView(props: TimelineViewProps) {
+  const { t, i18n } = useTranslation('extensions');
   const { nodes, types, selectedNodeId, onSelectNode, onNodeDoubleClick, groupBy, onGroupByChange, dateRange } = props;
+  const dateLocale = i18n.language.startsWith('ja') ? 'ja-JP' : 'en-US';
+  const isJapanese = i18n.language.startsWith('ja');
+
+  const phaseLabelFor = (key: PhaseSegment['phaseKey']) => {
+    switch (key) {
+      case 'draft': return t('project_graph.ui.phase_backlog');
+      case 'planning': return t('project_graph.ui.phase_planning');
+      case 'dev': return t('project_graph.ui.phase_development');
+      case 'review': return t('project_graph.ui.phase_review');
+      case 'done': return t('project_graph.ui.phase_done');
+      case 'blocked': return t('project_graph.ui.phase_blocked');
+      case 'rejected': return t('project_graph.ui.phase_rejected');
+      default: return t('project_graph.ui.phase_other');
+    }
+  };
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Re-read on new data or a new range, so a rolling "last 24 hours" window
@@ -230,10 +247,10 @@ export function TimelineView(props: TimelineViewProps) {
         byTag.set(t, arr);
       }
     }
-    const out = Array.from(byTag.entries())
+    const out: Array<{ tag: string; members: Row[]; isUntagged?: boolean }> = Array.from(byTag.entries())
       .map(([tag, members]) => ({ tag, members }))
       .sort((a, b) => b.members.length - a.members.length || a.tag.localeCompare(b.tag));
-    if (showUntagged && untagged.length > 0) out.push({ tag: 'Untagged', members: untagged });
+    if (showUntagged && untagged.length > 0) out.push({ tag: 'Untagged', members: untagged, isUntagged: true });
     return out;
   }, [groupBy, rows, showUntagged]);
 
@@ -256,7 +273,7 @@ export function TimelineView(props: TimelineViewProps) {
       // Open items end exactly at `now`; anything earlier ended on its own.
       const endsNow = s.endMs >= now;
       const withTime = s.endMs - s.startMs < 2 * DAY;
-      const title = `${s.statusLabel || s.phaseLabel} · ${fmtDate(s.startMs, withTime)} → ${endsNow ? 'now' : fmtDate(s.endMs, withTime)} · ${fmtDuration(s.endMs - s.startMs)}`;
+      const title = `${s.statusLabel || phaseLabelFor(s.phaseKey)} · ${fmtDate(s.startMs, dateLocale, withTime)} → ${endsNow ? t('project_graph.ui.now') : fmtDate(s.endMs, dateLocale, withTime)} · ${fmtDuration(s.endMs - s.startMs, isJapanese)}`;
       return (
         <div
           key={i}
@@ -270,7 +287,7 @@ export function TimelineView(props: TimelineViewProps) {
   const renderItemRow = (row: Row, indented = false) => {
     const schema = getTypeSchema(types, row.node.type);
     const selected = row.node.id === selectedNodeId;
-    const phaseLabel = row.node.status ? phaseForStatus(row.node.status).label : '';
+    const phaseLabel = row.node.status ? phaseLabelFor(phaseForStatus(row.node.status).key) : '';
     return (
       <div
         key={row.node.id}
@@ -285,7 +302,7 @@ export function TimelineView(props: TimelineViewProps) {
           />
           <span className="pg-tl-label-text">{row.node.label}</span>
           {row.node.status && (
-            <span className="pg-tl-label-status" title={`Current: ${row.node.status}`}>{phaseLabel}</span>
+            <span className="pg-tl-label-status" title={t('project_graph.ui.current_status', { status: row.node.status })}>{phaseLabel}</span>
           )}
         </div>
         <div className="pg-tl-track" style={{ width: contentWidth }}>
@@ -301,7 +318,7 @@ export function TimelineView(props: TimelineViewProps) {
     <main className="pg-tl">
       {/* toolbar */}
       <div className="pg-tl-toolbar">
-        <div className="pg-tl-group" role="tablist" aria-label="Group by">
+        <div className="pg-tl-group" role="tablist" aria-label={t('project_graph.ui.group_by')}>
           <button
             type="button"
             role="tab"
@@ -309,7 +326,7 @@ export function TimelineView(props: TimelineViewProps) {
             className={`pg-tl-group-tab${groupBy === 'none' ? ' is-active' : ''}`}
             onClick={() => onGroupByChange('none')}
           >
-            Items
+            {t('project_graph.ui.items')}
           </button>
           <button
             type="button"
@@ -318,22 +335,22 @@ export function TimelineView(props: TimelineViewProps) {
             className={`pg-tl-group-tab${groupBy === 'tag' ? ' is-active' : ''}`}
             onClick={() => onGroupByChange('tag')}
           >
-            By tag
+            {t('project_graph.ui.by_tag')}
           </button>
         </div>
 
         {groupBy === 'tag' && (
           <label className="pg-tl-toggle">
             <input type="checkbox" checked={showUntagged} onChange={e => setShowUntagged(e.target.checked)} />
-            Untagged
+            {t('project_graph.ui.untagged')}
           </label>
         )}
 
         <div className="pg-tl-legend">
           {PHASE_DEFS.map(p => (
-            <span key={p.key} className="pg-tl-legend-item" title={p.label}>
+            <span key={p.key} className="pg-tl-legend-item" title={phaseLabelFor(p.key)}>
               <span className="pg-tl-legend-dot" style={{ background: `var(${p.colorVar})` }} />
-              {p.label}
+              {phaseLabelFor(p.key)}
             </span>
           ))}
         </div>
@@ -341,9 +358,9 @@ export function TimelineView(props: TimelineViewProps) {
         <div className="pg-tl-spacer" />
 
         <div className="pg-tl-zoom">
-          <button type="button" className="pg-icon-btn" title="Zoom out" onClick={() => zoomBy(1 / 1.4)}>−</button>
-          <button type="button" className="pg-icon-btn" title="Fit" onClick={() => { setPxPerDay(null); didInitScroll.current = false; }}>Fit</button>
-          <button type="button" className="pg-icon-btn" title="Zoom in" onClick={() => zoomBy(1.4)}>+</button>
+          <button type="button" className="pg-icon-btn" title={t('project_graph.ui.zoom_out')} onClick={() => zoomBy(1 / 1.4)}>−</button>
+          <button type="button" className="pg-icon-btn" title={t('project_graph.ui.fit')} onClick={() => { setPxPerDay(null); didInitScroll.current = false; }}>{t('project_graph.ui.fit')}</button>
+          <button type="button" className="pg-icon-btn" title={t('project_graph.ui.zoom_in')} onClick={() => zoomBy(1.4)}>+</button>
         </div>
       </div>
 
@@ -352,20 +369,20 @@ export function TimelineView(props: TimelineViewProps) {
         {isEmpty ? (
           <div className="pg-tl-empty">
             {dateRange
-              ? 'No dated, status-bearing items overlap this time range.'
-              : 'No dated, status-bearing items in this view. Try the Everything or Delivery view, or pick item types in the sidebar.'}
+              ? t('project_graph.ui.no_items_in_range')
+              : t('project_graph.ui.no_items_in_view')}
           </div>
         ) : (
           <div className="pg-tl-grid" style={{ width: GUTTER_W + contentWidth }}>
             {todayX >= 0 && todayX <= contentWidth && (
-              <div className="pg-tl-today" style={{ left: GUTTER_W + todayX }} title="Today" />
+              <div className="pg-tl-today" style={{ left: GUTTER_W + todayX }} title={t('project_graph.ui.today')} />
             )}
 
             {/* ruler */}
             <div className="pg-tl-row pg-tl-ruler-row">
               <div className="pg-tl-corner" style={{ width: GUTTER_W }}>
-                {rows.length} item{rows.length === 1 ? '' : 's'}
-                {hiddenRowCount > 0 && <span className="pg-tl-corner-more">+{hiddenRowCount} hidden</span>}
+                {t(rows.length === 1 ? 'project_graph.ui.item_count_one' : 'project_graph.ui.item_count_other', { count: rows.length })}
+                {hiddenRowCount > 0 && <span className="pg-tl-corner-more">{t('project_graph.ui.hidden_count', { count: hiddenRowCount })}</span>}
               </div>
               <TimelineRuler rangeMin={range.min} rangeMax={range.max} pxPerDay={pxd} contentWidth={contentWidth} />
             </div>
@@ -375,12 +392,13 @@ export function TimelineView(props: TimelineViewProps) {
               ? rows.map(r => renderItemRow(r))
               : lanes.map(lane => {
                   const expanded = expandedTags.has(lane.tag);
+                  const laneLabel = lane.isUntagged ? t('project_graph.ui.untagged') : lane.tag;
                   return (
                     <div key={lane.tag} className="pg-tl-lane">
                       <div className="pg-tl-row pg-tl-lane-head" onClick={() => toggleTag(lane.tag)}>
-                        <div className="pg-tl-label" style={{ width: GUTTER_W }} title={lane.tag}>
+                        <div className="pg-tl-label" style={{ width: GUTTER_W }} title={laneLabel}>
                           <span className={`pg-tl-chevron${expanded ? ' is-open' : ''}`}>▸</span>
-                          <span className="pg-tl-label-text">{lane.tag}</span>
+                          <span className="pg-tl-label-text">{laneLabel}</span>
                           <span className="pg-tl-lane-count">{lane.members.length}</span>
                         </div>
                         <div className="pg-tl-track" style={{ width: contentWidth }}>
@@ -396,7 +414,7 @@ export function TimelineView(props: TimelineViewProps) {
                                   key={m.node.id}
                                   className="pg-tl-heat"
                                   style={{ left, width: w }}
-                                  title={`${m.node.label} · ${fmtDate(m.start, m.end - m.start < 2 * DAY)} → ${fmtDate(m.end, m.end - m.start < 2 * DAY)}`}
+                                  title={`${m.node.label} · ${fmtDate(m.start, dateLocale, m.end - m.start < 2 * DAY)} → ${fmtDate(m.end, dateLocale, m.end - m.start < 2 * DAY)}`}
                                 />
                               );
                             })}
@@ -410,12 +428,12 @@ export function TimelineView(props: TimelineViewProps) {
         )}
       </div>
 
-      <div className="pg-tl-tip">
-        <kbd>⌘ scroll</kbd> zoom
+      <div className="pg-tl-tip" aria-label={t('project_graph.ui.timeline_shortcuts')}>
+        <kbd>{t('project_graph.ui.command_scroll')}</kbd> {t('project_graph.ui.zoom')}
         <span>·</span>
-        <kbd>⇧ scroll</kbd> pan
+        <kbd>{t('project_graph.ui.shift_scroll')}</kbd> {t('project_graph.ui.pan_help')}
         <span>·</span>
-        <kbd>scroll</kbd> rows
+        <kbd>{t('project_graph.ui.scroll_key')}</kbd> {t('project_graph.ui.rows')}
       </div>
     </main>
   );

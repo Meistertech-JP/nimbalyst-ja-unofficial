@@ -1,14 +1,30 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import type { PropsWithChildren, ReactNode } from 'react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CanvasScreenTitle } from '../CanvasScreenTitle';
 
 afterEach(cleanup);
 
-it('commits a trimmed title once on Enter and contains editing keys', () => {
+async function renderWithLanguage(
+  element: ReactNode,
+  language: 'en' | 'ja' = 'en'
+) {
+  const i18n = await createI18nInstance(language);
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return render(element, { wrapper: Wrapper });
+}
+
+it('commits a trimmed title once on Enter and contains editing keys', async () => {
   const rename = vi.fn(),
     outerKey = vi.fn(),
     outerDoubleClick = vi.fn();
-  render(
+  await renderWithLanguage(
     <div onKeyDown={outerKey} onDoubleClick={outerDoubleClick}>
       <CanvasScreenTitle label="Files" readOnly={false} onRename={rename} />
     </div>
@@ -23,9 +39,9 @@ it('commits a trimmed title once on Enter and contains editing keys', () => {
   expect(outerDoubleClick).not.toHaveBeenCalled();
 });
 
-it('cancels on Escape, ignores empty titles, and saves on blur', () => {
+it('cancels on Escape, ignores empty titles, and saves on blur', async () => {
   const rename = vi.fn();
-  render(
+  await renderWithLanguage(
     <CanvasScreenTitle label="Files" readOnly={false} onRename={rename} />
   );
   const start = () => {
@@ -46,9 +62,9 @@ it('cancels on Escape, ignores empty titles, and saves on blur', () => {
   expect(rename.mock.calls).toEqual([['Workspace']]);
 });
 
-it('supports keyboard editing and cancels when the card becomes read-only', () => {
+it('supports keyboard editing and cancels when the card becomes read-only', async () => {
   const rename = vi.fn();
-  const { rerender } = render(
+  const { rerender } = await renderWithLanguage(
     <CanvasScreenTitle label="Files" readOnly={false} onRename={rename} />
   );
   fireEvent.keyDown(screen.getByRole('button'), { key: 'Enter' });
@@ -59,4 +75,22 @@ it('supports keyboard editing and cancels when the card becomes read-only', () =
   expect(screen.queryByRole('textbox')).toBeNull();
   expect(screen.queryByRole('button')).toBeNull();
   expect(rename).not.toHaveBeenCalled();
+});
+
+it('localizes the screenshot title accessibility label and rename hint', async () => {
+  await renderWithLanguage(
+    <CanvasScreenTitle label="Files" readOnly={false} onRename={vi.fn()} />,
+    'ja'
+  );
+
+  expect(
+    screen.getByRole('button', { name: 'Filesの名前を変更' })
+  ).toHaveProperty('title', 'ダブルクリックして名前を変更');
+
+  fireEvent.doubleClick(screen.getByRole('button'));
+  expect(
+    screen
+      .getByRole('textbox', { name: 'スクリーンショットのタイトル' })
+      .getAttribute('aria-label')
+  ).toBe('スクリーンショットのタイトル');
 });

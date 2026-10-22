@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { SavedView } from '@nimbalyst/collab-client/trackers';
 
@@ -16,17 +17,19 @@ export const TrackerSavedViewsSection: React.FC<{
    */
   onDeleteView?: (view: SavedView) => void;
   onToggleShareView?: (view: SavedView) => void;
-}> = ({ savedViews, activeSavedViewId, isSharedLayout, onApplyView, onDeleteView, onToggleShareView }) => (
-  <div className="px-2 pt-2 pb-1" data-testid="tracker-saved-views">
+}> = ({ savedViews, activeSavedViewId, isSharedLayout, onApplyView, onDeleteView, onToggleShareView }) => {
+  const { t } = useTranslation('tracker');
+  return (
+    <div className="px-2 pt-2 pb-1" data-testid="tracker-saved-views">
     <div className="flex items-center justify-between px-1 mb-1.5">
       <span className="text-[10px] font-semibold text-nim-faint uppercase tracking-wider">
-        Saved Views
+        {t('sidebar.saved_views')}
       </span>
     </div>
 
     {savedViews.length === 0 ? (
       <div className="px-1 text-[10px] text-nim-faint italic">
-        Saved views will appear here.
+        {t('sidebar.saved_views_empty')}
       </div>
     ) : (
       <div className="flex flex-col gap-0.5">
@@ -41,7 +44,7 @@ export const TrackerSavedViewsSection: React.FC<{
             <button
               className="flex-1 flex items-center gap-2 px-2 py-1.5 text-left text-[12px] text-nim-muted hover:text-nim min-w-0"
               onClick={() => onApplyView(view)}
-              title={`Apply view: ${view.name}`}
+              title={t('ui.apply_view', { name: view.name })}
             >
               <MaterialSymbol
                 icon={view.builtIn ? 'bolt' : 'bookmark'}
@@ -54,7 +57,7 @@ export const TrackerSavedViewsSection: React.FC<{
                   icon="group"
                   size={12}
                   className="shrink-0 text-nim-faint"
-                  title="Shared with this team"
+                  title={t('ui.shared_with_team')}
                 />
               )}
             </button>
@@ -64,7 +67,7 @@ export const TrackerSavedViewsSection: React.FC<{
                   ? 'px-1.5 text-[var(--nim-primary)]'
                   : 'opacity-0 group-hover:opacity-100 px-1.5 text-nim-faint hover:text-nim transition-opacity'}
                 onClick={() => onToggleShareView(view)}
-                title={view.shared ? 'Stop sharing with the team' : 'Share view with the team'}
+                title={view.shared ? t('ui.stop_sharing_view') : t('ui.share_view_with_team')}
                 data-testid="tracker-saved-view-share"
               >
                 <MaterialSymbol icon={view.shared ? 'group' : 'group_add'} size={13} />
@@ -74,7 +77,7 @@ export const TrackerSavedViewsSection: React.FC<{
               <button
                 className="opacity-0 group-hover:opacity-100 px-1.5 text-nim-faint hover:text-nim-error transition-opacity"
                 onClick={() => onDeleteView(view)}
-                title={view.shared ? 'Delete view for the whole team' : 'Delete view'}
+                title={view.shared ? t('ui.delete_view_for_team') : t('ui.delete_view')}
                 data-testid="tracker-saved-view-delete"
               >
                 <MaterialSymbol icon="close" size={13} />
@@ -84,5 +87,6 @@ export const TrackerSavedViewsSection: React.FC<{
         ))}
       </div>
     )}
-  </div>
-);
+    </div>
+  );
+};

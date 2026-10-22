@@ -11,6 +11,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import {
   FloatingPortal,
@@ -41,30 +43,34 @@ interface McpSessionStatusChipProps {
 /** Providers whose sessions can report MCP status. Mirrors the main-process set. */
 const MCP_STATUS_PROVIDERS = new Set(['claude-code']);
 
-function formatRelativeTime(timestamp: number): string {
+function formatRelativeTime(timestamp: number, t: TFunction<'mcp'>): string {
   const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 60) return t('session_status.seconds_ago', { count: seconds });
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.round(minutes / 60)}h ago`;
+  if (minutes < 60) return t('session_status.minutes_ago', { count: minutes });
+  return t('session_status.hours_ago', { count: Math.round(minutes / 60) });
 }
 
-function rowDetail(row: McpSessionServerRow): string {
+function rowDetail(row: McpSessionServerRow, t: TFunction<'mcp'>): string {
   switch (row.state) {
     case 'absent':
-      return 'Configured but never reached this session';
+      return t('session_status.configured_not_reached');
     case 'needs-auth':
-      return 'Needs authorization';
+      return t('session_status.needs_authorization');
     case 'pending':
-      return row.error ? `Connecting - ${row.error}` : 'Connecting';
+      return row.error
+        ? t('session_status.connecting_error', { error: row.error })
+        : t('session_status.connecting');
     case 'disabled':
-      return 'Disabled';
+      return t('session_status.disabled');
     case 'failed':
-      return row.error ? `Failed - ${row.error}` : 'Failed';
+      return row.error
+        ? t('session_status.failed_error', { error: row.error })
+        : t('session_status.failed');
     default:
       return row.toolCount === undefined
-        ? 'Connected'
-        : `${row.toolCount} ${row.toolCount === 1 ? 'tool' : 'tools'}`;
+        ? t('panel.connected')
+        : t('session_status.tools', { count: row.toolCount });
   }
 }
 
@@ -78,6 +84,7 @@ const DOT_CLASS: Record<McpSessionServerRow['state'], string> = {
 };
 
 function ServerRow({ row }: { row: McpSessionServerRow }) {
+  const { t } = useTranslation('mcp');
   const isError = row.state === 'failed' || row.state === 'absent';
   const isWarn = row.state === 'needs-auth' || row.state === 'pending';
   return (
@@ -99,7 +106,7 @@ function ServerRow({ row }: { row: McpSessionServerRow }) {
                 : 'mcp-session-status-row-detail text-[0.6875rem] text-[var(--nim-text-muted)]'
           }
         >
-          {rowDetail(row)}
+          {rowDetail(row, t)}
         </div>
       </div>
     </div>
@@ -107,6 +114,7 @@ function ServerRow({ row }: { row: McpSessionServerRow }) {
 }
 
 export function McpSessionStatusChip({ sessionId, provider }: McpSessionStatusChipProps) {
+  const { t } = useTranslation('mcp');
   const supported = MCP_STATUS_PROVIDERS.has(provider);
   const status = useAtomValue(mcpSessionStatusAtomFamily(sessionId));
   const setStatus = useSetAtom(mcpSessionStatusAtomFamily(sessionId));
@@ -188,7 +196,8 @@ export function McpSessionStatusChip({ sessionId, provider }: McpSessionStatusCh
         ref={floating.refs.setReference}
         {...getReferenceProps()}
         className={`mcp-session-status-chip shrink-0 inline-flex items-center gap-1.5 h-6 px-2 rounded-full border text-[0.6875rem] font-medium bg-transparent cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] ${chipClass}`}
-        title="MCP servers for this session"
+        title={t('session_status.button_title')}
+        aria-label={t('session_status.button_aria', { status: chipLabel })}
         data-testid="mcp-session-status-chip"
       >
         <span className={`mcp-session-status-chip-dot w-1.5 h-1.5 rounded-full ${chipDot}`} />
@@ -201,22 +210,23 @@ export function McpSessionStatusChip({ sessionId, provider }: McpSessionStatusCh
             ref={floating.refs.setFloating}
             style={floating.floatingStyles}
             {...getFloatingProps()}
+            aria-label={t('session_status.popover_title')}
             className="mcp-session-status-popover z-50 w-80 max-h-96 overflow-y-auto rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-elevated,var(--nim-bg))] shadow-lg py-1"
             data-testid="mcp-session-status-popover"
           >
             <div className="mcp-session-status-popover-head flex items-baseline justify-between px-3 py-1.5">
-              <span className="mcp-session-status-popover-title text-xs font-semibold text-[var(--nim-text)]">MCP servers</span>
+              <span className="mcp-session-status-popover-title text-xs font-semibold text-[var(--nim-text)]">{t('panel.title')}</span>
               <span className="mcp-session-status-popover-sub text-[0.625rem] text-[var(--nim-text-faint)]">
                 {status.lastCheckedAt === null
-                  ? 'not checked yet'
-                  : `refreshed ${formatRelativeTime(status.lastCheckedAt)}`}
+                  ? t('session_status.not_checked_yet')
+                  : t('session_status.refreshed', { time: formatRelativeTime(status.lastCheckedAt, t) })}
               </span>
             </div>
 
             {problemCount > 0 && (
               <>
                 <div className="mcp-session-status-section-label px-3 pt-1 pb-0.5 text-[0.625rem] uppercase tracking-wide text-[var(--nim-text-faint)]">
-                  Not available
+                  {t('session_status.not_available')}
                 </div>
                 {groups.absent.map((row) => <ServerRow key={row.name} row={row} />)}
                 {groups.problem.map((row) => <ServerRow key={row.name} row={row} />)}
@@ -226,7 +236,7 @@ export function McpSessionStatusChip({ sessionId, provider }: McpSessionStatusCh
             {groups.connected.length > 0 && (
               <>
                 <div className="mcp-session-status-section-label px-3 pt-1 pb-0.5 text-[0.625rem] uppercase tracking-wide text-[var(--nim-text-faint)]">
-                  Connected
+                  {t('panel.connected')}
                 </div>
                 {groups.connected.map((row) => <ServerRow key={row.name} row={row} />)}
               </>
@@ -237,7 +247,7 @@ export function McpSessionStatusChip({ sessionId, provider }: McpSessionStatusCh
                 from its own settings can be healthy and still not listed. Say
                 so rather than implying the list is exhaustive. */}
             <div className="mcp-session-status-popover-foot mt-1 px-3 py-2 border-t border-[var(--nim-border)] text-[0.625rem] leading-snug text-[var(--nim-text-faint)]">
-              Reflects the servers Nimbalyst passed to this session. Servers the CLI reads from its own settings may not appear here.
+              {t('session_status.scope_description')}
             </div>
           </div>
         </FloatingPortal>

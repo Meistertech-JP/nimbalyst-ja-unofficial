@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface TrackerViewTitleProps {
@@ -26,6 +27,7 @@ export function TrackerViewTitle({
   onUpdateSavedView,
   onExitSavedView,
 }: TrackerViewTitleProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const [editMode, setEditMode] = useState<'create' | 'rename' | null>(null);
   const [viewName, setViewName] = useState('');
 
@@ -72,7 +74,7 @@ export function TrackerViewTitle({
             if (viewName.trim()) commitViewName();
             else cancelNaming();
           }}
-          placeholder={editMode === 'rename' ? 'View name…' : 'Name this view…'}
+          placeholder={editMode === 'rename' ? t('ui.view_name') : t('ui.name_this_view')}
           className="h-full w-44 bg-transparent px-2 text-sm font-semibold text-nim outline-none placeholder:font-normal placeholder:text-nim-faint"
           data-testid="tracker-saved-view-name-input"
         />
@@ -82,7 +84,7 @@ export function TrackerViewTitle({
           disabled={!viewName.trim()}
           onMouseDown={event => event.preventDefault()}
           onClick={commitViewName}
-          aria-label={editMode === 'rename' ? 'Save view name' : 'Save named view'}
+          aria-label={editMode === 'rename' ? t('ui.save_view_name') : t('ui.save_named_view')}
           data-testid="tracker-saved-view-save"
         >
           <MaterialSymbol icon="check" size={14} />
@@ -92,7 +94,7 @@ export function TrackerViewTitle({
           className="inline-flex h-full w-7 items-center justify-center text-nim-faint hover:bg-nim-tertiary hover:text-nim"
           onMouseDown={event => event.preventDefault()}
           onClick={cancelNaming}
-          aria-label="Cancel saving view"
+          aria-label={t('ui.cancel_saving_view')}
         >
           <MaterialSymbol icon="close" size={13} />
         </button>
@@ -119,7 +121,7 @@ export function TrackerViewTitle({
             setEditMode('rename');
           }}
           data-testid="tracker-view-title"
-          title="Rename saved view"
+          title={t('ui.rename_saved_view')}
         >
           <span className="truncate">{activeSavedViewName}</span>
           <MaterialSymbol
@@ -145,7 +147,7 @@ export function TrackerViewTitle({
           data-testid="tracker-saved-view-update"
         >
           <MaterialSymbol icon="save" size={13} />
-          Save changes
+          {t('ui.save_changes')}
         </button>
       ) : !activeSavedViewName && showSaveViewAction ? (
         <button
@@ -155,7 +157,7 @@ export function TrackerViewTitle({
           data-testid="tracker-saved-view-add"
         >
           <MaterialSymbol icon="bookmark_add" size={13} />
-          Save view
+          {t('ui.save_view')}
         </button>
       ) : null}
       {activeSavedViewName && (
@@ -163,8 +165,8 @@ export function TrackerViewTitle({
           type="button"
           className="inline-flex h-7 w-7 items-center justify-center rounded text-nim-faint hover:bg-nim-tertiary hover:text-nim"
           onClick={onExitSavedView}
-          aria-label="Exit saved view"
-          title="Exit saved view"
+          aria-label={t('ui.exit_saved_view')}
+          title={t('ui.exit_saved_view')}
           data-testid="tracker-saved-view-exit"
         >
           <MaterialSymbol icon="close" size={14} />

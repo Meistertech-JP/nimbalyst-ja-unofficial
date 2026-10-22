@@ -42,14 +42,23 @@ export function initFileChangeListeners(): () => void {
     const existing = warnings.get(data.root);
     if (data.state === 'watching' || data.state === 'stopped') {
       if (existing?.timer) clearTimeout(existing.timer);
-      if (existing?.shown && data.state === 'watching') errorNotificationService.showInfo('File updates resumed', 'Open files are being checked for changes.');
+      if (existing?.shown && data.state === 'watching') {
+        errorNotificationService.showInfo(
+          errorNotificationService.getLocalizedText('common', 'deep_links.file_updates_resumed_title', 'File updates resumed'),
+          errorNotificationService.getLocalizedText('common', 'deep_links.file_updates_resumed_message', 'Open files are being checked for changes.'),
+        );
+      }
       warnings.delete(data.root);
     } else if (data.state === 'recovering' && !existing) {
       const warning = { shown: false, timer: undefined as ReturnType<typeof setTimeout> | undefined };
       warning.timer = setTimeout(() => {
         warning.timer = undefined;
         warning.shown = true;
-        errorNotificationService.showWarning('File updates delayed', 'Automatic file updates are recovering. Open files will continue to be checked for changes.', { duration: 10_000 });
+        errorNotificationService.showWarning(
+          errorNotificationService.getLocalizedText('common', 'deep_links.file_updates_delayed_title', 'File updates delayed'),
+          errorNotificationService.getLocalizedText('common', 'deep_links.file_updates_delayed_message', 'Automatic file updates are recovering. Open files will continue to be checked for changes.'),
+          { duration: 10_000 },
+        );
       }, 10_000);
       warnings.set(data.root, warning);
     }

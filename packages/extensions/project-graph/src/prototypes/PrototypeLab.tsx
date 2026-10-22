@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import type { PanelHostProps } from "@nimbalyst/extension-sdk";
 import type { ProjectGraphNode, ProjectGraphSnapshot } from "../types";
 import { ProjectIndex } from "../indexing/projectIndex";
@@ -29,6 +30,7 @@ import { SourceRecord } from "./SourceRecord";
 import "./prototype-shell.css";
 
 export function PrototypeLab({ host }: PanelHostProps) {
+  const { t } = useTranslation("extensions");
   const [settings, setSettings] = useState(() =>
     normalizeSettings(host.storage.get(SETTINGS_KEY))
   );
@@ -106,10 +108,11 @@ export function PrototypeLab({ host }: PanelHostProps) {
       settingsWrites.current = settingsWrites.current
         .then(() => host.storage.set(SETTINGS_KEY, next))
         .catch((e) => {
-          if (alive.current) setError(`Could not save settings: ${String(e)}`);
+          if (alive.current)
+            setError(t("project_graph.error_save_settings", { error: String(e) }));
         });
     },
-    [host]
+    [host, t]
   );
   const saveRegistry = useCallback(
     (next: AreaRule[]) => {
@@ -117,10 +120,11 @@ export function PrototypeLab({ host }: PanelHostProps) {
       registryWrites.current = registryWrites.current
         .then(() => host.storage.set(REGISTRY_KEY, next))
         .catch((e) => {
-          if (alive.current) setError(`Could not save areas: ${String(e)}`);
+          if (alive.current)
+            setError(t("project_graph.error_save_areas", { error: String(e) }));
         });
     },
-    [host]
+    [host, t]
   );
   const liveSnapshot = useMemo<ProjectGraphSnapshot>(() => {
     const countsByType: Record<string, number> = {};
@@ -220,11 +224,11 @@ export function PrototypeLab({ host }: PanelHostProps) {
       .loadCommitEvidence({ sinceMs: startMs, untilMs: range.endMs })
       .then((result) => {
         if (alive.current && result.error)
-          setError(`Commit evidence: ${result.error}`);
+            setError(t("project_graph.error_commit_evidence", { error: result.error }));
       })
       .catch((e) => {
         if (alive.current)
-          setError(`Could not retrieve commit evidence: ${String(e)}`);
+            setError(t("project_graph.error_retrieve_commit_evidence", { error: String(e) }));
       });
   }, [
     index,
@@ -235,6 +239,7 @@ export function PrototypeLab({ host }: PanelHostProps) {
     source,
     range,
     comparisonRange,
+    t,
   ]);
   const navigate = useCallback<PrototypeViewProps["onNavigate"]>(
     (mode, nodeId, areaId) => {
@@ -287,10 +292,10 @@ export function PrototypeLab({ host }: PanelHostProps) {
           })
           .catch((e) => {
             if (alive.current)
-              setError(`Could not fetch source detail: ${String(e)}`);
+            setError(t("project_graph.error_fetch_source_detail", { error: String(e) }));
           });
     },
-    [source, index]
+    [source, index, t]
   );
   const resolve = useCallback(
     (id: string) => {
@@ -305,9 +310,7 @@ export function PrototypeLab({ host }: PanelHostProps) {
             setSelectedNodeId(n.id);
             setRecord(n);
           } else
-            setError(
-              "This reference could not be resolved in the available project sources. It remains an unresolved link."
-            );
+            setError(t("project_graph.reference_unresolved"));
         })
         .catch((e) => {
           if (alive.current) setError(String(e));
@@ -316,7 +319,7 @@ export function PrototypeLab({ host }: PanelHostProps) {
           if (alive.current) setResolving(false);
         });
     },
-    [index, source]
+    [index, source, t]
   );
   const openOriginal = () => {
     if (!record || source === "sample") return;
@@ -385,7 +388,7 @@ export function PrototypeLab({ host }: PanelHostProps) {
   return (
     <div className="pg-prototype-lab">
       <header className="pg-prototype-toolbar">
-        <nav aria-label="Project views">
+        <nav aria-label={t("project_graph.project_views")}>
           {(["pulse", "atlas", "trails"] as const).map((m) => (
             <button
               key={m}
@@ -393,17 +396,17 @@ export function PrototypeLab({ host }: PanelHostProps) {
               onClick={() => navigate(m)}
             >
               {m === "trails"
-                ? "Evidence Trails"
+                ? t("project_graph.evidence_trails")
                 : m === "atlas"
-                ? "Atlas"
-                : "Pulse"}
+        ? t("project_graph.atlas_label")
+        : t("project_graph.pulse_label")}
             </button>
           ))}
         </nav>
         <label>
-          Data{" "}
+          {t("project_graph.data_label")} {" "}
           <select
-            aria-label="Prototype data source"
+            aria-label={t("project_graph.prototype_data_source")}
             value={source}
             onChange={(e) => {
               setSource(e.target.value as typeof source);
@@ -414,20 +417,20 @@ export function PrototypeLab({ host }: PanelHostProps) {
               setError(null);
             }}
           >
-            <option value="live">Live project</option>
-            <option value="sample">Illustrative sample · 3,080 records</option>
+            <option value="live">{t("project_graph.live_project")}</option>
+            <option value="sample">{t("project_graph.illustrative_sample_records", { count: "3,080" })}</option>
           </select>
         </label>
         <label>
-          Area{" "}
+          {t("project_graph.area_label")} {" "}
           <select
-            aria-label="Prototype area"
+            aria-label={t("project_graph.prototype_area")}
             value={viewProps?.selectedAreaId ?? ""}
             onChange={(e) =>
               saveSettings({ ...settings, areaId: e.target.value || null })
             }
           >
-            <option value="">All areas</option>
+            <option value="">{t("project_graph.all_areas")}</option>
             {model?.areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
@@ -436,9 +439,9 @@ export function PrototypeLab({ host }: PanelHostProps) {
           </select>
         </label>
         <label>
-          Range{" "}
+          {t("project_graph.range_label")} {" "}
           <select
-            aria-label="Prototype time range"
+            aria-label={t("project_graph.prototype_time_range")}
             value={settings.days}
             onChange={(e) => {
               saveSettings({ ...settings, days: Number(e.target.value) });
@@ -447,20 +450,20 @@ export function PrototypeLab({ host }: PanelHostProps) {
           >
             {[7, 30, 90].map((d) => (
               <option key={d} value={d}>
-                {d} days
+                {t("project_graph.days", { count: d })}
               </option>
             ))}
           </select>
         </label>
         <button
-          aria-label="Previous time window"
+          aria-label={t("project_graph.previous_time_window")}
           onClick={() => setOffset((v) => v + settings.days)}
         >
           ←
         </button>
         <button
           disabled={!offset}
-          aria-label="Next time window"
+          aria-label={t("project_graph.next_time_window")}
           onClick={() => setOffset((v) => Math.max(0, v - settings.days))}
         >
           →
@@ -471,7 +474,7 @@ export function PrototypeLab({ host }: PanelHostProps) {
             setTimeAnchor(Date.now());
           }}
         >
-          Now
+          {t("project_graph.now")}
         </button>
         <label>
           <input
@@ -481,13 +484,13 @@ export function PrototypeLab({ host }: PanelHostProps) {
               saveSettings({ ...settings, compare: e.target.checked })
             }
           />
-          Compare previous period
+          {t("project_graph.compare_previous_period")}
         </label>
         {settings.lenses.length > 0 && (
           <label>
-            Lens{" "}
+            {t("project_graph.lens_label")} {" "}
             <select
-              aria-label="Saved lens"
+              aria-label={t("project_graph.saved_lens")}
               value={settings.lensId ?? ""}
               onChange={(e) => {
                 const l = settings.lenses.find((x) => x.id === e.target.value);
@@ -505,44 +508,45 @@ export function PrototypeLab({ host }: PanelHostProps) {
                 } else saveSettings({ ...settings, lensId: null });
               }}
             >
-              <option value="">Custom view</option>
+              <option value="">{t("project_graph.custom_view")}</option>
               {settings.lenses.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
               ))}
             </select>
-            {lens && !lensMatches(settings, lens) && <span>Modified</span>}
+            {lens && !lensMatches(settings, lens) && <span>{t("project_graph.modified")}</span>}
           </label>
         )}
         <button
           onClick={() => setSettingsOpen((v) => !v)}
           aria-expanded={settingsOpen}
         >
-          Settings
+          {t("project_graph.settings")}
         </button>
         <button
           disabled={loading || source === "sample"}
           onClick={() => {
             setError(null);
             void index.refresh().catch((e) => {
-              if (alive.current) setError(String(e));
+              if (alive.current)
+                setError(t("project_graph.error_refresh_index", { error: String(e) }));
             });
           }}
         >
-          Refresh
+          {t("project_graph.refresh")}
         </button>
         {loading && (
-          <button onClick={() => index.cancel()}>Cancel indexing</button>
+          <button onClick={() => index.cancel()}>{t("project_graph.cancel_indexing")}</button>
         )}
       </header>
       <div className="pg-prototype-context">
         <strong>
           {source === "sample"
-            ? "Illustrative sample"
+            ? t("project_graph.illustrative_sample")
             : indexState.fromCache
-            ? "Cached project metadata · refreshing"
-            : "Live project"}
+            ? t("project_graph.cached_project_metadata_refreshing")
+            : t("project_graph.live_project")}
         </strong>
         <span>
           {new Date(range.startMs).toLocaleDateString()} –{" "}
@@ -550,25 +554,28 @@ export function PrototypeLab({ host }: PanelHostProps) {
         </span>
         <span>
           {source === "live"
-            ? `${indexState.records.length.toLocaleString()} indexed · `
+            ? `${t("project_graph.indexed_count", { count: indexState.records.length.toLocaleString() })} · `
             : ""}
-          {model?.snapshot.nodes.length.toLocaleString() ?? "…"} in view ·{" "}
-          {model?.events
-            .filter((e) => e.at >= range.startMs && e.at <= range.endMs)
-            .length.toLocaleString() ?? "…"}{" "}
-          observations in range
+          {t("project_graph.records_in_view", {
+            count: model?.snapshot.nodes.length.toLocaleString() ?? "…",
+            observations: model?.events
+              .filter((e) => e.at >= range.startMs && e.at <= range.endMs)
+              .length.toLocaleString() ?? "…",
+          })}
         </span>
         {loading && (
           <span role="status">
-            Indexing {indexState.progress.activeSourceId ?? "sources"} ·{" "}
-            {indexState.progress.recordsIndexed.toLocaleString()} records ·{" "}
-            {indexState.progress.completedSources}/
-            {indexState.progress.totalSources} sources
+            {t("project_graph.indexing_status", {
+              source: indexState.progress.activeSourceId ?? t("project_graph.sources"),
+              records: indexState.progress.recordsIndexed.toLocaleString(),
+              completed: indexState.progress.completedSources,
+              total: indexState.progress.totalSources,
+            })}
           </span>
         )}
-        {resolving && <span role="status">Resolving source…</span>}
+        {resolving && <span role="status">{t("project_graph.resolving_source")}</span>}
         <details>
-          <summary>Sources & limitations</summary>
+          <summary>{t("project_graph.sources_and_limitations")}</summary>
           <ul>
             {model?.coverage.map((message, i) => (
               <li key={i}>{message}</li>
@@ -605,9 +612,8 @@ export function PrototypeLab({ host }: PanelHostProps) {
       ) : (
         <div className="pg-prototype-empty">
           {loading
-            ? "Indexing project evidence…"
-            : "No project snapshot loaded."}{" "}
-          Select the illustrative sample to explore while sources load.
+            ? t("project_graph.indexing_project_evidence")
+            : t("project_graph.no_project_snapshot_loaded")} {t("project_graph.select_sample_while_loading")}
         </div>
       )}
       {record && model && (

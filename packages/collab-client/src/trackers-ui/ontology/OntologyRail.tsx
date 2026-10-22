@@ -3,6 +3,7 @@
  * proposal, and the ontology proposals already on record.
  */
 import { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { DomainGap } from './ontologyDomain';
 import { OntologyGapRow, type GapAction } from './OntologyParts';
 
@@ -29,6 +30,7 @@ export function OntologyGapList({ gaps, gapAction, limit }: {
   gapAction: (gap: DomainGap) => GapAction;
   limit?: number;
 }) {
+  const { t } = useTranslation('tracker');
   const [expanded, setExpanded] = useState(false);
   const shown = limit && !expanded ? gaps.slice(0, limit) : gaps;
   return (
@@ -36,7 +38,7 @@ export function OntologyGapList({ gaps, gapAction, limit }: {
       {shown.map((gap) => <OntologyGapRow key={gap.id} gap={gap} action={gapAction(gap)} />)}
       {gaps.length > shown.length && (
         <button type="button" className="ontology-link ontology-more" onClick={() => setExpanded(true)}>
-          Show {gaps.length - shown.length} more
+          {t('ontology_parts.show_more', { count: gaps.length - shown.length })}
         </button>
       )}
     </>
@@ -47,15 +49,16 @@ export function OntologyProposalList({ proposals, onOpenProposal }: {
   proposals: readonly ProposalSummary[];
   onOpenProposal: (id: string) => void;
 }) {
+  const { t } = useTranslation('tracker');
   if (!proposals.length) {
-    return <div className="ontology-empty">None yet. Rejected proposals are kept so the agent does not suggest them again.</div>;
+    return <div className="ontology-empty">{t('ontology_rail.empty_proposals')}</div>;
   }
   return (
     <div className="ontology-proposal-list">
       {proposals.map((proposal) => (
         <button key={proposal.id} type="button" className="ontology-proposal-row" onClick={() => onOpenProposal(proposal.id)}>
           <span className="ontology-proposal-row-title">{proposal.title}</span>
-          <span className="ontology-status" data-status={proposal.status}>{proposalStatusLabel(proposal.status)}</span>
+          <span className="ontology-status" data-status={proposal.status}>{t(`ontology_proposals.status_${proposal.status}`, { defaultValue: proposal.status })}</span>
         </button>
       ))}
     </div>
@@ -73,6 +76,7 @@ export function OntologyRail({ title, subtitle, gaps, elsewhere, gapAction, prop
   proposals: readonly ProposalSummary[];
   onOpenProposal: (id: string) => void;
 }) {
+  const { t } = useTranslation('tracker');
   return (
     <aside className="ontology-rail">
       <h4>{title}</h4>
@@ -80,11 +84,11 @@ export function OntologyRail({ title, subtitle, gaps, elsewhere, gapAction, prop
       <OntologyGapList gaps={gaps} gapAction={gapAction} />
       {elsewhere && elsewhere.length > 0 && (
         <>
-          <div className="ontology-label">Elsewhere</div>
+          <div className="ontology-label">{t('ontology_rail.elsewhere')}</div>
           <OntologyGapList gaps={elsewhere} gapAction={gapAction} limit={3} />
         </>
       )}
-      <div className="ontology-label ontology-label-spaced">Proposals</div>
+      <div className="ontology-label ontology-label-spaced">{t('ontology_rail.proposals')}</div>
       <OntologyProposalList proposals={proposals} onOpenProposal={onOpenProposal} />
     </aside>
   );

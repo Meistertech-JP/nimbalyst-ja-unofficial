@@ -60,7 +60,10 @@ describe('shouldShowRoleSelector', () => {
 describe('summarizeRolePermissions', () => {
   it('does not flatten a mixed bash policy into a single claim', () => {
     expect(summarizeRolePermissions({ permission: { edit: 'ask', bash: { '*': 'ask', 'git push': 'deny' } } }))
-      .toEqual(['edits on approval', 'commands vary by rule']);
+      .toEqual([
+        { key: 'open_code_role.permissions.edits_on_approval' },
+        { key: 'open_code_role.permissions.commands_vary' },
+      ]);
   });
 
   it('names the permissions that reach past the workspace and the tools withheld', () => {
@@ -70,15 +73,16 @@ describe('summarizeRolePermissions', () => {
       permission: { edit: 'allow', bash: {}, external_directory: 'allow', doom_loop: 'allow' },
       tools: { read: true, webfetch: false, bash: false },
     })).toEqual(expect.arrayContaining([
-      'works outside the workspace',
-      'doom loop allowed',
-      '2 tools disabled',
+      { key: 'open_code_role.permissions.works_outside_workspace' },
+      { key: 'open_code_role.permissions.doom_loop_allowed' },
+      { key: 'open_code_role.permissions.tools_disabled', count: 2 },
     ]));
   });
 
   it('claims nothing about a permission the role does not set', () => {
     // The server resolves an unset policy, so any claim here is unverified.
-    expect(summarizeRolePermissions({ permission: { edit: 'allow', bash: {} } })).toEqual(['edits files']);
+    expect(summarizeRolePermissions({ permission: { edit: 'allow', bash: {} } }))
+      .toEqual([{ key: 'open_code_role.permissions.edits_files' }]);
   });
 });
 
@@ -86,8 +90,13 @@ describe('describeRoleOrigin', () => {
   it('does not claim a config-defined role came from the project', () => {
     // `builtIn: false` covers both `.opencode/agent` here and the user's own
     // global config; OpenCode reports no finer provenance than that.
-    expect(describeRoleOrigin({ builtIn: false }).label).toBe('custom');
-    expect(describeRoleOrigin({ builtIn: false }).title).not.toMatch(/^This project/);
-    expect(describeRoleOrigin({ builtIn: true }).label).toBe('built-in');
+    expect(describeRoleOrigin({ builtIn: false })).toEqual({
+      labelKey: 'open_code_role.origin_custom',
+      titleKey: 'open_code_role.origin_custom_title',
+    });
+    expect(describeRoleOrigin({ builtIn: true })).toEqual({
+      labelKey: 'open_code_role.origin_built_in',
+      titleKey: 'open_code_role.origin_built_in_title',
+    });
   });
 });

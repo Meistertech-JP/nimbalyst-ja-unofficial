@@ -275,6 +275,27 @@ describe('team-invitation deep-link handoff', () => {
     );
   });
 
+  it('uses localized fixed copy for invitation notifications while preserving the team name', async () => {
+    pendingInvite = { status: 'accepted', orgId: 'org-acme', teamName: 'Acme' };
+    vi.spyOn(errorNotificationService, 'getLocalizedText').mockImplementation((_namespace, key, fallback, options) => {
+      if (key === 'deep_links.invite_joined_title') return `${options?.teamName}に参加しました`;
+      if (key === 'deep_links.invite_joined_message') return 'このチームの共有コンテンツを利用できるようになりました。';
+      return fallback;
+    });
+
+    cleanup = initDeepLinkListeners();
+
+    await vi.waitFor(() => expect(errorNotificationService.showInfo).toHaveBeenCalledTimes(1));
+    expect(errorNotificationService.showInfo).toHaveBeenCalledWith(
+      'Acmeに参加しました',
+      'このチームの共有コンテンツを利用できるようになりました。',
+      expect.anything(),
+    );
+    expect(errorNotificationService.getLocalizedText).toHaveBeenCalledWith(
+      'common', 'deep_links.invite_joined_title', 'You joined Acme', { teamName: 'Acme' },
+    );
+  });
+
   it('sends an invitee with no matching account to the account sign-in panel', async () => {
     pendingInvite = {
       status: 'sign-in-required',

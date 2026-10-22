@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { atom, useAtom, useAtomValue, type Getter } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   sessionRegistryAtom,
@@ -116,6 +117,7 @@ export function useVisibleSessionTreeRows(
 
 /** Non-virtual tree, used inside worktree groups. */
 export function SessionTree(props: SessionTreeProps) {
+  const { t } = useTranslation('agents');
   const projectPath = props.projectPath || props.root?.workspaceId || props.sessions[0]?.workspaceId || '';
   const trees = useMemo(
     () => [{ key: 'tree', rows: props.root ? [props.root, ...props.sessions] : props.sessions }],
@@ -123,7 +125,7 @@ export function SessionTree(props: SessionTreeProps) {
   );
   const rows = useVisibleSessionTreeRows(trees, props.activeSessionId, projectPath).get('tree') ?? [];
   return (
-    <div className="session-tree" role="tree" aria-label="Session tree">
+    <div className="session-tree" role="tree" aria-label={t('accessibility.session_tree')}>
       {rows.map((row) => (
         <SessionTreeRow key={row.node.session.id} {...props} {...row} />
       ))}
@@ -132,6 +134,7 @@ export function SessionTree(props: SessionTreeProps) {
 }
 
 export function SessionTreeRow(props: SessionTreeRowHandlers & VisibleSessionTreeRow) {
+  const { t } = useTranslation('agents');
   const { node, baseDepth, activeSessionId } = props;
   const row = node.session;
   const pinSession = props.pinSession ?? row;
@@ -165,19 +168,19 @@ export function SessionTreeRow(props: SessionTreeRowHandlers & VisibleSessionTre
   // Inline on the metadata line; a separate row per parent cost a line of height each.
   const details = useMemo(() => hasChildren && (
     <span className="session-tree-rollup inline-flex shrink-0 gap-1.5 whitespace-nowrap text-[10px] text-[var(--nim-text-muted)]">
-      {status.running > 0 && <span className="text-[var(--nim-primary)]">{status.running} running</span>}
-      {status.unread > 0 && <span>{status.unread} unread</span>}
-      {status.review > 0 && <span>{status.review} need review</span>}
+      {status.running > 0 && <span className="text-[var(--nim-primary)]">{t('session_tree.running', { count: status.running })}</span>}
+      {status.unread > 0 && <span>{t('session_tree.unread', { count: status.unread })}</span>}
+      {status.review > 0 && <span>{t('session_tree.needs_review', { count: status.review })}</span>}
       {node.uncommittedCount > 0 && (
-        <span className="text-[var(--nim-warning)]">{node.uncommittedCount} uncommitted</span>
+        <span className="text-[var(--nim-warning)]">{t('accessibility.uncommitted_changes', { count: node.uncommittedCount })}</span>
       )}
-      {!expanded && <span>{hiddenCount} sessions</span>}
+      {!expanded && <span>{t('context.session_count', { count: hiddenCount })}</span>}
     </span>
-  ), [hasChildren, status.running, status.unread, status.review, node.uncommittedCount, expanded, hiddenCount]);
+  ), [hasChildren, status.running, status.unread, status.review, node.uncommittedCount, expanded, hiddenCount, t]);
   const leading = useMemo(() => (
     hasChildren ? (
       <button
-        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${row.title}`}
+        aria-label={`${t(expanded ? 'context.collapse' : 'context.expand')} ${row.title}`}
         aria-expanded={expanded}
         className={`session-tree-chevron shrink-0 flex items-center p-0 leading-none ${compact ? "" : "mt-1"}`}
         onClick={(e) => {
@@ -190,7 +193,7 @@ export function SessionTreeRow(props: SessionTreeRowHandlers & VisibleSessionTre
     ) : (
       <span className="w-3.5 shrink-0" />
     )
-  ), [hasChildren, expanded, row.title, compact, setState]);
+  ), [hasChildren, expanded, row.title, compact, setState, t]);
   return (
     <div
       className="session-tree-row"
@@ -205,7 +208,7 @@ export function SessionTreeRow(props: SessionTreeRowHandlers & VisibleSessionTre
       <SessionListItem
         {...row}
         isPinned={pinSession.isPinned}
-        title={row.title || 'Untitled Session'}
+        title={row.title || t('status.untitled_session')}
         isActive={row.id === activeSessionId}
         treeContext
         projectPath={props.projectPath || row.workspaceId}

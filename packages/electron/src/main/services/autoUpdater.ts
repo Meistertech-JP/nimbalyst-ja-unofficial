@@ -46,6 +46,7 @@ const GITHUB_UPDATE_PROVIDER = {
 const getDurationCategory = categorizeDownloadDuration;
 
 export class AutoUpdaterService {
+  public readonly updatesEnabled: boolean;
   private updateCheckInterval: NodeJS.Timeout | null = null;
   private isCheckingForUpdate = false;
   private isManualCheck = false; // Track if this is a user-initiated check (for showing up-to-date toast)
@@ -61,10 +62,23 @@ export class AutoUpdaterService {
   // tested without an Electron app global.
   private updateAnalytics: UpdateAnalyticsState = EMPTY_UPDATE_ANALYTICS_STATE;
 
-  constructor() {
+  // This distribution must never inherit the official GitHub update feed from
+  // an environment variable. Explicit true is retained for updater policy tests.
+  constructor(updatesEnabled = false) {
+    this.updatesEnabled = updatesEnabled;
+
     // Configure electron-updater logger
     log.transports.file.level = 'info';
     autoUpdater.logger = log;
+
+    if (!this.updatesEnabled) {
+      // Unofficial builds must never contact or install from the official feed.
+      autoUpdater.autoDownload = false;
+      autoUpdater.autoInstallOnAppQuit = false;
+      log.info('Automatic updates are disabled for this build');
+      this.setupIpcHandlers();
+      return;
+    }
 
     // Configure auto-updater. autoDownload=true: both background polls and the
     // manual "Check for Updates" trigger download immediately, then surface a
@@ -89,6 +103,8 @@ export class AutoUpdaterService {
   }
 
   private configureFeedURL() {
+    if (!this.updatesEnabled) return;
+
     const channel = getReleaseChannel();
 
     log.info(`Configuring ${channel} channel updates from GitHub`);
@@ -372,6 +388,8 @@ export class AutoUpdaterService {
   }
 
   private performQuitAndInstall() {
+    if (!this.updatesEnabled) return;
+
     setImmediate(async () => {
       try {
         log.info('Performing quit and install...');
@@ -414,11 +432,13 @@ export class AutoUpdaterService {
   }
 
   public reconfigureFeedURL() {
+    if (!this.updatesEnabled) return;
     this.configureFeedURL();
   }
 
   private setupIpcHandlers() {
     safeHandle('check-for-updates', async () => {
+      if (!this.updatesEnabled) return { checking: false, disabled: true };
       if (this.isCheckingForUpdate) {
         return { checking: true };
       }
@@ -433,6 +453,7 @@ export class AutoUpdaterService {
     });
 
     safeHandle('download-update', async () => {
+      if (!this.updatesEnabled) return { success: false, disabled: true };
       try {
         await autoUpdater.downloadUpdate();
         return { success: true };
@@ -453,6 +474,7 @@ export class AutoUpdaterService {
 
     // Toast-based update IPC handlers
     safeOn('update-toast:download', async () => {
+      if (!this.updatesEnabled) return;
       try {
         log.info('Update toast: Starting download...');
 
@@ -500,6 +522,7 @@ export class AutoUpdaterService {
     });
 
     safeOn('update-toast:install', () => {
+      if (!this.updatesEnabled) return;
       log.info('Update toast: Installing update...');
 
       // Track install initiated
@@ -517,6 +540,7 @@ export class AutoUpdaterService {
 
     // Deferred install: wait for all AI sessions to finish, then install
     safeOn('update-toast:install-when-idle', () => {
+      if (!this.updatesEnabled) return;
       log.info('Update toast: Deferring install until AI sessions finish...');
 
       AnalyticsService.getInstance().sendEvent('update_install_deferred', {
@@ -582,6 +606,8 @@ export class AutoUpdaterService {
   }
 
   public startAutoUpdateCheck(intervalMinutes = 60) {
+    if (!this.updatesEnabled) return;
+
     // Initial check after 30 seconds
     setTimeout(() => {
       this.checkForUpdates();
@@ -605,6 +631,8 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdates() {
+    if (!this.updatesEnabled) return;
+
     if (this.isCheckingForUpdate) {
       log.info('Already checking for updates, skipping...');
       return;
@@ -619,6 +647,8 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdatesWithUI() {
+    if (!this.updatesEnabled) return;
+
     if (this.isCheckingForUpdate) {
       // Already checking, don't show anything - the checking toast is already visible
       return;
@@ -658,6 +688,8 @@ export class AutoUpdaterService {
   }
 
   private async checkAndDownloadLatest() {
+    if (!this.updatesEnabled) return;
+
     try {
       // Previously this method called `autoUpdater.checkForUpdates()` immediately
       // before `downloadUpdate()` to "get the absolute latest version" - but on

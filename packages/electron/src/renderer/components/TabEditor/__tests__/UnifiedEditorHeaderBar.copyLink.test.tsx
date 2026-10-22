@@ -1,8 +1,27 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { UnifiedEditorHeaderBar } from '../UnifiedEditorHeaderBar';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function render(tree: React.ReactElement, language: 'en' | 'ja' = 'en') {
+  return testingLibraryRender(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={language === 'ja' ? japaneseI18n : englishI18n} preference={language} systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 const { buildSharedDocumentDeepLink, copyToClipboard, localLinkState } = vi.hoisted(() => ({
   buildSharedDocumentDeepLink: vi.fn((documentId: string, orgId: string) =>
@@ -204,6 +223,27 @@ describe('UnifiedEditorHeaderBar shared document link', () => {
     expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Open in browser' })).toBeNull();
     screen.getByRole('button', { name: 'Copy as Markdown' });
+  });
+
+  it('localizes shared-document link actions in Japanese', () => {
+    render(
+      <UnifiedEditorHeaderBar
+        filePath="collab://org:team%20one:doc:doc/one"
+        fileName="Shared doc"
+        workspaceId="/workspace"
+        isMarkdown
+        lexicalEditor={lexicalEditor}
+        showShareLinkButton={false}
+        showSharedDocButton={false}
+        showCommonFileActions={false}
+        sharedDocumentLinkTarget={{ documentId: 'doc/one', orgId: 'team one', teamProjectId: 'project/one' }}
+      />,
+      'ja',
+    );
+
+    fireEvent.click(screen.getByTitle('その他の操作'));
+    screen.getByRole('button', { name: 'ブラウザーで開く' });
+    screen.getByRole('button', { name: 'リンクをコピー' });
   });
 
   it('shows Pull from Shared Doc above re-upload for a linked local file', () => {

@@ -5,6 +5,7 @@
  * actions in the same place.
  */
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   autoUpdate,
@@ -53,6 +54,7 @@ const LEVEL_CLASS: Record<number, string> = {
 };
 
 export const HeaderTableOfContents: React.FC<{ editor: TableOfContentsEditor }> = ({ editor }) => {
+  const { t } = useTranslation('editor');
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<TocItem[]>([]);
   // Read only while open: the list is for the moment the menu is shown.
@@ -84,7 +86,7 @@ export const HeaderTableOfContents: React.FC<{ editor: TableOfContentsEditor }> 
     <>
       <HeaderIconButton
         ref={floating.refs.setReference}
-        label="Table of Contents"
+        label={t('tooltips.table_of_contents')}
         haspopup
         active={open}
         onClick={() => setOpen(!open)}
@@ -125,7 +127,7 @@ export const HeaderTableOfContents: React.FC<{ editor: TableOfContentsEditor }> 
                 ))}
               </ul>
             ) : (
-              <div className="toc-empty py-4 px-3 text-center text-[13px] text-[var(--nim-text-muted)]">No headings in document</div>
+              <div className="toc-empty py-4 px-3 text-center text-[13px] text-[var(--nim-text-muted)]">{t('tooltips.table_of_contents_empty')}</div>
             )}
           </div>
         </FloatingPortal>

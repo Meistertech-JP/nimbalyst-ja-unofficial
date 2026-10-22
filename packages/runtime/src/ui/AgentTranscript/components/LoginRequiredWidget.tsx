@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 // Inject login widget styles once (for color-mix patterns)
 const injectLoginWidgetStyles = () => {
@@ -37,6 +38,7 @@ interface LoginRequiredWidgetProps {
 }
 
 export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ workspacePath }) => {
+  const { t } = useTranslation('aichat');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [loginStatus, setLoginStatus] = useState<{
@@ -61,7 +63,7 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
     try {
       if (!window.electronAPI?.invoke) {
         setLoginStatus({
-          message: 'Cannot access Electron API. Please restart the application.',
+          message: t('auth.api_unavailable'),
           success: false
         });
         setIsChecking(false);
@@ -72,7 +74,7 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
 
       if (status.isLoggedIn) {
         setLoginStatus({
-          message: 'Login successful! You can now use Claude Agent.',
+          message: t('auth.logged_in'),
           success: true,
           accountInfo: {
             email: status.email,
@@ -82,19 +84,19 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
         });
       } else {
         setLoginStatus({
-          message: status.error || 'Not logged in. Please complete the authentication flow.',
+          message: status.error || t('auth.login_required'),
           success: false
         });
       }
     } catch (error: any) {
       setLoginStatus({
-        message: `Failed to check status: ${error.message || 'Unknown error'}`,
+        message: t('auth.check_failed', { error: error.message || t('auth.unknown_error') }),
         success: false
       });
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [t]);
 
   // Check login status when component mounts
   useEffect(() => {
@@ -109,7 +111,7 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
       // Check if we have the electronAPI available
       if (!window.electronAPI?.invoke) {
         setLoginStatus({
-          message: 'Cannot access Electron API. Please restart the application.',
+          message: t('auth.api_unavailable'),
           success: false
         });
         setIsLoggingIn(false);
@@ -120,18 +122,18 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
 
       if (result.success) {
         setLoginStatus({
-          message: 'Login initiated! Complete authentication in the Terminal window (you may have to type /login to complete the process), then click "Check Status".',
+          message: t('auth.login_started'),
           success: true
         });
       } else {
         setLoginStatus({
-          message: result.error || 'Login failed. Please try again.',
+          message: result.error || t('auth.login_retry'),
           success: false
         });
       }
     } catch (error: any) {
       setLoginStatus({
-        message: `Login failed: ${error.message || 'Unknown error'}`,
+        message: t('auth.login_failed', { error: error.message || t('auth.unknown_error') }),
         success: false
       });
     } finally {
@@ -141,11 +143,11 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
 
   const isLoggedIn = loginStatus?.success && loginStatus?.accountInfo;
   const loginButtonLabel = isLoggingIn
-    ? 'Opening Login...'
+    ? t('auth.opening_login')
     : isLoggedIn
-      ? 'Log In Again'
-      : 'Log In';
-  const statusButtonLabel = isChecking ? 'Checking...' : 'Check Status';
+      ? t('auth.login_again')
+      : t('auth.login');
+  const statusButtonLabel = isChecking ? t('auth.checking') : t('auth.check_status');
 
   return (
     <div className={`login-required-widget my-4 p-4 rounded-lg flex flex-col gap-4 ${isLoggedIn ? 'logged-in' : ''}`}>
@@ -153,20 +155,20 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
         {isLoggedIn ? (
           <>
             <span className="login-status-icon success text-lg font-bold text-[var(--nim-success)]">&#10003;</span>
-            <span className="font-medium text-[var(--nim-success)]">You are logged in and can continue your conversation</span>
+            <span className="font-medium text-[var(--nim-success)]">{t('auth.logged_in')}</span>
           </>
         ) : (
-          'An Anthropic account is required to use Claude Agent. Please login or create an account.'
+          t('auth.claude_required')
         )}
       </div>
 
       {loginStatus && loginStatus.accountInfo && (
         <div className={`login-account-info text-xs flex flex-col gap-1 ${isLoggedIn ? 'pl-0' : 'pl-6'} text-[var(--nim-text-muted)]`}>
           {loginStatus.accountInfo.email && (
-            <div>Account: {loginStatus.accountInfo.email}</div>
+            <div>{t('auth.account', { email: loginStatus.accountInfo.email })}</div>
           )}
           {loginStatus.accountInfo.organization && (
-            <div>Organization: {loginStatus.accountInfo.organization}</div>
+            <div>{t('auth.organization', { organization: loginStatus.accountInfo.organization })}</div>
           )}
         </div>
       )}
@@ -178,7 +180,7 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
             <span>{loginStatus.message}</span>
           </div>
           <div className="login-status-fallback text-[var(--nim-text-muted)]">
-            Still stuck? Open a Claude Code terminal session and run <code className="px-1 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]">/login</code> there, then click &ldquo;Check Status&rdquo;.
+            {t('auth.fallback_before')} <code className="px-1 py-0.5 rounded bg-[var(--nim-bg-tertiary)] text-[var(--nim-text)]">/login</code> {t('auth.fallback_after')}
           </div>
         </div>
       )}

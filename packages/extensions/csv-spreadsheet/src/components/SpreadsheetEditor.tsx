@@ -27,6 +27,7 @@ import { FormulaReferenceOverlay } from './FormulaReferenceOverlay';
 import { keyStateFromSelection } from '../keyboard';
 import { ContextMenu } from './ContextMenu';
 import { FindBar } from './FindBar';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { ColumnFilterDropdown } from './ColumnFilterDropdown';
 import { useEditorCore } from '../editor/editorCore';
 import { DISPLAY_BUFFER_COLS } from '../editor/editorUtils';
@@ -57,6 +58,7 @@ import type { DiffState } from '../types';
 
 export function SpreadsheetEditor({ host }: EditorHostProps) {
   const { filePath, isActive } = host;
+  const { t } = useTranslation('editor');
 
   // Reactive read-only state. In read-only mode (inline embeds, share
   // viewer) we hide the formula-bar toolbar, suppress the right-click
@@ -119,6 +121,7 @@ export function SpreadsheetEditor({ host }: EditorHostProps) {
   // hardcode colors that override the CSS mapping --revo-* to --nim-*.
   const columns = useMemo(
     () => generateColumns({
+      translate: t,
       columnCount: displayColumnCount,
       formulaViewState: core.formulaViewState,
       frozenColumnCount,
@@ -133,7 +136,7 @@ export function SpreadsheetEditor({ host }: EditorHostProps) {
       ...paint,
       zoom,
     }),
-    [displayColumnCount, frozenColumnCount, columnWidths, metadata.hiddenCols, diffState, trackerStore,
+    [displayColumnCount, frozenColumnCount, columnWidths, metadata.hiddenCols, diffState, trackerStore, t,
      cellStyleIndex, paint, zoom, core]
   );
 
@@ -168,7 +171,7 @@ export function SpreadsheetEditor({ host }: EditorHostProps) {
     return (
       <div className="spreadsheet-editor flex flex-col h-full w-full bg-nim text-nim overflow-hidden" data-theme={theme}>
         <div className="flex items-center justify-center h-full text-nim-muted">
-          Loading spreadsheet...
+          {t('spreadsheet_ui.editor.loading')}
         </div>
       </div>
     );
@@ -179,7 +182,7 @@ export function SpreadsheetEditor({ host }: EditorHostProps) {
     return (
       <div className="spreadsheet-editor flex flex-col h-full w-full bg-nim text-nim overflow-hidden" data-theme={theme}>
         <div className="p-5 text-nim bg-nim">
-          <h3 className="text-nim">Error Loading Spreadsheet</h3>
+          <h3 className="text-nim">{t('spreadsheet_ui.editor.error')}</h3>
           <p className="text-nim-muted">{loadError.message}</p>
         </div>
       </div>
@@ -211,9 +214,9 @@ export function SpreadsheetEditor({ host }: EditorHostProps) {
             <button
               className="px-2 py-1 text-[12px] font-medium bg-nim-tertiary border border-nim rounded text-nim-muted cursor-pointer whitespace-nowrap hover:bg-nim-hover hover:text-nim"
               onClick={() => host.toggleSourceMode?.()}
-              title="View raw CSV source"
+              title={t('spreadsheet_ui.toolbar.view_source_title')}
             >
-              View Source
+              {t('spreadsheet_ui.toolbar.view_source')}
             </button>
           )}
         />

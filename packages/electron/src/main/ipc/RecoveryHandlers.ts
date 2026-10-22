@@ -35,6 +35,7 @@ import * as fsp from 'fs/promises';
 import * as path from 'path';
 import { safeHandle } from '../utils/ipcRegistry';
 import { logger } from '../utils/logger';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import { readBackendState } from '../database/sqlite/BackendSelector';
 import { readCutoverJournal } from '../database/sqlite/cutoverJournal';
 import { findRecoveryArtifacts, formatBytes } from '../database/sqlite/recoveryArtifacts';
@@ -194,19 +195,30 @@ function listMigratedCopies(userDataPath: string): MigratedCopyView[] {
  */
 async function confirmMigratedCopyDeletion(target: MigratedCopyView): Promise<boolean> {
   const detail = target.isRollbackSource
-    ? `${target.name} (${formatBytes(target.sizeBytes)}) is the copy Nimbalyst would restore from `
-      + 'if you rolled back to PGLite. Deleting it removes that option permanently. Your current '
-      + 'database is not affected.'
-    : `${target.name} (${formatBytes(target.sizeBytes)}) is a preserved copy of your database from `
-      + 'before the switch to SQLite. Deleting it frees the space permanently. Your current '
-      + 'database is not affected.';
+    ? translateMainDialogLabel(
+        'database_recovery.delete_copy_rollback_detail',
+        `${target.name} (${formatBytes(target.sizeBytes)}) is the copy Nimbalyst would restore from `
+          + 'if you rolled back to PGLite. Deleting it removes that option permanently. Your current '
+          + 'database is not affected.',
+        { name: target.name, size: formatBytes(target.sizeBytes) },
+      )
+    : translateMainDialogLabel(
+        'database_recovery.delete_copy_preserved_detail',
+        `${target.name} (${formatBytes(target.sizeBytes)}) is a preserved copy of your database from `
+          + 'before the switch to SQLite. Deleting it frees the space permanently. Your current '
+          + 'database is not affected.',
+        { name: target.name, size: formatBytes(target.sizeBytes) },
+      );
 
   const { response } = await dialog.showMessageBox({
     type: 'warning',
-    title: 'Delete a preserved database copy?',
-    message: `Permanently delete ${target.name}?`,
+    title: translateMainDialogLabel('database_recovery.delete_copy_title', 'Delete a preserved database copy?'),
+    message: translateMainDialogLabel('database_recovery.delete_copy_message', `Permanently delete ${target.name}?`, { name: target.name }),
     detail,
-    buttons: ['Cancel', 'Delete Permanently'],
+    buttons: [
+      translateMainDialogLabel('database_recovery.cancel', 'Cancel'),
+      translateMainDialogLabel('database_recovery.delete_permanently', 'Delete Permanently'),
+    ],
     // The safe answer is the default and the escape key, in both directions.
     defaultId: 0,
     cancelId: 0,

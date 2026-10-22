@@ -7,16 +7,26 @@
 import type { CollabSidebarCreateMenu } from '@nimbalyst/collab-client/docs-ui';
 import type { TitleBarCreateMenu } from '../../store/atoms/titleBarCreate';
 
+export interface PagesCreateMenuCopy {
+  addFromFiles: string;
+  personalHeading: string;
+  sharedWithTeam: string;
+  newFolder: string;
+  newPersonalPage: string;
+  newPersonalFolder: string;
+}
+
 export function composePagesCreateMenu(
   team: CollabSidebarCreateMenu | null,
   personal: CollabSidebarCreateMenu | null,
   /** Copy a file from disk in; the dialog it opens offers both sections. */
-  onAddFromFiles?: (section: 'team' | 'personal') => void,
+  onAddFromFiles: ((section: 'team' | 'personal') => void) | undefined,
+  copy: PagesCreateMenuCopy,
 ): TitleBarCreateMenu | null {
   const primary = team ?? personal;
   if (!primary) return null;
   const addFromFiles = onAddFromFiles
-    ? [{ id: 'add-from-files', label: 'Add from Files...', icon: 'upload_file', separatorBefore: true, onSelect: () => onAddFromFiles(team ? 'team' : 'personal') }]
+    ? [{ id: 'add-from-files', label: copy.addFromFiles, icon: 'upload_file', separatorBefore: true, onSelect: () => onAddFromFiles(team ? 'team' : 'personal') }]
     : [];
   const folderItem = (menu: CollabSidebarCreateMenu, id: string, label: string) => ({
     id,
@@ -34,33 +44,33 @@ export function composePagesCreateMenu(
     return {
       mode: 'collab',
       destination: primary.destination,
-      heading: { label: 'Personal', icon: 'person' },
+      heading: { label: copy.personalHeading, icon: 'person' },
       onPrimary: primary.onPrimary,
       primaryTrailing: primary.primaryTrailing,
-      items: [...primary.items, ...folderItems(primary, 'folder', 'New folder'), ...addFromFiles],
+      items: [...primary.items, ...folderItems(primary, 'folder', copy.newFolder), ...addFromFiles],
     };
   }
 
   return {
     mode: 'collab',
     destination: team.destination,
-    heading: { label: 'Shared with team', icon: 'groups' },
+    heading: { label: copy.sharedWithTeam, icon: 'groups' },
     onPrimary: team.onPrimary,
     primaryTrailing: team.primaryTrailing,
     items: [
       ...team.items,
-      ...folderItems(team, 'folder', 'New folder'),
+      ...folderItems(team, 'folder', copy.newFolder),
       ...(personal
         ? [
           {
             id: 'personal-page',
-            label: 'New personal page',
+            label: copy.newPersonalPage,
             icon: 'person',
             separatorBefore: true,
             trailing: personal.primaryTrailing,
             onSelect: personal.onPrimary,
           },
-          ...folderItems(personal, 'personal-folder', 'New personal folder')
+          ...folderItems(personal, 'personal-folder', copy.newPersonalFolder)
             .map((item) => ({ ...item, separatorBefore: false })),
         ]
         : []),

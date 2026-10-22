@@ -18,6 +18,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { TrackerIdentity } from '@nimbalyst/runtime/core/DocumentService';
 import type {
@@ -82,6 +83,7 @@ export function TrackerBoardSurface({
   preserveRowOrder,
   renderCardFields,
 }: TrackerBoardSurfaceProps) {
+  const { t } = useTranslation('tracker');
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -177,7 +179,7 @@ export function TrackerBoardSurface({
       <div className="tracker-kanban-empty flex flex-col">
       <TrackerSurfaceMessage
         icon="view_kanban"
-        message="No items to display"
+        message={t('kanban.no_items')}
         testId="tracker-kanban-empty"
       />
       {onCreateItem ? <ViewNewItem onCreate={(title, requestId) => onCreateItem(title, undefined, requestId)} /> : null}

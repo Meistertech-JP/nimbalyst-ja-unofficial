@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { atom, useAtom, useStore } from 'jotai';
 import type { Store } from 'jotai/vanilla/store';
 import type { TrackerCreationPublication as Publication } from '@nimbalyst/runtime/core/trackerCreation';
@@ -57,6 +58,7 @@ export function TrackerCreationPublication({
   workspacePath: string;
   itemId: string;
 }) {
+  const { t } = useTranslation('tracker');
   const store = useStore();
   const target = creationPublicationAtom(
     creationPublicationKey(workspacePath, itemId),
@@ -95,8 +97,8 @@ export function TrackerCreationPublication({
     >
       <span className="select-text">
         {state.busy
-          ? 'Publishing to team…'
-          : state.value.error || 'Saved locally; team publication is pending.'}
+          ? t('quick_create.publication_publishing')
+          : state.value.error || t('quick_create.publication_pending')}
       </span>
       {!state.busy && (
         <button
@@ -106,7 +108,7 @@ export function TrackerCreationPublication({
             void publishCreatedTrackerItem(store, workspacePath, itemId)
           }
         >
-          Retry publication
+          {t('quick_create.publication_retry')}
         </button>
       )}
       {!state.busy && state.value.savedContent && (
@@ -126,7 +128,7 @@ export function TrackerCreationPublication({
             }
           }}
         >
-          Copy saved content
+          {t('quick_create.publication_copy_saved')}
         </button>
       )}
       {copyError && (

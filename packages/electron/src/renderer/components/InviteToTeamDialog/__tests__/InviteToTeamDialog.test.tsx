@@ -11,9 +11,12 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { TeamSharedContent } from '../useTeamSharedContent';
 
 let sharedContent: TeamSharedContent = 'empty';
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
 vi.mock('../useTeamSharedContent', () => ({
   useTeamSharedContent: () => sharedContent,
@@ -29,15 +32,17 @@ const { InviteToTeamDialog } = await import('../InviteToTeamDialog');
 
 function renderDialog() {
   return render(
-    <InviteToTeamDialog
-      isOpen
-      orgId="org-1"
-      orgName="Acme"
-      projects={[{ teamProjectId: 'tp-1', name: 'Acme', isPrimary: true }]}
-      workspacePath="/tmp/workspace"
-      onClose={() => {}}
-      onInvited={() => {}}
-    />,
+    <UiLanguageProvider i18n={testI18n} preference="en" systemLocale="en-US">
+      <InviteToTeamDialog
+        isOpen
+        orgId="org-1"
+        orgName="Acme"
+        projects={[{ teamProjectId: 'tp-1', name: 'Acme', isPrimary: true }]}
+        workspacePath="/tmp/workspace"
+        onClose={() => {}}
+        onInvited={() => {}}
+      />
+    </UiLanguageProvider>,
   );
 }
 
@@ -48,8 +53,9 @@ function typeInvitee() {
 }
 
 describe('InviteToTeamDialog publishing guidance', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     sharedContent = 'empty';
+    testI18n = await createI18nInstance('en');
   });
 
   it('urges a publish, and warns about an empty arrival, only for an empty team', () => {

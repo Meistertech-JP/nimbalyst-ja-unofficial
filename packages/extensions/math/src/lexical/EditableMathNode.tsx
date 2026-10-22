@@ -5,6 +5,7 @@ import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection';
 import { $getNodeByKey, type NodeKey } from 'lexical';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { renderMathMarkup } from '../renderMath';
 import { $isMathBlockNode, type MathBlockDelimiter } from './MathBlockNode';
@@ -23,6 +24,7 @@ export function EditableMathNode({
   nodeKey,
   source,
 }: EditableMathNodeProps): JSX.Element {
+  const { t } = useTranslation('extensions');
   const [editor] = useLexicalComposerContext();
   const isEditable = useLexicalEditable();
   const [isSelected, setSelected, clearSelection] =
@@ -170,7 +172,7 @@ export function EditableMathNode({
                 onClick={(event) => event.stopPropagation()}
                 onDoubleClick={(event) => event.stopPropagation()}
                 onKeyDown={handleEditorKeyDown}
-                placeholder="Enter LaTeX..."
+                placeholder={t('math_extension_ui.enter_latex')}
                 rows={Math.max(3, draft.split('\n').length)}
               />
               <span className="nim-math-editor-delimiter">{delimiter}</span>
@@ -187,7 +189,7 @@ export function EditableMathNode({
                 onClick={(event) => event.stopPropagation()}
                 onDoubleClick={(event) => event.stopPropagation()}
                 onKeyDown={handleEditorKeyDown}
-                placeholder="Enter LaTeX..."
+                placeholder={t('math_extension_ui.enter_latex')}
               />
               <span className="nim-math-editor-delimiter">$</span>
             </span>
@@ -202,7 +204,7 @@ export function EditableMathNode({
                 finishEditing(false);
               }}
             >
-              Cancel
+              {t('math_extension_ui.cancel')}
             </button>
             <button
               type="button"
@@ -213,7 +215,7 @@ export function EditableMathNode({
                 finishEditing(true);
               }}
             >
-              Done
+              {t('math_extension_ui.done')}
             </button>
           </span>
         </span>

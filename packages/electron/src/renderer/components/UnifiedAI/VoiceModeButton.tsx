@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { VoiceStartupTiming } from '../../../shared/voiceStartupTiming';
@@ -245,6 +246,7 @@ interface VoiceModeButtonProps {
 }
 
 export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
+  const { t } = useTranslation('voice');
   const voiceModeEnabled = useAtomValue(voiceModeEnabledAtom);
   const activeSessionId = useAtomValue(activeSessionIdAtom);
   const listenState = useAtomValue(voiceListenStateAtom);
@@ -258,6 +260,21 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
   const voiceError = useAtomValue(voiceErrorAtom);
   // Transient reconnect state (socket dropped, backoff reconnect in progress)
   const isReconnecting = useAtomValue(voiceReconnectingAtom);
+
+  const getErrorMessage = (voiceError: { type: string; message: string }): string => {
+    switch (voiceError.type) {
+      case 'insufficient_quota':
+        return t('errors.quota');
+      case 'rate_limit_exceeded':
+        return t('errors.rate_limit');
+      case 'invalid_api_key':
+        return t('errors.invalid_key');
+      case 'connection_failed':
+        return voiceError.message || t('errors.connection_failed');
+      default:
+        return voiceError.message || t('errors.unexpected');
+    }
+  };
 
   // Sync error atom -> local error state and handle auto-disconnect
   useEffect(() => {
@@ -352,7 +369,7 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
         if (!result.success) {
           readyChime.dispose();
           timing.finish('failed');
-          setError({ type: 'connection_failed', message: result.message || 'Failed to connect to voice service' });
+          setError({ type: 'connection_failed', message: result.message || t('errors.connection_failed') });
           setIsConnecting(false);
           return;
         }
@@ -393,7 +410,7 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
         readyChime.dispose();
         timing.finish('failed');
         console.error('[VoiceModeButton] Failed to start voice mode:', err);
-        setError({ type: 'connection_failed', message: err instanceof Error ? err.message : 'Failed to start voice mode' });
+        setError({ type: 'connection_failed', message: err instanceof Error ? err.message : t('errors.start_failed') });
         if (globalAudioCapture) {
           globalAudioCapture.stop();
           globalAudioCapture = null;
@@ -437,13 +454,13 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
   };
 
   const getButtonTitle = () => {
-    if (isReconnecting) return 'Voice Mode reconnecting...';
-    if (isConnecting) return 'Connecting...';
-    if (error) return `Error: ${getErrorMessage(error)}`;
-    if (isVoiceActive && isSleeping) return 'Voice Mode (sleeping) - Click to wake';
-    if (isVoiceActive) return 'Stop Voice Mode';
-    if (!activeSessionId) return 'Voice Mode (no active session)';
-    return 'Start Voice Mode';
+    if (isReconnecting) return t('button.reconnecting');
+    if (isConnecting) return t('button.connecting');
+    if (error) return t('button.error_message', { message: getErrorMessage(error) });
+    if (isVoiceActive && isSleeping) return t('button.sleeping_wake');
+    if (isVoiceActive) return t('button.stop');
+    if (!activeSessionId) return t('button.no_session');
+    return t('button.start');
   };
 
   // Disabled when no session is selected and voice isn't already active
@@ -451,7 +468,7 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
 
   const RING_RADIUS = 16;
   const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-  const usageDisplay = isVoiceActive ? buildVoiceUsageDisplay(voiceUsage) : null;
+  const usageDisplay = isVoiceActive ? buildVoiceUsageDisplay(voiceUsage, t) : null;
   // No reported occupancy means no ring. An empty ring would read as "barely
   // used", which is a claim we have not measured.
   const ringOccupancy = usageDisplay?.occupancy ?? null;
@@ -473,7 +490,7 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
       ))}
       {usageDisplay.isFloor && (
         <span className="text-[var(--nim-text-faint)]">
-          At least this much -- the session ended before final usage arrived.
+          {t('usage_floor_note')}
         </span>
       )}
     </div>
@@ -548,7 +565,7 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
             <div className="flex items-start gap-2 text-nim">
               <MaterialSymbol icon="error" size={18} className="text-nim-error shrink-0" />
               <div className="text-[13px] leading-[1.4]">
-                <div className="font-semibold mb-1">Voice Mode Error</div>
+                <div className="font-semibold mb-1">{t('button.error_title')}</div>
                 <div className="text-nim-muted">{getErrorMessage(error)}</div>
                 {shouldShowVoiceModeSettingsLink(error) && (
                   <button
@@ -557,7 +574,7 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
                     data-testid="voice-mode-error-open-settings"
                     className="voice-mode-error-settings-link mt-2 bg-transparent border-none cursor-pointer p-0 text-left text-[var(--nim-link)] hover:text-[var(--nim-link-hover)]"
                   >
-                    Open Voice Mode Settings
+                    {t('button.open_settings')}
                   </button>
                 )}
               </div>
@@ -574,24 +591,6 @@ export function VoiceModeButton({ workspacePath }: VoiceModeButtonProps) {
       </div>
     </HelpTooltip>
   );
-}
-
-/**
- * Get a user-friendly error message based on error type
- */
-function getErrorMessage(error: { type: string; message: string }): string {
-  switch (error.type) {
-    case 'insufficient_quota':
-      return 'OpenAI API quota exceeded. Please check your billing at platform.openai.com.';
-    case 'rate_limit_exceeded':
-      return 'Too many requests. Please wait a moment and try again.';
-    case 'invalid_api_key':
-      return 'Invalid OpenAI API key. Please check your settings.';
-    case 'connection_failed':
-      return error.message || 'Failed to connect to voice service.';
-    default:
-      return error.message || 'An unexpected error occurred.';
-  }
 }
 
 function shouldShowVoiceModeSettingsLink(error: { type: string; message: string }): boolean {

@@ -1,4 +1,5 @@
 import { hunkDisplayLines } from '../../../../git/unifiedDiffModel';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../../icons/MaterialSymbol';
 import { excludedHunkCount, type FileHunkState } from './selectionModel';
 
@@ -26,6 +27,7 @@ export function HunkList({
   onSelectAll,
   disabled,
 }: HunkListProps) {
+  const { t } = useTranslation('aichat');
   if (!state.selectable || state.hunks.length === 0) return null;
 
   const excluded = excludedHunkCount(state);
@@ -45,13 +47,14 @@ export function HunkList({
         >
           <MaterialSymbol icon="info" size={12} className="shrink-0" />
           <span className="flex-1 min-w-0">
-            {excluded} {excluded === 1 ? 'hunk' : 'hunks'} excluded
-            {narrowedBySession && siblingSessionLabel
-              ? ` — likely edited by session "${siblingSessionLabel}"`
-              : narrowedBySession
-                ? ' — not edited by this session'
-                : ''}
-            .
+            {t('git_commit.excluded_hunks', {
+              count: excluded,
+              sessionHint: narrowedBySession
+                ? siblingSessionLabel
+                  ? t('git_commit.likely_edited_by_session', { session: siblingSessionLabel })
+                  : t('git_commit.not_edited_by_session')
+                : '',
+            })}
           </span>
           <button
             type="button"
@@ -63,7 +66,7 @@ export function HunkList({
               onSelectAll(filePath);
             }}
           >
-            Select all hunks
+            {t('git_commit.select_all_hunks')}
           </button>
         </div>
       )}
@@ -84,7 +87,7 @@ export function HunkList({
                 type="button"
                 data-testid="git-commit-hunk-checkbox"
                 disabled={disabled}
-                aria-label={isSelected ? 'Exclude this hunk' : 'Include this hunk'}
+                aria-label={t(isSelected ? 'git_commit.exclude_hunk' : 'git_commit.include_hunk')}
                 aria-pressed={isSelected}
                 className="shrink-0 bg-transparent border-0 p-0 pt-[3px] cursor-pointer disabled:cursor-default"
                 onClick={(e) => {

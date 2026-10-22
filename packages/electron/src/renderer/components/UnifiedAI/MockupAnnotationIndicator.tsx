@@ -1,4 +1,5 @@
 import React, { useSyncExternalStore, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface MockupAnnotationIndicatorProps {
   /** Current document file path */
@@ -74,6 +75,7 @@ export const MockupAnnotationIndicator: React.FC<MockupAnnotationIndicatorProps>
   currentFilePath,
   lastUserMessageTimestamp
 }) => {
+  const { t } = useTranslation('aichat');
   // Subscribe to annotation changes using React 18's useSyncExternalStore
   // This ensures the component re-renders when the external state changes
   useSyncExternalStore(subscribe, getSnapshot);
@@ -147,7 +149,7 @@ export const MockupAnnotationIndicator: React.FC<MockupAnnotationIndicatorProps>
       </style>
       <div
         className="mockup-annotation-indicator"
-        data-tooltip="Annotations drawn on your mockup will be included with your prompt"
+        data-tooltip={t('context_indicators.mockup_annotations_tooltip')}
         style={{
           padding: '4px 8px',
           marginBottom: '4px',
@@ -158,7 +160,7 @@ export const MockupAnnotationIndicator: React.FC<MockupAnnotationIndicatorProps>
           gap: '4px'
         }}
       >
-        <span>+ mockup annotations</span>
+        <span>{t('context_indicators.mockup_annotations')}</span>
       </div>
     </>
   );

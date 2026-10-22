@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import { useAtomValue } from "jotai";
 import { ProviderIcon } from "@nimbalyst/runtime/ui/icons/ProviderIcons";
 import { sessionLaunchCountAtom } from "../../store/atoms/sessionLaunchCounts";
@@ -17,8 +18,9 @@ export function SessionProviderIcon({
   isActive?: boolean;
   hideLaunchCount?: boolean;
 }) {
+  const { t } = useTranslation("agents");
   const count = useAtomValue(sessionLaunchCountAtom(sessionId));
-  const label = `Launched ${count} session${count === 1 ? "" : "s"}`;
+  const label = t("session_launch_count", { count });
   return (
     <span
       className={`session-provider-icon shrink-0 inline-flex items-center gap-1.5 ${

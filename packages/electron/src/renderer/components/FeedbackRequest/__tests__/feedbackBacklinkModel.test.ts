@@ -41,10 +41,10 @@ describe('feedback backlink presentation model', () => {
       progress: { ...waiting.progress, answeredRecipientCount: 2, quorumReached: true },
     });
 
-    expect(feedbackBacklinkStatus(waiting)).toEqual({ label: 'Open', tone: 'open' });
-    expect(feedbackBacklinkStatus(satisfied)).toEqual({ label: 'Answered', tone: 'answered' });
+    expect(feedbackBacklinkStatus(waiting)).toEqual({ code: 'open', label: 'Open', tone: 'open' });
+    expect(feedbackBacklinkStatus(satisfied)).toEqual({ code: 'answered', label: 'Answered', tone: 'answered' });
     expect(feedbackBacklinkStatus(entry({ lifecycle: { status: 'cancelled', changedAt: 2 } })))
-      .toEqual({ label: 'Cancelled', tone: 'closed' });
+      .toEqual({ code: 'cancelled', label: 'Cancelled', tone: 'closed' });
   });
 
   it('omits an author the index cannot identify', () => {

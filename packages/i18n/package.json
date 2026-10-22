@@ -1,0 +1,36 @@
+{
+  "name": "@nimbalyst/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Shared locale types and translation resources for Nimbalyst hosts",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/core.js",
+  "types": "./dist/core.d.ts",
+  "exports": {
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./resources": {
+      "types": "./dist/resources/index.d.ts",
+      "import": "./dist/resources/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "i18next": "^26.3.6",
+    "react-i18next": "^17.0.9"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}

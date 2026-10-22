@@ -22,6 +22,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type {
   FeedbackAskArtifact,
   StructuredInputSingleSelectOption,
@@ -122,7 +123,10 @@ export const FeedbackRespondOptionCards: React.FC<FeedbackRespondOptionCardsProp
   renderPreview,
   onExpand,
   resolveAction,
-}) => (
+}) => {
+  const { t } = useTranslation('feedback');
+
+  return (
   <div
     data-testid="feedback-respond-option-cards"
     className="feedback-respond-option-cards grid gap-2.5"
@@ -178,7 +182,7 @@ export const FeedbackRespondOptionCards: React.FC<FeedbackRespondOptionCardsProp
             <button
               type="button"
               data-testid="feedback-respond-option-expand"
-              aria-label={`Open ${artifact.label}`}
+              aria-label={t('response.open_artifact', { label: artifact.label })}
               onClick={(event) =>
                 onExpand?.(
                   artifact,
@@ -227,4 +231,5 @@ export const FeedbackRespondOptionCards: React.FC<FeedbackRespondOptionCardsProp
       );
     })}
   </div>
-);
+  );
+};

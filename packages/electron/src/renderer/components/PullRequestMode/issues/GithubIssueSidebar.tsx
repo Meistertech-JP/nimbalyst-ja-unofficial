@@ -16,6 +16,7 @@
 
 import type { JSX } from 'react';
 import { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue } from 'jotai';
 import { getStatusOptions } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import { githubIssueListAtom } from '../../../store/atoms/githubIssues';
@@ -41,18 +42,18 @@ interface GithubIssueSidebarProps {
   onToggleAttentionFilter: (chip: IssueAttentionChip) => void;
 }
 
-const FILTER_CHIPS: { id: IssueFilterChip; label: string; icon: string }[] = [
-  { id: 'open', label: 'Open', icon: 'adjust' },
-  { id: 'closed', label: 'Closed', icon: 'check_circle' },
-  { id: 'assigned-to-me', label: 'Assigned to me', icon: 'assignment_ind' },
-  { id: 'authored-by-me', label: 'Authored by me', icon: 'person' },
-  { id: 'unlabeled', label: 'Unlabeled', icon: 'label_off' },
-  { id: 'has-linked-pr', label: 'Has linked PR', icon: 'merge' },
+const FILTER_CHIPS: { id: IssueFilterChip; key: string; icon: string }[] = [
+  { id: 'open', key: 'open', icon: 'adjust' },
+  { id: 'closed', key: 'closed', icon: 'check_circle' },
+  { id: 'assigned-to-me', key: 'assigned_to_me', icon: 'assignment_ind' },
+  { id: 'authored-by-me', key: 'authored_by_me', icon: 'person' },
+  { id: 'unlabeled', key: 'unlabeled', icon: 'label_off' },
+  { id: 'has-linked-pr', key: 'has_linked_pr', icon: 'merge' },
 ];
 
-const ATTENTION_CHIPS: { id: IssueAttentionChip; label: string; icon: string }[] = [
-  { id: 'diverged', label: 'Diverged', icon: 'sync_problem' },
-  { id: 'stale', label: `Untriaged ${STALE_UNTRIAGED_DAYS}d+`, icon: 'hourglass_empty' },
+const ATTENTION_CHIPS: { id: IssueAttentionChip; key: string; icon: string }[] = [
+  { id: 'diverged', key: 'diverged', icon: 'sync_problem' },
+  { id: 'stale', key: 'stale', icon: 'hourglass_empty' },
 ];
 
 export function GithubIssueSidebar({
@@ -65,6 +66,7 @@ export function GithubIssueSidebar({
   activeAttentionFilters,
   onToggleAttentionFilter,
 }: GithubIssueSidebarProps): JSX.Element {
+  const { t } = useTranslation('git');
   const issues = useAtomValue(githubIssueListAtom);
   const references = useIssueTrackerReferences(remote);
 
@@ -100,7 +102,7 @@ export function GithubIssueSidebar({
     >
       <div className="px-3 py-2 border-b border-nim">
         <div className="text-[11px] font-semibold text-nim-muted uppercase tracking-wider">
-          Issues
+          {t('issues.title')}
         </div>
         {remote && (
           <div className="text-[11px] text-nim-faint truncate mt-0.5" title={remote}>
@@ -110,8 +112,8 @@ export function GithubIssueSidebar({
       </div>
 
       <GithubFilterChips
-        heading="Upstream"
-        chips={FILTER_CHIPS}
+        heading={t('issues.upstream')}
+        chips={FILTER_CHIPS.map((chip) => ({ ...chip, label: t(`issues.filters.${chip.key}`) }))}
         activeIds={activeFilters}
         onToggle={onToggleFilter}
         testIdPrefix="issue-filter"
@@ -119,7 +121,7 @@ export function GithubIssueSidebar({
 
       {hasLocalState && (
         <GithubFilterChips
-          heading="Local"
+          heading={t('issues.groups.local')}
           chips={localStatusChips.map((chip) => ({
             ...chip,
             id: chip.value,
@@ -134,8 +136,8 @@ export function GithubIssueSidebar({
 
       {hasAttention && (
         <GithubFilterChips
-          heading="Needs attention"
-          chips={attentionChips}
+          heading={t('issues.needs_attention')}
+          chips={attentionChips.map((chip) => ({ ...chip, label: chip.id === 'stale' ? t('issues.attention.stale', { days: STALE_UNTRIAGED_DAYS }) : t(`issues.attention.${chip.key}`) }))}
           activeIds={activeAttentionFilters}
           onToggle={onToggleAttentionFilter}
           testIdPrefix="issue-attention"

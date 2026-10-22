@@ -8,11 +8,11 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
 import { TrackerOwnershipChip } from '../common/TrackerOwnershipChip';
 import {
-  describeTrackerSharingOutcome,
   selectTrackerSharingMigrationNotice,
   type TrackerSharingMigrationNotice as Notice,
 } from './trackerSharingMigrationNotice';
@@ -21,6 +21,7 @@ export const TrackerSharingMigrationBanner: React.FC<{
   workspacePath?: string;
   teamName?: string | null;
 }> = ({ workspacePath, teamName }) => {
+  const { t } = useTranslation('tracker');
   const [notice, setNotice] = useState<Notice | null>(null);
 
   useEffect(() => {
@@ -65,11 +66,9 @@ export const TrackerSharingMigrationBanner: React.FC<{
     >
       <MaterialSymbol icon="info" size={15} className="shrink-0 mt-0.5 text-nim-muted" />
       <div className="flex-1 min-w-0">
-        <div className="font-medium">Sharing now belongs to the tracker itself</div>
+        <div className="font-medium">{t('sharing_migration.title')}</div>
         <p className="mt-0.5 text-nim-muted leading-relaxed">
-          Each tracker is personal or your team's, covering its fields and its items together.
-          Where this machine's old per-tracker setting disagreed with the schema file, the
-          setting you were actually using won:
+          {t('sharing_migration.description')}
         </p>
         <ul className="mt-1.5 space-y-1">
           {notice.changes.map((change) => (
@@ -77,7 +76,13 @@ export const TrackerSharingMigrationBanner: React.FC<{
               <span className="font-medium">
                 {globalRegistry.get(change.trackerType)?.displayNamePlural ?? change.trackerType}
               </span>
-              <span className="text-nim-muted">{describeTrackerSharingOutcome(change)}</span>
+              <span className="text-nim-muted">
+                {change.sharing === 'personal'
+                  ? t('sharing_migration.outcome_personal')
+                  : change.draftByDefault
+                    ? t('sharing_migration.outcome_team_drafts')
+                    : t('sharing_migration.outcome_team_shared')}
+              </span>
               <TrackerOwnershipChip
                 ownership={change.sharing}
                 teamName={teamName}
@@ -92,7 +97,7 @@ export const TrackerSharingMigrationBanner: React.FC<{
         onClick={handleDismiss}
         data-testid="tracker-sharing-migration-dismiss"
       >
-        Got it
+        {t('sharing_migration.acknowledge')}
       </button>
     </div>
   );

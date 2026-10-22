@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   useFloating,
   offset,
@@ -57,6 +58,7 @@ export function DiffPeekPopover({
   height,
   onResize,
 }: DiffPeekPopoverProps) {
+  const { t } = useTranslation('files');
   const virtualRef = useMemo(() => ({
     getBoundingClientRect: () => anchorRect,
   }), [anchorRect]);
@@ -169,12 +171,12 @@ export function DiffPeekPopover({
           </span>
           {mode === 'peek' && (
             <span className="text-[10px] tracking-[0.06em] uppercase py-0.5 px-1.5 rounded-sm bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-faint)]">
-              Peeking
+              {t('diff_peek.peeking')}
             </span>
           )}
           {mode === 'pinned' && (
             <span className="text-[10px] tracking-[0.06em] uppercase py-0.5 px-1.5 rounded-sm bg-[color-mix(in_srgb,var(--nim-primary)_25%,transparent)] text-[var(--nim-primary)]">
-              Pinned
+              {t('diff_peek.pinned')}
             </span>
           )}
           {onOpenInEditor && (
@@ -183,7 +185,7 @@ export function DiffPeekPopover({
               className="bg-transparent border-0 cursor-pointer text-[var(--nim-primary)] text-[11px] py-0.5 px-1 hover:underline"
               onClick={(e) => { e.stopPropagation(); onOpenInEditor(); }}
             >
-              Open in editor
+              {t('diff_peek.open_in_editor')}
             </button>
           )}
         </div>
@@ -193,8 +195,8 @@ export function DiffPeekPopover({
         </div>
 
         <div className="flex gap-3 py-1.5 px-3 border-t border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[10px] text-[var(--nim-text-faint)]">
-          <span><kbd className={KBD_CLASS}>Esc</kbd> close</span>
-          {mode === 'peek' && <span><kbd className={KBD_CLASS}>Enter</kbd> pin</span>}
+          <span><kbd className={KBD_CLASS}>Esc</kbd> {t('diff_peek.close')}</span>
+          {mode === 'peek' && <span><kbd className={KBD_CLASS}>Enter</kbd> {t('diff_peek.pin')}</span>}
         </div>
       </div>
     </FloatingPortal>

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   MAX_UNDO_CHANGES_PER_ENTRY,
   MAX_UNDO_DEPTH,
@@ -91,6 +91,20 @@ describe('tracker undo stack', () => {
 
     // The skipped count reaches the user; the exact copy is not the contract.
     expect(formatTrackerUndoToast('undo', 'Paste 12 cells', 9, 3).body).toContain('3');
+  });
+
+  it('uses caller-provided localized toast copy', () => {
+    const skippedChanges = vi.fn(() => '翻訳済みの変更数メッセージ');
+
+    expect(formatTrackerUndoToast('redo', '翻訳済みの項目', 2, 1, {
+      undone: '元に戻しました',
+      redone: 'やり直しました',
+      skippedChanges,
+    })).toEqual({
+      title: 'やり直しました',
+      body: '翻訳済みの変更数メッセージ',
+    });
+    expect(skippedChanges).toHaveBeenCalledWith(2, 3, 1);
   });
 
   it('fails the drift guard closed and folds repeated writes to one cell', () => {

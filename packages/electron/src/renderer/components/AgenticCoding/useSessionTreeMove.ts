@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { DragEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { atom, useAtomValue, useSetAtom, useStore } from 'jotai';
 import { sessionRegistryAtom } from '../../store/atoms/sessions';
 import { reparentSessionAtom } from '../../store';
@@ -7,11 +8,31 @@ import { errorNotificationService } from '../../services/ErrorNotificationServic
 import { sessionMoveError } from './sessionTreeModel';
 
 const MIME = 'application/x-nimbalyst-session';
+const MOVE_ERROR_KEYS: Record<string, string> = {
+  'Session is no longer available': 'move.validation.session_missing',
+  'Containers must stay at top level': 'move.validation.container_top_level',
+  'Parent is no longer available': 'move.validation.parent_missing',
+  'Sessions must stay in the same workspace and machine': 'move.validation.same_workspace_machine',
+  'Blitz sessions cannot receive moved sessions': 'move.validation.blitz_parent',
+  'Sessions must stay in the same worktree': 'move.validation.same_worktree',
+  'A session cannot move under its descendant': 'move.validation.descendant',
+  'The target has a cyclic parent chain': 'move.validation.cyclic_parent',
+  'Parent hierarchy is not loaded': 'move.validation.parent_not_loaded',
+};
+
+function localizeMoveError(message: string, t: ReturnType<typeof useTranslation>['t']): string {
+  const tooDeep = message.match(/^The moved tree would exceed (\d+) levels$/);
+  if (tooDeep) return t('move.validation.tree_too_deep', { maxDepth: Number(tooDeep[1]) });
+  const key = MOVE_ERROR_KEYS[message];
+  return key ? t(key) : message;
+}
+
 // Drag payloads are protected during dragover; keep the local identity for validation.
 let dragging: { sessionId: string; workspacePath: string } | null = null;
 let undoGeneration = 0;
 
 export function useSessionTreeMove(id: string, workspacePath?: string) {
+  const { t } = useTranslation('sessions');
   const store = useStore();
   const sessionType = useAtomValue(
     useMemo(() => atom((get) => get(sessionRegistryAtom).get(id)?.sessionType), [id])
@@ -28,7 +49,7 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
       const source = currentRegistry.get(sourceId);
       const error = sessionMoveError(currentRegistry, sourceId, newParentId);
       if (error) {
-        errorNotificationService.showError('Cannot move session', error);
+        errorNotificationService.showError(t('move.notification.title'), localizeMoveError(error, t));
         return false;
       }
       const oldParentId = source?.parentSessionId ?? null;
@@ -46,22 +67,22 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
       });
       if (!success) {
         errorNotificationService.showError(
-          'Cannot move session',
-          'The move was rejected. Refresh the list and try again.'
+          t('move.notification.title'),
+          t('move.notification.rejected'),
         );
         return false;
       }
       const generation = ++undoGeneration;
       if (!undo)
         errorNotificationService.showInfo(
-          'Session moved',
+          t('move.notification.success_title'),
           newParentId
-            ? `Moved under ${currentRegistry.get(newParentId)?.title || 'session'}`
-            : 'Moved to top level',
+            ? t('move.notification.under', { name: currentRegistry.get(newParentId)?.title || t('move.session') })
+            : t('move.notification.top_level'),
           {
             duration: 8000,
             action: {
-              label: 'Undo',
+              label: t('move.undo'),
               onClick: () => {
                 if (generation === undoGeneration)
                   void move(sourceId, previous.parentId, true, previous.managerId);
@@ -71,7 +92,7 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
         );
       return true;
     },
-    [store, workspacePath, reparent]
+    [store, workspacePath, reparent, t]
   );
 
   const target = (e: DragEvent) => {
@@ -111,13 +132,16 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
       const registry = store.get(sessionRegistryAtom);
       const error =
         !dragging || dragging.workspacePath !== workspacePath
-          ? 'Sessions must stay in the same workspace'
+          ? t('move.validation.same_workspace')
           : sessionMoveError(registry, dragging.sessionId, parentId);
+      const errorLabel = error ? localizeMoveError(error, t) : null;
       e.dataTransfer.dropEffect = error ? 'none' : 'move';
       setHint({
         valid: !error,
         between,
-        label: error || (parentId ? `under ${registry.get(parentId)?.title || 'session'}` : 'at top level'),
+        label: errorLabel || (parentId
+          ? t('move.hint.under', { name: registry.get(parentId)?.title || t('move.session') })
+          : t('move.notification.top_level')),
       });
     },
     onDragLeave(e: DragEvent) {
@@ -133,7 +157,7 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
         if (data.workspacePath === workspacePath && typeof data.sessionId === 'string')
           await move(data.sessionId, target(e).parentId);
       } catch (error) {
-        errorNotificationService.showError('Cannot move session', String(error));
+        errorNotificationService.showError(t('move.notification.title'), String(error));
       }
       dragging = null;
     },

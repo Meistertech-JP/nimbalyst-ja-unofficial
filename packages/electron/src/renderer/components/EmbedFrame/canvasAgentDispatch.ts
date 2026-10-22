@@ -58,8 +58,16 @@ export async function dispatchCanvasAgentThread(
   });
   if (!sessionId) {
     errorNotificationService.showError(
-      'Could not start a session for that comment',
-      'The @agent mention was saved, but no session could be created for it.',
+      errorNotificationService.getLocalizedText(
+        'editor',
+        'notifications.canvas_agent_create_failed_title',
+        'Could not start a session for that comment',
+      ),
+      errorNotificationService.getLocalizedText(
+        'editor',
+        'notifications.canvas_agent_create_failed_message',
+        'The @agent mention was saved, but no session could be created for it.',
+      ),
     );
     return;
   }
@@ -103,12 +111,25 @@ export async function dispatchCanvasAgentThread(
       );
     }
     errorNotificationService.showInfo(
-      'Session started for this comment',
-      `${title}. It will reply in the thread when it is done.`,
+      errorNotificationService.getLocalizedText(
+        'editor',
+        'notifications.canvas_agent_started_title',
+        'Session started for this comment',
+      ),
+      errorNotificationService.getLocalizedText(
+        'editor',
+        'notifications.canvas_agent_started_message',
+        '{{title}}. It will reply in the thread when it is done.',
+        { title },
+      ),
     );
   } catch (error) {
     errorNotificationService.showError(
-      'Could not hand that comment to a session',
+      errorNotificationService.getLocalizedText(
+        'editor',
+        'notifications.canvas_agent_dispatch_failed_title',
+        'Could not hand that comment to a session',
+      ),
       error instanceof Error ? error.message : String(error),
     );
   }

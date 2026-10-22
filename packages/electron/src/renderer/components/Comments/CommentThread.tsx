@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useAtomValue, useSetAtom } from 'jotai';
 
@@ -85,7 +86,7 @@ export function CommentThread({
   onOpenResource,
   onOpenSession,
   onOpenMention,
-  emptyLabel = 'No messages yet.',
+  emptyLabel,
   autoFocusComposer = false,
   density = 'comfortable',
 }: {
@@ -126,6 +127,8 @@ export function CommentThread({
    */
   density?: CommentDensity;
 }) {
+  const { t } = useTranslation('common');
+
   // Seeded from whatever the adapter already holds, so a conversation the
   // window showed a moment ago paints its history on the first frame. The
   // `list()` below still runs and merges over it — this is stale-while-
@@ -267,12 +270,14 @@ export function CommentThread({
           now: clock,
           replyParent: comment.replyToCommentId ? byId.get(comment.replyToCommentId) ?? null : undefined,
           pending: pendingKeys.has(comment.ref.commentId),
-          pendingLabel: pendingKeys.has(comment.ref.commentId) ? 'Sending' : undefined,
+          pendingLabel: pendingKeys.has(comment.ref.commentId)
+            ? t('comments.thread.sending')
+            : undefined,
           failed: failedKeys.has(comment.ref.commentId),
           pendingAgentSessionIds: pendingAgentSessions[comment.ref.commentId],
         }),
       ),
-    [byId, clock, comments, directory, failedKeys, pendingAgentSessions, pendingKeys, previews, reactionsSupported, viewerUserId],
+    [byId, clock, comments, directory, failedKeys, pendingAgentSessions, pendingKeys, previews, reactionsSupported, t, viewerUserId],
   );
 
   /**
@@ -507,7 +512,7 @@ export function CommentThread({
       >
         {loading && (
           <p className="m-0 px-3 py-4 text-[13px] text-[var(--nim-text-faint)]" data-testid="comment-thread-loading">
-            Loading conversation…
+            {t('comments.thread.loading')}
           </p>
         )}
 
@@ -516,7 +521,7 @@ export function CommentThread({
             className="m-0 px-3 py-2 text-[12px] text-[var(--nim-error)]"
             data-testid="comment-thread-load-error"
           >
-            Could not load conversation history.
+            {t('comments.thread.load_failed')}
           </p>
         )}
 
@@ -529,14 +534,16 @@ export function CommentThread({
               disabled={loadingEarlier}
               onClick={() => { void loadEarlier(); }}
             >
-              {loadingEarlier ? 'Loading' : 'Load earlier messages'}
+              {loadingEarlier
+                ? t('comments.thread.loading_earlier')
+                : t('comments.thread.load_earlier')}
             </button>
           </div>
         )}
 
         {!loading && views.length === 0 && activity.length === 0 && (
           <p className="m-0 px-3 py-6 text-center text-[13px] text-[var(--nim-text-faint)]" data-testid="comment-thread-empty">
-            {emptyLabel}
+            {emptyLabel ?? t('comments.thread.empty')}
           </p>
         )}
 
@@ -551,7 +558,7 @@ export function CommentThread({
                 resolver={resolver}
                 resourceCandidates={resourceCandidates}
                 attachmentHost={attachmentHost}
-                submitLabel="Save"
+                submitLabel={t('save')}
                 autoFocus
                 initialText={editingComment.body.text}
                 initialPool={poolForComment(editingComment, directory)}
@@ -596,7 +603,7 @@ export function CommentThread({
           data-testid="comment-thread-no-reactions"
         >
           <MaterialSymbol icon="info" size={12} />
-          Reactions are not available on this surface yet.
+          {t('comments.thread.reactions_unavailable')}
         </p>
       )}
 
@@ -615,6 +622,7 @@ export function CommentThread({
             ? {
                 commentId: replyView.ref.commentId,
                 actorLabel: replyView.actor.displayName,
+            actorLabelFallback: replyView.actor.displayNameFallback,
                 snippet: segmentsToPlainText(replyView.segments).slice(0, 120),
               }
             : null

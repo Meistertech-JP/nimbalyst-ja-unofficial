@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const openDialog = vi.hoisted(() => vi.fn());
 // `organizationCreationEnabled` is a build-time constant (dev true, packaged
@@ -15,7 +17,7 @@ vi.mock('../SecurityEncryptionSection', () => ({ SecurityEncryptionSection: () =
 vi.mock('../MoveProjectWizard', () => ({ MoveProjectWizard: () => null }));
 vi.mock('../MergeOrgWizard', () => ({ MergeOrgWizard: () => null }));
 vi.mock('../ProjectAccessEditor', () => ({ ProjectAccessEditor: () => null }));
-vi.mock('../../../common/AlphaBadge', () => ({ AlphaBadge: () => null, SETTINGS_ALPHA_TOOLTIP: '' }));
+vi.mock('../../../common/AlphaBadge', () => ({ AlphaBadge: () => null, SettingsAlphaBadge: () => null }));
 vi.mock('../../../../contexts/DialogContext', () => ({
   useDialogState: (id: string) => ({
     open: (data: unknown) => openDialog(id, data),
@@ -37,12 +39,41 @@ import {
   WorkspaceProjectSharingPanel,
 } from '../WorkspaceProjectSharingPanel';
 
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function renderEnglish(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
+
+function renderJapanese(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
+
 const remote = 'git@example.com:acme/app.git';
 
 function renderFlow(overrides: Partial<React.ComponentProps<typeof UnsharedProjectSharingState>> = {}) {
   const onAddToOrg = vi.fn();
   const onCreateOrganization = vi.fn();
-  render(
+  renderEnglish(
     <UnsharedProjectSharingState
       workspacePath="/tmp/acme-app"
       gitRemote={remote}
@@ -72,6 +103,22 @@ describe('UnsharedProjectSharingState', () => {
 
     fireEvent.click(screen.getByTestId('project-sharing-confirm-action'));
     expect(onAddToOrg).toHaveBeenCalledWith('org-1');
+  });
+
+  it('renders the sharing choices in Japanese', () => {
+    renderJapanese(
+      <UnsharedProjectSharingState
+        workspacePath="/tmp/acme-app"
+        gitRemote={remote}
+        adminOrgs={[{ orgId: 'org-1', name: 'Acme' }]}
+        onAddToOrg={vi.fn()}
+        onCreateOrganization={vi.fn()}
+      />,
+    );
+
+    screen.getByText('このプロジェクトを組織に接続');
+    screen.getByText('既存の組織に追加');
+    screen.getByRole('combobox', { name: '組織' });
   });
 
   it('goes straight to creating an organization when the user has none', () => {
@@ -162,7 +209,7 @@ describe('WorkspaceProjectSharingPanel entry points', () => {
   afterEach(() => cleanup());
 
   it('gives a signed-out user a button into the wizard, not instructions', async () => {
-    render(<WorkspaceProjectSharingPanel workspacePath="/tmp/acme-app" />);
+    renderEnglish(<WorkspaceProjectSharingPanel workspacePath="/tmp/acme-app" />);
 
     const signedOut = await screen.findByTestId('project-sharing-signed-out');
     expect(signedOut.textContent).not.toContain('Account & Sync');
@@ -185,7 +232,7 @@ describe('WorkspaceProjectSharingPanel entry points', () => {
    */
   it('signs a packaged-build user in rather than into a create it cannot finish', async () => {
     flags.organizationCreationEnabled = false;
-    render(<WorkspaceProjectSharingPanel workspacePath="/tmp/acme-app" />);
+    renderEnglish(<WorkspaceProjectSharingPanel workspacePath="/tmp/acme-app" />);
 
     fireEvent.click(await screen.findByTestId('project-sharing-sign-in'));
     await waitFor(() => expect(openDialog).toHaveBeenCalled());
@@ -199,7 +246,7 @@ describe('WorkspaceProjectSharingPanel entry points', () => {
       user: { user_id: 'u1', emails: [{ email: 'a@example.com' }] },
     }));
 
-    render(<WorkspaceProjectSharingPanel workspacePath="/tmp/acme-app" />);
+    renderEnglish(<WorkspaceProjectSharingPanel workspacePath="/tmp/acme-app" />);
 
     fireEvent.click(await screen.findByTestId('project-sharing-choose-new'));
     fireEvent.click(screen.getByTestId('project-sharing-confirm-action'));

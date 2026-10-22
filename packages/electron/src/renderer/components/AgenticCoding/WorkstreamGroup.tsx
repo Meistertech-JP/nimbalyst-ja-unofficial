@@ -1,6 +1,7 @@
 import { SessionTree } from './SessionTree.tsx';
 import { sessionRegistryAtom } from '../../store/atoms/sessions';
 import React, { useState, useCallback, useEffect, useRef, memo, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { compactRowsAtom } from '../../store/atoms/agentMode';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
@@ -32,6 +33,7 @@ import { FullTitleTooltip } from './FullTitleTooltip';
  * Displays when the tree is collapsed so users can see status at a glance.
  */
 const WorkstreamGroupStatusIndicator: React.FC<{ sessionIds: string[] }> = memo(({ sessionIds }) => {
+  const { t } = useTranslation('agents');
   // Create a stable key for the atom family by sorting and serializing session IDs
   const sessionIdsKey = useMemo(() => JSON.stringify([...sessionIds].sort()), [sessionIds]);
 
@@ -41,7 +43,7 @@ const WorkstreamGroupStatusIndicator: React.FC<{ sessionIds: string[] }> = memo(
   // Priority: interactive prompt > processing > pending prompt > unread
   if (hasPendingInteractivePrompt) {
     return (
-      <div className="workstream-group-status-indicator waiting-for-input flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="workstream-group-status-indicator waiting-for-input flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title={t('status.waiting')}>
         <MaterialSymbol icon="contact_support" size={12} />
       </div>
     );
@@ -49,7 +51,7 @@ const WorkstreamGroupStatusIndicator: React.FC<{ sessionIds: string[] }> = memo(
 
   if (hasProcessing) {
     return (
-      <div className="workstream-group-status-indicator processing flex items-center justify-center text-[var(--nim-primary)]" title="Processing">
+      <div className="workstream-group-status-indicator processing flex items-center justify-center text-[var(--nim-primary)]" title={t('status.processing')}>
         <MaterialSymbol icon="progress_activity" size={12} className="animate-spin" />
       </div>
     );
@@ -57,7 +59,7 @@ const WorkstreamGroupStatusIndicator: React.FC<{ sessionIds: string[] }> = memo(
 
   if (hasPendingPrompt) {
     return (
-      <div className="workstream-group-status-indicator pending flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="workstream-group-status-indicator pending flex items-center justify-center text-[var(--nim-warning)] animate-pulse" title={t('status.waiting')}>
         <MaterialSymbol icon="help" size={12} />
       </div>
     );
@@ -65,7 +67,7 @@ const WorkstreamGroupStatusIndicator: React.FC<{ sessionIds: string[] }> = memo(
 
   if (hasUnread) {
     return (
-      <div className="workstream-group-status-indicator unread flex items-center justify-center text-[var(--nim-primary)]" title="Unread response">
+      <div className="workstream-group-status-indicator unread flex items-center justify-center text-[var(--nim-primary)]" title={t('status.unread')}>
         <MaterialSymbol icon="circle" size={6} fill />
       </div>
     );
@@ -183,6 +185,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
   onAddSuperLoop,
   onWorktreeCleanGitignored,
 }) => {
+  const { t } = useTranslation('agents');
   const registry = useAtomValue(sessionRegistryAtom);
   const compact = useAtomValue(compactRowsAtom);
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -485,8 +488,8 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
     if (type !== 'workstream' || !workstreamShareInfo) return;
     const url = buildShareUrl(workstreamShareInfo.shareId, shareKeys.get(id));
     copyToClipboard(url);
-    errorNotificationService.showInfo('Share link copied', 'The share link has been copied to your clipboard.', { duration: 3000 });
-  }, [type, id, workstreamShareInfo, shareKeys]);
+    errorNotificationService.showInfo(t('context.share_copied_title'), t('context.share_copied_message'), { duration: 3000 });
+  }, [type, id, workstreamShareInfo, shareKeys, t]);
 
   const handleWorkstreamUnshare = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -500,14 +503,14 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
       });
       if (result?.success) {
         removeShare(id);
-        errorNotificationService.showInfo('Session unshared', 'The share link has been removed.', { duration: 3000 });
+        errorNotificationService.showInfo(t('context.unshared_title'), t('context.unshared_message'), { duration: 3000 });
       } else if (result?.error) {
-        errorNotificationService.showError('Unshare failed', result.error);
+        errorNotificationService.showError(t('context.unshare_failed'), result.error);
       }
     } catch (error) {
-      errorNotificationService.showError('Unshare failed', error instanceof Error ? error.message : 'An unexpected error occurred');
+      errorNotificationService.showError(t('context.unshare_failed'), error instanceof Error ? error.message : t('context.unexpected'));
     }
-  }, [type, id, workstreamShareInfo, removeShare]);
+  }, [type, id, workstreamShareInfo, removeShare, t]);
 
   const handleHeaderClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -588,7 +591,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
           className={`workstream-group-chevron-button flex items-center justify-center w-6 h-full ${compact ? 'min-h-[1.5rem]' : 'min-h-[2.5rem]'} p-0 bg-transparent border-none cursor-pointer text-[var(--nim-text-faint)] shrink-0 rounded-l-md hover:bg-[var(--nim-bg-secondary)] focus:outline-none focus-visible:outline-2 focus-visible:outline-[var(--nim-border-focus)] focus-visible:outline-offset-[-2px]`}
           onClick={handleChevronClick}
           aria-expanded={isExpanded}
-          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${type}`}
+          aria-label={t('context.group_toggle', { action: t(isExpanded ? 'context.collapse' : 'context.expand'), type: t(type === 'worktree' ? 'context.worktree' : 'context.workstream') })}
         >
           <MaterialSymbol
             icon="chevron_right"
@@ -609,7 +612,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onSelect();
             }
           }}
-          aria-label={`${type === 'worktree' ? 'Worktree' : 'Workstream'}: ${displayTitle}, ${sessionCount} session${sessionCount !== 1 ? 's' : ''}`}
+          aria-label={t(sessionCount === 1 ? 'context.group_header_one' : 'context.group_header_other', { type: t(type === 'worktree' ? 'context.worktree' : 'context.workstream'), title: displayTitle, count: sessionCount })}
         >
           {/* Icon */}
           <div className={`workstream-group-icon shrink-0 w-[1.125rem] h-[1.125rem] mt-[0.0625rem] flex items-center justify-center ${
@@ -665,7 +668,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
                 <MaterialSymbol icon="push_pin" size={12} className="workstream-group-pin-icon shrink-0 text-[var(--nim-text-faint)] opacity-70" />
               )}
               {displayIsArchived && !isRenamingWorktree && (
-                <span className="workstream-group-badge archived text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(156,163,175,0.15)] text-[var(--nim-text-faint)]">archived</span>
+                <span className="workstream-group-badge archived text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(156,163,175,0.15)] text-[var(--nim-text-faint)]">{t('status.archived')}</span>
               )}
               {/* Status indicator for child sessions (processing/pending/unread) */}
               {!isRenamingWorktree && (
@@ -678,17 +681,17 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
                 <>
                   {gitStatus.ahead && gitStatus.ahead > 0 && (
                     <span className="workstream-group-badge ahead text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(74,158,255,0.15)] text-[var(--nim-primary)]">
-                      {gitStatus.ahead} ahead
+                      {gitStatus.ahead} {t('header.ahead')}
                     </span>
                   )}
                   {gitStatus.behind && gitStatus.behind > 0 && (
                     <span className="workstream-group-badge behind text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]">
-                      {gitStatus.behind} behind
+                      {gitStatus.behind} {t('header.behind')}
                     </span>
                   )}
                   {gitStatus.uncommitted && (
                     <span className="workstream-group-badge uncommitted text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]">
-                      uncommitted
+                      {t('header.uncommitted')}
                     </span>
                   )}
                 </>
@@ -697,13 +700,13 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               {type === 'workstream' && totalUncommittedCount > 0 && (
                 <span
                   className="workstream-group-badge uncommitted text-[0.5625rem] px-1.5 py-[0.0625rem] rounded-[0.625rem] font-medium bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]"
-                  title={`${totalUncommittedCount} uncommitted change${totalUncommittedCount !== 1 ? 's' : ''} across all sessions`}
+                  title={t('accessibility.uncommitted_changes', { count: totalUncommittedCount })}
                 >
-                  {totalUncommittedCount} uncommitted
+                  {totalUncommittedCount} {t('header.uncommitted')}
                 </span>
               )}
               <span className="workstream-group-count shrink-0 text-[0.6875rem] text-[var(--nim-text-faint)]">
-                {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+                {t(sessionCount === 1 ? 'context.session_count_one' : 'context.session_count_other', { count: sessionCount })}
               </span>
             </div>
           </div>
@@ -716,8 +719,8 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               <button
                 className="workstream-group-action-button flex items-center justify-center w-6 h-6 p-0 bg-transparent border-none rounded cursor-pointer text-[var(--nim-text-faint)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] focus:outline-none focus-visible:outline-2 focus-visible:outline-[var(--nim-border-focus)] focus-visible:outline-offset-[-2px]"
                 onClick={handleFilesMode}
-                title="Browse Files"
-                aria-label="Browse files in worktree"
+                title={t('context.browse_files')}
+                aria-label={t('context.browse_files_aria')}
               >
                 <MaterialSymbol icon="description" size={14} />
               </button>
@@ -726,8 +729,8 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               <button
                 className="workstream-group-action-button flex items-center justify-center w-6 h-6 p-0 bg-transparent border-none rounded cursor-pointer text-[var(--nim-text-faint)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] focus:outline-none focus-visible:outline-2 focus-visible:outline-[var(--nim-border-focus)] focus-visible:outline-offset-[-2px]"
                 onClick={handleChangesMode}
-                title="View Changes"
-                aria-label="View changes in worktree"
+                title={t('context.view_changes')}
+                aria-label={t('context.view_changes_aria')}
               >
                 <MaterialSymbol icon="difference" size={14} />
               </button>
@@ -764,7 +767,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleRenameClick}
             >
               <MaterialSymbol icon="edit" size={14} />
-              Rename
+              {t('context.rename')}
             </button>
           )}
           {type === 'worktree' && onWorktreePinToggle && (
@@ -773,7 +776,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handlePinToggle}
             >
               <MaterialSymbol icon="push_pin" size={14} />
-              {worktree?.isPinned ? 'Unpin' : 'Pin'}
+              {t(worktree?.isPinned ? 'context.unpin' : 'context.pin')}
             </button>
           )}
           {type === 'worktree' && onAddSession && (
@@ -782,7 +785,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleAddSession}
             >
               <MaterialSymbol icon="add" size={14} />
-              Add Session
+              {t('context.add_session')}
             </button>
           )}
           {type === 'worktree' && onAddTerminal && (
@@ -791,7 +794,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleAddTerminal}
             >
               <MaterialSymbol icon="terminal" size={14} />
-              Add Terminal
+              {t('context.add_terminal')}
             </button>
           )}
           {type === 'worktree' && onAddSuperLoop && (
@@ -800,7 +803,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleAddSuperLoop}
             >
               <MaterialSymbol icon="sync" size={14} />
-              New Super Loop
+              {t('context.new_super_loop')}
             </button>
           )}
           {type === 'worktree' && onWorktreeCleanGitignored && (
@@ -809,7 +812,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleCleanGitignored}
             >
               <MaterialSymbol icon="delete_sweep" size={14} />
-              Clear Gitignored Files
+              {t('context.clear_gitignored_files')}
             </button>
           )}
           {type === 'worktree' && onWorktreeArchive && (
@@ -820,7 +823,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
                 onClick={handleArchive}
               >
                 <MaterialSymbol icon="archive" size={14} />
-                Archive Worktree
+                {t('context.archive_worktree')}
               </button>
             </>
           )}
@@ -832,7 +835,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleRenameClick}
             >
               <MaterialSymbol icon="edit" size={14} />
-              Rename
+              {t('context.rename')}
             </button>
           )}
           {type === 'workstream' && onWorkstreamPinToggle && (
@@ -841,7 +844,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handlePinToggle}
             >
               <MaterialSymbol icon="push_pin" size={14} />
-              {isPinned ? 'Unpin' : 'Pin'}
+              {t(isPinned ? 'context.unpin' : 'context.pin')}
             </button>
           )}
           {type === 'workstream' && (
@@ -850,7 +853,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleWorkstreamMarkAllRead}
             >
               <MaterialSymbol icon="done_all" size={14} />
-              Mark All Read
+              {t('context.mark_all_read')}
             </button>
           )}
           {type === 'workstream' && onSessionBranch && (
@@ -859,7 +862,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleWorkstreamBranch}
             >
               <MaterialSymbol icon="fork_right" size={14} />
-              Branch conversation
+              {t('context.branch')}
             </button>
           )}
           {type === 'workstream' && (
@@ -868,7 +871,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleWorkstreamCopySessionId}
             >
               <MaterialSymbol icon="content_copy" size={14} />
-              Copy Session ID
+              {t('context.copy_session_id')}
             </button>
           )}
           {type === 'workstream' && workstreamShareInfo ? (
@@ -878,14 +881,14 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
                 onClick={handleWorkstreamCopyShareLink}
               >
                 <MaterialSymbol icon="content_copy" size={14} />
-                Copy share link
+                {t('context.copy_share_link')}
               </button>
               <button
                 className="workstream-group-context-menu-item flex items-center gap-2 w-full py-2 px-3 bg-transparent border-none cursor-pointer text-[0.8125rem] text-[var(--nim-text)] text-left rounded transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                 onClick={handleWorkstreamUnshare}
               >
                 <MaterialSymbol icon="link_off" size={14} />
-                Unshare
+                {t('context.unshare')}
               </button>
             </>
           ) : type === 'workstream' ? (
@@ -894,7 +897,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleWorkstreamShareLink}
             >
               <MaterialSymbol icon="link" size={14} />
-              Share link
+              {t('context.share_link')}
             </button>
           ) : null}
           {type === 'workstream' && (
@@ -903,7 +906,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleWorkstreamExportHtml}
             >
               <MaterialSymbol icon="download" size={14} />
-              Export as HTML
+              {t('context.export_html')}
             </button>
           )}
           {type === 'workstream' && (
@@ -912,7 +915,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleWorkstreamCopyTranscript}
             >
               <MaterialSymbol icon="assignment" size={14} />
-              Copy transcript
+              {t('context.copy_transcript')}
             </button>
           )}
           {type === 'workstream' && onWorkstreamArchive && (
@@ -921,7 +924,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleArchive}
             >
               <MaterialSymbol icon={isArchived ? 'unarchive' : 'archive'} size={14} />
-              {isArchived ? 'Unarchive Workstream' : 'Archive Workstream'}
+              {t(isArchived ? 'context.unarchive_workstream' : 'context.archive_workstream')}
             </button>
           )}
           {type === 'workstream' && onSessionDelete && (
@@ -930,7 +933,7 @@ export const WorkstreamGroup: React.FC<WorkstreamGroupProps> = ({
               onClick={handleWorkstreamDelete}
             >
               <MaterialSymbol icon="delete" size={14} />
-              Delete
+              {t('context.delete')}
             </button>
           )}
         </div>

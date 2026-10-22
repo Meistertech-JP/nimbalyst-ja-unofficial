@@ -35,6 +35,7 @@ import {
 import { $isListItemNode, $createListItemNode } from '@lexical/list';
 import { useEffect as useReactEffect } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import { $createTrackerItemNode, $getTrackerItemNode, $isTrackerItemNode, TrackerItemData, TrackerItemType, TrackerItemNode, TrackerItemStatus, TrackerItemPriority } from './TrackerItemNode';
 import { TRACKER_ITEM_TRANSFORMERS } from './TrackerItemTransformer';
 import { defineExtension } from 'lexical';
@@ -272,6 +273,7 @@ async function convertToDecision(editor: LexicalEditor, onContentChange?: (conte
 export interface TrackerPluginProps {}
 
 function TrackerPlugin(): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   const [editor] = useLexicalComposerContext();
   const [editorState, setEditorState] = useState<TrackerEditorState | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -686,7 +688,7 @@ function TrackerPlugin(): JSX.Element | null {
             <textarea
               value={value}
               onChange={(e) => handleChange(e.target.value)}
-              placeholder={`Add ${label.toLowerCase()}...`}
+              placeholder={t('inline.add_field', { field: label.toLowerCase() })}
               rows={4}
             />
           </div>
@@ -700,7 +702,7 @@ function TrackerPlugin(): JSX.Element | null {
               value={value}
               onChange={(e) => handleChange(e.target.value)}
             >
-              {!field.required && <option value="">None</option>}
+              {!field.required && <option value="">{t('inline.none')}</option>}
               {field.options?.map((option: any) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -718,12 +720,12 @@ function TrackerPlugin(): JSX.Element | null {
               type={field.type === 'number' ? 'number' : 'text'}
               value={value}
               onChange={(e) => handleChange(e.target.value)}
-              placeholder={`Enter ${label.toLowerCase()}...`}
+              placeholder={t('inline.enter_field', { field: label.toLowerCase() })}
             />
           </div>
         );
     }
-  }, [editorState, updateTrackerData]);
+  }, [editorState, t, updateTrackerData]);
 
   // Group fields for layout
   const fields = model?.fields || [];
@@ -763,7 +765,7 @@ function TrackerPlugin(): JSX.Element | null {
           {/* Title field - always first */}
           {titleField && (
             <div className="tracker-item-popover-field">
-              <label>Title</label>
+              <label>{t('columns.title')}</label>
               <input
                 type="text"
                 value={editorState.data.title}
@@ -771,7 +773,7 @@ function TrackerPlugin(): JSX.Element | null {
                   updateTrackerData(editorState.nodeKey, { title: e.target.value });
                   setEditorState({ ...editorState, data: { ...editorState.data, title: e.target.value } });
                 }}
-                placeholder="Enter title"
+                placeholder={t('inline.enter_title')}
               />
             </div>
           )}
@@ -796,17 +798,17 @@ function TrackerPlugin(): JSX.Element | null {
               className="tracker-item-convert-button"
               disabled={converting}
               onClick={() => handleConvertToReference(editorState.nodeKey, editorState.data)}
-              title="Create a real tracked item from this inline note and replace it with a live reference chip"
+              title={t('inline.convert_title')}
             >
               <span className="material-symbols-outlined">sync_alt</span>
-              {converting ? 'Converting…' : 'Convert to tracked reference'}
+              {converting ? t('inline.converting') : t('inline.convert')}
             </button>
           </div>
 
           <div className="tracker-item-popover-footer">
-            <span className="tracker-item-date">Created: {editorState.data.created ? new Date(editorState.data.created).toLocaleString() : 'N/A'}</span>
-            <span className="tracker-item-date">Updated: {editorState.data.updated ? new Date(editorState.data.updated).toLocaleString() : 'N/A'}</span>
-            <span className="tracker-item-id">ID: {editorState.data.id}</span>
+            <span className="tracker-item-date">{t('inline.created')} {editorState.data.created ? new Date(editorState.data.created).toLocaleString() : t('inline.not_available')}</span>
+            <span className="tracker-item-date">{t('inline.updated')} {editorState.data.updated ? new Date(editorState.data.updated).toLocaleString() : t('inline.not_available')}</span>
+            <span className="tracker-item-id">{t('inline.id')}: {editorState.data.id}</span>
           </div>
         </div>
       )}

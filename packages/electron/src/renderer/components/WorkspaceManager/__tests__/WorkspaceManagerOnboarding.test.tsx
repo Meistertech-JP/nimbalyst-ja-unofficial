@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const startTutorial = vi.fn();
 const invoke = vi.fn();
@@ -19,6 +21,21 @@ vi.mock('posthog-js', () => ({
 }));
 
 const { WorkspaceManagerOnboarding } = await import('../WorkspaceManagerOnboarding');
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
+
+function renderEnglish(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 describe('WorkspaceManagerOnboarding', () => {
   beforeEach(() => {
@@ -48,7 +65,7 @@ describe('WorkspaceManagerOnboarding', () => {
   });
 
   it('persists Get started and reveals the manager without project-window mode state', async () => {
-    render(<WorkspaceManagerOnboarding showOnboarding />);
+    renderEnglish(<WorkspaceManagerOnboarding showOnboarding />);
 
     expect(screen.getByTestId('workspace-manager-behind-onboarding')).not.toBeNull();
     fireEvent.click(screen.getByText('Standard Mode'));
@@ -71,7 +88,7 @@ describe('WorkspaceManagerOnboarding', () => {
   });
 
   it('persists onboarding before starting the tutorial', async () => {
-    render(<WorkspaceManagerOnboarding showOnboarding />);
+    renderEnglish(<WorkspaceManagerOnboarding showOnboarding />);
 
     fireEvent.click(screen.getByText('Developer Mode'));
     fireEvent.click(screen.getByRole('button', { name: 'Start tutorial' }));
@@ -86,9 +103,17 @@ describe('WorkspaceManagerOnboarding', () => {
   });
 
   it('does not show onboarding when the renderer flag is absent', () => {
-    render(<WorkspaceManagerOnboarding showOnboarding={false} />);
+    renderEnglish(<WorkspaceManagerOnboarding showOnboarding={false} />);
 
     expect(screen.queryByRole('button', { name: 'Start tutorial' })).toBeNull();
     expect(screen.getByTestId('workspace-manager-behind-onboarding')).not.toBeNull();
+  });
+
+  it('explains safe mode in the banner and preserves the launch flag', () => {
+    renderEnglish(<WorkspaceManagerOnboarding showOnboarding={false} safeMode />);
+
+    expect(screen.getByText('Safe mode:')).toBeDefined();
+    expect(screen.getByText(/Saved windows were not restored/)).toBeDefined();
+    expect(screen.getByText('--safe-mode')).toBeDefined();
   });
 });

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface InputModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function InputModal({
   onConfirm,
   onCancel,
 }: InputModalProps) {
+  const { t } = useTranslation('common');
   const [value, setValue] = useState(defaultValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -62,7 +64,7 @@ export function InputModal({
             ) : null}
           </div>
           <div className="input-modal-buttons flex justify-end gap-2">
-            <button type="button" className="input-modal-button input-modal-cancel nim-btn-secondary px-4 py-1.5 text-sm" onClick={onCancel}>Cancel</button>
+            <button type="button" className="input-modal-button input-modal-cancel nim-btn-secondary px-4 py-1.5 text-sm" onClick={onCancel}>{t('cancel')}</button>
             <button type="submit" className="input-modal-button input-modal-confirm nim-btn-primary px-4 py-1.5 text-sm" disabled={!value.trim()}>{confirmLabel}</button>
           </div>
         </form>

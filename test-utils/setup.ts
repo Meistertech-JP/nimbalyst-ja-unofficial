@@ -1,6 +1,17 @@
 import { vi, describe, it, test, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { setI18n } from 'react-i18next';
+import { createI18nInstance } from '../packages/i18n/src/core';
+
+// Legacy component tests omit the application's language provider. Use real
+// English resources there; tests with an explicit provider remain isolated.
+const defaultTestI18n = await createI18nInstance('en');
+setI18n(defaultTestI18n);
+beforeEach(async () => {
+  setI18n(defaultTestI18n);
+  await defaultTestI18n.changeLanguage('en');
+});
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 

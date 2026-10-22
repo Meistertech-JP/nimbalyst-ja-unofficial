@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { ProjectGraphNode } from '../../types';
 import type { PrototypeViewProps } from '../contracts';
 import {
@@ -25,7 +26,6 @@ import {
   describeGaps,
   explicitDegreeOf,
   findStartingArtifacts,
-  formatCount,
   formatRange,
   latestEvent,
   type NeighborRef,
@@ -48,6 +48,9 @@ function toneFor(node: ProjectGraphNode): string {
 }
 
 export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
+  const { t, i18n } = useTranslation('extensions');
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const countText = (shown: number, total: number, unit: string) => t('project_graph.trails.count', { shown, total, unit });
   const { model, range, selectedAreaId, selectedNodeId } = props;
   const { onSelectArea, onSelectNode, onOpenNode, onNavigate, onResolveNode } = props;
 
@@ -96,8 +99,9 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
         perLane: key => perLane[key] ?? LANE_PAGE,
         laneLimit,
         includePathDerived,
+        translate: t,
       }),
-    [model, index, focusId, range, perLane, laneLimit, includePathDerived],
+    [model, index, focusId, range, perLane, laneLimit, includePathDerived, t],
   );
 
   const inspected: NeighborRef | null = useMemo(() => {
@@ -111,10 +115,10 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
 
   const secondHop = useMemo(() => {
     if (!inspected || !focusId) return null;
-    return buildSecondHop(model, index, inspected.node.id, focusId, range, SECOND_HOP_LIMIT);
-  }, [model, index, inspected, focusId, range]);
+    return buildSecondHop(model, index, inspected.node.id, focusId, range, SECOND_HOP_LIMIT, t);
+  }, [model, index, inspected, focusId, range, t]);
 
-  const gaps = useMemo(() => describeGaps(model, neighborhood), [model, neighborhood]);
+  const gaps = useMemo(() => describeGaps(model, neighborhood, t), [model, neighborhood, t]);
 
   const recenter = useCallback(
     (id: string) => {
@@ -193,9 +197,9 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
 
   return (
     <div className="pg-trails">
-      <section className="pg-trails-start" aria-label="Starting artifacts">
+      <section className="pg-trails-start" aria-label={t('project_graph.trails.starting_artifacts')}>
         <header className="pg-trails-start-head">
-          <h2>Start from</h2>
+          <h2>{t('project_graph.trails.start_from')}</h2>
           {area ? (
             <button
               type="button"
@@ -204,15 +208,15 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
               onClick={() => setScopeToArea(v => !v)}
               title={area.basis}
             >
-              {scopeToArea ? `Scoped to ${area.label}` : 'All records'}
+              {scopeToArea ? t('project_graph.trails.scoped_to', { area: area.label }) : t('project_graph.trails.all_records')}
             </button>
           ) : null}
         </header>
         <input
           type="search"
           className="pg-trails-search"
-          placeholder="Search records"
-          aria-label="Search starting artifacts"
+          placeholder={t('project_graph.trails.search_records')}
+          aria-label={t('project_graph.trails.search_starting_artifacts')}
           value={query}
           onChange={e => {
             setQuery(e.target.value);
@@ -228,26 +232,26 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
           }}
         />
         <p className="pg-trails-note">
-          {formatCount(startItems.length, starting.total, 'match')}
-          {area && scopeToArea ? ` in ${area.label} (${starting.scopeTotal} records)` : ` of ${starting.scopeTotal} records`}
-          {starting.total > startItems.length ? ' · narrow the search to reach the rest' : ''}
+          {countText(startItems.length, starting.total, t('project_graph.trails.matches'))}
+          {area && scopeToArea ? ` ${t('project_graph.trails.in_area_scope', { area: area.label, count: starting.scopeTotal })}` : ` ${t('project_graph.trails.of_scope', { count: starting.scopeTotal })}`}
+          {starting.total > startItems.length ? ` · ${t('project_graph.trails.narrow_search')}` : ''}
         </p>
         <p className="pg-trails-note">
           {query.trim()
-            ? 'Name matches first, then most recent event.'
-            : 'Ranked by evidence in range, then artifacts ahead of directory rollups, then explicit links.'}
+            ? t('project_graph.trails.search_ranking')
+            : t('project_graph.trails.suggestion_ranking')}
         </p>
         <div
           className="pg-trails-list"
           role="listbox"
           tabIndex={0}
           ref={listRef}
-          aria-label="Starting artifacts"
+          aria-label={t('project_graph.trails.starting_artifacts')}
           aria-activedescendant={activeIndex >= 0 ? `pg-trails-start-${activeIndex}` : undefined}
           onKeyDown={onListKeyDown}
         >
           {startItems.length === 0 ? (
-            <p className="pg-trails-empty">No record matches this search in the current scope.</p>
+            <p className="pg-trails-empty">{t('project_graph.trails.no_search_matches')}</p>
           ) : null}
           {startItems.map((node, i) => {
             const linked = degreeOf(index, node.id);
@@ -269,8 +273,8 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                 <span className="pg-trails-start-label">{node.label}</span>
                 <span className="pg-trails-start-meta">
                   {linked === 0
-                    ? 'no recorded connections'
-                    : `${explicit} explicit of ${linked} connection${linked === 1 ? '' : 's'}`}
+                    ? t('project_graph.trails.no_recorded_connections')
+                    : t('project_graph.trails.explicit_connections', { explicit, total: linked })}
                 </span>
               </div>
             );
@@ -278,12 +282,12 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
         </div>
       </section>
 
-      <section className="pg-trails-canvas" aria-label="Evidence trail">
+      <section className="pg-trails-canvas" aria-label={t('project_graph.trails.evidence_trail')}>
         <div className="pg-trails-crumbs">
           <button type="button" className="pg-trails-btn" onClick={goBack} disabled={trail.length === 0}>
-            ← Back
+            {t('project_graph.trails.back')}
           </button>
-          {crumbOffset > 0 ? <span className="pg-trails-note">+{crumbOffset} earlier</span> : null}
+          {crumbOffset > 0 ? <span className="pg-trails-note">{t('project_graph.trails.earlier_items', { count: crumbOffset })}</span> : null}
           {crumbs.map((id, i) => (
             <button
               key={`${id}-${i}`}
@@ -299,20 +303,15 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
 
         {!focus ? (
           <div className="pg-trails-blank">
-            <h2>Pick a starting artifact</h2>
+            <h2>{t('project_graph.trails.pick_starting_artifact')}</h2>
             <p>
-              A trail starts from one record and shows only its recorded relations, one or two hops out. Search on the
-              left, or take one of the suggestions there.
+              {t('project_graph.trails.starting_artifact_help')}
             </p>
             <p className="pg-trails-note">
-              With no search, suggestions are ranked by evidence inside the current range, then named artifacts ahead
-              of directory rollups, then explicitly linked connections, then the most recent recorded event. That is
-              the whole rule — it is not a relevance model. Directories and records with no connections are ranked
-              lower, never excluded: search by name reaches every record in scope.
+              {t('project_graph.trails.suggestion_ranking_help')}
             </p>
             <p className="pg-trails-note">
-              Current range {formatRange(range)} highlights recent evidence. Older records stay reachable; nothing here
-              is filtered out by date.
+              {t('project_graph.trails.range_help', { range: formatRange(range, locale, t) })}
             </p>
           </div>
         ) : (
@@ -329,22 +328,22 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                   `node.closedAt` can be inferred (loader back-fills undated
                   nodes from a neighbor), so neither is printed as observed. */}
               <p className="pg-trails-note">
-                {describeCreation(index, focus.id)} · {describeEvent(focusEvent)}
+                {describeCreation(index, focus.id, t, locale)} · {describeEvent(focusEvent, t, locale)}
               </p>
               <div className="pg-trails-actions">
                 <button type="button" className="pg-trails-btn" onClick={() => onOpenNode(focus)}>
-                  Open source record
+                  {t('project_graph.trails.open_source_record')}
                 </button>
                 <button type="button" className="pg-trails-btn" onClick={() => onNavigate('atlas', focus.id, selectedAreaId ?? undefined)}>
-                  Show in Atlas
+                  {t('project_graph.trails.show_in_atlas')}
                 </button>
                 <button type="button" className="pg-trails-btn" onClick={() => onNavigate('pulse', focus.id, selectedAreaId ?? undefined)}>
-                  Show in Pulse
+                  {t('project_graph.trails.show_in_pulse')}
                 </button>
               </div>
               {memberships.length > 0 ? (
                 <div className="pg-trails-membership">
-                  <span className="pg-trails-eyebrow">Area membership — a grouping, not a recorded relation</span>
+                  <span className="pg-trails-eyebrow">{t('project_graph.trails.area_membership')}</span>
                   <div className="pg-trails-chiprow">
                     {memberships.map(m => {
                       const label = model.areas.find(a => a.id === m.areaId)?.label ?? m.areaId;
@@ -367,15 +366,14 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
 
             <div className="pg-trails-summary">
               <span>
-                {formatCount(neighborhood.connectionShown, neighborhood.connectionTotal, 'recorded connection')}
-                {' shown'}
+                {countText(neighborhood.connectionShown, neighborhood.connectionTotal, t('project_graph.trails.recorded_connections'))} {t('project_graph.trails.shown')}
               </span>
               <span className="pg-trails-note">
-                {neighborhood.inRangeTotal} with evidence in {formatRange(range)}
+                {t('project_graph.trails.evidence_in_range', { count: neighborhood.inRangeTotal, range: formatRange(range, locale, t) })}
               </span>
               {neighborhood.census.resolved > 0 ? (
                 <span className="pg-trails-note">
-                  {neighborhood.census.explicit} explicit · {neighborhood.census.pathDerived} path containment
+                  {t('project_graph.trails.relation_basis_counts', { explicit: neighborhood.census.explicit, derived: neighborhood.census.pathDerived })}
                 </span>
               ) : null}
               <button
@@ -385,23 +383,21 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                 onClick={() => setIncludePathDerived(v => !v)}
               >
                 {includePathDerived
-                  ? 'Path containment shown'
-                  : `Path containment hidden (${neighborhood.hiddenPathDerived})`}
+                  ? t('project_graph.trails.path_containment_shown')
+                  : t('project_graph.trails.path_containment_hidden', { count: neighborhood.hiddenPathDerived })}
               </button>
             </div>
 
             {neighborhood.connectionTotal === 0 ? (
               <div className="pg-trails-unlinked">
-                <h3>No links in the loaded snapshot</h3>
+                <h3>{t('project_graph.trails.no_loaded_links')}</h3>
                 <p>
-                  Nothing in the loaded snapshot links this record to another one. Every source here is
-                  bounded, so a record carrying a link to it may simply not have been loaded — this says
-                  what was loaded, not what the sources hold.
+                  {t('project_graph.trails.no_loaded_links_help')}
                 </p>
                 <p className="pg-trails-note">
                   {memberships.length > 0
-                    ? 'It does belong to an area above. Membership is a grouping rule, and suggests where to look next — it is not a relation between records.'
-                    : 'It also has no area membership, so there is no grouping to suggest where to look next.'}
+                    ? t('project_graph.trails.member_area_explanation')
+                    : t('project_graph.trails.no_area_membership_explanation')}
                 </p>
               </div>
             ) : null}
@@ -409,18 +405,16 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
             {neighborhood.unresolvedRefs.length > 0 ? (
               <section
                 className="pg-trails-unresolved"
-                aria-label={`Unresolved endpoints (${neighborhood.unresolved})`}
+                aria-label={t('project_graph.trails.unresolved_endpoints_count', { count: neighborhood.unresolved })}
               >
                 <header className="pg-trails-unresolved-head">
-                  <span className="pg-trails-relation">Unresolved endpoints</span>
+                  <span className="pg-trails-relation">{t('project_graph.trails.unresolved_endpoints')}</span>
                   <span className="pg-trails-note">
-                    {formatCount(neighborhood.unresolvedRefs.length, neighborhood.unresolved, 'link')}
+                    {countText(neighborhood.unresolvedRefs.length, neighborhood.unresolved, t('project_graph.trails.links'))}
                   </span>
                 </header>
                 <p className="pg-trails-note">
-                  These links are recorded, but the record at the other end is not in this view — either
-                  it was not indexed, or its type is filtered out here. The id is what the link names;
-                  opening one shows whatever the sources hold for it.
+                  {t('project_graph.trails.unresolved_explanation')}
                 </p>
                 <ul className="pg-trails-unresolved-list">
                   {neighborhood.unresolvedRefs.map(ref => (
@@ -435,7 +429,7 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                           className="pg-trails-btn"
                           onClick={() => onResolveNode(ref.missingId)}
                         >
-                          Open this record
+                          {t('project_graph.trails.open_this_record')}
                         </button>
                       ) : null}
                     </li>
@@ -451,16 +445,16 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                   <section
                     key={lane.key}
                     className={`pg-trails-lane pg-trails-basis-${lane.descriptor.kind}`}
-                    aria-label={`${lane.descriptor.label}, ${lane.direction === 'out' ? 'outgoing' : 'incoming'}, ${lane.total} connections`}
+                    aria-label={t('project_graph.trails.lane_accessible_label', { relation: lane.descriptor.label, direction: t(`project_graph.trails.${lane.direction === 'out' ? 'outgoing' : 'incoming'}`), count: lane.total })}
                   >
                     <header className="pg-trails-lane-head">
                       <span className="pg-trails-relation">
                         {lane.direction === 'out' ? '→' : '←'} {lane.descriptor.label}
                       </span>
                       <span className="pg-trails-basis-tag">{lane.descriptor.kind}</span>
-                      <span className="pg-trails-note">{formatCount(shown, lane.total, 'record')}</span>
+                      <span className="pg-trails-note">{countText(shown, lane.total, t('project_graph.trails.records'))}</span>
                       {lane.inRangeCount > 0 ? (
-                        <span className="pg-trails-note">{lane.inRangeCount} recent</span>
+                        <span className="pg-trails-note">{t('project_graph.trails.recent_count', { count: lane.inRangeCount })}</span>
                       ) : null}
                     </header>
                     <p className="pg-trails-note pg-trails-lane-basis">{lane.descriptor.basis}</p>
@@ -476,8 +470,8 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                           <span className="pg-trails-node-kind">{kindLabel(ref.node)}</span>
                           <span className="pg-trails-node-label">{ref.node.label}</span>
                           <span className="pg-trails-node-meta">
-                            {ref.inRange ? 'recent evidence · ' : ''}
-                            {ref.degree} connection{ref.degree === 1 ? '' : 's'}
+                            {ref.inRange ? `${t('project_graph.trails.recent_evidence')} · ` : ''}
+                            {t('project_graph.trails.connection_count', { count: ref.degree })}
                           </span>
                         </button>
                       ))}
@@ -488,7 +482,7 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                         className="pg-trails-btn pg-trails-more"
                         onClick={() => setPerLane(prev => ({ ...prev, [lane.key]: shown + LANE_PAGE }))}
                       >
-                        Show {Math.min(LANE_PAGE, lane.total - shown)} more of {lane.total}
+                        {t('project_graph.trails.show_more_of', { shown: Math.min(LANE_PAGE, lane.total - shown), total: lane.total })}
                       </button>
                     ) : null}
                   </section>
@@ -500,15 +494,14 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
                   className="pg-trails-btn pg-trails-more"
                   onClick={() => setLaneLimit(neighborhood.laneTotal)}
                 >
-                  Show {neighborhood.laneTotal - neighborhood.lanes.length} more relation type
-                  {neighborhood.laneTotal - neighborhood.lanes.length === 1 ? '' : 's'}
+                  {t('project_graph.trails.show_more_relation_types', { count: neighborhood.laneTotal - neighborhood.lanes.length })}
                 </button>
               ) : null}
             </div>
 
             {gaps.length > 0 ? (
-              <section className="pg-trails-gaps" aria-label="What this trail does not establish">
-                <span className="pg-trails-eyebrow">What this trail does not establish</span>
+              <section className="pg-trails-gaps" aria-label={t('project_graph.trails.what_trail_does_not_establish')}>
+                <span className="pg-trails-eyebrow">{t('project_graph.trails.what_trail_does_not_establish')}</span>
                 <ul>
                   {gaps.map(gap => (
                     <li key={gap}>{gap}</li>
@@ -520,7 +513,7 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
         )}
       </section>
 
-      <aside className="pg-trails-inspect" aria-label="Connection inspector">
+      <aside className="pg-trails-inspect" aria-label={t('project_graph.trails.connection_inspector')}>
         {inspected && focus ? (
           <>
             <span className="pg-trails-eyebrow">
@@ -532,46 +525,46 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
               {inspected.node.status ? ` · ${inspected.node.status}` : ''}
             </p>
             <div className="pg-trails-rule" />
-            <h3>What supports this connection</h3>
+            <h3>{t('project_graph.trails.what_supports_connection')}</h3>
             <p className={`pg-trails-basis-line pg-trails-basis-${inspected.descriptor.kind}`}>
               {inspected.descriptor.basis}
             </p>
             <p className="pg-trails-note">
-              Recorded as <code>{inspected.edge.type}</code>
+              {t('project_graph.trails.recorded_as')} <code>{inspected.edge.type}</code>
               {inspected.edge.strength != null ? ` · strength ${inspected.edge.strength}` : ''} ·{' '}
               {inspected.descriptor.kind === 'explicit'
-                ? 'explicit link in the source'
+                ? t('project_graph.trails.explicit_link_in_source')
                 : inspected.descriptor.kind === 'derived'
-                  ? 'derived by a stated rule'
-                  : 'basis not stated by the source'}
+                  ? t('project_graph.trails.derived_by_rule')
+                  : t('project_graph.trails.basis_not_stated')}
             </p>
             <div className="pg-trails-rule" />
-            <h3>This record</h3>
+            <h3>{t('project_graph.trails.this_record')}</h3>
             <p className="pg-trails-note">
-              {describeCreation(index, inspected.node.id)} · {describeEvent(inspected.latest)}
+              {describeCreation(index, inspected.node.id, t, locale)} · {describeEvent(inspected.latest, t, locale)}
             </p>
             <p className="pg-trails-note">
               {inspected.inRange
-                ? `Has evidence inside ${formatRange(range)}.`
-                : `No evidence inside ${formatRange(range)}. It stays reachable as older context.`}
+                ? t('project_graph.trails.has_evidence_in_range', { range: formatRange(range, locale, t) })
+                : t('project_graph.trails.no_evidence_in_range', { range: formatRange(range, locale, t) })}
             </p>
             <div className="pg-trails-actions">
               <button type="button" className="pg-trails-btn" onClick={() => onOpenNode(inspected.node)}>
-                Open source ↗
+                {t('project_graph.trails.open_source')}
               </button>
               <button type="button" className="pg-trails-btn" onClick={() => recenter(inspected.node.id)}>
-                Recenter trail
+                {t('project_graph.trails.recenter_trail')}
               </button>
             </div>
             <div className="pg-trails-rule" />
             <h3>
-              From here{' '}
+              {t('project_graph.trails.from_here')}{' '}
               <span className="pg-trails-note">
-                {secondHop ? formatCount(secondHop.items.length, secondHop.total, 'further connection') : ''}
+                {secondHop ? countText(secondHop.items.length, secondHop.total, t('project_graph.trails.further_connections')) : ''}
               </span>
             </h3>
             {secondHop && secondHop.total === 0 ? (
-              <p className="pg-trails-note">Nothing beyond this trail is recorded for this record.</p>
+              <p className="pg-trails-note">{t('project_graph.trails.no_further_connections')}</p>
             ) : null}
             {secondHop?.items.map(ref => (
               <button
@@ -590,29 +583,25 @@ export function TrailsPrototype(props: PrototypeViewProps): JSX.Element {
           </>
         ) : (
           <>
-            <span className="pg-trails-eyebrow">Inspector</span>
+            <span className="pg-trails-eyebrow">{t('project_graph.trails.inspector')}</span>
             <p>
-              Select a record in a lane to see what supports its connection, where it leads next, and what the sources
-              do not say.
+              {t('project_graph.trails.inspector_help')}
             </p>
             <div className="pg-trails-rule" />
-            <h3>How to read a lane</h3>
+            <h3>{t('project_graph.trails.how_to_read_lane')}</h3>
             <p className="pg-trails-note">
-              Lane names are the snapshot's own relation names. <strong>Explicit</strong> means a link recorded in the
-              source. <strong>Derived</strong> means a stated rule produced it — path containment, for instance, which
-              says where a file is filed, not what it is about. <strong>Unknown</strong> means the source did not say.
+              {t('project_graph.trails.lane_reading_help')}
             </p>
             <div className="pg-trails-rule" />
-            <h3>Time scope</h3>
+            <h3>{t('project_graph.trails.time_scope')}</h3>
             <p className="pg-trails-note">
-              {formatRange(range)} decides what is marked <em>recent evidence</em> and what sorts first. It never
-              removes a connection: an older decision stays on the trail as context.
+              {t('project_graph.trails.time_scope_help', { range: formatRange(range, locale, t) })}
             </p>
             {model.source === 'sample' ? (
-              <p className="pg-trails-note">Sample records — content and counts are illustrative.</p>
+              <p className="pg-trails-note">{t('project_graph.trails.sample_records_notice')}</p>
             ) : (
               <p className="pg-trails-note">
-                Live records from this project's loaded snapshot, within the adapters' own bounds.
+                {t('project_graph.trails.live_records_notice')}
               </p>
             )}
           </>

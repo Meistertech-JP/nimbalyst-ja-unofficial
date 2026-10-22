@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
+import type { TFunction } from "i18next";
 import type { EditorHost, EditorHostProps } from "@nimbalyst/runtime";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import { MockupProjectCollabContentAdapter } from "@nimbalyst/mockuplm/collab-adapters";
 import { CanvasEditor } from "@nimbalyst/runtime/canvas/CanvasEditor";
 
@@ -35,7 +37,8 @@ function previewFileName(sourceName: string): string {
 
 function readOnlyCanvasHost(
   sourceHost: EditorHost,
-  canvasContent: string
+  canvasContent: string,
+  readOnlyErrorMessage: string
 ): EditorHost {
   return {
     ...sourceHost,
@@ -46,17 +49,32 @@ function readOnlyCanvasHost(
     onFileChanged: () => () => {},
     setDirty: () => {},
     saveContent: async () => {
-      throw new Error("The mockup project compatibility preview is read-only.");
+      throw new Error(readOnlyErrorMessage);
     },
     onSaveRequested: () => () => {},
     onReadOnlyChanged: undefined,
   };
 }
 
-function errorMessage(cause: unknown): string {
-  if (cause instanceof MockupProjectConversionError) return cause.message;
+function errorMessage(cause: unknown, t: TFunction<"common">): string {
+  if (cause instanceof MockupProjectConversionError) {
+    switch (cause.code) {
+      case "invalid-source-path":
+        return t("mockup_compatibility.errors.invalid_source_path");
+      case "source-missing":
+        return t("mockup_compatibility.errors.source_missing");
+      case "target-exists":
+        return t("mockup_compatibility.errors.target_exists", {
+          path: cause.targetPath ?? "",
+        });
+      case "suspect-conversion":
+        return t("mockup_compatibility.errors.suspect_conversion");
+      case "verification-failed":
+        return t("mockup_compatibility.errors.verification_failed");
+    }
+  }
   const detail = cause instanceof Error ? cause.message : String(cause);
-  return `Conversion failed: ${detail}. The original mockup project was not modified.`;
+  return t("mockup_compatibility.conversion_failed", { detail });
 }
 
 /**
@@ -70,6 +88,7 @@ function errorMessage(cause: unknown): string {
 export function MockupProjectCompatibilityEditor({
   host,
 }: EditorHostProps): ReactElement {
+  const { t } = useTranslation("common");
   const [preview, setPreview] = useState<PreviewState>({ kind: "loading" });
   const [conversion, setConversion] = useState<ConversionState>({
     kind: "idle",
@@ -90,7 +109,7 @@ export function MockupProjectCompatibilityEditor({
         if (!cancelled) {
           setPreview({
             kind: "error",
-            message: errorMessage(cause),
+            message: errorMessage(cause, t),
           });
         }
       }
@@ -116,7 +135,7 @@ export function MockupProjectCompatibilityEditor({
       .then(publish)
       .catch((cause: unknown) => {
         if (!cancelled) {
-          setPreview({ kind: "error", message: errorMessage(cause) });
+          setPreview({ kind: "error", message: errorMessage(cause, t) });
         }
       });
     const unsubscribe = host.onFileChanged(publish);
@@ -124,14 +143,18 @@ export function MockupProjectCompatibilityEditor({
       cancelled = true;
       unsubscribe();
     };
-  }, [host]);
+  }, [host, t]);
 
   const canvasHost = useMemo(
     () =>
       preview.kind === "ready"
-        ? readOnlyCanvasHost(host, preview.canvasContent)
+        ? readOnlyCanvasHost(
+            host,
+            preview.canvasContent,
+            t("mockup_compatibility.read_only_error")
+          )
         : null,
-    [host, preview]
+    [host, preview, t]
   );
 
   const handleConvert = async () => {
@@ -155,7 +178,7 @@ export function MockupProjectCompatibilityEditor({
           });
       }
     } catch (cause) {
-      setConversion({ kind: "error", message: errorMessage(cause) });
+      setConversion({ kind: "error", message: errorMessage(cause, t) });
     }
   };
 
@@ -170,11 +193,13 @@ export function MockupProjectCompatibilityEditor({
     >
       <div className="mockup-project-compatibility-editor__notice flex shrink-0 items-center gap-3 border-b border-nim bg-nim-secondary px-4 py-2">
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold">Legacy Mockup Project</div>
+          <div className="text-sm font-semibold">
+            {t("mockup_compatibility.title")}
+          </div>
           <div className="text-xs text-nim-muted">
             {host.collaboration
-              ? "This shared project is open read-only for compatibility. Its shared document remains unchanged."
-              : "This file is open read-only. Convert it to Project Canvas to keep working; the original file remains unchanged."}
+              ? t("mockup_compatibility.shared_read_only")
+              : t("mockup_compatibility.file_read_only")}
           </div>
         </div>
         {!host.collaboration && host.fs ? (
@@ -185,15 +210,17 @@ export function MockupProjectCompatibilityEditor({
             onClick={() => void handleConvert()}
           >
             {conversion.kind === "converting"
-              ? "Converting..."
-              : "Convert to canvas"}
+              ? t("mockup_compatibility.converting")
+              : t("mockup_compatibility.convert_to_canvas")}
           </button>
         ) : null}
       </div>
 
       {conversion.kind === "converted" ? (
         <div className="mockup-project-compatibility-editor__status shrink-0 border-b border-nim px-4 py-2 text-xs text-nim-muted">
-          Created {conversion.targetPath}. The original project was not changed.
+          {t("mockup_compatibility.converted", {
+            path: conversion.targetPath,
+          })}
         </div>
       ) : conversion.kind === "error" ? (
         <div className="mockup-project-compatibility-editor__error shrink-0 border-b border-nim px-4 py-2 text-xs text-nim-error">
@@ -201,14 +228,14 @@ export function MockupProjectCompatibilityEditor({
         </div>
       ) : targetPath ? (
         <div className="mockup-project-compatibility-editor__target sr-only">
-          Conversion target: {targetPath}
+          {t("mockup_compatibility.conversion_target", { path: targetPath })}
         </div>
       ) : null}
 
       <div className="min-h-0 flex-1">
         {preview.kind === "loading" ? (
           <div className="flex h-full items-center justify-center text-sm text-nim-muted">
-            Loading project preview...
+            {t("mockup_compatibility.loading_preview")}
           </div>
         ) : preview.kind === "error" ? (
           <div className="flex h-full items-center justify-center p-6">

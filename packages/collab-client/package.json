@@ -99,6 +99,7 @@
   "dependencies": {
     "@floating-ui/react": "^0.27.19",
     "@nimbalyst/collab-protocol": "workspace:*",
+    "@nimbalyst/i18n": "workspace:*",
     "@nimbalyst/tracker-schema": "workspace:*",
     "@nimbalyst/tracker-engine": "workspace:*",
     "@nimbalyst/runtime": "workspace:*",

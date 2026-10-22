@@ -6,6 +6,7 @@
  * stored.
  */
 import type { KeyboardEvent } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { formatCount, type DomainCategory, type DomainGap, type DomainModel } from './ontologyDomain';
 import { OntologyNeighborhood } from './OntologyNeighborhood';
 import {
@@ -28,13 +29,13 @@ export interface OntologyViewProps {
   onOpenItem?: (itemId: string) => void;
 }
 
-function relativeDay(iso: string | null, now: number): string {
+function relativeDay(iso: string | null, now: number, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (!iso) return '';
   const days = Math.floor((now - Date.parse(iso)) / 86_400_000);
   if (Number.isNaN(days)) return '';
-  if (days <= 0) return 'last change today';
-  if (days === 1) return 'last change yesterday';
-  return `last change ${days} days ago`;
+  if (days <= 0) return t('ontology_what_we_track.last_change_today');
+  if (days === 1) return t('ontology_what_we_track.last_change_yesterday');
+  return t('ontology_what_we_track.last_change_days_ago', { count: days });
 }
 
 /** A card is a block of text, so it is a div that acts as a button rather than a button holding divs. */
@@ -58,6 +59,7 @@ function OntologyCard({ model, category, onOpen, gapAction }: {
   onOpen: OpenCategory;
   gapAction: (gap: DomainGap) => GapAction;
 }) {
+  const { t } = useTranslation('tracker');
   const gaps = model.gaps.filter((gap) => category.gapIds.includes(gap.id));
   if (category.ghost) {
     const gap = gaps[0];
@@ -66,12 +68,12 @@ function OntologyCard({ model, category, onOpen, gapAction }: {
         <div className="ontology-card-head">
           <span className="ontology-dot ontology-dot-warn" />
           <span className="ontology-card-name">{category.name}</span>
-          <span className="ontology-card-count">not tracked</span>
+          <span className="ontology-card-count">{t('ontology_what_we_track.not_tracked')}</span>
         </div>
         <div className="ontology-card-role">{category.role}</div>
         <div className="ontology-card-example">{category.example}</div>
         <div className="ontology-card-lines" />
-        <div className="ontology-card-gap">Propose tracking {category.name.toLowerCase()} &rarr;</div>
+        <div className="ontology-card-gap">{t('ontology_what_we_track.propose_tracking', { name: category.name.toLowerCase() })} &rarr;</div>
       </div>
     );
   }
@@ -109,11 +111,12 @@ function OntologyCard({ model, category, onOpen, gapAction }: {
 }
 
 export function OntologySummary({ model, onOpen, now }: { model: DomainModel; onOpen: OpenCategory; now: number }) {
+  const { t } = useTranslation('tracker');
   const meta = [
-    `${formatCount(model.meta.pages)} wiki pages`,
-    `${formatCount(model.meta.statements)} statements`,
-    `${formatCount(model.meta.types)} tracker types`,
-    relativeDay(model.meta.lastChange, now),
+    t('ontology_what_we_track.wiki_pages', { count: formatCount(model.meta.pages) }),
+    t('ontology_what_we_track.statements', { count: formatCount(model.meta.statements) }),
+    t('ontology_what_we_track.tracker_types', { count: formatCount(model.meta.types) }),
+    relativeDay(model.meta.lastChange, now, t),
   ].filter(Boolean);
   return (
     <>
@@ -133,6 +136,7 @@ export function OntologyOverview({ model, onOpen, gapAction, now }: {
   gapAction: (gap: DomainGap) => GapAction;
   now: number;
 }) {
+  const { t } = useTranslation('tracker');
   const byId = new Map(model.categories.map((category) => [category.id, category]));
   return (
     <div className="ontology-overview">
@@ -152,7 +156,7 @@ export function OntologyOverview({ model, onOpen, gapAction, now }: {
       ))}
       {model.also.length > 0 && (
         <div className="ontology-also">
-          <span>Also tracked</span>
+          <span>{t('ontology_what_we_track.also_tracked')}</span>
           {model.also.map((chip) => (
             <span key={chip.id} className="ontology-chip">{chip.name} <i>{formatCount(chip.count)}</i></span>
           ))}
@@ -171,6 +175,7 @@ export function OntologyCategoryDetail({ model, category, onOpen, onBack, onOpen
   onOpenGap: (gapId: string) => void;
   backLabel: string;
 }) {
+  const { t } = useTranslation('tracker');
   const group = model.groups.find((entry) => entry.id === category.group);
   return (
     <div className="ontology-category-detail" data-category={category.id}>
@@ -184,7 +189,7 @@ export function OntologyCategoryDetail({ model, category, onOpen, onBack, onOpen
       <div className="ontology-detail-grid">
         <div>
           <OntologyNeighborhood model={model} categoryId={category.id} onOpen={onOpen} onOpenGap={onOpenGap} />
-          <div className="ontology-label">{category.us ? 'Recorded about us' : 'Members'}</div>
+          <div className="ontology-label">{category.us ? t('ontology_what_we_track.recorded_about_us') : t('ontology_what_we_track.members')}</div>
           <OntologyMembersTable table={category.table} onOpenItem={onOpenItem} />
         </div>
         <div>
@@ -202,6 +207,7 @@ export function OntologyWhatWeTrack({ model, gapAction, proposals, onOpenProposa
   onSelect: (categoryId: string | null) => void;
   now: number;
 }) {
+  const { t } = useTranslation('tracker');
   const category = selected ? model.categories.find((entry) => entry.id === selected && !entry.ghost) ?? null : null;
   const openGap = (gapId: string) => {
     const gap = model.gaps.find((entry) => entry.id === gapId);
@@ -219,17 +225,21 @@ export function OntologyWhatWeTrack({ model, gapAction, proposals, onOpenProposa
             onBack={() => onSelect(null)}
             onOpenItem={onOpenItem}
             onOpenGap={openGap}
-            backLabel="What we track"
+            backLabel={t('ontology_what_we_track.back')}
           />
         ) : (
           <OntologyOverview model={model} onOpen={(id) => onSelect(id)} gapAction={gapAction} now={now} />
         )}
       </div>
       <OntologyRail
-        title={category ? 'Worth fixing here' : 'Worth fixing'}
+        title={category ? t('ontology_what_we_track.worth_fixing_here') : t('ontology_what_we_track.worth_fixing')}
         subtitle={category
-          ? (own.length ? `Specific to ${category.name.toLowerCase()}.` : `Nothing specific to ${category.name.toLowerCase()}.`)
-          : own.length ? 'Found by comparing what you record against what you could. Each one drafts a proposal you can accept or reject part by part.' : 'Nothing to fix.'}
+          ? (own.length
+            ? t('ontology_what_we_track.specific_to', { name: category.name.toLowerCase() })
+            : t('ontology_what_we_track.nothing_specific_to', { name: category.name.toLowerCase() }))
+          : own.length
+            ? t('ontology_what_we_track.found_by_comparing')
+            : t('ontology_what_we_track.nothing_to_fix')}
         gaps={own}
         elsewhere={category ? model.gaps.filter((gap) => !category.gapIds.includes(gap.id)) : undefined}
         gapAction={gapAction}

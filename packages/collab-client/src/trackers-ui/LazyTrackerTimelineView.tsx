@@ -1,4 +1,5 @@
 import { lazy, Suspense, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TrackerTimelineViewProps } from './TrackerTimelineView';
 import { TrackerSurfaceMessage } from './primitives/TrackerSurfaceMessage';
 
@@ -17,10 +18,11 @@ export function preloadTrackerTimelineView(): void {
 export function LazyTrackerTimelineView(
   props: TrackerTimelineViewProps
 ): JSX.Element {
+  const { t } = useTranslation('tracker');
   return (
     <Suspense
       fallback={
-        <TrackerSurfaceMessage icon="timeline" message="Loading timeline…" />
+        <TrackerSurfaceMessage icon="timeline" message={t('view_modes.loading_timeline')} />
       }
     >
       <TrackerTimelineViewImpl {...props} />

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType } from "react";
+import { useTranslation } from 'react-i18next';
 import type { EditorHostProps } from "@nimbalyst/extension-sdk";
 
 interface DeferredExtensionEditorOptions {
@@ -25,6 +26,7 @@ export function createDeferredExtensionEditor({
   load,
 }: DeferredExtensionEditorOptions): ComponentType<EditorHostProps> {
   function DeferredExtensionEditor(props: EditorHostProps) {
+    const { t } = useTranslation('common');
     const [attempt, setAttempt] = useState(0);
     const [state, setState] = useState<LoadState>({ status: "loading" });
 
@@ -66,7 +68,7 @@ export function createDeferredExtensionEditor({
         >
           <div className="max-w-lg text-center">
             <h2 className="mb-2 text-lg font-semibold">
-              Could not load {extensionName}
+              {t('deferred_extension.load_failed', { extensionName })}
             </h2>
             <p className="mb-4 text-sm text-[var(--nim-text-muted)]">
               {state.message}
@@ -76,7 +78,7 @@ export function createDeferredExtensionEditor({
               type="button"
               onClick={() => setAttempt((value) => value + 1)}
             >
-              Retry
+              {t('retry')}
             </button>
           </div>
         </div>
@@ -90,7 +92,7 @@ export function createDeferredExtensionEditor({
         aria-live="polite"
         data-extension-load-state="loading"
       >
-        Loading {extensionName}…
+        {t('deferred_extension.loading', { extensionName })}
       </div>
     );
   }

@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
+import { createInstance } from 'i18next';
+import { resources } from '../../../../../../i18n/src/resources';
 import {
   buildVoiceUsageDisplay,
   formatLiveCost,
@@ -31,6 +33,36 @@ describe('formatLiveCost', () => {
 });
 
 describe('buildVoiceUsageDisplay', () => {
+  it('localizes visible labels while retaining English for the English locale', async () => {
+    const en = createInstance();
+    const ja = createInstance();
+    await Promise.all([
+      en.init({ lng: 'en', resources, defaultNS: 'voice', interpolation: { escapeValue: false } }),
+      ja.init({ lng: 'ja', resources, defaultNS: 'voice', interpolation: { escapeValue: false } }),
+    ]);
+    const usage = {
+      engine: 'live' as const,
+      contextUsageRatio: 0.42,
+      durationSeconds: 125,
+      backend: [{ responseId: 'r1', delegationId: null, usage: { input_tokens: 10 } }],
+    };
+
+    expect(buildVoiceUsageDisplay(usage, en.getFixedT('en', 'voice'))?.lines.map((line) => [line.label, line.value]))
+      .toEqual([
+        ['Context', '42%'],
+        ['Voice time', '2:05'],
+        ['Voice cost', '$0.10'],
+        ['Controller', '1 response'],
+      ]);
+    expect(buildVoiceUsageDisplay(usage, ja.getFixedT('ja', 'voice'))?.lines.map((line) => [line.label, line.value]))
+      .toEqual([
+        ['コンテキスト', '42%'],
+        ['音声時間', '2:05'],
+        ['音声料金', '$0.10'],
+        ['コントローラー', '1 応答'],
+      ]);
+  });
+
   it('returns nothing when there is no usage at all', () => {
     expect(buildVoiceUsageDisplay(null)).toBeNull();
     expect(buildVoiceUsageDisplay({})).toBeNull();

@@ -31,6 +31,14 @@ export interface OrgWizardApi {
   publishFolder(folderPath: string): Promise<boolean>;
 }
 
+/** User-visible copy supplied by the React host so this runner stays UI-agnostic. */
+export interface OrgWizardMessages {
+  organizationNameRequired(): string;
+  organizationNotCreated(): string;
+  invitationFailures(details: string): string;
+  folderPublishFailures(details: string): string;
+}
+
 function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
@@ -42,10 +50,11 @@ function errorMessage(reason: unknown): string {
 export async function runCreateOrganization(
   state: OrgWizardState,
   api: OrgWizardApi,
+  messages: OrgWizardMessages,
 ): Promise<OrgWizardState> {
   if (state.createdOrgId) return { ...state, error: null };
   const name = state.orgName.trim();
-  if (!name) return { ...state, error: 'Enter a name for the organization.' };
+  if (!name) return { ...state, error: messages.organizationNameRequired() };
   try {
     const { orgId } = await api.createOrganization({
       name,
@@ -66,9 +75,10 @@ export async function runCreateOrganization(
 export async function runSendInvites(
   state: OrgWizardState,
   api: OrgWizardApi,
+  messages: OrgWizardMessages,
 ): Promise<OrgWizardState> {
   const orgId = state.createdOrgId;
-  if (!orgId) return { ...state, error: 'The organization has not been created yet.' };
+  if (!orgId) return { ...state, error: messages.organizationNotCreated() };
   let next = state;
   const inviteFailures: string[] = [];
   for (const email of pendingInvites(state)) {
@@ -104,8 +114,8 @@ export async function runSendInvites(
   }
 
   const problems = [
-    ...(inviteFailures.length > 0 ? [`Some invitations failed — ${inviteFailures.join('; ')}`] : []),
-    ...(publishFailures.length > 0 ? [`Some folders were not published — ${publishFailures.join('; ')}`] : []),
+    ...(inviteFailures.length > 0 ? [messages.invitationFailures(inviteFailures.join('; '))] : []),
+    ...(publishFailures.length > 0 ? [messages.folderPublishFailures(publishFailures.join('; '))] : []),
   ];
   return { ...next, error: problems.length > 0 ? problems.join('. ') : null };
 }

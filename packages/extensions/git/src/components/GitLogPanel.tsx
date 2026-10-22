@@ -4,6 +4,7 @@ import {
   useDismiss, useInteractions, autoUpdate,
 } from '@floating-ui/react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   GIT_SHOW_OUTPUT_REQUEST_EVENT,
   type GitShowOutputRequestDetail,
@@ -87,7 +88,15 @@ function openSession(sessionId: string, workspacePath: string): void {
   );
 }
 
-function formatRelativeDate(dateStr: string): string {
+interface RelativeDateMessages {
+  justNow: string;
+  minutesAgo: (count: number) => string;
+  hoursAgo: (count: number) => string;
+  daysAgo: (count: number) => string;
+  weeksAgo: (count: number) => string;
+}
+
+function formatRelativeDate(dateStr: string, locale: string, messages: RelativeDateMessages): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -96,15 +105,16 @@ function formatRelativeDate(dateStr: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffSecs < 60) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return date.toLocaleDateString();
+  if (diffSecs < 60) return messages.justNow;
+  if (diffMins < 60) return messages.minutesAgo(diffMins);
+  if (diffHours < 24) return messages.hoursAgo(diffHours);
+  if (diffDays < 7) return messages.daysAgo(diffDays);
+  if (diffDays < 30) return messages.weeksAgo(Math.floor(diffDays / 7));
+  return date.toLocaleDateString(locale);
 }
 
 export function GitLogPanel({ host }: PanelHostProps) {
+  const { t, i18n } = useTranslation('git');
   const workspacePath = host.workspacePath;
 
   // Every git command in this panel runs against `repoPath`, not the workspace.
@@ -582,22 +592,22 @@ export function GitLogPanel({ host }: PanelHostProps) {
           isError: (r) => !r.success,
           getError: (r) => r.error,
           formatSuggestion: (r) => r.error ? getSuggestionForError(r.error) : undefined,
-          formatOutput: () => 'Pushed successfully',
+          formatOutput: () => t('log_panel.push_success'),
         }
       );
       if (result.success) {
-        showMessage('Pushed successfully');
+        showMessage(t('log_panel.push_success'));
         loadStatus();
         loadCommits();
       } else {
-        showMessage(result.error || 'Push failed', true, 'git push origin');
+        showMessage(result.error || t('log_panel.push_failed'), true, 'git push origin');
       }
     } catch (err) {
-      showMessage(err instanceof Error ? err.message : 'Push failed', true, 'git push origin');
+      showMessage(err instanceof Error ? err.message : t('log_panel.push_failed'), true, 'git push origin');
     } finally {
       setActionLoading(null);
     }
-  }, [repoPath, showMessage, loadStatus, loadCommits, withLog]);
+  }, [repoPath, showMessage, loadStatus, loadCommits, withLog, t]);
 
   const handlePull = useCallback(async () => {
     setActionLoading('pull');
@@ -611,22 +621,22 @@ export function GitLogPanel({ host }: PanelHostProps) {
           isError: (r) => !r.success,
           getError: (r) => r.error,
           formatSuggestion: (r) => r.error ? getSuggestionForError(r.error) : undefined,
-          formatOutput: () => 'Pulled successfully',
+          formatOutput: () => t('log_panel.pull_success'),
         }
       );
       if (result.success) {
-        showMessage('Pulled successfully');
+        showMessage(t('log_panel.pull_success'));
         loadStatus();
         loadCommits();
       } else {
-        showMessage(result.error || 'Pull failed', true, `git pull${strategyLabel} origin`);
+        showMessage(result.error || t('log_panel.pull_failed'), true, `git pull${strategyLabel} origin`);
       }
     } catch (err) {
-      showMessage(err instanceof Error ? err.message : 'Pull failed', true, `git pull${strategyLabel} origin`);
+      showMessage(err instanceof Error ? err.message : t('log_panel.pull_failed'), true, `git pull${strategyLabel} origin`);
     } finally {
       setActionLoading(null);
     }
-  }, [repoPath, showMessage, loadStatus, loadCommits, pullStrategy, withLog]);
+  }, [repoPath, showMessage, loadStatus, loadCommits, pullStrategy, withLog, t]);
 
   const handleChangePullStrategy = useCallback((strategy: PullStrategy) => {
     setPullStrategy(strategy);
@@ -644,21 +654,21 @@ export function GitLogPanel({ host }: PanelHostProps) {
           isError: (r) => !r.success,
           getError: (r) => r.error,
           formatSuggestion: (r) => r.error ? getSuggestionForError(r.error) : undefined,
-          formatOutput: () => 'Fetched successfully',
+          formatOutput: () => t('log_panel.fetch_success'),
         }
       );
       if (result.success) {
-        showMessage('Fetched successfully');
+        showMessage(t('log_panel.fetch_success'));
         loadStatus();
       } else {
-        showMessage(result.error || 'Fetch failed', true, 'git fetch origin');
+        showMessage(result.error || t('log_panel.fetch_failed'), true, 'git fetch origin');
       }
     } catch (err) {
-      showMessage(err instanceof Error ? err.message : 'Fetch failed', true, 'git fetch origin');
+      showMessage(err instanceof Error ? err.message : t('log_panel.fetch_failed'), true, 'git fetch origin');
     } finally {
       setActionLoading(null);
     }
-  }, [repoPath, showMessage, loadStatus, withLog]);
+  }, [repoPath, showMessage, loadStatus, withLog, t]);
 
   const handleRefresh = useCallback(() => {
     loadStatus();
@@ -769,15 +779,26 @@ export function GitLogPanel({ host }: PanelHostProps) {
     setHoveredHash(null);
   }, [setSelectedIndex]);
 
+  const remoteIsUpToDate = !!status && status.ahead === 0 && status.behind === 0;
   const remoteStatus = status ? (
-    status.ahead > 0 || status.behind > 0
-      ? `↑${status.ahead} ↓${status.behind}`
-      : 'up to date'
+    remoteIsUpToDate
+      ? t('log_panel.remote_up_to_date')
+      : `↑${status.ahead} ↓${status.behind}`
   ) : '';
 
   const hasChanges = status?.hasUncommitted ?? false;
   const isDetachedHead = status?.branch === 'HEAD';
-  const detachedHeadMessage = 'Detached HEAD: checkout a branch before pulling or pushing.';
+  const detachedHeadMessage = t('log_panel.detached_head_message');
+  const relativeDateMessages: RelativeDateMessages = {
+    justNow: t('log_panel.relative_time.just_now'),
+    minutesAgo: (count) => t('log_panel.relative_time.minutes_ago', { count }),
+    hoursAgo: (count) => t('log_panel.relative_time.hours_ago', { count }),
+    daysAgo: (count) => t('log_panel.relative_time.days_ago', { count }),
+    weeksAgo: (count) => t('log_panel.relative_time.weeks_ago', { count }),
+  };
+  const pullStrategyLabel = pullStrategy === 'ff-only'
+    ? t('log_panel.pull_strategies.ff_only')
+    : t(`log_panel.pull_strategies.${pullStrategy}`);
 
   return (
     <div
@@ -800,19 +821,19 @@ export function GitLogPanel({ host }: PanelHostProps) {
               className={`git-tab-btn${activeTab === 'log' ? ' git-tab-btn--active' : ''}`}
               onClick={() => setActiveTab('log')}
             >
-              Log
+              {t('log_panel.tabs.log')}
             </button>
             <button
               className={`git-tab-btn${activeTab === 'changes' ? ' git-tab-btn--active' : ''}`}
               onClick={() => setActiveTab('changes')}
             >
-              Changes{hasChanges ? <span className="git-tab-dot" /> : null}
+              {t('log_panel.tabs.changes')}{hasChanges ? <span className="git-tab-dot" /> : null}
             </button>
             <button
               className={`git-tab-btn${activeTab === 'output' ? ' git-tab-btn--active' : ''}`}
               onClick={() => setActiveTab('output')}
             >
-              Output
+              {t('log_panel.tabs.output')}
               {runningEntry ? <span className="git-tab-running" /> : null}
               {logEntries.some(e => e.status === 'error') ? <span className="git-tab-dot git-tab-dot--error" /> : null}
             </button>
@@ -836,13 +857,13 @@ export function GitLogPanel({ host }: PanelHostProps) {
 
           {/* Remote status */}
           {remoteStatus && (
-            <span className={`git-log-remote-status ${remoteStatus === 'up to date' ? 'up-to-date' : 'diverged'}`}>
+            <span className={`git-log-remote-status ${remoteIsUpToDate ? 'up-to-date' : 'diverged'}`}>
               {remoteStatus}
             </span>
           )}
           {isDetachedHead && (
             <span className="git-log-remote-status diverged" title={detachedHeadMessage}>
-              detached HEAD
+              {t('log_panel.detached_head_label')}
             </span>
           )}
         </div>
@@ -874,10 +895,14 @@ export function GitLogPanel({ host }: PanelHostProps) {
               {statusPillEntry.status === 'running' && <span className="git-output-spinner" />}
               <span className="git-operation-status-label">
                 {statusPillEntry.status === 'running'
-                  ? `Running ${Math.max(0, Math.floor((operationClock - statusPillEntry.timestamp.getTime()) / 1000))}s`
+                  ? t('log_panel.operation_status.running', { seconds: Math.max(0, Math.floor((operationClock - statusPillEntry.timestamp.getTime()) / 1000)) })
                   : statusPillEntry.status === 'success'
-                    ? `Completed${statusPillEntry.durationMs != null ? ` in ${(statusPillEntry.durationMs / 1000).toFixed(1)}s` : ''}`
-                    : `Failed${statusPillEntry.exitCode != null ? ` (exit ${statusPillEntry.exitCode})` : ''}`}
+                    ? statusPillEntry.durationMs != null
+                      ? t('log_panel.operation_status.completed_in', { seconds: (statusPillEntry.durationMs / 1000).toFixed(1) })
+                      : t('log_panel.operation_status.completed')
+                    : statusPillEntry.exitCode != null
+                      ? t('log_panel.operation_status.failed_exit', { exitCode: statusPillEntry.exitCode })
+                      : t('log_panel.operation_status.failed')}
               </span>
               {statusPillEntry.status === 'running' && runningLatestLine && (
                 <span className="git-operation-status-line">{runningLatestLine}</span>
@@ -889,26 +914,26 @@ export function GitLogPanel({ host }: PanelHostProps) {
             className="git-log-action-btn"
             onClick={handlePush}
             disabled={!!actionLoading || isDetachedHead}
-            title={isDetachedHead ? detachedHeadMessage : 'Push'}
+            title={isDetachedHead ? detachedHeadMessage : t('log_panel.push')}
           >
-            {'\u2191 Push'}
+            {'\u2191 '}{t('log_panel.push')}
           </button>
           <div className="git-log-split-btn">
             <button
               className="git-log-action-btn git-log-split-btn-main"
               onClick={handlePull}
               disabled={!!actionLoading || isDetachedHead}
-              title={isDetachedHead ? detachedHeadMessage : `Pull (${pullStrategy})`}
+              title={isDetachedHead ? detachedHeadMessage : t('log_panel.pull_title', { strategy: pullStrategyLabel })}
             >
-              {'\u2193 Pull'}
+              {'\u2193 '}{t('log_panel.pull')}
             </button>
             <button
               className="git-log-action-btn git-log-split-btn-arrow"
               onClick={() => setPullMenuOpen(v => !v)}
-            disabled={!!actionLoading || isDetachedHead}
-            title={isDetachedHead ? detachedHeadMessage : 'Pull strategy'}
-            aria-label="Pull strategy"
-          >
+              disabled={!!actionLoading || isDetachedHead}
+              title={isDetachedHead ? detachedHeadMessage : t('log_panel.pull_strategy')}
+              aria-label={t('log_panel.pull_strategy')}
+            >
               <svg className="git-log-split-btn-chevron" aria-hidden="true" viewBox="0 0 12 12" width="12" height="12">
                 <path d="m3 4.5 3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -919,19 +944,19 @@ export function GitLogPanel({ host }: PanelHostProps) {
                   className={`git-log-split-menu-item${pullStrategy === 'rebase' ? ' git-log-split-menu-item--active' : ''}`}
                   onClick={() => handleChangePullStrategy('rebase')}
                 >
-                  Rebase
+                  {t('log_panel.pull_strategies.rebase')}
                 </button>
                 <button
                   className={`git-log-split-menu-item${pullStrategy === 'merge' ? ' git-log-split-menu-item--active' : ''}`}
                   onClick={() => handleChangePullStrategy('merge')}
                 >
-                  Merge
+                  {t('log_panel.pull_strategies.merge')}
                 </button>
                 <button
                   className={`git-log-split-menu-item${pullStrategy === 'ff-only' ? ' git-log-split-menu-item--active' : ''}`}
                   onClick={() => handleChangePullStrategy('ff-only')}
                 >
-                  Fast-forward only
+                  {t('log_panel.pull_strategies.ff_only')}
                 </button>
               </div>
             )}
@@ -940,15 +965,15 @@ export function GitLogPanel({ host }: PanelHostProps) {
             className="git-log-action-btn"
             onClick={handleFetch}
             disabled={!!actionLoading}
-            title="Fetch"
+            title={t('log_panel.fetch')}
           >
-            Fetch
+            {t('log_panel.fetch')}
           </button>
           <button
             className="git-log-action-btn git-log-action-btn--refresh"
             onClick={handleRefresh}
             disabled={!!actionLoading}
-            title="Refresh"
+            title={t('log_panel.refresh')}
           >
             {'\u21BA'}
           </button>
@@ -974,8 +999,8 @@ export function GitLogPanel({ host }: PanelHostProps) {
           <input
             className="git-log-search-input"
             type="search"
-            placeholder="Search commits by message, author, or hash"
-            aria-label="Search commits"
+            placeholder={t('log_panel.search_placeholder')}
+            aria-label={t('log_panel.search_label')}
             value={searchFilter}
             onChange={event => setSearchFilter(event.target.value)}
             spellCheck={false}
@@ -983,14 +1008,14 @@ export function GitLogPanel({ host }: PanelHostProps) {
           {searchFilter && (
             <>
               <span className="git-log-search-count">
-                {commits.length} result{commits.length === 1 ? '' : 's'}
+                {t('log_panel.search_results', { count: commits.length })}
               </span>
               <button
                 type="button"
                 className="git-log-search-clear"
                 onClick={() => setSearchFilter('')}
-                title="Clear search"
-                aria-label="Clear search"
+                title={t('log_panel.clear_search')}
+                aria-label={t('log_panel.clear_search')}
               >
                 &#10005;
               </button>
@@ -1031,21 +1056,23 @@ export function GitLogPanel({ host }: PanelHostProps) {
         <div className="git-log-body" tabIndex={0} onKeyDown={handleKeyDown}>
           <div className="git-log-content">
             {loading ? (
-              <div className="git-log-empty">Loading commits...</div>
+              <div className="git-log-empty">{t('log_panel.loading_commits')}</div>
             ) : commits.length === 0 ? (
               <div className="git-log-empty">
-                {unfilteredCommits.length > 0 ? 'No commits match the search' : 'No commits found'}
+                {unfilteredCommits.length > 0
+                  ? t('log_panel.no_commits_match_search')
+                  : t('log_panel.no_commits')}
               </div>
             ) : (
               <table className="git-log-table">
                 <thead>
                   <tr>
                     <th className="git-log-th git-log-th--graph" />
-                    <th className="git-log-th git-log-th--hash">Hash</th>
-                    <th className="git-log-th git-log-th--message">Message</th>
-                    <th className="git-log-th git-log-th--author">Author</th>
-                    <th className="git-log-th git-log-th--session">Session</th>
-                    <th className="git-log-th git-log-th--date">Date</th>
+                    <th className="git-log-th git-log-th--hash">{t('log_panel.columns.hash')}</th>
+                    <th className="git-log-th git-log-th--message">{t('log_panel.columns.message')}</th>
+                    <th className="git-log-th git-log-th--author">{t('log_panel.columns.author')}</th>
+                    <th className="git-log-th git-log-th--session">{t('log_panel.columns.session')}</th>
+                    <th className="git-log-th git-log-th--date">{t('log_panel.columns.date')}</th>
                   </tr>
                 </thead>
                 <tbody ref={tbodyRef}>
@@ -1091,18 +1118,20 @@ export function GitLogPanel({ host }: PanelHostProps) {
                             <button
                               type="button"
                               className="git-log-session-chip"
-                              title={`Open session: ${sessionLinks[commit.hash].title || 'Untitled session'}`}
+                              title={t('log_panel.open_session_title', {
+                                title: sessionLinks[commit.hash].title || t('log_panel.untitled_session'),
+                              })}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openSession(sessionLinks[commit.hash].sessionId, workspacePath);
                               }}
                             >
-                              {sessionLinks[commit.hash].title || 'Untitled session'}
+                              {sessionLinks[commit.hash].title || t('log_panel.untitled_session')}
                             </button>
                           )}
                         </td>
                         <td className="git-log-td git-log-td--date">
-                          {formatRelativeDate(commit.date)}
+                          {formatRelativeDate(commit.date, i18n.language, relativeDateMessages)}
                         </td>
                       </tr>
                     );
@@ -1253,6 +1282,7 @@ function FileMaskFilter({
   onCommitToHistory,
   onRemoveHistoryEntry,
 }: FileMaskFilterProps) {
+  const { t } = useTranslation('git');
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const { refs, floatingStyles, context } = useFloating({
@@ -1271,13 +1301,13 @@ function FileMaskFilter({
 
   return (
     <div className="git-log-toolbar-filters" ref={refs.setReference}>
-      <label className="git-changes-mask-toggle" title="Filter visible files by glob patterns">
+      <label className="git-changes-mask-toggle" title={t('log_panel.file_mask.filter_title')}>
         <input
           type="checkbox"
           checked={enabled}
           onChange={e => onEnabledChange(e.target.checked)}
         />
-        <span>File mask:</span>
+        <span>{t('log_panel.file_mask.label')}</span>
       </label>
       <div className="git-changes-mask-input-wrap">
         <input
@@ -1304,8 +1334,8 @@ function FileMaskFilter({
             type="button"
             className="git-changes-mask-history-btn"
             onClick={() => setHistoryOpen(o => !o)}
-            title="Recent file masks"
-            aria-label="Recent file masks"
+            title={t('log_panel.file_mask.recent_title')}
+            aria-label={t('log_panel.file_mask.recent_title')}
           >
             <span className="git-changes-mask-history-chevron">▾</span>
           </button>
@@ -1316,7 +1346,8 @@ function FileMaskFilter({
           type="button"
           className="git-changes-mask-clear"
           onClick={() => onValueChange('')}
-          title="Clear mask"
+          title={t('log_panel.file_mask.clear')}
+          aria-label={t('log_panel.file_mask.clear')}
         >
           &#10005;
         </button>
@@ -1330,7 +1361,7 @@ function FileMaskFilter({
             className="git-changes-mask-history-menu"
             {...getFloatingProps()}
           >
-            <div className="git-changes-mask-history-header">Recent file masks</div>
+            <div className="git-changes-mask-history-header">{t('log_panel.file_mask.recent_title')}</div>
             {history.map(entry => (
               <div key={entry} className="git-changes-mask-history-row">
                 <button
@@ -1352,8 +1383,8 @@ function FileMaskFilter({
                     e.stopPropagation();
                     onRemoveHistoryEntry(entry);
                   }}
-                  title="Remove from history"
-                  aria-label="Remove from history"
+                  title={t('log_panel.file_mask.remove_from_history')}
+                  aria-label={t('log_panel.file_mask.remove_from_history')}
                 >
                   &#10005;
                 </button>

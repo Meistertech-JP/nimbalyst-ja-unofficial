@@ -66,6 +66,8 @@ export interface ItemPosition {
 }
 
 export interface SetPageTypeDependencies {
+  /** Localizes user-facing sequence messages in hosts that have an i18n layer. */
+  translate?(key: string, fallback: string, options?: Record<string, string | number>): string;
   /** Pages, placed types and placed typed pages directly under the page. */
   listChildren(pageId: string): PageChild[];
   /** Resolves ok only once the child is stored under the typed page. */
@@ -138,9 +140,16 @@ export async function setPageType(
   dependencies: SetPageTypeDependencies,
 ): Promise<SetPageTypeOutcome> {
   const { lane, page, typeId } = request;
+  const message = (key: string, fallback: string, options?: Record<string, string | number>) => {
+    const translated = dependencies.translate?.(key, fallback, options);
+    if (translated) return translated;
+    return fallback.replace(/\{\{(\w+)\}\}/g, (placeholder, name: string) =>
+      options?.[name] === undefined ? placeholder : String(options[name]),
+    );
+  };
 
   if (page.documentType !== 'markdown') {
-    return { status: 'refused', message: 'Only a text page can be given a type.' };
+    return { status: 'refused', message: message('only_text_page', 'Only a text page can be given a type.') };
   }
 
   // An item of a type the room does not hold publishes, but nobody else can
@@ -150,9 +159,9 @@ export async function setPageType(
     try {
       problem = await dependencies.teamTypeProblem(typeId);
     } catch (error) {
-      problem = `Could not check the type with the team's server (${errorText(error)}).`;
+      problem = message('team_type_check_failed', "Could not check the type with the team's server ({{error}}).", { error: errorText(error) });
     }
-    if (problem) return { status: 'refused', message: `${problem} The page is unchanged.` };
+    if (problem) return { status: 'refused', message: `${problem} ${message('page_unchanged', 'The page is unchanged.')}` };
   }
 
   let copy: PageCopy;
@@ -160,13 +169,13 @@ export async function setPageType(
     await dependencies.flushPageEditor(page.documentId);
     copy = await dependencies.readPageMarkdown(page.documentId);
   } catch (error) {
-    return { status: 'failed', message: `Could not read the page: ${errorText(error)}`, itemKept: false };
+    return { status: 'failed', message: message('could_not_read_page', 'Could not read the page: {{error}}', { error: errorText(error) }), itemKept: false };
   }
   const { markdown } = copy;
   if (PAGE_ROOM_ASSET.test(markdown) || DECISION_BLOCK.test(markdown)) {
     return {
       status: 'refused',
-      message: 'This page has uploaded images or decision blocks, which cannot move to a typed page yet. The page is unchanged.',
+      message: message('unsupported_content', 'This page has uploaded images or decision blocks, which cannot move to a typed page yet. The page is unchanged.'),
     };
   }
 
@@ -175,7 +184,7 @@ export async function setPageType(
   try {
     created = await dependencies.createItem({ typeId, title, markdown });
   } catch (error) {
-    return { status: 'failed', message: `Could not create the item: ${errorText(error)}`, itemKept: false };
+    return { status: 'failed', message: message('could_not_create_item', 'Could not create the item: {{error}}', { error: errorText(error) }), itemKept: false };
   }
   const { itemId } = created;
   const keepBoth = (message: string): SetPageTypeOutcome => ({ status: 'failed', message, itemId, itemKept: true });
@@ -185,9 +194,9 @@ export async function setPageType(
   const abandon = async (message: string): Promise<SetPageTypeOutcome> => {
     try {
       await dependencies.removeItem(itemId);
-      return { status: 'failed', message: `${message} The page is unchanged.`, itemId, itemKept: false };
+      return { status: 'failed', message: `${message} ${dependencies.translate?.('page_unchanged', 'The page is unchanged.') ?? 'The page is unchanged.'}`, itemId, itemKept: false };
     } catch (error) {
-      return keepBoth(`${message} The page is unchanged, but the new item could not be removed (${errorText(error)}).`);
+      return keepBoth(`${message} ${dependencies.translate?.('page_unchanged_item_not_removed', 'The page is unchanged, but the new item could not be removed ({{error}}).', { error: errorText(error) }) ?? `The page is unchanged, but the new item could not be removed (${errorText(error)}).`}`);
     }
   };
 
@@ -195,21 +204,21 @@ export async function setPageType(
   const reachedItsSection = lane === 'team' ? reachedTeam : created.publication !== 'pending';
   if (!reachedItsSection) {
     return abandon(created.error
-      ? `The item did not reach the team: ${created.error}`
-      : 'The item did not reach the team.');
+      ? message('item_did_not_reach_team', 'The item did not reach the team: {{error}}', { error: created.error })
+      : message('item_did_not_reach_team_plain', 'The item did not reach the team.'));
   }
 
   const check = await readBack(dependencies, itemId, markdown);
   if (check.status === 'unreadable') {
-    const message = `The item's text could not be read back (${check.reason}).`;
+    const readBackMessage = message('item_text_unreadable', "The item's text could not be read back ({{reason}}).", { reason: check.reason });
     // Teammates can already see and edit a published item; never delete it.
     return reachedTeam
-      ? keepBoth(`${message} The page was kept. Open the item to check it, then delete the one you do not need.`)
-      : abandon(message);
+      ? keepBoth(`${readBackMessage} ${message('published_item_page_kept', 'The page was kept. Open the item to check it, then delete the one you do not need.')}`)
+      : abandon(readBackMessage);
   }
   if (check.status === 'mismatch') {
     // A different body may already carry someone's edit; keep it for review.
-    return keepBoth('The item\'s text does not match the page, so the page was kept. Compare them and delete the one you do not need.');
+    return keepBoth(message('item_text_mismatch', "The item's text does not match the page, so the page was kept. Compare them and delete the one you do not need."));
   }
 
   let placement: ItemPlacementResult;
@@ -222,7 +231,7 @@ export async function setPageType(
     placement = { ok: false, error: errorText(error) };
   }
   if (!placement.ok) {
-    return keepBoth(`The typed page was created but sits under its type, not where the page was (${placement.error}). The page is unchanged.`);
+    return keepBoth(message('placement_failed', 'The typed page was created but sits under its type, not where the page was ({{error}}). The page is unchanged.', { error: placement.error }));
   }
 
   let unchanged: boolean;
@@ -233,7 +242,7 @@ export async function setPageType(
   }
   if (!unchanged) {
     // Someone is still editing the page; leave its tab where it is.
-    return keepBoth('The page changed while its type was being set, so it was kept beside the new typed page. Copy the latest edits across, then delete the page.');
+    return keepBoth(message('page_changed_during_type_set', 'The page changed while its type was being set, so it was kept beside the new typed page. Copy the latest edits across, then delete the page.'));
   }
 
   // Read when they move, not at the start: a child added meanwhile moves too.
@@ -246,7 +255,7 @@ export async function setPageType(
       moved = { ok: false, error: errorText(error) };
     }
     if (!moved.ok) {
-      return keepBoth(`The typed page is ready, but not everything inside the page could move under it (${moved.error}), so the page was kept. Move the rest across, then delete the page.`);
+      return keepBoth(message('child_move_failed', 'The typed page is ready, but not everything inside the page could move under it ({{error}}), so the page was kept. Move the rest across, then delete the page.', { error: moved.error }));
     }
   }
 
@@ -254,7 +263,7 @@ export async function setPageType(
     await dependencies.trashPage(page.documentId);
   } catch (error) {
     dependencies.openItem(itemId, page.documentId);
-    return keepBoth(`The typed page is ready, but the old page could not be moved to Trash (${errorText(error)}). Delete it yourself.`);
+    return keepBoth(message('trash_page_failed', 'The typed page is ready, but the old page could not be moved to Trash ({{error}}). Delete it yourself.', { error: errorText(error) }));
   }
 
   dependencies.openItem(itemId, page.documentId);

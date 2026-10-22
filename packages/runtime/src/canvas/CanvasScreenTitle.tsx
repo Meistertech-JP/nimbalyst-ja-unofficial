@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /** Board-local title editing; the source image and capture metadata stay intact. */
 export function CanvasScreenTitle({
@@ -10,6 +11,7 @@ export function CanvasScreenTitle({
   readOnly: boolean;
   onRename(label: string): void;
 }) {
+  const { t } = useTranslation('editor');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(label);
   const pending = useRef(false);
@@ -37,7 +39,7 @@ export function CanvasScreenTitle({
     return (
       <input
         autoFocus
-        aria-label="Screenshot title"
+        aria-label={t('canvas.screen_title_placeholder')}
         className="canvas-screen-title canvas-screen-title--input nodrag nowheel"
         value={draft}
         onFocus={(event) => event.currentTarget.select()}
@@ -58,8 +60,8 @@ export function CanvasScreenTitle({
     <button
       type="button"
       className="canvas-screen-title canvas-screen-title--button"
-      title="Double-click to rename"
-      aria-label={`Rename ${label}`}
+      title={t('canvas.rename_title')}
+      aria-label={t('canvas.rename_aria_label', { title: label })}
       onDoubleClick={(event) => {
         event.stopPropagation();
         begin();

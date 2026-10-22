@@ -185,4 +185,78 @@ describe('extension awareness bridge across a reconnect (NIM-3006)', () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(sockets[1].sentOfType('docAwareness')).toHaveLength(sentAtDestroy);
   });
+
+  it('round-trips optional fallback provenance and accepts legacy awareness unchanged', async () => {
+    let unnamedCollaboratorLabel = 'Teammate';
+    const bridge = createExtensionAwarenessBridge({
+      syncProvider: provider,
+      yDoc: provider.getYDoc(),
+      user: {
+        id: 'member-rowan',
+        name: 'Teammate',
+        color: '#3A8FD6',
+        nimbalystNameSource: 'system-default',
+      },
+      getUnnamedCollaboratorLabel: () => unnamedCollaboratorLabel,
+    });
+
+    // Local state is serialized into the existing opaque awareness envelope;
+    // the display name remains byte-for-byte compatible.
+    bridge.awareness.setLocalStateField('testMarker', true);
+    await vi.advanceTimersByTimeAsync(500);
+    const sentFrame = sockets[0].sentOfType('docAwareness').at(-1);
+    expect(sentFrame).toBeDefined();
+    const sentState = JSON.parse(
+      Buffer.from(sentFrame?.encryptedState as string, 'base64').toString('utf8'),
+    ) as AwarenessState;
+    expect(sentState.user).toMatchObject({
+      name: 'Teammate',
+      nimbalystNameSource: 'system-default',
+    });
+
+    // The current receiver parses and forwards additive user-block fields.
+    sockets[0].deliver(peerAwarenessFrame({
+      user: { name: 'Teammate', color: '#E05555', nimbalystNameSource: 'system-default' },
+    }));
+    await vi.advanceTimersByTimeAsync(0);
+    const received = [...bridge.awareness.getStates().entries()]
+      .find(([clientId]) => clientId !== bridge.awareness.clientID)?.[1] as AwarenessState | undefined;
+    expect(received?.user).toMatchObject({
+      name: 'Teammate',
+      nimbalystNameSource: 'system-default',
+    });
+    expect(provider.getAwarenessStates().get('member-dana')?.user.name).toBe('Teammate');
+
+    // Extension-facing awareness is a display view, not the provider's wire
+    // state. A language change rebuilds that view and notifies subscribers.
+    const remoteClientId = [...bridge.awareness.getStates().keys()]
+      .find((clientId) => clientId !== bridge.awareness.clientID)!;
+    const onChange = vi.fn();
+    bridge.awareness.on('change', onChange);
+    unnamedCollaboratorLabel = 'チームメンバー';
+    bridge.refreshRemoteDisplayNames();
+    expect((bridge.awareness.getStates().get(remoteClientId) as AwarenessState).user.name)
+      .toBe('チームメンバー');
+    expect(provider.getAwarenessStates().get('member-dana')?.user.name).toBe('Teammate');
+    expect(onChange).toHaveBeenCalledOnce();
+    bridge.awareness.off('change', onChange);
+
+    // Legacy payloads have no provenance. They are accepted and preserved,
+    // not guessed to be generated defaults.
+    sockets[0].deliver(peerAwarenessFrame({
+      user: { name: 'Teammate', color: '#E05555' },
+    }));
+    await vi.advanceTimersByTimeAsync(0);
+    const legacy = [...bridge.awareness.getStates().entries()]
+      .find(([clientId]) => clientId !== bridge.awareness.clientID)?.[1] as AwarenessState | undefined;
+    expect(legacy?.user).toEqual({ name: 'Teammate', color: '#E05555', id: 'member-dana' });
+
+    unnamedCollaboratorLabel = 'チームメンバー';
+    bridge.refreshRemoteDisplayNames();
+    expect([...bridge.awareness.getStates().entries()]
+      .find(([clientId]) => clientId !== bridge.awareness.clientID)?.[1])
+      .toMatchObject({ user: { name: 'Teammate' } });
+
+    bridge.destroy();
+  });
 });

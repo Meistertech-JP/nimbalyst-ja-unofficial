@@ -4,6 +4,7 @@
  */
 
 import React, { lazy, Suspense, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 
 const loadCustomSelectPopover = () => import('./CustomSelectPopover');
@@ -35,6 +36,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   placeholder = 'Select...',
   required = false,
 }) => {
+  const { t } = useTranslation('tracker');
   const [isOpen, setIsOpen] = useState(false);
   const [reference, setReference] = useState<HTMLButtonElement | null>(null);
 
@@ -89,7 +91,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           // so the value stays visible and editable instead of silently vanishing.
           <span
             className="custom-select-value custom-select-value-unknown flex items-center gap-1.5 flex-1 text-[var(--nim-text-secondary)]"
-            title={`Unrecognized option: ${value}`}
+            title={t('reference.unrecognized_option', { value })}
           >
             <MaterialSymbol icon="help_outline" size={16} />
             <span>{String(value)}</span>

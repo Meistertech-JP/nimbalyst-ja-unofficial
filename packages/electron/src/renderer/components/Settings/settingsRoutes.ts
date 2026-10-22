@@ -132,6 +132,29 @@ export interface ExtensionSettingsRoute {
 
 export type SettingsRoute = BuiltinSettingsRoute | ExtensionSettingsRoute;
 
+const extensionSettingsRouteLabelKeys: Record<string, Record<string, string>> = {
+  'com.nimbalyst.knowledge': {
+    'knowledge-curator': 'sidebar.item_knowledge_curator',
+  },
+  'com.nimbalyst.memory': {
+    memory: 'sidebar.item_memory',
+  },
+};
+
+export function getSettingsRouteLabel(
+  route: SettingsRoute,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): string {
+  if (route.source === 'builtin') {
+    const key = `sidebar.item_${route.id.replace(/-/g, '_')}`;
+    return t(key, { defaultValue: route.label });
+  }
+
+  const contributionId = route.id.slice(route.id.lastIndexOf(':') + 1);
+  const key = extensionSettingsRouteLabelKeys[route.extensionId]?.[contributionId];
+  return key ? t(key, { defaultValue: route.label }) : route.label;
+}
+
 const developerOnly = ({ developerMode }: SettingsAvailabilityContext) => developerMode;
 const directChatProvidersVisible = ({ showDirectChatProviders }: SettingsAvailabilityContext) =>
   showDirectChatProviders;

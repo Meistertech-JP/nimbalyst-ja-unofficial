@@ -9,6 +9,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import type { EditorHostProps } from '@nimbalyst/runtime';
 import { MonacoEditor, type MonacoEditorCollabConfig } from '@nimbalyst/runtime/editors/MonacoEditor';
@@ -44,6 +45,7 @@ function useDebouncedHtml(): [string | null, (next: string) => void] {
 }
 
 export function HtmlPageEditor({ host }: EditorHostProps): React.ReactElement {
+  const { t } = useTranslation('editor');
   const [mode, setMode] = useState<Mode>('preview');
   const [html, setHtml] = useDebouncedHtml();
   const setHtmlRef = useRef(setHtml);
@@ -98,7 +100,7 @@ export function HtmlPageEditor({ host }: EditorHostProps): React.ReactElement {
   return (
     <div className={`html-page-editor html-page-editor--${mode}`} data-testid="html-page-editor" data-mode={mode}>
       {host.embedded ? null : (
-        <div className="html-page-editor__toolbar" role="tablist" aria-label="HTML page view">
+        <div className="html-page-editor__toolbar" role="tablist" aria-label={t('html_page.view')}>
           {(['preview', 'source'] as const).map((value) => (
             <button
               key={value}
@@ -110,7 +112,7 @@ export function HtmlPageEditor({ host }: EditorHostProps): React.ReactElement {
               data-testid={`html-page-editor-${value}`}
             >
               <MaterialSymbol icon={value === 'preview' ? 'visibility' : 'code'} size={16} />
-              {value === 'preview' ? 'Preview' : 'Source'}
+              {value === 'preview' ? t('html_page.preview') : t('html_page.source')}
             </button>
           ))}
         </div>

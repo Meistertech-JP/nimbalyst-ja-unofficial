@@ -6,6 +6,7 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { parseGIF, decompressFrames } from 'gifuct-js';
 
 interface GifPlayerProps {
@@ -92,6 +93,7 @@ function decodeGif(buffer: ArrayBuffer, canvas: HTMLCanvasElement): DecodedFrame
 }
 
 export const GifPlayer: React.FC<GifPlayerProps> = ({ src, alt, className }) => {
+  const { t } = useTranslation('aichat');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [frames, setFrames] = useState<DecodedFrame[]>([]);
   const [currentFrame, setCurrentFrame] = useState(0);
@@ -232,12 +234,12 @@ export const GifPlayer: React.FC<GifPlayerProps> = ({ src, alt, className }) => 
         ref={canvasRef}
         className="max-w-full h-auto block"
         role="img"
-        aria-label={alt || 'Animated GIF'}
+      aria-label={alt || t('media.animated_gif')}
         style={{ display: loading ? 'none' : 'block' }}
       />
       {loading && (
         <div className="flex items-center justify-center p-4 bg-nim-secondary rounded-md border border-nim">
-          <span className="text-nim-muted text-sm">Decoding GIF...</span>
+        <span className="text-nim-muted text-sm">{t('media.decoding_gif')}</span>
         </div>
       )}
       {!loading && frames.length > 1 && (
@@ -248,7 +250,7 @@ export const GifPlayer: React.FC<GifPlayerProps> = ({ src, alt, className }) => 
           <button
             onClick={togglePlayPause}
             className="flex items-center justify-center w-6 h-6 rounded text-nim-muted hover:text-nim hover:bg-nim-hover transition-colors shrink-0"
-            aria-label={isPlaying ? 'Pause' : 'Play'}
+          aria-label={t(isPlaying ? 'media.pause' : 'media.play')}
           >
             {isPlaying ? (
               <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
@@ -268,7 +270,7 @@ export const GifPlayer: React.FC<GifPlayerProps> = ({ src, alt, className }) => 
             value={currentFrame}
             onChange={handleScrub}
             className="flex-1 h-1 accent-[var(--nim-primary)] cursor-pointer"
-            aria-label="GIF frame position"
+        aria-label={t('media.frame_position')}
           />
           <span className="text-[10px] text-nim-faint font-mono tabular-nums shrink-0 min-w-[4.5rem] text-right">
             {formatTime(currentTime)} / {formatTime(totalDuration)}

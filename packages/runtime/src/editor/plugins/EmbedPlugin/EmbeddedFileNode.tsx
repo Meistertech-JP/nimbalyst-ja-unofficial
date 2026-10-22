@@ -6,6 +6,7 @@
 import type { JSX } from 'react';
 import type { NodeKey } from 'lexical';
 import React, { Suspense } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { getEmbedPluginCallbacks } from './EmbedPluginCallbacks';
 import { isLinkPreviewLink } from '../LinkPreviewPlugin/linkPreviewLinks';
@@ -35,7 +36,8 @@ function EmbedFrameSlot(props: {
   attrs: EmbedAttrs;
   nodeKey: NodeKey;
 }): JSX.Element {
-  if (props.attrs.namedPageView) return <span data-named-page-view={props.attrs.namedPageView} className="text-xs text-nim-muted">Named view: {props.label}</span>;
+  const { t } = useTranslation('editor');
+  if (props.attrs.namedPageView) return <span data-named-page-view={props.attrs.namedPageView} className="text-xs text-nim-muted">{t('embed.named_view')}: {props.label}</span>;
   // A web link preview is drawn here on every host; the host renderer only
   // knows files and placed views.
   if (isLinkPreviewLink(props.src, props.attrs)) {

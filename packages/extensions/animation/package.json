@@ -12,7 +12,9 @@
     "build": "vite build",
     "typecheck": "node ../../../scripts/tsc-native.mjs --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@nimbalyst/i18n": "workspace:*"
+  },
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

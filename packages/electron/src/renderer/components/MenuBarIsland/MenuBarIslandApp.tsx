@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { FLEET_STRIP_COLORS as STRIP_COLORS } from '../../../shared/fleetStripColors';
 import {
@@ -18,7 +19,6 @@ import {
   TraySessionSectionHeader,
   TrayStatusIndicator,
 } from '../TrayPanel/traySessionSections';
-import { getRelativeTimeString } from '../../utils/dateFormatting';
 import { MenuBarIslandSettingsPanel } from './MenuBarIslandSettings';
 
 /**
@@ -44,6 +44,23 @@ const FOCUS_RING = 'focus:outline-none focus-visible:outline-2 focus-visible:out
 
 /** Menu bar row height. The collapsed pill fills it exactly. */
 const STRIP_HEIGHT = 30;
+
+function getLocalizedRelativeTimeString(timestamp: number, locale: string): string {
+  const deltaSeconds = (timestamp - Date.now()) / 1000;
+  const absoluteSeconds = Math.abs(deltaSeconds);
+  const units = [
+    { unit: 'year' as const, seconds: 365 * 24 * 60 * 60 },
+    { unit: 'month' as const, seconds: 30 * 24 * 60 * 60 },
+    { unit: 'week' as const, seconds: 7 * 24 * 60 * 60 },
+    { unit: 'day' as const, seconds: 24 * 60 * 60 },
+    { unit: 'hour' as const, seconds: 60 * 60 },
+    { unit: 'minute' as const, seconds: 60 },
+    { unit: 'second' as const, seconds: 1 },
+  ];
+  const { unit, seconds } = units.find((candidate) => absoluteSeconds >= candidate.seconds) ?? units[units.length - 1];
+  const value = Math.round(deltaSeconds / seconds);
+  return new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' }).format(value, unit);
+}
 
 function CountPair({ color, count }: { color: string; count: number }) {
   return (
@@ -73,6 +90,7 @@ function IslandStrip({
   glyph: string | null;
   onOpenSession: (sessionId: string, workspacePath: string) => void;
 }) {
+  const { t } = useTranslation('menu');
   return (
     <div
       className="flex shrink-0 items-center gap-[7px] whitespace-nowrap px-3 text-[13px] text-white/95"
@@ -108,7 +126,7 @@ function IslandStrip({
           <button
             type="button"
             className="menu-bar-island-strip-title max-w-[190px] truncate rounded-[3px] px-0.5 text-[12.5px] font-medium text-white/95 transition-colors hover:bg-white/20 focus:outline-none focus-visible:outline-2 focus-visible:outline-white/70 focus-visible:outline-offset-[-2px]"
-            title={`Open ${strip.title}`}
+            title={t('menu_bar_island.open_session', { title: strip.title })}
             onPointerDown={(event) => event.stopPropagation()}
             onPointerUp={(event) => event.stopPropagation()}
             onClick={() => onOpenSession(strip.sessionId, strip.workspacePath)}
@@ -166,21 +184,25 @@ function IdlePanel({
   idle: MenuBarIslandState['idle'];
   onSelect: (sessionId: string) => void;
 }) {
+  const { t, i18n } = useTranslation('menu');
+  const { t: tAiChat } = useTranslation('aichat');
   const recent = idle?.recent ?? [];
   return (
     <div data-testid="menu-bar-island-idle">
       <div className="px-3.5 pb-1 pt-2.5 text-[11.5px] text-nim-muted">
-        Nothing running.
+        {t('menu_bar_island.nothing_running')}
         {idle?.lastActivityAt !== undefined && (
-          <> Last session {getRelativeTimeString(idle.lastActivityAt)}.</>
+          <> {t('menu_bar_island.last_session', {
+            relative: getLocalizedRelativeTimeString(idle.lastActivityAt, i18n.resolvedLanguage === 'ja' ? 'ja' : 'en'),
+          })}</>
         )}
       </div>
       {recent.length === 0 ? (
-        <div className="px-3.5 pb-4 pt-1 text-[12px] text-nim-faint">No sessions yet.</div>
+        <div className="px-3.5 pb-4 pt-1 text-[12px] text-nim-faint">{tAiChat('session_dropdown.no_sessions_yet')}</div>
       ) : (
         <>
           <div className="px-3.5 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-wide text-nim-faint">
-            Recent
+            {t('menu_bar_island.recent')}
           </div>
           {recent.map((session) => (
             <SessionAttentionRow
@@ -201,6 +223,8 @@ function IdlePanel({
 }
 
 export function MenuBarIslandApp() {
+  const { t } = useTranslation('menu');
+  const { t: tAiChat } = useTranslation('aichat');
   const state = useAtomValue(menuBarIslandStateAtom);
   const glyph = useAtomValue(menuBarIslandGlyphAtom);
   const islandRef = useRef<HTMLDivElement>(null);
@@ -464,8 +488,8 @@ export function MenuBarIslandApp() {
               <button
                 type="button"
                 aria-pressed={settingsOpen}
-                aria-label={settingsOpen ? 'Back to sessions' : 'Menu bar settings'}
-                title={settingsOpen ? 'Back to sessions' : 'Menu bar settings'}
+                aria-label={settingsOpen ? t('menu_bar_island.back_to_sessions') : t('menu_bar_island.settings')}
+                title={settingsOpen ? t('menu_bar_island.back_to_sessions') : t('menu_bar_island.settings')}
                 className={`flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-medium transition-colors hover:bg-nim-tertiary ${
                   settingsOpen ? 'bg-nim-tertiary text-nim' : 'text-nim-muted hover:text-nim'
                 } ${FOCUS_RING}`}
@@ -473,7 +497,7 @@ export function MenuBarIslandApp() {
                 data-testid="menu-bar-island-settings-toggle"
               >
                 <MaterialSymbol icon={settingsOpen ? 'arrow_back' : 'settings'} size={15} />
-                {settingsOpen && 'Sessions'}
+                {settingsOpen && tAiChat('session_dropdown.all_sessions')}
               </button>
 
               <div className="flex items-center gap-1">
@@ -484,7 +508,7 @@ export function MenuBarIslandApp() {
                   data-testid="menu-bar-island-new-session"
                 >
                   <MaterialSymbol icon="add" size={14} />
-                  New Session
+                  {tAiChat('session_dropdown.new_session')}
                 </button>
                 <button
                   type="button"
@@ -492,7 +516,7 @@ export function MenuBarIslandApp() {
                   onClick={() => window.electronAPI.send(MENU_BAR_ISLAND_CHANNELS.openApp)}
                   data-testid="menu-bar-island-open-app"
                 >
-                  Open Nimbalyst
+                  {t('menu_bar_island.open_app', { app: t('top_bar.nimbalyst') })}
                 </button>
               </div>
             </div>

@@ -9,6 +9,7 @@
 
 import type { JSX } from 'react';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useFloating, FloatingPortal } from '@floating-ui/react';
 import { useScrollableMenuFloating } from '../../../ui/floating/useScrollableMenuFloating';
 import type { TrackerItemType } from '../../../core/DocumentService';
@@ -19,6 +20,13 @@ import { getStatusColor, getPriorityColor, getTypeColor, getTypeIcon } from './t
 import type { ConfirmTrackerDelete } from './useTrackerRows';
 
 const PRIORITIES = ['critical', 'high', 'medium', 'low'] as const;
+const BUILT_IN_STATUS_KEYS: Record<string, string> = {
+  'to-do': 'table.statuses.to_do',
+  'in-progress': 'table.statuses.in_progress',
+  'in-review': 'table.statuses.in_review',
+  done: 'table.statuses.done',
+  blocked: 'table.statuses.blocked',
+};
 
 /**
  * Panel chrome carried as inline style rather than Tailwind arbitrary values.
@@ -105,6 +113,7 @@ export function TrackerRowContextMenu({
   closeContextMenu,
   clearSelection,
 }: TrackerRowContextMenuProps): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   if (!anchor || selectedIds.size === 0) return null;
 
   const statusType = activeTypeFilter !== 'all' ? activeTypeFilter : undefined;
@@ -127,16 +136,19 @@ export function TrackerRowContextMenu({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-3 py-1 text-[11px] text-[var(--nim-text-faint)] font-medium">
-          {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+          {t('kanban.selected_count', { count: selectedIds.size })}
         </div>
         <div className="border-b border-[var(--nim-border)] my-1" />
 
-        <ContextSubmenu label="Set Status" icon="swap_horiz">
+        <ContextSubmenu label={t('kanban.set_status')} icon="swap_horiz">
           {statusOptions.map(opt => {
             const value = typeof opt === 'string' ? opt : opt.value;
-            const label = typeof opt === 'string'
-              ? opt.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-              : opt.label;
+            const builtInStatusKey = BUILT_IN_STATUS_KEYS[value];
+            const label = builtInStatusKey
+              ? t(builtInStatusKey)
+              : typeof opt === 'string'
+                ? opt.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                : opt.label;
             return (
               <button
                 key={value}
@@ -153,7 +165,7 @@ export function TrackerRowContextMenu({
           })}
         </ContextSubmenu>
 
-        <ContextSubmenu label="Set Priority" icon="flag">
+        <ContextSubmenu label={t('kanban.set_priority')} icon="flag">
           {PRIORITIES.map(p => (
             <button
               key={p}
@@ -164,13 +176,13 @@ export function TrackerRowContextMenu({
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: getPriorityColor(p) }}
               />
-              {p.charAt(0).toUpperCase() + p.slice(1)}
+              {t(`kanban.priority_${p}`)}
             </button>
           ))}
         </ContextSubmenu>
 
         {onAddToCollection && collectionTargets.length > 0 && (
-          <ContextSubmenu label="Add to Collection" icon="inventory_2">
+          <ContextSubmenu label={t('kanban.add_to_collection')} icon="inventory_2">
             {collectionTargets.map(collection => (
               <button
                 key={collection.id}
@@ -194,13 +206,13 @@ export function TrackerRowContextMenu({
             <div className="border-b border-[var(--nim-border)] my-1" />
 
             {linkedSessions.length > 0 && (
-              <ContextSubmenu label={`Sessions (${linkedSessions.length})`} icon="smart_toy">
+              <ContextSubmenu label={t('kanban.sessions_count', { count: linkedSessions.length })} icon="smart_toy">
                 {linkedSessions.map(session => (
                   <button
                     key={session.id}
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] cursor-pointer"
                     data-testid="tracker-row-context-open-session"
-                    title={`Open session: ${session.title}`}
+                    title={t('kanban.open_session_title', { title: session.title })}
                     onClick={() => {
                       closeContextMenu();
                       onOpenSession?.(session.id);
@@ -230,7 +242,7 @@ export function TrackerRowContextMenu({
                 }}
               >
                 <span className="material-symbols-outlined text-sm">add_circle</span>
-                Launch Session
+                {t('kanban.launch_session')}
               </button>
             )}
 
@@ -244,7 +256,7 @@ export function TrackerRowContextMenu({
                 }}
               >
                 <span className="material-symbols-outlined text-sm">account_tree</span>
-                Launch Worktree
+                {t('kanban.launch_worktree')}
               </button>
             )}
           </>
@@ -263,7 +275,7 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">article</span>
-            Open document
+            {t('kanban.open_document')}
           </button>
         )}
 
@@ -278,7 +290,7 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">link</span>
-            Copy Link
+            {t('kanban.copy_link')}
           </button>
         )}
 
@@ -293,7 +305,7 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">archive</span>
-            Archive
+            {t('kanban.archive')}
           </button>
         )}
 
@@ -311,7 +323,7 @@ export function TrackerRowContextMenu({
             }}
           >
             <span className="material-symbols-outlined text-sm">delete</span>
-            Delete
+            {t('kanban.delete')}
           </button>
         )}
       </div>

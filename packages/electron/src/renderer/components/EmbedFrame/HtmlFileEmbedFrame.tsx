@@ -12,6 +12,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { basename } from 'pathe';
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
@@ -39,7 +40,7 @@ import './HtmlFileEmbedFrame.css';
  * the file with main as open, which is what makes the watcher report changes
  * to a gitignored file too.
  */
-function useFileText(absolutePath: string | null): { text: string | null; error: string | null } {
+function useFileText(absolutePath: string | null, deletedMessage: string): { text: string | null; error: string | null } {
   const [state, setState] = useState<{ text: string | null; error: string | null }>({ text: null, error: null });
   useEffect(() => {
     if (!absolutePath) return;
@@ -55,14 +56,14 @@ function useFileText(absolutePath: string | null): { text: string | null; error:
       () => readFileFromDisk(absolutePath),
       ({ content }) => show(typeof content === 'string' ? content : new TextDecoder().decode(content)),
       () => {
-        if (!cancelled) setState({ text: null, error: 'The file was deleted' });
+        if (!cancelled) setState({ text: null, error: deletedMessage });
       },
     );
     return () => {
       cancelled = true;
       subscription.dispose();
     };
-  }, [absolutePath]);
+  }, [absolutePath, deletedMessage]);
   return state;
 }
 
@@ -72,10 +73,11 @@ export function parseHtmlEmbedHeight(value: string | undefined): number | undefi
 }
 
 export const HtmlFileEmbedFrame: React.FC<EmbedFrameProps> = ({ src, label, attrs, nodeKey, detached = false }) => {
+  const { t } = useTranslation('editor');
   const { documentDir } = useDocumentPath();
   const workspacePath = useAtomValue(activeWorkspacePathAtom);
   const { path: absolutePath, pending, error: pathError } = useEmbedFilePath(src, documentDir, workspacePath);
-  const { text, error: readError } = useFileText(absolutePath);
+  const { text, error: readError } = useFileText(absolutePath, t('embed.file_deleted'));
   const theme = useDesktopHtmlEmbedTheme();
   const onAttrsChange = usePlacedViewAttrs(nodeKey, detached);
   const [isSelected, setSelected, clearSelection] = useLexicalNodeSelection(nodeKey);
@@ -106,7 +108,7 @@ export const HtmlFileEmbedFrame: React.FC<EmbedFrameProps> = ({ src, label, attr
     [absolutePath, workspacePath],
   );
 
-  const problem = pending ? null : pathError || (!absolutePath ? 'Could not resolve embed path' : readError);
+  const problem = pending ? null : pathError || (!absolutePath ? t('embed.file_path_unresolved') : readError);
   const name = absolutePath ? basename(absolutePath) : src;
 
   return (
@@ -122,8 +124,8 @@ export const HtmlFileEmbedFrame: React.FC<EmbedFrameProps> = ({ src, label, attr
             type="button"
             className="html-file-embed__handle"
             onMouseDown={select}
-            aria-label={`Select ${name}`}
-            title="Select"
+            aria-label={t('embed.file_select_name', { name })}
+            title={t('embed.file_select')}
             data-testid="html-file-embed-select"
           >
             <MaterialSymbol icon="drag_indicator" size={16} />
@@ -133,8 +135,8 @@ export const HtmlFileEmbedFrame: React.FC<EmbedFrameProps> = ({ src, label, attr
               type="button"
               className="html-file-embed__handle"
               onMouseDown={open}
-              aria-label={`Open ${name}`}
-              title={absolutePath ? `Open ${workspaceRelativePath(absolutePath)}` : undefined}
+              aria-label={t('embed.file_open_name', { name })}
+              title={absolutePath ? t('embed.file_open_path', { path: workspaceRelativePath(absolutePath) }) : undefined}
             >
               <MaterialSymbol icon="open_in_new" size={16} />
             </button>
@@ -152,7 +154,7 @@ export const HtmlFileEmbedFrame: React.FC<EmbedFrameProps> = ({ src, label, attr
               <code>{src}</code>
             </div>
           ) : text === null ? (
-            <div className="html-file-embed__placeholder">Loading {name}…</div>
+            <div className="html-file-embed__placeholder">{t('embed.file_loading', { name })}</div>
           ) : (
             <HtmlEmbedFrame
               html={text}

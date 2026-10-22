@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   getFeedbackTextAnswerMaxLength,
   type FeedbackAnswer,
@@ -102,17 +103,18 @@ function detailEntries(
 const ReorderArtifactButton: React.FC<{
   artifact: FeedbackAskArtifact;
   onExpand: (anchor: HTMLElement | null) => void;
-}> = ({ artifact, onExpand }) => (
-  <button
+}> = ({ artifact, onExpand }) => {
+  const { t } = useTranslation('feedback');
+  return <button
     type="button"
     data-testid="feedback-respond-reorder-open"
-    aria-label={`Open ${artifact.label}`}
+    aria-label={t('response.open_artifact', { label: artifact.label })}
     onClick={(event) => onExpand(event.currentTarget)}
     className="feedback-respond-reorder-artifact-button shrink-0 rounded border border-nim bg-nim px-1.5 py-0.5 text-[0.6875rem] text-nim-muted cursor-pointer hover:text-nim"
   >
-    Open
+    {t('response.open')}
   </button>
-);
+};
 
 export const FeedbackRespondAskField: React.FC<FeedbackRespondAskFieldProps> = ({
   ask,
@@ -124,6 +126,7 @@ export const FeedbackRespondAskField: React.FC<FeedbackRespondAskFieldProps> = (
   renderArtifactDetail,
   resolveArtifactAction,
 }) => {
+  const { t } = useTranslation('feedback');
   const artifacts = 'artifacts' in ask ? ask.artifacts : undefined;
 
   /**
@@ -195,7 +198,7 @@ export const FeedbackRespondAskField: React.FC<FeedbackRespondAskFieldProps> = (
               data-testid="feedback-respond-other"
               value={otherText}
               disabled={disabled}
-              placeholder="Something else…"
+              placeholder={t('response.something_else')}
               onChange={(event) =>
                 onChange({
                   type: 'singleSelect',
@@ -326,14 +329,14 @@ export const FeedbackRespondAskField: React.FC<FeedbackRespondAskFieldProps> = (
         <WidgetOptionList>
           <WidgetOptionRow
             testId="feedback-respond-confirm-yes"
-            label="Yes"
+            label={t('response.yes')}
             selected={value === true}
             disabled={disabled}
             onSelect={() => onChange({ type: 'confirm', value: true })}
           />
           <WidgetOptionRow
             testId="feedback-respond-confirm-no"
-            label="No"
+            label={t('response.no')}
             selected={value === false}
             disabled={disabled}
             onSelect={() => onChange({ type: 'confirm', value: false })}

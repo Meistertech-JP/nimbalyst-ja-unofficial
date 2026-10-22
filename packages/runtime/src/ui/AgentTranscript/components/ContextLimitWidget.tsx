@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ContextFailureKind } from './contextFailureDetection';
 
 // Inject context limit widget styles once (for color-mix patterns)
@@ -39,6 +40,7 @@ export const ContextLimitWidget: React.FC<ContextLimitWidgetProps> = ({
   detail,
   onCompact,
 }) => {
+  const { t } = useTranslation('aichat');
   const [isCompacting, setIsCompacting] = useState(false);
 
   // Inject styles on mount
@@ -60,18 +62,18 @@ export const ContextLimitWidget: React.FC<ContextLimitWidgetProps> = ({
 
   const compactionFailed = variant === 'compaction-failed';
 
-  const title = compactionFailed ? 'Compaction failed' : 'Context limit exceeded';
+  const title = compactionFailed ? t('context_limit.compaction_failed') : t('context_limit.exceeded');
 
   const message = compactionFailed
     ? (isLastMessage
-        ? 'The conversation could not be summarized, so the context was not reduced. Retrying sometimes works; otherwise start a new session to keep going.'
-        : 'A compaction attempt failed at this point in the conversation.')
+        ? t('context_limit.compaction_failed_last')
+        : t('context_limit.compaction_failed_earlier'))
     : (isLastMessage
-        ? 'This conversation has grown too large for the model\'s context window. Compact the conversation history to continue.'
-        : 'This conversation exceeded the model\'s context window at this point.');
+        ? t('context_limit.exceeded_last')
+        : t('context_limit.exceeded_earlier'));
 
-  const idleLabel = compactionFailed ? 'Try again' : 'Compact';
-  const busyLabel = compactionFailed ? 'Retrying...' : 'Compacting...';
+  const idleLabel = compactionFailed ? t('context_limit.retry') : t('context_limit.compact');
+  const busyLabel = compactionFailed ? t('context_limit.retrying') : t('context_limit.compacting');
 
   // This widget renders instead of the message it matched, so without this the
   // only description of the failure is thrown away.
@@ -111,7 +113,7 @@ export const ContextLimitWidget: React.FC<ContextLimitWidgetProps> = ({
 
       {isLastMessage && !onCompact && (
         <div className="context-limit-unsupported text-[var(--nim-text-faint)] text-[0.8rem]">
-          This provider cannot compact from Nimbalyst. Start a new session to continue.
+          {t('context_limit.unsupported')}
         </div>
       )}
     </div>

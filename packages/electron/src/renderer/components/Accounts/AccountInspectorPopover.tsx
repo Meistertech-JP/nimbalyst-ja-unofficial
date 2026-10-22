@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   FloatingPortal,
@@ -90,6 +91,7 @@ export function AccountInspectorPopover({
   sync = null,
   onOpenSyncSettings,
 }: AccountInspectorPopoverProps) {
+  const { t } = useTranslation('common');
   const { refs, floatingStyles, context } = useFloating({
     open: true,
     onOpenChange: (open) => { if (!open) onClose(); },
@@ -111,6 +113,34 @@ export function AccountInspectorPopover({
   const email = activeAccount?.email ?? activeAccount?.personalOrgId ?? null;
   const expired = activeAccount?.sessionStatus === 'expired';
   const orgRow = resolveAccountOrgRow({ projectOrg, projectOrgLoading });
+  const syncDetail = sync
+    ? (() => {
+        switch (sync.localizedDetail?.kind) {
+          case 'disabled-project': return t('sync_status.disabled_project');
+          case 'checking': return t('sync_status.checking');
+          case 'syncing': return t('sync_status.syncing');
+          case 'connected': return t('sync_status.connected_short');
+          case 'disconnected': return t('sync_status.disconnected_short');
+          case 'synced-just-now': return t('sync_status.synced_just_now');
+          case 'synced-minutes-ago': return t('sync_status.synced_minutes_ago', { count: sync.localizedDetail.count });
+          case 'synced-hours-ago': return t('sync_status.synced_hours_ago', { count: sync.localizedDetail.count });
+          case 'synced-days-ago': return t('sync_status.synced_days_ago', { count: sync.localizedDetail.count });
+          case 'update-required':
+            return sync.localizedDetail.detail
+              ? t('sync_status.update_required_with_detail', { detail: sync.localizedDetail.detail })
+              : t('sync_status.update_required');
+          default:
+            return ({
+              'Off for this project': t('sync_status.disabled_project'),
+              'Checking session sync…': t('sync_status.checking'),
+              'Syncing…': t('sync_status.syncing'),
+              Connected: t('sync_status.connected_short'),
+              Disconnected: t('sync_status.disconnected_short'),
+              'Session sync is paused.': t('sync_status.paused'),
+            }[sync.detail] ?? sync.detail);
+        }
+      })()
+    : null;
 
   return (
     <FloatingPortal>
@@ -130,7 +160,7 @@ export function AccountInspectorPopover({
           onClick={onOpenApplicationSettings}
         >
           <MaterialSymbol icon="settings" size={20} className="shrink-0 text-[var(--nim-text-muted)]" />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">Application Settings</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('account_ui.application_settings')}</span>
           <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />
         </button>
         <button
@@ -140,7 +170,7 @@ export function AccountInspectorPopover({
           onClick={onOpenProjectSettings}
         >
           <MaterialSymbol icon="tune" size={20} className="shrink-0 text-[var(--nim-text-muted)]" />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">Project Settings</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('help.settings-project-tab.title')}</span>
           <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />
         </button>
 
@@ -156,13 +186,13 @@ export function AccountInspectorPopover({
             data-testid="account-inspector-messages-row"
             aria-label={
               messagesUnreadCount > 0
-                ? `Messages, ${messagesUnreadCount} unread`
-                : 'Messages'
+                ? t('account_ui.messages_unread', { count: messagesUnreadCount })
+                : t('account_ui.messages')
             }
             onClick={() => onOpenMessages(projectOrg.orgId)}
           >
             <MaterialSymbol icon="forum" size={20} className="shrink-0 text-[var(--nim-text-muted)]" />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">Messages</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('account_ui.messages')}</span>
             {messagesUnreadCount > 0 && (
               <span
                 className="shrink-0 rounded-full bg-[var(--nim-error)] px-1.5 text-[10px] font-bold leading-[18px] text-white"
@@ -192,7 +222,7 @@ export function AccountInspectorPopover({
             data-testid="account-inspector-organization-loading"
           >
             <MaterialSymbol icon="corporate_fare" size={20} className="shrink-0 text-[var(--nim-text-faint)]" />
-            <span className="min-w-0 flex-1 truncate text-sm text-[var(--nim-text-muted)]">Loading organization…</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-[var(--nim-text-muted)]">{t('account_ui.loading_organization')}</span>
           </div>
         ) : orgRow.kind === 'organization' ? (
           <button
@@ -215,7 +245,7 @@ export function AccountInspectorPopover({
             onClick={() => (onAddProjectToOrganization ?? onOpenProjectSettings)()}
           >
             <MaterialSymbol icon="corporate_fare" size={20} className="shrink-0 text-[var(--nim-text-muted)]" />
-            <span className="min-w-0 flex-1 truncate text-sm">Add this project to an organization</span>
+            <span className="min-w-0 flex-1 truncate text-sm">{t('account_ui.add_project_to_organization')}</span>
             <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />
           </button>
         )}
@@ -241,10 +271,10 @@ export function AccountInspectorPopover({
               className={`shrink-0 ${SYNC_TONE_CLASS[sync.tone]}`}
             />
             <span className="min-w-0 flex-1 text-sm font-medium">
-              Mobile Sync
+              {t('account_ui.mobile_sync')}
             </span>
             <span className={`min-w-0 shrink truncate text-xs ${SYNC_TONE_CLASS[sync.tone]}`}>
-              {sync.detail}
+              {syncDetail}
             </span>
             <MaterialSymbol icon="chevron_right" size={18} className="shrink-0 text-[var(--nim-text-faint)]" />
           </button>
@@ -261,10 +291,10 @@ export function AccountInspectorPopover({
             {email ? (email[0] ?? '?').toUpperCase() : <MaterialSymbol icon="person" size={18} />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">Account</span>
-            <span className="block truncate text-sm font-medium">{email ?? 'Sign in'}</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--nim-text-faint)]">{t('account')}</span>
+            <span className="block truncate text-sm font-medium">{email ?? t('account_ui.sign_in')}</span>
             <span className={`block text-[11px] ${expired ? 'text-[var(--nim-warning)]' : 'text-[var(--nim-text-muted)]'}`}>
-              {email ? (expired ? 'Session expired — reconnect' : 'Manage account & sign-in') : 'Sign in to sync and collaborate'}
+              {email ? (expired ? t('account_ui.expired_reconnect') : t('account_ui.manage_sign_in')) : t('account_ui.sign_in_sync')}
             </span>
           </span>
           <MaterialSymbol icon="chevron_right" size={18} className="text-[var(--nim-text-faint)]" />

@@ -7,6 +7,7 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { ModelIdentifier } from '@nimbalyst/runtime/ai/server/types';
@@ -71,7 +72,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   onSessionIdChange,
   autoInitializeSession = true,
   emptyState,
-  newSessionTitle = 'Chat',
+  newSessionTitle,
   newSessionDraft,
   linkedSession,
   documentContext,
@@ -83,6 +84,9 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   onWidthChange,
   onSwitchToAgentMode,
 }, ref) => {
+  const { t } = useTranslation('aichat');
+  const { t: tSessions } = useTranslation('sessions');
+  const resolvedNewSessionTitle = newSessionTitle ?? t('chat_sidebar.default_title');
   const transcriptRef = useRef<SessionTranscriptRef>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pendingFocusRef = useRef(false);
@@ -136,7 +140,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
           id: newSessionId,
           provider,
           model: defaultModel,
-          title: newSessionTitle,
+          title: resolvedNewSessionTitle,
         },
         workspaceId: workspacePath,
       }
@@ -155,7 +159,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
   }, [
     defaultModel,
     newSessionDraft,
-    newSessionTitle,
+    resolvedNewSessionTitle,
     refreshSessions,
     selectSession,
     workspacePath,
@@ -279,7 +283,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
               id: newSessionId,
               provider,
               model: defaultModel,
-              title: 'New Session',
+              title: tSessions('new_session'),
             },
             workspaceId: workspacePath,
           }
@@ -304,6 +308,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
     isActive,
     refreshSessions,
     selectSession,
+    tSessions,
     workspacePath,
   ]);
 
@@ -372,7 +377,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
         style={{ width: onWidthChange ? width : undefined }}
         data-session-id={sessionId}
       >
-        {emptyState ?? <p>Failed to load chat session</p>}
+        {emptyState ?? <p>{t('chat_sidebar.failed_load')}</p>}
       </div>
     );
   }
@@ -391,7 +396,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
           data-testid="chat-sidebar-resize-handle"
           onPointerDown={startResize}
           role="separator"
-          aria-label="Resize AI chat sidebar"
+          aria-label={t('chat_sidebar.resize')}
           aria-orientation="vertical"
         />
       )}
@@ -412,7 +417,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
           <button
             className="chat-sidebar-maximize-button flex items-center justify-center w-7 h-7 shrink-0 rounded-md text-nim-muted border-none cursor-pointer transition-colors duration-150 hover:bg-nim-bg-active hover:text-nim bg-transparent"
             onClick={() => onSwitchToAgentMode(sessionId ?? undefined)}
-            title="Open in agent mode"
+            title={t('chat_sidebar.open_agent')}
           >
             <MaterialSymbol icon="zoom_out_map" size={16} />
           </button>
@@ -426,7 +431,7 @@ export const ChatSidebar = forwardRef<ChatSidebarRef, ChatSidebarProps>(({
           data-linked-session-id={linkedSession.id}
         >
           <MaterialSymbol icon="link" size={15} className="text-nim-primary shrink-0" />
-          <span className="shrink-0">Connected to</span>
+          <span className="shrink-0">{t('chat_sidebar.connected_to')}</span>
           <span className="truncate text-nim" title={linkedSession.title}>
             {linkedSession.title}
           </span>

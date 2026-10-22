@@ -292,8 +292,13 @@ export function TipProvider({ children, currentMode, workspacePath }: TipProvide
     const tip = tips.find((t) => t.id === tipId);
     if (!tip) {
       errorNotificationService.showInfo(
-        'Unknown Tip',
-        `Tip "${tipId}" not found.`,
+        errorNotificationService.getLocalizedText('notifications', 'guidance.unknown_tip', 'Unknown Tip'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.tip_not_found',
+          'Tip "{{id}}" not found.',
+          { id: tipId },
+        ),
         { duration: 3000 }
       );
       return;
@@ -325,8 +330,12 @@ export function TipProvider({ children, currentMode, workspacePath }: TipProvide
       store.set(walkthroughStateAtom, newState);
       setActiveTipId(null);
       errorNotificationService.showInfo(
-        'Tips Reset',
-        'All tips will show again.',
+        errorNotificationService.getLocalizedText('notifications', 'guidance.tips_reset', 'Tips Reset'),
+        errorNotificationService.getLocalizedText(
+          'notifications',
+          'guidance.tips_reset_message',
+          'All tips will show again.',
+        ),
         { duration: 3000 }
       );
     })();

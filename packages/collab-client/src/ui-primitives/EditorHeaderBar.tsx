@@ -18,6 +18,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export function EditorHeaderBar({
   breadcrumb,
@@ -74,10 +75,11 @@ export function EditorBreadcrumb({
   leading?: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useTranslation('common');
   return (
     <nav
       className={`unified-header-breadcrumb flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden whitespace-nowrap text-[13px] text-nim-muted ${className ?? ''}`}
-      aria-label="Breadcrumb"
+      aria-label={t('editor_breadcrumb')}
     >
       {leading}
       {crumbs.map((crumb, index) => (

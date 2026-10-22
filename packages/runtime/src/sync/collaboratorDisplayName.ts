@@ -16,11 +16,34 @@ export interface CollaboratorIdentity {
   memberId?: string | null;
 }
 
-export function collaboratorDisplayName(identity: CollaboratorIdentity): string {
+export interface CollaboratorDisplayIdentity {
+  name: string;
+  isSystemDefaultName: boolean;
+}
+
+export function collaboratorDisplayIdentity(
+  identity: CollaboratorIdentity,
+  unnamedLabel = UNNAMED_COLLABORATOR_LABEL,
+): CollaboratorDisplayIdentity {
+  const resolved = collaboratorIdentityName(identity);
+  return {
+    name: resolved ?? unnamedLabel,
+    isSystemDefaultName: resolved === null,
+  };
+}
+
+export function collaboratorDisplayName(
+  identity: CollaboratorIdentity,
+  unnamedLabel = UNNAMED_COLLABORATOR_LABEL,
+): string {
+  return collaboratorDisplayIdentity(identity, unnamedLabel).name;
+}
+
+function collaboratorIdentityName(identity: CollaboratorIdentity): string | null {
   const memberId = identity.memberId?.trim();
   for (const candidate of [identity.name, identity.email]) {
     const value = candidate?.trim();
     if (value && value !== memberId) return value;
   }
-  return UNNAMED_COLLABORATOR_LABEL;
+  return null;
 }

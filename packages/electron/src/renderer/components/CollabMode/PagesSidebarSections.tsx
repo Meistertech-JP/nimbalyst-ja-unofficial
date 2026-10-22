@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { atom, useAtom, useAtomValue } from 'jotai';
 import type { CollabHost, CollabOpenOptions, CollabScope } from '@nimbalyst/collab-client/core';
 import type { CollabDocsSession } from '@nimbalyst/collab-client/docs';
@@ -74,6 +75,7 @@ export function PagesSidebarSections({
   registerTeamCreateMenu,
   registerPersonalCreateMenu,
 }: PagesSidebarSectionsProps) {
+  const { t } = useTranslation('collabSidebar');
   // Database Personal pages from before the Local wiki: exported only when the user asks.
   const { unexportedPageCount, brokenTypes } = useAtomValue(localWikiStatusAtomFamily(workspacePath));
   const teamTypeResolver = useCollabTypeResolver('team');
@@ -93,13 +95,13 @@ export function PagesSidebarSections({
     if (!moveRequest) return;
     setMoveRequest(null);
     if (!teamScope) {
-      errorNotificationService.showError('Could not move this page', 'This project is not connected to its team.');
+      errorNotificationService.showError(t('pages_section.move_failed'), t('pages_section.not_connected'));
       return;
     }
-    void movePageAcrossSections({ ...moveRequest, workspacePath, teamScope, tabsActions }).then((result) => {
-      if (result && !result.ok) errorNotificationService.showError('Could not move this page', result.error);
+    void movePageAcrossSections({ ...moveRequest, workspacePath, teamScope, tabsActions, t }).then((result) => {
+      if (result && !result.ok) errorNotificationService.showError(t('pages_section.move_failed'), result.error);
     });
-  }, [moveRequest, setMoveRequest, teamScope, workspacePath, tabsActions]);
+  }, [moveRequest, setMoveRequest, teamScope, workspacePath, tabsActions, t]);
   // Rename, Move to..., New page inside and Trash from a page header: its section's tree runs them.
   const [actionRequest, setActionRequest] = useAtom(pageActionRequestAtom);
   const clearActionRequest = () => setActionRequest(null);
@@ -112,7 +114,7 @@ export function PagesSidebarSections({
   const personalHomeId = useSectionHomeId(null, getPersonalCollabDocsSession(workspacePath));
   const localMenuItems = unexportedPageCount > 0 ? [{
     id: 'export-database-pages',
-    label: `Export ${unexportedPageCount} database page${unexportedPageCount === 1 ? '' : 's'} to files`,
+    label: t(unexportedPageCount === 1 ? 'pages_section.export_one' : 'pages_section.export_other', { count: unexportedPageCount }),
     icon: 'drive_file_move',
     onSelect: () => { void exportPersonalPagesToFiles(workspacePath, unexportedPageCount); },
   }] : undefined;
@@ -146,7 +148,7 @@ export function PagesSidebarSections({
               reaches it through the per-artifact backlinks. */}
           <ElectronCollabDocsUIRoot scope={teamScope}>
             <CollabSidebar
-              sectionTitle="Team"
+              sectionTitle={t('pages_section.team')}
               activeDocumentId={activeTeamDocumentId}
               activeItemId={activeRow.itemId}
               activeTypeId={activeRow.typeId}
@@ -167,13 +169,13 @@ export function PagesSidebarSections({
           className="pages-sidebar-team-note px-3 py-2 text-xs text-nim-faint bg-nim-secondary border-r border-b border-nim shrink-0"
           data-testid="pages-sidebar-team-note"
         >
-          Sign in and share this project to see team pages
+          {t('pages_section.sign_in_for_team_pages')}
         </div>
       )}
       <div className={`pages-sidebar-personal-section ${sectionClass(collapsed.personal)}`}>
         <ElectronCollabDocsUIRoot scope={personalScope}>
           <CollabSidebar
-            sectionTitle="Local"
+            sectionTitle={t('pages_section.local')}
             extraSectionMenuItems={localMenuItems}
             activeDocumentId={activePersonalDocumentId}
             sectionEntries={entries('personal', personalScope, getPersonalCollabHost(workspacePath), personalHomeId, activePersonalDocumentId)}

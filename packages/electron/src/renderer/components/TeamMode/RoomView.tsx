@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
   FloatingPortal,
@@ -37,7 +38,6 @@ import { useResourcePreviewResolver } from '../../hooks/useResourcePreviewResolv
 import {
   ROOM_NOTIFICATION_LEVELS,
   buildRoomHeader,
-  roomEmptyLabel,
   toCommentCapabilities,
   toMentionDirectory,
   type RoomNotificationLevel,
@@ -91,6 +91,7 @@ export function RoomView({
   projectWorkspacePath?: string | null;
   onOpenProject?: (workspacePath: string) => void;
 }) {
+  const { t } = useTranslation('collabSidebar');
   const targetStore = useStore();
   // The org window's message-display preference. Read here rather than inside
   // the thread so document comments, which mount the same thread, keep the
@@ -248,6 +249,15 @@ export function RoomView({
   }, [orgId]);
 
   const resourceResolver = useResourcePreviewResolver(orgId);
+  const emptyLabel = header.archived
+    ? t('room_view.empty_archived', { name: `${header.prefix}${header.title}` })
+    : header.isDirectMessage
+      ? capabilities.comment
+        ? t('room_view.empty_dm_comment', { name: header.title })
+        : t('room_view.empty_dm_readonly', { name: header.title })
+      : capabilities.comment
+        ? t('room_view.empty_room_comment', { name: `${header.prefix}${header.title}` })
+        : t('room_view.empty_room_readonly', { name: `${header.prefix}${header.title}` });
 
   // Posting attributes to a team member id. Without one resolved the thread
   // would create messages attributed to an empty actor, so the surface waits.
@@ -258,7 +268,7 @@ export function RoomView({
         data-testid="org-room-view"
         data-component="RoomView"
       >
-        Loading conversation…
+        {t('room_view.loading_conversation')}
       </section>
     );
   }
@@ -285,7 +295,7 @@ export function RoomView({
             )}
             {header.archived && (
               <span className="org-room-archived rounded bg-[var(--nim-bg-tertiary)] px-1.5 text-[10px] uppercase tracking-wide text-[var(--nim-text-faint)]">
-                Archived
+                {t('org_sidebar.inbox_filter.archived')}
               </span>
             )}
           </h2>
@@ -302,7 +312,7 @@ export function RoomView({
             data-testid="org-room-member-count"
           >
             <MaterialSymbol icon="group" size={14} />
-            {memberCount} {memberCount === 1 ? 'member' : 'members'}
+            {t('room_view.member_count', { count: memberCount })}
           </span>
         )}
 
@@ -314,7 +324,7 @@ export function RoomView({
             onClick={() => onOpenProject(projectWorkspacePath)}
           >
             <MaterialSymbol icon="folder_open" size={14} />
-            Open project
+            {t('org_sidebar.open_project')}
           </button>
         )}
 
@@ -360,7 +370,7 @@ export function RoomView({
           viewerActor={viewerActor}
           onOpenResource={openResource}
           resolver={resourceResolver}
-          emptyLabel={roomEmptyLabel(header, capabilities.comment)}
+          emptyLabel={emptyLabel}
           // Opening a conversation means you are about to write in it. This is
           // also what closes the Cmd+K loop: pick a destination, start typing,
           // press Enter — no pointer anywhere in the flow. The thread is keyed
@@ -381,6 +391,7 @@ function NotificationLevelMenu({
   level: RoomNotificationLevel;
   onSelect?: (level: RoomNotificationLevel) => void;
 }) {
+  const { t } = useTranslation('collabSidebar');
   const [open, setOpen] = useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open,
@@ -404,10 +415,14 @@ function NotificationLevelMenu({
           type="button"
           className="org-room-notifications org-window-no-drag flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:cursor-not-allowed disabled:text-[var(--nim-text-disabled)]"
           data-testid="org-room-notifications"
-          aria-label={`Notifications: ${active.label}`}
+          aria-label={t('room_view.notifications_aria', {
+            level: t(`room_view.notification_levels.${active.id}`),
+          })}
           title={onSelect
-            ? `Notification level: ${active.label}`
-            : 'Updating notification level'}
+            ? t('room_view.notification_level_title', {
+              level: t(`room_view.notification_levels.${active.id}`),
+            })
+            : t('room_view.updating_notification_level')}
           disabled={!onSelect}
           {...getReferenceProps({ onClick: () => setOpen((value) => !value) })}
         >
@@ -435,8 +450,8 @@ function NotificationLevelMenu({
               >
                 <MaterialSymbol icon={entry.icon} size={14} className="mt-px shrink-0" />
                 <span className="min-w-0">
-                  <span className="block font-medium">{entry.label}</span>
-                  <span className="block text-[11px] text-[var(--nim-text-faint)]">{entry.description}</span>
+                  <span className="block font-medium">{t(`room_view.notification_levels.${entry.id}`)}</span>
+                  <span className="block text-[11px] text-[var(--nim-text-faint)]">{t(`room_view.notification_descriptions.${entry.id}`)}</span>
                 </span>
               </button>
             ))}
@@ -456,6 +471,7 @@ function RoomActionsMenu({
   onOpenRoomSettings?: () => void;
   onInviteMembers?: () => void;
 }) {
+  const { t } = useTranslation('collabSidebar');
   const [open, setOpen] = useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open,
@@ -476,13 +492,13 @@ function RoomActionsMenu({
     ? [
       {
         id: 'invite',
-        label: 'Invite members',
+        label: t('room_view.invite_members'),
         icon: 'person_add',
         action: onInviteMembers,
       },
       {
         id: 'settings',
-        label: 'Room settings',
+        label: t('room_view.room_settings'),
         icon: 'settings',
         action: onOpenRoomSettings,
       },
@@ -499,8 +515,8 @@ function RoomActionsMenu({
           type="button"
           className="org-room-actions org-window-no-drag flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:cursor-not-allowed disabled:text-[var(--nim-text-disabled)]"
           data-testid="org-room-actions"
-          aria-label="Room actions"
-          title={available ? 'Room actions' : 'You cannot manage this conversation'}
+          aria-label={t('org_sidebar.room_actions')}
+          title={available ? t('org_sidebar.room_actions') : t('room_view.cannot_manage')}
           disabled={!available}
           {...getReferenceProps({ onClick: () => setOpen((value) => !value) })}
         >

@@ -5,6 +5,7 @@
  */
 
 import { useLayoutEffect, useMemo, useRef, type JSX, type ReactNode } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { SavedView } from '@nimbalyst/collab-client/trackers';
 import { compileChart } from '@nimbalyst/runtime/ui/chart/chartSpec';
 import { VegaChart } from '@nimbalyst/runtime/ui/chart/VegaChart';
@@ -25,6 +26,7 @@ export function ChartViewEmbed({ view, chart, fields, height, headerActions, hea
   headerActions?: ReactNode;
   headerNotice?: ReactNode;
 }): JSX.Element {
+  const { t } = useTranslation('tracker');
   const { identity } = useTrackersUI();
   const bodyRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => { bodyRef.current?.setAttribute('data-placed-view-body', ''); }, []);
@@ -41,7 +43,7 @@ export function ChartViewEmbed({ view, chart, fields, height, headerActions, hea
   }), [chart.by, chart.sum, byKey]);
   const data = useMemo(() => chartData(rows, query), [rows, query]);
   const xTitle = byField?.label ?? chart.by;
-  const yTitle = chart.sum ? `Sum of ${sumField?.label ?? chart.sum}` : 'Count';
+  const yTitle = chart.sum ? t('placed_view_embed.sum_of', { field: sumField?.label ?? chart.sum }) : t('placed_view_embed.count');
   const compiled = useMemo(
     () => compileChart(
       { type: chart.type, x: CHART_CATEGORY, y: CHART_VALUE, data },
@@ -58,14 +60,14 @@ export function ChartViewEmbed({ view, chart, fields, height, headerActions, hea
       <div className="placed-view-chart-head flex shrink-0 items-center gap-2.5 border-b border-nim px-3 py-1.5 text-xs">
         <span className="min-w-0 truncate font-medium text-nim" title={view.name}>{view.name}</span>
         <span className="placed-view-query min-w-0 truncate rounded bg-nim-tertiary px-2 py-0.5 font-mono text-[11px] text-nim-muted">
-          {chart.sum ? `sum of ${chart.sum}` : 'count'} by {chart.by}
+          {chart.sum ? t('placed_view_embed.sum_of_by', { field: chart.sum, by: chart.by }) : t('placed_view_embed.count_by', { field: chart.by })}
         </span>
         <div className="ml-auto shrink-0">{headerActions}</div>
       </div>
       {headerNotice}
       <div ref={bodyRef} className="placed-view-chart-body bg-nim p-2">
         {rows.length === 0 ? (
-          <div className="px-1 py-6 text-center text-xs text-nim-faint">No items match this view.</div>
+          <div className="px-1 py-6 text-center text-xs text-nim-faint">{t('placed_view_embed.no_items_match')}</div>
         ) : compiled.ok ? (
           <VegaChart spec={compiled.spec} height={height} />
         ) : (

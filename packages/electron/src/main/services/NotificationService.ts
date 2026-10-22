@@ -16,6 +16,7 @@ import type { SessionNotificationNavigationTarget } from '../../shared/sessionNo
 import { composeNotificationTitle } from '../../shared/notificationTitle';
 import { resolveNotificationIcon, type NotificationKind } from './notificationIcons';
 import { AISessionsRepository } from '@nimbalyst/runtime/storage/repositories/AISessionsRepository';
+import { translateMainNotification } from '../i18n/mainI18n';
 
 const NOTIFICATION_OUTCOME_TIMEOUT_MS = 2_000;
 
@@ -313,8 +314,8 @@ class NotificationService {
     }
 
     const notification = new Notification({
-      title: 'Notifications Enabled',
-      body: 'Nimbalyst will notify you when AI responses are ready.',
+      title: translateMainNotification('notifications_enabled', 'Notifications Enabled'),
+      body: translateMainNotification('notifications_enabled_message', 'Nimbalyst will notify you when AI responses are ready.'),
       icon: this.getAppIcon(),
       silent: true,
       urgency: 'normal',
@@ -502,8 +503,10 @@ class NotificationService {
 
     if (!Notification.isSupported()) return;
     const failure = new Notification({
-      title: `${navigation.sourceLabel} -- could not be opened`,
-      body: 'Nimbalyst could not open the project for this session. Open the project, then retry.',
+      title: translateMainNotification('project_open_failed_title', `${navigation.sourceLabel} -- could not be opened`, {
+        label: navigation.sourceLabel,
+      }),
+      body: translateMainNotification('project_open_failed_message', 'Nimbalyst could not open the project for this session. Open the project, then retry.'),
       icon: this.getAppIcon(),
       silent: true,
     });

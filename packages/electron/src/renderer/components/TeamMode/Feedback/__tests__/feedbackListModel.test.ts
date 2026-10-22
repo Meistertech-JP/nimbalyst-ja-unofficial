@@ -20,6 +20,7 @@ import type {
 
 import {
   feedbackListStatus,
+  formatFeedbackAge,
   isViewerAuthor,
   needsViewerResponse,
   selectFeedbackRows,
@@ -29,6 +30,15 @@ import { feedbackRequestViewMode } from '../../../FeedbackRequest/feedbackReques
 
 const VIEWER = asTeamMemberId('member-viewer');
 const PEER = asTeamMemberId('member-peer');
+
+describe('feedback relative time localization', () => {
+  it('keeps compact English labels and formats Japanese labels from the supplied locale', () => {
+    const now = 10_000_000;
+    expect(formatFeedbackAge(now - 5 * 60_000, now)).toBe('5m ago');
+    expect(formatFeedbackAge(now - 5 * 60_000, now, 'ja')).toBe('5分前');
+    expect(formatFeedbackAge(now, now, 'ja', 'たった今')).toBe('たった今');
+  });
+});
 
 function entry(
   overrides: Partial<FeedbackRequestIndexEntry> = {},

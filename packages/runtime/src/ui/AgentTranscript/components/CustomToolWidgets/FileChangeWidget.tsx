@@ -10,6 +10,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CustomToolWidgetProps } from './index';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import { useElapsedTimeRef } from './useElapsedTime';
@@ -76,12 +77,12 @@ function getRelativePath(filePath: string, workspacePath?: string): string {
   return filePath;
 }
 
-function getKindLabel(kind: string): string {
+function getKindLabel(kind: string, t: (key: string) => string): string {
   switch (kind) {
-    case 'create': return 'Created';
-    case 'delete': return 'Deleted';
+    case 'create': return t('file_change.created');
+    case 'delete': return t('file_change.deleted_action');
     case 'update':
-    default: return 'Updated';
+    default: return t('file_change.updated');
   }
 }
 
@@ -103,19 +104,19 @@ function getKindBgClass(kind: string): string {
   }
 }
 
-function getSummary(changes: FileChange[]): string {
-  if (changes.length === 0) return 'No file changes';
+function getSummary(changes: FileChange[], t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (changes.length === 0) return t('file_change.none');
   if (changes.length === 1) {
     const c = changes[0];
-    return `${getKindLabel(c.kind)} ${getBasename(c.path)}`;
+    return t('file_change.single', { action: getKindLabel(c.kind, t), name: getBasename(c.path) });
   }
   // Check if all same kind
   const kinds = new Set(changes.map(c => c.kind));
   if (kinds.size === 1) {
     const kind = changes[0].kind;
-    return `${getKindLabel(kind)} ${changes.length} files`;
+    return t('file_change.same_kind', { action: getKindLabel(kind, t), count: changes.length });
   }
-  return `Changed ${changes.length} files`;
+  return t('file_change.mixed', { count: changes.length });
 }
 
 function countLines(text: string): number {
@@ -138,6 +139,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
   readFile,
   sessionId,
 }) => {
+  const { t } = useTranslation('aichat');
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [contentExpanded, setContentExpanded] = useState(false);
@@ -176,7 +178,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
           [filePath]: { content: result.success ? result.content ?? null : null, error: result.success ? undefined : result.error },
         }));
       } catch {
-        setLiveContent(prev => ({ ...prev, [filePath]: { content: null, error: 'Failed to read file' } }));
+        setLiveContent(prev => ({ ...prev, [filePath]: { content: null, error: t('read_file_failed') } }));
       } finally {
         setLoadingLive(prev => {
           const next = new Set(prev);
@@ -185,7 +187,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
         });
       }
     }
-  }, [selectedFile, snapshots, readFile, liveContent]);
+  }, [selectedFile, snapshots, readFile, liveContent, t]);
 
   const handlePathClick = useCallback((e: React.MouseEvent, filePath: string) => {
     e.stopPropagation();
@@ -202,7 +204,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
 
   // --- Collapsed view ---
   if (!isExpanded) {
-    const summary = getSummary(changes);
+    const summary = getSummary(changes, t);
     return (
       <button
         className={`file-change-widget rounded-md bg-nim-tertiary ${getBorderClass()} border overflow-hidden flex items-center justify-between w-full py-1.5 px-2 cursor-pointer transition-colors duration-150 text-left hover:bg-nim-hover`}
@@ -307,13 +309,13 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
               <line x1="9" y1="15" x2="15" y2="15"></line>
             </svg>
           </div>
-          <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">File Changes</span>
+          <span className="text-[0.7rem] font-medium text-nim-faint uppercase tracking-wide font-sans">{t('file_change.title')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {running && (
             <span className="flex items-center gap-1 text-[0.7rem] font-medium font-sans text-nim-primary">
               <span className="w-2.5 h-2.5 border-[1.5px] border-[color-mix(in_srgb,var(--nim-primary)_30%,transparent)] border-t-nim-primary rounded-full animate-spin" />
-              Running <span ref={elapsedRef} className="tabular-nums" />
+              {t('file_change.running')} <span ref={elapsedRef} className="tabular-nums" />
             </span>
           )}
           {!running && !hasError && (
@@ -360,13 +362,13 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
               <code
                 className="text-[0.75rem] text-nim-muted flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap hover:text-nim-primary hover:underline cursor-pointer"
                 onClick={(e) => handlePathClick(e, change.path)}
-                title={`Open ${relPath}`}
+                title={t('file_change.open_path', { path: relPath })}
               >
                 {relPath}
               </code>
               {/* Kind badge */}
               <span className={`text-[0.65rem] font-medium py-0.5 px-1.5 rounded-full ${getKindColorClass(change.kind)} ${getKindBgClass(change.kind)}`}>
-                {getKindLabel(change.kind)}
+                {getKindLabel(change.kind, t)}
               </span>
               {/* Expand indicator */}
               <svg
@@ -397,14 +399,14 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
           {/* Binary file */}
           {!selectedIsLoading && selectedIsBinary && (
             <div className="py-2 px-3 text-xs text-nim-faint font-sans italic bg-nim">
-              Binary file - content cannot be displayed
+              {t('file_change.binary')}
             </div>
           )}
 
           {/* Deleted file */}
           {!selectedIsLoading && !selectedIsBinary && selectedChange?.kind === 'delete' && !selectedContent && (
             <div className="py-2 px-3 text-xs text-nim-faint font-sans italic bg-nim">
-              File was deleted
+              {t('file_change.deleted')}
             </div>
           )}
 
@@ -418,7 +420,7 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
           {/* No snapshot, no live content, not loading */}
           {!selectedIsLoading && !selectedContent && !selectedIsBinary && !selectedError && selectedChange?.kind !== 'delete' && (
             <div className="py-2 px-3 text-xs text-nim-faint font-sans italic bg-nim">
-              Snapshot unavailable
+              {t('file_change.no_snapshot')}
             </div>
           )}
 
@@ -427,12 +429,12 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
             <div className="relative">
               {selectedIsLive && (
                 <div className="py-1 px-3 text-[0.65rem] text-nim-faint font-sans bg-nim-secondary border-b border-nim">
-                  Showing current file (no snapshot available)
+                  {t('file_change.live')}
                 </div>
               )}
               {selectedTruncated && (
                 <div className="py-1 px-3 text-[0.65rem] text-nim-faint font-sans bg-nim-secondary border-b border-nim">
-                  File truncated at 100KB
+                  {t('file_change.truncated')}
                 </div>
               )}
               <pre className="m-0 p-2 text-xs leading-normal text-nim-muted bg-nim overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono">
@@ -445,8 +447,8 @@ export const FileChangeWidget: React.FC<CustomToolWidgetProps> = ({
                   type="button"
                 >
                   {contentExpanded
-                    ? 'Show less'
-                    : `Show ${hiddenLineCount} more line${hiddenLineCount === 1 ? '' : 's'}`
+                    ? t('tool_output.less')
+                    : t('tool_output.more_lines', { count: hiddenLineCount })
                   }
                 </button>
               )}

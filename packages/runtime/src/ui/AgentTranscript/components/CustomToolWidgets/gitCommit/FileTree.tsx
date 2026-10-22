@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../../icons/MaterialSymbol';
 import { HunkList } from './HunkList';
 import { directoryCheckboxState, fileCheckboxState, type FileHunkState } from './selectionModel';
@@ -36,6 +37,7 @@ export interface FileTreeContext {
 }
 
 export function FileTree({ tree, ctx }: { tree: DirectoryNode; ctx: FileTreeContext }) {
+  const { t } = useTranslation('aichat');
   const {
     filesToStage,
     hunkStates,
@@ -92,7 +94,7 @@ export function FileTree({ tree, ctx }: { tree: DirectoryNode; ctx: FileTreeCont
             type="button"
             data-testid="git-commit-file-expand"
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? `Collapse hunks for ${fileName}` : `Show hunks for ${fileName}`}
+            aria-label={t(isExpanded ? 'git_commit.collapse_hunks_for_file' : 'git_commit.show_hunks_for_file', { fileName })}
             className="git-commit-widget__file-caret shrink-0 w-4 h-4 flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer text-[var(--nim-text-faint)] hover:text-[var(--nim-text)]"
             onClick={(e) => {
               e.stopPropagation();
@@ -134,7 +136,10 @@ export function FileTree({ tree, ctx }: { tree: DirectoryNode; ctx: FileTreeCont
           </div>
           {isPartial && hunkState && (
             <span className="git-commit-widget__hunk-count shrink-0 px-1 py-0.5 bg-[var(--nim-bg-tertiary)] rounded text-[9px] text-[var(--nim-text-faint)]">
-              {hunkState.selected.size}/{hunkState.hunks.length} hunks
+              {t('git_commit.selected_hunks_count', {
+                selected: hunkState.selected.size,
+                total: hunkState.hunks.length,
+              })}
             </span>
           )}
         </button>
@@ -145,7 +150,7 @@ export function FileTree({ tree, ctx }: { tree: DirectoryNode; ctx: FileTreeCont
             className={`git-commit-widget__peek-btn shrink-0 w-5 h-5 flex items-center justify-center rounded text-[var(--nim-text-faint)] hover:text-[var(--nim-primary)] hover:bg-[var(--nim-bg-tertiary)] transition-opacity bg-transparent border-0 cursor-pointer ${
               isPinned ? 'opacity-100 text-[var(--nim-primary)]' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
             }`}
-            title={isPinned ? 'Hide diff' : 'Show diff'}
+            title={t(isPinned ? 'git_commit.hide_diff' : 'git_commit.show_diff')}
             onClick={(e) => {
               e.stopPropagation();
               togglePeek(filePath);
@@ -157,7 +162,7 @@ export function FileTree({ tree, ctx }: { tree: DirectoryNode; ctx: FileTreeCont
       </div>
       {isExpanded && (
         loadingHunks.has(filePath) ? (
-          <div className="pl-8 py-1 text-[0.6875rem] italic text-[var(--nim-text-faint)]">Loading hunks…</div>
+          <div className="pl-8 py-1 text-[0.6875rem] italic text-[var(--nim-text-faint)]">{t('git_commit.loading_hunks')}</div>
         ) : hunkState?.selectable ? (
           <HunkList
             filePath={filePath}
@@ -169,7 +174,7 @@ export function FileTree({ tree, ctx }: { tree: DirectoryNode; ctx: FileTreeCont
           />
         ) : (
           <div className="pl-8 py-1 text-[0.6875rem] italic text-[var(--nim-text-faint)]">
-            This file can only be staged whole.
+            {t('git_commit.stage_whole_file')}
           </div>
         )
       )}

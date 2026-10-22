@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   categorizeTeamAnalyticsError,
   normalizeTeamAnalyticsCallerRole,
@@ -9,6 +10,7 @@ interface AccessGrant { userId: string; projectRole: string }
 interface Member { memberId: string; email: string; name: string; role: string }
 
 export function ProjectAccessEditor({ orgId, projectId }: { orgId: string; projectId: string }) {
+  const { t } = useTranslation('settings');
   const [members, setMembers] = useState<Member[]>([]);
   const [grants, setGrants] = useState<AccessGrant[]>([]);
   const [callerRole, setCallerRole] = useState('member');
@@ -30,21 +32,30 @@ export function ProjectAccessEditor({ orgId, projectId }: { orgId: string; proje
       {members.map((member) => {
         const inherited = member.role === 'owner' || member.role === 'admin';
         const grant = grants.find((entry) => entry.userId === member.memberId);
+        const memberName = member.name || member.email;
+        const organizationRole = member.role === 'owner'
+          ? t('organization_ui.role_owner')
+          : member.role === 'admin'
+            ? t('organization_ui.role_admin')
+            : member.role === 'viewer'
+              ? t('organization_ui.role_viewer')
+              : t('organization_ui.role_member');
         return (
           <div key={member.memberId} className="project-access-row flex items-center gap-3 rounded-lg border border-[var(--nim-border)] p-3" data-testid="project-access-row">
-            <div className="min-w-0 flex-1"><div className="truncate text-sm">{member.name || member.email}</div><div className="truncate text-xs text-[var(--nim-text-muted)]">{inherited ? `${member.role} · inherited project admin` : member.email}</div></div>
+            <div className="min-w-0 flex-1"><div className="truncate text-sm">{memberName}</div><div className="truncate text-xs text-[var(--nim-text-muted)]">{inherited ? t('organization_ui.inherited_admin', { role: organizationRole }) : member.email}</div></div>
             <select
               value={inherited ? 'project-admin' : grant?.projectRole ?? ''}
               disabled={!canAdminister || inherited}
               className="project-access-role rounded border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-2 py-1 text-xs disabled:opacity-60"
               data-testid="project-access-role"
+              aria-label={t('organization_ui.access_role_for', { member: memberName })}
               onChange={(event) => {
                 const role = event.target.value;
                 const promise = role
                   ? window.electronAPI.invoke('org:grant-project-access', orgId, projectId, member.memberId, role)
                   : window.electronAPI.invoke('org:revoke-project-access', orgId, projectId, member.memberId);
                 void promise.then((result) => {
-                  if (result?.success === false) throw new Error(result.error ?? 'Could not change project access');
+                  if (result?.success === false) throw new Error(result.error ?? t('organization_ui.access_failed'));
                   trackTeamAnalyticsEvent('team_project_access_changed', {
                     surface: 'desktop',
                     action: role ? 'granted' : 'revoked',
@@ -63,15 +74,15 @@ export function ProjectAccessEditor({ orgId, projectId }: { orgId: string; proje
                 });
               }}
             >
-              <option value="">No project access</option>
-              <option value="project-viewer">Viewer</option>
-              <option value="project-editor">Editor</option>
-              <option value="project-admin">Project admin</option>
+              <option value="">{t('organization_ui.no_project_access')}</option>
+              <option value="project-viewer">{t('organization_ui.role_viewer')}</option>
+              <option value="project-editor">{t('organization_ui.project_editor')}</option>
+              <option value="project-admin">{t('organization_ui.project_admin')}</option>
             </select>
           </div>
         );
       })}
-      {!canAdminister && <p className="text-xs text-[var(--nim-text-faint)]">Read-only. An organization owner or admin manages project access.</p>}
+      {!canAdminister && <p className="text-xs text-[var(--nim-text-faint)]">{t('organization_ui.access_readonly')}</p>}
     </div>
   );
 }

@@ -12,6 +12,7 @@
  */
 
 import React, { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LexicalEditor } from 'lexical';
 import { NimbalystEditor, type EditorConfig } from '@nimbalyst/runtime/editor';
 import type { UploadedEditorAsset } from '@nimbalyst/runtime/editor/EditorConfig';
@@ -75,6 +76,7 @@ export interface PersonalPageBodyEditorProps {
 }
 
 export const PersonalPageBodyEditor: React.FC<PersonalPageBodyEditorProps> = ({ documentId, workspacePath, className, onEditorReady, documentHeader }) => {
+  const { t } = useTranslation('collabSidebar');
   const readyRef = useRef(onEditorReady); readyRef.current = onEditorReady;
   useEffect(() => () => readyRef.current?.(null), [documentId, workspacePath]);
   const body = usePersonalPageBody({ workspacePath, documentId });
@@ -115,9 +117,13 @@ export const PersonalPageBodyEditor: React.FC<PersonalPageBodyEditorProps> = ({ 
     <>
       {body.notice && (
         <div className="personal-page-tab-notice flex shrink-0 items-center gap-2 px-6 py-1.5 text-sm text-nim-muted" role="status">
-          <span className="flex-1">{body.notice}</span>
+          <span className="flex-1">{body.notice === 'This page changed elsewhere; your edits were kept in local history.'
+            ? t('personal_page_body.notice_conflict')
+            : body.notice === 'This page could not be saved. Your next edit will retry.'
+              ? t('personal_page_body.notice_save_failed')
+              : body.notice}</span>
           <button type="button" className="text-xs text-nim-muted hover:text-nim" onClick={body.dismissNotice}>
-            Dismiss
+            {t('personal_page_body.dismiss')}
           </button>
         </div>
       )}
@@ -129,10 +135,10 @@ export const PersonalPageBodyEditor: React.FC<PersonalPageBodyEditorProps> = ({ 
         ) : (
           <div className="py-4 text-center text-sm text-nim-faint" role="status">
             {body.status === 'unavailable'
-              ? 'This page is unavailable on this device. It may have been deleted. Check Wiki Trash for a recoverable copy.'
-              : body.status === 'error' ? 'This page could not be loaded.' : 'Loading...'}
+              ? t('personal_page_body.unavailable')
+              : body.status === 'error' ? t('personal_page_body.load_error') : t('personal_page_body.loading')}
             {(body.status === 'unavailable' || body.status === 'error') && (
-              <button type="button" className="ml-2 text-nim-link hover:underline" onClick={body.retryLoad}>Try again</button>
+              <button type="button" className="ml-2 text-nim-link hover:underline" onClick={body.retryLoad}>{t('personal_page_body.retry')}</button>
             )}
           </div>
         )}

@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import { resources } from '@nimbalyst/i18n/resources';
 
 import { AccountLoginForm } from '../AccountLoginForm';
 import type { PersonalAccountSummary } from '../../../store/atoms/settingsDomains';
@@ -13,6 +16,21 @@ vi.mock('@nimbalyst/runtime', () => ({
 const sendMagicLink = vi.fn(async () => ({ success: true }));
 const signInWithGoogle = vi.fn(async () => ({ success: true }));
 const getAccounts = vi.fn(async (): Promise<PersonalAccountSummary[]> => []);
+const testI18n = createInstance();
+const testI18nReady = testI18n.init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'common',
+  interpolation: { escapeValue: false },
+});
+
+function render(ui: React.ReactElement) {
+  return rtlRender(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider>,
+  });
+}
 
 function storedAccount(overrides: Partial<PersonalAccountSummary> = {}): PersonalAccountSummary {
   return {
@@ -25,7 +43,9 @@ function storedAccount(overrides: Partial<PersonalAccountSummary> = {}): Persona
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await testI18nReady;
+  await testI18n.changeLanguage('en');
   sendMagicLink.mockClear().mockResolvedValue({ success: true });
   signInWithGoogle.mockClear().mockResolvedValue({ success: true });
   getAccounts.mockClear().mockResolvedValue([]);

@@ -22,6 +22,7 @@
  */
 
 import { createContext, memo, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { ViewportPortal, useStore } from '@xyflow/react';
 
 import { CommentCountBadge } from '../editor/commenting/ui/CommentCountBadge';
@@ -139,6 +140,7 @@ export const CanvasCardCommentBadges = memo(function CanvasCardCommentBadges({
   counts,
   onOpen,
 }: CanvasCardCommentBadgesProps): JSX.Element | null {
+  const { t } = useTranslation('editor');
   const showDocument = counts.inDocument !== null && counts.inDocument > 0;
   if (counts.onCanvas <= 0 && !showDocument) return null;
 
@@ -148,9 +150,7 @@ export const CanvasCardCommentBadges = memo(function CanvasCardCommentBadges({
         <button
           type="button"
           className="canvas-card-comments__button"
-          title={`${counts.onCanvas} comment ${
-            counts.onCanvas === 1 ? 'thread' : 'threads'
-          } on this card`}
+          title={t(counts.onCanvas === 1 ? 'canvas.comments.on_card_one' : 'canvas.comments.on_card_other', { count: counts.onCanvas })}
           onClick={(event) => {
             event.stopPropagation();
             onOpen?.();
@@ -159,21 +159,19 @@ export const CanvasCardCommentBadges = memo(function CanvasCardCommentBadges({
           <CommentCountBadge
             count={counts.onCanvas}
             className="canvas-card-comments__badge canvas-card-comments__badge--canvas"
-            label={`${counts.onCanvas} comment threads on this card`}
+            label={t(counts.onCanvas === 1 ? 'canvas.comments.on_card_one' : 'canvas.comments.on_card_other', { count: counts.onCanvas })}
           />
         </button>
       )}
       {showDocument && (
         <span
           className="canvas-card-comments__document"
-          title={`${counts.inDocument} comment ${
-            counts.inDocument === 1 ? 'thread' : 'threads'
-          } inside this document`}
+          title={t(counts.inDocument === 1 ? 'canvas.comments.in_document_one' : 'canvas.comments.in_document_other', { count: counts.inDocument })}
         >
           <CommentCountBadge
             count={counts.inDocument as number}
             className="canvas-card-comments__badge canvas-card-comments__badge--document"
-            label={`${counts.inDocument} comment threads inside this document`}
+            label={t(counts.inDocument === 1 ? 'canvas.comments.in_document_one' : 'canvas.comments.in_document_other', { count: counts.inDocument })}
           />
         </span>
       )}

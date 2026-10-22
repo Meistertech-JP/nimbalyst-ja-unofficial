@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { EditorHostProps } from '@nimbalyst/extension-sdk';
 import { useEditorLifecycle } from '@nimbalyst/extension-sdk';
 import {
@@ -30,6 +31,9 @@ import { BrowserToolbar } from './BrowserToolbar';
  *   HTML editing); the editor itself does not implement source mode.
  */
 export function BrowserEditor({ host }: EditorHostProps): JSX.Element {
+  const { t } = useTranslation('editor');
+  const tRef = useRef(t);
+  tRef.current = t;
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [navState, setNavState] = useState<BrowserNavigationState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +76,11 @@ export function BrowserEditor({ host }: EditorHostProps): JSX.Element {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setError(err.message || 'Failed to build preview URL');
+        setError(
+          !err.message || err.message === 'build-preview-url failed'
+            ? tRef.current('browser.preview_url_failed')
+            : err.message,
+        );
       });
     return (): void => {
       cancelled = true;
@@ -93,7 +101,11 @@ export function BrowserEditor({ host }: EditorHostProps): JSX.Element {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setError(err.message || 'Failed to create browser session');
+        setError(
+          !err.message || err.message === 'Failed to create browser session'
+            ? tRef.current('browser.session_create_failed')
+            : err.message,
+        );
       });
 
     const unsubscribeState = subscribeToStateChanges(sessionId, (state) => {
@@ -138,7 +150,7 @@ export function BrowserEditor({ host }: EditorHostProps): JSX.Element {
             borderRadius: 4,
           }}
         >
-          <strong>Cannot preview this file.</strong>
+          <strong>{t('browser.preview_error')}</strong>
           <div style={{ marginTop: 8, fontSize: 13 }}>{error}</div>
         </div>
       </div>

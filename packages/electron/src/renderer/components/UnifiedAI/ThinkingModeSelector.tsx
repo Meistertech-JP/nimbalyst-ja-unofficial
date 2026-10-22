@@ -1,13 +1,11 @@
 import React, { useEffect } from 'react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { ThinkingMode } from '../../utils/modelUtils';
 import { DEFAULT_THINKING_MODE } from '../../utils/modelUtils';
 import { FloatingPortal, useFloatingMenu } from '../../hooks/useFloatingMenu';
 
-const THINKING_MODE_OPTIONS: Array<{ key: ThinkingMode; label: string }> = [
-  { key: 'enabled', label: 'Extended: On' },
-  { key: 'disabled', label: 'Extended: Off' },
-];
+const THINKING_MODE_OPTIONS: ThinkingMode[] = ['enabled', 'disabled'];
 
 interface ThinkingModeSelectorProps {
   mode: ThinkingMode;
@@ -17,6 +15,7 @@ interface ThinkingModeSelectorProps {
 }
 
 export function ThinkingModeSelector({ mode, onModeChange, disabled = false, disabledTitle }: ThinkingModeSelectorProps) {
+  const { t } = useTranslation('aichat');
   const menu = useFloatingMenu({ placement: 'top-start', offsetPx: 4 });
   const { isOpen, setIsOpen } = menu;
 
@@ -26,7 +25,9 @@ export function ThinkingModeSelector({ mode, onModeChange, disabled = false, dis
     }
   }, [disabled]);
 
-  const currentMode = THINKING_MODE_OPTIONS.find((option) => option.key === mode) ?? THINKING_MODE_OPTIONS.find((option) => option.key === DEFAULT_THINKING_MODE)!;
+  const currentMode = THINKING_MODE_OPTIONS.find((option) => option === mode) ?? DEFAULT_THINKING_MODE;
+  const currentModeLabel = t(`thinking.${currentMode}`);
+  const currentModeName = t(currentMode === 'enabled' ? 'thinking.on' : 'thinking.off');
 
   return (
     <div className="thinking-mode-selector relative inline-block">
@@ -40,12 +41,12 @@ export function ThinkingModeSelector({ mode, onModeChange, disabled = false, dis
         onClick={() => {
           if (!disabled) setIsOpen(!isOpen);
         }}
-        aria-label={`Extended thinking: ${currentMode.label}`}
+        aria-label={t('thinking.selected_label', { mode: currentModeName })}
         disabled={disabled}
         title={disabled ? disabledTitle : undefined}
       >
         <MaterialSymbol icon="psychology_alt" size={12} />
-        <span>{currentMode.label}</span>
+        <span>{currentModeLabel}</span>
         <MaterialSymbol icon="expand_more" size={14} className={`transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -59,17 +60,17 @@ export function ThinkingModeSelector({ mode, onModeChange, disabled = false, dis
           >
             {THINKING_MODE_OPTIONS.map((option) => (
               <button
-                key={option.key}
+                key={option}
                 className={`flex items-center justify-between gap-2 px-2 py-1.5 w-full border-none rounded text-xs cursor-pointer transition-[background] duration-150 text-left text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] ${
-                  option.key === mode ? 'bg-[var(--nim-bg-secondary)] text-[var(--nim-primary)]' : ''
+                  option === mode ? 'bg-[var(--nim-bg-secondary)] text-[var(--nim-primary)]' : ''
                 }`}
                 onClick={() => {
-                  onModeChange(option.key);
+                  onModeChange(option);
                   setIsOpen(false);
                 }}
               >
-                <span>{option.label}</span>
-                {option.key === mode && <MaterialSymbol icon="check" size={14} />}
+                <span>{t(`thinking.${option}`)}</span>
+                {option === mode && <MaterialSymbol icon="check" size={14} />}
               </button>
             ))}
           </div>

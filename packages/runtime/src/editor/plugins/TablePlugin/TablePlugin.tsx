@@ -7,6 +7,7 @@
  */
 
 import type {JSX} from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {
@@ -85,6 +86,7 @@ export function InsertTableDialog({
   activeEditor: LexicalEditor;
   onClose: () => void;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [rows, setRows] = useState('5');
   const [columns, setColumns] = useState('5');
   const [isDisabled, setIsDisabled] = useState(true);
@@ -111,16 +113,16 @@ export function InsertTableDialog({
   return (
     <>
       <TextInput
-        placeholder={'# of rows (1-500)'}
-        label="Rows"
+        placeholder={t('insert_dialog.rows_placeholder')}
+        label={t('insert_dialog.rows')}
         onChange={setRows}
         value={rows}
         data-test-id="table-modal-rows"
         type="number"
       />
       <TextInput
-        placeholder={'# of columns (1-50)'}
-        label="Columns"
+        placeholder={t('insert_dialog.columns_placeholder')}
+        label={t('insert_dialog.columns')}
         onChange={setColumns}
         value={columns}
         data-test-id="table-modal-columns"
@@ -128,7 +130,7 @@ export function InsertTableDialog({
       />
       <DialogActions data-test-id="table-model-confirm-insert">
         <Button disabled={isDisabled} onClick={onClick}>
-          Confirm
+          {t('insert_dialog.confirm')}
         </Button>
       </DialogActions>
     </>

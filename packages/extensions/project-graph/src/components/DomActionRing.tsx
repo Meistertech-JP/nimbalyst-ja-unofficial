@@ -1,4 +1,5 @@
 import type { GraphNodeTypeSchema, ProjectGraphNode } from '../types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface DomActionRingProps {
   x: number;
@@ -82,6 +83,7 @@ function buildSlots(node: ProjectGraphNode, schema: GraphNodeTypeSchema | undefi
 }
 
 export function DomActionRing({ x, y, node, schema, onAction }: DomActionRingProps) {
+  const { t } = useTranslation('extensions');
   const slots = buildSlots(node, schema);
   const launchAction = schema?.quickActions?.includes('launch-fix-session')
     ? 'launch-fix-session'
@@ -101,7 +103,7 @@ export function DomActionRing({ x, y, node, schema, onAction }: DomActionRingPro
           onClick={(e) => { e.stopPropagation(); onAction(launchAction); }}
         >
           <span className="pg-dom-ring-dot" />
-          Launch session
+          {t('project_graph.ui.launch_session')}
         </button>
       )}
 
@@ -124,7 +126,11 @@ export function DomActionRing({ x, y, node, schema, onAction }: DomActionRingPro
               borderColor: slot.color,
               color: slot.textColor,
             }}
-            title={slot.action}
+            title={slot.action.startsWith('expand:')
+              ? t('project_graph.ui.expand_group')
+              : slot.action === 'add-child'
+                ? t('project_graph.ui.add_child')
+                : t('project_graph.ui.open_file')}
             onClick={(e) => { e.stopPropagation(); onAction(slot.action); }}
           >
             {typeof slot.count === 'number' ? (
@@ -133,7 +139,7 @@ export function DomActionRing({ x, y, node, schema, onAction }: DomActionRingPro
                 <span className="pg-dom-ring-chip-sub">{slot.label}</span>
               </span>
             ) : (
-              <span className="pg-dom-ring-chip-label">{slot.label}</span>
+              <span className="pg-dom-ring-chip-label">{slot.key === 'open' ? t('project_graph.ui.open') : slot.label}</span>
             )}
           </button>
         );

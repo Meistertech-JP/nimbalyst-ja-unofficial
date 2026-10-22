@@ -123,6 +123,7 @@ const trackerCoreSrcDir = resolve(__dirname, '../tracker-core/src');
 const collabProtocolSrcDir = resolve(__dirname, '../collab-protocol/src');
 const localWikiEntry = resolve(__dirname, '../local-wiki/src/index.ts');
 const runtimeSrcDir = resolve(__dirname, '../runtime/src');
+const i18nSrcDir = resolve(__dirname, '../i18n/src');
 const configRequire = createRequire(resolve(__dirname, 'package.json'));
 
 // Locates a file inside an installed package the way Node would from this
@@ -332,6 +333,7 @@ const config = {
         { find: /^@nimbalyst\/runtime$/, replacement: runtimeElectronMainEntry },
         // Explicit subpath imports still resolve straight to runtime source.
         { find: '@nimbalyst/runtime', replacement: runtimeSrcDir },
+        { find: '@nimbalyst/i18n', replacement: i18nSrcDir },
         { find: '@nimbalyst/tracker-core', replacement: trackerCoreSrcDir },
         { find: '@nimbalyst/tracker-schema', replacement: trackerSchemaSrcDir },
         { find: '@nimbalyst/tracker-engine', replacement: trackerEngineSrcDir },
@@ -386,6 +388,7 @@ const config = {
     resolve: {
       alias: {
         '@nimbalyst/runtime': runtimeSrcDir,
+        '@nimbalyst/i18n': i18nSrcDir,
         '@nimbalyst/tracker-core': trackerCoreSrcDir,
         '@nimbalyst/tracker-schema': trackerSchemaSrcDir,
         '@nimbalyst/tracker-engine': trackerEngineSrcDir
@@ -559,6 +562,7 @@ const config = {
         { find: /^process$/, replacement: browserProcess },
         // Ensure renderer also points runtime imports at source
         { find: '@nimbalyst/runtime', replacement: runtimeSrcDir },
+        { find: '@nimbalyst/i18n', replacement: i18nSrcDir },
         { find: '@nimbalyst/tracker-core', replacement: trackerCoreSrcDir },
         { find: '@nimbalyst/tracker-schema', replacement: trackerSchemaSrcDir },
         { find: '@nimbalyst/tracker-engine', replacement: trackerEngineSrcDir },

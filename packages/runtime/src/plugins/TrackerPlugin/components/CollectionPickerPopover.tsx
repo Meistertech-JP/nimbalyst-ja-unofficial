@@ -15,6 +15,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import type { FieldDefinition, TrackerRelationshipValue } from '@nimbalyst/tracker-schema';
 import {
@@ -83,6 +84,7 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
   onRequestClose,
   testIdBase = DEFAULT_TEST_ID_BASE,
 }) => {
+  const { t } = useTranslation('tracker');
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   // Non-null once the user picks "Create …": the type they are choosing between.
@@ -172,7 +174,7 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
     try {
       const created = await onCreateCollection(trimmedQuery, type);
       if (!created) {
-        setCreateError('Could not create the collection.');
+        setCreateError(t('collection_picker.create_failed'));
         return;
       }
       setPendingType(null);
@@ -182,7 +184,7 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
     } finally {
       setCreating(false);
     }
-  }, [assign, creating, onCreateCollection, trimmedQuery]);
+  }, [assign, creating, onCreateCollection, t, trimmedQuery]);
 
   const cancelCreate = useCallback(() => {
     setPendingType(null);
@@ -253,8 +255,8 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
         ref={inputRef}
         type="text"
         className="collection-picker-search"
-        placeholder="Search collections…"
-        aria-label="Search collections"
+        placeholder={t('collection_picker.search_placeholder')}
+        aria-label={t('collection_picker.search_label')}
         value={query}
         disabled={creating}
         onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }}
@@ -279,8 +281,8 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
                 <button
                   type="button"
                   className="collection-picker-chip-remove"
-                  aria-label={`Remove from ${label}`}
-                  title={`Remove from ${label}`}
+                  aria-label={t('relationship.remove_label', { label })}
+                  title={t('relationship.remove_label', { label })}
                   onClick={() => unassign(assignment.itemId)}
                   data-testid={`${testIdBase}-remove-${assignment.itemId}`}
                 >
@@ -295,17 +297,21 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
       {pendingType !== null ? (
         <div className="collection-picker-create-panel" data-testid={`${testIdBase}-create-panel`}>
           <div className="collection-picker-create-prompt">
-            Create &ldquo;{trimmedQuery}&rdquo; as
+            {t('collection_picker.create_as', { name: trimmedQuery })}
           </div>
-          <div className="collection-picker-type-toggle" role="radiogroup" aria-label="Collection type">
+          <div className="collection-picker-type-toggle" role="radiogroup" aria-label={t('collection_picker.type_label')}>
             {createTypes.map((type) => {
               const display = collectionTypeDisplay(type);
+              const typeLabel = type === 'milestone' || type === 'release'
+                ? t(`collection_picker.types.${type}`)
+                : display.label;
               const selected = type === pendingType;
               return (
                 <button
                   key={type}
                   type="button"
                   role="radio"
+                  aria-label={typeLabel}
                   aria-checked={selected}
                   disabled={creating}
                   className={selected
@@ -315,7 +321,7 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
                   data-testid={`${testIdBase}-type-${type}`}
                 >
                   <MaterialSymbol icon={display.icon} size={15} />
-                  <span>{display.label}</span>
+                  <span>{typeLabel}</span>
                 </button>
               );
             })}
@@ -329,7 +335,7 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
             onClick={cancelCreate}
             disabled={creating}
           >
-            Cancel
+            {t('cancel', { ns: 'common' })}
           </button>
         </div>
       ) : (
@@ -337,12 +343,14 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
           ref={listRef}
           className="collection-picker-list"
           role="listbox"
-          aria-label="Collections"
+          aria-label={t('collection_picker.list_label')}
           data-testid={`${testIdBase}-list`}
         >
           {results.length === 0 && !canCreate && (
             <div className="collection-picker-empty" data-testid={`${testIdBase}-empty`}>
-              {candidates.length === 0 ? 'No collections yet' : 'No matches'}
+              {candidates.length === 0
+                ? t('collection_picker.empty')
+                : t('collection_picker.no_matches')}
             </div>
           )}
           {results.map((candidate, index) => {
@@ -376,6 +384,7 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
             <button
               type="button"
               role="option"
+              aria-label={t('collection_picker.create_name', { name: trimmedQuery })}
               aria-selected={false}
               data-active={activeIndex === createRowIndex}
               className={activeIndex === createRowIndex
@@ -387,7 +396,7 @@ export const CollectionPickerPopover: React.FC<CollectionPickerPopoverProps> = (
             >
               <MaterialSymbol icon="add" size={15} className="collection-picker-option-icon" />
               <span className="collection-picker-option-label">
-                Create &ldquo;{trimmedQuery}&rdquo;
+                {t('collection_picker.create_name', { name: trimmedQuery })}
               </span>
             </button>
           )}

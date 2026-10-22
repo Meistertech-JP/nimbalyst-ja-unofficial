@@ -6,14 +6,22 @@
  */
 
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { beforeAll, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { DisplayOptionsPanel } from '../DisplayOptionsPanel';
 import type { TrackerColumnDef, TypeColumnConfig } from '../trackerColumns';
 
 vi.mock('../../../../ui/icons/MaterialSymbol', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span data-icon={icon} />,
 }));
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+});
 
 const availableColumns: TrackerColumnDef[] = [
   { id: 'title', label: 'Title', defaultVisible: true },
@@ -26,6 +34,7 @@ function renderPanel() {
   const anchor = document.createElement('button');
   document.body.appendChild(anchor);
   const utils = render(
+    <I18nextProvider i18n={englishI18n}>
     <DisplayOptionsPanel
       availableColumns={availableColumns}
       config={{ visibleColumns: ['title'], columnWidths: {} }}
@@ -35,7 +44,8 @@ function renderPanel() {
       groupBy="none"
       onGroupByChange={onGroupByChange}
       showColumnProperties={false}
-    />,
+    />
+    </I18nextProvider>,
   );
   return { onGroupByChange, onClose, anchor, ...utils };
 }
@@ -77,13 +87,15 @@ describe('DisplayOptionsPanel type column display', () => {
     const anchor = document.createElement('button');
     document.body.appendChild(anchor);
     render(
+      <I18nextProvider i18n={englishI18n}>
       <DisplayOptionsPanel
         availableColumns={typeColumns}
         config={config}
         onConfigChange={onConfigChange}
         onClose={vi.fn()}
         anchorElement={anchor}
-      />,
+      />
+      </I18nextProvider>,
     );
     return { onConfigChange };
   }

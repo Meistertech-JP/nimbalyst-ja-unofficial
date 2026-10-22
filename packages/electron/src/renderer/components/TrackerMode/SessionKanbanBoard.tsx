@@ -29,6 +29,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
 import type { SessionMeta } from '@nimbalyst/runtime';
 import {
@@ -79,19 +80,28 @@ const ALL_COLUMN_KEYS: SessionPhaseKey[] = [
   ...SESSION_PHASE_COLUMNS.map(c => c.value),
 ];
 
+const SESSION_PHASE_TRANSLATION_KEYS: Record<SessionPhase, string> = {
+  backlog: 'session_kanban.phase_backlog',
+  planning: 'session_kanban.phase_planning',
+  implementing: 'session_kanban.phase_implementing',
+  validating: 'session_kanban.phase_validating',
+  complete: 'session_kanban.phase_complete',
+};
+
 // ============================================================
 // ChildRunStateBar
 // ============================================================
 
 const RUN_STATE_SEGMENTS = [
-  { key: 'running' as const, label: 'running', color: '#60a5fa' },
-  { key: 'waiting' as const, label: 'waiting', color: '#f97316' },
-  { key: 'review' as const, label: 'review', color: '#a78bfa' },
-  { key: 'idle' as const, label: 'idle', color: '#666666' },
-  { key: 'done' as const, label: 'done', color: '#4ade80' },
+  { key: 'running' as const, color: '#60a5fa' },
+  { key: 'waiting' as const, color: '#f97316' },
+  { key: 'review' as const, color: '#a78bfa' },
+  { key: 'idle' as const, color: '#666666' },
+  { key: 'done' as const, color: '#4ade80' },
 ];
 
 function ChildRunStateBar({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation('tracker');
   const summary = useAtomValue(childRunStatesAtom(sessionId));
 
   if (summary.total === 0) return null;
@@ -108,7 +118,7 @@ function ChildRunStateBar({ sessionId }: { sessionId: string }) {
             style={{ background: s.color }}
           />
           <span className="text-[9px] whitespace-nowrap" style={{ color: s.color }}>
-            {summary[s.key]} {s.label}
+            {t(`session_kanban.run_state_count.${s.key}`, { count: summary[s.key] })}
           </span>
         </div>
       ))}
@@ -162,7 +172,8 @@ const CARD_STATE_STYLES: Record<CardVisualState, { bg: string; border: string }>
 
 interface CardStateInfo {
   state: CardVisualState;
-  badgeLabel: string | null;
+  badgeLabelKey: string | null;
+  badgeCount?: number;
   badgeIcon: string | null;
   badgeColor: string;
   spinIcon: boolean;
@@ -182,7 +193,8 @@ function useCardState(sessionId: string, cardType: KanbanCardType): CardStateInf
   if (isProcessing || hasChildRunning) {
     return {
       state: 'running',
-      badgeLabel: hasChildRunning ? `${childStates.running} running` : 'running',
+      badgeLabelKey: hasChildRunning ? 'session_kanban.run_state_count.running' : 'session_kanban.running_status',
+      badgeCount: hasChildRunning ? childStates.running : undefined,
       badgeIcon: 'progress_activity',
       badgeColor: '#60a5fa',
       spinIcon: true,
@@ -191,7 +203,8 @@ function useCardState(sessionId: string, cardType: KanbanCardType): CardStateInf
   if (hasPendingPrompt || hasChildWaiting) {
     return {
       state: 'waiting',
-      badgeLabel: hasChildWaiting ? `${childStates.waiting} waiting` : 'needs input',
+      badgeLabelKey: hasChildWaiting ? 'session_kanban.run_state_count.waiting' : 'session_kanban.needs_input',
+      badgeCount: hasChildWaiting ? childStates.waiting : undefined,
       badgeIcon: 'help_outline',
       badgeColor: '#f97316',
       spinIcon: false,
@@ -200,7 +213,7 @@ function useCardState(sessionId: string, cardType: KanbanCardType): CardStateInf
   if (hasUnread || (isParent && hasChildUnread)) {
     return {
       state: 'unread',
-      badgeLabel: null,
+      badgeLabelKey: null,
       badgeIcon: null,
       badgeColor: 'var(--nim-primary)',
       spinIcon: false,
@@ -208,7 +221,7 @@ function useCardState(sessionId: string, cardType: KanbanCardType): CardStateInf
   }
   return {
     state: 'idle',
-    badgeLabel: null,
+    badgeLabelKey: null,
     badgeIcon: null,
     badgeColor: '',
     spinIcon: false,
@@ -220,11 +233,15 @@ function useCardState(sessionId: string, cardType: KanbanCardType): CardStateInf
 // ============================================================
 
 function CardStatusBadge({ info }: { info: CardStateInfo }) {
+  const { t } = useTranslation('tracker');
+  const badgeLabel = info.badgeLabelKey
+    ? t(info.badgeLabelKey, info.badgeCount === undefined ? undefined : { count: info.badgeCount })
+    : null;
   if (info.state === 'running') {
     return (
       <span className="flex items-center gap-0.5 text-[10px] px-1 py-px rounded bg-blue-400/10" style={{ color: info.badgeColor }}>
         <span className={`material-symbols-outlined text-[12px] ${info.spinIcon ? 'animate-spin' : ''}`}>{info.badgeIcon}</span>
-        {info.badgeLabel}
+        {badgeLabel}
       </span>
     );
   }
@@ -232,13 +249,13 @@ function CardStatusBadge({ info }: { info: CardStateInfo }) {
     return (
       <span className="flex items-center gap-0.5 text-[10px] px-1 py-px rounded bg-orange-500/10" style={{ color: info.badgeColor }}>
         <MaterialSymbol icon="help_outline" size={12} />
-        {info.badgeLabel}
+        {badgeLabel}
       </span>
     );
   }
   if (info.state === 'unread') {
     return (
-      <span className="flex items-center justify-center w-[8px] h-[8px] text-[var(--nim-primary)]" title="Unread response">
+      <span className="flex items-center justify-center w-[8px] h-[8px] text-[var(--nim-primary)]" title={t('session_kanban.unread_response')}>
         <MaterialSymbol icon="circle" size={8} fill />
       </span>
     );
@@ -264,6 +281,8 @@ interface SessionKanbanCardProps {
 }
 
 function SessionKanbanCard({ session, onSelect, onArchive, onRename, phaseColor, isFocused, isSelected, selectedCount = 1, showPeekOverride, onPeekToggle }: SessionKanbanCardProps) {
+  const { t } = useTranslation('tracker');
+  const { t: tSessions } = useTranslation('sessions');
   const cardType = useMemo(() => getCardType(session), [session]);
   const cardState = useCardState(session.id, cardType);
   const stateStyle = CARD_STATE_STYLES[cardState.state];
@@ -327,14 +346,14 @@ function SessionKanbanCard({ session, onSelect, onArchive, onRename, phaseColor,
   const timeAgo = useMemo(() => {
     const diff = Date.now() - session.updatedAt;
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return tSessions('relative_time.compact_just_now');
+    if (mins < 60) return tSessions('relative_time.compact_minutes', { count: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return tSessions('relative_time.compact_hours', { count: hours });
     const days = Math.floor(hours / 24);
-    if (days === 1) return 'yesterday';
-    return `${days}d ago`;
-  }, [session.updatedAt]);
+    if (days === 1) return tSessions('relative_time.compact_yesterday');
+    return tSessions('relative_time.compact_days', { count: days });
+  }, [session.updatedAt, tSessions]);
 
   // Cleanup hover timer on unmount
   useEffect(() => {
@@ -412,7 +431,7 @@ function SessionKanbanCard({ session, onSelect, onArchive, onRename, phaseColor,
         {cardType !== 'session' && session.childCount > 0 && (
           <div className="flex items-center gap-1 text-[10px] text-nim-faint mb-1">
             <MaterialSymbol icon="chat_bubble_outline" size={12} />
-            {session.childCount} session{session.childCount !== 1 ? 's' : ''}
+            {tSessions(session.childCount === 1 ? 'history.session_count' : 'history.session_count_plural', { count: session.childCount })}
           </div>
         )}
 
@@ -444,7 +463,12 @@ function SessionKanbanCard({ session, onSelect, onArchive, onRename, phaseColor,
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             {session.uncommittedCount > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-nim-faint" title={`${session.uncommittedCount} uncommitted file${session.uncommittedCount !== 1 ? 's' : ''}`}>
+              <span
+                className="flex items-center gap-0.5 text-[10px] text-nim-faint"
+                title={t(session.uncommittedCount === 1
+                  ? 'session_kanban.uncommitted_files_one'
+                  : 'session_kanban.uncommitted_files_other', { count: session.uncommittedCount })}
+              >
                 <MaterialSymbol icon="edit_note" size={12} />
                 {session.uncommittedCount}
               </span>
@@ -453,7 +477,7 @@ function SessionKanbanCard({ session, onSelect, onArchive, onRename, phaseColor,
           <div className="flex items-center gap-1.5">
             <span
               className="w-4 h-4 rounded flex items-center justify-center text-nim-disabled hover:text-nim-muted transition-colors"
-              title="Preview transcript"
+              title={t('session_kanban.preview_transcript')}
               data-testid="session-kanban-peek"
               onMouseEnter={handlePeekEnter}
               onMouseLeave={handlePeekLeave}
@@ -516,7 +540,6 @@ function SessionKanbanCard({ session, onSelect, onArchive, onRename, phaseColor,
 
 interface SessionKanbanColumnProps {
   phase: SessionPhase;
-  label: string;
   color: string;
   sessions: SessionMeta[];
   onSelect: (sessionId: string) => void;
@@ -535,7 +558,8 @@ interface SessionKanbanColumnProps {
   onHeaderContextMenu: (e: React.MouseEvent, phase: SessionPhaseKey, sessionIds: string[]) => void;
 }
 
-function SessionKanbanColumn({ phase, label, color, sessions, onSelect, onArchive, onRename, onDrop, isCollapsed, onToggleCollapse, focusedCardId, selectedIds, peekCardId, onCardClick, onPeekToggle, onDragStart: onDragStartProp, onSelectAll, onHeaderContextMenu }: SessionKanbanColumnProps) {
+function SessionKanbanColumn({ phase, color, sessions, onSelect, onArchive, onRename, onDrop, isCollapsed, onToggleCollapse, focusedCardId, selectedIds, peekCardId, onCardClick, onPeekToggle, onDragStart: onDragStartProp, onSelectAll, onHeaderContextMenu }: SessionKanbanColumnProps) {
+  const { t } = useTranslation('tracker');
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -603,7 +627,7 @@ function SessionKanbanColumn({ phase, label, color, sessions, onSelect, onArchiv
             className="text-[10px] font-semibold text-nim-faint uppercase tracking-wide"
             style={{ writingMode: 'vertical-lr', textOrientation: 'mixed' }}
           >
-            {label}
+            {t(SESSION_PHASE_TRANSLATION_KEYS[phase])}
           </span>
         </div>
       </div>
@@ -630,7 +654,7 @@ function SessionKanbanColumn({ phase, label, color, sessions, onSelect, onArchiv
           style={{ backgroundColor: color }}
         />
         <span className="text-[11px] font-semibold text-nim uppercase tracking-wide truncate">
-          {label}
+          {t(SESSION_PHASE_TRANSLATION_KEYS[phase])}
         </span>
         <span className="text-[10px] font-semibold text-nim-faint ml-auto">
           {sessions.length}
@@ -638,7 +662,7 @@ function SessionKanbanColumn({ phase, label, color, sessions, onSelect, onArchiv
         <button
           className="text-nim-disabled hover:text-nim-muted transition-colors"
           onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
-          title="Collapse column"
+          title={t('session_kanban.collapse_column')}
         >
           <MaterialSymbol icon="chevron_left" size={16} />
         </button>
@@ -655,7 +679,7 @@ function SessionKanbanColumn({ phase, label, color, sessions, onSelect, onArchiv
       >
         {sessions.length === 0 ? (
           <div className="flex items-center justify-center py-6 text-nim-disabled text-[11px] italic">
-            No sessions
+            {t('session_kanban.no_sessions')}
           </div>
         ) : (
           sessions.map(session => (
@@ -708,6 +732,7 @@ interface UnphasedColumnProps {
 }
 
 function UnphasedColumn({ sessions, onSelect, onArchive, onRename, onDropToPhase, onRemovePhase, focusedCardId, selectedIds, peekCardId, onCardClick, onPeekToggle, onDragStart: onDragStartProp, onSelectAll, onHeaderContextMenu }: UnphasedColumnProps) {
+  const { t } = useTranslation('tracker');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -774,7 +799,7 @@ function UnphasedColumn({ sessions, onSelect, onArchive, onRename, onDropToPhase
             className="text-[10px] font-semibold text-nim-faint uppercase tracking-wide"
             style={{ writingMode: 'vertical-lr', textOrientation: 'mixed' }}
           >
-            Inbox
+            {t('session_kanban.inbox')}
           </span>
         </div>
       </div>
@@ -803,7 +828,7 @@ function UnphasedColumn({ sessions, onSelect, onArchive, onRename, onDropToPhase
       >
         <span className="w-2 h-2 rounded-full shrink-0 bg-neutral-600" />
         <span className="text-[11px] font-semibold text-nim uppercase tracking-wide truncate">
-          Inbox
+          {t('session_kanban.inbox')}
         </span>
         <span className="text-[10px] font-semibold text-nim-faint ml-auto">
           {sessions.length}
@@ -811,7 +836,7 @@ function UnphasedColumn({ sessions, onSelect, onArchive, onRename, onDropToPhase
         <button
           className="text-nim-faint hover:text-nim transition-colors"
           onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-          title="Collapse"
+          title={t('session_kanban.collapse')}
         >
           <MaterialSymbol icon="chevron_left" size={16} />
         </button>
@@ -857,6 +882,7 @@ function UnphasedColumn({ sessions, onSelect, onArchive, onRename, onDropToPhase
 // ============================================================
 
 function SessionKanbanToolbar({ selectedCount, onClearSelection }: { selectedCount: number; onClearSelection: () => void }) {
+  const { t } = useTranslation('tracker');
   const posthog = usePostHog();
   const filter = useAtomValue(sessionKanbanFilterAtom);
   const setFilter = useSetAtom(sessionKanbanFilterAtom);
@@ -978,7 +1004,7 @@ function SessionKanbanToolbar({ selectedCount, onClearSelection }: { selectedCou
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search or type # to filter by tag..."
+          placeholder={t('ui.search_tag')}
           value={inputValue}
           onChange={handleSearchChange}
           onKeyDown={handleKeyDown}
@@ -1018,7 +1044,7 @@ function SessionKanbanToolbar({ selectedCount, onClearSelection }: { selectedCou
             className="absolute left-0 right-0 top-full mt-1 bg-nim-secondary border border-nim rounded shadow-lg z-50"
           >
             <div className="px-2.5 py-2 text-[11px] text-nim-faint italic">
-              No matching tags
+              {t('session_kanban.no_matching_tags')}
             </div>
           </div>
         )}
@@ -1041,9 +1067,9 @@ function SessionKanbanToolbar({ selectedCount, onClearSelection }: { selectedCou
         <button
           className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border border-[rgba(96,165,250,0.4)] text-[#60a5fa] bg-[rgba(96,165,250,0.08)] cursor-pointer shrink-0"
           onClick={onClearSelection}
-          title="Clear selection (Esc)"
+          title={t('session_kanban.clear_selection')}
         >
-          {selectedCount} selected
+          {t('session_kanban.selected_count', { count: selectedCount })}
           <MaterialSymbol icon="close" size={12} />
         </button>
       )}
@@ -1052,7 +1078,7 @@ function SessionKanbanToolbar({ selectedCount, onClearSelection }: { selectedCou
 
       {/* Count */}
       <span className="text-[11px] text-nim-faint shrink-0">
-        {totalCount} session{totalCount !== 1 ? 's' : ''}
+        {t('session_kanban.session_count', { count: totalCount })}
       </span>
 
       {/* Show completed toggle */}
@@ -1088,6 +1114,7 @@ interface ColumnHeaderContextMenuProps {
 }
 
 function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelectAll, onArchiveAll, onMoveAll, onRemovePhase }: ColumnHeaderContextMenuProps) {
+  const { t } = useTranslation('tracker');
   const reference = useMemo(() => virtualElement(position.x, position.y), [position.x, position.y]);
   const menu = useFloatingMenu({
     placement: 'right-start',
@@ -1114,7 +1141,7 @@ function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelec
           onMouseLeave={onClose}
         >
           <div className="px-2.5 py-2 text-[0.8125rem] text-[var(--nim-text-faint)] italic">
-            No sessions in column
+            {t('session_kanban.no_sessions_col')}
           </div>
         </div>
       </FloatingPortal>
@@ -1137,7 +1164,7 @@ function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelec
           onClick={(e) => { e.stopPropagation(); onClose(); onSelectAll(sessionIds); }}
         >
           <MaterialSymbol icon="select_all" size={14} />
-          Select All ({count})
+          {t('session_kanban.select_all', { count })}
         </button>
 
         <div className="h-px bg-[var(--nim-border)] my-1" />
@@ -1160,7 +1187,7 @@ function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelec
             onClick={(e) => { e.stopPropagation(); setShowMoveSubmenu(!showMoveSubmenu); }}
           >
             <MaterialSymbol icon="drive_file_move" size={14} />
-            <span className="flex-1">Move All to...</span>
+            <span className="flex-1">{t('session_kanban.move_all_to')}</span>
             <MaterialSymbol icon="chevron_right" size={12} />
           </button>
           {showMoveSubmenu && (
@@ -1172,7 +1199,7 @@ function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelec
                   onClick={(e) => { e.stopPropagation(); onClose(); onMoveAll(sessionIds, col.value); }}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.color }} />
-                  {col.label}
+                  {t(SESSION_PHASE_TRANSLATION_KEYS[col.value])}
                 </button>
               ))}
               {phase !== 'unphased' && (
@@ -1183,7 +1210,7 @@ function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelec
                     onClick={(e) => { e.stopPropagation(); onClose(); onRemovePhase(sessionIds); }}
                   >
                     <MaterialSymbol icon="close" size={14} />
-                    Remove from board
+                    {t('session_kanban.remove_from_board')}
                   </button>
                 </>
               )}
@@ -1199,7 +1226,7 @@ function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelec
           onClick={(e) => { e.stopPropagation(); onClose(); onArchiveAll(sessionIds); }}
         >
           <MaterialSymbol icon="archive" size={14} />
-          Archive All ({count})
+          {t('session_kanban.archive_all', { count })}
         </button>
       </div>
     </FloatingPortal>
@@ -1211,6 +1238,7 @@ function ColumnHeaderContextMenu({ phase, sessionIds, position, onClose, onSelec
 // ============================================================
 
 function ArchiveGutter({ onArchive }: { onArchive: (sessionIds: string[]) => void }) {
+  const { t } = useTranslation('tracker');
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -1260,7 +1288,7 @@ function ArchiveGutter({ onArchive }: { onArchive: (sessionIds: string[]) => voi
         }`}
         style={{ writingMode: 'vertical-lr', textOrientation: 'mixed' }}
       >
-        Archive
+        {t('kanban.archive')}
       </span>
     </div>
   );
@@ -1277,6 +1305,7 @@ interface SessionKanbanBoardProps {
 }
 
 export const SessionKanbanBoard: React.FC<SessionKanbanBoardProps> = ({ onSessionSelect, onSessionOpen }) => {
+  const { t } = useTranslation('tracker');
   const posthog = usePostHog();
   const grouped = useAtomValue(sessionsByPhaseAtom);
   const setPhase = useSetAtom(setSessionPhaseAtom);
@@ -1817,9 +1846,9 @@ export const SessionKanbanBoard: React.FC<SessionKanbanBoardProps> = ({ onSessio
         <div className="flex-1 flex items-center justify-center text-nim-muted" data-testid="kanban-empty-state">
           <div className="text-center max-w-[300px]">
             <MaterialSymbol icon="view_kanban" size={48} className="opacity-30" />
-            <p className="mt-2 text-sm">No sessions on the board</p>
+            <p className="mt-2 text-sm">{t('session_kanban.no_sessions_board')}</p>
             <p className="mt-1 text-xs text-nim-faint">
-              Sessions appear here when an AI agent sets a phase, or you can drag sessions from the history sidebar.
+              {t('session_kanban.no_sessions_desc')}
             </p>
           </div>
         </div>
@@ -1845,7 +1874,6 @@ export const SessionKanbanBoard: React.FC<SessionKanbanBoardProps> = ({ onSessio
             <SessionKanbanColumn
               key={col.value}
               phase={col.value}
-              label={col.label}
               color={col.color}
               sessions={grouped.get(col.value) || []}
               onSelect={handleSelect}

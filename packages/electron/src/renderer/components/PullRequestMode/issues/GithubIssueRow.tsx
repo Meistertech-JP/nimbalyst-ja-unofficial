@@ -11,6 +11,7 @@
  */
 
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { GithubIssueRow as GithubIssueRowData } from '../../../services/RendererGithubIssueService';
@@ -40,6 +41,7 @@ export function GithubIssueRow({
   hasSessions,
   diverged,
 }: GithubIssueRowProps): JSX.Element {
+  const { t } = useTranslation('git');
   const closed = issue.state === 'closed';
   const extraLabels = issue.labels.length - MAX_LABELS;
 
@@ -59,14 +61,14 @@ export function GithubIssueRow({
             icon={closed ? 'check_circle' : 'adjust'}
             size={14}
             className={closed ? 'text-nim-faint shrink-0' : 'text-nim-success shrink-0'}
-            title={closed ? 'Closed' : 'Open'}
+            title={t(closed ? 'issues.state.closed' : 'issues.state.open')}
           />
           <span className="truncate text-sm text-nim">{issue.title}</span>
         </span>
         <span className="flex items-center gap-2 mt-0.5 text-[11px] text-nim-faint min-w-0">
           <span className="font-bold font-mono">#{issue.number}</span>
           {issue.authorLogin && <span className="truncate max-w-[120px]">{issue.authorLogin}</span>}
-          <span className="shrink-0" title={`Opened ${formatRelative(issue.createdAt)}`}>
+          <span className="shrink-0" title={t('issues.opened_relative', { time: formatRelative(issue.createdAt) })}>
             {formatRelative(issue.createdAt)}
           </span>
           {issue.labels.slice(0, MAX_LABELS).map((label) => (
@@ -86,28 +88,28 @@ export function GithubIssueRow({
                 icon="sync_problem"
                 size={13}
                 className="issue-diverged-marker text-nim-warning shrink-0"
-                title="A local copy of this issue has drifted from upstream"
+                title={t('issues.row.diverged_title')}
               />
             )}
             {hasSessions && (
               <span
                 className="issue-session-dot w-[7px] h-[7px] rounded-full bg-[var(--nim-success)] shrink-0"
-                title="Has linked sessions"
+                title={t('issues.row.has_linked_sessions')}
               />
             )}
             {overlay && <GithubTrackerBadge record={overlay} compact markerClass="issue-tracker-badge" />}
             {issue.commentsCount > 0 && (
-              <span className="flex items-center gap-0.5" title={`${issue.commentsCount} comments`}>
+              <span className="flex items-center gap-0.5" title={t('issues.row.comments_count', { count: issue.commentsCount })}>
                 <MaterialSymbol icon="chat_bubble" size={12} />
                 {issue.commentsCount}
               </span>
             )}
             {closed && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-nim-on-primary bg-[var(--nim-primary)]">
-                {issue.stateReason === 'not_planned' ? 'Not planned' : 'Closed'}
+                {issue.stateReason === 'not_planned' ? t('issues.state.not_planned') : t('issues.state.closed')}
               </span>
             )}
-            <span className="shrink-0" title="Last activity">
+            <span className="shrink-0" title={t('issues.last_activity')}>
               {formatRelative(issue.updatedAt)}
             </span>
           </span>

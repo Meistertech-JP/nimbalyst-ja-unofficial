@@ -3,7 +3,10 @@ import React from 'react';
 import { Provider } from 'jotai';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
 import { store } from '@nimbalyst/runtime/store';
+import { resources } from '@nimbalyst/i18n/resources';
 
 import type { OrgSettings } from '../../../../../shared/orgSettings';
 import { orgSettingsAtomFamily } from '../../../../store/atoms/orgSettings';
@@ -21,6 +24,15 @@ vi.mock('../SecurityEncryptionSection', () => ({
 
 const stored: Record<string, unknown> = {};
 let setError: string | null = null;
+const testI18n = createInstance();
+const testI18nReady = testI18n.init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'orgSharing',
+  interpolation: { escapeValue: false },
+});
 
 const invoke = vi.fn(async (channel: string, request: { orgId: string; settings?: OrgSettings }) => {
   if (channel === 'org:settings:get') {
@@ -38,12 +50,14 @@ const invoke = vi.fn(async (channel: string, request: { orgId: string; settings?
 function renderPanel(callerRole: string, orgId: string, onRenamed = vi.fn()) {
   return render(
     <Provider store={store}>
-      <OrganizationSettingsPanel
-        orgId={orgId}
-        orgName="Acme"
-        callerRole={callerRole}
-        onRenamed={onRenamed}
-      />
+      <I18nextProvider i18n={testI18n}>
+        <OrganizationSettingsPanel
+          orgId={orgId}
+          orgName="Acme"
+          callerRole={callerRole}
+          onRenamed={onRenamed}
+        />
+      </I18nextProvider>
     </Provider>,
   );
 }
@@ -53,7 +67,9 @@ function toggleInput(testId: string): HTMLInputElement {
 }
 
 describe('OrganizationSettingsPanel', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await testI18nReady;
+    await testI18n.changeLanguage('en');
     invoke.mockClear();
     setError = null;
     for (const key of Object.keys(stored)) delete stored[key];
@@ -157,12 +173,14 @@ describe('OrganizationSettingsPanel', () => {
   it('states the owning account, and omits the line when there is none', () => {
     const { unmount } = render(
       <Provider store={store}>
-        <OrganizationSettingsPanel
-          orgId="org-owner"
-          orgName="Acme"
-          ownerEmail="owner@example.com"
-          callerRole="owner"
-        />
+        <I18nextProvider i18n={testI18n}>
+          <OrganizationSettingsPanel
+            orgId="org-owner"
+            orgName="Acme"
+            ownerEmail="owner@example.com"
+            callerRole="owner"
+          />
+        </I18nextProvider>
       </Provider>,
     );
     expect(screen.getByTestId('organization-settings-owner').textContent)
@@ -171,6 +189,14 @@ describe('OrganizationSettingsPanel', () => {
 
     renderPanel('owner', 'org-no-owner');
     expect(screen.queryByTestId('organization-settings-owner')).toBeNull();
+  });
+
+  it('renders organization settings in Japanese when the selected language is Japanese', async () => {
+    await testI18n.changeLanguage('ja');
+    renderPanel('member', 'org-japanese');
+
+    screen.getByText('この設定を変更できるのは、組織のオーナーと管理者のみです。');
+    expect(screen.getByRole('heading', { name: 'メッセージ' }).textContent).toBe('メッセージ');
   });
 
   it('surfaces a rejected save instead of claiming the setting changed', async () => {

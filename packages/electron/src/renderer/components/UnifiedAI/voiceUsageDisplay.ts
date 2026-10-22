@@ -12,6 +12,7 @@
  */
 
 import type { VoiceEngineId, VoiceTokenUsage } from '../../store/atoms/voiceModeState';
+import type { TFunction } from 'i18next';
 
 /** Live list price as of 2026-09-11: $0.05 per minute, billed per second. */
 export const LIVE_COST_PER_MINUTE_USD = 0.05;
@@ -90,7 +91,10 @@ export function resolveUsageEngine(usage: VoiceTokenUsage): VoiceEngineId {
   return 'realtime';
 }
 
-export function buildVoiceUsageDisplay(usage: VoiceTokenUsage | null | undefined): VoiceUsageDisplay | null {
+export function buildVoiceUsageDisplay(
+  usage: VoiceTokenUsage | null | undefined,
+  t?: TFunction<'voice'>,
+): VoiceUsageDisplay | null {
   if (!usage) return null;
 
   const engine = resolveUsageEngine(usage);
@@ -102,17 +106,17 @@ export function buildVoiceUsageDisplay(usage: VoiceTokenUsage | null | undefined
     // divisor of ours -- that derived number is exactly what this replaces.
     if (isNumber(usage.contextUsageRatio)) {
       occupancy = Math.min(1, Math.max(0, usage.contextUsageRatio));
-      lines.push({ id: 'context', label: 'Context', value: `${Math.round(occupancy * 100)}%` });
+      lines.push({ id: 'context', label: t?.('usage_display.context') ?? 'Context', value: `${Math.round(occupancy * 100)}%` });
     }
     if (isNumber(usage.durationSeconds)) {
-      lines.push({ id: 'duration', label: 'Voice time', value: formatVoiceDuration(usage.durationSeconds) });
-      lines.push({ id: 'cost', label: 'Voice cost', value: formatLiveCost(usage.durationSeconds) });
+      lines.push({ id: 'duration', label: t?.('usage_display.voice_time') ?? 'Voice time', value: formatVoiceDuration(usage.durationSeconds) });
+      lines.push({ id: 'cost', label: t?.('usage_display.voice_cost') ?? 'Voice cost', value: formatLiveCost(usage.durationSeconds) });
     }
   } else if (isNumber(usage.total)) {
     // Cumulative token usage does not measure remaining context capacity.
     lines.push({
       id: 'tokens',
-      label: 'Tokens used',
+      label: t?.('usage_display.tokens_used') ?? 'Tokens used',
       value: usage.total.toLocaleString(),
     });
   }
@@ -122,7 +126,9 @@ export function buildVoiceUsageDisplay(usage: VoiceTokenUsage | null | undefined
   // inventing a dollar figure from an opaque usage block would be a guess.
   if (usage.backend && usage.backend.length > 0) {
     const n = usage.backend.length;
-    lines.push({ id: 'backend', label: 'Controller', value: `${n} ${n === 1 ? 'response' : 'responses'}` });
+    const responseLabel = t?.(n === 1 ? 'usage_display.response_one' : 'usage_display.response_other')
+      ?? (n === 1 ? 'response' : 'responses');
+    lines.push({ id: 'backend', label: t?.('usage_display.controller') ?? 'Controller', value: `${n} ${responseLabel}` });
   }
 
   if (lines.length === 0) return null;

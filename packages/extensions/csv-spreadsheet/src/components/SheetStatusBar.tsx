@@ -17,11 +17,14 @@ import { computeRangeStats, type SelectionStats } from '../status/selectionStats
 import { conditionalSnapshot } from '../cells/paintContext';
 import { formatCellValue } from '../utils/formatters';
 import { ToolbarMenu, MenuItem, MenuSeparator } from './toolbar/ToolbarMenu';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export type Aggregate = 'sum' | 'average' | 'count' | 'countNumbers' | 'min' | 'max';
 
-const LABELS: Record<Aggregate, string> = {
-  sum: 'Sum', average: 'Avg', count: 'Count', countNumbers: 'Count numbers', min: 'Min', max: 'Max',
+const LABEL_KEYS: Record<Aggregate, string> = {
+  sum: 'spreadsheet_ui.status_bar.sum', average: 'spreadsheet_ui.status_bar.average',
+  count: 'spreadsheet_ui.status_bar.count', countNumbers: 'spreadsheet_ui.status_bar.count_numbers',
+  min: 'spreadsheet_ui.status_bar.min', max: 'spreadsheet_ui.status_bar.max',
 };
 const ORDER: readonly Aggregate[] = ['sum', 'average', 'count', 'countNumbers', 'min', 'max'];
 export const ZOOM_LEVELS = [0.5, 0.75, 0.9, 1, 1.25, 1.5, 2] as const;
@@ -57,6 +60,7 @@ export function SheetStatusBar({ core, paint, zoom, onZoom }: {
   zoom: number;
   onZoom: (zoom: number) => void;
 }) {
+  const { t } = useTranslation('editor');
   const version = useSelectionVersion(core);
   const [shown, setShown] = useState<readonly Aggregate[]>(['sum', 'average', 'count']);
   const range = core.selectionRangeRef.current;
@@ -83,22 +87,22 @@ export function SheetStatusBar({ core, paint, zoom, onZoom }: {
   return (
     <div className="sheet-status-bar" role="status">
       <span className="sheet-status-spacer" />
-      {result === 'tooLarge' && <span className="sheet-status-item">Selection too large to summarize</span>}
+      {result === 'tooLarge' && <span className="sheet-status-item">{t('spreadsheet_ui.status_bar.too_large')}</span>}
       {result && result !== 'tooLarge' && (
         <>
           {shown.map((aggregate) => {
             const text = aggregateText(result.stats, aggregate, result.format);
             return text === '' ? null : (
               <span key={aggregate} className="sheet-status-item" data-aggregate={aggregate}>
-                {LABELS[aggregate]}: <b>{text}</b>
+                {t(LABEL_KEYS[aggregate])}: <b>{text}</b>
               </span>
             );
           })}
-          <ToolbarMenu name="aggregates" title="Choose what to show" label={<span>{LABELS[shown[0] ?? 'sum']}</span>}>
+          <ToolbarMenu name="aggregates" title={t('spreadsheet_ui.status_bar.choose')} label={<span>{t(LABEL_KEYS[shown[0] ?? 'sum'])}</span>}>
             {() => ORDER.map((aggregate) => (
               <MenuItem
                 key={aggregate}
-                label={LABELS[aggregate]}
+                label={t(LABEL_KEYS[aggregate])}
                 hint={aggregateText(result.stats, aggregate, result.format)}
                 checked={shown.includes(aggregate)}
                 onSelect={() => setShown((current) => (current.includes(aggregate)
@@ -110,14 +114,14 @@ export function SheetStatusBar({ core, paint, zoom, onZoom }: {
         </>
       )}
       <span className="sheet-toolbar-separator" />
-      <ToolbarMenu name="zoom" title="Zoom" label={<span>{Math.round(zoom * 100)}%</span>}>
+      <ToolbarMenu name="zoom" title={t('spreadsheet_ui.status_bar.zoom')} label={<span>{Math.round(zoom * 100)}%</span>}>
         {(close) => (
           <>
             {ZOOM_LEVELS.map((level) => (
               <MenuItem key={level} label={`${Math.round(level * 100)}%`} checked={level === zoom} onSelect={() => { onZoom(level); close(); }} />
             ))}
             <MenuSeparator />
-            <MenuItem label="Reset" disabled={zoom === 1} onSelect={() => { onZoom(1); close(); }} />
+            <MenuItem label={t('spreadsheet_ui.status_bar.reset')} disabled={zoom === 1} onSelect={() => { onZoom(1); close(); }} />
           </>
         )}
       </ToolbarMenu>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { SessionData } from '../../../ai/server/types';
 import type { ToolCallDiffLoadResult } from '../../../ai/server/transcript';
 import type { TranscriptSettings, PromptMarker, FileEditSummary } from '../types';
@@ -178,6 +179,7 @@ const AgentTranscriptPanelComponent = React.forwardRef<
   phaseColumns,
   onSetPhase,
 }, ref) => {
+  const { t } = useTranslation('aichat');
   // Show floating actions if explicitly enabled, otherwise default to showing when sidebar is visible
   const shouldShowFloatingActions = showFloatingActions ?? !hideSidebar;
   // Prefer worktree path for worktree sessions, then prop, then sessionData
@@ -385,7 +387,7 @@ const AgentTranscriptPanelComponent = React.forwardRef<
             {/* Header with Files label */}
             <div className="session-files-right-panel flex items-center gap-2 p-3 border-b border-nim bg-nim-secondary">
               <MaterialSymbol icon="description" size={16} />
-              <span className="font-medium text-nim">Files Edited</span>
+              <span className="font-medium text-nim">{t('transcript_panel.files_edited')}</span>
               {fileEdits.length > 0 && (
                 <span className="ml-auto py-0.5 px-1.5 bg-nim-tertiary rounded text-[11px] font-medium text-nim-faint">
                   {fileEdits.length}
@@ -415,7 +417,7 @@ const AgentTranscriptPanelComponent = React.forwardRef<
               {Array.isArray(todos) && todos.length > 0 && (
                 <div className="border-t border-nim bg-nim-secondary p-3 max-h-[150px] overflow-auto">
                   <div className="mb-2 text-xs font-medium text-nim-muted">
-                    Tasks ({todos.filter(t => t.status === 'completed').length}/{todos.length})
+                    {t('transcript_panel.tasks', { completed: todos.filter(t => t.status === 'completed').length, total: todos.length })}
                   </div>
                   <div className="flex flex-col gap-1">
                     {todos.map((todo, index) => {

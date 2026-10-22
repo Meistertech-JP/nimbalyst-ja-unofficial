@@ -7,6 +7,7 @@ import type {
 } from '../types';
 import { getTypeSchema } from '../schema';
 import { IconFile, IconLaunch, IconPlay, IconPlus, IconShare } from './icons';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface GraphInspectorProps {
   snapshot: ProjectGraphSnapshot;
@@ -31,6 +32,7 @@ function statusPillClass(status?: string): string {
 }
 
 export function GraphInspector({ snapshot, types, selectedNodeId, onSelectNode, onAction }: GraphInspectorProps) {
+  const { t } = useTranslation('extensions');
   const node = useMemo(() => {
     if (!selectedNodeId) return null;
     return snapshot.nodes.find(n => n.id === selectedNodeId) ?? null;
@@ -68,7 +70,7 @@ export function GraphInspector({ snapshot, types, selectedNodeId, onSelectNode, 
   if (!node || !schema) {
     return (
       <aside className="pg-inspector">
-        <div className="pg-empty">Select a node to see its details, relations, and actions.</div>
+        <div className="pg-empty">{t('project_graph.ui.select_node')}</div>
       </aside>
     );
   }
@@ -85,37 +87,37 @@ export function GraphInspector({ snapshot, types, selectedNodeId, onSelectNode, 
           {schema.label}
         </div>
         <div className="pg-insp-title">{path ?? node.label}</div>
-        <div className="pg-insp-id">{node.id} · src={node.source} · {node.visibility}</div>
+        <div className="pg-insp-id">{node.id} · {t('project_graph.ui.source')}={node.source} · {node.visibility}</div>
       </div>
 
       <div className="pg-insp-meta">
         {owner && (
           <div>
-            <div className="pg-k">Owner</div>
+            <div className="pg-k">{t('project_graph.ui.owner')}</div>
             <div className="pg-v"><span className="pg-pill">{owner}</span></div>
           </div>
         )}
         {node.status && (
           <div>
-            <div className="pg-k">Status</div>
+            <div className="pg-k">{t('project_graph.ui.status')}</div>
             <div className="pg-v"><span className={statusPillClass(node.status)}>{node.status}</span></div>
           </div>
         )}
         {node.priority && (
           <div>
-            <div className="pg-k">Priority</div>
+            <div className="pg-k">{t('project_graph.ui.priority')}</div>
             <div className="pg-v"><span className="pg-pill">{node.priority}</span></div>
           </div>
         )}
         {node.severity && (
           <div>
-            <div className="pg-k">Severity</div>
+            <div className="pg-k">{t('project_graph.ui.severity')}</div>
             <div className="pg-v"><span className="pg-pill is-severity">{node.severity}</span></div>
           </div>
         )}
         {typeof node.progress === 'number' && (
           <div style={{ gridColumn: '1 / -1' }}>
-            <div className="pg-k">Progress</div>
+            <div className="pg-k">{t('project_graph.ui.progress')}</div>
             <div className="pg-v" style={{ display: 'block' }}>
               <div className="pg-progress">
                 <span style={{ width: `${Math.max(0, Math.min(100, node.progress))}%` }} />
@@ -128,52 +130,52 @@ export function GraphInspector({ snapshot, types, selectedNodeId, onSelectNode, 
       <div className="pg-insp-actions">
         {schema.quickActions?.includes('launch-fix-session') && (
           <button className="pg-insp-action is-primary" onClick={() => onAction('launch-fix-session', node)}>
-            <IconPlay /> Launch fix session
+            <IconPlay /> {t('project_graph.ui.launch_fix_session')}
           </button>
         )}
         {schema.quickActions?.includes('launch-session') && (
           <button className="pg-insp-action is-primary" onClick={() => onAction('launch-session', node)}>
-            <IconPlay /> Launch session
+            <IconPlay /> {t('project_graph.ui.launch_session')}
           </button>
         )}
         {schema.quickActions?.includes('open-file') && (
           <button className="pg-insp-action" onClick={() => onAction('open-file', node)}>
-            <IconFile /> Open file
+            <IconFile /> {t('project_graph.ui.open_file')}
           </button>
         )}
         {schema.quickActions?.includes('reveal-in-tracker') && (
           <button className="pg-insp-action" onClick={() => onAction('reveal-in-tracker', node)}>
-            <IconShare /> Reveal in tracker
+            <IconShare /> {t('project_graph.ui.reveal_tracker')}
           </button>
         )}
         {schema.quickActions?.includes('add-bug') && (
           <button className="pg-insp-action" onClick={() => onAction('add-bug', node)}>
-            <IconPlus /> Add bug
+            <IconPlus /> {t('project_graph.ui.add_bug')}
           </button>
         )}
         {schema.quickActions?.includes('add-task') && (
           <button className="pg-insp-action" onClick={() => onAction('add-task', node)}>
-            <IconPlus /> Add task
+            <IconPlus /> {t('project_graph.ui.add_task')}
           </button>
         )}
         {schema.quickActions?.includes('add-feature') && (
           <button className="pg-insp-action" onClick={() => onAction('add-feature', node)}>
-            <IconPlus /> Add feature
+            <IconPlus /> {t('project_graph.ui.add_feature')}
           </button>
         )}
         {schema.quickActions?.includes('open') && (
           <button className="pg-insp-action" onClick={() => onAction('open', node)}>
-            <IconLaunch /> Open
+            <IconLaunch /> {t('project_graph.ui.open')}
           </button>
         )}
       </div>
 
       <div className="pg-insp-section">
         <h4>
-          Relations <span className="pg-count">{relations.length}</span>
+          {t('project_graph.ui.relations')} <span className="pg-count">{relations.length}</span>
         </h4>
         {relations.length === 0 ? (
-          <div style={{ color: 'var(--pg-text-mute)', fontSize: 11.5 }}>No connected nodes.</div>
+          <div style={{ color: 'var(--pg-text-mute)', fontSize: 11.5 }}>{t('project_graph.ui.no_connected_nodes')}</div>
         ) : (
           relations.map(rel => (
             <button
@@ -181,7 +183,9 @@ export function GraphInspector({ snapshot, types, selectedNodeId, onSelectNode, 
               type="button"
               className="pg-relation"
               onClick={() => onSelectNode(rel.other.id)}
-              title={`${rel.direction === 'outgoing' ? rel.edge.type : `${rel.edge.type} (in)`}`}
+              title={rel.direction === 'outgoing'
+                ? rel.edge.type
+                : t('project_graph.ui.incoming_relation_title', { type: rel.edge.type })}
             >
               <span
                 className="pg-rt-dot"
@@ -196,7 +200,7 @@ export function GraphInspector({ snapshot, types, selectedNodeId, onSelectNode, 
 
       {node.counts && Object.keys(node.counts).length > 0 && (
         <div className="pg-insp-section">
-          <h4>Rollups</h4>
+          <h4>{t('project_graph.ui.rollups')}</h4>
           {Object.entries(node.counts).map(([k, v]) => (
             <div key={k} className="pg-progress-row">
               <span className="pg-label">{k}</span>

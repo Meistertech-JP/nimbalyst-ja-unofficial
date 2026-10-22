@@ -12,6 +12,7 @@
  */
 
 import React, { forwardRef, useImperativeHandle, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { moveWorkstreamEditorAtom } from '../../store/atoms/agentFileViewer';
 import { ResizablePanel } from '../AgenticCoding/ResizablePanel';
@@ -130,6 +131,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
   onOpenSessionInChat,
   onPanelStateChange,
 }, ref) {
+  const { t } = useTranslation('agents');
   // Ref to the workstream panel for closing tabs
   const workstreamPanelRef = useRef<AgentWorkstreamPanelRef>(null);
 
@@ -467,7 +469,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
 
     addSession({
       id: data.analysisSessionId,
-      title: 'Analysis',
+      title: t('blitz.analysis_title'),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       provider: data.analysisProvider || 'claude-code',
@@ -490,7 +492,7 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
       });
 
     refreshSessions();
-  }, [blitzAnalysisCreated, workspacePath, addSession, refreshSessions]);
+  }, [blitzAnalysisCreated, workspacePath, addSession, refreshSessions, t]);
 
   // Handle @@session reference link clicks from transcript
   const requestedSessionId = useAtomValue(requestOpenSessionAtom);
@@ -604,12 +606,12 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
     )
   ) : (
     <div className="agent-mode-empty flex flex-col items-center justify-center h-full gap-4 text-nim-muted">
-      <p className="m-0 text-sm">Select a session or create a new one to get started</p>
+      <p className="m-0 text-sm">{t('select_or_create')}</p>
       <button
         onClick={() => dispatchCreateNewSession({ launchSource: 'new_session_button' })}
         className="agent-mode-new-button py-2 px-4 rounded-md border border-nim-border bg-nim-bg-secondary text-nim cursor-pointer text-sm transition-colors hover:bg-nim-bg-active"
       >
-        New Session
+        {t('new_session')}
       </button>
     </div>
   );

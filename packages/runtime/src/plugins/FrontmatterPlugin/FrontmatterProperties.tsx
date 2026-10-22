@@ -5,6 +5,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   extractFrontmatterWithError,
   parseFields,
@@ -87,10 +88,12 @@ function CommitInput({
   );
 }
 
-function FieldValue({ field, onChange, readOnly }: {
+function FieldValue({ field, onChange, readOnly, openLinkLabel, commaSeparatedPlaceholder }: {
   field: InferredField;
   onChange: (value: unknown) => void;
   readOnly: boolean;
+  openLinkLabel: string;
+  commaSeparatedPlaceholder: string;
 }) {
   switch (field.type) {
     case 'boolean':
@@ -134,7 +137,7 @@ function FieldValue({ field, onChange, readOnly }: {
       return (
         <CommitInput
           value={items.join(', ')}
-          placeholder="Comma-separated"
+          placeholder={commaSeparatedPlaceholder}
           disabled={readOnly}
           onCommit={(next) => onChange(next.split(',').map((v) => v.trim()).filter(Boolean))}
         />
@@ -146,7 +149,7 @@ function FieldValue({ field, onChange, readOnly }: {
         <div className="flex items-center gap-1">
           <CommitInput type="url" value={href} placeholder="https://..." disabled={readOnly} onCommit={onChange} />
           {/^https?:\/\//.test(href) && (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="flex p-1 text-nim-muted hover:text-nim-primary" aria-label="Open link">
+            <a href={href} target="_blank" rel="noopener noreferrer" className="flex p-1 text-nim-muted hover:text-nim-primary" aria-label={openLinkLabel}>
               <MaterialSymbol icon="open_in_new" size={14} />
             </a>
           )}
@@ -162,6 +165,7 @@ function FieldValue({ field, onChange, readOnly }: {
 }
 
 export function FrontmatterProperties({ getContent, contentVersion, onContentChange }: FrontmatterPropertiesProps) {
+  const { t } = useTranslation('tracker');
   const [fields, setFields] = useState<InferredField[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [showSecondary, setShowSecondary] = useState(false);
@@ -169,9 +173,9 @@ export function FrontmatterProperties({ getContent, contentVersion, onContentCha
 
   const readFields = useCallback((content: string) => {
     const result = extractFrontmatterWithError(content);
-    setParseError(result.hasFrontmatter && !result.success ? (result.error || 'Invalid frontmatter') : null);
+    setParseError(result.hasFrontmatter && !result.success ? (result.error || t('frontmatter.invalid')) : null);
     setFields(result.data ? parseFields(result.data) : []);
-  }, []);
+  }, [t]);
   useEffect(() => readFields(getContent()), [getContent, contentVersion, readFields]);
 
   const readOnly = !onContentChange;
@@ -188,7 +192,7 @@ export function FrontmatterProperties({ getContent, contentVersion, onContentCha
       <div className="frontmatter-properties-error flex items-start gap-2 rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs" role="alert">
         <MaterialSymbol icon="error" size={16} className="shrink-0 text-red-500" />
         <div className="min-w-0">
-          <div className="font-semibold text-red-500">Invalid frontmatter</div>
+          <div className="font-semibold text-red-500">{t('frontmatter.invalid')}</div>
           <div className="whitespace-pre-wrap break-words font-mono text-nim-muted">{parseError}</div>
         </div>
       </div>
@@ -200,7 +204,13 @@ export function FrontmatterProperties({ getContent, contentVersion, onContentCha
   const renderRow = (field: InferredField) => (
     <div key={field.key} className="frontmatter-property grid grid-cols-[84px_1fr] items-start gap-2">
       <label className="truncate pt-1 text-[13px] text-nim-muted" title={field.key}>{field.key}</label>
-      <FieldValue field={field} readOnly={readOnly} onChange={(value) => setField(field.key, value)} />
+      <FieldValue
+        field={field}
+        readOnly={readOnly}
+        openLinkLabel={t('fields.open_link')}
+        commaSeparatedPlaceholder={t('frontmatter.comma_separated_values')}
+        onChange={(value) => setField(field.key, value)}
+      />
     </div>
   );
 
@@ -212,7 +222,7 @@ export function FrontmatterProperties({ getContent, contentVersion, onContentCha
 
   return (
     <div className="frontmatter-properties flex flex-col gap-2">
-      {fields.length === 0 && <div className="text-xs text-nim-faint">No properties</div>}
+      {fields.length === 0 && <div className="text-xs text-nim-faint">{t('frontmatter.no_properties')}</div>}
       {primary.map(renderRow)}
       {secondary.length > 0 && (
         <button
@@ -222,7 +232,9 @@ export function FrontmatterProperties({ getContent, contentVersion, onContentCha
           aria-expanded={showSecondary}
         >
           <MaterialSymbol icon={showSecondary ? 'expand_more' : 'chevron_right'} size={14} />
-          {showSecondary ? 'Fewer' : `${secondary.length} more: ${secondary.map((field) => field.key).join(', ')}`}
+          {showSecondary
+            ? t('frontmatter.secondary_fewer')
+            : t('frontmatter.secondary_more', { count: secondary.length, keys: secondary.map((field) => field.key).join(', ') })}
         </button>
       )}
       {showSecondary && secondary.map(renderRow)}
@@ -233,13 +245,13 @@ export function FrontmatterProperties({ getContent, contentVersion, onContentCha
           onClick={() => setAddingKey('')}
         >
           <MaterialSymbol icon="add" size={14} />
-          Add property
+          {t('frontmatter.add_property')}
         </button>
       ) : (
         <input
           autoFocus
           className={INPUT}
-          placeholder="Property name"
+          placeholder={t('frontmatter.property_name')}
           value={addingKey}
           onChange={(e) => setAddingKey(e.target.value)}
           onBlur={(e) => commitNewKey(e.target.value)}

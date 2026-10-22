@@ -79,10 +79,14 @@ export interface ExtensionAwarenessUser {
   id: string;
   name: string;
   color: string;
+  /** Additive provenance for a generated fallback; absent on legacy peer payloads. */
+  nimbalystNameSource?: 'system-default';
 }
 
 export interface ExtensionAwarenessBridge {
   awareness: Awareness;
+  /** Re-map marked remote fallbacks after the host's display language changes. */
+  refreshRemoteDisplayNames: () => void;
   destroy: () => void;
 }
 
@@ -95,6 +99,8 @@ export function createExtensionAwarenessBridge(args: {
   yDoc: Doc;
   /** Local user identity to set on the Awareness instance immediately. */
   user: ExtensionAwarenessUser;
+  /** Current localized label for generated remote names; never applied to wire state. */
+  getUnnamedCollaboratorLabel?: () => string;
   /**
    * Cadence for re-announcing local awareness while connected. 0 disables it,
    * for hosts that already run their own presence heartbeat.
@@ -165,6 +171,8 @@ export function createExtensionAwarenessBridge(args: {
   // Map remote userIds (string) to stable numeric clientIDs in our Awareness.
   // Never reuse our own awareness.clientID for a remote user.
   const userIdToClientId = new Map<string, number>();
+  const remoteWireStates = new Map<string, WireAwarenessState>();
+  let lastUnnamedCollaboratorLabel = args.getUnnamedCollaboratorLabel?.();
   let nextRemoteClientId = awareness.clientID + 1;
   // identity-scope-allow: awareness wire ids can come from either document-sync identity lane
   const allocateClientId = (userId: string): number => {
@@ -177,8 +185,45 @@ export function createExtensionAwarenessBridge(args: {
     return id;
   };
 
-  // Receive remote awareness from DocumentSync -> inject into Awareness.
+  // identity-scope-allow: awareness wire ids can come from either document-sync identity lane
+  const viewStateFor = (userId: string, state: WireAwarenessState): Record<string, unknown> => {
+    const wireUser = state.user as Record<string, unknown>;
+    const displayNameSource = wireUser.nimbalystNameSource;
+    const userView: Record<string, unknown> = {
+      ...wireUser,
+      id: (typeof wireUser.id === 'string' ? wireUser.id : userId),
+    };
+    if (displayNameSource === 'system-default') {
+      const label = args.getUnnamedCollaboratorLabel?.();
+      if (label) userView.name = label;
+    }
+    return { ...state, user: userView };
+  };
+
+  const refreshRemoteDisplayNames = (): void => {
+    const label = args.getUnnamedCollaboratorLabel?.();
+    if (!label || label === lastUnnamedCollaboratorLabel) return;
+    lastUnnamedCollaboratorLabel = label;
+    const updated: number[] = [];
+    for (const [userId, state] of remoteWireStates) {
+      if ((state.user as Record<string, unknown>).nimbalystNameSource !== 'system-default') continue;
+      const clientId = allocateClientId(userId);
+      if (!awareness.states.has(clientId)) continue;
+      awareness.states.set(clientId, viewStateFor(userId, state));
+      updated.push(clientId);
+    }
+    if (updated.length === 0) return;
+    const event = { added: [], updated, removed: [] };
+    awareness.emit('change', [event, REMOTE_AWARENESS_ORIGIN]);
+    awareness.emit('update', [event, REMOTE_AWARENESS_ORIGIN]);
+  };
+
+  // Receive remote awareness from DocumentSync -> inject a display-only copy
+  // into the extension-facing Awareness instance. Keep the original wire map
+  // so a language change can rebuild the view without ever rewriting wire data.
   const awarenessUnsub = syncProvider.onAwarenessChange((states) => {
+    remoteWireStates.clear();
+    for (const [userId, state] of states) remoteWireStates.set(userId, state);
     const presentClientIds = new Set<number>();
     const added: number[] = [];
     const updated: number[] = [];
@@ -189,13 +234,7 @@ export function createExtensionAwarenessBridge(args: {
       const wasPresent = awareness.states.has(clientId);
       // Ensure remote state carries `user.id` so SDK consumers can use it
       // for deduping; the DocumentSync wrapper provides userId out-of-band.
-      const stateWithId = {
-        ...(state as Record<string, unknown>),
-        user: {
-          ...(state.user as { name: string; color: string }),
-          id: (state.user as { id?: string }).id ?? userId,
-        },
-      };
+      const stateWithId = viewStateFor(userId, state);
       awareness.states.set(clientId, stateWithId);
       const prevMeta = awareness.meta.get(clientId);
       awareness.meta.set(clientId, {
@@ -225,6 +264,7 @@ export function createExtensionAwarenessBridge(args: {
 
   return {
     awareness,
+    refreshRemoteDisplayNames,
     destroy: () => {
       destroyed = true;
       stopHeartbeat();

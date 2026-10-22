@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { FullscreenModal } from '../FullscreenModal';
 import { ZoomableImageSurface } from '../ZoomableImageSurface';
 import {
@@ -527,20 +528,24 @@ const ImageDisplay: React.FC<{
   readFile?: ReadFile;
   className?: string;
 }> = ({ image, description, readFile, className }) => {
+  const { t } = useTranslation('aichat');
   const { imageData, loading, error, setError } = useImageSource(image, readFile);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4 bg-nim-secondary rounded-md border border-nim">
-        <span className="text-nim-muted text-sm">Loading...</span>
+        <span className="text-nim-muted text-sm">{t('visual.loading')}</span>
       </div>
     );
   }
 
   if (error) {
+    const loadError = error.startsWith('Failed to load image: ')
+      ? t('visual.image_load_failed', { error: error.slice('Failed to load image: '.length) })
+      : error;
     return (
       <div className="flex flex-col items-center gap-2 p-4 bg-nim-secondary rounded-md border border-nim">
-        <span className="text-nim-error text-sm">{error}</span>
+        <span className="text-nim-error text-sm">{loadError}</span>
         <span className="font-mono text-xs text-nim-faint break-all">{image.path}</span>
       </div>
     );
@@ -553,20 +558,20 @@ const ImageDisplay: React.FC<{
       {isGif && imageData ? (
         <GifPlayer
           src={imageData}
-          alt={description || 'Animated GIF'}
+          alt={description || t('visual.image')}
           className="max-w-full"
         />
       ) : (
         <img
           src={imageData || ''}
-          alt={description || 'Image'}
+          alt={description || t('visual.image')}
           className={`max-w-full h-auto block ${className || ''}`.trim()}
           onError={(e) => {
             console.error('[VisualDisplayWidget] Image element failed to load:', {
               path: image.path,
               src: imageData?.substring(0, 100) + (imageData && imageData.length > 100 ? '...' : '')
             });
-            setError(`Failed to render image from: ${image.path}`);
+            setError(t('visual.image_render_failed', { path: image.path }));
           }}
         />
       )}
@@ -581,6 +586,7 @@ const ChartItemRenderer: React.FC<{
   item: DisplayItem;
   isDark: boolean;
 }> = ({ item, isDark }) => {
+  const { t } = useTranslation('aichat');
   if (!item.chart) return null;
 
   const chartConfig: ChartConfig = {
@@ -612,18 +618,30 @@ const ChartItemRenderer: React.FC<{
     }
   };
 
+  const chartTranslationKeys: Record<ChartConfig['chartType'], string> = {
+    bar: 'visual.chart_bar',
+    line: 'visual.chart_line',
+    pie: 'visual.chart_pie',
+    area: 'visual.chart_area',
+    scatter: 'visual.chart_scatter'
+  };
+  const chartLabel = t(chartTranslationKeys[chartConfig.chartType]);
   const errorFallback = (
     <div className="p-3 rounded-md border border-nim-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))]">
       <p className="text-nim-muted text-sm mb-2">{item.description}</p>
       <p className="text-nim-error text-sm">
-        Failed to render {chartConfig.chartType} chart. Check that data contains valid "{chartConfig.xAxisKey}" and "{Array.isArray(chartConfig.yAxisKey) ? chartConfig.yAxisKey.join(', ') : chartConfig.yAxisKey}" fields.
+        {t('visual.chart_render_failed', {
+          chart: chartLabel,
+          x: chartConfig.xAxisKey,
+          y: Array.isArray(chartConfig.yAxisKey) ? chartConfig.yAxisKey.join(', ') : chartConfig.yAxisKey
+        })}
       </p>
     </div>
   );
 
   return (
     <VisualErrorBoundary fallback={errorFallback} context={`${chartConfig.chartType} chart`}>
-      <div className="rounded-md overflow-hidden border border-nim bg-nim p-3" role="img" aria-label={`${chartConfig.chartType} chart: ${item.description}`}>
+      <div className="rounded-md overflow-hidden border border-nim bg-nim p-3" role="img" aria-label={t('visual.chart_description', { chart: chartLabel, description: item.description })}>
         <p className="text-nim text-sm font-medium mb-3">{item.description}</p>
         <div style={{ height }}>
           <ResponsiveContainer
@@ -649,12 +667,13 @@ const Lightbox: React.FC<{
   onNavigate: (index: number) => void;
   readFile?: ReadFile;
 }> = ({ images, selectedIndex, onClose, onNavigate, readFile }) => {
+  const { t } = useTranslation('aichat');
   const { imageData } = useImageSource(images[selectedIndex].image!, readFile);
   return (
     <FullscreenModal
       isOpen={true}
       onClose={onClose}
-      ariaLabel="Image lightbox"
+      ariaLabel={t('visual.lightbox')}
       contentClassName="h-[92dvh] w-[96vw] max-w-[1400px] overflow-hidden rounded-lg border border-nim bg-nim"
     >
       {imageData ? <ZoomableImageSurface
@@ -674,9 +693,9 @@ const Lightbox: React.FC<{
                   type="button"
                   className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                   onClick={() => onNavigate((selectedIndex - 1 + images.length) % images.length)}
-                  aria-label="Previous image"
+                  aria-label={t('visual.previous_image')}
                 >
-                  Prev
+                  {t('visual.previous')}
                 </button>
                 <div className="min-w-[3.5rem] text-center font-mono text-xs text-[var(--nim-text-muted)]">
                   {selectedIndex + 1} / {images.length}
@@ -685,9 +704,9 @@ const Lightbox: React.FC<{
                   type="button"
                   className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
                   onClick={() => onNavigate((selectedIndex + 1) % images.length)}
-                  aria-label="Next image"
+                  aria-label={t('visual.next_image')}
                 >
-                  Next
+                  {t('visual.next_image')}
                 </button>
               </div>
             ) : null}
@@ -695,9 +714,9 @@ const Lightbox: React.FC<{
               type="button"
               className="rounded border border-[var(--nim-border)] bg-[var(--nim-bg)] px-2 py-1 text-xs text-[var(--nim-text)] transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('close', { ns: 'common' })}
             >
-              Close
+              {t('close', { ns: 'common' })}
             </button>
           </>
         )}
@@ -715,6 +734,7 @@ const ImageGallery: React.FC<{
   galleryKeys: string[];
   readFile?: (path: string) => Promise<{ success: boolean; content?: string; error?: string }>;
 }> = ({ images, galleryKeys, readFile }) => {
+  const { t } = useTranslation('aichat');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const gallery = useTranscriptImageGallery();
   const openImage = (index: number) => {
@@ -725,10 +745,10 @@ const ImageGallery: React.FC<{
   const errorFallback = (
     <div className="p-3 rounded-md border border-nim-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))]">
       <p className="text-nim-error text-sm">
-        Failed to render image gallery ({images.length} image{images.length !== 1 ? 's' : ''}).
+        {t('visual.gallery_failed', { count: images.length })}
         {imagePaths.length > 0 && (
           <span className="block mt-1 text-nim-faint text-xs">
-            Paths: {imagePaths.slice(0, 3).join(', ')}{imagePaths.length > 3 ? `, ...and ${imagePaths.length - 3} more` : ''}
+            {t('visual.paths', { paths: imagePaths.slice(0, 3).join(', ') })}{imagePaths.length > 3 ? t('visual.more_paths', { count: imagePaths.length - 3 }) : ''}
           </span>
         )}
       </p>
@@ -808,6 +828,7 @@ function groupItemsIntoSegments(items: DisplayItem[]): ItemSegment[] {
 }
 
 export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, readFile }) => {
+  const { t } = useTranslation('aichat');
   const tool = message.toolCall;
   const isDark = useAtomValue(isDarkThemeAtom);
 
@@ -824,7 +845,11 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
     const hasError = isToolError(tool.result, message);
 
     // Extract detailed error message from server response
-    const serverErrorMessage = extractErrorMessage(tool.result);
+    const extractedErrorMessage = extractErrorMessage(tool.result);
+    const fileNotFoundMatch = extractedErrorMessage?.match(/^File not found at "(.+)"\. Please verify the file exists and the path is correct\.$/);
+    const serverErrorMessage = fileNotFoundMatch
+      ? t('visual.file_not_found', { path: fileNotFoundMatch[1] })
+      : extractedErrorMessage;
 
     // Try to extract path information from tool arguments for better error context
     const args = tool.arguments as unknown as DisplayArgs | undefined;
@@ -841,9 +866,9 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
       displayErrorMessage = serverErrorMessage;
     } else if (hasError) {
       // Server indicated error but no message extracted - show what we can
-      displayErrorMessage = 'Server rejected the request';
+      displayErrorMessage = t('visual.server_rejected');
       if (pathInfo) {
-        displayErrorMessage += `\n\nProvided paths: ${pathInfo}`;
+        displayErrorMessage += `\n\n${t('visual.provided_paths', { paths: pathInfo })}`;
       }
       // Also include raw result for debugging
       if (tool.result) {
@@ -852,7 +877,7 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
             ? tool.result
             : JSON.stringify(tool.result);
           if (resultStr && resultStr !== '{}' && resultStr !== 'null') {
-            displayErrorMessage += `\n\nRaw result: ${resultStr.substring(0, 500)}`;
+            displayErrorMessage += `\n\n${t('visual.raw_result', { result: resultStr.substring(0, 500) })}`;
           }
         } catch {
           // Ignore stringify errors
@@ -860,9 +885,9 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
       }
     } else {
       // No server error but couldn't parse items
-      displayErrorMessage = 'Invalid visual configuration: items array is missing or malformed';
+      displayErrorMessage = t('visual.invalid_config');
       if (pathInfo) {
-        displayErrorMessage += `\n\nProvided paths: ${pathInfo}`;
+        displayErrorMessage += `\n\n${t('visual.provided_paths', { paths: pathInfo })}`;
       }
     }
 
@@ -886,11 +911,11 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
     }
 
     return (
-      <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label="Visual content error">
+      <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label={t('visual.error')}>
         <div className="flex items-center gap-2 py-2 px-3 border-b border-nim bg-nim-tertiary">
-          <span className="text-sm font-medium text-nim">Visual</span>
+          <span className="text-sm font-medium text-nim">{t('visual.title')}</span>
           <span className="text-xs font-semibold text-nim-error py-0.5 px-2 rounded-full bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]">
-            Error
+            {t('visual.error_status')}
           </span>
         </div>
         <div className="p-3 text-sm text-nim-error whitespace-pre-wrap">
@@ -908,28 +933,31 @@ export const VisualDisplayWidget: React.FC<CustomToolWidgetProps> = ({ message, 
   // Summarize content for error message
   const chartCount = items.filter(i => i.chart).length;
   const imageCount = items.filter(i => i.image).length;
-  const contentSummary = [
-    chartCount > 0 ? `${chartCount} chart${chartCount !== 1 ? 's' : ''}` : null,
-    imageCount > 0 ? `${imageCount} image${imageCount !== 1 ? 's' : ''}` : null
-  ].filter(Boolean).join(' and ');
+  const localizedContentSummary = chartCount > 0 && imageCount > 0
+    ? t('visual.combined_summary', { charts: t('visual.charts', { count: chartCount }), images: t('visual.images', { count: imageCount }) })
+    : chartCount > 0
+      ? t('visual.charts', { count: chartCount })
+      : imageCount > 0
+        ? t('visual.images', { count: imageCount })
+        : t('visual.unknown_content');
 
   const errorFallback = (
-    <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label="Visual content error">
+    <div className="visual-display-widget rounded-md border border-nim-error bg-nim-secondary overflow-hidden" role="img" aria-label={t('visual.error')}>
       <div className="flex items-center gap-2 py-2 px-3 border-b border-nim bg-nim-tertiary">
-        <span className="text-sm font-medium text-nim">Visual</span>
+        <span className="text-sm font-medium text-nim">{t('visual.title')}</span>
         <span className="text-xs font-semibold text-nim-error py-0.5 px-2 rounded-full bg-[color-mix(in_srgb,var(--nim-error)_15%,transparent)]">
-          Error
+          {t('visual.error_status')}
         </span>
       </div>
       <div className="p-3 text-sm text-nim-error">
-        Failed to render visual content ({contentSummary || 'unknown content'}).
+        {t('visual.render_failed', { summary: localizedContentSummary })}
       </div>
     </div>
   );
 
   return (
     <VisualErrorBoundary fallback={errorFallback} context="main widget">
-      <div className="visual-display-widget flex flex-col gap-3" role="img" aria-label={`${items.length} visual item(s)`}>
+      <div className="visual-display-widget flex flex-col gap-3" role="img" aria-label={t('visual.items', { count: items.length })}>
         {segments.map((segment, index) => {
           if (segment.type === 'chart') {
             return (

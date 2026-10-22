@@ -1,5 +1,6 @@
 import { CodexWindowsSandboxSection } from './CodexWindowsSandboxSection';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { ProviderConfig, Model } from '../../Settings/SettingsView';
 import { SettingsToggle } from '../SettingsToggle';
@@ -40,6 +41,7 @@ export function OpenAICodexPanel({
   config,
   onToggle,
 }: OpenAICodexPanelProps) {
+  const { t } = useTranslation('settings');
   // Usage indicator visibility (rail gutter is the single source of truth --
   // see NavigationGutter's "Show Codex Usage" / "Customize Gutter…" restore
   // affordances, which read the same hiddenGutterItems set this toggle does).
@@ -76,11 +78,11 @@ export function OpenAICodexPanel({
       if (result.authMode === 'apikey') setSelectedAuthMethod('api-key');
       else if (result.authMode === 'chatgpt') setSelectedAuthMethod('chatgpt');
     } catch (err: any) {
-      setAuthError(err?.message ?? 'Failed to check Codex auth status');
+      setAuthError(err?.message ?? t('provider.codex.auth_check_failed'));
     } finally {
       setAuthBusy(null);
     }
-  }, []);
+  }, [t]);
 
   // Re-check whenever the central listener reports the CLI's auth state moved
   // (login/logout writes auth.json outside the app). Counter-atom pattern from
@@ -97,10 +99,10 @@ export function OpenAICodexPanel({
     try {
       const result = await window.electronAPI.invoke('openai-codex:login-chatgpt') as { success: boolean; error?: string };
       if (!result.success) {
-        setAuthError(result.error ?? 'Login failed');
+        setAuthError(result.error ?? t('provider.codex.login_failed'));
       }
     } catch (err: any) {
-      setAuthError(err?.message ?? 'Login failed');
+      setAuthError(err?.message ?? t('provider.codex.login_failed'));
     } finally {
       setAuthBusy(null);
     }
@@ -108,7 +110,7 @@ export function OpenAICodexPanel({
 
   const handleApiKeyLogin = async () => {
     if (!pendingApiKey.trim()) {
-      setAuthError('Enter an API key first');
+      setAuthError(t('provider.codex.enter_api_key'));
       return;
     }
     setAuthBusy('apikey');
@@ -116,13 +118,13 @@ export function OpenAICodexPanel({
     try {
       const result = await window.electronAPI.invoke('openai-codex:login-apikey', pendingApiKey.trim()) as { success: boolean; error?: string };
       if (!result.success) {
-        setAuthError(result.error ?? 'Login failed');
+        setAuthError(result.error ?? t('provider.codex.login_failed'));
       } else {
         setPendingApiKey('');
         await checkStatus();
       }
     } catch (err: any) {
-      setAuthError(err?.message ?? 'Login failed');
+      setAuthError(err?.message ?? t('provider.codex.login_failed'));
     } finally {
       setAuthBusy(null);
     }
@@ -134,12 +136,12 @@ export function OpenAICodexPanel({
     try {
       const result = await window.electronAPI.invoke('openai-codex:logout') as { success: boolean; error?: string };
       if (!result.success) {
-        setAuthError(result.error ?? 'Logout failed');
+        setAuthError(result.error ?? t('provider.codex.logout_failed'));
       } else {
         await checkStatus();
       }
     } catch (err: any) {
-      setAuthError(err?.message ?? 'Logout failed');
+      setAuthError(err?.message ?? t('provider.codex.logout_failed'));
     } finally {
       setAuthBusy(null);
     }
@@ -153,22 +155,21 @@ export function OpenAICodexPanel({
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">OpenAI Codex</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Advanced code generation and completion powered by OpenAI Codex models.
-          Provides intelligent code suggestions and automated programming assistance.
+          {t('provider.codex.description')}
         </p>
       </div>
 
       <SettingsToggle
         variant="enable"
-        name="Enable OpenAI Codex"
+        name={t('provider.codex.enable')}
         checked={config.enabled || false}
         onChange={onToggle}
       />
 
       <SettingsToggle
         variant="enable"
-        name="Show Usage Indicator"
-        description="Display Codex usage limits in the navigation gutter"
+        name={t('provider.codex.usage_name')}
+        description={t('provider.codex.usage_desc')}
         checked={usageIndicatorEnabled}
         onChange={setUsageIndicatorEnabled}
       />
@@ -178,16 +179,15 @@ export function OpenAICodexPanel({
       {acpEnabled && (
         <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)]">
           <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">
-            ACP Transport <span className="text-xs font-normal text-[var(--nim-text-muted)]">(legacy)</span>
+            {t('provider.codex.acp_transport')} <span className="text-xs font-normal text-[var(--nim-text-muted)]">({t('provider.codex.legacy')})</span>
           </h4>
           <p className="text-[13px] text-[var(--nim-text-muted)] mb-3 leading-relaxed">
-            <strong>OpenAI Codex (ACP)</strong> is already enabled for this installation, but new Codex
-            sessions now use the app-server transport through the main <strong>OpenAI Codex</strong> provider.
+            <strong>OpenAI Codex (ACP)</strong> {t('provider.codex.acp_status', { provider: 'OpenAI Codex' })}
           </p>
           <SettingsToggle
             variant="enable"
-            name="Enable ACP transport"
-            description="Keeps the separate 'OpenAI Codex (ACP)' legacy provider available"
+            name={t('provider.codex.enable_acp')}
+            description={t('provider.codex.acp_desc')}
             checked={acpEnabled}
             onChange={handleAcpToggle}
           />
@@ -196,7 +196,7 @@ export function OpenAICodexPanel({
 
       {config.enabled && (
         <div data-testid="codex-auth-section" className="codex-auth-section provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-          <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Sign In</h4>
+          <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.codex.sign_in')}</h4>
 
           {isLoggedIn ? (
             <div className="status-box-success mb-4 py-3.5 px-4 rounded-lg text-[13px] flex items-center gap-3 justify-between bg-[rgba(16,185,129,0.08)] border border-[rgba(16,185,129,0.2)]">
@@ -204,7 +204,7 @@ export function OpenAICodexPanel({
                 <span className="status-box-icon text-xl leading-none shrink-0 text-[var(--nim-success)]">✓</span>
                 <div className="status-box-content flex flex-col gap-1 flex-1">
                   <span className="status-box-title font-semibold text-sm text-[var(--nim-text)]">
-                    {authStatus?.authMode === 'chatgpt' ? 'Signed in with ChatGPT' : authStatus?.authMode === 'apikey' ? 'Signed in with API key' : 'Signed in'}
+                    {authStatus?.authMode === 'chatgpt' ? t('provider.codex.signed_in_chatgpt') : authStatus?.authMode === 'apikey' ? t('provider.codex.signed_in_api') : t('provider.codex.signed_in')}
                   </span>
                   {(authStatus?.email || authStatus?.planType) && (
                     <span className="status-box-subtitle text-xs text-[var(--nim-text-muted)]">
@@ -219,7 +219,7 @@ export function OpenAICodexPanel({
                   onClick={checkStatus}
                   disabled={authBusy !== null}
                 >
-                  Refresh
+                  {t('provider.codex.refresh')}
                 </button>
                 <button
                   className="btn-small py-1.5 px-3 rounded text-xs font-medium cursor-pointer transition-all bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]"
@@ -227,7 +227,7 @@ export function OpenAICodexPanel({
                   disabled={authBusy !== null}
                   data-testid="codex-logout"
                 >
-                  {authBusy === 'logout' ? 'Signing out…' : 'Sign out'}
+                  {authBusy === 'logout' ? t('provider.codex.signing_out') : t('provider.codex.sign_out')}
                 </button>
               </div>
             </div>
@@ -243,7 +243,7 @@ export function OpenAICodexPanel({
                   onClick={() => setSelectedAuthMethod('chatgpt')}
                   data-testid="codex-auth-method-chatgpt"
                 >
-                  ChatGPT (Recommended)
+                  {t('provider.codex.chatgpt_recommended')}
                 </button>
                 <button
                   className={`auth-method-button flex-1 py-2.5 px-4 rounded-md text-[13px] font-medium cursor-pointer transition-all border ${
@@ -254,14 +254,14 @@ export function OpenAICodexPanel({
                   onClick={() => setSelectedAuthMethod('api-key')}
                   data-testid="codex-auth-method-apikey"
                 >
-                  API Key
+                  {t('provider.codex.api_key')}
                 </button>
               </div>
 
               {selectedAuthMethod === 'chatgpt' && (
                 <div className="mb-4 p-4 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg">
                   <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-3">
-                    Authenticate with your ChatGPT Pro, Plus, or Team subscription. No API credits needed.
+                    {t('provider.codex.chatgpt_desc')}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -270,18 +270,18 @@ export function OpenAICodexPanel({
                       disabled={authBusy !== null}
                       data-testid="codex-login-chatgpt"
                     >
-                      {authBusy === 'chatgpt' ? 'Opening browser…' : 'Sign in with ChatGPT'}
+                      {authBusy === 'chatgpt' ? t('provider.codex.opening_browser') : t('provider.codex.sign_in_chatgpt')}
                     </button>
                     <button
                       className="nim-btn-secondary"
                       onClick={checkStatus}
                       disabled={authBusy !== null}
                     >
-                      Refresh
+                      {t('provider.codex.refresh')}
                     </button>
                   </div>
                   <p className="text-[11px] leading-relaxed text-[var(--nim-text-faint)] mt-2">
-                    Opens your default browser. Complete the OpenAI sign-in flow; Nimbalyst updates automatically when you return.
+                    {t('provider.codex.browser_desc')}
                   </p>
                 </div>
               )}
@@ -289,7 +289,7 @@ export function OpenAICodexPanel({
               {selectedAuthMethod === 'api-key' && (
                 <div className="mb-4 p-4 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-lg">
                   <p className="text-xs leading-relaxed text-[var(--nim-text-muted)] mb-3">
-                    Use an OpenAI API key. Pay-per-use with API credits — more expensive than the ChatGPT subscription path.
+                    {t('provider.codex.api_desc')}
                   </p>
                   <div className="api-key-row flex gap-2 items-center">
                     <input
@@ -297,7 +297,7 @@ export function OpenAICodexPanel({
                       value={pendingApiKey}
                       onChange={(e) => setPendingApiKey(e.target.value)}
                       onFocus={(e) => e.target.select()}
-                      placeholder="sk-..."
+                      placeholder={t('provider.codex.api_key_placeholder')}
                       className="api-key-input flex-1 py-2 px-3 rounded-md bg-[var(--nim-bg)] border border-[var(--nim-border)] text-[var(--nim-text)] outline-none font-mono focus:border-[var(--nim-primary)]"
                       data-testid="codex-apikey-input"
                     />
@@ -307,11 +307,11 @@ export function OpenAICodexPanel({
                       disabled={authBusy !== null || !pendingApiKey.trim()}
                       data-testid="codex-login-apikey"
                     >
-                      {authBusy === 'apikey' ? 'Saving…' : 'Save'}
+                      {authBusy === 'apikey' ? t('provider.codex.saving') : t('provider.codex.save')}
                     </button>
                   </div>
                   <p className="text-[11px] leading-relaxed text-[var(--nim-text-faint)] mt-2">
-                    Stored by Codex in <code>~/.codex/auth.json</code>, not in Nimbalyst settings.
+                    {t('provider.codex.storage_prefix')} <code>~/.codex/auth.json</code>{t('provider.codex.storage_suffix')}
                   </p>
                 </div>
               )}

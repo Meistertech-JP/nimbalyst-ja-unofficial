@@ -9,8 +9,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { Provider } from 'jotai';
 import { store } from '@nimbalyst/runtime/store';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
-import { trackerSyncRejectionAtom, type TrackerSyncRejection } from '../../../store/atoms/trackerSync';
+import {
+  trackerSyncDrainHoldAtom,
+  trackerSyncRejectionAtom,
+  type TrackerSyncRejection,
+} from '../../../store/atoms/trackerSync';
 import { TrackerSyncRejectionBanner } from '../TrackerSyncRejectionBanner';
 
 const WS = '/ws/banner-test';
@@ -28,10 +34,13 @@ function setState(partial: Partial<Record<TrackerSyncRejection['code'], TrackerS
   });
 }
 
-function renderBanner() {
+async function renderBanner(language: 'en' | 'ja' = 'en') {
+  const i18n = await createI18nInstance(language);
   return render(
     <Provider store={store}>
-      <TrackerSyncRejectionBanner workspacePath={WS} />
+      <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+        <TrackerSyncRejectionBanner workspacePath={WS} />
+      </UiLanguageProvider>
     </Provider>,
   );
 }
@@ -40,11 +49,12 @@ describe('TrackerSyncRejectionBanner', () => {
   afterEach(() => {
     cleanup();
     setState({});
+    store.set(trackerSyncDrainHoldAtom, null);
   });
 
-  it('renders the custody-unavailable copy for custodyUnavailable', () => {
+  it('renders the custody-unavailable copy for custodyUnavailable', async () => {
     setState({ custodyUnavailable: rejection('custodyUnavailable') });
-    renderBanner();
+    await renderBanner();
 
     const banner = screen.getByTestId('tracker-sync-rejection-banner');
     expect(banner.getAttribute('data-rejection-code')).toBe('custodyUnavailable');
@@ -52,32 +62,55 @@ describe('TrackerSyncRejectionBanner', () => {
     expect(banner.textContent).toContain("can't sync");
   });
 
-  it('prefers custodyUnavailable over the legacy codes', () => {
+  it('prefers custodyUnavailable over the legacy codes', async () => {
     setState({
       custodyUnavailable: rejection('custodyUnavailable'),
       staleKeyEpoch: rejection('staleKeyEpoch'),
       rotationLocked: rejection('rotationLocked'),
     });
-    renderBanner();
+    await renderBanner();
 
     expect(
       screen.getByTestId('tracker-sync-rejection-banner').getAttribute('data-rejection-code'),
     ).toBe('custodyUnavailable');
   });
 
-  it('still renders the legacy rotationLocked copy', () => {
+  it('still renders the legacy rotationLocked copy', async () => {
     setState({ rotationLocked: rejection('rotationLocked') });
-    renderBanner();
+    await renderBanner();
 
     const banner = screen.getByTestId('tracker-sync-rejection-banner');
     expect(banner.getAttribute('data-rejection-code')).toBe('rotationLocked');
     expect(banner.textContent).toContain('rotation in progress');
   });
 
-  it('renders nothing when there is no rejection', () => {
+  it('renders nothing when there is no rejection', async () => {
     setState({});
-    renderBanner();
+    await renderBanner();
 
     expect(screen.queryByTestId('tracker-sync-rejection-banner')).toBeNull();
+  });
+
+  it('renders the drain-hold banner in Japanese', async () => {
+    store.set(trackerSyncDrainHoldAtom, {
+      workspacePath: WS,
+      reason: 'unresolved-policy-would-delete',
+      rowsHeldBack: 2,
+    });
+    await renderBanner('ja');
+
+    const banner = screen.getByTestId('tracker-sync-drain-hold-banner');
+    expect(banner.textContent).toContain('トラッカー項目2件をまだチームに同期できていません。');
+    expect(banner.textContent).toContain('共有対象のトラッカーを確認できなかったため');
+    expect(screen.getByRole('button', { name: '再試行' })).toBeDefined();
+  });
+
+  it('localizes rejection copy and its dismiss accessibility label in Japanese', async () => {
+    setState({ custodyUnavailable: rejection('custodyUnavailable') });
+    await renderBanner('ja');
+
+    const banner = screen.getByTestId('tracker-sync-rejection-banner');
+    expect(banner.textContent).toContain('この組織の暗号化設定は移行されていないため');
+    expect(screen.getByTestId('tracker-sync-rejection-dismiss').getAttribute('aria-label')).toBe('閉じる');
   });
 });

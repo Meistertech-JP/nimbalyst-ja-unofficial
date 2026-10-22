@@ -26,8 +26,10 @@ export function initConsoleLinkListeners(): () => void {
     if (!handled && request.fromDeepLink) {
       // From the console, so the browser has already declined it.
       errorNotificationService.showWarning(
-        'Not in this project',
-        'Open the project this link belongs to, then try the link again.',
+        errorNotificationService.getLocalizedText('common', 'deep_links.not_in_this_project', 'Not in this project'),
+        errorNotificationService.getLocalizedText(
+          'common', 'deep_links.project_link_guidance', 'Open the project this link belongs to, then try the link again.',
+        ),
         { duration: 6000 },
       );
     }

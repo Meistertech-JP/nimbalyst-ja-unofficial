@@ -104,10 +104,34 @@ describe('SettingsService', () => {
     expect(svc.get('ai.defaultProvider')).toBe('claude-code');
     expect(svc.get('ai.chatShowToolCalls')).toBe(true);
     expect(svc.get('ai.apiKey.anthropic')).toBe('');
+    expect(svc.get('app.uiLanguage')).toBe('system');
     // Subscription CLI is off by default (opt-in).
     expect(svc.get('ai.provider.claude-code-cli')).toMatchObject({ enabled: false });
     // Codex (app server) is on by default.
     expect(svc.get('ai.provider.openai-codex')).toMatchObject({ enabled: true });
+  });
+
+  it('persists and broadcasts UI language preferences independently', async () => {
+    const { getSettingsService } = await import('../SettingsService');
+    const svc = getSettingsService();
+    const events: Array<{ key: string; value: unknown }> = [];
+    const unsubscribe = svc.subscribe((key, value) => events.push({ key, value }));
+
+    for (const language of ['system', 'en', 'ja'] as const) {
+      svc.set('app.uiLanguage', language);
+      expect(svc.get('app.uiLanguage')).toBe(language);
+    }
+    expect(events).toEqual([
+      { key: 'app.uiLanguage', value: 'system' },
+      { key: 'app.uiLanguage', value: 'en' },
+      { key: 'app.uiLanguage', value: 'ja' },
+    ]);
+    expect(() => svc.set('app.uiLanguage', 'fr' as any)).toThrow(/schema validation failed/);
+    unsubscribe();
+
+    vi.resetModules();
+    const reloaded = (await import('../SettingsService')).getSettingsService();
+    expect(reloaded.get('app.uiLanguage')).toBe('ja');
   });
 
   it.each([undefined, null, 'true', 1, {}, []].map(value => [value]))('keeps external following off for absent or malformed saved value %j', async (value) => {

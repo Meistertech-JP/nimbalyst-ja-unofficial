@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   autoUpdate,
   flip,
@@ -17,6 +18,7 @@ export function CanvasCommandTooltips({
 }: {
   surfaceRef: { current: HTMLElement | null };
 }) {
+  const { t } = useTranslation('editor');
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const id = useId();
   const { refs, floatingStyles } = useFloating({
@@ -111,9 +113,9 @@ export function CanvasCommandTooltips({
         className="canvas-command-tooltip"
         style={floatingStyles}
       >
-        <strong>{help.title}</strong>
+        <strong>{t(help.titleKey)}</strong>
         {shortcut && <kbd>{shortcut}</kbd>}
-        <div>{help.body}</div>
+        <div>{t(help.bodyKey)}</div>
       </div>
     </FloatingPortal>
   );

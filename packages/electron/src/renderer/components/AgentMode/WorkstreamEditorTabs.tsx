@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { store } from '@nimbalyst/runtime/store';
 import { TabsProvider, useTabs, useTabsActions, useTabNavigationShortcuts } from '../../contexts/TabsContext';
@@ -85,6 +86,7 @@ interface WorkstreamEditorTabsInnerProps {
 
 const WorkstreamEditorTabsInner = forwardRef<WorkstreamEditorTabsRef, WorkstreamEditorTabsInnerProps>(
   function WorkstreamEditorTabsInner({ workstreamId, workspacePath, basePath, isActive, onSwitchToAgentMode, onOpenSessionInChat, onTabDoubleClick, onBeforeMove }, ref) {
+    const { t } = useTranslation('files');
     const { tabs, activeTabId } = useTabs();
     const filePlacement = useAtomValue(agentFilePlacementAtom);
     const revealEditor = useSetAtom(revealWorkstreamEditorAtom);
@@ -378,8 +380,8 @@ const WorkstreamEditorTabsInner = forwardRef<WorkstreamEditorTabsRef, Workstream
     return (
       <div className="workstream-editor-tabs relative flex flex-col h-full overflow-hidden">
         {filePlacement === 'right' && <div className="workstream-file-viewer-heading flex items-center gap-2 px-3 h-8 shrink-0 border-b border-nim text-xs text-nim-muted">
-          <MaterialSymbol icon="description" size={16} /> File viewer
-          {tabs.length > 0 && <button type="button" className="ml-auto cursor-pointer hover:text-nim" title="Maximize or restore file viewer" onClick={() => onTabDoubleClick?.(activeTabId ?? '')}><MaterialSymbol icon="fullscreen" size={16} /></button>}
+          <MaterialSymbol icon="description" size={16} /> {t('workstream_viewer.title')}
+          {tabs.length > 0 && <button type="button" className="ml-auto cursor-pointer hover:text-nim" title={t('workstream_viewer.maximize_restore')} aria-label={t('workstream_viewer.maximize_restore')} onClick={() => onTabDoubleClick?.(activeTabId ?? '')}><MaterialSymbol icon="fullscreen" size={16} /></button>}
         </div>}
         <div className="workstream-editor-header flex items-center shrink-0 border-b border-nim">
           <div className="flex-1 min-w-0">
@@ -396,8 +398,8 @@ const WorkstreamEditorTabsInner = forwardRef<WorkstreamEditorTabsRef, Workstream
           <FilePlacementControl workstreamId={workstreamId} onBeforeMove={onBeforeMove} />
         </div>
         {tabs.length === 0 && <div className="workstream-file-viewer-empty flex-1 flex flex-col items-center justify-center gap-3 p-4 text-center text-sm text-nim-muted">
-          <span>Open a file to view it here</span>
-          <button type="button" className="rounded border border-nim px-3 py-1.5 cursor-pointer hover:bg-nim-hover text-nim" onClick={handleOpenFile}>Open file…</button>
+          <span>{t('workstream_viewer.empty')}</span>
+          <button type="button" className="rounded border border-nim px-3 py-1.5 cursor-pointer hover:bg-nim-hover text-nim" onClick={handleOpenFile}>{t('workstream_viewer.open_file')}</button>
         </div>}
         <FilePlacementNotice />
         <div className="workstream-editor-tabs-content flex-1 min-h-0 overflow-hidden" style={{ display: tabs.length ? undefined : 'none' }}>

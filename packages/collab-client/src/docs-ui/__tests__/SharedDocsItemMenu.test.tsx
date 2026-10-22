@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { atom, createStore, Provider } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { CollabHost } from '@nimbalyst/collab-client/core';
 import type { CollabDocsSession, SharedDocument, SharedFolder } from '@nimbalyst/collab-client/docs';
 import { CollabDocsUIProvider } from '../CollabDocsUIProvider';
@@ -43,7 +45,19 @@ const documents: SharedDocument[] = [
 const documentTypes = [] as const;
 const notUnread = atom(false);
 
-function renderList(props: React.ComponentProps<typeof SharedDocsListView>) {
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function renderList(
+  props: React.ComponentProps<typeof SharedDocsListView>,
+  i18n = englishI18n,
+  preference: 'en' | 'ja' = 'en',
+) {
   const session = {
     scope: {
       scopeKey: 'web-console:org-menu-test:project-primary',
@@ -82,11 +96,13 @@ function renderList(props: React.ComponentProps<typeof SharedDocsListView>) {
     toggleFavorite: vi.fn(),
   } as unknown as CollabDocsSession;
   const view = render(
-    <Provider store={createStore()}>
-      <CollabDocsUIProvider session={session}>
-        <SharedDocsListView {...props} />
-      </CollabDocsUIProvider>
-    </Provider>,
+    <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="en-US">
+      <Provider store={createStore()}>
+        <CollabDocsUIProvider session={session}>
+          <SharedDocsListView {...props} />
+        </CollabDocsUIProvider>
+      </Provider>
+    </UiLanguageProvider>,
   );
   return { ...view, session: session as unknown as Record<string, ReturnType<typeof vi.fn>> };
 }
@@ -101,6 +117,21 @@ afterEach(() => {
  * folder tree carries -- trash, delete, move -- have to be reachable from a row.
  */
 describe('row context menu', () => {
+  it('renders the fixed context-menu actions in Japanese without translating document names', async () => {
+    const { container } = renderList(
+      { folderId: 'folder-engineering', onSelectFolder: () => undefined },
+      japaneseI18n,
+      'ja',
+    );
+    const row = container.querySelector('[data-document-id="doc-in-engineering"]')!;
+    fireEvent.contextMenu(row);
+    expect(await screen.findByText('開く')).toBeTruthy();
+    expect(screen.getByText('リンクをコピー')).toBeTruthy();
+    expect(screen.getByText('名前を変更')).toBeTruthy();
+    expect(screen.getByText('移動')).toBeTruthy();
+    expect(screen.getByText('ゴミ箱へ移動')).toBeTruthy();
+  });
+
   it('trashes a document and moves it to another folder from its row', async () => {
     const { container, session } = renderList({ folderId: 'folder-engineering', onSelectFolder: () => undefined });
     const row = container.querySelector('[data-document-id="doc-in-engineering"]')!;
@@ -109,9 +140,11 @@ describe('row context menu', () => {
     // The menu is lazy-loaded, so its first appearance is awaited.
     fireEvent.click(await screen.findByText('Move to Trash'));
     expect(session.trashDocument).toHaveBeenCalledWith('doc-in-engineering');
+    await vi.waitFor(() => expect(container.querySelector('.shared-docs-item-menu')).toBeNull());
 
     fireEvent.contextMenu(row);
-    fireEvent.click(await screen.findByText('Move to…'));
+    fireEvent.click(await screen.findByText('Move'));
+    await screen.findByRole('dialog');
     fireEvent.click(document.querySelector('[data-folder-option="folder-marketing"]')!);
     fireEvent.click(document.querySelector('.shared-docs-move-confirm')!);
     expect(session.moveDocument).toHaveBeenCalledWith('doc-in-engineering', 'folder-marketing');
@@ -126,10 +159,12 @@ describe('row context menu', () => {
     const row = container.querySelector('[data-document-id="doc-bare-child"]')!;
 
     fireEvent.contextMenu(row);
-    fireEvent.click(await screen.findByText('Move to…'));
+    fireEvent.click(await screen.findByText('Move'));
+    await screen.findByRole('dialog');
     fireEvent.click(document.querySelector('[data-folder-option="root"]')!);
     fireEvent.click(document.querySelector('.shared-docs-move-confirm')!);
     expect(session.moveDocument).toHaveBeenCalledWith('doc-bare-child', null);
+    await vi.waitFor(() => expect(container.querySelector('.shared-docs-move-dialog')).toBeNull());
     expect(session.updateDocumentTitle).not.toHaveBeenCalled();
 
     fireEvent.contextMenu(row);
@@ -148,7 +183,7 @@ describe('row context menu', () => {
     fireEvent.contextMenu(row);
     fireEvent.click(await screen.findByText('Delete'));
     const dialog = await screen.findByTestId('collab-confirm-dialog');
-    expect(dialog.textContent).toContain('2 documents');
+    expect(dialog.textContent).toContain('2 document(s)');
     fireEvent.keyDown(dialog, { key: 'Escape' });
     await vi.waitFor(() => expect(screen.queryByTestId('collab-confirm-dialog')).toBeNull());
     expect(session.removeFolder).not.toHaveBeenCalled();

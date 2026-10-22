@@ -11,6 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   createEditorAPIOwnerToken,
   createExtensionStorage,
@@ -213,6 +214,8 @@ const PersonalExtensionEditor: React.FC<PersonalExtensionPageBodyProps & { body:
   body,
   embedded,
 }) => {
+  const { t } = useTranslation('common');
+  const { t: tCollab } = useTranslation('collabSidebar');
   const onEditRef = useRef(body.onEdit);
   onEditRef.current = body.onEdit;
   const fileExtension = page.fileExtension ?? undefined;
@@ -245,7 +248,7 @@ const PersonalExtensionEditor: React.FC<PersonalExtensionPageBodyProps & { body:
   if (!registration) {
     return (
       <div className={`personal-extension-page-body py-4 text-center text-sm text-nim-faint ${className ?? ''}`} role="status">
-        No installed extension opens {page.documentType} pages. Install the extension that made this page to edit it.
+        {t('personal_extension_page.no_editor', { documentType: page.documentType })}
       </div>
     );
   }
@@ -254,8 +257,12 @@ const PersonalExtensionEditor: React.FC<PersonalExtensionPageBodyProps & { body:
     <>
       {body.notice && (
         <div className="personal-page-tab-notice flex shrink-0 items-center gap-2 px-6 py-1.5 text-sm text-nim-muted" role="status">
-          <span className="flex-1">{body.notice}</span>
-          <button type="button" className="text-xs text-nim-muted hover:text-nim" onClick={body.dismissNotice}>Dismiss</button>
+          <span className="flex-1">{body.notice === 'This page changed elsewhere; your edits were kept in local history.'
+            ? tCollab('personal_page_body.notice_conflict')
+            : body.notice === 'This page could not be saved. Your next edit will retry.'
+              ? tCollab('personal_page_body.notice_save_failed')
+              : body.notice}</span>
+          <button type="button" className="text-xs text-nim-muted hover:text-nim" onClick={body.dismissNotice}>{t('dismiss')}</button>
         </div>
       )}
       <div className={`personal-extension-page-body relative flex min-h-0 flex-1 flex-col ${className ?? ''}`} data-file-path={personalPageDocumentPath(documentId)}>
@@ -264,10 +271,10 @@ const PersonalExtensionEditor: React.FC<PersonalExtensionPageBodyProps & { body:
         ) : (
           <div className="py-4 text-center text-sm text-nim-faint" role="status">
             {body.status === 'unavailable'
-              ? 'This page is unavailable on this device. It may have been deleted. Check Wiki Trash for a recoverable copy.'
-              : body.status === 'error' ? 'This page could not be loaded.' : 'Loading...'}
+              ? t('personal_extension_page.unavailable')
+              : body.status === 'error' ? t('personal_extension_page.load_error') : t('loading')}
             {(body.status === 'unavailable' || body.status === 'error') && (
-              <button type="button" className="ml-2 text-nim-link hover:underline" onClick={body.retryLoad}>Try again</button>
+              <button type="button" className="ml-2 text-nim-link hover:underline" onClick={body.retryLoad}>{t('retry')}</button>
             )}
           </div>
         )}

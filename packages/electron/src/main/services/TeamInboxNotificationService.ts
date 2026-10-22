@@ -4,6 +4,7 @@ import {
   type CommentRef,
 } from "@nimbalyst/collab-protocol";
 import type { TeamInboxMaterializedDelivery } from "@nimbalyst/runtime/sync";
+import { translateMainNotification } from "../i18n/mainI18n";
 
 export interface TeamInboxNativeNotification {
   title: string;
@@ -43,14 +44,14 @@ type DeliveryRoute =
    */
   | { kind: "inbox"; orgId: string };
 
-const SOURCE_FALLBACKS: Record<CommentRef["sourceKind"], string> = {
-  roomMessage: "Room",
-  dmMessage: "Direct message",
-  documentDiscussion: "Document discussion",
-  documentDecision: "Document question",
-  trackerComment: "Tracker",
-  documentInlineComment: "Document",
-  feedbackRequest: "Feedback request",
+const SOURCE_FALLBACKS: Record<CommentRef["sourceKind"], { key: string; fallback: string }> = {
+  roomMessage: { key: "team_inbox.room", fallback: "Room" },
+  dmMessage: { key: "team_inbox.direct_message", fallback: "Direct message" },
+  documentDiscussion: { key: "team_inbox.document_discussion", fallback: "Document discussion" },
+  documentDecision: { key: "team_inbox.document_question", fallback: "Document question" },
+  trackerComment: { key: "team_inbox.tracker", fallback: "Tracker" },
+  documentInlineComment: { key: "team_inbox.document", fallback: "Document" },
+  feedbackRequest: { key: "team_inbox.feedback_request", fallback: "Feedback request" },
 };
 
 /**
@@ -68,10 +69,10 @@ const ACTIVITY_DEEP_LINK_HOSTS: Record<
   feedbackRequest: null,
 };
 
-const ACTIVITY_FALLBACKS: Record<ActivityRef["resourceKind"], string> = {
-  tracker: "Tracker",
-  document: "Document",
-  feedbackRequest: "Feedback request",
+const ACTIVITY_FALLBACKS: Record<ActivityRef["resourceKind"], { key: string; fallback: string }> = {
+  tracker: { key: "team_inbox.tracker", fallback: "Tracker" },
+  document: { key: "team_inbox.document", fallback: "Document" },
+  feedbackRequest: { key: "team_inbox.feedback_request", fallback: "Feedback request" },
 };
 const MAX_NOTIFICATION_SANITIZER_INPUT_CHARS =
   MAX_INBOX_PREVIEW_SNIPPET_CHARS * 8;
@@ -93,7 +94,8 @@ function boundedSnippet(value: string | null | undefined): string {
     ?.replace(NIMBALYST_MARKDOWN_LINK_PATTERN, "$1")
     .replace(MARKDOWN_LINK_PATTERN, "$1")
     .replace(BARE_NIMBALYST_URL_PATTERN, "");
-  const cleaned = cleanLabel(sanitized) ?? "New activity";
+  const cleaned = cleanLabel(sanitized)
+    ?? translateMainNotification("team_inbox.new_activity", "New activity");
   return cleaned.slice(0, MAX_INBOX_PREVIEW_SNIPPET_CHARS);
 }
 
@@ -175,8 +177,10 @@ function routeForDelivery(
 function sourceFallback(delivery: TeamInboxMaterializedDelivery): string {
   const source = delivery.source;
   if (!source) return "Inbox";
-  if ("sourceKind" in source) return SOURCE_FALLBACKS[source.sourceKind];
-  return ACTIVITY_FALLBACKS[source.resourceKind];
+  const fallback = "sourceKind" in source
+    ? SOURCE_FALLBACKS[source.sourceKind]
+    : ACTIVITY_FALLBACKS[source.resourceKind];
+  return translateMainNotification(fallback.key, fallback.fallback);
 }
 
 /**
@@ -246,7 +250,7 @@ export class TeamInboxNotificationService {
       cleanLabel(delivery.preview?.actorLabel) ??
       cleanLabel(delivery.actor?.sessionName) ??
       cleanLabel(resolvedMemberLabel) ??
-      "A teammate";
+      translateMainNotification("team_inbox.teammate", "A teammate");
     const orgName = cleanLabel(delivery.orgName) ?? "Nimbalyst Teams";
     const body = `${sender}: ${boundedSnippet(delivery.preview?.snippet)}`;
 

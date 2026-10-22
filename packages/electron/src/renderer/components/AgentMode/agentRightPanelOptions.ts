@@ -1,19 +1,22 @@
 import type { AgentRightPanelMode } from "../../store/atoms/workstreamState";
 import type { WindowTopBarPanelOption } from "../WindowTopBar/WindowTopBar";
 
-const modes: Array<{ id: AgentRightPanelMode; label: string; icon: string }> = [
-  { id: "edited-files", label: "Edited Files", icon: "description" },
-  { id: "review", label: "Review", icon: "rate_review" },
-  { id: "session-chat", label: "Chat with Session", icon: "forum" },
-  { id: "file-viewer", label: "File viewer", icon: "tab" },
+const modes: Array<{ id: AgentRightPanelMode; icon: string }> = [
+  { id: "edited-files", icon: "description" },
+  { id: "review", icon: "rate_review" },
+  { id: "session-chat", icon: "forum" },
+  { id: "file-viewer", icon: "tab" },
 ];
 
 export function agentRightPanelOptions(
   selected: AgentRightPanelMode,
-  onSelect: (mode: AgentRightPanelMode) => void
+  onSelect: (mode: AgentRightPanelMode) => void,
+  labelFor: (mode: AgentRightPanelMode) => string,
 ): WindowTopBarPanelOption[] {
   return modes.map((mode) => ({
-    ...mode,
+    id: mode.id,
+    icon: mode.icon,
+    label: labelFor(mode.id),
     selected: mode.id === selected,
     onSelect: () => onSelect(mode.id),
   }));

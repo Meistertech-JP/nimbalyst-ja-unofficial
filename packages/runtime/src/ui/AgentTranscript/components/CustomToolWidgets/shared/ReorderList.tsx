@@ -11,6 +11,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DndContext,
   KeyboardSensor,
@@ -92,6 +93,7 @@ function ReorderRow({
   testIds,
   trailing,
 }: ReorderRowProps) {
+  const { t } = useTranslation('aichat');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: itemId });
 
   const style = {
@@ -126,7 +128,7 @@ function ReorderRow({
         {...attributes}
         {...listeners}
         disabled={disabled}
-        aria-label="Drag to reorder"
+        aria-label={t('user_input.drag_reorder')}
         // touch-action: none on the handle -- once the TouchSensor fires
         // (after the activation delay) the browser must NOT also try to
         // pan/scroll. Without this, iOS routes the gesture to scroll and
@@ -156,7 +158,7 @@ function ReorderRow({
           data-testid={testIds.remove}
           onClick={onRemove}
           disabled={disabled || !canRemove}
-          aria-label="Remove item"
+          aria-label={t('user_input.remove_item')}
           className="w-6 h-6 shrink-0 rounded text-nim-faint hover:text-nim-error hover:bg-[color-mix(in_srgb,var(--nim-error)_12%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -178,6 +180,7 @@ export const ReorderList: React.FC<ReorderListProps> = ({
   testIds = {},
   renderTrailing,
 }) => {
+  const { t } = useTranslation('aichat');
   // Three sensors for cross-platform support:
   //  - MouseSensor (distance) for desktop click-drag
   //  - TouchSensor (delay) for iOS/Android long-press drag. The delay is what
@@ -253,7 +256,9 @@ export const ReorderList: React.FC<ReorderListProps> = ({
       </DndContext>
       {state.removedIds.length > 0 && (
         <div className="text-[0.6875rem] text-nim-faint italic px-1">
-          Removed: {state.removedIds.length} item{state.removedIds.length === 1 ? '' : 's'}
+          {t(state.removedIds.length === 1 ? 'user_input.removed_one' : 'user_input.removed_other', {
+            count: state.removedIds.length,
+          })}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { activeFileRepoPathAtom } from '../../store/atoms/workspaceRepos';
 import { copyToClipboard, MaterialSymbol } from '@nimbalyst/runtime';
 import { TrackerUnreadDot } from '@nimbalyst/runtime/readReceipts/TrackerUnreadDot';
@@ -184,6 +185,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
   onUpdateSavedView,
   onExitSavedView,
 }) => {
+  const { t } = useTranslation('tracker');
   const [searchQuery, setSearchQuery] = useState('');
   const [quickAddType, setQuickAddType] = useState<string | null>(null);
   const [pendingWorktreeLaunch, setPendingWorktreeLaunch] = useState<TrackerLaunchContext | null>(null);
@@ -239,10 +241,10 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
       [currentRadarActorKey]: {
         liveSessions: liveSessions || undefined,
         unpushedCommits: unpushedCommits || undefined,
-        divergence: behind > 0 ? `${behind} behind` : undefined,
+        divergence: behind > 0 ? t('main_extra.behind_count', { count: behind }) : undefined,
       },
     };
-  }, [agentAttention.running.length, currentRadarActorKey, gitStatus?.ahead, gitStatus?.behind]);
+  }, [agentAttention.running.length, currentRadarActorKey, gitStatus?.ahead, gitStatus?.behind, t]);
 
   useEffect(() => {
     if (!workspacePath) return;
@@ -431,11 +433,11 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     if (!item) return [];
     return resolveLinkedSessions(item, store.get(sessionRegistryAtom)).map(session => ({
       id: session.id,
-      title: session.title || 'Untitled session',
+      title: session.title || t('detail_extra.untitled_session'),
       provider: session.provider,
       timeLabel: getRelativeTimeString(session.updatedAt),
     }));
-  }, []);
+  }, [store, t]);
 
   /** Launch a new AI session linked to a tracker item */
   const handleLaunchSession = useCallback(async (trackerItemId: string) => {
@@ -458,7 +460,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           id: sessionId,
           provider,
           model: defaultModel,
-          title: 'New Session',
+          title: t('new_session', { ns: 'sessions' }),
         },
         workspaceId: workspacePath,
       });
@@ -485,7 +487,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     } catch (err) {
       console.error('[TrackerMainView] Failed to launch session:', err);
     }
-  }, [workspacePath, refreshSessionList, setSelectedWorkstream, setWindowMode, defaultModel]);
+  }, [workspacePath, refreshSessionList, setSelectedWorkstream, setWindowMode, defaultModel, t]);
 
   /** Launch a new isolated worktree session linked to a tracker item. */
   const handleLaunchWorktree = useCallback((trackerItemId: string) => {
@@ -506,7 +508,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
         ...options,
         initialDraft: pendingWorktreeLaunch.draftInput,
       });
-      if (!sessionId) throw new Error('Worktree session was not created');
+      if (!sessionId) throw new Error(t('main_extra.worktree_not_created'));
 
       await window.electronAPI.invoke('tracker:link-session', {
         trackerId: pendingWorktreeLaunch.trackerLinkId,
@@ -519,7 +521,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
       console.error('[TrackerMainView] Failed to launch worktree:', err);
       throw err;
     }
-  }, [createNewWorktreeSession, handleSwitchToAgentMode, pendingWorktreeLaunch, refreshSessionList]);
+  }, [createNewWorktreeSession, handleSwitchToAgentMode, pendingWorktreeLaunch, refreshSessionList, t]);
 
   // Base item sets from atoms
   const activeItems = useAtomValue(trackerItemsByTypeAtom(filterType));
@@ -575,7 +577,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
   }, [allTags, tagFilter]);
 
   // Source provenance: 'native' or the importer provider id (from origin).
-  const sourceField = useMemo(() => sourceFilterField(baseFilteredItems.map(recordSourceKey)), [baseFilteredItems]);
+  const sourceField = useMemo(() => sourceFilterField(baseFilteredItems.map(recordSourceKey), t), [baseFilteredItems, t]);
   const sourceOptions = useMemo(() => (sourceField.options ?? []).map((option) => option.value), [sourceField]);
 
   // Only worth offering the Source filter once imported items coexist with native ones.
@@ -682,7 +684,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
   );
   const omniboxFilters = useMemo(() => withSourceClause(columnFilters, sourceFilter), [columnFilters, sourceFilter]);
   const handleOmniboxFiltersChange = useCallback((filters: TrackerFilterSet) => {
-    const split = splitSourceClause(filters, sourceOptions);
+    const split = splitSourceClause(filters, sourceOptions, t);
     setSourceFilter(split.sourceFilter);
     handleColumnFiltersChange(split.columnFilters);
   }, [handleColumnFiltersChange, setSourceFilter, sourceOptions]);
@@ -899,18 +901,18 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     try {
       await copyToClipboard(url);
       errorNotificationService.showInfo(
-        'Link copied',
-        'Paste it anywhere to open this tracker in Nimbalyst.',
+        t('main_extra.link_copied'),
+        t('main_extra.link_copied_message'),
         { duration: 3000 }
       );
     } catch (err) {
       console.error('[TrackerMainView] Failed to copy link:', err);
       errorNotificationService.showError(
-        'Copy failed',
-        'Could not write the link to the clipboard.'
+        t('main_extra.copy_failed'),
+        t('main_extra.copy_failed_message')
       );
     }
-  }, [teamOrgId]);
+  }, [teamOrgId, t]);
 
   /** Link that reopens the item in document view (`view=document`). */
   const handleCopyDocumentLink = useCallback(async () => {
@@ -919,18 +921,18 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     try {
       await copyToClipboard(url);
       errorNotificationService.showInfo(
-        'Document link copied',
-        'Paste it anywhere to open this item as a document in Nimbalyst.',
+        t('main_extra.document_link_copied'),
+        t('main_extra.document_link_copied_message'),
         { duration: 3000 }
       );
     } catch (err) {
       console.error('[TrackerMainView] Failed to copy document link:', err);
       errorNotificationService.showError(
-        'Copy failed',
-        'Could not write the link to the clipboard.'
+        t('main_extra.copy_failed'),
+        t('main_extra.copy_failed_message')
       );
     }
-  }, [documentItemId, teamOrgId]);
+  }, [documentItemId, teamOrgId, t]);
 
   /** Bulk archive for multi-select context menu */
   const handleArchiveItems = useCallback(async (itemIds: string[], archive: boolean) => {
@@ -950,11 +952,17 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     // An archived tracker keeps everything it has and gains nothing more.
     const writeAccess = resolveTrackerWriteAccess(globalRegistry.get(type));
     if (!writeAccess.canWrite) {
-      errorNotificationService.showInfo('Archived tracker', writeAccess.readOnlyReason ?? '', { duration: 4000 });
+      errorNotificationService.showInfo(
+        t('main_extra.archived_tracker'),
+                t('detail_extra.lifecycle.archived_read_only_reason', {
+          trackerName: globalRegistry.get(type)?.displayNamePlural?.trim() || t('main_extra.archived_tracker'),
+        }),
+        { duration: 4000 },
+      );
       return;
     }
     setQuickAddType(type);
-  }, []);
+  }, [t]);
 
   const handleQuickAddClose = useCallback(() => {
     setQuickAddType(null);
@@ -995,19 +1003,19 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     const activeTracker = filterType !== 'all'
       ? trackerTypes.find(t => t.type === filterType)
       : null;
-    const typeName = activeTracker ? activeTracker.displayNamePlural : 'Items';
+    const typeName = activeTracker ? activeTracker.displayNamePlural : t('main_extra.items');
 
     const parts: string[] = [];
-    if (activeFilters.includes('archived')) parts.push('Archived');
-    if (activeFilters.includes('mine')) parts.push('My');
-    if (activeFilters.includes('high-priority')) parts.push('High Priority');
-    if (activeFilters.includes('recently-updated')) parts.push('Recent');
+    if (activeFilters.includes('archived')) parts.push(t('main_extra.filter_archived'));
+    if (activeFilters.includes('mine')) parts.push(t('main_extra.filter_mine'));
+    if (activeFilters.includes('high-priority')) parts.push(t('main_extra.filter_high_priority'));
+    if (activeFilters.includes('recently-updated')) parts.push(t('main_extra.filter_recent'));
 
     if (parts.length === 0) {
-      return activeTracker ? activeTracker.displayNamePlural : 'All Items';
+      return activeTracker ? activeTracker.displayNamePlural : t('main_extra.all_items');
     }
     return `${parts.join(' ')} ${typeName}`;
-  }, [filterType, activeFilters, trackerTypes]);
+  }, [filterType, activeFilters, trackerTypes, t]);
 
   const displayedItemCount = viewMode === 'inbox'
     ? inboxFilteredItems.length
@@ -1084,7 +1092,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
       overrideItems={viewItemsWithPersonalFields}
       onArchiveItems={handleArchiveItems}
       onDeleteItems={handleDeleteItems}
-      confirmDelete={confirmTrackerItemDelete}
+      confirmDelete={(itemCount) => confirmTrackerItemDelete(itemCount, t)}
       onCopyDeepLink={teamOrgId ? handleCopyDeepLink : undefined}
       searchQuery={searchQuery}
       hasExternalFilters={hasExternalTableFilters}
@@ -1163,8 +1171,8 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
                 type="button"
                 className="tracker-toolbar-filter-button inline-flex shrink-0 items-center rounded p-0.5 text-nim-faint hover:bg-nim-tertiary hover:text-nim"
                 onClick={() => setOpenFiltersToken(token => token + 1)}
-                title="Filter by field"
-                aria-label="Filter by field"
+                title={t('main_extra.filter_by_field')}
+                aria-label={t('main_extra.filter_by_field')}
                 data-testid="tracker-view-filter-button"
               >
                 <MaterialSymbol icon="filter_list" size={14} />
@@ -1209,7 +1217,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     <>
       {personalStateRequired && !personalStateHydrated ? (
             <div className="h-full flex items-center justify-center text-sm text-nim-muted" data-testid="tracker-personal-state-loading">
-              Loading personal tracker state...
+              {t('main_extra.loading_personal_state')}
             </div>
           ) : viewMode === 'list' ? (
             <TrackerTable
@@ -1234,7 +1242,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
               overrideItems={viewItemsWithPersonalFields}
               onArchiveItems={handleArchiveItems}
               onDeleteItems={handleDeleteItems}
-              confirmDelete={confirmTrackerItemDelete}
+              confirmDelete={(itemCount) => confirmTrackerItemDelete(itemCount, t)}
               onCopyDeepLink={teamOrgId ? handleCopyDeepLink : undefined}
               onOpenDocument={handleOpenItemAsDocument}
               searchQuery={searchQuery}
@@ -1365,7 +1373,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
               data-testid="tracker-hidden-by-scope"
             >
               <span>
-                {hiddenByScopeCount} closed item{hiddenByScopeCount === 1 ? '' : 's'} hidden
+                {t('main_extra.hidden_closed_count', { count: hiddenByScopeCount })}
               </span>
               <button
                 type="button"
@@ -1373,7 +1381,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
                 onClick={() => setModeLayout({ statusScope: 'all' })}
                 data-testid="tracker-hidden-by-scope-show-all"
               >
-                Show all
+                {t('main_extra.show_all')}
               </button>
             </div>
           )}

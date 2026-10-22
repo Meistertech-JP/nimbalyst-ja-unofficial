@@ -1,6 +1,8 @@
 import React from 'react';
 import { it, expect, vi } from 'vitest';
 import { Provider } from 'jotai';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { store } from '@nimbalyst/runtime/store/store';
 import { render, screen, waitFor, cleanup, act } from '@testing-library/react';
 import { ShellTrackingNotice } from '../ShellTrackingNotice';
@@ -23,7 +25,12 @@ it('refreshes coverage through the central listener, isolates scopes, and reject
   });
   Object.defineProperty(window, 'electronAPI', { configurable: true, value: { invoke, on } });
   const stop = initFileStateListeners('/workspace');
-  const view = (ids: string[]) => <Provider store={store}><ShellTrackingNotice sessionIds={ids} /></Provider>;
+  const i18n = await createI18nInstance('en');
+  const view = (ids: string[]) => (
+    <I18nextProvider i18n={i18n}>
+      <Provider store={store}><ShellTrackingNotice sessionIds={ids} /></Provider>
+    </I18nextProvider>
+  );
   try {
     const { rerender, unmount } = render(view(['a']));
     rerender(view(['b']));
@@ -62,6 +69,31 @@ it('refreshes coverage through the central listener, isolates scopes, and reject
     cleanup();
     stop();
     expect(handlers.size).toBe(0);
+    Object.defineProperty(window, 'electronAPI', { configurable: true, value: original });
+  }
+});
+
+it('renders Japanese coverage-unavailable guidance', async () => {
+  const original = window.electronAPI;
+  const i18n = await createI18nInstance('ja');
+  Object.defineProperty(window, 'electronAPI', {
+    configurable: true,
+    value: { invoke: vi.fn().mockRejectedValue(new Error('unavailable')) },
+  });
+
+  try {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Provider store={store}>
+          <ShellTrackingNotice sessionIds={[]} />
+        </Provider>
+      </I18nextProvider>,
+    );
+
+    expect(await screen.findByText('ファイル追跡の状態を確認できません')).toBeTruthy();
+    expect(screen.getByText(/コミットする前に変更内容を確認してください。/)).toBeTruthy();
+  } finally {
+    cleanup();
     Object.defineProperty(window, 'electronAPI', { configurable: true, value: original });
   }
 });

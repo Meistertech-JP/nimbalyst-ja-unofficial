@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useAtomValue, useStore } from 'jotai';
+import { useTranslation } from 'react-i18next';
 
 import { organizationDirectoryStateAtom, personalAccountsAtom } from '../../store/atoms/settingsDomains';
 import { refreshOrganizationDirectory } from '../../store/listeners/stytchAuthListeners';
@@ -57,6 +58,7 @@ function OrgModeHostContent({
   onOrgIdChange,
   sidebarCollapsed,
 }: OrgModeHostProps & { sidebarCollapsed: boolean }) {
+  const { t } = useTranslation('common');
   const directory = useAtomValue(organizationDirectoryStateAtom);
   const accounts = useAtomValue(personalAccountsAtom);
   const organizations = directory.entries;
@@ -122,7 +124,7 @@ function OrgModeHostContent({
     return (
       <section className="org-mode-host team-mode team-mode-loading-arm flex h-full flex-col overflow-hidden bg-[var(--nim-bg)] text-[var(--nim-text)]" data-component="OrgModeHost">
         {chrome === 'window' && <OrgWindowTitleBar />}
-        <div className="team-mode-loading flex flex-1 items-center justify-center text-sm text-nim-muted">Loading organization…</div>
+        <div className="team-mode-loading flex flex-1 items-center justify-center text-sm text-nim-muted">{t('account_ui.loading_organization')}</div>
       </section>
     );
   }
@@ -145,8 +147,8 @@ function OrgModeHostContent({
     <div className="org-mode-directory-host flex h-full min-h-0 flex-col">
       {!directory.complete && (
         <div className="org-mode-directory-status px-4 py-2 text-sm text-nim-muted" role="status">
-          {directory.status === 'error' ? organizationLoadError : 'Refreshing organizations…'}
-          {directory.status === 'error' && <button type="button" onClick={reloadOrganizations}>Retry</button>}
+          {directory.status === 'error' ? organizationLoadError : t('account_ui.refreshing_organizations')}
+          {directory.status === 'error' && <button type="button" onClick={reloadOrganizations}>{t('retry')}</button>}
         </div>
       )}
       <OrgModeBody

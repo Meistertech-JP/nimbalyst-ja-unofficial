@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FeedbackAsk, FeedbackAskArtifact } from '@nimbalyst/collab-protocol';
 import { WidgetOptionList, WidgetOptionRow } from '../shared/InteractiveWidgetChrome';
 import type {
@@ -40,41 +41,45 @@ const ComposeArtifactCard: React.FC<{
   description?: string;
   preview: React.ReactNode;
   onExpand?: (anchor: HTMLElement | null) => void;
-}> = ({ label, description, preview, onExpand }) => (
-  <div
-    data-testid="feedback-compose-option-card"
-    className="feedback-compose-option-card relative overflow-hidden rounded-md border border-nim bg-nim-secondary"
-  >
-    {/*
-      The picture is the button. The scaled preview is `pointer-events: none`,
-      so nothing inside the artifact can take the click, which is what makes the
-      whole panel a safe target -- and what made a 20px corner icon a needlessly
-      small version of the same affordance.
-    */}
-    {onExpand ? (
-      <button
-        type="button"
-        data-testid="feedback-compose-option-expand"
-        aria-label={`Open ${label}`}
-        onClick={(event) =>
-          onExpand(event.currentTarget.closest<HTMLElement>('.feedback-compose-option-card'))}
-        className="relative block h-44 w-full border-b border-nim bg-nim p-2.5 text-left cursor-zoom-in hover:ring-1 hover:ring-inset hover:ring-nim-primary"
-      >
-        {preview}
-      </button>
-    ) : (
-      <div className="relative h-44 border-b border-nim bg-nim p-2.5">{preview}</div>
-    )}
-    <div className="flex flex-col gap-0.5 px-2.5 py-2">
-      <span className="text-xs font-semibold leading-snug text-nim select-text">{label}</span>
-      {description && (
-        <span className="text-[0.6875rem] leading-snug text-nim-muted select-text">
-          {description}
-        </span>
+}> = ({ label, description, preview, onExpand }) => {
+  const { t } = useTranslation('aichat');
+
+  return (
+    <div
+      data-testid="feedback-compose-option-card"
+      className="feedback-compose-option-card relative overflow-hidden rounded-md border border-nim bg-nim-secondary"
+    >
+      {/*
+        The picture is the button. The scaled preview is `pointer-events: none`,
+        so nothing inside the artifact can take the click, which is what makes the
+        whole panel a safe target -- and what made a 20px corner icon a needlessly
+        small version of the same affordance.
+      */}
+      {onExpand ? (
+        <button
+          type="button"
+          data-testid="feedback-compose-option-expand"
+          aria-label={t('feedback_results.open_artifact', { label })}
+          onClick={(event) =>
+            onExpand(event.currentTarget.closest<HTMLElement>('.feedback-compose-option-card'))}
+          className="relative block h-44 w-full border-b border-nim bg-nim p-2.5 text-left cursor-zoom-in hover:ring-1 hover:ring-inset hover:ring-nim-primary"
+        >
+          {preview}
+        </button>
+      ) : (
+        <div className="relative h-44 border-b border-nim bg-nim p-2.5">{preview}</div>
       )}
+      <div className="flex flex-col gap-0.5 px-2.5 py-2">
+        <span className="text-xs font-semibold leading-snug text-nim select-text">{label}</span>
+        {description && (
+          <span className="text-[0.6875rem] leading-snug text-nim-muted select-text">
+            {description}
+          </span>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ComposeArtifactGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div
@@ -98,6 +103,7 @@ export const FeedbackComposeAskPreview: React.FC<{
   renderArtifact?: FeedbackComposeArtifactRenderer;
   renderArtifactPopover?: FeedbackComposeArtifactPopoverRenderer;
 }> = ({ ask, renderArtifact, renderArtifactPopover }) => {
+  const { t } = useTranslation('aichat');
   const artifacts = 'artifacts' in ask ? ask.artifacts : undefined;
   const showCards = Boolean(renderArtifact && artifacts?.length);
 
@@ -176,7 +182,7 @@ export const FeedbackComposeAskPreview: React.FC<{
               selected={false}
             />
           ))}
-          {ask.allowOther && <WidgetOptionRow label="Other" selected={false} />}
+          {ask.allowOther && <WidgetOptionRow label={t('questions.other')} selected={false} />}
         </WidgetOptionList>
       );
 
@@ -246,13 +252,13 @@ export const FeedbackComposeAskPreview: React.FC<{
       );
 
     case 'editText':
-      return <StaticField>{ask.placeholder || ask.initialText || 'Optional…'}</StaticField>;
+      return <StaticField>{ask.placeholder || ask.initialText || t('feedback_compose.optional_placeholder')}</StaticField>;
 
     case 'confirm':
       return (
         <WidgetOptionList>
-          <WidgetOptionRow label="Yes" selected={ask.defaultValue === true} />
-          <WidgetOptionRow label="No" selected={ask.defaultValue === false} />
+          <WidgetOptionRow label={t('user_input.yes')} selected={ask.defaultValue === true} />
+          <WidgetOptionRow label={t('user_input.no')} selected={ask.defaultValue === false} />
         </WidgetOptionList>
       );
 
@@ -260,7 +266,7 @@ export const FeedbackComposeAskPreview: React.FC<{
       return (
         <StaticField>
           {ask.minLabel ? `${ask.minLabel} · ` : ''}
-          {ask.min} to {ask.max}
+          {t('feedback_compose.rating_range', { min: ask.min, max: ask.max })}
           {ask.maxLabel ? ` · ${ask.maxLabel}` : ''}
         </StaticField>
       );

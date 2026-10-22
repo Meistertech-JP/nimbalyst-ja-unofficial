@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PromptMarker } from '../types';
 import { formatTimeAgo, formatDuration } from '../../../utils/dateUtils';
 
@@ -17,6 +18,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
   isCollapsed,
   onToggleCollapse
 }) => {
+  const { t } = useTranslation('aichat');
   const [selectedPromptId, setSelectedPromptId] = useState<number | null>(null);
 
   const handlePromptClick = (marker: PromptMarker) => {
@@ -50,7 +52,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
               fontSize: '0.875rem',
               margin: 0
             }}>
-              Prompt History
+              {t('transcript_sidebar.prompt_history')}
             </h3>
           </div>
 
@@ -66,7 +68,7 @@ export const TranscriptSidebar: React.FC<TranscriptSidebarProps> = ({
                 color: 'var(--nim-text-faint)',
                 fontSize: '0.875rem'
               }}>
-                No prompts yet. Start by entering a prompt.
+                {t('transcript_sidebar.no_prompts_hint')}
               </div>
             ) : (
               <>

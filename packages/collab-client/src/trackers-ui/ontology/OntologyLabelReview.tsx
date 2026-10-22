@@ -5,6 +5,7 @@
  * reader never sees health or proposals.
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { LabelRegistry, PredicateDefinition, TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { buildKnowledgeGraph, entityKind, ENTITY_TYPE, type HealthItem } from './ontologyKnowledge';
 import { effectiveLabelRegistry } from './ontologyLabels';
@@ -32,6 +33,7 @@ export interface OntologyLabelReviewProps {
 }
 
 export function OntologyLabelReview({ labelId, health, types, predicates = null, labels = null, records, writer, onOpenItem }: OntologyLabelReviewProps) {
+  const { t } = useTranslation('tracker');
   const [drawer, setDrawer] = useState<DrawerTarget | null>(null);
   const graph = useMemo(() => buildKnowledgeGraph(records), [records]);
   const proposalRecords = useMemo(() => records.filter((record) => record.primaryType === ONTOLOGY_PROPOSAL_TYPE && !record.archived), [records]);
@@ -54,7 +56,7 @@ export function OntologyLabelReview({ labelId, health, types, predicates = null,
   return (
     <div className="ontology-label-review" data-label-id={labelId}>
       {health.length === 0 ? (
-        <p className="ontology-label-review-empty">Nothing to fix.</p>
+        <p className="ontology-label-review-empty">{t('collaboration_surface.nothing_to_fix')}</p>
       ) : (
         <ul>
           {health.map((item) => {
@@ -70,7 +72,7 @@ export function OntologyLabelReview({ labelId, health, types, predicates = null,
                       ? { kind: 'proposal', id: existing.id }
                       : { kind: 'request', draft: proposalRequestFor(item), detail: item.detail, pages: item.items })}
                   >
-                    {existing ? 'View proposal' : 'Fix'}
+                    {existing ? t('ontology_inspector.view_proposal') : t('ontology_inspector.fix')}
                   </button>
                 )}
               </li>
@@ -80,16 +82,20 @@ export function OntologyLabelReview({ labelId, health, types, predicates = null,
       )}
       {touching.length > 0 && (
         <>
-          <div className="ontology-label">Open proposals</div>
+          <div className="ontology-label">{t('collaboration_surface.open_proposals')}</div>
           <ul>
             {touching.map((proposal) => {
               const status = ontologyFieldValue(proposal, 'status');
+              const statusValue = typeof status === 'string' && status ? status : 'proposed';
+              const statusLabel = ['proposed', 'accepted', 'applied', 'rejected', 'undone'].includes(statusValue)
+                ? t(`ontology_proposals.status_${statusValue}`)
+                : proposalStatusLabel(statusValue);
               return (
                 <li key={proposal.id} className="ontology-label-review-row">
                   <button type="button" className="ontology-link" onClick={() => setDrawer({ kind: 'proposal', id: proposal.id })}>
                     {ontologyRecordTitle(proposal).replace(/^Improve: /, '')}
                   </button>
-                  <span className="ontology-status" data-status={status}>{proposalStatusLabel(typeof status === 'string' && status ? status : 'proposed')}</span>
+                  <span className="ontology-status" data-status={status}>{statusLabel}</span>
                 </li>
               );
             })}

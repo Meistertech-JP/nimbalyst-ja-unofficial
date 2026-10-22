@@ -11,8 +11,9 @@ import { scanFormulaTokens } from './referenceScanner';
 
 export interface FormulaErrorDescription {
   code: FormulaErrorCode;
-  title: string;
-  detail: string;
+  titleKey: string;
+  detailKey: string;
+  detailParams?: Record<string, string | number>;
 }
 
 const ERROR_CODES: readonly FormulaErrorCode[] = [
@@ -42,40 +43,42 @@ export function describeFormulaError(code: FormulaErrorCode, formula?: string): 
     case '#REF!':
       return {
         code,
-        title: 'Invalid reference',
-        detail: text?.toUpperCase().includes('#REF!')
-          ? 'The formula points at a row or column that was deleted.'
-          : 'A reference points outside the sheet.',
+        titleKey: 'spreadsheet_ui.formula_errors.title_ref',
+        detailKey: text?.toUpperCase().includes('#REF!')
+          ? 'spreadsheet_ui.formula_errors.detail_ref_deleted'
+          : 'spreadsheet_ui.formula_errors.detail_ref_outside',
       };
     case '#NAME?': {
       const names = text ? unknownNames(text) : [];
       return {
         code,
-        title: 'Unknown name',
-        detail: names.length > 0
-          ? `Not a function or reference: ${names.join(', ')}. Check the spelling, or quote text.`
-          : 'The formula uses a name that is not a function or reference. Check the spelling, or quote text.',
+        titleKey: 'spreadsheet_ui.formula_errors.title_name',
+        detailKey: names.length > 0
+          ? 'spreadsheet_ui.formula_errors.detail_name_unknown'
+          : 'spreadsheet_ui.formula_errors.detail_name_general',
+        ...(names.length > 0 ? { detailParams: { names: names.join(', ') } } : {}),
       };
     }
     case '#VALUE!':
-      return { code, title: 'Wrong value type', detail: 'An argument has the wrong type, such as text where a number is needed.' };
+      return { code, titleKey: 'spreadsheet_ui.formula_errors.title_value', detailKey: 'spreadsheet_ui.formula_errors.detail_value' };
     case '#DIV/0!':
-      return { code, title: 'Division by zero', detail: 'The formula divides by zero or by an empty cell.' };
+      return { code, titleKey: 'spreadsheet_ui.formula_errors.title_div_zero', detailKey: 'spreadsheet_ui.formula_errors.detail_div_zero' };
     case '#CIRC!':
-      return { code, title: 'Circular reference', detail: 'The formula depends on its own result, directly or through other cells.' };
+      return { code, titleKey: 'spreadsheet_ui.formula_errors.title_circular', detailKey: 'spreadsheet_ui.formula_errors.detail_circular' };
     case '#LIMIT!':
       return {
         code,
-        title: 'Too large to calculate',
-        detail: `The formula reads too many cells, or sits in a chain of more than ${FORMULA_LIMITS.maxDependencyDepth} dependent formulas.`,
+        titleKey: 'spreadsheet_ui.formula_errors.title_limit',
+        detailKey: 'spreadsheet_ui.formula_errors.detail_limit',
+        detailParams: { maxDepth: FORMULA_LIMITS.maxDependencyDepth },
       };
     case '#N/A':
-      return { code, title: 'Value not available', detail: 'A lookup did not find a match, or a value is missing.' };
+      return { code, titleKey: 'spreadsheet_ui.formula_errors.title_na', detailKey: 'spreadsheet_ui.formula_errors.detail_na' };
     case '#NUM!':
-      return { code, title: 'Invalid number', detail: 'A calculation produced a number that is out of range or undefined.' };
+      return { code, titleKey: 'spreadsheet_ui.formula_errors.title_num', detailKey: 'spreadsheet_ui.formula_errors.detail_num' };
     case '#NULL!':
-      return { code, title: 'Empty intersection', detail: 'Two ranges that were meant to intersect do not overlap.' };
+      return { code, titleKey: 'spreadsheet_ui.formula_errors.title_null', detailKey: 'spreadsheet_ui.formula_errors.detail_null' };
     case '#ERROR!':
-      return { code, title: 'Formula error', detail: 'The formula could not be read. Check for a missing parenthesis or operator.' };
+      return { code, titleKey: 'spreadsheet_ui.formula_errors.title_error', detailKey: 'spreadsheet_ui.formula_errors.detail_error' };
   }
 }

@@ -8,6 +8,8 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, waitFor } from '@testing-library/react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const navigation = vi.hoisted(() => ({ open: vi.fn() }));
 
@@ -34,11 +36,17 @@ import { HtmlFileEmbedFrame } from '../HtmlFileEmbedFrame';
 
 describe('HtmlFileEmbedFrame', () => {
   it('resolves relative links against the HTML file, not the embedding page', async () => {
+    const i18n = await createI18nInstance('ja');
     const { container } = render(
-      <LexicalComposer initialConfig={{ namespace: 'html-file-embed-test', onError: (error) => { throw error; } }}>
-        <HtmlFileEmbedFrame src="Maps/Map.html" label="Map" attrs={{}} nodeKey="missing" />
-      </LexicalComposer>,
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US">
+        <LexicalComposer initialConfig={{ namespace: 'html-file-embed-test', onError: (error) => { throw error; } }}>
+          <HtmlFileEmbedFrame src="Maps/Map.html" label="Map" attrs={{}} nodeKey="missing" />
+        </LexicalComposer>
+      </UiLanguageProvider>,
     );
+    const selectButton = container.querySelector('[data-testid="html-file-embed-select"]');
+    expect(selectButton?.getAttribute('aria-label')).toBe('Map.htmlを選択');
+    expect(selectButton?.getAttribute('title')).toBe('選択');
     const iframe = await waitFor(() => {
       const found = container.querySelector('iframe');
       if (!found) throw new Error('no frame yet');

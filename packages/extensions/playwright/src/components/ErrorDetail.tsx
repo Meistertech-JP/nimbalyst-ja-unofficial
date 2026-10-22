@@ -1,4 +1,5 @@
 import type { TestNode } from '../types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface ErrorDetailProps {
   node: TestNode;
@@ -7,6 +8,7 @@ interface ErrorDetailProps {
 }
 
 export function ErrorDetail({ node, onOpenFile, onViewTrace }: ErrorDetailProps) {
+  const { t } = useTranslation('extensions');
   if (!node.error) {
     return (
       <div className="pw-error-detail pw-empty">
@@ -15,10 +17,10 @@ export function ErrorDetail({ node, onOpenFile, onViewTrace }: ErrorDetailProps)
         </span>
         <p>
           {node.status === 'passed'
-            ? 'Test passed'
+            ? t('playwright.error_detail.passed')
             : node.status === 'skipped'
-            ? 'Test was skipped'
-            : 'Select a failed test to see error details'}
+            ? t('playwright.error_detail.skipped')
+            : t('playwright.error_detail.select_failed_test')}
         </p>
       </div>
     );
@@ -53,11 +55,11 @@ export function ErrorDetail({ node, onOpenFile, onViewTrace }: ErrorDetailProps)
       {node.error.expected != null && node.error.actual != null && (
         <div className="pw-error-diff">
           <div className="pw-diff-col">
-            <div className="pw-diff-label">Expected</div>
+            <div className="pw-diff-label">{t('playwright.error_detail.expected')}</div>
             <pre className="pw-diff-value pw-diff-expected">{node.error.expected}</pre>
           </div>
           <div className="pw-diff-col">
-            <div className="pw-diff-label">Actual</div>
+            <div className="pw-diff-label">{t('playwright.error_detail.actual')}</div>
             <pre className="pw-diff-value pw-diff-actual">{node.error.actual}</pre>
           </div>
         </div>
@@ -66,10 +68,10 @@ export function ErrorDetail({ node, onOpenFile, onViewTrace }: ErrorDetailProps)
       {/* Screenshot */}
       {screenshotPath && (
         <div className="pw-error-screenshot">
-          <div className="pw-section-label">Failure Screenshot</div>
+          <div className="pw-section-label">{t('playwright.error_detail.failure_screenshot')}</div>
           <img
             src={`file://${screenshotPath}`}
-            alt="Failure screenshot"
+            alt={t('playwright.error_detail.screenshot_alt')}
             style={{ maxWidth: '100%', borderRadius: 4, border: '1px solid #4a4a4a' }}
           />
         </div>
@@ -78,7 +80,7 @@ export function ErrorDetail({ node, onOpenFile, onViewTrace }: ErrorDetailProps)
       {/* Stack trace */}
       {stackLines.length > 0 && (
         <div className="pw-error-stack">
-          <div className="pw-section-label">Stack Trace</div>
+          <div className="pw-section-label">{t('playwright.error_detail.stack_trace')}</div>
           <pre className="pw-stack-trace">
             {stackLines.map((line, i) => {
               const fileMatch = line.match(/at\s+.*?\((.+?):(\d+):\d+\)/);
@@ -111,7 +113,7 @@ export function ErrorDetail({ node, onOpenFile, onViewTrace }: ErrorDetailProps)
             onClick={() => onViewTrace(node.error!.tracePath!)}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>timeline</span>
-            <span>View Trace</span>
+            <span>{t('playwright.error_detail.view_trace')}</span>
           </button>
         </div>
       )}
@@ -119,7 +121,9 @@ export function ErrorDetail({ node, onOpenFile, onViewTrace }: ErrorDetailProps)
       {/* Retry info */}
       {node.retries != null && node.retries > 0 && (
         <div className="pw-retry-info">
-          Retried {node.retries} time{node.retries > 1 ? 's' : ''}
+          {node.retries === 1
+            ? t('playwright.error_detail.retried_one')
+            : t('playwright.error_detail.retried', { count: node.retries })}
         </div>
       )}
     </div>

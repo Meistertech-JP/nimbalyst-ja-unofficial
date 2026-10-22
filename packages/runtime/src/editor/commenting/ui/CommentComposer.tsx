@@ -18,6 +18,7 @@
 
 import type { JSX, KeyboardEvent } from 'react';
 import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { CommentMember } from '../types';
 import { validateCommentBody } from '../commentValidation';
@@ -72,6 +73,7 @@ export function CommentComposer({
   label,
   className,
 }: CommentComposerProps): JSX.Element {
+  const { t } = useTranslation('editor');
   const fieldRef = useRef<HTMLTextAreaElement | null>(null);
   // Held in state as well as a ref: the picker positions against the element,
   // and a ref alone would still read null on the render that opens it.
@@ -280,7 +282,7 @@ export function CommentComposer({
           className="nim-comment-btn nim-comment-btn-cancel"
           onClick={onCancel}
         >
-          Cancel
+          {t('comments.cancel')}
         </button>
         <button
           type="button"

@@ -12,25 +12,26 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CustomToolWidgetProps } from './index';
 import { SessionReferenceChip } from '../../session/SessionReferenceChip';
 
 interface ActionMeta {
-  label: string;
+  translationKey: 'send_prompt' | 'respond_to_prompt' | 'spawn_session' | 'create_session' | 'get_session_status' | 'get_session_result' | 'list_queued_prompts' | 'list_spawned_sessions';
   icon: string;
   /** Argument key holding a human-readable detail (prompt/response text). */
   detailArg?: string;
 }
 
 const ACTIONS: Record<string, ActionMeta> = {
-  send_prompt: { label: 'Send prompt', icon: 'send', detailArg: 'prompt' },
-  respond_to_prompt: { label: 'Respond to prompt', icon: 'reply', detailArg: 'response' },
-  spawn_session: { label: 'Spawn session', icon: 'rocket_launch', detailArg: 'prompt' },
-  create_session: { label: 'Create session', icon: 'add_circle', detailArg: 'initialPrompt' },
-  get_session_status: { label: 'Get session status', icon: 'query_stats' },
-  get_session_result: { label: 'Get session result', icon: 'task_alt' },
-  list_queued_prompts: { label: 'List queued prompts', icon: 'list' },
-  list_spawned_sessions: { label: 'List spawned sessions', icon: 'account_tree' },
+  send_prompt: { translationKey: 'send_prompt', icon: 'send', detailArg: 'prompt' },
+  respond_to_prompt: { translationKey: 'respond_to_prompt', icon: 'reply', detailArg: 'response' },
+  spawn_session: { translationKey: 'spawn_session', icon: 'rocket_launch', detailArg: 'prompt' },
+  create_session: { translationKey: 'create_session', icon: 'add_circle', detailArg: 'initialPrompt' },
+  get_session_status: { translationKey: 'get_session_status', icon: 'query_stats' },
+  get_session_result: { translationKey: 'get_session_result', icon: 'task_alt' },
+  list_queued_prompts: { translationKey: 'list_queued_prompts', icon: 'list' },
+  list_spawned_sessions: { translationKey: 'list_spawned_sessions', icon: 'account_tree' },
 };
 
 /** Strip an `mcp__<server>__` prefix to the bare tool name. */
@@ -105,11 +106,14 @@ export const CrossSessionToolWidget: React.FC<CustomToolWidgetProps> = ({
   isExpanded,
   onToggle,
 }) => {
+  const { t } = useTranslation('agents');
   const tool = message.toolCall;
   if (!tool) return null;
 
   const bare = tool.mcpTool || bareToolName(tool.toolName);
-  const action = ACTIONS[bare] ?? { label: bare, icon: 'account_tree' };
+  const action = ACTIONS[bare];
+  const actionIcon = action?.icon ?? 'account_tree';
+  const actionLabel = action ? t(`cross_session_tool.actions.${action.translationKey}`) : bare;
   const args = (tool.arguments ?? {}) as Record<string, unknown>;
 
   // Target session(s): the addressed session from args, plus any minted/listed
@@ -150,13 +154,13 @@ export const CrossSessionToolWidget: React.FC<CustomToolWidgetProps> = ({
             color: isError ? 'var(--nim-error)' : 'var(--nim-text-muted)',
           }}
         >
-          {action.icon}
+          {actionIcon}
         </span>
-        <span style={{ fontWeight: 600 }}>{action.label}</span>
+        <span style={{ fontWeight: 600 }}>{actionLabel}</span>
         {args.interrupt === true ? (
           <span
             className="cross-session-tool-widget-interrupt"
-            title="Sent with interrupt: the target session's current turn was stopped"
+            title={t('cross_session_tool.interrupt_title')}
             style={{
               fontSize: '11px',
               padding: '1px 6px',
@@ -165,7 +169,7 @@ export const CrossSessionToolWidget: React.FC<CustomToolWidgetProps> = ({
               color: 'var(--nim-text-muted)',
             }}
           >
-            interrupt
+            {t('cross_session_tool.interrupt')}
           </span>
         ) : null}
         {sessionIds.length > 0 ? (
@@ -197,7 +201,7 @@ export const CrossSessionToolWidget: React.FC<CustomToolWidgetProps> = ({
               fontSize: '12px',
             }}
           >
-            {isExpanded ? 'Hide' : 'Details'}
+            {t(isExpanded ? 'cross_session_tool.hide' : 'cross_session_tool.details')}
             <span
               className="material-symbols-outlined"
               aria-hidden="true"

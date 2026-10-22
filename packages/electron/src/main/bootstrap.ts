@@ -48,6 +48,11 @@ import './hostEnvironment';
 delete process.env.ANTHROPIC_API_KEY;
 delete process.env.OPENAI_API_KEY;
 
+// Keep the unofficial Japanese edition's default profile separate from the
+// official app. An explicit NIMBALYST_USER_DATA_DIR / --user-data-dir still
+// takes precedence below; no existing official profile is migrated or deleted.
+app.setName('Nimbalyst 日本語版（非公式）');
+
 // Global uncaught exception handler - must be registered early. This catches
 // errors that bubble up from async SDK operations. The throttling and the
 // EPIPE feedback-loop guard (#502) live in ./uncaughtException, extracted so
@@ -80,6 +85,8 @@ if (customUserDataDir) {
   // Also set appData to parent directory for consistency
   app.setPath('appData', path.dirname(customUserDataDir));
   // console.log(`[Bootstrap] Using custom userData directory: ${customUserDataDir}`);
+} else {
+  app.setPath('userData', path.join(app.getPath('appData'), 'Nimbalyst 日本語版（非公式）'));
 }
 
 hardenExistingSettings(app.getPath('userData'));

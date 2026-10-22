@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import type { ReactNode } from 'react';
 import type {
   PrototypeArea,
   PrototypeEvent,
@@ -69,7 +72,17 @@ function makeModel(): PrototypeModel {
   };
 }
 
-function renderPulse(over: Partial<PrototypeViewProps> = {}) {
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function renderPulse(
+  over: Partial<PrototypeViewProps> = {},
+  i18n = englishI18n,
+) {
   const props: PrototypeViewProps = {
     model: makeModel(),
     range: RANGE,
@@ -82,7 +95,16 @@ function renderPulse(over: Partial<PrototypeViewProps> = {}) {
     onRenameArea: vi.fn(),
     ...over,
   };
-  return { props, ...render(<PulsePrototype {...props} />) };
+  const withEnglishUi = (ui: ReactNode) => (
+    <UiLanguageProvider i18n={i18n} preference={i18n.language === 'ja' ? 'ja' : 'en'} systemLocale="en-US">
+      {ui}
+    </UiLanguageProvider>
+  );
+  return {
+    props,
+    withEnglishUi,
+    ...render(withEnglishUi(<PulsePrototype {...props} />)),
+  };
 }
 
 describe('PulsePrototype layout inputs', () => {
@@ -115,26 +137,26 @@ describe('PulsePrototype layout inputs', () => {
 describe('PulsePrototype comparison', () => {
   it('shows the preceding period the shell supplied, with its delta', () => {
     renderPulse({ comparisonRange: PREVIOUS });
-    const compare = screen.getByLabelText('Comparison with the preceding period');
+    const compare = screen.getByLabelText('Period comparison');
 
-    expect(within(compare).getByText(/2 events, 2 artifacts/)).toBeTruthy();
-    expect(within(compare).getByText(/1 event, 1 artifact/)).toBeTruthy();
-    expect(within(compare).getByText(/\+1 event/)).toBeTruthy();
+    expect(within(compare).getByText(/2 events across 2 artifacts/)).toBeTruthy();
+    expect(within(compare).getByText(/1 events across 1 artifacts/)).toBeTruthy();
+    expect(within(compare).getByText(/\+1 events/)).toBeTruthy();
   });
 
   it('offers no comparison at all when the shell supplies no preceding period', () => {
     renderPulse();
-    expect(screen.queryByLabelText('Comparison with the preceding period')).toBeNull();
+    expect(screen.queryByLabelText('Period comparison')).toBeNull();
   });
 
   it('names the exact interval it compared against, and does not call it a calendar period', () => {
     renderPulse({ comparisonRange: PREVIOUS });
-    const compare = screen.getByLabelText('Comparison with the preceding period');
+    const compare = screen.getByLabelText('Period comparison');
 
     // Day-aligned, so no time of day is printed.
     const bounds = within(compare).getByLabelText('Preceding interval');
     expect(bounds.textContent).not.toMatch(/\d{1,2}:\d{2}/);
-    expect(within(compare).getByText(/exact preceding interval of the same length/i)).toBeTruthy();
+    expect(within(compare).getByText(/exact preceding interval, not a calendar period/i)).toBeTruthy();
     // No copy that *asserts* a calendar period; the disclaimer denying one is
     // the only place the word may appear.
     expect(compare.textContent).not.toMatch(/last week|previous week|last month/i);
@@ -155,7 +177,7 @@ describe('PulsePrototype comparison', () => {
     renderPulse({ range: partial, comparisonRange: preceding });
 
     const bounds = within(
-      screen.getByLabelText('Comparison with the preceding period'),
+      screen.getByLabelText('Period comparison'),
     ).getByLabelText('Preceding interval');
     expect(bounds.textContent).toMatch(/\d{1,2}:\d{2}/);
   });
@@ -176,10 +198,13 @@ describe('PulsePrototype comparison', () => {
       },
     });
 
-    expect(screen.getByText(/clipped by the toolbar range/)).toBeTruthy();
+    const clippedHeader = screen.getAllByRole('columnheader').find((element) =>
+      element.getAttribute('title')?.includes('Clipped to the selected range'),
+    );
+    expect(clippedHeader).toBeDefined();
     expect(screen.queryByText(/no period-over-period comparison/i)).toBeNull();
     // The comparison itself is still offered.
-    expect(screen.getByLabelText('Comparison with the preceding period')).toBeTruthy();
+    expect(screen.getByLabelText('Period comparison')).toBeTruthy();
   });
 
   it('labels a delta as observed when the bounds do not support a stronger claim', () => {
@@ -196,9 +221,9 @@ describe('PulsePrototype comparison', () => {
         },
       },
     });
-    const compare = screen.getByLabelText('Comparison with the preceding period');
+    const compare = screen.getByLabelText('Period comparison');
 
-    expect(within(compare).getByText(/\+1 event .* in loaded records/)).toBeTruthy();
+    expect(within(compare).getByText(/\+1 events .* in loaded records/)).toBeTruthy();
     expect(within(compare).getByText(/do not report how far back they retrieved/)).toBeTruthy();
   });
 
@@ -211,10 +236,40 @@ describe('PulsePrototype comparison', () => {
         periodCoverage: { startMs: RANGE.startMs, endMs: RANGE.endMs, complete: true },
       },
     });
-    const compare = screen.getByLabelText('Comparison with the preceding period');
+    const compare = screen.getByLabelText('Period comparison');
 
     expect(within(compare).queryByText(/[+-]\d+ event/)).toBeNull();
     expect(within(compare).getByText(/outside|not.*loaded/i)).toBeTruthy();
+  });
+});
+
+describe('PulsePrototype Japanese labels', () => {
+  it.each([
+    ['en', 'Auto', 'week'],
+    ['ja', '自動', '週'],
+  ] as const)('labels automatic buckets and retains unit selection in %s', async (language, automatic, week) => {
+    const i18n = await createI18nInstance(language);
+    renderPulse({}, i18n);
+    const option = screen.getByRole('option', { name: automatic }) as HTMLOptionElement;
+    const select = option.closest('select')!;
+    expect(option.value).toBe('auto');
+    expect(select.value).toBe('auto');
+    fireEvent.change(select, { target: { value: 'week' } });
+    expect(select.value).toBe('week');
+    expect((screen.getByRole('option', { name: week }) as HTMLOptionElement).selected).toBe(true);
+    fireEvent.change(select, { target: { value: 'auto' } });
+    expect(option.selected).toBe(true);
+  });
+
+  it('localizes the count of selected rows', () => {
+    const { container } = renderPulse({}, japaneseI18n);
+    const cells = container.querySelectorAll('.pgp-cell');
+    expect(cells.length).toBeGreaterThan(1);
+
+    fireEvent.mouseDown(cells[0]);
+    fireEvent.mouseEnter(cells[cells.length - 1]);
+
+    expect(container.querySelector('.pgp-selection .pgp-eyebrow')?.textContent).toContain('3行');
   });
 });
 
@@ -231,22 +286,22 @@ describe('PulsePrototype under a progressive index', () => {
   };
 
   it('keeps the selection when a refreshed model carries the same rows and buckets', () => {
-    const { container, props, rerender } = renderPulse();
+    const { container, props, rerender, withEnglishUi } = renderPulse();
     selectFirstCell(container);
     expect(container.querySelectorAll('.pgp-cell-selected').length).toBeGreaterThan(0);
 
-    rerender(<PulsePrototype {...props} model={makeModel()} />);
+    rerender(withEnglishUi(<PulsePrototype {...props} model={makeModel()} />));
 
     expect(container.querySelectorAll('.pgp-cell-selected').length).toBeGreaterThan(0);
   });
 
   it('keeps focus on the same row across a model refresh', () => {
-    const { container, props, rerender } = renderPulse();
+    const { container, props, rerender, withEnglishUi } = renderPulse();
     const grid = container.querySelector('.pgp-grid') as HTMLElement;
     fireEvent.keyDown(grid, { key: 'ArrowDown' });
     const before = container.querySelector('.pgp-cell[tabindex="0"]')!.getAttribute('aria-label');
 
-    rerender(<PulsePrototype {...props} model={makeModel()} />);
+    rerender(withEnglishUi(<PulsePrototype {...props} model={makeModel()} />));
 
     expect(container.querySelector('.pgp-cell[tabindex="0"]')!.getAttribute('aria-label')).toBe(
       before,
@@ -257,34 +312,34 @@ describe('PulsePrototype under a progressive index', () => {
     // The shell derives the range end from the snapshot timestamp, which moves
     // on every refresh. While the day buckets are unchanged, the column indices
     // still name the same days, so the selection is still meaningful.
-    const { container, props, rerender } = renderPulse();
+    const { container, props, rerender, withEnglishUi } = renderPulse();
     selectFirstCell(container);
 
-    rerender(
+    rerender(withEnglishUi(
       <PulsePrototype
         {...props}
         model={makeModel()}
         range={{ ...RANGE, endMs: new Date(2026, 8, 5, 18, 30).getTime() }}
       />,
-    );
+    ));
 
     expect(container.querySelectorAll('.pgp-cell-selected').length).toBeGreaterThan(0);
   });
 
   it('still clears the selection when the buckets or the scope actually change', () => {
-    const { container, props, rerender } = renderPulse();
+    const { container, props, rerender, withEnglishUi } = renderPulse();
     selectFirstCell(container);
 
-    rerender(
+    rerender(withEnglishUi(
       <PulsePrototype
         {...props}
         range={{ startMs: new Date(2026, 7, 1).getTime(), endMs: RANGE.endMs }}
       />,
-    );
+    ));
     expect(container.querySelectorAll('.pgp-cell-selected')).toHaveLength(0);
 
     selectFirstCell(container);
-    rerender(<PulsePrototype {...props} selectedAreaId="editor" />);
+    rerender(withEnglishUi(<PulsePrototype {...props} selectedAreaId="editor" />));
     expect(container.querySelectorAll('.pgp-cell-selected')).toHaveLength(0);
   });
 });
@@ -300,7 +355,7 @@ describe('PulsePrototype keyboard focus', () => {
     fireEvent.keyDown(grid, { key: 'ArrowDown' });
     const before = rowLabel(container.querySelector('.pgp-cell[tabindex="0"]')!);
 
-    fireEvent.change(screen.getByLabelText('Rows by'), { target: { value: 'name' } });
+    fireEvent.change(screen.getAllByRole('combobox')[1]!, { target: { value: 'name' } });
 
     expect(rowLabel(container.querySelector('.pgp-cell[tabindex="0"]')!)).toBe(before);
   });

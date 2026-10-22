@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { GraphNodeTypeSchema, GraphViewDefinition, ProjectGraphSnapshot } from '../types';
 import { groupTypesByCategory } from '../schema';
 import { IconEyeOff, IconEyeOpen, IconSearch, IconStar } from './icons';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface GraphSidebarProps {
   snapshot: ProjectGraphSnapshot;
@@ -32,6 +33,7 @@ export function GraphSidebar({
   searchQuery,
   onSearchChange,
 }: GraphSidebarProps) {
+  const { t } = useTranslation('extensions');
   const groups = useMemo(() => groupTypesByCategory(types, extraCategories), [types, extraCategories]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -48,15 +50,15 @@ export function GraphSidebar({
       <div className="pg-search">
         <IconSearch />
         <input
-          placeholder="Search nodes..."
+          placeholder={t('project_graph.ui.search_nodes_placeholder')}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          aria-label="Search nodes"
+          aria-label={t('project_graph.ui.search_nodes')}
         />
       </div>
 
       <div className="pg-left-section">
-        <h4>Saved views <span className="pg-count">{views.length}</span></h4>
+        <h4>{t('project_graph.ui.saved_views')} <span className="pg-count">{views.length}</span></h4>
         {views.map(view => {
           const isActive = view.id === activeViewId;
           return (
@@ -75,15 +77,15 @@ export function GraphSidebar({
 
       <div className="pg-left-section pg-types-header">
         <h4>
-          <span>Item types</span>
+          <span>{t('project_graph.ui.item_types')}</span>
           <button
             type="button"
             className="pg-group-bulk"
             onClick={() => onSetAllHidden(allVisible)}
             disabled={toggleableTypes.length === 0}
-            title={allVisible ? 'Hide every type' : 'Show every type'}
+            title={allVisible ? t('project_graph.ui.hide_every_type') : t('project_graph.ui.show_every_type')}
           >
-            {allVisible ? 'Hide all' : 'Show all'}
+            {allVisible ? t('project_graph.ui.hide_all') : t('project_graph.ui.show_all')}
           </button>
         </h4>
       </div>
@@ -114,7 +116,7 @@ export function GraphSidebar({
                   else next.add(group.id as string);
                   return next;
                 })}
-                title={isCollapsed ? 'Expand group' : 'Collapse group'}
+                title={isCollapsed ? t('project_graph.ui.expand_group') : t('project_graph.ui.collapse_group')}
               >
                 <span className={`pg-group-caret${isCollapsed ? ' is-collapsed' : ''}`}>▾</span>
                 <span>{group.label}</span>
@@ -124,9 +126,9 @@ export function GraphSidebar({
                   type="button"
                   className="pg-group-bulk"
                   onClick={() => onSetGroupHidden(sortedTypes.map(t => t.type), allVisible)}
-                  title={allVisible ? 'Hide all' : 'Show all'}
+                  title={allVisible ? t('project_graph.ui.hide_all') : t('project_graph.ui.show_all')}
                 >
-                  {allVisible ? 'Hide' : 'Show'}
+                  {allVisible ? t('project_graph.ui.hide') : t('project_graph.ui.show')}
                 </button>
                 <span className="pg-count">{totalCount}</span>
               </span>

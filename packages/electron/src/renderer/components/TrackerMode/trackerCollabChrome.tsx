@@ -12,6 +12,7 @@
 
 import React from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   collabAwarenessAtom,
   collabProductStatusAtom,
@@ -19,6 +20,7 @@ import {
 import { trackerContentCollabKey } from '../../hooks/trackerContentCollabKey';
 
 export const TrackerCollabAvatars: React.FC<{ itemId: string }> = ({ itemId }) => {
+  const { t } = useTranslation('editor');
   const collabKey = trackerContentCollabKey(itemId);
   const users = useAtomValue(collabAwarenessAtom(collabKey));
   const status = useAtomValue(collabProductStatusAtom(collabKey));
@@ -30,7 +32,10 @@ export const TrackerCollabAvatars: React.FC<{ itemId: string }> = ({ itemId }) =
       data-testid="tracker-collab-presence"
     >
       {[...users.entries()].map(([userId, user]) => {
-        const initials = user.name
+        const displayName = user.nimbalystNameSource === 'system-default'
+          ? t('collab.unnamed_collaborator')
+          : user.name;
+        const initials = displayName
           .split(/\s+/)
           .map((word) => word[0])
           .join('')
@@ -45,7 +50,7 @@ export const TrackerCollabAvatars: React.FC<{ itemId: string }> = ({ itemId }) =
               color: '#fff',
               border: '1.5px solid var(--nim-bg)',
             }}
-            title={user.name}
+            title={displayName}
           >
             {initials}
           </div>
@@ -66,19 +71,24 @@ function trackerCollabStatusDotClass(
 }
 
 export const TrackerCollabSyncDot: React.FC<{ itemId: string }> = ({ itemId }) => {
+  const { t } = useTranslation('editor');
   const status = useAtomValue(
     collabProductStatusAtom(trackerContentCollabKey(itemId)),
   );
-  const description = status.detail
-    ? `${status.label}: ${status.detail}`
-    : status.label;
+  const statusLabel = t(`collab_status.${status.kind}.label`);
+  const statusDetail = status.detail
+    ? t(`collab_status.${status.kind}.detail`)
+    : null;
+  const description = statusDetail
+    ? `${statusLabel}: ${statusDetail}`
+    : statusLabel;
   return (
     <span
       className={`collab-sync-dot h-2 w-2 shrink-0 rounded-full ${trackerCollabStatusDotClass(status.severity)}`}
       data-testid="tracker-collab-sync-dot"
       data-status-kind={status.kind}
       role="status"
-      aria-label={`Sync status: ${description}`}
+      aria-label={t('collab.sync_status', { status: description })}
       title={description}
     />
   );

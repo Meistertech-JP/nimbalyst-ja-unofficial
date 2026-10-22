@@ -2,7 +2,9 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InboxSection } from '../InboxSection';
 import { createInboxFixtures } from '../inboxFixtures';
@@ -29,6 +31,13 @@ vi.mock('../../../FeedbackRequest/FeedbackRequestSurface', () => ({
 }));
 
 const NOW = Date.parse('2026-07-26T18:00:00.000Z');
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  japaneseI18n = await createI18nInstance('ja');
+  englishI18n = await createI18nInstance('en');
+});
 
 function installApi() {
   Object.defineProperty(window, 'electronAPI', {
@@ -42,7 +51,11 @@ function installApi() {
 let store = createStore();
 
 function wrap(ui: React.ReactElement) {
-  return <Provider store={store}>{ui}</Provider>;
+  return (
+    <I18nextProvider i18n={englishI18n}>
+      <Provider store={store}>{ui}</Provider>
+    </I18nextProvider>
+  );
 }
 
 /** What clicking the sidebar's Inbox row does: it is the only way in now. */
@@ -154,6 +167,74 @@ describe('InboxSection', () => {
     expect(screen.queryByTestId('inbox-list')).toBeNull();
     expect((screen.getByTestId('inbox-unread-toggle') as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByTestId('inbox-search-input') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('shows Japanese context guidance and pending-dispatch status after selecting a delivery', async () => {
+    const provider = createFixtureInboxProvider({
+      now: NOW,
+      unavailableOrganizations: [{
+        orgId: 'org-legacy-ja',
+        orgName: 'Legacy Co',
+        errorCode: 'ORG_SERVER_MANAGED_DEK_REQUIRED',
+      }],
+    });
+    render(
+      <I18nextProvider i18n={japaneseI18n}>
+        <Provider store={store}>
+          <InboxSection provider={provider} now={NOW} />
+        </Provider>
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByTestId('inbox-context-pane').textContent)
+      .toContain('通知を選択すると、ここに内容が表示されます');
+    expect(screen.getByRole('heading', { name: '受信トレイ' })).toBeTruthy();
+    const row = await screen.findByTestId('inbox-row-delivery-agent-mention');
+    expect(row.textContent).toContain('エージェントへのメンション');
+    expect(within(row).getByTestId('inbox-row-agent-pending').getAttribute('title'))
+      .toContain('エージェントに送信しました');
+    expect(within(row).getByTestId('inbox-row-open-delivery-agent-mention').getAttribute('aria-label'))
+      .toBe('開く');
+    expect(within(row).getByTestId('inbox-row-open-delivery-agent-mention').getAttribute('title'))
+      .toBe('開く（Enter）');
+    expect(screen.getByTestId('inbox-mark-all-read').textContent).toContain('既読にする');
+    expect((screen.getByTestId('inbox-new-message') as HTMLButtonElement).title)
+      .toBe('メッセージを作成するには組織ウィンドウを開いてください');
+    const unavailableOrganization = await screen.findByTestId('inbox-organization-unavailable-org-legacy-ja');
+    expect(unavailableOrganization.textContent).toContain('Legacy Coではメッセージ機能を利用できません');
+    expect(within(unavailableOrganization).getByRole('button', { name: '組織を移行' })).toBeTruthy();
+
+    fireEvent.click(row);
+
+    const selectedContext = await screen.findByTestId('inbox-context-pane');
+    expect(selectedContext.textContent).toContain('送信待ち');
+    expect(selectedContext.textContent)
+      .toContain('通知に保存されたプレビューを表示しています');
+  });
+
+  it('shows the translated organization messaging restriction in the compose tooltip', async () => {
+    const store = createStore();
+    const provider = createFixtureInboxProvider({ now: NOW });
+    const composeUnavailableLabel = japaneseI18n.t(
+      'inbox_surface.compose_unavailable_org_messaging',
+      { ns: 'collabSidebar' },
+    );
+
+    render(
+      <I18nextProvider i18n={japaneseI18n}>
+        <Provider store={store}>
+          <InboxSection
+            provider={provider}
+            now={NOW}
+            composeUnavailableLabel={composeUnavailableLabel}
+          />
+        </Provider>
+      </I18nextProvider>,
+    );
+
+    await screen.findByTestId('inbox-list');
+    expect((screen.getByTestId('inbox-new-message') as HTMLButtonElement).title)
+      .toBe('この組織ではルームとダイレクトメッセージが無効になっています');
   });
 
   it('labels cached previews as stale when offline', async () => {

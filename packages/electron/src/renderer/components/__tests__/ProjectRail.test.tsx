@@ -1,7 +1,9 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { openSettingsCommandAtom } from '../../store/atoms/settingsNavigation';
 import { projectAppearanceAtom } from '../../store/atoms/projectAppearance';
 import { ProjectRail } from '../ProjectRail';
@@ -12,6 +14,30 @@ vi.mock('../OrgSwitcher', () => ({ OrgSwitcher: () => null }));
 vi.mock('../WorkspaceSummaryHeader', () => ({ generateWorkspaceAccentColor: () => '#123456' }));
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function renderRail(tree: React.ReactElement, language: 'en' | 'ja' = 'en') {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider
+        i18n={language === 'en' ? englishI18n : japaneseI18n}
+        preference={language}
+        systemLocale="en-US"
+      >
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
 
 it('reveals restored and newly selected projects, handles resize, and leaves manual scrolling alone', () => {
   const store = createStore();
@@ -38,7 +64,7 @@ it('reveals restored and newly selected projects, handles resize, and leaves man
     return { top: 0, bottom: 0 } as DOMRect;
   });
   const tree = <Provider store={store}><ProjectRail /></Provider>;
-  const view = render(tree);
+  const view = renderRail(tree);
   const list = view.getByTestId('project-rail-projects');
   const visible = (index: number) => {
     const item = view.getByRole('button', { name: `Switch to project Project ${index}` }).parentElement!;
@@ -67,7 +93,7 @@ it('moves and sorts from the keyboard menu without activating the targeted proje
   store.set(multiProjectModeAtom, true);
   store.set(openProjectsAtom, projects);
   store.set(activeWorkspacePathAtom, projects[0].path);
-  const view = render(<Provider store={store}><ProjectRail /></Provider>);
+  const view = renderRail(<Provider store={store}><ProjectRail /></Provider>);
   const alpha = view.getByRole('button', { name: 'Switch to project Alpha' });
   alpha.focus();
   fireEvent.keyDown(alpha, { key: 'F10', shiftKey: true });
@@ -91,6 +117,25 @@ it('moves and sorts from the keyboard menu without activating the targeted proje
   expect(store.get(activeWorkspacePathAtom)).toBe(projects[0].path);
 });
 
+it('renders project rail controls in Japanese', () => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  const store = createStore();
+  const projects = ['Alpha', 'Beta'].map(name => ({ path: `/p/${name}`, name, openedAt: 0 }));
+  store.set(multiProjectModeAtom, true);
+  store.set(openProjectsAtom, projects);
+  store.set(activeWorkspacePathAtom, projects[0].path);
+
+  const view = renderRail(<Provider store={store}><ProjectRail /></Provider>, 'ja');
+  view.getByRole('navigation', { name: '開いているプロジェクト' });
+  const alpha = view.getByRole('button', { name: 'Alphaプロジェクトに切り替え' });
+  fireEvent.contextMenu(alpha, { clientX: 40, clientY: 100 });
+  view.getByRole('menuitem', { name: '上へ移動' });
+  view.getByRole('menuitem', { name: '下へ移動' });
+  view.getByRole('menuitem', { name: '名前順に並べ替え' });
+  view.getByRole('menuitem', { name: 'Finderで表示' });
+  view.getByRole('button', { name: 'プロジェクトをレールに追加' });
+});
+
 it('commits a native drag only on drop, and ignores external drops and cancellation', () => {
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   const store = createStore();
@@ -102,7 +147,7 @@ it('commits a native drag only on drop, and ignores external drops and cancellat
     const index = projects.findIndex(p => p.path === this.dataset.projectPath);
     return { top: index * 48, bottom: index * 48 + 40, height: 40, left: 0, right: 56 } as DOMRect;
   });
-  const view = render(<Provider store={store}><ProjectRail /></Provider>);
+  const view = renderRail(<Provider store={store}><ProjectRail /></Provider>);
   const list = view.getByTestId('project-rail-projects');
   const source = view.getByRole('button', { name: 'Switch to project C' });
   const dataTransfer = { setData: vi.fn(), effectAllowed: '', dropEffect: '' };
@@ -126,7 +171,7 @@ it('customizes an inactive project without switching or editing the active proje
   store.set(openProjectsAtom, projects);
   store.set(activeWorkspacePathAtom, projects[0].path);
   for (const project of projects) store.set(projectAppearanceAtom(project.path), { snapshot: { revision: 0, appearance: {} } });
-  const view = render(<Provider store={store}><ProjectRail /></Provider>);
+  const view = renderRail(<Provider store={store}><ProjectRail /></Provider>);
   fireEvent.contextMenu(view.getByRole('button', { name: 'Switch to project FileRocket' }));
   fireEvent.click(view.getByText('Customize appearance…'));
   expect(store.get(openSettingsCommandAtom)?.destination).toEqual({ scope: 'project', category: 'project-appearance', target: { kind: 'workspace', workspacePath: projects[1].path } });

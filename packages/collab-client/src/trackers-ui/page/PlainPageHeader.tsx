@@ -7,6 +7,7 @@
  * Presentational: the host saves the title and fields and runs Set type.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import { TrackerTypeRow } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerTypeRow';
 import type { TeamMemberOption } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldEditor';
@@ -44,6 +45,16 @@ export const PlainPageHeader: React.FC<PlainPageHeaderProps> = ({
   onUpdateField,
   teamMembers,
 }) => {
+  const { t } = useTranslation('tracker');
+  const pageHeaderFields = PAGE_HEADER_FIELDS.map((field) => field.name === 'status'
+    ? {
+      ...field,
+      options: field.options?.map((option) => ({
+        ...option,
+        label: t(`page_status.${option.value}`),
+      })),
+    }
+    : field);
   const handleSaveField = useCallback(
     (field: FieldDefinition, value: unknown) => onUpdateField?.(field.name as keyof PageFields, value),
     [onUpdateField],
@@ -87,15 +98,15 @@ export const PlainPageHeader: React.FC<PlainPageHeaderProps> = ({
             }
           }}
           className="tracker-page-view-title m-0 mb-3 w-full resize-none overflow-hidden break-words border-none bg-transparent p-0 text-[28px] font-medium leading-tight text-nim outline-none placeholder:text-nim-faint"
-          placeholder="Untitled"
+          placeholder={t('inline.untitled')}
           data-testid="plain-page-title"
         />
       ) : (
-        <h1 className="tracker-page-view-title m-0 mb-3 break-words text-[28px] font-medium leading-tight text-nim select-text">{title || 'Untitled'}</h1>
+        <h1 className="tracker-page-view-title m-0 mb-3 break-words text-[28px] font-medium leading-tight text-nim select-text">{title || t('collaboration_surface.untitled')}</h1>
       )}
       <TrackerTypeRow
         typeId="page"
-        fields={PAGE_HEADER_FIELDS}
+        fields={pageHeaderFields}
         values={fields as Record<string, unknown>}
         editable={editable && Boolean(onUpdateField)}
         onSaveField={handleSaveField}
@@ -106,13 +117,13 @@ export const PlainPageHeader: React.FC<PlainPageHeaderProps> = ({
           <button
             type="button"
             className="plain-page-type tracker-page-view-type inline-flex items-center gap-1 rounded border-none bg-nim-tertiary px-1.5 py-0.5 text-xs font-medium text-nim-muted enabled:cursor-pointer enabled:hover:text-nim"
-            title={onSetType ? 'Page. Click to change its type.' : 'Page'}
+            title={onSetType ? t('collaboration_surface.page_type_title') : t('collaboration_surface.page')}
             disabled={!onSetType}
             onClick={onSetType}
             data-testid="plain-page-type"
           >
             <MaterialSymbol icon="description" size={13} />
-            Page
+            {t('collaboration_surface.page')}
           </button>
         )}
         end={<PageFacts facts={facts} />}

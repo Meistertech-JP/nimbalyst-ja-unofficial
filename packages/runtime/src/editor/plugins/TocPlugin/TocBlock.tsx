@@ -4,6 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import { $getNodeByKey } from 'lexical';
@@ -20,6 +21,7 @@ function sameHeadings(a: TocHeading[], b: TocHeading[]): boolean {
 }
 
 export function TocBlock({ source, nodeKey }: { source: string; nodeKey: string }): React.JSX.Element {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const editable = useLexicalEditable();
   const depth = parseTocDepth(source);
@@ -54,22 +56,22 @@ export function TocBlock({ source, nodeKey }: { source: string; nodeKey: string 
   return (
     <nav className="toc-block my-3 border-l-2 border-nim py-1 pl-4" contentEditable={false}>
       <div className="toc-block-header mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-nim-faint">
-        <span>Contents</span>
+        <span>{t('tooltips.table_of_contents')}</span>
         {editable ? (
           <select
             className="toc-block-depth bg-transparent text-xs text-nim-faint"
             value={depth}
             onChange={onDepthChange}
-            aria-label="Heading depth"
+            aria-label={t('toc.heading_depth')}
           >
             {DEPTH_OPTIONS.map((level) => (
-              <option key={level} value={level}>{`Up to H${level}`}</option>
+              <option key={level} value={level}>{t('toc.up_to_heading', { level })}</option>
             ))}
           </select>
         ) : null}
       </div>
       {headings.length === 0 ? (
-        <div className="toc-block-empty text-sm text-nim-faint">Add headings to build the table of contents.</div>
+        <div className="toc-block-empty text-sm text-nim-faint">{t('toc.add_headings')}</div>
       ) : (
         <ul className="toc-block-list m-0 list-none p-0">
           {headings.map((heading) => (

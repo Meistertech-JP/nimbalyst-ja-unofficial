@@ -6,6 +6,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   DocumentHeaderRegistry,
   type DocumentHeaderComponentProps,
@@ -16,6 +17,8 @@ import { setPageInfoPanelOpen } from './pageInfoPanelState';
 export const PAGE_STATUS_CHIP_PROVIDER_ID = 'page-status-chip';
 
 export function PageStatusChip({ filePath, getContent, contentVersion }: DocumentHeaderComponentProps) {
+  const { t } = useTranslation('tracker');
+  const { t: tEditor } = useTranslation('editor');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const badge = useMemo(() => frontmatterStatusBadge(getContent(), filePath), [getContent, contentVersion, filePath]);
   if (!badge) return null;
@@ -28,10 +31,10 @@ export function PageStatusChip({ filePath, getContent, contentVersion }: Documen
           ? 'border-red-500/40 bg-red-500/10 text-red-500'
           : 'border-nim-warning bg-nim-warning-subtle text-nim-warning'}`}
         onClick={() => setPageInfoPanelOpen(true)}
-        title="Open Page info"
+        title={tEditor('page_info.title')}
         data-testid="page-status-chip"
       >
-        {invalid ? 'Invalid frontmatter' : badge.status}
+        {invalid ? t('frontmatter.invalid') : badge.status}
       </button>
     </div>
   );

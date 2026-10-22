@@ -3,12 +3,14 @@
  * "What we track": the category and the categories it links to directly. The
  * project-wide map is the label type map in the wiki (`OntologyTypeMap`).
  */
+import { useTranslation } from '@nimbalyst/i18n/react';
+import type { TFunction } from 'i18next';
 import { formatCount, type DomainCategory, type DomainEdge, type DomainModel } from './ontologyDomain';
 import type { OpenCategory } from './OntologyParts';
 
-function edgeCount(edge: DomainEdge, fromUs: boolean): string {
+function edgeCount(edge: DomainEdge, fromUs: boolean, t: TFunction<'tracker'>): string {
   if (edge.state === 'missing') return '';
-  if (!fromUs && edge.have < edge.total) return `${formatCount(edge.have)} of ${formatCount(edge.total)}`;
+  if (!fromUs && edge.have < edge.total) return t('ontology_parts.of_total', { have: formatCount(edge.have), total: formatCount(edge.total) });
   return formatCount(edge.links);
 }
 
@@ -39,10 +41,15 @@ function ArrowDefs({ id }: { id: string }) {
   );
 }
 
-function nodeCountLabel(category: DomainCategory): string {
-  if (category.ghost) return 'not tracked';
-  if (category.us) return 'us';
-  return `${formatCount(category.count)}${category.countLabel ? ` ${category.countLabel}` : ''}`;
+function nodeCountLabel(category: DomainCategory, t: TFunction<'tracker'>): string {
+  if (category.ghost) return t('ontology_what_we_track.not_tracked');
+  if (category.us) return t('ontology_neighborhood.ours');
+  const countLabel = category.countLabel === 'open'
+    ? t('ontology_neighborhood.open_count')
+    : category.countLabel === 'not tracked'
+      ? t('ontology_what_we_track.not_tracked')
+      : category.countLabel;
+  return `${formatCount(category.count)}${countLabel ? ` ${countLabel}` : ''}`;
 }
 
 /** The category and its direct neighbors, for the top of a detail page. */
@@ -52,6 +59,7 @@ export function OntologyNeighborhood({ model, categoryId, onOpen, onOpenGap }: {
   onOpen: OpenCategory;
   onOpenGap: (gapId: string) => void;
 }) {
+  const { t } = useTranslation('tracker');
   const edges = model.edges.filter((edge) => edge.from === categoryId || edge.to === categoryId);
   const byId = new Map(model.categories.map((category) => [category.id, category]));
   const others = [...new Set(edges.map((edge) => (edge.from === categoryId ? edge.to : edge.from)))].filter((id) => byId.has(id));
@@ -68,7 +76,7 @@ export function OntologyNeighborhood({ model, categoryId, onOpen, onOpenGap }: {
   });
   return (
     <div className="ontology-canvas ontology-neighborhood">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Directly connected categories">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('ontology_neighborhood.directly_connected')}>
         <ArrowDefs id="ontology-arrow-small" />
         {edges.filter((edge) => positions.has(edge.from) && positions.has(edge.to)).map((edge) => {
           const [x1, y1] = positions.get(edge.from)!;
@@ -83,7 +91,7 @@ export function OntologyNeighborhood({ model, categoryId, onOpen, onOpenGap }: {
                 x={(sx + ex) / 2}
                 y={(sy + ey) / 2}
                 text={missing ? `${edge.verb}  +` : edge.verb}
-                count={edgeCount(edge, byId.get(edge.from)?.us ?? false)}
+                count={edgeCount(edge, byId.get(edge.from)?.us ?? false, t)}
                 onClick={missing && edge.gapId ? () => onOpenGap(edge.gapId!) : undefined}
               />
             </g>
@@ -103,7 +111,7 @@ export function OntologyNeighborhood({ model, categoryId, onOpen, onOpenGap }: {
             >
               <rect className="ontology-node-box" x={x - boxW / 2} y={y - boxH / 2} width={boxW} height={boxH} rx={9} />
               <text className="ontology-node-title" x={x} y={y - 2} textAnchor="middle">{category.name}</text>
-              <text className="ontology-node-example" x={x} y={y + 14} textAnchor="middle">{nodeCountLabel(category)}</text>
+              <text className="ontology-node-example" x={x} y={y + 14} textAnchor="middle">{nodeCountLabel(category, t)}</text>
             </g>
           );
         })}

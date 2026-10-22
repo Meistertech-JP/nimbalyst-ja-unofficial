@@ -18,6 +18,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type {
   DecisionEditTextTally,
   DecisionProposalTally,
@@ -44,6 +45,7 @@ export const DecisionEditTextControl: React.FC<ControlProps> = ({
   onDraftChange,
   disabled,
 }) => {
+  const { t } = useTranslation('editor');
   const text = draft?.type === 'editText' ? draft.text : seed;
   const edited = text !== seed;
 
@@ -69,9 +71,9 @@ export const DecisionEditTextControl: React.FC<ControlProps> = ({
       />
       <div className="decision-edittext-foot">
         <span className={edited ? 'decision-edited' : 'decision-quiet'}>
-          {edited ? 'edited from draft' : 'unchanged'}
+          {edited ? t('decision.proposal.edited_from_draft') : t('decision.proposal.unchanged')}
         </span>
-        <span className="decision-quiet">{` · ${text.length} chars`}</span>
+        <span className="decision-quiet">{` · ${t('decision.proposal.characters', { count: text.length })}`}</span>
       </div>
     </div>
   );
@@ -125,6 +127,7 @@ export const DecisionProposalList: React.FC<{
   /** Absent when the viewer cannot seal; the accept affordance is then hidden. */
   onAccept?: (proposal: DecisionProposalTally) => void;
 }> = ({ seed, tally, members, viewerId, onAccept }) => {
+  const { t } = useTranslation('editor');
   const leaderCount = tally.proposals[0]?.count ?? 0;
   const nameFor = (id: string): string =>
     members.find((member) => member.id === id)?.name ?? id;
@@ -150,7 +153,7 @@ export const DecisionProposalList: React.FC<{
             <div className="decision-prop-head">
               <AvatarStack voterIds={[proposal.voterId]} members={members} />
               <span className="decision-prop-who">
-                {isMine ? 'You' : (proposal.voterName ?? nameFor(proposal.voterId))}
+                {isMine ? t('decision.proposal.you') : (proposal.voterName ?? nameFor(proposal.voterId))}
               </span>
               {proposal.backerIds.length > 1 ? (
                 <span className="decision-row-tally">
@@ -162,20 +165,20 @@ export const DecisionProposalList: React.FC<{
                 </span>
               ) : null}
               <span className="decision-grow" />
-              {isLeading ? <span className="decision-leading">Leading</span> : null}
+              {isLeading ? <span className="decision-leading">{t('decision.proposal.leading')}</span> : null}
               {onAccept ? (
                 <button
                   type="button"
                   className="decision-linkish"
                   onClick={() => onAccept(proposal)}
                 >
-                  Accept
+                  {t('decision.actions.accept')}
                 </button>
               ) : null}
             </div>
             <div className="decision-prop-text">
               {proposal.unchanged ? (
-                <span className="decision-quiet">Kept the original wording.</span>
+                <span className="decision-quiet">{t('decision.proposal.kept_original')}</span>
               ) : (
                 diffWords(seed, proposal.text)
               )}

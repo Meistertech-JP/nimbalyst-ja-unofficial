@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import type React from 'react';
 
 const { documentModelRegistry, errorNotificationService, requestConfirmation } = vi.hoisted(() => ({
   documentModelRegistry: { get: vi.fn() },
@@ -29,6 +32,26 @@ vi.mock('../../store/atoms/collabDocuments', () => ({
 }));
 
 import { useLocalFileSharedDocLink } from '../useCollabLocalOrigin';
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function renderLocalizedHook<T>(callback: () => T, locale: 'en' | 'ja' = 'en') {
+  const i18n = locale === 'ja' ? japaneseI18n : englishI18n;
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <UiLanguageProvider i18n={i18n} preference={locale} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return renderHook(callback, { wrapper: Wrapper });
+}
 
 const binding = {
   orgId: 'org-1',
@@ -76,7 +99,7 @@ describe('useLocalFileSharedDocLink pull', () => {
       .mockReturnValue(false);
     documentModelRegistry.get.mockReturnValue({ isDirty, flushDirtyEditors });
 
-    const { result } = renderHook(() => (
+    const { result } = renderLocalizedHook(() => (
       useLocalFileSharedDocLink('/workspace', '/workspace/local.md')
     ));
     await waitFor(() => expect(result.current.binding?.documentId).toBe('doc-1'));
@@ -104,7 +127,7 @@ describe('useLocalFileSharedDocLink pull', () => {
       flushDirtyEditors,
     });
 
-    const { result } = renderHook(() => (
+    const { result } = renderLocalizedHook(() => (
       useLocalFileSharedDocLink('/workspace', '/workspace/local.md')
     ));
     await waitFor(() => expect(result.current.binding?.documentId).toBe('doc-1'));
@@ -127,7 +150,7 @@ describe('useLocalFileSharedDocLink pull', () => {
     documentModelRegistry.get.mockReturnValue(null);
     const conflict = { success: false, status: 'conflict', conflictKind: 'diverged', conflictToken: 'tok-1' };
 
-    const { result } = renderHook(() => (
+    const { result } = renderLocalizedHook(() => (
       useLocalFileSharedDocLink('/workspace', '/workspace/local.md')
     ));
     await waitFor(() => expect(result.current.binding?.documentId).toBe('doc-1'));
@@ -153,6 +176,29 @@ describe('useLocalFileSharedDocLink pull', () => {
       documentId: 'doc-1',
       forceOverwriteLocal: true,
       conflictToken: 'tok-1',
+    });
+  });
+
+  it('localizes the pull conflict confirmation while preserving dynamic file data', async () => {
+    documentModelRegistry.get.mockReturnValue(null);
+    const conflict = { success: false, status: 'conflict', conflictKind: 'diverged', conflictToken: 'tok-ja' };
+    pullLocalOrigin.mockResolvedValueOnce(conflict);
+    requestConfirmation.mockResolvedValueOnce(false);
+
+    const { result } = renderLocalizedHook(() => (
+      useLocalFileSharedDocLink('/workspace', '/workspace/local.md')
+    ), 'ja');
+    await waitFor(() => expect(result.current.binding?.documentId).toBe('doc-1'));
+
+    await act(async () => {
+      await result.current.pullFromSharedDoc();
+    });
+
+    expect(requestConfirmation).toHaveBeenCalledWith({
+      title: 'ローカルファイルを上書きしますか？',
+      message: 'ローカルファイルと共有ドキュメントの両方が変更されています。 共有ドキュメントでローカルファイル全体を置き換えます。続行しますか？',
+      confirmLabel: '上書き',
+      destructive: true,
     });
   });
 });

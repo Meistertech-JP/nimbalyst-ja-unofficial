@@ -41,6 +41,7 @@ import {
 } from 'lexical';
 import {Dispatch, useCallback, useEffect, useReducer, useRef, useState} from 'react';
 import * as React from 'react';
+import {useTranslation} from '@nimbalyst/i18n/react';
 
 import {useDocumentPath} from '../../../DocumentPathContext';
 import {MaterialSymbol} from '../../../ui/icons/MaterialSymbol';
@@ -182,6 +183,7 @@ export default function FloatingLinkEditorPlugin({
   isLinkEditMode: boolean;
   setIsLinkEditMode: Dispatch<boolean>;
 }): JSX.Element | null {
+  const {t} = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const {documentPath} = useDocumentPath();
   const documentPathRef = useRef<string | null>(documentPath ?? null);
@@ -608,24 +610,24 @@ export default function FloatingLinkEditorPlugin({
         {showForm ? (
           <>
             <label className="link-field">
-              <span className="link-field-label">Text</span>
+              <span className="link-field-label">{t('floating_link.text')}</span>
               <input
                 className="link-input"
                 value={textValue}
-                aria-label="Link text"
+                aria-label={t('floating_link.link_text')}
                 onFocus={onFieldFocus}
                 onChange={(event) => setDraftText(event.target.value)}
                 onKeyDown={onFieldKeyDown}
               />
             </label>
             <label className="link-field">
-              <span className="link-field-label">Link</span>
+              <span className="link-field-label">{t('floating_link.link')}</span>
               <input
                 ref={urlInputRef}
                 className="link-input"
                 value={urlValue}
-                placeholder="Paste or type a link"
-                aria-label="Link URL"
+                placeholder={t('floating_link.url_placeholder')}
+                aria-label={t('floating_link.link_url')}
                 onFocus={onFieldFocus}
                 onChange={(event) => setDraftUrl(event.target.value)}
                 onKeyDown={onFieldKeyDown}
@@ -638,7 +640,7 @@ export default function FloatingLinkEditorPlugin({
                 onMouseDown={preventDefault}
                 onClick={removeLink}>
                 <MaterialSymbol icon="link_off" size={16} />
-                Remove link
+                {t('floating_link.remove_link')}
               </button>
               {isLinkEditMode && (
                 <button
@@ -646,7 +648,7 @@ export default function FloatingLinkEditorPlugin({
                   className="link-editor-text-button link-save"
                   onMouseDown={preventDefault}
                   onClick={saveEdit}>
-                  Save
+                  {t('floating_link.save')}
                 </button>
               )}
             </div>
@@ -663,14 +665,14 @@ export default function FloatingLinkEditorPlugin({
                   // The field mounts on the next render.
                   window.setTimeout(() => urlInputRef.current?.focus(), 0);
                 }}>
-                Edit
+                {t('floating_link.edit')}
               </button>
             )}
             <button
               type="button"
               className="link-editor-icon-button"
-              title={copied ? 'Copied' : 'Copy link'}
-              aria-label="Copy link"
+              title={copied ? t('floating_link.copied') : t('floating_link.copy_link')}
+              aria-label={t('floating_link.copy_link')}
               onMouseDown={preventDefault}
               onClick={copyUrl}>
               <MaterialSymbol icon={copied ? 'check' : 'content_copy'} size={16} />

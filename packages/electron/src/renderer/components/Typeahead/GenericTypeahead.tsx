@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { createPortal } from 'react-dom';
 import { getWindowControlsZones } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 import { getCursorCoordinates } from './typeaheadUtils';
@@ -11,6 +12,21 @@ export interface TypeaheadOption {
   section?: string;
   data?: any;
   disabled?: boolean;
+}
+
+const TYPEAHEAD_SECTION_KEYS: Record<string, string> = {
+  'Project Skills': 'project_skills',
+  'Plugin Skills': 'plugin_skills',
+  'User Skills': 'user_skills',
+  'Built-in Commands': 'builtin_commands',
+  'Project Commands': 'project_commands',
+  'Extension Commands': 'extension_commands',
+  'User Commands': 'user_commands',
+};
+
+export function getTypeaheadSectionTranslationKey(section: string): string | null {
+  const key = TYPEAHEAD_SECTION_KEYS[section];
+  return key ? `typeahead.${key}` : null;
 }
 
 interface GenericTypeaheadProps {
@@ -61,6 +77,7 @@ export function GenericTypeahead({
   maxWidth = 600,
   sectionOrder
 }: GenericTypeaheadProps) {
+  const { t } = useTranslation('editor');
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [isPositioned, setIsPositioned] = useState(false);
@@ -276,7 +293,11 @@ export function GenericTypeahead({
         {groupedOptions.map(({ section, options: sectionOptions }, groupIndex) => (
           <div key={section || groupIndex} className="generic-typeahead-section py-0.5 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-nim">
             {section && (
-              <div className="generic-typeahead-section-header px-3 pt-1.5 pb-1 text-[0.6875rem] font-semibold text-nim-faint uppercase tracking-wide">{section}</div>
+              <div className="generic-typeahead-section-header px-3 pt-1.5 pb-1 text-[0.6875rem] font-semibold text-nim-faint uppercase tracking-wide">
+                {getTypeaheadSectionTranslationKey(section)
+                  ? t(getTypeaheadSectionTranslationKey(section)!)
+                  : section}
+              </div>
             )}
             {sectionOptions.map((option) => {
               // Calculate visual index based on flat ordered list (matches navigation order)
@@ -306,7 +327,7 @@ export function GenericTypeahead({
                   )}
                   <div className="generic-typeahead-option-text flex-1 min-w-0 flex flex-col gap-0.5">
                     <div className="generic-typeahead-option-label text-sm text-nim-primary whitespace-nowrap overflow-hidden text-ellipsis">
-                      {option.label}
+                      {option.data?.isUntitledSession ? t('kanban.untitled') : option.label}
                     </div>
                     {option.description && (
                       <div className="generic-typeahead-option-description text-xs text-nim-faint break-words leading-snug">

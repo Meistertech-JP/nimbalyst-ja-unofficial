@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ProviderConfig } from '../../Settings/SettingsView';
 import { SettingsToggle } from '../SettingsToggle';
-import { AlphaBadge, SETTINGS_ALPHA_TOOLTIP } from '../../common/AlphaBadge';
+import { AlphaBadge } from '../../common/AlphaBadge';
 import type { FileChangeFidelity } from '@nimbalyst/runtime/ai/server/providerFileTracking';
 
 /**
@@ -40,19 +41,6 @@ interface InstallStrategy {
   docsUrl?: string;
 }
 
-const FIDELITY_COPY: Record<FileChangeFidelity, string> = {
-  structured:
-    'Reports every file it changes directly, including the file\'s contents before the '
-    + 'edit. Diff review and the Files Edited list are exact.',
-  'tool-args':
-    'Reports the files it edits, but not the ones it deletes or renames — those go '
-    + 'through shell commands. Nimbalyst watches the project folder to catch them, so '
-    + 'a diff can occasionally be attributed to the wrong turn.',
-  none:
-    'Does not report the files it changes. Nimbalyst infers them by watching the '
-    + 'project folder, so diff review is approximate.',
-};
-
 export function HeadlessCliProviderPanel({
   config,
   onToggle,
@@ -65,6 +53,8 @@ export function HeadlessCliProviderPanel({
   docsLabel,
   fileChangeFidelity,
 }: HeadlessCliProviderPanelProps) {
+  const { t } = useTranslation('settings');
+  const providerKey = toolId === 'cursor-agent' ? 'cursor_agent' : 'grok_build';
   const [cliStatus, setCLIStatus] = useState<CLIStatus>('checking');
   const [cliVersion, setCLIVersion] = useState<string | null>(null);
   const [installCommand, setInstallCommand] = useState<string | null>(null);
@@ -118,11 +108,11 @@ export function HeadlessCliProviderPanel({
     <div className="provider-panel headless-cli-provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)] flex items-center gap-2">
-          {title}
-          <AlphaBadge size="sm" tooltip={SETTINGS_ALPHA_TOOLTIP} />
+          {t(`provider.headless.providers.${providerKey}.title`, { defaultValue: title })}
+          <AlphaBadge size="sm" tooltip={t('provider.alpha_tooltip')} />
         </h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          {description}
+          {t(`provider.headless.providers.${providerKey}.description`, { defaultValue: description })}
         </p>
       </div>
 
@@ -132,14 +122,14 @@ export function HeadlessCliProviderPanel({
         </h4>
 
         {cliStatus === 'checking' && (
-          <p className="text-[13px] text-[var(--nim-text-muted)]">Checking for the {commandName} CLI...</p>
+          <p className="text-[13px] text-[var(--nim-text-muted)]">{t('provider.headless.checking', { name: commandName })}</p>
         )}
 
         {cliStatus === 'installed' && (
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[var(--nim-success)] shrink-0" />
             <span className="text-[13px] text-[var(--nim-text)]">
-              Installed and signed in{cliVersion ? ` (${cliVersion})` : ''}
+              {t('provider.headless.installed_signed_in')}{cliVersion ? ` (${cliVersion})` : ''}
             </span>
           </div>
         )}
@@ -149,19 +139,19 @@ export function HeadlessCliProviderPanel({
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2 h-2 rounded-full bg-[var(--nim-warning)] shrink-0" />
               <span className="text-[13px] text-[var(--nim-text)]">
-                Installed{cliVersion ? ` (${cliVersion})` : ''}, but not signed in
+                {t('provider.headless.installed_signed_out')}{cliVersion ? ` (${cliVersion})` : ''}
               </span>
             </div>
             <p className="text-[13px] text-[var(--nim-text-muted)] leading-relaxed">
-              Run{' '}
+              {t('provider.headless.run_command')}{' '}
               <code className="text-[var(--nim-code-text)] bg-[var(--nim-code-bg)] px-1 rounded select-text">{loginCommand}</code>{' '}
-              in your terminal, then check again.
+              {t('provider.headless.then_check_again')}
             </p>
             <button
               className="mt-3 inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-surface)] text-[var(--nim-text)] border border-[var(--nim-border)] hover:bg-[var(--nim-surface-hover)]"
               onClick={() => void checkCLI()}
             >
-              Check again
+              {t('provider.headless.check_again')}
             </button>
           </div>
         )}
@@ -169,8 +159,7 @@ export function HeadlessCliProviderPanel({
         {cliStatus === 'not-installed' && (
           <div>
             <p className="text-[13px] text-[var(--nim-text-muted)] mb-3 leading-relaxed">
-              The {commandName} CLI is required to run this agent. Nimbalyst does not install it
-              for you — run the vendor&apos;s installer in your terminal:
+              {t('provider.headless.not_installed', { name: commandName })}
             </p>
             {installCommand && (
               <code className="block text-[13px] text-[var(--nim-code-text)] bg-[var(--nim-code-bg)] px-3 py-2 rounded mb-3 select-text">
@@ -181,61 +170,59 @@ export function HeadlessCliProviderPanel({
               className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-surface)] text-[var(--nim-text)] border border-[var(--nim-border)] hover:bg-[var(--nim-surface-hover)]"
               onClick={() => void checkCLI()}
             >
-              Check again
+              {t('provider.headless.check_again')}
             </button>
           </div>
         )}
 
         <p className="text-[13px] text-[var(--nim-text-muted)] mt-3 leading-relaxed">
-          See the{' '}
+          {t('provider.headless.see_docs_prefix')}{' '}
           <a
             href={docsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[var(--nim-primary)] hover:underline"
           >
-            {docsLabel}
+            {t(`provider.headless.providers.${providerKey}.docs_label`, { defaultValue: docsLabel })}
           </a>
-          {' '}for installation and authentication details.
+          {' '}{t('provider.headless.see_docs_suffix')}
         </p>
       </div>
 
       <SettingsToggle
         variant="enable"
-        name={`Enable ${title}`}
+        name={t('provider.headless.enable', { title: t(`provider.headless.providers.${providerKey}.title`, { defaultValue: title }) })}
         checked={config.enabled || false}
         onChange={onToggle}
       />
 
       {cliStatus === 'installed' && (
         <p className="text-[13px] text-[var(--nim-text-muted)] mt-2 leading-relaxed">
-          On by default because the {commandName} CLI is installed and signed in. Turning it
-          off here is remembered.
+          {t('provider.headless.enabled_by_default', { name: commandName })}
         </p>
       )}
 
       {config.enabled && (
         <>
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)]">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">Authentication</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.headless.authentication')}</h4>
             <p className="text-[13px] text-[var(--nim-text-muted)] mb-3 leading-relaxed">
-              {title} uses its own CLI login. Run{' '}
+              {t('provider.headless.auth_description', { title: t(`provider.headless.providers.${providerKey}.title`, { defaultValue: title }) })}{' '}
               <code className="text-[var(--nim-code-text)] bg-[var(--nim-code-bg)] px-1 rounded select-text">{loginCommand}</code>{' '}
-              in your terminal to authenticate.
+              {t('provider.headless.in_terminal_to_authenticate')}
             </p>
             <p className="text-[13px] text-[var(--nim-text-muted)]">
-              No API key is required, and Nimbalyst never reads one from your environment.
+              {t('provider.headless.no_api_key')}
             </p>
           </div>
 
           <div className="provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)] last:border-b-0 last:mb-0 last:pb-0">
-            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">File tracking</h4>
+            <h4 className="provider-panel-section-title text-base font-semibold mb-3 text-[var(--nim-text)]">{t('provider.headless.file_tracking')}</h4>
             <p className="text-[13px] text-[var(--nim-text-muted)] leading-relaxed">
-              {FIDELITY_COPY[fileChangeFidelity]}
+              {t(`provider.headless.file_fidelity.${fileChangeFidelity}`)}
             </p>
             <p className="text-[13px] text-[var(--nim-text-muted)] mt-3 leading-relaxed">
-              This agent cannot pause a turn to ask permission for an individual tool, so a
-              session requires the &ldquo;Allow Edits&rdquo; workspace permission mode.
+              {t('provider.headless.permission_mode')}
             </p>
           </div>
         </>

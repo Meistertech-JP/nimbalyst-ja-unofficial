@@ -334,16 +334,32 @@ export function renderPart(
 }
 
 /** A description of the animation for assistive technology. */
-export function sceneAriaLabel(doc: AnimDocument): string {
+export interface SceneAriaLabelTranslations {
+  diagram: (partCount: number, stepCount: number) => string;
+  steps: (captions: string) => string;
+}
+
+export function sceneAriaLabel(
+  doc: AnimDocument,
+  translations?: SceneAriaLabelTranslations
+): string {
   const partCount = Object.keys(doc.parts).length;
   const captions = doc.steps
     .map((s) => s.caption?.trim())
     .filter((c): c is string => Boolean(c));
-  const narration = captions.length > 0 ? ` Steps: ${captions.join(" ")}` : "";
-  return `Animated diagram with ${partCount} parts and ${doc.steps.length} steps.${narration}`;
+  const description = translations
+    ? translations.diagram(partCount, doc.steps.length)
+    : `Animated diagram with ${partCount} parts and ${doc.steps.length} steps.`;
+  if (captions.length === 0) return description;
+  const captionText = captions.join(" ");
+  return `${description}${translations ? translations.steps(captionText) : ` Steps: ${captionText}`}`;
 }
 
-export function renderScene(doc: AnimDocument, assets?: HtmlAssets): string {
+export function renderScene(
+  doc: AnimDocument,
+  assets?: HtmlAssets,
+  ariaLabel = sceneAriaLabel(doc)
+): string {
   const body = drawOrder(doc)
     .map((id) => renderPart(id, doc, assets))
     .join("");
@@ -351,6 +367,6 @@ export function renderScene(doc: AnimDocument, assets?: HtmlAssets): string {
     `<svg class="anim-stage" xmlns="http://www.w3.org/2000/svg" ` +
     `viewBox="0 0 ${doc.stage.width} ${doc.stage.height}" ` +
     `preserveAspectRatio="xMidYMid meet" role="img" ` +
-    `aria-label="${escapeXml(sceneAriaLabel(doc))}">${body}</svg>`
+    `aria-label="${escapeXml(ariaLabel)}">${body}</svg>`
   );
 }

@@ -11,6 +11,7 @@
 
 import type { LexicalEditor } from 'lexical';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CollabScope } from '@nimbalyst/collab-client/core';
 import { TYPE_PAGE_DOCUMENT_PREFIX, type SharedDocument } from '@nimbalyst/collab-client/docs';
 import { CollaborativeEmbedEditor } from '../EmbedFrame/CollaborativeEmbedEditor';
@@ -45,6 +46,7 @@ export const TypePageProse: React.FC<TypePageProseProps> = ({
   documents,
   onEditorReady,
 }) => {
+  const { t } = useTranslation('collabSidebar');
   const documentId = `${TYPE_PAGE_DOCUMENT_PREFIX}${typeId}`;
   const [created, setCreated] = useState<SharedDocument | null>(null);
   const [creating, setCreating] = useState(false);
@@ -79,9 +81,9 @@ export const TypePageProse: React.FC<TypePageProseProps> = ({
           onClick={() => void startWriting()}
           data-testid="type-page-prose-start"
         >
-          {creating ? 'Creating the page...' : `Describe what a ${itemName.toLowerCase()} is and what belongs here`}
+          {creating ? t('type_page_prose.creating') : t('type_page_prose.empty_prompt', { item: itemName.toLowerCase() })}
         </button>
-        {error && <div className="pb-2 text-xs text-nim-error" role="alert">This page could not be created: {error}</div>}
+        {error && <div className="pb-2 text-xs text-nim-error" role="alert">{t('type_page_prose.create_error', { error })}</div>}
       </div>
     );
   }

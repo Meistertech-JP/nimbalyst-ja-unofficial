@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { store } from '@nimbalyst/runtime/store';
@@ -41,6 +42,18 @@ interface FlatFileTreeProps {
   extensionFileTypes?: ExtensionFileType[];
 }
 
+export function getFlatFileTreeDeleteConfirmationCopy(paths: string[]) {
+  const isMultiple = paths.length > 1;
+  return {
+    titleKey: isMultiple ? 'context.confirm_delete_items_title' : 'context.confirm_delete_item_title',
+    messageKey: isMultiple ? 'context.confirm_delete_multiple' : 'context.confirm_delete_item',
+    messageOptions: isMultiple
+      ? { count: paths.length }
+      : { name: paths[paths.length - 1]?.split('/').pop() ?? '' },
+    confirmLabelKey: 'context.delete',
+  };
+}
+
 /**
  * Flat virtualized file tree component.
  *
@@ -62,6 +75,7 @@ export function FlatFileTree({
   onFolderSelect,
   extensionFileTypes = [],
 }: FlatFileTreeProps) {
+  const { t } = useTranslation('files');
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   // Atoms
@@ -445,9 +459,9 @@ export function FlatFileTree({
       // trash" when the trash folder is unwritable, common on Linux). See #195.
       console.error('Failed to delete file:', result.error);
       dialogRef.current?.open(DIALOG_IDS.ERROR, {
-        title: 'Delete failed',
-        message: `Could not delete ${filePath.split(/[/\\]/).pop() || filePath}.`,
-        details: result.error || 'The OS did not provide a reason. Check that the file still exists and that the trash folder is writable.',
+        title: t('operations.delete_failed'),
+        message: t('operations.delete_failed_message', { name: filePath.split(/[/\\]/).pop() || filePath }),
+        details: result.error || t('operations.os_reason_unknown'),
       });
     }
   };
@@ -466,11 +480,11 @@ export function FlatFileTree({
       // Same silent-failure concern as handleDelete, but rolled up into a
       // single summary dialog rather than one per failed file. See #195.
       const failureSummary = failures
-        .map(f => `- ${f.path.split(/[/\\]/).pop() || f.path}: ${f.error || 'unknown error'}`)
+        .map(f => `- ${f.path.split(/[/\\]/).pop() || f.path}: ${f.error || t('operations.unknown_error')}`)
         .join('\n');
       dialogRef.current?.open(DIALOG_IDS.ERROR, {
-        title: failures.length === filePaths.length ? 'Delete failed' : 'Some files could not be deleted',
-        message: `${failures.length} of ${filePaths.length} file${filePaths.length === 1 ? '' : 's'} could not be deleted.`,
+        title: failures.length === filePaths.length ? t('operations.delete_failed') : t('operations.some_delete_failed'),
+        message: t('operations.delete_multiple_message', { failed: failures.length, total: filePaths.length }),
         details: failureSummary,
       });
     }
@@ -619,7 +633,7 @@ export function FlatFileTree({
         for (const file of externalFiles) {
           const sourcePath = window.electronAPI.getPathForFile(file);
           if (!sourcePath) {
-            externalFailures.push({ name: file.name, error: 'No filesystem path' });
+            externalFailures.push({ name: file.name, error: t('operations.no_filesystem_path') });
             continue;
           }
           const result = await window.electronAPI.copyFile(sourcePath, node.path);
@@ -635,11 +649,11 @@ export function FlatFileTree({
         }
         if (externalFailures.length > 0) {
           const failureSummary = externalFailures
-            .map((f) => `- ${f.name}: ${f.error || 'unknown error'}`)
+            .map((f) => `- ${f.name}: ${f.error || t('operations.unknown_error')}`)
             .join('\n');
           dialogRef.current?.open(DIALOG_IDS.ERROR, {
-            title: externalFailures.length === externalFiles.length ? 'Copy failed' : 'Some files could not be copied',
-            message: `${externalFailures.length} of ${externalFiles.length} item${externalFiles.length === 1 ? '' : 's'} could not be copied into ${node.name}.`,
+            title: externalFailures.length === externalFiles.length ? t('operations.copy_failed') : t('operations.some_copy_failed'),
+            message: t('operations.copy_multiple_message', { failed: externalFailures.length, total: externalFiles.length, name: node.name }),
             details: failureSummary,
           });
         }
@@ -694,13 +708,15 @@ export function FlatFileTree({
         // Same single-summary-dialog pattern as handleDeleteMultiple (#216)
         // so users do not get one error dialog per failed file.
         const failureSummary = failures
-          .map((f) => `- ${f.path.split(/[/\\]/).pop() || f.path}: ${f.error || 'unknown error'}`)
+          .map((f) => `- ${f.path.split(/[/\\]/).pop() || f.path}: ${f.error || t('operations.unknown_error')}`)
           .join('\n');
         const verb = isCopy ? 'copied' : 'moved';
-        const verbCap = isCopy ? 'Copy' : 'Move';
+        const verbLabel = t(`operations.${verb}`);
         dialogRef.current?.open(DIALOG_IDS.ERROR, {
-          title: failures.length === sourcePaths.length ? `${verbCap} failed` : `Some files could not be ${verb}`,
-          message: `${failures.length} of ${sourcePaths.length} item${sourcePaths.length === 1 ? '' : 's'} could not be ${verb} into ${node.name}.`,
+          title: failures.length === sourcePaths.length
+            ? t(isCopy ? 'operations.copy_failed' : 'operations.move_failed')
+            : t('operations.some_move_copy_failed', { verb: verbLabel }),
+          message: t('operations.move_copy_multiple_message', { failed: failures.length, total: sourcePaths.length, verb: verbLabel, name: node.name }),
           details: failureSummary,
         });
       }
@@ -869,14 +885,12 @@ export function FlatFileTree({
         if (paths.length === 0) return;
 
         // Show confirmation before deleting (matches context menu behavior)
-        const confirmMessage = paths.length > 1
-          ? `Are you sure you want to delete ${paths.length} items?`
-          : `Are you sure you want to delete "${paths[paths.length - 1].split('/').pop()}"?`;
+        const confirmationCopy = getFlatFileTreeDeleteConfirmationCopy(paths);
 
         const confirmed = await requestConfirmation({
-          title: paths.length > 1 ? 'Delete items?' : 'Delete item?',
-          message: confirmMessage,
-          confirmLabel: 'Delete',
+          title: t(confirmationCopy.titleKey),
+          message: t(confirmationCopy.messageKey, confirmationCopy.messageOptions),
+          confirmLabel: t(confirmationCopy.confirmLabelKey),
           destructive: true,
         });
         if (!confirmed) return;
@@ -1001,7 +1015,7 @@ export function FlatFileTree({
         ref={containerRef}
         className="file-tree-container"
         role="tree"
-        aria-label="File Explorer"
+        aria-label={t('operations.file_explorer')}
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onClick={handleContainerInteraction}

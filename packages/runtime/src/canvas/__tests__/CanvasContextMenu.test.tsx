@@ -9,9 +9,11 @@
  * them until a host passes the callbacks -- and for Cut and Paste, which
  * mutate, the callbacks existing is not the same as the board being writable.
  */
-import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import type { ComponentProps, PropsWithChildren, ReactElement } from 'react';
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CanvasContextMenu } from '../CanvasContextMenu';
 import type { CanvasCommandContext } from '../canvasCommands';
@@ -29,11 +31,30 @@ function node(id: string): CanvasAnyNode {
   } as CanvasAnyNode;
 }
 
+const i18nInstances: Partial<Record<'en' | 'ja', Awaited<ReturnType<typeof createI18nInstance>>>> = {};
+
+beforeAll(async () => {
+  i18nInstances.en = await createI18nInstance('en');
+  i18nInstances.ja = await createI18nInstance('ja');
+});
+
+function renderWithLanguage(element: ReactElement, language: 'en' | 'ja' = 'en') {
+  const i18n = i18nInstances[language];
+  if (!i18n) throw new Error(`Missing i18n instance for ${language}`);
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+      {children}
+    </UiLanguageProvider>
+  );
+  return rtlRender(element, { wrapper: Wrapper });
+}
+
 function renderMenu(
   kind: 'selection' | 'canvas',
   selection: CanvasAnyNode[],
   extra: Partial<ComponentProps<typeof CanvasContextMenu>> = {},
-  ctxOverrides: Partial<CanvasCommandContext> = {}
+  ctxOverrides: Partial<CanvasCommandContext> = {},
+  language: 'en' | 'ja' = 'en'
 ) {
   const ctx: CanvasCommandContext = {
     selection,
@@ -43,7 +64,7 @@ function renderMenu(
     tool: 'select',
     ...ctxOverrides,
   };
-  return render(
+  return renderWithLanguage(
     <CanvasContextMenu
       anchor={{ x: 120, y: 80 }}
       kind={kind}
@@ -53,7 +74,8 @@ function renderMenu(
       onAddSticky={vi.fn()}
       onAddComment={vi.fn()}
       {...extra}
-    />
+    />,
+    language
   );
 }
 
@@ -76,7 +98,7 @@ describe('CanvasContextMenu', () => {
     expect(screen.queryByRole('menuitem', { name: 'Open original screenshot' })).toBeNull();
   });
   it('renders nothing without an anchor', () => {
-    const { container } = render(
+    const { container } = renderWithLanguage(
       <CanvasContextMenu
         anchor={null}
         kind="canvas"
@@ -230,5 +252,30 @@ describe('CanvasContextMenu', () => {
       expect(submenuItems).toHaveLength(1);
       expect(document.activeElement).toBe(submenuItems[0]);
     });
+  });
+
+  it('renders context-menu and command labels in Japanese', () => {
+    const canvasMenu = renderMenu('canvas', [], {}, {}, 'ja');
+    screen.getByRole('menuitem', { name: '付箋を追加' });
+    screen.getByRole('menuitem', { name: 'コメントを追加' });
+    screen.getByRole('menuitem', { name: /^すべて選択/ });
+    screen.getByRole('menuitem', { name: /^すべて表示/ });
+    canvasMenu.unmount();
+
+    renderMenu(
+      'selection',
+      [node('a'), node('b')],
+      { onCopy: vi.fn(), onCut: vi.fn() },
+      {},
+      'ja'
+    );
+    screen.getByRole('menuitem', { name: /^コピー/ });
+    screen.getByRole('menuitem', { name: /^切り取り/ });
+    screen.getByRole('menuitem', { name: /^複製/ });
+    screen.getByRole('menuitem', { name: /^グループ化/ });
+    screen.getByRole('menuitem', { name: /^最前面へ移動/ });
+    screen.getByRole('menuitem', { name: /^削除/ });
+    fireEvent.click(screen.getByRole('menuitem', { name: /^整列/ }));
+    screen.getByRole('menuitem', { name: '左揃え' });
   });
 });

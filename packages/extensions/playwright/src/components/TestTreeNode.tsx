@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TestNode } from '../types';
 import { StatusIcon } from './StatusIcon';
 
@@ -12,6 +13,7 @@ interface TestTreeNodeProps {
 }
 
 export function TestTreeNode({ node, depth, onRun, onSelect, selectedId, onOpenFile }: TestTreeNodeProps) {
+  const { t } = useTranslation('extensions');
   const [expanded, setExpanded] = useState(depth < 2);
   const hasChildren = node.children.length > 0;
   const isSelected = node.id === selectedId;
@@ -75,13 +77,13 @@ export function TestTreeNode({ node, depth, onRun, onSelect, selectedId, onOpenF
 
         {/* Actions */}
         <span className="pw-tree-actions">
-          <button className="pw-icon-btn" onClick={handleRun} title="Run">
+          <button className="pw-icon-btn" onClick={handleRun} title={t('playwright.run')}>
             <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
               play_arrow
             </span>
           </button>
           {node.filePath && (
-            <button className="pw-icon-btn" onClick={handleOpenFile} title="Open file">
+            <button className="pw-icon-btn" onClick={handleOpenFile} title={t('playwright.open_file')}>
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
                 open_in_new
               </span>

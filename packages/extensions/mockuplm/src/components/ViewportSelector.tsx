@@ -6,6 +6,7 @@
  */
 
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VIEWPORT_PRESETS } from './viewportPresets';
 
 export type { ViewportPreset } from './viewportPresets';
@@ -19,6 +20,7 @@ export const ViewportSelector = memo(function ViewportSelector({
   activeWidth,
   onSelect,
 }: ViewportSelectorProps) {
+  const { t } = useTranslation('extensions');
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
       {VIEWPORT_PRESETS.map((preset) => {
@@ -27,7 +29,9 @@ export const ViewportSelector = memo(function ViewportSelector({
           <button
             key={preset.label}
             onClick={() => onSelect(preset.width)}
-            title={preset.width ? `${preset.label} (${preset.width}px)` : 'Full width'}
+            title={preset.width
+              ? `${t(`mockup_lm_ui.viewport.${preset.label.toLowerCase()}`)} (${preset.width}px)`
+              : t('mockup_lm_ui.full_width')}
             style={{
               padding: '3px 8px',
               fontSize: 11,
@@ -41,7 +45,7 @@ export const ViewportSelector = memo(function ViewportSelector({
               whiteSpace: 'nowrap' as const,
             }}
           >
-            {preset.label}
+            {t(`mockup_lm_ui.viewport.${preset.label.toLowerCase()}`)}
           </button>
         );
       })}

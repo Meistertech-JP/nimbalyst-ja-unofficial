@@ -15,6 +15,7 @@ import { ElectronFileSystemService } from '../services/ElectronFileSystemService
 import { isWorktreePath, resolveProjectPath, resolveProjectPathCandidates } from '../utils/workspaceDetection';
 import { getPreloadPath } from '../utils/appPaths';
 import { createUnresponsiveHandler } from './unresponsiveHandler';
+import { translateMainDialogLabel, translateMainMenuLabel } from '../i18n/mainI18n';
 import { recoverAfterProjectWindowClosed } from './ApplicationWindowRecovery';
 import {
   setFileSystemService,
@@ -645,7 +646,7 @@ export function createWindow(
 
         // Handle unresponsive renderer
         window.webContents.on('unresponsive', createUnresponsiveHandler({
-            message: 'The window is not responding',
+            message: translateMainDialogLabel('unresponsive.window_not_responding', 'The window is not responding'),
             logLabel: '[MAIN]',
             getWindow: () => window
         }));
@@ -672,7 +673,7 @@ export function createWindow(
                     }
                 } else {
                     menuTemplate.push({
-                        label: 'No suggestions',
+                        label: translateMainMenuLabel('no_suggestions', 'No suggestions'),
                         enabled: false
                     });
                 }
@@ -680,7 +681,7 @@ export function createWindow(
                 menuTemplate.push({ type: 'separator' });
 
                 menuTemplate.push({
-                    label: 'Add to Dictionary',
+                    label: translateMainMenuLabel('add_to_dictionary', 'Add to Dictionary'),
                     click: () => {
                         window.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord);
                     }
@@ -692,21 +693,21 @@ export function createWindow(
             // Standard edit operations when there's editable content
             if (params.isEditable) {
                 menuTemplate.push(
-                    { label: 'Cut', role: 'cut', enabled: params.editFlags.canCut },
-                    { label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy },
-                    { label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste }
+                    { label: translateMainMenuLabel('cut', 'Cut'), role: 'cut', enabled: params.editFlags.canCut },
+                    { label: translateMainMenuLabel('copy', 'Copy'), role: 'copy', enabled: params.editFlags.canCopy },
+                    { label: translateMainMenuLabel('paste', 'Paste'), role: 'paste', enabled: params.editFlags.canPaste }
                 );
 
                 if (params.selectionText) {
                     menuTemplate.push(
                         { type: 'separator' },
-                        { label: 'Select All', role: 'selectAll' }
+                        { label: translateMainMenuLabel('select_all', 'Select All'), role: 'selectAll' }
                     );
                 }
             } else if (params.selectionText) {
                 // Non-editable but has selection - just show copy
                 menuTemplate.push(
-                    { label: 'Copy', role: 'copy' }
+                    { label: translateMainMenuLabel('copy', 'Copy'), role: 'copy' }
                 );
             }
 

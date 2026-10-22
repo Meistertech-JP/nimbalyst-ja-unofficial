@@ -7,6 +7,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import type { PanelHost, PanelPaneSide } from '@nimbalyst/extension-sdk';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   clampPaneWidth,
   DESK_PANEL_WIDTH,
@@ -43,6 +44,7 @@ export function useCrewPanes(): CrewPaneLayout {
  */
 export function useCrewPaneState(host: PanelHost, hasDeskPanel: boolean): CrewPanesValue {
   const [layout, setLayout] = useState(() => readCrewPaneLayout(host.storage.get(PANE_LAYOUT_KEY)));
+  const { t } = useTranslation('extensions');
   const dragging = useRef(false);
   const latest = useRef(layout);
   latest.current = layout;
@@ -74,10 +76,10 @@ export function useCrewPaneState(host: PanelHost, hasDeskPanel: boolean): CrewPa
 
   useEffect(() => {
     host.setPanes?.({
-      left: { label: 'Crew roster', collapsed: layout.rosterCollapsed },
-      right: hasDeskPanel ? { label: 'Crew desk panel', collapsed: layout.deskPanelCollapsed } : undefined,
+      left: { label: t('crew.roster.pane_label'), collapsed: layout.rosterCollapsed },
+      right: hasDeskPanel ? { label: t('crew.panel.pane_label'), collapsed: layout.deskPanelCollapsed } : undefined,
     });
-  }, [host, hasDeskPanel, layout.rosterCollapsed, layout.deskPanelCollapsed]);
+  }, [host, hasDeskPanel, layout.rosterCollapsed, layout.deskPanelCollapsed, t]);
 
   return useMemo(() => ({
     layout,
@@ -93,6 +95,7 @@ export function useCrewPaneState(host: PanelHost, hasDeskPanel: boolean): CrewPa
 /** Drag handle on the inner edge of a side pane. */
 export function CrewPaneResizer({ side }: { side: PanelPaneSide }) {
   const { layout, resize, endResize } = useCrewPanesContext();
+  const { t } = useTranslation('extensions');
   const bounds = side === 'left' ? ROSTER_WIDTH : DESK_PANEL_WIDTH;
   const width = side === 'left' ? layout.rosterWidth : layout.deskPanelWidth;
   const drag = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -126,7 +129,7 @@ export function CrewPaneResizer({ side }: { side: PanelPaneSide }) {
       data-testid={`crew-pane-resizer-${side}`}
       role="separator"
       aria-orientation="vertical"
-      aria-label={side === 'left' ? 'Resize crew roster' : 'Resize desk panel'}
+      aria-label={side === 'left' ? t('crew.roster.resize_aria') : t('crew.panel.resize_aria')}
       aria-valuemin={bounds.min}
       aria-valuemax={bounds.max}
       aria-valuenow={width}

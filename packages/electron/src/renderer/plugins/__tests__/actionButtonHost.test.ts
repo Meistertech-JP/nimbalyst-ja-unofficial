@@ -1,4 +1,4 @@
-// @vitest-environment node
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const atoms = vi.hoisted(() => ({
@@ -59,6 +59,7 @@ const TEAM_PAGE = 'collab://org:o1:doc:D1';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  document.documentElement.lang = 'en';
   state.values = new Map<symbol, unknown>([
     [atoms.workspace, '/ws'],
     [atoms.scope, { orgId: 'o1' }],
@@ -185,7 +186,24 @@ describe('new item button host', () => {
     state.openPage.mockImplementation(async () => { order.push('open'); });
     const result = await createItemFromButton({ type: 'decision', title: 'Pick a DB', body: '', pagePath: TEAM_PAGE, newTab: false });
     expect(order).toEqual(['place', 'open']);
-    expect(state.warn).toHaveBeenCalledWith(expect.any(String), expect.stringMatching(/Pick a DB.*refused.*Decision/s), expect.objectContaining({ duration: 0 }));
+    expect(state.warn).toHaveBeenCalledWith(
+      'New item not placed',
+      'Pick a DB was created, but it could not be placed under this page (refused). It is listed under Decision in the team Pages.',
+      expect.objectContaining({ duration: 0 }),
+    );
     expect(result).toEqual({ ok: false, error: expect.stringContaining('refused') });
+  });
+
+  it('localizes the persistent placement warning while preserving dynamic values', async () => {
+    document.documentElement.lang = 'ja';
+    state.setItemPlacement.mockResolvedValue({ ok: false, error: '権限がありません' });
+
+    await createItemFromButton({ type: 'note', title: '議事録', body: '', pagePath: 'personal-doc://P1', newTab: false });
+
+    expect(state.warn).toHaveBeenCalledWith(
+      '新しい項目を配置できませんでした',
+      '「議事録」を作成しましたが、このページには配置できませんでした（権限がありません）。個人ページの「Note」に表示されています。',
+      expect.objectContaining({ duration: 0 }),
+    );
   });
 });

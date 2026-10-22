@@ -1,17 +1,18 @@
 {
   "name": "@nimbalyst/electron",
-  "version": "0.81.7",
+  "version": "0.81.7-ja.1",
   "private": true,
   "license": "MIT",
-  "author": "Nimbalyst Team",
-  "description": "Electron app for Nimbalyst",
-  "homepage": "https://nimbalyst.com",
+  "author": "Meistertech-JP",
+  "description": "Nimbalyst — Unofficial Japanese Edition",
+  "homepage": "https://github.com/Meistertech-JP/nimbalyst-ja-unofficial",
   "desktopName": "nimbalyst.desktop",
   "main": "out/main/index.js",
   "bin": {
     "nimbalyst": "./bin/nimbalyst"
   },
   "scripts": {
+    "prebuild": "pnpm --filter @nimbalyst/i18n run build",
     "start": "electron-vite preview",
     "dev": "./scripts/dev.sh",
     "dev:user2": "node ./scripts/dev-user2.mjs",
@@ -65,6 +66,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@nimbalyst/collab-adapters": "workspace:*",
     "@nimbalyst/collab-protocol": "workspace:*",
+    "@nimbalyst/i18n": "workspace:*",
     "@nimbalyst/excalidraw-extension": "workspace:*",
     "@nimbalyst/extension-calc-sheets": "workspace:*",
     "@nimbalyst/extension-csv-spreadsheet": "workspace:*",
@@ -186,8 +188,9 @@
     "vitest": "4.1.11"
   },
   "build": {
-    "appId": "com.nimbalyst.electron",
-    "productName": "Nimbalyst",
+    "appId": "jp.meistertech.nimbalyst.ja.unofficial",
+    "productName": "Nimbalyst 日本語版（非公式）",
+    "copyright": "Copyright (c) 2024-2026 Nimbalyst Inc.",
     "electronVersion": "43.7.0",
     "nodeGypRebuild": false,
     "buildDependenciesFromSource": false,
@@ -203,14 +206,7 @@
     "directories": {
       "output": "release"
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "nimbalyst",
-        "repo": "nimbalyst",
-        "releaseType": "release"
-      }
-    ],
+    "publish": null,
     "generateUpdatesFilesForAllChannels": true,
     "asar": true,
     "asarUnpack": [
@@ -520,7 +516,7 @@
       ],
       "artifactName": "${productName}-Windows-${arch}.${ext}",
       "signtoolOptions": {
-        "publisherName": "NIMBALYST, INC.",
+        "publisherName": "Meistertech-JP",
         "signingHashAlgorithms": [
           "sha256"
         ],
@@ -530,6 +526,9 @@
     "nsis": {
       "oneClick": false,
       "packElevateHelper": false,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "Nimbalyst 日本語版（非公式）",
       "runAfterFinish": true
     },
     "linux": {
@@ -542,6 +541,6 @@
       "category": "Development",
       "maintainer": "Nimbalyst Team <support@nimbalyst.com>"
     },
-    "buildVersion": "0.36.5"
+    "buildVersion": "0.81.7.1"
   }
 }

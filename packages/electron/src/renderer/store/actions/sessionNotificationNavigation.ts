@@ -44,7 +44,12 @@ function safeSourceLabel(target: SessionNotificationNavigationTarget): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, MAX_SOURCE_LABEL_LENGTH);
-  return sanitized || `Session ${target.sessionId.slice(0, 8)}`;
+  return sanitized || errorNotificationService.getLocalizedText(
+    'notifications',
+    'session.navigation_source_fallback',
+    `Session ${target.sessionId.slice(0, 8)}`,
+    { id: target.sessionId.slice(0, 8) },
+  );
 }
 
 function failureMessage(
@@ -54,13 +59,33 @@ function failureMessage(
   const shortId = target.sessionId.slice(0, 8);
   switch (reason) {
     case 'archived':
-      return `Session ${shortId} is archived and was not opened. Restore it from archived sessions, then retry.`;
+      return errorNotificationService.getLocalizedText(
+        'notifications',
+        'session.navigation_archived',
+        `Session ${shortId} is archived and was not opened. Restore it from archived sessions, then retry.`,
+        { id: shortId },
+      );
     case 'missing':
-      return `Session ${shortId} could not be found in its originating project.`;
+      return errorNotificationService.getLocalizedText(
+        'notifications',
+        'session.navigation_missing',
+        `Session ${shortId} could not be found in its originating project.`,
+        { id: shortId },
+      );
     case 'project-unavailable':
-      return `Nimbalyst could not switch to the project for session ${shortId}. Close a project from the rail, then retry.`;
+      return errorNotificationService.getLocalizedText(
+        'notifications',
+        'session.navigation_project_unavailable',
+        `Nimbalyst could not switch to the project for session ${shortId}. Close a project from the rail, then retry.`,
+        { id: shortId },
+      );
     default:
-      return `Nimbalyst could not verify session ${shortId} in its originating project.`;
+      return errorNotificationService.getLocalizedText(
+        'notifications',
+        'session.navigation_lookup_failed',
+        `Nimbalyst could not verify session ${shortId} in its originating project.`,
+        { id: shortId },
+      );
   }
 }
 
@@ -71,7 +96,12 @@ function showUnavailable(
   const label = safeSourceLabel(target);
   let notificationId = '';
   notificationId = errorNotificationService.showWarning(
-    `${label} unavailable`,
+    errorNotificationService.getLocalizedText(
+      'notifications',
+      'session.navigation_unavailable_title',
+      `${label} unavailable`,
+      { label },
+    ),
     failureMessage(target, reason),
     {
       duration: 0,
@@ -79,7 +109,7 @@ function showUnavailable(
       // so it replaces the existing warning instead of being deduplicated away.
       allowDuplicate: true,
       action: {
-        label: 'Retry',
+        label: errorNotificationService.getLocalizedText('common', 'retry', 'Retry'),
         onClick: () => {
           errorNotificationService.dismiss(notificationId);
           void navigateToNotificationSession(target);

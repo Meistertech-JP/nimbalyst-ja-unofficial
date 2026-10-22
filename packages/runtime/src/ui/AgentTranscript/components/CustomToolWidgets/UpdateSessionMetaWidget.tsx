@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CustomToolWidgetProps } from './index';
 
 // ---------- Types ----------
@@ -196,6 +197,7 @@ const Arrow: React.FC = () => (
 // ---------- Main widget ----------
 
 export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ message }) => {
+  const { t } = useTranslation('aichat');
   const tool = message.toolCall;
   if (!tool) return null;
 
@@ -226,7 +228,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
               background: 'var(--nim-bg-tertiary)',
             }}
           >
-            <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Session Meta</span>
+            <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('session_meta.title')}</span>
             {name && <span style={{ color: 'var(--nim-text-muted)', fontSize: '10px' }}>{name}</span>}
           </div>
         </div>
@@ -250,7 +252,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
             borderBottom: '1px solid var(--nim-border)',
           }}
         >
-          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>Session Meta</span>
+          <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>{t('session_meta.title')}</span>
         </div>
         <div style={{ padding: '6px 10px', color: 'var(--nim-text-muted)', whiteSpace: 'pre-wrap', fontSize: '10px' }}>
           {fallbackText}
@@ -295,7 +297,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         }}
       >
         <span style={{ fontWeight: 600, color: 'var(--nim-text)', fontSize: '11px' }}>
-          Session Meta
+          {t('session_meta.title')}
         </span>
       </div>
 
@@ -305,7 +307,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {(after.name || nameSkipped) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '36px' }}>
-              Name
+              {t('session_meta.name')}
             </span>
             <span style={{ fontSize: '11px', color: 'var(--nim-text)', fontWeight: 500 }}>
               {after.name}
@@ -322,7 +324,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   lineHeight: '16px',
                 }}
               >
-                set
+                {t('session_meta.set')}
               </span>
             )}
             {nameSkipped && (
@@ -333,7 +335,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   fontStyle: 'italic',
                 }}
               >
-                (already set)
+                {t('session_meta.already_set')}
               </span>
             )}
           </div>
@@ -343,7 +345,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {(after.phase || phaseChanged) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '36px' }}>
-              Phase
+              {t('session_meta.phase')}
             </span>
             {phaseChanged ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -351,7 +353,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   <PhaseBadge phase={before.phase} />
                 ) : (
                   <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-                    none
+                    {t('session_meta.none')}
                   </span>
                 )}
                 <Arrow />
@@ -359,7 +361,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
                   <PhaseBadge phase={after.phase} />
                 ) : (
                   <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-                    none
+                    {t('session_meta.none')}
                   </span>
                 )}
               </div>
@@ -373,7 +375,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {(after.tags.length > 0 || removed.length > 0) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
             <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontWeight: 500, minWidth: '36px', paddingTop: '1px' }}>
-              Tags
+              {t('session_meta.tags')}
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
               {kept.map((t) => (
@@ -392,7 +394,7 @@ export const UpdateSessionMetaWidget: React.FC<CustomToolWidgetProps> = ({ messa
         {/* Empty state: nothing at all */}
         {!after.name && !after.phase && after.tags.length === 0 && removed.length === 0 && (
           <span style={{ fontSize: '10px', color: 'var(--nim-text-faint)', fontStyle: 'italic' }}>
-            No metadata set
+            {t('session_meta.empty')}
           </span>
         )}
       </div>

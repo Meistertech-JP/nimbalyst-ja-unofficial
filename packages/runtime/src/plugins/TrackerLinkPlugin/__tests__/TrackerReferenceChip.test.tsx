@@ -1,7 +1,9 @@
 import * as React from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render as testingRender, screen } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 import type { TrackerRecord } from '../../../core/TrackerRecord';
 import {
@@ -18,6 +20,20 @@ import { setTrackerReferenceHomeScope } from '../trackerReferenceHref';
 import { trackerReferenceRelationOptions } from '../TrackerReferenceRelationMenu';
 import { TrackerReferenceSourceProvider } from '../trackerReferenceSource';
 import { setTrackerReferenceLinksSource } from '../trackerReferencePreviewData';
+
+let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  testI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
+
+function render(ui: React.ReactNode, i18n = testI18n) {
+  return testingRender(ui, {
+    wrapper: ({ children }) => <I18nextProvider i18n={i18n}>{children}</I18nextProvider>,
+  });
+}
 
 const trackerRecord: TrackerRecord = {
   id: 'bug_1',
@@ -41,6 +57,31 @@ const trackerRecord: TrackerRecord = {
 };
 
 describe('TrackerReferenceChip', () => {
+  it('localizes accessibility labels and the unresolved tooltip', () => {
+    const store = createStore();
+    store.set(trackerItemsMapAtom, new Map([[trackerRecord.id, trackerRecord]]));
+
+    const { container } = render(
+      <Provider store={store}>
+        <TrackerReferenceChip referenceKey="NIM-1" />
+      </Provider>,
+      japaneseI18n,
+    );
+
+    expect(container.querySelector('.tracker-reference-chip-type-icon')?.getAttribute('aria-label')).toBe('Bug項目');
+    expect(container.querySelector('.tracker-reference-chip-owner')?.getAttribute('aria-label')).toBe('担当者: Morgan Reed');
+
+    const unresolved = render(
+      <Provider store={createStore()}>
+        <TrackerReferenceChip referenceKey="NIM-404" />
+      </Provider>,
+      japaneseI18n,
+    );
+    expect(unresolved.container.querySelector('.tracker-reference-chip')?.getAttribute('title')).toBe(
+      'NIM-404 — このトラッカー項目はこのワークスペースで解決できませんでした。',
+    );
+  });
+
   it.each(['chip', 'card', 'statements'] as const)('preserves %s view through DOM copy/paste', (view) => {
     const editor = createEditor({ nodes: [TrackerReferenceNode], onError: error => { throw error; } });
     editor.update(() => {
@@ -260,6 +301,23 @@ describe('TrackerReferenceChip', () => {
         .querySelector('.tracker-reference-chip')
         ?.getAttribute('data-resolved'),
     ).toBe('true');
+  });
+
+  it('localizes preview actions and metadata in Japanese', async () => {
+    const i18n = await createI18nInstance('ja');
+    const store = createStore();
+    store.set(trackerItemsMapAtom, new Map([[trackerRecord.id, trackerRecord]]));
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Provider store={store}><TrackerReferenceChip referenceKey="NIM-1" /></Provider>
+      </I18nextProvider>,
+    );
+
+    fireEvent.click(screen.getByText('NIM-1'));
+
+    expect(screen.getByText('項目を開く')).toBeTruthy();
+    expect(document.querySelector('.tracker-reference-preview-priority')?.textContent).toContain('優先度');
+    expect(document.querySelector('.tracker-reference-preview-updated')?.textContent).toContain('更新');
   });
 
   it('says what the item is and what it connects to in the preview', async () => {

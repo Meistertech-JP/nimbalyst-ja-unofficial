@@ -9,6 +9,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import type { TrackerLabelFieldLayout } from './trackerLabelFields';
 
@@ -17,6 +18,7 @@ export interface TrackerLabelPropertiesSectionProps {
 }
 
 export const TrackerLabelPropertiesSection: React.FC<TrackerLabelPropertiesSectionProps> = ({ layout }) => {
+  const { t } = useTranslation('tracker');
   if (layout.unknown.length === 0) return null;
 
   return (
@@ -25,12 +27,12 @@ export const TrackerLabelPropertiesSection: React.FC<TrackerLabelPropertiesSecti
       data-testid="tracker-label-properties-unknown"
     >
       <MaterialSymbol icon="warning" size={14} className="text-[var(--nim-warning)]" />
-      <span className="text-[11px] text-nim-muted">Undeclared properties:</span>
+      <span className="text-[11px] text-nim-muted">{t('fields.undeclared_properties')}</span>
       {layout.unknown.map(property => (
         <span
           key={property.id}
           className="tracker-label-property-unknown text-[11px] font-mono text-nim-muted"
-          title={`'${property.id}' is listed by the '${property.viaLabel}' label but is neither a field property nor a predicate`}
+          title={t('fields.undeclared_property_title', { property: property.id, label: property.viaLabel })}
         >
           {property.id}
         </span>

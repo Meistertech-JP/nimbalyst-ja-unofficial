@@ -26,6 +26,7 @@ import {
 
 export const FEEDBACK_REQUEST_TAB_PREFIX = 'virtual://feedback-request/';
 export const FEEDBACK_REQUEST_TAB_TITLE = 'Feedback request';
+export const FEEDBACK_REQUEST_TAB_TITLE_KEY = 'request.title' as const;
 
 /** Dispatched at an already-mounted workstream, mirroring the tracker open. */
 export const FEEDBACK_REQUEST_OPEN_EVENT = 'nimbalyst:workstream-open-feedback-request';

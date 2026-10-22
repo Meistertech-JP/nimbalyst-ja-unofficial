@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CommentBody } from '../CommentBody';
 import type { BodySegment, MessageAttachmentView } from '../commentTypes';
@@ -24,8 +26,20 @@ function imageAttachment(
 }
 
 function renderSegments(segments: BodySegment[]) {
-  return render(<CommentBody segments={segments} />);
+  return render(
+    <I18nextProvider i18n={englishI18n}>
+      <CommentBody segments={segments} />
+    </I18nextProvider>,
+  );
 }
+
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
+});
 
 describe('CommentBody attachments', () => {
   afterEach(() => {
@@ -96,5 +110,26 @@ describe('CommentBody attachments', () => {
     renderSegments([{ type: 'text', text: 'just words' }]);
 
     expect(screen.queryByTestId('comment-body-attachments')).toBeNull();
+  });
+
+  it('localizes agent mention accessibility labels and preserves dynamic names', () => {
+    render(
+      <I18nextProvider i18n={japaneseI18n}>
+        <CommentBody
+          segments={[{
+            type: 'agentMention',
+            sessionId: 'session-1',
+            sessionName: 'Sync repro',
+            ownerDisplayName: 'Rowan',
+            pending: true,
+          }]}
+        />
+      </I18nextProvider>,
+    );
+
+    const mention = screen.getByTestId('comment-mention-agent');
+    expect(mention.getAttribute('title')).toBe('エージェントセッション「Sync repro」（所有者: Rowan）');
+    expect(mention.querySelector('[aria-label="エージェント"]')).not.toBeNull();
+    expect(mention.querySelector('[title="送信待ち"]')).not.toBeNull();
   });
 });

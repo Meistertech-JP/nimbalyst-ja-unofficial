@@ -1,11 +1,14 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import { ActionButtonView, type ActionButtonViewProps } from '../ActionButtonBlock';
 import type { ActionButtonHost } from '../actionButtonHost';
 
 const SESSION = 'label: Draft notes\nprompt: |\n  Read this page.\n  Then draft notes.\nmodel: claude-code:opus\neffort: max';
+const i18n = await createI18nInstance('en');
 
 function view(props: Partial<ActionButtonViewProps> & { host: ActionButtonHost | null }) {
   const all: ActionButtonViewProps = {
@@ -16,8 +19,9 @@ function view(props: Partial<ActionButtonViewProps> & { host: ActionButtonHost |
     getPagePath: () => 'collab://org:o:doc:D',
     ...props,
   };
-  const result = render(<ActionButtonView {...all} />);
-  return { ...result, rerenderWith: (next: Partial<ActionButtonViewProps>) => result.rerender(<ActionButtonView {...all} {...next} />) };
+  const wrap = (props: ActionButtonViewProps) => <UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US"><ActionButtonView {...props} /></UiLanguageProvider>;
+  const result = render(wrap(all));
+  return { ...result, rerenderWith: (next: Partial<ActionButtonViewProps>) => result.rerender(wrap({ ...all, ...next })) };
 }
 
 const LAUNCH = {

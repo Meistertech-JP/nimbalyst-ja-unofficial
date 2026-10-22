@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   flip,
@@ -23,14 +24,10 @@ interface AlphaBadgeProps {
   tooltip?: string;
 }
 
-const DEFAULT_TOOLTIP = 'Alpha feature — may change or be removed.';
-export const SETTINGS_ALPHA_TOOLTIP =
-  'Alpha features may be incomplete, and shared data may be lost.\n\nTeam features are free during beta and will be part of a Nimbalyst Teams subscription in the future.';
-
-const STAGE_LABELS = {
-  alpha: { word: 'alpha', dot: 'α', title: 'Alpha' },
-  beta: { word: 'beta', dot: 'β', title: 'Beta' },
-} as const;
+export function SettingsAlphaBadge({ size = 'xs', className = '' }: { size?: 'xs' | 'sm' | 'dot'; className?: string }) {
+  const { t } = useTranslation('settings');
+  return <AlphaBadge size={size} tooltip={t('agent_features.alpha_tooltip')} className={className} />;
+}
 
 const PILL_BASE = 'inline-flex items-center font-medium lowercase bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)]';
 
@@ -44,9 +41,13 @@ export const AlphaBadge: React.FC<AlphaBadgeProps> = ({
   size = 'xs',
   stage = 'alpha',
   className = '',
-  tooltip = DEFAULT_TOOLTIP,
+  tooltip,
 }) => {
-  const label = STAGE_LABELS[stage];
+  const { t } = useTranslation('common');
+  const heading = t(stage === 'alpha' ? 'alpha.heading' : 'beta.heading');
+  const accessibleLabel = t(stage === 'alpha' ? 'alpha.label' : 'beta.label');
+  const badgeText = t(stage === 'alpha' ? 'alpha.badge' : 'beta.badge');
+  const resolvedTooltip = tooltip ?? t(stage === 'alpha' ? 'alpha.tooltip' : 'beta.tooltip');
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const { refs, floatingStyles, context } = useFloating({
     open: tooltipOpen,
@@ -64,13 +65,13 @@ export const AlphaBadge: React.FC<AlphaBadgeProps> = ({
         ref={refs.setReference}
         data-testid="alpha-badge"
         data-stage={stage}
-        aria-label={`${label.title} feature`}
+        aria-label={accessibleLabel}
         className={`${SIZE_CLASSES[size]} ${className}`.trim()}
         {...getReferenceProps()}
       >
-        {size === 'dot' ? label.dot : label.word}
+        {size === 'dot' ? (stage === 'alpha' ? 'α' : 'β') : badgeText}
       </span>
-      {tooltipOpen && tooltip && (
+      {tooltipOpen && resolvedTooltip && (
         <FloatingPortal>
           <div
             ref={refs.setFloating}
@@ -78,8 +79,8 @@ export const AlphaBadge: React.FC<AlphaBadgeProps> = ({
             style={floatingStyles}
             {...getFloatingProps()}
           >
-            <div className="mb-1 text-[13px] font-semibold text-[var(--nim-text)]">{label.title}</div>
-            {tooltip}
+            <div className="mb-1 text-[13px] font-semibold text-[var(--nim-text)]">{heading}</div>
+            {resolvedTooltip}
           </div>
         </FloatingPortal>
       )}

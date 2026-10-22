@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   autoUpdate,
   flip,
@@ -25,17 +26,12 @@ import {
 import { windowControlsClearance } from '../../../ui/floating/windowControlsClearance';
 import type { TrackerGroupBy } from '../models/trackerGrouping';
 import type { TrackerOrdering } from '../models/trackerOrdering';
-import { CustomSelect, type SelectOption } from './CustomSelect';
+import { CustomSelect } from './CustomSelect';
 import { DisplayOptionsColumnList } from './DisplayOptionsColumnList';
 import { DisplayViewSettings, type DisplayOptionsViewMode } from './DisplayViewSettings';
 import { resolveTypeColumnDisplay, type TrackerColumnDef, type TypeColumnConfig, type TypeColumnDisplay } from './trackerColumns';
 
 export type { DisplayOptionsViewMode } from './DisplayViewSettings';
-
-const TYPE_DISPLAY_OPTIONS: SelectOption[] = [
-  { value: 'icon', label: 'Icon' },
-  { value: 'label', label: 'Name' },
-];
 
 interface DisplayOptionsPanelProps {
   /** All available columns for this type */
@@ -98,6 +94,7 @@ const DisplayOptionsPanelContent: React.FC<DisplayOptionsPanelProps> = ({
   onOrderingChange,
   showColumnProperties = true,
 }) => {
+  const { t } = useTranslation('tracker');
   const nodeId = useFloatingNodeId();
   const { refs, floatingStyles, context } = useFloating({
     nodeId,
@@ -142,7 +139,7 @@ const DisplayOptionsPanelContent: React.FC<DisplayOptionsPanelProps> = ({
       {...getFloatingProps()}
     >
       <div className="px-3 py-2 border-b border-[var(--nim-border)]">
-        <span className="text-xs font-semibold text-[var(--nim-text)]">Display Settings</span>
+        <span className="text-xs font-semibold text-[var(--nim-text)]">{t('display.settings_title')}</span>
       </div>
 
       <div
@@ -162,11 +159,11 @@ const DisplayOptionsPanelContent: React.FC<DisplayOptionsPanelProps> = ({
 
         {showTypeDisplay && (
           <div className="display-options-setting flex items-center gap-2 border-b border-[var(--nim-border)] px-3 py-2">
-            <span className="w-16 shrink-0 text-[11px] text-[var(--nim-text-muted)]">Type as</span>
+            <span className="w-16 shrink-0 text-[11px] text-[var(--nim-text-muted)]">{t('display.type_as')}</span>
             <div className="min-w-0 flex-1" data-testid="tracker-display-type-column">
               <CustomSelect
                 value={resolveTypeColumnDisplay(config)}
-                options={TYPE_DISPLAY_OPTIONS}
+                options={[{ value: 'icon', label: t('display.icon') }, { value: 'label', label: t('display.name') }]}
                 onChange={value => onConfigChange({ ...config, typeColumnDisplay: value as TypeColumnDisplay })}
                 required
               />
@@ -192,7 +189,7 @@ const DisplayOptionsPanelContent: React.FC<DisplayOptionsPanelProps> = ({
               onConfigChange({ visibleColumns: defaults, columnWidths: {} });
             }}
           >
-            Reset to defaults
+            {t('display.reset')}
           </button>
         </div>
       )}

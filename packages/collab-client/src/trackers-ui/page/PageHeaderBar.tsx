@@ -6,6 +6,7 @@
  * place on every page, and the page's ⋯ menu.
  */
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { globalRegistry } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { EditorBreadcrumb, EditorHeaderBar, HeaderIconButton, type BreadcrumbCrumb } from '../../ui-primitives/EditorHeaderBar';
@@ -88,6 +89,8 @@ export const PageHeaderBar: React.FC<PageHeaderBarProps> = ({
   menuItems,
   testId = 'page-header-bar',
 }) => {
+  const { t: trackerT } = useTranslation('tracker');
+  const { t: editorT } = useTranslation('editor');
   const menu = useFloatingMenu({ placement: 'bottom-end' });
   const hasMenu = (menuItems?.length ?? 0) > 0;
   return (
@@ -100,7 +103,7 @@ export const PageHeaderBar: React.FC<PageHeaderBarProps> = ({
           {status}
           {actions}
           {onShowHistory && (
-            <HeaderIconButton label="Page history" onClick={onShowHistory} testId="page-history-button">
+            <HeaderIconButton label={trackerT('collaboration_surface.page_history')} onClick={onShowHistory} testId="page-history-button">
               <MaterialSymbol icon="history" size={16} />
             </HeaderIconButton>
           )}
@@ -108,7 +111,7 @@ export const PageHeaderBar: React.FC<PageHeaderBarProps> = ({
             <>
               <HeaderIconButton
                 ref={menu.refs.setReference}
-                label="More actions"
+                label={editorT('tooltips.more_actions')}
                 haspopup
                 active={menu.isOpen}
                 onClick={() => menu.setIsOpen(!menu.isOpen)}

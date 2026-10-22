@@ -18,6 +18,7 @@ import {
   useRole,
 } from '@floating-ui/react';
 import type { ListOption } from '../validation/types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 function useCellAnchor(rect: DOMRect, open: boolean, onClose: () => void, placement: 'bottom-start' | 'top-start') {
   const reference = useMemo(() => ({ getBoundingClientRect: () => rect }), [rect]);
@@ -50,6 +51,7 @@ export function ValidationDropdown({ rect, options, value, onPick, onClose }: {
   onPick: (value: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('editor');
   const [active, setActive] = useState(() => Math.max(0, options.findIndex((option) => option.value === value)));
   const { refs, floatingStyles, context } = useCellAnchor(rect, true, onClose, 'bottom-start');
   const { getFloatingProps } = useInteractions([useDismiss(context), useRole(context, { role: 'listbox' })]);
@@ -107,7 +109,7 @@ export function ValidationDropdown({ rect, options, value, onPick, onClose }: {
           onMouseEnter={() => setActive(options.length)}
           onClick={() => onPick('')}
         >
-          Clear
+          {t('spreadsheet_ui.validation.clear')}
         </button>
       </div>
     </FloatingPortal>
@@ -115,6 +117,7 @@ export function ValidationDropdown({ rect, options, value, onPick, onClose }: {
 }
 
 export function ValidationMessage({ rect, message, onClose }: { rect: DOMRect; message: string; onClose: () => void }) {
+  const { t } = useTranslation('editor');
   const { refs, floatingStyles, context } = useCellAnchor(rect, true, onClose, 'bottom-start');
   const { getFloatingProps } = useInteractions([useDismiss(context), useRole(context, { role: 'tooltip' })]);
   useEffect(() => {
@@ -124,7 +127,7 @@ export function ValidationMessage({ rect, message, onClose }: { rect: DOMRect; m
   return (
     <FloatingPortal>
       <div ref={refs.setFloating} style={floatingStyles} className="csv-validation-message" role="alert" {...getFloatingProps()}>
-        <strong>Invalid value.</strong> {message}
+        <strong>{t('spreadsheet_ui.validation.invalid_value')}</strong> {message}
       </div>
     </FloatingPortal>
   );

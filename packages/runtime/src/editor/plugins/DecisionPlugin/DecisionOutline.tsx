@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { $getRoot, $isElementNode, type LexicalEditor, type LexicalNode } from 'lexical';
 import { $isDecisionNode } from './DecisionNode';
 import { parseDecisionFence } from './decisionFence';
@@ -21,6 +22,7 @@ export function readOpenDecisions(editor: LexicalEditor): OpenQuestion[] {
 }
 
 export function DecisionOutline({ editor }: { editor: LexicalEditor | null }): React.JSX.Element | null {
+  const { t } = useTranslation('editor');
   const [questions, setQuestions] = useState<OpenQuestion[]>([]);
   useEffect(() => {
     if (!editor) { setQuestions([]); return; }
@@ -33,7 +35,7 @@ export function DecisionOutline({ editor }: { editor: LexicalEditor | null }): R
   }, [editor]);
   if (questions.length === 0) return null;
   return <details className="decision-outline">
-    <summary>{questions.length} open {questions.length === 1 ? 'question' : 'questions'}</summary>
+    <summary>{t(questions.length === 1 ? 'decision.outline.one' : 'decision.outline.other', { count: questions.length })}</summary>
     <div>{questions.map((question) => <button type="button" key={question.id} className="decision-linkish" onClick={() => editor?.getElementByKey(question.key)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>{question.question}</button>)}</div>
   </details>;
 }

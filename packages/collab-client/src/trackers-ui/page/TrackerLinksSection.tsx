@@ -5,6 +5,7 @@
  * the sentence that made each link. Hidden when the page has no links.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { collabOpenOptions, type CollabOpenOptions } from '@nimbalyst/collab-client/core';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
 import { groupTrackerPageLinks, type LinkedPage, type PageLinksSource, type TrackerPageLink } from './pageLinks';
@@ -20,6 +21,7 @@ export interface TrackerLinksSectionProps {
 }
 
 export const TrackerLinksSection: React.FC<TrackerLinksSectionProps> = ({ linksSource, itemId, itemType, revision = 0, onOpenItem }) => {
+  const { t } = useTranslation('tracker');
   const [links, setLinks] = useState<TrackerPageLink[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const fetchedItemRef = useRef<string | null>(null);
@@ -71,7 +73,7 @@ export const TrackerLinksSection: React.FC<TrackerLinksSectionProps> = ({ linksS
 
   return (
     <div className="tracker-links-section @container space-y-1 select-text">
-      <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">Links</h4>
+      <h4 className="text-xs font-medium text-nim-muted uppercase tracking-wide">{t('page_links.heading')}</h4>
       {groups.map((group) => {
         const open = expanded.has(group.label);
         return (

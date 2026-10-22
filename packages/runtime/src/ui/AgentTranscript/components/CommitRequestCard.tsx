@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
 import {
   COMMIT_FILE_LIST_END,
@@ -169,6 +170,7 @@ interface CommitRequestCardProps {
 }
 
 export const CommitRequestCard: React.FC<CommitRequestCardProps> = ({ request }) => {
+  const { t } = useTranslation('aichat');
   const [isExpanded, setIsExpanded] = useState(false);
   const { files, scenario, sessionCount, isWorktree, excludedFileCount } = request;
 
@@ -195,9 +197,9 @@ export const CommitRequestCard: React.FC<CommitRequestCardProps> = ({ request })
         {excludedFileCount > 0 && (
           <span
             className="text-[10px] rounded-full font-medium px-1.5 py-0.5 bg-[var(--nim-bg-tertiary)] text-[var(--nim-warning)]"
-            title="File paths containing control characters cannot be safely included in an AI commit request."
+            title={t('commit_request.excluded_paths_title')}
           >
-            {excludedFileCount} unsupported path{excludedFileCount === 1 ? '' : 's'} excluded
+            {t('commit_request.excluded_paths', { count: excludedFileCount })}
           </span>
         )}
         {isWorktree && (

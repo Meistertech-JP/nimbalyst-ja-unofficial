@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { VList } from 'virtua';
 import { FloatingPortal } from '@floating-ui/react';
@@ -115,6 +116,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onToggleFavorite,
   currentIdentity,
 }) => {
+  const { t } = useTranslation('tracker');
   // Items always come from the caller (TrackerMainView passes atom-sourced items).
   // KanbanBoard no longer loads its own data -- single source of truth via Jotai atoms.
   const allItems = useMemo(() => {
@@ -430,7 +432,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   if (allItems.length === 0) {
     return (
-      <TrackerSurfaceMessage icon="view_kanban" message="No items to display" />
+      <TrackerSurfaceMessage icon="view_kanban" message={t('kanban.no_items')} />
     );
   }
 
@@ -552,12 +554,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="px-3 py-1 text-[11px] text-nim-faint font-medium">
-            {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+            {t(selectedIds.size === 1 ? 'kanban.selected_count_one' : 'kanban.selected_count_other', { count: selectedIds.size })}
           </div>
           <div className="border-b border-nim my-1" />
 
           {/* Set Status */}
-          <KanbanContextSubmenu label="Set Status" icon="swap_horiz">
+          <KanbanContextSubmenu label={t('kanban.set_status')} icon="swap_horiz">
             {statusChoices.map(choice => (
               <button
                 key={`${choice.kind}:${choice.value}`}
@@ -578,7 +580,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </KanbanContextSubmenu>
 
           {/* Set Priority */}
-          <KanbanContextSubmenu label="Set Priority" icon="flag">
+          <KanbanContextSubmenu label={t('kanban.set_priority')} icon="flag">
             {(['critical', 'high', 'medium', 'low'] as const).map(p => (
               <button
                 key={p}
@@ -589,7 +591,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: PRIORITY_COLORS[p] || NEUTRAL_SWATCH }}
                 />
-                {p.charAt(0).toUpperCase() + p.slice(1)}
+                {t(`kanban.priority_${p}`)}
               </button>
             ))}
           </KanbanContextSubmenu>
@@ -599,13 +601,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <div className="border-b border-nim my-1" />
 
               {contextSessions.length > 0 && (
-                <KanbanContextSubmenu label={`Sessions (${contextSessions.length})`} icon="smart_toy">
+                <KanbanContextSubmenu label={t('kanban.sessions_count', { count: contextSessions.length })} icon="smart_toy">
                   {contextSessions.map(session => (
                     <button
                       key={session.id}
                       className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-nim hover:bg-nim-tertiary cursor-pointer"
                       data-testid="tracker-kanban-context-open-session"
-                      title={`Open session: ${session.title}`}
+                      title={t('kanban.open_session_title', { title: session.title })}
                       onClick={() => {
                         closeContextMenu();
                         onOpenSession?.(session.id);
@@ -633,7 +635,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   }}
                 >
                   <MaterialSymbol icon="add_circle" size={16} />
-                  Launch Session
+                  {t('kanban.launch_session')}
                 </button>
               )}
 
@@ -647,7 +649,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   }}
                 >
                   <MaterialSymbol icon="account_tree" size={16} />
-                  Launch Worktree
+                  {t('kanban.launch_worktree')}
                 </button>
               )}
             </>
@@ -666,7 +668,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               }}
             >
               <MaterialSymbol icon="article" size={16} />
-              Open document
+              {t('kanban.open_document')}
             </button>
           )}
 
@@ -680,7 +682,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               }}
             >
               <MaterialSymbol icon="link" size={16} />
-              Copy Link
+              {t('kanban.copy_link')}
             </button>
           )}
 
@@ -694,7 +696,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               }}
             >
               <MaterialSymbol icon="archive" size={16} />
-              Archive
+              {t('kanban.archive')}
             </button>
           )}
 
@@ -705,9 +707,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 closeContextMenu();
                 const ids = Array.from(selectedIds);
                 const approved = await requestConfirmation({
-                  title: ids.length > 1 ? 'Delete items?' : 'Delete item?',
-                  message: `Delete ${ids.length} item${ids.length > 1 ? 's' : ''}? This cannot be undone.`,
-                  confirmLabel: 'Delete',
+                  title: t(ids.length > 1 ? 'kanban.delete_title_other' : 'kanban.delete_title_one', { count: ids.length }),
+                  message: t(ids.length > 1 ? 'kanban.delete_confirm_other' : 'kanban.delete_confirm_one', { count: ids.length }),
+                  confirmLabel: t('kanban.delete'),
                   destructive: true,
                 });
                 if (approved) {
@@ -717,7 +719,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               }}
             >
               <MaterialSymbol icon="delete" size={16} />
-              Delete
+              {t('kanban.delete')}
             </button>
           )}
         </div>

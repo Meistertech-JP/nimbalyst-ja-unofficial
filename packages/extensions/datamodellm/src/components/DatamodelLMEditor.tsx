@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { DataModelCanvas, type DataModelCanvasRef } from './DataModelCanvas';
 import { DataModelToolbar } from './DataModelToolbar';
@@ -26,6 +27,7 @@ import { isDataModelYDocEmpty, seedDataModelYDoc } from '../collab/seed';
 import { buildEntitySelectionContextItem, buildRelationshipSelectionContextItem } from '../selectionContext';
 
 export function DatamodelLMEditor({ host }: EditorHostProps) {
+  const { t } = useTranslation('extensions');
   const { filePath } = host;
   const layoutSerializer = useMemo(() => createLayoutSerializer(), [filePath]);
 
@@ -192,17 +194,17 @@ export function DatamodelLMEditor({ host }: EditorHostProps) {
       await copyScreenshotToClipboard(base64Data);
       // console.log('[DatamodelLM] Screenshot copied to clipboard');
     } catch (err) {
-      setScreenshotError(err instanceof Error ? err.message : 'Screenshot failed.');
+      setScreenshotError(err instanceof Error ? err.message : t('datamodellm_ui.screenshot_failed'));
     } finally {
       screenshotPending.current = false;
       setIsCapturing(false);
     }
-  }, []);
+  }, [t]);
 
   if (isLoading) {
     return (
       <div className="datamodel-editor" data-theme={theme}>
-        <div className="p-5 text-nim-muted">Loading...</div>
+        <div className="p-5 text-nim-muted">{t('datamodellm_ui.loading')}</div>
       </div>
     );
   }
@@ -211,7 +213,7 @@ export function DatamodelLMEditor({ host }: EditorHostProps) {
     return (
       <div className="datamodel-editor" data-theme={theme}>
         <div className="p-5 text-nim-error">
-          Failed to load: {error.message}
+          {t('datamodellm_ui.load_failed', { error: error.message })}
         </div>
       </div>
     );

@@ -7,6 +7,7 @@
 import React from 'react';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useCollabDocsUI } from './CollabDocsUIProvider';
 
 export interface DocUnreadDotProps {
@@ -15,6 +16,7 @@ export interface DocUnreadDotProps {
 }
 
 export const DocUnreadDot: React.FC<DocUnreadDotProps> = ({ documentId, className }) => {
+  const { t } = useTranslation('common');
   const { session } = useCollabDocsUI();
   const unread = useAtomValue(session.atoms.unreadDocument(documentId));
   if (!unread) return null;
@@ -23,8 +25,8 @@ export const DocUnreadDot: React.FC<DocUnreadDotProps> = ({ documentId, classNam
       className={`doc-unread-dot inline-flex items-center justify-center shrink-0 text-[var(--nim-primary)]${
         className ? ` ${className}` : ''
       }`}
-      title="New activity"
-      aria-label="Unread"
+      title={t('collab.new_activity')}
+      aria-label={t('collab.unread')}
     >
       <MaterialSymbol icon="circle" size={8} fill />
     </span>

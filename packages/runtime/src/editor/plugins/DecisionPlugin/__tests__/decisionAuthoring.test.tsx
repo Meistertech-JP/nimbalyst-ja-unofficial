@@ -1,10 +1,14 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { DecisionAuthoring } from '../DecisionAuthoring';
 import { parseDecisionFence } from '../decisionFence';
 import { describe, expect, it } from 'vitest';
 import { createEditor } from 'lexical';
 import { DecisionNode, $createDecisionNode } from '../DecisionNode';
+
+const i18n = await createI18nInstance('en');
 
 // Link targets must remain reachable after a decision has been sealed and its
 // interactive decorator has collapsed. The node container owns the anchor.
@@ -26,7 +30,7 @@ describe('decision document anchors', () => {
 
 it('composes a decision block without sending and retains multiline edit proposals', () => {
   let saved = '';
-  render(<DecisionAuthoring onSave={(content) => { saved = content; }} />);
+  render(<UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US"><DecisionAuthoring onSave={(content) => { saved = content; }} /></UiLanguageProvider>);
   fireEvent.change(screen.getByLabelText('Question'), { target: { value: 'How should this read?' } });
   fireEvent.change(screen.getByLabelText('Answer format'), { target: { value: 'editText' } });
   fireEvent.change(screen.getByLabelText('Draft to edit'), { target: { value: 'First paragraph.\n\nSecond paragraph.' } });

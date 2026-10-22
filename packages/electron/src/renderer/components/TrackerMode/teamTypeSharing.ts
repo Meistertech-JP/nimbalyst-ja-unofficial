@@ -9,50 +9,81 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useAtomValue } from 'jotai';
 import { store } from '@nimbalyst/runtime/store';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { trackerItemCountByTypeAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin';
-import {
-  describeTrackerPromotion,
-  resolveTrackerPromotionEligibility,
-} from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerLifecycle';
+import { resolveTrackerPromotionEligibility } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerLifecycle';
 import { requestConfirmation } from '../../dialogs/requestConfirmation';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
 import { trackerSyncConnectionAtom } from '../../store/atoms/trackerSync';
 import { TEAM_TYPES_NOT_SYNCING_GRACE_MS, teamTypesAreNotSyncing } from './teamTypesSyncState';
-
-export { TEAM_TYPES_NOT_SYNCING_MESSAGE } from './teamTypesSyncState';
 
 export function canShareTrackerTypeWithTeam(model: TrackerDataModel): boolean {
   return model.sharing === 'personal' && resolveTrackerPromotionEligibility(model).canPromote;
 }
 
 /** Confirm, then promote a personal type and its items to the team. Resolves true once it is the team's. */
-export async function shareTrackerTypeWithTeam(workspacePath: string, model: TrackerDataModel): Promise<boolean> {
-  const copy = describeTrackerPromotion(model, store.get(trackerItemCountByTypeAtom(model.type)));
+export async function shareTrackerTypeWithTeam(
+  workspacePath: string,
+  model: TrackerDataModel,
+  t: TFunction,
+): Promise<boolean> {
+  const itemCount = store.get(trackerItemCountByTypeAtom(model.type));
+  const itemLabel = itemCount === 1
+    ? t('config.lifecycle.one_item')
+    : t('config.lifecycle.many_items', { count: itemCount });
+  const isResume = model.sharing === 'team';
   const approved = await requestConfirmation({
-    title: copy.title,
-    message: copy.message,
-    confirmLabel: copy.confirmLabel,
-    cancelLabel: 'Cancel',
+    title: t(isResume ? 'config.lifecycle.resume_share_title' : 'config.lifecycle.promote_title', { name: model.displayNamePlural }),
+    message: t(isResume ? 'config.lifecycle.resume_share_message' : 'config.lifecycle.promote_message', {
+      name: model.displayNamePlural,
+      itemLabel,
+    }),
+    confirmLabel: t(isResume ? 'config.lifecycle.resume_share_confirm' : 'config.lifecycle.promote_confirm'),
+    cancelLabel: t('config.cancel'),
     destructive: false,
   });
   if (!approved) return false;
   try {
     const result = await window.electronAPI.trackerLifecycle.promoteToTeam({ workspacePath, type: model.type });
-    if (!result?.success) throw new Error(result?.error || 'Could not share this tracker with your team.');
+    if (!result?.success) throw new Error(result?.error || t('config.lifecycle.promote_failed'));
     const { publishedCount = 0, pendingKeyCount = 0 } = result.promotion ?? {};
     errorNotificationService.showInfo(
-      `${model.displayNamePlural} is now your team's`,
+      errorNotificationService.getLocalizedText(
+        'tracker',
+        'config.lifecycle.promoted_title',
+        "{{name}} is now your team's",
+        { name: model.displayNamePlural },
+      ),
       pendingKeyCount > 0
-        ? `${publishedCount} item(s) published. ${pendingKeyCount} are waiting on the server for their keys.`
-        : `${publishedCount} item(s) published, each with its issue key.`,
+        ? errorNotificationService.getLocalizedText(
+          'tracker',
+          'config.lifecycle.promoted_pending',
+          '{{publishedCount}} item(s) published. {{pendingKeyCount}} are waiting on the server for their keys.',
+          { publishedCount, pendingKeyCount },
+        )
+        : errorNotificationService.getLocalizedText(
+          'tracker',
+          'config.lifecycle.promoted',
+          '{{count}} item(s) published, each with its issue key.',
+          { count: publishedCount },
+        ),
       { duration: 4000 },
     );
     return true;
   } catch (error) {
-    errorNotificationService.showError('Tracker update failed', error instanceof Error ? error.message : String(error));
+    errorNotificationService.showError(
+      errorNotificationService.getLocalizedText('tracker', 'config.lifecycle.update_failed', 'Tracker update failed'),
+      error instanceof Error
+        ? error.message
+        : errorNotificationService.getLocalizedText(
+          'tracker',
+          'config.lifecycle.promote_failed',
+          'Could not share this tracker with your team.',
+        ),
+    );
     return false;
   }
 }

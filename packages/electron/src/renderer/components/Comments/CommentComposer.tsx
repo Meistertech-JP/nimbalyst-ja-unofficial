@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { MAX_ATTACHMENTS_PER_MESSAGE } from '@nimbalyst/collab-protocol';
 
@@ -26,10 +27,12 @@ import {
 import { useResourcePreviews } from './useResourcePreviews';
 import { parsePastedResourceLink, resourceRefToUrn } from './resourceUrn';
 import { formatAttachmentSize, toAttachmentView } from './commentBodyParser';
+import { DISPLAY_NAME_FALLBACK_KEY } from './displayNameFallbackKeys';
 import type {
   AttachmentComposerHost,
   CommentCapabilities,
   ConversationContext,
+  DisplayNameFallback,
   MentionDirectory,
   MessageAttachment,
   ResourceCandidate,
@@ -145,7 +148,7 @@ export function CommentComposer({
   attachmentHost?: AttachmentComposerHost | null;
   placeholder?: string;
   /** One displayed level of reply context, mirroring the row. */
-  replyingTo?: { commentId: string; actorLabel: string; snippet: string } | null;
+  replyingTo?: { commentId: string; actorLabel: string; actorLabelFallback?: DisplayNameFallback; snippet: string } | null;
   onCancelReply?: () => void;
   onSubmit: (submission: ComposerSubmission) => Promise<void> | void;
   autoFocus?: boolean;
@@ -164,6 +167,9 @@ export function CommentComposer({
   /** Main conversation composer only: flush the cleared draft after send. */
   onDraftCleared?: () => void;
 }) {
+  const { t: tEditor } = useTranslation('editor');
+  const { t: tCommon } = useTranslation('common');
+  const { t: tFeedback } = useTranslation('feedback');
   const [text, setText] = useState(initialText);
   const [pool, setPool] = useState<DraftPool>(initialPool);
   const [sending, setSending] = useState(false);
@@ -181,6 +187,22 @@ export function CommentComposer({
   pendingRef.current = pendingAttachments;
 
   const restriction = describeComposerRestriction(capabilities, context);
+  const restrictionCopy = restriction?.reason === 'no_access'
+    ? {
+        title: tEditor('comments.restriction_no_access_title'),
+        detail: tEditor('comments.restriction_no_access_detail'),
+      }
+    : restriction?.reason === 'archived'
+      ? {
+          title: tEditor('comments.restriction_archived_title', { surface: restriction.surfaceLabel ?? '' }),
+          detail: tEditor('comments.restriction_archived_detail'),
+        }
+      : restriction?.reason === 'read_only'
+        ? {
+            title: tEditor('comments.restriction_read_only_title'),
+            detail: tEditor('comments.restriction_read_only_detail', { surface: restriction.surfaceLabel ?? '' }),
+          }
+        : restriction;
 
   const readyAttachments = useMemo(
     () => pendingAttachments.flatMap((entry) => (entry.attachment ? [entry.attachment] : [])),
@@ -415,10 +437,10 @@ export function CommentComposer({
         <MaterialSymbol icon={restriction.icon} size={16} />
         <div className="min-w-0">
           <p className="m-0 text-[13px] font-medium text-[var(--nim-text)]" data-testid="comment-composer-restriction-title">
-            {restriction.title}
+            {restrictionCopy?.title}
           </p>
           <p className="m-0 mt-0.5 text-[12px] text-[var(--nim-text-muted)]" data-testid="comment-composer-restriction-detail">
-            {restriction.detail}
+            {restrictionCopy?.detail}
           </p>
         </div>
       </div>
@@ -437,12 +459,16 @@ export function CommentComposer({
       {replyingTo && (
         <div className="comment-composer-reply mb-1.5 flex items-center gap-1.5 rounded border-l-2 border-[var(--nim-primary)] bg-[var(--nim-bg-secondary)] px-2 py-1 text-[11px] text-[var(--nim-text-muted)]" data-testid="comment-composer-reply">
           <MaterialSymbol icon="reply" size={12} />
-          <span className="shrink-0 font-medium">{replyingTo.actorLabel}</span>
+        <span className="shrink-0 font-medium">
+          {replyingTo.actorLabelFallback
+            ? tEditor(DISPLAY_NAME_FALLBACK_KEY[replyingTo.actorLabelFallback])
+            : replyingTo.actorLabel}
+        </span>
           <span className="truncate">{replyingTo.snippet}</span>
           <button
             type="button"
             className="ml-auto shrink-0 rounded p-0.5 hover:bg-[var(--nim-bg-hover)]"
-            aria-label="Cancel reply"
+            aria-label={tEditor('comments.cancel')}
             data-testid="comment-composer-cancel-reply"
             onClick={onCancelReply}
           >
@@ -456,8 +482,8 @@ export function CommentComposer({
         initialText={initialText}
         initialPool={initialPool}
         autoFocus={autoFocus}
-        ariaLabel={`Message ${context.surfaceLabel}`}
-        placeholder={placeholder ?? `Message ${context.surfaceLabel}. Type @ to mention someone or an agent.`}
+        ariaLabel={tFeedback('composer.message_aria', { surfaceLabel: context.surfaceLabel })}
+        placeholder={placeholder ?? tFeedback('composer.message_placeholder', { surfaceLabel: context.surfaceLabel })}
         onChange={handleTextChange}
         onSubmit={() => void submit()}
         mentionCandidatesFor={candidatesFor}
@@ -494,7 +520,7 @@ export function CommentComposer({
               <span className="max-w-[160px] truncate">{pills[urn].label}</span>
               <button
                 type="button"
-                aria-label={`Remove ${pills[urn].label}`}
+                aria-label={tFeedback('composer.remove_attachment', { label: pills[urn].label })}
                 className="rounded hover:bg-[var(--nim-bg-hover)]"
                 onClick={() => removeAttachment(urn)}
               >
@@ -554,8 +580,8 @@ export function CommentComposer({
             <button
               type="button"
               data-testid="comment-composer-attach-file"
-              aria-label="Attach a file"
-              title="Attach a file"
+              aria-label={tCommon('help.attach-files-input.title')}
+              title={tCommon('help.attach-files-input.title')}
               onClick={() => fileInputRef.current?.click()}
               className="comment-composer-attach-file flex size-6 items-center justify-center rounded border border-transparent text-[var(--nim-text-muted)] hover:border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]"
             >
@@ -581,7 +607,7 @@ export function CommentComposer({
             onClick={onCancel}
             className="comment-composer-cancel ml-auto shrink-0 rounded-md px-2.5 py-1 text-[12px] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]"
           >
-            Cancel
+            {tCommon('cancel')}
           </button>
         )}
 
@@ -622,6 +648,7 @@ function PendingAttachmentChip({
   entry: PendingAttachment;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation('feedback');
   const failed = entry.status === 'failed';
   return (
     <span
@@ -648,15 +675,15 @@ function PendingAttachmentChip({
         <span className="max-w-[160px] truncate text-[var(--nim-text)]">{entry.fileName}</span>
         <span className="text-[11px] text-[var(--nim-text-faint)]">
           {entry.status === 'uploading'
-            ? 'Attaching…'
+            ? t('composer.attaching')
             : failed
-              ? 'Failed'
+              ? t('composer.failed')
               : formatAttachmentSize(entry.byteSize)}
         </span>
       </span>
       <button
         type="button"
-        aria-label={`Remove ${entry.fileName}`}
+        aria-label={t('composer.remove_attachment', { label: entry.fileName })}
         className="rounded p-0.5 hover:bg-[var(--nim-bg-hover)]"
         onClick={onRemove}
       >
@@ -714,6 +741,7 @@ function ResourceAttachMenu({
   candidates: ResourceCandidate[];
   onAttach: (candidate: ResourceCandidate) => void;
 }) {
+  const { t } = useTranslation('editor');
   const menu = useFloatingMenu({ placement: 'top-start' });
   return (
     <>
@@ -722,8 +750,8 @@ function ResourceAttachMenu({
         {...menu.getReferenceProps()}
         type="button"
         data-testid="composer-attach-trigger"
-        aria-label="Attach a reference"
-        title="Attach a reference"
+        aria-label={t('comments.attach_reference')}
+        title={t('comments.attach_reference')}
         onClick={() => menu.setIsOpen(!menu.isOpen)}
         className="composer-attach-trigger flex size-6 items-center justify-center rounded border border-transparent text-[var(--nim-text-muted)] hover:border-[var(--nim-border)] hover:bg-[var(--nim-bg-hover)]"
       >

@@ -51,6 +51,8 @@ export default defineConfig({
         'react-dom',
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
+        // The host supplies the shared i18n singleton through its extension import map.
+        '@nimbalyst/i18n/react',
         // Host-provided singletons — must NOT be bundled. Bundling
         // @nimbalyst/runtime drags in @anthropic-ai/sdk, whose agent-toolset
         // imports Node built-ins (node:crypto/node:path) that break the

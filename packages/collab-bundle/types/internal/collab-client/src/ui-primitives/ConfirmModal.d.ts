@@ -3,6 +3,7 @@ export interface ConfirmModalProps {
     title: string;
     message: string;
     confirmLabel: string;
+    cancelLabel: string;
     onSettle: (accepted: boolean) => void;
 }
 /**
@@ -11,10 +12,10 @@ export interface ConfirmModalProps {
  * accept button carries the error color. Escape or Cancel cancels; Enter
  * submits from the focused accept button.
  */
-export declare function ConfirmModal({ title, message, confirmLabel, onSettle }: ConfirmModalProps): React.JSX.Element;
+export declare function ConfirmModal({ title, message, confirmLabel, cancelLabel, onSettle }: ConfirmModalProps): React.JSX.Element;
 /**
  * Mounts the dialog in its own root on `document.body` and resolves once the
  * user answers. Its own root keeps callers free of dialog state, so the docs-ui
  * eager bundle carries only the lazy import (see `confirmDestructive`).
  */
-export declare function openConfirm(title: string, message: string, confirmLabel: string): Promise<boolean>;
+export declare function openConfirm(title: string, message: string, confirmLabel: string, cancelLabel: string): Promise<boolean>;

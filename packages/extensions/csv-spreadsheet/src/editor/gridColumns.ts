@@ -10,6 +10,7 @@
  */
 
 import type { RefObject } from 'react';
+import type { TFunction } from 'i18next';
 import type { ColumnRegular } from '@revolist/react-datagrid';
 import type { CellStyle, ColumnFormat, DiffState } from '../types';
 import type { FormulaViewState } from '../utils/gridOperations';
@@ -57,6 +58,7 @@ function getAlignmentClass(format: ColumnFormat | undefined): string {
 }
 
 export interface ColumnOptions {
+  translate: TFunction<'editor'>;
   columnCount: number;
   formulaViewState: FormulaViewState;
   frozenColumnCount?: number;
@@ -95,7 +97,7 @@ export function generateColumns(options: ColumnOptions): ColumnRegular[] {
     columnCount, formulaViewState, frozenColumnCount = 0, columnWidths = {}, diffState = null,
     findHighlightRef = { current: EMPTY_FIND_HIGHLIGHT }, filteredColumnsRef = { current: new Set() },
     aiFlashRef = { current: new WeakMap() }, trackerStore = null, cellStyleIndex = new CellStyleIndex({}),
-    decorations, rows, conditional,
+    decorations, rows, conditional, translate,
   } = options;
   const hidden = new Set(options.hiddenCols ?? []);
 
@@ -114,13 +116,13 @@ export function generateColumns(options: ColumnOptions): ColumnRegular[] {
       // The funnel is a plain marked-up span rather than a React node; the
       // editor picks its clicks up through the header mousedown delegation it
       // already runs, and anchors the dropdown to this element.
-      columnTemplate: (h, props) => (isHidden ? h('span', { class: 'csv-header-hidden', title: `Column ${letter} is hidden` }, '') : h('span', { class: 'csv-header-cell' }, [
+      columnTemplate: (h, props) => (isHidden ? h('span', { class: 'csv-header-hidden', title: translate('spreadsheet_ui.hidden_column', { column: letter }) }, '') : h('span', { class: 'csv-header-cell' }, [
         h('span', { class: 'csv-header-label' }, props.name ?? ''),
         h('span', {
           class: filteredColumnsRef.current?.has(index)
             ? 'csv-filter-affordance csv-filter-affordance-active'
             : 'csv-filter-affordance',
-          title: 'Filter column',
+          title: translate('spreadsheet_ui.toolbar.filter_column'),
         }, '▼'),
       ])),
       // RevoGrid's editor reads the raw model value, while this template can
@@ -224,7 +226,7 @@ export function generateColumns(options: ColumnOptions): ColumnRegular[] {
         // Tooltip for the previous value on modified/deleted cells.
         if (diffState?.isActive) {
           const previousValue = getCellPreviousValue(diffState, cellData.rowIndex, letter, isPinned);
-          if (previousValue !== undefined) props.title = `Previous: ${previousValue}`;
+          if (previousValue !== undefined) props.title = translate('spreadsheet_ui.previous_value', { value: previousValue });
         }
         return props;
       },

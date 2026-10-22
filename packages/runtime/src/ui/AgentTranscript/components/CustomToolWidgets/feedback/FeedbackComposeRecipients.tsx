@@ -12,6 +12,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FeedbackAsk, FeedbackRequestRecipient } from '@nimbalyst/collab-protocol';
 import { FeedbackComposeMenu, FeedbackComposeMenuItem } from './FeedbackComposeMenu';
 
@@ -22,10 +23,10 @@ function initials(name: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-export const RecipientAvatar: React.FC<{ name: string; className?: string }> = ({
-  name,
-  className,
-}) => (
+export const RecipientAvatar: React.FC<{
+  name: string;
+  className?: string;
+}> = ({ name, className }) => (
   <span
     aria-hidden="true"
     className={`feedback-compose-avatar shrink-0 flex items-center justify-center rounded-full text-[0.625rem] font-semibold text-nim-primary bg-[color-mix(in_srgb,var(--nim-primary)_18%,transparent)] ${
@@ -44,43 +45,53 @@ export const FeedbackComposeAddRecipient: React.FC<{
   candidates: FeedbackRequestRecipient[];
   onAdd: (recipient: FeedbackRequestRecipient) => void;
   disabled?: boolean;
-}> = ({ candidates, onAdd, disabled }) => (
-  <FeedbackComposeMenu
-    ariaLabel="Add a person to ask"
-    triggerTestId="feedback-compose-add-recipient"
-    disabled={disabled}
-    trigger={
-      <span className="flex items-center gap-1.5 text-nim-primary">
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-          <path d="M6 2.5v7M2.5 6h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-        Add people
-      </span>
-    }
-  >
-    {(close) =>
-      candidates.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-nim-muted">No other teammates available yet.</div>
-      ) : (
-        candidates.map((candidate) => (
-          <FeedbackComposeMenuItem
-            key={candidate.userId}
-            testId="feedback-compose-candidate"
-            onSelect={() => {
-              onAdd(candidate);
-              close();
-            }}
-          >
-            <span className="flex items-center gap-2">
-              <RecipientAvatar name={candidate.name} className="w-5 h-5" />
-              {candidate.name}
-            </span>
-          </FeedbackComposeMenuItem>
-        ))
-      )
-    }
-  </FeedbackComposeMenu>
-);
+}> = ({ candidates, onAdd, disabled }) => {
+  const { t } = useTranslation('aichat');
+  return (
+    <FeedbackComposeMenu
+      ariaLabel={t('feedback_compose.add_person_aria')}
+      triggerTestId="feedback-compose-add-recipient"
+      disabled={disabled}
+      trigger={
+        <span className="flex items-center gap-1.5 text-nim-primary">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path
+              d="M6 2.5v7M2.5 6h7"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          </svg>
+          {t('feedback_compose.add_people')}
+        </span>
+      }
+    >
+      {(close) =>
+        candidates.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-nim-muted">
+            {t('feedback_compose.no_other_teammates')}
+          </div>
+        ) : (
+          candidates.map((candidate) => (
+            <FeedbackComposeMenuItem
+              key={candidate.userId}
+              testId="feedback-compose-candidate"
+              onSelect={() => {
+                onAdd(candidate);
+                close();
+              }}
+            >
+              <span className="flex items-center gap-2">
+                <RecipientAvatar name={candidate.name} className="w-5 h-5" />
+                {candidate.name}
+              </span>
+            </FeedbackComposeMenuItem>
+          ))
+        )
+      }
+    </FeedbackComposeMenu>
+  );
+};
 
 export interface FeedbackComposeRecipientsProps {
   recipients: FeedbackRequestRecipient[];
@@ -104,64 +115,82 @@ export const FeedbackComposeRecipients: React.FC<FeedbackComposeRecipientsProps>
   onAdd,
   onRemove,
   disabled,
-}) => (
-  <div className="feedback-compose-recipients flex flex-col gap-1.5">
-    {recipients.map((recipient) => (
-      <div
-        key={recipient.userId}
-        data-testid="feedback-compose-recipient"
-        className="feedback-compose-recipient flex items-center gap-2.5 p-2 border border-nim rounded-md bg-nim-secondary"
-      >
-        <RecipientAvatar name={recipient.name} />
-        <span className="text-[0.8125rem] font-medium text-nim truncate select-text">
-          {recipient.name}
-        </span>
-
-        {onToggleAssignment && (
-          <span className="feedback-compose-ask-chips ml-auto flex gap-1">
-            {asks.map((ask, index) => {
-              const assigned = isAskAssigned(ask.id, recipient.userId);
-              return (
-                <button
-                  key={ask.id}
-                  type="button"
-                  data-testid="feedback-compose-ask-chip"
-                  data-assigned={assigned}
-                  title={`${ask.label} — ${assigned ? 'assigned to' : 'not assigned to'} ${recipient.name}`}
-                  onClick={() => onToggleAssignment(ask.id, recipient.userId)}
-                  disabled={disabled}
-                  className={`feedback-compose-ask-chip font-mono text-[0.625rem] font-semibold rounded px-1.5 py-0.5 cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed ${
-                    assigned
-                      ? 'bg-nim-primary text-nim-on-primary'
-                      : 'bg-nim-tertiary text-nim-muted hover:bg-nim-hover'
-                  }`}
-                >
-                  {`Q${index + 1}`}
-                </button>
-              );
-            })}
-          </span>
-        )}
-
-        <button
-          type="button"
-          data-testid="feedback-compose-remove-recipient"
-          aria-label={`Remove ${recipient.name}`}
-          onClick={() => onRemove(recipient.userId)}
-          disabled={disabled}
-          className={`shrink-0 text-nim-faint hover:text-nim cursor-pointer bg-transparent border-none p-0 leading-none disabled:opacity-50 ${
-            onToggleAssignment ? '' : 'ml-auto'
-          }`}
+}) => {
+  const { t } = useTranslation('aichat');
+  return (
+    <div className="feedback-compose-recipients flex flex-col gap-1.5">
+      {recipients.map((recipient) => (
+        <div
+          key={recipient.userId}
+          data-testid="feedback-compose-recipient"
+          className="feedback-compose-recipient flex items-center gap-2.5 p-2 border border-nim rounded-md bg-nim-secondary"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-    ))}
+          <RecipientAvatar name={recipient.name} />
+          <span className="text-[0.8125rem] font-medium text-nim truncate select-text">
+            {recipient.name}
+          </span>
 
-    <div className="feedback-compose-add-recipient">
-      <FeedbackComposeAddRecipient candidates={candidates} onAdd={onAdd} disabled={disabled} />
+          {onToggleAssignment && (
+            <span className="feedback-compose-ask-chips ml-auto flex gap-1">
+              {asks.map((ask, index) => {
+                const assigned = isAskAssigned(ask.id, recipient.userId);
+                return (
+                  <button
+                    key={ask.id}
+                    type="button"
+                    data-testid="feedback-compose-ask-chip"
+                    data-assigned={assigned}
+                    title={t(
+                      assigned
+                        ? 'feedback_compose.assigned_to_person'
+                        : 'feedback_compose.not_assigned_to_person',
+                      {
+                        label: ask.label,
+                        name: recipient.name,
+                      }
+                    )}
+                    onClick={() => onToggleAssignment(ask.id, recipient.userId)}
+                    disabled={disabled}
+                    className={`feedback-compose-ask-chip font-mono text-[0.625rem] font-semibold rounded px-1.5 py-0.5 cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                      assigned
+                        ? 'bg-nim-primary text-nim-on-primary'
+                        : 'bg-nim-tertiary text-nim-muted hover:bg-nim-hover'
+                    }`}
+                  >
+                    {t('feedback_compose.question_short', { index: index + 1 })}
+                  </button>
+                );
+              })}
+            </span>
+          )}
+
+          <button
+            type="button"
+            data-testid="feedback-compose-remove-recipient"
+            aria-label={t('feedback_compose.remove_person', {
+              name: recipient.name,
+            })}
+            onClick={() => onRemove(recipient.userId)}
+            disabled={disabled}
+            className={`shrink-0 text-nim-faint hover:text-nim cursor-pointer bg-transparent border-none p-0 leading-none disabled:opacity-50 ${
+              onToggleAssignment ? '' : 'ml-auto'
+            }`}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path
+                d="M2 2l6 6M8 2l-6 6"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+      ))}
+
+      <div className="feedback-compose-add-recipient">
+        <FeedbackComposeAddRecipient candidates={candidates} onAdd={onAdd} disabled={disabled} />
+      </div>
     </div>
-  </div>
-);
+  );
+};

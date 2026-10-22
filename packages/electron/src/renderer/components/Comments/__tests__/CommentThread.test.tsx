@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { createStore, Provider } from 'jotai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,6 +23,7 @@ import type {
   Actor,
   CommentAdapter,
   CommentCapabilities,
+  CommentPage,
   CommentView,
   TimelineEntry,
 } from '../commentTypes';
@@ -31,6 +34,13 @@ vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
 
 const NOW = Date.parse('2026-07-26T18:00:00.000Z');
 const VIEWER: Actor = { kind: 'user', userId: 'user-rowan', onBehalfOfUserId: 'user-rowan' };
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeEach(async () => {
+  englishI18n ??= await createI18nInstance('en');
+  japaneseI18n ??= await createI18nInstance('ja');
+});
 
 function renderThread(
   options: {
@@ -41,6 +51,7 @@ function renderThread(
     activity?: ActivityView[];
     adapter?: CommentAdapter;
     store?: ReturnType<typeof createStore>;
+    language?: 'en' | 'ja';
   } = {},
 ) {
   const fixtures = createCommentFixtures({ now: NOW, capabilities: options.capabilities });
@@ -52,7 +63,7 @@ function renderThread(
   });
   const adapter = options.adapter ?? fixtureAdapter;
   const targetStore = options.store ?? createStore();
-  const utils = render(
+  const thread = (
     <Provider store={targetStore}>
       <CommentThread
         adapter={adapter}
@@ -68,7 +79,17 @@ function renderThread(
         onCopyLink={options.onCopyLink}
         activity={options.activity}
       />
-    </Provider>,
+    </Provider>
+  );
+  const language = options.language ?? 'en';
+  const utils = render(
+    <UiLanguageProvider
+      i18n={language === 'ja' ? japaneseI18n : englishI18n}
+      preference={language}
+      systemLocale={language === 'ja' ? 'ja-JP' : 'en-US'}
+    >
+      {thread}
+    </UiLanguageProvider>,
   );
   return { adapter, fixtureAdapter, fixtures, store: targetStore, ...utils };
 }
@@ -85,6 +106,37 @@ describe('CommentThread', () => {
     await waitFor(() => screen.getByTestId('comment-row-msg-001'));
     expect(screen.getByTestId('comment-row-msg-003').getAttribute('data-actor-kind')).toBe('agent');
     screen.getByTestId('comment-composer-input');
+  });
+
+  it('localizes conversation loading, pagination, empty state, and history errors', async () => {
+    let resolveInitial: ((page: CommentPage) => void) | undefined;
+    let rejectEarlier: ((reason: Error) => void) | undefined;
+    const adapter: CommentAdapter = {
+      list: vi.fn((cursor?: string) => cursor
+        ? new Promise<never>((_resolve, reject) => { rejectEarlier = reject; })
+        : new Promise<CommentPage>((resolve) => { resolveInitial = resolve; })),
+      create: vi.fn(),
+      edit: vi.fn(),
+      remove: vi.fn(),
+      subscribe: () => () => undefined,
+    };
+    renderThread({ adapter, language: 'ja', capabilities: READ_ONLY_CAPABILITIES });
+
+    expect(screen.getByText('会話を読み込み中…')).toBeDefined();
+    await act(async () => resolveInitial?.({ comments: [], nextCursor: 'older' }));
+    expect(screen.getByText('メッセージはまだありません。')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: '過去のメッセージを読み込む' }));
+    expect(screen.getByRole('button', { name: '読み込み中' })).toBeDefined();
+    await act(async () => rejectEarlier?.(new Error('history unavailable')));
+    await waitFor(() => expect(screen.getByText('会話の履歴を読み込めませんでした。')).toBeDefined());
+  });
+
+  it('localizes the unavailable reactions explanation', async () => {
+    renderThread({ supportsReactions: false, language: 'ja' });
+
+    await waitFor(() => screen.getByTestId('comment-thread-no-reactions'));
+    expect(screen.getByText('この画面ではまだリアクションを利用できません。')).toBeDefined();
   });
 
   it('renders no reactions affordance at all when the adapter omits react', async () => {

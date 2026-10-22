@@ -11,6 +11,7 @@
  * host's pages and the tracker records under its `TrackersUIProvider`.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { PageSearchRequest, PageSearchResponse } from '@nimbalyst/collab-protocol';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import type { TrackerFilterSet } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerFilters';
@@ -89,15 +90,15 @@ function inLane(model: TrackerDataModel | undefined, lane: PagesSearchLane): boo
   return Boolean(model) && ((model!.sharing ?? 'personal') === 'team') === (lane === 'team');
 }
 
-function relativeTime(ms: number): string {
+function relativeTime(ms: number, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (!ms) return '';
   const minutes = Math.round((Date.now() - ms) / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t('collaboration_surface.just_now');
+  if (minutes < 60) return t('collaboration_surface.minutes_ago', { count: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('collaboration_surface.hours_ago', { count: hours });
   const days = Math.round(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return t('collaboration_surface.days_ago', { count: days });
   return new Date(ms).toLocaleDateString();
 }
 
@@ -116,6 +117,7 @@ export function PagesSearchView({
   onOpenItem,
   headerActions,
 }: PagesSearchViewProps): React.JSX.Element {
+  const { t } = useTranslation('tracker');
   const state = useMemo(() => parsePagesSearch(new URLSearchParams(search)), [search]);
   // The omnibox commits a filter as two calls in one tick (filters, then the
   // leftover text), so each update builds on the last one, not on this render.
@@ -133,9 +135,9 @@ export function PagesSearchView({
   // A new search or sort starts from the top again.
   useEffect(() => setRowLimit(ROWS_PER_PAGE), [search, sort]);
 
-  const typeLabel = useMemo(() => (typeId: string) => (typeId === PLAIN_PAGE_TYPE ? 'Page' : globalRegistry.get(typeId)?.displayName || typeId),
+  const typeLabel = useMemo(() => (typeId: string) => (typeId === PLAIN_PAGE_TYPE ? t('collaboration_surface.page') : globalRegistry.get(typeId)?.displayName || typeId),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [registryRevision]);
+    [registryRevision, t]);
   const rows = useMemo(() => buildPagesSearchRows(pages, records as readonly PagesSearchItemInput[], {
     inSection: placedTypeScope(typePlacements, (typeId) => inLane(globalRegistry.get(typeId), lane)),
     itemTitle: (item) => getRecordTitle(item as Parameters<typeof getRecordTitle>[0]),
@@ -173,15 +175,15 @@ export function PagesSearchView({
     ? { column, descending: !current.descending }
     : { column, descending: column === 'updated' }));
   const open = (match: PagesSearchMatch, options: PagesOpenOptions) => (match.row.kind === 'page' ? onOpenPage(match.row.id, options) : onOpenItem(match.row.id, options));
-  const sectionName = lane === 'team' ? 'Team' : 'Personal';
+  const sectionName = lane === 'team' ? t('collaboration_surface.team') : t('collaboration_surface.personal');
   const note = !state.query.trim() || !searchPages
     ? null
     : body?.status === 'partial'
-      ? 'Still indexing page text; some text matches may be missing.'
+      ? t('collaboration_surface.indexing_page_text')
       : body?.status === 'unavailable'
-        ? 'Page text search is unavailable right now; showing title matches.'
+        ? t('collaboration_surface.page_text_unavailable')
         : hiddenByFilters
-          ? 'Filters hid some text matches; more may match. Narrow the search text to see them.'
+          ? t('collaboration_surface.filters_hide_text_matches')
           : null;
 
   return (
@@ -189,14 +191,14 @@ export function PagesSearchView({
       <div className="pages-search-header flex shrink-0 flex-col gap-3 border-b border-nim px-4 pb-3 pt-4">
         <div className="pages-search-title flex min-w-0 items-center gap-2">
           <MaterialSymbol icon="manage_search" size={20} className="shrink-0 text-nim-muted" />
-          <h1 className="m-0 truncate text-[17px] font-semibold text-nim">Search</h1>
+          <h1 className="m-0 truncate text-[17px] font-semibold text-nim">{t('collaboration_surface.search')}</h1>
           <span className="truncate text-[13px] text-nim-faint">{title ?? sectionName}</span>
           {headerActions && <div className="ml-auto flex shrink-0 items-center gap-2">{headerActions}</div>}
         </div>
         <TrackerFilterOmnibox
           className="pages-search-omnibox w-full"
           size="large"
-          placeholder="Search pages, or type a field name to filter"
+          placeholder={t('collaboration_surface.search_pages_placeholder')}
           searchQuery={state.query}
           onSearchQueryChange={(query) => update({ query })}
           fields={fields}
@@ -214,19 +216,19 @@ export function PagesSearchView({
             <MaterialSymbol icon={rows.length === 0 ? 'description' : 'search_off'} size={36} className="mb-2 text-nim-faint" />
             <p className="m-0 text-[13px] text-nim-muted">
               {rows.length === 0
-                ? (loaded ? `No pages in ${sectionName} yet.` : 'Loading pages...')
-                : 'Nothing matches. Remove a filter or change the search.'}
+                ? (loaded ? t('collaboration_surface.no_pages_in_section', { section: sectionName }) : t('collaboration_surface.loading_pages'))
+                : t('collaboration_surface.nothing_matches')}
             </p>
           </div>
         ) : (
           <table className="w-full table-fixed border-collapse text-[13px]">
             <thead>
               <tr className="pages-search-thead sticky top-0 z-10 border-b border-nim bg-nim text-[11px] uppercase tracking-wide text-nim-muted">
-                <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} className="pl-4" />
-                <SortHeader label="Type" column="type" sort={sort} onSort={toggleSort} className="pages-search-col-wide w-[130px]" />
-                <SortHeader label="Status" column="status" sort={sort} onSort={toggleSort} className="pages-search-col-wide w-[110px]" />
-                <SortHeader label="Author" column="author" sort={sort} onSort={toggleSort} className="pages-search-col-wide w-[140px]" />
-                <SortHeader label="Updated" column="updated" sort={sort} onSort={toggleSort} className="pages-search-col-updated w-[100px] pr-4" />
+                <SortHeader label={t('collaboration_surface.name')} column="name" sort={sort} onSort={toggleSort} className="pl-4" />
+                <SortHeader label={t('collaboration_surface.type')} column="type" sort={sort} onSort={toggleSort} className="pages-search-col-wide w-[130px]" />
+                <SortHeader label={t('collaboration_surface.status')} column="status" sort={sort} onSort={toggleSort} className="pages-search-col-wide w-[110px]" />
+                <SortHeader label={t('collaboration_surface.author')} column="author" sort={sort} onSort={toggleSort} className="pages-search-col-wide w-[140px]" />
+                <SortHeader label={t('collaboration_surface.updated')} column="updated" sort={sort} onSort={toggleSort} className="pages-search-col-updated w-[100px] pr-4" />
               </tr>
             </thead>
             <tbody>
@@ -243,13 +245,15 @@ export function PagesSearchView({
               className="cursor-pointer rounded-md border border-nim bg-transparent px-3 py-1 text-[12px] text-nim hover:bg-nim-hover"
               onClick={() => setRowLimit((limit) => limit + ROWS_PER_PAGE)}
             >
-              Show more
+              {t('collaboration_surface.show_more')}
             </button>
           </div>
         )}
       </div>
       <div className="pages-search-footer flex shrink-0 items-center gap-2 border-t border-nim px-4 py-1.5 text-[11.5px] text-nim-muted">
-        {shown.length > rowLimit ? `Showing ${rowLimit} of ${shown.length} matches` : `${shown.length} of ${rows.length} ${rows.length === 1 ? 'page' : 'pages'}`}
+        {shown.length > rowLimit
+          ? t('collaboration_surface.showing_matches', { shown: rowLimit, total: shown.length })
+          : t(rows.length === 1 ? 'collaboration_surface.page_count_one' : 'collaboration_surface.page_count_other', { count: shown.length, total: rows.length })}
       </div>
     </div>
   );
@@ -302,6 +306,7 @@ function PagesSearchRowView({ match, typeLabel, authorLabel, onOpen }: {
   authorLabel: (author: string) => string;
   onOpen: (options: PagesOpenOptions) => void;
 }) {
+  const { t } = useTranslation('tracker');
   const { row, snippet } = match;
   const model = row.kind === 'typed' ? globalRegistry.get(row.typeId) : undefined;
   const status = row.status ? pageStatusLabel(row.status) : '';
@@ -353,7 +358,7 @@ function PagesSearchRowView({ match, typeLabel, authorLabel, onOpen }: {
       <td className="pages-search-col-wide px-2 py-2 align-top">{typeChip}</td>
       <td className="pages-search-col-wide truncate px-2 py-2 align-top text-nim-muted">{status}</td>
       <td className="pages-search-col-wide truncate px-2 py-2 align-top text-nim-muted">{author}</td>
-      <td className="truncate py-2 pl-2 pr-4 align-top text-nim-muted">{relativeTime(row.updated)}</td>
+      <td className="truncate py-2 pl-2 pr-4 align-top text-nim-muted">{relativeTime(row.updated, t)}</td>
     </tr>
   );
 }

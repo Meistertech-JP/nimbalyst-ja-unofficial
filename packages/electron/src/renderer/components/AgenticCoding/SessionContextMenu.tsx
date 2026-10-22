@@ -9,9 +9,10 @@
  */
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol, copyToClipboard } from '@nimbalyst/runtime';
 import { sessionShareAtom, shareKeysAtom, removeSessionShareAtom, buildShareUrl } from '../../store';
-import { setSessionPhaseAtom, SESSION_PHASE_COLUMNS } from '../../store/atoms/sessionKanban';
+import { setSessionPhaseAtom, SESSION_PHASE_COLUMNS, SESSION_PHASE_LABEL_KEYS } from '../../store/atoms/sessionKanban';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
 import { dialogRef, DIALOG_IDS } from '../../dialogs';
 import type { ShareDialogData } from '../../dialogs';
@@ -65,6 +66,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
   onDelete,
   selectedCount = 1,
 }) => {
+  const { t } = useTranslation('agents');
   const [showPhaseSubmenu, setShowPhaseSubmenu] = useState(false);
   const [submenuFlipped, setSubmenuFlipped] = useState(false);
   const submenuParentRef = useRef<HTMLDivElement>(null);
@@ -123,10 +125,10 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
       if (shareInfo) {
         const url = buildShareUrl(shareInfo.shareId, shareKeys.get(sessionId));
         copyToClipboard(url);
-        errorNotificationService.showInfo('Share link copied', 'The share link has been copied to your clipboard.', { duration: 3000 });
+        errorNotificationService.showInfo(t('context.share_copied_title'), t('context.share_copied_message'), { duration: 3000 });
       }
     });
-  }, [handleAction, shareInfo, shareKeys, sessionId]);
+  }, [handleAction, shareInfo, shareKeys, sessionId, t]);
 
   const handleUnshare = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,14 +142,14 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
       });
       if (result?.success) {
         removeShare(sessionId);
-        errorNotificationService.showInfo('Session unshared', 'The share link has been removed.', { duration: 3000 });
+        errorNotificationService.showInfo(t('context.unshared_title'), t('context.unshared_message'), { duration: 3000 });
       } else if (result?.error) {
-        errorNotificationService.showError('Unshare failed', result.error);
+        errorNotificationService.showError(t('context.unshare_failed'), result.error);
       }
     } catch (error) {
-      errorNotificationService.showError('Unshare failed', error instanceof Error ? error.message : 'An unexpected error occurred');
+      errorNotificationService.showError(t('context.unshare_failed'), error instanceof Error ? error.message : t('context.unexpected'));
     }
-  }, [onClose, shareInfo, sessionId, removeShare]);
+  }, [onClose, shareInfo, sessionId, removeShare, t]);
 
   const handleForceReparseSession = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -157,23 +159,23 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
       const result = await window.electronAPI.invoke('transcript:force-reparse-session', sessionId);
       if (result?.success) {
         errorNotificationService.showInfo(
-          'Transcript reprocessed',
-          'Canonical transcript events were rebuilt for this session.',
+          t('context.reprocessed_title'),
+          t('context.reprocessed_message'),
           { duration: 3000 },
         );
       } else {
         errorNotificationService.showError(
-          'Failed to reprocess transcript',
-          result?.error || 'An unexpected error occurred',
+          t('context.reprocess_failed'),
+          result?.error || t('context.unexpected'),
         );
       }
     } catch (error) {
       errorNotificationService.showError(
-        'Failed to reprocess transcript',
-        error instanceof Error ? error.message : 'An unexpected error occurred',
+        t('context.reprocess_failed'),
+        error instanceof Error ? error.message : t('context.unexpected'),
       );
     }
-  }, [onClose, sessionId]);
+  }, [onClose, sessionId, t]);
 
   return (
     <FloatingPortal>
@@ -189,13 +191,13 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
         {onRename && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, onRename)}>
             <MaterialSymbol icon="edit" size={14} />
-            Rename
+            {t('context.rename')}
           </button>
         )}
         {onPinToggle && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, () => onPinToggle(!isPinned))}>
             <MaterialSymbol icon="push_pin" size={14} />
-            {isPinned ? 'Unpin' : 'Pin'}
+            {isPinned ? t('context.unpin') : t('context.pin')}
           </button>
         )}
         {/* Set Phase submenu */}
@@ -218,9 +220,13 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             onClick={(e) => { e.stopPropagation(); setShowPhaseSubmenu(!showPhaseSubmenu); }}
           >
             <MaterialSymbol icon="view_kanban" size={14} />
-            <span className="flex-1">Set Phase</span>
+            <span className="flex-1">{t('context.set_phase')}</span>
             {phase && (
-              <span className="text-[10px] text-[var(--nim-text-faint)] ml-1">{phase}</span>
+              <span className="text-[10px] text-[var(--nim-text-faint)] ml-1">
+                {SESSION_PHASE_COLUMNS.find((col) => col.value === phase)
+                  ? t(SESSION_PHASE_LABEL_KEYS[phase as keyof typeof SESSION_PHASE_LABEL_KEYS])
+                  : phase}
+              </span>
             )}
             <MaterialSymbol icon="chevron_right" size={12} />
           </button>
@@ -237,7 +243,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
                   }}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col.color }} />
-                  {col.label}
+                  {t(SESSION_PHASE_LABEL_KEYS[col.value])}
                   {phase === col.value && <MaterialSymbol icon="check" size={14} className="ml-auto" />}
                 </button>
               ))}
@@ -253,7 +259,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
                     }}
                   >
                     <MaterialSymbol icon="close" size={14} />
-                    Remove from board
+                    {t('context.remove_board')}
                   </button>
                 </>
               )}
@@ -268,27 +274,27 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
         {onBranch && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, onBranch)}>
             <MaterialSymbol icon="fork_right" size={14} />
-            Branch conversation
+            {t('context.branch')}
           </button>
         )}
         {onRemoveFromWorkstream && parentSessionId && (
           <button className={menuItemClass} onClick={(e) => handleAction(e, onRemoveFromWorkstream)}>
             <MaterialSymbol icon="drive_file_move_rtl" size={14} />
-            Move to top level
+            {t('context.move_to_top_level')}
           </button>
         )}
 
-        {onMoveUnder && <button className={menuItemClass} onClick={(e) => handleAction(e, onMoveUnder)}><MaterialSymbol icon="drive_file_move" size={14} />Move under...</button>}
+        {onMoveUnder && <button className={menuItemClass} onClick={(e) => handleAction(e, onMoveUnder)}><MaterialSymbol icon="drive_file_move" size={14} />{t('context.move_under')}</button>}
 
         {/* Group 3: Copy to clipboard */}
         <div className="h-px bg-[var(--nim-border)] my-1" />
         <button className={menuItemClass} onClick={handleCopyTranscript}>
           <MaterialSymbol icon="assignment" size={14} />
-          Copy transcript
+          {t('context.copy_transcript')}
         </button>
         <button className={menuItemClass} onClick={handleCopySessionId}>
           <MaterialSymbol icon="content_copy" size={14} />
-          Copy Session ID
+          {t('context.copy_session_id')}
         </button>
 
         {/* Group 4: Share / export */}
@@ -297,22 +303,22 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
           <>
             <button className={menuItemClass} onClick={handleCopyShareLink}>
               <MaterialSymbol icon="content_copy" size={14} />
-              Copy share link
+              {t('context.copy_share_link')}
             </button>
             <button className={menuItemClass} onClick={handleUnshare}>
               <MaterialSymbol icon="link_off" size={14} />
-              Unshare
+              {t('context.unshare')}
             </button>
           </>
         ) : (
           <button className={menuItemClass} onClick={handleShareLink}>
             <MaterialSymbol icon="link" size={14} />
-            Share link
+            {t('context.share_link')}
           </button>
         )}
         <button className={menuItemClass} onClick={handleExportHtml}>
           <MaterialSymbol icon="download" size={14} />
-          Export as HTML
+          {t('context.export_html')}
         </button>
 
         {isDevMode && (
@@ -320,7 +326,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             <div className="h-px bg-[var(--nim-border)] my-1" />
             <button className={menuItemClass} onClick={handleForceReparseSession}>
               <MaterialSymbol icon="sync" size={14} />
-              Reprocess transcript
+              {t('context.reprocess')}
             </button>
           </>
         )}
@@ -340,12 +346,16 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             {isArchived ? (
               <>
                 <MaterialSymbol icon="unarchive" size={14} />
-                Unarchive {selectedCount > 1 ? `${selectedCount} Sessions` : isWorkstream ? 'Workstream' : isWorktreeSession ? 'Worktree' : 'Session'}
+                {selectedCount > 1
+                  ? t('context.unarchive_sessions', { count: selectedCount })
+                  : t('context.unarchive_item', { type: t(isWorkstream ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
               </>
             ) : (
               <>
                 <MaterialSymbol icon="archive" size={14} />
-                Archive {selectedCount > 1 ? `${selectedCount} Sessions` : isWorkstream ? 'Workstream' : isWorktreeSession ? 'Worktree' : 'Session'}
+                {selectedCount > 1
+                  ? t('context.archive_sessions', { count: selectedCount })
+                  : t('context.archive_item', { type: t(isWorkstream ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
               </>
             )}
           </button>
@@ -356,7 +366,7 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
             onClick={(e) => handleAction(e, onDelete)}
           >
             <MaterialSymbol icon="delete" size={14} />
-            Delete
+            {t('context.delete')}
           </button>
         )}
       </div>

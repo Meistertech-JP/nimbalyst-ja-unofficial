@@ -306,6 +306,24 @@ export interface RelationOrigin {
   note?: string;
 }
 
+export type AtlasModelTranslator = (
+  key: string,
+  values?: Record<string, string | number>,
+) => string;
+
+const RELATION_ORIGIN_TRANSLATION_KEYS: Record<string, string> = {
+  references: 'project_graph.atlas.relation_origin.references',
+  closes: 'project_graph.atlas.relation_origin.closes',
+  edited_in: 'project_graph.atlas.relation_origin.edited_in',
+  touches: 'project_graph.atlas.relation_origin.touches',
+  fixes: 'project_graph.atlas.relation_origin.fixes',
+  contains: 'project_graph.atlas.relation_origin.contains',
+  part_of: 'project_graph.atlas.relation_origin.part_of',
+};
+
+const UNKNOWN_ORIGIN_TRANSLATION_KEY = 'project_graph.atlas.relation_origin.unknown';
+const SOURCE_RECORD_TRANSLATION_KEY = 'project_graph.atlas.source_record_note';
+
 /**
  * Provenance per edge type, read off the adapters that actually emit them
  * rather than assumed from the verb. A snapshot edge is NOT automatically an
@@ -349,11 +367,18 @@ const RELATION_ORIGIN: Record<string, RelationOrigin> = {
   },
 };
 
-export function relationOrigin(type: string): RelationOrigin {
+export function relationOrigin(type: string, translate?: AtlasModelTranslator): RelationOrigin {
+  const origin = RELATION_ORIGIN[type];
+  if (origin) {
+    const key = RELATION_ORIGIN_TRANSLATION_KEYS[type];
+    return key && translate ? { ...origin, note: translate(key) } : origin;
+  }
   return (
-    RELATION_ORIGIN[type] ?? {
+    {
       family: 'unclassified-link',
-      note: 'Carried from the snapshot; this prototype does not classify how it was produced.',
+      note: translate
+        ? translate(UNKNOWN_ORIGIN_TRANSLATION_KEY)
+        : 'Carried from the snapshot; this prototype does not classify how it was produced.',
     }
   );
 }
@@ -368,11 +393,11 @@ const PROVENANCE_FAMILY: Record<'recorded' | 'derived' | 'unknown', LinkFamily> 
  * Provenance for one edge. An adapter that stated its own provenance is the
  * authority; the table above is the fallback for the ones that did not.
  */
-export function connectionOrigin(edge: ProjectGraphEdge): RelationOrigin {
+export function connectionOrigin(edge: ProjectGraphEdge, translate?: AtlasModelTranslator): RelationOrigin {
   if (edge.provenance) {
     return { family: PROVENANCE_FAMILY[edge.provenance.kind], note: edge.provenance.basis };
   }
-  return relationOrigin(edge.type);
+  return relationOrigin(edge.type, translate);
 }
 
 export interface ConnectionEvidence {
@@ -431,9 +456,10 @@ export function areaConnections(
   model: PrototypeModel,
   index: AreaIndex,
   areaId: string,
-  options: { evidenceCap?: number } = {},
+  options: { evidenceCap?: number; translate?: AtlasModelTranslator } = {},
 ): AreaConnectionResult {
   const cap = options.evidenceCap ?? DEFAULT_EVIDENCE_CAP;
+  const translate = options.translate;
   const home = index.nodeSetByArea.get(areaId);
   const homeArea = index.byId.get(areaId);
   const internalEdges: InternalEdgeCensus = { total: 0, byFamily: {} };
@@ -476,7 +502,7 @@ export function areaConnections(
     if (sourceHome) for (const id of areasOf(edge.targetId)) if (id !== areaId) outside.add(id);
     if (targetHome) for (const id of areasOf(edge.sourceId)) if (id !== areaId) outside.add(id);
 
-    const origin = connectionOrigin(edge);
+    const origin = connectionOrigin(edge, translate);
     if (outside.size === 0) {
       // Both endpoints live only in this area (or the far end is unfiled).
       if (sourceHome && targetHome) {
@@ -508,7 +534,12 @@ export function areaConnections(
           // Bucketing is direction-blind; the explanation is not. The arrow is
           // the direction the snapshot actually recorded.
           label: `${nodeLabel(model, edge.sourceId)} → ${nodeLabel(model, edge.targetId)}`,
-          detail: `Snapshot ${relation} edge · ${origin.note ?? 'link recorded in a source record'}`,
+          detail: translate
+            ? translate('project_graph.atlas.snapshot_edge_detail', {
+                relation,
+                note: origin.note ?? translate(SOURCE_RECORD_TRANSLATION_KEY),
+              })
+            : `Snapshot ${relation} edge · ${origin.note ?? 'link recorded in a source record'}`,
         });
       }
     }
@@ -532,7 +563,9 @@ export function areaConnections(
           id: `shared:${nodeId}:${otherId}`,
           nodeId,
           label: nodeLabel(model, nodeId),
-          detail: `Filed in both areas · ${basis}`,
+          detail: translate
+            ? translate('project_graph.atlas.shared_membership_detail', { basis })
+            : `Filed in both areas · ${basis}`,
         });
       }
     }
@@ -540,6 +573,14 @@ export function areaConnections(
 
   const connections: AreaConnection[] = [];
   const explain = (family: ConnectionFamily, n: number, otherLabel: string): string => {
+    if (translate) {
+      const key = `project_graph.atlas.connection_summary.${family.replace('-', '_')}_${n === 1 ? 'one' : 'other'}`;
+      return translate(key, {
+        count: n,
+        home: homeArea.label,
+        other: otherLabel,
+      });
+    }
     const links = `${n} ${n === 1 ? 'link' : 'links'}`;
     switch (family) {
       case 'recorded-link':
@@ -557,7 +598,7 @@ export function areaConnections(
     const other = index.byId.get(bucket.otherAreaId);
     if (!other) continue;
     const relationCounts = [...bucket.relations.entries()]
-      .map(([relation, count]) => ({ relation, count, note: relationOrigin(relation).note }))
+      .map(([relation, count]) => ({ relation, count, note: relationOrigin(relation, translate).note }))
       .sort((a, b) => b.count - a.count || a.relation.localeCompare(b.relation));
     connections.push({
       id: `${bucket.family}:${bucket.otherAreaId}`,
@@ -584,11 +625,12 @@ export function areaConnections(
 export function formatRelationSummary(
   relationCounts: Array<{ relation: string; count: number }>,
   limit = 3,
+  translateMore?: (count: number) => string,
 ): string {
   if (relationCounts.length === 0) return '';
   const shown = relationCounts.slice(0, limit).map((r) => `${r.relation} ×${r.count}`);
   const rest = relationCounts.length - shown.length;
-  return rest > 0 ? `${shown.join(', ')} +${rest} more` : shown.join(', ');
+  return rest > 0 ? `${shown.join(', ')} +${translateMore ? translateMore(rest) : `${rest} more`}` : shown.join(', ');
 }
 
 export interface TerritoryBox {

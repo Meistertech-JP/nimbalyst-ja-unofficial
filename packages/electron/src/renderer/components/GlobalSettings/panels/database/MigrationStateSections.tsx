@@ -13,6 +13,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
@@ -28,16 +29,12 @@ import { formatArtifactDate, formatBytes } from './dbFormat';
  * proves: every one of these is a reason to look, and none of them is a
  * finding that data is missing.
  */
-const BLOCKED_REASON_TEXT: Record<MigrationRefusalReason, string> = {
-  backup_dwarfs_live:
-    'A database set aside on this computer is much larger than the one in use, so Nimbalyst will not copy the one in use without you looking first.',
-  projects_without_sessions:
-    'This computer has settings for projects you have opened, but the database Nimbalyst would copy from has no sessions in it.',
-  source_unreadable:
-    'Nimbalyst could not read the database it would copy from, and an unreadable database is not treated as an empty one.',
-  source_missing: 'The database Nimbalyst would copy from is not on disk.',
-  insufficient_disk:
-    'There is not enough free disk space to hold both databases during the copy.',
+const BLOCKED_REASON_KEYS: Record<MigrationRefusalReason, string> = {
+  backup_dwarfs_live: 'reason_backup_larger',
+  projects_without_sessions: 'reason_projects_without_sessions',
+  source_unreadable: 'reason_source_unreadable',
+  source_missing: 'reason_source_missing',
+  insufficient_disk: 'reason_insufficient_disk',
 };
 
 export function MigrationBlockedSection({
@@ -45,6 +42,7 @@ export function MigrationBlockedSection({
 }: {
   onCleared: () => void;
 }): React.ReactElement | null {
+  const { t } = useTranslation('settings');
   const blocked = useAtomValue(dbMigrationBlockedAtom);
   const [clearing, setClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,23 +69,19 @@ export function MigrationBlockedSection({
   return (
     <div className="provider-panel-section nim-database-migration-blocked mb-6 select-text">
       <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
-        Automatic migration is held back on this computer
+        {t('database.migration_state.blocked_title')}
       </h4>
       <div className="rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-3">
         <p className="text-sm text-[var(--nim-text)]">
-          {BLOCKED_REASON_TEXT[blocked.reasonCode] ?? 'Nimbalyst recorded a reason it cannot describe in this build.'}
+          {t(`database.migration_state.${BLOCKED_REASON_KEYS[blocked.reasonCode] ?? 'reason_unknown'}`)}
         </p>
         <p className="mt-2 text-xs text-[var(--nim-text-muted)]">
-          Recorded {formatArtifactDate(blocked.blockedAt)}. Nimbalyst re-checks this on its
-          own if what it measures changes. Nothing has been copied, moved, or deleted.
+          {t('database.migration_state.recorded', { date: formatArtifactDate(blocked.blockedAt) })}
         </p>
       </div>
 
       <p className="mt-3 text-sm text-[var(--nim-text-muted)]">
-        Clearing this lets a later launch assess the migration again. It does not start a
-        migration and does not change any data, but it does remove the check that stopped
-        Nimbalyst from copying a database it could not confirm was the one holding your
-        work. Look at any set-aside copies first.
+        {t('database.migration_state.clear_description')}
       </p>
 
       <button
@@ -97,12 +91,12 @@ export function MigrationBlockedSection({
         className="nim-database-clear-block-button setting-button mt-3 inline-flex items-center gap-2 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3 py-1.5 text-sm text-[var(--nim-text)] hover:bg-[var(--nim-hover)] disabled:opacity-50"
       >
         <MaterialSymbol icon="refresh" size={16} />
-        {clearing ? 'Clearing...' : 'Clear this and re-check on the next launch'}
+        {clearing ? t('database.migration_state.clearing') : t('database.migration_state.clear_button')}
       </button>
 
       {error && (
         <div className="mt-3 rounded-md border border-[rgba(220,38,38,0.3)] bg-[rgba(220,38,38,0.1)] p-3 text-sm text-[var(--nim-text)]">
-          Could not clear it: {error}
+          {t('database.migration_state.clear_failed', { error })}
         </div>
       )}
     </div>
@@ -114,6 +108,7 @@ export function MigratedCopiesSection({
 }: {
   onChanged: () => void;
 }): React.ReactElement | null {
+  const { t } = useTranslation('settings');
   const copies = useAtomValue(dbMigratedCopiesAtom);
   const [deleting, setDeleting] = useState<MigratedCopyView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -144,11 +139,10 @@ export function MigratedCopiesSection({
   return (
     <div className="provider-panel-section nim-database-migrated-copies mb-6 select-text">
       <h4 className="provider-panel-section-title text-base font-semibold mb-2 text-[var(--nim-text)]">
-        PGLite copies kept from a migration
+        {t('database.migration_state.copies_title')}
       </h4>
       <p className="provider-panel-hint text-sm text-[var(--nim-text-muted)] mb-3">
-        A migration keeps the PGLite database it copied from. These stay until you remove
-        them; Nimbalyst does not delete them on a schedule.
+        {t('database.migration_state.copies_description')}
       </p>
 
       <div className="flex flex-col gap-3">
@@ -163,8 +157,8 @@ export function MigratedCopiesSection({
             </div>
             <p className="mt-2 text-sm text-[var(--nim-text)]">
               {copy.isRollbackSource
-                ? 'This is the copy "Restore from preserved PGLite" would use.'
-                : 'Kept on disk. It is not the copy a rollback would use.'}
+                ? t('database.migration_state.rollback_source')
+                : t('database.migration_state.not_rollback_source')}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -173,7 +167,7 @@ export function MigratedCopiesSection({
                 className="nim-database-migrated-reveal-button setting-button inline-flex items-center gap-2 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-primary)] px-3 py-1.5 text-sm text-[var(--nim-text)] hover:bg-[var(--nim-hover)]"
               >
                 <MaterialSymbol icon="folder_open" size={16} />
-                Show in Finder
+                {t('database.recovery.show_finder')}
               </button>
               <button
                 type="button"
@@ -181,7 +175,7 @@ export function MigratedCopiesSection({
                 className="nim-database-migrated-delete-button setting-button inline-flex items-center gap-2 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-primary)] px-3 py-1.5 text-sm text-[var(--nim-text)] hover:bg-[var(--nim-hover)]"
               >
                 <MaterialSymbol icon="delete" size={16} />
-                Delete this copy
+                {t('database.migration_state.delete_copy')}
               </button>
             </div>
           </div>
@@ -190,7 +184,7 @@ export function MigratedCopiesSection({
 
       {error && (
         <div className="mt-3 rounded-md border border-[rgba(220,38,38,0.3)] bg-[rgba(220,38,38,0.1)] p-3 text-sm text-[var(--nim-text)]">
-          Nothing was deleted: {error}
+          {t('database.migration_state.nothing_deleted', { error })}
         </div>
       )}
 
@@ -217,28 +211,25 @@ function DeleteCopyConfirmation({
   onReveal: () => void;
   onDelete: () => void;
 }): React.ReactElement {
+  const { t } = useTranslation('settings');
   const [acknowledged, setAcknowledged] = useState(false);
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/45 px-4">
       <div className="nim-database-delete-confirmation w-full max-w-xl select-text rounded-xl border border-[var(--nim-border)] bg-[var(--nim-bg-primary)] p-6 shadow-2xl">
-        <h4 className="text-lg font-semibold text-[var(--nim-text)]">Delete a preserved copy</h4>
+        <h4 className="text-lg font-semibold text-[var(--nim-text)]">{t('database.migration_state.delete_title')}</h4>
 
         <div className="mt-4 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] p-4 text-sm text-[var(--nim-text)]">
           <div className="font-mono">{copy.name}</div>
           <p className="mt-2">
-            This permanently removes {formatBytes(copy.sizeBytes)} — the PGLite database as
-            it stood on {formatArtifactDate(copy.createdAt)}, before it was migrated.
-            Sessions and document history that exist only in this copy cannot be recovered
-            afterwards.
+            {t('database.migration_state.delete_description', { size: formatBytes(copy.sizeBytes), date: formatArtifactDate(copy.createdAt) })}
           </p>
           {copy.isRollbackSource && (
             <p className="mt-2">
-              This is the copy a rollback restores from. Once it is gone, this install
-              cannot be put back onto PGLite.
+              {t('database.migration_state.delete_rollback_warning')}
             </p>
           )}
           <p className="mt-2 text-[var(--nim-text-muted)]">
-            The database you are using now is not touched.
+            {t('database.migration_state.current_db_untouched')}
           </p>
         </div>
 
@@ -249,7 +240,7 @@ function DeleteCopyConfirmation({
             onChange={(e) => setAcknowledged(e.target.checked)}
             className="mt-0.5"
           />
-          <span>I understand this copy cannot be recovered after deleting it.</span>
+          <span>{t('database.migration_state.ack_delete')}</span>
         </label>
 
         <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -258,14 +249,14 @@ function DeleteCopyConfirmation({
             onClick={onCancel}
             className="nim-database-delete-cancel-button rounded-md border border-[var(--nim-border)] px-3 py-2 text-sm text-[var(--nim-text)]"
           >
-            Cancel
+            {t('database.cancel')}
           </button>
           <button
             type="button"
             onClick={onReveal}
             className="nim-database-delete-reveal-button rounded-md border border-[var(--nim-border)] px-3 py-2 text-sm text-[var(--nim-text)]"
           >
-            Show in Finder
+            {t('database.recovery.show_finder')}
           </button>
           <button
             type="button"
@@ -273,7 +264,7 @@ function DeleteCopyConfirmation({
             disabled={!acknowledged}
             className="nim-database-delete-confirm-button rounded-md border border-[rgba(220,38,38,0.4)] bg-[rgba(220,38,38,0.12)] px-3 py-2 text-sm font-medium text-[var(--nim-text)] disabled:opacity-50"
           >
-            Delete permanently
+            {t('database.migration_state.delete_permanently')}
           </button>
         </div>
       </div>

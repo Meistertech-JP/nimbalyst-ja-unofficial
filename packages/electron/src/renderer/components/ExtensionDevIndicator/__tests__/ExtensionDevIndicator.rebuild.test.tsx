@@ -3,6 +3,8 @@ import React from 'react';
 import { Provider, createStore } from 'jotai';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { advancedSettingsAtom } from '../../../store/atoms/appSettings';
 import { ExtensionDevIndicator } from '../ExtensionDevIndicator';
 
@@ -18,12 +20,61 @@ vi.mock('../ExtensionErrorConsole', () => ({
   ExtensionErrorConsole: () => null,
 }));
 
+async function renderIndicator(store: ReturnType<typeof createStore>, language: 'en' | 'ja' = 'en') {
+  const i18n = await createI18nInstance(language);
+  return render(
+    <Provider store={store}>
+      <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+        <ExtensionDevIndicator />
+      </UiLanguageProvider>
+    </Provider>,
+  );
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
 
 describe('ExtensionDevIndicator rebuild feedback', () => {
+  it('renders stale-extension controls in Japanese', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        extensionDevTools: {
+          getLogs: vi.fn().mockResolvedValue({ logs: [] }),
+          getProcessInfo: vi.fn().mockResolvedValue({ startTime: Date.now() }),
+        },
+        extensions: {
+          listInstalled: vi.fn().mockResolvedValue([{
+            id: 'com.example.extension',
+            path: '/workspace/packages/extensions/example',
+            manifest: { name: 'Example' },
+            name: 'Example',
+            enabled: true,
+            staleBundleWarning: 'src/index.tsx is newer than the built bundle',
+          }]),
+          devReload: vi.fn().mockResolvedValue({ success: true }),
+        },
+      },
+    });
+    const store = createStore();
+    store.set(advancedSettingsAtom, { ...store.get(advancedSettingsAtom), extensionDevToolsEnabled: true });
+    await renderIndicator(store, 'ja');
+
+    fireEvent.click(screen.getByRole('button', { name: '拡張機能開発モード' }));
+    const enabledNotice = await screen.findByText('開発ツールが有効です');
+    expect(enabledNotice.textContent).toBe('開発ツールが有効です');
+    const staleNotice = await screen.findByRole('status');
+    expect(staleNotice.textContent).toContain('古い拡張機能バンドルを検出しました: 1件');
+    expect(
+      within(staleNotice).getByRole('list', { name: '古い拡張機能' }).getAttribute('aria-label')
+    ).toBe('古い拡張機能');
+    expect(
+      within(staleNotice).getByRole('button', { name: 'Exampleを再インストール' }).textContent
+    ).toBe('再インストール');
+  });
+
   it.each(['returned failure', 'rejected request'])('reinstalls only stale extensions and retains %s for retry', async (failureMode) => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const installed = ['Alpha', 'Beta', 'Current', 'Gamma'].map(name => ({
@@ -55,7 +106,7 @@ describe('ExtensionDevIndicator rebuild feedback', () => {
     });
     const store = createStore();
     store.set(advancedSettingsAtom, { ...store.get(advancedSettingsAtom), extensionDevToolsEnabled: true });
-    render(<Provider store={store}><ExtensionDevIndicator /></Provider>);
+    await renderIndicator(store);
     fireEvent.click(screen.getByTestId('gutter-extension-dev-button'));
     const reinstall = await screen.findByRole('button', { name: 'Reinstall stale extensions' });
     const staleList = screen.getByRole('list', { name: 'Stale extensions' });
@@ -114,14 +165,10 @@ describe('ExtensionDevIndicator rebuild feedback', () => {
       ...atomStore.get(advancedSettingsAtom),
       extensionDevToolsEnabled: true,
     });
-    render(
-      <Provider store={atomStore}>
-        <ExtensionDevIndicator />
-      </Provider>,
-    );
+    await renderIndicator(atomStore);
 
     fireEvent.click(screen.getByTestId('gutter-extension-dev-button'));
-    await screen.findByText(/1 stale extension bundle detected/i);
+    await screen.findByText(/stale extension bundles detected: 1/i);
     fireEvent.click(screen.getByRole('menuitem', { name: /rebuild extensions/i }));
     fireEvent.click(await screen.findByRole('menuitem', { name: /csv spreadsheet/i }));
 

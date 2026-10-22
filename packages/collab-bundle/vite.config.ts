@@ -111,6 +111,11 @@ function isHostSingleton(id: string): boolean {
     || id.startsWith('react/')
     || id === 'react-dom'
     || id.startsWith('react-dom/')
+    // Shared Docs UI consumes the host's i18next context. A private copy of
+    // react-i18next creates a second context, so the host provider cannot reach
+    // hooks inside this prebuilt bundle.
+    || id === 'react-i18next'
+    || id.startsWith('react-i18next/')
     || id === 'lexical'
     || id.startsWith('lexical/')
     || id.startsWith('@lexical/')
@@ -148,6 +153,7 @@ export default defineConfig({
     dedupe: [
       'react',
       'react-dom',
+      'react-i18next',
       'lexical',
       '@lexical/yjs',
       '@revolist/react-datagrid',
@@ -198,6 +204,7 @@ export default defineConfig({
     exclude: [
       'react',
       'react-dom',
+      'react-i18next',
       'lexical',
       '@lexical/yjs',
       '@revolist/react-datagrid',

@@ -1,13 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { ProjectGraphNode } from '../../types';
 import type { PrototypeArea, PrototypeEvent, PrototypeModel, PrototypeRange, PrototypeViewProps } from '../contracts';
 import { eventsInRange } from '../contracts';
 import {
-  CONNECTION_FAMILY_LABEL,
-  CONNECTION_FAMILY_SHORT,
   describeNode,
   formatRelationSummary,
-  plural,
   type AreaActivity,
   type AreaConnection,
   type AreaIndex,
@@ -22,12 +20,12 @@ import {
  * provenance is stated rather than summed: a path-synthesized edge between two
  * records that happen to be filed together is not the same fact.
  */
-function describeInternalEdges(census: InternalEdgeCensus): string {
+function describeInternalEdges(census: InternalEdgeCensus, t: ReturnType<typeof useTranslation>['t']): string {
   const parts = (Object.entries(census.byFamily) as Array<[LinkFamily, number]>)
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
-    .map(([family, count]) => `${count} ${CONNECTION_FAMILY_SHORT[family]}`);
-  return `${census.total.toLocaleString()} edge${census.total === 1 ? '' : 's'} stay inside this area (${parts.join(', ')})`;
+    .map(([family, count]) => t('project_graph.atlas.internal_edge_family_count', { count, family: t(`project_graph.atlas.family_short.${family.replace('-', '_')}`) }));
+  return t('project_graph.atlas.internal_edges', { count: census.total.toLocaleString(), parts: parts.join(', ') });
 }
 
 export type RelationLens = 'all' | ConnectionFamily;
@@ -64,6 +62,9 @@ function formatDay(ms: number): string {
 }
 
 export function AreaDetailPanel(props: AreaDetailPanelProps) {
+  const { t } = useTranslation('extensions');
+  const recordCount = (count: number) => t('project_graph.atlas.record_count', { count: count.toLocaleString() });
+  const familyLabel = (family: ConnectionFamily) => t(`project_graph.atlas.family.${family.replace('-', '_')}`);
   const {
     model, index, area, standing, activity, range, connections, internalEdges,
     lens, onLensChange, openConnectionId, onOpenConnection, tab, onTabChange,
@@ -127,25 +128,25 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
         className="pga-mini-btn"
         onClick={(e) => { e.stopPropagation(); onOpenNode(node); }}
       >
-        Open
+        {t('project_graph.atlas.open')}
       </button>
       <button
         type="button"
         className="pga-mini-btn"
         onClick={(e) => { e.stopPropagation(); onNavigate('trails', node.id, area.id); }}
       >
-        Trail
+        {t('project_graph.atlas.trail')}
       </button>
     </span>
   );
 
   const shownCount = (shown: number, total: number, unit: string) =>
-    `Showing ${Math.min(shown, total)} of ${total} ${unit}`;
+    t('project_graph.atlas.showing_count', { shown: Math.min(shown, total), total, unit });
 
   return (
-    <aside className="pga-detail" aria-label={`Area detail: ${area.label}`}>
+    <aside className="pga-detail" aria-label={t('project_graph.atlas.area_detail', { name: area.label })}>
       <div className="pga-detail-head">
-        <div className="pga-eyebrow">Selected area</div>
+        <div className="pga-eyebrow">{t('project_graph.atlas.selected_area')}</div>
         {renameDraft === null ? (
           <div className="pga-detail-title-row">
             <h2 className="pga-detail-title">{area.label}</h2>
@@ -157,7 +158,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                 window.requestAnimationFrame(() => renameInput.current?.select());
               }}
             >
-              Rename
+              {t('project_graph.atlas.rename')}
             </button>
           </div>
         ) : (
@@ -165,7 +166,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
             <input
               ref={renameInput}
               className="pga-rename-input"
-              aria-label="Area display name"
+              aria-label={t('project_graph.atlas.area_display_name')}
               value={renameDraft}
               autoFocus
               onChange={(e) => setRenameDraft(e.target.value)}
@@ -175,36 +176,36 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                 else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setRenameDraft(null); }
               }}
             />
-            <button type="button" className="pga-mini-btn" onClick={commitRename}>Save</button>
-            <button type="button" className="pga-mini-btn" onClick={() => setRenameDraft(null)}>Cancel</button>
-            <p className="pga-hint">Display name for this view only. Source tags and records are unchanged.</p>
+            <button type="button" className="pga-mini-btn" onClick={commitRename}>{t('project_graph.atlas.save')}</button>
+            <button type="button" className="pga-mini-btn" onClick={() => setRenameDraft(null)}>{t('project_graph.atlas.cancel')}</button>
+            <p className="pga-hint">{t('project_graph.atlas.rename_hint')}</p>
           </div>
         )}
         <p className="pga-basis">{area.basis}</p>
         <p className="pga-detail-counts">
           {standing
-            ? `${plural(standing.total, 'record')} all-time · ${standing.open.toLocaleString()} with no recorded close`
-            : 'No standing computed'}
+            ? t('project_graph.atlas.standing_summary', { records: recordCount(standing.total), open: standing.open.toLocaleString() })
+            : t('project_graph.atlas.no_standing')}
           {standing && standing.resolved < standing.total
-            ? ` · ${(standing.total - standing.resolved).toLocaleString()} not resolvable in the loaded snapshot`
+            ? ` · ${t('project_graph.atlas.unresolved_records', { count: (standing.total - standing.resolved).toLocaleString() })}`
             : ''}
         </p>
         <p className="pga-detail-counts">
           {activity && activity.events > 0
-            ? `In range: ${activity.touched.toLocaleString()} of ${activity.members.toLocaleString()} records active (${Math.round(activity.share * 100)}%) · ${activity.recorded.toLocaleString()} recorded events · ${activity.lastObserved.toLocaleString()} last-observed markers`
-            : 'No activity recorded for this area in the selected range.'}
+            ? t('project_graph.atlas.activity_summary', { touched: activity.touched.toLocaleString(), members: activity.members.toLocaleString(), percent: Math.round(activity.share * 100), recorded: activity.recorded.toLocaleString(), observed: activity.lastObserved.toLocaleString() })
+            : t('project_graph.atlas.no_activity_selected_range')}
         </p>
         <div className="pga-detail-nav">
           <button type="button" className="pga-mini-btn" onClick={() => onNavigate('pulse', undefined, area.id)}>
-            See this area in Pulse
+            {t('project_graph.atlas.see_area_in_pulse')}
           </button>
           <button type="button" className="pga-mini-btn" onClick={() => onNavigate('trails', undefined, area.id)}>
-            Open a trail here
+            {t('project_graph.atlas.open_trail_here')}
           </button>
         </div>
       </div>
 
-      <div className="pga-tabs" role="tablist" aria-label="Area detail sections">
+      <div className="pga-tabs" role="tablist" aria-label={t('project_graph.atlas.detail_sections')}>
         {(['connections', 'activity', 'records'] as DetailTab[]).map((id) => (
           <button
             key={id}
@@ -215,7 +216,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
             className={tab === id ? 'pga-tab is-active' : 'pga-tab'}
             onClick={() => onTabChange(id)}
           >
-            {id === 'connections' ? 'Connections' : id === 'activity' ? 'Activity' : 'Records'}
+            {id === 'connections' ? t('project_graph.atlas.connections') : id === 'activity' ? t('project_graph.atlas.activity') : t('project_graph.atlas.records')}
           </button>
         ))}
       </div>
@@ -224,33 +225,31 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
         {tab === 'connections' && (
           <>
             <label className="pga-lens">
-              <span>Relation lens</span>
+              <span>{t('project_graph.atlas.relation_lens')}</span>
               <select
                 value={lens}
                 onChange={(e) => { onLensChange(e.target.value as RelationLens); onOpenConnection(null); }}
               >
-                <option value="all">All relations</option>
+                <option value="all">{t('project_graph.atlas.all_relations')}</option>
                 {presentFamilies.map((family) => (
                   <option key={family} value={family}>
-                    {CONNECTION_FAMILY_LABEL[family]} only
+                    {t('project_graph.atlas.family_only', { family: familyLabel(family) })}
                   </option>
                 ))}
               </select>
             </label>
             <p className="pga-hint">
-              Only connections for the selected area are drawn. Recorded links, derived links, and shared membership
-              stay separate families and are never summed into one weight.
+              {t('project_graph.atlas.connection_families_hint')}
             </p>
             {visibleConnections.length === 0 ? (
               <p className="pga-empty">
-                No {lens === 'all' ? 'connections' : CONNECTION_FAMILY_LABEL[lens].toLowerCase()} between this area
-                and any other area in the loaded snapshot.
+                {t('project_graph.atlas.no_connections_between_areas', { family: lens === 'all' ? t('project_graph.atlas.connections').toLowerCase() : familyLabel(lens).toLowerCase() })}
               </p>
             ) : (
               <>
                 <p className="pga-count-line">
                   {shownCount(connectionRows, visibleConnections.length, 'connections')}
-                  {internalEdges.total > 0 ? ` · ${describeInternalEdges(internalEdges)}` : ''}
+                  {internalEdges.total > 0 ? ` · ${describeInternalEdges(internalEdges, t)}` : ''}
                 </p>
                 <ul className="pga-list">
                   {visibleConnections.slice(0, connectionRows).map((connection) => {
@@ -267,13 +266,17 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                             {area.label} ↔ {connection.otherAreaLabel}
                           </span>
                           <span className={`pga-family pga-family-${connection.family}`}>
-                            {CONNECTION_FAMILY_LABEL[connection.family]}
+                            {familyLabel(connection.family)}
                           </span>
                           <span className="pga-conn-count">{connection.count.toLocaleString()}</span>
                         </button>
                         <p className="pga-conn-why">{connection.explanation}</p>
                         {connection.relationCounts.length > 0 && (
-                          <p className="pga-conn-relations">{formatRelationSummary(connection.relationCounts)}</p>
+                          <p className="pga-conn-relations">
+                            {formatRelationSummary(connection.relationCounts, 3, (count) =>
+                              t('project_graph.atlas.more_relations', { count }),
+                            )}
+                          </p>
                         )}
                         {/* A family header can never stand in for per-relation
                             provenance: `part_of` and `fixes` are derived even
@@ -293,9 +296,9 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                         {isOpen && (
                           <>
                             <p className="pga-count-line">
-                              {shownCount(evidenceRows, connection.evidence.length, 'evidence rows')}
+                              {shownCount(evidenceRows, connection.evidence.length, t('project_graph.atlas.evidence_rows'))}
                               {connection.evidence.length < connection.count
-                                ? ` · evidence capped at ${connection.evidence.length.toLocaleString()} of ${connection.count.toLocaleString()}`
+                                ? ` · ${t('project_graph.atlas.evidence_capped', { shown: connection.evidence.length.toLocaleString(), total: connection.count.toLocaleString() })}`
                                 : ''}
                             </p>
                             <ul className="pga-evidence-list">
@@ -326,7 +329,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                                 className="pga-more"
                                 onClick={() => setEvidenceRows((n) => Math.min(n + PAGE, MAX_ROWS))}
                               >
-                                Show {PAGE} more
+                                {t('project_graph.atlas.show_more', { count: PAGE })}
                               </button>
                             )}
                           </>
@@ -337,7 +340,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                 </ul>
                 {connectionRows < visibleConnections.length && (
                   <button type="button" className="pga-more" onClick={() => setConnectionRows((n) => n + PAGE)}>
-                    Show {PAGE} more connections
+                    {t('project_graph.atlas.show_more_connections', { count: PAGE })}
                   </button>
                 )}
               </>
@@ -347,7 +350,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
 
         {tab === 'activity' && (
           areaEvents.length === 0 ? (
-            <p className="pga-empty">No events recorded for this area in the selected range.</p>
+            <p className="pga-empty">{t('project_graph.atlas.no_events_selected_range')}</p>
           ) : (
             <>
               <p className="pga-count-line">{shownCount(activityRows, areaEvents.length, 'events')}</p>
@@ -369,8 +372,8 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                         <small>
                           {formatDay(event.at)} · {event.kind} ·{' '}
                           {event.provenance === 'last-observed'
-                            ? 'last-observed marker (one observation, not an interval)'
-                            : 'recorded event'}
+                            ? t('project_graph.atlas.last_observed_marker')
+                            : t('project_graph.atlas.recorded_event')}
                         </small>
                       </button>
                       {node && renderRowActions(node)}
@@ -384,7 +387,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                   className="pga-more"
                   onClick={() => setActivityRows((n) => Math.min(n + PAGE, MAX_ROWS))}
                 >
-                  Show {PAGE} more
+                  {t('project_graph.atlas.show_more', { count: PAGE })}
                 </button>
               )}
             </>
@@ -393,7 +396,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
 
         {tab === 'records' && (
           areaRecords.length === 0 ? (
-            <p className="pga-empty">No loaded records resolve for this area.</p>
+            <p className="pga-empty">{t('project_graph.atlas.no_records_resolve')}</p>
           ) : (
             <>
               <p className="pga-count-line">{shownCount(recordRows, areaRecords.length, 'records')}</p>
@@ -413,7 +416,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                       <small>
                         {describeNode(node)} ·{' '}
                         {model.memberships.get(node.id)?.find((m) => m.areaId === area.id)?.basis ??
-                          'membership basis not recorded'}
+                          t('project_graph.atlas.membership_basis_missing')}
                       </small>
                     </button>
                     {renderRowActions(node)}
@@ -426,7 +429,7 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
                   className="pga-more"
                   onClick={() => setRecordRows((n) => Math.min(n + PAGE, MAX_ROWS))}
                 >
-                  Show {PAGE} more
+                  {t('project_graph.atlas.show_more', { count: PAGE })}
                 </button>
               )}
             </>
@@ -436,12 +439,12 @@ export function AreaDetailPanel(props: AreaDetailPanelProps) {
         {openConnection && tab === 'connections' && (
           <p className="pga-callout">
             {openConnection.family === 'recorded-link'
-              ? 'A recorded link evidences a relation a source record carries. It is not proof of a verified outcome.'
+              ? t('project_graph.atlas.recorded_link_explanation')
               : openConnection.family === 'derived-link'
-                ? 'A derived link was produced by a loader rule, not asserted by any record. Treat it as a reason to look, not as a dependency.'
+                ? t('project_graph.atlas.derived_link_explanation')
                 : openConnection.family === 'unclassified-link'
-                  ? 'This prototype cannot say how these links were produced. Check the source record before relying on them.'
-                  : 'Shared membership is derived by a tag or path rule. It is a reason to look, not a dependency.'}
+                  ? t('project_graph.atlas.unclassified_link_explanation')
+                  : t('project_graph.atlas.shared_membership_explanation')}
           </p>
         )}
       </div>

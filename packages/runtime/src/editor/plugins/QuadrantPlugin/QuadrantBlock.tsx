@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useLexicalEditable } from '@lexical/react/useLexicalEditable';
 import { $getNodeByKey, type NodeKey } from 'lexical';
@@ -25,6 +26,7 @@ import { $isQuadrantNode } from './QuadrantNodeCore';
 const clampHeight = (height: number) => Math.min(MAX_QUADRANT_HEIGHT, Math.max(MIN_QUADRANT_HEIGHT, Math.round(height)));
 
 export function QuadrantBlock({ source, nodeKey }: { source: string; nodeKey: NodeKey }): JSX.Element {
+  const { t } = useTranslation('editor');
   const [editor] = useLexicalComposerContext();
   const editable = useLexicalEditable();
   const [isResizing, setIsResizing] = useState(false);
@@ -99,7 +101,7 @@ export function QuadrantBlock({ source, nodeKey }: { source: string; nodeKey: No
     >
       <QuadrantChart points={parsed.points} {...parsed.labels} height={chartHeight} frameRef={frameRef} />
       <div className="quadrant-block-foot flex items-center gap-3 px-1 pt-1 text-[11px] text-nim-faint">
-        {parsed.skipped > 0 ? <span>{parsed.skipped} line{parsed.skipped === 1 ? '' : 's'} without two numbers</span> : null}
+        {parsed.skipped > 0 ? <span>{t('quadrant.skipped_lines', { count: parsed.skipped })}</span> : null}
         {editable ? (
           <button
             type="button"

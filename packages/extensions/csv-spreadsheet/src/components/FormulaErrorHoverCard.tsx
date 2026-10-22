@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { autoUpdate, flip, FloatingPortal, offset, shift, useFloating } from '@floating-ui/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { EditorCore } from '../editor/editorCore';
 import { logicalCellOfElement } from '../editor/useFormulaPointMode';
 import { asFormulaErrorCode, describeFormulaError, type FormulaErrorDescription } from '../formula/formulaErrors';
@@ -16,6 +17,7 @@ import { asFormulaErrorCode, describeFormulaError, type FormulaErrorDescription 
 const HOVER_DELAY_MS = 350;
 
 export function FormulaErrorHoverCard({ core, enabled }: { core: EditorCore; enabled: boolean }) {
+  const { t } = useTranslation('editor');
   const [shown, setShown] = useState<{ cell: Element; description: FormulaErrorDescription } | null>(null);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function FormulaErrorHoverCard({ core, enabled }: { core: EditorCore; ena
   });
 
   if (!shown) return null;
-  const { code, title, detail } = shown.description;
+  const { code, titleKey, detailKey, detailParams } = shown.description;
   return (
     <FloatingPortal>
       <div
@@ -80,9 +82,9 @@ export function FormulaErrorHoverCard({ core, enabled }: { core: EditorCore; ena
       >
         <div className="flex items-baseline gap-2">
           <span className="font-mono font-semibold text-[var(--nim-error)]">{code}</span>
-          <span className="font-semibold">{title}</span>
+          <span className="font-semibold">{t(titleKey)}</span>
         </div>
-        <div className="mt-1 text-[11.5px] text-nim-muted leading-snug">{detail}</div>
+        <div className="mt-1 text-[11.5px] text-nim-muted leading-snug">{t(detailKey, detailParams)}</div>
       </div>
     </FloatingPortal>
   );

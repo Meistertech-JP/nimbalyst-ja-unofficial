@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { CollaborativeDocumentTypeDescriptor } from '../../services/CollaborativeDocumentTypeCatalog';
 import type { EmbeddedDocumentCandidate } from '../../services/embeddedDocumentShare';
@@ -37,7 +38,6 @@ export interface ShareToTeamDialogProps {
 
 const EMPTY_EMBEDDED_DOCUMENTS: EmbeddedDocumentCandidate[] = [];
 const TEAM_ONLY: readonly SharedFolderSection[] = ['team'];
-const SECTION_LABEL: Record<SharedFolderSection, string> = { team: 'Team', personal: 'Personal' };
 
 export function splitShareFileName(
   fileName: string,
@@ -66,6 +66,7 @@ export function ShareToTeamDialog({
   initialSection,
   onConfirm,
 }: ShareToTeamDialogProps) {
+  const { t } = useTranslation('dialogs');
   const [section, setSection] = useState<SharedFolderSection>(initialSection ?? sections[0] ?? 'team');
   useEffect(() => {
     if (isOpen) setSection(initialSection ?? sections[0] ?? 'team');
@@ -197,7 +198,7 @@ export function ShareToTeamDialog({
   const selectedFolderPath = selectedFolderId
     ? (folderLookups.pathById.get(selectedFolderId) ?? '')
     : '';
-  const sectionLabel = SECTION_LABEL[section];
+  const sectionLabel = t(`share_team.section_${section}`);
   const destinationFolderLabel = selectedFolderPath || sectionLabel;
   const destinationFullPath = selectedFolderPath
     ? `${sectionLabel} / ${selectedFolderPath.split('/').join(' / ')} /`
@@ -226,7 +227,7 @@ export function ShareToTeamDialog({
         className="share-to-team-dialog flex max-h-[90vh] w-[460px] max-w-[92%] flex-col overflow-hidden rounded-xl border border-[var(--nim-border)] bg-[var(--nim-bg)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Copy to Wiki"
+        aria-label={t('share_team.copy_to_wiki')}
       >
         {/* Header */}
         <div className="flex items-start gap-3 px-5 pt-4 pb-3 border-b border-[var(--nim-border)]">
@@ -235,19 +236,19 @@ export function ShareToTeamDialog({
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-[14px] font-semibold text-[var(--nim-text)] m-0 leading-tight">
-              Copy to Wiki
+              {t('share_team.copy_to_wiki')}
             </h2>
             <p className="text-[12px] text-[var(--nim-text-faint)] m-0 mt-0.5 leading-snug">
               {personal
-                ? 'A copy for you in Personal; the file on disk stays as it is.'
-                : 'A copy your team can open and edit; the file on disk stays as it is.'}
+                ? t('share_team.personal_description')
+                : t('share_team.team_description')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-tertiary)] w-6 h-6 rounded inline-flex items-center justify-center"
-            aria-label="Close"
+            aria-label={t('share_team.close')}
           >
             <MaterialSymbol icon="close" size={16} />
           </button>
@@ -256,7 +257,7 @@ export function ShareToTeamDialog({
         {/* Body */}
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-2">
           <div className="text-[11px] uppercase tracking-wider font-semibold text-[var(--nim-text-faint)] mb-1.5">
-            Source file
+            {t('share_team.source_file')}
           </div>
           <div className="flex items-center gap-2.5 px-3 py-2 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border-subtle,var(--nim-border))] rounded-md mb-4">
             <MaterialSymbol icon={descriptor.icon} size={20} className="text-[var(--nim-primary)] shrink-0" />
@@ -269,7 +270,7 @@ export function ShareToTeamDialog({
           </div>
 
           {sections.length > 1 && (
-            <div className="share-to-pages-section mb-4 flex gap-1 rounded-md border border-[var(--nim-border-subtle,var(--nim-border))] bg-[var(--nim-bg-secondary)] p-0.5" role="radiogroup" aria-label="Section">
+            <div className="share-to-pages-section mb-4 flex gap-1 rounded-md border border-[var(--nim-border-subtle,var(--nim-border))] bg-[var(--nim-bg-secondary)] p-0.5" role="radiogroup" aria-label={t('share_team.section')}>
               {sections.map((option) => (
                 <button
                   key={option}
@@ -280,14 +281,14 @@ export function ShareToTeamDialog({
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1 text-[12px] ${section === option ? 'bg-[var(--nim-bg)] text-[var(--nim-text)] font-medium' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]'}`}
                 >
                   <MaterialSymbol icon={option === 'personal' ? 'person' : 'group'} size={14} />
-                  {SECTION_LABEL[option]}
+                  {t(`share_team.section_${option}`)}
                 </button>
               ))}
             </div>
           )}
 
           <div className="text-[11px] uppercase tracking-wider font-semibold text-[var(--nim-text-faint)] mb-1.5">
-            Page name
+            {t('share_team.page_name')}
           </div>
           <div className="flex items-center gap-1.5 px-2 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border-subtle,var(--nim-border))] rounded-md mb-4 focus-within:border-[var(--nim-primary)]">
             <MaterialSymbol icon="edit" size={14} className="text-[var(--nim-text-faint)]" />
@@ -309,7 +310,7 @@ export function ShareToTeamDialog({
                 }
               }}
               className="flex-1 bg-transparent border-none text-[var(--nim-text)] text-[13px] py-2 outline-none font-inherit"
-              placeholder="Document name"
+              placeholder={t('share_team.document_name')}
             />
             <span className="text-[12px] text-[var(--nim-text-muted)] pr-1 shrink-0">
               {fileNameParts.suffix}
@@ -327,7 +328,7 @@ export function ShareToTeamDialog({
 
           <div className="flex items-center gap-2 px-3 py-2 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border-subtle,var(--nim-border))] rounded-md mb-3 text-[12px] text-[var(--nim-text-muted)]">
             <MaterialSymbol icon="place" size={14} className="text-[var(--nim-text-faint)]" />
-            <span>Will be added as</span>
+            <span>{t('share_team.will_be_added_as')}</span>
             <span className="text-[var(--nim-text)] font-medium truncate" title={destinationFolderLabel}>
               {destinationFullPath}
             </span>
@@ -339,11 +340,11 @@ export function ShareToTeamDialog({
           {linkedDocuments.length > 0 && (
             <div className="share-to-team-linked-documents mb-3">
               <div className="text-[11px] uppercase tracking-wider font-semibold text-[var(--nim-text-faint)] mb-1.5">
-                Linked documents
+                {t('share_team.linked_documents')}
               </div>
               <div className="max-h-[260px] overflow-y-auto rounded-md border border-[var(--nim-border-subtle,var(--nim-border))] bg-[var(--nim-bg-secondary)]">
                 <div className="px-3 py-2 text-[12px] leading-snug text-[var(--nim-text-muted)] border-b border-[var(--nim-border-subtle,var(--nim-border))]">
-                  Sharing this document will also share the documents it embeds so your team can see them.
+                  {t('share_team.linked_description')}
                 </div>
                 {linkedDocuments.map(document => {
                   const checked = selectedEmbeddedDocumentPaths.has(document.absolutePath);
@@ -363,7 +364,7 @@ export function ShareToTeamDialog({
                             return next;
                           });
                         }}
-                        aria-label={`Share ${document.fileName}`}
+                        aria-label={t('share_team.share_embedded', { name: document.fileName })}
                       />
                       <MaterialSymbol
                         icon={document.descriptor.icon}
@@ -378,7 +379,7 @@ export function ShareToTeamDialog({
                       </span>
                       {document.alreadyShared && (
                         <span className="shrink-0 rounded-full bg-[var(--nim-primary)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--nim-primary)]">
-                          Already shared
+                          {t('share_team.already_shared')}
                         </span>
                       )}
                     </label>
@@ -386,7 +387,7 @@ export function ShareToTeamDialog({
                 })}
                 {selectedEmbeddedCount < linkedDocuments.length && (
                   <div className="px-3 py-2 text-[11px] leading-snug text-[var(--nim-warning)] border-t border-[var(--nim-border-subtle,var(--nim-border))]">
-                    Unchecked documents stay as local links that teammates cannot open.
+                    {t('share_team.unchecked_warning')}
                   </div>
                 )}
               </div>
@@ -401,7 +402,7 @@ export function ShareToTeamDialog({
             onClick={onClose}
             className="px-3 py-1.5 bg-transparent rounded-md text-[var(--nim-text-muted)] text-[13px] hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
           >
-            Cancel
+            {t('share_team.cancel')}
           </button>
           <button
             type="button"
@@ -415,8 +416,8 @@ export function ShareToTeamDialog({
           >
             <MaterialSymbol icon="note_add" size={16} />
             {linkedDocuments.length > 0
-              ? `Copy ${shareDocumentCount} document${shareDocumentCount === 1 ? '' : 's'} to ${sectionLabel}`
-              : `Copy to ${sectionLabel}`}
+              ? t('share_team.copy_documents', { count: shareDocumentCount, section: sectionLabel })
+              : t('share_team.copy_to_section', { section: sectionLabel })}
           </button>
         </div>
       </div>

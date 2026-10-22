@@ -8,6 +8,7 @@
 import type { JSX } from 'react';
 import * as React from 'react';
 import { useSyncExternalStore } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import {
   getTrackerReferenceHomeScope,
@@ -22,6 +23,7 @@ export function useTrackerReferenceIsForeign(href: string | null): boolean {
 }
 
 export function TrackerReferenceExternalChip({ referenceKey, href }: { referenceKey: string; href: string }): JSX.Element {
+  const { t } = useTranslation('tracker');
   return (
     <a
       className="tracker-reference-chip tracker-reference-chip--external"
@@ -29,7 +31,7 @@ export function TrackerReferenceExternalChip({ referenceKey, href }: { reference
       data-issue-key={referenceKey}
       data-resolved="false"
       href={href}
-      title={`${referenceKey} in another project`}
+      title={t('reference.other_project_title', { key: referenceKey })}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -51,7 +53,7 @@ export function TrackerReferenceExternalChip({ referenceKey, href }: { reference
       }}
     >
       {referenceKey}
-      <span style={{ fontWeight: 400, fontSize: '0.9em' }}>another project</span>
+      <span style={{ fontWeight: 400, fontSize: '0.9em' }}>{t('reference.other_project')}</span>
     </a>
   );
 }

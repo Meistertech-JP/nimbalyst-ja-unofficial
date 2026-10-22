@@ -7,6 +7,7 @@
 import './CitationPopover.css';
 
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   FloatingPortal,
   flip,
@@ -54,6 +55,7 @@ function HumanPopover({ citation }: { citation: HumanCitation }): JSX.Element {
 }
 
 function SourcePopover({ citation }: { citation: SourceCitation }): JSX.Element {
+  const { t } = useTranslation('editor');
   const host = getCitationHost();
   return (
     <>
@@ -63,7 +65,7 @@ function SourcePopover({ citation }: { citation: SourceCitation }): JSX.Element 
       <div className="citation-popover-target select-text">{citation.target}</div>
       {host.openSource ? (
         <button type="button" className="citation-popover-go" onClick={() => host.openSource?.(citation.target)}>
-          {isWebSource(citation.target) ? 'Open link' : 'Open document'} &#8250;
+          {t(isWebSource(citation.target) ? 'citation_sources.open_link' : 'citation_sources.open_document')} &#8250;
         </button>
       ) : null}
     </>

@@ -4,13 +4,13 @@
  * its comments and sessions, and Tracker mode's Archived view restores it.
  */
 import { isLocalWikiItemId } from './localWikiTrackerRecords';
-import { LOCAL_WIKI_NO_ARCHIVE } from './localWikiTrackerWrites';
+import { getLocalWikiArchiveFallback, getLocalWikiNoArchiveMessage } from './localWikiTrackerWrites';
 
 export async function setTrackerItemArchived(itemId: string, archive: boolean): Promise<void> {
-  if (isLocalWikiItemId(itemId)) throw new Error(LOCAL_WIKI_NO_ARCHIVE);
+  if (isLocalWikiItemId(itemId)) throw new Error(getLocalWikiNoArchiveMessage());
   const result = await window.electronAPI.documentService.archiveTrackerItem({ itemId, archive });
   if (!result.success) {
-    throw new Error(result.error || `Could not ${archive ? 'archive' : 'restore'} this page.`);
+    throw new Error(result.error || getLocalWikiArchiveFallback(archive));
   }
 }
 

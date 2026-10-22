@@ -8,6 +8,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAtomValue, useStore } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CollabHost, CollabScope, TeamMemberSummary } from '@nimbalyst/collab-client/core';
 import type { CollabDocsSession, SharedDocument } from '@nimbalyst/collab-client/docs';
 import { DESKTOP_TRACKER_UI_CAPABILITIES, TrackersUIProvider } from '@nimbalyst/collab-client/trackers-ui';
@@ -100,8 +101,9 @@ export interface PagesSectionTabProps {
 
 /** What a Team tab shows while its scope resolves (nothing) or when there is no team. */
 export function PagesSectionUnavailable({ section }: { section: null | undefined }) {
+  const { t } = useTranslation('common');
   if (section === undefined) return null;
-  return <div className="pages-section-unavailable flex h-full items-center justify-center text-sm text-nim-faint">Sign in and share this project to see team pages</div>;
+  return <div className="pages-section-unavailable flex h-full items-center justify-center text-sm text-nim-faint">{t('collab.sign_in_share_to_see_team_pages')}</div>;
 }
 
 export const PagesSearchTab: React.FC<PagesSectionTabProps> = ({ lane, workspacePath }) => {
@@ -111,6 +113,7 @@ export const PagesSearchTab: React.FC<PagesSectionTabProps> = ({ lane, workspace
 };
 
 function PagesSearchTabBody({ lane, section }: { lane: PagesSectionLane; section: PagesSectionData }) {
+  const { t } = useTranslation('common');
   const { scope, session, host, me } = section;
   const pages = useAtomValue<readonly SharedDocument[]>(session.atoms.sharedDocuments);
   const typePlacements = useAtomValue(session.atoms.typePlacements);
@@ -123,12 +126,12 @@ function PagesSearchTabBody({ lane, section }: { lane: PagesSectionLane; section
     return {
       memberEmail: (memberId: string) => byId.get(memberId)?.email ?? null,
       authorLabel: (author: string) => {
-        if (me && author.toLowerCase() === me.toLowerCase()) return 'You';
+        if (me && author.toLowerCase() === me.toLowerCase()) return t('collab.you');
         const member = byEmail.get(author.toLowerCase()) ?? byId.get(author);
-        return member?.name || member?.email || (author.includes('@') ? author.split('@')[0] : 'Unknown');
+        return member?.name || member?.email || (author.includes('@') ? author.split('@')[0] : t('collab.unknown'));
       },
     };
-  }, [members, me]);
+  }, [members, me, t]);
   const searchPages = useMemo(() => session.searchPages.bind(session), [session]);
   const teamProjectId = scope.indexConfig.teamProjectId ?? null;
 

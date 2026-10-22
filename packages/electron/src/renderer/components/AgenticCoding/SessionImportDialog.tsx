@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getRelativeTimeString } from '../../utils/dateFormatting';
 import { getFileName } from '../../utils/pathUtils';
 import type { ExternalSessionSelection, ExternalSessionSummary, ExternalSessionScanResponse } from '../../../shared/externalSessions';
@@ -36,6 +37,8 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
   currentWorkspacePath,
   filterByWorkspace = true  // Default to filtering by current workspace
 }) => {
+  const { t } = useTranslation('dialogs');
+  const { t: tSessions } = useTranslation('sessions');
   const [sessions, setSessions] = useState<SessionToImport[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -43,13 +46,6 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
   const [scopeNotice, setScopeNotice] = useState<string | null>(null);
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Load sessions when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      loadSessions();
-    }
-  }, [isOpen]);
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -74,7 +70,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
       ) {
         result = await scanSessions();
         if (result.success && Array.isArray(result.sessions) && result.sessions.length > 0) {
-          setScopeNotice('No sessions matched this exact workspace path. Showing sessions from all workspaces instead.');
+          setScopeNotice(t('session_import.scope_notice_external'));
         }
       }
 
@@ -99,15 +95,22 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
         }
         setExpandedWorkspaces(initialExpanded);
       } else {
-        setError(result.error || 'Failed to load sessions');
+        setError(result.error || t('session_import.error_load'));
       }
     } catch (err) {
       console.error('[SessionImportDialog] Failed to load sessions:', err);
-      setError('Failed to load sessions');
+      setError(t('session_import.error_load'));
     } finally {
       setLoading(false);
     }
-  }, [currentWorkspacePath, filterByWorkspace]);
+  }, [currentWorkspacePath, filterByWorkspace, t]);
+
+  // Load sessions when dialog opens.
+  useEffect(() => {
+    if (isOpen) {
+      loadSessions();
+    }
+  }, [isOpen, loadSessions]);
 
   const handleImport = async () => {
     const selectedSessions = sessions
@@ -126,7 +129,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
       onClose();
     } catch (err) {
       console.error('[SessionImportDialog] Failed to import sessions:', err);
-      setError('Failed to import sessions');
+      setError(t('session_import.error_import'));
     } finally {
       setImporting(false);
     }
@@ -210,11 +213,11 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="session-import-dialog-header flex items-center justify-between px-5 py-4 border-b border-[var(--nim-border)]">
-          <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">Import earlier sessions</h2>
+          <h2 className="m-0 text-base font-semibold text-[var(--nim-text)]">{t('session_import.title_external')}</h2>
           <button
             className="session-import-dialog-close bg-transparent border-none text-[var(--nim-text-muted)] cursor-pointer p-1 flex items-center justify-center rounded transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
             onClick={onClose}
-            aria-label="Close dialog"
+            aria-label={t('session_import.close')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -224,7 +227,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
 
         {loading ? (
           <div className="session-import-dialog-loading py-10 px-5 text-center text-[var(--nim-text-muted)]">
-            <p>Scanning Claude Code and Codex sessions...</p>
+            <p>{t('session_import.scanning_external')}</p>
           </div>
         ) : error ? (
           <div className="session-import-dialog-error py-10 px-5 text-center text-[var(--nim-text-muted)]">
@@ -233,7 +236,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
               className="mt-3 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer"
               onClick={loadSessions}
             >
-              Retry
+              {t('session_import.retry')}
             </button>
           </div>
         ) : (
@@ -241,19 +244,19 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
             <div className="session-import-dialog-stats flex gap-4 px-5 py-4 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{totalSessions}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">Total</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.total')}</span>
               </div>
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{newSessions}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">New</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.new')}</span>
               </div>
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{needsUpdate}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">Updates</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.updates')}</span>
               </div>
               <div className="session-import-stat flex flex-col items-center gap-1">
                 <span className="session-import-stat-value text-lg font-semibold text-[var(--nim-text)]">{inSync}</span>
-                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">In Sync</span>
+                <span className="session-import-stat-label text-[11px] text-[var(--nim-text-faint)] uppercase tracking-[0.5px]">{t('session_import.in_sync')}</span>
               </div>
             </div>
 
@@ -261,7 +264,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
               <input
                 type="text"
                 className="session-import-search-input nim-input text-sm"
-                placeholder="Search sessions by title..."
+                placeholder={t('session_import.search')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -278,22 +281,22 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                 onClick={selectAll}
                 className="session-import-action-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               >
-                Select All
+                {t('session_import.select_all')}
               </button>
               <button
                 onClick={deselectAll}
                 className="session-import-action-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)]"
               >
-                Deselect All
+                {t('session_import.deselect_all')}
               </button>
             </div>
 
             <div className="session-import-dialog-content flex-1 overflow-y-auto py-3">
               {workspacePaths.length === 0 ? (
                 <div className="session-import-empty py-10 px-5 text-center text-[var(--nim-text-muted)]">
-                  <p>No Claude Code or Codex sessions found</p>
+                  <p>{t('session_import.none_external')}</p>
                   <p className="session-import-empty-hint text-[13px] mt-2 text-[var(--nim-text-faint)]">
-                    Sessions from the CLI will appear here
+                    {t('session_import.cli_hint_external')}
                   </p>
                 </div>
               ) : (
@@ -331,7 +334,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                             }
                           }}
                           onChange={() => toggleWorkspace(workspacePath)}
-                          aria-label={`Select all sessions in ${workspaceName}`}
+                          aria-label={t('session_import.select_workspace', { workspace: workspaceName })}
                         />
                         <span className="session-import-workspace-name flex-1 font-medium text-[var(--nim-text)] text-sm">{workspaceName}</span>
                         <span className="session-import-workspace-count text-xs text-[var(--nim-text-faint)]">
@@ -351,7 +354,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                                 type="checkbox"
                                 checked={session.selected}
                                 onChange={() => toggleSession(selectionKey(session))}
-                                aria-label={`Select ${session.title}`}
+                                aria-label={t('session_import.select_session', { title: session.title })}
                                 className="mt-0.5 cursor-pointer"
                               />
                               <div className="session-import-session-info flex-1 min-w-0">
@@ -359,14 +362,16 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                                 <div className="session-import-session-meta text-xs text-[var(--nim-text-muted)] flex items-center gap-1.5">
                                   <span>{session.providerId === 'claude-code' ? 'Claude Code' : 'Codex'}</span>
                                   <span>•</span>
-                                  <span>{getRelativeTimeString(session.updatedAt)}</span>
+                                  <span>
+                                    {getRelativeTimeString(session.updatedAt, (key, options) => tSessions(key, options))}
+                                  </span>
                                   {typeof session.messageCount === 'number' && <>
                                     <span>•</span>
-                                    <span>{session.messageCount} messages</span>
+                                    <span>{t('session_import.message_count', { count: session.messageCount })}</span>
                                   </>}
                                   {totalTokens(session.tokenUsage) !== undefined && <>
                                     <span>•</span>
-                                    <span>{totalTokens(session.tokenUsage)?.toLocaleString()} tokens</span>
+                                    <span>{t('session_import.token_count', { count: totalTokens(session.tokenUsage)?.toLocaleString() })}</span>
                                   </>}
                                   <span>•</span>
                                   <span
@@ -378,9 +383,9 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                                           : 'bg-[rgba(158,158,158,0.15)] text-[rgb(158,158,158)]'
                                     }`}
                                   >
-                                    {session.syncStatus === 'new' && 'New'}
-                                    {session.syncStatus === 'up-to-date' && 'In Sync'}
-                                    {session.syncStatus === 'needs-update' && 'Has Updates'}
+                                    {session.syncStatus === 'new' && t('session_import.status_new')}
+                                    {session.syncStatus === 'up-to-date' && t('session_import.status_in_sync')}
+                                    {session.syncStatus === 'needs-update' && t('session_import.status_updates')}
                                   </span>
                                 </div>
                               </div>
@@ -400,14 +405,14 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
                 onClick={onClose}
                 disabled={importing}
               >
-                Cancel
+                {t('session_import.cancel')}
               </button>
               <button
                 className="session-import-button-primary nim-btn-primary"
                 onClick={handleImport}
                 disabled={importing || selectedCount === 0}
               >
-                {importing ? 'Importing...' : `Import ${selectedCount} Session${selectedCount !== 1 ? 's' : ''}`}
+                {importing ? t('session_import.importing') : t('session_import.import', { count: selectedCount })}
               </button>
             </div>
           </>

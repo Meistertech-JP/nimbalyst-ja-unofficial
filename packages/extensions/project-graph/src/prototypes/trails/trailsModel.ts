@@ -19,6 +19,10 @@ import type { PrototypeEvent, PrototypeModel, PrototypeRange } from '../contract
 
 export type RelationBasisKind = 'explicit' | 'derived' | 'unknown';
 
+export type TrailsTranslate = (key: string, options?: Record<string, unknown>) => string;
+
+const DEFAULT_TRANSLATE: TrailsTranslate = key => key;
+
 export interface RelationDescriptor {
   /** The snapshot's own relation name, spaced for reading. Never a synonym. */
   label: string;
@@ -31,6 +35,11 @@ export interface RelationDescriptor {
    * separately from the broader explicit/derived/unknown distinction.
    */
   pathDerived?: true;
+}
+
+function translated(t: TrailsTranslate, key: string, fallback: string, options?: Record<string, unknown>): string {
+  const value = t(key, options);
+  return value === key ? fallback : value;
 }
 
 /**
@@ -100,12 +109,18 @@ const RELATIONS: Record<string, RelationDescriptor> = {
   },
 };
 
-export function describeRelation(type: string): RelationDescriptor {
+export function describeRelation(type: string, t: TrailsTranslate = DEFAULT_TRANSLATE): RelationDescriptor {
   const known = RELATIONS[type];
-  if (known) return known;
+  if (known) {
+    return {
+      ...known,
+      label: translated(t, `project_graph.trails.relations.${type}.label`, known.label),
+      basis: translated(t, `project_graph.trails.relations.${type}.basis`, known.basis),
+    };
+  }
   return {
     label: type.replace(/[_-]+/g, ' '),
-    basis: 'Recorded in the snapshot without a stated basis.',
+    basis: translated(t, 'project_graph.trails.relations.unknown_basis', 'Recorded in the snapshot without a stated basis.'),
     kind: 'unknown',
   };
 }
@@ -142,8 +157,9 @@ const PROVENANCE_KIND: Record<'recorded' | 'derived' | 'unknown', RelationBasisK
 export function describeConnection(
   edge: ProjectGraphEdge,
   nodeById?: Map<string, ProjectGraphNode>,
+  t: TrailsTranslate = DEFAULT_TRANSLATE,
 ): RelationDescriptor {
-  const table = describeRelation(edge.type);
+  const table = describeRelation(edge.type, t);
   if (edge.provenance) {
     return {
       ...table,
@@ -158,7 +174,12 @@ export function describeConnection(
     return {
       ...table,
       kind: 'derived',
-      basis: `${table.basis} The link reaches this directory because the adapter rolled that file list up to it, not because a record names the directory.`,
+      basis: translated(
+        t,
+        'project_graph.trails.relations.rollup_basis',
+        `${table.basis} The link reaches this directory because the adapter rolled that file list up to it, not because a record names the directory.`,
+        { basis: table.basis },
+      ),
     };
   }
   return table;
@@ -330,6 +351,7 @@ export interface NeighborhoodOptions {
   perLane: (laneKey: string) => number;
   laneLimit: number;
   includePathDerived: boolean;
+  translate?: TrailsTranslate;
 }
 
 function compareNeighbors(a: NeighborRef, b: NeighborRef): number {
@@ -359,6 +381,7 @@ export function buildNeighborhood(
   range: PrototypeRange,
   options: NeighborhoodOptions,
 ): Neighborhood {
+  const t = options.translate ?? DEFAULT_TRANSLATE;
   const empty: Neighborhood = {
     focus: null,
     lanes: [],
@@ -395,7 +418,7 @@ export function buildNeighborhood(
           missingId: entry.neighborId,
           knownId: focusId,
           direction: entry.direction,
-          descriptor: describeConnection(entry.edge, model.nodeById),
+          descriptor: describeConnection(entry.edge, model.nodeById, t),
         });
       }
       continue;
@@ -405,7 +428,7 @@ export function buildNeighborhood(
       node,
       edge: entry.edge,
       direction: entry.direction,
-      descriptor: describeConnection(entry.edge, model.nodeById),
+      descriptor: describeConnection(entry.edge, model.nodeById, t),
       inRange: hasEvidenceInRange(index, node.id, range),
       latest: latestEvent(index, node.id),
       degree: degreeOf(index, node.id),
@@ -485,6 +508,7 @@ export function buildSecondHop(
   focusId: string,
   range: PrototypeRange,
   limit: number,
+  t: TrailsTranslate = DEFAULT_TRANSLATE,
 ): SecondHop {
   const entries = index.adjacency.get(neighborId) ?? [];
   const refs: NeighborRef[] = [];
@@ -497,7 +521,7 @@ export function buildSecondHop(
       node,
       edge: entry.edge,
       direction: entry.direction,
-      descriptor: describeConnection(entry.edge, model.nodeById),
+      descriptor: describeConnection(entry.edge, model.nodeById, t),
       inRange: hasEvidenceInRange(index, node.id, range),
       latest: latestEvent(index, node.id),
       degree: degreeOf(index, node.id),
@@ -611,7 +635,11 @@ export function findStartingArtifacts(
  * path-containment toggle is on. Nothing here asserts a negative outcome, and
  * nothing claims an absence the view did not measure.
  */
-export function describeGaps(model: PrototypeModel, neighborhood: Neighborhood): string[] {
+export function describeGaps(
+  model: PrototypeModel,
+  neighborhood: Neighborhood,
+  t: TrailsTranslate = DEFAULT_TRANSLATE,
+): string[] {
   const focus = neighborhood.focus;
   if (!focus) return [];
   const { census } = neighborhood;
@@ -621,69 +649,71 @@ export function describeGaps(model: PrototypeModel, neighborhood: Neighborhood):
     // Every adapter here is capped, and a record that would carry the link may
     // simply not have been loaded. The claim is about this snapshot only — it
     // is never that the sources recorded nothing.
-    gaps.push(
-      'No connection to this artifact is present in the loaded snapshot. Each source is bounded, so a link may exist in a record that was not loaded; this is not evidence that the work stands alone.',
-    );
+    gaps.push(translated(t, 'project_graph.trails.gaps.no_connection', 'No connection to this artifact is present in the loaded snapshot. Each source is bounded, so a link may exist in a record that was not loaded; this is not evidence that the work stands alone.'));
   }
 
   if (focus.type === 'commit' || census.commit > 0) {
-    gaps.push(
-      'A commit is implementation evidence. Whether this shipped, or behaves correctly, is not recorded in this snapshot.',
-    );
+    gaps.push(translated(t, 'project_graph.trails.gaps.commit_evidence', 'A commit is implementation evidence. Whether this shipped, or behaves correctly, is not recorded in this snapshot.'));
   }
 
   if (focus.type === 'commit' || focus.source === 'session' || census.commit > 0 || census.session > 0) {
-    gaps.push(
-      'This view does not assess verification — it reads recorded links and never evaluates an outcome. Verification status here is unknown, not failed.',
-    );
+    gaps.push(translated(t, 'project_graph.trails.gaps.verification_unknown', 'This view does not assess verification — it reads recorded links and never evaluates an outcome. Verification status here is unknown, not failed.'));
   }
   if (census.review > 0) {
-    gaps.push(
-      `${census.review} recorded review link${census.review === 1 ? ' is' : 's are'} on this trail. This view lists ${census.review === 1 ? 'it' : 'them'} without reading ${census.review === 1 ? 'its' : 'their'} result.`,
-    );
+    gaps.push(translated(t, census.review === 1
+      ? 'project_graph.trails.gaps.review_link_one'
+      : 'project_graph.trails.gaps.review_link_other',
+    `${census.review} recorded review link${census.review === 1 ? ' is' : 's are'} on this trail. This view lists ${census.review === 1 ? 'it' : 'them'} without reading ${census.review === 1 ? 'its' : 'their'} result.`, { count: census.review }));
   }
 
   // Both claims below are counted over every resolved connection, not over the
   // lanes that happened to be drawn.
   if (census.resolved > 0 && census.pathDerived === census.resolved) {
-    gaps.push(
-      `All ${census.resolved} recorded connection${census.resolved === 1 ? '' : 's'} here come from file-path containment — where these records are filed, not what they are about.`,
-    );
+    gaps.push(translated(t, census.resolved === 1
+      ? 'project_graph.trails.gaps.all_path_one'
+      : 'project_graph.trails.gaps.all_path_other',
+    `All ${census.resolved} recorded connection${census.resolved === 1 ? '' : 's'} here come from file-path containment — where these records are filed, not what they are about.`, { count: census.resolved }));
   } else if (census.resolved > 0 && census.derived === census.resolved) {
     // Gated on `derived`, not on `explicit === 0`: a relation with an unstated
     // basis (`related_to`) is not derived by any rule we can name, and saying it
     // came from a path or an item type would invent one. Unknown stays unknown.
-    gaps.push(
-      `None of the ${census.resolved} recorded connection${census.resolved === 1 ? '' : 's'} here is an explicit source link; each was derived by a stated rule, from a file path or from the item's type.`,
-    );
+    gaps.push(translated(t, census.resolved === 1
+      ? 'project_graph.trails.gaps.none_explicit_one'
+      : 'project_graph.trails.gaps.none_explicit_other',
+    `None of the ${census.resolved} recorded connection${census.resolved === 1 ? '' : 's'} here is an explicit source link; each was derived by a stated rule, from a file path or from the item's type.`, { count: census.resolved }));
   }
 
   if (neighborhood.unresolved > 0) {
     const n = neighborhood.unresolved;
-    gaps.push(
-      // The shell retains edges incident to record types it filtered out, so a
-      // missing endpoint is either unindexed or merely out of view. This view
-      // cannot tell those apart and does not guess.
-      `${n} connection${n === 1 ? ' points' : 's point'} at records that are not in this view — either not indexed, or of a type filtered out here. ${n === 1 ? 'It is' : 'They are'} listed with the id ${n === 1 ? 'it names' : 'they name'}.`,
-    );
+    // The shell retains edges incident to record types it filtered out, so a
+    // missing endpoint is either unindexed or merely out of view. This view
+    // cannot tell those apart and does not guess.
+    gaps.push(translated(t, n === 1
+      ? 'project_graph.trails.gaps.unresolved_one'
+      : 'project_graph.trails.gaps.unresolved_other',
+    `${n} connection${n === 1 ? ' points' : 's point'} at records that are not in this view — either not indexed, or of a type filtered out here. ${n === 1 ? 'It is' : 'They are'} listed with the id ${n === 1 ? 'it names' : 'they name'}.`, { count: n }));
   }
 
   if (model.source === 'live') {
-    gaps.push('This snapshot runs no memory adapter, so memory evidence is missing rather than empty.');
+    gaps.push(translated(t, 'project_graph.trails.gaps.memory_missing', 'This snapshot runs no memory adapter, so memory evidence is missing rather than empty.'));
   }
 
   return gaps;
 }
 
-const DAY_FORMAT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-
-export function formatDay(ms: number | undefined | null): string {
-  if (ms == null || !Number.isFinite(ms)) return 'unknown';
-  return DAY_FORMAT.format(new Date(ms));
+export function formatDay(
+  ms: number | undefined | null,
+  locale?: string,
+  t: TrailsTranslate = DEFAULT_TRANSLATE,
+): string {
+  if (ms == null || !Number.isFinite(ms)) {
+    return translated(t, 'project_graph.trails.events.unknown_date', 'unknown');
+  }
+  return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(ms));
 }
 
-export function formatRange(range: PrototypeRange): string {
-  return `${formatDay(range.startMs)} – ${formatDay(range.endMs)}`;
+export function formatRange(range: PrototypeRange, locale?: string, t: TrailsTranslate = DEFAULT_TRANSLATE): string {
+  return `${formatDay(range.startMs, locale, t)} – ${formatDay(range.endMs, locale, t)}`;
 }
 
 /**
@@ -706,16 +736,25 @@ export function recordedCreation(index: TrailsIndex, nodeId: string): PrototypeE
 }
 
 /** Caption for a record's creation. Never prints an inferred date as observed. */
-export function describeCreation(index: TrailsIndex, nodeId: string): string {
+export function describeCreation(
+  index: TrailsIndex,
+  nodeId: string,
+  t: TrailsTranslate = DEFAULT_TRANSLATE,
+  locale?: string,
+): string {
   const created = recordedCreation(index, nodeId);
-  return created ? `Created ${formatDay(created.at)}` : 'Creation date not recorded';
+  return created
+    ? translated(t, 'project_graph.trails.events.created_on', `Created ${formatDay(created.at, locale, t)}`, { date: formatDay(created.at, locale, t) })
+    : translated(t, 'project_graph.trails.events.creation_date_not_recorded', 'Creation date not recorded');
 }
 
 /** "recorded" vs "last observed" — a single observation is never an interval. */
-export function describeEvent(event: PrototypeEvent | null): string {
-  if (!event) return 'No dated event recorded';
-  const qualifier = event.provenance === 'last-observed' ? 'last observed' : 'recorded';
-  return `${event.label} · ${qualifier} ${formatDay(event.at)}`;
+export function describeEvent(event: PrototypeEvent | null, t: TrailsTranslate = DEFAULT_TRANSLATE, locale?: string): string {
+  if (!event) return translated(t, 'project_graph.trails.events.no_dated_event', 'No dated event recorded');
+  const date = formatDay(event.at, locale, t);
+  return event.provenance === 'last-observed'
+    ? translated(t, 'project_graph.trails.events.last_observed_on', `${event.label} · last observed ${date}`, { label: event.label, date })
+    : translated(t, 'project_graph.trails.events.recorded_on', `${event.label} · recorded ${date}`, { label: event.label, date });
 }
 
 export function formatCount(shown: number, total: number, noun: string): string {

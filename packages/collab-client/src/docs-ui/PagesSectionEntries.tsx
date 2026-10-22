@@ -5,6 +5,7 @@
  * classes so they read as part of it; the host opens each surface.
  */
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 export type PagesSectionEntry = 'home' | 'search' | 'types';
@@ -21,16 +22,17 @@ export interface PagesSectionEntriesProps {
   onOpenTypes: PagesSectionEntryOpen;
 }
 
-const ENTRIES: ReadonlyArray<{ id: PagesSectionEntry; icon: string; label: string }> = [
-  { id: 'home', icon: 'home', label: 'Home' },
-  { id: 'search', icon: 'manage_search', label: 'Search' },
-  { id: 'types', icon: 'category', label: 'Types' },
+const ENTRIES: ReadonlyArray<{ id: PagesSectionEntry; icon: string }> = [
+  { id: 'home', icon: 'home' },
+  { id: 'search', icon: 'manage_search' },
+  { id: 'types', icon: 'category' },
 ];
 
 export const PagesSectionEntries: React.FC<PagesSectionEntriesProps> = ({ active, onOpenHome, onOpenSearch, onOpenTypes }) => {
+  const { t } = useTranslation('collabSidebar');
   const handlers: Record<PagesSectionEntry, PagesSectionEntryOpen | undefined> = { home: onOpenHome, search: onOpenSearch, types: onOpenTypes };
   return (
-    <div className="pages-section-entries mb-1 border-b border-[var(--nim-border)] pb-1" role="group" aria-label="Section">
+    <div className="pages-section-entries mb-1 border-b border-[var(--nim-border)] pb-1" role="group" aria-label={t('pages_section.section_aria')}>
       {ENTRIES.filter((entry) => handlers[entry.id]).map((entry) => (
         <button
           key={entry.id}
@@ -43,7 +45,7 @@ export const PagesSectionEntries: React.FC<PagesSectionEntriesProps> = ({ active
         >
           <span className="file-tree-spacer" />
           <span className="file-tree-icon"><MaterialSymbol icon={entry.icon} size={16} /></span>
-          <span className="file-tree-name">{entry.label}</span>
+          <span className="file-tree-name">{t(`pages_section.${entry.id}`)}</span>
         </button>
       ))}
     </div>

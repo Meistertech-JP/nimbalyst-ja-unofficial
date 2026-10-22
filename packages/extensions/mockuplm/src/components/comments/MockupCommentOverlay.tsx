@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { numberUnresolvedPins } from "../../comments/mockupPinRepository";
 import type {
   MockupCommentSource,
@@ -173,6 +174,7 @@ function MockupCommentTray({
   hiddenCount: number;
   detachedCount: number;
 }) {
+  const { t } = useTranslation("extensions");
   if (hiddenCount === 0 && detachedCount === 0) return null;
   return (
     <div
@@ -182,17 +184,17 @@ function MockupCommentTray({
       {hiddenCount > 0 && (
         <span
           className="mockup-comment-hidden-count"
-          title="Comments on elements that are not currently shown"
+          title={t("mockup_lm_ui.hidden_comments_title")}
         >
-          {hiddenCount} hidden
+          {t("mockup_lm_ui.hidden_comments", { count: hiddenCount })}
         </span>
       )}
       {detachedCount > 0 && (
         <span
           className="mockup-comment-detached-count"
-          title="Comments whose element could no longer be found"
+          title={t("mockup_lm_ui.detached_comments_title")}
         >
-          {detachedCount} detached
+          {t("mockup_lm_ui.detached_comments", { count: detachedCount })}
         </span>
       )}
     </div>

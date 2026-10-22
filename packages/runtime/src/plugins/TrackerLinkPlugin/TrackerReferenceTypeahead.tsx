@@ -11,6 +11,7 @@
 
 import type { JSX } from 'react';
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   $getSelection,
@@ -70,6 +71,7 @@ export function TrackerReferenceTypeahead({
   search,
   iconForType,
 }: TrackerReferenceTypeaheadProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const [editor] = useLexicalComposerContext();
   const [query, setQuery] = React.useState<string | null>(null);
   // The view the next pick inserts. Set by the slash command, and reset when
@@ -112,8 +114,12 @@ export function TrackerReferenceTypeahead({
         // A disabled hint rather than an empty floating box.
         id: NO_MATCHES_ID,
         label: typeFilter
-          ? (searchQuery ? `No ${typeFilter} items match “${searchQuery}”` : `No ${typeFilter} items`)
-          : (searchQuery ? `No tracker items match “${searchQuery}”` : 'No tracker items yet'),
+          ? (searchQuery
+            ? t('inline.no_type_items_match', { type: typeFilter, query: searchQuery })
+            : t('inline.no_type_items', { type: typeFilter }))
+          : (searchQuery
+            ? t('inline.no_items_match', { query: searchQuery })
+            : t('inline.no_items_yet')),
         onSelect: () => {},
         disabled: true,
       }];
@@ -122,7 +128,7 @@ export function TrackerReferenceTypeahead({
   const header = typeFilter ? (
     <div className="tracker-typeahead-filter-hint">
       <span className="material-symbols-outlined">filter_list</span>
-      Filtering by type: <strong>{typeFilter}</strong>
+      {t('inline.filtering_by_type')} <strong>{typeFilter}</strong>
     </div>
   ) : undefined;
 

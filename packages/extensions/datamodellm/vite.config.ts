@@ -35,6 +35,7 @@ export default defineConfig({
         'react-dom',
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
+        '@nimbalyst/i18n/react',
         // No Lexical externals: this extension contributes no editor nodes.
         // Inline embedding of a data model in a markdown document goes through
         // the host's editor-neutral EmbeddedFileNode, which needs nothing from

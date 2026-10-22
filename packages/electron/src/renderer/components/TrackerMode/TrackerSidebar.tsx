@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { TrackerIdentity, TrackerItemType } from '@nimbalyst/runtime';
@@ -239,6 +240,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
   team,
   teamMembers,
 }) => {
+  const { t } = useTranslation('tracker');
   const trackerSyncConnection = useAtomValue(trackerSyncConnectionAtom);
   const isSharedLayout = !!workspacePath &&
     trackerSyncConnection?.workspacePath === workspacePath &&
@@ -478,7 +480,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                         : 'bg-nim-secondary text-nim-muted hover:text-nim'
                     }`}
                     onClick={() => onViewModeChange('list')}
-                    title="List view"
+                    title={t('ui.list_view')}
                     data-testid="tracker-view-mode-list"
                   >
                     <MaterialSymbol icon="view_list" size={16} />
@@ -490,7 +492,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                         : 'bg-nim-secondary text-nim-muted hover:text-nim'
                     }`}
                     onClick={() => onViewModeChange('table')}
-                    title="Table view"
+                    title={t('ui.table_view')}
                     data-testid="tracker-view-mode-table"
                   >
                     <MaterialSymbol icon="table_chart" size={16} />
@@ -502,7 +504,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                         : 'bg-nim-secondary text-nim-muted hover:text-nim'
                     }`}
                     onClick={() => onViewModeChange('kanban')}
-                    title="Kanban view (alpha)"
+                    title={t('ui.kanban_view')}
                     data-testid="tracker-view-mode-kanban"
                   >
                     <MaterialSymbol icon="view_kanban" size={16} />
@@ -515,7 +517,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                         : 'bg-nim-secondary text-nim-muted hover:text-nim'
                     }`}
                     onClick={() => onViewModeChange('tag-board')}
-                    title="Tag board view (alpha)"
+                    title={t('ui.tag_board_view')}
                     data-testid="tracker-view-mode-tag-board"
                   >
                     <MaterialSymbol icon="sell" size={16} />
@@ -528,7 +530,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                         : 'bg-nim-secondary text-nim-muted hover:text-nim'
                     }`}
                     onClick={() => onViewModeChange('inbox')}
-                    title="Triage inbox (alpha)"
+                    title={t('ui.inbox_view')}
                     data-testid="tracker-view-mode-inbox"
                   >
                     <MaterialSymbol icon="inbox" size={16} />
@@ -540,7 +542,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
         />
       )}
       <div className="px-3 py-1.5 border-b border-nim text-[11px] font-semibold text-nim-muted uppercase tracking-wider">
-        Trackers
+        {t('sidebar.trackers')}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -568,11 +570,11 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
             }}
           >
             <span className="text-[10px] font-semibold text-nim-faint uppercase tracking-wider">
-              Types
+              {t('sidebar.types')}
             </span>
             <span className="flex items-center gap-1">
               {isSharedLayout && (
-                <span className="text-nim-faint" title="Folder organization is shared with this team">
+                <span className="text-nim-faint" title={t('ui.folder_shared')}>
                   <MaterialSymbol icon="group" size={13} />
                 </span>
               )}
@@ -637,7 +639,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                 setContextFolder(null);
               }}
             >
-              <MaterialSymbol icon="edit" size={14} /> Rename folder
+              <MaterialSymbol icon="edit" size={14} /> {t('sidebar.rename_folder')}
             </button>
             <button
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-nim-error hover:bg-nim-tertiary"
@@ -645,9 +647,9 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                 const folder = contextFolder;
                 setContextFolder(null);
                 const approved = await requestConfirmation({
-                  title: 'Delete folder?',
-                  message: `Delete folder “${folder.name}”? Its tracker types will move to the root.`,
-                  confirmLabel: 'Delete',
+                  title: t('sidebar.delete_folder'),
+                  message: t('sidebar.delete_folder_confirm', { name: folder.name }),
+                  confirmLabel: t('sidebar.delete_folder'),
                   destructive: true,
                 });
                 if (approved) {
@@ -657,7 +659,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                 }
               }}
             >
-              <MaterialSymbol icon="delete" size={14} /> Delete folder
+              <MaterialSymbol icon="delete" size={14} /> {t('sidebar.delete_folder')}
             </button>
           </div>
         </FloatingPortal>
@@ -669,7 +671,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
     return (
       <button
         className="flex items-center justify-center px-1 text-nim-faint hover:text-nim transition-colors"
-        title="New tracker folder"
+        title={t('ui.new_folder')}
         data-testid="tracker-folder-add"
         data-ownership={ownership}
         onClick={() => {
@@ -708,7 +710,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
             setCreatingFolderIn(null);
             setNewFolderName('');
           }}
-          placeholder="Folder name"
+          placeholder={t('ui.folder_name')}
           className="min-w-0 flex-1 px-2 py-1 text-xs bg-nim border border-nim rounded text-nim placeholder:text-nim-faint focus:outline-none focus:border-nim-focus"
         />
       </div>
@@ -760,7 +762,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
               >
                 <button
                   className="flex items-center justify-center w-4 h-5 shrink-0"
-                  title={expanded ? 'Collapse folder' : 'Expand folder'}
+                  title={expanded ? t('ui.collapse_folder') : t('ui.expand_folder')}
                   onClick={() => setFolderExpanded(folder.folderId, !expanded)}
                 >
                   <MaterialSymbol icon={expanded ? 'expand_more' : 'chevron_right'} size={15} />
@@ -809,7 +811,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                 </span>
                 <button
                   className="opacity-0 group-hover:opacity-100 text-nim-faint hover:text-nim"
-                  title="Folder actions"
+                  title={t('ui.folder_actions')}
                   onClick={(event) => {
                     const rect = event.currentTarget.getBoundingClientRect();
                     setContextPoint({ x: rect.right, y: rect.bottom });

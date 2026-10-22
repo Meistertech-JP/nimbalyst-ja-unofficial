@@ -21,34 +21,35 @@ import {
 } from '@floating-ui/react';
 import type { ColumnFilter, ColumnFormat, DateFilterOperator, FilterScalar } from '../types';
 import { columnIndexToLetter } from '../utils/csvParser';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { isTemporalColumnType, parseDateTime } from '../utils/formatters';
 
 type ConditionOperator =
-  | { kind: 'text'; operator: 'contains' | 'equals' | 'startsWith'; label: string }
-  | { kind: 'number'; operator: 'equals' | 'notEquals' | 'greaterThan' | 'greaterThanOrEqual' | 'lessThan' | 'lessThanOrEqual'; label: string }
-  | { kind: 'date'; operator: DateFilterOperator; label: string }
-  | { kind: 'blank'; operator: 'isBlank' | 'isNotBlank'; label: string };
+  | { kind: 'text'; operator: 'contains' | 'equals' | 'startsWith'; key: string }
+  | { kind: 'number'; operator: 'equals' | 'notEquals' | 'greaterThan' | 'greaterThanOrEqual' | 'lessThan' | 'lessThanOrEqual'; key: string }
+  | { kind: 'date'; operator: DateFilterOperator; key: string }
+  | { kind: 'blank'; operator: 'isBlank' | 'isNotBlank'; key: string };
 
 /** Offered only on date/datetime/time columns, where they are the useful ones. */
 const DATE_CONDITIONS: readonly ConditionOperator[] = [
-  { kind: 'date', operator: 'on', label: 'Date is' },
-  { kind: 'date', operator: 'before', label: 'Date is before' },
-  { kind: 'date', operator: 'after', label: 'Date is after' },
-  { kind: 'date', operator: 'between', label: 'Date is between' },
+  { kind: 'date', operator: 'on', key: 'spreadsheet_ui.filter.cond_date_is' },
+  { kind: 'date', operator: 'before', key: 'spreadsheet_ui.filter.cond_date_before' },
+  { kind: 'date', operator: 'after', key: 'spreadsheet_ui.filter.cond_date_after' },
+  { kind: 'date', operator: 'between', key: 'spreadsheet_ui.filter.cond_date_between' },
 ];
 
 const BASE_CONDITIONS: readonly ConditionOperator[] = [
-  { kind: 'text', operator: 'contains', label: 'Text contains' },
-  { kind: 'text', operator: 'equals', label: 'Text is exactly' },
-  { kind: 'text', operator: 'startsWith', label: 'Text starts with' },
-  { kind: 'number', operator: 'equals', label: 'Number equals' },
-  { kind: 'number', operator: 'notEquals', label: 'Number is not' },
-  { kind: 'number', operator: 'greaterThan', label: 'Number greater than' },
-  { kind: 'number', operator: 'greaterThanOrEqual', label: 'Number at least' },
-  { kind: 'number', operator: 'lessThan', label: 'Number less than' },
-  { kind: 'number', operator: 'lessThanOrEqual', label: 'Number at most' },
-  { kind: 'blank', operator: 'isBlank', label: 'Is empty' },
-  { kind: 'blank', operator: 'isNotBlank', label: 'Is not empty' },
+  { kind: 'text', operator: 'contains', key: 'spreadsheet_ui.filter.cond_text_contains' },
+  { kind: 'text', operator: 'equals', key: 'spreadsheet_ui.filter.cond_text_equals' },
+  { kind: 'text', operator: 'startsWith', key: 'spreadsheet_ui.filter.cond_text_starts' },
+  { kind: 'number', operator: 'equals', key: 'spreadsheet_ui.filter.cond_number_equals' },
+  { kind: 'number', operator: 'notEquals', key: 'spreadsheet_ui.filter.cond_number_not' },
+  { kind: 'number', operator: 'greaterThan', key: 'spreadsheet_ui.filter.cond_number_gt' },
+  { kind: 'number', operator: 'greaterThanOrEqual', key: 'spreadsheet_ui.filter.cond_number_gte' },
+  { kind: 'number', operator: 'lessThan', key: 'spreadsheet_ui.filter.cond_number_lt' },
+  { kind: 'number', operator: 'lessThanOrEqual', key: 'spreadsheet_ui.filter.cond_number_lte' },
+  { kind: 'blank', operator: 'isBlank', key: 'spreadsheet_ui.filter.cond_is_blank' },
+  { kind: 'blank', operator: 'isNotBlank', key: 'spreadsheet_ui.filter.cond_not_blank' },
 ];
 
 function conditionsFor(format: ColumnFormat | undefined): readonly ConditionOperator[] {
@@ -107,6 +108,7 @@ export function ColumnFilterDropdown({
   onApply,
   onClose,
 }: ColumnFilterDropdownProps) {
+  const { t } = useTranslation('editor');
   const conditions = useMemo(() => conditionsFor(columnFormat), [columnFormat]);
   const [mode, setMode] = useState<'values' | 'condition'>(
     currentFilter && currentFilter.kind !== 'values' ? 'condition' : 'values',
@@ -217,15 +219,15 @@ export function ColumnFilterDropdown({
         className="csv-column-filter-dropdown z-50 flex flex-col w-64 overflow-hidden bg-nim-secondary border border-nim rounded shadow-lg text-nim"
       >
         <div className="csv-column-filter-title px-3 py-2 text-[12px] font-semibold text-nim-muted border-b border-nim">
-          Filter column {columnIndexToLetter(columnIndex)}
+          {t('spreadsheet_ui.filter.title', { column: columnIndexToLetter(columnIndex) })}
         </div>
 
         <div className="csv-column-filter-mode flex gap-1 px-3 pt-2">
           <button className={`${BUTTON_CLASS} flex-1 ${mode === 'values' ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white' : ''}`} onClick={() => setMode('values')}>
-            By value
+            {t('spreadsheet_ui.filter.by_value')}
           </button>
           <button className={`${BUTTON_CLASS} flex-1 ${mode === 'condition' ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white' : ''}`} onClick={() => setMode('condition')}>
-            By condition
+            {t('spreadsheet_ui.filter.by_condition')}
           </button>
         </div>
 
@@ -237,7 +239,7 @@ export function ColumnFilterDropdown({
               onChange={(event) => setConditionIndex(Number(event.target.value))}
             >
               {conditions.map((entry, index) => (
-                <option key={entry.label} value={index}>{entry.label}</option>
+                <option key={entry.key} value={index}>{t(entry.key)}</option>
               ))}
             </select>
             {condition.kind === 'date' ? (
@@ -263,7 +265,7 @@ export function ColumnFilterDropdown({
                 className={FIELD_CLASS}
                 value={conditionValue}
                 onChange={(event) => setConditionValue(event.target.value)}
-                placeholder={condition.kind === 'number' ? 'Number' : 'Text'}
+                placeholder={condition.kind === 'number' ? t('spreadsheet_ui.filter.placeholder_number') : t('spreadsheet_ui.filter.placeholder_text')}
                 inputMode={condition.kind === 'number' ? 'decimal' : 'text'}
                 autoFocus
               />
@@ -275,12 +277,12 @@ export function ColumnFilterDropdown({
               className={FIELD_CLASS}
               value={valueSearch}
               onChange={(event) => setValueSearch(event.target.value)}
-              placeholder="Search values"
+              placeholder={t('spreadsheet_ui.filter.search_values')}
               autoFocus
             />
             <div className="flex gap-1">
-              <button className={`${BUTTON_CLASS} flex-1`} onClick={() => setAllVisible(true)}>Select all</button>
-              <button className={`${BUTTON_CLASS} flex-1`} onClick={() => setAllVisible(false)}>Clear</button>
+              <button className={`${BUTTON_CLASS} flex-1`} onClick={() => setAllVisible(true)}>{t('spreadsheet_ui.filter.select_all')}</button>
+              <button className={`${BUTTON_CLASS} flex-1`} onClick={() => setAllVisible(false)}>{t('spreadsheet_ui.filter.clear')}</button>
             </div>
             <div className="csv-column-filter-value-list flex flex-col gap-0.5 overflow-y-auto max-h-56 min-h-0">
               {visibleValues.map((value) => {
@@ -288,12 +290,12 @@ export function ColumnFilterDropdown({
                 return (
                   <label key={key} className="flex items-center gap-2 px-1 py-0.5 text-[12px] rounded cursor-pointer hover:bg-nim-hover">
                     <input type="checkbox" checked={checked.has(key)} onChange={() => toggleValue(key)} />
-                    <span className="truncate">{scalarLabel(value)}</span>
+                    <span className="truncate">{value === null || value === '' ? t('spreadsheet_ui.filter.blank') : String(value)}</span>
                   </label>
                 );
               })}
               {visibleValues.length === 0 && (
-                <span className="px-1 py-1 text-[12px] text-nim-faint">No matching values</span>
+                <span className="px-1 py-1 text-[12px] text-nim-faint">{t('spreadsheet_ui.filter.no_matching')}</span>
               )}
             </div>
           </div>
@@ -301,13 +303,13 @@ export function ColumnFilterDropdown({
 
         <div className="csv-column-filter-actions flex gap-1 px-3 py-2 border-t border-nim">
           <button className={`${BUTTON_CLASS} flex-1`} onClick={() => { onApply(null); onClose(); }}>
-            Clear filter
+            {t('spreadsheet_ui.filter.clear_filter')}
           </button>
           <button
             className={`${BUTTON_CLASS} flex-1 bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white`}
             onClick={() => { onApply(buildFilter()); onClose(); }}
           >
-            Apply
+            {t('spreadsheet_ui.filter.apply')}
           </button>
         </div>
       </div>

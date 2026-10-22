@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { SystemMessagePayload, UserMessagePayload } from '../../../ai/server/transcript/types';
 import { interactiveWidgetHostAtom } from '../../../store/atoms/interactiveWidgetHost';
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
@@ -17,6 +18,7 @@ export function AttachmentStagingDeniedCard({
   prompt,
   attachments,
 }: AttachmentStagingDeniedCardProps) {
+  const { t } = useTranslation('aichat');
   const host = useAtomValue(interactiveWidgetHostAtom(sessionId));
   const [gitignoreOffered, setGitignoreOffered] = useState(false);
   const [addGitignore, setAddGitignore] = useState(true);
@@ -37,7 +39,7 @@ export function AttachmentStagingDeniedCard({
     setError(null);
     try {
       const result = await host.retryAttachmentStaging(prompt, attachments, gitignoreOffered && addGitignore);
-      if (!result.success) setError(result.error ?? 'Could not re-stage the attachment.');
+      if (!result.success) setError(result.error ?? t('attachment_staging_denied.retry_failed'));
     } catch (retryError) {
       setError(retryError instanceof Error ? retryError.message : String(retryError));
     } finally {
@@ -50,9 +52,11 @@ export function AttachmentStagingDeniedCard({
       <div className="flex items-start gap-2">
         <MaterialSymbol icon="folder_off" size={20} className="mt-0.5 shrink-0 text-[var(--nim-warning)]" />
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-[var(--nim-text)]">Attachment directory blocked</div>
+          <div className="font-semibold text-[var(--nim-text)]">{t('attachment_staging_denied.title')}</div>
           <p className="select-text m-0 mt-1 text-sm text-[var(--nim-text-muted)]">
-            Claude Code could not read {systemMessage.attachmentFilename ?? 'an attachment'} from the current staging directory.
+            {t('attachment_staging_denied.message', {
+              filename: systemMessage.attachmentFilename ?? t('attachment_staging_denied.attachment'),
+            })}
           </p>
           {systemMessage.attachmentDenyRule && (
             <p className="select-text m-0 mt-1 break-all font-mono text-xs text-[var(--nim-text-faint)]">
@@ -66,7 +70,7 @@ export function AttachmentStagingDeniedCard({
                 checked={addGitignore}
                 onChange={(event) => setAddGitignore(event.target.checked)}
               />
-              Add nimbalyst-local/attachments/ to .gitignore
+              {t('attachment_staging_denied.add_to_gitignore')}
             </label>
           )}
           {error && <p className="select-text m-0 mt-2 text-sm text-[var(--nim-error)]">{error}</p>}
@@ -77,14 +81,16 @@ export function AttachmentStagingDeniedCard({
               disabled={submitting || !host?.retryAttachmentStaging || attachments.length === 0}
               onClick={retry}
             >
-              {submitting ? 'Moving attachments…' : 'Move attachments into the workspace and retry'}
+              {submitting
+                ? t('attachment_staging_denied.moving')
+                : t('attachment_staging_denied.retry')}
             </button>
             <button
               type="button"
               className="nim-btn-secondary"
               onClick={() => host?.openAttachmentSettings?.()}
             >
-              Attachment settings
+              {t('attachment_staging_denied.settings')}
             </button>
           </div>
         </div>

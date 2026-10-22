@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { getFileIcon } from '@nimbalyst/runtime/ui/icons/fileIcons';
 
 interface WorkspaceFile {
@@ -33,6 +34,7 @@ export function WorkspaceHistoryFileTree({
   onFileSelect,
   onDeletedFileToggle
 }: WorkspaceHistoryFileTreeProps) {
+  const { t } = useTranslation('dialogs', { keyPrefix: 'history' });
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
 
   // Build tree structure from flat file paths
@@ -180,7 +182,7 @@ export function WorkspaceHistoryFileTree({
           {getFileIcon(node.name)}
         </span>
         <span className="workspace-history-tree-name">{node.name}</span>
-        {isDeleted && <span className="workspace-history-deleted-label">(deleted)</span>}
+        {isDeleted && <span className="workspace-history-deleted-label">{t('deleted_label')}</span>}
       </div>
     );
   };
@@ -188,7 +190,7 @@ export function WorkspaceHistoryFileTree({
   if (files.length === 0) {
     return (
       <div className="workspace-history-tree-empty">
-        No files with history in this workspace
+        {t('no_files')}
       </div>
     );
   }

@@ -9,6 +9,8 @@
  */
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const harness = vi.hoisted(() => {
   interface Listener {
@@ -49,11 +51,18 @@ vi.mock('@nimbalyst/runtime', async () => {
       }, []);
       return <div data-testid="monaco-stub" />;
     },
+    MonacoCodeEditor: () => <div data-testid="monaco-code-stub" />,
   };
 });
 
 // Imported after the mock so the stubbed barrel is what the editor picks up.
 const { CalcSheetEditor } = await import('../CalcSheetEditor');
+const { CalcSheetShareViewer } = await import('../CalcSheetShareViewer');
+
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+beforeEach(async () => {
+  japaneseI18n = await createI18nInstance('ja');
+});
 
 const SHEET = ['---', 'title: Demo', '---', 'a = 1', 'b = 2', 'c = a + b'].join('\n');
 
@@ -126,6 +135,7 @@ function buildCollabHost(seed: string) {
     readOnly: false,
     collaboration: { documentId: 'doc-1' },
     loadContent: async () => seed,
+    onThemeChanged: () => () => {},
     onFileChanged: () => () => {},
     onReadOnlyChanged: () => () => {},
     setEditorContextItems: vi.fn(),
@@ -148,7 +158,11 @@ describe('CalcSheetEditor collab gutter', () => {
   it('renders results from an already-populated model instead of the empty seed', async () => {
     // A remount reuses the Monaco model keyed by file path, so the model
     // already holds the synced document before any change event fires.
-    render(<CalcSheetEditor host={buildCollabHost('')} />);
+    render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <CalcSheetEditor host={buildCollabHost('')} />
+      </UiLanguageProvider>,
+    );
 
     await screen.findByTestId('monaco-stub');
     await waitFor(() => {
@@ -157,7 +171,11 @@ describe('CalcSheetEditor collab gutter', () => {
   });
 
   it('keeps results when the host is recreated after sync', async () => {
-    const { rerender } = render(<CalcSheetEditor host={buildCollabHost('')} />);
+    const { rerender } = render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <CalcSheetEditor host={buildCollabHost('')} />
+      </UiLanguageProvider>,
+    );
     await screen.findByTestId('monaco-stub');
 
     // An edit repopulates state via the model change listener...
@@ -166,12 +184,45 @@ describe('CalcSheetEditor collab gutter', () => {
 
     // ...then the tab re-creates its host (activation, sync status, dirty
     // bookkeeping). The gutter must not fall back to the empty seed.
-    rerender(<CalcSheetEditor host={buildCollabHost('')} />);
+    rerender(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <CalcSheetEditor host={buildCollabHost('')} />
+      </UiLanguageProvider>,
+    );
     // Let the re-run of the `loadContent` effect settle before asserting.
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
     expect(gutterValues().join(' ')).toContain('3');
+  });
+
+  it('localizes the results label and fixed tooltip text', async () => {
+    render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <CalcSheetEditor host={buildCollabHost(SHEET)} />
+      </UiLanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('[aria-label="計算結果"]')).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(document.querySelector('.calc-sheets__result-line[title^="定数"]')).toBeTruthy();
+      expect(document.querySelector('.calc-sheets__result-line[title^="数式"]')).toBeTruthy();
+    });
+  });
+
+  it('localizes the shared viewer summary and actions', async () => {
+    render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <CalcSheetShareViewer host={buildCollabHost(SHEET)} />
+      </UiLanguageProvider>,
+    );
+
+    expect(await screen.findByText('共有された計算シートです。ここでの編集内容は結果に反映されますが、元のファイルには保存されません。'))
+      .toBeTruthy();
+    expect(screen.getByText('基準通貨: USD')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'リセット' })).toBeTruthy();
   });
 });

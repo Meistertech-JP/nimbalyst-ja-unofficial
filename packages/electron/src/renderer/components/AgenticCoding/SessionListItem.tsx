@@ -15,6 +15,7 @@ import { FullTitleTooltip } from './FullTitleTooltip';
 import { settingAtom } from '../../store/atoms/settingAtomFamily';
 import { sessionAgentWakePendingAtom } from '../../store/atoms/teamInbox';
 import { sessionBackgroundTasksAtom, describeBackgroundWait } from '../../store/atoms/sessionBackgroundTasks';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * Combined status indicator that subscribes to this session's state atoms.
@@ -22,6 +23,7 @@ import { sessionBackgroundTasksAtom, describeBackgroundWait } from '../../store/
  * Only this component re-renders when the session's state changes.
  */
 export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: number }>(({ sessionId, messageCount }) => {
+  const { t } = useTranslation('agents');
   // Use aggregated atom that checks this session AND any children (for workstreams)
   const hasPendingInteractivePrompt = useAtomValue(sessionHasPendingInteractivePromptAtom(sessionId));
   const isProcessing = useAtomValue(sessionOrChildProcessingAtom(sessionId));
@@ -36,7 +38,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
   // All interactive prompts (AskUserQuestion, ExitPlanMode, ToolPermission, etc.) show same indicator
   if (hasPendingInteractivePrompt) {
     return (
-      <div className="session-list-item-status waiting-for-input flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="session-list-item-status waiting-for-input flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title={t('status.waiting')}>
         <MaterialSymbol icon="contact_support" size={14} />
       </div>
     );
@@ -52,7 +54,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 
   if (isProcessing) {
     return (
-      <div className="session-list-item-status processing flex items-center justify-center w-5 h-5 text-[var(--nim-primary)] opacity-80" title="Processing...">
+      <div className="session-list-item-status processing flex items-center justify-center w-5 h-5 text-[var(--nim-primary)] opacity-80" title={t('status.processing_ellipsis')}>
         <MaterialSymbol icon="progress_activity" size={14} className="animate-spin" />
       </div>
     );
@@ -60,7 +62,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 
   if (hasAgentWakePending) {
     return (
-      <div className="session-list-item-status agent-wake-pending flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title="Room message pending agent dispatch">
+      <div className="session-list-item-status agent-wake-pending flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title={t('status.room_dispatch_pending')}>
         <MaterialSymbol icon="hourglass_top" size={14} />
       </div>
     );
@@ -68,7 +70,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 
   if (hasPendingPrompt) {
     return (
-      <div className="session-list-item-status pending-prompt flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title="Waiting for your response">
+      <div className="session-list-item-status pending-prompt flex items-center justify-center w-5 h-5 text-[var(--nim-warning)] animate-pulse" title={t('status.waiting')}>
         <MaterialSymbol icon="help" size={14} />
       </div>
     );
@@ -77,11 +79,15 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
   if (wakeup) {
     const isOverdue = wakeup.status === 'overdue';
     const colorClass = isOverdue ? 'text-[var(--nim-warning)]' : 'text-[var(--nim-primary)]';
-    const tooltip = isOverdue
-      ? `Overdue wakeup${wakeup.reason ? ` — ${wakeup.reason}` : ''}`
-      : `Scheduled wakeup at ${new Date(wakeup.fireAt).toLocaleString()}${wakeup.reason ? ` — ${wakeup.reason}` : ''}`;
+    const time = new Date(wakeup.fireAt).toLocaleString();
+    const tooltip = isOverdue ? t('status.wakeup_overdue') : t('status.wakeup_scheduled', { time });
     return (
-      <div className={`session-list-item-status wakeup flex items-center justify-center w-5 h-5 ${colorClass} opacity-80`} title={tooltip}>
+      <div className={`session-list-item-status wakeup flex items-center justify-center w-5 h-5 ${colorClass} opacity-80`} title={wakeup.reason
+        ? t(isOverdue ? 'status.wakeup_overdue_with_reason' : 'status.wakeup_scheduled_with_reason', {
+          time: new Date(wakeup.fireAt).toLocaleString(),
+          reason: wakeup.reason,
+        })
+        : tooltip}>
         <MaterialSymbol icon="schedule" size={14} />
       </div>
     );
@@ -89,7 +95,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 
   if (hasUnread) {
     return (
-      <div className="session-list-item-status unread flex items-center justify-center w-5 h-5 text-[var(--nim-primary)]" title="Unread response">
+      <div className="session-list-item-status unread flex items-center justify-center w-5 h-5 text-[var(--nim-primary)]" title={t('status.unread')}>
         <MaterialSymbol icon="circle" size={8} fill />
       </div>
     );
@@ -105,6 +111,7 @@ export const SessionStatusIndicator = memo<{ sessionId: string; messageCount?: n
 // This leaf owns its expiry timer: following never ticks the parent or sibling rows.
 const EXTERNAL_ACTIVITY_RECENT_MS = 30_000;
 const SessionExternalMarker = memo(function SessionExternalMarker({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation('agents');
   const source = useAtomValue(useMemo(() => atom(get => get(sessionRegistryAtom).get(sessionId)?.externalSource), [sessionId]));
   const lastActivity = useAtomValue(useMemo(() => atom(get => get(sessionRegistryAtom).get(sessionId)?.externalLastActivityAt), [sessionId]));
   const enabled = useAtomValue(settingAtom('app.externalSessionFollowEnabled')) === true;
@@ -120,22 +127,23 @@ const SessionExternalMarker = memo(function SessionExternalMarker({ sessionId }:
 
   if (!source) return null;
   return (
-    <span className="session-list-item-external inline-flex gap-1 whitespace-nowrap text-[var(--nim-text-muted)]" title={`Imported from ${source === 'claude-code' ? 'Claude Code' : 'Codex'}`}>
-      <span>External</span>
-      {following && <span className="session-list-item-following text-[var(--nim-primary)]" title="Recent external session activity">Following</span>}
+    <span className="session-list-item-external inline-flex gap-1 whitespace-nowrap text-[var(--nim-text-muted)]" title={t('status.external_imported', { source: source === 'claude-code' ? 'Claude Code' : 'Codex' })}>
+      <span>{t('status.external')}</span>
+      {following && <span className="session-list-item-following text-[var(--nim-primary)]" title={t('status.external_activity')}>{t('status.following')}</span>}
     </span>
   );
 });
 
-const PHASE_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  backlog: { label: 'Backlog', color: 'var(--nim-text-faint)', bg: 'rgba(128,128,128,0.12)' },
-  planning: { label: 'Planning', color: 'var(--nim-primary)', bg: 'rgba(96,165,250,0.12)' },
-  implementing: { label: 'Implementing', color: 'var(--nim-warning)', bg: 'rgba(251,191,36,0.12)' },
-  validating: { label: 'Validating', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
-  complete: { label: 'Complete', color: 'var(--nim-success)', bg: 'rgba(74,222,128,0.12)' },
+const PHASE_STYLES: Record<string, { labelKey: string; color: string; bg: string }> = {
+  backlog: { labelKey: 'status.phase_backlog', color: 'var(--nim-text-faint)', bg: 'rgba(128,128,128,0.12)' },
+  planning: { labelKey: 'status.phase_planning', color: 'var(--nim-primary)', bg: 'rgba(96,165,250,0.12)' },
+  implementing: { labelKey: 'status.phase_implementing', color: 'var(--nim-warning)', bg: 'rgba(251,191,36,0.12)' },
+  validating: { labelKey: 'status.phase_validating', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+  complete: { labelKey: 'status.phase_complete', color: 'var(--nim-success)', bg: 'rgba(74,222,128,0.12)' },
 };
 
 const SessionPhaseBadge = memo<{ phase: string }>(({ phase }) => {
+  const { t } = useTranslation('agents');
   const style = PHASE_STYLES[phase];
   if (!style) return null;
   return (
@@ -143,7 +151,7 @@ const SessionPhaseBadge = memo<{ phase: string }>(({ phase }) => {
       className="session-list-item-phase text-[0.5625rem] leading-tight px-1 py-px rounded font-medium whitespace-nowrap"
       style={{ color: style.color, backgroundColor: style.bg }}
     >
-      {style.label}
+      {t(style.labelKey)}
     </span>
   );
 });
@@ -232,6 +240,7 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
   branchedAt,
   phase,
 }) {
+  const { t } = useTranslation('agents');
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [isRenaming, setIsRenaming] = useState(false);
@@ -288,7 +297,9 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
     }
   }, [isRenaming]);
 
-  const displayTitle = title || 'Untitled Session';
+  const displayTitle = title === 'New conversation'
+    ? t('quick_open.new_conversation')
+    : title || t('status.untitled_session');
 
   // Per-session live activity. Bumped on every `ai:message-logged`; only
   // this list item re-renders when its own activity ticks, instead of the
@@ -366,7 +377,7 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
           onClick(e as unknown as React.MouseEvent);
         }
       }}
-      aria-label={`Session: ${displayTitle}, ${timestampLabel} ${relativeTime}${isLoaded ? ' (loaded in tab)' : ''}${isArchived ? ' (archived)' : ''}`}
+      aria-label={`${t('context.session_label', { title: displayTitle })}, ${timestampLabel} ${relativeTime}${isLoaded ? `, ${t('accessibility.loaded_in_tab')}` : ''}${isArchived ? `, ${t('accessibility.archived_status')}` : ''}`}
       aria-current={isActive ? 'page' : undefined}
     >
       {treeLeading}
@@ -400,10 +411,10 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
         <MaterialSymbol icon="push_pin" size={12} className={`session-list-item-pin-icon shrink-0 -ml-1 opacity-70 ${isActive ? 'text-[var(--nim-primary)] opacity-80' : 'text-[var(--nim-text-faint)]'}`} />
       )}
       {branchedAt && (
-        <MaterialSymbol icon="fork_right" size={12} className={`session-list-item-branch-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title="Branched conversation" />
+          <MaterialSymbol icon="fork_right" size={12} className={`session-list-item-branch-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title={t('status.branched')} />
       )}
       {shareInfo && (
-        <MaterialSymbol icon="link" size={12} className={`session-list-item-share-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title="Shared" />
+        <MaterialSymbol icon="link" size={12} className={`session-list-item-share-icon shrink-0 -ml-1 opacity-60 ${isActive ? 'text-[var(--nim-primary)] opacity-70' : 'text-[var(--nim-text-faint)]'}`} title={t('status.shared')} />
       )}
       <div className="session-list-item-content flex-1 min-w-0 overflow-hidden">
         {isRenaming ? (
@@ -451,7 +462,7 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
       </div>
       <div className="session-list-item-right shrink-0 flex items-center gap-1.5 ml-auto">
         {uncommittedCount !== undefined && uncommittedCount > 0 && (
-          <span className="session-list-item-badge uncommitted text-[0.6875rem] px-1.5 py-0.5 rounded-xl font-semibold whitespace-nowrap bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]" title={`${uncommittedCount} uncommitted change${uncommittedCount !== 1 ? 's' : ''}`}>
+          <span className="session-list-item-badge uncommitted text-[0.6875rem] px-1.5 py-0.5 rounded-xl font-semibold whitespace-nowrap bg-[rgba(245,158,11,0.15)] text-[var(--nim-warning)]" title={t('accessibility.uncommitted_changes', { count: uncommittedCount })}>
             {uncommittedCount}
           </span>
         )}

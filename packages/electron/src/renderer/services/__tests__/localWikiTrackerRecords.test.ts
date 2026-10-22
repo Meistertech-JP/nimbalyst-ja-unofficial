@@ -10,6 +10,7 @@ import { replaceAllTrackerItemsAtom, trackerItemsMapAtom } from '@nimbalyst/runt
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import type { TrackerRecord } from '@nimbalyst/tracker-core';
 import type { LocalPage } from '@nimbalyst/local-wiki';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { buildTrackerCreatePayload } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerCreatePayload';
 import {
   buildLocalWikiRecords,
@@ -20,7 +21,8 @@ import {
   mergeLocalWikiRecords,
   remergeLocalWikiRecords,
 } from '../localWikiTrackerRecords';
-import { refuseLocalWikiArchive, saveLocalWikiItemFields } from '../localWikiTrackerWrites';
+import { deleteLocalWikiItem, refuseLocalWikiArchive, saveLocalWikiItemFields } from '../localWikiTrackerWrites';
+import { setLocalWikiTranslator } from '../localWikiUiText';
 import { createCollectionItem } from '../../components/TrackerMode/createCollectionItem';
 
 const notify = vi.hoisted(() => ({ showError: vi.fn(), showInfo: vi.fn(), showWarning: vi.fn() }));
@@ -50,6 +52,7 @@ const dbItem = { id: 'db1', primaryType: 'bug', typeTags: ['bug'], source: 'nati
   system: { workspace: '/ws', createdAt: 'x', updatedAt: 'x' }, fields: { title: 'Crash' } } as TrackerRecord;
 
 afterEach(() => {
+  setLocalWikiTranslator(null);
   mergeLocalWikiRecords('/ws', []);
   store.set(replaceAllTrackerItemsAtom, []);
 });
@@ -133,6 +136,8 @@ describe('Local wiki tracker records', () => {
   });
 
   it('saves Tracker mode edits to the file and never drops a change silently', async () => {
+    const japanese = await createI18nInstance('ja');
+    setLocalWikiTranslator((key, options) => japanese.t(key, { ns: 'common', ...options }));
     const invoke = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('window', { electronAPI: { invoke } });
     try {
@@ -143,15 +148,35 @@ describe('Local wiki tracker records', () => {
       });
       // Board order has no place in the file: said so, and nothing written for it.
       expect(notify.showInfo).toHaveBeenCalledTimes(1);
+      expect(notify.showInfo).toHaveBeenCalledWith(
+        '並び順を保存できませんでした',
+        'ローカルWikiのファイル「Acme」には、ボード上の位置を保存できません。',
+      );
       expect(await saveLocalWikiItemFields(acme, { kanbanSortOrder: 'a2' })).toBe(false);
       expect(invoke).toHaveBeenCalledTimes(1);
 
       invoke.mockRejectedValueOnce(new Error('version conflict'));
       expect(await saveLocalWikiItemFields(acme, { status: 'gone' })).toBe(false);
+      expect(notify.showError).toHaveBeenCalledWith(
+        '変更を保存できませんでした',
+        'ローカルWikiのファイル「Acme」に書き込めませんでした: version conflict',
+      );
       expect(notify.showError.mock.calls[0][1]).toContain('version conflict');
 
       expect(refuseLocalWikiArchive([acme, dbItem, undefined])).toEqual([acme]);
       expect(notify.showWarning).toHaveBeenCalledTimes(1);
+      expect(notify.showWarning).toHaveBeenCalledWith(
+        '「Acme」をアーカイブできません',
+        'ローカルWikiのファイルはアーカイブできません。ファイルをWikiのゴミ箱に移動するには、項目を削除してください。',
+        { allowDuplicate: true },
+      );
+
+      invoke.mockRejectedValueOnce(new Error('disk full'));
+      expect(await deleteLocalWikiItem(acme)).toBe(false);
+      expect(notify.showError).toHaveBeenLastCalledWith(
+        '削除できませんでした',
+        '「Acme」をWikiのゴミ箱に移動できませんでした: disk full',
+      );
     } finally {
       vi.unstubAllGlobals();
     }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import { TrackerFieldEditor, type TeamMemberOption } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldEditor';
 
@@ -9,6 +10,7 @@ export function TrackerPhoneProperties({ fields, values, editing, onChange, team
   onChange?: (name: string, value: unknown) => void | Promise<unknown>;
   teamMembers?: TeamMemberOption[];
 }) {
+  const { t } = useTranslation('tracker');
   return <div className="tracker-phone-properties">
     {fields.map(field => {
       const value = values[field.name];
@@ -22,7 +24,7 @@ export function TrackerPhoneProperties({ fields, values, editing, onChange, team
       if (field.type === 'select' || field.type === 'user') {
         const options = field.type === 'user' ? teamMembers.map(member => ({ value: member.email, label: member.name || member.email })) : field.options ?? [];
         return <label key={field.name}>{label}<select aria-label={label} value={String(value ?? '')} onChange={event => change(event.target.value)}>
-          <option value="">Choose…</option>
+          <option value="">{t('filters.choose')}</option>
           {value && !options.some(option => option.value === value) ? <option value={String(value)}>{String(value)}</option> : null}
           {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select></label>;

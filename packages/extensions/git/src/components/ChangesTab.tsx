@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { parseFileMask, matchesFileMask } from '@nimbalyst/extension-sdk/file-mask';
 import { DiffPeekPopover } from './DiffPeekPopover';
 import { useDiffCache, type DiffGroup } from '../hooks/useDiffCache';
@@ -79,12 +80,12 @@ function statusColorClass(status: string): string {
   }
 }
 
-const statusTitles: Record<string, string> = {
-  M: 'Modified',
-  A: 'Added',
-  D: 'Deleted',
-  '?': 'Untracked',
-  C: 'Conflict',
+const statusTitleKeys: Record<string, string> = {
+  M: 'changes_tab.status.modified',
+  A: 'changes_tab.status.added',
+  D: 'changes_tab.status.deleted',
+  '?': 'changes_tab.status.untracked',
+  C: 'changes_tab.status.conflict',
 };
 
 function Checkbox({ checked, indeterminate, onChange, disabled, label }: {
@@ -144,6 +145,7 @@ interface RowRenderOptions {
 }
 
 function ChangeRows({ rows, opts }: { rows: ChangeRow[]; opts: RowRenderOptions }) {
+  const { t } = useTranslation('git');
   return (
     <>
       {rows.map(row => {
@@ -158,7 +160,7 @@ function ChangeRows({ rows, opts }: { rows: ChangeRow[]; opts: RowRenderOptions 
                 className="git-changes-row-chevron"
                 onClick={() => opts.toggleDir(row.path)}
                 aria-expanded={!row.collapsed}
-                aria-label={`${row.collapsed ? 'Expand' : 'Collapse'} ${row.label}`}
+                aria-label={`${t(row.collapsed ? 'changes_tab.expand' : 'changes_tab.collapse')} ${row.label}`}
               >
                 {row.collapsed ? '▶' : '▼'}
               </button>
@@ -203,12 +205,12 @@ function ChangeRows({ rows, opts }: { rows: ChangeRow[]; opts: RowRenderOptions 
               {row.dirPrefix && <span className="git-changes-file-dir-prefix">{row.dirPrefix}</span>}
               <span
                 className={`git-changes-file-name ${statusColorClass(row.status)}${row.status === 'D' ? ' git-changes-file-name--strike' : ''}`}
-                title={statusTitles[row.status] ?? row.status}
+                title={t(statusTitleKeys[row.status] ?? row.status)}
               >
                 {name}
               </span>
             </span>
-            {!opts.selectable && <span className="git-changes-conflict-label">Resolve in editor</span>}
+            {!opts.selectable && <span className="git-changes-conflict-label">{t('changes_tab.resolve_in_editor')}</span>}
           </div>
         );
       })}
@@ -227,6 +229,7 @@ export function ChangesTab({
   refreshToken,
   onCountChange,
 }: ChangesTabProps) {
+  const { t } = useTranslation('git');
   // One flat list of changes: staged/unstaged/untracked are merged, since the
   // selection (not the index) is what gets committed.
   const [changes, setChanges] = useState<WorkingFile[]>([]);
@@ -442,16 +445,16 @@ export function ChangesTab({
   const handleDiscardSelected = useCallback(async () => {
     if (discardablePaths.length === 0) return;
     const count = discardablePaths.length;
-    const label = count === 1 ? discardablePaths[0] : `${count} files`;
-    if (!window.confirm(`Discard all changes to ${label}? This cannot be undone.`)) {
+    const label = count === 1 ? discardablePaths[0] : t('changes_tab.file_count_other', { count });
+    if (!window.confirm(t('changes_tab.discard_confirmation', { label }))) {
       return;
     }
     await runOp(
       `git checkout -- ${count} file${count !== 1 ? 's' : ''}`,
       () => ipc.invoke('git:discard-changes', workspacePath, discardablePaths) as Promise<SuccessResult>,
-      'Failed to discard changes',
+      t('changes_tab.discard_failed'),
     );
-  }, [discardablePaths, runOp, workspacePath]);
+  }, [discardablePaths, runOp, workspacePath, t]);
 
   const handleCommit = useCallback(async () => {
     const fullMessage = commitDescription
@@ -459,14 +462,14 @@ export function ChangesTab({
       : commitMessage;
 
     if (!fullMessage.trim()) {
-      showStatus('Commit message is required', true);
+      showStatus(t('changes_tab.commit_message_required'), true);
       messageRef.current?.focus();
       return;
     }
 
     const paths = selectedFiles.map(f => f.path);
     if (paths.length === 0) {
-      showStatus('Select at least one file to commit', true);
+      showStatus(t('changes_tab.select_file_to_commit'), true);
       return;
     }
 
@@ -480,24 +483,24 @@ export function ChangesTab({
         {
           isError: (r) => !r.success,
           getError: (r) => r.error,
-          formatOutput: (r) => r.commitHash ? `Committed: ${r.commitHash}` : undefined,
+          formatOutput: (r) => r.commitHash ? t('changes_tab.committed_hash', { hash: r.commitHash }) : undefined,
         }
       );
 
       if (result.success) {
         setCommitMessage('');
         setCommitDescription('');
-        showStatus(`Committed ${paths.length} file${paths.length !== 1 ? 's' : ''}`);
+        showStatus(t('changes_tab.committed_count', { count: paths.length }));
       } else {
-        showStatus(result.error || 'Commit failed', true);
+        showStatus(result.error || t('changes_tab.commit_failed'), true);
       }
       await loadChanges();
     } catch (err) {
-      showStatus(err instanceof Error ? err.message : 'Commit failed', true);
+      showStatus(err instanceof Error ? err.message : t('changes_tab.commit_failed'), true);
     } finally {
       setIsCommitting(false);
     }
-  }, [workspacePath, commitMessage, commitDescription, selectedFiles, loadChanges, showStatus, withLog]);
+  }, [workspacePath, commitMessage, commitDescription, selectedFiles, loadChanges, showStatus, withLog, t]);
 
   const handleCommitWithAI = useCallback(() => {
     if (selectedFiles.length === 0) return;
@@ -690,16 +693,16 @@ export function ChangesTab({
   }, [popoverPath, activePath, workspacePath]);
 
   if (loading) {
-    return <div className="git-log-empty">Loading changes...</div>;
+    return <div className="git-log-empty">{t('changes_tab.loading')}</div>;
   }
 
   if (loadError) {
     return (
       <div className="git-changes-empty">
-        <span className="git-changes-error-title">Failed to load changes</span>
+        <span className="git-changes-error-title">{t('changes_tab.load_error')}</span>
         <span className="git-changes-empty-hint">{loadError}</span>
         <button className="git-changes-retry-btn" onClick={loadChanges}>
-          Retry
+          {t('changes_tab.retry')}
         </button>
       </div>
     );
@@ -708,8 +711,8 @@ export function ChangesTab({
   if (totalChanges === 0) {
     return (
       <div className="git-changes-empty">
-        <span>No changes</span>
-        <span className="git-changes-empty-hint">Working tree is clean.</span>
+        <span>{t('changes_tab.no_changes')}</span>
+        <span className="git-changes-empty-hint">{t('changes_tab.clean_tree')}</span>
       </div>
     );
   }
@@ -745,13 +748,13 @@ export function ChangesTab({
       onKeyDown={handleKeyDown}
     >
       <div className="git-changes-keyhint">
-        <span><kbd>↑↓</kbd> navigate</span>
+        <span><kbd>↑↓</kbd> {t('changes_tab.navigate')}</span>
         <span className="git-changes-keyhint-sep">·</span>
-        <span><kbd>Space</kbd> peek</span>
+        <span><kbd>Space</kbd> {t('changes_tab.peek')}</span>
         <span className="git-changes-keyhint-sep">·</span>
-        <span><kbd>Enter</kbd> pin</span>
+        <span><kbd>Enter</kbd> {t('changes_tab.pin')}</span>
         <span className="git-changes-keyhint-sep">·</span>
-        <span><kbd>Esc</kbd> close</span>
+        <span><kbd>Esc</kbd> {t('changes_tab.close')}</span>
       </div>
       <GitStatusBar
         message={statusMessage && !statusMessage.isError ? statusMessage.text : null}
@@ -762,9 +765,9 @@ export function ChangesTab({
 
       {filteredTotal === 0 && (
         <div className="git-changes-empty">
-          <span>No matching files</span>
+          <span>{t('changes_tab.no_matching_files')}</span>
           <span className="git-changes-empty-hint">
-            {totalChanges} change{totalChanges !== 1 ? 's' : ''} hidden by file mask.
+            {t('changes_tab.hidden_by_file_mask', { count: totalChanges })}
           </span>
         </div>
       )}
@@ -778,7 +781,7 @@ export function ChangesTab({
                 onClick={() => setConflictsCollapsed(v => !v)}
               >
                 <span className="git-changes-group-chevron">{conflictsCollapsed ? '▶' : '▼'}</span>
-                <span className="git-changes-group-label">Conflicts ({filteredConflicted.length})</span>
+                <span className="git-changes-group-label">{t('changes_tab.conflicts_count', { count: filteredConflicted.length })}</span>
               </div>
               {!conflictsCollapsed && <ChangeRows rows={conflictRows} opts={conflictRowOptions} />}
             </div>
@@ -794,20 +797,22 @@ export function ChangesTab({
                 <Checkbox
                   checked={allSelectionState === 'all'}
                   indeterminate={allSelectionState === 'some'}
-                  label="Select all changes"
+                  label={t('changes_tab.select_all_changes')}
                   onChange={() => bulkToggle(
                     filteredChanges.map(f => f.path),
                     allSelectionState !== 'all',
                   )}
                 />
-                <span className="git-changes-group-label">Changes ({filteredChanges.length})</span>
+                <span className="git-changes-group-label">{t('changes_tab.changes_count', { count: filteredChanges.length })}</span>
                 <button
                   className="git-changes-group-action git-changes-group-action--danger"
                   onClick={(e) => { e.stopPropagation(); handleDiscardSelected(); }}
                   disabled={isAnyLoading || discardablePaths.length === 0}
-                  title="Discard changes to the selected tracked files"
+                  title={t('changes_tab.discard_title')}
                 >
-                  {discardablePaths.length > 0 ? `Discard (${discardablePaths.length})` : 'Discard'}
+                  {discardablePaths.length > 0
+                    ? t('changes_tab.discard_count', { count: discardablePaths.length })
+                    : t('changes_tab.discard')}
                 </button>
               </div>
               {!changesCollapsed && <ChangeRows rows={changeRows} opts={rowOptions} />}
@@ -828,7 +833,7 @@ export function ChangesTab({
             type="button"
             className="git-changes-sessions-pane-reopen"
             onClick={toggleSessionsPane}
-            title="Show sessions that edited this file"
+            title={t('changes_tab.show_sessions')}
           >
             ◀
           </button>
@@ -836,11 +841,11 @@ export function ChangesTab({
 
         {/* Commit area */}
         <div className="git-changes-commit">
-          <div className="git-changes-commit-label">COMMIT MESSAGE</div>
+          <div className="git-changes-commit-label">{t('changes_tab.commit_message_label')}</div>
           <textarea
             ref={messageRef}
             className="git-changes-commit-input"
-            placeholder="Summary (required)"
+            placeholder={t('changes_tab.summary_required')}
             value={commitMessage}
             onChange={e => setCommitMessage(e.target.value)}
             rows={2}
@@ -853,7 +858,7 @@ export function ChangesTab({
           />
           <textarea
             className="git-changes-commit-input git-changes-commit-description"
-            placeholder="Description"
+            placeholder={t('changes_tab.description')}
             value={commitDescription}
             onChange={e => setCommitDescription(e.target.value)}
             rows={2}
@@ -864,25 +869,25 @@ export function ChangesTab({
               onClick={handleCommit}
               disabled={isCommitting || selectedCount === 0 || !commitMessage.trim()}
             >
-              {isCommitting ? 'Committing...' : `Commit (${selectedCount})`}
+              {isCommitting ? t('committing') : t('commit_count', { count: selectedCount })}
             </button>
             <button
               className="git-changes-commit-ai-btn"
               onClick={handleCommitWithAI}
               disabled={selectedCount === 0}
-              title="Open a new session that writes the message and commits these files"
+              title={t('changes_tab.commit_with_ai_title')}
             >
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 2l1.9 5.6L19.5 9.5 13.9 11.4 12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2z" />
                 <path d="M18.5 14.5l.85 2.15L21.5 17.5l-2.15.85L18.5 20.5l-.85-2.15L15.5 17.5l2.15-.85.85-2.15z" />
               </svg>
-              Commit with AI
+              {t('commit_with_ai')}
             </button>
           </div>
           <div className="git-changes-commit-summary">
             {selectedCount > 0
-              ? `${selectedCount} file${selectedCount !== 1 ? 's' : ''} selected · committed exactly as selected`
-              : 'Select files to commit'}
+              ? t('changes_tab.selected_summary', { count: selectedCount })
+              : t('changes_tab.select_files_to_commit')}
           </div>
         </div>
       </div>

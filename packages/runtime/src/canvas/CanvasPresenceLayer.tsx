@@ -23,6 +23,7 @@
  */
 import { useMemo, type CSSProperties, type ReactElement } from 'react';
 import { ViewportPortal, useStore } from '@xyflow/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { CanvasAnyNode } from './CanvasDocument';
 import type { CanvasAwarenessPoint } from './canvasBinding';
@@ -48,6 +49,7 @@ export function CanvasPresenceLayer({
   participants,
   nodes,
 }: CanvasPresenceLayerProps): ReactElement | null {
+  const { t } = useTranslation('editor');
   // Raw scale, not the surface's `canvasZoomBucket` value: that bucket collapses
   // to four numbers for LOD decisions, so a label counter-scaled by it would be
   // wrong everywhere except at 1.0. Subscribing here rather than in the surface
@@ -90,7 +92,9 @@ export function CanvasPresenceLayer({
                     className="canvas-presence__viewport-label"
                     style={{ ...counterScale(zoom), color: participant.color }}
                   >
-                    {participant.name} is looking here
+                    {t('canvas.presence.looking_here', {
+                      name: participant.name,
+                    })}
                   </span>
                 </div>
               )}
@@ -129,7 +133,9 @@ export function CanvasPresenceLayer({
                       {participant.kind === 'agent' &&
                         participant.onBehalfOfName !== undefined && (
                           <span className="canvas-presence__on-behalf">
-                            for {participant.onBehalfOfName}
+                            {t('comments.on_behalf_of', {
+                              name: participant.onBehalfOfName,
+                            })}
                           </span>
                         )}
                     </span>
@@ -183,6 +189,7 @@ export function CanvasPresenceRoster({
   participants,
   onJumpTo,
 }: CanvasPresenceRosterProps): ReactElement | null {
+  const { t } = useTranslation('editor');
   const others = participants.filter(
     (participant) => !(participant.kind === 'user' && participant.isLocal)
   );
@@ -199,8 +206,10 @@ export function CanvasPresenceRoster({
           disabled={participant.viewport === undefined}
           title={
             participant.viewport === undefined
-              ? `${participant.name} has not published a view of this board`
-              : `Jump to what ${participant.name} is looking at`
+              ? t('canvas.presence.not_published', {
+                  name: participant.name,
+                })
+              : t('canvas.presence.jump_to', { name: participant.name })
           }
           onClick={() => onJumpTo(participant)}
         >
@@ -212,7 +221,9 @@ export function CanvasPresenceRoster({
             {participant.name}
           </span>
           {participant.kind === 'agent' && (
-            <span className="canvas-presence-roster__badge">session</span>
+            <span className="canvas-presence-roster__badge">
+              {t('canvas.presence.session')}
+            </span>
           )}
         </button>
       ))}

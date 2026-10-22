@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { EditorHostProps } from '@nimbalyst/extension-sdk';
 import { useEditorLifecycle } from '@nimbalyst/extension-sdk';
 import {
@@ -63,6 +64,9 @@ function serializeDocument(doc: BrowserSessionDocument): string {
  * survives restart).
  */
 export function BrowserSessionEditor({ host }: EditorHostProps): JSX.Element {
+  const { t } = useTranslation('editor');
+  const tRef = useRef(t);
+  tRef.current = t;
   // Fileless ("virtual://com.nimbalyst.browser/…") tabs carry their URL in the
   // path; .browser.json tabs load it from file content. For virtual tabs we also
   // mirror the *live* URL into extension storage so restore reopens the last
@@ -124,7 +128,11 @@ export function BrowserSessionEditor({ host }: EditorHostProps): JSX.Element {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setError(err.message || 'Failed to create browser session');
+        setError(
+          !err.message || err.message === 'Failed to create browser session'
+            ? tRef.current('browser.session_create_failed')
+            : err.message,
+        );
       });
 
     const unsubscribe = subscribeToStateChanges(sessionId, (state) => {
@@ -156,7 +164,7 @@ export function BrowserSessionEditor({ host }: EditorHostProps): JSX.Element {
   if (error) {
     return (
       <div className="nim-browser-editor nim-browser-editor-error" style={{ padding: 16 }}>
-        <strong>Browser session error.</strong>
+        <strong>{t('browser.session_error')}</strong>
         <div style={{ marginTop: 8, fontSize: 13 }}>{error}</div>
       </div>
     );
@@ -181,7 +189,8 @@ export function BrowserSessionEditor({ host }: EditorHostProps): JSX.Element {
           // their URL is mirrored to storage via the state-change subscription.
           if (!isVirtual) markDirty();
           void navigateBrowserSession(sessionIdRef.current, url).catch((err) => {
-            setError(String(err?.message ?? err));
+            const message = String(err?.message ?? err);
+            setError(message === 'navigate failed' ? tRef.current('browser.navigation_failed') : message);
           });
         }}
         onBack={(): void => {

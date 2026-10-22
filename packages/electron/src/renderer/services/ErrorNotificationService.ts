@@ -7,6 +7,8 @@
 import posthog from 'posthog-js';
 
 export type ErrorSeverity = 'error' | 'warning' | 'info';
+export type ErrorNotificationTitleKey = 'generic_title' | 'uncaught_title' | 'unhandled_rejection_title';
+export type NotificationTranslationOptions = Record<string, string | number>;
 
 export interface NotificationAction {
   label: string;
@@ -64,7 +66,32 @@ class ErrorNotificationService {
   private nextId = 1;
   // Deduplication: track recent error keys to suppress duplicates
   private recentErrorKeys = new Map<string, { count: number; firstSeen: number }>();
+  private translateTitle: ((key: ErrorNotificationTitleKey) => string) | null = null;
+  private translateText: ((namespace: string, key: string, fallback: string, options?: NotificationTranslationOptions) => string) | null = null;
   private static DEDUP_WINDOW_MS = 5000; // Suppress identical errors within 5s
+
+  setTitleTranslator(translate: ((key: ErrorNotificationTitleKey) => string) | null): void {
+    this.translateTitle = translate;
+  }
+
+  getLocalizedTitle(key: ErrorNotificationTitleKey, fallback: string): string {
+    return this.translateTitle?.(key) || fallback;
+  }
+
+  setTextTranslator(
+    translate: ((namespace: string, key: string, fallback: string, options?: NotificationTranslationOptions) => string) | null,
+  ): void {
+    this.translateText = translate;
+  }
+
+  getLocalizedText(
+    namespace: string,
+    key: string,
+    fallback: string,
+    options?: NotificationTranslationOptions,
+  ): string {
+    return this.translateText?.(namespace, key, fallback, options) || fallback;
+  }
 
   /**
    * Register a listener for error notifications
@@ -147,10 +174,10 @@ class ErrorNotificationService {
    */
   showFromError(
     error: Error,
-    title: string = 'An error occurred',
+    title?: string,
     context?: Record<string, any>
   ): string {
-    return this.showError(title, error.message, {
+    return this.showError(title ?? this.getLocalizedTitle('generic_title', 'An error occurred'), error.message, {
       stack: error.stack,
       context
     });
@@ -300,7 +327,7 @@ if (typeof window !== 'undefined') {
     });
 
     errorNotificationService.showError(
-      'Uncaught Error',
+      errorNotificationService.getLocalizedTitle('uncaught_title', 'Uncaught Error'),
       message,
       {
         stack: event.error?.stack,
@@ -333,7 +360,7 @@ if (typeof window !== 'undefined') {
     });
 
     errorNotificationService.showError(
-      'Unhandled Promise Rejection',
+      errorNotificationService.getLocalizedTitle('unhandled_rejection_title', 'Unhandled Promise Rejection'),
       message,
       {
         stack: reason?.stack

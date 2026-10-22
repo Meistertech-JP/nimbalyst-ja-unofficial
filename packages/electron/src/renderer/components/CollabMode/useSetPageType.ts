@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { store } from '@nimbalyst/runtime/store';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
 import {
@@ -48,6 +49,7 @@ export interface SetPageTypeContext {
   lane: PageTypeLane;
   workspacePath: string;
   session: CollabDocsSession;
+  translate?: (key: string, fallback: string, options?: Record<string, string | number>) => string;
   /** Team only: the org the page's room belongs to. */
   teamScope: CollabScope | null;
   tabsActions: TabsActions;
@@ -121,7 +123,9 @@ export async function readPageMarkdown(context: SetPageTypeContext, pageId: stri
   if (context.lane === 'personal') {
     return readLocalPageBody(context.workspacePath, pageId);
   }
-  if (!context.teamScope) throw new Error('This project is not connected to its team.');
+  if (!context.teamScope) {
+    throw new Error(context.translate?.('project_not_connected', 'This project is not connected to its team.') ?? 'This project is not connected to its team.');
+  }
   return {
     markdown: await readHeadlessCollabDocContent(buildCollabUri(context.teamScope.orgId, pageId), context.workspacePath),
   };
@@ -179,7 +183,9 @@ async function createItem(
     payload.customFields = { ...payload.customFields, share: { status: 'team', body: 'team' } };
   }
   const result = await window.electronAPI.documentService.createTrackerItem(payload);
-  if (!result.success) throw new Error(result.error || 'Could not create the item');
+  if (!result.success) {
+    throw new Error(result.error || context.translate?.('could_not_create_item_fallback', 'Could not create the item') || 'Could not create the item');
+  }
   let publication = result.publication ?? { itemId, status: 'local' as const };
   if (publication.status === 'pending') {
     // Publishes the metadata, seeds the body room from the saved body and
@@ -189,9 +195,15 @@ async function createItem(
   return { itemId, publication: publication.status, ...(publication.error ? { error: publication.error } : {}) };
 }
 
-export function buildSetPageTypeDependencies(context: SetPageTypeContext, title: string): SetPageTypeDependencies {
+export function buildSetPageTypeDependencies(
+  context: SetPageTypeContext,
+  title: string,
+  translate?: (key: string, fallback: string, options?: Record<string, string | number>) => string,
+): SetPageTypeDependencies {
   const { session, workspacePath, lane } = context;
+  const translateMessage = translate ?? context.translate;
   return {
+    translate: translateMessage,
     listChildren: (pageId) => listPageChildren(session, store.get(session.atoms.typePlacements), pageId),
     moveChildUnderItem: (child, itemId) => movePageChild(session, store.get(session.atoms.typePlacements), child, itemId),
     flushPageEditor: (pageId) => flushPageEditor(context, pageId),
@@ -205,7 +217,9 @@ export function buildSetPageTypeDependencies(context: SetPageTypeContext, title:
     }) as Promise<ItemBodyCheck>,
     removeItem: async (itemId) => {
       const result = await window.electronAPI.documentService.deleteTrackerItem({ itemId });
-      if (!result.success) throw new Error(result.error || 'Delete failed');
+      if (!result.success) {
+        throw new Error(result.error || translateMessage?.('delete_failed', 'Delete failed') || 'Delete failed');
+      }
     },
     setItemPlacement: (itemId, parentId, position) => placeItem(session, itemId, parentId, position),
     pageUnchangedSince: (pageId, copy) => pageUnchangedSince(context, pageId, copy),
@@ -222,13 +236,21 @@ export function buildSetPageTypeDependencies(context: SetPageTypeContext, title:
       const confirmed = await window.electronAPI.invoke('tracker-page-type:team-type-confirmed', { workspacePath, typeId });
       return confirmed
         ? null
-        : `The team's server does not have the "${globalRegistry.get(typeId)?.displayName ?? typeId}" type yet, so teammates could not see the typed page.`;
+        : translateMessage?.('team_type_not_available', 'The team\'s server does not have the "{{type}}" type yet, so teammates could not see the typed page.', {
+            type: globalRegistry.get(typeId)?.displayName ?? typeId,
+          }) ?? `The team's server does not have the "${globalRegistry.get(typeId)?.displayName ?? typeId}" type yet, so teammates could not see the typed page.`;
     },
   };
 }
 
 /** Runs Set type for the picked page and reports anything short of success. */
 export function useSetPageType(workspacePath: string, teamScope: CollabScope | null) {
+  const { t } = useTranslation('collabSidebar');
+  const translateMessage = useCallback(
+    (key: string, fallback: string, options?: Record<string, string | number>) =>
+      t(`set_page_type_notification.messages.${key}`, { defaultValue: fallback, ...options }),
+    [t],
+  );
   const tabsActions = useTabsActions();
   const [running, setRunning] = useState(false);
 
@@ -247,7 +269,7 @@ export function useSetPageType(workspacePath: string, teamScope: CollabScope | n
           await setLocalWikiPageType(workspacePath, page.documentId, typeId);
           return true;
         } catch (error) {
-          errorNotificationService.showWarning('Cannot set the type', error instanceof Error ? error.message : String(error), { allowDuplicate: true });
+          errorNotificationService.showWarning(t('set_page_type_notification.cannot_set_title'), error instanceof Error ? error.message : String(error), { allowDuplicate: true });
           return false;
         }
       }
@@ -265,18 +287,22 @@ export function useSetPageType(workspacePath: string, teamScope: CollabScope | n
             sortOrder: page.sortOrder ?? null,
           },
         },
-        buildSetPageTypeDependencies({ lane, workspacePath, session, teamScope, tabsActions }, title),
+        buildSetPageTypeDependencies(
+          { lane, workspacePath, session, teamScope, tabsActions, translate: translateMessage },
+          title,
+          translateMessage,
+        ),
       );
       if (outcome.status === 'refused') {
-        errorNotificationService.showWarning('Cannot set the type', outcome.message, { allowDuplicate: true });
+        errorNotificationService.showWarning(t('set_page_type_notification.cannot_set_title'), outcome.message, { allowDuplicate: true });
       } else if (outcome.status === 'failed') {
-        errorNotificationService.showError('Set type did not finish', outcome.message);
+        errorNotificationService.showError(t('set_page_type_notification.did_not_finish_title'), outcome.message);
       }
       return outcome.status === 'done';
     } finally {
       setRunning(false);
     }
-  }, [workspacePath, teamScope, tabsActions]);
+  }, [workspacePath, teamScope, tabsActions, t, translateMessage]);
 
   return { run, running };
 }

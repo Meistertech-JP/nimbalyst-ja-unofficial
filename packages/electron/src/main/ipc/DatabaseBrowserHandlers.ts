@@ -154,7 +154,7 @@ export function registerDatabaseBrowserHandlers() {
             if (!trimmedSQL.startsWith('select')) {
                 return {
                     success: false,
-                    error: 'Only SELECT queries are allowed in the Database Browser.'
+                    error: 'database.query_select_only'
                 };
             }
 
@@ -340,7 +340,7 @@ export function registerDatabaseBrowserHandlers() {
     ) => {
         try {
             if (!primaryKeys || primaryKeys.length === 0) {
-                return { success: false, error: 'Cannot update: table has no primary key' };
+                return { success: false, error: 'database.no_primary_key' };
             }
 
             // Sanitize table and column names (allow only alphanumeric and underscores)

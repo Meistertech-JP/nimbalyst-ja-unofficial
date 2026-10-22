@@ -5,6 +5,8 @@ const syncMocks = vi.hoisted(() => ({
   providerOptions: [] as any[],
   replicaOptions: [] as any[],
   replicaDestroy: vi.fn(async () => {}),
+  bridgeOptions: [] as any[],
+  refreshRemoteDisplayNames: vi.fn(),
 }));
 
 vi.mock('@nimbalyst/runtime/sync', () => ({
@@ -26,10 +28,14 @@ vi.mock('@nimbalyst/runtime/sync', () => ({
 }));
 vi.mock('../../components/TabEditor/collabExtensionHost', () => ({
   createCollaborationContext: vi.fn(() => ({})),
-  createExtensionAwarenessBridge: vi.fn(() => ({
-    awareness: {},
-    destroy: vi.fn(),
-  })),
+  createExtensionAwarenessBridge: vi.fn((options: any) => {
+    syncMocks.bridgeOptions.push(options);
+    return {
+      awareness: {},
+      refreshRemoteDisplayNames: syncMocks.refreshRemoteDisplayNames,
+      destroy: vi.fn(),
+    };
+  }),
   notifyCollabStatus: vi.fn(),
 }));
 vi.mock('../../store/atoms/documentSyncRegistry', () => ({
@@ -55,7 +61,9 @@ import { resolveDesktopCollabConfigForUri } from '../../utils/collabDocumentOpen
 beforeEach(() => {
   syncMocks.providerOptions.length = 0;
   syncMocks.replicaOptions.length = 0;
+  syncMocks.bridgeOptions.length = 0;
   syncMocks.replicaDestroy.mockClear();
+  syncMocks.refreshRemoteDisplayNames.mockClear();
   vi.mocked(resolveDesktopCollabConfigForUri).mockReset();
 });
 
@@ -216,5 +224,61 @@ describe('CollaborativeEmbedProviderCache', () => {
         false,
       );
     });
+  });
+
+  it('marks generated embedded identities and refreshes their display-only label', async () => {
+    vi.mocked(resolveDesktopCollabConfigForUri).mockResolvedValue({
+      scope: {
+        scopeKey: '/workspace',
+        orgId: 'team-1',
+        indexConfig: { serverUrl: 'ws://collab.test', teamMemberId: asTeamMemberId('user-1') },
+      },
+      orgId: 'team-1',
+      documentId: 'mockup-1',
+      title: 'Wireframe',
+      documentType: 'mockup.html',
+      serverUrl: 'ws://collab.test',
+      accountId: 'account-1',
+      teamMemberId: asTeamMemberId('user-1'),
+      getJwt: async () => asTeamJwt('token'),
+    });
+    vi.stubGlobal('window', {
+      electronAPI: {
+        documentSync: {
+          setReplicaProviderAttached: vi.fn(async () => {}),
+          setPendingUpdate: vi.fn(async () => {}),
+          closeDoc: vi.fn(async () => ({ success: true })),
+        },
+      },
+    });
+
+    const resource = await createDefaultResource({
+      workspacePath: '/workspace',
+      orgId: 'team-1',
+      documentId: 'mockup-1',
+      title: 'Wireframe',
+      documentType: 'mockup.html',
+      metadata: {
+        metadataVersion: 2,
+        fileExtension: '.mockup.html',
+        editorId: 'com.nimbalyst.mockuplm',
+      },
+    });
+
+    expect(syncMocks.bridgeOptions[0].user).toMatchObject({
+      id: 'user-1',
+      name: 'Teammate',
+      nimbalystNameSource: 'system-default',
+    });
+    expect(syncMocks.bridgeOptions[0].getUnnamedCollaboratorLabel()).toBe('Teammate');
+    const setUnnamedCollaboratorLabel = resource.setUnnamedCollaboratorLabel;
+    if (typeof setUnnamedCollaboratorLabel !== 'function') {
+      throw new Error('Default resource must support localized collaborator labels');
+    }
+    setUnnamedCollaboratorLabel.call(resource, 'チームメンバー');
+    expect(syncMocks.bridgeOptions[0].getUnnamedCollaboratorLabel()).toBe('チームメンバー');
+    expect(syncMocks.refreshRemoteDisplayNames).toHaveBeenCalledOnce();
+
+    resource.destroy();
   });
 });

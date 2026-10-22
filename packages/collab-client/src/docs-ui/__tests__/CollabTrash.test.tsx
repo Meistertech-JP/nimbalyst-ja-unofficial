@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, within } from '@testing-library/react';
 import { atom, createStore, Provider } from 'jotai';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { CollabHost } from '@nimbalyst/collab-client/core';
 import type { CollabDocsSession, SharedDocument } from '@nimbalyst/collab-client/docs';
 import { CollabDocsUIProvider } from '../CollabDocsUIProvider';
@@ -42,8 +44,45 @@ const trashed = [
 
 const notUnread = atom(false);
 const noDocumentTypes = [] as const;
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function withEnglish(ui: React.ReactNode) {
+  return <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">{ui}</UiLanguageProvider>;
+}
+
+function withJapanese(ui: React.ReactNode) {
+  return <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">{ui}</UiLanguageProvider>;
+}
 
 afterEach(cleanup);
+
+it('localizes the section Trash entry and its accessible item count', async () => {
+  const session = makeSession();
+  let view!: ReturnType<typeof render>;
+  await act(async () => {
+    view = render(
+      withJapanese(
+        <Provider store={createStore()}>
+          <CollabDocsUIProvider session={session}>
+            <CollabSidebar sectionTitle="チーム" />
+          </CollabDocsUIProvider>
+        </Provider>,
+      ),
+    );
+  });
+
+  const entry = view.container.querySelector<HTMLButtonElement>('.collab-sidebar-trash-entry')!;
+  expect(entry.textContent).toContain('ゴミ箱');
+  expect(entry.getAttribute('aria-label')).toBe('チームのゴミ箱（2件）');
+});
 
 function makeSession(extra: Record<string, unknown> = {}) {
   const host = {
@@ -90,11 +129,13 @@ it('opens the section Trash from the Pages sidebar and restores a page with what
   let view!: ReturnType<typeof render>;
   await act(async () => {
     view = render(
-      <Provider store={createStore()}>
-        <CollabDocsUIProvider session={session}>
-          <CollabSidebar sectionTitle="Team" />
-        </CollabDocsUIProvider>
-      </Provider>,
+      withEnglish(
+        <Provider store={createStore()}>
+          <CollabDocsUIProvider session={session}>
+            <CollabSidebar sectionTitle="Team" />
+          </CollabDocsUIProvider>
+        </Provider>,
+      ),
     );
   });
 
@@ -123,11 +164,13 @@ it('runs a page header request with the row menu writes: Trash, Rename, and a wa
   const session = makeSession({ trashDocument });
   const onHandled = vi.fn();
   const sidebar = (request: CollabPageActionRequest | null) => (
-    <Provider store={createStore()}>
-      <CollabDocsUIProvider session={session}>
-        <CollabSidebar sectionTitle="Team" pageActionRequest={request} onPageActionHandled={onHandled} />
-      </CollabDocsUIProvider>
-    </Provider>
+    withEnglish(
+      <Provider store={createStore()}>
+        <CollabDocsUIProvider session={session}>
+          <CollabSidebar sectionTitle="Team" pageActionRequest={request} onPageActionHandled={onHandled} />
+        </CollabDocsUIProvider>
+      </Provider>,
+    )
   );
   let view!: ReturnType<typeof render>;
   await act(async () => { view = render(sidebar({ pageId: 'live', action: 'trash' })); });

@@ -1,11 +1,24 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { createI18nInstance } from "@nimbalyst/i18n/core";
 
 import {
+  formatFolderShareFileWarnings,
   orderCandidatesByEmbedDependency,
   reportFolderShareOutcome,
 } from "../folderSharePlan";
 import type { FolderShareCandidate } from "../folderShareCandidates";
+
+let t: Awaited<ReturnType<typeof createI18nInstance>>["t"];
+let tJa: Awaited<ReturnType<typeof createI18nInstance>>["t"];
+beforeAll(async () => {
+  const [english, japanese] = await Promise.all([
+    createI18nInstance("en"),
+    createI18nInstance("ja"),
+  ]);
+  t = english.getFixedT("en", "collabSidebar");
+  tJa = japanese.getFixedT("ja", "collabSidebar");
+});
 
 function candidate(relativePath: string): FolderShareCandidate {
   const lastSlash = relativePath.lastIndexOf("/");
@@ -78,9 +91,21 @@ describe("reportFolderShareOutcome", () => {
     return { showError: vi.fn(), showWarning: vi.fn(), showInfo: vi.fn() };
   }
 
+  it("formats degraded file-share results in the selected locale", () => {
+    expect(formatFolderShareFileWarnings({
+      linkedDocumentFailures: 2,
+      attachmentFailures: 1,
+      attachmentsUnavailable: false,
+    }, tJa)).toEqual([
+      "リンク先ドキュメント2件を共有できず、ローカルリンクのままです",
+      "添付ファイル1件をアップロードできませんでした",
+    ]);
+  });
+
   it("warns rather than reporting plain success when some files were left behind", () => {
     const notify = notifiers();
     reportFolderShareOutcome({
+      t,
       folderName: "design",
       sharedFolderPath: "Team/design",
       sharedCount: 9,
@@ -105,6 +130,7 @@ describe("reportFolderShareOutcome", () => {
   it("reports plain success only when nothing was skipped, failed, or degraded", () => {
     const notify = notifiers();
     reportFolderShareOutcome({
+      t,
       folderName: "design",
       sharedFolderPath: "Team/design",
       sharedCount: 3,
@@ -122,6 +148,7 @@ describe("reportFolderShareOutcome", () => {
   it("errors when nothing landed at all", () => {
     const notify = notifiers();
     reportFolderShareOutcome({
+      t,
       folderName: "design",
       sharedFolderPath: "",
       sharedCount: 0,
@@ -138,5 +165,24 @@ describe("reportFolderShareOutcome", () => {
     expect(notify.showInfo).not.toHaveBeenCalled();
     expect(notify.showWarning).not.toHaveBeenCalled();
     expect(notify.showError.mock.calls[0][0]).toBe("Nothing was shared");
+  });
+
+  it("reports a successful share in Japanese when the Japanese translator is provided", () => {
+    const notify = notifiers();
+    reportFolderShareOutcome({
+      t: tJa,
+      folderName: "design",
+      sharedFolderPath: "Team/design",
+      sharedCount: 1,
+      skippedCount: 0,
+      failures: [],
+      warnings: [],
+      skipped: [],
+      ...notify,
+    });
+
+    expect(notify.showInfo.mock.calls[0][0]).toBe("フォルダーをチームに共有しました");
+    expect(notify.showInfo.mock.calls[0][1]).toContain("「design」からTeam/designへ");
+    expect(notify.showInfo.mock.calls[0][1]).not.toContain("Folder shared");
   });
 });

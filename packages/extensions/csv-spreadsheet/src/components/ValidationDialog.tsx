@@ -8,15 +8,16 @@ import { useEffect, useState } from 'react';
 import type { CellColor } from '../types';
 import type { ListOption, ValidationMode, ValidationRule } from '../validation/types';
 import { parseListOptions } from '../validation/entry';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 type Kind = ValidationRule['kind'];
 
-const KINDS: readonly { kind: Kind; label: string }[] = [
-  { kind: 'list', label: 'Dropdown' },
-  { kind: 'checkbox', label: 'Checkbox' },
-  { kind: 'numberRange', label: 'Number between' },
-  { kind: 'dateRange', label: 'Date between' },
-  { kind: 'textLength', label: 'Text length' },
+const KINDS: readonly { kind: Kind; key: string }[] = [
+  { kind: 'list', key: 'spreadsheet_ui.validation.kind_list' },
+  { kind: 'checkbox', key: 'spreadsheet_ui.validation.kind_checkbox' },
+  { kind: 'numberRange', key: 'spreadsheet_ui.validation.kind_number_range' },
+  { kind: 'dateRange', key: 'spreadsheet_ui.validation.kind_date_range' },
+  { kind: 'textLength', key: 'spreadsheet_ui.validation.kind_text_length' },
 ];
 const CHIP_COLORS: readonly CellColor[] = ['default', 'green', 'blue', 'yellow', 'orange', 'red', 'purple', 'gray'];
 
@@ -35,6 +36,7 @@ export function ValidationDialog({ isOpen, rangeLabel, current, onSave, onClose 
   onSave: (rule: ValidationRule | null) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('editor');
   const [kind, setKind] = useState<Kind>('list');
   const [mode, setMode] = useState<ValidationMode>('warn');
   const [optionsText, setOptionsText] = useState('');
@@ -85,19 +87,19 @@ export function ValidationDialog({ isOpen, rangeLabel, current, onSave, onClose 
         onKeyDown={(event) => { if (event.key === 'Escape') onClose(); }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-nim">
-          <h3 className="m-0 text-base font-semibold text-nim">Data validation {rangeLabel}</h3>
+          <h3 className="m-0 text-base font-semibold text-nim">{t('spreadsheet_ui.validation.title', { range: rangeLabel })}</h3>
           <button className="bg-none border-none text-xl text-nim-muted cursor-pointer p-0 leading-none hover:text-nim" onClick={onClose}>&times;</button>
         </div>
         <div className="px-5 py-4 flex flex-col gap-3">
           <label className="flex flex-col gap-1">
-            <span className={LABEL}>Criteria</span>
+            <span className={LABEL}>{t('spreadsheet_ui.validation.criteria')}</span>
             <select className={FIELD} value={kind} onChange={(event) => setKind(event.target.value as Kind)} data-validation-field="kind">
-              {KINDS.map((option) => <option key={option.kind} value={option.kind}>{option.label}</option>)}
+              {KINDS.map((option) => <option key={option.kind} value={option.kind}>{t(option.key)}</option>)}
             </select>
           </label>
           {kind === 'list' && (
             <label className="flex flex-col gap-1">
-              <span className={LABEL}>Options, one per line</span>
+              <span className={LABEL}>{t('spreadsheet_ui.validation.options_per_line')}</span>
               <textarea className={`${FIELD} min-h-[80px] font-mono`} value={optionsText} data-validation-field="options"
                 onChange={(event) => setOptionsText(event.target.value)} />
               {options.length > 0 && (
@@ -105,9 +107,9 @@ export function ValidationDialog({ isOpen, rangeLabel, current, onSave, onClose 
                   {options.map((value) => (
                     <div key={value} className="flex items-center justify-between gap-2 text-[12px] text-nim">
                       <span className="truncate">{value}</span>
-                      <select className={FIELD} value={colors[value] ?? 'default'} aria-label={`Color for ${value}`}
+                      <select className={FIELD} value={colors[value] ?? 'default'} aria-label={t('spreadsheet_ui.validation.color_for', { value })}
                         onChange={(event) => setColors((prev) => ({ ...prev, [value]: event.target.value as CellColor }))}>
-                        {CHIP_COLORS.map((color) => <option key={color} value={color}>{color === 'default' ? 'Neutral' : color}</option>)}
+                        {CHIP_COLORS.map((color) => <option key={color} value={color}>{color === 'default' ? t('spreadsheet_ui.validation.neutral') : color}</option>)}
                       </select>
                     </div>
                   ))}
@@ -118,36 +120,36 @@ export function ValidationDialog({ isOpen, rangeLabel, current, onSave, onClose 
           {(kind === 'numberRange' || kind === 'textLength' || kind === 'dateRange') && (
             <div className="flex gap-2">
               <label className="flex flex-col gap-1 flex-1">
-                <span className={LABEL}>{kind === 'textLength' ? 'Min length' : 'Min'}</span>
+                <span className={LABEL}>{kind === 'textLength' ? t('spreadsheet_ui.validation.min_length') : t('spreadsheet_ui.validation.min')}</span>
                 <input className={FIELD} type={kind === 'dateRange' ? 'date' : 'number'} value={min} onChange={(event) => setMin(event.target.value)} />
               </label>
               <label className="flex flex-col gap-1 flex-1">
-                <span className={LABEL}>{kind === 'textLength' ? 'Max length' : 'Max'}</span>
+                <span className={LABEL}>{kind === 'textLength' ? t('spreadsheet_ui.validation.max_length') : t('spreadsheet_ui.validation.max')}</span>
                 <input className={FIELD} type={kind === 'dateRange' ? 'date' : 'number'} value={max} onChange={(event) => setMax(event.target.value)} />
               </label>
             </div>
           )}
           <fieldset className="flex flex-col gap-1 border-none p-0 m-0">
-            <span className={LABEL}>If the data is invalid</span>
+            <span className={LABEL}>{t('spreadsheet_ui.validation.if_invalid')}</span>
             <label className="flex items-center gap-2 text-[13px] text-nim">
-              <input type="radio" checked={mode === 'warn'} onChange={() => setMode('warn')} /> Show a warning
+              <input type="radio" checked={mode === 'warn'} onChange={() => setMode('warn')} /> {t('spreadsheet_ui.validation.warn')}
             </label>
             <label className="flex items-center gap-2 text-[13px] text-nim">
-              <input type="radio" checked={mode === 'reject'} onChange={() => setMode('reject')} data-validation-field="reject" /> Reject the input
+              <input type="radio" checked={mode === 'reject'} onChange={() => setMode('reject')} data-validation-field="reject" /> {t('spreadsheet_ui.validation.reject')}
             </label>
           </fieldset>
           <label className="flex flex-col gap-1">
-            <span className={LABEL}>Help text (optional)</span>
+            <span className={LABEL}>{t('spreadsheet_ui.validation.help_text')}</span>
             <input className={FIELD} value={message} onChange={(event) => setMessage(event.target.value)} />
           </label>
         </div>
         <div className="flex justify-between gap-2 px-5 py-4 border-t border-nim">
           <button className="px-3 py-2 text-sm rounded cursor-pointer bg-transparent border border-nim text-nim-muted hover:bg-nim-hover disabled:opacity-40"
-            disabled={!current} onClick={() => { onSave(null); onClose(); }}>Remove rule</button>
+            disabled={!current} onClick={() => { onSave(null); onClose(); }}>{t('spreadsheet_ui.validation.remove_rule')}</button>
           <div className="flex gap-2">
-            <button className="px-4 py-2 text-sm font-medium rounded cursor-pointer bg-nim-secondary border border-nim text-nim hover:bg-nim-hover" onClick={onClose}>Cancel</button>
+            <button className="px-4 py-2 text-sm font-medium rounded cursor-pointer bg-nim-secondary border border-nim text-nim hover:bg-nim-hover" onClick={onClose}>{t('spreadsheet_ui.validation.cancel')}</button>
             <button className="px-4 py-2 text-sm font-medium rounded cursor-pointer bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:opacity-90 disabled:opacity-40"
-              disabled={!rule} data-validation-field="save" onClick={() => { onSave(rule); onClose(); }}>Done</button>
+              disabled={!rule} data-validation-field="save" onClick={() => { onSave(rule); onClose(); }}>{t('spreadsheet_ui.validation.done')}</button>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ import type { LexicalEditor } from 'lexical';
 import { ensureTypePageDocument } from '../../services/collaborativeDocumentCreationOrchestrator';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { atom, useAtom, useAtomValue, useSetAtom, useStore, type Atom } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CollabOpenOptions, CollabScope } from '@nimbalyst/collab-client/core';
 import type { SharedDocument } from '@nimbalyst/collab-client/docs';
 import { DESKTOP_TRACKER_UI_CAPABILITIES, TrackersUIProvider } from '@nimbalyst/collab-client/trackers-ui';
@@ -92,6 +93,7 @@ export interface TypePageTabProps {
 }
 
 export const TypePageTab: React.FC<TypePageTabProps> = ({ typeId, workspacePath, onOpenItem }) => {
+  const { t } = useTranslation('tracker');
   const store = useStore();
   const identity = useDesktopTrackerIdentity(workspacePath);
   const teamMembers = useTrackerTeamMembers(workspacePath);
@@ -153,7 +155,7 @@ export const TypePageTab: React.FC<TypePageTabProps> = ({ typeId, workspacePath,
     <div className="type-page-tab tracker-page-view flex h-full min-h-0 flex-col overflow-hidden bg-nim" data-testid="type-page-tab" data-type-id={typeId}>
       <PageHeaderBar
         testId="type-page-header-bar"
-        section={lane === 'personal' ? 'Personal' : null}
+        section={lane === 'personal' ? t('pages_types.personal') : null}
         path={crumbPath}
         title={typeName}
         titleIcon={model?.icon || 'table'}
@@ -174,15 +176,15 @@ export const TypePageTab: React.FC<TypePageTabProps> = ({ typeId, workspacePath,
             <div className="tracker-page-view-props flex flex-wrap items-center gap-x-[18px] gap-y-1.5 border-b border-nim pb-3 text-xs" data-testid="type-page-props">
               <span className="type-page-tab-type-chip inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium">
                 <MaterialSymbol icon="table" size={13} />
-                Type
+                {t('pages_types.type')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="text-nim-faint">Pages</span>
+                <span className="text-nim-faint">{t('pages_types.pages')}</span>
                 <span className="text-nim">{itemCount}</span>
               </span>
               {fieldLabels.length > 0 && (
                 <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <span className="text-nim-faint">Fields</span>
+                  <span className="text-nim-faint">{t('pages_types.fields')}</span>
                   <span className="truncate text-nim">{fieldLabels.join(', ')}</span>
                 </span>
               )}
@@ -206,14 +208,14 @@ export const TypePageTab: React.FC<TypePageTabProps> = ({ typeId, workspacePath,
               viewsController={viewsController}
               viewScope={lane === 'personal' ? 'local' : scope?.indexConfig.teamProjectId ? { orgId: scope.orgId, projectId: scope.indexConfig.teamProjectId } : undefined}
               onPrepareViewsDocument={async () => {
-                if (!scope) throw new Error('The page is still opening.');
+            if (!scope) throw new Error(t('pages_types.page_still_opening'));
                 await ensureTypePageDocument({ scope, typeId, typeName, parentFolderId });
               }}
               typeId={typeId}
               temporaryView={scope ? temporaryView : null}
               onClearTemporaryView={() => setTemporaryView(null)}
               typeLabel={typeName}
-              rootLabel={lane === 'personal' ? 'Personal' : 'Team'}
+              rootLabel={t(lane === 'personal' ? 'pages_types.personal' : 'pages_types.team')}
               itemPlacements={itemPlacements}
               pages={pages}
               itemTitle={itemTitle}

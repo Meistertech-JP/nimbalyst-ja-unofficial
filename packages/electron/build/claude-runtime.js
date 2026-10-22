@@ -13,7 +13,10 @@ function locations(resourcesDir, platform, arch) {
 function validateClaudeRuntime(resourcesDir, platform, arch) {
   const { legacy, destination, manifest } = locations(resourcesDir, platform, arch);
   const stat = fs.lstatSync(destination);
-  if (!stat.isFile() || stat.size === 0 || (platform !== 'win32' && !(stat.mode & 0o111))) {
+  // Windows does not expose POSIX execute bits through stat/chmod. Only enforce
+  // the packaged mode bit on hosts that can represent it; native macOS/Linux
+  // packaging still validates the executable permission.
+  if (!stat.isFile() || stat.size === 0 || (process.platform !== 'win32' && platform !== 'win32' && !(stat.mode & 0o111))) {
     throw new Error(`Invalid packaged Claude executable: ${destination}`);
   }
   if (fs.existsSync(legacy)) throw new Error(`#1476: packaged Claude executable remains at ${legacy}`);

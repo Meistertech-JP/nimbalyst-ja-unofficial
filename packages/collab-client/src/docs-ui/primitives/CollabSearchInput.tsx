@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 /**
  * The one text-filter control shared by every collab surface that narrows a
@@ -27,6 +28,7 @@ export function CollabSearchInput({
   className?: string;
   autoFocus?: boolean;
 }) {
+  const { t } = useTranslation('common');
   const accessibleName = label ?? placeholder;
   const hasValue = value.trim().length > 0;
   return (
@@ -45,8 +47,8 @@ export function CollabSearchInput({
           type="button"
           className="collab-search-input-clear absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded text-[var(--nim-text-muted)] bg-transparent border-none cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]"
           onClick={() => onChange('')}
-          aria-label={`Clear ${accessibleName.toLowerCase()}`}
-          title="Clear search"
+          aria-label={t('collab.clear_search')}
+          title={t('collab.clear_search')}
         >
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

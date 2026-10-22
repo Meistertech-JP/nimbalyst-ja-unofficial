@@ -8,6 +8,7 @@
  */
 
 import React, { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
@@ -124,6 +125,7 @@ export function TrackerListView({
   stacked = false,
   showType = true,
 }: TrackerListViewProps) {
+  const { t } = useTranslation('tracker');
   // Cached rows may arrive before their schema. Track the registry's existing
   // change signal without requiring a provider for this presentational leaf.
   const getSchemaNames = useCallback(() => JSON.stringify(
@@ -139,7 +141,7 @@ export function TrackerListView({
     return (
       <TrackerSurfaceMessage
         icon="checklist"
-        message="Loading tracker items..."
+        message={t('table.loading')}
         testId="tracker-list-loading"
       />
     );
@@ -149,8 +151,8 @@ export function TrackerListView({
     return (
       <TrackerSurfaceMessage
         icon="checklist"
-        message="No items to display"
-        hint="Nothing in this tracker matches the current view."
+        message={t('kanban.no_items')}
+        hint={t('list.no_items_current_view')}
         testId="tracker-list-empty"
       />
     );

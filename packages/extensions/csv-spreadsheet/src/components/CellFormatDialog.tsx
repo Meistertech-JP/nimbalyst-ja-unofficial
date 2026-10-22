@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { CellAlignment, CellColor, CellStyle, HexColor } from '../types';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 interface CellFormatDialogProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export function CellFormatDialog({
   onSave,
   onClose,
 }: CellFormatDialogProps) {
+  const { t } = useTranslation('editor');
   const [bold, setBold] = useState(false);
   const [italic, setItalic] = useState(false);
   const [underline, setUnderline] = useState(false);
@@ -86,10 +88,10 @@ export function CellFormatDialog({
   if (!isOpen) return null;
 
   const toggles: [string, boolean, (next: boolean) => void][] = [
-    ['Bold', bold, setBold],
-    ['Italic', italic, setItalic],
-    ['Underline', underline, setUnderline],
-    ['Strikethrough', strikethrough, setStrikethrough],
+    ['bold', bold, setBold],
+    ['italic', italic, setItalic],
+    ['underline', underline, setUnderline],
+    ['strikethrough', strikethrough, setStrikethrough],
   ];
 
   return (
@@ -100,7 +102,7 @@ export function CellFormatDialog({
         onKeyDown={handleKeyDown}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-nim">
-          <h3 className="m-0 text-base font-semibold text-nim">Format Cells {rangeLabel}</h3>
+          <h3 className="m-0 text-base font-semibold text-nim">{t('spreadsheet_ui.cell_format.title', { range: rangeLabel })}</h3>
           <button className="bg-none border-none text-xl text-nim-muted cursor-pointer p-0 leading-none hover:text-nim" onClick={onClose}>
             &times;
           </button>
@@ -116,13 +118,13 @@ export function CellFormatDialog({
                   onChange={(event) => set(event.target.checked)}
                   className="w-4 h-4 accent-[var(--nim-primary)]"
                 />
-                {label}
+                {t(`spreadsheet_ui.toolbar.${label}`)}
               </label>
             ))}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={LABEL_CLASS}>Text color</label>
+            <label className={LABEL_CLASS}>{t('spreadsheet_ui.cell_format.text_color')}</label>
             <div className="flex items-center gap-2">
               <span className={`csv-swatch ${swatchClass(textColor)}`} style={swatchStyle(textColor)} />
               <select
@@ -131,7 +133,7 @@ export function CellFormatDialog({
                 className={`${SELECT_CLASS} flex-1`}
               >
                 {COLORS.map((color) => (
-                  <option key={color} value={color}>{color === 'default' ? 'Default' : color}</option>
+                  <option key={color} value={color}>{color === 'default' ? t('spreadsheet_ui.cell_format.default') : t(`spreadsheet_ui.cell_format.color_${color}`)}</option>
                 ))}
                 {textColor.startsWith('#') && <option value={textColor}>{textColor}</option>}
               </select>
@@ -139,7 +141,7 @@ export function CellFormatDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={LABEL_CLASS}>Fill</label>
+            <label className={LABEL_CLASS}>{t('spreadsheet_ui.cell_format.fill')}</label>
             <div className="flex items-center gap-2">
               <span className={`csv-swatch ${swatchClass(fillColor)}`} style={swatchStyle(fillColor)} />
               <select
@@ -148,7 +150,7 @@ export function CellFormatDialog({
                 className={`${SELECT_CLASS} flex-1`}
               >
                 {COLORS.map((color) => (
-                  <option key={color} value={color}>{color === 'default' ? 'None' : color}</option>
+                  <option key={color} value={color}>{color === 'default' ? t('spreadsheet_ui.cell_format.none') : t(`spreadsheet_ui.cell_format.color_${color}`)}</option>
                 ))}
                 {fillColor.startsWith('#') && <option value={fillColor}>{fillColor}</option>}
               </select>
@@ -156,7 +158,7 @@ export function CellFormatDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={LABEL_CLASS}>Alignment</label>
+            <label className={LABEL_CLASS}>{t('spreadsheet_ui.cell_format.alignment')}</label>
             <select
               value={align}
               onChange={(event) => setAlign(event.target.value as CellAlignment | 'auto')}
@@ -164,7 +166,7 @@ export function CellFormatDialog({
             >
               {ALIGNMENTS.map((option) => (
                 <option key={option} value={option}>
-                  {option === 'auto' ? 'Automatic' : option.charAt(0).toUpperCase() + option.slice(1)}
+                  {option === 'auto' ? t('spreadsheet_ui.cell_format.automatic') : t(`spreadsheet_ui.toolbar.align_${option}`)}
                 </option>
               ))}
             </select>
@@ -176,13 +178,13 @@ export function CellFormatDialog({
             className="px-4 py-2 text-sm font-medium rounded cursor-pointer bg-nim-secondary border border-nim text-nim hover:bg-nim-hover"
             onClick={onClose}
           >
-            Cancel
+            {t('spreadsheet_ui.cell_format.cancel')}
           </button>
           <button
             className="px-4 py-2 text-sm font-medium rounded cursor-pointer bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:opacity-90"
             onClick={handleSave}
           >
-            Apply
+            {t('spreadsheet_ui.cell_format.apply')}
           </button>
         </div>
       </div>

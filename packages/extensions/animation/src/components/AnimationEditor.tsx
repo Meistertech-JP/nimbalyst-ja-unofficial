@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import {
   parseDocument,
   createEmptyDocument,
@@ -35,6 +36,7 @@ import {
   totalDuration,
 } from "../core/timeline";
 import type { AnimDocument } from "../core/types";
+import { sceneAriaLabel } from "../render/scene";
 import { FALLBACK_TOKENS } from "../render/stageCss";
 import { buildStandaloneDocument } from "../render/standalone";
 import {
@@ -128,6 +130,11 @@ export interface AnimationEditorProps {
 const MAX_UNDO = 60;
 
 export function AnimationEditor({ host }: AnimationEditorProps) {
+  const { t } = useTranslation("extensions");
+  const localizedSceneAriaLabel = useCallback((targetDoc: AnimDocument) => sceneAriaLabel(targetDoc, {
+    diagram: (partCount, stepCount) => t("animation.scene_aria_label", { partCount, stepCount }),
+    steps: (captions) => t("animation.scene_steps", { captions }),
+  }), [t]);
   const [doc, setDoc] = useState<AnimDocument>(createEmptyDocument);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -190,6 +197,8 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
         const problem: Problem = {
           level: "warning",
           path: "parts",
+          messageKey: "animation.issue.html_file_filesystem_unavailable",
+          messageParams: { count: refs.length },
           message: `This view has no filesystem access, so ${refs.length} htmlFile partial${
             refs.length === 1 ? "" : "s"
           } could not be loaded.`,
@@ -198,7 +207,7 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
         setProblems((previous) => [...previous, problem]);
         return;
       }
-      const { assets: loaded, errors } = await loadHtmlAssets(
+      const { assets: loaded, issues } = await loadHtmlAssets(
         next,
         host.filePath,
         async (path) => {
@@ -210,17 +219,18 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
         }
       );
       setAssets(loaded);
-      if (errors.length > 0) {
-        const extra: Problem[] = errors.map((message) => ({
+      if (issues.length > 0) {
+        const extra: Problem[] = issues.map((issue) => ({
           level: "warning",
           path: "parts",
-          message,
+          ...issue,
+          message: t(issue.messageKey, issue.messageParams),
         }));
         problemsRef.current = [...problemsRef.current, ...extra];
         setProblems((previous) => [...previous, ...extra]);
       }
     },
-    [host]
+    [host, t]
   );
 
   const ingest = useCallback(
@@ -251,6 +261,8 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
           {
             level: "error",
             path: "",
+            messageKey: "animation.issue.file_read_failed",
+            messageParams: { reason: String(err) },
             message: `Could not read the file: ${String(err)}`,
           },
         ];
@@ -286,18 +298,18 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
   // ---- saving ------------------------------------------------------------
   const save = useCallback(async () => {
     if (readOnlyRef.current) {
-      throw new Error("Cannot save a read-only animation.");
+      throw new Error(t("animation.save_read_only"));
     }
     if (problemsRef.current.some((problem) => problem.level === "error")) {
       throw new Error(
-        "Cannot save an animation while the source has parse errors."
+        t("animation.save_parse_errors")
       );
     }
     const text = serializeDocument(docRef.current, extrasRef.current);
     lastSavedTextRef.current = text;
     await host.saveContent(text);
     host.setDirty(false);
-  }, [host]);
+  }, [host, t]);
 
   useEffect(() => host.onSaveRequested(save), [host, save]);
 
@@ -311,11 +323,11 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
   const exportHtml = useCallback(async () => {
     const fs = host.fs;
     if (!fs) {
-      setExportNotice({ ok: false, text: "Export needs filesystem access." });
+      setExportNotice({ ok: false, text: t("animation.filesystem_access_required") });
       return;
     }
     if (problemsRef.current.some((problem) => problem.level === "error")) {
-      setExportNotice({ ok: false, text: "Fix parse errors before exporting." });
+      setExportNotice({ ok: false, text: t("animation.fix_parse_errors_before_export") });
       return;
     }
 
@@ -326,6 +338,7 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
       const html = buildStandaloneDocument(docRef.current, FALLBACK_TOKENS, {
         title: host.fileName.replace(/(\.anim)?\.json$/i, ""),
         assets: assetsRef.current,
+        sceneAriaLabel: localizedSceneAriaLabel(docRef.current),
       });
       // Read first so an existing export is overwritten rather than rejected by
       // the compare-and-swap; `null` means "must not exist yet".
@@ -342,14 +355,16 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
         ],
       });
       await revealExport(outputPath);
-      setExportNotice({ ok: true, text: `Exported ${name}` });
+      setExportNotice({ ok: true, text: t("animation.exported", { name }) });
     } catch (error) {
       setExportNotice({
         ok: false,
-        text: error instanceof Error ? error.message : "Export failed.",
+        text: error instanceof Error
+          ? t("animation.export_failed_reason", { reason: error.message })
+          : t("animation.export_failed"),
       });
     }
-  }, [host]);
+  }, [host, t, localizedSceneAriaLabel]);
 
   /**
    * Record the animation to a file. GIF and MP4 differ only in the channel and
@@ -362,14 +377,14 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
       if (!invoke) {
         setExportNotice({
           ok: false,
-          text: `${label} export needs the desktop app.`,
+          text: t("animation.export_needs_desktop", { format: label }),
         });
         return;
       }
       if (problemsRef.current.some((problem) => problem.level === "error")) {
         setExportNotice({
           ok: false,
-          text: "Fix parse errors before exporting.",
+          text: t("animation.fix_parse_errors_before_export"),
         });
         return;
       }
@@ -380,7 +395,7 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
       const name = outputPath.split(/[\\/]/).pop() ?? outputPath;
 
       // Recording runs in real time, so say so rather than looking hung.
-      setExportNotice({ ok: true, text: `Recording ${name}…` });
+      setExportNotice({ ok: true, text: t("animation.recording", { name }) });
       try {
         const response = await invoke(
           format === "gif" ? "export:animationGif" : "export:animationMp4",
@@ -389,6 +404,7 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
               title: host.fileName.replace(/(\.anim)?\.json$/i, ""),
               captureHooks: true,
               assets: assetsRef.current,
+              sceneAriaLabel: localizedSceneAriaLabel(doc),
             }),
             outputPath,
             width: doc.stage.width,
@@ -399,21 +415,24 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
         if (!response?.success) {
           setExportNotice({
             ok: false,
-            text: response?.error ?? `${label} export failed.`,
+            text: t("animation.export_failed_reason", {
+              reason: response?.error ?? t("animation.export_failed_format", { format: label }),
+            }),
           });
           return;
         }
         await revealExport(outputPath);
-        setExportNotice({ ok: true, text: `Exported ${name}` });
+        setExportNotice({ ok: true, text: t("animation.exported", { name }) });
       } catch (error) {
         setExportNotice({
           ok: false,
-          text:
-            error instanceof Error ? error.message : `${label} export failed.`,
+          text: error instanceof Error
+            ? t("animation.export_failed_reason", { reason: error.message })
+            : t("animation.export_failed_format", { format: label }),
         });
       }
     },
-    [host]
+    [host, t, localizedSceneAriaLabel]
   );
 
   // Registered once, reading the document through refs: re-registering on every
@@ -424,21 +443,21 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
 
     host.registerMenuItems([
       {
-        label: "Export as HTML…",
+        label: t("animation.export_as_html"),
         icon: "download",
         onClick: () => {
           void exportHtml();
         },
       },
       {
-        label: "Export as MP4…",
+        label: t("animation.export_as_mp4"),
         icon: "movie",
         onClick: () => {
           void exportRecording("mp4");
         },
       },
       {
-        label: "Export as GIF…",
+        label: t("animation.export_as_gif"),
         icon: "gif_box",
         onClick: () => {
           void exportRecording("gif");
@@ -638,7 +657,7 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
 
   if (!loaded) {
     return (
-      <div className="anim-editor anim-editor-loading">Loading animation…</div>
+      <div className="anim-editor anim-editor-loading">{t("animation.loading")}</div>
     );
   }
 
@@ -661,17 +680,17 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
         {errors.length > 0 ? (
           <span
             className="anim-badge anim-badge-error"
-            title={errors.map((e) => `${e.path}: ${e.message}`).join("\n")}
+            title={errors.map((e) => `${e.path}: ${e.messageKey ? t(e.messageKey, e.messageParams) : e.message}`).join("\n")}
           >
-            {errors.length} error{errors.length === 1 ? "" : "s"}
+            {t("animation.error_count", { count: errors.length })}
           </span>
         ) : null}
         {warnings.length > 0 ? (
           <span
             className="anim-badge anim-badge-warning"
-            title={warnings.map((w) => `${w.path}: ${w.message}`).join("\n")}
+            title={warnings.map((w) => `${w.path}: ${w.messageKey ? t(w.messageKey, w.messageParams) : w.message}`).join("\n")}
           >
-            {warnings.length} warning{warnings.length === 1 ? "" : "s"}
+            {t("animation.warning_count", { count: warnings.length })}
           </span>
         ) : null}
       </div>
@@ -687,6 +706,7 @@ export function AnimationEditor({ host }: AnimationEditorProps) {
             selectedPartId={selectedPartId}
             tokens={FALLBACK_TOKENS}
             assets={assets}
+            sceneAriaLabel={localizedSceneAriaLabel(doc)}
             onSelectPart={setSelectedPartId}
           />
         </div>

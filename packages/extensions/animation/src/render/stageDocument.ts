@@ -22,7 +22,8 @@ import { buildStageCss, resolveStageTheme, type ThemeTokens } from "./stageCss";
 export function buildStageDocument(
   doc: AnimDocument,
   tokens: ThemeTokens,
-  assets?: HtmlAssets
+  assets?: HtmlAssets,
+  ariaLabel?: string
 ): string {
   const theme = resolveStageTheme(doc.stage.theme, tokens);
   return `<!DOCTYPE html>
@@ -31,7 +32,7 @@ export function buildStageDocument(
     doc.stage.background,
     theme.custom
   )}</style></head>
-<body>${renderScene(doc, assets)}</body></html>`;
+<body>${renderScene(doc, assets, ariaLabel)}</body></html>`;
 }
 
 /** Write a fresh scene into the frame. Replaces whatever was there. */
@@ -39,12 +40,13 @@ export function writeStageDocument(
   frame: HTMLIFrameElement,
   doc: AnimDocument,
   tokens: ThemeTokens,
-  assets?: HtmlAssets
+  assets?: HtmlAssets,
+  ariaLabel?: string
 ): void {
   const frameDoc = frame.contentDocument;
   if (!frameDoc) return;
   frameDoc.open();
-  frameDoc.write(buildStageDocument(doc, tokens, assets));
+  frameDoc.write(buildStageDocument(doc, tokens, assets, ariaLabel));
   frameDoc.close();
 }
 

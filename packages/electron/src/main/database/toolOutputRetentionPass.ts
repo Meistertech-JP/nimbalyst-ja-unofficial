@@ -174,9 +174,15 @@ export interface ReclaimEstimate {
   probesTaken: number;
   /** True when the sample is too thin for the extrapolation to mean much. */
   lowConfidence: boolean;
-  /** Set whenever the number needs a caveat spoken out loud. */
-  note?: string;
+  /** Structured caveat text, localized by the renderer that presents it. */
+  note?: ReclaimEstimateNote;
 }
+
+export type ReclaimEstimateNote =
+  | { kind: 'no_eligible_rows' }
+  | { kind: 'sample_empty'; candidateRows: number }
+  | { kind: 'sample_floor'; sampledRows: number; coveragePct: string; candidateRows: number; probesTaken: number }
+  | { kind: 'thin_sample'; sampledRows: number; coveragePct: string; candidateRows: number };
 
 /** Id span counted per estimate chunk, so the worker yields while counting. */
 const ESTIMATE_COUNT_WINDOW = 200_000;
@@ -220,15 +226,14 @@ export function finalizeEstimate(raw: ReclaimEstimate): ReclaimEstimate {
   const { sampledRows, sampleBytesSaved, candidateRows } = raw;
 
   if (candidateRows === 0) {
-    return { ...raw, lowConfidence: false, note: 'No rows are old enough to reclaim.' };
+    return { ...raw, lowConfidence: false, note: { kind: 'no_eligible_rows' } };
   }
 
   if (sampledRows === 0) {
     return {
       ...raw,
       lowConfidence: true,
-      note: `Sampled no rows out of ${candidateRows.toLocaleString()} candidates, so nothing `
-        + 'can be concluded about how much is reclaimable.',
+      note: { kind: 'sample_empty', candidateRows },
     };
   }
 
@@ -239,9 +244,7 @@ export function finalizeEstimate(raw: ReclaimEstimate): ReclaimEstimate {
     return {
       ...raw,
       lowConfidence: true,
-      note: `The ${sampledRows.toLocaleString()} sampled rows (${coveragePct}% of `
-        + `${candidateRows.toLocaleString()} candidates, ${raw.probesTaken} probes) contained `
-        + 'nothing reclaimable. That is a floor, not a guarantee the rest is empty.',
+      note: { kind: 'sample_floor', sampledRows, coveragePct, candidateRows, probesTaken: raw.probesTaken },
     };
   }
 
@@ -249,8 +252,7 @@ export function finalizeEstimate(raw: ReclaimEstimate): ReclaimEstimate {
     ...raw,
     lowConfidence: thin,
     note: thin
-      ? `Based on only ${sampledRows.toLocaleString()} sampled rows (${coveragePct}% of `
-        + `${candidateRows.toLocaleString()} candidates); treat as a rough order of magnitude.`
+      ? { kind: 'thin_sample', sampledRows, coveragePct, candidateRows }
       : undefined,
   };
 }

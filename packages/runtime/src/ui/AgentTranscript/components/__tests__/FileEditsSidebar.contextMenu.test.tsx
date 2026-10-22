@@ -1,6 +1,8 @@
 import React from 'react';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeAll, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { FileEditsSidebar } from '../FileEditsSidebar';
 import type { FileEditSummary } from '../../types';
 
@@ -14,15 +16,30 @@ const fileEdits: FileEditSummary[] = [
   } as FileEditSummary,
 ];
 const originalNavigatorPlatform = navigator.platform;
+let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
-function renderSidebar() {
+beforeAll(async () => {
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
+});
+
+function renderSidebar(language: 'en' | 'ja' = 'en') {
   return render(
-    <FileEditsSidebar
-      fileEdits={fileEdits}
-      workspacePath="/workspace"
-      onCopyPath={vi.fn()}
-      onRevealInFinder={vi.fn()}
-    />
+    <UiLanguageProvider
+      i18n={language === 'en' ? englishI18n : japaneseI18n}
+      preference={language}
+      systemLocale="en-US"
+    >
+      <FileEditsSidebar
+        fileEdits={fileEdits}
+        workspacePath="/workspace"
+        onCopyPath={vi.fn()}
+        onRevealInFinder={vi.fn()}
+      />
+    </UiLanguageProvider>,
   );
 }
 
@@ -74,5 +91,16 @@ describe('FileEditsSidebar file browser label', () => {
     fireEvent.contextMenu(screen.getByText('app.ts'), { clientX: 120, clientY: 200 });
 
     screen.getByText(expectedLabel);
+  });
+
+  it('renders the context menu and platform label in Japanese', () => {
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'MacIntel' });
+    renderSidebar('ja');
+
+    fireEvent.contextMenu(screen.getByText('app.ts'), { clientX: 120, clientY: 200 });
+
+    screen.getByRole('menu', { name: 'ファイル操作' });
+    screen.getByText('パスをコピー');
+    screen.getByText('Finderで表示');
   });
 });

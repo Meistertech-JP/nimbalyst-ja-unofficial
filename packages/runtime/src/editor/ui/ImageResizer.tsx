@@ -10,6 +10,7 @@ import type {LexicalEditor} from 'lexical';
 import type {JSX} from 'react';
 
 import * as React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import BlockResizer from './BlockResizer';
 
@@ -35,6 +36,7 @@ export default function ImageResizer({
   showCaption: boolean;
   captionsEnabled: boolean;
 }): JSX.Element {
+  const { t } = useTranslation('editor');
   return (
     <BlockResizer
       editor={editor}
@@ -49,7 +51,7 @@ export default function ImageResizer({
           onClick={() => {
             setShowCaption(!showCaption);
           }}>
-          Add Caption
+          {t('shared_ui.add_caption')}
         </button>
       )}
     </BlockResizer>

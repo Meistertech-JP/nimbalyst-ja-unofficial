@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FieldDefinition, UrlFieldValue } from '@nimbalyst/tracker-schema';
 import { CustomSelect } from './CustomSelect';
 import { UserAvatar } from './UserAvatar';
@@ -125,6 +126,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
   citationHost,
   showLabel = true,
 }) => {
+  const { t } = useTranslation('tracker');
   const fieldId = `field-${field.name}`;
   // A field a label brought carries its property's own label.
   const label = (field as { displayLabel?: string }).displayLabel || formatFieldLabel(field.name);
@@ -251,7 +253,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
             className={`${inputClasses} min-h-[80px] resize-y`}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={field.required ? 'Required' : 'Optional'}
+            placeholder={field.required ? t('fields.required') : t('fields.optional')}
           />
         </div>
       );
@@ -263,7 +265,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
           <UserFieldInput
             value={value || ''}
             onChange={onChange}
-            placeholder={field.required ? 'Required' : 'Optional'}
+            placeholder={field.required ? t('fields.required') : t('fields.optional')}
             teamMembers={teamMembers}
           />
         </div>
@@ -279,7 +281,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
             className={inputClasses}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={field.required ? 'Required' : 'Optional'}
+            placeholder={field.required ? t('fields.required') : t('fields.optional')}
           />
         </div>
       );
@@ -323,7 +325,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
             id={fieldId}
             value={value}
             onChange={onChange}
-            placeholder={field.required ? 'Required' : 'https://...'}
+            placeholder={field.required ? t('fields.required') : 'https://...'}
           />
         </div>
       );
@@ -364,7 +366,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
       return (
         <div className={wrapperClasses}>
           {renderLabel()}
-          <React.Suspense fallback={<span className="citation-field-loading text-[12px] text-[var(--nim-text-muted)]">Loading citations...</span>}>
+          <React.Suspense fallback={<span className="citation-field-loading text-[12px] text-[var(--nim-text-muted)]">{t('fields.loading_citations')}</span>}>
             <CitationFieldEditor
               field={field}
               value={value}
@@ -402,6 +404,7 @@ const TagChipsInput: React.FC<{
   value: string[];
   onChange: (value: string[]) => void;
 }> = ({ value, onChange }) => {
+  const { t } = useTranslation('tracker');
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -453,7 +456,7 @@ const TagChipsInput: React.FC<{
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleAdd}
-        placeholder={value.length === 0 ? 'Add tag...' : ''}
+        placeholder={value.length === 0 ? t('fields.add_tag') : ''}
       />
     </div>
   );
@@ -469,6 +472,7 @@ const UserFieldInput: React.FC<{
   placeholder?: string;
   teamMembers?: TeamMemberOption[];
 }> = ({ value, onChange, placeholder, teamMembers }) => {
+  const { t } = useTranslation('tracker');
   const [showDropdown, setShowDropdown] = useState(false);
   const [filterText, setFilterText] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -519,7 +523,7 @@ const UserFieldInput: React.FC<{
           <button
             className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] p-0.5"
             onClick={() => { onChange(''); setFilterText(''); }}
-            title="Clear"
+            title={t('fields.clear')}
           >
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
@@ -578,6 +582,7 @@ const UrlFieldInput: React.FC<{
   onChange: (value: UrlFieldValue | undefined) => void;
   placeholder?: string;
 }> = ({ id, value, onChange, placeholder }) => {
+  const { t } = useTranslation('tracker');
   const normalized = normalizeUrlValue(value);
 
   const update = (next: UrlFieldValue) => {
@@ -612,7 +617,7 @@ const UrlFieldInput: React.FC<{
             target="_blank"
             rel="noopener noreferrer"
             className="text-[var(--nim-text-faint)] hover:text-[var(--nim-primary)] p-1"
-            title="Open link"
+            title={t('fields.open_link')}
           >
             <span className="material-symbols-outlined text-sm">open_in_new</span>
           </a>
@@ -623,7 +628,7 @@ const UrlFieldInput: React.FC<{
         className={`${inputClasses} text-[12px]`}
         value={normalized.label || ''}
         onChange={(e) => update({ ...normalized, label: e.target.value })}
-        placeholder="Display label (optional)"
+        placeholder={t('fields.display_label_optional')}
       />
     </div>
   );

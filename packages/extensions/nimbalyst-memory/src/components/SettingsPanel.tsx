@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SettingsPanelProps } from '@nimbalyst/runtime';
 import { isKeywordOnly, isSemanticProviderFailing } from '../capabilityResults';
+import { useMemoryText, type MemoryTextKey } from '../localization';
 
 interface IndexStatus {
   ready?: boolean;
@@ -85,17 +86,33 @@ interface SearchHit {
 }
 
 /** Display label + accent for each known source class (coverage breakdown). */
-const SOURCE_CLASS_META: Record<string, { label: string; color: string }> = {
-  plans: { label: 'plans', color: '#a78bfa' },
-  docs: { label: 'docs', color: '#4ade80' },
-  design: { label: 'design', color: '#60a5fa' },
-  facts: { label: 'voice-memory facts', color: '#f472b6' },
-  claude: { label: 'CLAUDE.md', color: '#fbbf24' },
+const SOURCE_CLASS_META: Record<string, { labelKey: MemoryTextKey; color: string }> = {
+  plans: { labelKey: 'plans', color: '#a78bfa' },
+  docs: { labelKey: 'docs', color: '#4ade80' },
+  design: { labelKey: 'design', color: '#60a5fa' },
+  facts: { labelKey: 'voiceMemoryFacts', color: '#f472b6' },
+  claude: { labelKey: 'claudeFile', color: '#fbbf24' },
 };
 const FALLBACK_COLOR = '#808080';
 
-function metaFor(cls: string): { label: string; color: string } {
-  return SOURCE_CLASS_META[cls] ?? { label: cls, color: FALLBACK_COLOR };
+function metaFor(cls: string, t: ReturnType<typeof useMemoryText>): { label: string; color: string } {
+  const known = SOURCE_CLASS_META[cls];
+  return known ? { label: t(known.labelKey), color: known.color } : { label: cls, color: FALLBACK_COLOR };
+}
+
+function modelNote(model: LocalEmbeddingModel, t: ReturnType<typeof useMemoryText>): string {
+  switch (model.id) {
+    case 'minilm':
+      return t('minilmNote');
+    case 'bge-small':
+      return t('bgeSmallNote');
+    case 'nomic':
+      return t('nomicNote');
+    case 'bge-m3':
+      return t('bgeM3Note');
+    default:
+      return model.note;
+  }
 }
 
 function formatBytes(n: number | undefined): string {
@@ -110,23 +127,24 @@ function formatBytes(n: number | undefined): string {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
 }
 
-function relativeTime(ms: number | null | undefined): string {
-  if (!ms) return 'never';
+function relativeTime(ms: number | null | undefined, t: ReturnType<typeof useMemoryText>): string {
+  if (!ms) return t('never');
   const diff = Date.now() - ms;
-  if (diff < 0) return 'just now';
+  if (diff < 0) return t('justNow');
   const s = Math.round(diff / 1000);
-  if (s < 60) return 'just now';
+  if (s < 60) return t('justNow');
   const m = Math.round(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t('minutesAgo', { count: m });
   const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return t('hoursAgo', { count: h });
   const d = Math.round(h / 24);
-  if (d < 30) return `${d}d ago`;
+  if (d < 30) return t('daysAgo', { count: d });
   const mo = Math.round(d / 30);
-  return `${mo}mo ago`;
+  return t('monthsAgo', { count: mo });
 }
 
 export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPanelProps) {
+  const t = useMemoryText();
   const isDark = theme === 'dark' || theme === 'crystal-dark';
   const muted = 'var(--nim-text-muted)';
 
@@ -257,7 +275,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
         ...(embeddingSource === 'local' ? { modelId: selectedLocalModel } : {}),
       })) as { ok?: boolean; error?: string };
       if (result?.ok === false) {
-        throw new Error(result.error || 'Could not change the embedding source.');
+        throw new Error(result.error || t('errorChangeEmbeddingSource'));
       }
       await Promise.all([refreshEmbeddingSettings(), refreshStatus()]);
     } catch (err) {
@@ -356,7 +374,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
       };
       if (res?.capability?.available === false) {
         setDistillNotice(
-          res.fallback?.hint ?? 'Add durable facts manually with the Add fact action.',
+          res.fallback?.hint ?? t('addFactsManually'),
         );
         return;
       }
@@ -441,24 +459,24 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
     embeddingSettings?.downloaded === true &&
     selectedLocalModel === embeddingSettings.selectedModelId;
   const activeEmbeddingLabel = (() => {
-    if (!embeddingSettings) return 'Checking…';
+    if (!embeddingSettings) return t('checking');
     if (embeddingSettings.activeMode === 'local') {
       const active = embeddingSettings.models.find(
         (model) => model.id === embeddingSettings.selectedModelId
       );
-      return active ? `On this device · ${active.repo}` : 'On this device';
+      return active ? `${t('onThisDevice')} · ${active.repo}` : t('onThisDevice');
     }
     if (embeddingSettings.activeMode === 'openai') {
-      return `OpenAI · ${status?.embedder?.model ?? 'configured model'}`;
+      return `OpenAI · ${status?.embedder?.model ?? t('configuredModel')}`;
     }
-    return 'Keyword search only';
+    return t('keywordSearchOnly');
   })();
   const breakdown = useMemo(
     () =>
       Object.entries(bySourceClass)
-        .map(([cls, n]) => ({ cls, n, ...metaFor(cls) }))
+        .map(([cls, n]) => ({ cls, n, ...metaFor(cls, t) }))
         .sort((a, b) => b.n - a.n),
-    [bySourceClass]
+    [bySourceClass, t]
   );
 
   const categories = useMemo(() => {
@@ -487,30 +505,23 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
       style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: 4, fontSize: 13 }}
     >
       <section style={SECTION}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Project knowledge</h3>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{t('projectKnowledge')}</h3>
         <p style={{ margin: 0, color: muted, lineHeight: 1.5 }}>
-          A local "project brain" that indexes your markdown into a rebuildable
-          shadow index and serves fast local keyword retrieval to the coding
-          agent and the voice agent. Semantic matching is added when an optional
-          provider is already available. The engine runs in the background and
-          refreshes as files change.
+          {t('projectKnowledgeDescription')}
         </p>
       </section>
 
       {!callBackendTool && (
         <p style={{ margin: 0, color: muted, lineHeight: 1.5 }}>
-          Live status is unavailable in this version of the host.
+          {t('liveStatusUnavailable')}
         </p>
       )}
 
       {/* ---------------- QUICK OPEN ---------------- */}
       <section style={SECTION}>
-        <h4 style={H4}>Memory search</h4>
+        <h4 style={H4}>{t('memorySearch')}</h4>
         <p style={{ margin: 0, color: muted, lineHeight: 1.5 }}>
-          With this extension enabled, Quick Open gains a <strong>Memory</strong>{' '}
-          tab that finds documents, trackers, and optional AI sessions by project
-          terms, and by meaning when semantic matching is available. Trackers are
-          cataloged automatically.
+          {t('memorySearchDescription')}
         </p>
         <label
           style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', lineHeight: 1.45 }}
@@ -523,11 +534,9 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
             style={{ marginTop: 2 }}
           />
           <span>
-            <span style={{ color: 'var(--nim-text)' }}>Also index AI sessions</span>
+            <span style={{ color: 'var(--nim-text)' }}>{t('indexAiSessions')}</span>
             <span style={{ display: 'block', color: muted, fontSize: 12 }}>
-              Makes past sessions findable by their titles, prompts, and replies
-              (not the full transcript). Off by default. Toggling on indexes your
-              existing sessions in the background.
+              {t('indexAiSessionsDescription')}
             </span>
           </span>
         </label>
@@ -537,10 +546,9 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
       <section style={SECTION}>
         <div style={HEAD}>
           <div>
-            <h4 style={H4}>Semantic matching</h4>
+            <h4 style={H4}>{t('semanticMatching')}</h4>
             <p style={{ margin: '4px 0 0', color: muted, fontSize: 12 }}>
-              Finds related ideas even when they use different words. Keyword
-              search remains available whichever option you choose.
+              {t('semanticMatchingDescription')}
             </p>
           </div>
           <span style={chipTone(embeddingSettings?.activeMode === 'sparse' ? 'idle' : 'ok')}>
@@ -554,7 +562,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
           disabled={!callBackendTool || loadingEmbeddingSettings || savingEmbeddingSettings}
           style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}
         >
-          <legend style={{ ...GROUP_LABEL, marginBottom: 8 }}>Create embeddings with</legend>
+          <legend style={{ ...GROUP_LABEL, marginBottom: 8 }}>{t('createEmbeddingsWith')}</legend>
           <label style={choiceStyle(embeddingSource === 'openai')}>
             <input
               type="radio"
@@ -566,8 +574,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
             <span>
               <strong style={{ color: 'var(--nim-text)', fontWeight: 600 }}>OpenAI</strong>
               <span style={CHOICE_DESCRIPTION}>
-                Uses the OpenAI key from AI Settings. If it is unavailable,
-                Memory continues with keyword search.
+                {t('openAiEmbeddingDescription')}
               </span>
             </span>
           </label>
@@ -587,9 +594,9 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
               onChange={() => setEmbeddingSource('local')}
             />
             <span>
-              <strong style={{ color: 'var(--nim-text)', fontWeight: 600 }}>On this device</strong>
+              <strong style={{ color: 'var(--nim-text)', fontWeight: 600 }}>{t('onThisDevice')}</strong>
               <span style={CHOICE_DESCRIPTION}>
-                Runs locally after a one-time model download. Text stays on this machine.
+                {t('localEmbeddingDescription')}
               </span>
             </span>
           </label>
@@ -598,7 +605,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
         {embeddingSource === 'local' && embeddingSettings && (
           <div style={{ ...CARD, gap: 8 }}>
             <label htmlFor="nimbalyst-memory-local-model" style={{ fontSize: 12, color: muted }}>
-              On-device model
+              {t('onDeviceModel')}
             </label>
             <select
               id="nimbalyst-memory-local-model"
@@ -610,13 +617,13 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
               {embeddingSettings.models.map((model) => (
                 <option key={model.id} value={model.id}>
                   {model.id} · {model.downloadSize}
-                  {model.recommended ? ' · Recommended' : ''}
+                  {model.recommended ? ` · ${t('recommended')}` : ''}
                 </option>
               ))}
             </select>
             {selectedModel && (
               <p style={{ margin: 0, color: muted, fontSize: 12, lineHeight: 1.5 }}>
-                {selectedModel.note} Download: {selectedModel.downloadSize}.
+                {modelNote(selectedModel, t)} {t('modelDownload', { size: selectedModel.downloadSize })}
               </p>
             )}
           </div>
@@ -632,14 +639,14 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
           >
             {savingEmbeddingSettings
               ? embeddingSource === 'local'
-                ? 'Downloading and switching…'
-                : 'Switching…'
+                ? t('downloadingAndSwitching')
+                : t('switching')
               : embeddingSource === 'local' && !selectedModelDownloaded
-                ? 'Download and use'
-                : 'Use this option'}
+                ? t('downloadAndUse')
+                : t('useThisOption')}
           </button>
           <span style={{ color: muted, fontSize: 11.5 }}>
-            Changing the source rebuilds the Memory index in the background.
+            {t('changingSource')}
           </span>
         </div>
       </section>
@@ -648,7 +655,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
       <section style={SECTION}>
         <div style={HEAD}>
           <h4 style={H4}>
-            Coverage
+            {t('coverage')}
             {status && status.ready !== false && (
               <span style={chipTone(status.indexing ? 'idle' : 'ok')}>
                 <span
@@ -659,7 +666,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
                     background: status.indexing ? 'var(--nim-text-muted)' : '#4ade80',
                   }}
                 />
-                {status.indexing ? 'Indexing…' : 'Ready'}
+                {status.indexing ? t('indexing') : t('ready')}
               </span>
             )}
           </h4>
@@ -671,7 +678,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
               className="nimbalyst-memory-refresh"
               style={btnStyle(isDark)}
             >
-              {loadingStatus ? 'Refreshing…' : 'Refresh'}
+              {loadingStatus ? t('refreshing') : t('refresh')}
             </button>
             <button
               type="button"
@@ -680,7 +687,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
               className="nimbalyst-memory-rebuild"
               style={btnStyle(isDark)}
             >
-              {rebuilding ? 'Rebuilding…' : 'Rebuild'}
+              {rebuilding ? t('rebuilding') : t('rebuild')}
             </button>
           </div>
         </div>
@@ -689,21 +696,20 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
 
         {status && status.ready === false && (
           <p style={{ margin: 0, color: muted }}>
-            The local project index is unavailable. Use normal workspace file/text
-            search over project Markdown.
+            {t('projectIndexUnavailable')}
           </p>
         )}
 
         {status && status.ready !== false && (
           <div style={CARD}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              <Stat value={totalChunks.toLocaleString()} label="chunks indexed" />
+              <Stat value={totalChunks.toLocaleString()} label={t('chunksIndexed', { count: totalChunks.toLocaleString() })} />
               <Stat
-                value={keywordOnly ? 'Unavailable' : `${coverage}`}
+                value={keywordOnly ? t('unavailable') : `${coverage}`}
                 unit={keywordOnly ? undefined : '%'}
-                label={keywordOnly ? 'semantic matching' : 'embedding coverage'}
+                label={keywordOnly ? t('semanticMatching') : t('embeddingCoverage')}
               />
-              <Stat value={`${status.sourceFiles ?? 0}`} label="source files" />
+              <Stat value={`${status.sourceFiles ?? 0}`} label={t('sourceFiles')} />
             </div>
 
             {breakdown.length > 0 && (
@@ -731,35 +737,35 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
             <div style={DIVIDER} />
 
             <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 14px', margin: 0, fontSize: 12 }}>
-              <dt style={{ color: 'var(--nim-text-muted)' }}>Retrieval</dt>
+              <dt style={{ color: 'var(--nim-text-muted)' }}>{t('retrieval')}</dt>
               <dd style={{ margin: 0 }}>
                 {keywordOnly ? (
-                  'Local keyword search'
+                  t('localKeywordSearch')
                 ) : (
                   <>
                     <code>
-                      {status.embedder?.id ?? 'unknown'} · {status.embedder?.model ?? '—'}
+                      {status.embedder?.id ?? t('unknown')} · {status.embedder?.model ?? '—'}
                     </code>
                     {status.embedder?.dims ? ` · ${status.embedder.dims}d` : ''}
                   </>
                 )}
               </dd>
-              <dt style={{ color: 'var(--nim-text-muted)' }}>Last indexed</dt>
+              <dt style={{ color: 'var(--nim-text-muted)' }}>{t('lastIndexed')}</dt>
               <dd style={{ margin: 0 }}>
-                {relativeTime(status.lastIndexedAt)} · auto-refreshes on file change
+                {relativeTime(status.lastIndexedAt, t)} {t('autoRefreshes')}
               </dd>
-              <dt style={{ color: 'var(--nim-text-muted)' }}>Index size</dt>
+              <dt style={{ color: 'var(--nim-text-muted)' }}>{t('indexSize')}</dt>
               <dd style={{ margin: 0 }}>
                 {formatBytes(status.indexSizeBytes)}{' '}
-                <span style={{ color: 'var(--nim-text-muted)' }}>(rebuildable)</span>
+                <span style={{ color: 'var(--nim-text-muted)' }}>{t('rebuildable')}</span>
               </dd>
             </dl>
 
             {keywordOnly && (
               <p style={{ margin: 0, color: 'var(--nim-warning, #d19a66)', lineHeight: 1.5 }}>
                 {semanticProviderFailing
-                  ? 'Local keyword search is active. Your configured embedding provider is not responding, so semantic matching is unavailable — check the API key in AI settings.'
-                  : 'Local keyword search is active. Semantic matching is unavailable.'}
+                  ? t('providerNotResponding')
+                  : t('semanticUnavailable')}
               </p>
             )}
           </div>
@@ -772,8 +778,8 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
       <section style={SECTION}>
         <div style={HEAD}>
           <h4 style={H4}>
-            Memories
-            {facts && <span style={chipTone('plain')}>{facts.length} facts</span>}
+            {t('memories')}
+            {facts && <span style={chipTone('plain')}>{t(facts.length === 1 ? 'oneFact' : 'manyFacts', { count: facts.length })}</span>}
           </h4>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -782,9 +788,9 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
               disabled={!callBackendTool || distilling}
               className="nimbalyst-memory-suggest"
               style={btnStyle(isDark)}
-              title="Use an LLM to propose facts from your recent plans/decisions"
+              title={t('suggestFactsTitle')}
             >
-              {distilling ? 'Suggesting…' : 'Suggest from decisions'}
+              {distilling ? t('suggesting') : t('suggestFromDecisions')}
             </button>
             <button
               type="button"
@@ -795,14 +801,12 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
               className="nimbalyst-memory-add"
               style={btnPrimary}
             >
-              + Add fact
+              + {t('addFact')}
             </button>
           </div>
         </div>
         <p style={{ margin: 0, color: muted, lineHeight: 1.5 }}>
-          The durable facts the agent remembers (the{' '}
-          <code>nimbalyst-local/voice-memory/</code> markdown tree). Highest
-          priority first within each category.
+          {t('durableFactsDescription')}
         </p>
 
         {distillError && <p style={ERR}>{distillError}</p>}
@@ -817,7 +821,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
             <textarea
               value={editor.text}
               onChange={(e) => setEditor({ ...editor, text: e.target.value })}
-              placeholder="A durable fact to remember…"
+              placeholder={t('durableFactPlaceholder')}
               rows={2}
               style={INPUT}
               autoFocus
@@ -826,22 +830,22 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
               <input
                 value={editor.category}
                 onChange={(e) => setEditor({ ...editor, category: e.target.value })}
-                placeholder="category"
+                placeholder={t('categoryPlaceholder')}
                 style={{ ...INPUT, flex: 1, minWidth: 120 }}
               />
               <input
                 value={editor.scope}
                 onChange={(e) => setEditor({ ...editor, scope: e.target.value })}
-                placeholder="scope (e.g. global, project)"
+                placeholder={t('scopePlaceholder')}
                 style={{ ...INPUT, flex: 1, minWidth: 120 }}
               />
               <input
                 type="number"
                 value={editor.priority}
                 onChange={(e) => setEditor({ ...editor, priority: Number(e.target.value) })}
-                placeholder="priority"
+                placeholder={t('priorityPlaceholder')}
                 style={{ ...INPUT, width: 90 }}
-                title="Higher = injected earlier into the agent context"
+                title={t('priorityTitle')}
               />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -851,14 +855,14 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
                 disabled={savingFact || !editor.text.trim()}
                 style={btnPrimary}
               >
-                {savingFact ? 'Saving…' : editor.replacingPath ? 'Save changes' : 'Add fact'}
+                {savingFact ? t('saving') : editor.replacingPath ? t('saveChanges') : t('addFact')}
               </button>
               <button type="button" onClick={() => setEditor(null)} style={btnStyle(isDark)}>
-                Cancel
+                {t('cancel')}
               </button>
               {editor.replacingPath && (
                 <span style={{ alignSelf: 'center', color: muted, fontSize: 11 }}>
-                  Editing replaces the existing fact file.
+                  {t('editingReplaces')}
                 </span>
               )}
             </div>
@@ -870,12 +874,12 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
           <div style={{ ...CARD, gap: 8 }}>
             {candidates.length === 0 ? (
               <span style={{ color: muted, fontStyle: 'italic' }}>
-                No new facts found in your recent decisions.
+                {t('noNewFacts')}
               </span>
             ) : (
               <>
                 <span style={{ color: muted }}>
-                  Proposed facts from your recent plans/decisions — pick the ones to keep:
+                  {t('proposedFacts')}
                 </span>
                 {candidates.map((c, i) => (
                   <label
@@ -901,10 +905,10 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
                     disabled={adding || selected.size === 0}
                     style={btnStyle(isDark)}
                   >
-                    {adding ? 'Adding…' : `Add ${selected.size} selected`}
+                    {adding ? t('adding') : t(selected.size === 1 ? 'addSelectedOne' : 'addSelectedOther', { count: selected.size })}
                   </button>
                   <button type="button" onClick={() => setCandidates(null)} style={btnStyle(isDark)}>
-                    Dismiss
+                    {t('dismiss')}
                   </button>
                 </div>
               </>
@@ -916,7 +920,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
         {categories.length > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <Pill active={categoryFilter === null} onClick={() => setCategoryFilter(null)}>
-              All
+              {t('all')}
             </Pill>
             {categories.map((c) => (
               <Pill key={c} active={categoryFilter === c} onClick={() => setCategoryFilter(c)}>
@@ -928,14 +932,14 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
 
         {facts && facts.length === 0 && (
           <p style={{ margin: 0, color: muted, fontStyle: 'italic' }}>
-            No facts stored yet — the agent will add them as you work, or add one above.
+            {t('noFacts')}
           </p>
         )}
 
         {groupedFacts.map(([category, rows]) => (
           <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={GROUP_LABEL}>
-              {category}
+              {category === 'uncategorized' ? t('uncategorized') : category}
               <span style={GROUP_COUNT}>{rows.length}</span>
             </div>
             {rows
@@ -948,7 +952,8 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                       <button
                         type="button"
-                        title="Edit"
+                        title={t('edit')}
+                        aria-label={t('edit')}
                         onClick={() =>
                           setEditor({
                             text: f.text,
@@ -965,7 +970,8 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
                       {confirmDelete === f.sourcePath ? null : (
                         <button
                           type="button"
-                          title="Delete"
+                          title={t('delete')}
+                          aria-label={t('delete')}
                           onClick={() => setConfirmDelete(f.sourcePath)}
                           style={iconBtn}
                         >
@@ -978,27 +984,27 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
                     {f.scope && <span style={badge('scope')}>{f.scope}</span>}
                     {typeof f.priority === 'number' && f.priority !== 0 && (
                       <span style={badge(f.priority >= 8 ? 'prioHigh' : 'prioMed')}>
-                        priority {f.priority}
+                        {t('priority', { count: f.priority })}
                       </span>
                     )}
                     <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', color: 'var(--nim-text-muted)', fontSize: 11 }}>
                       <code style={{ color: 'var(--nim-text-muted)' }}>{f.sourcePath.replace(/^.*\//, '')}</code>
-                      {f.mtime ? ` · ${relativeTime(f.mtime)}` : ''}
+                      {f.mtime ? ` · ${relativeTime(f.mtime, t)}` : ''}
                     </span>
                   </div>
                   {confirmDelete === f.sourcePath && (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ color: muted, fontSize: 12 }}>Delete this fact?</span>
+                      <span style={{ color: muted, fontSize: 12 }}>{t('deleteFactQuestion')}</span>
                       <button
                         type="button"
                         onClick={() => void deleteFact(f.sourcePath)}
                         disabled={busyFact === f.sourcePath}
                         style={{ ...btnStyle(isDark), color: 'var(--nim-error, #e06c75)' }}
                       >
-                        {busyFact === f.sourcePath ? 'Deleting…' : 'Confirm'}
+                        {busyFact === f.sourcePath ? t('deleting') : t('confirm')}
                       </button>
                       <button type="button" onClick={() => setConfirmDelete(null)} style={btnStyle(isDark)}>
-                        Cancel
+                        {t('cancel')}
                       </button>
                     </div>
                   )}
@@ -1012,10 +1018,9 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
 
       {/* ---------------- 3. TRY YOUR MEMORY ---------------- */}
       <section style={SECTION}>
-        <h4 style={H4}>Try your memory</h4>
+        <h4 style={H4}>{t('tryMemory')}</h4>
         <p style={{ margin: 0, color: 'var(--nim-text-muted)', fontSize: 12 }}>
-          Ask what the agent would ask. See exactly what gets recalled, and which
-          signal — semantic (embeddings) or keyword — surfaced it.
+          {t('tryMemoryDescription')}
         </p>
 
         <div style={{ display: 'flex', gap: 8 }}>
@@ -1025,7 +1030,7 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
             onKeyDown={(e) => {
               if (e.key === 'Enter') void runSearch();
             }}
-            placeholder="how do extensions store their own data?"
+            placeholder={t('queryPlaceholder')}
             disabled={!callBackendTool}
             className="nimbalyst-memory-query"
             style={{ ...INPUT, flex: 1 }}
@@ -1036,20 +1041,20 @@ export function NimbalystMemorySettings({ theme, callBackendTool }: SettingsPane
             disabled={!callBackendTool || searching || !query.trim()}
             style={btnPrimary}
           >
-            {searching ? 'Searching…' : 'Search'}
+            {searching ? t('searching') : t('search')}
           </button>
         </div>
 
         {searchError && <p style={ERR}>{searchError}</p>}
 
         {hits && hits.length === 0 && !searching && (
-          <p style={{ margin: 0, color: muted, fontStyle: 'italic' }}>No matches.</p>
+          <p style={{ margin: 0, color: muted, fontStyle: 'italic' }}>{t('noMatches')}</p>
         )}
 
         {hits && hits.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {hits.map((h, i) => {
-              const sig = signalLabel(h.signals);
+              const sig = signalLabel(h.signals, t);
               return (
                 <div key={`${h.sourcePath}-${i}`} style={{ ...CARD, gap: 6, padding: '10px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1131,11 +1136,11 @@ function Pill({
   );
 }
 
-function signalLabel(signals?: { dense: boolean; sparse: boolean }) {
+function signalLabel(signals: SearchHit['signals'], t: ReturnType<typeof useMemoryText>) {
   if (!signals) return null;
-  if (signals.dense && signals.sparse) return { text: 'semantic + keyword', tone: 'both' as const };
-  if (signals.dense) return { text: 'semantic', tone: 'semantic' as const };
-  if (signals.sparse) return { text: 'keyword', tone: 'keyword' as const };
+  if (signals.dense && signals.sparse) return { text: t('semanticAndKeyword'), tone: 'both' as const };
+  if (signals.dense) return { text: t('semantic'), tone: 'semantic' as const };
+  if (signals.sparse) return { text: t('keyword'), tone: 'keyword' as const };
   return null;
 }
 

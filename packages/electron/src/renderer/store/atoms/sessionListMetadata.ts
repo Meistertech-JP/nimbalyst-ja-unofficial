@@ -8,7 +8,7 @@ export function sessionListMetadata(
   return {
     id: s.id,
     ...(s.remoteHostDeviceId && { remoteHostDeviceId: s.remoteHostDeviceId }),
-    title: s.title || "Untitled Session",
+    title: s.title || "",
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
     provider: s.provider || "claude",

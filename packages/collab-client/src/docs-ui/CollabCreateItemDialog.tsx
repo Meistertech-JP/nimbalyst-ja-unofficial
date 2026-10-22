@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { CollabDocumentTypeDescriptor } from '@nimbalyst/collab-client/core';
 import {
@@ -62,13 +63,14 @@ export function CollabCreateItemDialog({
   folders,
   tree,
   documentTypeDescriptors = NO_DESCRIPTORS,
-  rootLabel = 'Team root',
+  rootLabel,
   targetFolderId,
   targetParentKind = 'page',
   onTargetFolderChange,
   onConfirm,
   onCancel,
 }: CollabCreateItemDialogProps) {
+  const { t } = useTranslation('common');
   const [name, setName] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -86,11 +88,15 @@ export function CollabCreateItemDialog({
   // A tree still loading has no rows yet; keep the target until it arrives.
   const optionsReady = !tree || tree.length > 0;
 
-  const documentDisplayName = documentDescriptor?.displayName ?? 'Document';
+  const documentDisplayName = documentDescriptor?.displayName ?? t('collab.document');
   const documentSuffix = documentDescriptor?.defaultExtension ?? '';
-  const title = kind === 'folder' ? 'New Shared Folder' : `New Shared ${documentDisplayName}`;
-  const itemLabel = kind === 'folder' ? 'folder' : 'document';
-  const placeholder = kind === 'folder' ? 'Folder name' : `Untitled ${documentDisplayName}`;
+  const title = kind === 'folder'
+    ? t('collab.new_shared_folder')
+    : t('collab.new_shared_document', { type: documentDisplayName });
+  const placeholder = kind === 'folder'
+    ? t('collab.folder_name')
+    : t('collab.untitled_document', { type: documentDisplayName });
+  const resolvedRootLabel = rootLabel ?? t('collab.team_root');
   const itemIcon = kind === 'folder' ? 'create_new_folder' : documentDescriptor?.icon ?? 'note_add';
   const titleId = `collab-create-${kind}-title`;
   const nameInputId = `collab-create-${kind}-name`;
@@ -187,7 +193,7 @@ export function CollabCreateItemDialog({
             className={`w-4 h-4 inline-flex items-center justify-center text-[var(--nim-text-faint)] ${
               option.hasChildren ? 'cursor-pointer' : 'cursor-default invisible'
             }`}
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            aria-label={isExpanded ? t('collab.collapse') : t('collab.expand')}
             onClick={event => {
               event.stopPropagation();
               if (option.hasChildren) toggleExpanded(option.key);
@@ -239,14 +245,14 @@ export function CollabCreateItemDialog({
               {title}
             </h2>
             <p className="text-[12px] text-[var(--nim-text-faint)] m-0 mt-0.5 leading-snug">
-              Pick where this {itemLabel} should live in your team space.
+              {kind === 'folder' ? t('collab.pick_folder_location') : t('collab.pick_document_location')}
             </p>
           </div>
           <button
             type="button"
             onClick={onCancel}
             className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-tertiary)] w-6 h-6 rounded inline-flex items-center justify-center"
-            aria-label="Close"
+            aria-label={t('close')}
           >
             <MaterialSymbol icon="close" size={16} />
           </button>
@@ -259,7 +265,9 @@ export function CollabCreateItemDialog({
               htmlFor={nameInputId}
               className="block text-[11px] uppercase tracking-wider font-semibold text-[var(--nim-text-faint)] mb-1.5"
             >
-              {kind === 'folder' ? 'Folder name' : `${documentDisplayName} name`}
+              {kind === 'folder'
+                ? t('collab.folder_name')
+                : t('collab.document_name', { type: documentDisplayName })}
             </label>
             <div className="flex items-center gap-1.5 px-2 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border-subtle,var(--nim-border))] rounded-md mb-4 focus-within:border-[var(--nim-primary)]">
               <MaterialSymbol icon="edit" size={14} className="text-[var(--nim-text-faint)]" />
@@ -295,7 +303,7 @@ export function CollabCreateItemDialog({
               id={locationLabelId}
               className="text-[11px] uppercase tracking-wider font-semibold text-[var(--nim-text-faint)] mb-1.5"
             >
-              {tree ? 'Location' : 'Destination folder'}
+              {tree ? t('collab.location') : t('collab.destination_folder')}
             </div>
             <div
               className="collab-create-location-picker collab-create-location-options nim-scrollbar bg-[var(--nim-bg-secondary)] border border-[var(--nim-border-subtle,var(--nim-border))] rounded-md p-1 mb-3 max-h-[240px] overflow-y-auto"
@@ -303,7 +311,7 @@ export function CollabCreateItemDialog({
               role="tree"
               aria-labelledby={locationLabelId}
             >
-              {renderRow('root', rootLabel, 8, selectedKey === null, <MaterialSymbol icon="workspaces" size={18} />, {
+              {renderRow('root', resolvedRootLabel, 8, selectedKey === null, <MaterialSymbol icon="workspaces" size={18} />, {
                 onSelect: () => onTargetFolderChange(null, 'page'),
               })}
               {visibleOptions.map(option => {
@@ -321,7 +329,7 @@ export function CollabCreateItemDialog({
 
             <div className="collab-create-destination-preview flex items-center gap-2 px-3 py-2 bg-[var(--nim-bg-secondary)] border border-[var(--nim-border-subtle,var(--nim-border))] rounded-md mb-3 text-[12px] text-[var(--nim-text-muted)]">
               <MaterialSymbol icon="place" size={14} className="text-[var(--nim-text-faint)]" />
-              <span>Will be created as</span>
+              <span>{t('collab.will_be_created_as')}</span>
               <span className="text-[var(--nim-text)] font-medium truncate" title={destinationPath}>
                 {destinationPath}
               </span>
@@ -340,7 +348,7 @@ export function CollabCreateItemDialog({
               onClick={onCancel}
               className="collab-create-cancel px-3 py-1.5 bg-transparent rounded-md text-[var(--nim-text-muted)] text-[13px] hover:bg-[var(--nim-bg-tertiary)] hover:text-[var(--nim-text)]"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -352,7 +360,9 @@ export function CollabCreateItemDialog({
               disabled={!name.trim()}
             >
               <MaterialSymbol icon={itemIcon} size={16} />
-              Create {kind === 'folder' ? 'Folder' : documentDisplayName}
+              {kind === 'folder'
+                ? t('collab.create_folder')
+                : t('collab.create_document_type', { type: documentDisplayName })}
             </button>
           </div>
         </form>

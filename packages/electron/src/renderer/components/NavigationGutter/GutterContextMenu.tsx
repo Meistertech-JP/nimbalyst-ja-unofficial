@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useFloatingMenu, FloatingPortal, virtualElement } from '../../hooks/useFloatingMenu';
 import type { GutterItemMeta } from './navGutterItems';
@@ -35,6 +36,7 @@ export function GutterContextMenu({
   onReset,
   onOpenCustomize,
 }: GutterContextMenuProps) {
+  const { t } = useTranslation('common');
   const vRef = useMemo(() => virtualElement(x, y), [x, y]);
   const labelOf = useMemo(() => {
     const map = new Map(items.map((it) => [it.id, it.label]));
@@ -73,7 +75,7 @@ export function GutterContextMenu({
               onClick={() => { onToggleHidden(targetButton!); onClose(); }}
             >
               <MaterialSymbol icon="visibility_off" size={16} className="text-nim-muted" />
-              <span>Hide {labelOf(targetButton!)}</span>
+              <span>{t('gutter.hide_item', { label: labelOf(targetButton!) })}</span>
             </button>
             <div className="my-1 border-t border-nim" />
           </>
@@ -89,7 +91,7 @@ export function GutterContextMenu({
                 onClick={() => { onToggleHidden(id); onClose(); }}
               >
                 <MaterialSymbol icon="visibility" size={16} className="text-nim-muted" />
-                <span>Show {labelOf(id)}</span>
+                <span>{t('gutter.show_item', { label: labelOf(id) })}</span>
               </button>
             ))}
             <div className="my-1 border-t border-nim" />
@@ -103,7 +105,7 @@ export function GutterContextMenu({
           data-testid="gutter-customize-button"
         >
           <MaterialSymbol icon="tune" size={16} className="text-nim-muted" />
-          <span>Customize Gutter…</span>
+          <span>{t('gutter.customize_ellipsis')}</span>
         </button>
 
         {hasHidden && (
@@ -112,7 +114,7 @@ export function GutterContextMenu({
             onClick={() => { onReset(); onClose(); }}
           >
             <MaterialSymbol icon="restart_alt" size={16} className="text-nim-muted" />
-            <span>Show All</span>
+            <span>{t('gutter.show_all')}</span>
           </button>
         )}
       </div>

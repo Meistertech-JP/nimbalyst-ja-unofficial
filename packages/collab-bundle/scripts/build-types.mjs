@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { writeDeclarationIfChanged } from './write-declaration.mjs';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const typesRoot = path.join(packageRoot, 'types');
@@ -96,7 +97,7 @@ for (const declarationFile of declarationFiles(internalRoot)) {
       return `${quote}${relativeDeclarationSpecifier(declarationFile, target)}${quote}`;
     },
   );
-  fs.writeFileSync(declarationFile, rewritten);
+  writeDeclarationIfChanged(declarationFile, source, rewritten);
 }
 
 for (const entry of publicEntries) {
@@ -111,6 +112,9 @@ for (const entry of publicEntries) {
       return `${quote}${relativeDeclarationSpecifier(entry.public, target)}${quote}`;
     },
   );
-  fs.writeFileSync(entry.public, publicTypes);
+  const currentPublicTypes = fs.existsSync(entry.public)
+    ? fs.readFileSync(entry.public, 'utf8')
+    : null;
+  writeDeclarationIfChanged(entry.public, currentPublicTypes, publicTypes);
 }
 fs.rmSync(path.join(internalRoot, 'collab-bundle'), { recursive: true, force: true });
