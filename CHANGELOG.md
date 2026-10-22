@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disabled official automatic updates and the manual update-check action in this edition.
 - Kept Windows authentication on a nonce-protected localhost callback without registering the `nimbalyst://` protocol.
 - Prepared source-only distribution; packaged Windows launch, authentication, installation and uninstallation are not verified.
+- Documented unsigned local packages and remaining Windows, authentication, and dynamic-translation verification limits in both languages.
 - Some unnamed collaborators may still appear as “Teammate”. Full-suite test failures remain under review.
 - See [the bilingual preview notes](RELEASE_NOTES_v0.81.7-ja.1.md) for limitations and distribution details.
 

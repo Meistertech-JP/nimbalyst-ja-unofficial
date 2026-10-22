@@ -12,6 +12,8 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 Source code is available from the [GitHub Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases) page. No Windows installer, portable build, or other executable binary is currently provided. Windows package protocol registration and authentication callbacks have not been verified from a packaged build.
 
+v0.81.7-ja.1 is a source-only prerelease. The locally generated Windows packages are unsigned. Installation, startup, authentication, and uninstallation have not been validated on a Windows machine. No Windows binaries are included in this release.
+
 ## Version and requirements
 
 - Base: Nimbalyst desktop version 0.81.7
@@ -28,6 +30,9 @@ Choose Japanese or English in the application's settings. The selected language 
 
 - Older clients do not distinguish a generated fallback name from an actual user name. Their “Teammate” values are left unchanged to protect real names. This edition marks generated fallback names so supported views can display them in Japanese or English.
 - The full unit-test suite has unresolved failures on Windows. Passing localization tests does not establish that every application feature works.
+- Known test failures also reproduce on the pinned upstream baseline. On Windows, EPERM while creating test symlinks prevents runtime verification of the rejection of symlinked files and symlinked ancestor directories. NTFS ACL access controls and some Stytch authentication recovery paths remain unverified. These are verification limitations, not confirmed defects or vulnerabilities.
+- Complete runtime verification of 119 dynamic translation references is pending. Exhaustive Japanese-language E2E and visual QA has not been performed.
+- Large CLI uploads stall in a particular host environment; this has not been established as a problem affecting all environments.
 - External Browser/Embed hosts and the packaged application's visual UI have not been verified. Errors returned by external services or the runtime environment, and legacy collaboration data, may contain English. Notifications already displayed before a language change may retain their original language until dismissed.
 - Running this build alongside the official Nimbalyst application is not supported. Authentication uses an instance-specific, nonce-protected `http://127.0.0.1:<port>/auth/callback`. Starting this edition on Windows does not change the default `nimbalyst://` handler. Non-authentication `nimbalyst://` links may open in another application that currently owns the association. Windows installer file associations and uninstall behavior have not been verified.
 - This edition does not download or apply updates from the official release. The manual update-check menu is also disabled.
