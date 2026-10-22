@@ -12,15 +12,15 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 Source code is available from the [GitHub Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases) page. No Windows installer, portable build, or other executable binary is currently provided. Windows package protocol registration and authentication callbacks have not been verified from a packaged build.
 
-The published v0.81.7-ja.1 is a source-only prerelease. This source is a candidate for v0.81.7-ja.2; no release or distribution for that version has been published. Changes are described in the [next-version release notes](RELEASE_NOTES_v0.81.7-ja.2.md).
+v0.81.7-ja.2 is a source-only prerelease. Changes since v0.81.7-ja.1 are described in the [release notes](RELEASE_NOTES_v0.81.7-ja.2.md).
 
-Locally generated Windows packages are unsigned. Installation, startup, authentication, and uninstallation have not been validated on a Windows machine. The next preview is also intended to be source-only, without Windows binaries.
+Previously generated local Windows packages are unsigned. Installation, startup, authentication, and uninstallation have not been validated on a Windows machine. This release provides source code only, without Windows binaries.
 
 ## Version and requirements
 
 - Base: Nimbalyst desktop version 0.81.7
 - Pinned upstream target: `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`. This incorporates 24 upstream commits affecting 121 files since the previous pinned base, `79b8c560c491061c39ea70d01097139055b62ae8`. It does not track all changes on the current official main branch.
-- Existing [CHANGELOG](CHANGELOG.md) entries include upstream history. Edition-specific changes are described in the [next-version release notes](RELEASE_NOTES_v0.81.7-ja.2.md).
+- Existing [CHANGELOG](CHANGELOG.md) entries include upstream history. Edition-specific changes are described in the [release notes](RELEASE_NOTES_v0.81.7-ja.2.md).
 - The source is configured for a Windows x64 desktop build. A distributable Windows package has not been tested by launching it.
 - Build environment: Node.js 24 or later and pnpm 12 or later (the repository specifies pnpm 12.9.1)
 - Features and fixes may differ from the current official release. This edition does not automatically track or install updates from the official release.
@@ -29,7 +29,7 @@ Locally generated Windows packages are unsigned. Installation, startup, authenti
 
 Choose Japanese or English in the application's settings. The selected language is saved and restored after restarting the app.
 
-The next version extends Japanese display to session context usage, GitHub author and label search, document outlines, local Wiki views, and static-site exports. Resources contain 26 namespaces and 14,401 keys in each language. Additions since the previous version comprise 111 keys for upstream UI changes and one backup-collision error message per language. Matching key sets do not establish complete UI coverage or runtime correctness.
+This version extends Japanese display to session context usage, GitHub author and label search, document outlines, local Wiki views, and static-site exports. Resources contain 26 namespaces and 14,401 keys in each language. Additions since the previous version comprise 111 keys for upstream UI changes and one backup-collision error message per language. Matching key sets do not establish complete UI coverage or runtime correctness.
 
 For static exports, use `nim wiki export --static <dir> --ui-language system|en|ja`. The CLI defaults to the system language when the option is omitted. Programmatic exports default to English for API compatibility. Wiki translations load namespaces on demand. These changes are included in this source; their inclusion does not imply availability in published npm packages.
 
@@ -44,7 +44,7 @@ Startup and authentication diagnostics now record counts or fixed classification
 ## Limitations
 
 - Older clients do not distinguish a generated fallback name from an actual user name. Their “Teammate” values are left unchanged to protect real names. This edition marks generated fallback names so supported views can display them in Japanese or English.
-- Full-suite runs against the pinned upstream baseline and this candidate remain incomplete at a CLI REST create/update test. Failures also remain; neither run is a full-suite pass. Passing localization tests does not establish that every application feature works.
+- Full-suite runs against the pinned upstream baseline and this edition remain incomplete at a CLI REST create/update test. No failures unique to this edition were found in the captured failure records, but neither run is a full-suite pass. Passing localization tests does not establish that every application feature works.
 - Four fixture failures also reproduce on the pinned upstream baseline on the same Windows host: CLI symlink creation, starting `/bin/sh` for a commit-hook fixture, creating a sandbox symlink-file fixture, and creating a sandbox symlink-ancestor fixture. The three symlink fixtures fail with EPERM; the shell fixture fails with ENOENT. The sandbox's symlink-rejection behavior itself has not been runtime-verified. NTFS ACL access controls and some Stytch authentication recovery paths also remain unverified. These are verification limitations, not confirmed defects or vulnerabilities.
 - Complete runtime verification of 119 dynamic translation references is pending. Exhaustive Japanese-language E2E and visual QA has not been performed.
 - A broader static audit leaves 370 legacy translation references with unresolved namespaces. They are separate from the reviewed changed paths; this does not establish 370 missing keys or display defects.
@@ -54,12 +54,13 @@ Startup and authentication diagnostics now record counts or fixed classification
 - This edition does not download or apply updates from the official release. The manual update-check menu is also disabled.
 - The Windows application identifier is `jp.meistertech.nimbalyst.ja.unofficial`. The display name and default user-data location are separate from the official application. Existing official user data is not moved or deleted. Separation has not been verified by launching the packaged application.
 - Authentication callbacks from a packaged Windows build have not been verified, so no Windows binary is currently provided.
+- Native Android and iOS behavior has not been verified for this edition. Earlier mobile CI results do not establish that this version works on a device.
 - Windows packaging of the final source stopped with EPERM while renaming the Electron extraction directory. The cause is unconfirmed, and no final installer or ZIP was generated. Earlier local artifacts also retain discrepancies between ASAR declarations and externally placed files. Neither observation establishes a startup failure or vulnerability.
 - If a binary is distributed in a future release, its code-signing status will be stated for that release.
 
 ## Build from source
 
-This candidate passes typecheck in all 38 workspaces, 216 tests across 30 related files, 35 Wiki/CLI tests across seven files, and 40 targeted authentication-diagnostic tests. Runtime, Electron, Collab bundle, Worker, Sandbox, Extensions, CLI, and Wiki builds also pass. A built-CLI smoke test in a fresh temporary project verifies Japanese → English → Japanese static exports, links, document contents, and retained backups. This is not browser or distributable-application launch testing.
+This source passes typecheck in all 38 workspaces, 216 tests across 30 related files, 35 Wiki/CLI tests across seven files, and 40 targeted authentication-diagnostic tests. Runtime, Electron, Collab bundle, Worker, Sandbox, Extensions, CLI, and Wiki builds also pass. A built-CLI smoke test in a fresh temporary project verifies Japanese → English → Japanese static exports, links, document contents, and retained backups. This is not browser or distributable-application launch testing.
 
 Run these commands from the repository root:
 

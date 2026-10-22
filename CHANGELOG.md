@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.81.7-ja.2] — Source preview candidate
+## [0.81.7-ja.2] — Source-only prerelease
 
 - Incorporated 24 upstream commits affecting 121 files through `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`, retaining the unofficial edition's separate identity and disabled official updates.
 - Extended Japanese display to session context usage, GitHub search, document outlines, local Wiki views, and static exports with `--ui-language system|en|ja`.
@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows Markdown file associations now use an edition-specific file class instead of sharing the official application's class; installed behavior remains unverified.
 - Startup and authentication diagnostics omit arbitrary argument, callback, identity, and error contents.
 - Fixed the worktree introduction description appearing as a translation key in English and Japanese.
-- Kept this candidate source-only, with full-suite, packaged Windows, authentication, and other verification limits documented in the [bilingual candidate notes](RELEASE_NOTES_v0.81.7-ja.2.md).
+- Kept this release source-only, with full-suite, packaged Windows, authentication, and other verification limits documented in the [bilingual release notes](RELEASE_NOTES_v0.81.7-ja.2.md).
 
 ## [0.81.7-ja.1] — Source preview preparation
 
