@@ -255,7 +255,11 @@ describe('UI language preference', () => {
     expect(resources.ja.menu.top_bar.new_shared_doc).toBe('新しい共有ドキュメント');
     expect(resources.en.menu.top_bar.new_item).toBe('New item');
     expect(resources.ja.menu.top_bar.new_item).toBe('新しい項目');
-    expect(totalKeys).toBe(14550);
+    expect(resources.en.common.account_ui.secure_storage_failed)
+      .toBe('Sign-in could not be completed because authentication information could not be stored securely.');
+    expect(resources.ja.common.account_ui.secure_storage_failed)
+      .toBe('認証情報を安全に保存できないため、サインインを完了できませんでした。');
+    expect(totalKeys).toBe(14551);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

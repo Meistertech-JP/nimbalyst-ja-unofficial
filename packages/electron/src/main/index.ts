@@ -15,7 +15,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { join } from 'path';
 import * as fs from 'fs';
-import { appendFileSync, existsSync, renameSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, unlinkSync, writeFileSync } from 'fs';
 import {
     createWindow,
     documentServices,
@@ -258,7 +258,8 @@ import { readFileContentOrNull } from './services/ai/aiServiceUtils';
 import { AISessionsRepository } from '@nimbalyst/runtime/storage/repositories/AISessionsRepository';
 import { isMCPServerEnabledForProvider, MCP_PROVIDER_IDS, type MCPProviderId } from '@nimbalyst/runtime/types/MCPServerConfig';
 import type { MCPServerConfig } from '@nimbalyst/runtime/types/MCPServerConfig';
-import { logger, overrideConsole } from './utils/logger';
+import { logger, overrideConsole, getLoggerConfig } from './utils/logger';
+import { createRendererDiagnosticLog } from './utils/rendererDiagnosticLog';
 import { startPerformanceMonitoring, stopPerformanceMonitoring } from './utils/performanceMonitor';
 import { setupForceQuit } from './utils/forceQuit';
 import { stopAllFileWatchers } from './file/FileWatcher';
@@ -585,129 +586,30 @@ if (process.env.RUN_ONE_DEV_MODE === 'true') {
     console.log(`Dev mode enabled: Using isolated userData path: ${devUserData}`);
 }
 
-// Log rotation constants
-const MAX_DEBUG_LOG_SESSIONS = 5; // Keep current + 4 previous sessions
-const MAX_MAIN_LOG_SESSIONS = 3; // Keep current + 2 previous sessions
-
-/**
- * Rotate main process log on app startup.
- * Files: main.log (current), main.1.log (previous), main.2.log (oldest)
- */
-function rotateMainLog() {
-    const logsDir = join(app.getPath('userData'), 'logs');
-    const baseName = 'main';
-    const ext = '.log';
-
-    try {
-        // Delete oldest log if it exists
-        const oldestPath = join(logsDir, `${baseName}.${MAX_MAIN_LOG_SESSIONS - 1}${ext}`);
-        if (existsSync(oldestPath)) {
-            unlinkSync(oldestPath);
-        }
-
-        // Shift existing logs: N-1 -> N, ..., 1 -> 2
-        for (let i = MAX_MAIN_LOG_SESSIONS - 2; i >= 1; i--) {
-            const currentPath = join(logsDir, `${baseName}.${i}${ext}`);
-            const nextPath = join(logsDir, `${baseName}.${i + 1}${ext}`);
-            if (existsSync(currentPath)) {
-                renameSync(currentPath, nextPath);
-            }
-        }
-
-        // Move current log to .1
-        const currentLogPath = join(logsDir, `${baseName}${ext}`);
-        const firstBackupPath = join(logsDir, `${baseName}.1${ext}`);
-        if (existsSync(currentLogPath)) {
-            renameSync(currentLogPath, firstBackupPath);
-        }
-    } catch (error) {
-        // Log rotation is best-effort, don't fail startup
-        console.error('Failed to rotate main log:', error);
-    }
-}
-
-/**
- * Rotate debug logs on app startup.
- * Each log file represents one app session, preserving crash logs intact.
- * Files: nimbalyst-debug.log (current), .1.log (previous), .2.log, .3.log, .4.log (oldest)
- */
-function rotateDebugLogs() {
-    const userData = app.getPath('userData');
-    const baseName = 'nimbalyst-debug';
-    const ext = '.log';
-
-    try {
-        // Delete oldest log if it exists
-        const oldestPath = join(userData, `${baseName}.${MAX_DEBUG_LOG_SESSIONS - 1}${ext}`);
-        if (existsSync(oldestPath)) {
-            unlinkSync(oldestPath);
-        }
-
-        // Shift existing logs: N-1 -> N, N-2 -> N-1, ..., 1 -> 2
-        for (let i = MAX_DEBUG_LOG_SESSIONS - 2; i >= 1; i--) {
-            const currentPath = join(userData, `${baseName}.${i}${ext}`);
-            const nextPath = join(userData, `${baseName}.${i + 1}${ext}`);
-            if (existsSync(currentPath)) {
-                renameSync(currentPath, nextPath);
-            }
-        }
-
-        // Move current log to .1
-        const currentLogPath = join(userData, `${baseName}${ext}`);
-        const firstBackupPath = join(userData, `${baseName}.1${ext}`);
-        if (existsSync(currentLogPath)) {
-            renameSync(currentLogPath, firstBackupPath);
-        }
-    } catch (error) {
-        // Log rotation is best-effort, don't fail startup
-        console.error('Failed to rotate debug logs:', error);
-    }
-}
+// Lazy paths preserve bootstrap profile selection. Every direct write uses the
+// live ordinary logging preference, including shutdown diagnostics.
+const diagnosticLog = createRendererDiagnosticLog({
+    userDataPath: () => app.getPath('userData'),
+    production: process.env.NODE_ENV === 'production',
+    enabled: () => getLoggerConfig().fileLogging,
+    onError: (message, error) => logger.main.error(message, error),
+});
 
 // Initialize logging
 function initializeLogging() {
     // electron-log handles main process logging
     logger.main.info('Application logging initialized');
 
-    // Always capture error logs for debugging
-    const debugLogPath = join(app.getPath('userData'), 'nimbalyst-debug.log');
+    diagnosticLog.initialize();
 
-    // Rotate main log on every startup (keeps 2 previous sessions)
-    rotateMainLog();
-
-    // Rotate debug logs on startup (development mode only - preserves previous session logs)
-    if (process.env.NODE_ENV !== 'production') {
-        rotateDebugLogs();
-    }
-
-    // Initialize or append to log
-    try {
-        const timestamp = new Date().toISOString();
-        if (process.env.NODE_ENV !== 'production') {
-            writeFileSync(debugLogPath, `=== Debug Log Started ${timestamp} ===\n`);
-        } else {
-            appendFileSync(debugLogPath, `\n=== App Started ${timestamp} ===\n`);
-        }
-    } catch (error) {
-        logger.main.error('Failed to initialize debug log:', error);
-    }
-
-    // Listen for console logs from renderer (always capture errors)
+    // Keep registration stable: normal preference changes apply to each event.
     safeOn('console-log', (_event, data) => {
-        // In production, only log errors and warnings
-        if (process.env.NODE_ENV === 'production' && !['error', 'warn'].includes(data.level)) {
-            return;
-        }
-
-        const logEntry = `[${data.timestamp}] [${data.level.toUpperCase()}] [${data.source}] ${data.message}\n`;
-        try {
-            appendFileSync(debugLogPath, logEntry);
-        } catch (error) {
-            // Ignore write errors
-        }
+        diagnosticLog.renderer(data);
     });
 
-    logger.main.info(`Debug logs will be written to: ${debugLogPath}`);
+    if (getLoggerConfig().fileLogging) {
+        logger.main.info(`Debug logs will be written to: ${join(app.getPath('userData'), 'nimbalyst-debug.log')}`);
+    }
 }
 
 // Register custom URL protocol handler (nimbalyst://)
@@ -3422,6 +3324,9 @@ app.on('before-quit', async (event) => {
     setupForceQuit(forceQuitDelay);
 
     let debugLog: string | null = null;
+    // Existing shutdown permission gate also controls session saving and handle
+    // cleanup. Do not disable those when logging is off: diagnosticLog.append
+    // independently checks the live fileLogging policy at every write.
     let canWriteLogs = false;
 
     // stop analytics
@@ -3466,8 +3371,8 @@ app.on('before-quit', async (event) => {
         // Test write permission
         fs.accessSync(userDataPath, fs.constants.W_OK);
         canWriteLogs = true;
-        fs.appendFileSync(debugLog, `\n[QUIT] before-quit event at ${new Date().toISOString()}\n`);
-        fs.appendFileSync(debugLog, `[QUIT] User: ${process.env.USER || 'unknown'}, UID: ${process.getuid?.() || 'unknown'}\n`);
+        diagnosticLog.append(debugLog, `\n[QUIT] before-quit event at ${new Date().toISOString()}\n`);
+        diagnosticLog.append(debugLog, `[QUIT] User: ${process.env.USER || 'unknown'}, UID: ${process.getuid?.() || 'unknown'}\n`);
     } catch (e) {
         console.error('[QUIT] Cannot write to userData directory:', e);
         canWriteLogs = false;
@@ -3505,7 +3410,7 @@ app.on('before-quit', async (event) => {
         console.error('Error clearing intervals:', error);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, `[QUIT] Error clearing intervals: ${error}\n`);
+                diagnosticLog.append(debugLog, `[QUIT] Error clearing intervals: ${error}\n`);
             } catch (e) {}
         }
     }
@@ -3516,7 +3421,7 @@ app.on('before-quit', async (event) => {
         console.log(`[QUIT] [${t1}] About to clean up file watchers`);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, '[QUIT] Cleaning up file watchers\n');
+                diagnosticLog.append(debugLog, '[QUIT] Cleaning up file watchers\n');
             } catch (e) {}
         }
 
@@ -3540,14 +3445,14 @@ app.on('before-quit', async (event) => {
 
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, '[QUIT] File watchers cleaned up\n');
+                diagnosticLog.append(debugLog, '[QUIT] File watchers cleaned up\n');
             } catch (e) {}
         }
     } catch (error) {
         console.error('[QUIT] Error cleaning up file watchers:', error);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, `[QUIT] Error cleaning up file watchers: ${error}\n`);
+                diagnosticLog.append(debugLog, `[QUIT] Error cleaning up file watchers: ${error}\n`);
             } catch (e) {}
         }
     }
@@ -3558,7 +3463,7 @@ app.on('before-quit', async (event) => {
         console.log(`[QUIT] [${t3_5}] Shutting down session state manager`);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, '[QUIT] Shutting down session state manager\n');
+                diagnosticLog.append(debugLog, '[QUIT] Shutting down session state manager\n');
             } catch (e) {}
         }
         await shutdownSessionStateHandlers();
@@ -3579,7 +3484,7 @@ app.on('before-quit', async (event) => {
         console.error('[QUIT] Error shutting down session state manager:', error);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, `[QUIT] Error shutting down session state manager: ${error}\n`);
+                diagnosticLog.append(debugLog, `[QUIT] Error shutting down session state manager: ${error}\n`);
             } catch (e) {}
         }
     }
@@ -3591,7 +3496,7 @@ app.on('before-quit', async (event) => {
         if (aiService) {
             if (canWriteLogs && debugLog) {
                 try {
-                    fs.appendFileSync(debugLog, '[QUIT] Destroying AI service\n');
+                    diagnosticLog.append(debugLog, '[QUIT] Destroying AI service\n');
                 } catch (e) {}
             }
             aiService.destroy();
@@ -3603,7 +3508,7 @@ app.on('before-quit', async (event) => {
         console.error('[QUIT] Error destroying AI service:', error);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, `[QUIT] Error destroying AI service: ${error}\n`);
+                diagnosticLog.append(debugLog, `[QUIT] Error destroying AI service: ${error}\n`);
             } catch (e) {}
         }
     }
@@ -3614,7 +3519,7 @@ app.on('before-quit', async (event) => {
         console.log(`[QUIT] [${t6}] Shutting down MCP HTTP server`);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, '[QUIT] Shutting down MCP HTTP server\n');
+                diagnosticLog.append(debugLog, '[QUIT] Shutting down MCP HTTP server\n');
             } catch (e) {}
         }
 
@@ -3654,14 +3559,14 @@ app.on('before-quit', async (event) => {
 
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, '[QUIT] MCP HTTP server shutdown complete\n');
+                diagnosticLog.append(debugLog, '[QUIT] MCP HTTP server shutdown complete\n');
             } catch (e) {}
         }
     } catch (error) {
         console.error('[QUIT] Error closing MCP server:', error);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, `[QUIT] Error closing MCP server: ${error}\n`);
+                diagnosticLog.append(debugLog, `[QUIT] Error closing MCP server: ${error}\n`);
             } catch (e) {}
         }
     }
@@ -3672,7 +3577,7 @@ app.on('before-quit', async (event) => {
         console.log(`[QUIT] [${t6a}] Shutting down session naming MCP HTTP server`);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, '[QUIT] Shutting down session naming MCP HTTP server\n');
+                diagnosticLog.append(debugLog, '[QUIT] Shutting down session naming MCP HTTP server\n');
             } catch (e) {}
         }
 
@@ -3685,14 +3590,14 @@ app.on('before-quit', async (event) => {
 
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, '[QUIT] Session naming MCP HTTP server shutdown complete\n');
+                diagnosticLog.append(debugLog, '[QUIT] Session naming MCP HTTP server shutdown complete\n');
             } catch (e) {}
         }
     } catch (error) {
         console.error('[QUIT] Error closing session naming MCP server:', error);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, `[QUIT] Error closing session naming MCP server: ${error}\n`);
+                diagnosticLog.append(debugLog, `[QUIT] Error closing session naming MCP server: ${error}\n`);
             } catch (e) {}
         }
     }
@@ -3744,7 +3649,7 @@ app.on('before-quit', async (event) => {
         if (canWriteLogs) {
             if (debugLog) {
                 try {
-                    fs.appendFileSync(debugLog, '[QUIT] Saving session state\n');
+                    diagnosticLog.append(debugLog, '[QUIT] Saving session state\n');
                 } catch (e) {}
             }
 
@@ -3764,7 +3669,7 @@ app.on('before-quit', async (event) => {
 
             if (debugLog) {
                 try {
-                    fs.appendFileSync(debugLog, '[QUIT] Session state saved\n');
+                    diagnosticLog.append(debugLog, '[QUIT] Session state saved\n');
                 } catch (e) {}
             }
         } else {
@@ -3774,7 +3679,7 @@ app.on('before-quit', async (event) => {
         console.error('[QUIT] Error saving session state:', error);
         if (canWriteLogs && debugLog) {
             try {
-                fs.appendFileSync(debugLog, `[QUIT] Error saving session: ${error}\n`);
+                diagnosticLog.append(debugLog, `[QUIT] Error saving session: ${error}\n`);
             } catch (e) {}
         }
     }
@@ -3784,7 +3689,7 @@ app.on('before-quit', async (event) => {
         const t11a = Date.now();
         console.log(`[QUIT] [${t11a}] Creating database backup...`);
         if (canWriteLogs && debugLog) {
-            try { fs.appendFileSync(debugLog, '[QUIT] Creating database backup\n'); } catch (e) {}
+            try { diagnosticLog.append(debugLog, '[QUIT] Creating database backup\n'); } catch (e) {}
         }
 
         // Import database and create backup (with timeout)
@@ -3806,12 +3711,12 @@ app.on('before-quit', async (event) => {
             if (backupResult.success) {
                 console.log(`[QUIT] [${t11b}] Database backup created successfully (${t11b-t11a}ms)`);
                 if (canWriteLogs && debugLog) {
-                    try { fs.appendFileSync(debugLog, `[QUIT] Database backup created (${t11b-t11a}ms)\n`); } catch (e) {}
+                    try { diagnosticLog.append(debugLog, `[QUIT] Database backup created (${t11b-t11a}ms)\n`); } catch (e) {}
                 }
             } else {
                 console.log(`[QUIT] [${t11b}] Database backup failed (${t11b-t11a}ms): ${backupResult.error}`);
                 if (canWriteLogs && debugLog) {
-                    try { fs.appendFileSync(debugLog, `[QUIT] Database backup failed: ${backupResult.error}\n`); } catch (e) {}
+                    try { diagnosticLog.append(debugLog, `[QUIT] Database backup failed: ${backupResult.error}\n`); } catch (e) {}
                 }
             }
 
@@ -3822,7 +3727,7 @@ app.on('before-quit', async (event) => {
                     await backupService.cleanupOldCorruptedBackups?.();
                     console.log('[QUIT] Old corrupted backups cleaned up');
                     if (canWriteLogs && debugLog) {
-                        try { fs.appendFileSync(debugLog, '[QUIT] Old backups cleaned up\n'); } catch (e) {}
+                        try { diagnosticLog.append(debugLog, '[QUIT] Old backups cleaned up\n'); } catch (e) {}
                     }
                 } catch (error) {
                     console.error('[QUIT] Error cleaning up old backups:', error);
@@ -3834,7 +3739,7 @@ app.on('before-quit', async (event) => {
             const t11c = Date.now();
             console.log(`[QUIT] [${t11c}] Closing database worker...`);
             if (canWriteLogs && debugLog) {
-                try { fs.appendFileSync(debugLog, '[QUIT] Closing database worker\n'); } catch (e) {}
+                try { diagnosticLog.append(debugLog, '[QUIT] Closing database worker\n'); } catch (e) {}
             }
 
             try {
@@ -3847,12 +3752,12 @@ app.on('before-quit', async (event) => {
                 const t11d = Date.now();
                 console.log(`[QUIT] [${t11d}] Database worker closed (${t11d-t11c}ms)`);
                 if (canWriteLogs && debugLog) {
-                    try { fs.appendFileSync(debugLog, `[QUIT] Database worker closed (${t11d-t11c}ms)\n`); } catch (e) {}
+                    try { diagnosticLog.append(debugLog, `[QUIT] Database worker closed (${t11d-t11c}ms)\n`); } catch (e) {}
                 }
             } catch (closeError) {
                 console.error('[QUIT] Error closing database worker:', closeError);
                 if (canWriteLogs && debugLog) {
-                    try { fs.appendFileSync(debugLog, `[QUIT] Error closing database worker: ${closeError}\n`); } catch (e) {}
+                    try { diagnosticLog.append(debugLog, `[QUIT] Error closing database worker: ${closeError}\n`); } catch (e) {}
                 }
             }
         } else {
@@ -3861,7 +3766,7 @@ app.on('before-quit', async (event) => {
     } catch (error) {
         console.error('[QUIT] Error creating database backup:', error);
         if (canWriteLogs && debugLog) {
-            try { fs.appendFileSync(debugLog, `[QUIT] Error creating backup: ${error}\n`); } catch (e) {}
+            try { diagnosticLog.append(debugLog, `[QUIT] Error creating backup: ${error}\n`); } catch (e) {}
         }
     }
 
@@ -3872,7 +3777,7 @@ app.on('before-quit', async (event) => {
         const all = BrowserWindow.getAllWindows();
         console.log(`[QUIT] [${t12}] Destroying ${all.length} windows`);
         if (canWriteLogs && debugLog) {
-            try { fs.appendFileSync(debugLog, `[QUIT] Destroying ${all.length} windows\n`); } catch (e) {}
+            try { diagnosticLog.append(debugLog, `[QUIT] Destroying ${all.length} windows\n`); } catch (e) {}
         }
         for (const win of all) {
             try {
@@ -3889,14 +3794,14 @@ app.on('before-quit', async (event) => {
     console.log(`[QUIT] [${t14}] All cleanup complete, checking for active handles`);
     if (canWriteLogs && debugLog) {
         try {
-            fs.appendFileSync(debugLog, '[QUIT] All cleanup complete, quitting app\n');
+            diagnosticLog.append(debugLog, '[QUIT] All cleanup complete, quitting app\n');
 
             // Log what's still keeping the process alive
             const activeHandles = (process as any)._getActiveHandles?.();
             const activeRequests = (process as any)._getActiveRequests?.();
 
             if (activeHandles && activeHandles.length > 0) {
-                fs.appendFileSync(debugLog, `[QUIT] WARNING: ${activeHandles.length} handles still active:\n`);
+                diagnosticLog.append(debugLog, `[QUIT] WARNING: ${activeHandles.length} handles still active:\n`);
                 activeHandles.forEach((handle: any, i: number) => {
                     const name = handle.constructor.name;
                     let details = `  ${i}: ${name}`;
@@ -3910,20 +3815,20 @@ app.on('before-quit', async (event) => {
                         // Force close ANY FSWatcher we find
                         try {
                             handle.close();
-                            fs.appendFileSync(debugLog, `    FORCE CLOSED FSWatcher ${i}\n`);
+                            diagnosticLog.append(debugLog, `    FORCE CLOSED FSWatcher ${i}\n`);
                         } catch (e) {
-                            fs.appendFileSync(debugLog, `    Failed to force close: ${e}\n`);
+                            diagnosticLog.append(debugLog, `    Failed to force close: ${e}\n`);
                         }
                     }
                     if (name === 'Timer' || name === 'Timeout') {
                         details += ' (timer/interval!)';
                     }
-                    fs.appendFileSync(debugLog, details + '\n');
+                    diagnosticLog.append(debugLog, details + '\n');
                 });
             }
 
             if (activeRequests && activeRequests.length > 0) {
-                fs.appendFileSync(debugLog, `[QUIT] WARNING: ${activeRequests.length} requests still active\n`);
+                diagnosticLog.append(debugLog, `[QUIT] WARNING: ${activeRequests.length} requests still active\n`);
             }
         } catch (e) {}
     }

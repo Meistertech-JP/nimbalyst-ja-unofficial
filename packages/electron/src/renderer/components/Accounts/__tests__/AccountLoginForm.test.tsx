@@ -13,8 +13,8 @@ vi.mock('@nimbalyst/runtime', () => ({
   MaterialSymbol: ({ icon }: { icon: string }) => <span>{icon}</span>,
 }));
 
-const sendMagicLink = vi.fn(async () => ({ success: true }));
-const signInWithGoogle = vi.fn(async () => ({ success: true }));
+const sendMagicLink = vi.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: true }));
+const signInWithGoogle = vi.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: true }));
 const getAccounts = vi.fn(async (): Promise<PersonalAccountSummary[]> => []);
 const testI18n = createInstance();
 const testI18nReady = testI18n.init({
@@ -67,6 +67,33 @@ function submitMagicLink(email?: string) {
   }
   fireEvent.click(screen.getByRole('button', { name: /^Send magic link/ }));
 }
+
+describe('AccountLoginForm encrypted-storage errors', () => {
+  it.each(['en', 'ja'] as const)('localizes returned storage errors in %s without entering a waiting state', async language => {
+    await testI18n.changeLanguage(language);
+    signInWithGoogle.mockResolvedValue({ success: false, error: 'StytchCredentialStorageError: Credential storage: encryption-unavailable' });
+    render(<AccountLoginForm mode="org-onboarding" />);
+    fireEvent.click(screen.getByRole('button', { name: /Google/ }));
+    const expected = language === 'ja'
+      ? '認証情報を安全に保存できないため、サインインを完了できませんでした。'
+      : 'Sign-in could not be completed because authentication information could not be stored securely.';
+    expect(await screen.findByText(expected)).toBeTruthy();
+    expect(screen.queryByText(/Credential storage:/)).toBeNull();
+    expect(screen.queryByTestId('account-login-waiting')).toBeNull();
+  });
+
+  it.each(['en', 'ja'] as const)('localizes rejected IPC storage errors in %s', async language => {
+    await testI18n.changeLanguage(language);
+    signInWithGoogle.mockRejectedValue(new Error("Error invoking remote method 'stytch:sign-in-google': StytchCredentialStorageError: Credential storage: write-failed"));
+    render(<AccountLoginForm mode="first-sign-in" />);
+    fireEvent.click(screen.getByRole('button', { name: /Google/ }));
+    const expected = language === 'ja'
+      ? '認証情報を安全に保存できないため、サインインを完了できませんでした。'
+      : 'Sign-in could not be completed because authentication information could not be stored securely.';
+    expect(await screen.findByText(expected)).toBeTruthy();
+    expect(screen.queryByText(/Credential storage:/)).toBeNull();
+  });
+});
 
 describe('AccountLoginForm intent', () => {
   it('signs in with no stored accounts', async () => {

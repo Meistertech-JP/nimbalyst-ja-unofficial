@@ -1,12 +1,15 @@
 import { app, BrowserWindow } from 'electron';
 import { appendFileSync } from 'fs';
 import { join } from 'path';
+import { getLoggerConfig } from './logger';
 
 let forceQuitTimer: NodeJS.Timeout | null = null;
 let isForceQuitting = false;
 
 function logToDebugFile(message: string) {
     try {
+        // Diagnostics follow the ordinary live policy, independently of quit cleanup.
+        if (!getLoggerConfig().fileLogging) return;
         const debugLog = join(app.getPath('userData'), 'nimbalyst-debug.log');
         appendFileSync(debugLog, `[QUIT] ${new Date().toISOString()} - ${message}\n`);
     } catch (e) {

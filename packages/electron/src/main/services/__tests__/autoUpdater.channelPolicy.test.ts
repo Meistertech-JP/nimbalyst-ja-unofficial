@@ -36,6 +36,7 @@ vi.mock('electron-updater', async () => {
 });
 
 import { autoUpdater } from 'electron-updater';
+import log from 'electron-log/main';
 import { AutoUpdaterService } from '../autoUpdater';
 
 beforeEach(() => {
@@ -113,3 +114,19 @@ it('keeps the default updater disabled even when OFFICIAL_BUILD is true', () => 
     }
   }
 });
+
+it.each([false, 'error', 'info', 'debug'] as const)(
+  'preserves the configured shared file logging level %s for disabled and enabled updaters',
+  (level) => {
+    for (const updatesEnabled of [false, true]) {
+      log.transports.file.level = level;
+
+      const service = new AutoUpdaterService(updatesEnabled);
+
+      expect(service.updatesEnabled).toBe(updatesEnabled);
+      expect(autoUpdater.logger).toBe(log);
+      expect(log.transports.file.level).toBe(level);
+      autoUpdater.removeAllListeners();
+    }
+  },
+);

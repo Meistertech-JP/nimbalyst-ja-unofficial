@@ -1685,6 +1685,7 @@
     "reauth_title": "このアカウントを再接続",
     "reauth_description": "このアカウントを再接続しても、ほかのアカウントはサインインしたままです。",
     "sign_in_failed": "サインインを開始できませんでした。",
+    "secure_storage_failed": "認証情報を安全に保存できないため、サインインを完了できませんでした。",
     "magic_link_failed": "サインインリンクを送信できませんでした。",
     "reconnect_required": "再接続するアカウントを選択してください。",
     "signing_back": "<account>{{email}}</account>で再度サインインします。",

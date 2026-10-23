@@ -3,6 +3,7 @@ import { safeOn } from './ipcRegistry';
 import { promises as fs } from 'fs';
 import path from 'path';
 import inspector from 'inspector';
+import { getLoggerConfig } from './logger';
 
 let lastCpuUsage = process.cpuUsage();
 let lastTime = Date.now();
@@ -36,7 +37,17 @@ let highCpuStreak = 0;
 let profileInFlight = false;
 let lastProfileAt = 0;
 
+function isProfileLoggingEnabled(): boolean {
+    try {
+        return getLoggerConfig().fileLogging;
+    } catch {
+        // Diagnostic capture must fail closed without interrupting monitoring.
+        return false;
+    }
+}
+
 async function captureCpuProfile(triggerCpuPercent: number, reason: string = 'cpu'): Promise<void> {
+    if (!isProfileLoggingEnabled()) return;
     if (profileInFlight) return;
     const now = Date.now();
     if (now - lastProfileAt < PROFILE_COOLDOWN_MS) return;
@@ -60,8 +71,10 @@ async function captureCpuProfile(triggerCpuPercent: number, reason: string = 'cp
         await new Promise<void>((r) => setTimeout(r, PROFILE_DURATION_MS));
         const { profile } = await post<{ profile: object }>('Profiler.stop');
 
+        if (!isProfileLoggingEnabled()) return;
         const logsDir = path.join(app.getPath('userData'), 'logs');
         await fs.mkdir(logsDir, { recursive: true });
+        if (!isProfileLoggingEnabled()) return;
         const filename = `cpu-${new Date().toISOString().replace(/[:.]/g, '-')}.cpuprofile`;
         const fullPath = path.join(logsDir, filename);
         await fs.writeFile(fullPath, JSON.stringify(profile));

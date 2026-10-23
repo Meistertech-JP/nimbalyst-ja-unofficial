@@ -52,6 +52,12 @@ async function resolveFlowOptions(
 
 export function AccountLoginForm({ mode, account }: AccountLoginFormProps) {
   const { t } = useTranslation('common');
+  // Keep fixed storage diagnostics out of the user-facing sign-in message.
+  // IPC may wrap the original error; unrelated server errors keep their meaning.
+  const displaySignInError = (message: string): string =>
+    /(?:^|:\s)(?:StytchCredentialStorageError:\s)?Credential storage: (?:encryption-unavailable|encrypt-failed|read-failed|write-failed|recovery-required)$/.test(message)
+      ? t('account_ui.secure_storage_failed')
+      : message;
   /**
    * The org wizard renders this inside its own dialog, which already carries the
    * card, the product identity and its own scale. Standing alone the form is the
@@ -90,16 +96,16 @@ export function AccountLoginForm({ mode, account }: AccountLoginFormProps) {
         ? await window.electronAPI.stytch.signInWithGoogle(options)
         : await window.electronAPI.stytch.sendMagicLink(targetEmail, options);
       if (!result?.success) {
-        setError(result?.error ?? (
+        setError(displaySignInError(result?.error ?? (
           method === 'google' ? t('account_ui.sign_in_failed') : t('account_ui.magic_link_failed')
-        ));
+        )));
         return false;
       }
       return true;
     } catch (reason) {
       setError(reason instanceof Error && reason.message === 'Reconnecting an account requires the account to reconnect.'
         ? t('account_ui.reconnect_required')
-        : reason instanceof Error ? reason.message : String(reason));
+        : displaySignInError(reason instanceof Error ? reason.message : String(reason)));
       return false;
     } finally {
       setLoading(false);

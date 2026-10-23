@@ -67,8 +67,7 @@ export class AutoUpdaterService {
   constructor(updatesEnabled = false) {
     this.updatesEnabled = updatesEnabled;
 
-    // Configure electron-updater logger
-    log.transports.file.level = 'info';
+    // Reuse the shared logger without overriding the user's transport policy.
     autoUpdater.logger = log;
 
     if (!this.updatesEnabled) {

@@ -222,30 +222,72 @@ export function isTransportError(error: unknown): boolean {
   return chain.some(hasSoftTransportEvidence);
 }
 
-/**
- * A short, log-safe rendering of the transport failure -- the `code` when we
- * have one, otherwise the deepest message. This is what makes the log line
- * self-diagnosing: "unreachable" alone does not tell you whether nothing is
- * listening, DNS is broken, or the socket died mid-handshake.
- */
+// Diagnostic output is an allowlist, not a redaction regex over arbitrary text.
+// Fetch errors (including nested causes and even `code`) can contain credentials,
+// request URLs, headers or response bodies. Never return any of those strings.
+const CHROMIUM_TRANSPORT_CODES = [
+  'net::ERR_CONNECTION_REFUSED',
+  'net::ERR_CONNECTION_RESET',
+  'net::ERR_CONNECTION_ABORTED',
+  'net::ERR_CONNECTION_CLOSED',
+  'net::ERR_CONNECTION_TIMED_OUT',
+  'net::ERR_TIMED_OUT',
+  'net::ERR_NAME_NOT_RESOLVED',
+  'net::ERR_INTERNET_DISCONNECTED',
+  'net::ERR_NETWORK_CHANGED',
+  'net::ERR_ADDRESS_UNREACHABLE',
+  'net::ERR_PROXY_CONNECTION_FAILED',
+  'net::ERR_TUNNEL_CONNECTION_FAILED',
+  'net::ERR_SSL_PROTOCOL_ERROR',
+  'net::ERR_CERT_AUTHORITY_INVALID',
+  'net::ERR_CERT_DATE_INVALID',
+  'net::ERR_CERT_COMMON_NAME_INVALID',
+  'net::ERR_ABORTED',
+  'net::ERR_FAILED',
+] as const;
+
+const SAFE_TRANSPORT_LABELS = [
+  ...TRANSPORT_ERROR_CODES,
+  ...TRANSPORT_ERROR_NAMES,
+  ...CHROMIUM_TRANSPORT_CODES,
+];
+
+/** Return only fixed diagnostic labels, never interpolated transport text. */
 export function describeTransportError(error: unknown): string {
-  const links = errorChain(error).filter((l): l is object => !!l && typeof l === 'object');
+  const links = errorChain(error).filter(isObjectLike);
+  // Keep the same authoritative rejection precedence as isTransportError.
   for (const link of links) {
-    const code = (link as { code?: unknown }).code;
-    if (typeof code === 'string' && code) {
-      const message = (link as { message?: unknown }).message;
-      if (typeof message !== 'string' || !message) return code;
-      // Keep the message when it already carries the code -- it is the part
-      // that names the host:port, which is what identifies a client pointed at
-      // a local dev collab server that is not running.
-      return message.includes(code) ? message : `${code} (${message})`;
+    const status = readHttpStatuses(link).find((value) => AUTH_HTTP_STATUSES.has(value));
+    if (status !== undefined) return `HTTP ${status}`;
+  }
+  for (const link of links) {
+    if (typeof link.code === 'string' && TRANSPORT_ERROR_CODES.has(link.code)) return link.code;
+  }
+  for (const link of links) {
+    if (typeof link.name === 'string' && TRANSPORT_ERROR_NAMES.has(link.name)) return link.name;
+    const message = messageOf(link);
+    if (!message) continue;
+    for (const label of SAFE_TRANSPORT_LABELS) {
+      // All labels are fixed alphanumeric/underscore/colon literals. A match
+      // selects that constant; no portion of the source text is returned.
+      if (new RegExp(`\\b${label}\\b`, 'i').test(message)) return label;
     }
   }
-  for (const link of links.reverse()) {
-    const message = (link as { message?: unknown }).message;
-    if (typeof message === 'string' && message) return message;
+  return isTransportError(error) ? 'transport error' : 'unknown transport error';
+}
+
+/** Preserve known server/loopback diagnosis without exposing custom hostnames. */
+function describeSyncOrigin(serverUrl: string): string {
+  try {
+    const url = new URL(serverUrl);
+    if (['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol)
+      && ['localhost', '127.0.0.1', '[::1]', 'sync.nimbalyst.com', 'collabv3.nimbalyst.workers.dev'].includes(url.hostname)) {
+      return url.origin;
+    }
+  } catch {
+    // Parsing errors can themselves contain the original URL; never log them.
   }
-  return 'unknown transport error';
+  return '[configured endpoint]';
 }
 
 export interface PersonalJwtFailureInput {
@@ -255,7 +297,7 @@ export interface PersonalJwtFailureInput {
   expiryMs: number | null;
   /** The collab server the refresh was attempted against. */
   serverUrl: string;
-  /** Rendered transport error for the `network` case, when one was captured. */
+  /** Transport detail for the `network` case; re-sanitized at the output boundary. */
   detail?: string | null;
 }
 
@@ -263,9 +305,9 @@ export function describePersonalJwtFailure(input: PersonalJwtFailureInput): Erro
   const { reason, expiryMs, serverUrl, detail } = input;
 
   if (reason === 'network') {
-    const cause = detail ? ` (${detail})` : '';
+    const cause = detail ? ` (${describeTransportError({ message: detail })})` : '';
     const err = new Error(
-      `[SyncManager] Sync server ${serverUrl} is unreachable${cause}, so the personal session could not be refreshed. ` +
+      `[SyncManager] Sync server ${describeSyncOrigin(serverUrl)} is unreachable${cause}, so the personal session could not be refreshed. ` +
         'The stored session is still valid and is NOT being cleared; sync will recover once the server is reachable.',
     );
     (err as { code?: string }).code = 'SYNC_SERVER_UNREACHABLE';

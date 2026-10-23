@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,6 +9,61 @@ import {
 
 const SERVER_URL = 'ws://localhost:8790';
 const EXPIRY_MS = Date.parse('2026-07-27T03:17:50.000Z');
+
+describe('auth diagnostic redaction', () => {
+  const marker = 'DUMMY_R11_SECRET_NOT_A_CREDENTIAL';
+  const secretUrl = `https://dummy-user:${marker}@sync.nimbalyst.com/private/${marker}?token=${marker}#${marker}`;
+
+  it.each([
+    ['nested transport message', { cause: Object.assign(new Error(`connect ECONNREFUSED ${secretUrl}`), { code: 'ECONNREFUSED' }) }, 'ECONNREFUSED'],
+    ['Chromium message', new Error(`net::ERR_CONNECTION_REFUSED ${secretUrl}`), 'net::ERR_CONNECTION_REFUSED'],
+    ['untrusted code and message', { code: marker, message: secretUrl }, 'unknown transport error'],
+    ['untrusted deepest cause', { cause: new Error(`Authorization: Bearer ${marker}`) }, 'unknown transport error'],
+    ['timeout name', { name: 'TimeoutError', message: secretUrl }, 'TimeoutError'],
+    ['known code with unrelated text', { code: 'ENOTFOUND', message: `${marker}@private.invalid` }, 'ENOTFOUND'],
+  ])('returns only safe technical detail for %s', (_label, error, expected) => {
+    expect(describeTransportError(error)).toBe(expected);
+  });
+
+  it('sanitizes both the configured URL and separately supplied detail at the final error boundary', () => {
+    const error = describePersonalJwtFailure({ reason: 'network', expiryMs: EXPIRY_MS, serverUrl: secretUrl, detail: `ECONNRESET (${secretUrl})` });
+    expect(error.message).toContain('https://sync.nimbalyst.com');
+    expect(error.message).toContain('ECONNRESET');
+    expect(error.message).not.toContain(marker);
+    expect(error.message).not.toContain('dummy-user');
+    expect(error.message).not.toContain('/private/');
+    expect((error as Error & { code: string }).code).toBe('SYNC_SERVER_UNREACHABLE');
+  });
+
+  it.each([`https://${marker}.example.invalid/path`, `invalid ${marker}`, `file:///${marker}`, `data:text/plain,${marker}`])('does not expose an untrusted endpoint or its parse error: %s', (serverUrl) => {
+    const error = describePersonalJwtFailure({ reason: 'network', expiryMs: null, serverUrl, detail: marker });
+    expect(error.message).not.toContain(marker);
+    expect(error.message).toContain('[configured endpoint]');
+    expect(error.message).toContain('unknown transport error');
+  });
+
+  it('retains loopback origin diagnosis without the URL credentials, path, query or fragment', () => {
+    const error = describePersonalJwtFailure({ reason: 'network', expiryMs: null, serverUrl: `ws://dummy:${marker}@127.0.0.1:8790/${marker}?jwt=${marker}#${marker}`, detail: 'UND_ERR_CONNECT_TIMEOUT' });
+    expect(error.message).toContain('ws://127.0.0.1:8790');
+    expect(error.message).toContain('UND_ERR_CONNECT_TIMEOUT');
+    expect(error.message).not.toContain(marker);
+  });
+
+  it('keeps authoritative auth rejection ahead of transport-looking wrappers without echoing either message', () => {
+    const error = { message: `net::ERR_CONNECTION_REFUSED ${marker}`, cause: { status: 401, message: `Unauthorized ${secretUrl}` } };
+    expect(isTransportError(error)).toBe(false);
+    expect(describeTransportError(error)).toBe('HTTP 401');
+    const described = describePersonalJwtFailure({ reason: 'auth', expiryMs: EXPIRY_MS, serverUrl: secretUrl, detail: marker });
+    expect((described as Error & { code: string }).code).toBe('PERSONAL_JWT_EXPIRED');
+    expect(described.message).not.toContain(marker);
+  });
+
+  it('bounds cyclic cause chains without copying arbitrary diagnostic text', () => {
+    const error: { message: string; cause?: unknown } = { message: marker };
+    error.cause = error;
+    expect(describeTransportError(error)).toBe('unknown transport error');
+  });
+});
 
 describe('describePersonalJwtFailure', () => {
   it('reports an unreachable sync server as a connectivity failure, not an auth failure', () => {
@@ -58,7 +114,8 @@ describe('describePersonalJwtFailure', () => {
 
     expect(err.message).toContain(SERVER_URL);
     expect(err.message).toContain('ECONNREFUSED');
-    expect(err.message).toContain('127.0.0.1:8790');
+    // Diagnose the configured origin, never an arbitrary host embedded in detail.
+    expect(err.message).not.toContain('127.0.0.1:8790');
   });
 });
 
@@ -235,20 +292,19 @@ describe('isTransportError', () => {
 });
 
 describe('describeTransportError', () => {
-  it('surfaces the nested cause code and message from an undici-wrapped failure', () => {
+  it('surfaces only the nested cause code from an undici-wrapped failure', () => {
     const error = Object.assign(new TypeError('fetch failed'), {
       cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:8790'), {
         code: 'ECONNREFUSED',
       }),
     });
 
-    // The port matters: it is what tells the reader the client is pointed at a
-    // local dev collab server that is not running.
-    expect(describeTransportError(error)).toContain('ECONNREFUSED');
-    expect(describeTransportError(error)).toContain('127.0.0.1:8790');
+    // Origin diagnosis belongs to the sanitized configured server URL, not
+    // free-form error messages that may also contain credentials.
+    expect(describeTransportError(error)).toBe('ECONNREFUSED');
   });
 
-  it('falls back to the message when there is no code', () => {
+  it('extracts a known Chromium code when there is no structured code', () => {
     expect(describeTransportError(new TypeError('net::ERR_CONNECTION_REFUSED')))
       .toBe('net::ERR_CONNECTION_REFUSED');
   });

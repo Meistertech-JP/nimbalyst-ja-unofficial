@@ -18,15 +18,14 @@
  * Callback format: http://127.0.0.1:<port>/auth/callback?state=...&session_token=...&user_id=...&org_id=...
  */
 
-import { app, BrowserWindow, safeStorage, shell, net } from 'electron';
-import * as fs from 'fs';
-import * as path from 'path';
+import { app, BrowserWindow, shell, net } from 'electron';
 import { logger } from '../utils/logger';
 import { summarizeAuthDiagnostic, summarizeAuthRejection } from '../utils/authDiagnosticSummary';
 import { STYTCH_CONFIG, asPersonalJwt, asPersonalMemberId, type PersonalJwt, type PersonalMemberId } from '@nimbalyst/runtime';
 import { clearOrgWalkPreferences, getSessionSyncConfig, setSessionSyncConfig } from '../utils/store';
 import { AnalyticsService } from './analytics/AnalyticsService';
 import { reconcilePersonalUserId } from './auth/personalUserIdReconcile';
+import { persistStytchCredentialFiles, readStytchCredentialFile, requireStytchCredentialEncryption, StytchCredentialStorageError, type StytchCredentialWrite } from './auth/stytchCredentialStorage';
 import { describeTransportError, isTransportError, type PersonalRefreshFailureReason } from './auth/personalJwtFailure';
 import {
   AUTH_FLOW_TTL_MS,
@@ -178,6 +177,22 @@ let authState: StytchAuthState = {
 // Multi-account state -- all accounts keyed by personalOrgId.
 const accounts = new Map<string, StoredStytchCredentials>();
 let syncAccountId: string | null = null;
+// Invalidates asynchronous work owned by a prior login or sync-account selection.
+let authGeneration = 0;
+const accountAuthGenerations = new Map<string, number>();
+let pendingSignOuts = 0;
+let authShuttingDown = false;
+
+function refreshBlocked(): boolean {
+  return pendingSignOuts > 0 || authShuttingDown;
+}
+
+function captureRefreshValidity(accountId: string | null | undefined): () => boolean {
+  const generation = authGeneration;
+  const accountGeneration = accountId ? accountAuthGenerations.get(accountId) ?? 0 : 0;
+  return () => !refreshBlocked() && generation === authGeneration
+    && (!accountId || accountGeneration === (accountAuthGenerations.get(accountId) ?? 0));
+}
 
 const pendingAuthFlows = new PendingAuthFlowLedger();
 const authCallbackListeners = new Map<string, AuthCallbackLoopbackController>();
@@ -190,70 +205,11 @@ type AuthStateListener = (state: StytchAuthState) => void;
 const authStateListeners = new Set<AuthStateListener>();
 
 /**
- * Get the path to the encrypted credentials file (v1 single-account).
- */
-function getCredentialsPath(): string {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, STYTCH_CREDENTIALS_FILE);
-}
-
-/**
- * Get the path to the multi-account credentials file (v2).
- */
-function getAccountsPath(): string {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, STYTCH_ACCOUNTS_FILE);
-}
-
-
-/**
- * Check if safeStorage is available for encryption.
- */
-function isSafeStorageAvailable(): boolean {
-  try {
-    return safeStorage.isEncryptionAvailable();
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Save Stytch credentials securely.
- */
-function saveStytchCredentials(credentials: StoredStytchCredentials): void {
-  const credentialsPath = getCredentialsPath();
-  const jsonData = JSON.stringify(credentials);
-
-  if (isSafeStorageAvailable()) {
-    const encrypted = safeStorage.encryptString(jsonData);
-    fs.writeFileSync(credentialsPath, encrypted);
-    // logger.main.info('[StytchAuthService] Credentials saved with safeStorage encryption');
-  } else {
-    logger.main.warn('[StytchAuthService] safeStorage not available - saving credentials without encryption');
-    fs.writeFileSync(credentialsPath, jsonData, 'utf8');
-  }
-}
-
-/**
  * Load Stytch credentials from secure storage.
  */
 function loadStytchCredentials(): StoredStytchCredentials | null {
-  const credentialsPath = getCredentialsPath();
-
-  if (!fs.existsSync(credentialsPath)) {
-    return null;
-  }
-
   try {
-    const fileData = fs.readFileSync(credentialsPath);
-
-    if (isSafeStorageAvailable()) {
-      const decrypted = safeStorage.decryptString(fileData);
-      return JSON.parse(decrypted);
-    } else {
-      const jsonData = fileData.toString('utf8');
-      return JSON.parse(jsonData);
-    }
+    return readStytchCredentialFile<StoredStytchCredentials>(STYTCH_CREDENTIALS_FILE);
   } catch (error) {
     logger.main.error('[StytchAuthService] Failed to load credentials:', summarizeAuthDiagnostic(error));
     return null;
@@ -264,11 +220,7 @@ function loadStytchCredentials(): StoredStytchCredentials | null {
  * Clear stored Stytch credentials.
  */
 function clearStytchCredentials(): void {
-  const credentialsPath = getCredentialsPath();
-  if (fs.existsSync(credentialsPath)) {
-    fs.unlinkSync(credentialsPath);
-    logger.main.info('[StytchAuthService] Credentials cleared');
-  }
+  persistStytchCredentialFiles([{ name: STYTCH_CREDENTIALS_FILE, value: null }]);
 }
 
 // ============================================================================
@@ -278,32 +230,25 @@ function clearStytchCredentials(): void {
 /**
  * Save all accounts to the multi-account file.
  */
-function saveAllAccounts(): void {
-  if (accounts.size === 0) {
-    // No accounts -- remove the file
-    const accountsPath = getAccountsPath();
-    if (fs.existsSync(accountsPath)) {
-      fs.unlinkSync(accountsPath);
-    }
-    return;
-  }
-
-  const data: StoredAccountsData = {
+function persistAccountSnapshot(
+  nextAccounts: ReadonlyMap<string, StoredStytchCredentials>,
+  nextSyncAccountId: string | null,
+  legacy?: StoredStytchCredentials | null,
+): void {
+  const data: StoredAccountsData | null = nextAccounts.size === 0 ? null : {
     version: 3,
-    syncAccountId: syncAccountId || '',
-    accounts: Array.from(accounts.values()),
+    syncAccountId: nextSyncAccountId || '',
+    accounts: Array.from(nextAccounts.values()),
   };
-
-  const accountsPath = getAccountsPath();
-  const jsonData = JSON.stringify(data);
-
-  if (isSafeStorageAvailable()) {
-    const encrypted = safeStorage.encryptString(jsonData);
-    fs.writeFileSync(accountsPath, encrypted);
-  } else {
-    logger.main.warn('[StytchAuthService] safeStorage not available - saving accounts without encryption');
-    fs.writeFileSync(accountsPath, jsonData, 'utf8');
-  }
+  const writes: StytchCredentialWrite[] = [{ name: STYTCH_ACCOUNTS_FILE, value: data }];
+  if (legacy !== undefined) writes.push({ name: STYTCH_CREDENTIALS_FILE, value: legacy });
+  persistStytchCredentialFiles(writes);
+  // Publish only after the complete disk snapshot succeeds. Copy before clearing
+  // because a caller may pass the current map itself.
+  const committed = new Map(nextAccounts);
+  accounts.clear();
+  for (const [id, credentials] of committed) accounts.set(id, credentials);
+  syncAccountId = nextSyncAccountId;
 }
 
 /**
@@ -313,50 +258,39 @@ function saveAllAccounts(): void {
  */
 function loadAllAccounts(): boolean {
   // Try the multi-account formats first.
-  const accountsPath = getAccountsPath();
-  if (fs.existsSync(accountsPath)) {
-    try {
-      const fileData = fs.readFileSync(accountsPath);
-      let jsonData: string;
-      if (isSafeStorageAvailable()) {
-        jsonData = safeStorage.decryptString(fileData);
+  try {
+    const data = readStytchCredentialFile<StoredAccountsData | LegacyStoredAccountsData>(STYTCH_ACCOUNTS_FILE);
+    if (data && (data.version === 2 || data.version === 3) && Array.isArray(data.accounts)) {
+      const loaded = new Map<string, StoredStytchCredentials>();
+      for (const acct of data.accounts) {
+        if (acct.personalOrgId) loaded.set(acct.personalOrgId, acct);
+      }
+      const persistedSyncAccountId = data.version === 3 ? data.syncAccountId : data.primaryAccountId;
+      const selected = persistedSyncAccountId && loaded.has(persistedSyncAccountId)
+        ? persistedSyncAccountId : loaded.keys().next().value ?? null;
+      if (data.version === 2) {
+        persistAccountSnapshot(loaded, selected);
       } else {
-        jsonData = fileData.toString('utf8');
-      }
-      const data = JSON.parse(jsonData) as StoredAccountsData | LegacyStoredAccountsData;
-      if ((data.version === 2 || data.version === 3) && Array.isArray(data.accounts)) {
         accounts.clear();
-        for (const acct of data.accounts) {
-          if (acct.personalOrgId) {
-            accounts.set(acct.personalOrgId, acct);
-          }
-        }
-        const persistedSyncAccountId = data.version === 3
-          ? data.syncAccountId
-          : data.primaryAccountId;
-        syncAccountId = persistedSyncAccountId && accounts.has(persistedSyncAccountId)
-          ? persistedSyncAccountId
-          : accounts.keys().next().value ?? null;
-        if (data.version === 2) {
-          saveAllAccounts();
-        }
-        logger.main.info(`[StytchAuthService] Loaded ${accounts.size} accounts (v${data.version} format)`);
-        return accounts.size > 0;
+        for (const [id, credentials] of loaded) accounts.set(id, credentials);
+        syncAccountId = selected;
       }
-    } catch (error) {
-      logger.main.error('[StytchAuthService] Failed to load v2 accounts:', summarizeAuthDiagnostic(error));
+      logger.main.info(`[StytchAuthService] Loaded ${accounts.size} accounts (v${data.version} format)`);
+      return accounts.size > 0;
     }
+  } catch (error) {
+    logger.main.error('[StytchAuthService] Failed to load v2 accounts:', summarizeAuthDiagnostic(error));
+    // A failed current-store read/migration is not permission to overwrite it
+    // with the older mirror. Preserve both for recovery.
+    return false;
   }
 
   // Migrate from v1 single-account format
   const v1Creds = loadStytchCredentials();
-  if (v1Creds && v1Creds.personalOrgId) {
-    accounts.clear();
-    accounts.set(v1Creds.personalOrgId, v1Creds);
-    syncAccountId = v1Creds.personalOrgId;
-
+  const legacyOrgId = v1Creds?.personalOrgId || v1Creds?.orgId;
+  if (v1Creds && legacyOrgId) {
     // Save in the current multi-account format.
-    saveAllAccounts();
+    persistAccountSnapshot(new Map([[legacyOrgId, v1Creds]]), legacyOrgId);
 
     logger.main.info('[StytchAuthService] Migrated v1 credentials to multi-account format');
     return true;
@@ -371,8 +305,9 @@ function loadAllAccounts(): boolean {
 function updateAccountCredentials(personalOrgId: string, update: Partial<StoredStytchCredentials>): void {
   const existing = accounts.get(personalOrgId);
   if (existing) {
-    accounts.set(personalOrgId, { ...existing, ...update });
-    saveAllAccounts();
+    const nextAccounts = new Map(accounts);
+    nextAccounts.set(personalOrgId, { ...existing, ...update });
+    persistAccountSnapshot(nextAccounts, syncAccountId);
   }
 }
 
@@ -440,15 +375,17 @@ function updateAuthState(update: Partial<StytchAuthState>): void {
  * IMPORTANT: Only pass the public token, never the secret key!
  */
 export function initializeStytchAuth(config: StytchConfig): void {
+  authShuttingDown = false;
   stytchConfig = config;
 
   logger.main.info('[StytchAuthService] Initialized with project:', summarizeAuthDiagnostic(config.projectId));
 
   // Load multi-account data, migrating older persisted formats if needed.
-  loadAllAccounts();
+  if (!loadAllAccounts()) return;
 
   // Restore the sync account into the singleton authState.
-  const savedCredentials = syncAccountId ? accounts.get(syncAccountId) ?? null : loadStytchCredentials();
+  const stored = syncAccountId ? accounts.get(syncAccountId) ?? null : loadStytchCredentials();
+  const savedCredentials = stored ? { ...stored } : null;
   if (savedCredentials && savedCredentials.expiresAt > Date.now() && savedCredentials.orgId) {
     // Validate JWT format (must be 3 parts separated by dots)
     const hasValidJwt = savedCredentials.sessionJwt && savedCredentials.sessionJwt.split('.').length === 3;
@@ -460,7 +397,37 @@ export function initializeStytchAuth(config: StytchConfig): void {
       || savedCredentials.orgId === savedCredentials.personalOrgId;
     const restoredJwt = hasValidJwt ? savedCredentials.sessionJwt : null;
 
-    // Use updateAuthState to notify listeners (like RepositoryManager) of the restored session
+    // One-time migration: if personalOrgId is missing (pre-existing creds from before
+    // this field was added), persist the current orgId as personalOrgId.
+    // At the time those creds were saved, the orgId WAS the personal org.
+    let needsSave = false;
+    if (!savedCredentials.personalOrgId && savedCredentials.orgId) {
+      savedCredentials.personalOrgId = savedCredentials.orgId;
+      needsSave = true;
+      logger.main.info('[StytchAuthService] Migrated orgId to personalOrgId:', summarizeAuthDiagnostic(savedCredentials.orgId));
+    }
+    // One-time migration: if personalUserId is missing, try to persist the current userId.
+    // BUT: if orgId !== personalOrgId, a team session exchange already happened and the
+    // stored userId is the TEAM member ID (not personal). In that case, SyncManager will
+    // call resolvePersonalUserId() during async init to exchange to the personal org
+    // and extract the correct member ID.
+    // Workstream A1's explicit account -> team-member binding makes this ambient-userId
+    // repair redundant for team access. Keep it for legacy credential recovery in this pass.
+    if (!savedCredentials.personalUserId && savedCredentials.userId) {
+      if (!savedCredentials.orgId || !savedCredentials.personalOrgId || savedCredentials.orgId === savedCredentials.personalOrgId) {
+        // No team exchange happened yet -- userId IS the personal member ID
+        savedCredentials.personalUserId = savedCredentials.userId;
+        needsSave = true;
+        logger.main.info('[StytchAuthService] Migrated userId to personalUserId:', summarizeAuthDiagnostic(savedCredentials.userId));
+      } else {
+        logger.main.warn('[StytchAuthService] personalUserId missing and orgId differs from personalOrgId.',
+          'Will resolve via session exchange to personal org during sync init.');
+      }
+    }
+    if (needsSave) {
+      persistAccountSnapshot(new Map(accounts).set(syncAccountId!, savedCredentials), syncAccountId, savedCredentials);
+    }
+    // Notify only after any required migration has been persisted.
     updateAuthState({
       isAuthenticated: true,
       user: savedCredentials.userId ? {
@@ -477,38 +444,7 @@ export function initializeStytchAuth(config: StytchConfig): void {
       personalUserId: savedCredentials.personalUserId || null,
       personalSessionJwt: isInPersonalOrg ? restoredJwt : null,
     });
-    // One-time migration: if personalOrgId is missing (pre-existing creds from before
-    // this field was added), persist the current orgId as personalOrgId.
-    // At the time those creds were saved, the orgId WAS the personal org.
-    let needsSave = false;
-    if (!savedCredentials.personalOrgId && savedCredentials.orgId) {
-      savedCredentials.personalOrgId = savedCredentials.orgId;
-      authState.personalOrgId = savedCredentials.orgId;
-      needsSave = true;
-      logger.main.info('[StytchAuthService] Migrated orgId to personalOrgId:', summarizeAuthDiagnostic(savedCredentials.orgId));
-    }
-    // One-time migration: if personalUserId is missing, try to persist the current userId.
-    // BUT: if orgId !== personalOrgId, a team session exchange already happened and the
-    // stored userId is the TEAM member ID (not personal). In that case, SyncManager will
-    // call resolvePersonalUserId() during async init to exchange to the personal org
-    // and extract the correct member ID.
-    // Workstream A1's explicit account -> team-member binding makes this ambient-userId
-    // repair redundant for team access. Keep it for legacy credential recovery in this pass.
-    if (!savedCredentials.personalUserId && savedCredentials.userId) {
-      if (!savedCredentials.orgId || !savedCredentials.personalOrgId || savedCredentials.orgId === savedCredentials.personalOrgId) {
-        // No team exchange happened yet -- userId IS the personal member ID
-        savedCredentials.personalUserId = savedCredentials.userId;
-        authState.personalUserId = savedCredentials.userId;
-        needsSave = true;
-        logger.main.info('[StytchAuthService] Migrated userId to personalUserId:', summarizeAuthDiagnostic(savedCredentials.userId));
-      } else {
-        logger.main.warn('[StytchAuthService] personalUserId missing and orgId differs from personalOrgId.',
-          'Will resolve via session exchange to personal org during sync init.');
-      }
-    }
-    if (needsSave) {
-      saveStytchCredentials(savedCredentials);
-    }
+    const isCurrent = captureRefreshValidity(syncAccountId);
     logger.main.info('[StytchAuthService] Restored session for user:', summarizeAuthDiagnostic(savedCredentials.userId, savedCredentials.email, {
       hasValidJwt,
       orgId: savedCredentials.orgId,
@@ -520,8 +456,10 @@ export function initializeStytchAuth(config: StytchConfig): void {
       logger.main.info('[StytchAuthService] Stored session has no valid JWT - will attempt refresh');
       // Schedule refresh after initialization completes (don't block startup)
       setImmediate(async () => {
+        if (!isCurrent()) return;
         try {
           const refreshed = await refreshSession();
+          if (!isCurrent()) return;
           if (refreshed) {
             logger.main.info('[StytchAuthService] Session refreshed on startup - JWT now available');
           } else {
@@ -539,8 +477,10 @@ export function initializeStytchAuth(config: StytchConfig): void {
     } else {
       // JWT looks valid locally, but verify it's still alive server-side
       setImmediate(async () => {
+        if (!isCurrent()) return;
         try {
           const refreshed = await refreshSession();
+          if (!isCurrent()) return;
           if (!refreshed) {
             logger.main.warn('[StytchAuthService] Session dead server-side on startup - preserving account for re-auth');
             markAccountSessionExpired(savedCredentials.personalOrgId ?? syncAccountId);
@@ -593,6 +533,7 @@ function assertCallbackMemberMatchesStoredAccount(
 export async function handleAuthCallback(
   params: IntentAwareAuthCallbackParams,
 ): Promise<AuthCallbackEffect> {
+  if (refreshBlocked()) throw new Error('Authentication lifecycle is closing');
   const {
     intent,
     targetPersonalOrgId,
@@ -669,25 +610,23 @@ export async function handleAuthCallback(
     if (accounts.size > 0) {
       throw new Error('Sign-in intent is only valid when no accounts are stored');
     }
-    syncAccountId = incomingPersonalOrgId;
-    accounts.set(incomingPersonalOrgId, credsToSave);
+    persistAccountSnapshot(new Map([[incomingPersonalOrgId, credsToSave]]), incomingPersonalOrgId, credsToSave);
+    invalidateAccountRefreshes(incomingPersonalOrgId);
     updateSyncAuthState();
-    saveStytchCredentials(credsToSave);
-    saveAllAccounts();
     affectsSyncIdentity = true;
     logger.main.info('[StytchAuthService] Signed in sync account:', summarizeAuthDiagnostic(email, incomingPersonalOrgId));
   } else if (intent === 'add-account') {
     assertCallbackMemberMatchesStoredAccount(incomingPersonalOrgId, userId);
     affectsSyncIdentity = incomingPersonalOrgId === syncAccountId;
-    accounts.set(incomingPersonalOrgId, credsToSave);
-    saveAllAccounts();
+    const nextAccounts = new Map(accounts).set(incomingPersonalOrgId, credsToSave);
+    persistAccountSnapshot(nextAccounts, syncAccountId, affectsSyncIdentity ? credsToSave : undefined);
+    invalidateAccountRefreshes(incomingPersonalOrgId);
     if (incomingPersonalOrgId === syncAccountId) {
       // Signing back in as the sync account through an add-account path still
       // has to refresh the singleton state, or the app keeps reading the stale
       // expired session. The slot itself is never repointed: this branch only
       // runs when the incoming account already *is* the sync account.
       updateSyncAuthState();
-      saveStytchCredentials(credsToSave);
     } else {
       // The singleton auth state is intentionally untouched, but account-list
       // consumers still need a change notification.
@@ -707,17 +646,18 @@ export async function handleAuthCallback(
     assertCallbackMemberMatchesStoredAccount(targetPersonalOrgId, userId);
 
     affectsSyncIdentity = targetPersonalOrgId === syncAccountId;
-    accounts.set(targetPersonalOrgId, credsToSave);
-    saveAllAccounts();
+    const nextAccounts = new Map(accounts).set(targetPersonalOrgId, credsToSave);
+    persistAccountSnapshot(nextAccounts, syncAccountId, affectsSyncIdentity ? credsToSave : undefined);
+    invalidateAccountRefreshes(targetPersonalOrgId);
     if (targetPersonalOrgId === syncAccountId) {
       updateSyncAuthState();
-      saveStytchCredentials(credsToSave);
     } else {
       notifyAuthStateChange(true);
     }
     logger.main.info('[StytchAuthService] Reauthenticated account:', summarizeAuthDiagnostic(email, targetPersonalOrgId));
   }
 
+  logger.main.info('[StytchAuthService] Credential persistence: encrypted');
   // Bootstrap sync config if it doesn't exist yet.
   // Teams and sync operations need this config to exist, even if sync isn't enabled.
   const existingConfig = getSessionSyncConfig();
@@ -762,6 +702,7 @@ function focusAppAfterAuth(): void {
 }
 
 export async function handleAuthCallbackUrl(url: string): Promise<AuthCallbackOutcome> {
+  logger.main.info('[StytchAuthService] Callback reached: true');
   let result: AuthCallbackRouteResult;
   try {
     result = await routeAuthCallbackUrl(url, pendingAuthFlows, handleAuthCallback);
@@ -774,6 +715,7 @@ export async function handleAuthCallbackUrl(url: string): Promise<AuthCallbackOu
     return { success: false, affectsSyncIdentity: false };
   }
 
+  logger.main.info('[StytchAuthService] Nonce validation: PASS; single-use validation: PASS');
   logger.main.info('[StytchAuthService] Auth callback handled successfully');
   return { success: true, affectsSyncIdentity: result.affectsSyncIdentity };
 }
@@ -807,7 +749,11 @@ async function startPendingAuthFlow(
   method: AuthMethod,
   options: AuthFlowOptions,
 ): Promise<StartedAuthFlow> {
+  if (refreshBlocked()) throw new Error('Authentication lifecycle is closing');
   validateAuthFlowOptions(options);
+  // Fail before opening a browser or sending a magic link. The writers repeat
+  // this check so key availability cannot silently degrade later persistence.
+  requireStytchCredentialEncryption();
 
   if (method === 'magicLink') {
     const reusable = pendingAuthFlows.find(method, options);
@@ -824,6 +770,7 @@ async function startPendingAuthFlow(
     if (reusable) pendingAuthFlows.delete(reusable.nonce);
   }
 
+  const generation = authGeneration;
   const nonce = pendingAuthFlows.createNonce();
   const listener = await startAuthCallbackLoopback({
     state: nonce,
@@ -846,12 +793,26 @@ async function startPendingAuthFlow(
     },
   });
 
+  // Binding is asynchronous. Logout/shutdown may have cleared the listener
+  // snapshot while this controller did not exist yet. Never register or open
+  // a stale flow after that boundary; close only the controller we just made.
+  try {
+    if (refreshBlocked() || generation !== authGeneration) {
+      throw new Error('Authentication lifecycle changed while opening sign-in');
+    }
+    validateAuthFlowOptions(options);
+  } catch (error) {
+    await listener.close();
+    throw error;
+  }
+
   pendingAuthFlows.register(nonce, {
     ...options,
     method,
     port: listener.port,
   });
   authCallbackListeners.set(nonce, listener);
+  logger.main.info('[StytchAuthService] Listener ready: true; IPv4 loopback: true');
   return {
     nonce,
     callbackBaseUrl: listener.callbackBaseUrl,
@@ -949,6 +910,8 @@ export function getPersonalUserId(): PersonalMemberId | null {
  * Returns the personal member ID, or null if resolution fails.
  */
 export async function resolvePersonalUserId(serverUrl: string): Promise<PersonalMemberId | null> {
+  if (refreshBlocked()) return null;
+  const isCurrent = captureRefreshValidity(authState.personalOrgId);
   // The personal-org exchange below is authoritative. We intentionally do NOT
   // early-return on a cached personalUserId: a stale cached value (e.g. seeded
   // from a non-personal sub by the creds migration) would otherwise never be
@@ -977,6 +940,7 @@ export async function resolvePersonalUserId(serverUrl: string): Promise<Personal
     // refresh first, exactly as doRefreshPersonalSession does. The refresh also
     // rotates the session token, so both are read after it.
     await refreshSession(serverUrl);
+    if (!isCurrent()) return null;
     const sessionToken = authState.sessionToken;
     const jwt = authState.sessionJwt;
     if (!jwt || !sessionToken) {
@@ -1007,6 +971,7 @@ export async function resolvePersonalUserId(serverUrl: string): Promise<Personal
       sessionJwt: string;
       sessionToken: string;
     };
+    if (!isCurrent()) return null;
 
     if (!data.sessionJwt) {
       logger.main.error('[StytchAuthService] Session exchange returned no JWT');
@@ -1032,22 +997,10 @@ export async function resolvePersonalUserId(serverUrl: string): Promise<Personal
     }
 
     // Persist the resolved personal member ID and personal JWT
-    authState = { ...authState, personalUserId: resolvedUserId, personalSessionJwt: data.sessionJwt };
-    const creds = loadStytchCredentials();
-    if (creds) {
-      saveStytchCredentials({ ...creds, personalUserId: resolvedUserId });
-    }
-    // Update accounts map
-    if (personalOrgId) {
-      updateAccountCredentials(personalOrgId, { personalUserId: resolvedUserId });
-    }
-
-    // The session exchange also updated the session token -- persist that too
-    // so future refreshes work. But do NOT update personalOrgId from the
-    // exchange response.
-    if (data.sessionToken) {
-      updateSessionToken(data.sessionToken);
-    }
+    persistSyncCredentialUpdate({ personalUserId: resolvedUserId,
+      ...(data.sessionToken ? { sessionToken: data.sessionToken } : {}) });
+    authState = { ...authState, personalUserId: resolvedUserId, personalSessionJwt: data.sessionJwt,
+      ...(data.sessionToken ? { sessionToken: data.sessionToken } : {}) };
 
     logger.main.info('[StytchAuthService] Resolved personalUserId and stored personal JWT:', summarizeAuthDiagnostic(resolvedUserId));
     return asPersonalMemberId(resolvedUserId);
@@ -1114,10 +1067,9 @@ function markAccountSessionExpired(personalOrgId: string | null | undefined): vo
   const credentials = accounts.get(personalOrgId);
   if (!credentials) return;
   const expiredCredentials = { ...credentials, expiresAt: 0 };
-  accounts.set(personalOrgId, expiredCredentials);
-  saveAllAccounts();
+  persistAccountSnapshot(new Map(accounts).set(personalOrgId, expiredCredentials), syncAccountId,
+    personalOrgId === syncAccountId ? expiredCredentials : undefined);
   if (personalOrgId === syncAccountId) {
-    saveStytchCredentials(expiredCredentials);
     updateAuthState({
       isAuthenticated: false,
       user: credentials.userId ? {
@@ -1153,7 +1105,8 @@ export function setSyncAccount(personalOrgId: string): boolean {
   if (!credentials) return false;
   if (syncAccountId === personalOrgId) return true;
 
-  syncAccountId = personalOrgId;
+  persistAccountSnapshot(accounts, personalOrgId, credentials);
+  invalidatePendingRefreshes();
   const isInPersonalOrg = !credentials.orgId || !credentials.personalOrgId
     || credentials.orgId === credentials.personalOrgId;
   updateAuthState({
@@ -1174,8 +1127,6 @@ export function setSyncAccount(personalOrgId: string): boolean {
     personalUserId: credentials.personalUserId || null,
     personalSessionJwt: isInPersonalOrg ? (credentials.sessionJwt || null) : null,
   });
-  saveStytchCredentials(credentials);
-  saveAllAccounts();
   logger.main.info('[StytchAuthService] Sync account selected:', summarizeAuthDiagnostic(personalOrgId));
   return true;
 }
@@ -1229,13 +1180,15 @@ let inflightPersonalSessionRefresh: Promise<PersonalRefreshOutcome> | null = nul
  * to `false` made an offline collab worker look like an expired-JWT bug.
  */
 export function refreshPersonalSessionDetailed(serverUrl: string): Promise<PersonalRefreshOutcome> {
+  if (refreshBlocked()) return Promise.resolve({ ok: false, reason: 'no-session' });
   if (inflightPersonalSessionRefresh) {
     return inflightPersonalSessionRefresh;
   }
-  inflightPersonalSessionRefresh = doRefreshPersonalSession(serverUrl).finally(() => {
-    inflightPersonalSessionRefresh = null;
+  const pending = doRefreshPersonalSession(serverUrl).finally(() => {
+    if (inflightPersonalSessionRefresh === pending) inflightPersonalSessionRefresh = null;
   });
-  return inflightPersonalSessionRefresh;
+  inflightPersonalSessionRefresh = pending;
+  return pending;
 }
 
 export async function refreshPersonalSession(serverUrl: string): Promise<boolean> {
@@ -1243,6 +1196,7 @@ export async function refreshPersonalSession(serverUrl: string): Promise<boolean
 }
 
 async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefreshOutcome> {
+  const isCurrent = captureRefreshValidity(authState.personalOrgId);
   const personalOrgId = authState.personalOrgId;
   if (!personalOrgId) {
     logger.main.warn('[StytchAuthService] Cannot refresh personal session: no personalOrgId');
@@ -1265,6 +1219,7 @@ async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefr
     try {
       result = await refreshSession(serverUrl);
     } catch (error) {
+      if (error instanceof StytchCredentialStorageError) throw error;
       if (isTransportError(error)) {
         const detail = describeTransportError(error);
         logger.main.warn(
@@ -1276,6 +1231,7 @@ async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefr
       }
       return { ok: false, reason: 'auth' };
     }
+    if (!isCurrent()) return { ok: false, reason: 'no-session' };
     if (result && authState.sessionJwt) {
       // Verify the JWT sub matches personalUserId
       try {
@@ -1313,6 +1269,7 @@ async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefr
   // so refresh it first to ensure the Authorization header is valid.
   try {
     await refreshSession(serverUrl);
+    if (!isCurrent()) return { ok: false, reason: 'no-session' };
     const httpUrl = serverUrl.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
     const jwt = authState.sessionJwt;
     // /auth/refresh rotates the session token. The personal-org exchange must
@@ -1338,6 +1295,7 @@ async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefr
       sessionJwt: string;
       sessionToken: string;
     };
+    if (!isCurrent()) return { ok: false, reason: 'no-session' };
 
     if (!data.sessionJwt || data.sessionJwt.split('.').length !== 3) {
       logger.main.error('[StytchAuthService] Personal session refresh returned invalid JWT');
@@ -1348,6 +1306,7 @@ async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefr
     // personalUserId here too -- refresh historically rewrote only the JWT and
     // never the id, leaving the personal index room permanently refused. See
     // NIM-859.
+    let personalUserId = authState.personalUserId;
     try {
       const jwtParts = data.sessionJwt.split('.');
       const payload = jwtParts.length === 3
@@ -1360,25 +1319,16 @@ async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefr
       if (changed && resolvedUserId) {
         logger.main.info('[StytchAuthService] Corrected personalUserId during personal session refresh:',
           summarizeAuthDiagnostic(authState.personalUserId ?? null, resolvedUserId));
-        authState = { ...authState, personalUserId: resolvedUserId, personalSessionJwt: data.sessionJwt };
-        const creds = loadStytchCredentials();
-        if (creds) {
-          saveStytchCredentials({ ...creds, personalUserId: resolvedUserId });
-        }
-        if (personalOrgId) {
-          updateAccountCredentials(personalOrgId, { personalUserId: resolvedUserId });
-        }
-      } else {
-        authState = { ...authState, personalSessionJwt: data.sessionJwt };
+        personalUserId = resolvedUserId;
       }
-    } catch {
-      authState = { ...authState, personalSessionJwt: data.sessionJwt };
-    }
-
-    // Update the session token (shared across orgs)
-    if (data.sessionToken) {
-      updateSessionToken(data.sessionToken);
-    }
+    } catch { /* Preserve the cached member ID if JWT payload parsing fails. */ }
+    // Do not let a persistence error be swallowed by the payload parser catch.
+    persistSyncCredentialUpdate({
+      ...(personalUserId ? { personalUserId } : {}),
+      ...(data.sessionToken ? { sessionToken: data.sessionToken } : {}),
+    });
+    authState = { ...authState, personalUserId, personalSessionJwt: data.sessionJwt,
+      ...(data.sessionToken ? { sessionToken: data.sessionToken } : {}) };
 
     return { ok: true };
   } catch (error) {
@@ -1394,6 +1344,7 @@ async function doRefreshPersonalSession(serverUrl: string): Promise<PersonalRefr
       );
       return { ok: false, reason: 'network', detail };
     }
+    if (error instanceof StytchCredentialStorageError) throw error;
     logger.main.error('[StytchAuthService] Error refreshing personal session:', summarizeAuthDiagnostic(error));
     return { ok: false, reason: 'auth' };
   }
@@ -1456,17 +1407,19 @@ export function getSessionToken(): string | null {
  * refreshSession() calls use the valid token.
  */
 export function updateSessionToken(newSessionToken: string): void {
+  persistSyncCredentialUpdate({ sessionToken: newSessionToken });
   authState = { ...authState, sessionToken: newSessionToken };
-  // Persist to disk so the token survives app restarts
-  const creds = loadStytchCredentials();
-  if (creds) {
-    saveStytchCredentials({ ...creds, sessionToken: newSessionToken });
+}
+
+function persistSyncCredentialUpdate(update: Partial<StoredStytchCredentials>): void {
+  // Persist the two copies as one snapshot before publishing the new token.
+  const creds = readStytchCredentialFile<StoredStytchCredentials>(STYTCH_CREDENTIALS_FILE);
+  const nextAccounts = new Map(accounts);
+  const id = authState.personalOrgId;
+  if (id && nextAccounts.has(id)) {
+    nextAccounts.set(id, { ...nextAccounts.get(id)!, ...update });
   }
-  // Update accounts map
-  if (authState.personalOrgId) {
-    updateAccountCredentials(authState.personalOrgId, { sessionToken: newSessionToken });
-  }
-  // logger.main.info('[StytchAuthService] Session token updated after exchange');
+  persistAccountSnapshot(nextAccounts, syncAccountId, creds ? { ...creds, ...update } : undefined);
 }
 
 /**
@@ -1577,26 +1530,32 @@ export async function sendMagicLink(
  * Sign out the current user.
  */
 export async function signOut(): Promise<void> {
-  await closeAllPendingAuthFlows();
-  // Clear local state
-  clearStytchCredentials();
-  accounts.clear();
-  syncAccountId = null;
-  saveAllAccounts();
-  clearOrgWalkPreferences();
-  updateAuthState({
-    isAuthenticated: false,
-    user: null,
-    session: null,
-    sessionToken: null,
-    sessionJwt: null,
-    orgId: null,
-    personalOrgId: null,
-    personalUserId: null,
-    personalSessionJwt: null,
-  });
+  pendingSignOuts++;
+  invalidatePendingRefreshes();
+  try {
+    await closeAllPendingAuthFlows();
+    // Leave the current state intact on filesystem failure, rather than claiming
+    // a completed logout while durable credentials remain.
+    persistAccountSnapshot(new Map(), null, null);
+    updateAuthState({
+      isAuthenticated: false,
+      user: null,
+      session: null,
+      sessionToken: null,
+      sessionJwt: null,
+      orgId: null,
+      personalOrgId: null,
+      personalUserId: null,
+      personalSessionJwt: null,
+    });
+    clearOrgWalkPreferences();
 
-  logger.main.info('[StytchAuthService] User signed out');
+    logger.main.info('[StytchAuthService] User signed out');
+  } finally {
+    // Also invalidate work before reopening the refresh boundary on failed logout.
+    invalidatePendingRefreshes();
+    pendingSignOuts--;
+  }
 }
 
 /**
@@ -1605,56 +1564,39 @@ export async function signOut(): Promise<void> {
  * becomes the sync account.
  */
 export async function removeAccount(targetOrgId: string): Promise<void> {
-  accounts.delete(targetOrgId);
+  if (!accounts.has(targetOrgId)) return;
+  if (accounts.size === 1) return signOut();
+  const nextAccounts = new Map(accounts);
+  nextAccounts.delete(targetOrgId);
+  const previousSyncAccountId = syncAccountId;
+  const nextSyncAccountId = syncAccountId === targetOrgId
+    ? nextAccounts.keys().next().value ?? null : syncAccountId;
+  persistAccountSnapshot(nextAccounts, nextSyncAccountId,
+    previousSyncAccountId === targetOrgId ? nextAccounts.get(nextSyncAccountId!)! : undefined);
+  invalidatePendingRefreshes();
 
-  if (syncAccountId === targetOrgId) {
-    // Sync account was removed -- pick another or go unauthenticated.
-    const remaining = Array.from(accounts.keys());
-    if (remaining.length > 0) {
-      syncAccountId = remaining[0];
-      const newSyncAccount = accounts.get(syncAccountId)!;
-      // Update singleton to the new sync account.
-      updateAuthState({
-        isAuthenticated: true,
-        user: newSyncAccount.userId ? {
-          user_id: newSyncAccount.userId,
-          emails: newSyncAccount.email ? [{ email_id: '', email: newSyncAccount.email, verified: true }] : [],
-          created_at: new Date().toISOString(),
-          status: 'active',
-        } : null,
-        session: null,
-        sessionToken: newSyncAccount.sessionToken,
-        sessionJwt: newSyncAccount.sessionJwt || null,
-        orgId: newSyncAccount.orgId || null,
-        personalOrgId: newSyncAccount.personalOrgId || null,
-        personalUserId: newSyncAccount.personalUserId || null,
-        personalSessionJwt: newSyncAccount.sessionJwt || null,
-      });
-      saveStytchCredentials(newSyncAccount);
-      logger.main.info('[StytchAuthService] Sync account changed to:', summarizeAuthDiagnostic(newSyncAccount.email));
-    } else {
-      syncAccountId = null;
-      updateAuthState({
-        isAuthenticated: false,
-        user: null,
-        session: null,
-        sessionToken: null,
-        sessionJwt: null,
-        orgId: null,
-        personalOrgId: null,
-        personalUserId: null,
-        personalSessionJwt: null,
-      });
-      clearStytchCredentials();
-      // Nobody is signed in any more, so the org preferences left behind belong
-      // to no one -- and a stale dismissal would silence the walk for whoever
-      // signs in next.
-      clearOrgWalkPreferences();
-      logger.main.info('[StytchAuthService] All accounts removed, user signed out');
-    }
+  if (previousSyncAccountId === targetOrgId) {
+    // The last-account case already took the full signOut path above.
+    const newSyncAccount = accounts.get(nextSyncAccountId!)!;
+    updateAuthState({
+      isAuthenticated: true,
+      user: newSyncAccount.userId ? {
+        user_id: newSyncAccount.userId,
+        emails: newSyncAccount.email ? [{ email_id: '', email: newSyncAccount.email, verified: true }] : [],
+        created_at: new Date().toISOString(),
+        status: 'active',
+      } : null,
+      session: null,
+      sessionToken: newSyncAccount.sessionToken,
+      sessionJwt: newSyncAccount.sessionJwt || null,
+      orgId: newSyncAccount.orgId || null,
+      personalOrgId: newSyncAccount.personalOrgId || null,
+      personalUserId: newSyncAccount.personalUserId || null,
+      personalSessionJwt: newSyncAccount.sessionJwt || null,
+    });
+    logger.main.info('[StytchAuthService] Sync account changed to:', summarizeAuthDiagnostic(newSyncAccount.email));
   }
 
-  saveAllAccounts();
   logger.main.info('[StytchAuthService] Removed account:', summarizeAuthDiagnostic(targetOrgId));
 }
 
@@ -1737,17 +1679,20 @@ let inflightRefreshSession: Promise<boolean> | null = null;
  * @returns true if refresh succeeded, false if session expired or failed
  */
 export function refreshSession(serverUrl?: string): Promise<boolean> {
+  if (refreshBlocked()) return Promise.resolve(false);
   if (inflightRefreshSession) {
     return inflightRefreshSession;
   }
-  inflightRefreshSession = doRefreshSession(serverUrl).finally(() => {
-    inflightRefreshSession = null;
+  const pending = doRefreshSession(serverUrl).finally(() => {
+    if (inflightRefreshSession === pending) inflightRefreshSession = null;
   });
-  return inflightRefreshSession;
+  inflightRefreshSession = pending;
+  return pending;
 }
 
 async function doRefreshSession(serverUrl?: string): Promise<boolean> {
-  const creds = loadStytchCredentials();
+  const isCurrent = captureRefreshValidity(syncAccountId);
+  const creds = readStytchCredentialFile<StoredStytchCredentials>(STYTCH_CREDENTIALS_FILE);
   if (!creds?.sessionToken) {
     logger.main.warn('[StytchAuthService] Cannot refresh - no session token');
     return false;
@@ -1807,6 +1752,10 @@ async function doRefreshSession(serverUrl?: string): Promise<boolean> {
       org_id?: string;
     };
 
+    // A response belongs to the login that initiated it, not whichever account
+    // may have signed in while it was in flight.
+    if (!isCurrent()) return false;
+
     // Validate the new JWT
     if (!data.session_jwt || data.session_jwt.split('.').length !== 3) {
       logger.main.error('[StytchAuthService] Refresh returned invalid JWT');
@@ -1840,7 +1789,7 @@ async function doRefreshSession(serverUrl?: string): Promise<boolean> {
     } catch {
       // Keep the existing personal JWT unless the refreshed token's scope is proven.
     }
-    updateAuthState({
+    const nextAuthState: Partial<StytchAuthState> = {
       isAuthenticated: true,
       user: data.user_id ? {
         user_id: data.user_id,
@@ -1854,7 +1803,7 @@ async function doRefreshSession(serverUrl?: string): Promise<boolean> {
       personalOrgId,
       personalUserId,
       personalSessionJwt,
-    });
+    };
 
     // Save updated credentials
     const refreshedCreds: StoredStytchCredentials = {
@@ -1867,18 +1816,18 @@ async function doRefreshSession(serverUrl?: string): Promise<boolean> {
       personalOrgId: personalOrgId || undefined,
       personalUserId: personalUserId || undefined,
     };
-    saveStytchCredentials(refreshedCreds);
-
-    // Update accounts map
+    const nextAccounts = new Map(accounts);
     if (personalOrgId) {
-      accounts.set(personalOrgId, refreshedCreds);
-      saveAllAccounts();
+      nextAccounts.set(personalOrgId, refreshedCreds);
     }
+    persistAccountSnapshot(nextAccounts, syncAccountId, refreshedCreds);
+    updateAuthState(nextAuthState);
 
     // logger.main.info('[StytchAuthService] Session refreshed successfully');
     return true;
   } catch (error) {
     // Re-throw network errors so callers can distinguish them from auth failures
+    if (error instanceof StytchCredentialStorageError) throw error;
     if ((error as any)?.isNetworkError) {
       throw error;
     }
@@ -1916,12 +1865,13 @@ const inflightRefreshForAccount = new Map<string, Promise<AccountRefreshOutcome>
  * Concurrent callers for the same personalOrgId share a single in-flight refresh.
  */
 export function refreshSessionForAccountDetailed(personalOrgId: string): Promise<AccountRefreshOutcome> {
+  if (refreshBlocked()) return Promise.resolve({ ok: false, reason: 'no-session' });
   const inflight = inflightRefreshForAccount.get(personalOrgId);
   if (inflight) {
     return inflight;
   }
   const promise = doRefreshSessionForAccount(personalOrgId).finally(() => {
-    inflightRefreshForAccount.delete(personalOrgId);
+    if (inflightRefreshForAccount.get(personalOrgId) === promise) inflightRefreshForAccount.delete(personalOrgId);
   });
   inflightRefreshForAccount.set(personalOrgId, promise);
   return promise;
@@ -1939,6 +1889,7 @@ export async function refreshSessionForAccount(personalOrgId: string): Promise<s
  * from "the server refused this account's session".
  */
 function classifyAccountRefreshFailure(error: unknown, personalOrgId: string): AccountRefreshOutcome {
+  if (error instanceof StytchCredentialStorageError) throw error;
   if (isTransportError(error)) {
     const detail = describeTransportError(error);
     logger.main.warn(
@@ -1951,10 +1902,12 @@ function classifyAccountRefreshFailure(error: unknown, personalOrgId: string): A
 }
 
 async function doRefreshSessionForAccount(personalOrgId: string): Promise<AccountRefreshOutcome> {
+  const isCurrent = captureRefreshValidity(personalOrgId);
   // For the sync account, delegate to refreshSession, which updates authState.
   if (personalOrgId === syncAccountId) {
     try {
       const ok = await refreshSession();
+      if (!isCurrent()) return { ok: false, reason: 'no-session' };
       if (!ok) return { ok: false, reason: 'auth' };
       const jwt = authState.sessionJwt;
       return jwt ? { ok: true, jwt } : { ok: false, reason: 'auth' };
@@ -2002,6 +1955,10 @@ async function doRefreshSessionForAccount(personalOrgId: string): Promise<Accoun
       expires_at: string;
       org_id?: string;
     };
+
+    if (!isCurrent() || !accounts.has(personalOrgId)) {
+      return { ok: false, reason: 'no-session' };
+    }
 
     if (!data.session_jwt || data.session_jwt.split('.').length !== 3) {
       logger.main.error('[StytchAuthService] Account refresh returned invalid JWT:', summarizeAuthDiagnostic(personalOrgId));
@@ -2059,14 +2016,17 @@ function getSyncServerUrl(): string {
  * valid once connectivity is restored.
  */
 export async function validateAndRefreshSession(): Promise<boolean> {
-  const creds = loadStytchCredentials();
-  if (!creds || creds.expiresAt <= Date.now()) {
-    markAccountSessionExpired(creds?.personalOrgId ?? syncAccountId);
-    return false;
-  }
-
+  if (refreshBlocked()) return false;
+  const isCurrent = captureRefreshValidity(syncAccountId);
   try {
+    const creds = readStytchCredentialFile<StoredStytchCredentials>(STYTCH_CREDENTIALS_FILE);
+    if (!creds || creds.expiresAt <= Date.now()) {
+      markAccountSessionExpired(creds?.personalOrgId ?? syncAccountId);
+      return false;
+    }
+
     const refreshed = await refreshSession();
+    if (!isCurrent()) return false;
     if (!refreshed) {
       // Server responded but rejected the session (401/403/expired). Keep the
       // account visible so the renderer can offer account-scoped re-auth.
@@ -2094,7 +2054,27 @@ export async function validateAndRefreshSession(): Promise<boolean> {
  * Call this when the app is closing.
  */
 export async function shutdownStytchAuth(): Promise<void> {
+  authShuttingDown = true;
+  invalidatePendingRefreshes();
   await closeAllPendingAuthFlows();
+}
+
+function invalidatePendingRefreshes(): void {
+  authGeneration++;
+  accountAuthGenerations.clear();
+  inflightRefreshSession = null;
+  inflightPersonalSessionRefresh = null;
+  inflightRefreshForAccount.clear();
+}
+
+function invalidateAccountRefreshes(accountId: string): void {
+  accountAuthGenerations.set(accountId, (accountAuthGenerations.get(accountId) ?? 0) + 1);
+  inflightRefreshForAccount.delete(accountId);
+  // A secondary-account callback must not discard another account's rotation.
+  if (accountId === syncAccountId) {
+    inflightRefreshSession = null;
+    inflightPersonalSessionRefresh = null;
+  }
 }
 
 /**

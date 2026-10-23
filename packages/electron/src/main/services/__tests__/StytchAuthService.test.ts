@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { safeStorage } from 'electron';
+import * as fs from 'fs';
 
 const { files, fetchMock, openExternalMock } = vi.hoisted(() => ({
   files: new Map<string, Buffer>(),
@@ -11,7 +13,12 @@ vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => '/mock/user-data'), focus: vi.fn() },
   BrowserWindow: { getFocusedWindow: vi.fn(() => null), getAllWindows: vi.fn(() => []) },
   net: { fetch: fetchMock },
-  safeStorage: { isEncryptionAvailable: vi.fn(() => false) },
+  // Identity codec is only a unit-test double, never evidence of native encryption.
+  safeStorage: {
+    isEncryptionAvailable: vi.fn(() => true),
+    encryptString: vi.fn((value: string) => Buffer.from(value)),
+    decryptString: vi.fn((value: Buffer) => value.toString('utf8')),
+  },
   shell: { openExternal: openExternalMock },
 }));
 
@@ -24,6 +31,11 @@ vi.mock('fs', () => ({
     files.set(filePath.replaceAll('\\', '/'), Buffer.isBuffer(data) ? data : Buffer.from(data));
   }),
   unlinkSync: vi.fn((filePath: string) => files.delete(filePath.replaceAll('\\', '/'))),
+  renameSync: vi.fn((from: string, to: string) => {
+    const source = from.replaceAll('\\', '/');
+    files.set(to.replaceAll('\\', '/'), files.get(source)!);
+    files.delete(source);
+  }),
 }));
 
 vi.mock('../../utils/store', () => ({
@@ -49,6 +61,7 @@ import {
   getAuthState,
   getPersonalSessionJwt,
   getSyncAccount,
+  getSessionTokenForAccount,
   handleAuthCallback,
   handleAuthCallbackUrl,
   initializeStytchAuth,
@@ -66,10 +79,14 @@ import {
   sendMagicLink,
   signInWithGoogle,
   signOut,
+  removeAccount,
+  validateAndRefreshSession,
+  shutdownStytchAuth,
 } from '../StytchAuthService';
 import { getSessionSyncConfig } from '../../utils/store';
 import { logger } from '../../utils/logger';
 import { formatLogArgs } from '../../utils/formatLogArgs';
+import * as callbackLoopback from '../auth/AuthCallbackLoopback';
 
 function createJwt(payload: Record<string, unknown>): string {
   return [
@@ -832,6 +849,7 @@ describe('StytchAuthService credential-free diagnostics', () => {
     callback.searchParams.set('error_description', bait);
     await expect(handleAuthCallbackUrl(callback.toString())).resolves.toEqual({ success: false, affectsSyncIdentity: false });
     expect(renderedLogs()).toContain('server-error');
+    expect(renderedLogs()).not.toContain('Nonce validation: PASS');
     expect(renderedLogs()).not.toContain(bait);
   });
 
@@ -853,18 +871,266 @@ describe('StytchAuthService credential-free diagnostics', () => {
     expect(renderedLogs()).not.toContain(bait);
   });
 
-  it('documents the unencrypted fallback when safeStorage is unavailable using only dummy storage', async () => {
-    await handleAuthCallback({
+  it('refuses persistence without encryption rather than writing dummy secrets as plaintext', async () => {
+    vi.mocked(safeStorage.isEncryptionAvailable).mockReturnValueOnce(false);
+    await expect(handleAuthCallback({
       intent: 'sign-in', sessionToken: bait, userId: 'dummy-member', orgId: 'dummy-org',
-    });
-    const legacy = JSON.parse(files.get('/mock/user-data/stytch-credentials.enc')!.toString('utf8'));
-    const accountsFile = JSON.parse(files.get('/mock/user-data/stytch-accounts.enc')!.toString('utf8'));
-    expect(legacy.sessionToken).toBe(bait);
-    expect(accountsFile.accounts[0].sessionToken).toBe(bait);
-    expect(renderedLogs()).toContain('without encryption');
+    })).rejects.toThrow();
+    expect(files.size).toBe(0);
+    expect(isAuthenticated()).toBe(false);
+    expect(getAccounts()).toEqual([]);
     expect(renderedLogs()).not.toContain(bait);
-    // This records an existing limitation, not a claim of encrypted persistence.
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('StytchAuthService durable authentication and logout boundaries', () => {
+  beforeEach(async () => {
+    await signOut();
+    files.clear();
+    fetchMock.mockReset();
+  });
+  afterEach(async () => { await signOut(); });
+
+  const login = (token = 'dummy-token') => handleAuthCallback({
+    intent: 'sign-in', sessionToken: token,
+    sessionJwt: createJwt({ sub: 'dummy-member' }),
+    userId: 'dummy-member', orgId: 'dummy-org',
+  });
+  const refreshed = () => ({
+    ok: true,
+    json: async () => ({
+      session_token: 'rotated-dummy', session_jwt: createJwt({ sub: 'dummy-member' }),
+      user_id: 'dummy-member', org_id: 'dummy-org',
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    }),
+  });
+
+  it('rejects availability exceptions before publishing authentication', async () => {
+    vi.mocked(safeStorage.isEncryptionAvailable).mockImplementationOnce(() => { throw new Error('dummy-unavailable'); });
+    await expect(login()).rejects.toThrow();
+    expect(isAuthenticated()).toBe(false);
+    expect(getAccounts()).toEqual([]);
+    expect(files.size).toBe(0);
+  });
+
+  it('does not publish an account or auth notification when a credential write fails', async () => {
+    const changed = vi.fn();
+    const stop = onAuthStateChange(changed);
+    changed.mockClear();
+    vi.mocked(fs.writeFileSync).mockImplementationOnce(() => { throw new Error('dummy-disk-full'); });
+    try {
+      await expect(login()).rejects.toThrow();
+      expect(isAuthenticated()).toBe(false);
+      expect(getAccounts()).toEqual([]);
+      expect(changed).not.toHaveBeenCalled();
+      expect(files.size).toBe(0);
+    } finally { stop(); }
+  });
+
+  it('keeps existing state and both credential files if reauthentication cannot be persisted', async () => {
+    await login();
+    const state = getAuthState();
+    const saved = new Map(files);
+    vi.mocked(fs.writeFileSync).mockImplementationOnce(() => { throw new Error('dummy-disk-full'); });
+    await expect(handleAuthCallback({
+      intent: 'reauth', targetPersonalOrgId: 'dummy-org', orgId: 'dummy-org',
+      userId: 'dummy-member', sessionToken: 'new-dummy-token',
+    })).rejects.toThrow();
+    expect(getAuthState()).toEqual(state);
+    expect(files).toEqual(saved);
+    expect(getSyncAccount()?.personalOrgId).toBe('dummy-org');
+    expect(getSessionTokenForAccount('dummy-org')).toBe('dummy-token');
+  });
+
+  it('keeps published state and stored credentials if refresh persistence fails', async () => {
+    await login();
+    const state = getAuthState();
+    const saved = new Map(files);
+    fetchMock.mockResolvedValueOnce(refreshed());
+    vi.mocked(fs.writeFileSync).mockImplementationOnce(() => { throw new Error('dummy-disk-full'); });
+    await expect(refreshSession()).rejects.toThrow('Credential storage: write-failed');
+    expect(getAuthState()).toEqual(state);
+    expect(files).toEqual(saved);
+  });
+
+  it('discards a refresh response that arrives after logout', async () => {
+    await login();
+    let complete!: (response: ReturnType<typeof refreshed>) => void;
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const pending = refreshSession();
+    await signOut();
+    complete(refreshed());
+    await expect(pending).resolves.toBe(false);
+    expect(isAuthenticated()).toBe(false);
+    expect(getAccounts()).toEqual([]);
+    expect(files.size).toBe(0);
+  });
+
+  it.each(['logout', 'shutdown'] as const)('blocks refresh begun while %s awaits listener cleanup', async operation => {
+    await login();
+    let complete!: (response: ReturnType<typeof refreshed>) => void;
+    const response = new Promise(resolve => { complete = resolve; });
+    fetchMock.mockReturnValueOnce(response);
+    const stopping = operation === 'logout' ? signOut() : shutdownStytchAuth();
+    const pending = refreshSession();
+    await stopping;
+    const stateAfterStop = getAuthState();
+    const filesAfterStop = new Map(files);
+    complete(refreshed());
+    await expect(pending).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getAuthState()).toEqual(stateAfterStop);
+    expect(files).toEqual(filesAfterStop);
+    // Reinitialize deliberately after the shutdown test, without restoring a session.
+    await signOut();
+    initializeStytchAuth({ projectId: 'test', publicToken: 'test', apiBase: 'https://test.invalid' });
+  });
+
+  it.each(['reauth', 'add-account'] as const)('does not overwrite a successful same-account %s with an older refresh', async intent => {
+    await login();
+    let complete!: (response: ReturnType<typeof refreshed>) => void;
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const pending = refreshSession();
+    await handleAuthCallback({ intent, ...(intent === 'reauth' ? { targetPersonalOrgId: 'dummy-org' } : {}),
+      orgId: 'dummy-org', userId: 'dummy-member', sessionToken: 'reauth-dummy',
+      sessionJwt: createJwt({ sub: 'dummy-member' }) });
+    const saved = new Map(files);
+    const state = getAuthState();
+    complete(refreshed());
+    await expect(pending).resolves.toBe(false);
+    expect(getAuthState()).toEqual(state);
+    expect(files).toEqual(saved);
+    expect(getSessionTokenForAccount('dummy-org')).toBe('reauth-dummy');
+  });
+
+  it('invalidates only the reauthenticated non-sync account, retaining another account refresh', async () => {
+    await login();
+    await handleAuthCallback({ intent: 'add-account', orgId: 'other-org', userId: 'other-member', sessionToken: 'other-token' });
+    let completeSync!: (response: ReturnType<typeof refreshed>) => void;
+    let completeOther!: (response: ReturnType<typeof refreshed>) => void;
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { completeSync = resolve; }));
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { completeOther = resolve; }));
+    const syncPending = refreshSession();
+    const otherPending = refreshSessionForAccountDetailed('other-org');
+    await handleAuthCallback({ intent: 'reauth', targetPersonalOrgId: 'other-org',
+      orgId: 'other-org', userId: 'other-member', sessionToken: 'other-reauth' });
+    completeOther(refreshed());
+    await expect(otherPending).resolves.toMatchObject({ ok: false, reason: 'no-session' });
+    completeSync(refreshed());
+    await expect(syncPending).resolves.toBe(true);
+    expect(getSessionTokenForAccount('other-org')).toBe('other-reauth');
+    expect(getSessionTokenForAccount('dummy-org')).toBe('rotated-dummy');
+    const stored = JSON.parse(files.get('/mock/user-data/stytch-accounts.enc')!.toString());
+    expect(stored.accounts.find((account: { personalOrgId: string }) => account.personalOrgId === 'other-org').sessionToken).toBe('other-reauth');
+  });
+
+  it('does not expire a server-valid account after a one-shot durable write failure during validation', async () => {
+    await login();
+    const state = getAuthState();
+    const saved = new Map(files);
+    fetchMock.mockResolvedValueOnce(refreshed());
+    vi.mocked(fs.writeFileSync).mockImplementationOnce(() => { throw new Error('dummy-disk-full'); });
+    await expect(validateAndRefreshSession()).resolves.toBe(false);
+    expect(getAuthState()).toEqual(state);
+    expect(files).toEqual(saved);
+  });
+
+  it('does not expire the startup-restored account when refresh persistence fails', async () => {
+    await login();
+    const saved = new Map(files);
+    fetchMock.mockResolvedValueOnce(refreshed());
+    vi.useFakeTimers({ toFake: ['setImmediate'] });
+    try {
+      initializeStytchAuth({ projectId: 'test', publicToken: 'test', apiBase: 'https://test.invalid' });
+      const restored = getAuthState();
+      vi.mocked(fs.writeFileSync).mockImplementationOnce(() => { throw new Error('dummy-disk-full'); });
+      await vi.runAllTimersAsync();
+      expect(getAuthState()).toEqual(restored);
+      expect(isAuthenticated()).toBe(true);
+      expect(files).toEqual(saved);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it.each(['personal', 'sync-account', 'non-sync-account'] as const)('keeps %s storage errors distinct from auth rejection', async kind => {
+    await login();
+    if (kind === 'non-sync-account') await handleAuthCallback({ intent: 'add-account', orgId: 'other-org', userId: 'other-member', sessionToken: 'other-token' });
+    const state = getAuthState();
+    const saved = new Map(files);
+    fetchMock.mockResolvedValueOnce(refreshed());
+    vi.mocked(fs.writeFileSync).mockImplementationOnce(() => { throw new Error('dummy-disk-full'); });
+    const pending = kind === 'personal' ? refreshPersonalSessionDetailed('https://sync.example')
+      : refreshSessionForAccountDetailed(kind === 'sync-account' ? 'dummy-org' : 'other-org');
+    await expect(pending).rejects.toThrow('Credential storage: write-failed');
+    expect(getAuthState()).toEqual(state);
+    expect(files).toEqual(saved);
+  });
+
+  it('does not overwrite a new login with a prior login refresh response', async () => {
+    await login();
+    let complete!: (response: ReturnType<typeof refreshed>) => void;
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const pending = refreshSession();
+    await signOut();
+    await login('new-login-token');
+    const state = getAuthState();
+    const saved = new Map(files);
+    complete(refreshed());
+    await expect(pending).resolves.toBe(false);
+    expect(getAuthState()).toEqual(state);
+    expect(files).toEqual(saved);
+  });
+
+  it('discards the last removed account refresh instead of recreating its files', async () => {
+    await login();
+    let complete!: (response: ReturnType<typeof refreshed>) => void;
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    const pending = refreshSession();
+    await removeAccount('dummy-org');
+    complete(refreshed());
+    await expect(pending).resolves.toBe(false);
+    expect(isAuthenticated()).toBe(false);
+    expect(getAccounts()).toEqual([]);
+    expect(files.size).toBe(0);
+  });
+});
+
+describe('StytchAuthService pending listener lifecycle', () => {
+  beforeEach(async () => {
+    await signOut(); files.clear(); fetchMock.mockReset(); openExternalMock.mockReset();
+    initializeStytchAuth({ projectId: 'test', publicToken: 'test', apiBase: 'https://test.invalid' });
+    vi.mocked(logger.main.info).mockClear();
+  });
+
+  it.each([
+    ['google', 'logout'], ['google', 'shutdown'], ['magic-link', 'logout'], ['magic-link', 'shutdown'],
+  ] as const)('closes deferred %s listener when %s completed before binding resolved', async (method, operation) => {
+    let complete!: (controller: callbackLoopback.AuthCallbackLoopbackController) => void;
+    const bound = new Promise<callbackLoopback.AuthCallbackLoopbackController>(resolve => { complete = resolve; });
+    const start = vi.spyOn(callbackLoopback, 'startAuthCallbackLoopback').mockReturnValueOnce(bound);
+    const close = vi.fn().mockResolvedValue(undefined);
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+    try {
+      const pending = method === 'google' ? signInWithGoogle('https://test.invalid')
+        : sendMagicLink('dummy@example.invalid', 'https://test.invalid');
+      expect(start).toHaveBeenCalledTimes(1);
+      const nonce = start.mock.calls[0][0].state;
+      await (operation === 'logout' ? signOut() : shutdownStytchAuth());
+      complete({ port: 12345, callbackBaseUrl: 'http://127.0.0.1:12345/auth/callback',
+        callbackUrl: `http://127.0.0.1:12345/auth/callback?state=${nonce}`, renew: vi.fn(), close });
+      await expect(pending).resolves.toMatchObject({ success: false });
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(openExternalMock).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(vi.mocked(logger.main.info).mock.calls.some(([message]) => message.includes('Listener ready: true'))).toBe(false);
+      await expect(handleAuthCallbackUrl(`http://127.0.0.1:12345/auth/callback?state=${nonce}&session_token=dummy&org_id=dummy-org`))
+        .resolves.toEqual({ success: false, affectsSyncIdentity: false });
+      expect(isAuthenticated()).toBe(false);
+      expect(files.size).toBe(0);
+    } finally {
+      await signOut(); start.mockRestore();
+      initializeStytchAuth({ projectId: 'test', publicToken: 'test', apiBase: 'https://test.invalid' });
+    }
   });
 });
 
@@ -1066,12 +1332,12 @@ describe('StytchAuthService personal refresh outcome classification', () => {
     expect(String(fetchMock.mock.calls[0][0])).toMatch(/^https:\/\/sync\.nimbalyst\.com\//);
   });
 
-  it('carries the transport error detail so the sync log can name it', async () => {
+  it('carries a fixed transport classification without copying the endpoint or secret error detail', async () => {
     await signInPersonal();
 
     fetchMock.mockRejectedValue(
       Object.assign(new TypeError('fetch failed'), {
-        cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:8790'), {
+        cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:8790 dummy-private-detail'), {
           code: 'ECONNREFUSED',
         }),
       }),
@@ -1080,8 +1346,8 @@ describe('StytchAuthService personal refresh outcome classification', () => {
     const outcome = await refreshPersonalSessionDetailed('ws://localhost:8790');
     expect(outcome.ok).toBe(false);
     expect(outcome).toMatchObject({ reason: 'network' });
-    expect((outcome as { detail?: string }).detail).toContain('ECONNREFUSED');
-    expect((outcome as { detail?: string }).detail).toContain('127.0.0.1:8790');
+    expect((outcome as { detail?: string }).detail).toBe('ECONNREFUSED');
+    expect(JSON.stringify(outcome)).not.toContain('dummy-private-detail');
   });
 
   it('classifies a server-confirmed rejection as an auth failure', async () => {
@@ -1164,8 +1430,8 @@ describe('StytchAuthService account refresh outcome classification', () => {
 
     const outcome = await refreshSessionForAccountDetailed('personal-other');
     expect(outcome).toMatchObject({ ok: false, reason: 'network' });
-    expect((outcome as { detail?: string }).detail).toContain('ECONNREFUSED');
-    expect((outcome as { detail?: string }).detail).toContain('127.0.0.1:8790');
+    expect((outcome as { detail?: string }).detail).toBe('ECONNREFUSED');
+    expect(JSON.stringify(outcome)).not.toContain('127.0.0.1:8790');
   });
 
   it('classifies a server-confirmed rejection as an auth failure for a non-sync account', async () => {

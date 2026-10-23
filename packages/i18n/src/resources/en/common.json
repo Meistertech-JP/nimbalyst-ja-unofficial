@@ -1685,6 +1685,7 @@
     "reauth_title": "Reconnect this account",
     "reauth_description": "Your other accounts stay signed in while this account reconnects.",
     "sign_in_failed": "Could not start sign-in.",
+    "secure_storage_failed": "Sign-in could not be completed because authentication information could not be stored securely.",
     "magic_link_failed": "Could not send the sign-in link.",
     "reconnect_required": "Select the account you want to reconnect.",
     "signing_back": "Signing back in for <account>{{email}}</account>.",
