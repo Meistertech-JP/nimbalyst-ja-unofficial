@@ -52,7 +52,8 @@ describe('the write path refuses what redaction blocks', () => {
   });
 
   it('stores the redacted text, not the original, and flags that it did', () => {
-    const secret = 'sk-Xk92Lm4Qw8Tz1Rb7Yv3Np6Hd5Fj0Gs2Ac4Ue8Wi1Ko3Mq7Zr';
+    // Deterministic synthetic fixture; never issued or used for authentication.
+    const secret = `sk-${'Ab1'.repeat(16)}`;
     const outcome = writeMemoryPage({
       body: `${PAGE}\n\nThe indexer authenticated with ${secret} during that run.`,
       type: 'fact',

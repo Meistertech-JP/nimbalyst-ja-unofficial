@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { isDeepStrictEqual } = require('util');
 
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 const electronRoot = path.resolve(__dirname, '..');
@@ -62,14 +63,43 @@ function main() {
     packages: records,
   };
 
-  fs.mkdirSync(outputDir, { recursive: true });
-  fs.writeFileSync(noticesPath, renderNotices(records, summary));
-  fs.writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
-  fs.writeFileSync(auditPath, renderAudit(records, summary));
-
-  console.log(`[licenses] Wrote ${path.relative(repoRoot, noticesPath)}`);
-  console.log(`[licenses] Wrote ${path.relative(repoRoot, inventoryPath)}`);
-  console.log(`[licenses] Wrote ${path.relative(repoRoot, auditPath)}`);
+  const outputs = [
+    [noticesPath, renderNotices(records, summary)],
+    [inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`],
+    [auditPath, renderAudit(records, summary)],
+  ];
+  if (reviewMode) {
+    for (const [filePath, expectedText] of outputs) {
+      try {
+        const existingText = fs.readFileSync(filePath, 'utf8');
+        let matches = existingText === expectedText;
+        if (filePath === inventoryPath) {
+          const existing = JSON.parse(existingText);
+          const expected = JSON.parse(expectedText);
+          if (typeof existing.generatedAt !== 'string' || new Date(existing.generatedAt).toISOString() !== existing.generatedAt) {
+            throw new Error('Missing or invalid generatedAt');
+          }
+          // Generation time is provenance, not dependency/license content.
+          delete existing.generatedAt;
+          delete expected.generatedAt;
+          matches = isDeepStrictEqual(existing, expected);
+        }
+        if (!matches) {
+          console.error(`[licenses] Stale generated output: ${path.relative(repoRoot, filePath)}; run licenses:generate`);
+          process.exitCode = 1;
+        }
+      } catch {
+        console.error(`[licenses] Missing, unreadable or invalid generated output: ${path.relative(repoRoot, filePath)}; run licenses:generate`);
+        process.exitCode = 1;
+      }
+    }
+  } else {
+    fs.mkdirSync(outputDir, { recursive: true });
+    for (const [filePath, contents] of outputs) {
+      fs.writeFileSync(filePath, contents);
+      console.log(`[licenses] Wrote ${path.relative(repoRoot, filePath)}`);
+    }
+  }
   console.log(`[licenses] ${summary.packageCount} packages, ${summary.reviewRequiredCount} require review`);
 
   if (reviewMode && summary.reviewRequiredCount > 0) {
