@@ -268,6 +268,17 @@ describe('MessageSegment', () => {
     expect(screen.getByRole('button', { name: 'ログイン' })).toBeDefined();
   });
 
+  it('keeps raw Codex auth diagnostics behind a Japanese disclosure', async () => {
+    await testI18n.changeLanguage('ja');
+    const diagnostic = 'The Codex authentication endpoint returned 401 Unauthorized.';
+    render(<CodexAuthRequiredWidget fallbackMessage={diagnostic} />);
+
+    const disclosure = screen.getByText('技術的な詳細を表示').closest('details');
+    expect(disclosure).not.toBeNull();
+    expect(disclosure?.open).toBe(false);
+    expect(disclosure?.textContent).toContain(diagnostic);
+  });
+
   it('suppresses the Codex auth CTA when shouldShowLoginWidget is false', () => {
     const message = makeMessage({
       type: 'system_message',

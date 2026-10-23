@@ -351,11 +351,11 @@ export function ClaudeCodePanel({
     setIsLoggingIn(true);
     try {
       const result = await window.electronAPI.invoke('claude-code:login', loginCwd, {
-        title: t('claude_code.terminal_auth_title'),
-        loginInstruction: t('claude_code.terminal_login_instruction'),
-        oauthInstruction: t('claude_code.terminal_oauth_instruction'),
-        quitInstruction: t('claude_code.terminal_login_quit_instruction'),
-        terminalUnavailable: t('claude_code.login_terminal_unavailable'),
+        title: t('provider.claude_agent.terminal_auth_title'),
+        loginInstruction: t('provider.claude_agent.terminal_login_instruction'),
+        oauthInstruction: t('provider.claude_agent.terminal_oauth_instruction'),
+        quitInstruction: t('provider.claude_agent.terminal_login_quit_instruction'),
+        terminalUnavailable: t('provider.claude_agent.login_terminal_unavailable'),
       });
       if (result.success) {
         errorNotificationService.showInfo(
@@ -374,10 +374,10 @@ export function ClaudeCodePanel({
   const handleLogout = async () => {
     try {
       const result = await window.electronAPI.invoke('claude-code:logout', {
-        title: t('claude_code.terminal_logout_title'),
-        logoutInstruction: t('claude_code.terminal_logout_instruction'),
-        quitInstruction: t('claude_code.terminal_logout_quit_instruction'),
-        terminalUnavailable: t('claude_code.logout_terminal_unavailable'),
+        title: t('provider.claude_agent.terminal_logout_title'),
+        logoutInstruction: t('provider.claude_agent.terminal_logout_instruction'),
+        quitInstruction: t('provider.claude_agent.terminal_logout_quit_instruction'),
+        terminalUnavailable: t('provider.claude_agent.logout_terminal_unavailable'),
       });
       if (result.success) {
         errorNotificationService.showInfo(

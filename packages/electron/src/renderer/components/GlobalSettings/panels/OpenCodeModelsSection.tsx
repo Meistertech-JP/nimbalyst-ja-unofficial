@@ -200,7 +200,7 @@ export function OpenCodeModelsSection({
 
       {error && (
         <div className="opencode-catalog-error text-xs mb-3 text-[var(--nim-error)]">
-          {t('provider.opencode.discovery_failed')}: {error}
+          {t('provider.opencode.discovery_failed')}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { JSONViewer } from './JSONViewer';
 import { DiffViewer } from './DiffViewer';
 import { LoginRequiredWidget } from './LoginRequiredWidget';
+import { ProviderAuthRequiredWidget } from './ProviderAuthRequiredWidget';
 import { OpenAIAuthWidget } from './OpenAIAuthWidget';
 import { CodexAuthRequiredWidget } from './CodexAuthRequiredWidget';
 import { ContextLimitWidget } from './ContextLimitWidget';
@@ -42,6 +43,14 @@ interface MessageSegmentProps {
   /** Optional: Session's project/worktree folder, used to open the login terminal there. */
   workspacePath?: string;
 }
+
+const PROVIDERS_WITH_AUTH_GUIDANCE = new Set([
+  'grok-build',
+  'cursor-agent',
+  'copilot-cli',
+  'antigravity-gemini-agent',
+  'opencode',
+]);
 
 export const MessageSegment = React.memo(function MessageSegment({
   message,
@@ -376,6 +385,15 @@ export const MessageSegment = React.memo(function MessageSegment({
     }
     if (message.isCodexAuthRequired && !shouldShowLoginWidget) {
       return null;
+    }
+
+    const isProviderAuthError = PROVIDERS_WITH_AUTH_GUIDANCE.has(provider ?? '') && (
+      message.isAuthError === true ||
+      /not signed in|not logged in|not authenticated|authentication required|unauthorized|forbidden|oauth token|auth token/i.test(errorMessage)
+    );
+    if (isProviderAuthError) {
+      if (!shouldShowLoginWidget) return null;
+      return <ProviderAuthRequiredWidget provider={provider} />;
     }
 
     // Check if this is an OpenAI authentication error

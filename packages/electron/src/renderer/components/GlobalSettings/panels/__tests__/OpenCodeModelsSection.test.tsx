@@ -25,19 +25,27 @@ const readyCatalog: OpenCodeModelCatalogSnapshot = {
 };
 
 let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
 beforeAll(async () => {
-  englishI18n = await createI18nInstance('en');
+  [englishI18n, japaneseI18n] = await Promise.all([
+    createI18nInstance('en'),
+    createI18nInstance('ja'),
+  ]);
 });
 
-function renderSection(props: Partial<React.ComponentProps<typeof OpenCodeModelsSection>> = {}) {
+function renderSection(
+  props: Partial<React.ComponentProps<typeof OpenCodeModelsSection>> = {},
+  i18n = englishI18n,
+  preference: 'en' | 'ja' = 'en',
+) {
   const handlers = {
     onSelectModel: vi.fn(),
     onVisibilityToggle: vi.fn(),
     onSetVisibilityForModels: vi.fn(),
   };
   render(
-    <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+    <UiLanguageProvider i18n={i18n} preference={preference} systemLocale={`${preference}-US`}>
       <OpenCodeModelsSection
         workspacePath="/tmp/project"
         hiddenModels={[]}
@@ -104,5 +112,19 @@ describe('OpenCodeModelsSection', () => {
     const select = (await screen.findByTestId('opencode-model-select')) as HTMLSelectElement;
     expect(select.value).toBe('google/gemini-2.5-pro');
     expect(Array.from(select.options).map((option) => option.value)).toContain('google/gemini-2.5-pro');
+  });
+
+  it('shows a localized discovery failure without exposing the provider diagnostic', async () => {
+    (window as any).electronAPI = {
+      openCodeModelCatalogGet: vi.fn(async () => ({
+        success: false,
+        error: 'OAuth authorization failed: English provider diagnostic',
+      })),
+      openCodeModelCatalogRefresh: vi.fn(),
+    };
+    renderSection({}, japaneseI18n, 'ja');
+
+    expect(await screen.findByText('検出に失敗しました')).toBeDefined();
+    expect(screen.queryByText(/English provider diagnostic/)).toBeNull();
   });
 });

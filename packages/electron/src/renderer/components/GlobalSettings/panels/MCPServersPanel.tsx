@@ -1123,7 +1123,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         const errorMsg = result.error || t('panel.failed');
         console.error('OAuth authorization failed:', errorMsg);
         setTestStatus('error');
-        setTestMessage(t('panel.authorization_failed', { error: errorMsg }));
+        setTestMessage(t('panel.authorization_failed'));
         setCanRetryAfterCacheClear(
           result.canRetryAfterCacheClear === true || result.isStalePortError === true
         );
@@ -1135,7 +1135,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
       const errorMsg = error instanceof Error ? error.message : t('panel.unknown');
       console.error('Failed to trigger OAuth:', errorMsg);
       setTestStatus('error');
-      setTestMessage(t('panel.authorization_error', { error: errorMsg }));
+      setTestMessage(t('panel.authorization_error'));
       setOauthStatus('not-authorized');
       captureOAuthResult({
         success: false,
@@ -1199,13 +1199,13 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         const errorMsg = result.error || t('panel.failed');
         console.error('Failed to revoke OAuth:', errorMsg);
         setTestStatus('error');
-        setTestMessage(errorMsg);
+        setTestMessage(t('panel.revocation_error'));
       }
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : t('panel.unknown');
       console.error('Failed to revoke OAuth:', errorMsg);
       setTestStatus('error');
-      setTestMessage(t('panel.revocation_error', { error: errorMsg }));
+      setTestMessage(t('panel.revocation_error'));
     } finally {
       setOauthAction('idle');
     }
@@ -1252,7 +1252,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         const errorMsg = result.error || t('panel.failed');
         console.error('OAuth authorization failed after cache clear:', errorMsg);
         setTestStatus('error');
-        setTestMessage(t('panel.authorization_failed', { error: errorMsg }));
+        setTestMessage(t('panel.authorization_failed'));
         setCanRetryAfterCacheClear(
           result.canRetryAfterCacheClear === true || result.isStalePortError === true
         );
@@ -1264,7 +1264,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
       const errorMsg = error instanceof Error ? error.message : t('panel.unknown');
       console.error('Failed to clear cache and retry OAuth:', errorMsg);
       setTestStatus('error');
-      setTestMessage(t('panel.error_detail', { error: errorMsg }));
+      setTestMessage(t('panel.authorization_error'));
       captureOAuthResult({
         success: false,
         outcome: 'failed',
@@ -1635,7 +1635,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
         if (isFigmaOAuth) {
           setTestMessage(t('panel.figma_oauth_hint'));
         } else {
-          setTestMessage(result.error || t('panel.failed'));
+          setTestMessage(t('panel.connection_test_failed'));
         }
         setTestHelpUrl(result.helpUrl || null);
         // Track failed test
@@ -1649,7 +1649,8 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : t('panel.failed');
       setTestStatus('error');
-      setTestMessage(errorMsg);
+      console.error('MCP connection test failed:', errorMsg);
+      setTestMessage(t('panel.connection_test_failed'));
       setTestHelpUrl(null);
       // Track test exception
       posthog?.capture('mcp_server_test_result', {

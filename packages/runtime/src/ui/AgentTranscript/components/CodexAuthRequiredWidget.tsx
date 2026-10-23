@@ -51,9 +51,10 @@ export const CodexAuthRequiredWidget: React.FC<{ fallbackMessage?: string }> = (
         {t('auth.codex_required')}
       </p>
       {fallbackMessage && (
-        <div className="rounded-md border border-[var(--nim-border)] text-[var(--nim-text-muted)] p-3 text-[12px] leading-relaxed">
-          {fallbackMessage}
-        </div>
+        <details className="rounded-md border border-[var(--nim-border)] text-[var(--nim-text-muted)] p-3 text-[12px] leading-relaxed">
+          <summary className="cursor-pointer">{t('auth.show_technical_details')}</summary>
+          <pre className="mt-2 whitespace-pre-wrap break-words font-mono">{fallbackMessage}</pre>
+        </details>
       )}
       <div className="flex flex-wrap gap-2">
         <button
