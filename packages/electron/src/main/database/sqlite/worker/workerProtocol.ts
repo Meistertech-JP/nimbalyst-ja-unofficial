@@ -129,6 +129,8 @@ export interface InitPayload {
    * cannot read electron-store; main resolves the setting and forwards it.
    */
   backupCopiesKept?: number;
+  /** Main-process file-logging policy for worker CPU-profile diagnostics. */
+  profileCaptureEnabled?: boolean;
 }
 
 export interface InitResult {

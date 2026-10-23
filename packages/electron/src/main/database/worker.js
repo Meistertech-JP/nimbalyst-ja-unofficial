@@ -24,6 +24,7 @@ const { serializeWorkerError } = require('./workerErrorSerialization');
 const { planInitFailureResponse } = require('./pgliteInitRecovery');
 const { runTransactionStatements } = require('./transactionStatements');
 const { LEGACY_SESSION_TYPES_SQL } = require('./legacySessionTypes');
+const { isWorkerFileLoggingEnabled } = require('../utils/workerLoggingPolicy');
 
 /**
  * The install's database root, or null when the spawner did not supply one.
@@ -40,6 +41,7 @@ const { LEGACY_SESSION_TYPES_SQL } = require('./legacySessionTypes');
  * make the one operation that actually needs it say so.
  */
 const workerUserDataPath = (workerData && workerData.userDataPath) || null;
+const profileCaptureEnabled = isWorkerFileLoggingEnabled(workerData?.profileCaptureEnabled);
 
 // ---------------------------------------------------------------------------
 // CPU profile auto-capture for the PGLite worker.
@@ -57,7 +59,7 @@ let pgliteLastProfileAt = 0;
 let pgliteHighEluStreak = 0;
 
 async function capturePgliteWorkerCpuProfile(triggerElu) {
-  if (pgliteProfileInFlight) return;
+  if (!profileCaptureEnabled || pgliteProfileInFlight) return;
   const now = Date.now();
   if (now - pgliteLastProfileAt < WORKER_PROFILE_TTL_MS) return;
   pgliteProfileInFlight = true;

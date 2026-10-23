@@ -8,7 +8,7 @@ import { Worker } from 'worker_threads';
 import { app, dialog } from 'electron';
 import path from 'path';
 import { getPackageRoot } from '../utils/appPaths';
-import { logger } from '../utils/logger';
+import { getLoggerConfig, logger } from '../utils/logger';
 import { AnalyticsService } from '../services/analytics/AnalyticsService';
 import type { SQLiteDatabase } from './sqlite/SQLiteDatabase';
 import { DatabaseBackupService } from '../services/database/DatabaseBackupService';
@@ -400,7 +400,8 @@ export class PGLiteDatabaseWorker {
 
     this.worker = new Worker(workerPath, {
       workerData: {
-        userDataPath
+        userDataPath,
+        profileCaptureEnabled: getLoggerConfig().fileLogging,
       }
     });
 

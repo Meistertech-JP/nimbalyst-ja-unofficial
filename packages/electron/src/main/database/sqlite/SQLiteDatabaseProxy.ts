@@ -33,7 +33,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDatabaseMaintenanceSettings } from '../../utils/store';
 import { app, BrowserWindow } from 'electron';
 import { observeMigrationProgress } from '../migrationOperation';
-import { logger } from '../../utils/logger';
+import { getLoggerConfig, logger } from '../../utils/logger';
 import { getPackageRoot } from '../../utils/appPaths';
 import type { AppDatabaseBackupService } from '../PGLiteDatabaseWorker';
 import type {
@@ -204,6 +204,9 @@ export class SQLiteDatabaseProxy {
       // Resolved here rather than in the worker: electron-store needs the
       // `electron` module, which a worker bundle cannot resolve.
       backupCopiesKept: getDatabaseMaintenanceSettings().backupCopiesKept,
+      // Workers cannot read electron-store. Respect the main process logging
+      // preference for their direct CPU-profile file writes as well.
+      profileCaptureEnabled: getLoggerConfig().fileLogging,
     };
     await this.send('init', payload, 120_000);
     this.initialized = true;

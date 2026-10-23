@@ -37,6 +37,7 @@ import { createRecoveryVerifier } from '../../recovery/recoveryVerification';
 import type { LivePgliteReader as OrchestratorLivePgliteReader } from '../MigrationOrchestrator';
 import { MigrationProgressReporter } from '../MigrationProgressReporter';
 import { countConfiguredProjects } from '../recoveryArtifacts';
+import { isWorkerFileLoggingEnabled } from '../../../utils/workerLoggingPolicy';
 import {
   handleMigrationRequest,
   type MigrationRequestDeps,
@@ -106,6 +107,7 @@ const pendingBridge = new Map<string, PendingBridge>();
 // ---------------------------------------------------------------------------
 
 let workerLogsDir: string | null = null;
+let workerProfileCaptureEnabled = false;
 let workerProfileInFlight = false;
 let workerLastProfileAt = 0;
 let workerHighEluStreak = 0;
@@ -115,7 +117,7 @@ const WORKER_ELU_THRESHOLD = 0.8;
 const WORKER_ELU_TRIGGER_SAMPLES = 2;
 
 async function captureWorkerCpuProfile(triggerElu: number): Promise<void> {
-  if (workerProfileInFlight || !workerLogsDir) return;
+  if (!workerProfileCaptureEnabled || workerProfileInFlight || !workerLogsDir) return;
   const now = Date.now();
   if (now - workerLastProfileAt < WORKER_PROFILE_TTL_MS) return;
   workerProfileInFlight = true;
@@ -317,8 +319,11 @@ async function handle(req: RequestEnvelope): Promise<unknown> {
       initOpts = opts;
       // Logs dir is sibling of the data dir (matches main process layout:
       // userData/sqlite-db -> userData/logs).
-      workerLogsDir = path.join(path.dirname(path.dirname(opts.dbDir)), 'logs');
-      startWorkerCpuMonitor();
+      workerProfileCaptureEnabled = isWorkerFileLoggingEnabled(opts.profileCaptureEnabled);
+      workerLogsDir = workerProfileCaptureEnabled
+        ? path.join(path.dirname(path.dirname(opts.dbDir)), 'logs')
+        : null;
+      if (workerProfileCaptureEnabled) startWorkerCpuMonitor();
       const t0 = performance.now();
       sqlite = new SQLiteDatabase({
         dbDir: opts.dbDir,
