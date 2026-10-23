@@ -351,7 +351,13 @@ export function ClaudeCodePanel({
   const handleLogin = async () => {
     setIsLoggingIn(true);
     try {
-      const result = await window.electronAPI.invoke('claude-code:login', loginCwd);
+      const result = await window.electronAPI.invoke('claude-code:login', loginCwd, {
+        title: t('claude_code.terminal_auth_title'),
+        loginInstruction: t('claude_code.terminal_login_instruction'),
+        oauthInstruction: t('claude_code.terminal_oauth_instruction'),
+        quitInstruction: t('claude_code.terminal_login_quit_instruction'),
+        terminalUnavailable: t('claude_code.login_terminal_unavailable'),
+      });
       if (result.success) {
         errorNotificationService.showInfo(
           t('claude_code_panel.login_toast_title'),
@@ -368,7 +374,12 @@ export function ClaudeCodePanel({
 
   const handleLogout = async () => {
     try {
-      const result = await window.electronAPI.invoke('claude-code:logout');
+      const result = await window.electronAPI.invoke('claude-code:logout', {
+        title: t('claude_code.terminal_logout_title'),
+        logoutInstruction: t('claude_code.terminal_logout_instruction'),
+        quitInstruction: t('claude_code.terminal_logout_quit_instruction'),
+        terminalUnavailable: t('claude_code.logout_terminal_unavailable'),
+      });
       if (result.success) {
         errorNotificationService.showInfo(
           t('claude_code_panel.logout_toast_title'),

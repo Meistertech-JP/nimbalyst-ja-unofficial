@@ -158,8 +158,15 @@ export function registerClaudeCodeHandlers() {
     }
   });
 
-  // Handle claude login command
-  safeHandle('claude-code:login', async (_event, workspacePath?: string) => {
+  // Handle claude login command. Terminal copy is supplied by the renderer so
+  // it follows the user's selected application language.
+  safeHandle('claude-code:login', async (_event, workspacePath: string | undefined, copy: {
+    title: string;
+    loginInstruction: string;
+    oauthInstruction: string;
+    quitInstruction: string;
+    terminalUnavailable: string;
+  }) => {
     try {
       const platform = process.platform;
       analytics.sendEvent('do_claude_code_login', {platform: platform});
@@ -182,7 +189,7 @@ export function registerClaudeCodeHandlers() {
         const script = `
 tell application "Terminal"
   activate
-  do script "${cdPrefix}clear && echo 'Claude Code Authentication' && echo '' && echo 'Type /login and press Enter to authenticate.' && echo 'Complete the OAuth flow in your browser when prompted.' && echo 'When finished, type /quit to exit and close this window.' && echo '' && env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"
+  do script "${cdPrefix}clear && echo ${shellQuote(copy.title)} && echo '' && echo ${shellQuote(copy.loginInstruction)} && echo ${shellQuote(copy.oauthInstruction)} && echo ${shellQuote(copy.quitInstruction)} && echo '' && env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"
 end tell`;
 
         spawn('osascript', ['-e', script], {
@@ -191,7 +198,8 @@ end tell`;
           stdio: 'ignore'
         }).unref();
       } else if (platform === 'win32') {
-        spawn('cmd', ['/c', 'start', '"Claude Code Authentication"', 'cmd', '/k', `echo Claude Code Authentication && echo. && echo Type /login and press Enter to authenticate. && echo Complete the OAuth flow in your browser when prompted. && echo When finished, type /quit to exit and close this window. && echo. && "${binaryPath}"`], {
+        const echo = (value: string) => value.replace(/([&|<>^])/g, '^$1').replace(/%/g, '%%');
+        spawn('cmd', ['/c', 'start', `"${echo(copy.title)}"`, 'cmd', '/k', `echo(${echo(copy.title)} && echo. && echo(${echo(copy.loginInstruction)} && echo(${echo(copy.oauthInstruction)} && echo(${echo(copy.quitInstruction)} && echo. && "${binaryPath}"`], {
           env,
           detached: true,
           stdio: 'ignore',
@@ -205,7 +213,7 @@ end tell`;
 
         for (const terminal of terminals) {
           try {
-            spawn(terminal, ['-e', `bash -c "${cdPrefix}clear; echo 'Claude Code Authentication'; echo ''; echo 'Type /login and press Enter to authenticate.'; echo 'Complete the OAuth flow in your browser when prompted.'; echo 'When finished, type /quit to exit.'; echo ''; env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`], {
+            spawn(terminal, ['-e', `bash -c "${cdPrefix}clear; echo ${shellQuote(copy.title)}; echo ''; echo ${shellQuote(copy.loginInstruction)}; echo ${shellQuote(copy.oauthInstruction)}; echo ${shellQuote(copy.quitInstruction)}; echo ''; env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`], {
               env,
               detached: true,
               stdio: 'ignore',
@@ -219,13 +227,13 @@ end tell`;
         }
 
         if (!terminalOpened) {
-          throw new Error('No terminal emulator found. Please run "' + binaryPath + '" manually and type /login to authenticate.');
+          throw new Error(copy.terminalUnavailable.replace('{{binaryPath}}', binaryPath));
         }
       }
 
       return {
         success: true,
-        message: 'Terminal window opened. Type /login and press Enter to authenticate, then click "Refresh Status" to verify.'
+        message: copy.loginInstruction
       };
     } catch (error) {
       log.error('[ClaudeCodeHandlers] Login error:', error);
@@ -234,7 +242,12 @@ end tell`;
   });
 
   // Handle claude logout command
-  safeHandle('claude-code:logout', async () => {
+  safeHandle('claude-code:logout', async (_event, copy: {
+    title: string;
+    logoutInstruction: string;
+    quitInstruction: string;
+    terminalUnavailable: string;
+  }) => {
     try {
       const platform = process.platform;
       analytics.sendEvent('do_claude_code_logout', {platform: platform});
@@ -252,7 +265,7 @@ end tell`;
         const script = `
 tell application "Terminal"
   activate
-  do script "clear && echo 'Claude Code Logout' && echo '' && echo 'Type /logout and press Enter to logout:' && echo '' && env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"
+  do script "clear && echo ${shellQuote(copy.title)} && echo '' && echo ${shellQuote(copy.logoutInstruction)} && echo ${shellQuote(copy.quitInstruction)} && echo '' && env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"
 end tell`;
 
         spawn('osascript', ['-e', script], {
@@ -261,7 +274,8 @@ end tell`;
           stdio: 'ignore'
         }).unref();
       } else if (platform === 'win32') {
-        spawn('cmd', ['/c', 'start', '"Claude Code Logout"', 'cmd', '/k', `"${binaryPath}"`], {
+        const echo = (value: string) => value.replace(/([&|<>^])/g, '^$1').replace(/%/g, '%%');
+        spawn('cmd', ['/c', 'start', `"${echo(copy.title)}"`, 'cmd', '/k', `echo(${echo(copy.title)} && echo. && echo(${echo(copy.logoutInstruction)} && echo(${echo(copy.quitInstruction)} && echo. && "${binaryPath}"`], {
           env,
           detached: true,
           stdio: 'ignore',
@@ -273,7 +287,7 @@ end tell`;
 
         for (const terminal of terminals) {
           try {
-            spawn(terminal, ['-e', `bash -c "clear; echo 'Claude Code Logout'; echo ''; echo 'Type /logout and press Enter to logout:'; echo ''; env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`], {
+            spawn(terminal, ['-e', `bash -c "clear; echo ${shellQuote(copy.title)}; echo ''; echo ${shellQuote(copy.logoutInstruction)}; echo ${shellQuote(copy.quitInstruction)}; echo ''; env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1 ${shellQuote(binaryPath).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`], {
               env,
               detached: true,
               stdio: 'ignore'
@@ -286,13 +300,13 @@ end tell`;
         }
 
         if (!terminalOpened) {
-          throw new Error('No terminal emulator found. Please run "' + binaryPath + '" manually and type /logout in your terminal.');
+          throw new Error(copy.terminalUnavailable.replace('{{binaryPath}}', binaryPath));
         }
       }
 
       return {
         success: true,
-        message: 'Terminal window opened. Type /logout and press Enter to complete logout.'
+        message: copy.logoutInstruction
       };
     } catch (error) {
       log.error('[ClaudeCodeHandlers] Logout error:', error);

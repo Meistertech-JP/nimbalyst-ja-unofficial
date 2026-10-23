@@ -61,14 +61,27 @@ vi.mock('../../utils/store', () => ({
 import { registerClaudeCodeHandlers } from '../ClaudeCodeHandlers';
 
 const originalPlatform = process.platform;
+const loginCopy = {
+  title: 'Claude Codeの認証',
+  loginInstruction: '/login と入力してEnterキーを押してください。',
+  oauthInstruction: 'ブラウザーで認証を完了してください。',
+  quitInstruction: '完了したら /quit と入力してください。',
+  terminalUnavailable: 'ターミナルが見つかりません。{{binaryPath}}を実行してください。',
+};
+const logoutCopy = {
+  title: 'Claude Codeのログアウト',
+  logoutInstruction: '/logout と入力してEnterキーを押してください。',
+  quitInstruction: '完了したら /quit と入力してください。',
+  terminalUnavailable: 'ターミナルが見つかりません。{{binaryPath}}を実行してください。',
+};
 function setPlatform(platform: NodeJS.Platform) {
   Object.defineProperty(process, 'platform', { value: platform, configurable: true });
 }
 
-async function invokeLogin(workspacePath?: string) {
+async function invokeLogin(workspacePath?: string, copy = loginCopy) {
   const handler = mocks.handlers.get('claude-code:login');
   if (!handler) throw new Error('login handler not registered');
-  return handler({}, workspacePath);
+  return handler({}, workspacePath, copy);
 }
 
 /** First spawn() call args, untyped for convenient tuple indexing in assertions. */
@@ -94,9 +107,14 @@ describe('claude-code:login opens the terminal in the project folder', () => {
     setPlatform(platform);
     for (const action of ['login', 'logout']) {
       mocks.spawn.mockClear();
-      await mocks.handlers.get(`claude-code:${action}`)!({}, '/project');
+      if (action === 'login') {
+        await mocks.handlers.get('claude-code:login')!({}, '/project', loginCopy);
+      } else {
+        await mocks.handlers.get('claude-code:logout')!({}, logoutCopy);
+      }
       const [, args, options] = firstSpawnCall();
       expect(options.env).toMatchObject({ PATH: '/fake/path', DISABLE_AUTOUPDATER: '1', DISABLE_UPDATES: '1' });
+      expect(args.join(' ')).toContain(action === 'login' ? loginCopy.loginInstruction : logoutCopy.logoutInstruction);
       if (platform === 'darwin') expect(args[1]).toContain('env DISABLE_AUTOUPDATER=1 DISABLE_UPDATES=1');
     }
   });
