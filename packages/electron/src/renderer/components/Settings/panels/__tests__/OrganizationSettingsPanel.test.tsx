@@ -199,7 +199,7 @@ describe('OrganizationSettingsPanel', () => {
     expect(screen.getByRole('heading', { name: 'メッセージ' }).textContent).toBe('メッセージ');
   });
 
-  it('surfaces a rejected save instead of claiming the setting changed', async () => {
+  it('surfaces a localized save failure instead of backend diagnostics', async () => {
     setError = 'Only organization admins may update settings';
     renderPanel('admin', 'org-rejected');
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
@@ -207,7 +207,9 @@ describe('OrganizationSettingsPanel', () => {
     fireEvent.click(toggleInput('organization-settings-dms-toggle'));
 
     await waitFor(() => expect(screen.getByTestId('organization-settings-save-error').textContent)
-      .toContain('Only organization admins may update settings'));
+      .toBe('Could not save settings.'));
+    expect(screen.getByTestId('organization-settings-save-error').textContent)
+      .not.toContain('Only organization admins may update settings');
     // Nothing was applied optimistically; the broadcast is what writes the atom.
     expect(store.get(orgSettingsAtomFamily('org-rejected')).messaging.dmsEnabled).toBe(true);
   });

@@ -204,8 +204,7 @@ export function ClaudeCodePanel({
       setAgentTeamsEnabled(newEnvVars.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1');
     } catch (error) {
       console.error('Failed to save env vars:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      errorNotificationService.showError(t('claude_code_panel.save_env_failed'), t('claude_code_panel.save_env_failed_detail', { error: errorMessage }));
+      errorNotificationService.showError(t('claude_code_panel.save_env_failed'), t('claude_code_panel.save_env_failed_detail'));
     }
   }, [t]);
 
@@ -365,8 +364,8 @@ export function ClaudeCodePanel({
           { duration: 0 },
         );
       }
-    } catch (error: any) {
-      errorNotificationService.showError(t('claude_code_panel.login_failed_title'), t('claude_code_panel.login_failed', { error: error.message || t('claude_code_panel.unknown_error') }));
+    } catch {
+      errorNotificationService.showError(t('claude_code_panel.login_failed_title'), t('claude_code_panel.login_failed'));
     } finally {
       setIsLoggingIn(false);
     }
@@ -387,8 +386,8 @@ export function ClaudeCodePanel({
           { duration: 0 },
         );
       }
-    } catch (error: any) {
-      errorNotificationService.showError(t('claude_code_panel.logout_failed_title'), t('claude_code_panel.logout_failed', { error: error.message || t('claude_code_panel.unknown_error') }));
+    } catch {
+      errorNotificationService.showError(t('claude_code_panel.logout_failed_title'), t('claude_code_panel.logout_failed'));
     }
   };
 
@@ -486,7 +485,7 @@ export function ClaudeCodePanel({
 
       <ClaudeRuntimeStatus scope={scope} workspacePath={workspacePath} revision={runtimeRevision} />
       {loginStatus?.error && (
-        <p className="claude-runtime-error text-sm text-[var(--nim-error)] select-text" role="alert">{loginStatus.error}</p>
+        <p className="claude-runtime-error text-sm text-[var(--nim-error)] select-text" role="alert">{t('claude_code_panel.auth_check_failed')}</p>
       )}
 
       {config.enabled && (

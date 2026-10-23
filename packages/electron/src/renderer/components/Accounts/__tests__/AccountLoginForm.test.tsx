@@ -63,9 +63,9 @@ function clickGoogle() {
 
 function submitMagicLink(email?: string) {
   if (email !== undefined) {
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: email } });
+    fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: email } });
   }
-  fireEvent.click(screen.getByRole('button', { name: /^Send magic link/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^(Send magic link|マジックリンクを送信)/ }));
 }
 
 describe('AccountLoginForm encrypted-storage errors', () => {
@@ -80,6 +80,32 @@ describe('AccountLoginForm encrypted-storage errors', () => {
     expect(await screen.findByText(expected)).toBeTruthy();
     expect(screen.queryByText(/Credential storage:/)).toBeNull();
     expect(screen.queryByTestId('account-login-waiting')).toBeNull();
+  });
+
+  it.each(['en', 'ja'] as const)('does not show provider-auth diagnostics in %s', async language => {
+    await testI18n.changeLanguage(language);
+    signInWithGoogle.mockResolvedValue({
+      success: false,
+      error: 'OAuth callback failed: invalid_grant from identity.example',
+    });
+    render(<AccountLoginForm mode="org-onboarding" />);
+    fireEvent.click(screen.getByRole('button', { name: /Google/ }));
+    const expected = language === 'ja' ? 'サインインを開始できませんでした。' : 'Could not start sign-in.';
+    expect(await screen.findByText(expected)).toBeTruthy();
+    expect(screen.queryByText(/OAuth callback failed|invalid_grant/)).toBeNull();
+  });
+
+  it.each(['en', 'ja'] as const)('does not show provider errors when sending a magic link in %s', async language => {
+    await testI18n.changeLanguage(language);
+    sendMagicLink.mockResolvedValue({
+      success: false,
+      error: 'Rate limit exceeded; try again later.',
+    });
+    render(<AccountLoginForm mode="org-onboarding" />);
+    submitMagicLink('user@example.com');
+    const expected = language === 'ja' ? 'サインインリンクを送信できませんでした。' : 'Could not send the sign-in link.';
+    expect(await screen.findByText(expected)).toBeTruthy();
+    expect(screen.queryByText(/Rate limit exceeded/)).toBeNull();
   });
 
   it.each(['en', 'ja'] as const)('localizes rejected IPC storage errors in %s', async language => {
@@ -173,12 +199,13 @@ describe('AccountLoginForm intent', () => {
     }));
   });
 
-  it('surfaces a rejected intent instead of pretending the flow started', async () => {
+  it('does not expose rejected intent diagnostics or pretend the flow started', async () => {
     signInWithGoogle.mockRejectedValue(new Error('Add-account requires an existing account'));
     render(<AccountLoginForm mode="add-account" />);
 
     clickGoogle();
-    expect(await screen.findByText(/Add-account requires an existing account/)).toBeTruthy();
+    expect(await screen.findByText('Could not start sign-in.')).toBeTruthy();
+    expect(screen.queryByText(/Add-account requires/)).toBeNull();
     expect(screen.queryByTestId('account-login-waiting')).toBeNull();
   });
 

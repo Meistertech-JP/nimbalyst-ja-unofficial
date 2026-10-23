@@ -769,7 +769,9 @@ export function SettingsView({
             [selectedCategory]: {
               ...prev[selectedCategory],
               testStatus: result.success ? 'success' : 'error',
-              testMessage: result.success ? 'Connected' : result.error
+              // Backend diagnostics can be English even in the Japanese UI;
+              // panels render the localized failure label, never this detail.
+              testMessage: result.success ? undefined : t('provider.connection_failed_detail')
             }
           }));
 
@@ -783,7 +785,7 @@ export function SettingsView({
             [selectedCategory]: {
               ...prev[selectedCategory],
               testStatus: 'error',
-              testMessage: 'Connection failed'
+              testMessage: t('provider.connection_failed_detail')
             }
           }));
         }

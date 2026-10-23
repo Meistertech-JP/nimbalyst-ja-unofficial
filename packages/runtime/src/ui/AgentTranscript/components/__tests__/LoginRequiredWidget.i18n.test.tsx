@@ -26,7 +26,7 @@ describe('LoginRequiredWidget localization', () => {
     vi.restoreAllMocks();
   });
 
-  it('localizes login guidance and actions while preserving service error details', async () => {
+  it('localizes login guidance and hides English service error details', async () => {
     const invoke = vi.fn(async (channel: string) => {
       if (channel === 'claude-code:check-login') {
         return { isLoggedIn: false, error: 'Auth service unavailable' };
@@ -41,14 +41,16 @@ describe('LoginRequiredWidget localization', () => {
     renderWidget();
 
     expect(screen.getByText('Claude Agentを使用するにはAnthropicアカウントが必要です。ログインするか、アカウントを作成してください。')).toBeTruthy();
-    expect(await screen.findByText('Auth service unavailable')).toBeTruthy();
+    expect(await screen.findByText('認証状態を確認できませんでした。')).toBeTruthy();
+    expect(screen.queryByText('Auth service unavailable')).toBeNull();
     expect(screen.getByRole('button', { name: 'ログイン' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '状態を確認' })).toBeTruthy();
     expect(screen.getByText(/Claude Codeのターミナルセッションを開き/)).toBeTruthy();
     expect(screen.getByText('/login')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'ログイン' }));
-    await waitFor(() => expect(screen.getByText('OAuth callback failed')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('ログインに失敗しました。もう一度お試しください。')).toBeTruthy());
+    expect(screen.queryByText('OAuth callback failed')).toBeNull();
     expect(invoke).toHaveBeenCalledWith('claude-code:login', '/workspace');
   });
 

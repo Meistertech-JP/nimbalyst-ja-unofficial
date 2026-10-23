@@ -168,8 +168,8 @@
     "rename": "Rename",
     "unnamed_organization": "Unnamed organization",
     "owned_by": "Owned by {{email}}",
-    "load_error": "Could not load settings: {{error}}",
-    "save_error": "Could not save settings: {{error}}",
+    "load_error": "Could not load settings.",
+    "save_error": "Could not save settings.",
     "messaging": {
       "title": "Messaging",
       "description": "Rooms and direct messages can be turned off for organizations that chat elsewhere. The Inbox, document comments and tracker comments are unaffected.",

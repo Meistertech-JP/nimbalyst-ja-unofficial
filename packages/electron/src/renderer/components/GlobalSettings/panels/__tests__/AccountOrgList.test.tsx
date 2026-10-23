@@ -193,6 +193,46 @@ describe('AccountOrgList', () => {
     expect(openManagementWindow).not.toHaveBeenCalled();
   });
 
+  it('shows the localized failure when the server rejects an invitation', async () => {
+    acceptInvite.mockResolvedValue({ success: false, error: 'Backend invite rejection' });
+
+    renderWithI18n(
+      <AccountOrgList
+        group={group({
+          organizations: [
+            { orgId: 'org-invite', name: 'Invited Org', role: 'member', isPending: true, alsoReachableBy: [] },
+          ],
+        })}
+      />,
+    );
+
+    screen.getByTestId('account-org-accept-invite').click();
+
+    await waitFor(() => expect(screen.getByText('Could not accept the invitation')).toBeTruthy());
+    expect(screen.queryByText('Backend invite rejection')).toBeNull();
+    expect(openManagementWindow).not.toHaveBeenCalled();
+  });
+
+  it('shows the localized failure when accepting throws instead of leaking IPC text', async () => {
+    acceptInvite.mockRejectedValue(new Error('IPC channel down'));
+
+    renderWithI18n(
+      <AccountOrgList
+        group={group({
+          organizations: [
+            { orgId: 'org-invite', name: 'Invited Org', role: 'member', isPending: true, alsoReachableBy: [] },
+          ],
+        })}
+      />,
+    );
+
+    screen.getByTestId('account-org-accept-invite').click();
+
+    await waitFor(() => expect(screen.getByText('Could not accept the invitation')).toBeTruthy());
+    expect(screen.queryByText('IPC channel down')).toBeNull();
+    expect(openManagementWindow).not.toHaveBeenCalled();
+  });
+
   it('credits the other signed-in login for a merged organization', () => {
     renderWithI18n(
       <AccountOrgList

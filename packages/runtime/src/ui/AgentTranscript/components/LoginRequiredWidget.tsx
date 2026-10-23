@@ -84,13 +84,13 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
         });
       } else {
         setLoginStatus({
-          message: status.error || t('auth.login_required'),
+          message: status.error ? t('auth.check_failed_generic') : t('auth.login_required'),
           success: false
         });
       }
-    } catch (error: any) {
+    } catch {
       setLoginStatus({
-        message: t('auth.check_failed', { error: error.message || t('auth.unknown_error') }),
+        message: t('auth.check_failed_generic'),
         success: false
       });
     } finally {
@@ -127,13 +127,13 @@ export const LoginRequiredWidget: React.FC<LoginRequiredWidgetProps> = ({ worksp
         });
       } else {
         setLoginStatus({
-          message: result.error || t('auth.login_retry'),
+          message: t('auth.login_retry'),
           success: false
         });
       }
-    } catch (error: any) {
+    } catch {
       setLoginStatus({
-        message: t('auth.login_failed', { error: error.message || t('auth.unknown_error') }),
+        message: t('auth.login_retry'),
         success: false
       });
     } finally {

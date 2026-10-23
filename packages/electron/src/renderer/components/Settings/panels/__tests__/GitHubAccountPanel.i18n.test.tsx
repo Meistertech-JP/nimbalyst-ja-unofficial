@@ -52,6 +52,15 @@ describe('GitHubAccountPanel localization', () => {
     expect(screen.getByText(/GitHub CLIアカウントが見つかりません/).textContent).toContain('gh auth login');
   });
 
+  it('keeps gh CLI diagnostics out of the load failure message', async () => {
+    mockService.listAccounts.mockRejectedValue(new Error('gh: auth token expired'));
+
+    renderJapanese('application');
+
+    expect(await screen.findByText('GitHubアカウントの読み込みに失敗しました')).toBeTruthy();
+    expect(screen.queryByText('gh: auth token expired')).toBeNull();
+  });
+
   it('localizes the project override selector while preserving account identifiers', async () => {
     mockService.listAccounts.mockResolvedValue([
       { login: 'work-user', host: 'github.com', active: true },

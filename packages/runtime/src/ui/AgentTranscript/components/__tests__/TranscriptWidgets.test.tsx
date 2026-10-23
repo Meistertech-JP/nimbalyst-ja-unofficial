@@ -1769,6 +1769,69 @@ describe('OpenAIAuthWidget', () => {
       }
     }
   });
+
+  it('shows a localized message when the ChatGPT login flow starts', async () => {
+    await testI18n.changeLanguage('ja');
+    const previousDescriptor = Object.getOwnPropertyDescriptor(window, 'electronAPI');
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        invoke: vi.fn(async (channel: string) => channel === 'openai-codex:check-login'
+          ? { installed: true, isLoggedIn: false, message: 'Not signed in.' }
+          : { success: true, message: 'Opened ChatGPT login in your browser.' }),
+      },
+    });
+
+    try {
+      const { OpenAIAuthWidget } = await import('../OpenAIAuthWidget');
+      render(<OpenAIAuthWidget />);
+      fireEvent.click(await screen.findByRole('button', { name: 'ログイン' }));
+      expect(await screen.findByText('Codexのログイン手続きを開始しました。')).toBeDefined();
+      expect(screen.queryByText('Opened ChatGPT login in your browser.')).toBeNull();
+    } finally {
+      if (previousDescriptor) {
+        Object.defineProperty(window, 'electronAPI', previousDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'electronAPI');
+      }
+    }
+  });
+
+  it('does not expose English diagnostics from failed ChatGPT login or status checks', async () => {
+    await testI18n.changeLanguage('ja');
+    const previousDescriptor = Object.getOwnPropertyDescriptor(window, 'electronAPI');
+    const invoke = vi.fn(async (channel: string) => channel === 'openai-codex:check-login'
+      ? {
+          installed: true,
+          isLoggedIn: false,
+          message: 'Unexpected English status message',
+          error: 'Unexpected English status diagnostic',
+        }
+      : {
+          success: false,
+          message: 'Unexpected English login message',
+          error: 'Unexpected English login diagnostic',
+        });
+    Object.defineProperty(window, 'electronAPI', { configurable: true, value: { invoke } });
+
+    try {
+      const { OpenAIAuthWidget } = await import('../OpenAIAuthWidget');
+      render(<OpenAIAuthWidget />);
+      expect(await screen.findByText('Codexのログイン状態を確認できませんでした。')).toBeDefined();
+      expect(screen.queryByText('Unexpected English status diagnostic')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'ログイン' }));
+      expect(await screen.findByText('Codexのログイン手続きを開始できませんでした。')).toBeDefined();
+      expect(screen.queryByText('Unexpected English login diagnostic')).toBeNull();
+      expect(screen.queryByText('Unexpected English login message')).toBeNull();
+    } finally {
+      if (previousDescriptor) {
+        Object.defineProperty(window, 'electronAPI', previousDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'electronAPI');
+      }
+    }
+  });
 });
 
 // ============================================================================

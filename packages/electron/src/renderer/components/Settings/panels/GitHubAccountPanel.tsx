@@ -49,8 +49,10 @@ export function GitHubAccountPanel({ scope, workspacePath }: GitHubAccountPanelP
       setAccounts(accs);
       setDefaultAccount(config.defaultAccount);
       setOverride(config.override);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('github_account.load_failed'));
+    } catch {
+      // gh CLI/IPC diagnostics can be English even in the Japanese UI; keep
+      // them out of the account picker.
+      setError(t('github_account.load_failed'));
     } finally {
       setLoading(false);
     }

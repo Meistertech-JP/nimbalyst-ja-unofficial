@@ -676,6 +676,7 @@
     "api_unavailable": "Electron APIにアクセスできません。アプリケーションを再起動してください。",
     "login_required": "ログインしていません。認証手続きを完了してください。",
     "check_failed": "状態の確認に失敗しました: {{error}}",
+    "check_failed_generic": "認証状態を確認できませんでした。",
     "login_retry": "ログインに失敗しました。もう一度お試しください。",
     "login_failed": "ログインに失敗しました: {{error}}",
     "login_started": "ログイン手続きを開始しました。ターミナルウィンドウで認証を完了し（/loginの入力が必要な場合があります）、「状態を確認」をクリックしてください。",

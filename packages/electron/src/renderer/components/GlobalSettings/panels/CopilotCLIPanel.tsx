@@ -53,8 +53,8 @@ export function CopilotCLIPanel({
     try {
       await window.electronAPI.invoke('cli:install', 'copilot-cli', {});
       await checkCLI();
-    } catch (err) {
-      setInstallError(err instanceof Error ? err.message : String(err));
+    } catch {
+      setInstallError(t('provider.copilot.install_failed'));
       setCLIStatus('install-error');
     }
   };

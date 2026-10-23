@@ -676,6 +676,7 @@
     "api_unavailable": "Cannot access Electron API. Please restart the application.",
     "login_required": "Not logged in. Please complete the authentication flow.",
     "check_failed": "Failed to check status: {{error}}",
+    "check_failed_generic": "Could not check the authentication status.",
     "login_retry": "Login failed. Please try again.",
     "login_failed": "Login failed: {{error}}",
     "login_started": "Login started. Complete authentication in the Terminal window (you may have to type /login), then click “Check Status”.",

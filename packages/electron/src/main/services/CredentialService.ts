@@ -31,6 +31,7 @@ export interface SyncCredentials {
 
 const CREDENTIALS_FILE = 'sync-credentials.enc';
 const CREDENTIAL_LOAD_ERROR = 'Sync credentials could not be loaded. The existing encryption key file has been preserved.';
+const SECURE_STORAGE_UNAVAILABLE = 'Secure credential storage is unavailable; sync credentials were not read or modified.';
 
 let cachedCredentials: SyncCredentials | null = null;
 
@@ -74,19 +75,15 @@ function createCredentials(): SyncCredentials {
  * Save credentials to disk using safeStorage encryption.
  */
 function saveCredentials(credentials: SyncCredentials): void {
+  if (!isSafeStorageAvailable()) {
+    throw new Error(SECURE_STORAGE_UNAVAILABLE);
+  }
+
   const credentialsPath = getCredentialsPath();
   const jsonData = JSON.stringify(credentials);
-
-  if (isSafeStorageAvailable()) {
-    // Encrypt using OS keychain
-    const encrypted = safeStorage.encryptString(jsonData);
-    fs.writeFileSync(credentialsPath, encrypted);
-    logger.main.info('[CredentialService] Credentials saved with safeStorage encryption');
-  } else {
-    // Fallback: save as plain JSON (with warning)
-    logger.main.warn('[CredentialService] safeStorage not available - saving credentials without encryption');
-    fs.writeFileSync(credentialsPath, jsonData, 'utf8');
-  }
+  const encrypted = safeStorage.encryptString(jsonData);
+  fs.writeFileSync(credentialsPath, encrypted);
+  logger.main.info('[CredentialService] Credentials saved with safeStorage encryption');
 }
 
 /**
@@ -94,6 +91,10 @@ function saveCredentials(credentials: SyncCredentials): void {
  */
 function loadCredentials(): SyncCredentials | null {
   const credentialsPath = getCredentialsPath();
+
+  if (!isSafeStorageAvailable()) {
+    throw new Error(SECURE_STORAGE_UNAVAILABLE);
+  }
 
   let fileData: Buffer;
   try {
@@ -106,9 +107,7 @@ function loadCredentials(): SyncCredentials | null {
   }
 
   try {
-    const jsonData = isSafeStorageAvailable()
-      ? safeStorage.decryptString(fileData)
-      : fileData.toString('utf8');
+    const jsonData = safeStorage.decryptString(fileData);
     const credentials = JSON.parse(jsonData) as SyncCredentials | null;
     // Keep the existing minimum seed length requirement (32 bytes in base64),
     // but preserve invalid credentials for recovery instead of rotating them.

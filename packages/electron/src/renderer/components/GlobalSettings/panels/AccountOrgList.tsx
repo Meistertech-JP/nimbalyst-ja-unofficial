@@ -116,9 +116,8 @@ function AccountOrgRow({
       if (result?.success) {
         const queued = await queueOrgWindowGeneralRoute(organization.orgId);
         if (!queued) {
-          throw new Error(
-            t('accepted_destination_save_failed'),
-          );
+          setError(t('accepted_destination_save_failed'));
+          return;
         }
         announceOrganizationsChanged();
         // Accepting used to end here, in a settings list. The new member still
@@ -127,10 +126,10 @@ function AccountOrgRow({
         // retargetable organization window does.
         openOrgMessages(organization.orgId, projectOrgId, openProjectOrgMode);
       } else {
-        setError(result?.error || t('accept_failed'));
+        setError(t('accept_failed'));
       }
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+    } catch {
+      setError(t('accept_failed'));
     } finally {
       setAccepting(false);
     }

@@ -8,7 +8,7 @@ interface CodexLoginStatus {
   isLoggedIn: boolean;
   authMethod?: 'chatgpt' | 'api-key' | 'unknown';
   message: string;
-  error?: string;
+  error?: 'api_unavailable' | 'codex_check_failed' | 'codex_login_failed' | 'codex_cli_unavailable';
 }
 
 const injectOpenAIAuthWidgetStyles = () => {
@@ -47,20 +47,42 @@ export const OpenAIAuthWidget: React.FC = () => {
         setStatus({
           installed: false,
           isLoggedIn: false,
-          message: t('auth.api_unavailable'),
-          error: t('auth.api_unavailable'),
+          message: 'Not signed in.',
+          error: 'api_unavailable',
         });
         return;
       }
 
-      const result = await window.electronAPI.invoke('openai-codex:check-login');
-      setStatus(result);
-    } catch (error: any) {
+      const result = await window.electronAPI.invoke('openai-codex:check-login') as {
+        installed: boolean;
+        isLoggedIn: boolean;
+        authMethod?: 'chatgpt' | 'api-key' | 'unknown';
+        message?: string;
+        error?: string;
+      };
+      const message = result.message || '';
+      const knownMessage = [
+        'Not signed in.',
+        'Codex CLI is unavailable.',
+        'Signed in with ChatGPT.',
+        'Signed in with API key.',
+        'Signed in.',
+      ].includes(message) || /^Signed in with ChatGPT \(.+\)\.$/.test(message);
+      setStatus({
+        installed: result.installed,
+        isLoggedIn: result.isLoggedIn,
+        authMethod: result.authMethod,
+        message: knownMessage ? message : 'Not signed in.',
+        error: result.error
+          ? message === 'Codex CLI is unavailable.' ? 'codex_cli_unavailable' : 'codex_check_failed'
+          : undefined,
+      });
+    } catch {
       setStatus({
         installed: false,
         isLoggedIn: false,
-        message: t('auth.codex_check_failed'),
-        error: error?.message || t('auth.codex_check_failed'),
+        message: 'Not signed in.',
+        error: 'codex_check_failed',
       });
     } finally {
       setIsChecking(false);
@@ -78,24 +100,29 @@ export const OpenAIAuthWidget: React.FC = () => {
         setStatus({
           installed: false,
           isLoggedIn: false,
-          message: t('auth.api_unavailable'),
-          error: t('auth.api_unavailable'),
+          message: 'Not signed in.',
+          error: 'api_unavailable',
         });
         return;
       }
 
-      const result = await window.electronAPI.invoke('openai-codex:login');
-      setStatus({
+      const result = await window.electronAPI.invoke('openai-codex:login') as { success?: boolean };
+      setStatus(result?.success ? {
         installed: true,
         isLoggedIn: false,
-        message: result?.message || t('auth.codex_started'),
+        message: 'Opened ChatGPT login in your browser.',
+      } : {
+        installed: true,
+        isLoggedIn: false,
+        message: 'Not signed in.',
+        error: 'codex_login_failed',
       });
-    } catch (error: any) {
+    } catch {
       setStatus({
         installed: false,
         isLoggedIn: false,
-        message: t('auth.codex_login_failed'),
-        error: error?.message || t('auth.codex_login_failed'),
+        message: 'Not signed in.',
+        error: 'codex_login_failed',
       });
     } finally {
       setIsLoggingIn(false);
@@ -117,7 +144,7 @@ export const OpenAIAuthWidget: React.FC = () => {
 
     const chatgptPlan = message.match(/^Signed in with ChatGPT \((.+)\)\.$/);
     if (chatgptPlan) return t('auth.codex_signed_in_chatgpt_plan', { planType: chatgptPlan[1] });
-    return message;
+    return t('auth.codex_check_failed');
   }, [t]);
 
   const title = useMemo(() => {
@@ -162,7 +189,7 @@ export const OpenAIAuthWidget: React.FC = () => {
 
       {status && (
         <div className={`rounded-md border p-3 text-[13px] leading-relaxed ${statusBoxClassName}`}>
-          {translateStatusMessage(status.error || status.message)}
+          {status.error ? t(`auth.${status.error}`) : translateStatusMessage(status.message)}
         </div>
       )}
 

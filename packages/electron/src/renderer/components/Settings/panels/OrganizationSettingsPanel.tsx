@@ -166,7 +166,7 @@ function OrganizationIdentitySection({
       )}
       {error && (
         <p className="m-0 mt-1 text-xs text-[var(--nim-error)]" data-testid="organization-settings-name-error">
-          {t('settings.save_error', { error })}
+          {t('settings.save_error')}
         </p>
       )}
       {ownerEmail && (
@@ -236,12 +236,12 @@ function MessagingSettingsSection({
       )}
       {loadState.status === 'error' && (
         <p className="m-0 mt-2 text-xs text-[var(--nim-error)]" data-testid="organization-settings-load-error">
-          {t('settings.load_error', { error: loadState.error })}
+          {t('settings.load_error')}
         </p>
       )}
       {error && (
         <p className="m-0 mt-2 text-xs text-[var(--nim-error)]" data-testid="organization-settings-save-error">
-          {t('settings.save_error', { error })}
+          {t('settings.save_error')}
         </p>
       )}
 

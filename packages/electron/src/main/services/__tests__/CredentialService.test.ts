@@ -89,13 +89,23 @@ describe('existing sync credentials', () => {
     expect(h.encrypt).not.toHaveBeenCalled();
   });
 
-  it.each([true, false])('loads the same existing key with safeStorage available=%s', async available => {
-    h.available.mockReturnValue(available);
+  it('loads the existing key when safeStorage is available', async () => {
     fs.writeFileSync(credentialPath(), JSON.stringify(original));
     const service = await import('../CredentialService');
     expect(service.getCredentials()).toEqual(original);
     expect(service.getEncryptionKeySeed()).toBe(original.encryptionKeySeed);
     expect(h.encrypt).not.toHaveBeenCalled();
+  });
+
+  it('refuses to read a plaintext credential file when safeStorage is unavailable', async () => {
+    const bytes = Buffer.from(JSON.stringify(original));
+    fs.writeFileSync(credentialPath(), bytes);
+    h.available.mockReturnValue(false);
+    const service = await import('../CredentialService');
+    expect(() => service.getCredentials()).toThrow('Secure credential storage is unavailable');
+    expect(fs.readFileSync(credentialPath())).toEqual(bytes);
+    expect(h.encrypt).not.toHaveBeenCalled();
+    expect(h.decrypt).not.toHaveBeenCalled();
   });
 });
 
@@ -107,4 +117,23 @@ it('creates a key only when the credential file is absent, and reloads it after 
   vi.resetModules();
   expect((await import('../CredentialService')).getCredentials()).toEqual(credentials);
   expect(h.encrypt).toHaveBeenCalledTimes(1);
+});
+
+it('does not create or save a credential when safeStorage is unavailable', async () => {
+  h.available.mockReturnValue(false);
+  const service = await import('../CredentialService');
+  expect(() => service.getCredentials()).toThrow('Secure credential storage is unavailable');
+  expect(fs.existsSync(credentialPath())).toBe(false);
+  expect(h.encrypt).not.toHaveBeenCalled();
+  expect(h.log.mock.calls.flat().join(' ')).not.toMatch(/saving credentials without encryption/i);
+});
+
+it('does not reset or overwrite existing credentials when safeStorage is unavailable', async () => {
+  const bytes = Buffer.from('preserve-existing-credential-file');
+  fs.writeFileSync(credentialPath(), bytes);
+  h.available.mockReturnValue(false);
+  const service = await import('../CredentialService');
+  expect(() => service.resetCredentials()).toThrow('Secure credential storage is unavailable');
+  expect(fs.readFileSync(credentialPath())).toEqual(bytes);
+  expect(h.encrypt).not.toHaveBeenCalled();
 });

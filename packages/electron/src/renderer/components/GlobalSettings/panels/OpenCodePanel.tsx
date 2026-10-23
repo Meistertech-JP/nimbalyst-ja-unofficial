@@ -103,10 +103,10 @@ export function OpenCodePanel({
         setOpenCodeConfig(response.config ?? null);
         setConfigError(null);
       } else {
-        setConfigError(response.error ?? t('provider.opencode.read_config_failed'));
+        setConfigError(t('provider.opencode.read_config_failed'));
       }
-    } catch (err) {
-      setConfigError(err instanceof Error ? err.message : String(err));
+    } catch {
+      setConfigError(t('provider.opencode.read_config_failed'));
     }
   }, [t]);
 
@@ -121,8 +121,8 @@ export function OpenCodePanel({
     try {
       await window.electronAPI.invoke('cli:install', 'opencode', {});
       await checkCLI();
-    } catch (err) {
-      setInstallError(err instanceof Error ? err.message : String(err));
+    } catch {
+      setInstallError(t('provider.opencode.install_failed'));
       setCLIStatus('install-error');
     }
   };
@@ -135,10 +135,10 @@ export function OpenCodePanel({
         setConfigError(null);
         return true;
       }
-      setConfigError(response.error ?? t('provider.opencode.update_config_failed'));
+      setConfigError(t('provider.opencode.update_config_failed'));
       return false;
-    } catch (err) {
-      setConfigError(err instanceof Error ? err.message : String(err));
+    } catch {
+      setConfigError(t('provider.opencode.update_config_failed'));
       return false;
     }
   };
@@ -174,11 +174,11 @@ export function OpenCodePanel({
         setLmStudioMessage(`${t(count === 1 ? 'provider.opencode.lm_configured_one' : 'provider.opencode.lm_configured_other', { count })} ${t('provider.opencode.discover_models_hint')}`);
       } else {
         setLmStudioStatus('error');
-        setLmStudioMessage(response.error ?? t('provider.opencode.configure_bridge_failed'));
+        setLmStudioMessage(t('provider.opencode.configure_bridge_failed'));
       }
-    } catch (err) {
+    } catch {
       setLmStudioStatus('error');
-      setLmStudioMessage(err instanceof Error ? err.message : String(err));
+      setLmStudioMessage(t('provider.opencode.configure_bridge_failed'));
     }
   };
 
@@ -192,11 +192,11 @@ export function OpenCodePanel({
         setLmStudioMessage(null);
       } else {
         setLmStudioStatus('error');
-        setLmStudioMessage(response.error ?? t('provider.opencode.remove_bridge_failed'));
+        setLmStudioMessage(t('provider.opencode.remove_bridge_failed'));
       }
-    } catch (err) {
+    } catch {
       setLmStudioStatus('error');
-      setLmStudioMessage(err instanceof Error ? err.message : String(err));
+      setLmStudioMessage(t('provider.opencode.remove_bridge_failed'));
     }
   };
 
