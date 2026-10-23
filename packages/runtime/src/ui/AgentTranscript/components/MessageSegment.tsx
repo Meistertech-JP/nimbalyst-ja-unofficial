@@ -129,9 +129,9 @@ export const MessageSegment = React.memo(function MessageSegment({
   // Uses SDK's first-class isAuthError flag when available (preferred)
   // Falls back to string matching for backwards compatibility with old messages
   const isLoginRequiredError = (text: string): boolean => {
-    // First-class detection via SDK's isAuthError flag (most reliable)
-    // This is set by ClaudeCodeProvider when it detects auth errors from the SDK
-    if (message.isAuthError === true) {
+    // The SDK auth flag is emitted by Claude Code. Keep that provider's
+    // dedicated /login guidance, while other providers use their own auth UI.
+    if (message.isAuthError === true && (!provider || provider === 'claude-code' || provider === 'claude-code-cli')) {
       return true;
     }
 
@@ -387,15 +387,6 @@ export const MessageSegment = React.memo(function MessageSegment({
       return null;
     }
 
-    const isProviderAuthError = PROVIDERS_WITH_AUTH_GUIDANCE.has(provider ?? '') && (
-      message.isAuthError === true ||
-      /not signed in|not logged in|not authenticated|authentication required|unauthorized|forbidden|oauth token|auth token/i.test(errorMessage)
-    );
-    if (isProviderAuthError) {
-      if (!shouldShowLoginWidget) return null;
-      return <ProviderAuthRequiredWidget provider={provider} />;
-    }
-
     // Check if this is an OpenAI authentication error
     if (isOpenAIAuthError(errorMessage) && shouldShowLoginWidget) {
       return <OpenAIAuthWidget />;
@@ -415,6 +406,15 @@ export const MessageSegment = React.memo(function MessageSegment({
     // If it's a login-required error but we shouldn't show widget, render nothing
     if (isLoginRequired && !shouldShowLoginWidget) {
       return null;
+    }
+
+    const isProviderAuthError = message.isAuthError === true || (
+      PROVIDERS_WITH_AUTH_GUIDANCE.has(provider ?? '') &&
+      /not signed in|not logged in|not authenticated|authentication required|unauthorized|forbidden|oauth token|auth token/i.test(errorMessage)
+    );
+    if (isProviderAuthError) {
+      if (!shouldShowLoginWidget) return null;
+      return <ProviderAuthRequiredWidget provider={provider} />;
     }
 
     // Check if this is a context limit error, or a compaction attempt that
@@ -444,12 +444,17 @@ export const MessageSegment = React.memo(function MessageSegment({
       return <ApiServiceErrorWidget content={errorMessage} />;
     }
 
-    // Otherwise, render the generic error UI
+    // Keep provider/backend diagnostics available, but don't expose their
+    // untranslated messages as the primary user-facing error copy.
     return (
-      <div className="my-2 p-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-lg">
+      <div className="my-2 p-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-lg" role="alert">
         <div className="text-nim-error font-semibold text-sm mb-2 whitespace-pre-wrap">
-          {errorMessage}
+          {t('transcript.generic_error')}
         </div>
+        <details className="text-xs text-[var(--nim-text-muted)]">
+          <summary className="cursor-pointer">{t('auth.show_technical_details')}</summary>
+          <pre className="mt-2 whitespace-pre-wrap break-words">{errorMessage}</pre>
+        </details>
       </div>
     );
   };

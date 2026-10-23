@@ -234,6 +234,8 @@
   },
   "error": {
     "details": "Error Details",
+    "generic_message": "An unexpected error occurred.",
+    "show_details": "Show details",
     "copied": "✓ Copied!",
     "copy_debug": "Copy Debug Info",
     "message_label": "Message:",

@@ -25,7 +25,9 @@ describe('#1476 effective runtime card', () => {
   it('does not present a failed settings lookup as a bundled runtime', async () => {
     Object.defineProperty(window, 'electronAPI', { configurable: true, value: { invoke: vi.fn().mockRejectedValue(new Error('Unavailable')) } });
     render(<ClaudeRuntimeStatus scope="user" revision={0} />);
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Unavailable'));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Unable to resolve the Claude runtime.'));
+    expect(screen.getByText('Show technical details').closest('details')?.open).toBe(false);
+    expect(screen.getByRole('alert').textContent).toContain('Unavailable');
     expect(screen.queryByText(/bundled runtime/)).toBeNull();
   });
 });

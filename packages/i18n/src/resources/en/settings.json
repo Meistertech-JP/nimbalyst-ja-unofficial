@@ -983,7 +983,8 @@
     "bundled_source": "Nimbalyst's bundled runtime",
     "version": "Agent SDK version",
     "project_required": "A project is required to resolve its runtime.",
-    "resolve_failed": "Unable to resolve the Claude runtime."
+    "resolve_failed": "Unable to resolve the Claude runtime.",
+    "technical_details": "Show technical details"
   },
   "notifications": {
     "title": "Notifications",

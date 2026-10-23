@@ -982,7 +982,8 @@
     "bundled_source": "Nimbalyst同梱ランタイム",
     "version": "Agent SDKバージョン",
     "project_required": "ランタイムの解決にはプロジェクトが必要です。",
-    "resolve_failed": "Claudeランタイムを解決できませんでした。"
+    "resolve_failed": "Claudeランタイムを解決できませんでした。",
+    "technical_details": "技術的な詳細を表示"
   },
   "notifications": {
     "title": "通知",

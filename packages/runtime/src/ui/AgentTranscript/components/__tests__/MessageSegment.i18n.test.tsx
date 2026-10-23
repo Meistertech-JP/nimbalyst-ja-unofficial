@@ -110,6 +110,102 @@ it.each([
   expect(container.textContent).not.toContain('Login');
 });
 
+it('localizes structured auth errors for providers without a dedicated instruction entry', async () => {
+  const i18n = await createI18nInstance('ja');
+  const error = 'Provider session expired: AUTH_REQUIRED';
+  const message = {
+    id: 5,
+    sequence: 5,
+    createdAt: new Date(),
+    type: 'assistant_message',
+    subagentId: null,
+    text: error,
+    isError: true,
+    isAuthError: true,
+  } as unknown as TranscriptViewMessage;
+
+  const { container } = render(
+    <I18nextProvider i18n={i18n}>
+      <MessageSegment
+        message={message}
+        provider="future-provider-id"
+        isUser={false}
+        showToolCalls
+        showThinking={false}
+        expandedTools={new Set()}
+        onToggleToolExpand={() => {}}
+      />
+    </I18nextProvider>,
+  );
+
+  expect(screen.getByRole('alert').textContent).toContain('AIプロバイダーの認証が必要です');
+  expect(container.textContent).not.toContain(error);
+  expect(container.textContent).not.toContain('future-provider-id');
+});
+
+it('preserves the Claude Code login widget for structured Claude auth errors', async () => {
+  const i18n = await createI18nInstance('ja');
+  const message = {
+    id: 7,
+    sequence: 7,
+    createdAt: new Date(),
+    type: 'assistant_message',
+    subagentId: null,
+    text: 'Authentication required',
+    isError: true,
+    isAuthError: true,
+  } as unknown as TranscriptViewMessage;
+
+  render(
+    <I18nextProvider i18n={i18n}>
+      <MessageSegment
+        message={message}
+        provider="claude-code"
+        isUser={false}
+        showToolCalls
+        showThinking={false}
+        expandedTools={new Set()}
+        onToggleToolExpand={() => {}}
+      />
+    </I18nextProvider>,
+  );
+
+  expect(screen.getByText('/login')).toBeTruthy();
+  expect(screen.queryByText('AIプロバイダーの認証が必要です')).toBeNull();
+});
+
+it('shows an untranslated backend error only as optional technical detail', async () => {
+  const i18n = await createI18nInstance('ja');
+  const error = 'OAuth exchange failed: invalid_grant';
+  const message = {
+    id: 6,
+    sequence: 6,
+    createdAt: new Date(),
+    type: 'assistant_message',
+    subagentId: null,
+    text: error,
+    isError: true,
+  } as unknown as TranscriptViewMessage;
+
+  const { container } = render(
+    <I18nextProvider i18n={i18n}>
+      <MessageSegment
+        message={message}
+        provider="future-provider-id"
+        isUser={false}
+        showToolCalls
+        showThinking={false}
+        expandedTools={new Set()}
+        onToggleToolExpand={() => {}}
+      />
+    </I18nextProvider>,
+  );
+
+  expect(screen.getByRole('alert').textContent).toContain('メッセージの処理中にエラーが発生しました。');
+  expect(screen.getByText('技術的な詳細を表示').closest('details')?.open).toBe(false);
+  expect(container.textContent).toContain(error);
+});
+
 it.each([
   { provider: 'grok-build', error: 'Grok is not signed in. Run `grok login` in your terminal, then try again.', command: 'grok login' },
   { provider: 'cursor-agent', error: 'Cursor is not logged in. Run `cursor-agent login` in your terminal, then try again.', command: 'cursor-agent login' },

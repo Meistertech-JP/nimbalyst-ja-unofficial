@@ -28,7 +28,7 @@ describe('notificationDedupKey', () => {
 
 describe('error notification titles', () => {
   it('uses the active UI translator for default error titles', () => {
-    const notifications: Array<{ title: string }> = [];
+    const notifications: Array<{ title: string; message: string; details?: string }> = [];
     const removeListener = errorNotificationService.addListener((notification) => {
       notifications.push(notification);
     });
@@ -37,12 +37,18 @@ describe('error notification titles', () => {
       uncaught_title: '未捕捉のエラー',
       unhandled_rejection_title: '未処理のPromise拒否',
     })[key]);
+    errorNotificationService.setTextTranslator((namespace, key, fallback) =>
+      namespace === 'dialogs' && key === 'error.generic_message' ? '予期しないエラーが発生しました。' : fallback,
+    );
 
     errorNotificationService.showFromError(new Error('details'));
     expect(notifications.at(-1)?.title).toBe('エラーが発生しました');
+    expect(notifications.at(-1)?.message).toBe('予期しないエラーが発生しました。');
+    expect(notifications.at(-1)?.details).toBe('details');
 
     removeListener();
     errorNotificationService.setTitleTranslator(null);
+    errorNotificationService.setTextTranslator(null);
   });
 
   it('translates fixed notification copy and interpolates dynamic values', () => {

@@ -211,12 +211,14 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   const [viewState, setViewState] = useState<ViewState>('discover');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [marketplace, setMarketplace] = useState<MarketplaceData | null>(null);
   const [installedPlugins, setInstalledPlugins] = useState<InstalledPlugin[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlugin, setSelectedPlugin] = useState<MarketplacePlugin | null>(null);
   const [installStatus, setInstallStatus] = useState<Record<string, 'idle' | 'installing' | 'installed' | 'error'>>({});
   const [installMessage, setInstallMessage] = useState<string>('');
+  const [installErrorDetails, setInstallErrorDetails] = useState<string | null>(null);
   const categoryLabel = (category: string) => {
     const key = CATEGORY_LABEL_KEYS[category.toLowerCase() as keyof typeof CATEGORY_LABEL_KEYS];
     return key ? t(key) : category;
@@ -225,6 +227,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setErrorDetails(null);
 
     try {
       // Fetch marketplace data and installed plugins in parallel
@@ -236,7 +239,8 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
       if (marketplaceResult.success) {
         setMarketplace(marketplaceResult.data);
       } else {
-        setError(marketplaceResult.error || t('claude_code_plugins_panel.load_marketplace_failed'));
+        setError(t('claude_code_plugins_panel.load_marketplace_failed'));
+        setErrorDetails(marketplaceResult.error || null);
       }
 
       if (installedResult.success) {
@@ -245,7 +249,8 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : t('claude_code_plugins_panel.load_plugin_data_failed');
       console.error('Failed to load plugin data:', err);
-      setError(errorMessage);
+      setError(t('claude_code_plugins_panel.load_plugin_data_failed'));
+      setErrorDetails(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -260,6 +265,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   const handleInstall = async (plugin: MarketplacePlugin) => {
     setInstallStatus(prev => ({ ...prev, [plugin.name]: 'installing' }));
     setInstallMessage(t('claude_code_plugins_panel.installing_plugin', { name: plugin.name }));
+    setInstallErrorDetails(null);
 
     try {
       // Pass both plugin name and source to the install handler
@@ -283,17 +289,20 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
         }
       } else {
         setInstallStatus(prev => ({ ...prev, [plugin.name]: 'error' }));
-        setInstallMessage(result.error || t('claude_code_plugins_panel.install_failed'));
+        setInstallMessage(t('claude_code_plugins_panel.install_failed'));
+        setInstallErrorDetails(result.error || null);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : t('claude_code_plugins_panel.install_failed');
       setInstallStatus(prev => ({ ...prev, [plugin.name]: 'error' }));
-      setInstallMessage(errorMessage);
+      setInstallMessage(t('claude_code_plugins_panel.install_failed'));
+      setInstallErrorDetails(errorMessage);
     }
 
     // Clear message after a few seconds
     setTimeout(() => {
       setInstallMessage('');
+      setInstallErrorDetails(null);
     }, 5000);
   };
 
@@ -316,6 +325,8 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
       return;
     }
 
+    setInstallErrorDetails(null);
+
     try {
       const result = await window.electronAPI.invoke('claude-plugin:uninstall', target);
 
@@ -329,15 +340,18 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
           setInstalledPlugins(installedResult.data || []);
         }
       } else {
-        setInstallMessage(result.error || t('claude_code_plugins_panel.uninstall_failed'));
+        setInstallMessage(t('claude_code_plugins_panel.uninstall_failed'));
+        setInstallErrorDetails(result.error || null);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : t('claude_code_plugins_panel.uninstall_failed');
-      setInstallMessage(errorMessage);
+      setInstallMessage(t('claude_code_plugins_panel.uninstall_failed'));
+      setInstallErrorDetails(errorMessage);
     }
 
     setTimeout(() => {
       setInstallMessage('');
+      setInstallErrorDetails(null);
     }, 5000);
   };
 
@@ -382,8 +396,14 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
   if (error) {
     return (
       <div className="provider-panel flex flex-col">
-        <div className="plugin-error p-8 text-center text-[#e74c3c]">
-          {t('claude_code_plugins_panel.error', { error })}
+        <div className="plugin-error p-8 text-center text-[#e74c3c]" role="alert">
+          <p>{error}</p>
+          {errorDetails && (
+            <details className="mt-3 text-left text-[var(--nim-text-muted)]">
+              <summary className="cursor-pointer">{t('claude_code_plugins_panel.show_technical_details')}</summary>
+              <pre className="mt-2 whitespace-pre-wrap break-words">{errorDetails}</pre>
+            </details>
+          )}
           <button onClick={loadData} className="plugin-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer">{t('claude_code_plugins_panel.retry')}</button>
         </div>
       </div>
@@ -679,6 +699,12 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
       {installMessage && (
         <div className="plugin-status-message py-3 px-4 mb-4 bg-[rgba(52,152,219,0.1)] border border-[rgba(52,152,219,0.3)] rounded-md text-sm text-[var(--nim-text)]" role="status" aria-live="polite">
           {installMessage}
+          {installErrorDetails && (
+            <details className="mt-2 text-[var(--nim-text-muted)]">
+              <summary className="cursor-pointer">{t('claude_code_plugins_panel.show_technical_details')}</summary>
+              <pre className="mt-2 whitespace-pre-wrap break-words">{installErrorDetails}</pre>
+            </details>
+          )}
         </div>
       )}
 

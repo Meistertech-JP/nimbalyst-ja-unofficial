@@ -954,6 +954,7 @@
   },
   "transcript": {
     "error_message": "エラー: {{message}}",
+    "generic_error": "メッセージの処理中にエラーが発生しました。",
     "submission_record_failed": "メッセージを保存できなかったため送信されませんでした。入力欄のテキストは保持されています。",
     "planning_failed": "プランモードに切り替えられませんでした。もう一度お試しください。",
     "send_failed": "メッセージを送信できませんでした",

@@ -234,6 +234,8 @@
   },
   "error": {
     "details": "エラー詳細",
+    "generic_message": "予期しないエラーが発生しました。",
+    "show_details": "詳細を表示",
     "copied": "✓ コピーしました",
     "copy_debug": "デバッグ情報をコピー",
     "message_label": "メッセージ：",

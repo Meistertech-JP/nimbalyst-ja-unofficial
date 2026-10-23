@@ -914,6 +914,7 @@
   "claude_code_plugins_panel": {
     "loading": "Claude Codeプラグインを読み込み中…",
     "error": "エラー：{{error}}",
+    "show_technical_details": "技術的な詳細を表示",
     "retry": "再試行",
     "discover_aria": "プラグインを探す",
     "search": "プラグインを検索…",

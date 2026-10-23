@@ -954,6 +954,7 @@
   },
   "transcript": {
     "error_message": "Error: {{message}}",
+    "generic_error": "An error occurred while processing this message.",
     "submission_record_failed": "Could not save your message, so it was not sent. Your text is still in the composer.",
     "planning_failed": "Failed to switch to planning mode. Please try again.",
     "send_failed": "Failed to send message",

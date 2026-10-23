@@ -914,6 +914,7 @@
   "claude_code_plugins_panel": {
     "loading": "Loading Claude Code plugins...",
     "error": "Error: {{error}}",
+    "show_technical_details": "Show technical details",
     "retry": "Retry",
     "discover_aria": "Plugin discovery",
     "search": "Search plugins...",

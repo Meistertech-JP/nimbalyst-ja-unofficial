@@ -11,10 +11,12 @@ export function ClaudeRuntimeStatus({ scope, workspacePath, revision }: {
   const { t } = useTranslation('settings', { keyPrefix: 'claude_runtime_status' });
   const [runtime, setRuntime] = useState<{ path: string } | null>(null);
   const [error, setError] = useState<string>();
+  const [errorDetails, setErrorDetails] = useState<string>();
   useEffect(() => {
     let cancelled = false;
     setRuntime(null);
     setError(undefined);
+    setErrorDetails(undefined);
     async function load() {
       try {
         if (scope === 'project' && !workspacePath) throw new Error(t('project_required'));
@@ -22,7 +24,15 @@ export function ClaudeRuntimeStatus({ scope, workspacePath, revision }: {
         if (!result?.success) throw new Error(result?.error || t('resolve_failed'));
         if (!cancelled) setRuntime({ path: result.settings.customClaudeCodePath || '' });
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : t('resolve_failed'));
+        if (!cancelled) {
+          const detail = cause instanceof Error ? cause.message : undefined;
+          if (detail === t('project_required')) {
+            setError(detail);
+          } else {
+            setError(t('resolve_failed'));
+            if (detail && detail !== t('resolve_failed')) setErrorDetails(detail);
+          }
+        }
       }
     }
     void load();
@@ -32,7 +42,17 @@ export function ClaudeRuntimeStatus({ scope, workspacePath, revision }: {
   return (
     <div className="claude-runtime-status provider-panel-section py-4 mb-4 border-b border-[var(--nim-border)]">
       <h4 className="text-base font-semibold mb-3 text-[var(--nim-text)]">{t('title')}</h4>
-      {error ? <p role="alert" className="text-sm text-[var(--nim-error)]">{error}</p> : !runtime ? (
+      {error ? (
+        <div role="alert" className="text-sm text-[var(--nim-error)]">
+          <p>{error}</p>
+          {errorDetails && (
+            <details className="mt-2 text-[var(--nim-text-muted)]">
+              <summary className="cursor-pointer">{t('technical_details')}</summary>
+              <pre className="mt-2 whitespace-pre-wrap break-words">{errorDetails}</pre>
+            </details>
+          )}
+        </div>
+      ) : !runtime ? (
         <p className="text-sm text-[var(--nim-text-muted)]">{t('loading')}</p>
       ) : (
         <div className="installation-status p-4 rounded-lg bg-[var(--nim-bg-secondary)] text-sm text-[var(--nim-text)]">

@@ -143,6 +143,13 @@ ${JSON.stringify(notification.context, null, 2)}
 
           <div className="error-toast-message text-[13px] text-[var(--nim-text)] leading-normal mb-2">{notification.message}</div>
 
+          {notification.details && (
+            <details className="error-toast-details text-xs text-[var(--nim-text-muted)]">
+              <summary className="cursor-pointer">{t('error.show_details')}</summary>
+              <pre className="mt-2 whitespace-pre-wrap break-words">{notification.details}</pre>
+            </details>
+          )}
+
           {(notification.action || notification.details || notification.stack || notification.context) && (
             <div className="error-toast-actions flex gap-2 mt-3">
               {notification.action && (

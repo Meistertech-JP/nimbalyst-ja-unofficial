@@ -177,10 +177,15 @@ class ErrorNotificationService {
     title?: string,
     context?: Record<string, any>
   ): string {
-    return this.showError(title ?? this.getLocalizedTitle('generic_title', 'An error occurred'), error.message, {
-      stack: error.stack,
-      context
-    });
+    return this.showError(
+      title ?? this.getLocalizedTitle('generic_title', 'An error occurred'),
+      this.getLocalizedText('dialogs', 'error.generic_message', 'An unexpected error occurred.'),
+      {
+        details: error.message,
+        stack: error.stack,
+        context
+      },
+    );
   }
 
   /**
@@ -328,8 +333,9 @@ if (typeof window !== 'undefined') {
 
     errorNotificationService.showError(
       errorNotificationService.getLocalizedTitle('uncaught_title', 'Uncaught Error'),
-      message,
+      errorNotificationService.getLocalizedText('dialogs', 'error.generic_message', 'An unexpected error occurred.'),
       {
+        details: message,
         stack: event.error?.stack,
         context: {
           filename: event.filename,
@@ -361,8 +367,9 @@ if (typeof window !== 'undefined') {
 
     errorNotificationService.showError(
       errorNotificationService.getLocalizedTitle('unhandled_rejection_title', 'Unhandled Promise Rejection'),
-      message,
+      errorNotificationService.getLocalizedText('dialogs', 'error.generic_message', 'An unexpected error occurred.'),
       {
+        details: message,
         stack: reason?.stack
       }
     );

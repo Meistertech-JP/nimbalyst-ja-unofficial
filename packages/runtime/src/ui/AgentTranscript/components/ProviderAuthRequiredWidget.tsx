@@ -16,7 +16,7 @@ const PROVIDER_AUTH_INSTRUCTIONS: Record<string, { name: string; command?: strin
 export const ProviderAuthRequiredWidget: React.FC<ProviderAuthRequiredWidgetProps> = ({ provider }) => {
   const { t } = useTranslation('aichat');
   const instructions = provider ? PROVIDER_AUTH_INSTRUCTIONS[provider] : undefined;
-  const providerName = instructions?.name ?? provider ?? t('auth.provider_unknown');
+  const providerName = instructions?.name ?? t('auth.provider_unknown');
 
   return (
     <div className="provider-auth-required-widget my-3 p-4 rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]" role="alert">
