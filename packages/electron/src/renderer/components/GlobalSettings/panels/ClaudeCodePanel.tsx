@@ -355,7 +355,7 @@ export function ClaudeCodePanel({
       if (result.success) {
         errorNotificationService.showInfo(
           t('claude_code_panel.login_toast_title'),
-          result.message || t('claude_code_panel.login_started'),
+          t('claude_code_panel.login_started'),
           { duration: 0 },
         );
       }
@@ -372,7 +372,7 @@ export function ClaudeCodePanel({
       if (result.success) {
         errorNotificationService.showInfo(
           t('claude_code_panel.logout_toast_title'),
-          result.message || t('claude_code_panel.logout_started'),
+          t('claude_code_panel.logout_started'),
           { duration: 0 },
         );
       }
