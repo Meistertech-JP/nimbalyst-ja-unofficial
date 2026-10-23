@@ -5,6 +5,7 @@
  * through the host; the preview follows its model.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { EditorHostProps } from '@nimbalyst/extension-sdk';
 import { MonacoEditor } from '@nimbalyst/runtime';
 import { HtmlEmbedFrame } from '@nimbalyst/runtime-source/ui/htmlEmbed/HtmlEmbedFrame';
@@ -13,6 +14,7 @@ import { navigateFromHtml, useWikiHtmlEmbedTheme, WIKI_HTML_EMBED_SHELL_URL } fr
 const PREVIEW_DEBOUNCE_MS = 400;
 
 function WikiHtmlPageEditor({ host }: EditorHostProps) {
+  const { t } = useTranslation('common');
   const [mode, setMode] = useState<'preview' | 'source'>('preview');
   const [html, setHtml] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,7 +51,7 @@ function WikiHtmlPageEditor({ host }: EditorHostProps) {
 
   return (
     <div className="wiki-web-html-page flex h-full min-h-0 flex-col" data-mode={mode}>
-      <div className="flex gap-1 border-b border-nim px-3 py-1.5 text-xs" role="tablist" aria-label="HTML page view">
+      <div className="flex gap-1 border-b border-nim px-3 py-1.5 text-xs" role="tablist" aria-label={t('wiki_web.html_page_view')}>
         {(['preview', 'source'] as const).map((value) => (
           <button
             key={value}
@@ -59,7 +61,7 @@ function WikiHtmlPageEditor({ host }: EditorHostProps) {
             className={mode === value ? 'rounded border border-nim bg-nim-secondary px-2 py-0.5 text-nim' : 'rounded border border-transparent px-2 py-0.5 text-nim-muted hover:bg-nim-hover'}
             onClick={() => setMode(value)}
           >
-            {value === 'preview' ? 'Preview' : 'Source'}
+            {value === 'preview' ? t('wiki_web.preview_tab') : t('wiki_web.source_tab')}
           </button>
         ))}
       </div>

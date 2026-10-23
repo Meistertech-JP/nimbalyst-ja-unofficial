@@ -22,7 +22,7 @@ describe('wiki display locale', () => {
   });
 
   it('retains an independently loadable resource for every namespace in both languages', async () => {
-    const namespaces = ['agents', 'aichat', 'cloudflareSandboxes', 'collabSidebar', 'common', 'dialogs', 'editor', 'errors', 'extensionMarketplace', 'extensions', 'feedback', 'file_edits_sidebar', 'files', 'git', 'mcp', 'menu', 'notifications', 'onboarding', 'orgSharing', 'project', 'sessions', 'settings', 'sqliteBrowser', 'terminal', 'tracker', 'voice'];
+    const namespaces = ['agents', 'aichat', 'cloudflareSandboxes', 'collabSidebar', 'common', 'dialogs', 'editor', 'errors', 'extensionMarketplace', 'extensions', 'feedback', 'file_edits_sidebar', 'files', 'git', 'help', 'mcp', 'menu', 'notifications', 'onboarding', 'orgSharing', 'project', 'sessions', 'settings', 'sqliteBrowser', 'terminal', 'tracker', 'voice'];
     const expected = ['en', 'ja'].flatMap((language) => namespaces.map((namespace) => `${language}/${namespace}`)).sort();
     expect(Object.keys(wikiResourceLoaders).sort()).toEqual(expected);
     for (const key of expected) {

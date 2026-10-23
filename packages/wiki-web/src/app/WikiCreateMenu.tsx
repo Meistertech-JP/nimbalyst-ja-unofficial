@@ -6,12 +6,14 @@
  */
 import { useState } from 'react';
 import { autoUpdate, flip, FloatingPortal, offset, shift, useClick, useDismiss, useFloating, useInteractions, useRole } from '@floating-ui/react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { CollabSidebarCreateMenu } from '@nimbalyst/collab-bundle/docs-ui';
 import { MaterialSymbol } from '@nimbalyst/runtime-source/ui/icons/MaterialSymbol';
 
 const CONTROL = 'flex h-[26px] shrink-0 cursor-pointer items-center gap-1 border border-nim bg-transparent px-2 text-[12px] text-nim hover:bg-nim-hover aria-expanded:bg-nim-hover';
 
 export function WikiCreateMenu({ menu }: { menu: CollabSidebarCreateMenu | null }) {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const floating = useFloating({
     open,
@@ -24,9 +26,9 @@ export function WikiCreateMenu({ menu }: { menu: CollabSidebarCreateMenu | null 
   if (!menu) return null;
   return (
     <div className="wiki-web-create-menu flex items-center px-2 pt-2">
-      <button type="button" className={`${CONTROL} flex-1 rounded-l-md`} onClick={menu.onPrimary} data-testid="wiki-web-new-page">
+      <button type="button" className={`${CONTROL} flex-1 rounded-l-md`} onClick={menu.onPrimary} aria-label={t('wiki_web.new_page')} data-testid="wiki-web-new-page">
         <MaterialSymbol icon="add" size={16} />
-        New page
+        {t('wiki_web.new_page')}
       </button>
       {menu.items.length > 0 ? (
         <button
@@ -34,7 +36,7 @@ export function WikiCreateMenu({ menu }: { menu: CollabSidebarCreateMenu | null 
           {...interactions.getReferenceProps()}
           type="button"
           className={`${CONTROL} -ml-px rounded-r-md`}
-          aria-label="New page of another kind"
+          aria-label={t('wiki_web.new_page_of_another_kind')}
           aria-expanded={open}
           data-testid="wiki-web-new-menu"
         >

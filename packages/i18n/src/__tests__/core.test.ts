@@ -245,6 +245,9 @@ describe('UI language preference', () => {
     expect(resources.ja.extensions.project_graph.pulse.unit.auto).toBe('自動');
     expect(resources.en.extensions.image_generation_ui.styles.custom.label).toBe('Custom');
     expect(resources.ja.extensions.image_generation_ui.styles.custom.label).toBe('カスタム');
+    expect(resources.en.extensions.image_generation_ui.api_key_missing_banner).toContain('Settings > Extensions > Image Generation');
+    expect(resources.ja.extensions.image_generation_ui.api_key_missing_banner).toContain('設定 > 拡張機能 > 画像生成');
+    expect(resources.ja.extensions.image_generation_ui.api_key_missing_banner).not.toContain('Image Generation');
     expect(resources.en.settings.sidebar.item_grok_build).toBe('Grok Build');
     expect(resources.ja.settings.sidebar.item_grok_build).toBe('Grok Build');
     expect(resources.en.settings.sidebar.item_cursor_agent).toBe('Cursor Agent');
@@ -259,7 +262,7 @@ describe('UI language preference', () => {
       .toBe('Sign-in could not be completed because authentication information could not be stored securely.');
     expect(resources.ja.common.account_ui.secure_storage_failed)
       .toBe('認証情報を安全に保存できないため、サインインを完了できませんでした。');
-    expect(totalKeys).toBe(14568);
+    expect(totalKeys).toBe(14573);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

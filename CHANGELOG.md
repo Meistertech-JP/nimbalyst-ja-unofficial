@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 <!-- Bug fixes go here -->
 - Windows builds now start reliably across ordinary extraction paths and install the complete application payload.
-- Japanese desktop labels, settings, tutorials, and exported content now follow the selected display language more consistently.
+- Japanese desktop labels, settings, tutorials, Wiki page creation, HTML editor controls and exported content now follow the selected display language more consistently.
 - Sign-in callbacks close cleanly on cancellation, reject concurrent replays, and publish sign-in state only after encrypted storage succeeds.
 - Signing out prevents a delayed session refresh from restoring the previous login.
 - Authentication transport errors no longer expose arbitrary error details in diagnostics.
