@@ -74,11 +74,11 @@ export function OpenAICodexPanel({
     try {
       const result = await window.electronAPI.invoke('openai-codex:check-login') as CodexAuthStatus;
       setAuthStatus(result);
-      if (result.error) setAuthError(result.error);
+      if (result.error) setAuthError(t('provider.codex.auth_check_failed'));
       if (result.authMode === 'apikey') setSelectedAuthMethod('api-key');
       else if (result.authMode === 'chatgpt') setSelectedAuthMethod('chatgpt');
-    } catch (err: any) {
-      setAuthError(err?.message ?? t('provider.codex.auth_check_failed'));
+    } catch {
+      setAuthError(t('provider.codex.auth_check_failed'));
     } finally {
       setAuthBusy(null);
     }
@@ -99,10 +99,10 @@ export function OpenAICodexPanel({
     try {
       const result = await window.electronAPI.invoke('openai-codex:login-chatgpt') as { success: boolean; error?: string };
       if (!result.success) {
-        setAuthError(result.error ?? t('provider.codex.login_failed'));
+        setAuthError(t('provider.codex.login_failed'));
       }
-    } catch (err: any) {
-      setAuthError(err?.message ?? t('provider.codex.login_failed'));
+    } catch {
+      setAuthError(t('provider.codex.login_failed'));
     } finally {
       setAuthBusy(null);
     }
@@ -118,13 +118,13 @@ export function OpenAICodexPanel({
     try {
       const result = await window.electronAPI.invoke('openai-codex:login-apikey', pendingApiKey.trim()) as { success: boolean; error?: string };
       if (!result.success) {
-        setAuthError(result.error ?? t('provider.codex.login_failed'));
+        setAuthError(t('provider.codex.login_failed'));
       } else {
         setPendingApiKey('');
         await checkStatus();
       }
-    } catch (err: any) {
-      setAuthError(err?.message ?? t('provider.codex.login_failed'));
+    } catch {
+      setAuthError(t('provider.codex.login_failed'));
     } finally {
       setAuthBusy(null);
     }
@@ -136,12 +136,12 @@ export function OpenAICodexPanel({
     try {
       const result = await window.electronAPI.invoke('openai-codex:logout') as { success: boolean; error?: string };
       if (!result.success) {
-        setAuthError(result.error ?? t('provider.codex.logout_failed'));
+        setAuthError(t('provider.codex.logout_failed'));
       } else {
         await checkStatus();
       }
-    } catch (err: any) {
-      setAuthError(err?.message ?? t('provider.codex.logout_failed'));
+    } catch {
+      setAuthError(t('provider.codex.logout_failed'));
     } finally {
       setAuthBusy(null);
     }
