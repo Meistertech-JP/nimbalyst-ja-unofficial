@@ -21,7 +21,7 @@
  *     main thread makes PGlite's WASM env re-`require()` the main bundle, which
  *     re-evaluates the bundled `electron-log` and dies with "Attempted to
  *     register a second handler for '__ELECTRON_LOG__'". This spawns the same
- *     `worker.bundle.js` the app runs on, pointed at the scratch copy.
+ *     `worker.bundle.cjs` the app runs on, pointed at the scratch copy.
  *   - **Everything it creates, it cleans up.** Scratch only: the copy it made
  *     and the SQLite it built. It never touches the artifact, the live
  *     database, or the staging path the transaction owns.
@@ -50,7 +50,7 @@ const WORKER_INIT_TIMEOUT_MS = 180_000;
 const WORKER_QUERY_TIMEOUT_MS = 30_000;
 
 export interface PgliteArtifactMaterializerOptions {
-  /** Absolute path to `worker.bundle.js`, resolved by the caller. */
+/** Absolute path to `worker.bundle.cjs`, resolved by the caller. */
   workerPath: string;
   /** Directory holding the SQLite migration SQL files. */
   schemaDir: string;

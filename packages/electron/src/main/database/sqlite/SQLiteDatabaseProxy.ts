@@ -119,9 +119,9 @@ const BACKUP_REQUEST_TIMEOUT_MS = 30 * 60_000;
 /** Resolve the on-disk path to the SQLite worker bundle. */
 function resolveWorkerPath(): string {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'sqlite-worker.bundle.js');
+    return path.join(process.resourcesPath, 'sqlite-worker.bundle.cjs');
   }
-  return path.join(getPackageRoot(), 'out', 'sqlite-worker.bundle.js');
+  return path.join(getPackageRoot(), 'out', 'sqlite-worker.bundle.cjs');
 }
 
 export class SQLiteDatabaseProxy {

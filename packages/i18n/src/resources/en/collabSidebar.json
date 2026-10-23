@@ -118,6 +118,7 @@
     "loading_projects": "Loading projects…",
     "no_projects": "No projects yet.",
     "could_not_load_projects": "Couldn't load projects.",
+    "could_not_open_project": "Could not open that project",
     "untitled_project": "Untitled project",
     "open_locally": "Open locally",
     "cloned_locally": "Cloned locally",
@@ -654,6 +655,12 @@
     "connection_summary_other": "{{count}} orgs · {{reconnecting}} reconnecting"
   },
   "comments_panel": {
+    "focus_notice": {
+      "no_target": "That comment is no longer in this document. It may have been deleted.",
+      "orphaned": "What this comment pointed at is no longer in the document, so there is nothing to jump to. The conversation is kept.",
+      "unsupported": "This comment points at something this editor does not understand, so it cannot be shown in place. The conversation is kept.",
+      "unavailable": "This editor could not bring that comment into view."
+    },
     "notifications": {
       "resolve_failed_title": "Could not resolve this comment",
       "reply_failed_title": "Could not reply to this comment",

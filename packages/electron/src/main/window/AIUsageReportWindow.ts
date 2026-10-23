@@ -1,6 +1,7 @@
 import electron from 'electron';
 import { join } from 'path';
 import { getPreloadPath } from '../utils/appPaths';
+import { translateMainMenuLabel } from '../i18n/mainI18n';
 
 const { app, BrowserWindow } = electron;
 
@@ -19,7 +20,7 @@ export function createAIUsageReportWindow(): electron.BrowserWindow {
     height: 800,
     show: false,
     autoHideMenuBar: true,
-    title: 'AI Usage Report',
+    title: `${translateMainMenuLabel('ai_usage_report', 'AI Usage Report')} - Nimbalyst`,
     webPreferences: {
       preload: getPreloadPath(),
       sandbox: false,

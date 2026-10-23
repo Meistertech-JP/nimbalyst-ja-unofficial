@@ -307,7 +307,7 @@ describe('DatabaseBackupService as production constructs it', () => {
    * That the verifier can actually START is asserted deterministically in
    * `recovery/__tests__/pgliteVerification.test.ts`, over real worker threads.
    * It is deliberately not asserted here: this test would have to depend on
-   * `out/worker.bundle.js`, which is a build artifact.
+   * `out/worker.bundle.cjs`, which is a build artifact.
    */
   it('verifies before it replaces anything, with the verifier it built itself', async () => {
     // Exactly the options `initialize.ts` supplies: a retention getter, and

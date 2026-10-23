@@ -30,9 +30,9 @@ const MAX_QUEUED_DIFFS = 4;
 
 function resolveHistoryDiffWorkerPath(): string {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'history-diff-worker.bundle.js');
+    return path.join(process.resourcesPath, 'history-diff-worker.bundle.cjs');
   }
-  return path.join(getPackageRoot(), 'out', 'history-diff-worker.bundle.js');
+  return path.join(getPackageRoot(), 'out', 'history-diff-worker.bundle.cjs');
 }
 
 /** Serial, bounded worker client. Terminating the worker is the hard deadline. */

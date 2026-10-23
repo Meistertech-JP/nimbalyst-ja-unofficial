@@ -126,8 +126,8 @@ export interface DatabaseBackupServiceOptions {
  */
 function defaultPgliteWorkerPath(): string {
   return app.isPackaged
-    ? path.join(process.resourcesPath, 'worker.bundle.js')
-    : path.join(getPackageRoot(), 'out', 'worker.bundle.js');
+        ? path.join(process.resourcesPath, 'worker.bundle.cjs')
+        : path.join(getPackageRoot(), 'out', 'worker.bundle.cjs');
 }
 
 export class DatabaseBackupService {

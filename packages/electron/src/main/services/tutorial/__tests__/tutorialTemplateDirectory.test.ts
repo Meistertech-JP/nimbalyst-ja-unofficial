@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "fs";
 import * as os from "os";
@@ -18,6 +19,7 @@ vi.mock("electron", () => ({
 }));
 
 import { getTutorialTemplateDirectory } from "../tutorialTemplateDirectory";
+import { createMainI18nController } from '../../../i18n/mainI18n';
 
 const originalResourcesPathDescriptor = Object.getOwnPropertyDescriptor(
   process,
@@ -51,6 +53,21 @@ afterEach(() => {
 });
 
 describe("getTutorialTemplateDirectory", () => {
+  it('resolves the active Main UI language lazily, including packaged resources', async () => {
+    const controller = await createMainI18nController({ get: () => 'ja', subscribe: () => () => undefined }, 'en-US', () => undefined);
+    try {
+      expect(getTutorialTemplateDirectory()).toBe(path.join(packageRoot, 'resources', 'tutorial-project-ja'));
+      electronState.isPackaged = true;
+      Object.defineProperty(process, 'resourcesPath', { configurable: true, value: path.join('bundle', 'resources') });
+      expect(getTutorialTemplateDirectory()).toBe(path.join('bundle', 'resources', 'tutorial-project-ja'));
+      await controller.i18n.changeLanguage('en');
+      expect(getTutorialTemplateDirectory()).toBe(path.join('bundle', 'resources', 'tutorial-project'));
+    } finally { controller.dispose(); }
+  });
+  it("selects the separate Japanese template while retaining the English default", () => {
+    expect(getTutorialTemplateDirectory('ja')).toBe(path.join(packageRoot, 'resources', 'tutorial-project-ja'));
+    expect(getTutorialTemplateDirectory('en')).toBe(path.join(packageRoot, 'resources', 'tutorial-project'));
+  });
   it("resolves the in-repo resource directory in development", () => {
     expect(getTutorialTemplateDirectory()).toBe(
       path.join(packageRoot, "resources", "tutorial-project")

@@ -4,9 +4,9 @@
  * This file handles custom user-data-dir configuration, which must be set
  * before any electron-store usage.
  *
- * Note: electron-store is lazy-initialized in store.ts, so we can use static
- * imports without worrying about load order. The stores are created on first
- * access, which happens well after app.setPath() is called here.
+ * bootstrapProfile runs as the first static dependency, before settings and
+ * Main initialization. A path-setting statement in this file's body would run
+ * after index and could not protect import-time profile reads.
  *
  * Native modules (node-pty) are handled via explicit path resolution in
  * TerminalSessionManager.ts using createRequire, which eliminates the need
@@ -22,8 +22,8 @@
  *   npm run dev -- --user-data-dir=/path/to/dir
  */
 
+import './bootstrapProfile';
 import { app } from 'electron';
-import * as path from 'path';
 import Store, { hardenExistingSettings } from './utils/privateSettingsStore';
 import { createUncaughtExceptionHandler } from './uncaughtException';
 // Tells the runtime package which host it is running in, before any of its
@@ -33,61 +33,11 @@ import { createUncaughtExceptionHandler } from './uncaughtException';
 // This import must stay above that one.
 import './hostEnvironment';
 
-// CRITICAL: Strip inherited API keys from process.env before ANY downstream code
-// (SDKs, providers, services) can observe them. See CLAUDE.md, section
-// "Never Use Environment Variables as Implicit API Key Sources".
-//
-// A user had ANTHROPIC_API_KEY in a local .env file for unrelated work.
-// Nimbalyst silently picked it up via process.env and billed the user's
-// personal Anthropic account $100+ instead of their Nimbalyst subscription.
-//
-// As of claude-agent-sdk 0.2.111, `options.env` overlays `process.env`
-// instead of replacing it, so per-session scrubbing in providers is no
-// longer sufficient on its own. Stripping at the main-process boundary
-// ensures no SDK or child process can ever inherit these keys.
-delete process.env.ANTHROPIC_API_KEY;
-delete process.env.OPENAI_API_KEY;
-
-// Keep the unofficial Japanese edition's default profile separate from the
-// official app. An explicit NIMBALYST_USER_DATA_DIR / --user-data-dir still
-// takes precedence below; no existing official profile is migrated or deleted.
-app.setName('Nimbalyst 日本語版（非公式）');
-
 // Global uncaught exception handler - must be registered early. This catches
 // errors that bubble up from async SDK operations. The throttling and the
 // EPIPE feedback-loop guard (#502) live in ./uncaughtException, extracted so
 // they can be unit tested.
 process.on('uncaughtException', createUncaughtExceptionHandler());
-
-// Parse --user-data-dir from command line args or environment variable
-function getCustomUserDataDir(): string | undefined {
-  // Check environment variable first (more reliable for npm scripts)
-  if (process.env.NIMBALYST_USER_DATA_DIR) {
-    return process.env.NIMBALYST_USER_DATA_DIR;
-  }
-
-  // Check command line args
-  for (const arg of process.argv) {
-    if (arg.startsWith('--user-data-dir=')) {
-      return arg.substring('--user-data-dir='.length);
-    }
-  }
-
-  return undefined;
-}
-
-const customUserDataDir = getCustomUserDataDir();
-
-if (customUserDataDir) {
-  // Set userData path before any electron-store instances are created.
-  // With lazy initialization in store.ts, this is guaranteed to run first.
-  app.setPath('userData', customUserDataDir);
-  // Also set appData to parent directory for consistency
-  app.setPath('appData', path.dirname(customUserDataDir));
-  // console.log(`[Bootstrap] Using custom userData directory: ${customUserDataDir}`);
-} else {
-  app.setPath('userData', path.join(app.getPath('appData'), 'Nimbalyst 日本語版（非公式）'));
-}
 
 hardenExistingSettings(app.getPath('userData'));
 
@@ -117,7 +67,6 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Static import - no chunk boundary, no module duplication issues.
-// This works because:
-// 1. electron-store is lazy-initialized (store.ts)
-// 2. node-pty uses explicit path resolution (TerminalSessionManager.ts)
+// Profile selection is a prior static dependency, not this module's body.
+// node-pty uses explicit path resolution (TerminalSessionManager.ts).
 import './index.js';

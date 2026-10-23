@@ -53,6 +53,7 @@ import { getSettingsService, isSettingKey } from '../services/SettingsService';
 import { SessionNamingService } from '../services/SessionNamingService';
 import { getDialogDefaultPath, rememberDialogSelection } from '../utils/dialogPaths';
 import { SoundNotificationService } from '../services/SoundNotificationService';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import { autoUpdaterService } from '../services/autoUpdater';
 import type { OnboardingState } from '../utils/store';
 import { getCredentials, resetCredentials, generateQRPairingPayload, isUsingSecureStorage } from '../services/CredentialService';
@@ -470,10 +471,10 @@ export function registerSettingsHandlers() {
     safeHandle('completion-sound:choose-custom', async (event) => {
         const window = BrowserWindow.fromWebContents(event.sender);
         const dialogOptions: Electron.OpenDialogOptions = {
-            title: 'Choose Completion Sound',
-            buttonLabel: 'Use Sound',
+            title: translateMainDialogLabel('native_dialogs.choose_sound_title', 'Choose Completion Sound'),
+            buttonLabel: translateMainDialogLabel('native_dialogs.use_sound_button', 'Use Sound'),
             properties: ['openFile'],
-            filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'] }],
+            filters: [{ name: translateMainDialogLabel('native_dialogs.audio_files', 'Audio'), extensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'] }],
             // Deliberately window-less: sound files live in the user's music
             // library, not inside the open workspace.
             defaultPath: getDialogDefaultPath(),

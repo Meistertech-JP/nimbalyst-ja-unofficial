@@ -130,7 +130,7 @@ describe('production recovery wiring', () => {
    * the byte.
    *
    * The directory branch -- copy to scratch, open in a worker, migrate, close,
-   * move -- needs `out/worker.bundle.js` and a real PGLite, so it is covered by
+   * move -- needs `out/worker.bundle.cjs` and a real PGLite, so it is covered by
    * `e2e/core/database-recovery.spec.ts` rather than here.
    */
   it('copies a SQLite-file candidate byte for byte', async () => {

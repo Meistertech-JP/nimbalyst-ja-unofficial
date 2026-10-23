@@ -1,0 +1,155 @@
+[
+  {
+    "key": "PLAN_DASHBOARD_REFINEMENT",
+    "type": "plan",
+    "title": "リリースダッシュボードを改善する",
+    "status": "in-development",
+    "priority": "high",
+    "description": "## 目標\n\n売上の勢いと準備状況に焦点を当てたダッシュボードにします。\n\n## 次の作業\n\n- 主要指標を検証する。\n- リリース担当チームとモックアップを確認する。\n- 残っている使い勝手の課題を記録する。",
+    "tags": [
+      "tutorial",
+      "dashboard"
+    ],
+    "fields": {
+      "planId": "tutorial-dashboard-refinement",
+      "planType": "feature",
+      "progress": 60
+    }
+  },
+  {
+    "key": "PLAN_CUSTOMER_HANDOFF",
+    "type": "plan",
+    "title": "顧客対応への引き継ぎを準備する",
+    "status": "draft",
+    "priority": "medium",
+    "description": "## 目標\n\nサポートとカスタマーサクセスの担当者がリリースに対応できるようにします。\n\n## 対象範囲\n\n展開の順序、担当者、顧客への連絡タイミングを文書化します。",
+    "tags": [
+      "tutorial",
+      "launch"
+    ],
+    "fields": {
+      "planId": "tutorial-customer-handoff",
+      "planType": "feature",
+      "progress": 20
+    }
+  },
+  {
+    "key": "DECISION_LAUNCH_DATE",
+    "type": "decision",
+    "title": "現在のリリース日を維持する",
+    "status": "decided",
+    "priority": "high",
+    "description": "## 背景\n\n売上は目標に近づいており、残りの作業も把握できています。\n\n## 決定\n\n現在のリリース日を維持し、次のレビューでは解約状況と導入支援の準備を重点的に確認します。",
+    "tags": [
+      "tutorial",
+      "launch"
+    ],
+    "fields": {
+      "decisionId": "tutorial-launch-date",
+      "chosen": "現在のリリース日を維持する"
+    }
+  },
+  {
+    "key": "DECISION_PRIMARY_METRIC",
+    "type": "decision",
+    "title": "月次売上を主要指標にする",
+    "status": "decided",
+    "priority": "medium",
+    "description": "## 背景\n\nダッシュボードには、元データを簡単にたどれる主要指標が必要です。\n\n## 決定\n\n月次売上を中心に示し、顧客の増加を補足情報として扱います。",
+    "tags": [
+      "tutorial",
+      "metrics"
+    ],
+    "fields": {
+      "decisionId": "tutorial-primary-metric",
+      "chosen": "月次売上"
+    }
+  },
+  {
+    "key": "DECISION_REVIEW_CADENCE",
+    "type": "decision",
+    "title": "毎週金曜日にリリース準備状況を確認する",
+    "status": "in-progress",
+    "priority": "medium",
+    "description": "## 検討事項\n\nリリース準備状況は毎週確認するべきでしょうか。それとも節目だけで十分でしょうか。\n\n## 現在の方針\n\nリリースが完了するまで、金曜日に短いレビューを実施します。",
+    "tags": [
+      "tutorial",
+      "process"
+    ],
+    "fields": {
+      "decisionId": "tutorial-review-cadence"
+    }
+  },
+  {
+    "key": "EXAMPLE_BUG",
+    "type": "bug",
+    "title": "日付範囲を変更してもエクスポートが無効のままになる",
+    "status": "to-do",
+    "priority": "medium",
+    "description": "## 発生したこと\n\nダッシュボードは新しい期間を認識してグラフを描き直しますが、ファイルを開き直すまでエクスポート操作が無効のままです。\n\n## 再現手順\n\n1. ダッシュボードを開きます。\n2. 集計期間を既定の6か月から任意の期間に変更します。\n3. グラフの更新を待ちます。\n4. エクスポート操作を確認します。\n\n## 期待する結果\n\n更新されたデータが準備できた時点で、エクスポート操作が利用可能になります。\n\n## 実際の結果\n\nグラフは更新されますが、エクスポート操作は無効のままです。\n\n## 受け入れ確認\n\n日付範囲を変更し、ファイルを開き直さなくてもエクスポート操作が利用可能になることを確認します。",
+    "tags": [
+      "tutorial",
+      "dashboard"
+    ]
+  },
+  {
+    "key": "BUG_METRICS_ROUNDING",
+    "type": "bug",
+    "title": "概要の目標差額で丸め方が一致しない",
+    "status": "in-progress",
+    "priority": "low",
+    "description": "## 発生したこと\n\n目標差額のカードは小数点以下1桁に丸めていますが、補足メモは1ドル単位の値を使っています。\n\n## 期待する結果\n\nどちらも同じ丸め規則を使います。",
+    "tags": [
+      "tutorial",
+      "metrics"
+    ]
+  },
+  {
+    "key": "BUG_CHECKLIST_OWNER",
+    "type": "bug",
+    "title": "リリースチェックリストで担当者未割り当てが分かりにくい",
+    "status": "to-do",
+    "priority": "medium",
+    "description": "## 発生したこと\n\n担当者のないチェックリスト行が、一見すると完了済みに見えます。\n\n## 期待する結果\n\nリリース前のレビューで、担当者が未割り当てであることが分かります。",
+    "tags": [
+      "tutorial",
+      "checklist"
+    ]
+  },
+  {
+    "key": "TASK_VALIDATE_REVENUE",
+    "type": "task",
+    "title": "6月の売上合計を検証する",
+    "status": "in-progress",
+    "priority": "high",
+    "description": "スプレッドシートの6月の合計を、ダッシュボードの主要指標と比較します。",
+    "tags": [
+      "tutorial",
+      "data"
+    ]
+  },
+  {
+    "key": "TASK_REVIEW_BRIEF",
+    "type": "task",
+    "title": "関係者と製品概要を確認する",
+    "status": "in-progress",
+    "priority": "medium",
+    "description": "対象者、リリースの目標、参照元の成果物が明確に説明されているか確認します。",
+    "tags": [
+      "tutorial",
+      "brief"
+    ]
+  },
+  {
+    "key": "TASK_CAPTURE_FEEDBACK",
+    "type": "task",
+    "title": "ダッシュボードレビューの意見を記録する",
+    "status": "to-do",
+    "priority": "medium",
+    "description": "デザインに関する疑問を記録し、合意した変更を次の作業にまとめます。",
+    "tags": [
+      "tutorial",
+      "dashboard"
+    ]
+  }
+]

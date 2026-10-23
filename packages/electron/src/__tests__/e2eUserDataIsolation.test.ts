@@ -20,6 +20,9 @@ import { describe, it, expect } from 'vitest';
 import * as os from 'os';
 import * as path from 'path';
 import { buildTestEnv } from '../../e2e/helpers';
+import { build } from 'esbuild';
+import { runInNewContext } from 'node:vm';
+import { createRequire } from 'node:module';
 
 const REAL_USER_DATA_FRAGMENT = path.join('@nimbalyst', 'electron');
 
@@ -60,5 +63,73 @@ describe('E2E launcher userData isolation', () => {
       if (previous === undefined) delete process.env.NIMBALYST_USER_DATA_DIR;
       else process.env.NIMBALYST_USER_DATA_DIR = previous;
     }
+  });
+});
+
+describe('bootstrap import-time profile isolation', () => {
+  const requireBuiltin = createRequire(import.meta.url);
+
+  async function observeIndexInitialization(env: Record<string, string>, argv: string[]) {
+    const output = await build({
+      entryPoints: [path.resolve(__dirname, '../main/bootstrap.ts')],
+      bundle: true,
+      platform: 'node',
+      format: 'cjs',
+      write: false,
+      external: ['electron'],
+      plugins: [{
+        name: 'observe-bootstrap-dependencies',
+        setup(plugin) {
+          plugin.onResolve({ filter: /^\.\/(index\.js|hostEnvironment|uncaughtException|utils\/privateSettingsStore)$/ }, args => ({ path: args.path, namespace: 'bootstrap-observer' }));
+          plugin.onLoad({ filter: /.*/, namespace: 'bootstrap-observer' }, args => ({
+            loader: 'js',
+            contents: args.path === './index.js'
+              ? `import { app } from 'electron'; globalThis.observedAtIndex = { userData: app.getPath('userData'), name: app.getName(), anthropic: process.env.ANTHROPIC_API_KEY, openai: process.env.OPENAI_API_KEY };`
+              : args.path === './utils/privateSettingsStore'
+                ? `export default class Store { get() { return 4096; } } export function hardenExistingSettings() {}`
+                : args.path === './uncaughtException'
+                  ? `export function createUncaughtExceptionHandler() { return () => {}; }`
+                  : '',
+          }));
+        },
+      }],
+    });
+    const paths: Record<string, string> = { userData: '/official-profile', appData: '/app-data' };
+    let name = 'Official';
+    const app = {
+      setName(value: string) { name = value; },
+      getName() { return name; },
+      getPath(key: string) { return paths[key]; },
+      setPath(key: string, value: string) { paths[key] = value; },
+      commandLine: { appendSwitch() {} },
+    };
+    const context = {
+      require: (specifier: string) => specifier === 'electron' ? { app } : requireBuiltin(specifier),
+      exports: {},
+      process: { env: { NODE_ENV: 'production', ...env }, argv, on() {} },
+      observedAtIndex: undefined as undefined | { userData: string; name: string; anthropic?: string; openai?: string },
+    };
+    runInNewContext(output.outputFiles[0].text, context);
+    return context.observedAtIndex!;
+  }
+
+  it('sets the explicit Main profile before index initialization and strips inherited provider keys', async () => {
+    const profile = path.join(os.tmpdir(), 'bootstrap-scoped-profile');
+    const observed = await observeIndexInitialization({ NIMBALYST_USER_DATA_DIR: profile, ANTHROPIC_API_KEY: 'fixture-anthropic', OPENAI_API_KEY: 'fixture-openai' }, ['app.exe', '--user-data-dir=/unused-argument']);
+    expect(observed.userData).toBe(profile);
+    expect(observed.name).toBe('Nimbalyst 日本語版（非公式）');
+    expect(observed.anthropic).toBeUndefined();
+    expect(observed.openai).toBeUndefined();
+  });
+
+  it('honors the command-line override before index initialization', async () => {
+    const profile = path.join(os.tmpdir(), 'bootstrap-cli-profile');
+    const observed = await observeIndexInitialization({}, ['app.exe', `--user-data-dir=${profile}`]);
+    expect(observed.userData).toBe(profile);
+  });
+
+  it('chooses a distinct unofficial default before index initialization', async () => {
+    const observed = await observeIndexInitialization({}, ['app.exe']);
+    expect(observed.userData).toBe(path.join('/app-data', 'Nimbalyst 日本語版（非公式）'));
   });
 });

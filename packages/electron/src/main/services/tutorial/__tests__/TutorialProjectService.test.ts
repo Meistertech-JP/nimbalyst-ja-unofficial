@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "fs/promises";
 import * as os from "os";
@@ -87,6 +88,31 @@ afterEach(async () => {
 });
 
 describe("TutorialProjectService", () => {
+  it("uses one Japanese template for files and both seeders, and preserves edits on reuse after switching language", async () => {
+    const harness = await createHarness();
+    let language = 'ja';
+    const japaneseTemplate = path.resolve(__dirname, '../../../../../resources/tutorial-project-ja');
+    harness.dependencies.getTemplateDirectory = vi.fn(() => language === 'ja' ? japaneseTemplate : harness.templateDirectory);
+    vi.mocked(harness.dependencies.seedTutorialTrackers).mockImplementation(async () => {
+      language = 'en';
+      return [EXAMPLE_BUG];
+    });
+    const service = new TutorialProjectService(harness.dependencies);
+    const first = await service.startTutorial();
+    if (!first.success) throw new Error(first.error);
+    const readme = path.join(first.workspacePath, 'README.md');
+    await expect(fs.readFile(readme, 'utf8')).resolves.toContain('# Nimbalystへようこそ');
+    await expect(fs.readFile(readme, 'utf8')).resolves.toContain('nimbalyst://NIM-6');
+    expect(harness.dependencies.seedTutorialTrackers).toHaveBeenCalledWith(first.workspacePath, japaneseTemplate);
+    expect(harness.dependencies.seedTutorialSessions).toHaveBeenCalledWith(first.workspacePath, [EXAMPLE_BUG], japaneseTemplate);
+    await fs.writeFile(readme, '# Edited tutorial');
+    vi.clearAllMocks();
+    const reused = await service.startTutorial();
+    expect(reused).toEqual({ success: true, workspacePath: first.workspacePath, reused: true });
+    await expect(fs.readFile(readme, 'utf8')).resolves.toBe('# Edited tutorial');
+    expect(harness.dependencies.seedTutorialTrackers).not.toHaveBeenCalled();
+    expect(harness.dependencies.seedTutorialSessions).not.toHaveBeenCalled();
+  });
   it("materializes the template and seeds trust, document mode, and the README tab", async () => {
     const harness = await createHarness();
 
@@ -136,11 +162,13 @@ describe("TutorialProjectService", () => {
       },
     });
     expect(harness.dependencies.seedTutorialTrackers).toHaveBeenCalledWith(
-      result.workspacePath
+      result.workspacePath,
+      harness.templateDirectory
     );
     expect(harness.dependencies.seedTutorialSessions).toHaveBeenCalledWith(
       result.workspacePath,
-      [EXAMPLE_BUG]
+      [EXAMPLE_BUG],
+      harness.templateDirectory
     );
     expect(harness.dependencies.createWindow).toHaveBeenCalledWith(
       false,

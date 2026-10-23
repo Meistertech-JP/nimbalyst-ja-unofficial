@@ -1,4 +1,11 @@
 {
+  "file_placement": {
+    "notice_right": "Files open on the right in Agent mode",
+    "notice_above": "Files open above the transcript in Agent mode",
+    "save_failed": "Could not save file placement. Your layout may reset when you reopen the app.",
+    "move_right": "Move files to the right",
+    "move_above": "Move files above transcript"
+  },
   "select_or_create": "Select a session or create a new one to get started",
   "new_session": "New Session",
   "session_launch_count_one": "Launched {{count}} session",

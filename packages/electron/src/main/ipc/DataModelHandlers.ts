@@ -13,6 +13,7 @@ import * as path from 'path';
 import { logger } from '../utils/logger';
 import { safeHandle, removeHandler } from '../utils/ipcRegistry';
 import { getWindowId, windowStates } from '../window/WindowManager';
+import { getMainI18n } from '../i18n/mainI18n';
 
 /**
  * Register IPC handlers for data model operations.
@@ -100,6 +101,13 @@ export function registerDataModelHandlers(): void {
         }
 
         // Create a basic data model template with Nimbalyst metadata
+        const i18n = getMainI18n();
+        const addModels = i18n?.t('datamodel_template.add_models', {
+          ns: 'editor', defaultValue: 'Add your models here',
+        }) ?? 'Add your models here';
+        const example = i18n?.t('datamodel_template.example', {
+          ns: 'editor', defaultValue: 'Example:',
+        }) ?? 'Example:';
         const template = `// @nimbalyst {"viewport":{"x":0,"y":0,"zoom":1},"positions":{},"entityViewMode":"standard"}
 
 datasource db {
@@ -111,8 +119,8 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Add your models here
-// Example:
+// ${addModels}
+// ${example}
 // model User {
 //   id        Int      @id @default(autoincrement())
 //   email     String   @unique

@@ -21,6 +21,8 @@
   "new": "新規",
   "application_menu": "アプリケーションメニュー",
   "top_bar": {
+    "new_shared_doc": "新しい共有ドキュメント",
+    "new_item": "新しい項目",
     "show_panel": "{{label}}を表示",
     "hide_panel": "{{label}}を非表示",
     "choose_panel": "{{label}}を選択: {{selection}}",

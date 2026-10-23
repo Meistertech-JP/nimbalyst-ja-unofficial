@@ -43,14 +43,7 @@ export interface CollabCommentsPanelState {
   close(): void;
 }
 
-const NO_TARGET_NOTICE =
-  'That comment is no longer in this document. It may have been deleted.';
-const ORPHANED_NOTICE =
-  'What this comment pointed at is no longer in the document, so there is nothing to jump to. The conversation is kept.';
-const UNSUPPORTED_NOTICE =
-  'This comment points at something this editor does not understand, so it cannot be shown in place. The conversation is kept.';
-const UNAVAILABLE_NOTICE =
-  'This editor could not bring that comment into view.';
+type FocusFailure = 'no_target' | 'orphaned' | 'unsupported' | 'unavailable';
 
 /**
  * Why focus failed, read from the same source the panel renders from — so the
@@ -60,16 +53,16 @@ const UNAVAILABLE_NOTICE =
 function explainFocusFailure(
   source: HostedCommentsPanelSource,
   threadId: string,
-): string {
+): FocusFailure {
   const thread = source.getThreads().find((entry) => entry.id === threadId);
-  if (!thread) return NO_TARGET_NOTICE;
+  if (!thread) return 'no_target';
   switch (source.getAnchorState?.(thread)) {
     case 'orphaned':
-      return ORPHANED_NOTICE;
+      return 'orphaned';
     case 'unsupported':
-      return UNSUPPORTED_NOTICE;
+      return 'unsupported';
     default:
-      return UNAVAILABLE_NOTICE;
+      return 'unavailable';
   }
 }
 
@@ -86,9 +79,12 @@ export function useCollabCommentsPanel(input: {
   panelSource: HostedCommentsPanelSource | null;
 }): CollabCommentsPanelState {
   const { documentUri, panelSource } = input;
+  const { t } = useTranslation('collabSidebar');
   const [isOpen, setIsOpen] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [focusNotice, setFocusNotice] = useState<string | null>(null);
+  // Keep the failure semantic so a language change updates an existing notice
+  // without subscribing again or issuing another asynchronous focus request.
+  const [focusFailure, setFocusFailure] = useState<FocusFailure | null>(null);
   // Focus is async. A second request while the first is in flight owns the
   // panel; the stale result must not overwrite its notice.
   const requestGeneration = useRef(0);
@@ -100,7 +96,7 @@ export function useCollabCommentsPanel(input: {
     const apply = (request: CommentPanelRequest): void => {
       const generation = ++requestGeneration.current;
       setIsOpen(true);
-      setFocusNotice(null);
+      setFocusFailure(null);
       if (!request.threadId) return;
       const threadId = request.threadId;
       setActiveThreadId(threadId);
@@ -111,12 +107,12 @@ export function useCollabCommentsPanel(input: {
           // The thread stays selected and readable either way; only the
           // in-place jump is what may be unavailable.
           if (!focused) {
-            setFocusNotice(explainFocusFailure(panelSource, threadId));
+            setFocusFailure(explainFocusFailure(panelSource, threadId));
           }
         })
         .catch(() => {
           if (disposed || requestGeneration.current !== generation) return;
-          setFocusNotice(UNAVAILABLE_NOTICE);
+          setFocusFailure('unavailable');
         });
     };
 
@@ -131,7 +127,7 @@ export function useCollabCommentsPanel(input: {
     (threadId: string) => {
       requestGeneration.current += 1;
       setActiveThreadId(threadId);
-      setFocusNotice(null);
+      setFocusFailure(null);
       setIsOpen(true);
       void panelSource?.focusThread(threadId).catch(() => undefined);
     },
@@ -142,9 +138,16 @@ export function useCollabCommentsPanel(input: {
     requestGeneration.current += 1;
     setIsOpen(false);
     setActiveThreadId(null);
-    setFocusNotice(null);
+    setFocusFailure(null);
   }, []);
 
+  const focusNotices: Record<FocusFailure, string> = {
+    no_target: t('comments_panel.focus_notice.no_target'),
+    orphaned: t('comments_panel.focus_notice.orphaned'),
+    unsupported: t('comments_panel.focus_notice.unsupported'),
+    unavailable: t('comments_panel.focus_notice.unavailable'),
+  };
+  const focusNotice = focusFailure ? focusNotices[focusFailure] : null;
   return { isOpen, activeThreadId, focusNotice, selectThread, close };
 }
 
@@ -174,6 +177,7 @@ export function CollabCommentsPanelDock({
 }: CollabCommentsPanelDockProps): JSX.Element | null {
   const { t } = useTranslation('collabSidebar');
   const { t: tCommon } = useTranslation('common');
+  const { t: tEditor } = useTranslation('editor');
   const { panelSource, service } = hosted;
   const view = useCollaborativeComments(panelSource);
 
@@ -206,8 +210,8 @@ export function CollabCommentsPanelDock({
         getMembers={getMembers}
         emptyMessage={
           view.canComment
-            ? 'No comments yet. Add one from the editor to start a thread.'
-            : 'No comments yet.'
+            ? tEditor('comments.empty_from_editor')
+            : tEditor('comments.empty_read_only')
         }
         onClose={panel.close}
         onSelectThread={panel.selectThread}

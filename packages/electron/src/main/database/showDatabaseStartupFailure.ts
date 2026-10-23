@@ -22,6 +22,7 @@ import {
   restoreWithCutoverJournalEvidence,
 } from "./recovery/preMigrationRecovery";
 import { resolveDatabaseUserDataPath } from "./userDataPath";
+import { translateMainDialogLabel } from "../i18n/mainI18n";
 
 export async function showDatabaseStartupFailure(
   error: unknown
@@ -187,7 +188,7 @@ export async function showDatabaseStartupFailure(
           }
         },
         onRestoreFailed: (message) => {
-          dialog.showErrorBox("Nimbalyst - Restore Failed", message);
+          dialog.showErrorBox(`Nimbalyst - ${translateMainDialogLabel('native_dialogs.restore_failed_title', 'Restore Failed')}`, message);
         },
       });
     } while (dialogOutcome.action === "diagnostics");
@@ -216,8 +217,8 @@ export async function showDatabaseStartupFailure(
     }
   } else {
     dialog.showErrorBox(
-      "Nimbalyst - Database Initialization Failed",
-      `Failed to initialize the database system.\n\nError: ${errorMessage}\n\nNimbalyst cannot continue without the database.`
+      translateMainDialogLabel('database_failure.title', "Nimbalyst - Database Initialization Failed"),
+      translateMainDialogLabel('native_dialogs.database_startup_failed_detail', `Failed to initialize the database system.\n\nError: ${errorMessage}\n\nNimbalyst cannot continue without the database.`, { error: errorMessage })
     );
   }
 }

@@ -1,8 +1,11 @@
+// @vitest-environment jsdom
 import React from "react";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import {
   projectRawMessagesToViewMessages,
   type RawMessage,
@@ -17,10 +20,9 @@ import {
   getCustomToolWidget,
 } from "@nimbalyst/runtime/ui/AgentTranscript/components/CustomToolWidgets";
 
-const FIXTURE_DIRECTORY = path.resolve(
-  process.cwd(),
-  "packages/electron/resources/tutorial-project/sessions"
-);
+const RESOURCE_DIRECTORY = path.resolve(__dirname, '../../../../../../electron/resources');
+const fixtureDirectory = (language: 'en' | 'ja') => path.join(RESOURCE_DIRECTORY,
+  language === 'ja' ? 'tutorial-project-ja' : 'tutorial-project', 'sessions');
 const TUTORIAL_ROOT = path.resolve("/tmp/Tutorial Fixture Projection");
 const DRAFT_SESSION_ID = "11111111-1111-4111-8111-111111111111";
 const TRIAGE_SESSION_ID = "22222222-2222-4222-8222-222222222222";
@@ -39,22 +41,18 @@ interface Fixture {
 
 async function loadAndProject(
   filename: string,
-  sessionId: string
+  sessionId: string,
+  language: 'en' | 'ja' = 'en'
 ): Promise<TranscriptViewMessage[]> {
   const fixture = JSON.parse(
-    await fs.readFile(path.join(FIXTURE_DIRECTORY, filename), "utf8")
+    await fs.readFile(path.join(fixtureDirectory(language), filename), "utf8")
   ) as Fixture;
   const rawMessages: RawMessage[] = fixture.messages.map((message, index) => ({
     id: index + 1,
     sessionId,
     source: message.source,
     direction: message.direction,
-    content: message.content
-      .replaceAll("{{TUTORIAL_ROOT}}", TUTORIAL_ROOT)
-      .replaceAll("{{SESSION_ID:DRAFT_THE_PRODUCT_BRIEF}}", DRAFT_SESSION_ID)
-      .replaceAll("{{SESSION_ID:TRIAGE_THE_LAUNCH_BUG}}", TRIAGE_SESSION_ID)
-      .replaceAll("{{TRACKER_ID:EXAMPLE_BUG}}", EXAMPLE_BUG_ID)
-      .replaceAll("{{TRACKER_ISSUE_KEY:EXAMPLE_BUG}}", EXAMPLE_BUG_KEY),
+    content: JSON.stringify(materializeValues(JSON.parse(message.content))),
     createdAt: new Date(1_800_000_000_000 + index * 1_000),
     hidden: message.hidden,
   }));
@@ -63,6 +61,21 @@ async function loadAndProject(
     fixture.session.provider
   );
 }
+
+function materializeValues(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(materializeValues);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, materializeValues(entry)]));
+  }
+  return typeof value === 'string' ? value
+    .replaceAll('{{TUTORIAL_ROOT}}', TUTORIAL_ROOT)
+    .replaceAll('{{SESSION_ID:DRAFT_THE_PRODUCT_BRIEF}}', DRAFT_SESSION_ID)
+    .replaceAll('{{SESSION_ID:TRIAGE_THE_LAUNCH_BUG}}', TRIAGE_SESSION_ID)
+    .replaceAll('{{TRACKER_ID:EXAMPLE_BUG}}', EXAMPLE_BUG_ID)
+    .replaceAll('{{TRACKER_ISSUE_KEY:EXAMPLE_BUG}}', EXAMPLE_BUG_KEY) : value;
+}
+
+afterEach(cleanup);
 
 function toolMessages(messages: TranscriptViewMessage[]) {
   return messages.filter(
@@ -75,9 +88,9 @@ function toolMessages(messages: TranscriptViewMessage[]) {
 }
 
 describe("tutorial session fixtures", () => {
-  it("projects the product-brief rich content through the production parser", async () => {
+  it.each(['en', 'ja'] as const)("projects %s product-brief rich content through the production parser and widgets", async (language) => {
     const messages = toolMessages(
-      await loadAndProject("01-draft-product-brief.json", DRAFT_SESSION_ID)
+      await loadAndProject("01-draft-product-brief.json", DRAFT_SESSION_ID, language)
     );
     const byName = new Map(
       messages.map((message) => [message.toolCall.toolName, message])
@@ -101,9 +114,11 @@ describe("tutorial session fixtures", () => {
     ).toBe(EditorScreenshotWidget);
     expect(getCustomToolWidget("Edit")).toBeUndefined();
     expect(byName.get("Edit")?.toolCall.arguments).toMatchObject({
-      file_path: path.join(TUTORIAL_ROOT, "product-brief.md"),
-      old_string: "The first version is for a team preparing a product launch.",
+      old_string: language === 'ja' ? '初期版の対象は、製品のリリースを準備するチームです。'
+        : "The first version is for a team preparing a product launch.",
     });
+    expect(path.normalize(String(byName.get('Edit')?.toolCall.arguments.file_path)))
+      .toBe(path.join(TUTORIAL_ROOT, 'product-brief.md'));
     expect(
       (
         byName.get("mcp__nimbalyst__display_to_user")?.toolCall.arguments
@@ -112,24 +127,32 @@ describe("tutorial session fixtures", () => {
     ).toHaveLength(6);
 
     const question = byName.get("AskUserQuestion");
-    expect(question?.toolCall.result).toContain("Revenue momentum");
+    expect(question?.toolCall.result).toContain(language === 'ja' ? '売上の勢い' : "Revenue momentum");
+    const i18n = await createI18nInstance(language);
     render(
+      <I18nextProvider i18n={i18n}>
       <AskUserQuestionWidget
         message={question!}
         isExpanded={false}
         onToggle={() => undefined}
         sessionId={DRAFT_SESSION_ID}
       />
+      </I18nextProvider>
     );
     expect(screen.getByTestId("ask-user-question-widget").dataset.state).toBe(
       "completed"
     );
     expect(screen.getByTestId("ask-user-question-completed")).toBeDefined();
     expect(screen.queryByTestId("ask-user-question-pending")).toBeNull();
+    expect(screen.getByTestId('ask-user-question-completed').textContent)
+      .toBe(language === 'ja' ? '送信済み' : 'Submitted');
+    expect(screen.getByTestId('ask-user-question-widget').textContent)
+      .toContain(language === 'ja' ? '売上の勢い' : 'Revenue momentum');
 
     const screenshot = byName.get("mcp__nimbalyst__capture_editor_screenshot");
     const readFile = vi.fn();
     render(
+      <I18nextProvider i18n={i18n}>
       <EditorScreenshotWidget
         message={screenshot!}
         isExpanded={false}
@@ -138,6 +161,7 @@ describe("tutorial session fixtures", () => {
         workspacePath={TUTORIAL_ROOT}
         readFile={readFile}
       />
+      </I18nextProvider>
     );
     const screenshotImage = await screen.findByAltText("dashboard.mockup.html");
     expect(screenshotImage.getAttribute("src")).toContain(
@@ -146,9 +170,9 @@ describe("tutorial session fixtures", () => {
     expect(readFile).not.toHaveBeenCalled();
   });
 
-  it("projects tracker and cross-session widgets with completed results", async () => {
+  it.each(['en', 'ja'] as const)("projects %s tracker and cross-session widgets with completed results", async (language) => {
     const messages = toolMessages(
-      await loadAndProject("02-triage-launch-bug.json", TRIAGE_SESSION_ID)
+      await loadAndProject("02-triage-launch-bug.json", TRIAGE_SESSION_ID, language)
     );
 
     expect(messages.map((message) => message.toolCall.toolName)).toEqual([
@@ -172,17 +196,21 @@ describe("tutorial session fixtures", () => {
     expect(messages[1]?.toolCall.arguments).toMatchObject({
       trackerId: EXAMPLE_BUG_ID,
     });
+    expect(messages[0]?.toolCall.arguments.title).toBe(language === 'ja'
+      ? '日付範囲を変更してもエクスポートが無効のままになる'
+      : 'Export remains disabled after changing the date range');
   });
 
-  it("ends both sample sessions with the continuation note", async () => {
+  it.each(['en', 'ja'] as const)("ends both %s sample sessions with the continuation note", async (language) => {
     const note =
-      "Note to the user: You can type into the window below and continue this session or start a new one";
+      language === 'ja' ? '下の入力欄から、このセッションを続けることも、新しいセッションを始めることもできます。'
+        : "Note to the user: You can type into the window below and continue this session or start a new one";
     for (const filename of [
       "01-draft-product-brief.json",
       "02-triage-launch-bug.json",
     ] as const) {
       const fixture = JSON.parse(
-        await fs.readFile(path.join(FIXTURE_DIRECTORY, filename), "utf8")
+        await fs.readFile(path.join(fixtureDirectory(language), filename), "utf8")
       ) as Fixture;
       const finalPayload = JSON.parse(fixture.messages.at(-1)!.content) as {
         message: { content: Array<{ text?: string }> };
@@ -191,11 +219,8 @@ describe("tutorial session fixtures", () => {
     }
   });
 
-  it("references tutorial files that ship in the materialized project", async () => {
-    const resourceRoot = path.resolve(
-      process.cwd(),
-      "packages/electron/resources/tutorial-project"
-    );
+  it.each(['en', 'ja'] as const)("references %s tutorial files that ship in the materialized project", async (language) => {
+    const resourceRoot = path.dirname(fixtureDirectory(language));
     await expect(
       Promise.all(
         [

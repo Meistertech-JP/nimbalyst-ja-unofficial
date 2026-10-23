@@ -1,6 +1,25 @@
 {
   "cancel": "キャンセル",
   "editor_breadcrumb": "パンくずリスト",
+  "file_path_breadcrumb_title": "ファイルツリーで{{name}}を開く",
+  "html_export": {
+    "failed": "失敗",
+    "succeeded": "成功",
+    "untitled_session": "無題のセッション",
+    "shared_from": "共有元",
+    "privacy_warning": "このセッションのエクスポートには、機密コード、ファイルパス、認証情報が含まれる可能性があります。共有にはご注意ください。",
+    "provider": "プロバイダー:",
+    "messages": "メッセージ数:",
+    "started": "開始日時:",
+    "last_activity": "最終アクティビティ:",
+    "toggle_theme": "ライト/ダークテーマを切り替え",
+    "theme": "テーマ",
+    "copy_transcript": "トランスクリプトをクリップボードにコピー",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "exported": "エクスポート日時",
+    "download_markdown": "Markdownをダウンロード"
+  },
   "save": "保存",
   "saving": "保存中…",
   "comments": {

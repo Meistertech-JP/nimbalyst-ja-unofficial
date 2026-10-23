@@ -321,9 +321,9 @@ export const UnifiedEditorHeaderBar: React.FC<UnifiedEditorHeaderBarProps> = ({
   // Handle export to PDF
   const handleExportToPdf = useCallback(async () => {
     if (!lexicalEditor || typeof lexicalEditor.getEditorState !== 'function') return;
-    await exportEditorToPdf(lexicalEditor as unknown as LexicalEditor, fileName);
+    await exportEditorToPdf(lexicalEditor as unknown as LexicalEditor, fileName, t);
     setShowActionsMenu(false);
-  }, [lexicalEditor, fileName]);
+  }, [lexicalEditor, fileName, t]);
 
   // Handle set document type
   const handleSetDocumentType = useCallback((trackerType: string) => {

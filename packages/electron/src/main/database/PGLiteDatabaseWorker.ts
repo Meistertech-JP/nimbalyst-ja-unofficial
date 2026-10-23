@@ -31,6 +31,44 @@ import {
  */
 export class HandledError extends Error {}
 
+// Display-only mapping for the fixed copy supplied to the shared dialog helpers.
+// Unknown backend diagnostic strings are intentionally retained verbatim.
+const PGLITE_DIALOG_KEYS: Record<string, string> = {
+  "Restore Failed": "native_dialogs.restore_failed_title",
+  "Database Restored": "native_dialogs.database_restored_title",
+  "Database Locked": "native_dialogs.database_locked_title",
+  "Initialization Failed": "native_dialogs.initialization_failed_title",
+  "Database Reset": "native_dialogs.database_reset_title",
+  "Delete Failed": "native_dialogs.delete_failed_title",
+  "Failed to restore from backup. Starting with a fresh database.": "native_dialogs.restore_failed_fresh",
+  "Could not clear the database lock.": "native_dialogs.clear_lock_failed",
+  "Nimbalyst cannot start while the database lock state is uncertain.": "native_dialogs.lock_uncertain",
+  "Close any other Nimbalyst windows you have open and try again. If you are sure no other Nimbalyst is running, restart this machine to clear any stale system locks.": "native_dialogs.lock_uncertain_detail",
+  "Another instance of Nimbalyst is already running.": "native_dialogs.other_instance_running",
+  "The database is locked by another process. Please close the other instance before starting a new one.\n\nRunning multiple instances simultaneously can cause data corruption.": "native_dialogs.other_instance_detail",
+  "Database was restored but failed to initialize.": "native_dialogs.restored_initialization_failed",
+  "Failed to restore from backup.": "native_dialogs.restore_failed",
+  "Failed to initialize fresh database.": "native_dialogs.fresh_initialization_failed",
+  "A fresh database has been created.": "native_dialogs.fresh_created",
+  "Your previous AI chat sessions could not be recovered, but your document files are safe.": "native_dialogs.fresh_created_detail",
+  "Failed to delete corrupted database.": "native_dialogs.delete_failed",
+  "Unknown error": "native_dialogs.unknown_error",
+};
+
+function localizePgliteDialogText(text: string): string {
+  const key = PGLITE_DIALOG_KEYS[text];
+  return key ? translateMainDialogLabel(key, text) : text;
+}
+
+function localizedBackupSource(source: string | undefined): string {
+  switch (source) {
+    case "current": return translateMainDialogLabel("native_dialogs.backup_current", "current");
+    case "previous": return translateMainDialogLabel("native_dialogs.backup_previous", "previous");
+    case "oldest": return translateMainDialogLabel("native_dialogs.backup_oldest", "oldest");
+    default: return String(source);
+  }
+}
+
 /**
  * Normalize a caller-supplied timeout to a sane bound for queryReadOnly.
  * Floors at 1ms; defaults to 5000; ceiling is 30000 to prevent runaway
@@ -239,10 +277,10 @@ export class PGLiteDatabaseWorker {
   private showErrorAndQuit(title: string, message: string, detail?: string): void {
     dialog.showMessageBox({
       type: 'error',
-      title: `Nimbalyst - ${title}`,
-      message,
-      detail,
-      buttons: ['Quit']
+      title: `Nimbalyst - ${localizePgliteDialogText(title)}`,
+      message: localizePgliteDialogText(message),
+      detail: detail === undefined ? undefined : localizePgliteDialogText(detail),
+      buttons: [translateMainDialogLabel('database_failure.quit', 'Quit')]
     }).then(() => app.quit()).catch((err) => {
       logger.main.error('[PGLite Worker] Dialog error:', err);
       app.quit();
@@ -255,10 +293,10 @@ export class PGLiteDatabaseWorker {
   private showInfoDialog(title: string, message: string, detail?: string): void {
     dialog.showMessageBox({
       type: 'info',
-      title: `Nimbalyst - ${title}`,
-      message,
-      detail,
-      buttons: ['OK']
+      title: `Nimbalyst - ${localizePgliteDialogText(title)}`,
+      message: localizePgliteDialogText(message),
+      detail: detail === undefined ? undefined : localizePgliteDialogText(detail),
+      buttons: [translateMainDialogLabel('database_recovery.ok', 'OK')]
     }).catch(() => {});
   }
 
@@ -344,10 +382,10 @@ export class PGLiteDatabaseWorker {
     // Create worker thread - use the bundled worker
     let workerPath: string;
     if (app.isPackaged) {
-      workerPath = path.join(process.resourcesPath, 'worker.bundle.js');
+      workerPath = path.join(process.resourcesPath, 'worker.bundle.cjs');
     } else {
       // The worker bundle is always built to the primary out/ directory under the package root.
-      workerPath = path.join(getPackageRoot(), 'out', 'worker.bundle.js');
+      workerPath = path.join(getPackageRoot(), 'out', 'worker.bundle.cjs');
     }
 
     // Use test-specific userData path to avoid touching production database.
@@ -454,7 +492,7 @@ export class PGLiteDatabaseWorker {
               logger.main.info('[PGLite Worker] Recreating worker thread after restore...');
               await this.recreateWorkerAndReinit();
 
-              this.showInfoDialog('Database Restored', `Your database has been successfully restored from the ${restoreResult.source} backup.`);
+              this.showInfoDialog('Database Restored', translateMainDialogLabel('native_dialogs.restored_success', `Your database has been successfully restored from the ${restoreResult.source} backup.`, { source: localizedBackupSource(restoreResult.source) }));
             } else {
               logger.main.error('[PGLite Worker] Failed to restore from backup:', restoreResult.error);
               this.analytics.sendEvent('database_corruption_restore_result', {
@@ -500,7 +538,7 @@ export class PGLiteDatabaseWorker {
                 logger.main.info('[PGLite Worker] Recreating worker thread after restore...');
                 await this.recreateWorkerAndReinit();
 
-                this.showInfoDialog('Database Restored', `Your database has been successfully restored from the ${restoreResult.source} backup.`);
+                this.showInfoDialog('Database Restored', translateMainDialogLabel('native_dialogs.restored_success', `Your database has been successfully restored from the ${restoreResult.source} backup.`, { source: localizedBackupSource(restoreResult.source) }));
               } else {
                 logger.main.error('[PGLite Worker] Failed to restore from backup:', restoreResult.error);
                 this.analytics.sendEvent('database_corruption_restore_result', {
@@ -618,8 +656,7 @@ export class PGLiteDatabaseWorker {
             this.showErrorAndQuit(
               'Database Locked',
               'Could not clear the database lock.',
-              `Removing the lock file failed: ${this.formatError(unlockErr)}\n\n` +
-              `If another Nimbalyst window is open, close it manually before retrying.`
+              translateMainDialogLabel('native_dialogs.clear_lock_failed_detail', `Removing the lock file failed: ${this.formatError(unlockErr)}\n\nIf another Nimbalyst window is open, close it manually before retrying.`, { error: this.formatError(unlockErr) })
             );
             throw new HandledError('DATABASE_LOCKED_AMBIGUOUS_UNLOCK_FAILED');
           }
@@ -688,7 +725,7 @@ export class PGLiteDatabaseWorker {
                 return;
               }
 
-              this.showInfoDialog('Database Restored', `Your database has been restored from the ${restoreResult.source} backup.`);
+              this.showInfoDialog('Database Restored', translateMainDialogLabel('native_dialogs.restored', `Your database has been restored from the ${restoreResult.source} backup.`, { source: localizedBackupSource(restoreResult.source) }));
               this.initialized = true;
               return;
             } else {
@@ -1087,16 +1124,16 @@ export class PGLiteDatabaseWorker {
     }
 
     const buttons = includeQuit
-      ? ['Restore (Recommended)', 'Start Fresh', 'Quit']
-      : ['Restore (Recommended)', 'Start Fresh'];
+      ? [translateMainDialogLabel('native_dialogs.restore_recommended', 'Restore (Recommended)'), translateMainDialogLabel('native_dialogs.start_fresh_button', 'Start Fresh'), translateMainDialogLabel('database_failure.quit', 'Quit')]
+      : [translateMainDialogLabel('native_dialogs.restore_recommended', 'Restore (Recommended)'), translateMainDialogLabel('native_dialogs.start_fresh_button', 'Start Fresh')];
 
     return {
       type: 'info',
-      title: 'Nimbalyst - Restore Your Data',
-      message: 'No file data has been lost.',
+      title: translateMainDialogLabel('native_dialogs.restore_data_title', 'Nimbalyst - Restore Your Data'),
+      message: translateMainDialogLabel('native_dialogs.files_safe', 'No file data has been lost.'),
       detail: backupDateStr
-        ? `Your files are safe, but your chat history will need to be restored from a backup dated ${backupDateStr}.`
-        : `Your files are safe and your AI chat sessions can be restored from a recent backup.`,
+        ? translateMainDialogLabel('native_dialogs.restore_dated_detail', `Your files are safe, but your chat history will need to be restored from a backup dated ${backupDateStr}.`, { date: backupDateStr })
+        : translateMainDialogLabel('native_dialogs.restore_recent_detail', 'Your files are safe and your AI chat sessions can be restored from a recent backup.'),
       buttons,
       defaultId: 0,
       cancelId: includeQuit ? 2 : 1

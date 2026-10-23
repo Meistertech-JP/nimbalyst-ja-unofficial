@@ -36,6 +36,7 @@ function renderComposer(
   overrides: {
     capabilities?: typeof FULL_CAPABILITIES;
     context?: Partial<ConversationContext>;
+    submitLabel?: string;
   } = {},
   language: 'en' | 'ja' = 'en',
 ) {
@@ -55,11 +56,43 @@ function renderComposer(
         resolver={createFixtureResolver()}
         resourceCandidates={fixtures.candidates}
         onSubmit={onSubmit}
+        submitLabel={overrides.submitLabel}
       />
     </UiLanguageProvider>,
   );
   return { fixtures, onSubmit, ...utils };
 }
+
+describe('CommentComposer localized submission state', () => {
+  afterEach(() => cleanup());
+
+  it.each([
+    ['en', 'Send', 'Sending'],
+    ['ja', '送信', '送信中'],
+  ] as const)('uses %s labels while submitting once and clearing the draft', async (language, send, sending) => {
+    const { onSubmit } = renderComposer({}, language);
+    const button = screen.getByTestId('comment-composer-send') as HTMLButtonElement;
+    expect(button.textContent).toContain(send);
+    let finish!: () => void;
+    onSubmit.mockImplementation(() => new Promise<void>((resolve) => { finish = resolve; }));
+    type('Keep this message');
+    await waitFor(() => expect(button.disabled).toBe(false));
+    fireEvent.click(button);
+
+    await waitFor(() => expect(button.textContent).toContain(sending));
+    expect(button.disabled).toBe(true);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0].body.text).toContain('Keep this message');
+    await act(async () => { finish(); });
+    await waitFor(() => expect(composerText()).toBe(''));
+    expect(button.textContent).toContain(send);
+  });
+
+  it('preserves a caller-owned submit label instead of translating its content', () => {
+    renderComposer({ submitLabel: 'Save draft A' }, 'ja');
+    expect(screen.getByTestId('comment-composer-send').textContent).toContain('Save draft A');
+  });
+});
 
 describe('composer trigger detection', () => {
   it('opens on @ at a word boundary and not inside a word', () => {

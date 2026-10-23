@@ -2,9 +2,29 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { Socket } from 'node:net';
 
 import { AUTH_FLOW_TTL_MS } from './PendingAuthFlowLedger';
+import { getMainI18n, translateMainDialogLabel } from '../../i18n/mainI18n';
 
-const SUCCESS_HTML = '<!doctype html><html><head><meta charset="utf-8"><title>Nimbalyst sign-in</title></head><body><main><h1>You\'re signed in</h1><p>Return to Nimbalyst.</p></main></body></html>';
-const ERROR_HTML = '<!doctype html><html><head><meta charset="utf-8"><title>Nimbalyst sign-in error</title></head><body><main><h1>Sign-in could not be completed</h1><p>Return to Nimbalyst and try again.</p></main></body></html>';
+function escapeHtml(value: string): string {
+  const entities: Record<string, string> = {
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  };
+  return value.replace(/[&<>"']/g, (character) => entities[character]!);
+}
+
+/** Read locale at response time: a pending sign-in can outlive a UI language change. */
+function callbackHtml(success: boolean): string {
+  const locale = getMainI18n()?.resolvedLanguage === 'ja' ? 'ja' : 'en';
+  const title = success
+    ? translateMainDialogLabel('auth_callback.success_title', 'Nimbalyst sign-in')
+    : translateMainDialogLabel('auth_callback.error_title', 'Nimbalyst sign-in error');
+  const heading = success
+    ? translateMainDialogLabel('auth_callback.success_heading', "You're signed in")
+    : translateMainDialogLabel('auth_callback.error_heading', 'Sign-in could not be completed');
+  const message = success
+    ? translateMainDialogLabel('auth_callback.success_message', 'Return to Nimbalyst.')
+    : translateMainDialogLabel('auth_callback.error_message', 'Return to Nimbalyst and try again.');
+  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head><body><main><h1>${escapeHtml(heading)}</h1><p>${escapeHtml(message)}</p></main></body></html>`;
+}
 
 /**
  * The listener only ever serves one local round trip from the browser, so every
@@ -113,7 +133,7 @@ export async function startAuthCallbackLoopback(
     }
 
     if (handlingCallback) {
-      respondPlain(response, 410, 'This sign-in callback has already been used.');
+      respondPlain(response, 410, translateMainDialogLabel('auth_callback.already_used', 'This sign-in callback has already been used.'));
       return;
     }
 
@@ -122,9 +142,21 @@ export async function startAuthCallbackLoopback(
     // through the same validation path.
     let callbackUrl = parsed;
     if (method === 'POST') {
-      const body = await readUrlEncodedBody(request);
+      let body: URLSearchParams | null;
+      try {
+        body = await readUrlEncodedBody(request);
+      } catch {
+        // Cancellation/sign-out destroys in-flight sockets. A truncated body
+        // must neither escape this async HTTP handler nor reach auth routing.
+        // Never log the body or error, which can contain callback credentials.
+        if (!closed && !response.destroyed) {
+          respondPlain(response, 400, translateMainDialogLabel('auth_callback.invalid_body', 'Invalid callback body'));
+        }
+        return;
+      }
+      if (closed || response.destroyed) return;
       if (!body) {
-        respondPlain(response, 413, 'Callback payload too large');
+        respondPlain(response, 413, translateMainDialogLabel('auth_callback.payload_too_large', 'Callback payload too large'));
         return;
       }
       callbackUrl = new URL(parsed.toString());
@@ -135,6 +167,12 @@ export async function startAuthCallbackLoopback(
       }
     }
 
+    // A POST may have started reading before another request claimed the flow.
+    // Recheck after that await so a delayed body cannot invoke routing twice.
+    if (handlingCallback) {
+      respondPlain(response, 410, translateMainDialogLabel('auth_callback.already_used', 'This sign-in callback has already been used.'));
+      return;
+    }
     handlingCallback = true;
 
     let outcome: AuthCallbackOutcome = FAILED_OUTCOME;
@@ -150,7 +188,7 @@ export async function startAuthCallbackLoopback(
       'Cache-Control': 'no-store',
       Connection: 'close',
     });
-    response.end(outcome.success ? SUCCESS_HTML : ERROR_HTML, () => {
+    response.end(callbackHtml(outcome.success), () => {
       void close();
     });
   });

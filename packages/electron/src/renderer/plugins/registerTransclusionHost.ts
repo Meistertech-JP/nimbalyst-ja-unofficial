@@ -46,6 +46,7 @@ import { readPersonalPageForAgent } from '../services/personalAgentEdit';
 import { PERSONAL_PAGE_URI_PREFIX, personalTypedPageUri } from '../../shared/personalPageUri';
 import { openConsoleLinkInWindow } from '../utils/openConsoleLink';
 import { openTeamPage } from './registerDocumentLinkPlugin';
+import { rendererUiText } from '../services/localWikiUiText';
 
 type Emit = (state: TransclusionSourceState) => void;
 
@@ -74,20 +75,20 @@ function teamPageReader(orgId: string | null, documentId: string): PageReader {
       const scope = store.get(activeCollabScopeAtom);
       const workspacePath = store.get(activeWorkspacePathAtom);
       if (!scope || !workspacePath) {
-        emit({ status: 'no-access', message: 'Open a team project to see this page.' });
+        emit({ status: 'no-access', message: rendererUiText('editor', 'transclusion.open_team_project', 'Open a team project to see this page.') });
         return;
       }
       if (orgId && orgId !== scope.orgId) {
-        emit({ status: 'no-access', message: 'This page belongs to a different team.' });
+        emit({ status: 'no-access', message: rendererUiText('editor', 'transclusion.different_team', 'This page belongs to a different team.') });
         return;
       }
       const document = getSharedDocumentsForScopeKey(scope.scopeKey).find((doc) => doc.documentId === documentId);
       if (!document || document.trashedAt) {
-        emit({ status: 'missing', message: document ? 'This page is in Trash.' : undefined });
+        emit({ status: 'missing', message: document ? rendererUiText('editor', 'transclusion.in_trash', 'This page is in Trash.') : undefined });
         return;
       }
       if (document.documentType !== 'markdown') {
-        emit({ status: 'error', message: 'Only text pages can be transcluded; open this one instead.' });
+        emit({ status: 'error', message: rendererUiText('editor', 'transclusion.text_pages_only', 'Only text pages can be transcluded; open this one instead.') });
         return;
       }
       started = true;
@@ -120,7 +121,7 @@ function teamPageReader(orgId: string | null, documentId: string): PageReader {
           if (error instanceof HeadlessCollabDocumentError && error.code === 'DOCUMENT_NOT_AVAILABLE') {
             emit({ status: 'missing' });
           } else {
-            emit({ status: 'error', message: `Could not load this page: ${errorMessage(error)}` });
+            emit({ status: 'error', message: rendererUiText('editor', 'transclusion.load_failed', 'Could not load this page: {{error}}', { error: errorMessage(error) }) });
           }
         });
     };
@@ -160,7 +161,7 @@ function storedPageReader(uri: string, revisionOf: () => unknown, titleOf: () =>
           if (!stopped && isCurrent()) emit({ status: 'ready', markdown, title: titleOf() });
         })
         .catch((error) => {
-          if (!stopped && isCurrent()) emit({ status: 'error', message: `Could not load this page: ${errorMessage(error)}` });
+          if (!stopped && isCurrent()) emit({ status: 'error', message: rendererUiText('editor', 'transclusion.load_failed', 'Could not load this page: {{error}}', { error: errorMessage(error) }) });
         });
     };
     read();
@@ -191,7 +192,7 @@ function typedPageReader(itemRef: string): PageReader {
   return (emit) => {
     const record = item();
     if (!record) {
-      emit({ status: 'missing', message: 'This typed page is not in this project, or it was deleted.' });
+      emit({ status: 'missing', message: rendererUiText('editor', 'transclusion.typed_page_missing', 'This typed page is not in this project, or it was deleted.') });
       return () => {};
     }
     return storedPageReader(

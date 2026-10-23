@@ -11,11 +11,12 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as workspaceEventBus from '../file/WorkspaceEventBus';
+import { getMainI18n } from '../i18n/mainI18n';
 import {
   parseActionPromptsFile,
   type ActionPrompt,
   type ActionPromptParseDiagnostic,
-  DEFAULT_ACTION_PROMPTS_TEMPLATE,
+  getDefaultActionPromptsTemplate,
 } from './ActionPromptParser';
 
 const ACTION_PROMPTS_RELATIVE_PATH = 'nimbalyst-local/ai-actions.md';
@@ -87,12 +88,16 @@ export class ActionPromptService {
    * the absolute path either way. Safe to call repeatedly.
    */
   async ensureFileExists(): Promise<string> {
+    const dir = path.dirname(this.absoluteFilePath);
+    await fs.mkdir(dir, { recursive: true });
+    const i18n = getMainI18n();
+    const template = getDefaultActionPromptsTemplate(i18n?.resolvedLanguage ?? i18n?.language ?? 'en');
     try {
-      await fs.access(this.absoluteFilePath);
-    } catch {
-      const dir = path.dirname(this.absoluteFilePath);
-      await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(this.absoluteFilePath, DEFAULT_ACTION_PROMPTS_TEMPLATE, 'utf-8');
+      await fs.writeFile(this.absoluteFilePath, template, { encoding: 'utf-8', flag: 'wx' });
+    } catch (error) {
+      // Exclusive creation preserves user edits even if another request creates
+      // the file concurrently. Other I/O failures remain visible to the caller.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
     }
     return this.absoluteFilePath;
   }

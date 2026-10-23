@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "@nimbalyst/i18n/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   agentFilePlacementAtom,
@@ -13,12 +14,13 @@ export function FilePlacementControl({
   workstreamId: string;
   onBeforeMove?: () => void;
 }) {
+  const { t } = useTranslation("agents");
   const placement = useAtomValue(agentFilePlacementAtom);
   const move = useSetAtom(moveWorkstreamEditorAtom);
   const title =
     placement === "above"
-      ? "Move files to the right"
-      : "Move files above transcript";
+      ? t("file_placement.move_right")
+      : t("file_placement.move_above");
   return (
     <button
       type="button"
@@ -67,6 +69,7 @@ export function FilePlacementControl({
 }
 
 export function FilePlacementNotice() {
+  const { t } = useTranslation("agents");
   const [notice, setNotice] = useAtom(agentFilePlacementNoticeAtom);
   useEffect(() => {
     if (!notice) return;
@@ -78,7 +81,11 @@ export function FilePlacementNotice() {
       className="file-placement-notice absolute bottom-3 left-3 right-3 z-10 rounded border border-nim bg-nim-secondary px-3 py-2 text-xs text-nim shadow"
       role="status"
     >
-      {notice}
+      {notice === "right"
+        ? t("file_placement.notice_right")
+        : notice === "above"
+          ? t("file_placement.notice_above")
+          : t("file_placement.save_failed")}
     </div>
   ) : null;
 }

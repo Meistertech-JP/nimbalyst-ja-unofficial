@@ -354,7 +354,7 @@ export function AgentFeaturesPanel() {
               value={attachmentCustomPath}
               onChange={(event) => setAttachmentCustomPath(event.target.value)}
               onBlur={() => { if (attachmentCustomPath.trim()) void saveAttachmentStaging('custom', attachmentCustomPath); }}
-              placeholder="C:\\Nimbalyst\\attachments or /path/to/attachments"
+              placeholder={t('agent_features.attachment_staging_custom_placeholder')}
               spellCheck={false}
               className="mt-3 w-full rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] px-3 py-1.5 text-sm text-[var(--nim-text)] outline-none focus:border-[var(--nim-primary)]"
             />

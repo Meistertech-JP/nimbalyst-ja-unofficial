@@ -2,7 +2,7 @@ import { BrowserWindow, dialog, app } from 'electron';
 import { join, basename } from 'path';
 import { getPreloadPath } from '../utils/appPaths';
 import { createUnresponsiveHandler } from './unresponsiveHandler';
-import { translateMainDialogLabel } from '../i18n/mainI18n';
+import { translateMainDialogLabel, translateMainMenuLabel } from '../i18n/mainI18n';
 import { existsSync, mkdirSync, statSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { resolveEntryType } from '../utils/FileTree';
@@ -175,7 +175,7 @@ export function createWorkspaceManagerWindow(options: WorkspaceManagerWindowOpti
     height: 700,
     minWidth: 900,
     minHeight: 600,
-    title: 'Project Manager - Nimbalyst',
+    title: `${translateMainMenuLabel('project_manager', 'Project Manager')} - Nimbalyst`,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -410,7 +410,9 @@ export function setupWorkspaceManagerHandlers() {
 
   // Create workspace dialog
   safeHandle('workspace-manager:create-workspace-dialog', async () => {
-    const defaultPath = getDialogDefaultPath({ suggestedName: 'Untitled Workspace' });
+    const defaultPath = getDialogDefaultPath({
+      suggestedName: translateMainDialogLabel('main_process.untitled_workspace', 'Untitled Workspace'),
+    });
     const result = await dialog.showSaveDialog({
       title: translateMainDialogLabel('main_process.create_workspace_title', 'Create New Workspace'),
       defaultPath,
@@ -430,7 +432,8 @@ export function setupWorkspaceManagerHandlers() {
         const fs = require('fs');
         const readmePath = join(result.filePath, 'README.md');
         if (!existsSync(readmePath)) {
-          fs.writeFileSync(readmePath, `# ${basename(result.filePath)}\n\nWelcome to your new workspace!\n`);
+          const welcome = translateMainDialogLabel('main_process.workspace_readme_welcome', 'Welcome to your new workspace!');
+          fs.writeFileSync(readmePath, `# ${basename(result.filePath)}\n\n${welcome}\n`);
         }
 
         return { success: true, path: result.filePath };

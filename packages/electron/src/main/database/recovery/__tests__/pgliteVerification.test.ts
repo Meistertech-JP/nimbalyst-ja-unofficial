@@ -13,7 +13,7 @@
  *
  * These drive real `worker_threads` workers -- three tiny scripts standing in
  * for the app's bundle, each reproducing one thing the real one does. Not the
- * bundle itself: `out/worker.bundle.js` is a build artifact that may not exist,
+ * bundle itself: `out/worker.bundle.cjs` is a build artifact that may not exist,
  * and opening a real PGLite store would cost seconds per case. What is being
  * asserted here is the message the parent sends and what it does with the four
  * ways a worker can fail to answer, and a script that echoes `workerData` back

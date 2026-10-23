@@ -23,7 +23,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { createI18nInstance, resolveUiLocale, type I18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { errorNotificationService } from './services/ErrorNotificationService';
-import { setLocalWikiTranslator } from './services/localWikiUiText';
+import { setLocalWikiTranslator, setRendererUiTranslator } from './services/localWikiUiText';
 import './index.css';
 import './styles/components.css';
 import posthog from "posthog-js";
@@ -213,6 +213,9 @@ errorNotificationService.setTextTranslator((namespace, key, fallback, options) =
   rendererI18n!.t(key, { ns: namespace, defaultValue: fallback, ...options }),
 );
 setLocalWikiTranslator((key, options) => rendererI18n!.t(key, { ns: 'common', ...options }));
+setRendererUiTranslator((namespace, key, fallback, options) =>
+  rendererI18n!.t(key, { ns: namespace, defaultValue: fallback, ...options }),
+);
 
 // Initialize legacy app settings atoms from main process.
 // These still drive most settings UI today; the flat-key SettingsService above

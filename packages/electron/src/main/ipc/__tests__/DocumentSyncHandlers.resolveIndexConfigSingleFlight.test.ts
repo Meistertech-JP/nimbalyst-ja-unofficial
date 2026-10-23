@@ -1,4 +1,6 @@
+// @vitest-environment node
 import { readFile } from 'node:fs/promises';
+import { createMainI18nController } from '../../i18n/mainI18n';
 import { resolve } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -40,14 +42,17 @@ const {
   };
 });
 
+const saveCopyDialog = vi.hoisted(() => vi.fn());
+vi.mock('../../utils/dialogPaths', () => ({ getDialogDefaultPath: () => '/fixture-only-copy', rememberDialogSelection: vi.fn() }));
 vi.mock('electron', async () => ({
   app: (await import('../../../../test-stubs/privateUserData')).testApp,
   BrowserWindow: class {
+    static fromWebContents() { return null; }
     static getAllWindows() {
       return browserWindowsMock();
     }
   },
-  dialog: {},
+  dialog: { showSaveDialog: saveCopyDialog },
   net: { fetch: vi.fn() },
 }));
 
@@ -510,6 +515,23 @@ describe('document-sync:replica-append-local fan-out', () => {
  * spends the local upload budget on bytes that can only ever 413, so the
  * ceiling is applied before the durable outbox sees them.
  */
+describe('save-a-copy native label', () => {
+  it('localizes the title while preserving filters and canceled outcome', async () => {
+    handlers.clear();
+    registerDocumentSyncHandlers();
+    saveCopyDialog.mockResolvedValue({ canceled: true });
+    const controller = await createMainI18nController({ get: () => 'ja', subscribe: () => () => undefined }, 'en-US', () => undefined);
+    const payload = { documentType: 'typescript', defaultFileName: 'sample.ts', fileExtensions: ['.ts'], bytes: new Uint8Array([1]) };
+    try {
+      expect(await handlers.get('document-sync:export-to-file')!({ sender: {} }, payload)).toEqual({ success: false, cancelled: true });
+      expect(saveCopyDialog).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'コピーを保存', filters: [{ name: 'typescript', extensions: ['ts'] }] }));
+      await controller.i18n.changeLanguage('en');
+      await handlers.get('document-sync:export-to-file')!({ sender: {} }, payload);
+      expect(saveCopyDialog).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Save a copy' }));
+    } finally { controller.dispose(); }
+  });
+});
+
 describe('document-sync:upload-asset size ceiling', () => {
   const MAX_COLLAB_ASSET_BYTES = 25 * 1024 * 1024;
 

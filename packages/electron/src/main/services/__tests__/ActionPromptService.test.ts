@@ -10,11 +10,19 @@ vi.mock('../../file/WorkspaceEventBus', () => ({
   unsubscribe: vi.fn(),
 }));
 
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs/promises')>();
+  return { ...actual, writeFile: vi.fn(actual.writeFile) };
+});
+
 import { ActionPromptService } from '../ActionPromptService';
+import { createMainI18nController, type MainI18nController } from '../../i18n/mainI18n';
+import { DEFAULT_ACTION_PROMPTS_TEMPLATE, parseActionPromptsFile } from '../ActionPromptParser';
 
 describe('ActionPromptService', () => {
   let workspacePath: string;
   let actionsFile: string;
+  let controller: MainI18nController | undefined;
 
   beforeEach(() => {
     workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), 'action-prompts-svc-'));
@@ -22,6 +30,8 @@ describe('ActionPromptService', () => {
   });
 
   afterEach(() => {
+    controller?.dispose();
+    controller = undefined;
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
@@ -88,6 +98,60 @@ describe('ActionPromptService', () => {
     await service.ensureFileExists();
     const content = await fsp.readFile(actionsFile, 'utf8');
     expect(content).toBe('## Existing\ncustom body\n');
+  });
+
+  it('seeds Japanese actions using the current UI language with commands and launch settings intact', async () => {
+    controller = await createMainI18nController({ get: () => 'en', subscribe: () => () => {} }, 'en-US', () => {});
+    const service = new ActionPromptService(workspacePath);
+    await controller.i18n.changeLanguage('ja');
+    await service.ensureFileExists();
+    const content = await fsp.readFile(actionsFile, 'utf8');
+    expect(content).toContain('# AIアクションプロンプト');
+    expect(content).toContain('## 変更ファイルをレビュー');
+    const actual = parseActionPromptsFile(content);
+    const original = parseActionPromptsFile(DEFAULT_ACTION_PROMPTS_TEMPLATE);
+    expect(actual.diagnostics).toEqual([]);
+    expect(actual.actions).toHaveLength(original.actions.length);
+    expect(new Set(actual.actions.map(action => action.id)).size).toBe(original.actions.length);
+    expect(actual.actions.map(action => action.config)).toEqual(original.actions.map(action => action.config));
+    expect(actual.actions[0].body).toMatch(/^\/review /);
+    expect(actual.actions[4].body).toMatch(/^\/release-notes /);
+    expect(actual.actions[2].config?.model).toBe('claude-code:opus');
+    await controller.i18n.changeLanguage('en');
+    await service.ensureFileExists();
+    expect(await fsp.readFile(actionsFile, 'utf8')).toBe(content);
+  });
+
+  it('keeps the English template byte-for-byte for English UI', async () => {
+    controller = await createMainI18nController({ get: () => 'en', subscribe: () => () => {} }, 'ja-JP', () => {});
+    const service = new ActionPromptService(workspacePath);
+    await service.ensureFileExists();
+    expect(await fsp.readFile(actionsFile)).toEqual(Buffer.from(DEFAULT_ACTION_PROMPTS_TEMPLATE, 'utf8'));
+  });
+
+  it('preserves all existing custom file bytes across language changes', async () => {
+    controller = await createMainI18nController({ get: () => 'ja', subscribe: () => () => {} }, 'ja-JP', () => {});
+    const original = Buffer.from('\uFEFF# Custom\r\n## 独自アクション\r\n/review KEEP USER CONTENT\r\n', 'utf8');
+    await fsp.mkdir(path.dirname(actionsFile), { recursive: true });
+    await fsp.writeFile(actionsFile, original);
+    const service = new ActionPromptService(workspacePath);
+    await service.ensureFileExists();
+    await controller.i18n.changeLanguage('en');
+    await service.ensureFileExists();
+    expect(await fsp.readFile(actionsFile)).toEqual(original);
+  });
+
+  it('never replaces an existing file when another creator wins the create race', async () => {
+    const service = new ActionPromptService(workspacePath);
+    const original = Buffer.from('## Winner\nPreserve this content.\n');
+    await fsp.mkdir(path.dirname(actionsFile), { recursive: true });
+    const originalWrite = (await vi.importActual<typeof import('fs/promises')>('fs/promises')).writeFile;
+    vi.mocked(fsp.writeFile).mockImplementationOnce(async (...args) => {
+      await originalWrite(actionsFile, original);
+      return originalWrite(...args);
+    });
+    await service.ensureFileExists();
+    expect(await fsp.readFile(actionsFile)).toEqual(original);
   });
 
   it('notifies change listeners on workspace fs events', async () => {

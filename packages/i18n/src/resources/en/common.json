@@ -1,6 +1,25 @@
 {
   "cancel": "Cancel",
   "editor_breadcrumb": "Breadcrumb",
+  "file_path_breadcrumb_title": "Go to {{name}} in file tree",
+  "html_export": {
+    "failed": "Failed",
+    "succeeded": "Succeeded",
+    "untitled_session": "Untitled Session",
+    "shared_from": "Shared from",
+    "privacy_warning": "This session export may contain sensitive code, file paths, and credentials. Share with care.",
+    "provider": "Provider:",
+    "messages": "Messages:",
+    "started": "Started:",
+    "last_activity": "Last activity:",
+    "toggle_theme": "Toggle light/dark theme",
+    "theme": "Theme",
+    "copy_transcript": "Copy transcript to clipboard",
+    "copy": "Copy",
+    "copied": "Copied",
+    "exported": "Exported",
+    "download_markdown": "Download as Markdown"
+  },
   "save": "Save",
   "saving": "Saving…",
   "comments": {

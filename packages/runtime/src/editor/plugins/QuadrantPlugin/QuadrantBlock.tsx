@@ -109,7 +109,7 @@ export function QuadrantBlock({ source, nodeKey }: { source: string; nodeKey: No
             data-testid="quadrant-block-edit"
             onClick={() => (editing ? save() : setEditing(true))}
           >
-            {editing ? 'Done' : 'Edit'}
+            {editing ? t('chart_block.done') : t('chart_block.edit')}
           </button>
         ) : null}
       </div>

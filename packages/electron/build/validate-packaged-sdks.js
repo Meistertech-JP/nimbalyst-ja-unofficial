@@ -73,8 +73,8 @@ if (!fs.existsSync(appPath)) {
 }
 
 // Locate app.asar.unpacked across macOS/Win/Linux layouts. Also surface the
-// parent Resources/ directory because worker bundles (worker.bundle.js,
-// sqlite-worker.bundle.js) and their extraResources-shipped native modules
+// parent Resources/ directory because worker bundles (worker.bundle.cjs,
+// sqlite-worker.bundle.cjs) and their extraResources-shipped native modules
 // live there, NOT inside app.asar.unpacked. Each layer must be checked
 // against the right root.
 function findPackagedRoots(rootPath) {
@@ -373,13 +373,13 @@ for (const check of nativeBinaryChecks()) {
 //
 // KEEP IN SYNC with the `external` arrays in
 // packages/electron/build/build-worker.js. The PGLite worker bundle
-// (worker.bundle.js) has no JS externals -- @electric-sql/pglite gets
+// (worker.bundle.cjs) has no JS externals -- @electric-sql/pglite gets
 // inlined by esbuild -- so it appears here only to assert the bundle file
 // itself was shipped.
 const WORKER_BUNDLES = [
   {
     name: 'sqlite-worker',
-    bundle: 'sqlite-worker.bundle.js',
+    bundle: 'sqlite-worker.bundle.cjs',
     externals: ['better-sqlite3'],
     nativeBinaries: [
       // v13 loads an N-API prebuild directly; keep the legacy build path as a
@@ -403,7 +403,7 @@ const WORKER_BUNDLES = [
     // missing bundle or missing binding here silently degrades backup
     // verification back to blocking the query loop.
     name: 'sqlite-verify-worker',
-    bundle: 'sqlite-verify-worker.bundle.js',
+    bundle: 'sqlite-verify-worker.bundle.cjs',
     externals: ['better-sqlite3'],
     nativeBinaries: [
       {
@@ -424,7 +424,7 @@ const WORKER_BUNDLES = [
     // multi-GB main-thread stall the worker exists to avoid -- and it degrades
     // silently, so it has to be validated in the packaged output.
     name: 'sqlite-recovery-verify-worker',
-    bundle: 'sqlite-recovery-verify-worker.bundle.js',
+    bundle: 'sqlite-recovery-verify-worker.bundle.cjs',
     externals: ['better-sqlite3'],
     nativeBinaries: [
       {
@@ -440,7 +440,25 @@ const WORKER_BUNDLES = [
   },
   {
     name: 'pglite-worker',
-    bundle: 'worker.bundle.js',
+    bundle: 'worker.bundle.cjs',
+    externals: [],
+    nativeBinaries: [],
+  },
+  {
+    name: 'history-diff-worker',
+    bundle: 'history-diff-worker.bundle.cjs',
+    externals: [],
+    nativeBinaries: [],
+  },
+  {
+    name: 'project-manifest-worker',
+    bundle: 'project-manifest-worker.bundle.cjs',
+    externals: [],
+    nativeBinaries: [],
+  },
+  {
+    name: 'gif-encode-worker',
+    bundle: 'gif-encode-worker.bundle.cjs',
     externals: [],
     nativeBinaries: [],
   },

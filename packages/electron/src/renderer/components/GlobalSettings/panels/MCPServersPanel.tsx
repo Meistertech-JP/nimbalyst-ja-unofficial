@@ -12,6 +12,7 @@ import {
   MCPOAuthTriggerResult,
 } from './mcpOAuthAnalytics';
 import { withStaticClientId } from './mcpStaticClientId';
+import { localizeMcpTestProgress } from './mcpTestProgressText';
 import { requestConfirmation } from '../../../dialogs/requestConfirmation';
 import { errorNotificationService } from '../../../services/ErrorNotificationService';
 
@@ -673,6 +674,10 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
   const [formOAuth, setFormOAuth] = useState<MCPServerConfig['oauth']>();
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState<string>('');
+  const { t: tSettings } = useTranslation('settings');
+  const displayedTestMessage = testStatus === 'testing'
+    ? localizeMcpTestProgress(testMessage, key => tSettings(key))
+    : testMessage;
   const [testHelpUrl, setTestHelpUrl] = useState<string | null>(null);
   const [canRetryAfterCacheClear, setCanRetryAfterCacheClear] = useState(false);
   // Set when authorization failed because the provider refuses dynamic client
@@ -1967,7 +1972,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
             </div>
             {!isNativeOAuthConfig && testStatus === 'error' && testMessage && (
               <div className="mcp-oauth-error mt-3 p-3 bg-[color-mix(in_srgb,var(--nim-error)_10%,transparent)] border border-[color-mix(in_srgb,var(--nim-error)_30%,transparent)] rounded-md text-[var(--nim-error)] text-[0.8125rem] leading-snug" role="alert" aria-live="assertive">
-                {testMessage}
+                {displayedTestMessage}
                 {canRetryAfterCacheClear && (
                   <button
                     type="button"
@@ -2072,7 +2077,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   aria-live="polite"
                 >
                   {testStatus === 'testing' && <span className="mcp-test-spinner inline-block w-3.5 h-3.5 border-2 border-[rgba(52,152,219,0.3)] border-t-[#3498db] rounded-full animate-spin shrink-0" aria-hidden="true" />}
-                  {testMessage}
+                  {displayedTestMessage}
                   {testHelpUrl && testStatus === 'error' && (
                     <button
                       type="button"
@@ -2216,7 +2221,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   aria-live="polite"
                 >
                   {testStatus === 'testing' && <span className="mcp-test-spinner inline-block w-3.5 h-3.5 border-2 border-[rgba(52,152,219,0.3)] border-t-[#3498db] rounded-full animate-spin shrink-0" aria-hidden="true" />}
-                  {testMessage}
+                  {displayedTestMessage}
                   {testHelpUrl && testStatus === 'error' && (
                     <button
                       type="button"
@@ -2292,7 +2297,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                 aria-live="polite"
               >
                 {testStatus === 'testing' && <span className="mcp-test-spinner inline-block w-3.5 h-3.5 border-2 border-[rgba(52,152,219,0.3)] border-t-[#3498db] rounded-full animate-spin shrink-0" aria-hidden="true" />}
-                {testMessage}
+                {displayedTestMessage}
                 {testHelpUrl && testStatus === 'error' && (
                   <button
                     type="button"

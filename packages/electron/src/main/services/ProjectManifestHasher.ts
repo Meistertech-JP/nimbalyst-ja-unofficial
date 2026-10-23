@@ -19,9 +19,9 @@ const MANIFEST_HASH_TIMEOUT_MS = 120_000;
 
 function resolveProjectManifestWorkerPath(): string {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'project-manifest-worker.bundle.js');
+    return path.join(process.resourcesPath, 'project-manifest-worker.bundle.cjs');
   }
-  return path.join(getPackageRoot(), 'out', 'project-manifest-worker.bundle.js');
+  return path.join(getPackageRoot(), 'out', 'project-manifest-worker.bundle.cjs');
 }
 
 /** The pre-worker behaviour, kept as the fallback path. */

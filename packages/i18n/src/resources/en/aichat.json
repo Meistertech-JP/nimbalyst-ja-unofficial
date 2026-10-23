@@ -1021,6 +1021,26 @@
     "turn_off": "Turn off",
     "auto_resume_action": "Resume automatically when the limit resets"
   },
+  "bundled_command_descriptions": {
+    "animation_animate": "Create an animated explainer diagram",
+    "automations_automation": "Create or manage an automation",
+    "crew_hire": "Design and hire a new crew member by describing the job",
+    "datamodellm_datamodel": "Create or modify Prisma-based data models",
+    "extension_dev_kit_new_extension": "Create a new Nimbalyst extension project from a starter scaffold",
+    "feedback_bug_report": "Guide the user through filing a bug report on GitHub",
+    "feedback_feature_request": "Guide the user through filing a feature request on GitHub",
+    "ios_dev_xcodegen": "Generate and manage Xcode projects with XcodeGen",
+    "ios_dev_ios_simulator": "Launch and manage iOS simulators",
+    "ios_dev_ios_build": "Build and deploy iOS apps",
+    "ios_dev_fastlane": "Automate iOS builds, code signing, and TestFlight deployments",
+    "mockuplm_mockup": "Create visual UX mockups",
+    "planning_design": "Create a structured plan document",
+    "planning_implement": "Execute a plan with progress tracking",
+    "planning_track": "Track bugs, tasks, ideas, and other items",
+    "planning_launch_new_session": "Spin off a sibling AI session to keep working in parallel",
+    "planning_session_cleanup": "Tidy your Sessions board -- fix phases, mark work complete, flag old sessions to archive",
+    "planning_nimbalyst_coach": "Review this project and your recent sessions, then suggest extensions, features, and agent-instruction changes"
+  },
   "mcp_lockdown": {
     "message": "This machine has an enterprise Claude Code MCP policy, so Nimbalyst's own tools are unavailable in this session — no interactive question widgets, session naming, tracker tools, or extension tools. Claude Code itself runs normally on your organization's servers.",
     "dismiss": "Dismiss"

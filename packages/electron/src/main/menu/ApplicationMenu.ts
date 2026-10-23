@@ -30,7 +30,7 @@ import { windowStates, createWindow, findWindowByFilePath, getWindowId } from '.
 import { createAboutWindow } from '../window/AboutWindow';
 import { installWindowListMenuRefresh } from './windowListMenuRefresh';
 import { createWorkspaceManagerWindow } from '../window/WorkspaceManagerWindow.ts';
-import { launchTutorialFromMenu } from './helpMenuActions';
+import { launchTutorialFromMenu, showMissingRecentProjectError } from './helpMenuActions';
 import {
     createTeamManagementWindow,
     isTeamManagementWindowFocused,
@@ -223,7 +223,7 @@ async function createRecentSubmenu(): Promise<any[]> {
                         const items = getRecentItems('workspaces').filter(item => item.path !== workspace.path);
                         store.set('recent.workspaces', items);
                         updateApplicationMenu();
-                        dialog.showErrorBox('Project Not Found', `The project "${workspace.name}" could not be found at:\n${workspace.path}`);
+                        showMissingRecentProjectError(workspace.name, workspace.path);
                     }
                 }
             });

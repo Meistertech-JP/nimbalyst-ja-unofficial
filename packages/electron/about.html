@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Nimbalyst</title>
+    <title>About Nimbalyst — Unofficial Japanese Edition</title>
     <style>
       body {
         margin: 0;
@@ -12,7 +12,7 @@
         background: #f5f5f5;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         height: 100vh;
         user-select: none;
         -webkit-user-select: none;
@@ -25,16 +25,17 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         text-align: center;
-        padding: 40px;
+        padding: 24px;
         box-sizing: border-box;
+        overflow-y: auto;
       }
 
       .about-logo {
-        width: 200px;
+        width: 160px;
         height: auto;
-        margin-bottom: 25px;
+        margin-bottom: 16px;
       }
 
       .about-logo img {
@@ -46,7 +47,7 @@
       }
 
       .about-title {
-        font-size: 32px;
+        font-size: 22px;
         font-weight: 600;
         margin: 0 0 10px 0;
         color: #1a1a1a;
@@ -55,7 +56,7 @@
       .about-version {
         font-size: 18px;
         color: #666;
-        margin: 0 0 35px 0;
+        margin: 0 0 16px 0;
       }
 
       .about-description {
@@ -63,21 +64,32 @@
         line-height: 1.6;
         color: #444;
         max-width: 450px;
-        margin: 0 auto 35px;
+        margin: 0 auto 16px;
+      }
+
+      .about-edition {
+        margin: 0 0 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: inherit;
+      }
+
+      .about-edition p {
+        margin: 4px 0;
       }
 
       .about-features {
         text-align: left;
-        margin: 0 auto 30px;
+        margin: 0 auto 16px;
         max-width: 500px;
       }
 
       .about-features ul {
         margin: 0;
         padding: 0 0 0 20px;
-        font-size: 15px;
+        font-size: 14px;
         color: #555;
-        line-height: 1.8;
+        line-height: 1.6;
       }
 
       .about-footer {
@@ -100,8 +112,8 @@
       }
 
       .support-id-container {
-        margin-top: 20px;
-        padding-top: 20px;
+        margin-top: 12px;
+        padding-top: 12px;
         border-top: 1px solid #e0e0e0;
         font-size: 12px;
         color: #666;
@@ -153,62 +165,7 @@
         opacity: 1;
       }
 
-      /* Dark theme support */
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: #1a1a1a;
-        }
-
-        .about-container {
-          background: #2a2a2a;
-          color: #e0e0e0;
-        }
-
-        .about-title {
-          color: #f0f0f0;
-        }
-
-        .about-version {
-          color: #aaa;
-        }
-
-        .about-description {
-          color: #ccc;
-        }
-
-        .about-features ul {
-          color: #bbb;
-        }
-
-        .about-footer {
-          color: #999;
-        }
-
-        .about-footer a {
-          color: #66b3ff;
-        }
-
-        .support-id-container {
-          border-top-color: #444;
-          color: #aaa;
-        }
-
-        .support-id-value {
-          background: #333;
-          border-color: #555;
-          color: #e0e0e0;
-        }
-
-        .support-id-value:hover {
-          background: #3a3a3a;
-        }
-
-        .support-id-value:active {
-          background: #444;
-        }
-      }
-
-      /* Manual theme classes */
+      /* The app's resolved theme wins over the OS preference. */
       body.dark-theme {
         background: #1a1a1a;
       }
@@ -268,29 +225,35 @@
       <div class="about-logo">
         <img src="nimbalyst-logo.png" alt="Nimbalyst">
       </div>
+      <h1 class="about-title" id="about-product">Nimbalyst — Unofficial Japanese Edition</h1>
       <p class="about-version" id="about-version">Version</p>
+      <div class="about-edition">
+        <p id="about-base">Based on official Nimbalyst 0.81.7.</p>
+        <p id="about-disclaimer">This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.</p>
+      </div>
 
-      <p class="about-description">
+      <p class="about-description" id="about-description">
         Nimbalyst is the visual workspace for building with Codex and Claude Code
       </p>
 
       <div class="about-features">
         <ul>
-          <li>Agentic WYSIWYG visual editors for markdown, mockups, excalidraw, mermaid, data models, csv and code. Extensions.</li>
-          <li>Parallel session management and kanban to understand session state, search and resume sessions, and link sessions to files and files to sessions</li>
-          <li>Item tracking and kanban to manage plans, bugs, and tasks with your agent</li>
-          <li>Open storage of content and status in plain files on disk and git.</li>
+          <li id="feature-editors">Agentic WYSIWYG visual editors for markdown, mockups, excalidraw, mermaid, data models, csv and code. Extensions.</li>
+          <li id="feature-sessions">Parallel session management and kanban to understand session state, search and resume sessions, and link sessions to files and files to sessions</li>
+          <li id="feature-tracking">Item tracking and kanban to manage plans, bugs, and tasks with your agent</li>
+          <li id="feature-storage">Open storage of content and status in plain files on disk and git.</li>
         </ul>
       </div>
 
       <div class="about-footer">
-        <p>Built with ❤️ by <a href="https://nimbalyst.com" id="nimbalyst-link">Nimbalyst</a></p>
+        <p><span id="original-credit">Original application by</span> <a href="https://nimbalyst.com" id="nimbalyst-link">Nimbalyst</a></p>
         <p class="about-copyright">© 2025-2026  Nimbalyst</p>
+        <p id="about-license">MIT License</p>
         <p><a href="#" id="third-party-notices-link">Third-Party Notices</a></p>
 
         <div class="support-id-container">
-          <div class="support-id-label">Your Nimbalyst Support ID:</div>
-          <div class="support-id-value" id="support-id" title="Click to copy">
+          <div class="support-id-label" id="support-id-label">Your Nimbalyst Support ID:</div>
+          <div class="support-id-value" id="support-id" role="button" tabindex="0" aria-label="Copy Support ID" title="Click to copy">
             <span id="support-id-text">Loading...</span>
             <svg class="copy-icon" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z"/>
@@ -303,37 +266,77 @@
     </div>
 
     <script>
-      // Apply theme from main window
-      window.electronAPI?.onThemeChange((theme) => {
-        const body = document.body;
-        if (body.dataset.theme === theme) return;
-        body.dataset.theme = theme;
-        body.classList.remove('dark-theme', 'light-theme');
-        // crystal-dark uses dark-theme styles
-        if (theme === 'dark' || theme === 'crystal-dark') {
-          body.classList.add('dark-theme');
-        } else if (theme === 'light') {
-          body.classList.add('light-theme');
-        }
+      // Only trusted Main-owned local page text is supplied; never insert HTML.
+      let model = {};
+      try { model = JSON.parse(new URLSearchParams(location.search).get('about') || '{}'); } catch {}
+      let locale = model.locale === 'ja' ? 'ja' : 'en';
+      let copy = model.locales?.[locale] || {};
+      let version = null;
+      let supportId = null;
+      let supportLoaded = false;
+      let settingsRevision = 0;
+      const subscriptions = [];
+      function setText(id, key) {
+        const element = document.getElementById(id);
+        if (element && typeof copy[key] === 'string') element.textContent = copy[key];
+      }
+      function renderVersion() {
+        const element = document.getElementById('about-version');
+        if (element) element.textContent = (copy.version_label || 'Version') + (version ? ` ${version}` : '');
+      }
+      function renderSupport() {
+        const element = document.getElementById('support-id-text');
+        if (element) element.textContent = supportId || (supportLoaded ? copy.unavailable || 'Not available' : copy.loading || 'Loading…');
+        document.getElementById('support-id')?.setAttribute('aria-disabled', String(!supportId));
+      }
+      function applyLanguage(preference) {
+        locale = preference === 'ja' || preference === 'en' ? preference : model.systemLocale === 'ja' ? 'ja' : 'en';
+        copy = model.locales?.[locale] || model.locales?.en || {};
+        document.documentElement.lang = locale;
+        if (typeof copy.title === 'string') document.title = copy.title;
+        for (const [id, key] of Object.entries({
+          'about-product': 'product', 'about-base': 'base_version', 'about-disclaimer': 'disclaimer',
+          'about-description': 'description', 'feature-editors': 'feature_editors', 'feature-sessions': 'feature_sessions',
+          'feature-tracking': 'feature_tracking', 'feature-storage': 'feature_storage', 'original-credit': 'original_credit',
+          'about-license': 'license', 'third-party-notices-link': 'third_party_notices', 'support-id-label': 'support_id_label',
+          'copy-feedback': 'copied',
+        })) setText(id, key);
+        const button = document.getElementById('support-id');
+        if (typeof copy.copy_title === 'string') button?.setAttribute('title', copy.copy_title);
+        if (typeof copy.copy_label === 'string') button?.setAttribute('aria-label', copy.copy_label);
+        renderVersion(); renderSupport();
+      }
+      applyLanguage(locale);
+      // Existing app settings broadcast updates already-open standalone windows.
+      const unsubscribeSettings = window.electronAPI?.onSettingsChanged?.(({ key, value }) => {
+        if (key !== 'app.uiLanguage') return;
+        settingsRevision++;
+        applyLanguage(value);
       });
+      if (typeof unsubscribeSettings === 'function') subscriptions.push(unsubscribeSettings);
+      const initialSettingsRevision = settingsRevision;
+      window.electronAPI?.settingsGetAll?.().then(settings => {
+        if (initialSettingsRevision === settingsRevision && settings) applyLanguage(settings['app.uiLanguage']);
+      }).catch(() => {});
 
-      // Request initial theme
-      window.electronAPI?.getTheme?.().then(theme => {
-        // crystal-dark uses dark-theme styles
-        if (theme === 'dark' || theme === 'crystal-dark') {
-          document.body.classList.add('dark-theme');
+      function applyTheme(fallback) {
+        const theme = window.electronAPI?.getResolvedThemeSync?.() || fallback || 'light';
+        for (const root of [document.documentElement, document.body]) {
+          root.dataset.theme = theme;
+          root.classList.remove('dark-theme', 'light-theme');
+          root.classList.add(theme === 'dark' || theme === 'crystal-dark' ? 'dark-theme' : 'light-theme');
         }
-        document.body.dataset.theme = theme;
-      });
+      }
+      applyTheme();
+      const unsubscribeTheme = window.electronAPI?.onThemeChange?.(applyTheme);
+      if (typeof unsubscribeTheme === 'function') subscriptions.push(unsubscribeTheme);
+      window.addEventListener('beforeunload', () => subscriptions.forEach(unsubscribe => unsubscribe()), { once: true });
 
       // Populate version from main process
       (async () => {
         try {
-          const version = await window.electronAPI?.getAppVersion?.();
-          if (version) {
-            const el = document.getElementById('about-version');
-            if (el) el.textContent = `Version ${version}`;
-          }
+          version = await window.electronAPI?.getAppVersion?.() || null;
+          renderVersion();
         } catch {}
       })();
 
@@ -354,31 +357,23 @@
       // Fetch and display Support ID
       (async () => {
         try {
-          const distinctId = await window.electronAPI?.analytics?.getDistinctId?.();
-          const supportIdText = document.getElementById('support-id-text');
-          if (supportIdText) {
-            supportIdText.textContent = distinctId || 'Not available';
-          }
+          supportId = await window.electronAPI?.analytics?.getDistinctId?.() || null;
         } catch (error) {
           console.error('Failed to fetch support ID:', error);
-          const supportIdText = document.getElementById('support-id-text');
-          if (supportIdText) {
-            supportIdText.textContent = 'Not available';
-          }
+          supportId = null;
         }
+        supportLoaded = true;
+        renderSupport();
       })();
 
       // Handle copy to clipboard
-      document.getElementById('support-id')?.addEventListener('click', async () => {
-        const supportIdText = document.getElementById('support-id-text');
+      async function copySupportId() {
         const copyFeedback = document.getElementById('copy-feedback');
 
-        if (!supportIdText || supportIdText.textContent === 'Loading...' || supportIdText.textContent === 'Not available') {
-          return;
-        }
+        if (!supportId) return;
 
         try {
-          await navigator.clipboard.writeText(supportIdText.textContent);
+          await navigator.clipboard.writeText(supportId);
 
           // Show feedback
           if (copyFeedback) {
@@ -390,6 +385,12 @@
         } catch (error) {
           console.error('Failed to copy to clipboard:', error);
         }
+      }
+      document.getElementById('support-id')?.addEventListener('click', copySupportId);
+      document.getElementById('support-id')?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        void copySupportId();
       });
 
     </script>

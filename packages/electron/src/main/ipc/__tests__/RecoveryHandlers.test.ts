@@ -83,7 +83,7 @@ vi.mock('../../database/recovery', () => ({
   }),
   getUserDataPath: () => process.env.NIMBALYST_USER_DATA_PATH!,
   liveDatabasePath: (u: string) => path.join(u, 'sqlite-db', 'nimbalyst.sqlite'),
-  pgliteWorkerPath: () => '/nonexistent/worker.bundle.js',
+  pgliteWorkerPath: () => '/nonexistent/worker.bundle.cjs',
   sizeBucketFor: () => 'empty',
   timestampFromArtifactName: () => null,
 }));

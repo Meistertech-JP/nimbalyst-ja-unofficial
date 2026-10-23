@@ -97,7 +97,7 @@ export function CollaborativeCommentsPanel({
   activeThreadId,
   capabilities,
   getMembers,
-  title = 'Comments',
+  title,
   emptyMessage,
   headerExtra,
   onClose,
@@ -110,6 +110,7 @@ export function CollaborativeCommentsPanel({
   ...actions
 }: CollaborativeCommentsPanelProps): JSX.Element {
   const { t } = useTranslation('editor');
+  const panelTitle = title ?? t('comments.title');
   const titleId = useId();
   const listRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement | null>());
@@ -237,7 +238,7 @@ export function CollaborativeCommentsPanel({
           chat_bubble
         </span>
         <span className="nim-comments-panel-title" id={titleId}>
-          {title}
+          {panelTitle}
         </span>
         <CommentCountBadge count={threads.length} />
         {headerExtra}
@@ -291,38 +292,45 @@ export function CollaborativeCommentsPanel({
         {ordered.length === 0 ? (
           <div className="nim-comments-empty">{emptyText}</div>
         ) : (
-          groups.map((group) => (
-            <div
-              key={group.key}
-              className={`nim-comments-group nim-comments-group-${group.key}`}
-              role="list"
-              aria-label={group.heading ? `${group.heading} threads` : title}
-            >
-              {group.heading && (
-                <div className="nim-comments-group-heading" aria-hidden="true">
-                  {group.heading}
-                </div>
-              )}
-              {group.views.map((view) => (
-                <CommentThreadCard
-                  key={view.thread.id}
-                  thread={view.thread}
-                  anchorState={view.anchorState}
-                  anchorLabel={view.anchorLabel}
-                  isActive={view.thread.id === activeThreadId}
-                  canComment={canComment}
-                  getMembers={getMembers}
-                  tabIndex={view.thread.id === rovingThreadId ? 0 : -1}
-                  autoFocusComposer={view.thread.id === autoFocusThreadId}
-                  cardRef={(element) => {
-                    if (element) cardRefs.current.set(view.thread.id, element);
-                    else cardRefs.current.delete(view.thread.id);
-                  }}
-                  {...actions}
-                />
-              ))}
-            </div>
-          ))
+          groups.map((group) => {
+            const heading = group.key === 'detached'
+              ? t('comments.detached')
+              : group.key === 'resolved'
+                ? t('comments.resolved')
+                : null;
+            return (
+              <div
+                key={group.key}
+                className={`nim-comments-group nim-comments-group-${group.key}`}
+                role="list"
+                aria-label={heading ? t('comments.group_threads', { heading }) : panelTitle}
+              >
+                {heading && (
+                  <div className="nim-comments-group-heading" aria-hidden="true">
+                    {heading}
+                  </div>
+                )}
+                {group.views.map((view) => (
+                  <CommentThreadCard
+                    key={view.thread.id}
+                    thread={view.thread}
+                    anchorState={view.anchorState}
+                    anchorLabel={view.anchorLabel}
+                    isActive={view.thread.id === activeThreadId}
+                    canComment={canComment}
+                    getMembers={getMembers}
+                    tabIndex={view.thread.id === rovingThreadId ? 0 : -1}
+                    autoFocusComposer={view.thread.id === autoFocusThreadId}
+                    cardRef={(element) => {
+                      if (element) cardRefs.current.set(view.thread.id, element);
+                      else cardRefs.current.delete(view.thread.id);
+                    }}
+                    {...actions}
+                  />
+                ))}
+              </div>
+            );
+          })
         )}
       </div>
     </section>

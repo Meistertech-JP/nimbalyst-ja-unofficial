@@ -29,6 +29,8 @@ const KNOWN_TRANSCRIPT_PROVIDERS = new Set([
 ]);
 
 export interface TutorialSessionFixture {
+  /** Stable placeholder identity, independent of the translated display title. */
+  key?: string;
   session: {
     provider: string;
     model?: string;
@@ -53,6 +55,7 @@ export interface SeededTutorialSession {
 
 export interface TutorialSessionSeedOptions {
   trackerReferences?: SeededTutorialTracker[];
+  templateDirectory?: string;
 }
 
 export interface TutorialSessionSeederDependencies {
@@ -86,6 +89,9 @@ function validateFixture(
   }
 
   const fixture = value as Partial<TutorialSessionFixture>;
+  if (fixture.key !== undefined && (typeof fixture.key !== 'string' || !/^[A-Z0-9_]+$/.test(fixture.key))) {
+    throw new Error(`Tutorial session fixture has an invalid stable key: ${fixturePath}`);
+  }
   const session = fixture.session;
   if (
     !session ||
@@ -252,6 +258,23 @@ function replaceMetadataPlaceholders(
   return value;
 }
 
+function replaceMessagePlaceholders(
+  content: string,
+  workspacePath: string,
+  sessionIdsByKey: Map<string, string>,
+  trackersByKey: Map<string, SeededTutorialTracker>
+): string {
+  // Raw transcript fixtures are JSON. Rewrite values before serializing so
+  // Windows backslashes (or quotes in a project path) cannot corrupt the wire payload.
+  let payload: unknown;
+  try {
+    payload = JSON.parse(content);
+  } catch {
+    return replaceFixturePlaceholders(content, workspacePath, sessionIdsByKey, trackersByKey);
+  }
+  return JSON.stringify(replaceMetadataPlaceholders(payload, workspacePath, sessionIdsByKey, trackersByKey));
+}
+
 export async function seedTutorialSessions(
   workspacePath: string,
   options: TutorialSessionSeedOptions = {},
@@ -260,7 +283,9 @@ export async function seedTutorialSessions(
   const deps = { ...defaultDependencies, ...dependencies };
   const absoluteWorkspacePath = path.resolve(workspacePath);
   const fixtures = await loadTutorialSessionFixtures(
-    deps.getFixtureDirectory(absoluteWorkspacePath)
+    options.templateDirectory
+      ? path.join(options.templateDirectory, "sessions")
+      : deps.getFixtureDirectory(absoluteWorkspacePath)
   );
   const sessionIdsByKey = new Map<string, string>();
   const trackersByKey = new Map(
@@ -268,7 +293,7 @@ export async function seedTutorialSessions(
   );
 
   for (const fixture of fixtures) {
-    const key = fixtureKey(fixture.session.title);
+    const key = fixture.key ?? fixtureKey(fixture.session.title);
     if (sessionIdsByKey.has(key)) {
       throw new Error(
         `Duplicate tutorial session fixture title: ${fixture.session.title}`
@@ -285,7 +310,7 @@ export async function seedTutorialSessions(
 
   try {
     for (const [fixtureIndex, fixture] of fixtures.entries()) {
-      const sessionId = sessionIdsByKey.get(fixtureKey(fixture.session.title))!;
+      const sessionId = sessionIdsByKey.get(fixture.key ?? fixtureKey(fixture.session.title))!;
       const fixtureMetadata = replaceMetadataPlaceholders(
         fixture.session.metadata ?? {},
         absoluteWorkspacePath,
@@ -321,7 +346,7 @@ export async function seedTutorialSessions(
           sessionId,
           direction: message.direction,
           source: message.source,
-          content: replaceFixturePlaceholders(
+          content: replaceMessagePlaceholders(
             message.content,
             absoluteWorkspacePath,
             sessionIdsByKey,

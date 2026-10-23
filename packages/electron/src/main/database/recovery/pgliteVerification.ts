@@ -83,7 +83,7 @@ export function toRecoveryVerification(data: WorkerVerifyPayload): RecoveryVerif
 }
 
 /**
- * `workerPath` is the PGLite worker bundle — `worker.bundle.js`, resolved by
+ * `workerPath` is the PGLite worker bundle — `worker.bundle.cjs`, resolved by
  * the caller because only it knows whether the app is packaged.
  *
  * Fails closed. If the bundle is missing or the thread cannot start, this

@@ -12,6 +12,15 @@
 import { marked, type MarkedOptions, type Tokens } from 'marked';
 import hljs from 'highlight.js';
 import type { TranscriptViewMessage, SessionData } from '@nimbalyst/runtime/ai/server/types';
+import { getMainI18n } from '../i18n/mainI18n';
+
+function exportText(key: string, fallback: string): string {
+  return String(getMainI18n()?.t(key, { ns: 'common', defaultValue: fallback }) ?? fallback);
+}
+
+function exportLocale(): 'en' | 'ja' {
+  return getMainI18n()?.resolvedLanguage?.toLowerCase().startsWith('ja') ? 'ja' : 'en';
+}
 
 // ---------------------------------------------------------------------------
 // Markdown setup – configure once
@@ -150,7 +159,7 @@ function toolStatus(message: TranscriptViewMessage): { didFail: boolean; label: 
     (message.isError && message.text) ||
     (resultObj && typeof resultObj.error === 'string' ? (resultObj.error as string) : undefined);
   const didFail = !!message.isError || !!message.toolCall?.isError || explicitSuccess === false || !!derivedError;
-  return { didFail, label: didFail ? 'Failed' : 'Succeeded' };
+  return { didFail, label: exportText(didFail ? 'html_export.failed' : 'html_export.succeeded', didFail ? 'Failed' : 'Succeeded') };
 }
 
 function truncateForExport(text: string, maxLength: number = 100_000): string {
@@ -371,16 +380,21 @@ function renderMessage(msg: TranscriptViewMessage, workspacePath: string): strin
 // ---------------------------------------------------------------------------
 
 function buildHtmlDocument(session: SessionData, messagesHtml: string): string {
-  const title = session.title || 'Untitled Session';
+  const title = session.title || exportText('html_export.untitled_session', 'Untitled Session');
   const provider = session.provider || 'unknown';
   const model = session.model || '';
   const messageCount = session.messages?.length ?? 0;
   const createdStr = session.createdAt ? formatTimestamp(session.createdAt) : '';
   const updatedStr = session.updatedAt ? formatTimestamp(session.updatedAt) : '';
   const exportDate = formatTimestamp(Date.now());
+  const locale = exportLocale();
+  const sharedFrom = exportText('html_export.shared_from', 'Shared from');
+  const toggleTheme = exportText('html_export.toggle_theme', 'Toggle light/dark theme');
+  const copyTranscript = exportText('html_export.copy_transcript', 'Copy transcript to clipboard');
+  const copied = exportText('html_export.copied', 'Copied');
 
   return `<!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="${locale}" class="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -393,30 +407,30 @@ ${getStylesheet()}
   <div class="nimbalyst-brand-bar">
     <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="nimbalyst-brand-link">
       ${getNimbalystIconSvg()}
-      <span class="nimbalyst-brand-text">Shared from <strong>Nimbalyst</strong></span>
+      <span class="nimbalyst-brand-text">${sharedFrom} <strong>Nimbalyst</strong></span>
     </a>
   </div>
 
   <div class="privacy-banner">
-    This session export may contain sensitive code, file paths, and credentials. Share with care.
+    ${exportText('html_export.privacy_warning', 'This session export may contain sensitive code, file paths, and credentials. Share with care.')}
   </div>
 
   <header class="session-header">
     <h1>${escapeHtml(title)}</h1>
     <div class="session-meta">
-      <span class="meta-item"><strong>Provider:</strong> ${escapeHtml(provider)}${model ? ` / ${escapeHtml(model)}` : ''}</span>
-      <span class="meta-item"><strong>Messages:</strong> ${messageCount}</span>
-      ${createdStr ? `<span class="meta-item"><strong>Started:</strong> ${createdStr}</span>` : ''}
-      ${updatedStr ? `<span class="meta-item"><strong>Last activity:</strong> ${updatedStr}</span>` : ''}
+      <span class="meta-item"><strong>${exportText('html_export.provider', 'Provider:')}</strong> ${escapeHtml(provider)}${model ? ` / ${escapeHtml(model)}` : ''}</span>
+      <span class="meta-item"><strong>${exportText('html_export.messages', 'Messages:')}</strong> ${messageCount}</span>
+      ${createdStr ? `<span class="meta-item"><strong>${exportText('html_export.started', 'Started:')}</strong> ${createdStr}</span>` : ''}
+      ${updatedStr ? `<span class="meta-item"><strong>${exportText('html_export.last_activity', 'Last activity:')}</strong> ${updatedStr}</span>` : ''}
     </div>
     <div class="header-actions">
-      <button onclick="toggleTheme()" class="theme-toggle" title="Toggle light/dark theme">
+      <button onclick="toggleTheme()" class="theme-toggle" title="${toggleTheme}">
         <span class="theme-icon-dark">&#9789;</span>
         <span class="theme-icon-light">&#9788;</span>
-        Theme
+        ${exportText('html_export.theme', 'Theme')}
       </button>
-      <button onclick="copyTranscript()" class="copy-btn" title="Copy transcript to clipboard">
-        &#128203; Copy
+      <button onclick="copyTranscript()" class="copy-btn" title="${copyTranscript}" data-copied-label="${copied}">
+        &#128203; ${exportText('html_export.copy', 'Copy')}
       </button>
     </div>
   </header>
@@ -429,9 +443,9 @@ ${getStylesheet()}
     <div class="nimbalyst-brand-bar footer-brand">
       <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="nimbalyst-brand-link">
         ${getNimbalystIconSvg()}
-        <span class="nimbalyst-brand-text">Shared from <strong>Nimbalyst</strong></span>
+        <span class="nimbalyst-brand-text">${sharedFrom} <strong>Nimbalyst</strong></span>
       </a>
-      <span class="footer-date">Exported ${exportDate}</span>
+      <span class="footer-date">${exportText('html_export.exported', 'Exported')} ${exportDate}</span>
     </div>
   </footer>
 
@@ -1088,7 +1102,7 @@ function copyTranscript() {
     if (btn) {
       btn.classList.add('copied');
       var orig = btn.innerHTML;
-      btn.innerHTML = '\\u2713 Copied';
+      btn.innerHTML = '\\u2713 ' + btn.getAttribute('data-copied-label');
       setTimeout(function() {
         btn.innerHTML = orig;
         btn.classList.remove('copied');

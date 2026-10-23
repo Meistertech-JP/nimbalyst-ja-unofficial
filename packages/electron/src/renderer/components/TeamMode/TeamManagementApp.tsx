@@ -72,6 +72,7 @@ function readTarget(): WindowTarget {
 
 export function TeamManagementApp() {
   const { t } = useTranslation('common');
+  const { t: tMenu } = useTranslation('menu');
   const setSelectedOrgId = useSetAtom(selectedOrgIdAtom);
   const setOrgWindowRoute = useSetAtom(
     orgWindowRouteAtomFamily(ORG_WINDOW_SURFACE_ID),
@@ -140,8 +141,8 @@ export function TeamManagementApp() {
   ]);
 
   useEffect(() => {
-    window.electronAPI?.setTitle?.('Organization Messages - Nimbalyst');
-  }, []);
+    window.electronAPI?.setTitle?.(`${tMenu('organization_messages')} - Nimbalyst`);
+  }, [tMenu]);
 
   // Accepting an invite or finishing the creation wizard queues "#general" for
   // this window rather than dead-ending the user in a settings list.

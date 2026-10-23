@@ -15,8 +15,26 @@ const fs = require('fs');
 const pgliteCjsEntry = require.resolve('@electric-sql/pglite');
 const pgliteDistDir = path.dirname(pgliteCjsEntry);
 
+function removeLegacyWorkerBundles(outDir) {
+  // Exact generated filenames only: never recursively clean the shared out/
+  // tree (Main/preload/renderer outputs live there too).
+  for (const basename of [
+    'worker', 'sqlite-worker', 'sqlite-verify-worker',
+    'sqlite-recovery-verify-worker', 'history-diff-worker',
+    'gif-encode-worker', 'project-manifest-worker',
+  ]) {
+    for (const suffix of ['.bundle.js', '.bundle.js.map']) {
+      const legacy = path.join(outDir, basename + suffix);
+      if (fs.existsSync(legacy)) fs.unlinkSync(legacy);
+    }
+  }
+}
+
 async function buildWorker() {
   const outDir = path.join(__dirname, '../out');
+  // Workers also ship outside app.asar. An enclosing installation directory
+  // may declare type:module, so every CommonJS worker needs an explicit .cjs
+  // extension rather than inheriting that unrelated package scope.
 
   // Ensure output directory exists
   if (!fs.existsSync(outDir)) {
@@ -29,7 +47,7 @@ async function buildWorker() {
       bundle: true,
       platform: 'node',
       target: 'node18',
-      outfile: path.join(outDir, 'worker.bundle.js'),
+      outfile: path.join(outDir, 'worker.bundle.cjs'),
       external: [
         'electron',
         'worker_threads',
@@ -68,7 +86,7 @@ async function buildWorker() {
       bundle: true,
       platform: 'node',
       target: 'node18',
-      outfile: path.join(outDir, 'sqlite-worker.bundle.js'),
+      outfile: path.join(outDir, 'sqlite-worker.bundle.cjs'),
       external: [
         'electron',
         'worker_threads',
@@ -111,7 +129,7 @@ async function buildWorker() {
     // backup file read-only, runs the structural check, posts the result and
     // exits. Split out of the SQLite worker because that check is synchronous
     // and multi-GB: run in-thread it stops the query message loop for a minute
-    // or more. Ships beside sqlite-worker.bundle.js; the spawner locates it
+    // or more. Ships beside sqlite-worker.bundle.cjs; the spawner locates it
     // relative to its own bundle.
     // ------------------------------------------------------------------------
     await esbuild.build({
@@ -121,7 +139,7 @@ async function buildWorker() {
       bundle: true,
       platform: 'node',
       target: 'node18',
-      outfile: path.join(outDir, 'sqlite-verify-worker.bundle.js'),
+      outfile: path.join(outDir, 'sqlite-verify-worker.bundle.cjs'),
       external: ['worker_threads', 'path', 'fs', 'better-sqlite3'],
       minify: false,
       sourcemap: process.env.NODE_ENV !== 'production',
@@ -147,7 +165,7 @@ async function buildWorker() {
       bundle: true,
       platform: 'node',
       target: 'node18',
-      outfile: path.join(outDir, 'sqlite-recovery-verify-worker.bundle.js'),
+      outfile: path.join(outDir, 'sqlite-recovery-verify-worker.bundle.cjs'),
       external: ['worker_threads', 'path', 'fs', 'better-sqlite3'],
       minify: false,
       sourcemap: process.env.NODE_ENV !== 'production',
@@ -165,7 +183,7 @@ async function buildWorker() {
       bundle: true,
       platform: 'node',
       target: 'node18',
-      outfile: path.join(outDir, 'history-diff-worker.bundle.js'),
+      outfile: path.join(outDir, 'history-diff-worker.bundle.cjs'),
       external: ['worker_threads'],
       minify: false,
       sourcemap: process.env.NODE_ENV !== 'production',
@@ -183,7 +201,7 @@ async function buildWorker() {
       bundle: true,
       platform: 'node',
       target: 'node18',
-      outfile: path.join(outDir, 'gif-encode-worker.bundle.js'),
+      outfile: path.join(outDir, 'gif-encode-worker.bundle.cjs'),
       external: ['worker_threads'],
       minify: false,
       sourcemap: process.env.NODE_ENV !== 'production',
@@ -200,20 +218,20 @@ async function buildWorker() {
       bundle: true,
       platform: 'node',
       target: 'node18',
-      outfile: path.join(outDir, 'project-manifest-worker.bundle.js'),
+      outfile: path.join(outDir, 'project-manifest-worker.bundle.cjs'),
       external: ['worker_threads'],
       minify: false,
       sourcemap: process.env.NODE_ENV !== 'production',
       format: 'cjs',
     });
 
-    console.log('Worker bundle created successfully at out/worker.bundle.js');
-    console.log('SQLite worker bundle created successfully at out/sqlite-worker.bundle.js');
-    console.log('SQLite verify worker bundle created successfully at out/sqlite-verify-worker.bundle.js');
-    console.log('Recovery verify worker bundle created successfully at out/sqlite-recovery-verify-worker.bundle.js');
-    console.log('History diff worker bundle created successfully at out/history-diff-worker.bundle.js');
-    console.log('GIF encode worker bundle created successfully at out/gif-encode-worker.bundle.js');
-    console.log('Project manifest worker bundle created successfully at out/project-manifest-worker.bundle.js');
+    console.log('Worker bundle created successfully at out/worker.bundle.cjs');
+    console.log('SQLite worker bundle created successfully at out/sqlite-worker.bundle.cjs');
+    console.log('SQLite verify worker bundle created successfully at out/sqlite-verify-worker.bundle.cjs');
+    console.log('Recovery verify worker bundle created successfully at out/sqlite-recovery-verify-worker.bundle.cjs');
+    console.log('History diff worker bundle created successfully at out/history-diff-worker.bundle.cjs');
+    console.log('GIF encode worker bundle created successfully at out/gif-encode-worker.bundle.cjs');
+    console.log('Project manifest worker bundle created successfully at out/project-manifest-worker.bundle.cjs');
 
     // Copy PGLite runtime files that are loaded dynamically at runtime
     // The binary loader embeds some files, but PGLite loads these via fs.readFile
@@ -227,10 +245,14 @@ async function buildWorker() {
       fs.copyFileSync(src, dest);
       console.log(`Copied ${file} to out/`);
     }
+    // files:["out"] also includes old generated files; remove obsolete .js
+    // workers only after all replacement bundles and assets built successfully.
+    removeLegacyWorkerBundles(outDir);
   } catch (error) {
     console.error('Failed to build worker bundle:', error);
     process.exit(1);
   }
 }
 
-buildWorker();
+module.exports = { buildWorker, removeLegacyWorkerBundles };
+if (require.main === module) buildWorker();

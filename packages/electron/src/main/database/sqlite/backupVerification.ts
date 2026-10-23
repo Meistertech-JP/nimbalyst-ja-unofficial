@@ -38,7 +38,7 @@ export interface BackupVerificationResult {
 export type BackupVerifier = (backupPath: string) => Promise<BackupVerificationResult>;
 
 /** Filename of the verification worker bundle, sibling of the caller's bundle. */
-export const VERIFY_WORKER_FILENAME = 'sqlite-verify-worker.bundle.js';
+export const VERIFY_WORKER_FILENAME = 'sqlite-verify-worker.bundle.cjs';
 
 /**
  * Synchronous verification. Blocks the calling thread for as long as it takes

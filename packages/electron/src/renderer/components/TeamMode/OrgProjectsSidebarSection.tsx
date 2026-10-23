@@ -93,7 +93,7 @@ export function OrgProjectsSidebarSection({
   onReload: () => void;
 }) {
   const { t } = useTranslation('collabSidebar');
-  const [openError, setOpenError] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<{ detail: string | null } | null>(null);
   const collapsed = useAtomValue(orgSidebarCollapsedSectionsAtom);
   const toggleSection = useSetAtom(toggleOrgSidebarSectionAtom);
 
@@ -126,7 +126,7 @@ export function OrgProjectsSidebarSection({
       directoryPath,
     });
     if (!result?.success) {
-      setOpenError(result?.error ?? 'Could not open that project');
+      setOpenError({ detail: result?.error ?? null });
       return;
     }
     onReload();
@@ -183,7 +183,7 @@ export function OrgProjectsSidebarSection({
             className="org-projects-sidebar-open-error px-3 py-1 text-[11px] text-nim-error"
             data-testid="org-projects-sidebar-open-error"
           >
-            {openError}
+            {openError.detail ?? t('org_sidebar.could_not_open_project')}
           </div>
         )}
       </div>

@@ -271,6 +271,7 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
   documentSessionActions,
 }) => {
   const { t } = useTranslation('editor');
+  const { t: tCollabSidebar } = useTranslation('collabSidebar');
   const unnamedCollaboratorLabel = t('collab.unnamed_collaborator');
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [activeConfig, setActiveConfig] = useState(initialCollabConfig);
@@ -1400,16 +1401,16 @@ export const CollaborativeTabEditor: React.FC<CollaborativeTabEditorProps> = ({
     return [
       // Trash stays last, after the local-source actions.
       ...treeItems,
-      ...(documentType === 'code' ? [{ label: 'Save a Copy', icon: 'download', disabled: !hasHydrated, onClick: () => { void handleSaveCodeCopy(); } }] : []),
+      ...(documentType === 'code' ? [{ label: t('collab.save_copy'), icon: 'download', disabled: !hasHydrated, onClick: () => { void handleSaveCodeCopy(); } }] : []),
       ...(linked ? [
-        { label: 'Open Local Source', icon: 'folder_open', dividerBefore: treeItems.length > 0, disabled: !localOrigin.hasResolvedBinding || busy, onClick: () => { void localOrigin.openLocalSource(); } },
-        { label: 'Update from Local Source', icon: 'upload', disabled: busy, onClick: () => { void handleReuploadFromLocal(); } },
+        { label: tCollabSidebar('ui.open_local_source'), icon: 'folder_open', dividerBefore: treeItems.length > 0, disabled: !localOrigin.hasResolvedBinding || busy, onClick: () => { void localOrigin.openLocalSource(); } },
+        { label: tCollabSidebar('ui.reupload_from_local'), icon: 'upload', disabled: busy, onClick: () => { void handleReuploadFromLocal(); } },
       ] : []),
-      { label: linked ? 'Relink Local Source' : 'Link Local Source', icon: 'link', dividerBefore: !linked && treeItems.length > 0, disabled: busy, onClick: () => { void localOrigin.relinkLocalSource(); } },
-      ...(linked ? [{ label: 'Clear Local Source', icon: 'link_off', disabled: busy, onClick: () => { void localOrigin.clearLocalSource(); } }] : []),
+      { label: linked ? tCollabSidebar('ui.relink_local_source') : tCollabSidebar('ui.link_local_source'), icon: 'link', dividerBefore: !linked && treeItems.length > 0, disabled: busy, onClick: () => { void localOrigin.relinkLocalSource(); } },
+      ...(linked ? [{ label: tCollabSidebar('ui.clear_local_source'), icon: 'link_off', disabled: busy, onClick: () => { void localOrigin.clearLocalSource(); } }] : []),
       ...pageItems.filter((item) => item.destructive),
     ];
-  }, [documentType, handleSaveCodeCopy, hasHydrated, localOrigin, handleReuploadFromLocal, pageMenuItems]);
+  }, [documentType, handleSaveCodeCopy, hasHydrated, localOrigin, handleReuploadFromLocal, pageMenuItems, t, tCollabSidebar]);
   const handleLexicalEditorReady = useCallback((editor: any) => {
     setLexicalEditor((prev: any) => (prev === editor ? prev : editor));
     lexicalEditorRef.current = editor ?? null;

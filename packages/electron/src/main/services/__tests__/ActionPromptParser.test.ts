@@ -342,4 +342,10 @@ Body.
     });
     expect(worktreeLauncher?.body).toContain('Open a sibling coding session in a git worktree.');
   });
+
+  it('keeps existing ASCII-derived IDs while giving Japanese-only headings distinct IDs', () => {
+    const { actions, diagnostics } = parseActionPromptsFile('## Review Changed Files\n/review\n\n## 実装計画\n計画してください。\n\n## 変更確認\n確認してください。\n');
+    expect(diagnostics).toEqual([]);
+    expect(actions.map(action => action.id)).toEqual(['review-changed-files', '実装計画', '変更確認']);
+  });
 });

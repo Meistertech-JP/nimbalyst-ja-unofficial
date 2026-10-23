@@ -1,0 +1,23 @@
+{
+  "about": {
+    "product": "Nimbalyst 日本語版（非公式）",
+    "title": "{{product}}について",
+    "version_label": "バージョン",
+    "base_version": "公式Nimbalyst {{version}}をベースにしています。",
+    "disclaimer": "本版はNimbalyst, Inc.の公式製品ではなく、同社による開発・サポート・承認を受けたものではありません。",
+    "description": "Nimbalystは、CodexやClaude Codeを使った開発のためのビジュアルワークスペースです。",
+    "feature_editors": "Markdown、モックアップ、Excalidraw、Mermaid、データモデル、CSV、コードに対応したエージェント連携のWYSIWYGエディターと拡張機能。",
+    "feature_sessions": "並列セッションとカンバンによる状態の把握、セッションの検索・再開、ファイルとセッションの相互連携。",
+    "feature_tracking": "エージェントと連携し、計画・不具合・タスクを管理するトラッカーとカンバン。",
+    "feature_storage": "コンテンツと状態を、ディスク上の通常のファイルとGitで保存。",
+    "original_credit": "原版の開発：",
+    "license": "MITライセンス",
+    "third_party_notices": "第三者ライセンス・通知",
+    "support_id_label": "NimbalystサポートID：",
+    "copy_title": "クリックしてコピー",
+    "copy_label": "サポートIDをコピー",
+    "loading": "読み込み中…",
+    "unavailable": "利用できません",
+    "copied": "コピーしました"
+  }
+}

@@ -1092,7 +1092,7 @@ function SessionKanbanToolbar({ selectedCount, onClearSelection }: { selectedCou
         data-testid="kanban-toggle-complete"
       >
         <MaterialSymbol icon="visibility" size={13} />
-        Complete
+        {t('session_kanban.complete')}
       </button>
     </div>
   );

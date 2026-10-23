@@ -192,7 +192,8 @@ import {
   type WindowTopBarGitActivityEntry,
   type WindowTopBarPanelControls,
 } from './components/WindowTopBar';
-import { resolveCreateAction, type CreateKind } from '../shared/createActions';
+import type { CreateKind } from '../shared/createActions';
+import { useLocalizedCreateAction } from './hooks/useLocalizedCreateAction';
 import { titleBarCreateMenusAtom } from './store/atoms/titleBarCreate';
 import { AccountExpiryBanner } from './components/Accounts/AccountExpiryBanner';
 import { organizationDirectoryAtom, personalAccountsAtom } from './store/atoms/settingsDomains';
@@ -565,6 +566,20 @@ export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const windowMode = urlParams.get('mode');
 
+  // These standalone windows share menu labels and update when the UI language changes.
+  useEffect(() => {
+    const titleKeys: Record<string, string> = {
+      'workspace-manager': 'project_manager',
+      'usage-report': 'ai_usage_report',
+      'database-browser': 'database_browser',
+      'developer-dashboard': 'developer_dashboard',
+    };
+    const titleKey = windowMode ? titleKeys[windowMode] : undefined;
+    if (titleKey) {
+      window.electronAPI?.setTitle(`${tMenu(titleKey)} - Nimbalyst`);
+    }
+  }, [windowMode, tMenu]);
+
   // Apply theme for ALL window modes (must run before early returns)
   const { theme, setTheme } = useTheme();
 
@@ -575,12 +590,6 @@ export default function App() {
 
   // Handle special window modes
   if (windowMode === 'workspace-manager') {
-    // Set window title for Workspace Manager
-    React.useEffect(() => {
-      if (window.electronAPI) {
-        window.electronAPI.setTitle('Project Manager - Nimbalyst');
-      }
-    }, []);
     return (
       <WorkspaceManagerOnboarding
         showOnboarding={urlParams.get('onboarding') === '1'}
@@ -590,31 +599,14 @@ export default function App() {
   }
 
   if (windowMode === 'usage-report') {
-    // Set window title for AI Usage Report
-    React.useEffect(() => {
-      if (window.electronAPI) {
-        window.electronAPI.setTitle('AI Usage Report - Nimbalyst');
-      }
-    }, []);
     return <AIUsageReport onClose={() => window.close()} />;
   }
 
   if (windowMode === 'database-browser') {
-    // Set window title for Database Browser
-    React.useEffect(() => {
-      if (window.electronAPI) {
-        window.electronAPI.setTitle('Database Browser - Nimbalyst');
-      }
-    }, []);
     return <DatabaseBrowser />;
   }
 
   if (windowMode === 'developer-dashboard') {
-    React.useEffect(() => {
-      if (window.electronAPI) {
-        window.electronAPI.setTitle('Developer Dashboard - Nimbalyst');
-      }
-    }, []);
     return <DeveloperDashboard />;
   }
 
@@ -1430,8 +1422,9 @@ export default function App() {
     }
   }, []);
 
+  const localizedCreateAction = useLocalizedCreateAction(activeMode);
   const windowTopBarNewInTreeControl = useMemo(() => {
-    const action = resolveCreateAction(activeMode);
+    const action = localizedCreateAction;
     if (!action) return undefined;
 
     const menu = titleBarCreateMenus[activeMode] ?? null;
@@ -1447,7 +1440,7 @@ export default function App() {
       onCreate: (anchor?: HTMLElement | null) =>
         menu?.onPrimary ? menu.onPrimary() : runCreateInTree(action.kind, anchor),
     };
-  }, [activeMode, runCreateInTree, titleBarCreateMenus]);
+  }, [activeMode, localizedCreateAction, runCreateInTree, titleBarCreateMenus]);
 
   // Cmd+N for the modes whose noun is neither a local file nor a session. Main
   // resolves the kind with the same function the button uses.

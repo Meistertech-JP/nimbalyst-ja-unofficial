@@ -7,6 +7,7 @@
  */
 
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 export interface CommentCountBadgeProps {
   count: number;
@@ -23,6 +24,7 @@ export function CommentCountBadge({
   label,
   className,
 }: CommentCountBadgeProps): JSX.Element | null {
+  const { t } = useTranslation('editor');
   if (!Number.isFinite(count) || count <= 0) return null;
   return (
     <span
@@ -33,7 +35,7 @@ export function CommentCountBadge({
       }
       data-testid="comment-count-badge"
       aria-label={
-        label ?? `${count} comment ${count === 1 ? 'thread' : 'threads'}`
+        label ?? t('comments.thread_count', { count })
       }
     >
       {count > max ? `${max}+` : count}

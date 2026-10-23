@@ -1,3 +1,4 @@
+// @vitest-environment node
 import * as path from "path";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -11,6 +12,21 @@ const FIXTURE_PATH = path.resolve(
 );
 
 describe("seedTutorialTrackers", () => {
+  it('uses the captured Japanese template while preserving stable tracker identities and fields', async () => {
+    const createdFixtures: any[] = [];
+    const result = await seedTutorialTrackers('/tmp/Nimbalyst Tutorial', {
+      getFixturePath: () => { throw new Error('Must not resolve another template'); },
+      createTrackerItem: vi.fn(async (_workspace, fixture, id) => {
+        createdFixtures.push(fixture);
+        return { key: fixture.key, id, type: fixture.type, title: fixture.title };
+      }),
+    }, path.resolve(FIXTURE_PATH, '../../tutorial-project-ja'));
+    expect(result).toHaveLength(11);
+    expect(result.find(item => item.key === 'EXAMPLE_BUG')?.title).toBe('日付範囲を変更してもエクスポートが無効のままになる');
+    expect(createdFixtures.find(item => item.key === 'EXAMPLE_BUG').description).toContain('## 再現手順');
+    expect(createdFixtures.find(item => item.key === 'PLAN_DASHBOARD_REFINEMENT').fields).toEqual({ planId: 'tutorial-dashboard-refinement', planType: 'feature', progress: 60 });
+    expect(createdFixtures.every(item => /[\u3040-\u9fff]/.test(item.title) && /[\u3040-\u9fff]/.test(item.description))).toBe(true);
+  });
   it("creates the native tutorial items and exposes the example bug reference", async () => {
     const created: SeededTutorialTracker[] = [];
 

@@ -1,8 +1,33 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
 import { PendingAuthFlowLedger } from '../PendingAuthFlowLedger';
 
 describe('PendingAuthFlowLedger', () => {
+  it('creates 256-bit hexadecimal nonces and does not reuse an active nonce', () => {
+    const ledger = new PendingAuthFlowLedger();
+    const first = ledger.createNonce();
+    ledger.register(first, { intent: 'sign-in', method: 'google', port: 4100 });
+    const second = ledger.createNonce();
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+    expect(second).toMatch(/^[a-f0-9]{64}$/);
+    expect(first).not.toBe(second);
+    const values = ['collision', 'collision', 'unique'];
+    const collisionLedger = new PendingAuthFlowLedger({ createNonce: () => values.shift()! });
+    collisionLedger.register(collisionLedger.createNonce(), { intent: 'sign-in', method: 'google', port: 4100 });
+    expect(collisionLedger.createNonce()).toBe('unique');
+  });
+
+  it('does not consume a nonce for a different listener port, and clears cancelled flows', () => {
+    const ledger = new PendingAuthFlowLedger();
+    const nonce = ledger.createNonce();
+    ledger.register(nonce, { intent: 'sign-in', method: 'google', port: 4100 });
+    expect(ledger.consume(nonce, 4200)).toBeNull();
+    expect(ledger.peek(nonce)).toMatchObject({ port: 4100 });
+    ledger.clear();
+    expect(ledger.consume(nonce, 4100)).toBeNull();
+  });
+
   it('rejects unknown and reused nonces', () => {
     const ledger = new PendingAuthFlowLedger({ createNonce: () => 'nonce' });
     expect(ledger.consume('unknown', 4100)).toBeNull();

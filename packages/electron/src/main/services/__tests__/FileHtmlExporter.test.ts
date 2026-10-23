@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { exportFileToHtml } from '../FileHtmlExporter';
 import { mermaidFenceSources } from '../../../shared/mermaidFences';
+import { createMainI18nController } from '../../i18n/mainI18n';
 
 const MARKDOWN = [
   '# Landscape',
@@ -42,5 +43,20 @@ describe('shared-link HTML', () => {
     // A diagram the renderer could not draw stays readable as code.
     expect(html.match(/class="share-diagram share-mermaid"/g)?.length).toBe(1);
     expect(html).toMatch(/<pre class="hljs"><code>[\s\S]*Unrendered/);
+  });
+
+  it('localizes the shared-file controls and document language', async () => {
+    const controller = await createMainI18nController({
+      get: () => 'ja',
+      subscribe: () => () => undefined,
+    }, 'en-US', () => undefined);
+    try {
+      const html = exportFileToHtml('/tmp/readme.md', '# Hello');
+      expect(html).toContain('<html lang="ja" class="dark">');
+      expect(html).toContain('title="Markdownをダウンロード"');
+      expect(html).toContain('共有元 <strong>Nimbalyst</strong>');
+    } finally {
+      controller.dispose();
+    }
   });
 });

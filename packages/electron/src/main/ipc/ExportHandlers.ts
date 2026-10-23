@@ -9,6 +9,7 @@ import { exportSessionToHtml, getExportFilename } from '../services/SessionHtmlE
 import { loadViewMessages } from '../utils/transcriptHelpers';
 import { getDialogDefaultPath, rememberDialogSelection } from '../utils/dialogPaths';
 import { recordAnimationGif, type AnimationGifRequest } from '../services/AnimationGifRecorder';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import {
   recordAnimationVideo,
   type AnimationVideoRequest,
@@ -31,9 +32,9 @@ export function registerExportHandlers() {
     ): Promise<string | null> => {
       const window = BrowserWindow.fromWebContents(event.sender);
       const dialogOptions: Electron.SaveDialogOptions = {
-        title: 'Export to PDF',
-        buttonLabel: 'Export',
-        filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
+        title: translateMainDialogLabel('native_dialogs.export_pdf_title', 'Export to PDF'),
+        buttonLabel: translateMainDialogLabel('native_dialogs.export_button', 'Export'),
+        filters: [{ name: translateMainDialogLabel('native_dialogs.pdf_files', 'PDF Files'), extensions: ['pdf'] }],
         defaultPath: getDialogDefaultPath({ window, explicitPath: options?.defaultPath }),
       };
 
@@ -253,9 +254,9 @@ export function registerExportHandlers() {
         // Show save dialog
         const window = BrowserWindow.fromWebContents(event.sender);
         const dialogOptions: Electron.SaveDialogOptions = {
-          title: 'Export Session as HTML',
-          buttonLabel: 'Export',
-          filters: [{ name: 'HTML Files', extensions: ['html'] }],
+          title: translateMainDialogLabel('native_dialogs.export_session_html_title', 'Export Session as HTML'),
+          buttonLabel: translateMainDialogLabel('native_dialogs.export_button', 'Export'),
+          filters: [{ name: translateMainDialogLabel('native_dialogs.html_files', 'HTML Files'), extensions: ['html'] }],
           defaultPath: getDialogDefaultPath({ window, explicitPath: defaultFilename }),
         };
 

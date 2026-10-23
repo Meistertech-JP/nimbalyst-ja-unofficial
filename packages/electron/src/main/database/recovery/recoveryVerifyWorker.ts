@@ -6,7 +6,7 @@
  * store never runs on the main thread or on the thread serving `query`
  * requests — see recoveryVerification.ts for the incident that motivated it.
  *
- * Bundled as `sqlite-recovery-verify-worker.bundle.js` alongside the other
+ * Bundled as `sqlite-recovery-verify-worker.bundle.cjs` alongside the other
  * worker bundles.
  */
 

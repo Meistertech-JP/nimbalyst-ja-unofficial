@@ -63,11 +63,17 @@ export interface ActionPromptParseResult {
 const COMBINING_DIACRITICAL_MARKS = /[̀-ͯ]/g;
 
 function slugify(label: string): string {
-  return label
+  const normalized = label
     .toLowerCase()
     .normalize('NFKD')
-    .replace(COMBINING_DIACRITICAL_MARKS, '')
+    .replace(COMBINING_DIACRITICAL_MARKS, '');
+  const asciiSlug = normalized
     .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  // Preserve existing ASCII-derived IDs while allowing distinct Japanese-only
+  // headings instead of collapsing every heading to the same "action" ID.
+  return asciiSlug || label.normalize('NFC')
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '') || 'action';
 }
 
@@ -383,3 +389,64 @@ Read the file that's currently open and tell me what you'd change. Be specific:
 - 3 concrete improvements
 - 1 thing that's already good and shouldn't change
 `;
+
+const JAPANESE_ACTION_PROMPTS_TEMPLATE = `# AIアクションプロンプト
+
+このファイルには、AI入力欄の**アクション**メニューに表示する再利用可能なプロンプトを記述します。
+各\`## 見出し\`が1つのアクションです。その下から次の\`##\`までの内容が、アクションを選んだときに入力下書きへ挿入されます。
+
+現在の入力欄に挿入する代わりに、同じワークストリーム内で新しいセッションを起動することもできます。
+
+使用できるキー: \`launch\`（same-session | new-session）、\`model\`
+（provider:variant）、\`effort\`（low | medium | high | xhigh | max | ultra）、\`foreground\`（true/false）、\`autoSubmit\`（true/false）、
+\`worktree\`（true/false）。既定値は\`launch: same-session\`です。
+現在の動作を維持するには、設定ブロックを省略してください。
+
+## 変更ファイルをレビュー
+/review このセッションで変更したファイルを確認し、影響を受けるモジュールでの回帰リスクを指摘してください。
+
+## 実装計画を作成
+現在の課題（上のリンク）と開いているエディターを確認してください。
+
+次の内容を含む計画を作成してください。
+- 作業を3〜5段階に分ける
+- 変更が必要なファイルを特定する
+- コードを書く前に検討すべき横断的な課題を挙げる
+
+完了したら、どの段階から始めるか尋ねてください。
+
+## 新しいOpusセッションで計画
+launch: new-session
+model: claude-code:opus
+foreground: true
+autoSubmit: true
+
+計画用の新しいセッションを同じワークストリーム内に開いてください。
+元のセッションから背景を確認し、3〜5段階の明確な実装計画を作成してください。
+コードの変更を提案する前に、リスクの高い不明点を挙げてください。
+
+## ワークツリーでの実装下書き
+launch: new-session
+foreground: true
+autoSubmit: false
+worktree: true
+
+Gitワークツリー内に実装用の新しいセッションを開いてください。
+元のセッションと現在のエディターの状態を背景情報として使ってください。
+最初に調べるファイルと最初の検証手順を含め、そのセッションに送る最初の実装指示を下書きしてください。
+
+## リリースノートの下書き
+/release-notes 前回のタグ以降にマージされた作業を、利用者向けの変更履歴としてまとめてください。
+
+## 開いているファイルを確認
+現在開いているファイルを読み、変更すべき点を具体的に説明してください。
+- 具体的な改善点を3つ
+- すでに良くできていて変更すべきでない点を1つ
+`;
+
+/** Only used when creating a new file; existing prompts remain user-owned. */
+export function getDefaultActionPromptsTemplate(language: string): string {
+  return language.toLowerCase().split(/[-_]/)[0] === 'ja'
+    ? JAPANESE_ACTION_PROMPTS_TEMPLATE
+    : DEFAULT_ACTION_PROMPTS_TEMPLATE;
+}

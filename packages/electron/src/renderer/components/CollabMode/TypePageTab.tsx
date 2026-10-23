@@ -94,6 +94,7 @@ export interface TypePageTabProps {
 
 export const TypePageTab: React.FC<TypePageTabProps> = ({ typeId, workspacePath, onOpenItem }) => {
   const { t } = useTranslation('tracker');
+  const { t: tEditor } = useTranslation('editor');
   const store = useStore();
   const identity = useDesktopTrackerIdentity(workspacePath);
   const teamMembers = useTrackerTeamMembers(workspacePath);
@@ -148,7 +149,7 @@ export const TypePageTab: React.FC<TypePageTabProps> = ({ typeId, workspacePath,
   const openHistory = useSetAtom(historyDialogFileAtom);
   const proseEditor = viewsEditor?.key === editorKey ? viewsEditor.editor : null;
   const viewsController = useNamedPageViewsController(proseEditor, typeId);
-  const exportItems = useMemo(() => editorExportMenuItems(proseEditor, typeName), [proseEditor, typeName]);
+  const exportItems = useMemo(() => editorExportMenuItems(proseEditor, typeName, tEditor), [proseEditor, typeName, tEditor]);
   const menuItems = useTypePageMenuItems(lane, typeId, typePlacements.some((placement) => placement.typeId === typeId), exportItems);
 
   return (

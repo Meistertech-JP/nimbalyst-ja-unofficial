@@ -18,6 +18,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseQuadrantFence } from '@nimbalyst/runtime/core/quadrantFence';
 import { quadrantSvgMarkup } from '@nimbalyst/runtime/ui/quadrant/quadrantSvg';
+import { getMainI18n } from '../i18n/mainI18n';
+
+function exportText(key: string, fallback: string): string {
+  return String(getMainI18n()?.t(key, { ns: 'common', defaultValue: fallback }) ?? fallback);
+}
+
+function exportLocale(): 'en' | 'ja' {
+  return getMainI18n()?.resolvedLanguage?.toLowerCase().startsWith('ja') ? 'ja' : 'en';
+}
 
 // ---------------------------------------------------------------------------
 // Markdown setup - separate Marked instance to avoid conflicting with
@@ -134,8 +143,12 @@ function getNimbalystIconSvg(): string {
 // ---------------------------------------------------------------------------
 
 function buildFileHtml(fileName: string, contentHtml: string, rawMarkdownB64: string): string {
+  const locale = exportLocale();
+  const sharedFrom = exportText('html_export.shared_from', 'Shared from');
+  const downloadMarkdown = exportText('html_export.download_markdown', 'Download as Markdown');
+  const toggleTheme = exportText('html_export.toggle_theme', 'Toggle light/dark theme');
   return `<!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="${locale}" class="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -148,14 +161,14 @@ ${getStylesheet()}
   <div class="brand-bar">
     <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="brand-link">
       ${getNimbalystIconSvg()}
-      <span class="brand-text">Shared from <strong>Nimbalyst</strong></span>
+      <span class="brand-text">${sharedFrom} <strong>Nimbalyst</strong></span>
     </a>
     <div class="brand-actions">
-      <button onclick="downloadMarkdown()" class="download-btn" title="Download as Markdown">
+      <button onclick="downloadMarkdown()" class="download-btn" title="${downloadMarkdown}">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v9m0 0L4.5 7.5M8 11l3.5-3.5M2 13h12"/></svg>
         <span>.md</span>
       </button>
-      <button onclick="toggleTheme()" class="theme-toggle" title="Toggle light/dark theme">
+      <button onclick="toggleTheme()" class="theme-toggle" title="${toggleTheme}">
         <span class="theme-icon-dark">&#9789;</span>
         <span class="theme-icon-light">&#9788;</span>
       </button>
@@ -169,7 +182,7 @@ ${getStylesheet()}
   <footer class="footer">
     <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="brand-link">
       ${getNimbalystIconSvg()}
-      <span class="brand-text">Shared from <strong>Nimbalyst</strong></span>
+      <span class="brand-text">${sharedFrom} <strong>Nimbalyst</strong></span>
     </a>
   </footer>
 

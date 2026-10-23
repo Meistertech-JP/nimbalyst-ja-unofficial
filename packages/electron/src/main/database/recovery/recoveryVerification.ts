@@ -32,7 +32,7 @@ import type { ContentIndicators, RecoveryLogFn, RecoveryVerification } from './t
 export const REQUIRED_TABLES = ['ai_sessions', 'document_history', 'projects'] as const;
 
 /** Filename of the recovery verification worker bundle, sibling of the caller's bundle. */
-export const RECOVERY_VERIFY_WORKER_FILENAME = 'sqlite-recovery-verify-worker.bundle.js';
+export const RECOVERY_VERIFY_WORKER_FILENAME = 'sqlite-recovery-verify-worker.bundle.cjs';
 
 const UNREADABLE = (error: string): RecoveryVerification => ({
   valid: false,

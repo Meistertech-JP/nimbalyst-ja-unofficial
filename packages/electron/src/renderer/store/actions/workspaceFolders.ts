@@ -8,6 +8,7 @@
  * `fileTreeListeners` turns into the updated explorer forest -- callers do not
  * update the tree themselves.
  */
+import { rendererUiText } from '../../services/localWikiUiText';
 
 export interface AttachFolderOutcome {
   success: boolean;
@@ -33,8 +34,8 @@ export async function attachWorkspaceFolderWithPicker(
   workspacePath: string,
 ): Promise<AttachFolderOutcome> {
   const picked = await window.electronAPI?.invoke?.('dialog:openDirectory', {
-    title: 'Attach Folder to Workspace',
-    buttonLabel: 'Attach',
+    title: rendererUiText('dialogs', 'workspace.attach_folder_title', 'Attach Folder to Workspace'),
+    buttonLabel: rendererUiText('dialogs', 'workspace.attach_folder_button', 'Attach Folder'),
   });
 
   const folderPath = picked?.canceled ? undefined : picked?.filePaths?.[0];

@@ -9,7 +9,7 @@
  * keyboard-operable.
  */
 
-import { fireEvent, render as rtlRender, renderHook, screen, within } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, renderHook, screen, within } from '@testing-library/react';
 import type { ComponentProps, ReactElement } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +17,7 @@ import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 import type { Comment, CommentMember, Thread } from '../../types';
 import { CollaborativeCommentsPanel } from '../CollaborativeCommentsPanel';
+import { CommentCountBadge } from '../CommentCountBadge';
 import { CommentComposer } from '../CommentComposer';
 import { filterMentionCandidates, useMentionRoster } from '../mentionRoster';
 import type { CollaborativeCommentsSource, CommentThreadView } from '../types';
@@ -111,6 +112,39 @@ function renderPanel(
 }
 
 describe('CollaborativeCommentsPanel', () => {
+  it.each([
+    ['en', 'Comments', 'Detached', 'Resolved', 'Detached threads', 'Resolved threads', '3 comment threads'],
+    ['ja', 'コメント', '対象なし', '解決済み', '対象なしのスレッド', '解決済みのスレッド', 'コメントスレッド3件'],
+  ] as const)('localizes %s panel grouping and counts without losing filter behavior', async (language, title, detached, resolved, detachedGroup, resolvedGroup, countLabel) => {
+    testI18n = await createI18nInstance(language);
+    const threads = [threadView('open'), threadView('detached', {}, 'orphaned'), threadView('resolved', { resolved: true })];
+    const { container } = renderPanel(threads);
+    expect(container.querySelector('.nim-comments-panel-title')?.textContent).toBe(title);
+    expect(screen.getByText(detached).className).toContain('nim-comments-group-heading');
+    expect(screen.getByText(resolved).className).toContain('nim-comments-group-heading');
+    expect(within(screen.getByRole('list', { name: detachedGroup })).getAllByTestId('comment-thread')).toHaveLength(1);
+    expect(within(screen.getByRole('list', { name: resolvedGroup })).getAllByTestId('comment-thread')).toHaveLength(1);
+    expect(screen.getByTestId('comment-count-badge').getAttribute('aria-label')).toBe(countLabel);
+    fireEvent.click(screen.getByTestId('comments-panel-resolved-filter'));
+    expect(screen.queryByRole('list', { name: resolvedGroup })).toBeNull();
+    expect(screen.getAllByTestId('comment-thread')).toHaveLength(2);
+  });
+
+  it('updates default labels on an existing panel when the provider language changes', async () => {
+    const { container } = renderPanel([threadView('detached', {}, 'orphaned')]);
+    expect(container.querySelector('.nim-comments-panel-title')?.textContent).toBe('Comments');
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    expect(container.querySelector('.nim-comments-panel-title')?.textContent).toBe('コメント');
+    expect(screen.getByRole('list', { name: '対象なしのスレッド' }).querySelector('.nim-comment-thread')).not.toBeNull();
+  });
+
+  it('keeps custom panel titles and empty messages unchanged', async () => {
+    testI18n = await createI18nInstance('ja');
+    const { container } = renderPanel([], { title: 'Review notes A', emptyMessage: 'No notes for A' });
+    expect(container.querySelector('.nim-comments-panel-title')?.textContent).toBe('Review notes A');
+    expect(container.querySelector('.nim-comments-empty')?.textContent).toBe('No notes for A');
+  });
+
   it('localizes detached and resolved thread labels and actions', async () => {
     testI18n = await createI18nInstance('ja');
     const thread = threadView(
@@ -271,6 +305,24 @@ describe('CollaborativeCommentsPanel', () => {
     if (!agentActor) throw new Error('agent actor not rendered');
     fireEvent.click(agentActor);
     expect(onOpenAgentSession).toHaveBeenCalledWith('session-9');
+  });
+});
+
+describe('CommentCountBadge localization', () => {
+  it.each([
+    ['en', '1 comment thread', '2 comment threads'],
+    ['ja', 'コメントスレッド1件', 'コメントスレッド2件'],
+  ] as const)('uses %s accessible counts while keeping zero hidden and high counts capped', async (language, one, two) => {
+    testI18n = await createI18nInstance(language);
+    const { rerender } = render(<CommentCountBadge count={0} />);
+    expect(screen.queryByTestId('comment-count-badge')).toBeNull();
+    rerender(<I18nextProvider i18n={testI18n}><CommentCountBadge count={1} /></I18nextProvider>);
+    expect(screen.getByTestId('comment-count-badge').getAttribute('aria-label')).toBe(one);
+    rerender(<I18nextProvider i18n={testI18n}><CommentCountBadge count={2} max={1} /></I18nextProvider>);
+    expect(screen.getByTestId('comment-count-badge').getAttribute('aria-label')).toBe(two);
+    expect(screen.getByTestId('comment-count-badge').textContent).toBe('1+');
+    rerender(<I18nextProvider i18n={testI18n}><CommentCountBadge count={2} label="Review count A" /></I18nextProvider>);
+    expect(screen.getByTestId('comment-count-badge').getAttribute('aria-label')).toBe('Review count A');
   });
 });
 

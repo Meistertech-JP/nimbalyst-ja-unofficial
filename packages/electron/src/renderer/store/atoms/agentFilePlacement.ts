@@ -7,19 +7,15 @@ export const normalizeAgentFilePlacement = (
   value: unknown
 ): AgentFilePlacement => (value === "right" ? "right" : "above");
 export const agentFilePlacementAtom = atom<AgentFilePlacement>("above");
-export const agentFilePlacementNoticeAtom = atom("");
+export type AgentFilePlacementNotice = "" | "right" | "above" | "save-failed";
+export const agentFilePlacementNoticeAtom = atom<AgentFilePlacementNotice>("");
 
 export const setAgentFilePlacementAtom = atom(
   null,
   (get, set, placement: AgentFilePlacement) => {
     if (get(agentFilePlacementAtom) === placement) return;
     set(agentFilePlacementAtom, placement);
-    set(
-      agentFilePlacementNoticeAtom,
-      placement === "right"
-        ? "Files open on the right in Agent mode"
-        : "Files open above the transcript in Agent mode"
-    );
+    set(agentFilePlacementNoticeAtom, placement);
     if (typeof window !== "undefined" && window.electronAPI) {
       void window.electronAPI
         .invoke("app-settings:set", AGENT_FILE_PLACEMENT_KEY, placement)
@@ -30,7 +26,7 @@ export const setAgentFilePlacementAtom = atom(
           );
           set(
             agentFilePlacementNoticeAtom,
-            "Could not save file placement. Your layout may reset when you reopen the app."
+            "save-failed"
           );
         });
     }

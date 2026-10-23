@@ -1,6 +1,10 @@
 {
   "loading": "Loading...",
   "load_failed": "Failed to load: {{error}}",
+  "datamodel_template": {
+    "add_models": "Add your models here",
+    "example": "Example:"
+  },
   "kanban": {
     "todo": "To Do",
     "sample_task": "Sample task {{number}}",
@@ -182,6 +186,14 @@
   },
   "comments": {
     "cancel": "Cancel",
+    "send": "Send",
+    "title": "Comments",
+    "detached": "Detached",
+    "resolved": "Resolved",
+    "group_threads": "{{heading}} threads",
+    "thread_count_one": "{{count}} comment thread",
+    "thread_count_other": "{{count}} comment threads",
+    "empty_from_editor": "No comments yet. Add one from the editor to start a thread.",
     "attach_reference": "Attach a reference",
     "open_agent": "Open agent session {{name}}",
     "agent_session_owned_by": "Agent session {{name}}, owned by {{owner}}",
@@ -459,7 +471,13 @@
     "no_access": "You do not have access to this page.",
     "missing_section": "The section \"#{{anchor}}\" is no longer on this page.",
     "cycle": "This page is already shown above; it is not repeated here.",
-    "too_deep": "Transclusions nest too deeply to show here."
+    "too_deep": "Transclusions nest too deeply to show here.",
+    "open_team_project": "Open a team project to see this page.",
+    "different_team": "This page belongs to a different team.",
+    "in_trash": "This page is in Trash.",
+    "text_pages_only": "Only text pages can be transcluded; open this one instead.",
+    "load_failed": "Could not load this page: {{error}}",
+    "typed_page_missing": "This typed page is not in this project, or it was deleted."
   },
   "quadrant": {
     "skipped_lines_one": "{{count}} line without two numbers",
@@ -478,6 +496,8 @@
     "read_only_reviewing": "Read-only while reviewing. Keep or Revert to edit.",
     "export_failed": "Export Failed",
     "export_failed_message": "Failed to export PDF: {{error}}",
+    "copy_as_markdown": "Copy as Markdown",
+    "export_to_pdf": "Export to PDF...",
     "days_ago": "{{count}} day(s) ago",
     "hours_ago": "{{count}} hour(s) ago",
     "minutes_ago": "{{count}} minute(s) ago",

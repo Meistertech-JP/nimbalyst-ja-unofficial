@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { basename } from 'pathe';
 import { useSetAtom } from 'jotai';
 
@@ -63,6 +64,7 @@ export const FilePathBreadcrumb: React.FC<FilePathBreadcrumbProps> = ({
   workspacePath,
   className = '',
 }) => {
+  const { t } = useTranslation('common');
   const revealFolder = useSetAtom(revealFolderAtom);
   const revealFile = useSetAtom(revealFileAtom);
   const setOpenFileRequest = useSetAtom(openFileRequestAtom);
@@ -103,7 +105,7 @@ export const FilePathBreadcrumb: React.FC<FilePathBreadcrumbProps> = ({
                   : ''
               }`}
               onClick={isClickable ? () => handleBreadcrumbClick(segment.folderPath, isLast ? filePath : undefined) : undefined}
-              title={isClickable ? `Go to ${segment.name} in file tree` : undefined}
+              title={isClickable ? t('file_path_breadcrumb_title', { name: segment.name }) : undefined}
             >
               {!isLast && (
                 <svg className="breadcrumb-icon w-3.5 h-3.5 opacity-70 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

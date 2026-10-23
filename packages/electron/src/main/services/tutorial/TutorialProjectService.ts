@@ -63,7 +63,8 @@ export interface TutorialProjectServiceDependencies {
   addToRecentItems: typeof addToRecentItems;
   closeWorkspaceManagerWindow: () => void;
   seedTutorialTrackers: (
-    workspacePath: string
+    workspacePath: string,
+    templateDirectory: string
   ) => Promise<SeededTutorialTracker[]>;
   deleteTutorialTrackers: (
     workspacePath: string,
@@ -71,7 +72,8 @@ export interface TutorialProjectServiceDependencies {
   ) => Promise<void>;
   seedTutorialSessions: (
     workspacePath: string,
-    trackerReferences: SeededTutorialTracker[]
+    trackerReferences: SeededTutorialTracker[],
+    templateDirectory: string
   ) => Promise<void>;
   captureTutorialStarted: (
     entryPoint: TutorialEntryPoint,
@@ -90,10 +92,11 @@ const defaultDependencies: TutorialProjectServiceDependencies = {
   findWindowByWorkspace,
   addToRecentItems,
   closeWorkspaceManagerWindow: () => undefined,
-  seedTutorialTrackers,
+  seedTutorialTrackers: (workspacePath, templateDirectory) =>
+    seedTutorialTrackers(workspacePath, {}, templateDirectory),
   deleteTutorialTrackers,
-  seedTutorialSessions: async (workspacePath, trackerReferences) => {
-    await seedTutorialSessions(workspacePath, { trackerReferences });
+  seedTutorialSessions: async (workspacePath, trackerReferences, templateDirectory) => {
+    await seedTutorialSessions(workspacePath, { trackerReferences, templateDirectory });
   },
   captureTutorialStarted,
 };
@@ -291,7 +294,8 @@ export class TutorialProjectService {
       });
 
       seededTrackers = await this.dependencies.seedTutorialTrackers(
-        workspacePath
+        workspacePath,
+        templateDirectory
       );
       await this.materializeTrackerReferences(workspacePath, seededTrackers);
 
@@ -318,7 +322,8 @@ export class TutorialProjectService {
 
       await this.dependencies.seedTutorialSessions(
         workspacePath,
-        seededTrackers
+        seededTrackers,
+        templateDirectory
       );
     } catch (error) {
       if (seededTrackers.length > 0) {

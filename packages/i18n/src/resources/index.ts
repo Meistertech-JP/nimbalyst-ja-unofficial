@@ -24,6 +24,7 @@ import cloudflareSandboxesEn from './en/cloudflareSandboxes.json';
 import extensionMarketplaceEn from './en/extensionMarketplace.json';
 import feedbackEn from './en/feedback.json';
 import sqliteBrowserEn from './en/sqliteBrowser.json';
+import helpEn from './en/help.json';
 
 import commonJa from './ja/common.json';
 import settingsJa from './ja/settings.json';
@@ -51,6 +52,7 @@ import cloudflareSandboxesJa from './ja/cloudflareSandboxes.json';
 import extensionMarketplaceJa from './ja/extensionMarketplace.json';
 import feedbackJa from './ja/feedback.json';
 import sqliteBrowserJa from './ja/sqliteBrowser.json';
+import helpJa from './ja/help.json';
 
 export const resources = {
   en: {
@@ -80,6 +82,7 @@ export const resources = {
     extensionMarketplace: extensionMarketplaceEn,
     feedback: feedbackEn,
     sqliteBrowser: sqliteBrowserEn,
+    help: helpEn,
   },
   ja: {
     common: commonJa,
@@ -108,6 +111,7 @@ export const resources = {
     extensionMarketplace: extensionMarketplaceJa,
     feedback: feedbackJa,
     sqliteBrowser: sqliteBrowserJa,
+    help: helpJa,
   },
 } as const;
 

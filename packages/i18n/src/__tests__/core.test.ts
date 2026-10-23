@@ -3,6 +3,19 @@ import { createI18nInstance, normalizeUiLanguage, resolveSystemLocale, resolveUi
 import { resources } from '../resources';
 
 describe('UI language preference', () => {
+  it('resolves shared-document local-source action labels in both languages', async () => {
+    const i18n = await createI18nInstance('ja');
+    const keys = ['open_local_source', 'reupload_from_local', 'relink_local_source', 'link_local_source', 'clear_local_source'];
+    const japanese = keys.map(key => i18n.t(`ui.${key}`, { ns: 'collabSidebar' }));
+    expect(japanese).toEqual(['ローカルのソースを開く', 'ローカルから再アップロード', 'ローカルソースを再リンク...', 'ローカルソースをリンク...', 'ローカルソースを解除']);
+    await i18n.changeLanguage('en');
+    for (const [index, key] of keys.entries()) {
+      const translated = i18n.t(`ui.${key}`, { ns: 'collabSidebar' });
+      expect(translated).not.toBe(`ui.${key}`);
+      expect(translated).not.toBe(japanese[index]);
+    }
+  });
+
   it('normalizes unsupported persisted values to system', () => {
     expect(normalizeUiLanguage('ja')).toBe('ja');
     expect(normalizeUiLanguage('en')).toBe('en');
@@ -238,7 +251,26 @@ describe('UI language preference', () => {
     expect(resources.ja.settings.sidebar.item_cursor_agent).toBe('Cursorエージェント');
     expect(resources.en.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
     expect(resources.ja.settings.sidebar.item_antigravity_gemini_agent).toBe('Gemini');
-    expect(totalKeys).toBe(14401);
+    expect(resources.en.menu.top_bar.new_shared_doc).toBe('New shared doc');
+    expect(resources.ja.menu.top_bar.new_shared_doc).toBe('新しい共有ドキュメント');
+    expect(resources.en.menu.top_bar.new_item).toBe('New item');
+    expect(resources.ja.menu.top_bar.new_item).toBe('新しい項目');
+    expect(totalKeys).toBe(14550);
+  });
+
+  it('contains localized browser sign-in results and callback refusals', async () => {
+    const en = await createI18nInstance('en');
+    const ja = await createI18nInstance('ja');
+    expect(en.t('auth_callback', { ns: 'dialogs', returnObjects: true })).toEqual({
+      success_title: 'Nimbalyst sign-in', success_heading: "You're signed in", success_message: 'Return to Nimbalyst.',
+      error_title: 'Nimbalyst sign-in error', error_heading: 'Sign-in could not be completed', error_message: 'Return to Nimbalyst and try again.',
+      already_used: 'This sign-in callback has already been used.', invalid_body: 'Invalid callback body', payload_too_large: 'Callback payload too large',
+    });
+    expect(ja.t('auth_callback', { ns: 'dialogs', returnObjects: true })).toEqual({
+      success_title: 'Nimbalystへのログイン', success_heading: 'ログインしました', success_message: 'Nimbalystに戻ってください。',
+      error_title: 'Nimbalystへのログインエラー', error_heading: 'ログインを完了できませんでした', error_message: 'Nimbalystに戻って、もう一度お試しください。',
+      already_used: 'このログイン用コールバックはすでに使用されています。', invalid_body: 'コールバックの本文が無効です', payload_too_large: 'コールバックのデータが大きすぎます',
+    });
   });
 
   it('creates isolated translator instances with English fallback', async () => {

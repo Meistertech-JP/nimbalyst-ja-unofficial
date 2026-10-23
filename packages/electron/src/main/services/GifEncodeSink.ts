@@ -19,7 +19,7 @@ import type {
   GifWorkerResult,
 } from '../workers/gifEncodeWorker';
 
-export const GIF_WORKER_FILENAME = 'gif-encode-worker.bundle.js';
+export const GIF_WORKER_FILENAME = 'gif-encode-worker.bundle.cjs';
 
 /**
  * A runaway export kills the worker instead of the app. Bounded well above what

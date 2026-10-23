@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import {
@@ -37,6 +37,7 @@ interface SettingsSidebarProps {
 
 const GROUP_LABEL_KEYS: Record<string, string> = {
   Application: 'sidebar.groups.application',
+  Account: 'sidebar.group_account',
   'Agent Providers': 'sidebar.groups.agent_providers',
   'Chat Providers': 'sidebar.groups.chat_providers',
   'Tools & Token Cost': 'sidebar.groups.tools_mcp',
@@ -83,6 +84,10 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
     Array<{ id: string; name: string; icon?: string; status: string }>
   >([]);
   const [tooltipText, setTooltipText] = useState<string | null>(null);
+  const tooltipId = useId();
+  useEffect(() => {
+    setTooltipText(null);
+  }, [t]);
   const { refs, floatingStyles } = useFloating({
     open: tooltipText !== null,
     placement: 'right',
@@ -154,6 +159,9 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
             {routes.map((route) => {
               const isSettingsRoute = 'source' in route;
               const id = route.id;
+              const label = isSettingsRoute
+                ? settingsRouteLabel(route, t)
+                : t(`sidebar.item_${id.replace(/-/g, '_')}`, { defaultValue: route.label });
               const providerState = providerStatus[id];
               const status = !isSettingsRoute
                 ? route.status
@@ -163,28 +171,37 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                   key={id}
                   type="button"
                   data-testid={`settings-route-${id}`}
+                  aria-describedby={tooltipText === label ? tooltipId : undefined}
                   className={`settings-sidebar-item w-full flex items-center gap-2 px-2 py-1.5 rounded text-left cursor-pointer text-sm transition-colors ${
                     selectedCategory === id
                       ? 'bg-[var(--nim-bg-selected)] text-[var(--nim-text)]'
                       : 'bg-transparent text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]'
                   }`}
                   onClick={() => onSelectCategory(id)}
+                  onMouseEnter={(event) => {
+                    refs.setReference(event.currentTarget);
+                    setTooltipText(label);
+                  }}
+                  onMouseLeave={() => setTooltipText(null)}
+                  onFocus={(event) => {
+                    refs.setReference(event.currentTarget);
+                    setTooltipText(label);
+                  }}
+                  onBlur={() => setTooltipText(null)}
                 >
-                  <span className="settings-sidebar-item-icon flex items-center justify-center w-5 h-5 shrink-0 text-[var(--nim-text-muted)]">
+                  <span aria-hidden="true" className="settings-sidebar-item-icon flex items-center justify-center w-5 h-5 shrink-0 text-[var(--nim-text-muted)]">
                     {isSettingsRoute
                       ? routeIcon(route)
                       : route.icon ? <MaterialSymbol icon={route.icon} size={16} /> : getProviderIcon(id, { size: 16 })}
                   </span>
-                  <span className="settings-sidebar-item-name flex-1 truncate">{isSettingsRoute
-                    ? settingsRouteLabel(route, t)
-                    : t(`sidebar.item_${id.replace(/-/g, '_')}`, { defaultValue: route.label })}</span>
+                  <span className="settings-sidebar-item-name min-w-0 flex-1 whitespace-normal break-words leading-5">{label}</span>
                   {isSettingsRoute && route.source === 'builtin' && route.isAlpha && (
                     route.id === 'project-sharing'
-                      ? <TeamBetaBadge size="xs" />
-                      : <SettingsAlphaBadge size="xs" />
+                      ? <TeamBetaBadge size="xs" className="shrink-0" />
+                      : <SettingsAlphaBadge size="xs" className="shrink-0" />
                   )}
                   {(status === 'success' || status === 'active' || status === 'error' || status === 'denied') && (
-                    <span className={`settings-sidebar-item-status h-2 w-2 rounded-full ${status === 'success' || status === 'active' ? 'bg-[var(--nim-success)]' : 'bg-[var(--nim-error)]'}`} />
+                    <span className={`settings-sidebar-item-status h-2 w-2 shrink-0 rounded-full ${status === 'success' || status === 'active' ? 'bg-[var(--nim-success)]' : 'bg-[var(--nim-error)]'}`} />
                   )}
                 </button>
               );
@@ -199,6 +216,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
             ref={refs.setFloating}
             style={floatingStyles}
             role="tooltip"
+            id={tooltipId}
             className="settings-sidebar-tooltip z-[10000] max-w-[280px] rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg-tertiary)] px-3 py-2 text-sm text-[var(--nim-text)] shadow-lg"
           >
             {tooltipText}

@@ -74,6 +74,7 @@ export interface PersonalPageTabProps {
 
 export const PersonalPageTab: React.FC<PersonalPageTabProps> = ({ documentId, workspacePath, fallbackTitle }) => {
   const { t } = useTranslation('common');
+  const { t: tEditor } = useTranslation('editor');
   const { t: tCollab } = useTranslation('collabSidebar');
   const info = usePersonalPage(workspacePath, documentId, fallbackTitle);
   const { title } = info;
@@ -94,7 +95,7 @@ export const PersonalPageTab: React.FC<PersonalPageTabProps> = ({ documentId, wo
   }, [workspacePath]);
   const session = getPersonalCollabDocsSession(workspacePath);
   const documents = useAtomValue(personalPagesDocumentsAtomFamily(workspacePath));
-  const exportItems = useMemo(() => editorExportMenuItems(editor, page.title ?? title), [editor, page.title, title]);
+  const exportItems = useMemo(() => editorExportMenuItems(editor, page.title ?? title, tEditor), [editor, page.title, title, tEditor]);
   const menuItems = usePageMenuItems({
     lane: 'personal',
     session,

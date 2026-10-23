@@ -5,9 +5,10 @@ import * as fsp from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
-// PGLite backup service is `app.getPath('userData')`-backed for the legacy
-// cleanup scan; stub it before the import.
+// Keep Electron's fallback isolated too, but the production resolver honors
+// NIMBALYST_USER_DATA_PATH first. Bind that override for every fresh fixture.
 let tmp: string;
+let inheritedDatabaseOverride: string | undefined;
 vi.mock('electron', () => ({
   app: {
     getPath: (_name: string) => tmp,
@@ -24,13 +25,33 @@ vi.mock('../../../utils/logger', () => ({
 }));
 
 import { DatabaseBackupService } from '../DatabaseBackupService';
+import { resolveDatabaseUserDataPath } from '../../../database/userDataPath';
+
+function createFixtureRoot(): void {
+  inheritedDatabaseOverride = process.env.NIMBALYST_USER_DATA_PATH;
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-pgbkp-'));
+  vi.stubEnv('NIMBALYST_USER_DATA_PATH', tmp);
+  expect(resolveDatabaseUserDataPath()).toBe(tmp);
+}
+
+function removeFixtureAndRestoreEnvironment(): void {
+  try {
+    // Only remove this test's newly created direct child of its current TEMP.
+    expect(path.dirname(path.resolve(tmp))).toBe(path.resolve(os.tmpdir()));
+    expect(path.basename(tmp)).toMatch(/^nim-pgbkp-/);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  } finally {
+    vi.unstubAllEnvs();
+    expect(process.env.NIMBALYST_USER_DATA_PATH).toBe(inheritedDatabaseOverride);
+  }
+}
 
 describe('DatabaseBackupService temp-dir cleanup', () => {
   let backupDir: string;
   let svc: DatabaseBackupService;
 
   beforeEach(async () => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-pgbkp-'));
+    createFixtureRoot();
     backupDir = path.join(tmp, 'db-backups');
     fs.mkdirSync(backupDir, { recursive: true });
 
@@ -42,9 +63,7 @@ describe('DatabaseBackupService temp-dir cleanup', () => {
     await svc.initialize();
   });
 
-  afterEach(() => {
-    fs.rmSync(tmp, { recursive: true, force: true });
-  });
+  afterEach(removeFixtureAndRestoreEnvironment);
 
   it('preserves aged root-level corruption artifacts and their contents', async () => {
     const artifact = path.join(tmp, 'pglite-db.backup-2026-08-21T12-00-00-000Z');
@@ -93,14 +112,22 @@ describe('DatabaseBackupService temp-dir cleanup', () => {
     // Make dbPath exist so the createBackup() pre-checks pass.
     fs.mkdirSync(path.join(tmp, 'pglite-db'));
     svcAny.hasEnoughDiskSpace = async () => true;
-    svcAny.copyDirectory = async (_src: string, dest: string) => {
+    let actualPartialPath: string | undefined;
+    const failedCopy = vi.fn(async (_src: string, dest: string) => {
+      expect(path.dirname(dest)).toBe(backupDir);
+      actualPartialPath = dest;
       await fsp.mkdir(dest, { recursive: true });
       await fsp.writeFile(path.join(dest, 'partial'), 'x');
       throw new Error('synthetic copy failure');
-    };
+    });
+    svcAny.copyDirectory = failedCopy;
 
     const result = await svc.createBackup();
     expect(result.success).toBe(false);
+    expect(result.error).toBe('synthetic copy failure');
+    expect(failedCopy).toHaveBeenCalledTimes(1);
+    expect(actualPartialPath).toEqual(expect.any(String));
+    expect(fs.existsSync(actualPartialPath!)).toBe(false);
 
     // The catch block must have cleaned up the partial temp directory.
     const stragglers = fs
@@ -131,8 +158,20 @@ describe('DatabaseBackupService createBackup', () => {
   const slotPath = (slot: 'current' | 'previous' | 'oldest') =>
     path.join(backupDir, `pglite-db.backup-${slot}`);
 
+  const expectActualBackupInFixture = (svc: DatabaseBackupService) => {
+    expect(resolveDatabaseUserDataPath()).toBe(tmp);
+    expect(fs.readFileSync(path.join(slotPath('current'), 'page.0'), 'utf8')).toBe('x'.repeat(1024));
+    expect(JSON.parse(fs.readFileSync(path.join(backupDir, 'backup-metadata.json'), 'utf8')))
+      .toEqual(svc.getBackupStatus());
+  };
+
+  const createSuccessfulBackup = async (svc: DatabaseBackupService) => {
+    expect(await svc.createBackup()).toEqual({ success: true });
+    expectActualBackupInFixture(svc);
+  };
+
   beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-pgbkp-'));
+    createFixtureRoot();
     backupDir = path.join(tmp, 'db-backups');
     fs.mkdirSync(backupDir, { recursive: true });
     dbPath = path.join(tmp, 'pglite-db');
@@ -140,9 +179,7 @@ describe('DatabaseBackupService createBackup', () => {
     fs.writeFileSync(path.join(dbPath, 'page.0'), 'x'.repeat(1024));
   });
 
-  afterEach(() => {
-    fs.rmSync(tmp, { recursive: true, force: true });
-  });
+  afterEach(removeFixtureAndRestoreEnvironment);
 
   it('coalesces a second createBackup while one is in flight', async () => {
     // #1369: the periodic timer and the resume-from-sleep check both fire a
@@ -168,9 +205,10 @@ describe('DatabaseBackupService createBackup', () => {
     expect(copyDirectory).toHaveBeenCalledTimes(1);
     expect(a).toEqual({ success: true });
     expect(b).toEqual({ success: true });
+    expectActualBackupInFixture(svc);
 
     // The guard must clear once the backup settles so the next window runs.
-    await svc.createBackup();
+    await createSuccessfulBackup(svc);
     expect(copyDirectory).toHaveBeenCalledTimes(2);
   });
 
@@ -192,6 +230,7 @@ describe('DatabaseBackupService createBackup', () => {
     svcAny.copyDirectory = copyDirectory;
     expect(await svc.createBackup()).toEqual({ success: true });
     expect(copyDirectory).toHaveBeenCalledTimes(1);
+    expectActualBackupInFixture(svc);
   });
 
   it('keeps backupCopiesKept generations instead of a hardcoded three', async () => {
@@ -200,9 +239,9 @@ describe('DatabaseBackupService createBackup', () => {
     const svc = makeService(() => 2);
     await svc.initialize();
 
-    await svc.createBackup();
-    await svc.createBackup();
-    await svc.createBackup();
+    await createSuccessfulBackup(svc);
+    await createSuccessfulBackup(svc);
+    await createSuccessfulBackup(svc);
 
     expect(fs.existsSync(slotPath('current'))).toBe(true);
     expect(fs.existsSync(slotPath('previous'))).toBe(true);
@@ -214,13 +253,13 @@ describe('DatabaseBackupService createBackup', () => {
     let copiesKept = 3;
     const svc = makeService(() => copiesKept);
     await svc.initialize();
-    await svc.createBackup();
-    await svc.createBackup();
-    await svc.createBackup();
+    await createSuccessfulBackup(svc);
+    await createSuccessfulBackup(svc);
+    await createSuccessfulBackup(svc);
     expect(fs.existsSync(slotPath('oldest'))).toBe(true);
 
     copiesKept = 1;
-    await svc.createBackup();
+    await createSuccessfulBackup(svc);
 
     expect(fs.existsSync(slotPath('current'))).toBe(true);
     expect(fs.existsSync(slotPath('previous'))).toBe(false);

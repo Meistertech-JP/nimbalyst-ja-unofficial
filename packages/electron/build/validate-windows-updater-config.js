@@ -23,15 +23,25 @@ function validateWindowsUpdaterConfig() {
       );
     }
 
-    // NSIS concatenates global and Windows associations, and unregisters by
-    // this file-class name. A separate appId alone does not isolate a ProgID.
+    if (packageJson.build?.extraMetadata?.name !== 'nimbalyst-ja-unofficial') {
+      throw new Error('Unofficial Windows installer cache must use the independent packaged name nimbalyst-ja-unofficial.');
+    }
+
+    // Even an appId-scoped standard APP_ASSOCIATE overwrites the shared
+    // extension default. The custom NSIS Open With policy owns registration.
     const associations = [
       ...asArray(packageJson.build?.fileAssociations),
       ...asArray(packageJson.build?.win?.fileAssociations),
     ];
-    const classPrefix = `${packageJson.build.appId}.`;
-    if (associations.some((entry) => typeof entry?.name !== 'string' || !entry.name.startsWith(classPrefix))) {
-      throw new Error('Unofficial Windows file associations must use appId-scoped ProgIDs so uninstall cannot remove the official file class.');
+    if (associations.length !== 0) {
+      throw new Error('Unofficial Windows standard file associations must be empty to preserve shared extension defaults; use the custom Open With policy.');
+    }
+    const nsis = packageJson.build?.nsis;
+    if (nsis?.include !== 'build/installer-unofficial.nsh') {
+      throw new Error('Unofficial Windows installer must use the custom Open With include.');
+    }
+    if (nsis.perMachine !== false || nsis.allowElevation !== false || nsis.runAfterFinish !== false || nsis.deleteAppDataOnUninstall !== false) {
+      throw new Error('Unofficial Windows installer must retain current-user, no-elevation-offer, no-auto-run and app-data-retention policies.');
     }
 
     console.log('Unofficial Windows build verified: auto-update feed generation is disabled');

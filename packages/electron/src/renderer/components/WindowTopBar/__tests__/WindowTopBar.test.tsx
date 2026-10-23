@@ -8,6 +8,7 @@ import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { WindowTopBar, clampGitFeedbackMessage } from '../WindowTopBar';
 import { windowFullScreenAtom } from '../../../store/atoms/windowFullScreen';
 import { NO_DRAG_REGION } from '../dragRegion';
+import { useLocalizedCreateAction } from '../../../hooks/useLocalizedCreateAction';
 
 // Only the icon needs stubbing (jsdom has no font ligatures). The rest of the
 // barrel is kept real: the bar's imports reach other runtime exports
@@ -36,6 +37,41 @@ const render = (ui: React.ReactElement) => renderBase(
 );
 
 describe('WindowTopBar', () => {
+  it('updates create labels, tooltip and menu accessibility when the language changes', async () => {
+    const i18n = await createI18nInstance('ja');
+    const onCreate = vi.fn();
+    function LocalizedBar() {
+      const action = useLocalizedCreateAction('files');
+      return <WindowTopBar
+        workspaceName="My project"
+        activeModeLabel="Files"
+        gitStatus={null}
+        gitActions={{ onPull: () => {}, onPush: () => {}, onOpenLog: () => {} }}
+        newInTreeControl={action ? {
+          label: action.label,
+          destination: 'My untranslated folder',
+          onCreate,
+          menuItems: [{ id: 'custom', label: 'My custom type', icon: 'description', onSelect: () => {} }],
+        } : undefined}
+      />;
+    }
+    renderBase(<UiLanguageProvider i18n={i18n} preference="ja" systemLocale="en-US"><LocalizedBar /></UiLanguageProvider>);
+    const primary = screen.getByTestId('window-top-bar-create-left');
+    expect(primary.getAttribute('aria-label')).toBe('新しいファイル');
+    expect(primary.getAttribute('title')).toBe('新しいファイル');
+    fireEvent.click(primary);
+    expect(onCreate).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: '作成する項目を選択: 新しいファイル' }));
+    expect(screen.getByRole('menuitem', { name: '新しいファイル' }).textContent).toContain('新しいファイル');
+    expect(screen.getByTestId('window-top-bar-create-left-destination').textContent).toContain('My untranslated folder');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(primary.getAttribute('aria-label')).toBe('New file');
+    expect(primary.getAttribute('title')).toBe('New file');
+    expect(screen.getByRole('button', { name: 'Choose what to create: New file' }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('menuitem', { name: 'New file' }).textContent).toContain('New file');
+    expect(screen.getByRole('menuitem', { name: 'My custom type' }).textContent).toContain('My custom type');
+  });
+
   it('renders fixed title-bar labels in Japanese', async () => {
     const i18n = await createI18nInstance('ja');
     getDefaultStore().set(windowFullScreenAtom, true);

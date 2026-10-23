@@ -133,7 +133,7 @@ export function CommentComposer({
   initialText = '',
   initialPool = EMPTY_POOL,
   initialAttachments = EMPTY_ATTACHMENTS,
-  submitLabel = 'Send',
+  submitLabel,
   onCancel,
   onDraftChange,
   onDraftCleared,
@@ -626,7 +626,7 @@ export function CommentComposer({
           }`}
         >
           <MaterialSymbol icon="send" size={13} />
-          {sending ? 'Sending' : submitLabel}
+          {sending ? tCommon('comments.thread.sending') : (submitLabel ?? tEditor('comments.send'))}
         </button>
       </div>
     </div>

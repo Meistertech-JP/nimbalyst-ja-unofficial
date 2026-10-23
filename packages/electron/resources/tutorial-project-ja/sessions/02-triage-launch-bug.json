@@ -1,0 +1,86 @@
+{
+  "session": {
+    "provider": "claude-code",
+    "model": "claude-code:sonnet",
+    "title": "リリースの不具合を調査する",
+    "agentRole": "standard",
+    "metadata": {
+      "linkedTrackerItemIds": [
+        "{{TRACKER_ID:EXAMPLE_BUG}}"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "direction": "input",
+      "source": "claude-code",
+      "content": "{\"prompt\":\"トラッカーモードでエクスポート操作の不具合サンプルを調査し、このセッションをリンクしてください。関連する製品概要の確認は別セッションに依頼してください。\",\"options\":{\"cwd\":\"{{TUTORIAL_ROOT}}\"}}",
+      "messageKind": "user",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[{\"type\":\"text\",\"text\":\"不具合のサンプルに明確な再現手順がありました。この調査をリンクし、別のセッションに製品の要件を確認してもらいます。\"}]}}",
+      "messageKind": "assistant",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[{\"type\":\"tool_use\",\"id\":\"tutorial-tracker-create\",\"name\":\"mcp__nimbalyst-trackers__tracker_create\",\"input\":{\"type\":\"bug\",\"title\":\"日付範囲を変更してもエクスポートが無効のままになる\",\"status\":\"to-do\",\"priority\":\"medium\",\"description\":\"任意の日付範囲を選んでも、ダッシュボードのエクスポート操作が更新されません。\",\"tags\":[\"tutorial\",\"dashboard\"]}}]}}",
+      "messageKind": "tool",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"tutorial-tracker-create\",\"content\":\"{\\\"structured\\\":{\\\"action\\\":\\\"created\\\",\\\"item\\\":{\\\"id\\\":\\\"{{TRACKER_ID:EXAMPLE_BUG}}\\\",\\\"issueKey\\\":\\\"{{TRACKER_ISSUE_KEY:EXAMPLE_BUG}}\\\",\\\"type\\\":\\\"bug\\\",\\\"title\\\":\\\"日付範囲を変更してもエクスポートが無効のままになる\\\",\\\"status\\\":\\\"to-do\\\",\\\"priority\\\":\\\"medium\\\",\\\"tags\\\":[\\\"tutorial\\\",\\\"dashboard\\\"]}},\\\"summary\\\":\\\"チュートリアルの不具合サンプルを作成しました。\\\"}\"}]}}",
+      "messageKind": "tool",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[{\"type\":\"tool_use\",\"id\":\"tutorial-tracker-link\",\"name\":\"mcp__nimbalyst-trackers__tracker_link_session\",\"input\":{\"trackerId\":\"{{TRACKER_ID:EXAMPLE_BUG}}\",\"sessionId\":\"{{SESSION_ID:TRIAGE_THE_LAUNCH_BUG}}\"}}]}}",
+      "messageKind": "tool",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"tutorial-tracker-link\",\"content\":\"{\\\"structured\\\":{\\\"action\\\":\\\"linked\\\",\\\"trackerId\\\":\\\"{{TRACKER_ID:EXAMPLE_BUG}}\\\",\\\"type\\\":\\\"bug\\\",\\\"title\\\":\\\"日付範囲を変更してもエクスポートが無効のままになる\\\",\\\"linkedCount\\\":1},\\\"summary\\\":\\\"このセッションをチュートリアルのリリース不具合にリンクしました。\\\"}\"}]}}",
+      "messageKind": "tool",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[{\"type\":\"tool_use\",\"id\":\"tutorial-spawn-review\",\"name\":\"mcp__nimbalyst-host__spawn_session\",\"input\":{\"prompt\":\"product-brief.mdを確認し、このエクスポート操作の回帰が満たしていない製品要件を特定してください。\",\"mode\":\"sibling\"}}]}}",
+      "messageKind": "tool",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"tutorial-spawn-review\",\"content\":\"{\\\"sessionId\\\":\\\"{{SESSION_ID:DRAFT_THE_PRODUCT_BRIEF}}\\\",\\\"status\\\":\\\"completed\\\",\\\"title\\\":\\\"製品概要を作成する\\\"}\"}]}}",
+      "messageKind": "tool",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[{\"type\":\"text\",\"text\":\"トラッカーとセッションの両側から、この回帰を参照できるようになりました。この挙動は[製品概要](product-brief.md)にある追跡可能性と即時利用の目標に反しています。詳しい再現手順は[{{TRACKER_ISSUE_KEY:EXAMPLE_BUG}}](nimbalyst://{{TRACKER_ISSUE_KEY:EXAMPLE_BUG}})で確認できます。\"}]}}",
+      "messageKind": "assistant",
+      "hidden": false
+    },
+    {
+      "direction": "output",
+      "source": "claude-code",
+      "content": "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"model\":\"claude-sonnet-4-5\",\"content\":[{\"type\":\"text\",\"text\":\"下の入力欄から、このセッションを続けることも、新しいセッションを始めることもできます。\"}]}}",
+      "messageKind": "assistant",
+      "hidden": false
+    }
+  ],
+  "key": "TRIAGE_THE_LAUNCH_BUG"
+}

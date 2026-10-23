@@ -23,6 +23,10 @@ exports.default = async function(context) {
   const platformMap = { mac: 'darwin', windows: 'win32', linux: 'linux' };
   const platformName = platformMap[packager.platform.name] || packager.platform.name;
 
+  if (configureWindowsNsisCompression(platformName, arch)) {
+    console.log('AfterPack: Using BCJ for Windows x64 NSIS compression; the bundled Nsis7z decoder cannot extract the newer ARM64 filter. All payload files are retained.');
+  }
+
   // Find the resources dir - path varies by platform
   const resourcesDir = packager.platform.name === 'mac'
     ? path.join(appOutDir, `${packager.appInfo.productName}.app`, 'Contents/Resources')
@@ -384,6 +388,18 @@ function validateBundledExtensions(resourcesDir) {
   }
 
   console.log(`AfterPack: verified ${expected.length} built-in extensions bundled into ${path.basename(resourcesDir)}/extensions`);
+}
+
+// electron-builder generates NSIS archives after this hook and reads this
+// supported environment setting when composing its 7z command. Newer 7zip
+// auto-selects ARM64 filters for some bundled binaries, but Nsis7z 19 silently
+// omits those entries. BCJ is reversible for every payload and supported by
+// that decoder. ZIP uses a separate compression path and ignores this setting.
+exports.configureWindowsNsisCompression = configureWindowsNsisCompression;
+function configureWindowsNsisCompression(platformName, arch, environment = process.env) {
+  if (platformName !== 'win32' || arch !== 'x64') return false;
+  environment.ELECTRON_BUILDER_7Z_FILTER = 'BCJ';
+  return true;
 }
 
 function getDirSize(dirPath) {

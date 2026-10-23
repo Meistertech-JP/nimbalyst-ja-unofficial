@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMainI18nController } from '../../i18n/mainI18n';
 
 type PdfRequest = {
   html: string;
@@ -12,15 +13,19 @@ const mocks = vi.hoisted(() => ({
   writeFile: vi.fn(),
   loadURL: vi.fn(),
   close: vi.fn(),
+  showSaveDialog: vi.fn(),
+  getSession: vi.fn(),
+  loadViewMessages: vi.fn(),
 }));
 vi.mock('electron', () => ({
   BrowserWindow: class {
+    static fromWebContents() { return null; }
     webContents = { printToPDF: mocks.printToPDF };
     loadURL = mocks.loadURL;
     close = mocks.close;
     isDestroyed = () => false;
   },
-  dialog: {},
+  dialog: { showSaveDialog: mocks.showSaveDialog },
   clipboard: {},
 }));
 vi.mock('fs/promises', () => ({ writeFile: mocks.writeFile }));
@@ -31,9 +36,9 @@ vi.mock('../../utils/ipcRegistry', () => ({
 }));
 vi.mock('../../utils/logger', () => ({ logger: { file: { info: vi.fn(), error: vi.fn() } } }));
 vi.mock('../../services/analytics/AnalyticsService', () => ({ AnalyticsService: {} }));
-vi.mock('@nimbalyst/runtime/storage/repositories/AISessionsRepository', () => ({ AISessionsRepository: {} }));
+vi.mock('@nimbalyst/runtime/storage/repositories/AISessionsRepository', () => ({ AISessionsRepository: { get: mocks.getSession } }));
 vi.mock('../../services/SessionHtmlExporter', () => ({ exportSessionToHtml: vi.fn(), getExportFilename: vi.fn() }));
-vi.mock('../../utils/transcriptHelpers', () => ({ loadViewMessages: vi.fn() }));
+vi.mock('../../utils/transcriptHelpers', () => ({ loadViewMessages: mocks.loadViewMessages }));
 vi.mock('../../utils/dialogPaths', () => ({ getDialogDefaultPath: vi.fn(), rememberDialogSelection: vi.fn() }));
 vi.mock('../../services/AnimationGifRecorder', () => ({ recordAnimationGif: vi.fn() }));
 vi.mock('../../services/AnimationVideoRecorder', () => ({ recordAnimationVideo: vi.fn() }));
@@ -50,6 +55,30 @@ async function exportPdf(margins?: Electron.PrintToPDFOptions['margins']) {
 }
 
 describe('PDF export margins', () => {
+  it('localizes HTML session save options without changing the file extension or canceled result', async () => {
+    const controller = await createMainI18nController({ get: () => 'ja', subscribe: () => () => undefined }, 'en-US', () => undefined);
+    mocks.getSession.mockResolvedValue({ id: 'fixture', provider: 'claude-code', createdAt: 0, updatedAt: 0, title: 'Fixture' });
+    mocks.loadViewMessages.mockResolvedValue({ success: true, messages: [] });
+    mocks.showSaveDialog.mockResolvedValue({ canceled: true });
+    const handler = mocks.handlers.get('export:sessionToHtml')! as any;
+    try {
+      expect(await handler({ sender: {} }, { sessionId: 'fixture' })).toEqual({ success: false, error: 'Export cancelled' });
+      expect(mocks.showSaveDialog).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'セッションをHTMLにエクスポート', buttonLabel: 'エクスポート', filters: [{ name: 'HTMLファイル', extensions: ['html'] }] }));
+      expect(mocks.writeFile).not.toHaveBeenCalled();
+    } finally { controller.dispose(); }
+  });
+  it('passes localized native save options while retaining PDF filters and cancellation', async () => {
+    const controller = await createMainI18nController({ get: () => 'ja', subscribe: () => () => undefined }, 'en-US', () => undefined);
+    mocks.showSaveDialog.mockResolvedValue({ canceled: true });
+    try {
+      const handler = mocks.handlers.get('export:showSaveDialogPdf')!;
+      expect(await handler({ sender: {} }, {} as PdfRequest)).toBeNull();
+      expect(mocks.showSaveDialog).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'PDFにエクスポート', buttonLabel: 'エクスポート', filters: [{ name: 'PDFファイル', extensions: ['pdf'] }] }));
+      await controller.i18n.changeLanguage('en');
+      await handler({ sender: {} }, {} as PdfRequest);
+      expect(mocks.showSaveDialog).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Export to PDF', buttonLabel: 'Export', filters: [{ name: 'PDF Files', extensions: ['pdf'] }] }));
+    } finally { controller.dispose(); }
+  });
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();

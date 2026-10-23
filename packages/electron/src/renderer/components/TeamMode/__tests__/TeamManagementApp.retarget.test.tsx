@@ -4,6 +4,8 @@ import { createHydratedOrgStore } from './organizationTestStore';
 import { Provider } from 'jotai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 /**
  * The org window is a single reusable window: opening it again just focuses it
@@ -82,6 +84,22 @@ describe('TeamManagementApp retargeting', () => {
     // The selection latch is a module singleton; a request left pending would
     // be picked up by the next test's Inbox.
     consumeInboxRowSelectionRequest(ORG_WINDOW_SURFACE_ID);
+  });
+
+  it('updates the native title when the mounted window switches between Japanese and English', async () => {
+    const i18n = await createI18nInstance('ja');
+    const store = await createHydratedOrgStore();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Provider store={store}><TeamManagementApp /></Provider>
+      </I18nextProvider>,
+    );
+
+    await waitFor(() => expect(window.electronAPI.setTitle).toHaveBeenLastCalledWith('組織のメッセージ - Nimbalyst'));
+    await act(async () => { await i18n.changeLanguage('en'); });
+    await waitFor(() => expect(window.electronAPI.setTitle).toHaveBeenLastCalledWith('Organization Messages - Nimbalyst'));
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    await waitFor(() => expect(window.electronAPI.setTitle).toHaveBeenLastCalledWith('組織のメッセージ - Nimbalyst'));
   });
 
   /**

@@ -3,6 +3,7 @@
  * menu and every page header in Pages offer them.
  */
 import type { LexicalEditor } from 'lexical';
+import type { TFunction } from 'i18next';
 import type { PageHeaderMenuItem } from '@nimbalyst/collab-client/trackers-ui/page';
 import { $generateHtmlFromNodes } from '@lexical/html';
 import { $convertToEnhancedMarkdownString, copyToClipboard, getEditorTransformers, wrapWithPrintStyles } from '@nimbalyst/runtime';
@@ -21,7 +22,7 @@ export function copyEditorAsMarkdown(editor: LexicalEditor): void {
 }
 
 /** Asks where to save, then prints the editor's HTML to a PDF there. */
-export async function exportEditorToPdf(editor: LexicalEditor, fileName: string): Promise<void> {
+export async function exportEditorToPdf(editor: LexicalEditor, fileName: string, t: TFunction<'editor'>): Promise<void> {
   const electronAPI = (window as any).electronAPI;
   if (!electronAPI) return;
   try {
@@ -43,7 +44,7 @@ export async function exportEditorToPdf(editor: LexicalEditor, fileName: string)
     });
     if (!result.success) {
       console.error('[editorExport] PDF export failed:', result.error);
-      electronAPI.showErrorDialog('Export Failed', `Failed to export PDF: ${result.error}`);
+      electronAPI.showErrorDialog(t('diff.export_failed'), t('diff.export_failed_message', { error: result.error }));
     }
   } catch (error) {
     console.error('[editorExport] Failed to export to PDF:', error);
@@ -51,10 +52,10 @@ export async function exportEditorToPdf(editor: LexicalEditor, fileName: string)
 }
 
 /** The two as page header menu entries; none until the editor exists. */
-export function editorExportMenuItems(editor: LexicalEditor | null, fileName: string): PageHeaderMenuItem[] {
+export function editorExportMenuItems(editor: LexicalEditor | null, fileName: string, t: TFunction<'editor'>): PageHeaderMenuItem[] {
   if (!editor) return [];
   return [
-    { id: 'copy-markdown', label: 'Copy as Markdown', icon: 'content_copy', onSelect: () => copyEditorAsMarkdown(editor) },
-    { id: 'export-pdf', label: 'Export to PDF...', icon: 'picture_as_pdf', onSelect: () => { void exportEditorToPdf(editor, fileName); } },
+    { id: 'copy-markdown', label: t('diff.copy_as_markdown'), icon: 'content_copy', onSelect: () => copyEditorAsMarkdown(editor) },
+    { id: 'export-pdf', label: t('diff.export_to_pdf'), icon: 'picture_as_pdf', onSelect: () => { void exportEditorToPdf(editor, fileName, t); } },
   ];
 }

@@ -128,6 +128,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   onOpenItem,
 }) => {
   const { t } = useTranslation('tracker');
+  const { t: tEditor } = useTranslation('editor');
   const item = useAtomValue(trackerItemByIdAtom(itemId));
   const trackerDataLoaded = useAtomValue(trackerDataLoadedAtom);
   const model = useMemo(() => globalRegistry.get(item?.primaryType ?? ''), [item?.primaryType]);
@@ -190,7 +191,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   const personal = body.sharing === 'personal';
   const collaborative = body.contentMode === 'collaborative';
   const menuSession = personal ? getPersonalCollabDocsSession(workspacePath) : teamScope ? getElectronCollabDocsSession(teamScope) : null;
-  const exportItems = useMemo(() => editorExportMenuItems(body.recoveryEditor, localTitle || t('collaboration_surface.untitled')), [body.recoveryEditor, localTitle, t]);
+  const exportItems = useMemo(() => editorExportMenuItems(body.recoveryEditor, localTitle || t('collaboration_surface.untitled'), tEditor), [body.recoveryEditor, localTitle, t, tEditor]);
   const typedPageMenuItems = useTypedPageMenuItems(personal ? 'personal' : 'team', itemId, menuSession, exportItems);
   const headerBar = useMemo(() => ({
     onOpenAncestor: (ancestor: PageTreeAncestor) => {

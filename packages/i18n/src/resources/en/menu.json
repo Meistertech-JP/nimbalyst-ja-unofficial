@@ -21,6 +21,8 @@
   "new": "New",
   "application_menu": "Application menu",
   "top_bar": {
+    "new_shared_doc": "New shared doc",
+    "new_item": "New item",
     "show_panel": "Show {{label}}",
     "hide_panel": "Hide {{label}}",
     "choose_panel": "Choose {{label}}: {{selection}}",

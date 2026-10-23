@@ -713,7 +713,7 @@ export const SuperLoopGroup: React.FC<SuperLoopGroupProps> = memo(({
               onClick={handleRenameClick}
             >
               <MaterialSymbol icon="edit" size={14} />
-              Rename
+              {t('context.rename')}
             </button>
           )}
           {onPinToggle && (
@@ -722,7 +722,7 @@ export const SuperLoopGroup: React.FC<SuperLoopGroupProps> = memo(({
               onClick={handlePinToggle}
             >
               <MaterialSymbol icon="push_pin" size={14} />
-              {loop.isPinned ? 'Unpin' : 'Pin'}
+              {loop.isPinned ? t('context.unpin') : t('context.pin')}
             </button>
           )}
           {(onArchive || onUnarchive) && (
@@ -733,7 +733,7 @@ export const SuperLoopGroup: React.FC<SuperLoopGroupProps> = memo(({
                 onClick={handleArchiveToggle}
               >
                 <MaterialSymbol icon={loop.isArchived ? "unarchive" : "archive"} size={14} />
-                {loop.isArchived ? 'Unarchive' : 'Archive'}
+                {loop.isArchived ? t('context.unarchive') : t('context.archive')}
               </button>
             </>
           )}

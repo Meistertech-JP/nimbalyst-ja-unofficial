@@ -2,6 +2,7 @@ import { app, BrowserWindow, screen, type Rectangle } from 'electron';
 import { join } from 'path';
 import { safeHandle, safeOn } from '../utils/ipcRegistry';
 import { getPreloadPath } from '../utils/appPaths';
+import { translateMainMenuLabel } from '../i18n/mainI18n';
 import {
   getTeamManagementWindowState,
   getTheme,
@@ -157,7 +158,7 @@ export function createTeamManagementWindow(target?: TeamWindowTarget): BrowserWi
 
   teamManagementWindow = new BrowserWindow({
     ...restoredBounds,
-    title: 'Organization',
+    title: `${translateMainMenuLabel('organization_messages', 'Organization Messages')} - Nimbalyst`,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

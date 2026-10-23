@@ -13,6 +13,7 @@ import { OffscreenEditorManager } from '../services/OffscreenEditorManager';
 import { logger } from '../utils/logger';
 import { safeHandle, safeOn } from '../utils/ipcRegistry';
 import { getWindowId, windowStates } from '../window/WindowManager';
+import { getMainI18n } from '../i18n/mainI18n';
 
 /**
  * Register IPC handlers for mockup operations.
@@ -190,9 +191,16 @@ export function registerMockupHandlers(): void {
           // File doesn't exist, which is what we want
         }
 
-        // Create a basic mockup template
+        // Create a basic mockup template in the current UI language.
+        const mainI18n = getMainI18n();
+        const language = mainI18n?.resolvedLanguage ?? mainI18n?.language ?? 'en';
+        const documentLanguage = language.toLowerCase().startsWith('ja') ? 'ja' : 'en';
+        const instruction = String(mainI18n?.t('mockup.edit_instruction', {
+          ns: 'editor',
+          defaultValue: 'Edit this mockup using AI chat or edit the HTML directly.',
+        }) ?? 'Edit this mockup using AI chat or edit the HTML directly.');
         const template = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${documentLanguage}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -219,7 +227,7 @@ export function registerMockupHandlers(): void {
 </head>
 <body>
   <div class="mockup-container">
-    <p>Edit this mockup to create your design</p>
+    <p>${instruction}</p>
   </div>
 </body>
 </html>`;

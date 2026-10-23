@@ -17,12 +17,14 @@ const path = require('path');
  * directory can exist while electron-builder silently omits the copied tree.
  */
 function validatePackagedTutorialProject(resourcesDir) {
-  const packagedReadme = path.join(resourcesDir, 'tutorial-project', 'README.md');
-  if (!fs.existsSync(packagedReadme)) {
-    throw new Error(
-      `[validate-extra-resources] Packaged tutorial project is missing: ${packagedReadme}. ` +
-      'electron-builder silently skipped the tutorial-project extraResource.',
-    );
+  for (const name of ['tutorial-project', 'tutorial-project-ja']) {
+    const packagedReadme = path.join(resourcesDir, name, 'README.md');
+    if (!fs.existsSync(packagedReadme)) {
+      throw new Error(
+        `[validate-extra-resources] Packaged tutorial project is missing: ${packagedReadme}. ` +
+        `electron-builder silently skipped the ${name} extraResource.`,
+      );
+    }
   }
 }
 

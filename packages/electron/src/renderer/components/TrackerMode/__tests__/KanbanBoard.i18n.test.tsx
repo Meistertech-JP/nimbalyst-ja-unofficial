@@ -110,5 +110,6 @@ describe('KanbanBoard localization', () => {
     expect(card.textContent).toContain('たった今');
     expect(card.textContent).not.toContain('running');
     expect(card.textContent).not.toContain('just now');
+    expect(screen.getByTestId('kanban-toggle-complete').textContent).toContain('完了');
   });
 });

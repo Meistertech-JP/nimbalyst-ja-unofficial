@@ -1,0 +1,23 @@
+{
+  "about": {
+    "product": "Nimbalyst — Unofficial Japanese Edition",
+    "title": "About {{product}}",
+    "version_label": "Version",
+    "base_version": "Based on official Nimbalyst {{version}}.",
+    "disclaimer": "This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.",
+    "description": "Nimbalyst is the visual workspace for building with Codex and Claude Code.",
+    "feature_editors": "Agentic WYSIWYG visual editors for markdown, mockups, Excalidraw, Mermaid, data models, CSV and code, with extensions.",
+    "feature_sessions": "Parallel session management and kanban to understand session state, search and resume sessions, and link sessions to files and files to sessions.",
+    "feature_tracking": "Item tracking and kanban to manage plans, bugs, and tasks with your agent.",
+    "feature_storage": "Open storage of content and status in plain files on disk and Git.",
+    "original_credit": "Original application by",
+    "license": "MIT License",
+    "third_party_notices": "Third-Party Notices",
+    "support_id_label": "Your Nimbalyst Support ID:",
+    "copy_title": "Click to copy",
+    "copy_label": "Copy Support ID",
+    "loading": "Loading…",
+    "unavailable": "Not available",
+    "copied": "Copied!"
+  }
+}

@@ -111,10 +111,13 @@ async function loadFixtures(
 
 export async function seedTutorialTrackers(
   workspacePath: string,
-  dependencies: Partial<TutorialTrackerSeederDependencies> = {}
+  dependencies: Partial<TutorialTrackerSeederDependencies> = {},
+  templateDirectory?: string
 ): Promise<SeededTutorialTracker[]> {
   const deps = { ...defaultDependencies, ...dependencies };
-  const fixtures = await loadFixtures(deps.getFixturePath());
+  const fixtures = await loadFixtures(templateDirectory
+    ? path.join(templateDirectory, "trackers.json")
+    : deps.getFixturePath());
   const seeded: SeededTutorialTracker[] = [];
 
   try {

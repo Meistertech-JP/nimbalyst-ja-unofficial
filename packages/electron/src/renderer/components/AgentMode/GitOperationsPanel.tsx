@@ -49,6 +49,12 @@ import { defaultAgentModelAtom } from '../../store/atoms/appSettings';
 import { type AgentModelOption } from './AgentModelPicker';
 import { isClaudeCliTerminalSession } from '../UnifiedAI/claudeCliInputRouting';
 import { buildCommitPrompt } from '@nimbalyst/runtime/ui/AgentTranscript/utils/commitPromptBuilder';
+import {
+  buildBadGitStateDraft,
+  buildRebaseConflictDraft,
+  buildUntrackedFilesDraft,
+  buildMergeConflictDraft,
+} from './gitResolutionDrafts';
 
 // Types for worktree mode (copied from DiffModeView)
 interface WorktreeChangedFile {
@@ -890,35 +896,15 @@ export const GitOperationsPanel: React.FC<GitOperationsPanelProps> = React.memo(
       setBadGitStateError(null);
 
       try {
-        // Create a prompt describing the issue
-        const conflictFilesList = badGitStateError.conflictedFiles
-          ? badGitStateError.conflictedFiles.map(f => `  - ${f}`).join('\n')
-          : '';
-
-        const draftMessage = `I'm having a git issue that needs to be resolved.
-
-**Context:**
-- Worktree location: ${worktreePath}
-- Main repository: ${workspacePath}
-
-**The Problem:**
-${badGitStateError.message}
-
-${badGitStateError.conflictedFiles && badGitStateError.conflictedFiles.length > 0 ? `**Conflicted Files:**
-${conflictFilesList}
-
-` : ''}**What you need to do:**
-1. Examine the git state to understand the issue
-2. Resolve any conflicts or incomplete operations
-3. Clean up the git state so operations can proceed
-
-Please help me resolve this git issue.`;
+        const draftMessage = buildBadGitStateDraft(t, {
+          workspacePath, worktreePath, ...badGitStateError,
+        });
 
         await createSessionWithDraft(draftMessage, modelId);
       } catch (err) {
         console.error('[GitOperationsPanel] Failed to send bad git state resolution request:', err);
       }
-    }, [badGitStateError, worktreePath, workspacePath, createSessionWithDraft]);
+    }, [badGitStateError, worktreePath, workspacePath, createSessionWithDraft, t]);
 
     // Resolve rebase conflicts with Claude Agent (using Crystal's prompt pattern)
     const handleResolveRebaseConflictsWithAgent = useCallback(async (modelId: string) => {
@@ -933,47 +919,15 @@ Please help me resolve this git issue.`;
         const wtName = getWorktreeNameFromPath(worktreePath);
         const worktreeBranch = `worktree/${wtName}`;
 
-        // Create a detailed prompt with specific instructions
-        const conflictFilesList = rebaseConflictData.files.map(f => `  - ${f}`).join('\n');
-        const draftMessage = `I need to rebase this worktree branch onto the latest changes from ${baseBranch}.
-
-**Context:**
-- Main repository: ${workspacePath}
-- Base branch: ${baseBranch}
-- Worktree location: ${worktreePath}
-- Worktree branch: ${worktreeBranch}
-
-**The Situation:**
-I'm trying to rebase ${worktreeBranch} onto the local ${baseBranch} branch (from the main repository at ${workspacePath}, NOT origin/${baseBranch}). These files have conflicts:
-${conflictFilesList}
-${rebaseConflictData.commits ? `
-**Conflicting Commits:**
-${rebaseConflictData.commits.ours && rebaseConflictData.commits.ours.length > 0 ? `Your commits:\n${rebaseConflictData.commits.ours.slice(0, 5).map(c => `  - ${c}`).join('\n')}` : ''}
-${rebaseConflictData.commits.theirs && rebaseConflictData.commits.theirs.length > 0 ? `\nIncoming commits from ${baseBranch}:\n${rebaseConflictData.commits.theirs.slice(0, 5).map(c => `  - ${c}`).join('\n')}` : ''}
-` : ''}
-**Important Notes:**
-- If there are any uncommitted changes (staged or unstaged), they have been auto-stashed before the rebase attempt
-- After completing the rebase, you'll need to restore the stash
-- **CRITICAL:** Before restoring the stash, verify it's for THIS worktree by checking \`git stash list\` - look for a stash message mentioning this worktree's name
-- Handle any conflicts that arise when restoring the stash
-
-**What you need to do:**
-1. Start the rebase: \`git rebase ${baseBranch}\`
-2. Resolve all conflicts in the files listed above
-3. After resolving each conflict, stage the file: \`git add <file>\`
-4. Continue the rebase: \`git rebase --continue\`
-5. Repeat steps 2-4 until the rebase is complete
-6. After the rebase succeeds, **FIRST** check \`git stash list\` to verify which stash is for this worktree
-7. Restore the correct stash: \`git stash pop stash@{N}\` where N is the index of the correct stash
-8. If there are conflicts when popping the stash, resolve them as well
-
-Make sure to preserve the intent of both the worktree changes and the incoming changes from ${baseBranch}.`;
+        const draftMessage = buildRebaseConflictDraft(t, {
+          workspacePath, worktreePath, baseBranch, worktreeBranch, ...rebaseConflictData,
+        });
 
         await createSessionWithDraft(draftMessage, modelId);
       } catch (err) {
         console.error('[GitOperationsPanel] Failed to create agent session for rebase conflict resolution:', err);
       }
-    }, [worktreePath, worktreeRepoRootBranch, rebaseConflictData, createSessionWithDraft]);
+    }, [worktreePath, workspacePath, worktreeRepoRootBranch, rebaseConflictData, createSessionWithDraft, t]);
 
     // Resolve untracked files conflict with Claude Agent
     const handleResolveUntrackedFilesWithAgent = useCallback(async (modelId: string) => {
@@ -988,36 +942,15 @@ Make sure to preserve the intent of both the worktree changes and the incoming c
         const wtName = getWorktreeNameFromPath(worktreePath);
         const worktreeBranch = `worktree/${wtName}`;
 
-        // Create a detailed prompt with specific instructions
-        const untrackedFilesList = untrackedFilesConflict.map(f => `  - ${f}`).join('\n');
-        const draftMessage = `I need to rebase this worktree branch onto the latest changes from ${baseBranch}, but there are untracked files blocking the rebase.
-
-**Context:**
-- Main repository: ${workspacePath}
-- Base branch: ${baseBranch}
-- Worktree location: ${worktreePath}
-- Worktree branch: ${worktreeBranch}
-
-**The Problem:**
-The rebase cannot proceed because these untracked files in the worktree would be overwritten by incoming changes from ${baseBranch}:
-${untrackedFilesList}
-
-**What you need to do:**
-1. First, examine each untracked file to understand what it contains
-2. Decide what to do with each file:
-   - If it's important and should be kept: \`git add <file>\` to track it, then commit
-   - If it's generated/temp and can be deleted: \`rm <file>\`
-   - If you're unsure, you can stash it: \`git stash -u\` (stashes untracked files too)
-3. After handling the untracked files, retry the rebase: \`git rebase ${baseBranch}\`
-4. If you stashed, remember to restore with \`git stash pop\` after the rebase
-
-Please analyze these files and recommend the best approach before taking action.`;
+        const draftMessage = buildUntrackedFilesDraft(t, {
+          workspacePath, worktreePath, baseBranch, worktreeBranch, files: untrackedFilesConflict,
+        });
 
         await createSessionWithDraft(draftMessage, modelId);
       } catch (err) {
         console.error('[GitOperationsPanel] Failed to create agent session for untracked files resolution:', err);
       }
-    }, [worktreePath, worktreeRepoRootBranch, untrackedFilesConflict, createSessionWithDraft]);
+    }, [worktreePath, workspacePath, worktreeRepoRootBranch, untrackedFilesConflict, createSessionWithDraft, t]);
 
     // Resolve merge conflicts with Claude Agent
     const handleResolveConflictsWithAgent = useCallback(async (modelId: string) => {
@@ -1032,72 +965,15 @@ Please analyze these files and recommend the best approach before taking action.
         const worktreeBranch = `worktree/${wtName}`;
         const mainBranch = worktreeRepoRootBranch || 'main';
 
-        // Create a very specific prompt for resolving the merge conflicts
-        const conflictFilesList = mergeConflictFiles.map(f => `  - ${f}`).join('\n');
-        const draftMessage = `I need to merge the worktree branch into main, preserving both committed and uncommitted changes.
-
-**Context:**
-- Main repository: ${workspacePath}
-- Main branch: ${mainBranch}
-- Worktree location: ${worktreePath}
-- Worktree branch: ${worktreeBranch}
-
-**The Situation:**
-I'm trying to merge commits from ${worktreeBranch} into ${mainBranch}. These files have both uncommitted changes in main AND committed changes in the worktree:
-${conflictFilesList}
-
-**IMPORTANT - The desired end state:**
-For each file, the final result should have:
-1. The committed changes from ${worktreeBranch} (merged and committed)
-2. The uncommitted changes from ${mainBranch} (still unstaged, on top of the merged version)
-
-**What you need to do:**
-
-**Step 1: Stash the uncommitted changes**
-\`\`\`bash
-cd ${workspacePath}
-git stash push -m "Uncommitted changes before worktree merge"
-\`\`\`
-
-**Step 2: Merge the worktree branch**
-\`\`\`bash
-git merge --no-ff ${worktreeBranch}
-\`\`\`
-This applies the committed changes from the worktree.
-
-**Step 3: Reapply the uncommitted changes**
-\`\`\`bash
-git stash pop
-\`\`\`
-
-**Step 4: Resolve conflicts from stash pop**
-The \`git stash pop\` will likely create conflicts in ${mergeConflictFiles.join(', ')} because both the merge and the stash modified these files.
-
-For each conflicted file:
-- Open the file and look for conflict markers (\`<<<<<<< Updated upstream\`, \`=======\`, \`>>>>>>> Stashed changes\`)
-- Between \`<<<<<<< Updated upstream\` and \`=======\` is the newly merged version (this is what we want to keep as the base)
-- Between \`=======\` and \`>>>>>>> Stashed changes\` is the uncommitted changes (this is what we want on top)
-- **Merge both sections**: Keep the merged version as the base, then apply the uncommitted changes on top
-- Remove all conflict markers
-- The file should now have both the merged changes AND the uncommitted changes
-
-**Step 5: Verify the result**
-\`\`\`bash
-git status
-\`\`\`
-Should show the files as modified (uncommitted). The working directory should have:
-- The committed changes from ${worktreeBranch} (in the last commit)
-- The uncommitted changes (as unstaged modifications)
-
-**DO NOT** stage or commit these changes - they should remain uncommitted.
-
-Please proceed with this strategy.`;
+        const draftMessage = buildMergeConflictDraft(t, {
+          workspacePath, worktreePath, baseBranch: mainBranch, worktreeBranch, files: mergeConflictFiles,
+        });
 
         await createSessionWithDraft(draftMessage, modelId);
       } catch (err) {
         console.error('[GitOperationsPanel] Failed to create agent session for conflict resolution:', err);
       }
-    }, [worktreePath, worktreeRepoRootBranch, mergeConflictFiles, createSessionWithDraft]);
+    }, [worktreePath, workspacePath, worktreeRepoRootBranch, mergeConflictFiles, createSessionWithDraft, t]);
 
     // Handle archive worktree
     const handleArchiveWorktree = useCallback(async () => {

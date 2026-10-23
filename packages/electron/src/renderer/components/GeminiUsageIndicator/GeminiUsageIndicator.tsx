@@ -62,7 +62,7 @@ export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ clas
   const strokeColor = colorClasses[effectiveSessionColor] || colorClasses.muted;
 
   const tooltipContent = usage?.notStarted
-    ? usage.error || t('usage_indicator.gemini_not_started_short')
+    ? t('usage_indicator.gemini_not_started_short')
     : usage?.error
     ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.gemini_name'), error: usage.error })
       : usage

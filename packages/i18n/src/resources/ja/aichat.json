@@ -1021,6 +1021,26 @@
     "turn_off": "無効にする",
     "auto_resume_action": "上限リセット後に自動再開"
   },
+  "bundled_command_descriptions": {
+    "animation_animate": "アニメーション付きの解説図を作成します",
+    "automations_automation": "自動化を作成・管理します",
+    "crew_hire": "仕事内容を説明して新しいクルーメンバーを設計・採用します",
+    "datamodellm_datamodel": "Prismaベースのデータモデルを作成・変更します",
+    "extension_dev_kit_new_extension": "雛形から新しいNimbalyst拡張機能プロジェクトを作成します",
+    "feedback_bug_report": "GitHubへの不具合報告を案内します",
+    "feedback_feature_request": "GitHubへの機能リクエストを案内します",
+    "ios_dev_xcodegen": "XcodeGenでXcodeプロジェクトを生成・管理します",
+    "ios_dev_ios_simulator": "iOSシミュレーターを起動・管理します",
+    "ios_dev_ios_build": "iOSアプリをビルド・デプロイします",
+    "ios_dev_fastlane": "iOSのビルド、コード署名、TestFlightへのデプロイを自動化します",
+    "mockuplm_mockup": "視覚的なUXモックアップを作成します",
+    "planning_design": "構造化された計画書を作成します",
+    "planning_implement": "進捗を追跡しながら計画を実行します",
+    "planning_track": "不具合、タスク、アイデアなどを追跡します",
+    "planning_launch_new_session": "並行して作業を続けるための別のAIセッションを開始します",
+    "planning_session_cleanup": "セッションボードのフェーズを修正し、完了した作業やアーカイブ候補を整理します",
+    "planning_nimbalyst_coach": "プロジェクトと最近のセッションを確認し、拡張機能、機能、エージェント指示の変更を提案します"
+  },
   "mcp_lockdown": {
     "message": "このマシンでは企業のClaude Code MCPポリシーが適用されているため、このセッションではNimbalyst独自のツールを利用できません。質問ウィジェット、セッション名設定、トラッカーツール、拡張機能ツールは使用できません。Claude Code自体は組織のサーバー上で通常どおり動作します。",
     "dismiss": "閉じる"

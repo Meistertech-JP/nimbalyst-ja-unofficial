@@ -17,28 +17,48 @@ function effectiveAssociations(platform: string) {
 }
 
 describe('Unofficial Windows file-class isolation', () => {
-  it('gives NSIS independent ProgIDs while preserving Markdown on every configured platform', () => {
+  it('leaves Windows registration to the tested Open With policy while preserving other platforms', () => {
     const windows = effectiveAssociations('win');
-    expect(windows.map(item => item.ext).sort()).toEqual(['markdown', 'md']);
-    expect(windows.map(item => item.name)).toEqual([
-      `${packageJson.build.appId}.Markdown`,
-      `${packageJson.build.appId}.Markdown`,
-    ]);
+    // nsis-isolation.test.ts executes the custom registration/unregistration
+    // commands. Standard associations here would take over extension defaults.
+    expect(windows).toEqual([]);
     for (const platform of ['mac', 'linux']) {
       expect(new Set(effectiveAssociations(platform).map(item => item.ext))).toEqual(new Set(['md', 'markdown']));
     }
     expect(() => validateWindowsUpdaterConfig()).not.toThrow();
   });
 
-  it.each(['global', 'win'])('refuses a shared file class inherited from the %s scope', (scope) => {
+  it.each(['global', 'win'])('refuses standard default-taking associations inherited from the %s scope, including a private ProgID', (scope) => {
     const container = scope === 'global' ? packageJson.build : packageJson.build.win;
     const original = container.fileAssociations;
     try {
-      container.fileAssociations = [{ ext: 'md', name: 'Markdown Document' }];
-      expect(() => validateWindowsUpdaterConfig()).toThrow(/file associations.*appId-scoped/i);
+      for (const name of ['Markdown Document', `${packageJson.build.appId}.Markdown`]) {
+        container.fileAssociations = [{ ext: 'md', name }];
+        expect(() => validateWindowsUpdaterConfig()).toThrow(/file associations.*preserve shared extension defaults/i);
+      }
     } finally {
       if (original === undefined) delete container.fileAssociations;
       else container.fileAssociations = original;
+    }
+  });
+
+  it('refuses a shared packaged name that would collide in the installer cache', () => {
+    const original = packageJson.build.extraMetadata.name;
+    try {
+      packageJson.build.extraMetadata.name = packageJson.name;
+      expect(() => validateWindowsUpdaterConfig()).toThrow(/installer cache.*independent packaged name/i);
+    } finally {
+      packageJson.build.extraMetadata.name = original;
+    }
+  });
+
+  it.each(['perMachine', 'allowElevation', 'runAfterFinish', 'deleteAppDataOnUninstall'])('refuses unsafe NSIS %s policy', (setting) => {
+    const original = packageJson.build.nsis[setting];
+    try {
+      packageJson.build.nsis[setting] = true;
+      expect(() => validateWindowsUpdaterConfig()).toThrow(/current-user, no-elevation-offer, no-auto-run and app-data-retention/i);
+    } finally {
+      packageJson.build.nsis[setting] = original;
     }
   });
 });

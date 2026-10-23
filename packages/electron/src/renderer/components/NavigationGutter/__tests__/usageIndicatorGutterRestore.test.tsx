@@ -10,7 +10,7 @@
  */
 import React from 'react';
 import { describe, it, expect, afterEach, beforeAll, vi } from 'vitest';
-import { render, cleanup, fireEvent, screen } from '@testing-library/react';
+import { render, cleanup, fireEvent, screen, act } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
 import { I18nextProvider } from 'react-i18next';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
@@ -60,14 +60,17 @@ function renderUsagePopover(store: ReturnType<typeof createStore>, children: Rea
   );
 }
 
-it('localizes Gemini usage tooltips in Japanese', async () => {
+it('localizes the real Gemini not-started payload in the tooltip and popover and follows language changes', async () => {
   const i18n = await createI18nInstance('ja');
   const store = createStore();
   store.set(geminiUsageAtom, {
-    fiveHour: { utilization: 1, resetsAt: null },
+    fiveHour: { utilization: 0, resetsAt: null },
     sevenDay: { utilization: 0, resetsAt: null },
     lastUpdated: 1,
     notStarted: true,
+    available: false,
+    limitsAvailable: false,
+    error: 'Gemini usage will appear after your first request.',
   });
 
   render(
@@ -78,12 +81,39 @@ it('localizes Gemini usage tooltips in Japanese', async () => {
     </I18nextProvider>,
   );
 
-  expect(screen.getByTitle('最初のリクエスト後にGeminiの使用量が表示されます')).toBeDefined();
+  const button = screen.getByTestId('gemini-usage-indicator');
+  expect(button.getAttribute('title')).toBe('最初のリクエスト後にGeminiの使用量が表示されます');
+  fireEvent.click(button);
+  expect(screen.getByText('最初のリクエスト後にGeminiの使用量が表示されます。').textContent)
+    .toBe('最初のリクエスト後にGeminiの使用量が表示されます。');
+  await act(async () => { await i18n.changeLanguage('en'); });
+  expect(button.getAttribute('title')).toBe('Gemini usage will appear after your first request');
+  expect(screen.getByText('Gemini usage will appear after your first request.').textContent)
+    .toBe('Gemini usage will appear after your first request.');
 });
 
 function noopRef() {
   return { current: null } as React.RefObject<HTMLElement | null>;
 }
+
+it('keeps real Gemini error diagnostics while localizing the unavailable prefix', async () => {
+  const i18n = await createI18nInstance('ja');
+  const store = createStore();
+  const diagnostic = 'R10 synthetic upstream diagnostic';
+  store.set(geminiUsageAtom, {
+    fiveHour: { utilization: 0, resetsAt: null },
+    sevenDay: { utilization: 0, resetsAt: null },
+    lastUpdated: 1, notStarted: false, available: false, limitsAvailable: false, error: diagnostic,
+  });
+  render(<I18nextProvider i18n={i18n}><Provider store={store}><GeminiUsageIndicator /></Provider></I18nextProvider>);
+  const button = screen.getByTestId('gemini-usage-indicator');
+  expect(button.getAttribute('title')).toBe(`Geminiの使用量を取得できません: ${diagnostic}`);
+  fireEvent.click(button);
+  expect(screen.getByText(diagnostic).textContent).toBe(diagnostic);
+  await act(async () => { await i18n.changeLanguage('en'); });
+  expect(button.getAttribute('title')).toBe(`Gemini usage unavailable: ${diagnostic}`);
+  expect(screen.getByText(diagnostic).textContent).toBe(diagnostic);
+});
 
 describe('usage popover "Disable" hides via the gutter customization atom', () => {
   it('shows model percent used including unused limits without duplicating legacy Opus', () => {

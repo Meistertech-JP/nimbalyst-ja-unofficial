@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { files, fetchMock, openExternalMock } = vi.hoisted(() => ({
@@ -15,12 +16,14 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('fs', () => ({
-  existsSync: vi.fn((filePath: string) => files.has(filePath)),
-  readFileSync: vi.fn((filePath: string) => files.get(filePath)),
+  // The in-memory fixture uses POSIX keys. Production path.join uses the host
+  // separator, so normalize at this fake filesystem boundary on Windows too.
+  existsSync: vi.fn((filePath: string) => files.has(filePath.replaceAll('\\', '/'))),
+  readFileSync: vi.fn((filePath: string) => files.get(filePath.replaceAll('\\', '/'))),
   writeFileSync: vi.fn((filePath: string, data: string | Buffer) => {
-    files.set(filePath, Buffer.isBuffer(data) ? data : Buffer.from(data));
+    files.set(filePath.replaceAll('\\', '/'), Buffer.isBuffer(data) ? data : Buffer.from(data));
   }),
-  unlinkSync: vi.fn((filePath: string) => files.delete(filePath)),
+  unlinkSync: vi.fn((filePath: string) => files.delete(filePath.replaceAll('\\', '/'))),
 }));
 
 vi.mock('../../utils/store', () => ({
@@ -750,6 +753,19 @@ describe('StytchAuthService outgoing auth flow URLs', () => {
     expect(openedUrl.searchParams.get('state')).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it('closes the pending loopback listener on sign-out without making a network auth request', async () => {
+    await signInWithGoogle('https://sync.example');
+    const openedUrl = new URL(openExternalMock.mock.calls[0][0]);
+    const callback = new URL(openedUrl.searchParams.get('client_redirect')!);
+    callback.searchParams.set('state', openedUrl.searchParams.get('state')!);
+    const probe = await fetch(callback.origin + '/not-auth');
+    expect(probe.status).toBe(404);
+    await signOut();
+    await expect(fetch(callback.toString())).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(files.size).toBe(0);
+  });
+
   it('posts a nonce-bearing loopback redirect and renews it on magic-link resend', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
@@ -835,6 +851,20 @@ describe('StytchAuthService credential-free diagnostics', () => {
     await expect(refreshSession('https://sync.example')).resolves.toBe(false);
     expect(getAuthState()).toEqual(before);
     expect(renderedLogs()).not.toContain(bait);
+  });
+
+  it('documents the unencrypted fallback when safeStorage is unavailable using only dummy storage', async () => {
+    await handleAuthCallback({
+      intent: 'sign-in', sessionToken: bait, userId: 'dummy-member', orgId: 'dummy-org',
+    });
+    const legacy = JSON.parse(files.get('/mock/user-data/stytch-credentials.enc')!.toString('utf8'));
+    const accountsFile = JSON.parse(files.get('/mock/user-data/stytch-accounts.enc')!.toString('utf8'));
+    expect(legacy.sessionToken).toBe(bait);
+    expect(accountsFile.accounts[0].sessionToken).toBe(bait);
+    expect(renderedLogs()).toContain('without encryption');
+    expect(renderedLogs()).not.toContain(bait);
+    // This records an existing limitation, not a claim of encrypted persistence.
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

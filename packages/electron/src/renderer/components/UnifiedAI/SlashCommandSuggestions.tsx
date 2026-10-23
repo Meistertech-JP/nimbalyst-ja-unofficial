@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { usePostHog } from 'posthog-js/react';
+import { getLocalizedBundledCommandDescription } from './localizedBundledCommandDescription';
 
 interface ExtensionPluginCommand {
   extensionId: string;
@@ -88,6 +89,7 @@ export const SlashCommandSuggestions: React.FC<SlashCommandSuggestionsProps> = (
   type UnifiedCommand = {
     type: 'extension';
     name: string;
+    commandName: string;
     description: string;
     sourceId: string;
     sourceName: string;
@@ -102,6 +104,7 @@ export const SlashCommandSuggestions: React.FC<SlashCommandSuggestionsProps> = (
       unified.push({
         type: 'extension',
         name: `${cmd.pluginNamespace}:${cmd.commandName}`,
+        commandName: cmd.commandName,
         description: cmd.description,
         sourceId: cmd.extensionId,
         sourceName: cmd.extensionName,
@@ -164,7 +167,7 @@ export const SlashCommandSuggestions: React.FC<SlashCommandSuggestionsProps> = (
                 className="slash-command-tooltip absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 px-3 py-2 text-xs font-normal leading-relaxed text-center whitespace-normal min-w-[200px] max-w-[320px] rounded-lg border z-[100] pointer-events-none opacity-0 invisible transition-[opacity,visibility] duration-150 group-hover:opacity-100 group-hover:visible bg-[var(--nim-bg)] border-[var(--nim-border)] text-[var(--nim-text-muted)] shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
                 role="tooltip"
               >
-                {cmd.description}
+                {getLocalizedBundledCommandDescription(cmd.sourceId, cmd.commandName, cmd.description, t)}
               </div>
             )}
           </div>

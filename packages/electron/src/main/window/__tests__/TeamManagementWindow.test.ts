@@ -114,6 +114,24 @@ describe('TeamManagementWindow', () => {
     expect(url).toContain('conversationId=general');
   });
 
+  it.each([
+    ['ja', '組織のメッセージ - Nimbalyst'],
+    ['en', 'Organization Messages - Nimbalyst'],
+  ])('uses the %s UI language before the renderer loads', async (locale, expectedTitle) => {
+    const { createMainI18nController } = await import('../../i18n/mainI18n');
+    const controller = await createMainI18nController({
+      get: () => locale,
+      subscribe: () => () => {},
+    }, 'en', () => {});
+    try {
+      const { createTeamManagementWindow } = await import('../TeamManagementWindow');
+      createTeamManagementWindow({ orgId: 'org-1' });
+      expect(instances[0].options.title).toBe(expectedTitle);
+    } finally {
+      controller.dispose();
+    }
+  });
+
   it('reuses the existing window and retargets it instead of opening a second one', async () => {
     const { createTeamManagementWindow } = await import('../TeamManagementWindow');
 

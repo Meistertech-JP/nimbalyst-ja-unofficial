@@ -21,6 +21,7 @@ import { getOrgIdFromJwt, getJwtExp, getSubFromJwt } from '../services/jwtOrg';
 import { getWorkspaceState, updateWorkspaceState } from '../utils/store';
 import { createSingleFlight } from '../utils/asyncCache';
 import { getDialogDefaultPath, rememberDialogSelection } from '../utils/dialogPaths';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import { getPersonalDocSyncConfig, isSyncEnabled } from '../services/SyncManager';
 import { resolveCollabDocumentType } from './collabDocumentTypeResolver';
 import { drainLegacyPendingUpdates } from './legacyPendingUpdateDrain';
@@ -1245,7 +1246,7 @@ export function registerDocumentSyncHandlers(): void {
       .filter((ext) => ext.length > 0);
 
     const dialogOptions: Electron.SaveDialogOptions = {
-      title: 'Save a copy',
+      title: translateMainDialogLabel('native_dialogs.save_copy_title', 'Save a copy'),
       defaultPath: getDialogDefaultPath({ window, explicitPath: payload.defaultFileName }),
       filters: filterExtensions.length > 0
         ? [{ name: payload.documentType, extensions: filterExtensions }]

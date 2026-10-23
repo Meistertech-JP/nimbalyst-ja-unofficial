@@ -1,6 +1,10 @@
 {
   "loading": "読み込み中…",
   "load_failed": "読み込みに失敗しました: {{error}}",
+  "datamodel_template": {
+    "add_models": "ここにモデルを追加してください",
+    "example": "例:"
+  },
   "typeahead": {
     "new_flag": "新機能",
     "no_matches": "一致する候補がありません",
@@ -194,6 +198,14 @@
   },
   "comments": {
     "cancel": "キャンセル",
+    "send": "送信",
+    "title": "コメント",
+    "detached": "対象なし",
+    "resolved": "解決済み",
+    "group_threads": "{{heading}}のスレッド",
+    "thread_count_one": "コメントスレッド{{count}}件",
+    "thread_count_other": "コメントスレッド{{count}}件",
+    "empty_from_editor": "コメントはまだありません。エディターから追加するとスレッドを開始できます。",
     "attach_reference": "参照を添付",
     "open_agent": "エージェントセッション「{{name}}」を開く",
     "agent_session_owned_by": "エージェントセッション「{{name}}」（所有者: {{owner}}）",
@@ -471,7 +483,13 @@
     "no_access": "このページにアクセスする権限がありません。",
     "missing_section": "セクション「#{{anchor}}」はこのページにありません。",
     "cycle": "このページはすでに上に表示されているため、重複表示しません。",
-    "too_deep": "埋め込みが深くネストされているため表示できません。"
+    "too_deep": "埋め込みが深くネストされているため表示できません。",
+    "open_team_project": "このページを表示するにはチームプロジェクトを開いてください。",
+    "different_team": "このページは別のチームに属しています。",
+    "in_trash": "このページはゴミ箱にあります。",
+    "text_pages_only": "埋め込みできるのはテキストページのみです。代わりにこのページを開いてください。",
+    "load_failed": "このページを読み込めませんでした: {{error}}",
+    "typed_page_missing": "この種別ページはプロジェクトにないか、削除されています。"
   },
   "quadrant": {
     "skipped_lines_one": "2つの数値がない行を{{count}}行スキップしました",
@@ -490,6 +508,8 @@
     "read_only_reviewing": "確認中は読み取り専用です。編集するには適用または元に戻してください。",
     "export_failed": "エクスポートに失敗しました",
     "export_failed_message": "PDFをエクスポートできませんでした: {{error}}",
+    "copy_as_markdown": "Markdownとしてコピー",
+    "export_to_pdf": "PDFにエクスポート...",
     "days_ago": "{{count}}日前",
     "hours_ago": "{{count}}時間前",
     "minutes_ago": "{{count}}分前",

@@ -175,6 +175,22 @@ describe('host-owned collaborative comments pane', () => {
     expect(screen.getByRole('complementary', { name: 'ドキュメントのコメント' })).toBeDefined();
   });
 
+  it.each([
+    ['en', 'No comments yet. Add one from the editor to start a thread.', 'No comments yet.'],
+    ['ja', 'コメントはまだありません。エディターから追加するとスレッドを開始できます。', 'コメントはまだありません。'],
+  ] as const)('localizes %s empty states after a capability downgrade', async (language, writable, readOnly) => {
+    await hosted.panelSource.deleteThread(threadId);
+    const { container } = renderHarness(hosted, language === 'ja' ? japaneseI18n : englishI18n);
+    await act(async () => { hosted.service.openPanel({}); });
+    expect(container.querySelector('.nim-comments-empty')?.textContent).toBe(writable);
+    capabilities = { read: true, comment: false };
+    // Refresh through the same refused operation used by the existing downgrade test.
+    await act(async () => { await hosted.service.setResolved(threadId, true).catch(() => undefined); });
+    await waitFor(() => expect(container.querySelector('.nim-comments-empty')?.textContent).toBe(readOnly));
+    expect(container.querySelector('.nim-comment-composer-input')).toBeNull();
+    expect(cards(container)).toHaveLength(0);
+  });
+
   it('localizes a refused comment resolution and preserves the server error detail', async () => {
     vi.clearAllMocks();
     vi.spyOn(hosted.service, 'setResolved').mockRejectedValue(new Error('server refused'));
@@ -224,6 +240,46 @@ describe('host-owned collaborative comments pane', () => {
     expect(card.dataset.threadId).toBe(threadId);
     expect(card.dataset.anchorState).toBe('orphaned');
     expect(card.textContent).toContain('Tighten this label');
+  });
+
+  it.each([
+    ['missing', 'That comment is no longer in this document. It may have been deleted.', 'このコメントはドキュメント内にありません。削除された可能性があります。'],
+    ['orphaned', 'What this comment pointed at is no longer in the document, so there is nothing to jump to. The conversation is kept.', 'このコメントの参照先はドキュメント内にないため、移動できません。会話は保持されています。'],
+    ['unsupported', 'This comment points at something this editor does not understand, so it cannot be shown in place. The conversation is kept.', 'このコメントの参照先はこのエディターで対応していないため、その位置を表示できません。会話は保持されています。'],
+    ['unavailable', 'This editor could not bring that comment into view.', 'このエディターでコメントの位置を表示できませんでした。'],
+    ['rejected', 'This editor could not bring that comment into view.', 'このエディターでコメントの位置を表示できませんでした。'],
+  ] as const)('updates an existing %s focus notice across language changes without refocusing', async (reason, english, japanese) => {
+    const i18n = await createI18nInstance('en');
+    const focus = vi.spyOn(hosted.panelSource, 'focusThread');
+    if (reason === 'rejected') focus.mockRejectedValue(new Error('focus failed'));
+    else focus.mockResolvedValue(false);
+    if (reason === 'orphaned' || reason === 'unsupported') {
+      vi.spyOn(hosted.panelSource, 'getAnchorState').mockReturnValue(reason);
+    }
+    const requestedThread = reason === 'missing' ? 'deleted-thread' : threadId;
+    const { container } = renderHarness(hosted, i18n);
+    await act(async () => { requestCommentPanel(DOCUMENT_URI, { threadId: requestedThread, source: 'deep-link' }); });
+    expect(screen.getByTestId('collab-comments-focus-notice').textContent).toBe(english);
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(screen.getByTestId('collab-comments-focus-notice').textContent).toBe(japanese);
+    expect(cards(container)[0].textContent).toContain('Tighten this label');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByTestId('collab-comments-focus-notice').textContent).toBe(english);
+    expect(focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a stale focus failure after a newer successful request and language change', async () => {
+    const i18n = await createI18nInstance('en');
+    let finishOld!: (focused: boolean) => void;
+    vi.spyOn(hosted.panelSource, 'focusThread')
+      .mockImplementationOnce(() => new Promise<boolean>((resolve) => { finishOld = resolve; }))
+      .mockResolvedValueOnce(true);
+    renderHarness(hosted, i18n);
+    await act(async () => { requestCommentPanel(DOCUMENT_URI, { threadId: 'deleted-thread', source: 'deep-link' }); });
+    await act(async () => { requestCommentPanel(DOCUMENT_URI, { threadId, source: 'deep-link' }); });
+    await act(async () => { await i18n.changeLanguage('ja'); finishOld(false); });
+    expect(screen.queryByTestId('collab-comments-focus-notice')).toBeNull();
+    expect(screen.getByText('Tighten this label')).toBeDefined();
   });
 
   it('drops the composer on a capability downgrade without losing threads', async () => {
