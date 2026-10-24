@@ -1,0 +1,53 @@
+name: Unofficial R13 full validation
+
+on:
+  push:
+    branches: [codex/r13-full-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Record immutable inputs
+        run: |
+          git rev-parse HEAD
+          node --version
+          pnpm --version
+          sha256sum pnpm-lock.yaml
+      - name: Install locked dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm install --frozen-lockfile
+      - name: Full prepared typecheck and bundle budgets
+        run: node scripts/run-validation.mjs typecheck
+      - name: Scripts and sandbox gates without exceptions
+        run: node scripts/run-validation.mjs scripts sandbox
+      - name: Full non-provider unit suite
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/run-validation.mjs unit 2>&1 | tee r13-full-unit.log
+      - name: Preserve failure details
+        if: failure()
+        run: cat .vitest/last-run.log || true
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: r13-full-linux-verification
+          path: |
+            r13-full-unit.log
+            .vitest/last-run.log
+            .vitest/last-run.json
