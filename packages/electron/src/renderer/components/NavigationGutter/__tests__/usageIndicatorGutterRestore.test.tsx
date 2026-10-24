@@ -43,6 +43,9 @@ import { ClaudeUsagePopover } from '../../ClaudeUsageIndicator/ClaudeUsagePopove
 import { CodexUsagePopover } from '../../CodexUsageIndicator/CodexUsagePopover';
 import { GeminiUsagePopover } from '../../GeminiUsageIndicator/GeminiUsagePopover';
 import { GeminiUsageIndicator } from '../../GeminiUsageIndicator/GeminiUsageIndicator';
+import { ClaudeUsageIndicator } from '../../ClaudeUsageIndicator/ClaudeUsageIndicator';
+import { CodexUsageIndicator } from '../../CodexUsageIndicator/CodexUsageIndicator';
+import { usageErrorDisplay } from '../../../utils/usageErrorDisplay';
 
 afterEach(() => cleanup());
 
@@ -95,6 +98,46 @@ it('localizes the real Gemini not-started payload in the tooltip and popover and
 function noopRef() {
   return { current: null } as React.RefObject<HTMLElement | null>;
 }
+
+it.each([
+  'Unknown error fetching usage',
+  'Unknown error reading Codex session files',
+  'Unknown error reading Gemini usage',
+])('localizes the product-owned fallback: %s', async (error) => {
+  const i18n = await createI18nInstance('ja');
+  expect(usageErrorDisplay(error, i18n.getFixedT(null, 'common'))).toBe('使用量を取得できませんでした。');
+  await i18n.changeLanguage('en');
+  expect(usageErrorDisplay(error, i18n.getFixedT(null, 'common'))).toBe('Usage could not be retrieved.');
+});
+
+it.each(['claude', 'codex'] as const)('localizes the real %s missing-usage message in tooltip and popover', async (provider) => {
+  const i18n = await createI18nInstance('ja');
+  const store = createStore();
+  const expected = provider === 'claude'
+    ? 'Claude Codeの認証情報が見つかりません。Claude Codeにログインしてください。'
+    : 'Codexの使用量データが見つかりません。ChatGPTのサブスクリプションでCodex CLIを使用すると、使用量を確認できます。';
+  if (provider === 'claude') {
+    store.set(claudeUsageAtom, {
+      fiveHour: { utilization: 0, resetsAt: null }, sevenDay: { utilization: 0, resetsAt: null }, lastUpdated: 1,
+      error: 'No Claude Code credentials found for config dir C:\\synthetic-profile\\claude. Please log in to Claude Code.',
+    });
+  } else {
+    store.set(codexUsageAtom, { limits: [], lastUpdated: 1,
+      error: 'No Codex usage data found. Use Codex CLI with a ChatGPT subscription to see usage.',
+    });
+  }
+  render(<I18nextProvider i18n={i18n}><Provider store={store}>
+    {provider === 'claude' ? <ClaudeUsageIndicator /> : <CodexUsageIndicator />}
+  </Provider></I18nextProvider>);
+  const button = screen.getByTestId(`${provider}-usage-indicator`);
+  expect(button.getAttribute('title')).toContain(expected);
+  fireEvent.click(button);
+  expect(screen.getByText(expected).textContent).toBe(expected);
+  await act(async () => { await i18n.changeLanguage('en'); });
+  expect(button.getAttribute('title')).toContain(provider === 'claude'
+    ? 'No Claude Code credentials found. Please log in to Claude Code.'
+    : 'No Codex usage data found. Use Codex CLI with a ChatGPT subscription to see usage.');
+});
 
 it('keeps real Gemini error diagnostics while localizing the unavailable prefix', async () => {
   const i18n = await createI18nInstance('ja');

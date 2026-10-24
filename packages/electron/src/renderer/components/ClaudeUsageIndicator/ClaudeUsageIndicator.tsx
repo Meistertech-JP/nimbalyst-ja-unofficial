@@ -7,6 +7,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { usageErrorDisplay } from '../../utils/usageErrorDisplay';
 import { useAtomValue } from 'jotai';
 import {
   claudeUsageAtom,
@@ -60,7 +61,7 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
   const strokeColor = colorClasses[effectiveSessionColor] || colorClasses.muted;
 
   const tooltipContent = usage?.error
-    ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.claude_name'), error: usage.error })
+    ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.claude_name'), error: usageErrorDisplay(usage.error, t) })
     : usage
       ? [
           t('usage_indicator.session_tooltip', {

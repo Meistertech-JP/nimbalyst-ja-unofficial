@@ -8,6 +8,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { usageErrorDisplay } from '../../utils/usageErrorDisplay';
 import { useAtomValue } from 'jotai';
 import {
   codexUsageAtom,
@@ -70,7 +71,7 @@ export const CodexUsageIndicator: React.FC<CodexUsageIndicatorProps> = ({ classN
     : null;
 
   const tooltipContent = usage?.error
-    ? t('usage_indicator.error_unavailable', { provider: 'Codex', error: usage.error })
+    ? t('usage_indicator.error_unavailable', { provider: 'Codex', error: usageErrorDisplay(usage.error, t) })
     : usage
       ? limitsAvailable
         ? t('usage_indicator.codex_limit_tooltip', {

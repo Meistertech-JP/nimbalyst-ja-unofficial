@@ -6,6 +6,7 @@
 
 import React, { useEffect, RefObject } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { usageErrorDisplay } from '../../utils/usageErrorDisplay';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
@@ -182,7 +183,7 @@ export const CodexUsagePopover: React.FC<CodexUsagePopoverProps> = ({
         {/* Content */}
         <div className="px-4 py-3">
           {usage.error ? (
-            <div className="text-[13px] text-nim-error">{usage.error}</div>
+            <div className="text-[13px] text-nim-error">{usageErrorDisplay(usage.error, t)}</div>
           ) : (
             <>
               {!limitsAvailable && windowEntries.length === 0 && (

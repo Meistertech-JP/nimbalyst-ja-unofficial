@@ -9,6 +9,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { usageErrorDisplay } from '../../utils/usageErrorDisplay';
 import { useAtomValue } from 'jotai';
 import {
   geminiUsageAtom,
@@ -64,7 +65,7 @@ export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ clas
   const tooltipContent = usage?.notStarted
     ? t('usage_indicator.gemini_not_started_short')
     : usage?.error
-    ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.gemini_name'), error: usage.error })
+    ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.gemini_name'), error: usageErrorDisplay(usage.error, t) })
       : usage
         ? limitsAvailable
           ? t('usage_indicator.gemini_tooltip', {

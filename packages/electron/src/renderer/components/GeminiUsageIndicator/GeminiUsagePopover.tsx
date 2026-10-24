@@ -8,6 +8,7 @@
 
 import React, { useEffect, RefObject } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { usageErrorDisplay } from '../../utils/usageErrorDisplay';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import {
@@ -184,7 +185,7 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
               {t('usage_indicator.gemini_not_started')}
             </div>
           ) : usage.error ? (
-            <div className="text-[13px] text-nim-error">{usage.error}</div>
+            <div className="text-[13px] text-nim-error">{usageErrorDisplay(usage.error, t)}</div>
           ) : (
             <>
               {!limitsAvailable && (
