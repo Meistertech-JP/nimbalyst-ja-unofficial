@@ -4,7 +4,7 @@
 
 ## 現在の提供状況
 
-公開済みv0.81.7-ja.2はソース限定です。v0.81.7-ja.3は未公開候補で、実アカウント認証・認証情報保護の最終検証と配布判定は未完了です。このガイドのインストール・ZIP展開手順は、ローカル検証用または将来公開が承認された配布物のための説明であり、現在ダウンロードできるWindowsバイナリがあることを示しません。
+公開済みv0.81.7-ja.2はソース限定です。v0.81.7-ja.3は未公開候補で、通常Windows版によるメール認証、暗号化保存、アカウント表示の復元、ログアウト、インストール・アンインストールをローカルで確認しています。公開はまだ承認されていません。このガイドの手順はローカル検証用または将来公開が承認された配布物のための説明であり、現在ダウンロードできるWindowsバイナリがあることを示しません。
 
 ## 未署名と取得元の確認
 
@@ -46,15 +46,15 @@ ZIPの全内容を新しい書込み可能なディレクトリへ展開し、�
 
 ## 表示言語とデータ
 
-設定の表示言語で日本語または英語を選びます。選択後はメニューや対応画面へ反映されます。言語設定の保存・再起動保持は直前のローカル検証版で確認していますが、新しい候補パッケージの検証を代替するものではありません。
+設定の表示言語で日本語または英語を選びます。選択後はメニューや対応画面へ反映されます。今回の通常製品ビルドで、両方向の切替と、両言語の再起動後の設定保持を確認しています。未訪問の画面や、すべての端末・DPIでの表示保証ではありません。
 
 既定の保存先は `%APPDATA%\Nimbalyst 日本語版（非公式）` です。公式版の保存先とは分離しています。既存の公式版データを本版へ自動移動・コピーしません。認証情報を含むプロファイル全体を第三者へ送らないでください。
 
 ## ログインとlocalhost callback
 
-本版の認証フローは、その起動インスタンスのためのnonceを含むlocalhost callbackを使用する構成です。ブラウザでの認証後に `http://127.0.0.1:<port>/auth/callback` へ戻ります。`127.0.0.1` は実行中の端末自身です。外部端末へ向けたポート開放やルーター設定変更は案内しません。
+本版の認証フローは、その起動インスタンスのためのnonceを含むlocalhost callbackを使用します。ブラウザでの認証後に `http://127.0.0.1:<port>/auth/callback` へ戻ります。**認証メールはアプリを起動している同じPCで開いてください。** `127.0.0.1` はそのブラウザを実行している端末自身です。スマートフォンでメールを開くとスマートフォン自身へ接続するため、PCのアプリへ認証を返せません。使用済み・期限切れのリンクは、PCのアプリから新しいメールを送ってください。URLを書き換えたり、外部端末へ向けてポートを開放したりする必要はありません。
 
-認証リンクやトークンを共有、転載、診断レポートへ添付しないでください。ログインできない場合に別アプリのURL関連付けやセキュリティ設定を変更することも推奨しません。実アカウントでの認証、暗号化保存、NTFS ACL、復旧処理の最終確認は未完了です。既存のWindows保護機能を回避した動作保証はありません。
+認証リンクやトークンを共有、転載、診断レポートへ添付しないでください。ログインできない場合に別アプリのURL関連付けやセキュリティ設定を変更することも推奨しません。今回の専用プロファイルではメール認証、暗号化保存、認証ファイルのACL、再起動後のアカウント表示、ログアウトを確認しています。ログアウトはローカル認証状態の削除であり、サービス側セッションの失効までは保証しません。Google認証、一部の復旧経路、他ユーザーを含む実効アクセスは未検証です。既存のWindows保護機能を回避した動作保証はありません。
 
 公式Nimbalystとの同時利用はサポートしません。認証以外の `nimbalyst://` リンクは、現在そのプロトコルを登録しているアプリで開かれる場合があります。
 
@@ -82,7 +82,7 @@ This guide covers an unsigned Windows x64 build. It is not an official product o
 
 ### Current availability
 
-The published v0.81.7-ja.2 is source-only. v0.81.7-ja.3 is an unpublished candidate; final real-account authentication and credential-protection checks and distribution approval are pending. Installation and ZIP instructions describe local validation artifacts or a future approved distribution, not an existing binary download.
+The published v0.81.7-ja.2 is source-only. v0.81.7-ja.3 is an unpublished candidate. Production email sign-in, encrypted storage, account UI restoration, logout, installation, and uninstallation were observed locally in the ordinary Windows build; publication has not been approved. These instructions describe local validation artifacts or a future approved distribution, not an existing binary download.
 
 ### Unsigned files and provenance
 
@@ -124,15 +124,15 @@ Extract the entire ZIP into a new writable directory and run `Nimbalyst 日本�
 
 ### Language and user data
 
-Select Japanese or English in display-language settings. Supported views and menus update accordingly. Persistence after restarting was verified in the preceding local validation build, not as proof for a new candidate package.
+Select Japanese or English in display-language settings. Supported views and menus update accordingly. Both switching directions and persistence after restarting in each language were observed in this ordinary production build. This is not coverage of every screen, device, or DPI.
 
 The default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`, separate from the official application. Official data is not automatically copied or moved. Do not send a profile containing authentication information to others.
 
 ### Login and localhost callback
 
-Authentication is configured to return from the browser to `http://127.0.0.1:<port>/auth/callback` using a nonce for the current instance. `127.0.0.1` is the current computer. External port forwarding or router changes are not part of this procedure.
+Authentication returns from the browser to `http://127.0.0.1:<port>/auth/callback` using a nonce for the current instance. **Open authentication email on the same PC running the application.** `127.0.0.1` refers to the device running that browser. Opening the email on a smartphone tries to connect to the phone itself, not the PC. Request a fresh email from the PC application if a link is consumed or expired. Do not rewrite the URL or expose the callback port to another device.
 
-Do not share, publish, or attach authentication links or tokens to diagnostic reports. Changing another application's protocol association or bypassing security settings is not a recommended sign-in remedy. Final real-account authentication, encrypted-storage, NTFS ACL, and recovery verification remains incomplete.
+Do not share, publish, or attach authentication links or tokens to diagnostic reports. Changing another application's protocol association or bypassing security settings is not a recommended sign-in remedy. Email sign-in, encrypted storage, credential-file ACLs, restored account UI, and logout were observed in the dedicated profile. Logout clears local state without guaranteeing service-side session revocation. Google sign-in, some recovery paths, and effective access involving other users remain unverified.
 
 Running alongside the official application is unsupported. Non-authentication `nimbalyst://` links may open in the application's current registered handler.
 

@@ -12,7 +12,7 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 The published **v0.81.7-ja.2 is a source-only prerelease**, available from [GitHub Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases). That release contains no Windows installer, portable ZIP, or executable binary. Its [release notes](RELEASE_NOTES_v0.81.7-ja.2.md) preserve the verification status at publication.
 
-This source is an **unpublished candidate for v0.81.7-ja.3**. It targets an unsigned Windows x64 build. Final verification of real-account authentication, credential storage and recovery, and access controls is incomplete, so distribution readiness remains undecided. There is no candidate download link or published candidate binary.
+This source is an **unpublished candidate for v0.81.7-ja.3**. Real-account email sign-in, encrypted persistence, account UI restoration after restart, and logout have been observed in an ordinary unsigned Windows x64 production build. Publication has not been approved. There is no candidate download link or published candidate binary.
 
 ### Unsigned builds
 
@@ -35,7 +35,7 @@ Choose Japanese or English in the display-language settings. This is separate fr
 
 The candidate adds localization for About, Settings, comment notices, shared-project errors, Git repair drafts, file creation and save/export dialogs, and bundled command descriptions. A new tutorial is selected using the display language at creation time. Switching languages does not rewrite an existing or edited tutorial.
 
-The candidate's translation resources contain 27 namespaces and 14,551 keys in each language. Matching keys and interpolation tokens have been checked; this is not complete runtime verification of all screens or dynamic references.
+The candidate's translation resources contain 27 namespaces and 14,579 keys in each language. Matching keys and interpolation tokens have been checked; this is not complete runtime verification of all screens or dynamic references.
 
 Static Wiki export accepts `nim wiki export --static <dir> --ui-language system|en|ja`. The CLI defaults to the system language. Programmatic exports default to English for compatibility. Wiki translations load namespaces on demand. This describes the source here, not availability in published npm packages.
 
@@ -44,19 +44,23 @@ Static Wiki export accepts `nim wiki export --static <dir> --ui-language system|
 - Downloading and applying official updates, including manual update checks, are disabled. Updates are manual, using this repository's published releases.
 - **Running this edition alongside the official Nimbalyst application is not supported.** Application identity, default installation location, and user-data location are separated, but that is not a coexistence guarantee.
 - The Windows application ID is `jp.meistertech.nimbalyst.ja.unofficial`. The default user-data directory is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Existing official data is not moved or deleted.
-- Authentication is configured to use an instance-specific, nonce-protected `http://127.0.0.1:<port>/auth/callback`. Do not share authentication URLs or tokens. Final verification of real-account sign-in and recovery is incomplete.
+- Authentication uses an instance-specific, nonce-protected `http://127.0.0.1:<port>/auth/callback`. Open authentication email on the same PC running the application. On a smartphone, `127.0.0.1` refers to that phone and cannot reach the desktop instance. Request a new email from the application if a link has been consumed or expired. Do not share authentication URLs or tokens.
+- Logout clears this edition's local authentication state. It does not guarantee revocation of the service-side session.
 - The Windows build does not claim the default `nimbalyst://` handler. Non-authentication links using that scheme may open in the currently registered application.
 - The installer adds this edition's Markdown “Open with” entry without changing extension defaults or Explorer UserChoice. Uninstallation targets registrations still owned by this installation and retains user data.
 
 ## Verification and limitations
 
-The preceding local Windows validation package was tested for installation, SQLite Worker startup, Japanese/English switching, persistence after restarting in both languages, selected screen layouts, and normal uninstallation. The same extracted payload was launched in four selected locations, and monitored existing settings and associations were retained. These results **do not verify a new v0.81.7-ja.3 package**.
+The local v0.81.7-ja.3 candidate was tested for an NSIS update installation, installed and ZIP-extracted application startup, and normal uninstallation. The ordinary production build was observed switching between Japanese and English, retaining each language after restart, and displaying selected creation menus, dialogs, and usage guidance. All 1,911 installed and ZIP payload files matched the reviewed unpacked application.
 
-- That baseline passed typecheck in 38 workspaces and 591 related tests across 60 files. This is neither a full-suite pass nor a guarantee of real-account authentication.
+Production email sign-in, IPv4 localhost callback, encrypted persistence, account UI restoration after restarting the dedicated profile, ordinary logout, and an unauthenticated post-logout restart were observed. Actual ACLs for both credential files and SQLite-related files were limited to the current user, SYSTEM, and Administrators. Monitored existing settings, default associations, and official shortcuts were retained; uninstall removed only this edition's own registrations and shortcuts. This is neither whole-host equality nor a guarantee for other systems.
+
+- The tested source passed typecheck in 38 workspaces and 925 related tests across 88 distinct files. This is not a full-suite pass.
 - Four test failures reproduced on the same Windows host with the pinned upstream remain recorded: CLI symlink-fixture EPERM, commit-hook `/bin/sh` ENOENT, sandbox symlink-file-fixture EPERM, and sandbox symlink-ancestor-fixture EPERM. The latter two fail during fixture creation and do not verify the sandbox rejection behavior itself.
 - Earlier full-suite runs did not complete; no all-tests-passed claim is made. A large CLI upload stalled in a particular environment, without establishing a failure on every host.
-- Final candidate verification of real-account authentication, encrypted storage, NTFS ACLs, and some Stytch recovery paths is incomplete. Unverified areas are not confirmed vulnerabilities or defects.
-- Complete runtime coverage of 119 dynamic translation references, 370 legacy references whose namespaces were unresolved in an earlier static audit, and unvisited screens, tooltips, and accessibility labels remains unproven. These counts are not counts of missing keys or confirmed defects.
+- Google sign-in, service-side session revocation, some Stytch recovery paths, and effective NTFS access involving other users or groups remain unverified. These are not confirmed vulnerabilities or defects.
+- Complete runtime coverage remains unproven for the current audit's 651 dynamic translation candidates, 382 unresolved translator-scope occurrences, and unvisited screens, tooltips, and accessibility labels. These populations differ in scope and counting from the earlier 119/370 figures; they are not counts of missing keys or confirmed defects.
+- NSIS retains an English note in its disabled administrator option. Current-user installation and uninstallation completion screens were observed in Japanese.
 - No product-wide zero-English claim is made. User content, external errors, technical identifiers, existing notices, and legacy collaboration data may contain English. Older clients' “Teammate” values are preserved because they cannot be distinguished from real user names.
 - Observed screens, zoom levels, and placements do not establish coverage of every screen, DPI, device, or external Browser/Embed host.
 
