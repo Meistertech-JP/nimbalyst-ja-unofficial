@@ -35,7 +35,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          swift test --package-path validation-source/packages/ios/NimbalystNative --filter testLeaveGuardDoesNotWaitForeverWhenTheBridgeNeverAnswers 2>&1 | tee r13-leave-deadline.log
+          # Keep the already-recorded upstream RED finite; cancellation tests
+          # require the fix and would otherwise wait on the intentionally stuck fake.
+          FILTER='${{ matrix.source == 'upstream' && 'testLeaveGuardDoesNotWaitForeverWhenTheBridgeNeverAnswers' || 'PagesFlushCoordinatorTests' }}'
+          swift test --package-path validation-source/packages/ios/NimbalystNative --filter "$FILTER" 2>&1 | tee r13-leave-deadline.log
       - name: Preserve the actual result including RED
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

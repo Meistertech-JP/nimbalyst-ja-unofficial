@@ -2,7 +2,7 @@ name: Unofficial R13 hosted iOS verification
 
 on:
   push:
-    branches: [codex/r13-ios-host]
+    branches: [codex/r13-ios-host, codex/r13-leave-deadline]
 
 permissions:
   contents: read
@@ -14,7 +14,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        source: [upstream, published, candidate]
+        # The fixed-source comparison is preserved on r13-ios-host. After its
+        # published job exhausted 45 minutes, run the actual fix only here.
+        source: ${{ fromJSON(github.ref == 'refs/heads/codex/r13-leave-deadline' && '["candidate"]' || '["upstream","published","candidate"]') }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:

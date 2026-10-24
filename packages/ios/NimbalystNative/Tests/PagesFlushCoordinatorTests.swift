@@ -20,11 +20,13 @@ private final class SuspendedUnsyncedEdits: PagesUnsyncedEdits {
     let unsynced = true
     private(set) var calls: [Int] = []
     private(set) var discards = 0
+    private(set) var completions = 0
     private var continuation: CheckedContinuation<ConsoleFlushResult?, Never>?
     private var released = false
 
     func flushPending(timeoutMs: Int) async -> ConsoleFlushResult? {
         calls.append(timeoutMs)
+        defer { completions += 1 }
         if released { return ConsoleFlushResult(status: .timedOut) }
         return await withCheckedContinuation { continuation = $0 }
     }
@@ -34,11 +36,11 @@ private final class SuspendedUnsyncedEdits: PagesUnsyncedEdits {
         return 1
     }
 
-    func release() {
+    func release(status: ConsoleFlushResult.Status = .timedOut) {
         released = true
         let pending = continuation
         continuation = nil
-        pending?.resume(returning: ConsoleFlushResult(status: .timedOut))
+        pending?.resume(returning: ConsoleFlushResult(status: status))
     }
 }
 
@@ -85,6 +87,85 @@ final class PagesFlushCoordinatorTests: XCTestCase {
         let permissionAfterCleanup = await request.value
         XCTAssertFalse(permissionAfterCleanup, "Cleanup cannot acknowledge an unanswered flush")
         XCTAssertEqual(edits.discards, 0)
+    }
+
+    func testLeaveGuardAcceptsAcknowledgedOrUnnecessaryFlush() async {
+        for status in [ConsoleFlushResult.Status.acknowledged, .notRequired] {
+            let edits = SuspendedUnsyncedEdits()
+            let guardUnderTest = PagesLeaveGuard()
+            let request = Task { await guardUnderTest.mayProceed(edits: edits) }
+            while edits.calls.isEmpty { await Task.yield() }
+            edits.release(status: status)
+            let permission = await request.value
+            XCTAssertTrue(permission)
+            XCTAssertEqual(edits.completions, 1)
+            XCTAssertEqual(edits.discards, 0)
+        }
+    }
+
+    func testLeaveGuardIgnoresAcknowledgmentAfterNativeTimeout() async {
+        let edits = SuspendedUnsyncedEdits()
+        let guardUnderTest = PagesLeaveGuard(flushTimeoutMs: 20)
+        guardUnderTest.hold(.leaveScreen)
+        let permission = await guardUnderTest.mayProceed(edits: edits)
+        XCTAssertFalse(permission)
+        XCTAssertEqual(edits.completions, 0, "The native deadline does not wait for the bridge")
+        edits.release(status: .acknowledged)
+        while edits.completions == 0 { await Task.yield() }
+        XCTAssertEqual(guardUnderTest.pending, .leaveScreen)
+        XCTAssertEqual(edits.discards, 0)
+    }
+
+    func testLeaveGuardRejectsAnAlreadyCancelledRequestWithoutCallingTheBridge() async {
+        let edits = SuspendedUnsyncedEdits()
+        let guardUnderTest = PagesLeaveGuard()
+        let request = Task { await guardUnderTest.mayProceed(edits: edits) }
+        request.cancel()
+        let permission = await request.value
+        XCTAssertFalse(permission)
+        XCTAssertTrue(edits.calls.isEmpty)
+        XCTAssertEqual(edits.discards, 0)
+    }
+
+    func testLeaveGuardCancellationDoesNotWaitForAnUnresponsiveBridge() async {
+        let edits = SuspendedUnsyncedEdits()
+        let guardUnderTest = PagesLeaveGuard()
+        let completed = expectation(description: "Cancelled leave finishes before the native deadline")
+        var permission: Bool?
+        let request = Task {
+            permission = await guardUnderTest.mayProceed(edits: edits)
+            completed.fulfill()
+        }
+        while edits.calls.isEmpty { await Task.yield() }
+        request.cancel()
+        await fulfillment(of: [completed], timeout: 1)
+        XCTAssertEqual(permission, false)
+        edits.release(status: .acknowledged)
+        await request.value
+        while edits.completions == 0 { await Task.yield() }
+        XCTAssertEqual(permission, false)
+        XCTAssertEqual(edits.discards, 0)
+    }
+
+    func testLeaveGuardKeepsConcurrentRequestsIndependent() async {
+        let oldEdits = SuspendedUnsyncedEdits()
+        let newEdits = SuspendedUnsyncedEdits()
+        let guardUnderTest = PagesLeaveGuard()
+        let oldRequest = Task { await guardUnderTest.mayProceed(edits: oldEdits) }
+        while oldEdits.calls.isEmpty { await Task.yield() }
+        let newRequest = Task { await guardUnderTest.mayProceed(edits: newEdits) }
+        while newEdits.calls.isEmpty { await Task.yield() }
+        newEdits.release(status: .acknowledged)
+        let newPermission = await newRequest.value
+        XCTAssertTrue(newPermission)
+        guardUnderTest.hold(.webBack)
+        oldRequest.cancel()
+        let oldPermission = await oldRequest.value
+        XCTAssertFalse(oldPermission)
+        oldEdits.release(status: .acknowledged)
+        while oldEdits.completions == 0 { await Task.yield() }
+        XCTAssertEqual(guardUnderTest.pending, .webBack)
+        XCTAssertEqual(oldEdits.discards + newEdits.discards, 0)
     }
 
     func testBackgroundFlushesOnceAndEndsTheTaskOnAck() async {

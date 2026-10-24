@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Fixed database-worker source startup during regression tests and updated account-binding test fixtures for encrypted credential persistence.
+- Prevented an unresponsive page editor from indefinitely blocking navigation without discarding unsaved edits.
 
 ## [0.81.7-ja.3] — 2026-10-24
 

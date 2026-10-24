@@ -38,10 +38,48 @@ public final class PagesLeaveGuard {
     /// acknowledged. Touches no state, so a request that went stale during the
     /// flush cannot overwrite a newer one; the caller decides, then `hold`s.
     public func mayProceed(edits: PagesUnsyncedEdits) async -> Bool {
+        guard !Task.isCancelled else { return false }
         guard edits.unsynced else { return true }
-        let result = await edits.flushPending(timeoutMs: flushTimeoutMs)
-        // `flushPending` covers every unacknowledged edit, so either answer means none is left.
-        return result?.status == .acknowledged || result?.status == .notRequired
+        let race = LeaveFlushRace()
+        let timeoutMs = flushTimeoutMs
+        // The JavaScript deadline cannot run after its document/process goes
+        // away. Match the background flush's native grace period, without
+        // waiting for a cancellation-unaware WebKit continuation to finish.
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                race.continuation = continuation
+                guard !Task.isCancelled else { return race.settle(false) }
+                race.workers.append(Task { @MainActor [weak race] in
+                    guard !Task.isCancelled else { return }
+                    let result = await edits.flushPending(timeoutMs: timeoutMs)
+                    guard !Task.isCancelled else { return }
+                    race?.settle(result?.status == .acknowledged || result?.status == .notRequired)
+                })
+                race.workers.append(Task { @MainActor [weak race] in
+                    try? await Task.sleep(for: .milliseconds(max(0, timeoutMs)) + .seconds(1))
+                    guard !Task.isCancelled else { return }
+                    race?.settle(false)
+                })
+            }
+        } onCancel: {
+            Task { @MainActor in race.settle(false) }
+        }
+    }
+
+    /// Only the first result may resume this request; a late acknowledgment
+    /// cannot approve a timed-out/cancelled leave or modify the pending intent.
+    @MainActor
+    private final class LeaveFlushRace {
+        var continuation: CheckedContinuation<Bool, Never>?
+        var workers: [Task<Void, Never>] = []
+
+        func settle(_ permission: Bool) {
+            guard let continuation else { return }
+            self.continuation = nil
+            workers.forEach { $0.cancel() }
+            workers.removeAll()
+            continuation.resume(returning: permission)
+        }
     }
 
     /// Wait for the reader's answer on `intent`.
