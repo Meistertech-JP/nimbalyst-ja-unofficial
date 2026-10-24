@@ -7,10 +7,8 @@ import { store } from '@nimbalyst/runtime/store';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import './collabSidebarTree.css';
-import { InputModal } from './primitives/InputModal';
 import { confirmDestructive } from './primitives/confirmDestructive';
 import { ScopeSummaryHeader } from './primitives/ScopeSummaryHeader';
-import { CollabCreateItemDialog } from './CollabCreateItemDialog';
 import {
   buildSharedNewDocumentMenuItems,
   CollabNewDocumentMenu,
@@ -73,6 +71,13 @@ const CollabItemMenu = React.lazy(() => loadPageMenu().then((m) => ({ default: m
 const CollabPageHistoryEntry = React.lazy(() => loadPageMenu().then((m) => ({ default: m.CollabPageHistoryEntry })));
 import { CollabMenuButton } from './primitives/CollabMenuButton';
 const CollabPageMoveDialog = React.lazy(() => import('./CollabPageMoveDialog'));
+// Opened only for create or rename, so their forms stay out of the eager graph.
+const CollabCreateItemDialog = React.lazy(() => import('./CollabCreateItemDialog').then((module) => ({
+  default: module.CollabCreateItemDialog,
+})));
+const InputModal = React.lazy(() => import('./primitives/InputModal').then((module) => ({
+  default: module.InputModal,
+})));
 import { DocUnreadDot } from './DocUnreadDot';
 import { bucketItemCount, trackDocumentAction } from './analytics';
 import { useCollabDocsUI, type CollabTreeFilter } from './CollabDocsUIProvider';
@@ -2345,78 +2350,93 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
         />
       )}
 
-      <CollabCreateItemDialog
-        isOpen={createDocumentDescriptor !== null}
-        kind="document"
-        documentDescriptor={createDocumentDescriptor ?? undefined}
-        folders={sharedFolders}
-        tree={pageTree ? tree : undefined}
-        documentTypeDescriptors={documentTypeDescriptors}
-        rootLabel={pageTree ? (personal ? t('ui.personal') : t('ui.team')) : undefined}
-        targetFolderId={createTargetFolderId}
-        targetParentKind={createTargetKind}
-        onTargetFolderChange={changeCreateTarget}
-        onConfirm={handleCreateDocument}
-        onCancel={() => {
-          setCreateDocumentDescriptor(null);
-          setCreateTargetKind('page');
-          setContextMenu(null);
-        }}
-      />
+      {(createDocumentDescriptor !== null || isCreateFolderOpen) && (
+        <React.Suspense fallback={null}>
+          {createDocumentDescriptor !== null && (
+            <CollabCreateItemDialog
+              isOpen
+              kind="document"
+              documentDescriptor={createDocumentDescriptor}
+              folders={sharedFolders}
+              tree={pageTree ? tree : undefined}
+              documentTypeDescriptors={documentTypeDescriptors}
+              rootLabel={pageTree ? (personal ? t('ui.personal') : t('ui.team')) : undefined}
+              targetFolderId={createTargetFolderId}
+              targetParentKind={createTargetKind}
+              onTargetFolderChange={changeCreateTarget}
+              onConfirm={handleCreateDocument}
+              onCancel={() => {
+                setCreateDocumentDescriptor(null);
+                setCreateTargetKind('page');
+                setContextMenu(null);
+              }}
+            />
+          )}
+          {isCreateFolderOpen && (
+            <CollabCreateItemDialog
+              isOpen
+              kind="folder"
+              folders={sharedFolders}
+              targetFolderId={createTargetFolderId}
+              onTargetFolderChange={setCreateTargetFolderId}
+              onConfirm={handleCreateFolder}
+              onCancel={() => {
+                setIsCreateFolderOpen(false);
+                setContextMenu(null);
+              }}
+            />
+          )}
+        </React.Suspense>
+      )}
 
-      <CollabCreateItemDialog
-        isOpen={isCreateFolderOpen}
-        kind="folder"
-        folders={sharedFolders}
-        targetFolderId={createTargetFolderId}
-        onTargetFolderChange={setCreateTargetFolderId}
-        onConfirm={handleCreateFolder}
-        onCancel={() => {
-          setIsCreateFolderOpen(false);
-          setContextMenu(null);
-        }}
-      />
-
-      <InputModal
-        isOpen={documentToRename !== null}
-        title={t('ui.rename_shared_document')}
-        placeholder={t('ui.document_name')}
-        defaultValue={documentRenameParts.baseName}
-        // A markdown page reads without ".md"; the save still re-applies it.
-        suffix={pageTree && documentToRename?.documentType === 'markdown' ? undefined : documentRenameParts.suffix}
-        confirmLabel={t('ui.rename')}
-        onConfirm={handleRenameDocument}
-        onCancel={() => {
-          setDocumentToRename(null);
-          setContextMenu(null);
-        }}
-      />
-
-      <InputModal
-        isOpen={folderToRename !== null}
-        title={t('ui.rename_shared_folder')}
-        placeholder={t('ui.folder_name')}
-        defaultValue={folderToRename?.name ?? ''}
-        confirmLabel={t('ui.rename')}
-        onConfirm={handleRenameFolder}
-        onCancel={() => {
-          setFolderToRename(null);
-          setContextMenu(null);
-        }}
-      />
-
-      <InputModal
-        isOpen={legacyFolderToRename !== null}
-        title={t('ui.rename_shared_folder')}
-        placeholder={t('ui.folder_name')}
-        defaultValue={legacyFolderToRename?.name ?? ''}
-        confirmLabel={t('ui.rename')}
-        onConfirm={handleRenameLegacyFolder}
-        onCancel={() => {
-          setLegacyFolderToRename(null);
-          setContextMenu(null);
-        }}
-      />
+      {(documentToRename !== null || folderToRename !== null || legacyFolderToRename !== null) && (
+        <React.Suspense fallback={null}>
+          {documentToRename !== null && (
+            <InputModal
+              isOpen
+              title={t('ui.rename_shared_document')}
+              placeholder={t('ui.document_name')}
+              defaultValue={documentRenameParts.baseName}
+              // A markdown page reads without ".md"; the save still re-applies it.
+              suffix={pageTree && documentToRename.documentType === 'markdown' ? undefined : documentRenameParts.suffix}
+              confirmLabel={t('ui.rename')}
+              onConfirm={handleRenameDocument}
+              onCancel={() => {
+                setDocumentToRename(null);
+                setContextMenu(null);
+              }}
+            />
+          )}
+          {folderToRename !== null && (
+            <InputModal
+              isOpen
+              title={t('ui.rename_shared_folder')}
+              placeholder={t('ui.folder_name')}
+              defaultValue={folderToRename.name}
+              confirmLabel={t('ui.rename')}
+              onConfirm={handleRenameFolder}
+              onCancel={() => {
+                setFolderToRename(null);
+                setContextMenu(null);
+              }}
+            />
+          )}
+          {legacyFolderToRename !== null && (
+            <InputModal
+              isOpen
+              title={t('ui.rename_shared_folder')}
+              placeholder={t('ui.folder_name')}
+              defaultValue={legacyFolderToRename.name}
+              confirmLabel={t('ui.rename')}
+              onConfirm={handleRenameLegacyFolder}
+              onCancel={() => {
+                setLegacyFolderToRename(null);
+                setContextMenu(null);
+              }}
+            />
+          )}
+        </React.Suspense>
+      )}
     </div>
   );
 };

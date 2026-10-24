@@ -29,6 +29,10 @@
       "types": "./src/docs-ui/index.ts",
       "default": "./src/docs-ui/index.ts"
     },
+    "./docs-ui/CollabCreateItemDialog": {
+      "types": "./src/docs-ui/CollabCreateItemDialog.tsx",
+      "default": "./src/docs-ui/CollabCreateItemDialog.tsx"
+    },
     "./docs-ui/setPageType": {
       "types": "./src/docs-ui/setPageType/index.ts",
       "default": "./src/docs-ui/setPageType/index.ts"

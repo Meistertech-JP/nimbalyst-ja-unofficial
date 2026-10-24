@@ -178,7 +178,7 @@ it('runs a page header request with the row menu writes: Trash, Rename, and a wa
   expect(onHandled).toHaveBeenCalledTimes(1);
 
   await act(async () => { view.rerender(sidebar({ pageId: 'live', action: 'rename' })); });
-  view.getByDisplayValue('Live');
+  await view.findByDisplayValue('Live');
   expect(onHandled).toHaveBeenCalledTimes(2);
 
   vi.useFakeTimers();

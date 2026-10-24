@@ -179,8 +179,12 @@ describe('routed folder scope', () => {
     await waitFor(() => expect(latest().items[0].label).toBe('HTMLページ'));
     expect(latest().items[0].id).toBe(id);
     await act(async () => { latest().items[0].onSelect(); });
-    const input = document.querySelector<HTMLInputElement>('[data-testid="collab-create-name-input"]');
-    expect(input?.placeholder).toContain('HTMLページ');
+    const input = await waitFor(() => {
+      const found = document.querySelector<HTMLInputElement>('[data-testid="collab-create-name-input"]');
+      if (!found) throw new Error('create dialog not open');
+      return found;
+    });
+    expect(input.placeholder).toContain('HTMLページ');
     await act(async () => { await testI18n.changeLanguage('en'); });
     await waitFor(() => expect(latest().items[0].label).toBe('HTML page'));
   });

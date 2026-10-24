@@ -1,4 +1,7 @@
-export * from './CollabCreateItemDialog';
+// The create form opens from the sidebar. A static export would keep it in the
+// docs-ui eager graph; hosts that need the component import the deep path.
+export type { CollabCreateItemDialogProps } from './CollabCreateItemDialog';
+export const loadCollabCreateItemDialog = () => import('./CollabCreateItemDialog');
 export * from './CollabDocsUIProvider';
 export * from './useCollabPagesState';
 export * from './CollabNewDocumentMenu';
