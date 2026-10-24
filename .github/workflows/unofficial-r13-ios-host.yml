@@ -30,8 +30,13 @@ jobs:
           git worktree add --detach validation-source '${{ matrix.source == 'upstream' && 'e14ddf383a8dbb40e511fc2c2ea50273d08e3579' || matrix.source == 'published' && '0871b7872bb9d043ff07acfaf62a3deb0eb6aef2' || github.sha }}'
           mkdir -p validation-source/packages/ios/NimbalystNativeTestHost
           cp -R packages/ios/NimbalystNativeTestHost/. validation-source/packages/ios/NimbalystNativeTestHost/
+          # Apply the same visible-window/bootstrap fixture to each engine.
+          # Product sources and all navigation/authentication assertions stay fixed.
+          cp packages/ios/NimbalystNative/Tests/HostedWebKitFixture.swift validation-source/packages/ios/NimbalystNative/Tests/
+          cp packages/ios/NimbalystNative/Tests/PagesWebViewTests.swift validation-source/packages/ios/NimbalystNative/Tests/
           git -C validation-source rev-parse HEAD
           shasum -a 256 validation-source/packages/ios/NimbalystNative/Tests/PagesWebViewTests.swift validation-source/packages/ios/NimbalystNative/Sources/Pages/PagesWebController.swift validation-source/packages/ios/NimbalystNativeTestHost/project.yml
+          shasum -a 256 validation-source/packages/ios/NimbalystNative/Tests/HostedWebKitFixture.swift
           xcodebuild -version
       - name: Generate hosted project
         working-directory: validation-source/packages/ios/NimbalystNativeTestHost

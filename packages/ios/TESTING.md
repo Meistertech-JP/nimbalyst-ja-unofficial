@@ -25,6 +25,21 @@ ten-second readiness requirement and its original navigation assertions; a
 missing host or failed readiness now fails before queuing further JavaScript.
 The existing macOS `swift test` path remains available separately.
 
+Simulator WebKit setup is separate from bridge behavior. `HostedWebKitFixture`
+retains a visible window in a foreground-active scene and loads an unauthenticated
+local bootstrap document. Navigation and JavaScript execution must both succeed
+within the environment gate (60 seconds); failure stays failed and is not retried
+by subsequent cases. This accommodates measured simulator GPU-process startup
+of 25.59 seconds without changing the Pages fixture's ten-second bridge deadline.
+Each tested controller's actual web view is attached to that window, and its
+existing teardown removes it. The bootstrap view stays alive for the suite.
+
+This verifies bridge/navigation behavior with WebKit prepared, not product
+cold-start performance. The three-source comparison applies the identical
+bootstrap helper and Pages harness to each fixed product source, preserving
+all seven behavior bodies, their origin/nonce checks, and leave-race assertions.
+Original baseline test files and prior failing run logs remain separate evidence.
+
 This document describes the automated testing strategy for the iOS transcript integration.
 
 ## Overview

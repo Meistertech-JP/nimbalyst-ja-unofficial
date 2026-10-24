@@ -134,7 +134,6 @@ private final class Harness {
 /// the console origin as its base URL, so the origin checks are the real ones.
 @MainActor
 final class PagesWebViewTests: XCTestCase {
-    private enum FixtureLoadError: Error { case bridgeNotReady }
     private let wiki = ConsoleRoute.wiki(orgId: "organization-fixture", teamProjectId: "p1")!
     private let trackers = ConsoleRoute.trackers(orgId: "organization-fixture", teamProjectId: "p1")!
 
@@ -149,15 +148,14 @@ final class PagesWebViewTests: XCTestCase {
 
     private func openReady(_ harness: Harness) async throws {
         #if os(iOS)
-        // A package's hostless xctest process has no UIApplication event lifecycle.
-        // Keep this a failing precondition rather than skipping WebKit behavior.
-        _ = try XCTUnwrap(UIApplication.shared.delegate, "Run simulator tests with NimbalystNativeHostedTests")
+        try await HostedWebKitFixture.shared.prepare(for: self)
+        try HostedWebKitFixture.shared.attach(harness.controller.webView)
         #endif
         harness.controller.open(wiki)
         let ready = await waitUntil { harness.controller.bridgeReady && harness.controller.title == "Fixture Page" }
-        XCTAssertTrue(ready, "phase=\(harness.controller.phase) title=\(harness.controller.title)")
         // Do not queue JavaScript into an unready process after recording failure.
-        guard ready else { throw FixtureLoadError.bridgeNotReady }
+        _ = try XCTUnwrap(ready ? harness.controller : nil,
+                          "phase=\(harness.controller.phase) title=\(harness.controller.title)")
     }
 
     func testFixturePageSpeaksTheBridge() async throws {
