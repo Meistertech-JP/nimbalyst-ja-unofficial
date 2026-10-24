@@ -236,6 +236,7 @@
     "markdown_file": "Markdownファイル",
     "new_file": "ファイルを新規作成...",
     "extension_types": {
+      "animation": "アニメーション",
       "browser_tab": "ブラウザータブ",
       "calc_sheet": "Calcシート",
       "html_page": "HTMLページ",

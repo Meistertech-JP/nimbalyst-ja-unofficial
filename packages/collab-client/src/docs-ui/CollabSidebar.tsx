@@ -1,4 +1,5 @@
 import { SharedDocumentLink } from './SharedDocumentLink';
+import { documentTypeDisplayName } from './documentTypeDisplayName';
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { collabOpenOptions, isPersonalCollabScope, type CollabDocumentTypeDescriptor } from '@nimbalyst/collab-client/core';
 import { atom, useAtomValue } from 'jotai';
@@ -1015,7 +1016,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
         .filter(({ descriptor }) => descriptor.documentType !== 'markdown')
         .map(({ descriptor }) => ({
           id: `${descriptor.documentType}:${descriptor.defaultExtension}`,
-          label: descriptor.displayName,
+          label: documentTypeDisplayName(descriptor.displayName, t),
           icon: descriptor.icon,
           trailing: descriptor.defaultExtension,
           onSelect: () => {
@@ -1027,7 +1028,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     return () => registerCreateMenu(null);
     // sharedNewDocumentMenuItems is read through its signature.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registerCreateMenu, sharedTypeSignature, selectedFolderPath, pageTree]);
+  }, [registerCreateMenu, sharedTypeSignature, selectedFolderPath, pageTree, t]);
 
   const selectCreateDocumentType = useCallback((descriptor: CollabDocumentTypeDescriptor) => {
     if (!descriptor.capabilities.sharedCreate) return;

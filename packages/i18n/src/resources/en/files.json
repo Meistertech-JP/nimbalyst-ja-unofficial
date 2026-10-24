@@ -236,6 +236,7 @@
     "markdown_file": "Markdown File",
     "new_file": "New File...",
     "extension_types": {
+      "animation": "Animation",
       "browser_tab": "Browser Tab",
       "calc_sheet": "Calc Sheet",
       "html_page": "HTML page",

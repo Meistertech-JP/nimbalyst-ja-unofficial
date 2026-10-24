@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { documentTypeDisplayName } from '@nimbalyst/collab-client/docs-ui';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { setTitleBarCreateMenuAtom } from '../store/atoms/titleBarCreate';
 import { FlatFileTree } from './FlatFileTree';
@@ -267,7 +268,7 @@ export function WorkspaceSidebar({
       const extType = extensionFileTypes.find(e => e.extension === fileType.slice(4));
       if (extType?.action === 'openVirtualTab' && extType.virtualScheme) {
         const id = `tab-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
-        const title = encodeURIComponent(extType.displayName);
+        const title = encodeURIComponent(documentTypeDisplayName(extType.displayName, t));
         onFileSelect(`${extType.virtualScheme}${id}?title=${title}`);
         return;
       }
@@ -317,7 +318,7 @@ export function WorkspaceSidebar({
       .sort((a, b) => a.displayName.localeCompare(b.displayName))
       .map((extType) => ({
         id: `ext:${extType.extension}`,
-        label: extType.displayName,
+        label: documentTypeDisplayName(extType.displayName, t),
         icon: extType.icon,
         onSelect: () => createHandlersRef.current.handleNewFileTypeSelect(`ext:${extType.extension}`),
       }));
@@ -1321,7 +1322,7 @@ export function WorkspaceSidebar({
           if (pendingFileType?.startsWith('ext:')) {
             const extName = pendingFileType.slice(4);
             const extType = extensionFileTypes.find(e => e.extension === extName);
-            const displayName = extType?.displayName || t('create.default_type');
+            const displayName = extType ? documentTypeDisplayName(extType.displayName, t) : t('create.default_type');
             return targetFolder
               ? t('create.new_type_in_folder', { type: displayName, folder: getFileName(targetFolder) })
               : t('create.new_type', { type: displayName });

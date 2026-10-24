@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Shared document editors now retain the selected display language, and built-in document creation menus and dialogs show localized type names.
+- Shared document editors retain the selected display language, and built-in creation menus and dialogs show localized type names in shared and local workspaces.
 
 ## [0.81.7-ja.2] — Source-only prerelease
 

@@ -7,6 +7,7 @@ import { useFloatingMenu, FloatingPortal, virtualElement } from '../hooks/useFlo
 import { historyDialogFileAtom } from '../store';
 import { requestConfirmation } from '../dialogs/requestConfirmation';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { documentTypeDisplayName } from '@nimbalyst/collab-client/docs-ui';
 
 interface FileContextMenuProps {
   x: number;
@@ -242,7 +243,7 @@ export function FileContextMenu({
                     onClick={() => { onNewFile(filePath, `ext:${extType.extension}`); onClose(); }}
                   >
                     <MaterialSymbol icon={extType.icon} size={18} />
-                    <span>{t('context.new_type', { type: extType.displayName })}</span>
+                    <span>{t('context.new_type', { type: documentTypeDisplayName(extType.displayName, t) })}</span>
                   </div>
                 ))}
                 <div className={menuItemClasses} onClick={() => { onNewFile(filePath, 'any'); onClose(); }}>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { documentTypeDisplayName } from '@nimbalyst/collab-client/docs-ui';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { NewFileType, ExtensionFileType } from './NewFileMenu';
 
@@ -78,7 +79,7 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
     extensionFileTypes.forEach((extType) => {
       options.push({
         id: `ext:${extType.extension}`,
-        label: extType.displayName,
+        label: documentTypeDisplayName(extType.displayName, t),
         icon: extType.icon,
         extension: extType.extension,
         defaultContent: extType.defaultContent,

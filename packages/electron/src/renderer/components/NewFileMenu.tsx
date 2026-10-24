@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { MaterialSymbol, type NewFileMenuContribution } from '@nimbalyst/runtime';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { documentTypeDisplayName } from '@nimbalyst/collab-client/docs-ui';
 import { useFloatingMenu, FloatingPortal, virtualElement } from '../hooks/useFloatingMenu';
 
 // Built-in file types
@@ -60,7 +61,7 @@ export function NewFileMenu({
       // here would duplicate it.
       ...extensionFileTypes.map((extType) => ({
         key: `ext:${extType.extension}`,
-        label: extType.displayName,
+        label: documentTypeDisplayName(extType.displayName, t),
         icon: extType.icon,
         fileType: `ext:${extType.extension}` as NewFileType,
       })),

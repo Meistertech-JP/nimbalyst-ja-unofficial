@@ -10,6 +10,13 @@ it('translates built-in creation names in both locales and preserves custom name
   expect(documentTypeDisplayName('Project Canvas', t)).toBe('プロジェクトキャンバス');
   expect(documentTypeDisplayName('Data Model', t)).toBe('データモデル');
   expect(documentTypeDisplayName('Custom Editor', t)).toBe('Custom Editor');
+  expect(documentTypeDisplayName('toString', t)).toBe('toString');
+  expect(documentTypeDisplayName('Animation', t)).toBe('アニメーション');
+  expect(documentTypeDisplayName('Browser Tab', t)).toBe('ブラウザータブ');
+  expect(documentTypeDisplayName('Image Generation Project', t)).toBe('画像生成プロジェクト');
+  expect(documentTypeDisplayName('Swift File', t)).toBe('Swiftファイル');
+  const prefixedT = instance.getFixedT(null, 'files', 'new_file_menu');
+  expect(documentTypeDisplayName('HTML page', prefixedT)).toBe('HTMLページ');
   await instance.changeLanguage('en');
   expect(documentTypeDisplayName('HTML page', t)).toBe('HTML page');
 });

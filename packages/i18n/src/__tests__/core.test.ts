@@ -262,7 +262,7 @@ describe('UI language preference', () => {
       .toBe('Sign-in could not be completed because authentication information could not be stored securely.');
     expect(resources.ja.common.account_ui.secure_storage_failed)
       .toBe('認証情報を安全に保存できないため、サインインを完了できませんでした。');
-    expect(totalKeys).toBe(14575);
+    expect(totalKeys).toBe(14576);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

@@ -164,6 +164,27 @@ const found = <T,>(lookup: () => T | null | undefined) => waitFor(() => {
  * folder rather than the whole project.
  */
 describe('routed folder scope', () => {
+  it('republishes translated title-bar creation labels when the language changes', async () => {
+    const registerCreateMenu = vi.fn<NonNullable<React.ComponentProps<typeof CollabSidebar>['registerCreateMenu']>>();
+    const descriptor = {
+      documentType: 'html', displayName: 'HTML page', defaultExtension: '.html', icon: 'html',
+      capabilities: { localCreate: true, sharedCreate: true },
+      creation: { defaultContent: '' }, editor: { kind: 'html' },
+    };
+    renderDocsUIWithHost(<CollabSidebar registerCreateMenu={registerCreateMenu} />, [], undefined, [descriptor]);
+    const latest = () => registerCreateMenu.mock.calls.map(([menu]) => menu).filter(menu => menu !== null).at(-1)!;
+    await waitFor(() => expect(latest().items[0].label).toBe('HTML page'));
+    const id = latest().items[0].id;
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    await waitFor(() => expect(latest().items[0].label).toBe('HTMLページ'));
+    expect(latest().items[0].id).toBe(id);
+    await act(async () => { latest().items[0].onSelect(); });
+    const input = document.querySelector<HTMLInputElement>('[data-testid="collab-create-name-input"]');
+    expect(input?.placeholder).toContain('HTMLページ');
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    await waitFor(() => expect(latest().items[0].label).toBe('HTML page'));
+  });
+
   it('reports the clicked folder to a host that routes folders', () => {
     const onSelectFolder = vi.fn();
     const { container } = renderDocsUI(<CollabSidebar onSelectFolder={onSelectFolder} />);

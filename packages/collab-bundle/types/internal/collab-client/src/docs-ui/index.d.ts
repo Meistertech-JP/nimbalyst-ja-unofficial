@@ -7,6 +7,7 @@ export type { CollabPageAction, CollabPageActionRequest } from './usePageActionR
 export * from './DocUnreadDot';
 export * from './documentDrag';
 export * from './documentPresentation';
+export * from './documentTypeDisplayName';
 export * from './PagesSectionEntries';
 export * from './primitives/CollabSearchInput';
 export * from '../ui-primitives/EditorHeaderBar';
