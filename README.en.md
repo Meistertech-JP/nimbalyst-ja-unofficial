@@ -6,17 +6,17 @@ Japanese localization covers desktop menus, settings, file management, AI sessio
 
 This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
 
-[日本語](README.md) · [Windows guide](docs/WINDOWS_JA_UNOFFICIAL.md#english) · [Next-version changes](RELEASE_NOTES_v0.81.7-ja.3.md#english)
+[日本語](README.md) · [Windows guide](docs/WINDOWS_JA_UNOFFICIAL.md#english) · [v0.81.7-ja.3 changes](RELEASE_NOTES_v0.81.7-ja.3.md#english)
 
 ## Availability and downloads
 
-The published **v0.81.7-ja.2 is a source-only prerelease**, available from [GitHub Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases). That release contains no Windows installer, portable ZIP, or executable binary. Its [release notes](RELEASE_NOTES_v0.81.7-ja.2.md) preserve the verification status at publication.
+**v0.81.7-ja.3 is a regular release for Windows x64.** Download the NSIS installer, portable ZIP, source ZIP, and `SHA256SUMS.txt` from the [latest release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/latest). Email sign-in through the official Nimbalyst service, encrypted persistence, account UI restoration after restart, and logout were verified in the ordinary production build.
 
-This source is an **unpublished candidate for v0.81.7-ja.3**. Real-account email sign-in, encrypted persistence, account UI restoration after restart, and logout have been observed in an ordinary unsigned Windows x64 production build. Publication has not been approved. There is no candidate download link or published candidate binary.
+The earlier v0.81.7-ja.2 remains a source-only prerelease; its [release notes](RELEASE_NOTES_v0.81.7-ja.2.md) retain that version's verification status. `ja.3` is this Japanese fork's update number. SemVer-aware tools interpret the hyphen suffix as a prerelease identifier, separately from this edition's regular GitHub Release designation. Check the intended version rather than relying on automatic package-manager selection.
 
 ### Unsigned builds
 
-Locally generated Windows applications and installers for this edition are unsigned. They have no certificate-verified Windows publisher. Product names and publisher strings in application metadata are not code signatures.
+Distributed Windows applications and installers for this edition are unsigned. They have no certificate-verified Windows publisher. Product names and publisher strings in application metadata are not code signatures.
 
 SmartScreen or other security software may display warnings. This project does not instruct users to disable protections or warnings. Do not run a file whose source, version, and SHA-256 you cannot verify. A matching SHA-256 establishes byte equality with the published file; it does not authenticate the publisher or establish safety. See the [Windows guide](docs/WINDOWS_JA_UNOFFICIAL.md#english) for verification steps.
 
@@ -24,18 +24,18 @@ SmartScreen or other security software may display warnings. This project does n
 
 - Base: Nimbalyst desktop v0.81.7
 - Pinned upstream: `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`
-- Windows candidate: x64. Testing does not cover every Windows version, configuration, or security product.
+- Windows distribution: x64. Testing does not cover every Windows version, configuration, or security product.
 - Build tools: Node.js 24 or later and pnpm 12 or later. The repository specifies **pnpm 12.9.1** and **Electron 43.7.0**. Dependencies are locked by `pnpm-lock.yaml`.
 - Features and fixes differ from the current official release. This edition does not automatically track the latest official main branch.
-- macOS, Linux, Android, and iOS distributions and native behavior are outside this Windows candidate's verification scope.
+- macOS, Linux, Android, and iOS distributions and native behavior are outside this Windows release's verification scope.
 
 ## Display language
 
 Choose Japanese or English in the display-language settings. This is separate from the preferred language for an agent's responses. It does not automatically translate user documents or external service responses.
 
-The candidate adds localization for About, Settings, comment notices, shared-project errors, Git repair drafts, file creation and save/export dialogs, and bundled command descriptions. A new tutorial is selected using the display language at creation time. Switching languages does not rewrite an existing or edited tutorial.
+This release adds localization for About, Settings, comment notices, shared-project errors, Git repair drafts, file creation and save/export dialogs, and bundled command descriptions. A new tutorial is selected using the display language at creation time. Switching languages does not rewrite an existing or edited tutorial.
 
-The candidate's translation resources contain 27 namespaces and 14,579 keys in each language. Matching keys and interpolation tokens have been checked; this is not complete runtime verification of all screens or dynamic references.
+The translation resources contain 27 namespaces and 14,579 keys in each language. Matching keys and interpolation tokens have been checked; this is not complete runtime verification of all screens or dynamic references.
 
 Static Wiki export accepts `nim wiki export --static <dir> --ui-language system|en|ja`. The CLI defaults to the system language. Programmatic exports default to English for compatibility. Wiki translations load namespaces on demand. This describes the source here, not availability in published npm packages.
 
@@ -51,7 +51,7 @@ Static Wiki export accepts `nim wiki export --static <dir> --ui-language system|
 
 ## Verification and limitations
 
-The local v0.81.7-ja.3 candidate was tested for an NSIS update installation, installed and ZIP-extracted application startup, and normal uninstallation. The ordinary production build was observed switching between Japanese and English, retaining each language after restart, and displaying selected creation menus, dialogs, and usage guidance. All 1,911 installed and ZIP payload files matched the reviewed unpacked application.
+The v0.81.7-ja.3 distribution build was tested for an NSIS update installation, installed and ZIP-extracted application startup, and normal uninstallation. The ordinary production build was observed switching between Japanese and English, retaining each language after restart, and displaying selected creation menus, dialogs, and usage guidance. All 1,911 installed and ZIP payload files matched the reviewed unpacked application.
 
 Production email sign-in, IPv4 localhost callback, encrypted persistence, account UI restoration after restarting the dedicated profile, ordinary logout, and an unauthenticated post-logout restart were observed. Actual ACLs for both credential files and SQLite-related files were limited to the current user, SYSTEM, and Administrators. Monitored existing settings, default associations, and official shortcuts were retained; uninstall removed only this edition's own registrations and shortcuts. This is neither whole-host equality nor a guarantee for other systems.
 

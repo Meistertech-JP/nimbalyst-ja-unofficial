@@ -1,8 +1,10 @@
-# Nimbalyst 日本語版（非公式） v0.81.7-ja.3 — 未公開候補
+# Nimbalyst 日本語版（非公式） v0.81.7-ja.3
 
-Nimbalystデスクトップ版 v0.81.7をベースとする非公式日本語版の次期候補です。Nimbalyst, Inc.の公式製品ではなく、同社による開発・サポート・承認を受けたものではありません。
+Nimbalystデスクトップ版 v0.81.7をベースとする、Windows x64向け非公式日本語版の正式リリースです。Nimbalyst, Inc.の公式製品ではなく、同社による開発・サポート・承認を受けたものではありません。
 
-**この版は未公開です。** 公開済みのv0.81.7-ja.2は引き続きソース限定Prereleaseで、変更しません。通常製品ビルドのローカルWindows候補で実アカウントのメール認証・暗号化保存・ログアウトを確認していますが、公開承認はまだありません。候補版のバイナリやチェックサムは公開されていません。
+未署名NSISインストーラー、ポータブルZIP、ソースZIP、`SHA256SUMS.txt`を添付します。表示言語は設定から日本語・英語を選択できます。正規のNimbalystサービスへのメール認証、暗号化保存、復元・ログアウトを通常製品ビルドで確認しています。旧v0.81.7-ja.2はソース限定Prereleaseのまま保持します。
+
+`ja.3`は日本語フォークの更新番号です。SemVer対応ツールではプレリリース識別子として扱われますが、GitHub上では正式リリース・最新版として指定します。パッケージ管理ツールの選択結果と対象バージョンを確認してください。
 
 ## v0.81.7-ja.2からの変更
 
@@ -10,7 +12,7 @@ Nimbalystデスクトップ版 v0.81.7をベースとする非公式日本語版
 - Settingsのグループ見出し、長いラベル、tooltip、コメントのfocus通知、共有プロジェクトのアプリ側fallbackを日本語表示へ接続します。外部エラーの詳細やユーザーが入力した名前は翻訳で置き換えません。
 - Git修復用の入力下書き、新規ファイルの説明、DataModel・Mockupの初期内容、保存・エクスポート用ダイアログ、HTML出力、同梱コマンドの説明を表示言語に対応させます。Gitコマンドやファイルパスの意味は変えず、下書きを自動送信しません。
 - 日本語のチュートリアル文書、トラッカー、セッション例を追加します。新規作成時に言語を選び、既存のチュートリアルやその編集内容を保持します。
-- 本候補の翻訳リソースは27名前空間、英日各14,579キーです。キー・補間の整合と静的に解決できる参照先を確認しています。リソース整合は、全画面の動作や翻訳完了の保証ではありません。
+- 本版の翻訳リソースは27名前空間、英日各14,579キーです。キー・補間の整合と静的に解決できる参照先を確認しています。リソース整合は、全画面の動作や翻訳完了の保証ではありません。
 - Windows Workerを外側のNode.jsモジュール設定から分離する配置・モジュール形式を使用し、SQLiteと同梱リソースの起動・パッケージ検査を強化します。
 - Windows x64インストーラーの圧縮設定を同梱展開器と整合させます。Markdownの「プログラムから開く」は本版専用の登録とし、拡張子の既定値やUserChoiceを上書きしません。
 - アプリの既定プロファイル分離を起動初期に適用します。公式更新は引き続き無効です。
@@ -21,7 +23,7 @@ Nimbalystデスクトップ版 v0.81.7をベースとする非公式日本語版
 
 ## 確認済みの範囲
 
-この候補の通常製品ビルドで、NSIS更新インストール、インストール版・ZIP展開版の起動、通常アンインストールを確認しました。日本語・英語の両方向切替、両言語の再起動後の設定保持、選択した作成メニュー・HTMLダイアログ・Claude/Codex使用量案内を確認しています。インストール済みファイルとZIPの全1,911ファイルが検証対象の展開物と一致しました。
+本版の通常製品ビルドで、NSIS更新インストール、インストール版・ZIP展開版の起動、通常アンインストールを確認しました。日本語・英語の両方向切替、両言語の再起動後の設定保持、選択した作成メニュー・HTMLダイアログ・Claude/Codex使用量案内を確認しています。インストール済みファイルとZIPの全1,911ファイルが検証対象の展開物と一致しました。
 
 本番サービスへの実アカウントのメール認証、IPv4 localhost callback、nonceと単回使用の受理、暗号化保存、専用プロファイルの再起動後のアカウント表示、通常ログアウト、ログアウト後の未認証状態を確認しました。認証ファイル2個とSQLite関連ファイルの実測ACLは、現在のユーザー・SYSTEM・Administratorsに限定されていました。認証値やCookieを検証成果へ含めていません。既存設定・既定の関連付け・公式版ショートカットは監査範囲で保持され、アンインストールによる変更は本版の登録とショートカットの削除だけでした。全ホスト状態や他の端末への保証ではありません。
 
@@ -29,11 +31,11 @@ Nimbalystデスクトップ版 v0.81.7をベースとする非公式日本語版
 
 ## 配布・署名・更新
 
-候補の対象は未署名Windows x64版です。ローカル生成したアプリとインストーラーには、証明書に基づくWindows発行元の証明がありません。SmartScreenなどの警告が表示される可能性があります。保護機能の無効化は案内しません。
+配布対象は未署名Windows x64版です。アプリとインストーラーには、証明書に基づくWindows発行元の証明がありません。SmartScreenなどの警告が表示される可能性があります。保護機能の無効化は案内しません。
 
-配布が承認された成果物だけを、対応するソースとSHA-256チェックサムとともに掲載します。現時点でこの版のバイナリやチェックサムは公開されていません。SHA-256はファイルの一致確認用であり、コード署名や発行元認証の代わりではありません。
+インストーラーは `Nimbalyst 日本語版（非公式）-Windows-x64.exe`、ポータブル版は同名の `.zip`、ソースは `nimbalyst-0.81.7-ja.3-source.zip` です。各ファイルを添付の `SHA256SUMS.txt` と照合してください。SHA-256はファイルの一致確認用であり、コード署名や発行元認証の代わりではありません。
 
-公式Nimbalystの更新は自動取得・適用せず、手動更新確認も無効です。更新は本リポジトリの公開内容から手動で行います。
+公式Nimbalystの更新は自動取得・適用せず、手動更新確認も無効です。更新時は作業を保存してアプリを終了し、このリポジトリの新しいReleaseから取得・照合したインストーラーを使用するか、ZIPを新しいディレクトリへ完全展開してください。
 
 ## 互換性と制限
 
@@ -45,7 +47,7 @@ Nimbalystデスクトップ版 v0.81.7をベースとする非公式日本語版
 - Google認証、Stytchの一部の復旧経路、他ユーザー・グループを含むNTFS実効アクセスは未検証です。ログアウトはローカルの認証状態を削除し、サービス側セッションの失効までは保証しません。これらは確認済みの脆弱性・不具合とは区別します。
 - NSISの無効な管理者向け選択肢には英語注記が残っています。現在のユーザー向けのインストール・アンインストール完了画面は日本語で確認しています。
 - 外部エラー、技術識別子、ユーザー文書、表示済み通知や旧形式の共同編集データに英語が残る場合があります。
-- macOS、Linux、Android、iOSの配布物・実機動作は今回のWindows候補の検証範囲外です。
+- macOS、Linux、Android、iOSの配布物・実機動作は今回のWindows版の検証範囲外です。
 
 ## 利用方法とライセンス
 
@@ -57,11 +59,13 @@ Nimbalystデスクトップ版 v0.81.7をベースとする非公式日本語版
 
 ## English
 
-# Nimbalyst — Unofficial Japanese Edition v0.81.7-ja.3 — Unpublished candidate
+# Nimbalyst — Unofficial Japanese Edition v0.81.7-ja.3
 
-This is the next candidate of the unofficial Japanese edition based on Nimbalyst desktop v0.81.7. It is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
+This is a regular Windows x64 release of the unofficial Japanese edition based on Nimbalyst desktop v0.81.7. It is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
 
-**This version is not published.** The published v0.81.7-ja.2 remains a source-only prerelease and is unchanged. Real-account email sign-in, encrypted storage, and logout have been observed in the local ordinary Windows production build, but publication has not been approved. No candidate binary or checksum is published.
+The unsigned NSIS installer, portable ZIP, source ZIP, and `SHA256SUMS.txt` are attached. Select Japanese or English in display-language settings. Email sign-in through the official Nimbalyst service, encrypted storage, restoration, and logout were verified in the ordinary production build. The earlier v0.81.7-ja.2 remains a source-only prerelease.
+
+`ja.3` is this Japanese fork's update number. SemVer-aware tools treat the suffix as a prerelease identifier, independently of the regular/latest GitHub Release designation. Check package-manager selection against the intended version.
 
 ### Changes since v0.81.7-ja.2
 
@@ -69,18 +73,18 @@ This is the next candidate of the unofficial Japanese edition based on Nimbalyst
 - Settings group headings, long labels, tooltips, comment-focus notices, and application-owned shared-project fallbacks are localized. External error details and user names are not replaced.
 - Git repair drafts, new-file descriptions, DataModel and Mockup seeds, save/export dialogs, HTML output, and bundled command descriptions follow the display language. Git commands and paths retain their meaning; drafts are not sent automatically.
 - Japanese tutorial documents, trackers, and session examples are included. Language is selected when a tutorial is created; existing tutorials and user edits are retained.
-- The candidate's translation resources have 27 namespaces and 14,579 keys in each language. Key/interpolation consistency and statically resolvable references have been checked. This is not complete runtime or translation coverage.
+- The translation resources have 27 namespaces and 14,579 keys in each language. Key/interpolation consistency and statically resolvable references have been checked. This is not complete runtime or translation coverage.
 - Windows Workers use a layout and module format isolated from an enclosing Node.js module setting; SQLite startup and packaged-resource checks are strengthened.
 - Windows x64 installer compression is aligned with the bundled extractor. Markdown “Open with” uses an edition-specific registration without replacing extension defaults or UserChoice.
 - Default profile separation takes effect early in startup. Official updates remain disabled.
 - Sign-in state is published only after encrypted storage succeeds; storage failure is reported without falling back to plaintext. Stale refresh responses cannot overwrite sign-out or successful reauthentication of the same account, and storage errors have Japanese and English messages.
 - Disabling file logging also disables renderer and shutdown diagnostic files and automatic CPU-profile files. The updater no longer overrides the shared logging setting.
 
-The pinned upstream remains `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`. This candidate does not incorporate a newer official main. Wiki translation lazy loading and static export are retained.
+The pinned upstream remains `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`. This release does not incorporate a newer official main. Wiki translation lazy loading and static export are retained.
 
 ### Verified scope
 
-This candidate's ordinary production build was tested for NSIS update installation, installed and ZIP-extracted application startup, and normal uninstallation. Switching in both language directions, persistence after restarting in each language, selected creation menus, the HTML dialog, and Claude/Codex usage guidance were observed. All 1,911 installed and ZIP payload files matched the reviewed unpacked application.
+The ordinary production build was tested for NSIS update installation, installed and ZIP-extracted application startup, and normal uninstallation. Switching in both language directions, persistence after restarting in each language, selected creation menus, the HTML dialog, and Claude/Codex usage guidance were observed. All 1,911 installed and ZIP payload files matched the reviewed unpacked application.
 
 Real-account production email sign-in, IPv4 localhost callback, nonce/single-use acceptance, encrypted persistence, account UI restoration in the dedicated profile, ordinary logout, and an unauthenticated post-logout restart were observed. Actual ACLs for both credential files and SQLite-related files were limited to the current user, SYSTEM, and Administrators. Verification artifacts exclude authentication values and cookies. Monitored existing settings, default associations, and official shortcuts were retained; uninstall changed only this edition's own registrations and shortcuts. This is not whole-host equality or coverage of other systems.
 
@@ -88,11 +92,11 @@ The tested source passed typecheck in 38 workspaces and 925 related tests across
 
 ### Distribution, signing, and updates
 
-The candidate targets unsigned Windows x64 distribution. Locally generated application and installer files have no certificate-backed Windows publisher identity. SmartScreen or other security software may show warnings. This project does not advise disabling protections.
+This release targets unsigned Windows x64 distribution. Application and installer files have no certificate-backed Windows publisher identity. SmartScreen or other security software may show warnings. This project does not advise disabling protections.
 
-Only artifacts approved for distribution will be listed with their corresponding source and SHA-256 checksums. No binary or checksum for this version is currently published. SHA-256 verifies file equality; it is not a code signature or publisher authentication.
+The installer is `Nimbalyst 日本語版（非公式）-Windows-x64.exe`, the portable build is the same name with `.zip`, and the source is `nimbalyst-0.81.7-ja.3-source.zip`. Compare each file with the attached `SHA256SUMS.txt`. SHA-256 verifies file equality; it is not a code signature or publisher authentication.
 
-Official Nimbalyst updates are not downloaded or applied, and manual update checks are disabled. Updates are manual through this repository's published releases.
+Official Nimbalyst updates are not downloaded or applied, and manual update checks are disabled. To update manually, save work and close the application, then use a verified installer from a newer Release in this repository or fully extract its ZIP into a new directory.
 
 ### Compatibility and limitations
 
@@ -104,7 +108,7 @@ Official Nimbalyst updates are not downloaded or applied, and manual update chec
 - Google sign-in, some Stytch recovery paths, and effective NTFS access involving other users or groups remain unverified. Logout clears local authentication state without guaranteeing service-side session revocation. These are not confirmed defects or vulnerabilities.
 - NSIS retains an English note in its disabled administrator option. Current-user installation and uninstallation completion screens were observed in Japanese.
 - External errors, technical identifiers, user documents, existing notices, and legacy collaboration data may remain in English.
-- macOS, Linux, Android, and iOS distributions and native behavior are outside this Windows candidate's verification scope.
+- macOS, Linux, Android, and iOS distributions and native behavior are outside this Windows release's verification scope.
 
 ### Documentation and license
 

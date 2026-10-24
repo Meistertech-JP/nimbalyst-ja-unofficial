@@ -4,11 +4,11 @@
 
 ## 現在の提供状況
 
-公開済みv0.81.7-ja.2はソース限定です。v0.81.7-ja.3は未公開候補で、通常Windows版によるメール認証、暗号化保存、アカウント表示の復元、ログアウト、インストール・アンインストールをローカルで確認しています。公開はまだ承認されていません。このガイドの手順はローカル検証用または将来公開が承認された配布物のための説明であり、現在ダウンロードできるWindowsバイナリがあることを示しません。
+v0.81.7-ja.3はWindows x64向けの正式リリースです。[最新版](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/latest)から、未署名NSISインストーラー、ポータブルZIP、ソースZIP、`SHA256SUMS.txt`を取得できます。通常Windows版によるメール認証、暗号化保存、アカウント表示の復元、ログアウト、インストール・アンインストールを確認しています。旧v0.81.7-ja.2はソース限定のまま保持しています。
 
 ## 未署名と取得元の確認
 
-ローカル生成したアプリとインストーラーは未署名です。Windowsが証明書で確認する発行元はありません。設定やファイル情報の「発行元」文字列は、電子署名による本人性の証明ではありません。同梱される第三者プログラムに署名があっても、本版全体やインストーラーの署名にはなりません。
+配布するアプリとインストーラーは未署名です。Windowsが証明書で確認する発行元はありません。設定やファイル情報の「発行元」文字列は、電子署名による本人性の証明ではありません。同梱される第三者プログラムに署名があっても、本版全体やインストーラーの署名にはなりません。
 
 配布物は[このリポジトリのReleases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases)の対象バージョンと照合してください。SmartScreen、ウイルス対策ソフト、組織のポリシーで実行が制限される場合があります。警告・保護機能を無効にしたり、除外設定を追加したりする手順は提供しません。判断できない場合は実行を中止してください。
 
@@ -82,11 +82,11 @@ This guide covers an unsigned Windows x64 build. It is not an official product o
 
 ### Current availability
 
-The published v0.81.7-ja.2 is source-only. v0.81.7-ja.3 is an unpublished candidate. Production email sign-in, encrypted storage, account UI restoration, logout, installation, and uninstallation were observed locally in the ordinary Windows build; publication has not been approved. These instructions describe local validation artifacts or a future approved distribution, not an existing binary download.
+v0.81.7-ja.3 is a regular Windows x64 release. Download the unsigned NSIS installer, portable ZIP, source ZIP, and `SHA256SUMS.txt` from the [latest release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/latest). Production email sign-in, encrypted storage, account UI restoration, logout, installation, and uninstallation were verified in the ordinary Windows build. The earlier v0.81.7-ja.2 remains source-only.
 
 ### Unsigned files and provenance
 
-Locally generated application and installer files are unsigned and have no certificate-verified Windows publisher. Publisher metadata is not a digital signature. A signature on an included third-party executable does not sign this edition or its installer.
+Distributed application and installer files are unsigned and have no certificate-verified Windows publisher. Publisher metadata is not a digital signature. A signature on an included third-party executable does not sign this edition or its installer.
 
 Match the file to the version on [this repository's Releases page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases). SmartScreen, antivirus software, or organizational policies may restrict execution. This guide does not provide steps to disable warnings, add security exclusions, or turn off protections. Do not proceed if you cannot assess the file.
 
