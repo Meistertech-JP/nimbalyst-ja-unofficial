@@ -11,9 +11,9 @@
  * It must NEVER re-render or it will destroy all TabEditor state.
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useContext, useEffect, useRef } from 'react';
 import type { Root } from 'react-dom/client';
-import { useTranslation } from 'react-i18next';
+import { I18nContext } from 'react-i18next';
 import { createTranslatedRoot } from './translatedRoot';
 import { Provider as JotaiProvider, useAtomValue } from 'jotai';
 import { fileSaveRequestAtom } from '../../store/atoms/appCommands';
@@ -114,7 +114,9 @@ const TabContentComponent: React.FC<TabContentProps> = ({
 
   // Use actions only - NO subscription that causes re-renders
   const tabsActions = useTabsActions();
-  const { i18n } = useTranslation();
+  // useTranslation returns a language snapshot wrapper in react-i18next 17.
+  // Imperative roots need the live host instance from context instead.
+  const { i18n } = useContext(I18nContext);
   const translationInstanceRef = useRef(i18n);
   translationInstanceRef.current = i18n;
 
