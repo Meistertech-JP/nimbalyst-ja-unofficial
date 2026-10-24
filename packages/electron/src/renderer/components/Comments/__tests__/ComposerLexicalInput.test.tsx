@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 import { CommentComposer } from '../CommentComposer';
 import { FULL_CAPABILITIES, createCommentFixtures, createFixtureResolver } from '../commentFixtures';
@@ -138,6 +140,37 @@ describe('composer rich input: mentions are atomic', () => {
 
 describe('composer rich input: Enter', () => {
   afterEach(() => cleanup());
+
+  it('retains keyboard completion and translated anchors across live language changes', async () => {
+    const i18n = await createI18nInstance('ja');
+    const fixtures = createCommentFixtures({ now: NOW });
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <I18nextProvider i18n={i18n}>
+        <CommentComposer capabilities={FULL_CAPABILITIES} context={fixtures.context}
+          directory={fixtures.directory} orgId={fixtures.orgId}
+          resolver={createFixtureResolver()} resourceCandidates={fixtures.candidates}
+          onSubmit={onSubmit} />
+      </I18nextProvider>,
+    );
+    const anchorLabels = () => Array.from(document.querySelectorAll('[class*="localized-typeahead-"]'),
+      anchor => anchor.getAttribute('aria-label'));
+    expect(anchorLabels()).toEqual(['入力候補', '入力候補']);
+    type('@dan');
+    await screen.findByTestId('mention-picker');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(anchorLabels().every(label => label === 'Typeahead menu')).toBe(true);
+    pressEnter();
+    await waitFor(() => expect(composerText()).toContain('nimbalyst://user/user-dana'));
+    expect(onSubmit).not.toHaveBeenCalled();
+    type(':rock');
+    await screen.findByTestId('emoji-suggestion-rocket');
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(anchorLabels().every(label => label === '入力候補')).toBe(true);
+    pressEnter();
+    await waitFor(() => expect(composerText()).toBe('\u{1F680} '));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 
   it('sends on Enter and breaks the line on Shift+Enter', async () => {
     const { onSubmit } = renderComposer();

@@ -9,12 +9,12 @@ import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
-  LexicalTypeaheadMenuPlugin,
   MenuOption,
   type TriggerFn,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import { BOLD_STAR, INLINE_CODE, ITALIC_STAR } from '@lexical/markdown';
 import { DRAG_DROP_PASTE } from '@lexical/rich-text';
+import { LocalizedTypeaheadMenuPlugin } from '@nimbalyst/runtime/editor/plugins/LocalizedTypeaheadMenuPlugin';
 import {
   $createTextNode,
   $getRoot,
@@ -475,7 +475,7 @@ function MentionTypeaheadPlugin({
   );
 
   return (
-    <LexicalTypeaheadMenuPlugin<MentionOption>
+    <LocalizedTypeaheadMenuPlugin<MentionOption>
       options={options}
       triggerFn={triggerFn}
       onQueryChange={setQuery}
@@ -540,7 +540,7 @@ function EmojiTypeaheadPlugin({
   );
 
   return (
-    <LexicalTypeaheadMenuPlugin<EmojiOption>
+    <LocalizedTypeaheadMenuPlugin<EmojiOption>
       options={options}
       triggerFn={triggerFn}
       onQueryChange={setQuery}

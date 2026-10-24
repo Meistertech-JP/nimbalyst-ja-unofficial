@@ -1,5 +1,6 @@
 {
   "loading": "Loading...",
+  "typeahead_menu_label": "Typeahead menu",
   "load_failed": "Failed to load: {{error}}",
   "datamodel_template": {
     "add_models": "Add your models here",

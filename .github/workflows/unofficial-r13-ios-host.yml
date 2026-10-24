@@ -2,7 +2,7 @@ name: Unofficial R13 hosted iOS verification
 
 on:
   push:
-    branches: [codex/r13-ios-host, codex/r13-leave-deadline, codex/r13-upstream-0821]
+    branches: [codex/r13-ios-host, codex/r13-leave-deadline, codex/r13-upstream-0821, codex/r14-release-candidate-0821]
 
 permissions:
   contents: read

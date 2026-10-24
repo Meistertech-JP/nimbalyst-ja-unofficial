@@ -8,7 +8,6 @@
 
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {
-  LexicalTypeaheadMenuPlugin,
   MenuOption,
   useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
@@ -25,6 +24,7 @@ import * as ReactDOM from 'react-dom';
 // ("dynamic import will not move module into another chunk") without deferring
 // anything.
 import emojiList from '../../utils/emoji-list';
+import { LocalizedTypeaheadMenuPlugin } from '../LocalizedTypeaheadMenuPlugin';
 
 class EmojiOption extends MenuOption {
   title: string;
@@ -153,7 +153,7 @@ export default function EmojiPickerPlugin() {
   );
 
   return (
-    <LexicalTypeaheadMenuPlugin
+    <LocalizedTypeaheadMenuPlugin
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
