@@ -24,7 +24,9 @@ const { serializeWorkerError } = require('./workerErrorSerialization');
 const { planInitFailureResponse } = require('./pgliteInitRecovery');
 const { runTransactionStatements } = require('./transactionStatements');
 const { LEGACY_SESSION_TYPES_SQL } = require('./legacySessionTypes');
-const { isWorkerFileLoggingEnabled } = require('../utils/workerLoggingPolicy');
+// Raw source is also started by Node 24 tests without a TS extension resolver.
+// Production esbuild still embeds this policy in the self-contained bundle.
+const { isWorkerFileLoggingEnabled } = require('../utils/workerLoggingPolicy.ts');
 
 /**
  * The install's database root, or null when the spawner did not supply one.

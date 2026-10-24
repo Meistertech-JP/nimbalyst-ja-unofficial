@@ -1,4 +1,6 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { safeStorage } from 'electron';
 
 const {
   queryMock,
@@ -45,16 +47,29 @@ vi.mock('electron', () => ({
     static getAllWindows() { return [{ webContents: { send: windowSendMock } }]; }
   },
   net: { fetch: fetchMock },
-  safeStorage: { isEncryptionAvailable: vi.fn(() => false) },
+  safeStorage: {
+    isEncryptionAvailable: vi.fn(() => true),
+    // Reversible test bytes only; native OS encryption is not exercised here.
+    encryptString: vi.fn((text: string) => Buffer.from([...Buffer.from(text)].map(byte => byte ^ 0xa5))),
+    decryptString: vi.fn((data: Buffer) => Buffer.from([...data].map(byte => byte ^ 0xa5)).toString()),
+  },
   shell: { openExternal: vi.fn() },
 }));
 vi.mock('fs', () => ({
-  existsSync: vi.fn((filePath: string) => files.has(filePath)),
-  readFileSync: vi.fn((filePath: string) => files.get(filePath)),
+  existsSync: vi.fn((filePath: string) => files.has(filePath.replaceAll('\\', '/'))),
+  readFileSync: vi.fn((filePath: string) => files.get(filePath.replaceAll('\\', '/'))),
   writeFileSync: vi.fn((filePath: string, data: string | Buffer) => {
-    files.set(filePath, Buffer.isBuffer(data) ? data : Buffer.from(data));
+    files.set(filePath.replaceAll('\\', '/'), Buffer.isBuffer(data) ? data : Buffer.from(data));
   }),
-  unlinkSync: vi.fn((filePath: string) => files.delete(filePath)),
+  renameSync: vi.fn((from: string, to: string) => {
+    const source = from.replaceAll('\\', '/');
+    const destination = to.replaceAll('\\', '/');
+    const bytes = files.get(source);
+    if (!bytes) throw new Error('missing fixture rename source');
+    files.set(destination, bytes);
+    files.delete(source);
+  }),
+  unlinkSync: vi.fn((filePath: string) => files.delete(filePath.replaceAll('\\', '/'))),
 }));
 vi.mock('../../utils/ipcRegistry', () => ({
   safeHandle: vi.fn((channel: string, handler: (...args: any[]) => any) => {
@@ -159,7 +174,7 @@ describe('TeamService account-to-org viewer binding', () => {
       { personalOrgId: 'personal-bound', personalUserId: 'personal-member-bound', email: 'bound@example.com' },
       { personalOrgId: 'personal-sync', personalUserId: 'personal-member-sync', email: 'sync@example.com' },
     ];
-    files.set('/mock/user-data/stytch-accounts.enc', Buffer.from(JSON.stringify({
+    files.set('/mock/user-data/stytch-accounts.enc', safeStorage.encryptString(JSON.stringify({
       version: 3,
       syncAccountId: 'personal-bound',
       accounts: authState.accounts.map((account) => ({
@@ -310,7 +325,9 @@ describe('TeamService account-to-org viewer binding', () => {
   function storedSessionToken(personalOrgId: string): string | undefined {
     const raw = files.get('/mock/user-data/stytch-accounts.enc');
     if (!raw) return undefined;
-    const parsed = JSON.parse(raw.toString('utf8')) as {
+    expect(raw.includes(Buffer.from('session-token:'))).toBe(false);
+    expect(raw.includes(Buffer.from('next-session-token'))).toBe(false);
+    const parsed = JSON.parse(safeStorage.decryptString(raw)) as {
       accounts: Array<{ personalOrgId?: string; sessionToken?: string }>;
     };
     return parsed.accounts.find((account) => account.personalOrgId === personalOrgId)?.sessionToken;

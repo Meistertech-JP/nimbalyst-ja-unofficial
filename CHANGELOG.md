@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fixed database-worker source startup during regression tests and updated account-binding test fixtures for encrypted credential persistence.
+
 ## [0.81.7-ja.3] — 2026-10-24
 
 - Expanded Japanese display across application information, settings, authentication notices, usage guidance, document creation, and tutorials while retaining existing user content.

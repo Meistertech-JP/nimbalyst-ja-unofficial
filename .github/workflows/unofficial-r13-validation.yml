@@ -1,0 +1,104 @@
+name: Unofficial R13 regression comparison
+
+on:
+  push:
+    branches: [codex/r13-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  unit-comparison:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [upstream, published, candidate]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ matrix.source == 'upstream' && 'e14ddf383a8dbb40e511fc2c2ea50273d08e3579' || matrix.source == 'published' && '0871b7872bb9d043ff07acfaf62a3deb0eb6aef2' || github.sha }}
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Record immutable inputs
+        run: |
+          git rev-parse HEAD
+          node --version
+          pnpm --version
+          sha256sum pnpm-lock.yaml
+      - name: Install locked dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm install --frozen-lockfile
+      - name: Build workspace dependencies
+        run: pnpm run build:workspace-deps
+      - name: Run unchanged regression population
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec vitest run packages/electron/src/main/services/__tests__/TeamService.accountOrgBinding.test.ts packages/electron/src/main/services/__tests__/sessionHierarchy.startup.test.ts --reporter=verbose 2>&1 | tee r13-unit.log
+      - name: Preserve results even on failure
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: r13-unit-${{ matrix.source }}
+          path: r13-unit.log
+
+  ios-comparison:
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [upstream, published, candidate]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ matrix.source == 'upstream' && 'e14ddf383a8dbb40e511fc2c2ea50273d08e3579' || matrix.source == 'published' && '0871b7872bb9d043ff07acfaf62a3deb0eb6aef2' || github.sha }}
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: '26.2'
+      - name: Record immutable inputs
+        run: |
+          git rev-parse HEAD
+          xcodebuild -version
+          shasum -a 256 packages/ios/NimbalystNative/Tests/PagesWebViewTests.swift packages/ios/NimbalystNative/Sources/Pages/PagesWebController.swift
+      - name: Select and boot iOS simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun simctl list -j devices runtimes available > /tmp/r13-simulators.json
+          SIMULATOR_UDID=$(python3 - <<'PY'
+          import json
+          with open('/tmp/r13-simulators.json') as stream:
+              data = json.load(stream)
+          runtimes = sorted((r for r in data['runtimes'] if r.get('isAvailable') and r.get('platform') == 'iOS'), key=lambda r: tuple(map(int, r['version'].split('.'))))
+          if not runtimes:
+              raise SystemExit('No iOS runtime available')
+          devices = data['devices'].get(runtimes[-1]['identifier'], [])
+          preferred = next((d for d in devices if d.get('isAvailable') and d['name'] == 'iPhone 16'), None)
+          device = preferred or next((d for d in devices if d.get('isAvailable') and d['name'].startswith('iPhone')), None)
+          if not device:
+              raise SystemExit('No iPhone simulator available')
+          print(device['udid'])
+          PY
+          )
+          xcrun simctl boot "$SIMULATOR_UDID" || true
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          echo "IOS_SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_UDID" >> "$GITHUB_ENV"
+      - name: Run original Pages WebView tests
+        working-directory: packages/ios/NimbalystNative
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild test -scheme NimbalystNative -destination "$IOS_SIMULATOR_DESTINATION" -skipPackagePluginValidation -parallel-testing-enabled NO -only-testing:NimbalystNativeTests/PagesWebViewTests -resultBundlePath r13-pages.xcresult 2>&1 | tee r13-ios.log
+      - name: Preserve results even on failure
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: r13-ios-${{ matrix.source }}
+          path: |
+            packages/ios/NimbalystNative/r13-ios.log
+            packages/ios/NimbalystNative/r13-pages.xcresult
