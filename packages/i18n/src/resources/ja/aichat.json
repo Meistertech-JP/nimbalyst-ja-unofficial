@@ -907,6 +907,8 @@
     "remote_offline": "リモートマシン · オフライン"
   },
   "selection_chips": {
+    "document_context_label": "コンテキスト:",
+    "document_context_tooltip": "メッセージに含まれます: {{path}}",
     "selection": "選択範囲",
     "mockup_annotations": "モックアップ注釈",
     "remove": "{{label}}をコンテキストから除外",

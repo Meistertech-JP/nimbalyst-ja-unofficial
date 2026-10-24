@@ -11,7 +11,7 @@
  * `personal-doc://<documentId>`, the key main records snapshots under.
  */
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LexicalEditor } from 'lexical';
 import { NimbalystEditor, type EditorConfig } from '@nimbalyst/runtime/editor';
@@ -21,6 +21,7 @@ import { store } from '@nimbalyst/runtime/store';
 import { historyDialogFileAtom } from '../../store/atoms/historyDialog';
 import { nimAssetUrl } from '../../utils/assetUrl';
 import { usePersonalPageBody } from './usePersonalPageBody';
+import { useLexicalSelectionContext } from '../../hooks/useLexicalSelectionContext';
 
 const PERSONAL_DOCUMENT_PREFIX = 'personal-doc://';
 const WORKSPACE_ASSET_PREFIX = '.nimbalyst/assets/';
@@ -71,16 +72,23 @@ export interface PersonalPageBodyEditorProps {
   /** Classes for the element holding the editor (layout differs per host). */
   className?: string;
   onEditorReady?: (editor: LexicalEditor | null) => void;
+  onGetContentReady?: (getContent: () => string) => void;
   /** Scrolls with the body, above it (the page's title and type row). */
   documentHeader?: React.ReactNode;
 }
 
-export const PersonalPageBodyEditor: React.FC<PersonalPageBodyEditorProps> = ({ documentId, workspacePath, className, onEditorReady, documentHeader }) => {
+export const PersonalPageBodyEditor: React.FC<PersonalPageBodyEditorProps> = ({ documentId, workspacePath, className, onEditorReady, onGetContentReady, documentHeader }) => {
   const { t } = useTranslation('collabSidebar');
   const readyRef = useRef(onEditorReady); readyRef.current = onEditorReady;
   useEffect(() => () => readyRef.current?.(null), [documentId, workspacePath]);
   const body = usePersonalPageBody({ workspacePath, documentId });
   const getContentRef = useRef<(() => string) | null>(null);
+  const [editor, setEditor] = useState<LexicalEditor | null>(null);
+  useLexicalSelectionContext({ editor, filePath: `personal://${documentId}`, isActive: true, enabled: !!onGetContentReady });
+  useEffect(() => {
+    onGetContentReady?.(() => getContentRef.current?.() ?? '');
+    return () => { getContentRef.current = null; };
+  }, [onGetContentReady, documentId]);
   const onEditRef = useRef(body.onEdit);
   onEditRef.current = body.onEdit;
 
@@ -94,7 +102,7 @@ export const PersonalPageBodyEditor: React.FC<PersonalPageBodyEditorProps> = ({ 
     return {
       ...hostConfig,
       documentHeader,
-      onEditorReady: editor => readyRef.current?.(editor),
+      onEditorReady: editor => { setEditor(editor); readyRef.current?.(editor); },
       isRichText: true,
       editable: true,
       showToolbar: false,

@@ -9,12 +9,13 @@
  * ranking.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
-import type {
-  DecisionBlockSource,
-  DecisionSelectTally,
-  FeedbackAnswer,
+import {
+  DECISION_OTHER_OPTION_ID,
+  type DecisionBlockSource,
+  type DecisionSelectTally,
+  type FeedbackAnswer,
 } from '@nimbalyst/collab-protocol';
 
 import { DecisionRow } from './DecisionPrimitives';
@@ -48,10 +49,26 @@ export const DecisionSelect: React.FC<SelectProps> = ({
   myAnswer,
   renderArtifact,
 }) => {
+  const { t } = useTranslation('editor');
   const selected = new Set(selectedIdsOf(draft));
   const mine = new Set(selectedIdsOf(myAnswer));
   const isMulti = source.type === 'multiSelect';
   const maxSelected = source.maxSelected ?? source.entries.length;
+  const showOther = !isMulti && source.allowOther === true;
+  const otherSelected = selected.has(DECISION_OTHER_OPTION_ID);
+  // Kept locally so switching to a listed option and back does not lose what
+  // the reader typed.
+  const [otherText, setOtherText] = useState(
+    draft?.type === 'singleSelect' ? (draft.otherText ?? '') : ''
+  );
+
+  const pickOther = (text: string): void => {
+    onDraftChange({
+      type: 'singleSelect',
+      selectedId: DECISION_OTHER_OPTION_ID,
+      otherText: text,
+    });
+  };
 
   const toggle = (entryId: string): void => {
     if (!isMulti) {
@@ -109,6 +126,36 @@ export const DecisionSelect: React.FC<SelectProps> = ({
           />
         );
       })}
+      {showOther ? (
+        <>
+          <DecisionRow
+            label={t('decision.select.other')}
+            description={t('decision.select.other_description')}
+            indicator="radio"
+            selected={otherSelected}
+            isMine={mine.has(DECISION_OTHER_OPTION_ID)}
+            onSelect={disabled ? undefined : () => pickOther(otherText)}
+            disabled={disabled}
+            testId="decision-other-row"
+          />
+          {otherSelected ? (
+            <div className="decision-edittext">
+              <textarea
+                className="decision-edittext-area"
+                data-testid="decision-other-text"
+                rows={3}
+                value={otherText}
+                placeholder={t('decision.select.answer_placeholder')}
+                disabled={disabled}
+                onChange={(event) => {
+                  setOtherText(event.target.value);
+                  pickOther(event.target.value);
+                }}
+              />
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 };

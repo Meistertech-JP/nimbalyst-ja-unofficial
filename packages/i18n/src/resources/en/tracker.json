@@ -1019,6 +1019,11 @@
     "load_items_failed": "Failed to load importable items"
   },
   "main_extra": {
+    "session_not_started": "Session not started",
+    "launch_project_changed": "The active project changed. Cancel and start the worktree from the original project.",
+    "launch_item_not_loaded": "The tracker item is not loaded in this project.",
+    "launch_item_wrong_workspace": "This item belongs to {{itemWorkspace}}, not {{activeWorkspace}}.",
+    "launch_current_project": "this project",
     "worktree_not_created": "Worktree session was not created",
     "importing_status": "Importing...",
     "imported_count": "{{count}} imported",

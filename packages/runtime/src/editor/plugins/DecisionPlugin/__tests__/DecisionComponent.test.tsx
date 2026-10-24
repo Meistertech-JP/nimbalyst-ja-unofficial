@@ -318,6 +318,42 @@ type: confirm`);
     expect(testNode.content).toContain("Greg: gutter");
   });
 
+  it.each(['en', 'ja'] as const)("offers a localized written Other answer in %s and seals the text", async (language) => {
+    const fence = `${SINGLE}\nallowOther: true`;
+    testNode.content = fence;
+    const config: DecisionsConfig = {
+      getYDoc: () => null,
+      currentUser: { id: "greg", name: "Greg" },
+    };
+    const languageI18n = await createI18nInstance(language);
+    render(
+      <UiLanguageProvider i18n={languageI18n} preference={language} systemLocale="en-US">
+        <DecisionsProvider config={config}>
+          <DecisionComponent className="" content={fence} nodeKey="k1" />
+        </DecisionsProvider>
+      </UiLanguageProvider>
+    );
+
+    const answer = screen.getByTestId("decision-answer") as HTMLButtonElement;
+    expect(screen.getByTestId('decision-other-row').textContent).toContain(language === 'ja' ? 'その他' : 'Other');
+    expect(screen.getByTestId('decision-other-row').textContent).toContain(language === 'ja' ? '自分の回答を入力' : 'Write your own answer');
+    fireEvent.click(screen.getByTestId("decision-other-row"));
+    expect(screen.getByTestId('decision-other-text').getAttribute('placeholder')).toBe(language === 'ja' ? '回答を入力' : 'Your answer');
+    // Choosing Other with nothing written is not an answer yet.
+    expect(answer.disabled).toBe(true);
+    fireEvent.change(screen.getByTestId("decision-other-text"), {
+      target: { value: "Both, gutter on desktop" },
+    });
+    expect(answer.disabled).toBe(false);
+    fireEvent.click(answer);
+    expect(testNode.content).toContain("resolved: Both, gutter on desktop");
+  });
+
+  it("shows no Other row without allowOther", () => {
+    renderBlock(SINGLE);
+    expect(screen.queryByTestId("decision-other-row")).toBeNull();
+  });
+
   it("lets the sealer override a tied single-select tally", () => {
     const doc = new Y.Doc();
     const repository = new YDocDecisionRepository(doc);

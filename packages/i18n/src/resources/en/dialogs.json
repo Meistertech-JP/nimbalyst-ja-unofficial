@@ -1,4 +1,19 @@
 {
+  "system_shell": {
+    "syntax_error": "Error in command line syntax",
+    "item_missing": "The item does not exist",
+    "required_tool_missing": "A required tool could not be found",
+    "action_failed": "The action failed",
+    "exited": "{{name}} exited with code {{code}}",
+    "start_failed": "{{name}} could not start: {{error}}",
+    "did_not_finish": "{{name}} did not finish",
+    "unavailable": "{{name}} is unavailable",
+    "empty_path": "{{name}} returned an empty path",
+    "path_conversion_failed": "Could not convert the path for Windows: {{error}}",
+    "url_unsupported": "Windows cannot open this URL",
+    "file_inspection_failed": "Could not inspect the file before opening it in Windows: {{error}}",
+    "url_open_failed": "Failed to open URL: {{error}}"
+  },
   "native_dialogs": {
     "tutorial_unavailable_title": "Tutorial Unavailable",
     "tutorial_unavailable_message": "The tutorial project could not be opened.\n\n{{error}}",

@@ -1,5 +1,5 @@
 /**
- * `nim wiki export --static <dir> [--title T] [--subtree <page>] [--outside-refs text|console]
+ * `nim wiki export --static <dir> [--title T] [--base /docs/] [--subtree <page>] [--outside-refs text|console]
  * [--exclude-type <type>,...] [--keep-identity] [--tracker-items linked|none] [--assets <dir>] [--json]`:
  * the local wiki as a static website. See staticExport/exportSite.ts.
  *
@@ -19,6 +19,7 @@ import { findPage } from '../localWiki/tree.js';
 import { installHint, resolveWikiWebAssets } from '../serve/assets.js';
 import { exportStaticSite, StaticExportError, type CarriedTrackerItem, type StaticExportReport, type TrackerItemSource } from '../staticExport/exportSite.js';
 import { createStaticExportI18n, type ExportTranslator } from '../staticExport/i18n.js';
+import { normalizeBasePath } from '../staticExport/sitePaths.js';
 
 const ISSUE_LABEL: Record<string, string> = {
   'excluded-page': 'wiki_export.link.excluded_page',
@@ -77,7 +78,7 @@ function openTrackerGateway(): { gateway: TrackerGateway | null; reason: string 
   }
 }
 
-function describe(report: StaticExportReport, outsideRefs: string, trackerNote: string | null, t: ExportTranslator): string {
+function describe(report: StaticExportReport, outsideRefs: string, trackerNote: string | null, t: ExportTranslator, base: string): string {
   const lines = [
     t('wiki_export.summary', { pages: report.pages, typedPages: report.typedPages, rows: report.rows, trackerItems: report.trackerItems, types: report.types, files: report.files, path: safeText(report.outDir) }),
   ];
@@ -100,7 +101,7 @@ function describe(report: StaticExportReport, outsideRefs: string, trackerNote: 
     lines.push(`  ${count} ${label}`);
   }
   if (inItems) lines.push(`  ${t('wiki_export.link.inside_items', { count: inItems })}`);
-  lines.push('', t('wiki_export.serve_hint'));
+  lines.push('', base === '/' ? t('wiki_export.serve_hint') : t('wiki_export.serve_base_hint', { base }));
   return lines.join('\n');
 }
 
@@ -129,6 +130,7 @@ export async function runWikiExport(args: ParsedArgs, opened: OpenedWiki, versio
       outDir,
       nimVersion: version,
       uiLanguage: language,
+      base: flagStr(args, 'base'),
       // A site is named for its project, not its Home page (which every wiki calls Home).
       title: flagStr(args, 'title') ?? (opened.projectRoot ? path.basename(opened.projectRoot) : undefined),
       outsideRefs,
@@ -143,6 +145,6 @@ export async function runWikiExport(args: ParsedArgs, opened: OpenedWiki, versio
   } finally {
     tracker.gateway?.close();
   }
-  process.stdout.write((flagBool(args, 'json') ? JSON.stringify(report, null, 2) : describe(report, outsideRefs, trackerNote, t)) + '\n');
+  process.stdout.write((flagBool(args, 'json') ? JSON.stringify(report, null, 2) : describe(report, outsideRefs, trackerNote, t, normalizeBasePath(flagStr(args, 'base')))) + '\n');
   return ExitCode.OK;
 }

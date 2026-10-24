@@ -25,6 +25,7 @@ const hostMocks = vi.hoisted(() => ({
   personalAdapter: null as null | ((target: any, source: string) => void),
   /** Team scope resolution for the outer CollabMode's real lifecycle. */
   resolveScope: null as null | (() => Promise<CollabScope>),
+  getDocumentContext: null as null | (() => Promise<unknown>),
 }));
 /** What a link can open: the current project's pages, then other projects'. */
 const linkable = vi.hoisted(() => ({ documents: [] as any[], atom: null as any }));
@@ -161,7 +162,10 @@ vi.mock('../../TabContent/TabContent', async () => {
 });
 
 vi.mock('../../ChatSidebar', () => ({
-  ChatSidebar: () => <div data-testid="chat-sidebar" />,
+  ChatSidebar: ({ getDocumentContext }: { getDocumentContext: () => Promise<unknown> }) => {
+    hostMocks.getDocumentContext = getDocumentContext;
+    return <div data-testid="chat-sidebar" />;
+  },
 }));
 
 import { TabsProvider, useTabs } from '../../../contexts/TabsContext';
@@ -185,11 +189,17 @@ function TabProbe() {
   );
 }
 
+function OpenContextFile() {
+  const { addTab } = useTabs();
+  return <button onClick={() => addTab('/workspace/wiki/Home.md', '', true, 'Home')}>Open context fixture</button>;
+}
+
 describe('CollabMode pinned tab persistence', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     hostMocks.adapter = null;
     hostMocks.personalAdapter = null;
+    hostMocks.getDocumentContext = null;
     const { atom } = await import('jotai');
     personalSession.atoms.sharedDocuments = atom([]);
     personalSession.scope = PERSONAL_SCOPE;
@@ -249,6 +259,33 @@ describe('CollabMode pinned tab persistence', () => {
       .toBe('ページを開くか、サイドバーを右クリックして「新しいページ」を選択してください');
     expect(screen.getByRole('separator').getAttribute('aria-label'))
       .toBe('共有ドキュメントのサイドバーをリサイズ');
+  });
+
+  it('localizes a failed page-context read and retains the original error from a rejected read', async () => {
+    persistenceMocks.load.mockResolvedValue([]);
+    const i18n = await createI18nInstance('ja');
+    const view = (preference: 'ja' | 'en') => (
+      <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="ja-JP">
+        <TabsProvider workspacePath="/workspace" disablePersistence>
+          <CollabModeInner workspacePath="/workspace" teamScope={null} teamUnavailable={null} onRetryTeamScope={() => {}} personalScope={PERSONAL_SCOPE} isActive onFileOpen={() => {}} />
+          <OpenContextFile />
+        </TabsProvider>
+      </UiLanguageProvider>
+    );
+    const { rerender } = render(view('ja'));
+    const readFileContent = vi.fn().mockResolvedValue({ success: false });
+    (window as any).electronAPI.readFileContent = readFileContent;
+    act(() => screen.getByRole('button', { name: 'Open context fixture' }).click());
+    await waitFor(() => expect(hostMocks.getDocumentContext).not.toBeNull());
+    await expect(hostMocks.getDocumentContext!()).rejects.toThrow('ページのコンテキストを読み取れませんでした: /workspace/wiki/Home.md');
+    expect(readFileContent).toHaveBeenCalledWith('/workspace/wiki/Home.md');
+
+    rerender(view('en'));
+    await waitFor(() => expect(i18n.language).toBe('en'));
+    await expect(hostMocks.getDocumentContext!()).rejects.toThrow('Could not read page context: /workspace/wiki/Home.md');
+    const original = new Error('external read failure: original detail');
+    readFileContent.mockRejectedValueOnce(original);
+    await expect(hostMocks.getDocumentContext!()).rejects.toBe(original);
   });
 
   afterEach(async () => {

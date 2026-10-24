@@ -726,6 +726,11 @@
     "proposal": { "edited_from_draft": "下書きから編集", "unchanged": "変更なし", "characters": "{{count}}文字", "you": "あなた", "leading": "最多支持", "kept_original": "元の文面を維持しました。" },
     "reorder": { "everyone_first": "全員が1位に選択", "first_by": "{{total}}人中{{count}}人が1位に選択", "aria_label": "順位の表示", "team_order": "チームの順位", "yours": "自分の順位", "mean_position": "{{count}}件の{{unit}}の平均順位", "ranking_one": "順位", "ranking_other": "順位", "submitted_order": "送信した順位", "same": "同じ", "you_had": "あなたの順位: {{position}}", "dropped_by": "{{count}}人が除外" },
     "confirm": { "yes": "はい", "no": "いいえ" },
+    "select": {
+      "other": "その他",
+      "other_description": "自分の回答を入力",
+      "answer_placeholder": "回答を入力"
+    },
     "outline": { "one": "未回答の質問 {{count}}件", "other": "未回答の質問 {{count}}件" },
     "status": {
       "private_unavailable": "非公開回答の状況を確認できません。再接続して更新してください。",

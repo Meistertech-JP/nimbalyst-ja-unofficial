@@ -107,10 +107,15 @@ import {
   createNewWorktreeSessionActionAtom,
 } from '../../store/actions/sessionHistoryActions';
 import { setTrackerFavoriteAtom } from '../../store/atoms/trackerPersonalState';
+import { activeWorkspacePathAtom } from '../../store/atoms/openProjects';
 import { WorktreeBaseBranchPicker } from '../AgenticCoding/WorktreeBaseBranchPicker';
 import {
+  assertTrackerItemInWorkspace,
   buildTrackerLaunchContext,
+  createTrackerWorktreeSession,
+  isTrackerLaunchForWorkspace,
   type TrackerLaunchContext,
+  type TrackerWorkspaceErrorMessages,
 } from './trackerSessionLaunch';
 import { trackTeamAnalyticsEvent } from '../../utils/teamAnalytics';
 import { TrackerQuickAddOverlay } from './TrackerQuickAddOverlay';
@@ -186,9 +191,21 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
   onExitSavedView,
 }) => {
   const { t } = useTranslation('tracker');
+  const trackerWorkspaceErrorMessages = useMemo<TrackerWorkspaceErrorMessages>(() => ({
+    itemNotLoaded: t('main_extra.launch_item_not_loaded'),
+    wrongWorkspace: (itemWorkspace, activeWorkspace) => t('main_extra.launch_item_wrong_workspace', {
+      itemWorkspace: String(itemWorkspace),
+      activeWorkspace: activeWorkspace ?? t('main_extra.launch_current_project'),
+    }),
+  }), [t]);
   const [searchQuery, setSearchQuery] = useState('');
   const [quickAddType, setQuickAddType] = useState<string | null>(null);
   const [pendingWorktreeLaunch, setPendingWorktreeLaunch] = useState<TrackerLaunchContext | null>(null);
+  const pendingLaunchIsCurrent = isTrackerLaunchForWorkspace(pendingWorktreeLaunch, workspacePath);
+  // Drop a launch started in another project once the rail switches away from it.
+  useEffect(() => {
+    if (pendingWorktreeLaunch && !pendingLaunchIsCurrent) setPendingWorktreeLaunch(null);
+  }, [pendingWorktreeLaunch, pendingLaunchIsCurrent]);
   const [openFiltersToken, setOpenFiltersToken] = useState(0);
 
   // User's selected default model. Used by handleLaunchSession so the new
@@ -441,12 +458,15 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
 
   /** Launch a new AI session linked to a tracker item */
   const handleLaunchSession = useCallback(async (trackerItemId: string) => {
+    const trackerItem = store.get(trackerItemsMapAtom).get(trackerItemId);
     try {
-      const itemsMap = store.get(trackerItemsMapAtom);
-      const trackerContext = buildTrackerLaunchContext(
-        trackerItemId,
-        itemsMap.get(trackerItemId),
-      );
+      assertTrackerItemInWorkspace(trackerItem, workspacePath, trackerWorkspaceErrorMessages);
+    } catch (err) {
+      errorNotificationService.showError(t('main_extra.session_not_started'), (err as Error).message);
+      return;
+    }
+    try {
+      const trackerContext = buildTrackerLaunchContext(trackerItemId, trackerItem);
 
       // Derive provider from the user's default model rather than hardcoding
       // 'claude-code'. Mirrors AgentMode.createNewSession so a Codex-only
@@ -487,16 +507,19 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     } catch (err) {
       console.error('[TrackerMainView] Failed to launch session:', err);
     }
-  }, [workspacePath, refreshSessionList, setSelectedWorkstream, setWindowMode, defaultModel, t]);
+  }, [workspacePath, refreshSessionList, setSelectedWorkstream, setWindowMode, defaultModel, t, trackerWorkspaceErrorMessages]);
 
   /** Launch a new isolated worktree session linked to a tracker item. */
   const handleLaunchWorktree = useCallback((trackerItemId: string) => {
-    const itemsMap = store.get(trackerItemsMapAtom);
-    setPendingWorktreeLaunch(buildTrackerLaunchContext(
-      trackerItemId,
-      itemsMap.get(trackerItemId),
-    ));
-  }, []);
+    const trackerItem = store.get(trackerItemsMapAtom).get(trackerItemId);
+    try {
+      assertTrackerItemInWorkspace(trackerItem, workspacePath, trackerWorkspaceErrorMessages);
+    } catch (err) {
+      errorNotificationService.showError(t('main_extra.session_not_started'), (err as Error).message);
+      return;
+    }
+    setPendingWorktreeLaunch(buildTrackerLaunchContext(trackerItemId, trackerItem));
+  }, [workspacePath, t, trackerWorkspaceErrorMessages]);
 
   const handleCreateTrackerWorktree = useCallback(async (
     options: { baseBranch: string; name?: string },
@@ -504,10 +527,13 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     if (!pendingWorktreeLaunch) return;
 
     try {
-      const sessionId = await createNewWorktreeSession({
-        ...options,
-        initialDraft: pendingWorktreeLaunch.draftInput,
-      });
+      const sessionId = await createTrackerWorktreeSession(
+        pendingWorktreeLaunch,
+        store.get(activeWorkspacePathAtom),
+        options,
+        createNewWorktreeSession,
+        t('main_extra.launch_project_changed'),
+      );
       if (!sessionId) throw new Error(t('main_extra.worktree_not_created'));
 
       await window.electronAPI.invoke('tracker:link-session', {
@@ -1420,7 +1446,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
         }}
       />
 
-      {workspacePath && pendingWorktreeLaunch && (
+      {workspacePath && pendingWorktreeLaunch && pendingLaunchIsCurrent && (
         <WorktreeBaseBranchPicker
           isOpen
           repoPath={worktreeSourceRepoPath}

@@ -46,6 +46,7 @@ import { getPersistedCollabDocMetadata } from '../../utils/collabOpenDocsPersist
 import { store, editorDirtyAtom, editorHasUnacceptedChangesAtom, makeEditorKey } from '@nimbalyst/runtime/store';
 import { clearMockupAnnotationsForFile, getMockupFilePath } from '../UnifiedAI/MockupAnnotationIndicator';
 import { resolveDesktopCollabScope } from '../../store/atoms/collabDocuments';
+import { usePageScrollMemory } from './pageScroll';
 
 interface TabContentProps {
   textReplacements?: TextReplacement[];
@@ -476,7 +477,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
     }
 
     // A personal page (Pages mode): its body saves itself through local IPC,
-    // so no save/dirty/getContent wiring.
+    // so only the live content getter needs to reach the chat context.
     if (tab.kind === 'personal-page' || isPersonalPageTabPath(tab.filePath)) {
       const documentId = tab.personalDocumentId ?? tab.filePath.slice(PERSONAL_PAGE_TAB_PREFIX.length);
       const workspacePath = propsRef.current.workspaceId;
@@ -494,7 +495,15 @@ const TabContentComponent: React.FC<TabContentProps> = ({
             }}
           >
             {workspacePath ? (
-              <PersonalPageTab documentId={documentId} workspacePath={workspacePath} fallbackTitle={tab.fileName} />
+              <PersonalPageTab
+                documentId={documentId}
+                workspacePath={workspacePath}
+                fallbackTitle={tab.fileName}
+                onGetContentReady={(getContent) => {
+                  getContentFunctionsRef.current.set(tab.id, getContent);
+                  propsRef.current.onGetContentReady?.(tab.id, getContent);
+                }}
+              />
             ) : null}
           </TabEditorErrorBoundary>
         </JotaiProvider>
@@ -680,6 +689,9 @@ const TabContentComponent: React.FC<TabContentProps> = ({
     }
   }, []);
 
+  // Back and Forward in Pages return a page to where it was scrolled.
+  const restoreNavigatedScroll = usePageScrollMemory(tabsActions.setPageScrollReader, (tabId) => tabInstancesRef.current.get(tabId)?.element);
+
   // Main effect: subscribe to tab changes and manage TabEditors imperatively
   // LAZY LOADING: Only create editors for the active tab; others get placeholders
   useEffect(() => {
@@ -734,6 +746,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
             const currentContent = getContentFn ? getContentFn() : instance.content;
             removeTabEditor(tab.id);
             createTabEditor(tab, currentContent);
+            restoreNavigatedScroll(tab);
           }
         }
 
@@ -751,6 +764,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
           const freshTab = tabsActions.getSnapshot().tabs.get(tab.id);
           if (freshTab && freshTab.filePath === tab.filePath) {
             createTabEditor(freshTab, content);
+            restoreNavigatedScroll(freshTab);
           } else if (freshTab) {
             void syncTabs();
           }
@@ -792,7 +806,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
     // Subscribe to changes
     const unsubscribe = tabsActions.subscribe(syncTabs);
     return unsubscribe;
-  }, [tabsActions, loadContent, createTabEditor, createPlaceholder, removeTabEditor, updateVisibility]);
+  }, [tabsActions, loadContent, createTabEditor, createPlaceholder, removeTabEditor, updateVisibility, restoreNavigatedScroll]);
 
   // React to file-save command (Cmd+S) from the menu. The IPC subscription
   // lives in store/listeners/appCommandListeners.ts; we watch the counter and

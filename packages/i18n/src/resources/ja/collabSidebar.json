@@ -335,6 +335,7 @@
     "never_viewed": "未閲覧"
   },
   "ui": {
+    "page_context_read_failed": "ページのコンテキストを読み取れませんでした: {{path}}",
     "resize_shared_documents_sidebar": "共有ドキュメントのサイドバーをリサイズ",
     "collapse": "折りたたむ",
     "expand": "展開",

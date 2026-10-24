@@ -907,6 +907,8 @@
     "remote_offline": "Remote machine · Offline"
   },
   "selection_chips": {
+    "document_context_label": "Context:",
+    "document_context_tooltip": "Included with your message: {{path}}",
     "selection": "Selection",
     "mockup_annotations": "Mockup annotations",
     "remove": "Remove {{label}} from context",

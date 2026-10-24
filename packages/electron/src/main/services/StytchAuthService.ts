@@ -18,7 +18,8 @@
  * Callback format: http://127.0.0.1:<port>/auth/callback?state=...&session_token=...&user_id=...&org_id=...
  */
 
-import { app, BrowserWindow, shell, net } from 'electron';
+import { app, BrowserWindow, net } from 'electron';
+import { systemShell } from '../utils/systemShell';
 import { logger } from '../utils/logger';
 import { summarizeAuthDiagnostic, summarizeAuthRejection } from '../utils/authDiagnosticSummary';
 import { STYTCH_CONFIG, asPersonalJwt, asPersonalMemberId, type PersonalJwt, type PersonalMemberId } from '@nimbalyst/runtime';
@@ -1465,7 +1466,7 @@ export async function signInWithGoogle(
     const syncServerUrl = serverUrl || 'https://collabv3.nimbalyst.workers.dev';
     const oauthUrl = `${syncServerUrl.replace(/\/$/, '')}/auth/login/google?client_redirect=${encodeURIComponent(flow.callbackBaseUrl)}&state=${encodeURIComponent(flow.nonce)}`;
 
-    await shell.openExternal(oauthUrl);
+    await systemShell.openExternal(oauthUrl);
 
     logger.main.info('[StytchAuthService] Opened Google OAuth flow via server:', summarizeAuthDiagnostic({
       server: syncServerUrl,

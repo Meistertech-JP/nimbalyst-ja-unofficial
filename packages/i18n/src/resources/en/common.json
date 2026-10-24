@@ -1978,6 +1978,7 @@
       "unknown_type": "No type {{type}} in .nimbalyst/trackers.",
       "unknown_page": "No page {{id}} in the wiki.",
       "invalid_language": "--ui-language is system, en or ja",
+      "invalid_base": "--base must be an absolute URL path such as /docs/ (no URL, query, fragment, or dot segments)",
       "missing_target": "nim wiki export needs a folder: nim wiki export --static <dir>",
       "outside_refs": "--outside-refs is text or console",
       "tracker_items": "--tracker-items is linked or none"
@@ -1988,6 +1989,7 @@
     "stripped_fields": "Removed {{count}} person fields (owners, assignees, emails); --keep-identity keeps them",
     "tracker_unavailable": "Tracker items were not looked up, so links to them are text: {{reason}}",
     "serve_hint": "Serve the folder from the root of a site (any static host, or `npx serve <dir>` to try it).",
+    "serve_base_hint": "Serve the contents of the output folder at {{base}} on your site.",
     "link": {
       "excluded_page": "links to a page left out (shown as text)",
       "missing_page": "links to a page the wiki does not have (shown as text)",

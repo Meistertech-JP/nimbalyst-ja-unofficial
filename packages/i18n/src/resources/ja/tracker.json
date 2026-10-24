@@ -1019,6 +1019,11 @@
     "load_items_failed": "インポート可能な項目の読み込みに失敗しました"
   },
   "main_extra": {
+    "session_not_started": "セッションを開始できませんでした",
+    "launch_project_changed": "操作中のプロジェクトが変更されました。キャンセルして、元のプロジェクトからワークツリーを作成してください。",
+    "launch_item_not_loaded": "このプロジェクトにトラッカー項目が読み込まれていません。",
+    "launch_item_wrong_workspace": "この項目は{{activeWorkspace}}ではなく、{{itemWorkspace}}に属しています。",
+    "launch_current_project": "このプロジェクト",
     "worktree_not_created": "ワークツリーのセッションが作成されませんでした",
     "importing_status": "インポート中…",
     "imported_count": "{{count}}件をインポート",

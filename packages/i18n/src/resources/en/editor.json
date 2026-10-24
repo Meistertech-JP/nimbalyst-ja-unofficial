@@ -714,6 +714,11 @@
     "proposal": { "edited_from_draft": "edited from draft", "unchanged": "unchanged", "characters": "{{count}} chars", "you": "You", "leading": "Leading", "kept_original": "Kept the original wording." },
     "reorder": { "everyone_first": "Ranked first by everyone", "first_by": "Ranked first by {{count}} of {{total}}", "aria_label": "Ranking view", "team_order": "Team order", "yours": "Yours", "mean_position": "mean position across {{count}} {{unit}}", "ranking_one": "ranking", "ranking_other": "rankings", "submitted_order": "the order you submitted", "same": "same", "you_had": "you had {{position}}", "dropped_by": "dropped by {{count}}" },
     "confirm": { "yes": "Yes", "no": "No" },
+    "select": {
+      "other": "Other",
+      "other_description": "Write your own answer",
+      "answer_placeholder": "Your answer"
+    },
     "outline": { "one": "{{count}} open question", "other": "{{count}} open questions" },
     "status": {
       "private_unavailable": "Private answer status is unavailable. Reconnect to refresh it.",

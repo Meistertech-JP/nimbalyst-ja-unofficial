@@ -1,4 +1,6 @@
 {
+  "wasm_not_inlined": "ghostty-vt.wasmがbase64形式でビルドに埋め込まれていません",
+  "wasm_memory_missing": "ghostty-vt.wasmがメモリをエクスポートしませんでした",
   "tooltips": {
     "new_terminal": "\u65b0\u3057\u3044\u30bf\u30fc\u30df\u30ca\u30eb",
     "close_panel": "\u30d1\u30cd\u30eb\u3092\u9589\u3058\u308b",

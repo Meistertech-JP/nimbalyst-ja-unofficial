@@ -13,6 +13,7 @@ import { themeIdAtom } from '@nimbalyst/runtime/store';
 import { TerminalContextMenu } from './TerminalContextMenu';
 import { sanitizeScrollback, stripProblematicEscapeSequences, cleanScrollback } from './scrollbackSanitization';
 import { loadTerminalGhostty, isGhosttyWasmTrap, writeGuardingWasmTrap } from './ghosttyInstance';
+import { logger } from '../../utils/logger';
 import {
   isElementMeasurable,
   waitUntilElementMeasurable,
@@ -449,6 +450,9 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
         if (terminalRef.current && !disposed) {
           terminal.open(terminalRef.current);
           await new Promise((resolve) => setTimeout(resolve, 0));
+          // #1818: the panel may have been removed during this wait. Do not
+          // start a terminal backend for a panel nobody is looking at.
+          if (disposed) return;
           let initialDims: { cols: number; rows: number } | undefined;
           try {
             fitAddon.fit();
@@ -538,6 +542,10 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           });
 
           const snapshot = await window.electronAPI.terminal.getRestoreSnapshot(workspacePath, sessionId);
+          // #1818: the panel may have been removed while the history loaded.
+          // Stop here. The cleanup below already disposes the terminal that
+          // was built, because it holds the same `terminal` variable.
+          if (disposed) return;
           lastAppliedSequence = snapshot.sequence;
 
           // NIM-823: for a full-screen TUI (the genuine claude CLI) the raw
@@ -652,6 +660,11 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
               }
             }
           }
+
+          // #1818: the panel may have been removed while saved history was
+          // replayed. Without this check the code below tries to watch a screen
+          // element that no longer exists, and the app logs a false start-up error.
+          if (disposed) return;
 
           // Mark scrollback restoration as complete and flush any queued output
           scrollbackRestoreComplete = true;
@@ -789,13 +802,17 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           }
         }
       } catch (error) {
+        // #1818: a failure after the panel was removed is not a start-up error.
+        if (disposed) return;
         // Any other init-time write (screen stamp, cursor restore) that trapped.
         if (isGhosttyWasmTrap(error)) {
           handleWasmTrap(error);
           return;
         }
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('[TerminalPanel] Error initializing terminal:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        // #1818: console output is not saved in packaged builds; the logger
+        // writes to main.log, so the cause survives a Retry click.
+        logger.renderer.error('[TerminalPanel] Error initializing terminal:', error);
         setInitError(errorMessage);
       }
     };
@@ -912,7 +929,11 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           ? t('display_failed')
           : initError === 'Unknown error'
             ? t('unknown_error')
-            : initError;
+            : initError === 'ghostty-vt.wasm was not inlined into the build as base64'
+              ? t('wasm_not_inlined')
+              : initError === 'ghostty-vt.wasm did not export its memory'
+                ? t('wasm_memory_missing')
+                : initError;
   useEffect(() => {
     if (terminalInstanceRef.current) {
       terminalInstanceRef.current.options.theme = getTerminalTheme();

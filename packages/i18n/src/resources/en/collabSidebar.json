@@ -335,6 +335,7 @@
     "never_viewed": "Never viewed"
   },
   "ui": {
+    "page_context_read_failed": "Could not read page context: {{path}}",
     "resize_shared_documents_sidebar": "Resize shared documents sidebar",
     "collapse": "Collapse",
     "expand": "Expand",

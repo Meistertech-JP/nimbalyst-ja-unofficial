@@ -15,6 +15,7 @@ import { parseArgs } from '../../cli/parse.js';
 import { createStaticExportI18n } from '../i18n.js';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { renderBodyHtml, renderShell } from '../prerender.js';
+import { normalizeBasePath } from '../sitePaths.js';
 import type { TrackerGateway } from '../../gateway/types.js';
 
 // Real filesystem operations remain the default; only swap/copy fault tests override these calls.
@@ -71,6 +72,7 @@ const EXPORT_TRANSLATION_KEYS = [
   'wiki_export.error.unknown_type',
   'wiki_export.error.unknown_page',
   'wiki_export.error.invalid_language',
+  'wiki_export.error.invalid_base',
   'wiki_export.error.missing_target',
   'wiki_export.error.outside_refs',
   'wiki_export.error.tracker_items',
@@ -80,6 +82,7 @@ const EXPORT_TRANSLATION_KEYS = [
   'wiki_export.stripped_fields',
   'wiki_export.tracker_unavailable',
   'wiki_export.serve_hint',
+  'wiki_export.serve_base_hint',
   'wiki_export.link.excluded_page',
   'wiki_export.link.missing_page',
   'wiki_export.link.outside_wiki',
@@ -103,6 +106,42 @@ const EXPORT_TRANSLATION_KEYS = [
 ] as const;
 
 describe('exportStaticSite', () => {
+  it.each([['/', '/'], ['/docs', '/docs/'], ['/product/docs/', '/product/docs/'], ['/my wiki', '/my%20wiki/'], ['/my%20wiki/', '/my%20wiki/']])('normalizes base %s', (input, expected) => {
+    expect(normalizeBasePath(input)).toBe(expected);
+  });
+
+  it.each(['', 'docs', 'https://example.com/docs', '//host/docs', '/docs?x=1', '/docs#top', '/a/../b', '/%2e%2e/', '/a//b', '/a%2fb', '/a%5cb', '/%zz'])('refuses invalid base %s before writing output', async (base) => {
+    const { root, wiki, assets } = await fixture();
+    const out = path.join(root, 'site');
+    await expect(exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9', base })).rejects.toThrow('--base');
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it.each(['en', 'ja'] as const)('exports nested pages, assets and carried-item links under a site directory in %s', async (uiLanguage) => {
+    const { root, wiki, assets } = await fixture();
+    writeFileSync(path.join(assets, 'index.html'), '<html><head><title>Wiki</title><link rel="stylesheet" href="/assets/app.css"><link rel="modulepreload" href="/assets/shared.js"></head><body><div id="root"></div><script type="module" src="/assets/app.js"></script></body></html>');
+    const home = await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, sortOrder: 0, body: '' });
+    const group = await wiki.command({ type: 'register-document', title: 'Guide', parentFolderId: null, body: '' });
+    const page = await wiki.command({ type: 'register-document', title: 'Setup', parentFolderId: group.id!, body: 'See [question](nimbalyst://USR.1).' });
+    const out = path.join(root, 'site');
+    await exportStaticSite({ wiki, assetsDir: assets, outDir: out, nimVersion: '9.9.9', base: '/product/docs', uiLanguage, trackerItems: {
+      find: async () => ({ id: 'q1', issueKey: 'USR.1', type: 'question', title: 'Question', fields: {}, body: '', createdAt: 1, updatedAt: 1 }),
+    } });
+    const html = read(path.join(out, 'guide/setup/index.html'));
+    expect(html).toContain('src="/product/docs/assets/app.js"');
+    expect(html).toContain('href="/product/docs/assets/app.css"');
+    expect(html).toContain('href="/product/docs/assets/shared.js"');
+    expect(html).toContain('"dataPath":"/product/docs/_wiki/","basePath":"/product/docs/"');
+    expect(html).toContain(`lang="${uiLanguage}"`);
+    expect(html).toContain(`"uiLanguage":"${uiLanguage}"`);
+    expect(html).toContain('href="../../items/q1/">question</a>');
+    expect(json<ReadBodyResult>(path.join(out, '_wiki/bodies', `${page.id}.json`)).markdown).toContain('](/product/docs/items/q1/)');
+    expect(read(path.join(out, '404.html'))).toContain('src="/product/docs/assets/app.js"');
+    expect(json<StaticSiteManifest>(path.join(out, '_wiki/manifest.json')).pages[home.id!]).toBe('');
+    expect(existsSync(path.join(out, 'html-embed/shell/index.html'))).toBe(true);
+    expect(existsSync(path.join(out, 'product'))).toBe(false);
+  });
+
   it('writes a page per folder, leaves out export: false pages and person fields, and keeps links followable', async () => {
     const { root, wiki, assets } = await fixture();
     await wiki.command({ type: 'register-document', title: 'Home', parentFolderId: null, sortOrder: 0, body: 'Welcome.' });
@@ -164,7 +203,7 @@ describe('exportStaticSite', () => {
     expect(html).toContain('<title>Acme · Home</title>');
     expect(html).toContain('href="../../">Home</a>');
     expect(html).not.toContain('Do not publish');
-    expect(html).toContain('window.__NIMBALYST_WIKI_STATIC__={"format":1,"dataPath":"/_wiki/","uiLanguage":"en"}');
+    expect(html).toContain('window.__NIMBALYST_WIKI_STATIC__={"format":1,"dataPath":"/_wiki/","basePath":"/","uiLanguage":"en"}');
     expect(read(path.join(out, 'index.html'))).toContain('<h2>Linked from</h2><ul><li><a href="./competitors/acme/">Acme</a>');
     // The app build is copied without its Node-only models or its unrendered shell.
     expect(existsSync(path.join(out, 'assets', 'app.js'))).toBe(true);
@@ -346,6 +385,11 @@ describe('exportStaticSite', () => {
     expect(report.excluded).toEqual([expect.objectContaining({ title: 'Hidden', reason: 'export-false' })]);
     expect(Object.keys(report).sort()).toEqual(['excluded', 'files', 'links', 'outDir', 'pages', 'previous', 'rows', 'strippedFields', 'trackerItems', 'typedPages', 'types']);
     expect(machine.html).toContain('<html lang="ja">');
+    const { t } = await createStaticExportI18n('ja');
+    const mounted = await run('mounted-ja', ['--ui-language', 'ja', '--base', '/product/docs']);
+    expect(mounted.text).toContain(t('wiki_export.serve_base_hint', { base: '/product/docs/' }));
+    expect(mounted.text).not.toContain('Serve the contents');
+    expect(mounted.html).toContain('"basePath":"/product/docs/","uiLanguage":"ja"');
     await expect(runWikiExport(parseArgs(['wiki', 'export', '--ui-language', 'de']), opened, '9.9.9')).rejects.toThrow('--ui-language には system、en、ja');
   });
 
@@ -359,6 +403,10 @@ describe('exportStaticSite', () => {
     const missingRoot = path.join(root, 'no-root');
     await expect(exportStaticSite({ wiki, assetsDir: assets, outDir: missingRoot, nimVersion: '9.9.9', uiLanguage: 'ja', rootPageId: 'unknown-id' })).rejects.toThrow('Wikiにページ unknown-id はありません。');
     expect(existsSync(missingRoot)).toBe(false);
+    const invalidBase = path.join(root, 'invalid-base');
+    const { t } = await createStaticExportI18n('ja');
+    await expect(exportStaticSite({ wiki, assetsDir: assets, outDir: invalidBase, nimVersion: '9.9.9', uiLanguage: 'ja', base: '/a/../b' })).rejects.toThrow(t('wiki_export.error.invalid_base'));
+    expect(existsSync(invalidBase)).toBe(false);
     const opened = { wiki, projectRoot: root, dir: wiki.root, source: 'flag' as const };
     const absentAssets = path.join(root, 'absent-app');
     await expect(runWikiExport(parseArgs(['wiki', 'export', '--static', path.join(root, 'no-assets'), '--assets', absentAssets, '--ui-language', 'ja']), opened, '9.9.9')).rejects.toThrow(`${absentAssets} に index.html がありません`);
@@ -429,7 +477,7 @@ describe('exportStaticSite', () => {
     expect(question).toContain('<th>&lt;field&gt;</th><td>&lt;img src=x onerror=unsafeField()&gt;</td>');
     expect(question).not.toContain('<script>unsafeTitle()');
     expect(question).not.toContain('<img src=x');
-    const config = { format: 1, custom: '</script><script>unsafeConfig()</script>' };
+    const config = { format: 1, dataPath: '/_wiki/', custom: '</script><script>unsafeConfig()</script>' };
     const shell = renderShell(read(path.join(assets, 'index.html')), 'Wiki', { sitePath: '', title: 'Page', description: hostile, content: '' }, config, 'ja');
     const encoded = /window\.__NIMBALYST_WIKI_STATIC__=(.*?)<\/script>/.exec(shell)![1];
     expect(JSON.parse(encoded)).toEqual(config);
@@ -593,9 +641,9 @@ describe('exportStaticSite', () => {
       path: '/export/site', type: 'custom_type', id: 'page-id',
       pages: 2, typedPages: 3, rows: 4, trackerItems: 5, types: 6, files: 7,
       entries: 'Hidden (export-false)', count: 8, reason: 'technical-reason',
-      handling: 'handling-value', package: '@nimbalyst/wiki-web', actual: 1, expected: 2,
+      handling: 'handling-value', package: '@nimbalyst/wiki-web', actual: 1, expected: 2, base: '/docs/',
     };
-    expect(new Set(EXPORT_TRANSLATION_KEYS).size).toBe(48);
+    expect(new Set(EXPORT_TRANSLATION_KEYS).size).toBe(50);
     for (const locale of ['en', 'ja'] as const) {
       const ownResources = await createI18nInstance(locale);
       const { language, t } = await createStaticExportI18n(locale);
@@ -632,7 +680,7 @@ describe('exportStaticSite', () => {
     for (const locale of ['en', 'ja'] as const) {
       const { t } = await createStaticExportI18n(locale);
       const translate = vi.fn(t);
-      const html = renderBodyHtml(markdown, { path: 'Home.md', dir: '' }, { pages: new Map(), included: new Set(), sitePaths: {} }, './', translate);
+      const html = renderBodyHtml(markdown, { path: 'Home.md', dir: '' }, { pages: new Map(), included: new Set(), sitePaths: {}, basePath: '/' }, './', translate);
       for (const [kind, _key, en, ja] of callouts) {
         expect(html).toContain(`<strong>${locale === 'ja' ? ja : en}: User ${kind}</strong>`);
       }

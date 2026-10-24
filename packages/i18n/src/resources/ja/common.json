@@ -1978,6 +1978,7 @@
       "unknown_type": ".nimbalyst/trackers に型 {{type}} はありません。",
       "unknown_page": "Wikiにページ {{id}} はありません。",
       "invalid_language": "--ui-language には system、en、ja のいずれかを指定してください",
+      "invalid_base": "--base には /docs/ のような絶対URLパスを指定してください（URL、クエリ、フラグメント、ドット区間は指定できません）。",
       "missing_target": "nim wiki export にはフォルダーの指定が必要です: nim wiki export --static <dir>",
       "outside_refs": "--outside-refs には text または console を指定してください",
       "tracker_items": "--tracker-items には linked または none を指定してください"
@@ -1988,6 +1989,7 @@
     "stripped_fields": "個人情報フィールド（所有者、担当者、メールアドレス）{{count}}件を除去しました。保持するには --keep-identity を指定してください",
     "tracker_unavailable": "トラッカー項目を取得できなかったため、それらへのリンクはテキストになっています: {{reason}}",
     "serve_hint": "フォルダーをサイトのルートとして配信してください（静的ホスティング、または動作確認には `npx serve <dir>` を使用できます）。",
+    "serve_base_hint": "出力フォルダーの内容をサイトの {{base}} で配信してください。",
     "link": {
       "excluded_page": "除外したページへのリンク（テキストとして表示）",
       "missing_page": "Wikiに存在しないページへのリンク（テキストとして表示）",

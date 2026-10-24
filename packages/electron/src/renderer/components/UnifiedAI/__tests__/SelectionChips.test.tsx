@@ -5,7 +5,7 @@ import { I18nextProvider } from 'react-i18next';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SelectionChips } from '../SelectionChips';
-import { clearTextSelection, setTextSelection } from '../TextSelectionIndicator';
+import { clearTextSelection, getTextSelection, setTextSelection } from '../TextSelectionIndicator';
 import {
   clearEditorContext,
   getActiveEditorContextItems,
@@ -17,11 +17,10 @@ const COLLAB_FILE = 'collab://org:o:doc:shared.md';
 let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
-async function renderChips(currentFilePath?: string, i18n = englishI18n) {
-  render(
-    <I18nextProvider i18n={i18n}>
-      <SelectionChips currentFilePath={currentFilePath} />
-    </I18nextProvider>,
+async function renderChips(currentFilePath?: string, i18n = englishI18n, currentFileName?: string) {
+  return render(
+    <SelectionChips currentFilePath={currentFilePath} currentFileName={currentFileName} />,
+    { wrapper: ({ children }) => <I18nextProvider i18n={i18n}>{children}</I18nextProvider> },
   );
 }
 
@@ -43,6 +42,24 @@ afterEach(() => {
 });
 
 describe('SelectionChips', () => {
+  it('keeps the named document context when its selection is removed', async () => {
+    const { rerender } = await renderChips(FILE, englishI18n, 'Architecture');
+    act(() => setTextSelection('  First line\n\tsecond line  ', FILE));
+    expect(screen.getByText(': “First line second line”').textContent).toBe(': “First line second line”');
+    expect(getTextSelection()?.text).toBe('  First line\n\tsecond line  ');
+    fireEvent.click(screen.getByLabelText('Remove Selection from context'));
+    expect(getTextSelection()).toBeNull();
+    expect(screen.getByText('Architecture').textContent).toBe('Architecture');
+
+    act(() => setTextSelection('Previous page selection', FILE));
+    rerender(<SelectionChips currentFilePath={COLLAB_FILE} currentFileName="Team handbook" />);
+    expect(screen.queryByText('Architecture')).toBeNull();
+    expect(screen.queryByText('Selection')).toBeNull();
+    expect(screen.getByText('Team handbook').textContent).toBe('Team handbook');
+    rerender(<SelectionChips />);
+    expect(screen.queryByText('Team handbook')).toBeNull();
+  });
+
   it('reacts to text-selection events and removes the selection immediately', async () => {
     await renderChips(FILE);
     expect(screen.queryByText('Selection')).toBeNull();
@@ -78,6 +95,23 @@ describe('SelectionChips', () => {
     expect(screen.getByText('選択範囲')).toBeDefined();
     expect(screen.getByTitle('選択したテキストが含まれます: 「選択されたテキスト」')).toBeDefined();
     expect(screen.getByRole('button', { name: '選択範囲をコンテキストから除外' })).toBeDefined();
+  });
+
+  it('localizes the current document context without translating its title or path', async () => {
+    const { rerender } = await renderChips(FILE, japaneseI18n, 'Architecture');
+    screen.getByText('コンテキスト:');
+    screen.getByTitle(`メッセージに含まれます: ${FILE}`);
+    expect(screen.getByText('Architecture').textContent).toBe('Architecture');
+
+    await act(async () => { await japaneseI18n.changeLanguage('en'); });
+    screen.getByText('Context:');
+    screen.getByTitle(`Included with your message: ${FILE}`);
+    expect(screen.getByText('Architecture').textContent).toBe('Architecture');
+
+    rerender(<SelectionChips currentFilePath={COLLAB_FILE} currentFileName="Team handbook" />);
+    expect(screen.queryByText('Architecture')).toBeNull();
+    screen.getByTitle(`Included with your message: ${COLLAB_FILE}`);
+    screen.getByText('Team handbook');
   });
 
   it('does not show a selection belonging to a different file when currentFilePath is set', async () => {

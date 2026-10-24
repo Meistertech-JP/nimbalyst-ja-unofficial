@@ -1,4 +1,19 @@
 {
+  "system_shell": {
+    "syntax_error": "コマンドライン構文に誤りがあります",
+    "item_missing": "項目が存在しません",
+    "required_tool_missing": "必要なツールが見つかりません",
+    "action_failed": "操作に失敗しました",
+    "exited": "{{name}} は終了コード {{code}} で終了しました",
+    "start_failed": "{{name}} を起動できませんでした: {{error}}",
+    "did_not_finish": "{{name}} が終了しませんでした",
+    "unavailable": "{{name}} を利用できません",
+    "empty_path": "{{name}} が空のパスを返しました",
+    "path_conversion_failed": "Windows用のパスに変換できませんでした: {{error}}",
+    "url_unsupported": "WindowsでこのURLを開けません",
+    "file_inspection_failed": "Windowsで開く前にファイルを確認できませんでした: {{error}}",
+    "url_open_failed": "URLを開けませんでした: {{error}}"
+  },
   "native_dialogs": {
     "tutorial_unavailable_title": "チュートリアルを開けません",
     "tutorial_unavailable_message": "チュートリアルプロジェクトを開けませんでした。\n\n{{error}}",

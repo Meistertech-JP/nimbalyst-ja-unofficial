@@ -76,6 +76,8 @@ export const COLLAB_BUNDLE_EAGER_GZIP_BUDGET_BYTES = {
   // 2026-10-04: 88,122 bytes after Pages became per project (the session keeps
   // other projects' pages in a separate link-only index and refuses writes to
   // them). Raised with ~4% headroom.
+  // The unofficial edition keeps the 92,000-byte initial-load ceiling;
+  // on-demand dialogs must remain outside the eager dependency graph.
   'docs-ui': 92_000,
   // Sep 5 privacy-aware document transport graph measured 35,049 bytes.
   // Keep a narrow allowance for the supported response/refresh contract.

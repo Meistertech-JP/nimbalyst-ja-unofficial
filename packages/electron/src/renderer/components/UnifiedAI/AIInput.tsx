@@ -128,6 +128,7 @@ export interface AIInputProps {
 
   // Mockup annotation indicator support
   currentFilePath?: string;
+  currentFileName?: string;
 
   // Test ID for E2E testing
   testId?: string;
@@ -204,6 +205,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
     onQueue,
     queueCount = 0,
     currentFilePath,
+    currentFileName,
     testId,
     onLaunchActionInNewSession,
   }, ref) => {
@@ -1412,6 +1414,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
             Each chip has an × so the user can drop it from the next prompt. */}
         <SelectionChips
           currentFilePath={currentFilePath}
+          currentFileName={currentFileName}
         />
 
         {/* Inline controls row - hidden in memory mode */}

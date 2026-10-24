@@ -1,4 +1,6 @@
 {
+  "wasm_not_inlined": "ghostty-vt.wasm was not inlined into the build as base64",
+  "wasm_memory_missing": "ghostty-vt.wasm did not export its memory",
   "tooltips": {
     "new_terminal": "New Terminal",
     "close_panel": "Close panel",
