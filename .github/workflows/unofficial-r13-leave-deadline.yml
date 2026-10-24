@@ -1,0 +1,44 @@
+name: Unofficial R13 leave guard deadline regression
+
+on:
+  push:
+    branches: [codex/r13-leave-deadline]
+
+permissions:
+  contents: read
+
+jobs:
+  finite-leave-regression:
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [upstream, candidate]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: '26.2'
+      - name: Prepare fixed product source and common finite regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach validation-source '${{ matrix.source == 'upstream' && 'e14ddf383a8dbb40e511fc2c2ea50273d08e3579' || github.sha }}'
+          cp packages/ios/NimbalystNative/Tests/PagesFlushCoordinatorTests.swift validation-source/packages/ios/NimbalystNative/Tests/
+          git -C validation-source rev-parse HEAD
+          shasum -a 256 validation-source/packages/ios/NimbalystNative/Tests/PagesFlushCoordinatorTests.swift validation-source/packages/ios/NimbalystNative/Sources/Pages/PagesLeaveGuard.swift
+          swift --version
+      - name: Require an unanswered flush to finish without discarding edits
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path validation-source/packages/ios/NimbalystNative --filter testLeaveGuardDoesNotWaitForeverWhenTheBridgeNeverAnswers 2>&1 | tee r13-leave-deadline.log
+      - name: Preserve the actual result including RED
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: r13-leave-deadline-${{ matrix.source }}
+          path: r13-leave-deadline.log
