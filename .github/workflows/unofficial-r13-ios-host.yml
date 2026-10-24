@@ -62,6 +62,12 @@ jobs:
           xcrun simctl boot "$SIMULATOR_UDID" || true
           xcrun simctl bootstatus "$SIMULATOR_UDID" -b
           echo "IOS_SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_UDID" >> "$GITHUB_ENV"
+      - name: Run unchanged storage and projection regressions in isolation
+        working-directory: validation-source/packages/ios/NimbalystNativeTestHost
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild test -project NimbalystNativeTestHost.xcodeproj -scheme NimbalystNativeHostedTests -destination "$IOS_SIMULATOR_DESTINATION" -skipPackagePluginValidation -parallel-testing-enabled NO -only-testing:NimbalystNativeTests/PairingMismatchTests/testDatabaseWriteFailuresDoNotRequestRepair -only-testing:NimbalystNativeTests/SessionListProjectionTests/testIncrementalRefreshCostDoesNotTrackHistorySize -resultBundlePath r13-isolated.xcresult 2>&1 | tee r13-isolated.log
       - name: Run the full native test population with application lifecycle
         working-directory: validation-source/packages/ios/NimbalystNativeTestHost
         shell: bash
@@ -74,5 +80,7 @@ jobs:
         with:
           name: r13-hosted-ios-${{ matrix.source }}
           path: |
+            validation-source/packages/ios/NimbalystNativeTestHost/r13-isolated.log
+            validation-source/packages/ios/NimbalystNativeTestHost/r13-isolated.xcresult
             validation-source/packages/ios/NimbalystNativeTestHost/r13-hosted.log
             validation-source/packages/ios/NimbalystNativeTestHost/r13-hosted.xcresult
