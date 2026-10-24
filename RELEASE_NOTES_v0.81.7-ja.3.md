@@ -27,7 +27,7 @@ Nimbalystデスクトップ版 v0.81.7をベースとする、Windows x64向け�
 
 本番サービスへの実アカウントのメール認証、IPv4 localhost callback、nonceと単回使用の受理、暗号化保存、専用プロファイルの再起動後のアカウント表示、通常ログアウト、ログアウト後の未認証状態を確認しました。認証ファイル2個とSQLite関連ファイルの実測ACLは、現在のユーザー・SYSTEM・Administratorsに限定されていました。認証値やCookieを検証成果へ含めていません。既存設定・既定の関連付け・公式版ショートカットは監査範囲で保持され、アンインストールによる変更は本版の登録とショートカットの削除だけでした。全ホスト状態や他の端末への保証ではありません。
 
-検証対象ソースは38 workspaceの型検査、重複を除いた関連88ファイル925テストで成功しています。全体テストの成功とは区別します。アプリケーションを生成したコードコミットは `d7de316a52e293cdcc9366f091ca3e353991fbb3` で、この確認結果を反映する後続の文書更新はアプリケーションのコード・リソース・ビルド設定を変更しません。
+認証・インストールに関する上記の実機結果はR11製品ビルドの検証記録です。今回のアプリケーションはコードコミット `88da1c56f6363f073ee30c5652474801aec7d44b` から再生成しています。認証コードはR11から変更していません。共有ドキュメントの作成・名前変更フォームと宛先一覧を必要時に読み込むようにし、読み込み失敗をダイアログ内に留める処理と、空エディターの入力案内の翻訳を追加しました。38 workspaceの型検査と今回の関連32テストが成功しています。R11の関連88ファイル925テストは過去の検証記録であり、今回の全体テスト成功を意味しません。
 
 ## 配布・署名・更新
 
@@ -88,7 +88,7 @@ The ordinary production build was tested for NSIS update installation, installed
 
 Real-account production email sign-in, IPv4 localhost callback, nonce/single-use acceptance, encrypted persistence, account UI restoration in the dedicated profile, ordinary logout, and an unauthenticated post-logout restart were observed. Actual ACLs for both credential files and SQLite-related files were limited to the current user, SYSTEM, and Administrators. Verification artifacts exclude authentication values and cookies. Monitored existing settings, default associations, and official shortcuts were retained; uninstall changed only this edition's own registrations and shortcuts. This is not whole-host equality or coverage of other systems.
 
-The tested source passed typecheck in 38 workspaces and 925 related tests across 88 distinct files, not the full suite. The application was generated from code commit `d7de316a52e293cdcc9366f091ca3e353991fbb3`; subsequent documentation updates reflecting these results do not change application code, resources, or build configuration.
+The authentication and installation results above refer to the R11 product build. This application is rebuilt from code commit `88da1c56f6363f073ee30c5652474801aec7d44b`; authentication code is unchanged from R11. Creation and rename forms and their destination lists now load on demand, failed imports stay inside the dialog, and empty-editor hints follow the display language. Typecheck passed in 38 workspaces, together with 32 tests related to this update. The R11 result of 925 related tests across 88 files is historical evidence, not a claim that the current full suite passed.
 
 ### Distribution, signing, and updates
 
