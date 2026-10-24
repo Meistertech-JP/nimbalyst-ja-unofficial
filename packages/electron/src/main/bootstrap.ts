@@ -60,7 +60,9 @@ try {
 // Enable CDP remote debugging in dev mode for Playwright extension testing.
 // This allows `playwright connectOverCDP("http://localhost:9222")` to drive
 // the running Nimbalyst instance without launching a separate Electron process.
-if (process.env.NODE_ENV !== 'production') {
+// A packaged executable may have no NODE_ENV, or inherit a development value.
+// Neither case authorizes opening a debugging endpoint in a product build.
+if (!app.isPackaged && process.env.NODE_ENV !== 'production') {
   const cdpPort = process.env.NIMBALYST_CDP_PORT || '9222';
   app.commandLine.appendSwitch('remote-debugging-port', cdpPort);
   // console.log(`[Bootstrap] CDP remote debugging enabled on port ${cdpPort}`);

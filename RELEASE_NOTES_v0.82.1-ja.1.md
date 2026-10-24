@@ -12,6 +12,7 @@ Nimbalyst 日本語版（非公式）は、Nimbalyst, Inc.による開発・サ�
 - 追加された画面とエラー案内の日本語を更新しました。翻訳リソースは27名前空間、英日各14,608キーです。キー数の一致は全画面の翻訳完了を意味しません。
 - データベースWorkerのソース実行、アカウントと組織の関連付け試験、応答しないページエディターの離脱処理を修正しました。
 - エディターとコメント入力の候補メニューに、表示言語に追従するアクセシビリティラベルを追加しました。Lexical本体の文字列やユーザーの文書内容は変更しません。
+- 通常製品ビルドが開発用のCDPデバッグポートを自動的に開かないよう、パッケージ版の起動条件を修正しました。
 
 ### 検証状況
 
@@ -40,6 +41,7 @@ This is an unpublished candidate verification record. The current public stable 
 - Updated Japanese text for new screens and errors. Resources contain 27 namespaces and 14,608 keys per language. Matching key counts do not imply complete UI translation.
 - Fixed database-worker source execution, account-to-organization binding test compatibility, and navigation away from an unresponsive page editor.
 - Added language-aware accessibility labels to editor and comment completion menus. Lexical itself and user-authored document content are unchanged.
+- Corrected packaged startup so ordinary product builds do not automatically enable the development CDP debugging port.
 
 ### Verification status
 
