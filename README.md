@@ -6,7 +6,18 @@ Nimbalyst v0.81.7をベースに、デスクトップアプリのユーザーイ
 
 本プロジェクトはNimbalyst, Inc.の公式製品ではなく、同社による開発・サポート・承認を受けたものではありません。
 
-[English](README.en.md) · [Windows利用ガイド](docs/WINDOWS_JA_UNOFFICIAL.md) · [v0.81.7-ja.3の変更内容](RELEASE_NOTES_v0.81.7-ja.3.md)
+[English](README.en.md) · [Wiki（日本語）](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki) · [Wiki (English)](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Home-English) · [Windows利用ガイド](docs/WINDOWS_JA_UNOFFICIAL.md) · [v0.81.7-ja.3の変更内容](RELEASE_NOTES_v0.81.7-ja.3.md)
+
+## ドキュメント
+
+GitHub Wikiに利用・開発資料を掲載しています。各記事の冒頭から対応する英語版へ移動できます。これはGitHub上の文書であり、アプリ内のLocal Wiki・Team Wikiとは別のものです。
+
+- [はじめに](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Getting-Started)
+- [Windowsへの導入と更新](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Windows-Installation)
+- [表示言語の設定](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Display-Language)
+- [アカウント認証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication)
+- [トラブルシューティング](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Troubleshooting)
+- 開発者向け資料：[日本語化アーキテクチャ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Localization-Architecture)、[ソースからのビルド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source)、[テストと品質検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)
 
 ## 公開状況とダウンロード
 

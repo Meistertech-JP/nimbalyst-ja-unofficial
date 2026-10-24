@@ -6,7 +6,18 @@ Japanese localization covers desktop menus, settings, file management, AI sessio
 
 This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
 
-[日本語](README.md) · [Windows guide](docs/WINDOWS_JA_UNOFFICIAL.md#english) · [v0.81.7-ja.3 changes](RELEASE_NOTES_v0.81.7-ja.3.md#english)
+[日本語](README.md) · [Wiki (English)](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Home-English) · [Wiki（日本語）](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki) · [Windows guide](docs/WINDOWS_JA_UNOFFICIAL.md#english) · [v0.81.7-ja.3 changes](RELEASE_NOTES_v0.81.7-ja.3.md#english)
+
+## Documentation
+
+User and developer guides are available in the GitHub Wiki. Each article links to its Japanese counterpart at the top. This documentation is hosted on GitHub and is separate from the application's Local Wiki and Team Wiki features.
+
+- [Getting started](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Getting-Started-English)
+- [Windows installation and updates](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Windows-Installation-English)
+- [Display language](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Display-Language-English)
+- [Account and authentication](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication-English)
+- [Troubleshooting](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Troubleshooting-English)
+- Developer guides: [Localization architecture](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Localization-Architecture-English), [Building from source](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source-English), and [Testing and verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English).
 
 ## Availability and downloads
 
