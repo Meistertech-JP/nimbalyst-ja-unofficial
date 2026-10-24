@@ -11,7 +11,7 @@ vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
 
 vi.mock('@nimbalyst/i18n/react', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { type?: string }) => {
+    t: (key: string, options?: { type?: string; defaultValue?: string }) => {
       const messages: Record<string, string> = {
         cancel: 'Cancel',
         close: 'Close',
@@ -32,7 +32,7 @@ vi.mock('@nimbalyst/i18n/react', () => ({
         'collab.untitled_document': 'Untitled {{type}}',
         'collab.will_be_created_as': 'Will be created as',
       };
-      return (messages[key] ?? key).replaceAll('{{type}}', options?.type ?? '');
+      return (messages[key] ?? options?.defaultValue ?? key).replaceAll('{{type}}', options?.type ?? '');
     },
   }),
 }));

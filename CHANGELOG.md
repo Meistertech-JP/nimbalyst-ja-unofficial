@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+- Shared document editors now retain the selected display language, and built-in document creation menus and dialogs show localized type names.
+
 ## [0.81.7-ja.2] — Source-only prerelease
 
 - Incorporated 24 upstream commits affecting 121 files through `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`, retaining the unofficial edition's separate identity and disabled official updates.

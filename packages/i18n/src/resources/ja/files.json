@@ -238,6 +238,8 @@
     "extension_types": {
       "browser_tab": "ブラウザータブ",
       "calc_sheet": "Calcシート",
+      "html_page": "HTMLページ",
+      "project_canvas": "プロジェクトキャンバス",
       "csv_spreadsheet": "CSVスプレッドシート",
       "data_model": "データモデル",
       "excalidraw_diagram": "Excalidraw図",

@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { documentTypeDisplayName } from './documentTypeDisplayName';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { CollabDocumentTypeDescriptor } from '@nimbalyst/collab-client/core';
 
@@ -36,6 +38,7 @@ export interface CollabNewDocumentMenuProps {
 }
 
 export function CollabNewDocumentMenu({ items, onSelect }: CollabNewDocumentMenuProps) {
+  const { t } = useTranslation('common');
   return (
     <div className="collab-new-document-menu min-w-[260px] max-w-[340px] rounded-md z-[10000] text-[13px] p-1 bg-nim-secondary border border-nim text-nim backdrop-blur-[10px] shadow-lg overflow-y-auto">
       {items.map(({ descriptor }) => (
@@ -49,7 +52,7 @@ export function CollabNewDocumentMenu({ items, onSelect }: CollabNewDocumentMenu
           <MaterialSymbol icon={descriptor.icon} size={18} className="shrink-0 mt-0.5" />
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline justify-between gap-3">
-              <span className="font-medium truncate">{descriptor.displayName}</span>
+              <span className="font-medium truncate">{documentTypeDisplayName(descriptor.displayName, t)}</span>
               <span className="text-[11px] text-nim-faint shrink-0">{descriptor.defaultExtension}</span>
             </span>
           </span>

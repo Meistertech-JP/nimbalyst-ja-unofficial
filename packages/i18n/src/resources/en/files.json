@@ -238,6 +238,8 @@
     "extension_types": {
       "browser_tab": "Browser Tab",
       "calc_sheet": "Calc Sheet",
+      "html_page": "HTML page",
+      "project_canvas": "Project Canvas",
       "csv_spreadsheet": "CSV Spreadsheet",
       "data_model": "Data Model",
       "excalidraw_diagram": "Excalidraw Diagram",

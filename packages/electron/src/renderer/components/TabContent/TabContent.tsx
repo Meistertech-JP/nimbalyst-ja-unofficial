@@ -12,7 +12,9 @@
  */
 
 import React, { useCallback, useEffect, useRef } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
+import { useTranslation } from 'react-i18next';
+import { createTranslatedRoot } from './translatedRoot';
 import { Provider as JotaiProvider, useAtomValue } from 'jotai';
 import { fileSaveRequestAtom } from '../../store/atoms/appCommands';
 import type { TextReplacement } from '@nimbalyst/runtime';
@@ -112,6 +114,9 @@ const TabContentComponent: React.FC<TabContentProps> = ({
 
   // Use actions only - NO subscription that causes re-renders
   const tabsActions = useTabsActions();
+  const { i18n } = useTranslation();
+  const translationInstanceRef = useRef(i18n);
+  translationInstanceRef.current = i18n;
 
   // Container ref for imperative DOM updates
   const containerRef = useRef<HTMLDivElement>(null);
@@ -331,7 +336,7 @@ const TabContentComponent: React.FC<TabContentProps> = ({
     element.style.display = 'none'; // Start hidden, updateVisibility will show active
     containerRef.current.appendChild(element);
 
-    const root = createRoot(element);
+    const root = createTranslatedRoot(element, translationInstanceRef.current);
 
     // A section's Search or Types (a leftover Shared Home tab is Team Search).
     // No save/dirty/getContent wiring; rows open through the section's host.

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { documentTypeDisplayName } from './documentTypeDisplayName';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { CollabDocumentTypeDescriptor } from '@nimbalyst/collab-client/core';
 import {
@@ -88,7 +89,7 @@ export function CollabCreateItemDialog({
   // A tree still loading has no rows yet; keep the target until it arrives.
   const optionsReady = !tree || tree.length > 0;
 
-  const documentDisplayName = documentDescriptor?.displayName ?? t('collab.document');
+  const documentDisplayName = documentDescriptor ? documentTypeDisplayName(documentDescriptor.displayName, t) : t('collab.document');
   const documentSuffix = documentDescriptor?.defaultExtension ?? '';
   const title = kind === 'folder'
     ? t('collab.new_shared_folder')
