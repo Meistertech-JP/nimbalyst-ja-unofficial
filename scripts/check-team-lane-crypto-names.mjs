@@ -40,10 +40,10 @@ const repoRoot = path.resolve(scriptDir, '..');
  */
 export const TEAM_LANE_FILES = [
   'packages/collab-protocol/src/teamTracker.ts',
-  'packages/runtime/src/sync/trackerProtocol.ts',
-  'packages/runtime/src/sync/trackerEnvelopeCodec.ts',
-  'packages/runtime/src/sync/TrackerSyncEngine.ts',
-  'packages/runtime/src/sync/trackerPersistence.ts',
+  'packages/tracker-engine/src/trackerProtocol.ts',
+  'packages/tracker-engine/src/trackerEnvelopeCodec.ts',
+  'packages/tracker-engine/src/TrackerSyncEngine.ts',
+  'packages/tracker-engine/src/trackerPersistence.ts',
   'packages/runtime/src/sync/DocumentSync.ts',
 ];
 

@@ -8,6 +8,7 @@
 
 import type { JSX } from 'react';
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -95,6 +96,7 @@ export function useCommentToolbarActions(
  * mount through `useExtensionEditorComponents()`.
  */
 export default function Editor({ config = DEFAULT_EDITOR_CONFIG }: EditorProps): JSX.Element {
+  const { t } = useTranslation('editor');
   const runtimeSettings = useRuntimeSettings();
   const {
     isCodeHighlighted,
@@ -108,7 +110,7 @@ export default function Editor({ config = DEFAULT_EDITOR_CONFIG }: EditorProps):
     forceFloatingToolbar = false,
   } = config;
 
-  const placeholder = isRichText ? 'Enter some rich text...' : 'Enter some plain text...';
+  const placeholder = t(isRichText ? 'formatting.rich_text_placeholder' : 'formatting.plain_text_placeholder');
 
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
   const [isSmallWidthViewport, setIsSmallWidthViewport] = useState<boolean>(false);

@@ -1,4 +1,5 @@
 import { SharedDocumentLink } from './SharedDocumentLink';
+import { DialogLoadBoundary } from './primitives/DialogLoadBoundary';
 import { documentTypeDisplayName } from './documentTypeDisplayName';
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { collabOpenOptions, isPersonalCollabScope, type CollabDocumentTypeDescriptor } from '@nimbalyst/collab-client/core';
@@ -2351,6 +2352,11 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       )}
 
       {(createDocumentDescriptor !== null || isCreateFolderOpen) && (
+        <DialogLoadBoundary onClose={() => {
+          setCreateDocumentDescriptor(null);
+          setIsCreateFolderOpen(false);
+          setContextMenu(null);
+        }}>
         <React.Suspense fallback={null}>
           {createDocumentDescriptor !== null && (
             <CollabCreateItemDialog
@@ -2387,9 +2393,16 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
             />
           )}
         </React.Suspense>
+        </DialogLoadBoundary>
       )}
 
       {(documentToRename !== null || folderToRename !== null || legacyFolderToRename !== null) && (
+        <DialogLoadBoundary onClose={() => {
+          setDocumentToRename(null);
+          setFolderToRename(null);
+          setLegacyFolderToRename(null);
+          setContextMenu(null);
+        }}>
         <React.Suspense fallback={null}>
           {documentToRename !== null && (
             <InputModal
@@ -2436,6 +2449,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
             />
           )}
         </React.Suspense>
+        </DialogLoadBoundary>
       )}
     </div>
   );
