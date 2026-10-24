@@ -1,0 +1,78 @@
+name: Unofficial R13 hosted iOS verification
+
+on:
+  push:
+    branches: [codex/r13-ios-host]
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-native-tests:
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [upstream, published, candidate]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: '26.2'
+      - name: Prepare fixed source and identical test host
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          git worktree add --detach validation-source '${{ matrix.source == 'upstream' && 'e14ddf383a8dbb40e511fc2c2ea50273d08e3579' || matrix.source == 'published' && '0871b7872bb9d043ff07acfaf62a3deb0eb6aef2' || github.sha }}'
+          mkdir -p validation-source/packages/ios/NimbalystNativeTestHost
+          cp -R packages/ios/NimbalystNativeTestHost/. validation-source/packages/ios/NimbalystNativeTestHost/
+          git -C validation-source rev-parse HEAD
+          shasum -a 256 validation-source/packages/ios/NimbalystNative/Tests/PagesWebViewTests.swift validation-source/packages/ios/NimbalystNative/Sources/Pages/PagesWebController.swift validation-source/packages/ios/NimbalystNativeTestHost/project.yml
+          xcodebuild -version
+      - name: Generate hosted project
+        working-directory: validation-source/packages/ios/NimbalystNativeTestHost
+        run: |
+          command -v xcodegen || brew install xcodegen
+          xcodegen generate
+          xcodebuild -showBuildSettings -project NimbalystNativeTestHost.xcodeproj -scheme NimbalystNativeHostedTests | grep -E 'TEST_HOST|BUNDLE_LOADER|PRODUCT_BUNDLE_IDENTIFIER' || true
+      - name: Select and boot iOS simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun simctl list -j devices runtimes available > /tmp/r13-hosted-simulators.json
+          SIMULATOR_UDID=$(python3 - <<'PY'
+          import json
+          with open('/tmp/r13-hosted-simulators.json') as stream:
+              data = json.load(stream)
+          runtimes = sorted((r for r in data['runtimes'] if r.get('isAvailable') and r.get('platform') == 'iOS'), key=lambda r: tuple(map(int, r['version'].split('.'))))
+          if not runtimes:
+              raise SystemExit('No iOS runtime available')
+          devices = data['devices'].get(runtimes[-1]['identifier'], [])
+          preferred = next((d for d in devices if d.get('isAvailable') and d['name'] == 'iPhone 16'), None)
+          device = preferred or next((d for d in devices if d.get('isAvailable') and d['name'].startswith('iPhone')), None)
+          if not device:
+              raise SystemExit('No iPhone simulator available')
+          print(device['udid'])
+          PY
+          )
+          xcrun simctl boot "$SIMULATOR_UDID" || true
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          echo "IOS_SIMULATOR_DESTINATION=platform=iOS Simulator,id=$SIMULATOR_UDID" >> "$GITHUB_ENV"
+      - name: Run the full native test population with application lifecycle
+        working-directory: validation-source/packages/ios/NimbalystNativeTestHost
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild test -project NimbalystNativeTestHost.xcodeproj -scheme NimbalystNativeHostedTests -destination "$IOS_SIMULATOR_DESTINATION" -skipPackagePluginValidation -parallel-testing-enabled NO -resultBundlePath r13-hosted.xcresult 2>&1 | tee r13-hosted.log
+      - name: Preserve results even on failure
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: r13-hosted-ios-${{ matrix.source }}
+          path: |
+            validation-source/packages/ios/NimbalystNativeTestHost/r13-hosted.log
+            validation-source/packages/ios/NimbalystNativeTestHost/r13-hosted.xcresult

@@ -1,5 +1,30 @@
 # iOS Transcript Integration Testing
 
+## Simulator WebKit test host
+
+Run the native iOS test population in the application-hosted scheme, not the
+Swift package's hostless simulator xctest process. The latter reports that it
+has no UIApplication and cannot receive events; the first PagesWebView test
+can time out before WebKit starts. This reproduced on pinned upstream,
+the published Japanese release, and the R13 candidate with unchanged Swift code.
+
+```bash
+cd packages/ios/NimbalystNativeTestHost
+xcodegen generate
+xcodebuild test -project NimbalystNativeTestHost.xcodeproj \
+  -scheme NimbalystNativeHostedTests \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -parallel-testing-enabled NO
+```
+
+The minimal test host starts a UIKit/SwiftUI lifecycle without launching the
+product application, signing in, or connecting to production sync. It compiles
+the same NimbalystNative/Tests sources against the same local Swift package.
+No tests are removed or skipped by this scheme. PagesWebViewTests retains its
+ten-second readiness requirement and its original navigation assertions; a
+missing host or failed readiness now fails before queuing further JavaScript.
+The existing macOS `swift test` path remains available separately.
+
 This document describes the automated testing strategy for the iOS transcript integration.
 
 ## Overview

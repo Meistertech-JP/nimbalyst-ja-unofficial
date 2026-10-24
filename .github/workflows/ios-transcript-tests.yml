@@ -136,6 +136,11 @@ jobs:
           cd NimbalystApp
           xcodegen generate
 
+      - name: Generate application-hosted native test project
+        run: |
+          cd NimbalystNativeTestHost
+          xcodegen generate
+
       - name: Prepare iOS simulator
         run: |
           set -euo pipefail
@@ -223,20 +228,23 @@ jobs:
 
       - name: Build NimbalystNative package
         run: |
-          cd NimbalystNative
-          xcodebuild build \
-            -scheme NimbalystNative \
+          cd NimbalystNativeTestHost
+          xcodebuild build-for-testing \
+            -project NimbalystNativeTestHost.xcodeproj \
+            -scheme NimbalystNativeHostedTests \
             -destination "$IOS_SIMULATOR_DESTINATION" \
             -skipPackagePluginValidation
 
       - name: Run NimbalystNative tests
         run: |
-          cd NimbalystNative
-          xcodebuild test \
-            -scheme NimbalystNative \
+          cd NimbalystNativeTestHost
+          xcodebuild test-without-building \
+            -project NimbalystNativeTestHost.xcodeproj \
+            -scheme NimbalystNativeHostedTests \
             -destination "$IOS_SIMULATOR_DESTINATION" \
             -skipPackagePluginValidation \
-            -enableCodeCoverage YES
+            -enableCodeCoverage YES \
+            -parallel-testing-enabled NO
 
       - name: Build iOS app (simulator)
         run: |

@@ -1,5 +1,8 @@
 import XCTest
 import WebKit
+#if os(iOS)
+import UIKit
+#endif
 @testable import NimbalystNative
 
 /// Answers the mint route with a fixed session.
@@ -131,6 +134,7 @@ private final class Harness {
 /// the console origin as its base URL, so the origin checks are the real ones.
 @MainActor
 final class PagesWebViewTests: XCTestCase {
+    private enum FixtureLoadError: Error { case bridgeNotReady }
     private let wiki = ConsoleRoute.wiki(orgId: "organization-fixture", teamProjectId: "p1")!
     private let trackers = ConsoleRoute.trackers(orgId: "organization-fixture", teamProjectId: "p1")!
 
@@ -143,10 +147,17 @@ final class PagesWebViewTests: XCTestCase {
         return false
     }
 
-    private func openReady(_ harness: Harness) async {
+    private func openReady(_ harness: Harness) async throws {
+        #if os(iOS)
+        // A package's hostless xctest process has no UIApplication event lifecycle.
+        // Keep this a failing precondition rather than skipping WebKit behavior.
+        _ = try XCTUnwrap(UIApplication.shared.delegate, "Run simulator tests with NimbalystNativeHostedTests")
+        #endif
         harness.controller.open(wiki)
         let ready = await waitUntil { harness.controller.bridgeReady && harness.controller.title == "Fixture Page" }
         XCTAssertTrue(ready, "phase=\(harness.controller.phase) title=\(harness.controller.title)")
+        // Do not queue JavaScript into an unready process after recording failure.
+        guard ready else { throw FixtureLoadError.bridgeNotReady }
     }
 
     func testFixturePageSpeaksTheBridge() async throws {
@@ -155,7 +166,7 @@ final class PagesWebViewTests: XCTestCase {
         defer { controller.tearDown() }
 
         // ready + route: native title from the console.
-        await openReady(harness)
+        try await openReady(harness)
         XCTAssertEqual(controller.phase, .ready)
         XCTAssertEqual(harness.loads.map(\.absoluteString), ["https://console.nimbalyst.com/org/organization-fixture/project/p1/wiki"])
 
@@ -203,7 +214,7 @@ final class PagesWebViewTests: XCTestCase {
     func testSessionForAPreviousSelectionIsNeverDelivered() async throws {
         let harness = Harness()
         defer { harness.controller.tearDown() }
-        await openReady(harness)
+        try await openReady(harness)
         // Re-pairing (same account id, new generation) lands during the JWT read.
         harness.duringJwtRead = { [unowned harness] in
             harness.account = ConsoleAccountContext(accountId: "acct", apiBase: URL(string: "https://sync.example")!, generation: 2)
@@ -221,7 +232,7 @@ final class PagesWebViewTests: XCTestCase {
         var harness: Harness? = Harness()
         var entered = false
         harness!.duringJwtRead = { entered = true; try? await Task.sleep(for: .seconds(30)) }
-        await openReady(harness!)
+        try await openReady(harness!)
         _ = try await harness!.js("window.webkit.messageHandlers.nimbalystConsole.postMessage({type:'sessionExpired', requestId:'r1', orgId:null}); 1")
         let started = await waitUntil { entered }
         XCTAssertTrue(started)
@@ -241,7 +252,7 @@ final class PagesWebViewTests: XCTestCase {
         let harness = Harness()
         let controller = harness.controller!
         defer { controller.tearDown() }
-        await openReady(harness)
+        try await openReady(harness)
 
         // Edits the server acknowledges on flush: the replacement just happens.
         controller.handle(.editState(editing: true, unsynced: true))
@@ -285,7 +296,7 @@ final class PagesWebViewTests: XCTestCase {
         let harness = Harness()
         let controller = harness.controller!
         defer { controller.tearDown() }
-        await openReady(harness)
+        try await openReady(harness)
         _ = try await harness.js("window.__flushStatus = 'timed-out'; 1")
         controller.handle(.editState(editing: true, unsynced: true))
         let loadsBefore = harness.loads.count
@@ -318,7 +329,7 @@ final class PagesWebViewTests: XCTestCase {
         let harness = Harness()
         let controller = harness.controller!
         defer { controller.tearDown() }
-        await openReady(harness)
+        try await openReady(harness)
         _ = try await harness.js("window.__flushDelayMs = 300; 1")
         controller.handle(.editState(editing: true, unsynced: true))
         let loadsBefore = harness.loads.count
@@ -344,7 +355,7 @@ final class PagesWebViewTests: XCTestCase {
         let harness = Harness()
         let controller = harness.controller!
         defer { controller.tearDown() }
-        await openReady(harness)
+        try await openReady(harness)
         let firstNonce = try XCTUnwrap(controller.documentNonce)
         MintStub.delay = 0.5
         _ = try await harness.js("window.webkit.messageHandlers.nimbalystConsole.postMessage({type:'requestSession', requestId:'r1', orgId:'organization-fixture'}); 1")
