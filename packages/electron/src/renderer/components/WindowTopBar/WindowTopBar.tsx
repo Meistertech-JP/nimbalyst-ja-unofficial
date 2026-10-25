@@ -883,11 +883,11 @@ export function WindowTopBar({
     >
       {/* The env() inset keeps the bar clear of the OS window controls: the
           traffic lights on macOS, the caption buttons on Windows. */}
-      <div className="window-top-bar__available-area absolute top-0 bottom-0 left-[env(titlebar-area-x,0px)] w-[env(titlebar-area-width,100%)] box-border grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 pl-2 pr-3.5">
+      <div className="window-top-bar__available-area absolute top-0 bottom-0 left-[env(titlebar-area-x,0px)] w-[env(titlebar-area-width,100%)] box-border grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 pl-2 pr-3.5">
         {/* The exit-fullscreen control takes the space the OS window controls
             vacate. WindowMenuBar is Windows/Linux only — macOS keeps the menu in
             the system menu bar and it renders nothing there. */}
-        <div className="window-top-bar__left flex items-center gap-1 min-w-0 overflow-hidden">
+        <div className="window-top-bar__left flex items-center gap-1">
           <ExitFullScreenButton />
           <WindowMenuBar />
           {/* Sits over the tree column, so what it makes is whatever that tree
