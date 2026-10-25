@@ -20,7 +20,7 @@
  * Both gates are required. The allowlist is populated dynamically as
  * workspaces are registered/unregistered.
  */
-import { protocol, app, net } from "electron";
+import { protocol, app, net, type CustomScheme } from "electron";
 import { realpath, stat } from "fs/promises";
 import { createReadStream } from "fs";
 import { Readable } from "stream";
@@ -219,26 +219,20 @@ export function parseRangeHeader(
 }
 
 /**
- * Register the `nim-asset` scheme as standard/secure with Chromium. Must be
- * called BEFORE `app.whenReady` resolves -- per Electron docs, schemes must
- * be registered as privileged before the app is ready.
+ * Privileges for the single pre-ready registration in registerAppSchemes.
  */
-export function registerNimAssetSchemeAsPrivileged(): void {
-  protocol.registerSchemesAsPrivileged([
-    {
-      scheme: NIM_ASSET_SCHEME,
-      privileges: {
-        standard: true,
-        secure: true,
-        supportFetchAPI: true,
-        bypassCSP: false,
-        // Avoid the default same-origin restriction: the scheme is treated
-        // as standard/secure, which is enough for `<img src=>` to load it
-        // from any origin in the renderer.
-        corsEnabled: true,
-      },
+export function getNimAssetScheme(): CustomScheme {
+  return {
+    scheme: NIM_ASSET_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: false,
+      // Images and renderer fetches use the same validated asset handler.
+      corsEnabled: true,
     },
-  ]);
+  };
 }
 
 /**

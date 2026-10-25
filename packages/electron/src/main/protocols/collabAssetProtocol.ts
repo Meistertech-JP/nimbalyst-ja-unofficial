@@ -20,7 +20,7 @@
  * opened. The registry is populated by `document-sync:open` and torn down
  * by `document-sync:close-doc` from the tab unmount.
  */
-import { protocol, net } from "electron";
+import { protocol, net, type CustomScheme } from "electron";
 import {
   COLLAB_ASSET_HEADER_ERROR_CODE,
   COLLAB_ASSET_HEADER_FILE_NAME,
@@ -220,23 +220,19 @@ export function clearCollabAssetRegistry(): void {
 }
 
 /**
- * Register the `collab-asset` scheme as standard/secure with Chromium. Must
- * be called BEFORE `app.whenReady` resolves -- per Electron docs, schemes
- * must be registered as privileged before the app is ready.
+ * Privileges for the single pre-ready registration in registerAppSchemes.
  */
-export function registerCollabAssetSchemeAsPrivileged(): void {
-  protocol.registerSchemesAsPrivileged([
-    {
-      scheme: COLLAB_ASSET_SCHEME,
-      privileges: {
-        standard: true,
-        secure: true,
-        supportFetchAPI: true,
-        bypassCSP: false,
-        corsEnabled: true,
-      },
+export function getCollabAssetScheme(): CustomScheme {
+  return {
+    scheme: COLLAB_ASSET_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: false,
+      corsEnabled: true,
     },
-  ]);
+  };
 }
 
 // ----------------------------------------------------------------------------

@@ -4,6 +4,8 @@
 
 ## 最新hosted検証結果（後段の未実行記録より優先）
 
+その後の最新製品実機検証で、ローカル文書の「画像をコピー」がnim-assetのfetch非対応エラーで2回失敗した。現在の判定はNOT READYで、以下のCONDITIONALは発見前の履歴である。Electron 43.7.0の隔離probeではscheme別3回登録で最終schemeのみfetch成功、1回の一括登録で3schemeとも成功した。起動前の登録を1回へ集約し、回帰RED→GREEN、関連48件と型38件が成功。新通常製品の生成・実画面確認と新ソースのCIは未完了である。webSecurity、CSP bypass、各handlerの許可範囲は変更していない。trackerツールは利用できず、再現・原因・失敗ログをimage-copy-native-057883f8b-RED.jsonとscheme-registration-separate/combined.jsonへ記録した。Feature inventoryへの影響はない。
+
 所有者の既知3件限定承認に基づき、通常ゲートと後続検査で新規失敗がないことを再確認した後、R15開発ブランチを `eabb8c5d6e0d951c77c79f2d5ab4439e056512ef` へfast-forward pushした。Git treeは `4e7353a7054adb448974fcfd0e766e72de2a14ba`。公開mainはb0432ce85977040461bf026aff063059bf6ffd1e、旧タグは2548c7f85fae0c88243a71ea63021090225be16aのままである。main・タグ・Release・公開Wikiを変更していない。
 
 同じHEADのLinux run40243528521はsuccess。実artifactのcomplete=true、result=PASS、fingerprint.head一致、失敗一覧空を確認した。Test Filesは2,339 PASS／0 FAIL／7 SKIP／2,346 total。Testsは19,284 PASS／0 FAIL／30 SKIP／19,314 total。38型・7容量・scripts・sandboxもLinuxでは例外なしで成功した。

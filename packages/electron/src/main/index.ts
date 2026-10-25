@@ -180,22 +180,20 @@ import { onWorkspaceUsageChanged } from './file/GitWatcherLifecycle';
 // unified httpServer instead. Nothing to start/shutdown from here.
 import { generateMcpAuthToken, getMcpAuthToken } from './mcp/mcpAuth';
 import {
-  registerNimAssetSchemeAsPrivileged,
   registerNimAssetProtocolHandler,
   addNimAssetRoot,
   removeNimAssetRoot,
 } from './protocols/nimAssetProtocol';
 import {
-  registerNimPreviewSchemeAsPrivileged,
   registerNimPreviewProtocolHandler,
   addNimPreviewWorkspaceRoot,
 } from './protocols/nimPreviewProtocol';
 import { registerBrowserSessionHandlers } from './ipc/BrowserSessionHandlers';
 import { BrowserSessionService } from './services/BrowserSessionService';
 import {
-  registerCollabAssetSchemeAsPrivileged,
   installCollabAssetProtocolHandler,
 } from './protocols/collabAssetProtocol';
+import { registerAppSchemes } from './protocols/registerAppSchemes';
 import { SessionNamingService } from './services/SessionNamingService';
 import { SessionWakeupScheduler } from './services/SessionWakeupScheduler';
 import { createSessionWakeup } from './services/sessionWakeupCreation';
@@ -395,9 +393,7 @@ if (process.platform === 'win32') {
 // `app.whenReady` resolves. Per Electron docs, schemes must be marked as
 // privileged before the app is ready or the renderer treats them as opaque
 // origins. The actual request handler is wired up after whenReady.
-registerNimAssetSchemeAsPrivileged();
-registerNimPreviewSchemeAsPrivileged();
-registerCollabAssetSchemeAsPrivileged();
+registerAppSchemes();
 
 // NIM-1487: no window may be spawned by an unhandled window.open — relative
 // file links that slip past the renderer's link routing used to open blank

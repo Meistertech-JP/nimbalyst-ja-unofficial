@@ -25,7 +25,7 @@
  * to for in-app HTML preview.
  */
 
-import { protocol, net, type Session } from 'electron';
+import { protocol, net, type Session, type CustomScheme } from 'electron';
 import { realpath } from 'fs/promises';
 import { resolve, sep, extname, join } from 'path';
 import { pathToFileURL } from 'url';
@@ -266,21 +266,20 @@ export function ensureUtf8HtmlResponse(absolutePath: string, response: Response)
   });
 }
 
-export function registerNimPreviewSchemeAsPrivileged(): void {
-  protocol.registerSchemesAsPrivileged([
-    {
-      scheme: NIM_PREVIEW_SCHEME,
-      privileges: {
-        standard: true,
-        secure: true,
-        supportFetchAPI: true,
-        bypassCSP: false,
-        corsEnabled: true,
-        // Required for ES-module script imports to resolve relative paths.
-        codeCache: true,
-      },
+/** Privileges for the single pre-ready registration in registerAppSchemes. */
+export function getNimPreviewScheme(): CustomScheme {
+  return {
+    scheme: NIM_PREVIEW_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: false,
+      corsEnabled: true,
+      // Required for ES-module script imports to resolve relative paths.
+      codeCache: true,
     },
-  ]);
+  };
 }
 
 /**

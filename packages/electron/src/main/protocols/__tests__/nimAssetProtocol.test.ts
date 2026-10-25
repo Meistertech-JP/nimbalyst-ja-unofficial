@@ -1,5 +1,6 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { sep } from "path";
+import { resolve, sep } from "path";
 import {
   encodeNimAssetUrl,
   parseRangeHeader,
@@ -8,8 +9,8 @@ import {
   NIM_ASSET_HOST,
 } from "../nimAssetProtocol";
 
-const ROOT = `${sep}tmp${sep}allowed-root`;
-const OTHER = `${sep}tmp${sep}allowed-other`;
+const ROOT = resolve(`${sep}tmp${sep}allowed-root`);
+const OTHER = resolve(`${sep}tmp${sep}allowed-other`);
 
 describe("nimAssetProtocol", () => {
   describe("encodeNimAssetUrl", () => {
@@ -34,16 +35,16 @@ describe("nimAssetProtocol", () => {
     const roots = [ROOT, OTHER];
 
     it("accepts a PNG inside the first allowlisted root", () => {
-      expect(validateNimAssetPath(`${ROOT}/img.png`, roots)).toBe(`${ROOT}/img.png`);
+      expect(validateNimAssetPath(`${ROOT}/img.png`, roots)).toBe(resolve(ROOT, 'img.png'));
     });
 
     it("accepts a JPG inside another allowlisted root", () => {
-      expect(validateNimAssetPath(`${OTHER}/sub/x.jpg`, roots)).toBe(`${OTHER}/sub/x.jpg`);
+      expect(validateNimAssetPath(`${OTHER}/sub/x.jpg`, roots)).toBe(resolve(OTHER, 'sub', 'x.jpg'));
     });
 
     it("accepts each image extension in the allowlist", () => {
       for (const ext of [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"]) {
-        expect(validateNimAssetPath(`${ROOT}/x${ext}`, roots)).toBe(`${ROOT}/x${ext}`);
+        expect(validateNimAssetPath(`${ROOT}/x${ext}`, roots)).toBe(resolve(ROOT, `x${ext}`));
       }
     });
 
@@ -89,7 +90,7 @@ describe("nimAssetProtocol", () => {
     });
 
     it("normalizes the file extension comparison case-insensitively", () => {
-      expect(validateNimAssetPath(`${ROOT}/IMG.PNG`, roots)).toBe(`${ROOT}/IMG.PNG`);
+      expect(validateNimAssetPath(`${ROOT}/IMG.PNG`, roots)).toBe(resolve(ROOT, 'IMG.PNG'));
     });
 
     it("requires the root prefix match to be a directory boundary, not a substring prefix", () => {
@@ -107,7 +108,7 @@ describe("nimAssetProtocol", () => {
     });
 
     it("serves .mp4 so video can be opened, but still rejects other binaries", () => {
-      expect(validateNimAssetPath(`${ROOT}/clip.mp4`, [ROOT])).toBe(`${ROOT}/clip.mp4`);
+      expect(validateNimAssetPath(`${ROOT}/clip.mp4`, [ROOT])).toBe(resolve(ROOT, 'clip.mp4'));
       expect(validateNimAssetPath(`${ROOT}/archive.zip`, [ROOT])).toBeNull();
       expect(validateNimAssetPath(`${ROOT}/secrets.env`, [ROOT])).toBeNull();
     });
