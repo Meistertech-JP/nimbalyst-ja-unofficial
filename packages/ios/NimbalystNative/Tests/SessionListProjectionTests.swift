@@ -532,6 +532,56 @@ final class SessionListProjectionTests: XCTestCase {
         try assertParity(db)
     }
 
+    func testActualIncrementalRefreshLooksUpTouchedGroupsByDirtySession() throws {
+        let db = try makeDatabase()
+        try write(db) { database in
+            for id in ["old", "new"] {
+                try Session(id: id, projectId: "/p", sessionType: "workstream",
+                            createdAt: 1, updatedAt: 1).save(database)
+            }
+            try Session(id: "moving", projectId: "/p", parentSessionId: "old",
+                        createdAt: 2, updatedAt: 2).save(database)
+            // Unrelated project history must not become the outer membership scan.
+            for index in 0..<1_000 {
+                try Session(id: "history\(index)", projectId: "/p",
+                            createdAt: 1, updatedAt: 100 + index).save(database)
+            }
+        }
+        try db.rebuildSessionListProjection(projectId: projectId, metaAgentEnabled: true)
+        try write(db) { database in
+            try database.execute(sql: "UPDATE sessions SET parentSessionId = 'new', updatedAt = 999999 WHERE id = 'moving'")
+        }
+
+        let plans = try db.writer.write { database in
+            var statements: [String] = []
+            database.trace(options: .statement) { event in
+                if case .statement(let statement) = event { statements.append(statement.expandedSQL) }
+            }
+            defer { database.trace(options: []) }
+            // Exercise the production refresh, not a test copy of its SQL.
+            try SessionListProjection.refresh(database, projectId: self.projectId, metaAgentEnabled: true)
+            database.trace(options: [])
+            let touched = statements.filter {
+                $0.contains("INSERT OR IGNORE INTO sessionListGroupTouched")
+                    && $0.contains("FROM sessionListGroupMembers")
+            }
+            XCTAssertEqual(touched.count, 2, "capture both old and new membership lookups from the actual refresh")
+            return try touched.map { sql in
+                try Row.fetchAll(database, sql: "EXPLAIN QUERY PLAN " + sql).map { row in
+                    row["detail"] as String
+                }.joined(separator: "\n")
+            }
+        }
+        for plan in plans {
+            XCTAssertTrue(plan.contains("SEARCH sessionListGroupMembers USING INDEX idx_slgm_session (projectId=? AND sessionId=?)"),
+                          "Touched groups must be looked up by dirty session, not all project history:\n\(plan)")
+        }
+        XCTAssertEqual(Set(try db.sessionListGroupMemberIds(filter: filter, groupKey: "ws:old")), ["old"])
+        XCTAssertEqual(Set(try db.sessionListGroupMemberIds(filter: filter, groupKey: "ws:new")), ["new", "moving"])
+        XCTAssertEqual(try db.sessionListItem(containing: "moving", filter: filter)?.group.orderTimestamp, 999999)
+        try assertParity(db)
+    }
+
     /// Refresh work includes the affected group's membership, but not unrelated history.
     func testIncrementalRefreshCostDoesNotTrackHistorySize() throws {
         for giantGroup in [false, true] {

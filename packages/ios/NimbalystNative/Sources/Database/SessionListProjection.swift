@@ -366,9 +366,11 @@ enum SessionListProjection {
 
         try db.execute(sql: "DELETE FROM sessionListGroupTouched")
         // Groups the changed rows used to belong to...
+        // The covering children index can scan a whole project's history here.
+        // Resolve dirty session IDs through the existing (projectId, sessionId) index.
         try db.execute(sql: """
             INSERT OR IGNORE INTO sessionListGroupTouched(groupKey)
-            SELECT groupKey FROM sessionListGroupMembers
+            SELECT groupKey FROM sessionListGroupMembers INDEXED BY idx_slgm_session
             WHERE projectId = :projectId AND sessionId IN (\(dirtyIds))
             """, arguments: arguments)
         try db.execute(sql: """
@@ -379,7 +381,7 @@ enum SessionListProjection {
         // ...and the groups they belong to now.
         try db.execute(sql: """
             INSERT OR IGNORE INTO sessionListGroupTouched(groupKey)
-            SELECT groupKey FROM sessionListGroupMembers
+            SELECT groupKey FROM sessionListGroupMembers INDEXED BY idx_slgm_session
             WHERE projectId = :projectId AND sessionId IN (\(dirtyIds))
             """, arguments: arguments)
 
