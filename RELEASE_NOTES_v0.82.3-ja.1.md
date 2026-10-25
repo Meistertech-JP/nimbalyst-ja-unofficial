@@ -23,7 +23,9 @@ SQLiteの0055は、待機中のTracker編集へ同期基準リビジョンを保
 
 表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,782キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
 
-38ワークスペースの型検査と、既存の7エントリの容量上限検査が成功しています。次期候補のLinux全体試験、iOSシミュレーター試験、通常Windows製品の実機検証・配布物監査は確定前です。旧正式版の実機成功を本候補の成功へ読み替えません。
+38ワークスペースの型検査と既存7エントリの容量上限検査が成功しています。Windows製品コミット49e52c53fのLinuxは19,264 PASS／0 FAIL／30 SKIP。通常ZIPの日英再起動保持、英語完了時刻、日本語の展開ヘルプ、文書画像の貼り付け・Undo／Redo、全1,913ファイルの照合・CRC・ASAR監査を確認しました。
+
+最新iOS CIは履歴件数に対する更新性能の試験で失敗し、全体試験は未実行です。変更セッションへ検索範囲を限定する修正と回帰テストを追加しましたが、修正後のiOS実行は未確認です。先行候補の認証・インストール・更新検証には適用範囲を明示し、新しいバイナリの実行成功と混同しません。最終ソースと配布候補の確定は継続中です。
 
 Windowsではsymlink fixture作成のEPERMが残っています。fixture作成で停止した試験は、symlinkの拒否・保持動作そのものを検証できていません。全Windows試験の成功は主張しません。外部スクリーンリーダー、全画面・DPI、動的翻訳の完全な実行時確認、WSL実環境での全経路、Google認証や特殊な復旧、サービス側セッション失効は未検証です。
 
@@ -58,7 +60,9 @@ SQLite migration 0055 adds the base synchronization revision to queued Tracker e
 
 Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,782 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
 
-All 38 workspace typechecks and seven existing bundle budgets passed. Linux full-suite, iOS simulator, ordinary Windows product testing, and distribution-integrity results for this candidate are not yet final. Previous-release native results are not claimed as evidence for the new binaries.
+All 38 workspace typechecks and seven existing bundle budgets passed. Windows product commit 49e52c53f passed Linux with 19,264 passed / zero failed / 30 skipped. Its ordinary ZIP was checked for persistence after restart in both languages, English completion times, Japanese expanded help, document image paste with Undo/Redo, all 1,913 file hashes, CRC, and ASAR integrity.
+
+The latest iOS CI failed its history-size performance test before the full suite ran. A fix restricting lookups to changed sessions and a regression test have been added, but have not yet run on iOS. Authentication, installation, and upgrade results from earlier candidates have a separately stated scope; they are not claimed as new-binary executions. The final source and distribution candidate remain under validation.
 
 Windows symlink-fixture EPERM failures remain. A test stopped during fixture creation does not verify symlink rejection or retention. No all-Windows-tests-passed claim is made. External screen readers, every screen and DPI, complete runtime coverage of dynamic translations, all native WSL paths, Google sign-in, special recovery flows, and service-side session revocation remain unverified.
 

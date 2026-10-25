@@ -1,0 +1,63 @@
+{
+  "status": "IN_PROGRESS",
+  "latestProductCommit": "49e52c53ffe1225ce7d411f53f7e20c7758c49a7",
+  "checkpointScope": "Assets below are the completed 49e52c53f Windows product. The later source commit 1e4033ed9 changes only two iOS Swift files and CHANGELOG; hosted verification of that delta is pending. Install/update/authentication checkpoints are historical and separately scoped in the Windows report.",
+  "productCommit": "49e52c53ffe1225ce7d411f53f7e20c7758c49a7",
+  "sourceCheckpoint": "1e4033ed9005faf11a68ad3277148fdf2c7d1e1c",
+  "version": "0.82.3-ja.1",
+  "numericBuildVersion": "0.82.3.1",
+  "appId": "jp.meistertech.nimbalyst.ja.unofficial",
+  "signed": false,
+  "assets": {
+    "nsis": {
+      "file": "Nimbalyst 日本語版（非公式）-Windows-x64.exe",
+      "bytes": 443180417,
+      "sha256": "c94ab7c0bae6fc62e6eb7873e6f9593547882d250a4bab4f5b26d8c9036fa4b6",
+      "installationVerified": false,
+      "historicalUpgradeCommit": "3388c93c552a84fdaef90f987a26d9712bb163af",
+      "historicalUpgradeEvidence": "tmp/r15-evidence/nsis-upgrade1/",
+      "evidence": "tmp/r15-evidence/windows-build-english-turn-prefix.log"
+    },
+    "portableZip": {
+      "file": "Nimbalyst 日本語版（非公式）-Windows-x64.zip",
+      "bytes": 576219733,
+      "sha256": "5c59a223f4496482ca710292e0bf9ada6e5f72b234570182bdde8905ee761546",
+      "crcPassed": true,
+      "entryPathSafetyPassed": true,
+      "originalFiles": 1913,
+      "restoredFiles": 1913,
+      "allFileHashesMatched": true,
+      "evidence": "tmp/r15-evidence/windows-zip-integrity5/RESULT.json",
+      "launchVerification": "PASS — actual final ZIP executable retained English and Japanese after normal restart in each language"
+    },
+    "sourceZip": null
+  },
+  "packagedRuntime": {
+    "sdkImports": 4,
+    "nativeBinariesPresent": 3,
+    "workerBundles": 8,
+    "externalResolutionChecks": 6,
+    "sqliteWorkerDlopen": "PASS",
+    "onnxBackendDlopen": "PASS",
+    "evidence": "tmp/r15-evidence/windows-build-english-turn-prefix.log",
+    "asarSha256": "6d0ccfbe135be8e77eecf6b78a5722f840644ca3c93b08c59cd3415c40c2d76c",
+    "asarFilesVerified": 1021,
+    "compiledOutputFilesMatched": 341,
+    "legalFilesMatched": 4,
+    "asarEvidence": "tmp/r15-evidence/asar-integrity-english-turn-prefix.json",
+    "mainAndPreloadFilesComparedWithAuthenticatedCheckpoint": 63,
+    "mainAndPreloadFilesUnchangedFromAuthenticatedCheckpoint": 62,
+    "mainAndPreloadPayloadEntirelyIdentical": false,
+    "authEquivalenceEvidence": "tmp/r15-evidence/auth-payload-equivalence-49e52c53f.json",
+    "onlyCompiledMainDeltaIsSixKnownResourceValues": true,
+    "resourceDeltaEvidence": "tmp/r15-evidence/auth-main-resource-delta-49e52c53f.json",
+    "latestBinaryAuthenticationReexecuted": false
+  },
+  "remaining": [
+    "Final source commit and source ZIP blob/hash/CRC/restore verification",
+    "Complete remaining Windows feature-level verification; auth checkpoint and payload equivalence are recorded separately",
+    "Finalize and preserve the generated legal inventory with matching source",
+    "Final SHA256SUMS and preservation/cleanup audit"
+  ],
+  "published": false
+}

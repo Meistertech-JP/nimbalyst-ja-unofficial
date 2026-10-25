@@ -1,0 +1,46 @@
+{
+  "status": "IN_PROGRESS",
+  "latestProductCommit": "49e52c53ffe1225ce7d411f53f7e20c7758c49a7",
+  "latestSourceCommit": "1e4033ed9005faf11a68ad3277148fdf2c7d1e1c",
+  "latestUnverifiedDelta": "iOS projection queries now use the existing dirty-session index. Actual-source synthetic SQLite RED/GREEN and independent review PASS; Swift regression and hosted iOS suite remain unexecuted for this commit. Normal push stopped at the known CLI symlink fixture EPERM. Earlier no-verify approvals do not cover this new commit; no bypass push performed. Final source archive/manifests incomplete.",
+  "pendingProductChanges": "The only committed delta after the Windows product commit is two iOS Swift files and CHANGELOG. This delta has not passed hosted CI. Reports and publication drafts remain uncommitted and require final consistency review.",
+  "checkpointScope": "Windows build and latest GUI checkpoints cover 49e52c53f. Authentication and install/update evidence below is historical with its own explicitly bounded source scope. Hosted CI entries identify their actual tested commit; no previous success is substituted for the latest iOS failure.",
+  "candidateVersion": "v0.82.3-ja.1",
+  "productCommit": "49e52c53ffe1225ce7d411f53f7e20c7758c49a7",
+  "fixedUpstream": "84dcc00f3cd0abbb36eafc6bfad9389f960076db",
+  "publishedBase": "b0432ce85977040461bf026aff063059bf6ffd1e",
+  "upstreamIntegration": {"commits":17,"files":144,"historyPreserved":true},
+  "typecheck": {"workspaces":38,"status":"PASS"},
+  "bundleBudgets": {"entries":7,"status":"PASS","limitsChanged":false},
+  "i18n": {"namespaces":27,"enKeys":14782,"jaKeys":14782,"keyDifference":0,"emptyJapanese":0,"interpolationDifference":0,"missingResolvedReferences":0,"dynamicCandidates":659,"unresolvedLexicalScopes":385,"wholeUiCoverageProven":false},
+  "linux": {"runId":40201861327,"head":"49e52c53ffe1225ce7d411f53f7e20c7758c49a7","status":"PASS","files":2344,"passedTests":19264,"failedTests":0,"skippedTests":30,"latestSourceCommitCovered":false},
+  "ios": {"runId":40201861401,"head":"49e52c53ffe1225ce7d411f53f7e20c7758c49a7","status":"FAIL","isolatedExecuted":2,"isolatedFailed":1,"fullSuiteExecuted":false,"physicalDeviceTested":false,"failure":"testIncrementalRefreshCostDoesNotTrackHistorySize","fixCommit":"1e4033ed9005faf11a68ad3277148fdf2c7d1e1c","fixHostedVerification":"PENDING"},
+  "windowsGateExceptions": {
+    "count":3,
+    "scope":"Explicitly approved R15 development-branch pushes only",
+    "cliFixtureSymlinkEperm":1,
+    "sandboxFixtureSymlinkEperm":2,
+    "fixedUpstreamReproduced":true,
+    "testsRetained":true,
+    "sandboxRejectionOnWindowsVerified":false,
+    "otherFailuresWaived":false
+  },
+  "windowsBuild": {"nsis":"PASS","portableZip":"PASS","signed":false,"zipFilesMatched":1913,"asarEntriesVerified":1021,"compiledOutputFilesMatched":341},
+  "nativeCheckpoints": {
+    "emailSignInRestoreLogout":"PASS on a9fcc204 ordinary ZIP product. Latest product has 62/63 Main/Preload files identical; the sole changed index matches after exactly six known resource-literal substitutions. Native sign-in not repeated on latest binary",
+    "freshInstallAndUninstall":"PASS on preceding ordinary NSIS product; 93 dedicated data-file hashes retained",
+    "published0821ToCandidateUpgrade":"PASS; migration 55 applied, English setting and all 10 document hashes retained",
+    "upgradedInstalledPayload":"PASS; 1913 source payload files matched",
+    "japaneseSessionTimeFix":"PASS in the new ordinary installed product",
+    "finalZipLanguageRestarts":"PASS — both languages after normal restart",
+    "finalUpdatedCandidateUninstall":"PASS; 183 isolated profile/document files unchanged"
+  },
+  "serverTeamRecovery":"Synthetic local tests only; production recovery and updated-server end-to-end compatibility unverified",
+  "remaining": [
+    "Hosted iOS verification of 1e4033ed9 remains pending; normal push failed at known fixture EPERM and no bypass authorization covers this commit",
+    "Finalize bilingual publication documents with bounded evidence",
+    "Final source commit, tree, source ZIP blob/CRC/restore verification",
+    "Complete final candidate preservation manifest; R14 197-file readback and verified old-restore cleanup completed"
+  ],
+  "publication": {"performed":false,"mainChanged":false,"tagsChanged":false,"releaseCreated":false,"publicWikiChanged":false}
+}

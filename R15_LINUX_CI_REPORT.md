@@ -18,3 +18,31 @@
 証拠: `tmp/r15-evidence/linux-ci-a9fcc204/`、`performance-policy-retention-green.json`。初回の生ログ・失敗一覧は保持し、削除・skipや期待値の無根拠な緩和はしていない。
 
 WindowsのCLI fixture EPERMとsandbox symlink fixture EPERM2件について、所有者が今回のR15開発ブランチへのpushだけの例外を明示承認した。通常pushの停止ログ、必須検査の個別結果、固定upstreamでの再現を保持したうえで、一度だけgit push --no-verifyを使用した。Linuxの試験削除・skip・例外化はしていない。main・タグ・Releaseには送信していない。
+
+## 修正後の全体再検証
+
+所有者が同じ3件限定で再pushを許可したため、リモートmainと既存タグの不変、開発ブランチのfast-forward条件を読み戻したうえで、`e5e207dce4d4bb3540b28720488d5b7b33047b66` だけをR15ブランチへ送信した。再実行 [40186642608](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40186642608) はsuccessで完了した。
+
+locked install、38ワークスペース型・7容量検査、scripts・sandbox（例外なし）、全non-provider unit suiteが成功。artifactのlast-run.jsonはcomplete=true、result=PASS、19,255 PASS／0 FAIL／30 SKIP、対象ファイル2,344と記録している。ファイルのPASS/SKIP内訳はこの成功artifactに存在しないため推測で補完しない。失敗ファイル一覧は空。先行失敗のログは保持した。
+
+実ログは `tmp/r15-evidence/linux-ci-e5e207dc.log`、JSONとunit生ログは `tmp/r15-evidence/linux-ci-e5e207dc/`。このCI完了後に見つかったSessionListItem時刻表示の修正は含まれていないため、修正後の全体検証は別途必要。
+
+## 時刻表示修正後の製品コード
+
+`3388c93c552a84fdaef90f987a26d9712bb163af` の [40188921749](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40188921749) はsuccess。38型・7容量・scripts・sandboxを例外なしで通過し、全non-provider suiteは19,257 PASS／0 FAIL／30 SKIP、2,344ファイル。artifactはcomplete=true、失敗一覧は空。時刻修正の新規2テストを含む実母集団である。
+
+実ログ `tmp/r15-evidence/linux-ci-3388c93c.log` とartifact `tmp/r15-evidence/linux-ci-3388c93c/` を保持。Windowsでの通常pushは同じCLI fixture EPERMだけで停止し、個別sandboxは6 artifact PASSと15 PASS／2 fixture EPERM。後続UI・native-dialog・archive静的検査は全てPASS。所有者の再承認後、同じ3件に限定した例外で当該R15コミットだけをfast-forward pushした。公開main・タグ・Releaseは不変である。
+
+## 添付ガイド・推奨表示・展開ヘルプ修正後
+
+`7af4c3b6e72d4c7c92feb88ce1bbacd89fc628c2` の [40195005111](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40195005111) はsuccess。artifactのlast-run.jsonでcomplete=true、result=PASS、headの一致、19,262 PASS／0 FAIL／30 SKIP、2,344ファイル、failingFiles空を確認した。ファイルのPASS/SKIP内訳はartifactから推測しない。38型と7容量、scripts・sandboxもLinuxでは例外なしで通過した。
+
+実ログは `tmp/r15-evidence/linux-ci-7af4c3b6e.log`、JSONとunitログは `tmp/r15-evidence/linux-ci-7af4c3b6e/`。Windowsの既知3 fixture EPERMは新コミットについて個別再承認を受けて開発ブランチだけpushした。通常pushの失敗記録 `normal-push-complete-help.log` と手動後続検査は保持している。新たな失敗へ例外を拡大していない。
+
+Linuxのtracker-ui初期容量は197,104 gzip bytes、同じコミットのWindows測定は197,240 bytesだった。両環境で既存200,000上限を通過しているが、全エントリが環境間でバイト一致するという主張はしない。
+
+## 完了時刻・タイトルバー修正後
+
+`b2cd7ea16927f52fe3b24dee4e215ecccbaf11bf` の [40198602456](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40198602456) はsuccess。artifact `linux-ci-b2cd7ea16/.vitest/last-run.json` はcomplete=true、result=PASS、fingerprint head一致、19,264 PASS／0 FAIL／30 SKIP、2,344ファイル、失敗一覧空。実ログも `linux-ci-b2cd7ea16.log` に保存した。英語のat重複修正49e52c53fは後続のため、このCIには含まれない。
+
+49e52c53ffe1225ce7d411f53f7e20c7758c49a7の [40201861327](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40201861327) もsuccess。artifact linux-ci-49e52c53f/.vitest/last-run.jsonはcomplete=true、head一致、19,264 PASS／0 FAIL／30 SKIP、2,344ファイル、失敗一覧空。ログlinux-ci-49e52c53f.logを保存。iOS側の性能試験failureは別の検査であり、Linux成功で代用しない。
