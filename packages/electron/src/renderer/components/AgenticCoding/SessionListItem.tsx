@@ -242,6 +242,7 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
   phase,
 }) {
   const { t } = useTranslation('agents');
+  const { t: tSessions, i18n } = useTranslation('sessions');
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [isRenaming, setIsRenaming] = useState(false);
@@ -312,7 +313,7 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
 
   // Show timestamp based on current sort order
   const timestamp = sortBy === 'updated' ? (effectiveUpdatedAt || createdAt) : createdAt;
-  const timestampLabel = sortBy === 'updated' ? 'updated' : 'created';
+  const timestampLabel = tSessions(sortBy === 'updated' ? 'last_updated' : 'created');
 
   // A quiet session still ages: relativeTime is derived from a fixed timestamp,
   // so without a periodic re-render the "X ago" label sits frozen until the
@@ -326,8 +327,8 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
   }, []);
 
   const { relativeTime, fullDateTime } = useMemo(() => ({
-    relativeTime: getRelativeTimeString(timestamp),
-    fullDateTime: new Date(timestamp).toLocaleString(undefined, {
+    relativeTime: getRelativeTimeString(timestamp, (key, options) => tSessions(key, options)),
+    fullDateTime: new Date(timestamp).toLocaleString(i18n.resolvedLanguage ?? i18n.language, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -336,7 +337,7 @@ export const SessionListItem = memo<SessionListItemProps>(function SessionListIt
       hour12: true,
       timeZoneName: 'short'
     }),
-  }), [timestamp, relativeTimeTick]);
+  }), [timestamp, relativeTimeTick, tSessions, i18n.resolvedLanguage, i18n.language]);
 
   // Extract model ID from provider:model format
   const displayModel = model?.includes(':') ? model.split(':')[1] : model;

@@ -99,3 +99,39 @@ it('localizes default session titles for display without changing the stored tit
   expect(screen.getByText('新しい会話')).toBeTruthy();
   expect(screen.getByTitle('未コミットの変更2件')).toBeTruthy();
 });
+
+it.each([
+  { sortBy: 'updated' as const, jaLabel: '最終更新', enLabel: 'Last Updated', jaTime: 'たった今', enTime: 'Just now', jaTick: '1分前' },
+  { sortBy: 'created' as const, jaLabel: '作成日時', enLabel: 'Created', jaTime: '1分前', enTime: '1 min ago', jaTick: '2分前' },
+])('localizes $sortBy time, accessible label and tooltip across live language switches while keeping the idle tick', async ({ sortBy, jaLabel, enLabel, jaTime, enTime, jaTick }) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(base);
+  window.electronAPI = {} as any;
+  const i18n = await createI18nInstance('ja');
+  const store = createStore();
+  const createdAt = base - 90_000;
+  const updatedAt = base - 30_000;
+  const timestamp = sortBy === 'updated' ? updatedAt : createdAt;
+  const dateOptions = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' } as const;
+  const { container } = render(
+    <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+      <Provider store={store}>
+        <SessionListItem id="localized-time" title="Time test" createdAt={createdAt} updatedAt={updatedAt} sortBy={sortBy} isActive={false} onClick={() => {}} />
+      </Provider>
+    </UiLanguageProvider>,
+  );
+  const date = () => container.querySelector('.session-list-item-datetime')!;
+  expect(date().textContent).toBe(jaTime);
+  expect(date().getAttribute('title')).toBe(new Date(timestamp).toLocaleString('ja', dateOptions));
+  expect(screen.getByRole('button', { name: `セッション: Time test, ${jaLabel} ${jaTime}` }).getAttribute('aria-label')).not.toMatch(/updated|created|ago|Just now/);
+
+  await act(async () => { await i18n.changeLanguage('en'); });
+  expect(date().textContent).toBe(enTime);
+  expect(date().getAttribute('title')).toBe(new Date(timestamp).toLocaleString('en', dateOptions));
+  screen.getByRole('button', { name: `Session: Time test, ${enLabel} ${enTime}` });
+
+  await act(async () => { await i18n.changeLanguage('ja'); });
+  act(() => { vi.advanceTimersByTime(60_000); });
+  expect(date().textContent).toBe(jaTick);
+  screen.getByRole('button', { name: `セッション: Time test, ${jaLabel} ${jaTick}` });
+});
