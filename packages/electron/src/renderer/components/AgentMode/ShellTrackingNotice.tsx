@@ -40,7 +40,8 @@ export function ShellTrackingNotice({ sessionIds }: { sessionIds: string[] }) {
       disposed = true;
     };
   }, [key, revision]);
-  const details = shellCoverageDetails(coverage);
+  const details = shellCoverageDetails(coverage, (reason, fallback) =>
+    t(`shell_tracking_notice.reasons.${reason}`, { defaultValue: `${fallback}.` }));
   const recovering = coverage.some(item => item.observation === 'recovering');
   const historical = coverage.length > 0 && coverage.every(item => item.observation === 'watching');
   if (!failed && !details.length) return null;
@@ -56,7 +57,7 @@ export function ShellTrackingNotice({ sessionIds }: { sessionIds: string[] }) {
       {details.length > 0 && (
         <ul className="mt-1 list-disc pl-4">
           {details.map((detail) => (
-            <li key={detail}>{detail}.</li>
+            <li key={detail}>{detail}</li>
           ))}
         </ul>
       )}

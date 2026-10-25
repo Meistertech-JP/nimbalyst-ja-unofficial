@@ -9,13 +9,14 @@
  * produces the expected end-state schema (columns, indexes, triggers).
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { Worker } from 'node:worker_threads';
 import { getMigrations, runMigrations, type Migration } from '../MigrationRunner';
 import { SQLiteDatabase } from '../SQLiteDatabase';
+import { loadBetterSqlite, nativeBindingOverride } from '../betterSqliteLoader';
 import { diskStampUpsertSql, parseDiskStamp } from '../../../services/projectFileSyncDiskCache';
 
 /**
@@ -79,6 +80,10 @@ describe('runMigrations', () => {
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-migrations-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, { recursive: true, force: true });
   });
 
   it('applies migrations in version order and records them', () => {
@@ -203,6 +208,77 @@ describe('runMigrations', () => {
 });
 
 describe('runMigrations against the real schema dir', () => {
+  // Only synthetic fixtures are opened here, never an application's user database.
+  function createV54Fixture(dbDir: string) {
+    const Sqlite = loadBetterSqlite();
+    const nativeBinding = nativeBindingOverride();
+    const db = new Sqlite(path.join(dbDir, 'nimbalyst.sqlite'), nativeBinding ? { nativeBinding } : {});
+    const schemaDir = path.resolve(__dirname, '..', 'schemas');
+    db.exec('CREATE TABLE _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL)');
+    for (const migration of getMigrations(schemaDir).filter(m => m.version <= 54)) {
+      db.transaction(() => {
+        db.exec(fs.readFileSync(migration.sqlFile!, 'utf8'));
+        db.prepare('INSERT INTO _migrations (version, name) VALUES (?, ?)').run(migration.version, migration.name);
+      })();
+    }
+    db.prepare('INSERT INTO ai_sessions (id, provider, title, draft_input) VALUES (?, ?, ?, ?)')
+      .run('session-retained', 'openai-codex', '保持するセッション', '日本語の下書き');
+    db.prepare('INSERT INTO tracker_items (id, type, data, workspace, issue_number, sync_id) VALUES (?, ?, ?, ?, ?, ?)')
+      .run('tracker-retained', 'bug', JSON.stringify({ title: '保持するチケット', status: 'open' }), '/fixture', 310, 42);
+    db.prepare('INSERT INTO tracker_transactions (client_mutation_id, item_id, workspace_path, state, kind, payload) VALUES (?, ?, ?, ?, ?, ?)')
+      .run('mutation-retained', 'tracker-retained', '/fixture', 'queued', 'update', JSON.stringify({ title: 'オフライン編集' }));
+    return db;
+  }
+
+  it('upgrades a populated 0054 database without changing tracker identity, queued edits or sessions', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-mig-0054-upgrade-'));
+    const old = createV54Fixture(tmpDir);
+    const tables = ['ai_sessions', 'tracker_items', 'tracker_transactions'];
+    const before = tables.map(table => old.prepare(`SELECT * FROM ${table}`).all());
+    expect(old.prepare('SELECT MAX(version) AS version FROM _migrations').get()).toEqual({ version: 54 });
+    expect(old.prepare('PRAGMA table_info(tracker_transactions)').all().map((c: any) => c.name)).not.toContain('base_sync_id');
+    old.close();
+    const sqlite = new SQLiteDatabase({ dbDir: tmpDir, schemaDir: path.resolve(__dirname, '..', 'schemas'), sampleRate: 0 });
+    try {
+      await sqlite.initialize();
+      const db = sqlite.getRawHandle()!;
+      const after = tables.map(table => db.prepare(`SELECT * FROM ${table}`).all());
+      expect(after[0]).toEqual(before[0]);
+      expect(after[1]).toEqual(before[1]);
+      expect(after[2]).toEqual(before[2].map(row => ({ ...(row as object), base_sync_id: null })));
+      expect(db.prepare('SELECT version FROM _migrations ORDER BY version').all())
+        .toEqual(getMigrations(path.resolve(__dirname, '..', 'schemas')).map(m => ({ version: m.version })));
+      expect(db.prepare('PRAGMA integrity_check').get()).toEqual({ integrity_check: 'ok' });
+      expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    } finally {
+      await sqlite.close();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rolls back a failed 0055 including its ledger and can retry without losing existing data', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-mig-0055-rollback-'));
+    const db = createV54Fixture(tmpDir);
+    try {
+      const schemaDir = path.resolve(__dirname, '..', 'schemas');
+      const before = ['ai_sessions', 'tracker_items', 'tracker_transactions'].map(table => db.prepare(`SELECT * FROM ${table}`).all());
+      const migration = getMigrations(schemaDir).find(m => m.version === 55)!;
+      fs.writeFileSync(path.join(tmpDir, path.basename(migration.sqlFile!)),
+        fs.readFileSync(migration.sqlFile!, 'utf8') + '\nSELECT * FROM deliberately_missing_migration_fixture;');
+      expect(() => runMigrations(db, tmpDir)).toThrow(/deliberately_missing_migration_fixture/);
+      expect(db.prepare('SELECT MAX(version) AS version FROM _migrations').get()).toEqual({ version: 54 });
+      expect(db.prepare('PRAGMA table_info(tracker_transactions)').all().map((c: any) => c.name)).not.toContain('base_sync_id');
+      expect(['ai_sessions', 'tracker_items', 'tracker_transactions'].map(table => db.prepare(`SELECT * FROM ${table}`).all())).toEqual(before);
+      expect(runMigrations(db, schemaDir)).toEqual({ applied: [55], skipped: Array.from({ length: 54 }, (_, i) => i + 1) });
+      expect(db.prepare('SELECT base_sync_id FROM tracker_transactions').all()).toEqual([{ base_sync_id: null }]);
+      expect(runMigrations(db, schemaDir).applied).toEqual([]);
+      expect(db.prepare('PRAGMA integrity_check').get()).toEqual({ integrity_check: 'ok' });
+    } finally {
+      db.close();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('applies 0003 and adds searchable_text + message_kind to ai_agent_messages', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-mig-real-'));
     const schemaDir = path.resolve(__dirname, '..', 'schemas');
@@ -248,6 +324,33 @@ describe('runMigrations against the real schema dir', () => {
           'quarantined_at',
         ]),
       );
+    } finally {
+      await sqlite.close();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('applies 0055 once across reopens and round-trips tracker_transactions.base_sync_id', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nim-mig-0055-'));
+    const open = async () => {
+      const sqlite = new SQLiteDatabase({ dbDir: tmpDir, schemaDir: path.resolve(__dirname, '..', 'schemas'), slowQueryThresholdMs: 1000, sampleRate: 0 });
+      await sqlite.initialize();
+      return sqlite;
+    };
+    let sqlite = await open();
+    try {
+      await sqlite.query(
+        `INSERT INTO tracker_transactions (client_mutation_id, item_id, workspace_path, state, kind, payload, base_sync_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        ['m1', 'item', '/workspace', 'queued', 'update', '{}', 42],
+      );
+      // A second launch must neither re-run the ALTER (duplicate column) nor lose the value.
+      await sqlite.close();
+      sqlite = await open();
+      const handle = sqlite.getRawHandle()!;
+      expect(handle.prepare(`SELECT COUNT(*) AS n FROM _migrations WHERE version = 55`).get()).toEqual({ n: 1 });
+      const { rows } = await sqlite.query<{ base_sync_id: number | null }>(`SELECT base_sync_id FROM tracker_transactions WHERE client_mutation_id = $1`, ['m1']);
+      expect(rows.map(row => Number(row.base_sync_id))).toEqual([42]);
     } finally {
       await sqlite.close();
       fs.rmSync(tmpDir, { recursive: true, force: true });

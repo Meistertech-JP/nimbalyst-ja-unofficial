@@ -181,6 +181,7 @@ patchedDependencies:
   '@revolist/revogrid@4.21.4': c1fbe0323c46436ce9bf37b5f96fbeff48a5755ed400b4452b80555a92e728dd
   app-builder-lib@26.15.3: 15db002513a1606730bfa3575668ce8edccfbcdd5b3381e48768ccf73764989e
   ghostty-web@0.4.0-next.20.g1858a59: a70c3bb0f157195d17505fc2837ad9b7a9477e0a282265838ce3da4b896ca413
+  react-dom@19.2.7: ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e
 
 importers:
 
@@ -233,7 +234,7 @@ importers:
         version: 3.0.2
       virtua:
         specifier: 0.51.3
-        version: 0.51.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.51.3(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       zod-to-json-schema:
         specifier: ^3.25.0
         version: 3.25.1(zod@4.3.6)
@@ -291,7 +292,7 @@ importers:
         version: 0.44.0
       '@lexical/react':
         specifier: ^0.44.0
-        version: 0.44.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(yjs@13.6.32)
+        version: 0.44.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(yjs@13.6.32)
       '@lexical/rich-text':
         specifier: ^0.44.0
         version: 0.44.0
@@ -321,7 +322,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.43
@@ -357,7 +358,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       semver:
         specifier: ^7.7.4
         version: 7.8.5
@@ -403,7 +404,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/react':
         specifier: ^19.2.17
@@ -556,7 +557,7 @@ importers:
         version: 4.21.4(patch_hash=c1fbe0323c46436ce9bf37b5f96fbeff48a5755ed400b4452b80555a92e728dd)
       '@testing-library/react':
         specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.43
@@ -577,10 +578,10 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       react-i18next:
         specifier: ^17.0.9
-        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
+        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -598,7 +599,7 @@ importers:
     dependencies:
       '@floating-ui/react':
         specifier: ^0.27.19
-        version: 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@nimbalyst/collab-protocol':
         specifier: workspace:*
         version: link:../collab-protocol
@@ -665,10 +666,10 @@ importers:
         version: 4.0.0(electron@43.7.0(supports-color@10.2.2))
       '@excalidraw/excalidraw':
         specifier: 0.18.1
-        version: 0.18.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.18.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@floating-ui/react':
         specifier: ^0.27.19
-        version: 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
@@ -677,7 +678,7 @@ importers:
         version: 1.32.1(supports-color@10.2.2)(zod@4.3.6)
       '@monaco-editor/react':
         specifier: ^4.7.0
-        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@nimbalyst/collab-adapters':
         specifier: workspace:*
         version: link:../collab-adapters
@@ -884,16 +885,16 @@ importers:
         version: 3.3.3(react@19.2.7)
       react-dom:
         specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       react-is:
         specifier: ^19.2.4
         version: 19.2.4
       react-virtuoso:
         specifier: ^4.18.11
-        version: 4.18.11(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 4.18.11(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       recharts:
         specifier: ^3.5.0
-        version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1)
+        version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1)
       refractor:
         specifier: ^3.6.0
         version: 3.6.0
@@ -920,7 +921,7 @@ importers:
         version: 6.4.3(vega@6.4.0)
       virtua:
         specifier: 0.51.3
-        version: 0.51.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.51.3(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       web-streams-polyfill:
         specifier: ^4.2.0
         version: 4.2.0
@@ -1131,7 +1132,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/react':
         specifier: ^19.2.17
@@ -1162,7 +1163,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@nimbalyst/extension-sdk':
         specifier: workspace:*
@@ -1199,7 +1200,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@nimbalyst/extension-sdk':
         specifier: workspace:*
@@ -1236,7 +1237,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@nimbalyst/extension-sdk':
         specifier: workspace:*
@@ -1275,7 +1276,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@nimbalyst/extension-sdk':
         specifier: workspace:*
@@ -1303,7 +1304,7 @@ importers:
     dependencies:
       '@floating-ui/react':
         specifier: ^0.27.19
-        version: 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@formulajs/formulajs':
         specifier: ^4.4.9
         version: 4.6.0
@@ -1321,7 +1322,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       use-undoable:
         specifier: ^5.0.0
         version: 5.0.0(react@19.2.7)
@@ -1367,7 +1368,7 @@ importers:
         version: link:../../i18n
       '@xyflow/react':
         specifier: ^12.11.5
-        version: 12.11.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 12.11.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       elkjs:
         specifier: ^0.11.0
         version: 0.11.1
@@ -1382,7 +1383,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       zustand:
         specifier: ^5.0.0
         version: 5.0.11(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
@@ -1416,7 +1417,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/node':
         specifier: ^20.10.0
@@ -1460,7 +1461,7 @@ importers:
     dependencies:
       '@excalidraw/excalidraw':
         specifier: ^0.18.1
-        version: 0.18.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.18.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@excalidraw/mermaid-to-excalidraw':
         specifier: ^2.0.0
         version: 2.2.2
@@ -1472,7 +1473,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       zustand:
         specifier: ^5.0.2
         version: 5.0.11(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
@@ -1523,7 +1524,7 @@ importers:
     dependencies:
       '@floating-ui/react':
         specifier: ^0.27.19
-        version: 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@nimbalyst/i18n':
         specifier: workspace:*
         version: link:../../i18n
@@ -1532,7 +1533,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@nimbalyst/extension-sdk':
         specifier: workspace:*
@@ -1572,7 +1573,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/react':
         specifier: ^19.2.17
@@ -1625,7 +1626,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       rehype-katex:
         specifier: ^7.0.1
         version: 7.0.1
@@ -1656,7 +1657,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/react':
         specifier: ^19.2.17
@@ -1678,7 +1679,7 @@ importers:
     dependencies:
       '@floating-ui/react':
         specifier: ^0.27.19
-        version: 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       html2canvas:
         specifier: ^1.4.1
         version: 1.4.1
@@ -1687,7 +1688,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/react':
         specifier: ^19.2.17
@@ -1772,7 +1773,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/react':
         specifier: ^19.2.17
@@ -1805,10 +1806,10 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       recharts:
         specifier: ^3.8.0
-        version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1)
+        version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1)
     devDependencies:
       '@nimbalyst/extension-sdk':
         specifier: workspace:*
@@ -1848,7 +1849,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       sigma:
         specifier: ^3.0.3
         version: 3.0.3(graphology-types@0.24.8)
@@ -1882,7 +1883,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       unist-util-visit:
         specifier: ^5.1.0
         version: 5.1.0
@@ -1919,7 +1920,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^18.2.0 || ^19.0.0
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       sql.js:
         specifier: ^1.11.0
         version: 1.14.1
@@ -1953,7 +1954,7 @@ importers:
         version: 19.2.7
       react-i18next:
         specifier: ^17.0.9
-        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
+        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
 
   packages/ios:
     dependencies:
@@ -1965,7 +1966,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     devDependencies:
       '@types/react':
         specifier: ^19.2.17
@@ -2070,16 +2071,16 @@ importers:
         version: 0.115.0(zod@4.3.6)
       '@dnd-kit/core':
         specifier: ^6.3.1
-        version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 6.3.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@dnd-kit/sortable':
         specifier: ^10.0.0
-        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
+        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.7)
       '@floating-ui/react':
         specifier: ^0.27.19
-        version: 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@lexical/clipboard':
         specifier: ^0.44.0
         version: 0.44.0
@@ -2124,7 +2125,7 @@ importers:
         version: 0.44.0
       '@lexical/react':
         specifier: ^0.44.0
-        version: 0.44.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(yjs@13.6.32)
+        version: 0.44.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(yjs@13.6.32)
       '@lexical/rich-text':
         specifier: ^0.44.0
         version: 0.44.0
@@ -2145,7 +2146,7 @@ importers:
         version: 0.44.0(patch_hash=81c6b5edf6a448a1b58989a2f66ee89f52e78871c1dba49750e93b7739de3020)(yjs@13.6.32)
       '@monaco-editor/react':
         specifier: ^4.7.0
-        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@nimbalyst/collab-adapters':
         specifier: workspace:*
         version: link:../collab-adapters
@@ -2187,7 +2188,7 @@ importers:
         version: 1.7.5
       '@xyflow/react':
         specifier: ^12.11.5
-        version: 12.11.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 12.11.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@zed-industries/codex-acp':
         specifier: ^0.12.0
         version: 0.12.0
@@ -2247,7 +2248,7 @@ importers:
         version: 15.6.6(react@19.2.7)
       recharts:
         specifier: ^3.5.0
-        version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1)
+        version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1)
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@10.2.2)
@@ -2277,7 +2278,7 @@ importers:
         version: 6.4.3(vega@6.4.0)
       virtua:
         specifier: 0.51.3
-        version: 0.51.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.51.3(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       vite:
         specifier: ^7.3.6
         version: 7.3.6(@types/node@20.19.43)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
@@ -2305,7 +2306,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@types/diff':
         specifier: ^7.0.2
         version: 7.0.2
@@ -2332,7 +2333,7 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -2412,7 +2413,7 @@ importers:
     devDependencies:
       '@floating-ui/react':
         specifier: ^0.27.19
-        version: 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@lexical/code':
         specifier: 0.44.0
         version: 0.44.0
@@ -2451,7 +2452,7 @@ importers:
         version: 0.44.0
       '@lexical/react':
         specifier: 0.44.0
-        version: 0.44.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(yjs@13.6.32)
+        version: 0.44.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(yjs@13.6.32)
       '@lexical/rich-text':
         specifier: 0.44.0
         version: 0.44.0
@@ -2469,7 +2470,7 @@ importers:
         version: 0.44.0(patch_hash=81c6b5edf6a448a1b58989a2f66ee89f52e78871c1dba49750e93b7739de3020)(yjs@13.6.32)
       '@monaco-editor/react':
         specifier: ^4.7.0
-        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@nimbalyst/collab-bundle':
         specifier: workspace:*
         version: link:../collab-bundle
@@ -2535,10 +2536,10 @@ importers:
         version: 19.2.7
       react-dom:
         specifier: ^19.2.7
-        version: 19.2.7(react@19.2.7)
+        version: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       react-i18next:
         specifier: ^17.0.9
-        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
+        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
       tailwindcss:
         specifier: ^3.4.19
         version: 3.4.19(yaml@2.8.3)
@@ -10849,17 +10850,17 @@ snapshots:
       react: 19.2.7
       tslib: 2.8.1
 
-  '@dnd-kit/core@6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@dnd-kit/core@6.3.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@dnd-kit/accessibility': 3.1.1(react@19.2.7)
       '@dnd-kit/utilities': 3.2.2(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       tslib: 2.8.1
 
-  '@dnd-kit/sortable@10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+  '@dnd-kit/sortable@10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@dnd-kit/core': 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@dnd-kit/core': 6.3.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@dnd-kit/utilities': 3.2.2(react@19.2.7)
       react: 19.2.7
       tslib: 2.8.1
@@ -11416,14 +11417,14 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@excalidraw/excalidraw@0.18.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@excalidraw/excalidraw@0.18.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@braintree/sanitize-url': 6.0.2
       '@excalidraw/laser-pointer': 1.3.1
       '@excalidraw/mermaid-to-excalidraw': 2.2.2
       '@excalidraw/random-username': 1.1.0
-      '@radix-ui/react-popover': 1.1.6(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@radix-ui/react-tabs': 1.0.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-popover': 1.1.6(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-tabs': 1.0.2(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       browser-fs-access: 0.29.1
       canvas-roundrect-polyfill: 0.0.1
       clsx: 1.1.1
@@ -11447,7 +11448,7 @@ snapshots:
       points-on-curve: 1.0.1
       pwacompat: 2.0.17
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       roughjs: 4.6.4
       sass: 1.51.0
       tunnel-rat: 0.1.2(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)
@@ -11482,18 +11483,18 @@ snapshots:
       '@floating-ui/core': 1.8.0
       '@floating-ui/utils': 0.2.12
 
-  '@floating-ui/react-dom@2.1.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@floating-ui/react-dom@2.1.9(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@floating-ui/dom': 1.8.0
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
-  '@floating-ui/react@0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@floating-ui/react@0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@floating-ui/react-dom': 2.1.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@floating-ui/react-dom': 2.1.9(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@floating-ui/utils': 0.2.12
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       tabbable: 6.5.0
 
   '@floating-ui/utils@0.2.12': {}
@@ -12046,7 +12047,7 @@ snapshots:
       '@lexical/extension': 0.44.0
       lexical: 0.44.0
 
-  '@lexical/devtools-core@0.44.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@lexical/devtools-core@0.44.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@lexical/html': 0.44.0
       '@lexical/link': 0.44.0
@@ -12055,7 +12056,7 @@ snapshots:
       '@lexical/utils': 0.44.0
       lexical: 0.44.0
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
   '@lexical/dragon@0.44.0':
     dependencies:
@@ -12138,10 +12139,10 @@ snapshots:
       '@lexical/utils': 0.44.0
       lexical: 0.44.0
 
-  '@lexical/react@0.44.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(yjs@13.6.32)':
+  '@lexical/react@0.44.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(yjs@13.6.32)':
     dependencies:
-      '@floating-ui/react': 0.27.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@lexical/devtools-core': 0.44.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@floating-ui/react': 0.27.20(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@lexical/devtools-core': 0.44.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@lexical/dragon': 0.44.0
       '@lexical/extension': 0.44.0
       '@lexical/hashtag': 0.44.0
@@ -12159,7 +12160,7 @@ snapshots:
       '@lexical/yjs': 0.44.0(patch_hash=81c6b5edf6a448a1b58989a2f66ee89f52e78871c1dba49750e93b7739de3020)(yjs@13.6.32)
       lexical: 0.44.0
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       react-error-boundary: 6.1.2(react@19.2.7)
     optionalDependencies:
       yjs: 13.6.32
@@ -12282,12 +12283,12 @@ snapshots:
     dependencies:
       state-local: 1.0.7
 
-  '@monaco-editor/react@4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@monaco-editor/react@4.7.0(monaco-editor@0.55.1)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@monaco-editor/loader': 1.7.0
       monaco-editor: 0.55.1
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
   '@napi-rs/canvas-android-arm64@0.1.90':
     optional: true
@@ -12464,24 +12465,24 @@ snapshots:
 
   '@radix-ui/primitive@1.1.1': {}
 
-  '@radix-ui/react-arrow@1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-arrow@1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
-  '@radix-ui/react-collection@1.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-collection@1.0.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@radix-ui/react-compose-refs': 1.0.0(react@19.2.7)
       '@radix-ui/react-context': 1.0.0(react@19.2.7)
-      '@radix-ui/react-primitive': 1.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 1.0.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-slot': 1.0.1(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
   '@radix-ui/react-compose-refs@1.0.0(react@19.2.7)':
     dependencies:
@@ -12510,15 +12511,15 @@ snapshots:
       '@babel/runtime': 7.28.6
       react: 19.2.7
 
-  '@radix-ui/react-dismissable-layer@1.1.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-dismissable-layer@1.1.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@radix-ui/primitive': 1.1.1
       '@radix-ui/react-compose-refs': 1.1.1(@types/react@19.2.17)(react@19.2.7)
-      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-use-callback-ref': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-use-escape-keydown': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
@@ -12529,13 +12530,13 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
-  '@radix-ui/react-focus-scope@1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-focus-scope@1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@radix-ui/react-compose-refs': 1.1.1(@types/react@19.2.17)(react@19.2.7)
-      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-use-callback-ref': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
@@ -12553,105 +12554,105 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
-  '@radix-ui/react-popover@1.1.6(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-popover@1.1.6(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@radix-ui/primitive': 1.1.1
       '@radix-ui/react-compose-refs': 1.1.1(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-context': 1.1.1(@types/react@19.2.17)(react@19.2.7)
-      '@radix-ui/react-dismissable-layer': 1.1.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-dismissable-layer': 1.1.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-focus-guards': 1.1.1(@types/react@19.2.17)(react@19.2.7)
-      '@radix-ui/react-focus-scope': 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-focus-scope': 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-id': 1.1.0(@types/react@19.2.17)(react@19.2.7)
-      '@radix-ui/react-popper': 1.2.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@radix-ui/react-portal': 1.1.4(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@radix-ui/react-presence': 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-popper': 1.2.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-portal': 1.1.4(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-presence': 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-slot': 1.1.2(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-use-controllable-state': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       aria-hidden: 1.2.6
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       react-remove-scroll: 2.7.2(@types/react@19.2.17)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
-  '@radix-ui/react-popper@1.2.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-popper@1.2.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@floating-ui/react-dom': 2.1.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@radix-ui/react-arrow': 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@floating-ui/react-dom': 2.1.9(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-arrow': 1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-compose-refs': 1.1.1(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-context': 1.1.1(@types/react@19.2.17)(react@19.2.7)
-      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-use-callback-ref': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-use-layout-effect': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-use-rect': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-use-size': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/rect': 1.1.0
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
-  '@radix-ui/react-portal@1.1.4(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-portal@1.1.4(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-use-layout-effect': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
-  '@radix-ui/react-presence@1.0.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-presence@1.0.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@radix-ui/react-compose-refs': 1.0.0(react@19.2.7)
       '@radix-ui/react-use-layout-effect': 1.0.0(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
-  '@radix-ui/react-presence@1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-presence@1.1.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@radix-ui/react-compose-refs': 1.1.1(@types/react@19.2.17)(react@19.2.7)
       '@radix-ui/react-use-layout-effect': 1.1.0(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
-  '@radix-ui/react-primitive@1.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-primitive@1.0.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@radix-ui/react-slot': 1.0.1(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
-  '@radix-ui/react-primitive@2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-primitive@2.0.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@radix-ui/react-slot': 1.1.2(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
 
-  '@radix-ui/react-roving-focus@1.0.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-roving-focus@1.0.2(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@radix-ui/primitive': 1.0.0
-      '@radix-ui/react-collection': 1.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-collection': 1.0.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-compose-refs': 1.0.0(react@19.2.7)
       '@radix-ui/react-context': 1.0.0(react@19.2.7)
       '@radix-ui/react-direction': 1.0.0(react@19.2.7)
       '@radix-ui/react-id': 1.0.0(react@19.2.7)
-      '@radix-ui/react-primitive': 1.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 1.0.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-use-callback-ref': 1.0.0(react@19.2.7)
       '@radix-ui/react-use-controllable-state': 1.0.0(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
   '@radix-ui/react-slot@1.0.1(react@19.2.7)':
     dependencies:
@@ -12666,19 +12667,19 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
-  '@radix-ui/react-tabs@1.0.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@radix-ui/react-tabs@1.0.2(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@radix-ui/primitive': 1.0.0
       '@radix-ui/react-context': 1.0.0(react@19.2.7)
       '@radix-ui/react-direction': 1.0.0(react@19.2.7)
       '@radix-ui/react-id': 1.0.0(react@19.2.7)
-      '@radix-ui/react-presence': 1.0.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@radix-ui/react-primitive': 1.0.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@radix-ui/react-roving-focus': 1.0.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-presence': 1.0.0(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-primitive': 1.0.1(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
+      '@radix-ui/react-roving-focus': 1.0.2(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-use-controllable-state': 1.0.0(react@19.2.7)
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
   '@radix-ui/react-use-callback-ref@1.0.0(react@19.2.7)':
     dependencies:
@@ -12972,12 +12973,12 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@testing-library/dom': 10.4.1
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
       '@types/react-dom': 19.2.3(@types/react@19.2.17)
@@ -13567,12 +13568,12 @@ snapshots:
 
   '@xmldom/xmldom@0.8.15': {}
 
-  '@xyflow/react@12.11.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@xyflow/react@12.11.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.8)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@xyflow/system': 0.0.81
       classcat: 5.0.5
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       zustand: 4.5.7(@types/react@19.2.17)(immer@11.1.8)(react@19.2.7)
     optionalDependencies:
       '@types/react': 19.2.17
@@ -17144,7 +17145,7 @@ snapshots:
       shallow-equal: 3.1.0
       warning: 4.0.3
 
-  react-dom@19.2.7(react@19.2.7):
+  react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7):
     dependencies:
       react: 19.2.7
       scheduler: 0.27.0
@@ -17158,7 +17159,7 @@ snapshots:
     dependencies:
       react: 19.2.7
 
-  react-i18next@17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3):
+  react-i18next@17.0.20(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7)(typescript@6.0.3):
     dependencies:
       '@babel/runtime': 7.29.10
       html-parse-stringify: 4.0.1
@@ -17166,7 +17167,7 @@ snapshots:
       react: 19.2.7
       use-sync-external-store: 1.6.0(react@19.2.7)
     optionalDependencies:
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       typescript: 6.0.3
 
   react-is@17.0.2: {}
@@ -17241,10 +17242,10 @@ snapshots:
       react: 19.2.7
       refractor: 3.6.0
 
-  react-virtuoso@4.18.11(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  react-virtuoso@4.18.11(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7):
     dependencies:
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
   react@19.2.7: {}
 
@@ -17274,7 +17275,7 @@ snapshots:
 
   readdirp@4.1.2: {}
 
-  recharts@3.8.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1):
+  recharts@3.8.1(@types/react@19.2.17)(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react-is@19.2.4)(react@19.2.7)(redux@5.0.1):
     dependencies:
       '@reduxjs/toolkit': 2.11.2(react-redux@9.2.0(@types/react@19.2.17)(react@19.2.7)(redux@5.0.1))(react@19.2.7)
       clsx: 2.1.1
@@ -17283,7 +17284,7 @@ snapshots:
       eventemitter3: 5.0.4
       immer: 10.2.0
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
       react-is: 19.2.4
       react-redux: 9.2.0(@types/react@19.2.17)(react@19.2.7)(redux@5.0.1)
       reselect: 5.1.1
@@ -18561,10 +18562,10 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  virtua@0.51.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  virtua@0.51.3(react-dom@19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7))(react@19.2.7):
     optionalDependencies:
       react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
+      react-dom: 19.2.7(patch_hash=ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e)(react@19.2.7)
 
   vite-plugin-dts@4.5.4(@types/node@20.19.43)(supports-color@10.2.2)(typescript@6.0.3)(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)):
     dependencies:

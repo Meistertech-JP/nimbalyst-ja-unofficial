@@ -180,6 +180,8 @@ export function getFocusedOrNewWindow(): BrowserWindow {
 }
 
 export interface CreateWindowOptions {
+    /** Explicit project windows must not inherit another window's saved rail. */
+    restorePreviousProjects?: boolean;
     /** Show the window without activating the app (no focus steal). */
     showInactive?: boolean;
     /**
@@ -304,6 +306,7 @@ export function createWindow(
             mode: isWorkspaceMode ? 'workspace' : 'document',
             filePath: null,
             workspacePath: isWorkspaceMode ? workspacePath : null,
+            restorePreviousProjects: options?.restorePreviousProjects,
             documentEdited: false
         });
 

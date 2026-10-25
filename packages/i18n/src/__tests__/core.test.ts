@@ -264,7 +264,12 @@ describe('UI language preference', () => {
       .toBe('認証情報を安全に保存できないため、サインインを完了できませんでした。');
     expect(resources.en.editor.typeahead_menu_label).toBe('Typeahead menu');
     expect(resources.ja.editor.typeahead_menu_label).toBe('入力候補');
-    expect(totalKeys).toBe(14608);
+    expect(resources.en.orgSharing.team_recovery.open).toBe('Recover this organization');
+    expect(resources.ja.orgSharing.team_recovery.open).toBe('この組織を復旧');
+    expect(resources.ja.orgSharing.team_recovery.blockers.missing_body).toContain('暗号化した復旧バンドル');
+    expect(resources.ja.orgSharing.team_recovery.errors.sign_in).toBe('組織の復旧を続けるにはサインインしてください');
+    expect(resources.ja.aichat.clipboard_image).toBe('クリップボードの画像');
+    expect(totalKeys).toBe(14782);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

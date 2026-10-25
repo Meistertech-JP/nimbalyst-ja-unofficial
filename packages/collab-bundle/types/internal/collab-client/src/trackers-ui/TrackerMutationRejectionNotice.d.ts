@@ -1,6 +1,7 @@
 import React from 'react';
 import type { TrackerMutationRejection } from '../trackers/index';
 declare const REJECTION_TRANSLATION_KEYS: {
+    readonly recoveryConflict: "mutation_rejection.recovery_conflict";
     readonly forbidden: "mutation_rejection.forbidden";
     readonly staleKeyEpoch: "mutation_rejection.stale_key_epoch";
     readonly rotationLocked: "mutation_rejection.rotation_locked";
@@ -12,7 +13,7 @@ declare const REJECTION_TRANSLATION_KEYS: {
     readonly schemaExists: "mutation_rejection.schema_exists";
     readonly serverError: "mutation_rejection.server_error";
 };
-export type TrackerMutationRejectionTranslationKey = typeof REJECTION_TRANSLATION_KEYS[TrackerMutationRejection['code']] | 'mutation_rejection.rollback_prefix' | 'mutation_rejection.fallback';
+export type TrackerMutationRejectionTranslationKey = typeof REJECTION_TRANSLATION_KEYS[TrackerMutationRejection['code']] | 'mutation_rejection.rollback_prefix' | 'mutation_rejection.retained_prefix' | 'mutation_rejection.fallback';
 export declare function formatTrackerMutationRejection(rejection: TrackerMutationRejection, translate?: (key: TrackerMutationRejectionTranslationKey) => string): string;
 export interface TrackerMutationRejectionNoticeProps {
     rejection: TrackerMutationRejection | null;

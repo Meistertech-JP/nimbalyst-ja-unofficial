@@ -1,7 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
+import path from 'node:path';
 import { ShellFileAttribution, type ShellAttributionDependencies, type ShellFileState, type ShellFileEvidence, type ShellPersistenceOutcome } from '../ShellFileAttribution';
 import { ShellTrackingCoverage } from '../ShellTrackingCoverage';
+import { AgentToolActivityRegistry } from '@nimbalyst/runtime/ai/server/agentToolActivity';
 
 function fixture(beforeRead?: () => Promise<void>, prepareCheckout?: () => Promise<any>, overrides: Partial<ShellAttributionDependencies> = {}) {
   let now = 1000;
@@ -38,7 +40,7 @@ function fixture(beforeRead?: () => Promise<void>, prepareCheckout?: () => Promi
     unsubscribe,
     write: (file: string, fingerprint: string) => {
       now++;
-      state.set(file, { fingerprint, modifiedAt: now });
+      state.set(path.resolve(file), { fingerprint, modifiedAt: now });
       emit(file);
     },
     event: (file: string) => emit(file),
@@ -46,29 +48,27 @@ function fixture(beforeRead?: () => Promise<void>, prepareCheckout?: () => Promi
   };
 }
 describe('shell hook attribution', () => {
-  it.each(['one', 'neither', 'both'] as const)('resolves overlapping Bash commands when %s names the changed path', async names => {
+  it('withholds an edit made while Bash commands from two sessions overlap', async () => {
     const coverage = new ShellTrackingCoverage({ load: async () => undefined, save: async () => {}, notify: () => {} });
     const f = fixture(undefined, async () => ({
       defer: async () => true,
-      finish: async () => new Map([['/workspace/named.ts', 'edit']]),
+      finish: async () => new Map([[path.resolve('/workspace/named.ts'), 'edit']]),
     }), { report: (...args) => coverage.record(...args) });
     const a = await f.service.register('A', '/workspace');
     const b = await f.service.register('B', '/workspace');
     await coverage.open('A', a);
     await coverage.open('B', b);
-    await f.service.pre(a, 'sleep', 'Bash', {}, names === 'both' ? 'cat /workspace/named.ts' : 'sleep 30; touch ./other.ts');
-    await f.service.pre(b, 'writer', 'Bash', {}, names === 'neither' ? 'npm test' : "printf edit > ./nested/../named.ts");
+    await f.service.pre(a, 'sleep', 'Bash');
+    await f.service.pre(b, 'writer', 'Bash');
     f.write('/workspace/named.ts', 'changed');
     await f.service.flush();
-    expect(f.persist).not.toHaveBeenCalled(); // The winner must still await checkout reconciliation.
+    expect(f.persist).not.toHaveBeenCalled(); // Reconciliation may suppress unchanged bytes, never select an owner.
     await f.service.post(b, 'writer');
     await f.service.post(a, 'sleep');
-    if (names === 'one') {
-      expect(f.persist.mock.calls.map(([e]) => [e.sessionId, e.toolUseId, e.filePath])).toEqual([['B', 'writer', '/workspace/named.ts']]);
-    } else expect(f.persist).not.toHaveBeenCalled();
+    expect(f.persist).not.toHaveBeenCalled();
     const summaries = await coverage.readMany(['A', 'B']);
     for (const summary of summaries) {
-      expect(summary.reasons).toEqual(names === 'one' ? {} : { competingOwners: 1 });
+      expect(summary.reasons).toEqual({ competingOwners: 1 });
       expect(summary.state).toBe('no-detected-fault');
     }
     await f.service.release(a);
@@ -77,13 +77,13 @@ describe('shell hook attribution', () => {
     await coverage.close(b);
   });
 
-  it.each(['lost observation', 'mixed tools'] as const)('does not override %s with a unique command match', async kind => {
+  it.each(['lost observation', 'mixed tools'] as const)('withholds an overlapping edit with %s', async kind => {
     const f = fixture();
     const a = await f.service.register('A', '/workspace');
     const b = await f.service.register('B', '/workspace');
     await f.service.pre(a, 'other', kind === 'mixed tools' ? 'apply_patch' : 'Bash');
-    await f.service.pre(b, 'writer', 'Bash', {}, 'printf edit > ./named.ts');
-    if (kind === 'lost observation') f.service.watcherLost('/workspace');
+    await f.service.pre(b, 'writer', 'Bash');
+    if (kind === 'lost observation') f.service.watcherLost(path.resolve('/workspace'));
     f.write('/workspace/named.ts', 'edit');
     await f.service.post(b, 'writer');
     await f.service.post(a, 'other');
@@ -106,7 +106,7 @@ describe('shell hook attribution', () => {
       expect(f.report).toHaveBeenCalledWith(a, 'checkoutBaseline', undefined, 'timeout', {
         tool: 'Bash', error: 'capture timeout: 1250 ms budget exceeded',
       });
-      finish({ defer: async () => true, finish: async () => new Map([['/workspace/rebuilt.d.ts', 'edit']]) });
+      finish({ defer: async () => true, finish: async () => new Map([[path.resolve('/workspace/rebuilt.d.ts'), 'edit']]) });
       await Promise.resolve();
       f.write('/workspace/rebuilt.d.ts', 'identical');
       const completed = f.service.completed(a, 'timeout');
@@ -184,7 +184,7 @@ describe('shell hook attribution', () => {
     expect(f.service.getStats().activeWindows).toBe(1);
     f.write('/workspace/root.ts', 'owned');
     await f.service.post(a, 'root');
-    expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/root.ts']);
+    expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual([path.resolve('/workspace/root.ts')]);
     expect(f.report.mock.calls.map(([, reason]) => reason)).toEqual(['foreignTool', 'foreignTool']);
     await f.service.release(a);
   });
@@ -249,7 +249,7 @@ describe('shell hook attribution', () => {
     f.write('/workspace/next.ts', 'owned');
     await f.service.post(a, 'next-shell');
     await completed;
-    expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/next.ts']);
+    expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual([path.resolve('/workspace/next.ts')]);
     await f.service.release(a);
   });
 
@@ -267,7 +267,7 @@ describe('shell hook attribution', () => {
     await f.service.post(a, 'next-shell');
     await Promise.all([completed, duplicate]);
     expect(f.persist.mock.calls.map(([e]) => [e.filePath, e.toolUseId])).toEqual([
-      ['/workspace/next.ts', 'next-shell'],
+      [path.resolve('/workspace/next.ts'), 'next-shell'],
     ]);
     expect(f.service.getStats().ambiguous).toBe(1);
     expect(f.report.mock.calls.map(([, r]) => r)).not.toContain('missingPre');
@@ -298,13 +298,13 @@ describe('shell hook attribution', () => {
         sessionId: 'A',
         toolUseId: 'one',
         source: 'shell-hook-inferred',
-        filePath: '/workspace/shared.ts',
+        filePath: path.resolve('/workspace/shared.ts'),
       }),
       expect.objectContaining({
         sessionId: 'B',
         toolUseId: 'two',
         source: 'shell-hook-inferred',
-        filePath: '/workspace/shared.ts',
+        filePath: path.resolve('/workspace/shared.ts'),
       }),
     ]);
     await f.service.release(a);
@@ -324,7 +324,7 @@ describe('shell hook attribution', () => {
     expect(f.persist).not.toHaveBeenCalled();
     expect(f.service.getStats().ambiguous).toBe(1);
     await f.service.pre(a, 'shell', 'Bash');
-    f.known.set('/workspace/edit.ts', 'editor');
+    f.known.set(path.resolve('/workspace/edit.ts'), 'editor');
     f.write('/workspace/edit.ts', 'editor');
     await f.service.flush();
     expect(f.persist).not.toHaveBeenCalled();
@@ -399,7 +399,7 @@ it('reports lost pre-hooks and rejects delayed pre-hooks after terminal cleanup'
   await f.service.pre(a, 'good', 'Bash');
   f.write('/workspace/good.ts', 'owned');
   await f.service.post(a, 'good');
-  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/good.ts']);
+  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual([path.resolve('/workspace/good.ts')]);
   await f.service.release(a);
 });
 
@@ -464,22 +464,68 @@ it('abstains for one command when the pre-hook drain times out, not for the rest
   f.write('/workspace/recovered.ts', 'C');
   await f.service.post(a, 'after-backlog');
   expect(f.persist.mock.calls.map(([e]) => [e.filePath, e.toolUseId])).toEqual([
-    ['/workspace/slow-hash.ts', 'big-build'],
-    ['/workspace/recovered.ts', 'after-backlog'],
+    [path.resolve('/workspace/slow-hash.ts'), 'big-build'],
+    [path.resolve('/workspace/recovered.ts'), 'after-backlog'],
   ]);
   await f.service.release(a);
 });
 
-it('shares links with a concurrent uninstrumented session instead of withholding them', async () => {
-  const f = fixture(undefined, undefined, { otherSessions: () => ['claude-session'] });
+it('does not assign a session without tool tracking’s edits to a long-running test command', async () => {
+  const f = fixture(undefined, undefined, { otherSessions: () => ['cli-session'] });
   const a = await f.service.register('A', '/workspace');
   await f.service.pre(a, 'shell', 'Bash');
-  f.write('/workspace/shared.ts', 'codex');
+  f.advance(100_000);
+  f.write('/workspace/shared.ts', 'written by the concurrent session');
   await f.service.post(a, 'shell');
-  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/shared.ts']);
-  expect(f.report.mock.calls.map(([, r]) => r)).toEqual(['uninstrumented']);
-  expect(f.service.getStats().ambiguous).toBe(0);
+  expect(f.persist).not.toHaveBeenCalled();
+  expect(f.report.mock.calls.map(([, r]) => r)).toEqual(['unreportedSession']);
+  expect(f.service.getStats().ambiguous).toBe(1);
   await f.service.release(a);
+});
+
+it('retains uncertainty after an uninstrumented writer finishes before reconciliation', async () => {
+  let others = ['claude-session'];
+  let finishRead!: () => void;
+  const reading = new Promise<void>(resolve => { finishRead = resolve; });
+  const f = fixture(() => reading, undefined, { otherSessions: () => others });
+  const a = await f.service.register('test-runner', '/workspace');
+  await f.service.pre(a, 'test', 'Bash');
+  f.write('/workspace/other-session.ts', 'edit');
+  others = [];
+  finishRead();
+  await f.service.post(a, 'test');
+  expect(f.persist).not.toHaveBeenCalled();
+  await f.service.release(a);
+});
+
+it('judges a concurrent hook-reporting session by its tool windows, not its active turn', async () => {
+  let f!: ReturnType<typeof fixture>;
+  const activity = new AgentToolActivityRegistry(() => f.advance(0));
+  f = fixture(undefined, undefined, {
+    otherSessions: (_w, file, at) => ['claude', ...activity.activeSessions(file, at)],
+    otherWriter: (id, file, at) => activity.writerEvidence(id, file, at),
+  });
+  activity.declare('claude', '/workspace');
+  const codex = await f.service.register('codex', '/workspace');
+  await f.service.pre(codex, 'test', 'Bash');
+  // Claude's Edit owns its file; the long Codex command must not claim it.
+  activity.started('claude', 'edit', 'Edit', { file_path: '/workspace/edited.ts' });
+  f.write('/workspace/edited.ts', 'claude edit');
+  activity.finished('claude', 'edit');
+  await f.service.flush();
+  // A Claude shell command could have written anything: withhold.
+  f.advance(10_000);
+  activity.started('claude', 'gen', 'Bash', { command: 'node gen.js' });
+  f.write('/workspace/generated.ts', 'claude or codex');
+  activity.finished('claude', 'gen');
+  await f.service.flush();
+  // Claude is mid-turn but between tools: the change is Codex's.
+  f.advance(10_000);
+  f.write('/workspace/codex.ts', 'codex');
+  await f.service.post(codex, 'test');
+  expect(f.persist.mock.calls.map(([e]) => [e.sessionId, e.filePath])).toEqual([['codex', path.resolve('/workspace/codex.ts')]]);
+  expect(f.report.mock.calls.map(([, r]) => r)).toEqual(['competingOwners']);
+  await f.service.release(codex);
 });
 
 it('lets an in-flight completion persist and clear its tool marker before release', async () => {
@@ -497,7 +543,7 @@ it('lets an in-flight completion persist and clear its tool marker before releas
   const released = f.service.release(a);
   setTimeout(finish, 5);
   await Promise.all([completing, released]);
-  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/deferred.ts']);
+  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual([path.resolve('/workspace/deferred.ts')]);
   expect(activity.mock.calls.at(-1)).toEqual([a, 'last-command', false]);
 });
 
@@ -507,7 +553,7 @@ it.each(['drain', 'release', 'queued'] as const)('reconciles turn-end checkout e
   const activity = vi.fn(async () => {});
   const reconcile = vi.fn(async () => {
     await gate;
-    return new Map([['/workspace/edit.ts', 'edit'], ['/workspace/same.ts', 'unchanged'], ['/workspace/copy.ts', 'initialization']]);
+    return new Map([[path.resolve('/workspace/edit.ts'), 'edit'], [path.resolve('/workspace/same.ts'), 'unchanged'], [path.resolve('/workspace/copy.ts'), 'initialization']]);
   });
   const f = fixture(boundary === 'queued' ? () => gate : undefined, async () => ({ defer: async () => true, finish: reconcile }), { activity });
   const a = await f.service.register('A', '/workspace');
@@ -524,7 +570,7 @@ it.each(['drain', 'release', 'queued'] as const)('reconciles turn-end checkout e
   finish();
   await done;
   expect(reconcile).toHaveBeenCalledTimes(1);
-  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/edit.ts']);
+  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual([path.resolve('/workspace/edit.ts')]);
   expect(f.report.mock.calls.map(([, reason]) => reason)).toEqual(['unmatchedTool', 'initialization']);
   expect(activity).toHaveBeenLastCalledWith(a, 'orphan', false);
   await f.service.release(a);
@@ -545,18 +591,18 @@ it('does not turn a slow quit-time drain into a coverage fault', async () => {
 it('reports watcher loss and recovers on the next turn without importing missed changes', async () => {
   const f = fixture(), a = await f.service.register('A', '/workspace');
   await f.service.pre(a, 'before', 'Bash');
-  f.service.watcherLost('/workspace');
+  f.service.watcherLost(path.resolve('/workspace'));
   f.write('/workspace/lost.ts', 'unobserved');
   await f.service.post(a, 'before');
   expect(f.persist).not.toHaveBeenCalled();
   expect(f.report.mock.calls.map(([, r]) => r)).toContain('watcherLoss');
   f.service.endTurn(a);
-  f.service.watcherRecovered('/workspace');
+  f.service.watcherRecovered(path.resolve('/workspace'));
   await f.service.pre(a, 'after', 'Bash');
   f.event('/workspace/lost.ts');
   f.write('/workspace/future.ts', 'observed');
   await f.service.post(a, 'after');
-  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/future.ts']);
+  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual([path.resolve('/workspace/future.ts')]);
   await f.service.release(a);
 });
 
@@ -565,9 +611,9 @@ it('does not blame idle sessions or turn a watcher outage into overlap; recovers
   const f = fixture(), a = await f.service.register('A', '/workspace');
   const idle = await f.service.register('idle', '/workspace');
   await f.service.pre(a, 'interrupted', 'Bash');
-  f.service.watcherLost('/workspace');
+  f.service.watcherLost(path.resolve('/workspace'));
   expect(f.report.mock.calls.map(([g, r]) => [g, r])).toEqual([[a, 'watcherLoss']]);
-  f.service.watcherRecovered('/workspace');
+  f.service.watcherRecovered(path.resolve('/workspace'));
   await f.service.pre(a, 'during-old-window', 'Bash');
   f.write('/workspace/ambiguous.ts', 'unknown');
   await f.service.post(a, 'during-old-window');
@@ -577,7 +623,7 @@ it('does not blame idle sessions or turn a watcher outage into overlap; recovers
   await f.service.pre(a, 'fresh-boundary', 'Bash');
   f.write('/workspace/good.ts', 'owned');
   await f.service.post(a, 'fresh-boundary');
-  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual(['/workspace/good.ts']);
+  expect(f.persist.mock.calls.map(([e]) => e.filePath)).toEqual([path.resolve('/workspace/good.ts')]);
   await f.service.release(a);
   await f.service.release(idle);
 });

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Integrated upstream v0.82.3 with Japanese organization-recovery guidance and retained desktop language switching.
+
 ## [0.82.1-ja.1] — 2026-10-25
 
 - Released an unsigned Windows x64 update based on upstream v0.82.1; see the [bilingual release notes](RELEASE_NOTES_v0.82.1-ja.1.md) for verified behavior and limitations.
@@ -53,6 +55,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [0.82.3] - 2026-10-25
+
+
+### Added
+- Admins can recover a legacy-encryption team organization in place from Settings > Security & Encryption, keeping ticket numbers (needs the updated sync server).
+
+### Fixed
+- Opening a rail project in a new window now shows the selected project even when restoring previous projects is enabled.
+- Automatic CPU profiles no longer accumulate and fill disk space.
+- Codex sessions no longer list files edited by concurrent sessions; edits of unknown origin are named in the file tracking notice.
+- Codex sessions no longer show duplicate commit cards, and automatic commits show success only after the result arrives.
+- Moving a session under another in the sidebar no longer appoints a manager or sends either session a message.
+- Images copied in Windows can now be pasted into agent chat and documents when Nimbalyst runs under WSL.
+- Wiki start and team skills load their descriptions correctly, and malformed skill metadata logs concise warnings.
+- Development builds no longer stop responding when React inspects props containing sandboxed HTML embed windows.
+- Scrolling past an agent-displayed image or editor screenshot in a transcript no longer jumps back to it.
+- A pasted image that finishes saving after you undo or switch sessions no longer reverts prompt edits.
+- Unchanged transcript rows are no longer re-rendered while a session runs or reloads.
 
 ### Removed
 <!-- Removed features go here -->

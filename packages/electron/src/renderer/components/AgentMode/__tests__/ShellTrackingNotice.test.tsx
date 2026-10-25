@@ -8,6 +8,24 @@ import { render, screen, waitFor, cleanup, act } from '@testing-library/react';
 import { ShellTrackingNotice } from '../ShellTrackingNotice';
 import { initFileStateListeners } from '../../../store/listeners/fileStateListeners';
 
+it('localizes withheld-edit reasons and updates them after changing language', async () => {
+  const original = window.electronAPI;
+  const i18n = await createI18nInstance('ja');
+  Object.defineProperty(window, 'electronAPI', { configurable: true, value: { invoke: vi.fn().mockResolvedValue([
+    { sessionId: 'fixture', state: 'no-detected-fault', reasons: { competingOwners: 1, unreportedSession: 1 }, turns: [] },
+  ]) } });
+  try {
+    render(<I18nextProvider i18n={i18n}><Provider store={store}><ShellTrackingNotice sessionIds={['fixture']} /></Provider></I18nextProvider>);
+    expect((await screen.findByText('別のセッションでコマンドを実行していた間の編集は関連付けられませんでした。')).textContent).toContain('関連付けられませんでした');
+    expect(screen.getByText('ツール追跡に対応していないエージェントのセッションが動作していた間の編集は関連付けられませんでした。').textContent).toContain('ツール追跡');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByText('Edits made while another session was running a command were not linked.').textContent).toContain('were not linked');
+  } finally {
+    cleanup();
+    Object.defineProperty(window, 'electronAPI', { configurable: true, value: original });
+  }
+});
+
 it('refreshes coverage through the central listener, isolates scopes, and rejects stale responses', async () => {
   const original = window.electronAPI;
   let finishOld!: (value: any) => void;

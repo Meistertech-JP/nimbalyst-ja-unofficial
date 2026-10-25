@@ -3,6 +3,7 @@ import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TrackerMutationRejection } from '@nimbalyst/collab-client/trackers';
 
 const REJECTION_TRANSLATION_KEYS = {
+  recoveryConflict: 'mutation_rejection.recovery_conflict',
   forbidden: 'mutation_rejection.forbidden',
   staleKeyEpoch: 'mutation_rejection.stale_key_epoch',
   rotationLocked: 'mutation_rejection.rotation_locked',
@@ -18,9 +19,11 @@ const REJECTION_TRANSLATION_KEYS = {
 export type TrackerMutationRejectionTranslationKey =
   | typeof REJECTION_TRANSLATION_KEYS[TrackerMutationRejection['code']]
   | 'mutation_rejection.rollback_prefix'
+  | 'mutation_rejection.retained_prefix'
   | 'mutation_rejection.fallback';
 
 const REJECTION_EXPLANATIONS: Record<TrackerMutationRejection['code'], string> = {
+  recoveryConflict: 'An older queued edit needs review against the recovered item.',
   forbidden: 'Your permission no longer allows this change.',
   staleKeyEpoch: 'The tracker encryption state changed before the server could accept this change.',
   rotationLocked: 'The tracker is temporarily locked while its encryption state changes.',
@@ -41,8 +44,10 @@ export function formatTrackerMutationRejection(
     ? translate(REJECTION_TRANSLATION_KEYS[rejection.code])
     : REJECTION_EXPLANATIONS[rejection.code] ?? 'The server refused this change.';
   const detail = rejection.message?.trim();
-  const rollbackPrefix = translate ? translate('mutation_rejection.rollback_prefix') : 'Change rolled back.';
-  return `${rollbackPrefix} ${explanation}${detail ? ` ${detail}` : ''}`;
+  const outcome = translate
+    ? translate(rejection.code === 'recoveryConflict' ? 'mutation_rejection.retained_prefix' : 'mutation_rejection.rollback_prefix')
+    : rejection.code === 'recoveryConflict' ? 'Queued edit retained for review.' : 'Change rolled back.';
+  return `${outcome} ${explanation}${detail ? ` ${detail}` : ''}`;
 }
 
 export interface TrackerMutationRejectionNoticeProps {

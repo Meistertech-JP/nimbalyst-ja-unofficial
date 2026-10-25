@@ -1,13 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// @vitest-environment node
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 
+const settingsFixture = await vi.hoisted(async () => {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  return { directory: mkdtempSync(join(tmpdir(), 'collab-asset-settings-')) };
+});
 vi.mock("electron", () => ({
-  app: { getPath: () => os.tmpdir() },
+  app: { getPath: () => settingsFixture.directory },
   safeStorage: { isEncryptionAvailable: () => false },
 }));
+afterAll(() => fs.rm(settingsFixture.directory, { recursive: true, force: true }));
 
 import {
   CollabAssetStore,
@@ -69,6 +77,7 @@ describe.each(["pglite", "sqlite"] as const)(
     const deleteKey = vi.fn(async () => undefined);
     const keyProvider: CollabAssetDeviceKeyProvider = {
       getKey: async () => new Uint8Array(32).fill(11),
+      getExistingKey: async () => new Uint8Array(32).fill(11),
       deleteKey,
     };
 
@@ -106,6 +115,14 @@ describe.each(["pglite", "sqlite"] as const)(
       await close();
       if (tempDir) await fs.rm(tempDir, { recursive: true, force: true });
       tempDir = null;
+    });
+
+    it("reads an attachment for recovery without touching its storage", async () => {
+      await store.cacheAsset({ identity: assetIdentity, bytes: new Uint8Array([8, 9]), mimeType: "image/png", fileName: "test.png" });
+      const query = vi.spyOn(db, "query");
+      expect([...(await store.loadAsset(assetIdentity, { readOnly: true }))!.bytes]).toEqual([8, 9]);
+      expect(query.mock.calls.every(([sql]) => /^\s*SELECT/.test(sql))).toBe(true);
+      query.mockRestore();
     });
 
     it("round-trips a cached blob encrypted under asset-bound AAD", async () => {

@@ -5,7 +5,8 @@ import { shouldAcceptPromptSuggestion } from './promptSuggestionKeys';
 import { GenericTypeahead, TypeaheadOption } from '../Typeahead/GenericTypeahead';
 import { extractTriggerMatch, getSlashTypeaheadScope, insertAtTrigger, type SlashTypeaheadScope, TriggerMatch } from '../Typeahead/typeaheadUtils';
 import { buildSlashCommandOptions, fetchSlashCommandEntries, type SlashCommandEntry } from '../Typeahead/slashCommandAutocomplete';
-import { readClipboard, encodeMarkdownLinkPath, type ChatAttachment } from '@nimbalyst/runtime';
+import { readClipboard, isEmptyPaste, encodeMarkdownLinkPath, type ChatAttachment } from '@nimbalyst/runtime';
+import { usePastedImage } from './usePastedImage';
 import type { TokenUsageCategory } from '@nimbalyst/runtime/ai/server/types';
 import type { EffortLevel, ThinkingMode } from '../../utils/modelUtils';
 import { AttachmentPreviewList } from '../AgenticCoding/AttachmentPreviewList';
@@ -1064,6 +1065,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
       // past this paste/drop -- we drop the result on resolve.
       const undoCountAtStart = getUndoCount();
       pasteUndoCountRef.current.set(processingId, undoCountAtStart);
+      setProcessingAttachments(prev => [...prev, { id: processingId, filename: file.name }]);
 
       try {
         const validation = await window.electronAPI.invoke('attachment:validate', {
@@ -1073,14 +1075,12 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         });
 
         if (!validation.valid) {
+          setProcessingAttachments(prev => prev.filter(p => p.id !== processingId));
           pasteUndoCountRef.current.delete(processingId);
           console.error('[AIInput] File validation failed:', validation.error);
           errorNotificationService.showError(tAgents('input.attachment_rejected'), validation.error || tAgents('input.invalid_file'));
           return;
         }
-
-        // Add to processing state before starting compression
-        setProcessingAttachments(prev => [...prev, { id: processingId, filename: file.name }]);
 
         const arrayBuffer = await file.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
@@ -1107,7 +1107,8 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         if (result.success && result.attachment) {
           onAttachmentAdd(result.attachment);
           const reference = `@${file.name} `;
-          onChange(value + (value ? ' ' : '') + reference);
+          const currentValue = textareaRef.current?.value ?? value;
+          onChange(currentValue + (currentValue ? ' ' : '') + reference);
         } else {
           console.error('[AIInput] Failed to save attachment:', result.error);
           errorNotificationService.showError(tAgents('input.attachment_failed'), result.error || tAgents('input.save_failed'));
@@ -1120,6 +1121,10 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
         errorNotificationService.showError(tAgents('input.attachment_failed'), tAgents('input.attach_failed'));
       }
     }, [onAttachmentAdd, sessionId, value, onChange, getUndoCount, tAgents]);
+
+    const attachPastedImage = usePastedImage({
+      sessionId, getUndoCount, captureSnapshot, pushSnapshot, handleFileAttachment, setProcessingAttachments,
+    });
 
     // Drag and drop handlers
     const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -1245,13 +1250,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
             e.preventDefault();
             const file = item.getAsFile();
             if (file) {
-              // Generate unique filename for pasted images (clipboard gives generic "image.png")
-              const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-              const ext = file.type.split('/')[1] || 'png';
-              const uniqueName = `pasted-image-${timestamp}.${ext}`;
-              const renamedFile = new File([file], uniqueName, { type: file.type });
-              pushSnapshot(captureSnapshot(), { boundary: true });
-              await handleFileAttachment(renamedFile);
+              await attachPastedImage(file);
             }
             return; // Exit early after handling image
           }
@@ -1260,7 +1259,15 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
 
       // Get pasted text for further processing
       const pastedText = e.clipboardData.getData('text');
-      if (!pastedText) return;
+      if (!pastedText) {
+        // Under WSL an image copied in Windows arrives as an empty text entry
+        // (WSLg passes only text to Linux apps); ask the host for the image.
+        if (onAttachmentAdd && isEmptyPaste(e.clipboardData)) {
+          e.preventDefault();
+          await attachPastedImage();
+        }
+        return;
+      }
 
       // Handle large text pastes as attachments (keeps transcript clean)
       if (onAttachmentAdd && sessionId) {
@@ -1292,7 +1299,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
       // Note: ordinary in-line text pastes fall through to the textarea's
       // native paste, which fires onChange and is recorded by the typing
       // path (with coalescing).
-    }, [onAttachmentAdd, handleFileAttachment, provider, value, onChange, sessionId, pushSnapshot, captureSnapshot]);
+    }, [onAttachmentAdd, handleFileAttachment, attachPastedImage, provider, value, onChange, sessionId, pushSnapshot, captureSnapshot]);
 
     // Handle attachment removal
     const handleRemoveAttachment = useCallback((attachmentId: string) => {

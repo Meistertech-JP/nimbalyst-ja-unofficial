@@ -89,6 +89,31 @@ describe('PGLiteToSQLiteMigrator', () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
+  it('preserves recovery base revisions through the shipping PGLite upgrade and SQLite cutover', async () => {
+    await seedPgliteSchema();
+    await seedRows();
+    const worker = fs.readFileSync(path.resolve(__dirname, '../../worker.js'), 'utf8');
+    const migration = worker.match(/\/\/ Offline transaction queue\.[\s\S]*?this\.db\.exec\(`([\s\S]*?)`\)/)?.[1];
+    if (!migration) throw new Error('Missing tracker transaction PGLite migration');
+    const before = await pglite.query('SELECT * FROM tracker_transactions');
+    await pglite.exec(migration);
+    expect((await pglite.query('SELECT * FROM tracker_transactions')).rows)
+      .toEqual(before.rows.map(row => ({ ...(row as object), base_sync_id: null })));
+    await pglite.query('UPDATE tracker_transactions SET base_sync_id = $1 WHERE client_mutation_id = $2', [42, 'cm-1']);
+    await pglite.exec(migration);
+    expect((await pglite.query<{ base_sync_id: number }>('SELECT base_sync_id FROM tracker_transactions')).rows.map(row => Number(row.base_sync_id)))
+      .toEqual([42]);
+    const migrator = new PGLiteToSQLiteMigrator();
+    await migrator.migrate({ pglite, sqlite, batchSize: 1, spotCheckPerTable: 1 });
+    const expected = { client_mutation_id: 'cm-1', item_id: 'tr-1', state: 'persistedEnqueue', base_sync_id: 42 };
+    expect((await sqlite.query('SELECT client_mutation_id, item_id, state, base_sync_id FROM tracker_transactions')).rows).toEqual([expected]);
+    await sqlite.close();
+    sqlite = new SQLiteDatabase({ dbDir: sqliteDir, schemaDir: SCHEMA_DIR, sampleRate: 0 });
+    await sqlite.initialize();
+    expect((await sqlite.query('SELECT client_mutation_id, item_id, state, base_sync_id FROM tracker_transactions')).rows).toEqual([expected]);
+    expect(sqlite.getRawHandle()!.pragma('foreign_key_check')).toEqual([]);
+  });
+
   it('preserves external per-file cursors through conversion, final catch-up, and target reopen', async () => {
     await seedPgliteSchema();
     // Execute the shipping cursor migration on the isolated source.

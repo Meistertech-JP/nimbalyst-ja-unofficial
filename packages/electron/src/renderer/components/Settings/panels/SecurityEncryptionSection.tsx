@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
+import { TeamRecoverySection } from './TeamRecoverySection';
 
 type KeyCustodyMode = 'server-managed' | 'unmigrated';
 
@@ -12,30 +13,33 @@ interface Props {
  * Organization encryption is server-managed product infrastructure and is the
  * only supported mode. This surface reports whether the organization carries
  * the server-managed marker; one that does not was never converted and the
- * server refuses its team data, so it has to be set up again.
+ * server refuses its team data. An unavailable probe is not a migration diagnosis.
  */
 export function SecurityEncryptionSection({ orgId }: Props) {
   const { t } = useTranslation('orgSharing');
   const [mode, setMode] = useState<KeyCustodyMode | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const loadedOrgId = useRef<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    try {
+    // Rechecking the same organization keeps its last mode, so an open recovery
+    // section is not unmounted, which would release its collected sources.
+    if (loadedOrgId.current !== orgId) { loadedOrgId.current = orgId; setMode(null); }
+    void (async () => { try {
       const statusResult = await window.electronAPI.team.getKeyCustodyStatus(orgId);
-      // Anything other than an explicit success + server-managed is treated as
-      // unusable. An unknown value must not read as "fine".
-      setMode(statusResult?.success && statusResult.mode === 'server-managed'
-        ? 'server-managed'
-        : 'unmigrated');
+      if (cancelled) return;
+      setMode(statusResult?.success && (statusResult.mode === 'server-managed' || statusResult.mode === 'unmigrated')
+        ? statusResult.mode : null);
     } catch {
-      setMode(null);
+      if (!cancelled) setMode(null);
     } finally {
-      setLoading(false);
-    }
-  }, [orgId]);
-
-  useEffect(() => { void refresh(); }, [refresh]);
+      if (!cancelled) setLoading(false);
+    } })();
+    return () => { cancelled = true; };
+  }, [orgId, refreshKey]);
 
   const unmigrated = mode === 'unmigrated';
 
@@ -79,6 +83,8 @@ export function SecurityEncryptionSection({ orgId }: Props) {
               {t('security_encryption.active')}
             </p>
           )}
+          {!loading && <button type="button" className="mt-3 text-xs text-[var(--nim-primary)]" onClick={() => setRefreshKey(k => k + 1)}>{t('security_encryption.check_again')}</button>}
+          {unmigrated && <TeamRecoverySection orgId={orgId} />}
         </div>
       </div>
     </section>

@@ -1119,6 +1119,7 @@
     "share_type_with_team": "Share with team..."
   },
   "sync": {
+    "recovery_conflict": "An edit made before this organization was recovered wasn't applied. Reopen the item and make the change again.",
     "team_types_not_syncing": "Team types are not syncing: this project's tracker sync is not connected.",
     "key_rotation": "Team key rotation in progress. Your changes will resume in a moment.",
     "key_changed": "Your team's encryption key changed. Ask your team admin to share the new key envelope with you.",
@@ -1751,6 +1752,8 @@
     "heading": "Links"
   },
   "mutation_rejection": {
+    "recovery_conflict": "An older queued edit needs review against the recovered item.",
+    "retained_prefix": "Queued edit retained for review.",
     "title": "Server rejected the change.",
     "rollback_prefix": "Change rolled back.",
     "forbidden": "Your permission no longer allows this change.",

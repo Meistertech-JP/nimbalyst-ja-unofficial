@@ -30,6 +30,7 @@ function setState(partial: Partial<Record<TrackerSyncRejection['code'], TrackerS
     staleKeyEpoch: null,
     rotationLocked: null,
     custodyUnavailable: null,
+    recoveryConflict: null,
     ...partial,
   });
 }

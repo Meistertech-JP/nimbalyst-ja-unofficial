@@ -38,6 +38,7 @@ type ToolCall = NonNullable<TranscriptViewMessage['toolCall']>;
 import { isDarkThemeAtom } from '../../../../store/atoms/theme';
 import { GifPlayer } from './GifPlayer';
 import { useImageSource } from './displayImageSource';
+import { useRememberedImageHeight } from './rememberedImageHeight';
 import { useTranscriptImageGallery } from '../transcriptImageGalleryContext';
 import { displayImageKey, type DisplayImageContent } from '../../utils/transcriptImages';
 
@@ -530,51 +531,62 @@ const ImageDisplay: React.FC<{
 }> = ({ image, description, readFile, className }) => {
   const { t } = useTranslation('aichat');
   const { imageData, loading, error, setError } = useImageSource(image, readFile);
+  const height = useRememberedImageHeight(image.path || null);
 
-  if (loading) {
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center p-4 bg-nim-secondary rounded-md border border-nim">
+          <span className="text-nim-muted text-sm">{t('visual.loading')}</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      const loadError = error.startsWith('Failed to load image: ')
+        ? t('visual.image_load_failed', { error: error.slice('Failed to load image: '.length) })
+        : error;
+      return (
+        <div className="flex flex-col items-center gap-2 p-4 bg-nim-secondary rounded-md border border-nim">
+          <span className="text-nim-error text-sm">{loadError}</span>
+          <span className="font-mono text-xs text-nim-faint break-all">{image.path}</span>
+        </div>
+      );
+    }
+
+    const isGif = image.path.toLowerCase().endsWith('.gif');
+
     return (
-      <div className="flex items-center justify-center p-4 bg-nim-secondary rounded-md border border-nim">
-        <span className="text-nim-muted text-sm">{t('visual.loading')}</span>
+      <div className="overflow-hidden rounded-md">
+        {isGif && imageData ? (
+          <GifPlayer
+            src={imageData}
+            alt={description || t('visual.image')}
+            className="max-w-full"
+          />
+        ) : (
+          <img
+            src={imageData || ''}
+            alt={description || t('visual.image')}
+            className={`max-w-full h-auto block ${className || ''}`.trim()}
+            onLoad={height.onImageLoad}
+            onError={(e) => {
+              console.error('[VisualDisplayWidget] Image element failed to load:', {
+                path: image.path,
+                src: imageData?.substring(0, 100) + (imageData && imageData.length > 100 ? '...' : '')
+              });
+              height.onImageError();
+              setError(t('visual.image_render_failed', { path: image.path }));
+            }}
+          />
+        )}
       </div>
     );
-  }
-
-  if (error) {
-    const loadError = error.startsWith('Failed to load image: ')
-      ? t('visual.image_load_failed', { error: error.slice('Failed to load image: '.length) })
-      : error;
-    return (
-      <div className="flex flex-col items-center gap-2 p-4 bg-nim-secondary rounded-md border border-nim">
-        <span className="text-nim-error text-sm">{loadError}</span>
-        <span className="font-mono text-xs text-nim-faint break-all">{image.path}</span>
-      </div>
-    );
-  }
-
-  const isGif = image.path.toLowerCase().endsWith('.gif');
+  };
 
   return (
-    <div className="overflow-hidden rounded-md">
-      {isGif && imageData ? (
-        <GifPlayer
-          src={imageData}
-          alt={description || t('visual.image')}
-          className="max-w-full"
-        />
-      ) : (
-        <img
-          src={imageData || ''}
-          alt={description || t('visual.image')}
-          className={`max-w-full h-auto block ${className || ''}`.trim()}
-          onError={(e) => {
-            console.error('[VisualDisplayWidget] Image element failed to load:', {
-              path: image.path,
-              src: imageData?.substring(0, 100) + (imageData && imageData.length > 100 ? '...' : '')
-            });
-            setError(t('visual.image_render_failed', { path: image.path }));
-          }}
-        />
-      )}
+    <div ref={height.ref} style={height.style} className="visual-display-image">
+      {renderContent()}
     </div>
   );
 };

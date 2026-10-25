@@ -10,12 +10,14 @@ export const shellCoverageReasons = {
   watcherLoss: 'The workspace file watcher was interrupted',
   hookFailure: 'A tracking hook could not be delivered',
   overlap: 'Earlier events were suppressed while ownership or tracking was uncertain',
-  competingOwners: 'Concurrent sessions made ownership uncertain',
+  competingOwners: 'Edits made while another session was running a command were not linked',
   toolOverlap: 'Overlapping tools made ownership uncertain',
   observationGap: 'Events arrived during an interrupted tracking window',
   checkoutBaseline: 'Repository initialization could not be reconciled',
   initialization: 'Repository checkout files were excluded',
+  // Recorded by earlier versions, which shared the link with the other session. No longer emitted.
   uninstrumented: 'Another agent session was active; links are shared, not exclusive',
+  unreportedSession: 'Edits made while an agent session without tool tracking was active were not linked',
   overflow: 'Tracking exceeded its bounded capacity',
   throttled: 'File links could not be saved within the rate limit',
   quota: 'The session reached its file tracking limit',
@@ -53,18 +55,25 @@ export function hasShellCoverageGap(reasons: ShellCoverageCounts): boolean {
     ([reason, count]) => count && isShellCoverageFault(reason)
   );
 }
-export function shellCoverageDetails(coverage: ShellCoverageSummary[]): string[] {
+/** Not instrumentation faults, but each one is a real change that was left unlinked. */
+const WITHHELD_EDIT_REASONS: ReadonlySet<string> = new Set(['competingOwners', 'unreportedSession']);
+export function shellCoverageDetails(
+  coverage: ShellCoverageSummary[],
+  translate?: (reason: ShellCoverageReason | 'currentlyInterrupted', fallback: string) => string,
+): string[] {
   const reasons = new Set<ShellCoverageReason>();
   for (const item of coverage)
     for (const reason of Object.keys(item.reasons) as ShellCoverageReason[]) {
-      if (isShellCoverageFault(reason) && item.reasons[reason]) reasons.add(reason);
+      if ((isShellCoverageFault(reason) || WITHHELD_EDIT_REASONS.has(reason)) && item.reasons[reason]) reasons.add(reason);
     }
-  const details: string[] = [...reasons].map((reason) => shellCoverageReasons[reason]);
-  if (coverage.some(item => item.observation === 'recovering')) details.unshift('File observation is currently interrupted');
+  const details: string[] = [...reasons].map((reason) => translate ? translate(reason, shellCoverageReasons[reason]) : shellCoverageReasons[reason]);
+  if (coverage.some(item => item.observation === 'recovering')) details.unshift(translate
+    ? translate('currentlyInterrupted', 'File observation is currently interrupted')
+    : 'File observation is currently interrupted');
   return details;
 }
 
 export function isShellCoverageFault(reason: string): boolean {
   // Cross-session ownership uncertainty is informational, not an instrumentation fault.
-  return !['excluded', 'knownWrite', 'initialization', 'suspiciousWindow', 'uninstrumented', 'foreignTool', 'competingOwners'].includes(reason);
+  return !['excluded', 'knownWrite', 'initialization', 'suspiciousWindow', 'uninstrumented', 'unreportedSession', 'foreignTool', 'competingOwners'].includes(reason);
 }
