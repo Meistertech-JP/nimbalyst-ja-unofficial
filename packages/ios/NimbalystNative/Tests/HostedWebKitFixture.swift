@@ -77,6 +77,14 @@ final class HostedWebKitFixture: NSObject, WKNavigationDelegate {
                           "The Pages fixture must be attached to its visible host window")
     }
 
+    /// Read native geometry/lifecycle only; no JavaScript or document identifiers.
+    func state(of webView: WKWebView) -> String {
+        let attachedWindow = webView.window
+        let scene = attachedWindow?.windowScene
+        let activeScenes = UIApplication.shared.connectedScenes.filter { $0.activationState == .foregroundActive }.count
+        return " inWindow=\(attachedWindow != nil) hostWindow=\(attachedWindow != nil && attachedWindow === window) webHidden=\(webView.isHidden) windowKey=\(attachedWindow?.isKeyWindow ?? false) windowHidden=\(attachedWindow?.isHidden ?? true) sceneState=\(scene?.activationState.rawValue ?? -999) foregroundActive=\(scene?.activationState == .foregroundActive) activeSceneCount=\(activeScenes)"
+    }
+
     private func completeNavigation(error: Error? = nil) {
         guard let expectation = navigationExpectation else { return }
         navigationExpectation = nil

@@ -77,9 +77,33 @@ private let fixtureHTML = """
 </body></html>
 """
 
+/// Bounded lifecycle events only: never log URLs, page content, or failure payloads.
+@MainActor
+private enum PagesWebViewTrace {
+    static func log(_ event: String, id: String, controller: PagesWebController? = nil) {
+        var state = ""
+        if let controller {
+            let phase: String
+            switch controller.phase {
+            case .idle: phase = "idle"
+            case .loading: phase = "loading"
+            case .ready: phase = "ready"
+            case .failed: phase = "failed"
+            }
+            let webView = controller.webView
+            state = " phase=\(phase) bridgeReady=\(controller.bridgeReady) titleEmpty=\(controller.title.isEmpty) titleMatchesFixture=\(controller.title == "Fixture Page") isLoading=\(webView.isLoading) attached=\(webView.superview != nil) bounds=\(webView.bounds)"
+            #if os(iOS)
+            state += HostedWebKitFixture.shared.state(of: webView)
+            #endif
+        }
+        print("[PagesReadiness] uptime=\(ProcessInfo.processInfo.systemUptime) id=\(id) event=\(event)\(state)")
+    }
+}
+
 /// One controller over the fixture page, with the selection under test control.
 @MainActor
 private final class Harness {
+    let traceID: String
     var account = ConsoleAccountContext(accountId: "acct", apiBase: URL(string: "https://sync.example")!, generation: 1)
     var loads: [URL] = []
     var opened: [URL] = []
@@ -89,6 +113,9 @@ private final class Harness {
     var controller: PagesWebController!
 
     init() {
+        let traceID = UUID().uuidString
+        self.traceID = traceID
+        PagesWebViewTrace.log("harness.create.enter", id: traceID)
         MintStub.reset()
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MintStub.self]
@@ -119,10 +146,23 @@ private final class Harness {
             isOnline: { true },
             hooks: .init(openExternally: { [weak self] in self?.opened.append($0) }, appRoute: { _ in }),
             loader: { [weak self] webView, url in
+                self?.trace("loader.enter")
                 self?.loads.append(url)
                 webView.loadHTMLString(fixtureHTML, baseURL: url)
+                self?.trace("loader.return")
             }
         )
+        trace("harness.create.return")
+    }
+
+    func trace(_ event: String) {
+        PagesWebViewTrace.log(event, id: traceID, controller: controller)
+    }
+
+    func tearDown() {
+        trace("teardown.enter")
+        controller.tearDown()
+        trace("teardown.return")
     }
 
     func js(_ source: String) async throws -> Any? {
@@ -147,12 +187,21 @@ final class PagesWebViewTests: XCTestCase {
     }
 
     private func openReady(_ harness: Harness) async throws {
+        harness.trace("openReady.enter")
         #if os(iOS)
+        harness.trace("prepare.enter")
         try await HostedWebKitFixture.shared.prepare(for: self)
+        harness.trace("prepare.return")
+        harness.trace("attach.enter")
         try HostedWebKitFixture.shared.attach(harness.controller.webView)
+        harness.trace("attach.return")
         #endif
+        harness.trace("initialOpen.enter")
         harness.controller.open(wiki)
+        harness.trace("initialOpen.return")
+        harness.trace("readiness.enter")
         let ready = await waitUntil { harness.controller.bridgeReady && harness.controller.title == "Fixture Page" }
+        harness.trace(ready ? "readiness.ready" : "readiness.failed")
         // Do not queue JavaScript into an unready process after recording failure.
         _ = try XCTUnwrap(ready ? harness.controller : nil,
                           "phase=\(harness.controller.phase) title=\(harness.controller.title)")
@@ -161,7 +210,7 @@ final class PagesWebViewTests: XCTestCase {
     func testFixturePageSpeaksTheBridge() async throws {
         let harness = Harness()
         let controller = harness.controller!
-        defer { controller.tearDown() }
+        defer { harness.tearDown() }
 
         // ready + route: native title from the console.
         try await openReady(harness)
@@ -211,7 +260,7 @@ final class PagesWebViewTests: XCTestCase {
     // even when the selection changes while its request is being answered.
     func testSessionForAPreviousSelectionIsNeverDelivered() async throws {
         let harness = Harness()
-        defer { harness.controller.tearDown() }
+        defer { harness.tearDown() }
         try await openReady(harness)
         // Re-pairing (same account id, new generation) lands during the JWT read.
         harness.duringJwtRead = { [unowned harness] in
@@ -236,7 +285,7 @@ final class PagesWebViewTests: XCTestCase {
         XCTAssertTrue(started)
 
         weak var released = harness!.controller
-        harness!.controller.tearDown()
+        harness!.tearDown()
         XCTAssertNil(harness!.controller.webView.superview)
         harness!.controller = nil
         harness = nil
@@ -249,7 +298,7 @@ final class PagesWebViewTests: XCTestCase {
     func testReplacingThePageGoesThroughTheLeaveGuard() async throws {
         let harness = Harness()
         let controller = harness.controller!
-        defer { controller.tearDown() }
+        defer { harness.tearDown() }
         try await openReady(harness)
 
         // Edits the server acknowledges on flush: the replacement just happens.
@@ -293,7 +342,7 @@ final class PagesWebViewTests: XCTestCase {
     func testEveryDocumentReplacingLoadGoesThroughTheGuard() async throws {
         let harness = Harness()
         let controller = harness.controller!
-        defer { controller.tearDown() }
+        defer { harness.tearDown() }
         try await openReady(harness)
         _ = try await harness.js("window.__flushStatus = 'timed-out'; 1")
         controller.handle(.editState(editing: true, unsynced: true))
@@ -326,7 +375,7 @@ final class PagesWebViewTests: XCTestCase {
     func testAStaleLeaveRequestNeverActsAfterANewerOne() async throws {
         let harness = Harness()
         let controller = harness.controller!
-        defer { controller.tearDown() }
+        defer { harness.tearDown() }
         try await openReady(harness)
         _ = try await harness.js("window.__flushDelayMs = 300; 1")
         controller.handle(.editState(editing: true, unsynced: true))
@@ -352,7 +401,7 @@ final class PagesWebViewTests: XCTestCase {
     func testSessionIsDeliveredOnlyIntoTheDocumentThatAsked() async throws {
         let harness = Harness()
         let controller = harness.controller!
-        defer { controller.tearDown() }
+        defer { harness.tearDown() }
         try await openReady(harness)
         let firstNonce = try XCTUnwrap(controller.documentNonce)
         MintStub.delay = 0.5
