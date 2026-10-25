@@ -12,6 +12,7 @@
 import type { JSX } from 'react';
 import * as React from 'react';
 import { useAtomValue } from 'jotai';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import { MaterialSymbol } from '../../icons/MaterialSymbol';
 import { resolveProviderIcon } from '../../icons/ProviderIcons';
@@ -22,12 +23,12 @@ import {
 } from './sessionRefAtoms';
 
 /** Phase -> presentation. Falls back to neutral for unknown phases. */
-const PHASE_PRESENTATION: Record<string, { color: string; label: string }> = {
-  backlog: { color: 'var(--nim-text-muted)', label: 'Backlog' },
-  planning: { color: 'var(--nim-info)', label: 'Planning' },
-  implementing: { color: 'var(--nim-warning)', label: 'Implementing' },
-  validating: { color: 'var(--nim-info)', label: 'Validating' },
-  complete: { color: 'var(--nim-success)', label: 'Complete' },
+const PHASE_PRESENTATION: Record<string, { color: string; labelKey: string }> = {
+  backlog: { color: 'var(--nim-text-muted)', labelKey: 'status.phase_backlog' },
+  planning: { color: 'var(--nim-info)', labelKey: 'status.phase_planning' },
+  implementing: { color: 'var(--nim-warning)', labelKey: 'status.phase_implementing' },
+  validating: { color: 'var(--nim-info)', labelKey: 'status.phase_validating' },
+  complete: { color: 'var(--nim-success)', labelKey: 'status.phase_complete' },
 };
 
 /** Short, stable id label for the unresolved / fallback state. */
@@ -71,6 +72,7 @@ export function SessionReferenceChip({
   fallbackMeta,
   onOpen: onOpenOverride,
 }: SessionReferenceChipProps): JSX.Element {
+  const { t } = useTranslation('aichat');
   const liveMeta = useAtomValue(sessionRefByIdAtom(sessionId));
   const meta: SessionRefMeta | null =
     liveMeta ?? (fallbackMeta ? { id: sessionId, title: '', ...fallbackMeta } : null);
@@ -78,12 +80,12 @@ export function SessionReferenceChip({
   const label = meta?.title?.trim() || shortSessionId(sessionId);
   const dotColor = statusDotColor(meta);
   const phase =
-    meta?.phase && PHASE_PRESENTATION[meta.phase]
-      ? PHASE_PRESENTATION[meta.phase].label
+    meta?.phase && PHASE_PRESENTATION[meta.phase]?.labelKey
+      ? t(PHASE_PRESENTATION[meta.phase].labelKey, { ns: 'agents' })
       : undefined;
   const tooltip = meta
-    ? `${meta.title || 'Session'}${phase ? ` · ${phase}` : ''} — open session`
-    : `Session ${shortSessionId(sessionId)} — open session`;
+    ? t('cross_session.open_resolved', { title: meta.title || t('usage.session'), phase: phase ? ` · ${phase}` : '' })
+    : t('cross_session.open_unknown', { id: shortSessionId(sessionId) });
 
   const onOpen = React.useCallback(
     (event: React.MouseEvent) => {
