@@ -163,7 +163,8 @@ export function TrackerGridView({
   favoriteItemIds,
   onToggleFavorite,
 }: TrackerGridViewProps): JSX.Element {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
+  const dateLocale = i18n.resolvedLanguage ?? i18n.language;
   const [filterTarget, setFilterTarget] = useState<{ columnId: string; rect: DOMRect } | null>(null);
   const activeTypeFilter = filterType;
   const schemaType = activeTypeFilter === 'all' ? '' : activeTypeFilter;
@@ -389,6 +390,7 @@ export function TrackerGridView({
   const gridColumns = useMemo(
     () => [
       ...buildGridColumns(visibleColumnDefs, {
+        dateFormat: { t, locale: dateLocale },
         trackerType: schemaType,
         columnWidths: effectiveColumnConfig.columnWidths,
         isRowEditable,
@@ -408,7 +410,7 @@ export function TrackerGridView({
       buildGridActionsColumn(),
     ],
     [
-      visibleColumnDefs, schemaType, effectiveColumnConfig.columnWidths,
+      visibleColumnDefs, schemaType, effectiveColumnConfig.columnWidths, t, dateLocale,
       isRowEditable, relationshipCandidates, filteredColumnIds, onColumnFiltersChange,
       sortingEnabled, favorites, onItemSelect, onOpenDocument, relationshipLabel,
     ],

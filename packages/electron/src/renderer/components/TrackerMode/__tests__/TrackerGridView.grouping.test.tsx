@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, waitFor } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { loadBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
@@ -93,6 +95,39 @@ describe('TrackerGridView grouping', () => {
   beforeEach(() => {
     gridProps.current = null;
     gridListeners.clear();
+  });
+
+  it('rebuilds desktop grid date text and exact titles on en → ja → en switching', async () => {
+    const i18n = await createI18nInstance('en');
+    const date = new Date(Date.now() - 3 * 3_600_000);
+    const recent = record('recent-date', 'in-progress');
+    recent.system.updatedAt = date.toISOString();
+    recent.system.lastIndexed = date.toISOString();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <TrackerGridView filterType="bug" overrideItems={[recent]}
+          columnConfig={{ visibleColumns: ['updated'], columnWidths: {} }} />
+      </I18nextProvider>,
+    );
+    const h = (tag: string, props: { title?: string }, text: string) => {
+      const node = document.createElement(tag);
+      node.textContent = text;
+      if (props.title) node.title = props.title;
+      return node;
+    };
+    for (const locale of ['en', 'ja', 'en'] as const) {
+      await act(async () => { await i18n.changeLanguage(locale); });
+      await waitFor(() => {
+        const column = gridProps.current?.columns?.find((candidate: { prop: string }) => candidate.prop === 'updated');
+        expect(column).toBeDefined();
+        // Run the real template passed by TrackerGridView, not a rebuilt test column.
+        const node = column.cellTemplate(h, { model: gridProps.current?.source[0] }) as HTMLElement;
+        expect(node.textContent).toBe(locale === 'ja' ? '3時間前' : '3h ago');
+        expect(node.title).toBe(date.toLocaleString(locale, {
+          month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+        }));
+      });
+    }
   });
 
   it('passes the Display Options grouping field and readable labels to RevoGrid', async () => {
