@@ -253,7 +253,7 @@ describe('transcript row memoization', () => {
     renderWithI18n(<Rows messages={messages} infos={infos} tick={0} />);
     expect(screen.getByText(/（22:18に完了）/).textContent).not.toContain('at ');
     await act(async () => { await testI18n.changeLanguage('en'); });
-    expect(screen.getByText(/at 10:18 pm/).textContent).not.toContain('に完了');
+    expect(screen.getByText(/^at 10:18 pm$/).textContent?.trim()).toBe('at 10:18 pm');
     await act(async () => { await testI18n.changeLanguage('ja'); });
     expect(screen.getByText(/（22:18に完了）/).textContent).not.toMatch(/am|pm/);
   });

@@ -8,7 +8,8 @@ describe('formatTurnFinishedAt', () => {
     expect(formatTurnFinishedAt(new Date(2026, 4, 6, 22, 18), reference, 'ja')).toBe('22:18');
     expect(formatTurnFinishedAt(new Date(2026, 4, 6, 0, 5), reference, 'ja-JP')).toBe('0:05');
     expect(formatTurnFinishedAt(new Date(2026, 4, 5, 10, 33), reference, 'ja')).toBe('2026年5月5日 10:33');
-    expect(formatTurnFinishedAt(new Date(2026, 4, 6, 22, 18), reference, 'en')).toBe('at 10:18 pm');
+    expect(formatTurnFinishedAt(new Date(2026, 4, 6, 22, 18), reference, 'en')).toBe('10:18 pm');
+    expect(formatTurnFinishedAt(new Date(2026, 4, 5, 10, 33), reference, 'en-US')).toBe('10:33 am, Tue May 5th, 2026');
     expect(formatTurnFinishedAt('not a date', reference, 'ja')).toBe('');
   });
   it('shows only the time for turns that ended earlier today', () => {

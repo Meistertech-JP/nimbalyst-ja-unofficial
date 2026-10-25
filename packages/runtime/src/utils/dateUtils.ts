@@ -221,17 +221,19 @@ export function formatShortTime(timestamp: number | string | Date | undefined | 
  * Format a turn-end timestamp for transcript summaries.
  * Returns empty string only for an unparseable timestamp -- a turn that just
  * finished still gets its time, so every turn in the transcript is stamped.
+ * A locale returns a time label for interpolation into translated sentences;
+ * callers without a locale retain the legacy standalone English prefix.
  */
 export function formatTurnFinishedAt(
   timestamp: number | string | Date | undefined | null,
   reference: number | string | Date | undefined | null = new Date(),
-  locale: string = 'en',
+  locale?: string,
 ): string {
   const date = parseTimestamp(timestamp);
   const now = parseTimestamp(reference);
   if (!date || !now) return '';
 
-  if (locale.toLowerCase().split('-')[0] === 'ja') {
+  if (locale?.toLowerCase().split('-')[0] === 'ja') {
     const time = new Intl.DateTimeFormat('ja-JP', {
       hour: 'numeric', minute: '2-digit', hour12: false,
     }).format(date);
@@ -243,12 +245,13 @@ export function formatTurnFinishedAt(
   }
 
   const timeLabel = formatLowercaseMeridiemTime(date);
+  const prefix = locale ? '' : 'at ';
   if (isToday(date, now)) {
-    return `at ${timeLabel}`;
+    return `${prefix}${timeLabel}`;
   }
 
   const weekday = WEEKDAY_NAMES[date.getDay()];
   const month = MONTH_NAMES[date.getMonth()];
   const day = formatOrdinalDay(date.getDate());
-  return `at ${timeLabel}, ${weekday} ${month} ${day}, ${date.getFullYear()}`;
+  return `${prefix}${timeLabel}, ${weekday} ${month} ${day}, ${date.getFullYear()}`;
 }
