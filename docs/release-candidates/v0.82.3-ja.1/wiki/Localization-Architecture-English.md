@@ -2,7 +2,7 @@
 
 [日本語](Localization-Architecture.md) · [Home](Home-English.md)
 
-This documents the v0.82.3-ja.1 candidate based on upstream v0.82.3. Resources reside in `packages/i18n/src/resources/en` and `ja`, with 27 namespaces and 14,782 keys per language.
+This documents the v0.82.3-ja.1 candidate based on upstream v0.82.3. Resources reside in `packages/i18n/src/resources/en` and `ja`, with 27 namespaces and 14,794 keys per language.
 
 ## Shared resources and hosts
 
@@ -22,4 +22,4 @@ The candidate's initial docs-ui size is 89,138 gzip bytes against a 92,000-byte 
 
 Existing resources now cover team-recovery stages, blockers and diagnostics export, Tracker post-recovery conflicts, uncertain Codex ownership, and the default pasted-image label. Main recovery helpers translate locally authored guidance, not arbitrary messages from the server.
 
-Checks cover key parity, empty translations, interpolation, and resolvable static references. The 105 direct Main-helper references and 27 finite ownership keys are also checked. Complete runtime tracing of 659 dynamic candidates and 385 unresolved lexical scopes remains incomplete. Candidate counts are not missing-key counts, and matching dictionaries do not establish complete UI translation. Session time text, aria-labels, and tooltips follow the display language while retaining minute-level idle updates.
+Checks cover key parity, empty translations, interpolation, and resolvable static references. The 105 direct Main-helper references, 27 finite ownership keys, and 42 tracker field, column, publication, sync-state, and action references are also checked. Complete runtime tracing of 672 dynamic candidates and 412 unresolved lexical scopes remains incomplete. Candidate counts are not missing-key counts, and matching dictionaries do not establish complete UI translation. Session time text, aria-labels, and tooltips follow the display language while retaining minute-level idle updates.

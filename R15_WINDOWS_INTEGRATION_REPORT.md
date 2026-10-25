@@ -1,6 +1,6 @@
 # R15 Windows統合検証（継続中）
 
-## 候補の固定点
+## 初期候補の固定点（履歴）
 
 製品ソースは `a9fcc204e44c39a0602342f8a8da763af32969bf`。本家v0.82.3統合コミットは `e9b53cf59f291f32c5c1327962d7ccf16fc367e1`。アプリ版番号は0.82.3-ja.1、数値buildVersionは0.82.3.1。
 
@@ -158,3 +158,29 @@ a9fcc204の実認証成功候補と49e52c53fの完成ASARを改めて比較し�
 ## アンインストール後の最終関連付け読み戻し
 
 新規導入前に記録したnimbalyst protocol、Markdown既定、Explorer UserChoiceを含む8レジストリキーを再取得した。存在状態と全値が8件とも一致し、本版のテスト用インストール先も不在だった。associations-final-readback.jsonへ記録した。レジストリへ書き込みは行っていない。
+
+## 最新ZIPでのWiki・Tracker再表示と追加監査
+
+文書コミットaac77079cの後も、Windows製品49e52c53fの同じZIP・candidate-01だけを使用した。Ctrl+Dで以前のR15-Wiki-検証を表示し、日本語本文と英語のユーザー記入markerの保持、日本語の検索・種類・ゴミ箱等を確認した。Ctrl+TではPlans3／Bugs3／Tasks4とR15 Tracker 保存確認0823を確認した。保存済みデータの再表示であり、サーバー同期の成功や新しい作成試験とは区別する。private-gui/wiki-retention-49e52c53f.pngとtracker-retention-49e52c53f.pngへ保存した。
+
+Trackerの実画面とアクセシビリティツリーにTAGS、4h ago、Status／Priority／Owner／Depends On等が英語で残ることを発見した。ユーザー定義schemaの状態値・項目名まで一括翻訳せず、固定UIと動的データを分類中。tracker-english-observation-49e52c53f.jsonに観測を保存した。新たな翻訳対象が未解決の間は最終候補として合格にしない。
+
+固定ラベル・公開状態・時刻を5306786daで修正し、関連11ファイル97テスト、通常pushで38型・7容量検査が成功した。通常pushは既知CLI fixture EPERMで停止し、例外は適用していない。同コミットの通常Windows build:winはexit0でNSIS生成まで完了し、SDK4・native3・Worker8・SQLite3 WorkerとONNXのElectron dlopenを通過した。ただし独立レビューでDesktop側TrackerGridViewの別buildGridColumns呼出しにdateFormat未接続があると判明したため、このビルドを最終版とは扱わず、当該経路の回帰試験と追加修正を進めている。先行49e52c53fのNSIS/ZIPはpre-tracker-candidate5へハッシュ確認後に保全済みである。
+
+## Desktop日時接続修正67a004c7cの製品確認と追加発見
+
+67a004c7cの通常NSISと同ペイロードZIPはともに正常終了。NSISは443,180,806 bytes、SHA-256 `842c68ba752ef1c8dd038a19677c462953d01efe3eba6da9325a72c954680194`。ZIPは576,221,175 bytes、SHA-256 `b339ed2a4dfd3e8a5757bf6a7a72632882fccfd9c81919248c0caa6f02754c8f`。CRC・安全な展開・全1,913ファイルの照合に合格（windows-zip-integrity6/RESULT.json）。完成後ASARは1,021エントリ・出力341ファイル・法務4ファイルが一致し、SHA-256は `710c82e3bdebf71bb84e31e1f275f17a75549d3f4de2c8a3570138939b0f9e1d`。
+
+実展開版だけを専用candidate-01で起動し、日本語の固定フィールド名・公開済み・リストの5時間前を確認。Desktopテーブルへ切り替えてアクセシビリティツリーでも5時間前を確認し、通常設定UIでEnglishへ切り替えた後はFileメニューと5h agoに更新された。スクリーンショットと範囲はtracker-native-67a004c7c.jsonに記録。通常File→Quitで終了し、ログのcleanup完了と該当パスのプロセス不在を確認した。この時点では当該バイナリの再起動保持・再認証・再NSIS実行まで成功としない。
+
+追加で、テーブルのType／Key／Title／Status／Priority／Owner／Due Date／Updated、表示設定のCreated by／Updated by、操作ラベルOpen details／Item actions／Filter、詳細同期欄pendingが固定UIの英語として残ることを発見した。独立したソース確認でも保存schema値とは区別できたため、表示専用の修正と回帰試験を進めている。既存の独自フィールド名・選択肢値を翻訳によって書き換えない。したがって67a004c7cの製品を最終合格とは判定しない。
+
+## 057883f8bの最新通常製品と実画面
+
+通常Windows buildと完成ペイロードのZIP生成はともにexit0。NSIS443,182,715 bytes、SHA-256 `25c698a4b595679478b7b4611b10f1c69ff4a1ebb82de4b925228b49ad48ac89`。ZIP576,220,113 bytes、SHA-256 `32107b617abec817688b3113e14cc3fcd04dc851561d88574c7f74546540ccd4`。windows-zip-integrity7/RESULT.jsonでCRC・パス安全性・全1,913ファイルの実展開照合が成功。ASARは `d1c037f9e6a77ebb5bc5ebe55d6ad18a4049b38044e373fcfa010c6b027a61ba`、全1,021エントリ・出力341ファイル・法務4ファイル一致でZIP後も同じだった。SDK4、native3、Worker8、SQLite3workerとONNXのElectron dlopenも成功。製品名・Meistertech-JP・数値版番号0.82.3.0/0.82.3.1を確認し、アプリとNSISはNotSigned。
+
+CRC照合済みZIP実展開版だけを専用candidate-01で起動。保存済み英語でのFile・列名を確認し、日本語へ切り替えた。種類・キー・タイトル・ステータス・優先度・担当者・期限・更新日時、操作の詳細を開く／項目の操作、フィルターの日本語titleをアクセシビリティツリーで確認した。表示設定の作成者・更新者・公開状態・開始日・報告者・タグ・進捗も日本語。「詳細を開く」を押して既存テスト項目の詳細が開き、同期待ち・公開済みを表示した。private-gui/tracker-ja-grid-057883f8b.pngとtracker-native-057883f8b.jsonに範囲を保存した。
+
+日本語のまま通常終了してPID消失を確認後、同じZIPを再起動。日本語メニュー・列名・同期待ち、設定セレクター日本語とapp-settings.jsonのuiLanguage=jaを確認した。初回の補助読み取りでは誤ってapp.uiLanguageを参照してnullとなったが、実保存はtop-level uiLanguageであり、これは設定消失ではない。その後Englishへ戻し、Pending・Open details・Item actionsへ更新したことを確認。通常終了後に再度同じZIPを起動し、英語File・列名・Pendingが保持されたことを確認した。3回の専用起動PIDは33916／38440／15580。日本語再起動時のMain待受は127.0.0.1:3456で、9222/9223はなかった。
+
+これは最新ZIPでの表示と起動終了の確認であり、新NSISインストール・更新・再認証を実行したという意味ではない。外部スクリーンリーダーは未実行。保存schemaのTo Do／Medium等やユーザーの独自名は自動翻訳しない。終了ログのPostHog flushエラーとSQLiteProxy worker終了code1は原ログに保持し、終了操作自体はcleanup完了とプロセス消失で確認する。

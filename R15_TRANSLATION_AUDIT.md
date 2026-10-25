@@ -90,3 +90,27 @@ locale指定のformatterは翻訳文へ埋め込む時刻だけを返し、local
 1e4033ed9005faf11a68ad3277148fdf2c7d1e1cで監査を再実行し、r15-translation-audit-ios-index-source-1/SUMMARY.jsonへ保存した。27名前空間・英日各14,782キー、差分・空訳・補間差分・解決済み参照欠落0。解析7,317ファイル、production参照12,277件（shared解決11,786・ローカルMemory106・scope未確定385）、動的候補659、未分類JSX英語候補378。前回から翻訳ソース入力の変更はない。辞書整合と全UI・全動的経路の完全翻訳は区別する。
 
 49e52c53fの通常ZIPでは英語at重複の解消、日英それぞれの再起動保持、日本語展開ヘルプを確認済み。iOSの後続変更は翻訳資源に影響しないが、そのSwift実行確認は未完了である。
+
+## Trackerの実画面で発見した追加の固定英語
+
+同ZIPのTrackerでTAGS、4h ago、Owner等とPublishedバッジを確認し、保存値とは別の固定UIである経路を特定した。標準フィールド名は軽量leaf helperで既存キーへ接続し、明示displayLabel・未知フィールド名・選択肢の保存値は保持した。Tags編集ラベル、チップの可視文字・aria-label・title、追加フィールドメニュー、読み取り専用表示を対象とする。公開状態のlabel/titleは元の可視性の説明を維持して翻訳した。状態値は変更していない。Table・RevoGrid・ページの相対時刻と日付hoverはトップレベルの現在言語から解決し、従来helperの英語default APIを維持する。i18nextへの新しい直接型依存は持ち込まず、必要十分な構造型と実getFixedTの代入検査を使用した。
+
+通常コミット5306786dab05015fb83f2cb74212393f2d170e87。追加は英日それぞれ7キー（field操作tooltip2、公開状態と説明4、collectionラベル1）。監査r15-translation-audit-tracker-5306786daは27名前空間・英日各14,789キー、差分・空訳・補間差分・解決済み欠落0。production参照12,306、shared解決11,788、Memory106、scope未確定412、動的候補666、未分類JSX候補378。有限フィールドmap・公開状態・tooltipの20参照（19独立キー）は別途ASTから列挙し、両言語とも欠落0（tracker-finite-keys-5306786da.json）。未解決の全動的参照まで解決済みと扱わない。
+
+新しい関連試験は11ファイル97テストPASS（tracker-related-builtin-labels-GREEN.log）。日英のライブ切替、可視ラベル・aria/title、カスタム名/値、Grid cellTemplate、日付のみと実時刻の境界、既存helper APIを確認した。最初の統合型検査はfixtureの過剰プロパティとsystemの不足で失敗し、型定義や製品側の契約を緩めずfixtureを修正した。resource試験の旧14,782件期待値も、新規7キーの内容を明示検証したうえで14,789へ更新した。原失敗ログは保持している。
+
+当初のラベル修正時の単体REDログは保存されていなかったため、存在しないログを根拠にしていない。修正前の実画面を先行REDとし、後から元aac77079cの3つのGit blobをVite loadで読み込んだ独立再生では、新規翻訳試験3 FAIL／既存10 PASSを確認した（tracker-label-baseline-RED.log、loaded-blobs.json）。元のworktreeやGitを戻さず、これは事後の回帰検証であってtest-first証拠とは表現しない。時刻側のREDは別途先に保存されている。
+
+5306786daの通常pushで38型・容量7件PASS。editor369,932／370,000、trackers-ui197,808／200,000、docs-ui89,138／92,000 gzip bytes。既知CLI fixture EPERMで停止し、手動sandboxは既知2 fixture EPERMだけ、後続静的3検査はPASS。例外の自動適用やテスト・上限の変更はない。新しいWindows製品は再生成中であり、source/unit成功を実画面の修正確認へ置き換えない。
+
+## Desktopテーブルと固定同期状態の追加監査
+
+67a004c7cの通常ZIP実展開版で、詳細フィールド・公開状態・リストとテーブルの相対日時の日本語表示、および英語へのライブ切替を確認した。しかしテーブル列名・表示設定・操作title/ariaと同期enumに固定英語が残ったため、最終合格とせず追加修正した。元の観測とスクリーンショットはtracker-native-67a004c7c.jsonに保持した。
+
+列定義にはfixed/schema/customの表示由来を保持し、固定列と標準ID/roleだけを翻訳する。明示displayLabelがStatusのように既定英語と同じでもカスタム名として保持し、列ID・role・保存値は変更しない。Desktop・共有Grid・表示設定・埋め込みカード・型ページで元の列定義から表示名を解決する。グリッド操作・フィルター・お気に入りのtitle/ariaも両Grid callerから注入し、旧英語default APIとイベント処理を保持した。local/pending/syncedは表示だけを翻訳し、内部enum・色・未知値の表示は維持する。
+
+追加資源は英日各5キー（grid.open_details、detail.sync_local/pending/synced、columns.publication）。Publication列に旧Sharedキーを転用せず、本家の公開状態という意味を維持した。作業ツリー監査r15-translation-audit-grid-controls-completeは27名前空間・英日各14,794キー、差分・空訳・補間差分・解決済み欠落0。production参照12,325（shared11,807・Memory106・scope未確定412）、動的候補672、未分類JSX候補378。有限map等の別監査は42参照・33独立キー・両言語欠落0。監査時HEADは67a004c7cだが新規修正はまだ未コミットの入力manifestが対象であり、67a004c7cのGit treeが14,794キーを持つという意味ではない。
+
+監査の初回はsandbox内の読み取り専用Git子プロセスがspawnSync EPERMで停止した。失敗先を上書きせず、許可された読み取り実行で別の証拠先へ完了した。辞書欠落や製品障害と同一視しない。追加の独立レビューではカードの新memoが同じ型のschema更新を隠す可能性を発見し、毎renderの再解決と回帰テストへ修正した。全体型・容量検査の最初の完了時点では38ワークスペースPASS、全7上限PASS（editor369,926/370,000、trackers-ui198,509/200,000、docs-ui89,138/92,000）。後続の小変更と最終製品には改めて適合確認が必要である。
+
+追加修正を057883f8bd230280dfeaa298a5c5e45f8252b508へ通常フックでコミットした。関連試験はtracker-grid-controls-integrated.logで10ファイル135 PASS。カードのformatValueにも現在の表示言語を渡し、Today/今日、2h ago/2時間前の切替と日付保存値の保持を確認した。カード修正後のcollab-client型検査もPASS。新規ファイルは型ページの実ラベルhelperとその回帰テストの2件で、一時成果物ではない。ビルドにより更新されたtracked宣言3ファイルもAPI変更と照合して同コミットに含めた。新しいWindows製品やhosted CIの成功まで主張しない。

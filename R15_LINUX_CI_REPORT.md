@@ -46,3 +46,7 @@ Linuxのtracker-ui初期容量は197,104 gzip bytes、同じコミットのWindo
 `b2cd7ea16927f52fe3b24dee4e215ecccbaf11bf` の [40198602456](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40198602456) はsuccess。artifact `linux-ci-b2cd7ea16/.vitest/last-run.json` はcomplete=true、result=PASS、fingerprint head一致、19,264 PASS／0 FAIL／30 SKIP、2,344ファイル、失敗一覧空。実ログも `linux-ci-b2cd7ea16.log` に保存した。英語のat重複修正49e52c53fは後続のため、このCIには含まれない。
 
 49e52c53ffe1225ce7d411f53f7e20c7758c49a7の [40201861327](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40201861327) もsuccess。artifact linux-ci-49e52c53f/.vitest/last-run.jsonはcomplete=true、head一致、19,264 PASS／0 FAIL／30 SKIP、2,344ファイル、失敗一覧空。ログlinux-ci-49e52c53f.logを保存。iOS側の性能試験failureは別の検査であり、Linux成功で代用しない。
+
+## 最新ローカル修正のhosted検証待ち
+
+最新製品コミット057883f8bd230280dfeaa298a5c5e45f8252b508の通常pushは38型・7容量を通過した後、同じCLI fixture symlink EPERMで停止した。手動sandboxも既知fixture EPERM2件だけで、後続静的3検査はPASS。既存の承認はこの新規コミットへ適用せず、bypassは実行していない。GitHub読み戻しでR15ブランチは49e52c53fのままであり、最新コミットに対するLinux全体結果は存在しない。ローカルの関連10ファイル135 PASSを全体CI成功へ読み替えない。

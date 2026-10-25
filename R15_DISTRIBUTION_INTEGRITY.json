@@ -1,9 +1,15 @@
 {
   "status": "IN_PROGRESS",
-  "latestProductCommit": "49e52c53ffe1225ce7d411f53f7e20c7758c49a7",
-  "checkpointScope": "Assets below are the completed 49e52c53f Windows product. The later source commit 1e4033ed9 changes only two iOS Swift files and CHANGELOG; hosted verification of that delta is pending. Install/update/authentication checkpoints are historical and separately scoped in the Windows report.",
-  "productCommit": "49e52c53ffe1225ce7d411f53f7e20c7758c49a7",
-  "sourceCheckpoint": "1e4033ed9005faf11a68ad3277148fdf2c7d1e1c",
+  "newerVerifiedCheckpoint": "tmp/r15-evidence/windows-product-057883f8b.json",
+  "newerCheckpointScope": "Ordinary NSIS/ZIP generated, CRC/1913-file restore and ASAR verified; actual ZIP languages/restarts/grid checks passed. New NSIS lifecycle and new authentication were not executed. Previous candidates remain preserved under their own evidence directories.",
+  "latestProductCommit": "057883f8bd230280dfeaa298a5c5e45f8252b508",
+  "checkpointScope": "Assets below are current 057883f8b ordinary Windows product files. Native language/grid checks apply to this product. Install/update/authentication checkpoints remain historical and separately scoped in the Windows report; six resource-literal byte-equivalence proof applies only to 49e52c53f.",
+  "assetRoot": "packages/electron/release",
+  "latestSourceFix": "057883f8bd230280dfeaa298a5c5e45f8252b508",
+  "intermediateBuild": {"commit":"5306786dab05015fb83f2cb74212393f2d170e87","nsisBuildExit":0,"finalCandidate":false,"evidence":"tmp/r15-evidence/windows-build-tracker-fields-CHECKPOINT.json"},
+  "productCommit": "057883f8bd230280dfeaa298a5c5e45f8252b508",
+  "productTree": "8b82354cca919ca0c8850121507dc213e9ff7413",
+  "sourceCheckpoint": "057883f8bd230280dfeaa298a5c5e45f8252b508",
   "version": "0.82.3-ja.1",
   "numericBuildVersion": "0.82.3.1",
   "appId": "jp.meistertech.nimbalyst.ja.unofficial",
@@ -11,26 +17,26 @@
   "assets": {
     "nsis": {
       "file": "Nimbalyst 日本語版（非公式）-Windows-x64.exe",
-      "bytes": 443180417,
-      "sha256": "c94ab7c0bae6fc62e6eb7873e6f9593547882d250a4bab4f5b26d8c9036fa4b6",
+      "bytes": 443182715,
+      "sha256": "25c698a4b595679478b7b4611b10f1c69ff4a1ebb82de4b925228b49ad48ac89",
       "installationVerified": false,
       "historicalUpgradeCommit": "3388c93c552a84fdaef90f987a26d9712bb163af",
       "historicalUpgradeEvidence": "tmp/r15-evidence/nsis-upgrade1/",
-      "evidence": "tmp/r15-evidence/windows-build-english-turn-prefix.log"
+      "evidence": "tmp/r15-evidence/windows-build-grid-controls.log"
     },
     "portableZip": {
       "file": "Nimbalyst 日本語版（非公式）-Windows-x64.zip",
-      "bytes": 576219733,
-      "sha256": "5c59a223f4496482ca710292e0bf9ada6e5f72b234570182bdde8905ee761546",
+      "bytes": 576220113,
+      "sha256": "32107b617abec817688b3113e14cc3fcd04dc851561d88574c7f74546540ccd4",
       "crcPassed": true,
       "entryPathSafetyPassed": true,
       "originalFiles": 1913,
       "restoredFiles": 1913,
       "allFileHashesMatched": true,
-      "evidence": "tmp/r15-evidence/windows-zip-integrity5/RESULT.json",
-      "launchVerification": "PASS — actual final ZIP executable retained English and Japanese after normal restart in each language"
+      "evidence": "tmp/r15-evidence/windows-zip-integrity7/RESULT.json",
+      "launchVerification": "PASS: actual restored product retained English and Japanese after normal restart in each language; native grid labels/actions and sync state also verified"
     },
-    "sourceZip": null
+    "sourceZip": {"commit":"057883f8bd230280dfeaa298a5c5e45f8252b508","tree":"8b82354cca919ca0c8850121507dc213e9ff7413","bytes":55921881,"sha256":"da9c453b9ef05cde2f163a27ef2064e10c374b1ff76fcc4abeacd89622b79e03","gitBlobsMatched":9714,"crcPassed":true,"restorePopulationMatched":true,"scope":"Product-source checkpoint; later reports and matching generated legal inventory require a final documentation checkpoint","evidence":"tmp/r15-evidence/source-grid-controls-057883f8b/RESULT.json"}
   },
   "packagedRuntime": {
     "sdkImports": 4,
@@ -39,12 +45,13 @@
     "externalResolutionChecks": 6,
     "sqliteWorkerDlopen": "PASS",
     "onnxBackendDlopen": "PASS",
-    "evidence": "tmp/r15-evidence/windows-build-english-turn-prefix.log",
-    "asarSha256": "6d0ccfbe135be8e77eecf6b78a5722f840644ca3c93b08c59cd3415c40c2d76c",
+    "evidence": "tmp/r15-evidence/windows-build-grid-controls.log",
+    "asarSha256": "d1c037f9e6a77ebb5bc5ebe55d6ad18a4049b38044e373fcfa010c6b027a61ba",
     "asarFilesVerified": 1021,
     "compiledOutputFilesMatched": 341,
     "legalFilesMatched": 4,
-    "asarEvidence": "tmp/r15-evidence/asar-integrity-english-turn-prefix.json",
+    "asarEvidence": "tmp/r15-evidence/asar-integrity-grid-controls-zip.json",
+    "historicalAuthComparisonScope": "The following 63-file and six-literal proof describes 49e52c53f only; it is not recomputed against 057883f8b and is not a new authentication attempt",
     "mainAndPreloadFilesComparedWithAuthenticatedCheckpoint": 63,
     "mainAndPreloadFilesUnchangedFromAuthenticatedCheckpoint": 62,
     "mainAndPreloadPayloadEntirelyIdentical": false,

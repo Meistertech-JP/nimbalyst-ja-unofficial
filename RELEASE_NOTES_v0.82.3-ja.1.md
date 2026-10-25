@@ -21,9 +21,9 @@ SQLiteの0055は、待機中のTracker編集へ同期基準リビジョンを保
 
 ### 表示言語と検証範囲
 
-表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,782キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
+表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,794キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
 
-38ワークスペースの型検査と既存7エントリの容量上限検査が成功しています。Windows製品コミット49e52c53fのLinuxは19,264 PASS／0 FAIL／30 SKIP。通常ZIPの日英再起動保持、英語完了時刻、日本語の展開ヘルプ、文書画像の貼り付け・Undo／Redo、全1,913ファイルの照合・CRC・ASAR監査を確認しました。
+最新製品ソース057883f8bで38ワークスペースの型検査、既存7エントリの容量上限、関連135テストが成功しています。同ソースの通常ZIPでTrackerの列名・操作案内・同期状態の日英切替と両言語再起動保持、全1,913ファイルの照合・CRC・ASAR監査を確認しました。先行49e52c53fのLinuxは19,264 PASS／0 FAIL／30 SKIPで、英語完了時刻、日本語の展開ヘルプ、文書画像の貼り付け・Undo／Redoも同先行製品で確認しています。最新ソースのhosted Linux/iOS CIは未実施です。
 
 最新iOS CIは履歴件数に対する更新性能の試験で失敗し、全体試験は未実行です。変更セッションへ検索範囲を限定する修正と回帰テストを追加しましたが、修正後のiOS実行は未確認です。先行候補の認証・インストール・更新検証には適用範囲を明示し、新しいバイナリの実行成功と混同しません。最終ソースと配布候補の確定は継続中です。
 
@@ -58,9 +58,9 @@ SQLite migration 0055 adds the base synchronization revision to queued Tracker e
 
 ### Language and verification scope
 
-Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,782 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
+Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,794 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
 
-All 38 workspace typechecks and seven existing bundle budgets passed. Windows product commit 49e52c53f passed Linux with 19,264 passed / zero failed / 30 skipped. Its ordinary ZIP was checked for persistence after restart in both languages, English completion times, Japanese expanded help, document image paste with Undo/Redo, all 1,913 file hashes, CRC, and ASAR integrity.
+Latest product source 057883f8b passed all 38 workspace typechecks, seven existing bundle budgets, and 135 related tests. Its ordinary ZIP was checked for bilingual tracker column/action/sync-state display, persistence after restart in both languages, all 1,913 file hashes, CRC, and ASAR integrity. Earlier 49e52c53f passed Linux with 19,264 passed / zero failed / 30 skipped; English completion times, Japanese expanded help, and document image paste with Undo/Redo were also checked on that earlier product. Hosted Linux/iOS CI has not run on the latest source.
 
 The latest iOS CI failed its history-size performance test before the full suite ran. A fix restricting lookups to changed sessions and a regression test have been added, but have not yet run on iOS. Authentication, installation, and upgrade results from earlier candidates have a separately stated scope; they are not claimed as new-binary executions. The final source and distribution candidate remain under validation.
 
