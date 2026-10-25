@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { fireEvent, render, screen, cleanup } from '@testing-library/react';
+import { act, fireEvent, render, screen, cleanup } from '@testing-library/react';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { I18nextProvider } from 'react-i18next';
 import { ContextUsageDisplay } from '../ContextUsageDisplay';
 
 vi.mock('@nimbalyst/runtime/ui/icons/MaterialSymbol', () => ({
   MaterialSymbol: () => null,
 }));
-vi.mock('../../../help', () => ({ getHelpContent: () => undefined }));
 
 // inputTokens > 0 makes the breakdown panel eligible (enableTooltip).
 const props = {
@@ -137,6 +137,25 @@ describe('ContextUsageDisplay - measured provider support (#914)', () => {
 });
 
 describe('ContextUsageDisplay localization', () => {
+  it('localizes expanded help live without changing the usage measurement or panel state', async () => {
+    const i18n = await createI18nInstance('ja');
+    render(<I18nextProvider i18n={i18n}><ContextUsageDisplay {...props} /></I18nextProvider>);
+    const meter = screen.getByTestId('context-indicator');
+    fireEvent.click(meter);
+    fireEvent.click(screen.getByTitle('これは何ですか？'));
+    expect(screen.getByText('コンテキストウィンドウ').textContent).toBe('コンテキストウィンドウ');
+    expect(screen.getByText('AIのコンテキストウィンドウの使用量を表示します。ファイル、会話履歴、ツールが含まれます。').textContent)
+      .toContain('ファイル、会話履歴、ツール');
+    expect(meter.getAttribute('aria-expanded')).toBe('true');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    screen.getByText('Context Window');
+    expect(meter.getAttribute('aria-expanded')).toBe('true');
+    expect(meter.textContent).toContain('132k/200k (66%)');
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    screen.getByText('コンテキストウィンドウ');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
   it('renders Japanese usage labels, tooltip details, and actions', async () => {
     await renderWithLanguage('ja', (
       <ContextUsageDisplay

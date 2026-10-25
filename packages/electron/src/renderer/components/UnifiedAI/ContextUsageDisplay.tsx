@@ -4,7 +4,7 @@ import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TokenUsageCategory } from '@nimbalyst/runtime/ai/server/types';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { agentCapabilitiesForProviderType } from '@nimbalyst/runtime/ai/server/agentCapabilities';
-import { getHelpContent } from '../../help';
+import { getHelpContent, localizeHelpEntry } from '../../help';
 import { openSettingsCommandAtom } from '../../store';
 
 const CATEGORY_COLORS = [
@@ -62,6 +62,7 @@ export function ContextUsageDisplay({
   currentContext
 }: ContextUsageDisplayProps) {
   const { t } = useTranslation('aichat');
+  const { t: tCommon } = useTranslation('common');
   const contextReporting = agentCapabilitiesForProviderType(provider).contextReporting;
   // For context window display, prefer currentContext (from /context command)
   // Fall back to legacy fields for backward compatibility
@@ -93,7 +94,8 @@ export function ContextUsageDisplay({
   const [toolBaselineTokens, setToolBaselineTokens] = useState<number | null>(null);
   const openSettings = useSetAtom(openSettingsCommandAtom);
   const tooltipId = useId();
-  const helpContent = getHelpContent('context-indicator');
+  const sourceHelp = getHelpContent('context-indicator');
+  const helpContent = sourceHelp ? localizeHelpEntry('context-indicator', sourceHelp, tCommon) : undefined;
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   // Calculate percentage used (only meaningful with context window)
