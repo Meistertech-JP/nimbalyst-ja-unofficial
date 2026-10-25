@@ -305,6 +305,7 @@
   },
   "columns": {
     "collection": "Collection",
+    "publication": "Publication",
     "type": "Type",
     "key": "Key",
     "updated": "Updated",
@@ -554,6 +555,9 @@
     "updated": "Updated",
     "key": "Key",
     "sync": "Sync",
+    "sync_local": "Local",
+    "sync_pending": "Pending",
+    "sync_synced": "Synced",
     "source": "Source",
     "linked_from": "Linked from",
     "save": "Save",
@@ -968,6 +972,7 @@
     }
   },
   "grid": {
+    "open_details": "Open details",
     "remove_favorite": "Remove from favorites",
     "add_favorite": "Add to favorites",
     "column_filtered": "Column filtered",

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Integrated upstream v0.82.3 with Japanese organization-recovery guidance and retained desktop language switching.
-- Localized session and tracker timestamps, tracker fields, attachment guides, and model recommendations with live language switching.
+- Localized session and tracker timestamps, tracker fields and table controls, attachment guides, and model recommendations with live language switching.
 - Kept iOS session-list refreshes from scanning unrelated session history.
 
 ## [0.82.1-ja.1] — 2026-10-25

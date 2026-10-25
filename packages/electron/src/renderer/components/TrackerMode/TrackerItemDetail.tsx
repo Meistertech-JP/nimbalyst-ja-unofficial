@@ -1369,7 +1369,9 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                       color: item.syncStatus === 'synced' ? '#22c55e' : item.syncStatus === 'pending' ? '#eab308' : '#6b7280',
                     }}
                   >
-                    {item.syncStatus}
+                    {item.syncStatus === 'local' ? t('detail.sync_local')
+                      : item.syncStatus === 'pending' ? t('detail.sync_pending')
+                        : item.syncStatus === 'synced' ? t('detail.sync_synced') : item.syncStatus}
                   </span>
                 </div>
               </div>

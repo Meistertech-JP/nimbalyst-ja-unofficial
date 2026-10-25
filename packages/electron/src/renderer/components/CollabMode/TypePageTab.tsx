@@ -23,7 +23,7 @@ import { buildCollabUri } from '@nimbalyst/collab-protocol';
 import '@nimbalyst/collab-client/trackers-ui/page.css';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { globalRegistry } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
-import { resolveColumnsForType } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
+import { typeFieldLabels } from './typePageFieldLabels';
 import { trackerItemCountByTypeAtom, trackerItemsMapAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
 import { ElectronTrackerDataSource } from '../../services/ElectronTrackerDataSource';
 import {
@@ -73,16 +73,6 @@ function useTypePageScope(workspacePath: string, lane: Lane): CollabScope | null
     [lane, workspacePath],
   );
   return lane === 'personal' ? personalScope : teamScope;
-}
-
-/** The type's own field names, as the table heads them (title and tags aside). */
-function typeFieldLabels(typeId: string): string[] {
-  const model = globalRegistry.get(typeId);
-  if (!model) return [];
-  const own = new Set(model.fields.map((field) => field.name));
-  return resolveColumnsForType(typeId)
-    .filter((column) => own.has(column.id) && column.role !== 'title' && column.id !== 'tags')
-    .map((column) => column.label);
 }
 
 export interface TypePageTabProps {
@@ -140,7 +130,7 @@ export const TypePageTab: React.FC<TypePageTabProps> = ({ typeId, workspacePath,
     [typeId, typePlacements, pages, itemPlacements, itemLookup],
   );
   const parentFolderId = typePlacements.find((placement) => placement.typeId === typeId)?.parentFolderId ?? null;
-  const fieldLabels = useMemo(() => typeFieldLabels(typeId), [typeId, model]);
+  const fieldLabels = useMemo(() => typeFieldLabels(typeId, key => t(key)), [typeId, model, t]);
   const itemTitle = useMemo(() => (itemId: string) => itemLookup(itemId)?.title ?? null, [itemLookup]);
   // The prose's history, once someone has started writing it.
   const proseId = `${TYPE_PAGE_DOCUMENT_PREFIX}${typeId}`;

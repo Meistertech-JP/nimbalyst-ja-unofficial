@@ -28,7 +28,7 @@ import { useAtomValue } from 'jotai';
 import type { TrackerItemType } from '@nimbalyst/runtime/core/DocumentService';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { useTrackerRows } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/useTrackerRows';
-import { resolveColumnsForType, getDefaultColumnConfig, getFieldForColumn, getCellValue, getTypeColor, type TrackerColumnDef, type TypeColumnConfig } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
+import { resolveColumnsForType, localizeTrackerColumns, getDefaultColumnConfig, getFieldForColumn, getCellValue, getTypeColor, type TrackerColumnDef, type TypeColumnConfig } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import { coerceCellValue } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerCellEditors';
 import { withEffectiveUpdated, filterTrackerRecords, getTrackerGroupLabel, sortTrackerRecords } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerRowData';
 import { globalRegistry } from '@nimbalyst/tracker-schema';
@@ -165,6 +165,16 @@ export function TrackerGridView({
 }: TrackerGridViewProps): JSX.Element {
   const { t, i18n } = useTranslation('tracker');
   const dateLocale = i18n.resolvedLanguage ?? i18n.language;
+  const gridLabels = useMemo(() => ({
+    openDetails: t('grid.open_details'),
+    openDocument: t('kanban.open_document'),
+    itemActions: t('table.item_actions'),
+    addFavorite: t('grid.add_favorite'),
+    removeFavorite: t('grid.remove_favorite'),
+    untitled: t('collaboration_surface.untitled'),
+    columnFiltered: t('grid.column_filtered'),
+    filterColumn: (column: string) => t('grid.filter_column', { column }),
+  }), [t]);
   const [filterTarget, setFilterTarget] = useState<{ columnId: string; rect: DOMRect } | null>(null);
   const activeTypeFilter = filterType;
   const schemaType = activeTypeFilter === 'all' ? '' : activeTypeFilter;
@@ -205,8 +215,8 @@ export function TrackerGridView({
   );
 
   const allColumnDefs = useMemo(
-    () => resolveColumnsForType(schemaType),
-    [schemaType],
+    () => localizeTrackerColumns(resolveColumnsForType(schemaType), t),
+    [schemaType, t, dateLocale],
   );
 
   const getGridFilterValue = useCallback((item: TrackerRecord, field: string): unknown => {
@@ -390,6 +400,7 @@ export function TrackerGridView({
   const gridColumns = useMemo(
     () => [
       ...buildGridColumns(visibleColumnDefs, {
+        labels: gridLabels,
         dateFormat: { t, locale: dateLocale },
         trackerType: schemaType,
         columnWidths: effectiveColumnConfig.columnWidths,
@@ -407,10 +418,10 @@ export function TrackerGridView({
           : undefined,
         resolveRelationshipLabel: relationshipLabel,
       }),
-      buildGridActionsColumn(),
+      buildGridActionsColumn(gridLabels),
     ],
     [
-      visibleColumnDefs, schemaType, effectiveColumnConfig.columnWidths, t, dateLocale,
+      visibleColumnDefs, schemaType, effectiveColumnConfig.columnWidths, t, dateLocale, gridLabels,
       isRowEditable, relationshipCandidates, filteredColumnIds, onColumnFiltersChange,
       sortingEnabled, favorites, onItemSelect, onOpenDocument, relationshipLabel,
     ],

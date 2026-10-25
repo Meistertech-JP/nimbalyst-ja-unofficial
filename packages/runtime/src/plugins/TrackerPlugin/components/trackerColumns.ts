@@ -39,6 +39,8 @@ export interface TrackerColumnDef {
   id: string;
   /** Display label in header and settings */
   label: string;
+  /** Where the label came from, so explicit schema labels are never localized. */
+  labelSource?: 'fixed' | 'schema' | 'custom';
   /** Default width in px, or 'auto' for flex */
   width: number | 'auto';
   /** Minimum width in px */
@@ -65,6 +67,60 @@ export interface TrackerColumnDef {
    * so the cell renderer needs no extra argument.
    */
   typeDisplay?: TypeColumnDisplay;
+}
+
+type FixedTrackerColumnLabel = { key: string; role?: TrackerSchemaRole };
+
+/** Only these exact built-in labels are fixed UI; schema-provided labels stay intact. */
+const FIXED_TRACKER_COLUMN_LABELS: Record<string, FixedTrackerColumnLabel> = {
+  type: { key: 'columns.type' },
+  key: { key: 'columns.key' },
+  title: { key: 'columns.title', role: 'title' },
+  status: { key: 'columns.status', role: 'workflowStatus' },
+  priority: { key: 'columns.priority', role: 'priority' },
+  owner: { key: 'columns.owner', role: 'assignee' },
+  dueDate: { key: 'columns.dueDate', role: 'dueDate' },
+  startDate: { key: 'columns.startDate', role: 'startDate' },
+  reporterEmail: { key: 'columns.reporter', role: 'reporter' },
+  tags: { key: 'columns.tags', role: 'tags' },
+  progress: { key: 'columns.progress', role: 'progress' },
+  updated: { key: 'columns.updated' },
+  viewed: { key: 'columns.viewed' },
+  createdBy: { key: 'columns.createdBy' },
+  updatedBy: { key: 'columns.updatedBy' },
+  module: { key: 'columns.module' },
+  shared: { key: 'columns.publication' },
+  created: { key: 'columns.created' },
+};
+
+/** Resolve a fixed UI column label without changing its ID, role, or schema values. */
+export function localizeTrackerColumnLabel(
+  column: TrackerColumnDef,
+  translate: (key: string) => string,
+): string {
+  if (column.labelSource !== 'fixed' && column.labelSource !== 'schema') return column.label;
+  const fixed = Object.prototype.hasOwnProperty.call(FIXED_TRACKER_COLUMN_LABELS, column.id)
+    ? FIXED_TRACKER_COLUMN_LABELS[column.id]
+    : undefined;
+  if (!fixed) return column.label;
+  if (fixed.role) {
+    if (column.role != null && column.role !== fixed.role) return column.label;
+    if (column.labelSource === 'schema' && column.role !== fixed.role) return column.label;
+  } else if (column.role != null) {
+    return column.label;
+  }
+  return translate(fixed.key);
+}
+
+/** Localize display labels while retaining every persisted/data-facing column property. */
+export function localizeTrackerColumns(
+  columns: TrackerColumnDef[],
+  translate: (key: string) => string,
+): TrackerColumnDef[] {
+  return columns.map(column => ({
+    ...column,
+    label: localizeTrackerColumnLabel(column, translate),
+  }));
 }
 
 /** Per-type column configuration (persisted) */
@@ -104,18 +160,18 @@ export function applyTypeColumnDisplay(columns: TrackerColumnDef[], display: Typ
 
 /** Columns that exist independent of schema field definitions. All derived, so none are editable. */
 const STRUCTURAL_COLUMNS: TrackerColumnDef[] = [
-  { id: 'type', label: 'Type', width: 64, minWidth: 64, sortable: true, render: 'type-icon', defaultVisible: true, builtin: true, editable: false, edit: 'readonly' },
+  { id: 'type', label: 'Type', labelSource: 'fixed', width: 64, minWidth: 64, sortable: true, render: 'type-icon', defaultVisible: true, builtin: true, editable: false, edit: 'readonly' },
   // Wide enough for a five-digit key at the grid's 12px, since the key is the
   // row's open affordance and a truncated one cannot be read or aimed at.
-  { id: 'key', label: 'Key', width: 110, minWidth: 90, sortable: true, render: 'text', defaultVisible: true, sortKey: 'issueKey', builtin: true, editable: false, edit: 'readonly' },
-  { id: 'updated', label: 'Updated', width: 100, sortable: true, render: 'date', defaultVisible: true, sortKey: 'lastIndexed', builtin: true, editable: false, edit: 'readonly' },
-  { id: 'viewed', label: 'Viewed', width: 100, sortable: true, render: 'date', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
-  { id: 'createdBy', label: 'Created by', width: 140, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
-  { id: 'updatedBy', label: 'Updated by', width: 140, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
-  { id: 'module', label: 'Source', width: 150, minWidth: 100, sortable: true, render: 'module', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
+  { id: 'key', label: 'Key', labelSource: 'fixed', width: 110, minWidth: 90, sortable: true, render: 'text', defaultVisible: true, sortKey: 'issueKey', builtin: true, editable: false, edit: 'readonly' },
+  { id: 'updated', label: 'Updated', labelSource: 'fixed', width: 100, sortable: true, render: 'date', defaultVisible: true, sortKey: 'lastIndexed', builtin: true, editable: false, edit: 'readonly' },
+  { id: 'viewed', label: 'Viewed', labelSource: 'fixed', width: 100, sortable: true, render: 'date', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
+  { id: 'createdBy', label: 'Created by', labelSource: 'fixed', width: 140, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
+  { id: 'updatedBy', label: 'Updated by', labelSource: 'fixed', width: 140, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
+  { id: 'module', label: 'Source', labelSource: 'fixed', width: 150, minWidth: 100, sortable: true, render: 'module', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
   // Label is the product vocabulary (Draft/Published); the id stays `shared`
   // so saved views and typed `shared:` filter tokens keep resolving.
-  { id: 'shared', label: 'Publication', width: 90, minWidth: 70, sortable: true, render: 'badge', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
+  { id: 'shared', label: 'Publication', labelSource: 'fixed', width: 90, minWidth: 70, sortable: true, render: 'badge', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' },
 ];
 
 /**
@@ -133,15 +189,15 @@ const STRUCTURAL_COLUMNS: TrackerColumnDef[] = [
  * was saved from the All view or from a single-tracker view.
  */
 const ROLE_FALLBACK_COLUMNS: TrackerColumnDef[] = [
-  { id: 'title', label: 'Title', width: 'auto', minWidth: 200, sortable: true, render: 'text', defaultVisible: true, builtin: true, role: 'title', editable: true, edit: 'text' },
-  { id: 'status', label: 'Status', width: 120, sortable: true, render: 'badge', defaultVisible: true, builtin: true, role: 'workflowStatus', editable: true, edit: 'select' },
-  { id: 'priority', label: 'Priority', width: 100, sortable: true, render: 'badge', defaultVisible: true, builtin: true, role: 'priority', editable: true, edit: 'select' },
-  { id: 'owner', label: 'Owner', width: 120, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: true, builtin: true, role: 'assignee', editable: true, edit: 'user' },
-  { id: 'dueDate', label: 'Due Date', width: 100, sortable: true, render: 'date', defaultVisible: true, builtin: true, role: 'dueDate', editable: true, edit: 'date' },
-  { id: 'startDate', label: 'Start Date', width: 100, sortable: true, render: 'date', defaultVisible: false, builtin: true, role: 'startDate', editable: true, edit: 'date' },
-  { id: 'reporterEmail', label: 'Reporter', width: 120, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: false, builtin: true, role: 'reporter', editable: true, edit: 'user' },
-  { id: 'tags', label: 'Tags', width: 120, sortable: true, render: 'tags', defaultVisible: false, builtin: true, role: 'tags', editable: true, edit: 'multiselect' },
-  { id: 'progress', label: 'Progress', width: 60, sortable: true, render: 'progress', defaultVisible: false, builtin: true, role: 'progress', editable: true, edit: 'number' },
+  { id: 'title', label: 'Title', labelSource: 'fixed', width: 'auto', minWidth: 200, sortable: true, render: 'text', defaultVisible: true, builtin: true, role: 'title', editable: true, edit: 'text' },
+  { id: 'status', label: 'Status', labelSource: 'fixed', width: 120, sortable: true, render: 'badge', defaultVisible: true, builtin: true, role: 'workflowStatus', editable: true, edit: 'select' },
+  { id: 'priority', label: 'Priority', labelSource: 'fixed', width: 100, sortable: true, render: 'badge', defaultVisible: true, builtin: true, role: 'priority', editable: true, edit: 'select' },
+  { id: 'owner', label: 'Owner', labelSource: 'fixed', width: 120, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: true, builtin: true, role: 'assignee', editable: true, edit: 'user' },
+  { id: 'dueDate', label: 'Due Date', labelSource: 'fixed', width: 100, sortable: true, render: 'date', defaultVisible: true, builtin: true, role: 'dueDate', editable: true, edit: 'date' },
+  { id: 'startDate', label: 'Start Date', labelSource: 'fixed', width: 100, sortable: true, render: 'date', defaultVisible: false, builtin: true, role: 'startDate', editable: true, edit: 'date' },
+  { id: 'reporterEmail', label: 'Reporter', labelSource: 'fixed', width: 120, minWidth: 100, sortable: true, render: 'avatar', defaultVisible: false, builtin: true, role: 'reporter', editable: true, edit: 'user' },
+  { id: 'tags', label: 'Tags', labelSource: 'fixed', width: 120, sortable: true, render: 'tags', defaultVisible: false, builtin: true, role: 'tags', editable: true, edit: 'multiselect' },
+  { id: 'progress', label: 'Progress', labelSource: 'fixed', width: 60, sortable: true, render: 'progress', defaultVisible: false, builtin: true, role: 'progress', editable: true, edit: 'number' },
 ];
 
 /**
@@ -220,12 +276,17 @@ export function resolveColumnsForType(type: string): TrackerColumnDef[] {
     const role = fieldToRole.get(field.name);
     const render = inferRenderType(field);
     const width = inferWidth(field, role);
-    const label = field.name.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+    const explicitDisplayLabel = (field as { displayLabel?: unknown }).displayLabel;
+    const hasExplicitDisplayLabel = typeof explicitDisplayLabel === 'string' && explicitDisplayLabel.length > 0;
+    const label = hasExplicitDisplayLabel
+      ? explicitDisplayLabel
+      : field.name.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
     const editor = resolveCellEditor(field);
 
     columns.push({
       id: field.name,
       label,
+      labelSource: hasExplicitDisplayLabel ? 'custom' : 'schema',
       width,
       minWidth: role === 'title' ? 200 : undefined,
       sortable: true,
@@ -239,7 +300,7 @@ export function resolveColumnsForType(type: string): TrackerColumnDef[] {
   }
 
   // Add 'created' column (always available but not visible by default)
-  columns.push({ id: 'created', label: 'Created', width: 100, sortable: true, render: 'date', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' });
+  columns.push({ id: 'created', label: 'Created', labelSource: 'fixed', width: 100, sortable: true, render: 'date', defaultVisible: false, builtin: true, editable: false, edit: 'readonly' });
 
   return columns;
 }

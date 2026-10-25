@@ -70,6 +70,7 @@ vi.mock('@nimbalyst/runtime/plugins/TrackerPlugin/components/useTrackerRows', ()
 });
 
 import { TrackerGridView } from '../TrackerGridView';
+import { TrackerGridSurface } from '../../../../../../collab-client/src/trackers-ui/grid/TrackerGridSurface';
 
 function record(id: string, status: string): TrackerRecord {
   return {
@@ -99,6 +100,8 @@ describe('TrackerGridView grouping', () => {
 
   it('rebuilds desktop grid date text and exact titles on en → ja → en switching', async () => {
     const i18n = await createI18nInstance('en');
+    i18n.addResource('en', 'tracker', 'grid.open_details', 'Open details');
+    i18n.addResource('ja', 'tracker', 'grid.open_details', '詳細を開く');
     const date = new Date(Date.now() - 3 * 3_600_000);
     const recent = record('recent-date', 'in-progress');
     recent.system.updatedAt = date.toISOString();
@@ -106,7 +109,8 @@ describe('TrackerGridView grouping', () => {
     render(
       <I18nextProvider i18n={i18n}>
         <TrackerGridView filterType="bug" overrideItems={[recent]}
-          columnConfig={{ visibleColumns: ['updated'], columnWidths: {} }} />
+          onItemSelect={vi.fn()} onOpenDocument={vi.fn()} onColumnFiltersChange={vi.fn()}
+          columnConfig={{ visibleColumns: ['key', 'updated'], columnWidths: {} }} />
       </I18nextProvider>,
     );
     const h = (tag: string, props: { title?: string }, text: string) => {
@@ -120,13 +124,63 @@ describe('TrackerGridView grouping', () => {
       await waitFor(() => {
         const column = gridProps.current?.columns?.find((candidate: { prop: string }) => candidate.prop === 'updated');
         expect(column).toBeDefined();
+        expect(column.name).toBe(i18n.t('columns.updated', { ns: 'tracker' }));
         // Run the real template passed by TrackerGridView, not a rebuilt test column.
         const node = column.cellTemplate(h, { model: gridProps.current?.source[0] }) as HTMLElement;
         expect(node.textContent).toBe(locale === 'ja' ? '3時間前' : '3h ago');
         expect(node.title).toBe(date.toLocaleString(locale, {
           month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
         }));
+        const vnode = (tag: string, props: any, children: any): any => ({ tag, props, children });
+        const keyColumn = gridProps.current?.columns.find((candidate: { prop: string }) => candidate.prop === 'key');
+        const keyCell = keyColumn.cellTemplate(vnode, { model: gridProps.current?.source[0] });
+        expect(keyCell.children[0].props.title).toBe(locale === 'ja' ? '詳細を開く' : 'Open details');
+        expect(keyCell.children[1].props['aria-label']).toBe(locale === 'ja' ? 'ドキュメントを開く' : 'Open document');
+        const actions = gridProps.current?.columns.at(-1).cellTemplate(vnode);
+        expect(actions.props['aria-label']).toBe(locale === 'ja' ? '項目の操作' : 'Item actions');
+        const header = column.columnTemplate(vnode);
+        expect(header.children[1].children[0].props.title).toBe(i18n.t('grid.filter_column', { ns: 'tracker', column: column.name }));
       });
+    }
+  });
+
+  it.each(['desktop', 'shared'] as const)('%s preserves explicit schema labels while re-localizing raw structural and standard columns', async (surface) => {
+    const i18n = await createI18nInstance('en');
+    const model = globalRegistry.get('bug')!;
+    const type = 'grid-custom-label-regression';
+    globalRegistry.register({
+      ...model, type,
+      fields: model.fields.map(field => field.name === 'status' ? { ...field, displayLabel: 'Status' } : field),
+    });
+    try {
+      render(<I18nextProvider i18n={i18n}>
+        {surface === 'desktop'
+          ? <TrackerGridView filterType={type} overrideItems={[{ ...record('custom', 'open'), primaryType: type }]}
+              onColumnFiltersChange={vi.fn()}
+              columnConfig={{ visibleColumns: ['status', 'priority', 'createdBy', 'updatedBy'], columnWidths: {} }} />
+          : <TrackerGridSurface trackerType={type} rows={[{ ...record('custom', 'open'), primaryType: type }]} loaded
+              onColumnFiltersChange={vi.fn()}
+              columnConfig={{ visibleColumns: ['status', 'priority', 'createdBy', 'updatedBy'], columnWidths: {} }} />}
+      </I18nextProvider>);
+      for (const locale of ['en', 'ja', 'en'] as const) {
+        await act(async () => { await i18n.changeLanguage(locale); });
+        await waitFor(() => {
+          const columns = gridProps.current?.columns;
+          expect(columns?.find((column: { prop: string }) => column.prop === 'status').name).toBe('Status');
+          for (const prop of ['priority', 'createdBy', 'updatedBy']) {
+            expect(columns?.find((column: { prop: string }) => column.prop === prop).name)
+              .toBe(i18n.t(`columns.${prop}`, { ns: 'tracker' }));
+          }
+          const priority = columns?.find((column: { prop: string }) => column.prop === 'priority');
+          const vnode = (tag: string, props: any, children: any): any => ({ tag, props, children });
+          const header = priority.columnTemplate(vnode);
+          expect(header.children[1].children[0].props.title).toBe(i18n.t('grid.filter_column', {
+            ns: 'tracker', column: i18n.t('columns.priority', { ns: 'tracker' }),
+          }));
+        });
+      }
+    } finally {
+      globalRegistry.unregister(type);
     }
   });
 

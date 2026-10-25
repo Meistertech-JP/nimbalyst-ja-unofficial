@@ -18,6 +18,7 @@ import {
   SortDirection as TrackerSortDirection,
   type TrackerItemType,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin';
+import { localizeTrackerColumns } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import {
   trackerItemsByTypeAtom,
   archivedTrackerItemsAtom,
@@ -382,8 +383,8 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
 
   const schemaType = columnConfigKey === 'all' ? '' : columnConfigKey;
   const availableColumns = useMemo(
-    () => resolveColumnsForType(schemaType),
-    [schemaType],
+    () => localizeTrackerColumns(resolveColumnsForType(schemaType), key => t(key)),
+    [schemaType, t],
   );
 
   const filterFields = useMemo<TrackerFilterField[]>(

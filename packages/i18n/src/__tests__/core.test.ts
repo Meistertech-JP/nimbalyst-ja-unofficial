@@ -285,7 +285,17 @@ describe('UI language preference', () => {
     });
     expect(resources.en.tracker.columns.collection).toBe('Collection');
     expect(resources.ja.tracker.columns.collection).toBe('コレクション');
-    expect(totalKeys).toBe(14789);
+    expect(resources.en.tracker.grid.open_details).toBe('Open details');
+    expect(resources.ja.tracker.grid.open_details).toBe('詳細を開く');
+    expect(resources.en.tracker.detail.sync_local).toBe('Local');
+    expect(resources.ja.tracker.detail.sync_local).toBe('ローカル');
+    expect(resources.en.tracker.detail.sync_pending).toBe('Pending');
+    expect(resources.ja.tracker.detail.sync_pending).toBe('同期待ち');
+    expect(resources.en.tracker.detail.sync_synced).toBe('Synced');
+    expect(resources.ja.tracker.detail.sync_synced).toBe('同期済み');
+    expect(resources.en.tracker.columns.publication).toBe('Publication');
+    expect(resources.ja.tracker.columns.publication).toBe('公開状態');
+    expect(totalKeys).toBe(14794);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

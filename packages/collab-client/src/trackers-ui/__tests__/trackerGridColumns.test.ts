@@ -70,6 +70,41 @@ describe('buildGridColumns', () => {
   const build = (ids: string[], isRowEditable: (id: string) => boolean = () => true) =>
     buildGridColumns(columnsFor(ids), { trackerType: gridType, isRowEditable });
 
+  it('localizes grid action accessibility and filter titles without changing their handlers', () => {
+    registerType();
+    const onOpenDetail = vi.fn();
+    const onOpenDocument = vi.fn();
+    const onOpenFilter = vi.fn();
+    const labels = {
+      openDetails: '詳細を開く', openDocument: '文書を開く', itemActions: '項目の操作',
+      columnFiltered: '列の絞り込み中', filterColumn: (column: string) => `${column}を絞り込む`,
+      addFavorite: 'お気に入りに追加', removeFavorite: 'お気に入りから削除', untitled: '無題',
+    };
+    const [key, title] = buildGridColumns(columnsFor(['key', 'title']), {
+      trackerType: gridType, isRowEditable: () => true, labels,
+      keyLink: { onOpenDetail, onOpenDocument }, rowActions: true, onOpenFilter,
+    });
+    const h = (tag: string, props: any, children: any): any => ({ tag, props, children });
+    const keyCell = (key.cellTemplate as any)(h, { model: { key: 'GCS-1', [ROW_ITEM_ID]: '1' } });
+    expect(keyCell.children[0].props.title).toBe('詳細を開く');
+    expect(keyCell.children[1].props['aria-label']).toBe('文書を開く');
+    const event = { preventDefault: vi.fn(), stopPropagation: vi.fn() };
+    keyCell.children[0].props.onClick(event);
+    keyCell.children[1].props.onClick(event);
+    expect(onOpenDetail).toHaveBeenCalledWith('1');
+    expect(onOpenDocument).toHaveBeenCalledWith('1');
+    const actionCell = (buildGridActionsColumn(labels).cellTemplate as any)(h);
+    expect(actionCell.props.title).toBe('項目の操作');
+    expect(actionCell.props['aria-label']).toBe('項目の操作');
+    const header = (title.columnTemplate as any)(h);
+    expect(header.children[1].children[0].props.title).toBe('Titleを絞り込む');
+    const [filtered] = buildGridColumns(columnsFor(['title']), {
+      trackerType: gridType, isRowEditable: () => true, labels,
+      filteredColumnIds: new Set(['title']), onOpenFilter,
+    });
+    expect((filtered.columnTemplate as any)(h).children[1].children[0].props.title).toBe('列の絞り込み中');
+  });
+
   it('renders date cell text and hover dates in the active UI locale', async () => {
     registerType();
     const date = new Date(Date.now() - 3 * 3_600_000);

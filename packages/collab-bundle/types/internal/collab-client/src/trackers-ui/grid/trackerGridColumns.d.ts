@@ -11,6 +11,16 @@ import { type TrackerRelationshipLabelResolver } from '../../../../runtime/src/p
 import { type TrackerEditorContext } from './trackerGridEditors';
 import { buildGridSource, ROW_ACTIONS, ROW_ITEM_ID, ROW_ITEM_TYPE } from '../../trackers/index';
 export { buildGridSource, ROW_ACTIONS, ROW_ITEM_ID, ROW_ITEM_TYPE };
+export interface TrackerGridLabels {
+    openDetails?: string;
+    openDocument?: string;
+    itemActions?: string;
+    addFavorite?: string;
+    removeFavorite?: string;
+    untitled?: string;
+    columnFiltered?: string;
+    filterColumn?: (column: string) => string;
+}
 /** Human-readable text for a stored value, by column render type. */
 export declare function formatValue(col: TrackerColumnDef, value: unknown, trackerType: string, resolveLabel?: TrackerRelationshipLabelResolver, dateFormat?: TrackerDateFormatOptions): string;
 export interface FavoritesOptions {
@@ -27,6 +37,7 @@ export interface KeyLinkOptions {
     titleOpens?: boolean;
 }
 export interface BuildGridColumnsOptions {
+    labels?: TrackerGridLabels;
     dateFormat?: TrackerDateFormatOptions;
     /** Active tracker type; `'all'` means a mixed-type view. */
     trackerType: string;
@@ -52,7 +63,7 @@ export interface BuildGridColumnsOptions {
     resolveRelationshipLabel?: TrackerRelationshipLabelResolver;
 }
 /** Always-present trailing action column, separate from editable tracker fields. */
-export declare function buildGridActionsColumn(): ColumnRegular;
+export declare function buildGridActionsColumn(labels?: TrackerGridLabels): ColumnRegular;
 /** A read-only text column whose value the host computed into the row under `id`. */
 export declare function buildDerivedGridColumn(column: {
     id: string;
@@ -63,4 +74,4 @@ export declare function buildDerivedGridColumn(column: {
  * Map visible tracker columns to RevoGrid columns, attaching the per-field
  * editor and a per-cell readonly gate.
  */
-export declare function buildGridColumns(columns: TrackerColumnDef[], { trackerType, columnWidths, isRowEditable, editorContext, filteredColumnIds, onOpenFilter, sortingEnabled, favorites, rowActions, keyLink, resolveRelationshipLabel: resolveLabel, dateFormat, }: BuildGridColumnsOptions): ColumnRegular[];
+export declare function buildGridColumns(columns: TrackerColumnDef[], { trackerType, columnWidths, isRowEditable, editorContext, filteredColumnIds, onOpenFilter, sortingEnabled, favorites, rowActions, keyLink, resolveRelationshipLabel: resolveLabel, dateFormat, labels, }: BuildGridColumnsOptions): ColumnRegular[];

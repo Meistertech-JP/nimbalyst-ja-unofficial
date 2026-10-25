@@ -9,16 +9,117 @@ import {
   getEffectiveUpdatedDate,
   getTypeIcon,
   getTypeLabel,
+  localizeTrackerColumns,
   resolveColumnFieldName,
   resolveColumnsForType,
   resolveTypeColumnDisplay,
+  type TrackerColumnDef,
 } from '../trackerColumns';
 import { resolveTrackerOrderingValue } from '../../models/trackerOrdering';
 import { globalRegistry } from '../../models';
-import { emptyLabelRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
+import { emptyLabelRegistry, type FieldDefinition, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import type { TrackerRecord } from '../../../../core/TrackerRecord';
 
 describe('trackerColumns', () => {
+  it('localizes only exact fixed labels and leaves custom column metadata intact across languages', () => {
+    const options = [{ value: 'todo', label: 'To Do' }];
+    const columns = [
+      { id: 'type', label: 'Type', labelSource: 'fixed', role: undefined },
+      { id: 'key', label: 'Key', labelSource: 'fixed', role: undefined },
+      { id: 'title', label: 'Title', labelSource: 'fixed', role: 'title' },
+      { id: 'status', label: 'Status', labelSource: 'fixed', role: 'workflowStatus' },
+      { id: 'priority', label: 'Priority', labelSource: 'fixed', role: 'priority' },
+      { id: 'owner', label: 'Owner', labelSource: 'fixed', role: 'assignee' },
+      { id: 'dueDate', label: 'Due Date', labelSource: 'fixed', role: 'dueDate' },
+      { id: 'startDate', label: 'Start Date', labelSource: 'fixed', role: 'startDate' },
+      { id: 'reporterEmail', label: 'Reporter', labelSource: 'fixed', role: 'reporter' },
+      { id: 'tags', label: 'Tags', labelSource: 'fixed', role: 'tags' },
+      { id: 'progress', label: 'Progress', labelSource: 'fixed', role: 'progress' },
+      { id: 'updated', label: 'Updated', labelSource: 'fixed', role: undefined },
+      { id: 'createdBy', label: 'Created by', labelSource: 'fixed', role: undefined },
+      { id: 'updatedBy', label: 'Updated by', labelSource: 'fixed', role: undefined },
+      { id: 'viewed', label: 'Viewed', labelSource: 'fixed', role: undefined },
+      { id: 'module', label: 'Source', labelSource: 'fixed', role: undefined },
+      { id: 'shared', label: 'Publication', labelSource: 'fixed', role: undefined },
+      { id: 'created', label: 'Created', labelSource: 'fixed', role: undefined },
+      { id: 'workflowState', label: 'Workflow State', labelSource: 'schema', role: 'workflowStatus' },
+      { id: 'status', label: 'Custom status', labelSource: 'custom', role: 'workflowStatus' },
+      { id: 'custom', label: 'My field', labelSource: 'custom', role: undefined, options },
+    ] as TrackerColumnDef[];
+    const dictionaries = {
+      en: {
+        'columns.type': 'Type', 'columns.key': 'Key', 'columns.title': 'Title',
+        'columns.status': 'Status', 'columns.priority': 'Priority', 'columns.owner': 'Owner',
+        'columns.dueDate': 'Due Date', 'columns.updated': 'Updated',
+        'columns.startDate': 'Start Date', 'columns.reporter': 'Reporter', 'columns.tags': 'Tags', 'columns.progress': 'Progress',
+        'columns.createdBy': 'Created by', 'columns.updatedBy': 'Updated by', 'columns.viewed': 'Viewed',
+        'columns.module': 'Source', 'columns.publication': 'Publication', 'columns.created': 'Created',
+      },
+      ja: {
+        'columns.type': '種類', 'columns.key': 'キー', 'columns.title': 'タイトル',
+        'columns.status': 'ステータス', 'columns.priority': '優先度', 'columns.owner': '担当者',
+        'columns.dueDate': '期限', 'columns.updated': '更新日時',
+        'columns.startDate': '開始日', 'columns.reporter': '報告者', 'columns.tags': 'タグ', 'columns.progress': '進捗',
+        'columns.createdBy': '作成者', 'columns.updatedBy': '更新者', 'columns.viewed': '閲覧日時',
+        'columns.module': 'ソース', 'columns.publication': '公開状態', 'columns.created': '作成日時',
+      },
+    };
+    let language: keyof typeof dictionaries = 'ja';
+    const translate = (key: string) => dictionaries[language][key as keyof typeof dictionaries.ja] ?? key;
+
+    const japanese = localizeTrackerColumns(columns, translate);
+    expect(japanese.map(column => column.label)).toEqual([
+      '種類', 'キー', 'タイトル', 'ステータス', '優先度', '担当者', '期限', '開始日', '報告者', 'タグ', '進捗', '更新日時',
+      '作成者', '更新者', '閲覧日時', 'ソース', '公開状態', '作成日時',
+      'Workflow State', 'Custom status', 'My field',
+    ]);
+    expect(japanese.map(column => column.id)).toEqual(columns.map(column => column.id));
+    expect(japanese.map(column => column.role)).toEqual(columns.map(column => column.role));
+    expect((japanese.find(column => column.id === 'custom') as TrackerColumnDef & { options: typeof options }).options).toBe(options);
+
+    const actualFallback = localizeTrackerColumns(resolveColumnsForType(''), translate);
+    expect(actualFallback.find(column => column.id === 'startDate')?.label).toBe('開始日');
+    expect(actualFallback.find(column => column.id === 'reporterEmail')?.label).toBe('報告者');
+    expect(actualFallback.find(column => column.id === 'tags')?.label).toBe('タグ');
+    expect(actualFallback.find(column => column.id === 'progress')?.label).toBe('進捗');
+    expect(actualFallback.find(column => column.id === 'createdBy')?.label).toBe('作成者');
+
+    language = 'en';
+    expect(localizeTrackerColumns(columns, translate).map(column => column.label))
+      .toEqual(columns.map(column => column.label));
+  });
+
+  it('distinguishes generated labels from an explicit displayLabel that matches a built-in label', () => {
+    const model = (type: string, displayLabel?: string): TrackerDataModel => ({
+      type,
+      displayName: type,
+      displayNamePlural: `${type}s`,
+      icon: 'assignment',
+      color: 'var(--nim-primary)',
+      modes: { inline: true, fullDocument: true },
+      idPrefix: 'LBL',
+      idFormat: 'ulid',
+      fields: [
+        { name: 'title', type: 'string', required: true },
+        ...(displayLabel === undefined
+          ? [{ name: 'status', type: 'select' } as FieldDefinition]
+          : [{ name: 'status', type: 'select', displayLabel } as unknown as FieldDefinition]),
+      ],
+      roles: { title: 'title', workflowStatus: 'status' },
+    });
+    globalRegistry.register(model('generatedStatusLabel'));
+    globalRegistry.register(model('explicitStatusLabel', 'Status'));
+
+    const japanese = localizeTrackerColumns(
+      [resolveColumnsForType('generatedStatusLabel'), resolveColumnsForType('explicitStatusLabel')]
+        .map(columns => columns.find(column => column.id === 'status')!),
+      key => key === 'columns.status' ? 'ステータス' : key,
+    );
+
+    expect(japanese[0]).toMatchObject({ id: 'status', label: 'ステータス', labelSource: 'schema' });
+    expect(japanese[1]).toMatchObject({ id: 'status', label: 'Status', labelSource: 'custom' });
+  });
+
   it('gives the structural type column enough width for the grid header and icon', () => {
     const typeColumn = resolveColumnsForType('').find(column => column.id === 'type');
 

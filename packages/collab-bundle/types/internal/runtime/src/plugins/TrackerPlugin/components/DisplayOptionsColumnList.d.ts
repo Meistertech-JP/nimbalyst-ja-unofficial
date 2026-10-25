@@ -4,7 +4,7 @@
  * DisplayOptionsPanel so the panel itself stays a layout of view settings.
  */
 import React from 'react';
-import type { TrackerColumnDef, TypeColumnConfig } from './trackerColumns';
+import { type TrackerColumnDef, type TypeColumnConfig } from './trackerColumns';
 interface DisplayOptionsColumnListProps {
     availableColumns: TrackerColumnDef[];
     config: TypeColumnConfig;

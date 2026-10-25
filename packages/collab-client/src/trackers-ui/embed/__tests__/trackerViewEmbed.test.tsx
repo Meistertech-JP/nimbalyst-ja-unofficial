@@ -8,6 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { act, fireEvent, render as libraryRender, renderHook, screen, waitFor } from '@testing-library/react';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { I18nextProvider } from 'react-i18next';
 import { trackerRecordToItem, type TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import {
@@ -22,6 +23,7 @@ import { TRACKER_EMBEDS_READ_ONLY_ATTRIBUTE, TrackerViewEmbed } from '../Tracker
 import { createTypePageView } from '../typePageView';
 import { PlacedViewEmbed } from '../PlacedViewEmbed';
 import { MarksListEmbed } from '../MarksListEmbed';
+import { ViewCardFields } from '../ViewCardFields';
 import { setPageMarksSource } from '../../../pages';
 
 let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
@@ -30,6 +32,9 @@ function EnglishI18nWrapper({ children }: { children: ReactNode }) {
 }
 function render(ui: Parameters<typeof libraryRender>[0]) {
   return libraryRender(ui, { wrapper: EnglishI18nWrapper });
+}
+function renderWithI18n(ui: Parameters<typeof libraryRender>[0], i18n: Awaited<ReturnType<typeof createI18nInstance>>) {
+  return libraryRender(ui, { wrapper: ({ children }) => <I18nextProvider i18n={i18n}>{children}</I18nextProvider> });
 }
 
 // The real grid surface runs; only the web component is a bare element, so a
@@ -130,6 +135,102 @@ describe('TrackerViewEmbed', () => {
     fireEvent.change(screen.getByLabelText('Filter value'), { target: { value: 'A,B|C' } });
     fireEvent.click(screen.getByRole('button', { name: /Add filter/ }));
     expect(change).toHaveBeenLastCalledWith({ filter: 'title:=Braze,title:=A%2CB%7CC' });
+  });
+
+  it('localizes fixed placed-view properties with language changes and preserves explicit custom labels', async () => {
+    const explicitStatus = { name: 'customStatus', type: 'text', displayLabel: 'Status' } as unknown as TrackerDataModel['fields'][number];
+    act(() => globalRegistry.register({
+      ...model('ev-label-settings', [
+        { name: 'title', type: 'string' },
+        { name: 'status', type: 'text' },
+        explicitStatus,
+      ]),
+      roles: { title: 'title', workflowStatus: 'status' },
+    }));
+    try {
+      const i18n = await createI18nInstance('en');
+      renderWithI18n(
+        <TrackersUIProvider dataSource={fakeSource()} identity={null}>
+          <PlacedViewEmbed target={{ kind: 'type', typeId: 'ev-label-settings' }} label="Label settings" attrs={{ cols: 'title,status,customStatus' }} />
+        </TrackersUIProvider>,
+        i18n,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'View settings' }));
+      fireEvent.click(screen.getByRole('button', { name: /Property visibility/ }));
+      expect(screen.getAllByText('Status')).toHaveLength(2);
+
+      await act(async () => { await i18n.changeLanguage('ja'); });
+      expect(screen.getByText('ステータス')).toBeDefined();
+      expect(screen.getByText('Status')).toBeDefined();
+
+      await act(async () => { await i18n.changeLanguage('en'); });
+      expect(screen.getAllByText('Status')).toHaveLength(2);
+    } finally {
+      act(() => globalRegistry.unregister('ev-label-settings'));
+    }
+  });
+
+  it('localizes card field labels while keeping schema values and explicit labels unchanged', async () => {
+    const explicitStatus = { name: 'customStatus', type: 'text', displayLabel: 'Status' } as unknown as TrackerDataModel['fields'][number];
+    act(() => globalRegistry.register({
+      ...model('ev-card-labels', [
+        { name: 'title', type: 'string' },
+        { name: 'status', type: 'text' },
+        { name: 'dueDate', type: 'date' },
+        { name: 'startDate', type: 'datetime' },
+        explicitStatus,
+      ]),
+      roles: { title: 'title', workflowStatus: 'status', dueDate: 'dueDate', startDate: 'startDate' },
+    }));
+    try {
+      const i18n = await createI18nInstance('en');
+      const now = new Date();
+      const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const startDate = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+      const item = record('card-labels', 'ev-card-labels', { title: 'Labels', status: 'Open', customStatus: 'Custom', dueDate, startDate });
+      const { rerender } = renderWithI18n(<ViewCardFields item={item} columns={['status', 'customStatus', 'dueDate', 'startDate']} />, i18n);
+      expect(screen.getByText('Status: Open')).toBeDefined();
+      expect(screen.getByText('Status: Custom')).toBeDefined();
+      expect(screen.getByText('Due Date: Today')).toBeDefined();
+      expect(screen.getByText('Start Date: 2h ago')).toBeDefined();
+
+      await act(async () => { await i18n.changeLanguage('ja'); });
+      expect(screen.getByText('ステータス: Open')).toBeDefined();
+      expect(screen.getByText('Status: Custom')).toBeDefined();
+      expect(screen.getByText('期限: 今日')).toBeDefined();
+      expect(screen.getByText('開始日: 2時間前')).toBeDefined();
+
+      await act(async () => { await i18n.changeLanguage('en'); });
+      expect(screen.getByText('Status: Open')).toBeDefined();
+      expect(screen.getByText('Status: Custom')).toBeDefined();
+      expect(screen.getByText('Due Date: Today')).toBeDefined();
+      expect(screen.getByText('Start Date: 2h ago')).toBeDefined();
+      expect(item.fields.dueDate).toBe(dueDate);
+      expect(item.fields.startDate).toBe(startDate);
+
+      const updatedCustomStatus = { name: 'customStatus', type: 'text', displayLabel: 'Custom workflow' } as unknown as TrackerDataModel['fields'][number];
+      const reviewer = { name: 'reviewer', type: 'text', displayLabel: 'Reviewer' } as unknown as TrackerDataModel['fields'][number];
+      act(() => globalRegistry.register({
+        ...model('ev-card-labels', [
+          { name: 'title', type: 'string' },
+          { name: 'status', type: 'text' },
+          { name: 'dueDate', type: 'date' },
+          { name: 'startDate', type: 'datetime' },
+          updatedCustomStatus,
+          reviewer,
+        ]),
+        roles: { title: 'title', workflowStatus: 'status', dueDate: 'dueDate', startDate: 'startDate' },
+      }));
+      const updatedItem = record('card-labels', 'ev-card-labels', { title: 'Labels', status: 'Open', customStatus: 'Custom', reviewer: 'Grace', dueDate, startDate });
+      rerender(<I18nextProvider i18n={i18n}><ViewCardFields item={updatedItem} columns={['status', 'customStatus', 'reviewer', 'dueDate', 'startDate']} /></I18nextProvider>);
+      expect(screen.getByText('Status: Open')).toBeDefined();
+      expect(screen.getByText('Custom workflow: Custom')).toBeDefined();
+      expect(screen.getByText('Reviewer: Grace')).toBeDefined();
+      expect(screen.getByText('Due Date: Today')).toBeDefined();
+      expect(screen.getByText('Start Date: 2h ago')).toBeDefined();
+    } finally {
+      act(() => globalRegistry.unregister('ev-card-labels'));
+    }
   });
 
   it('routes native header sorting and resize through the shared view write-back', async () => {

@@ -5,7 +5,7 @@
  * click landed, making grouping unpickable.
  */
 
-import React from 'react';
+import React, { act } from 'react';
 import { beforeAll, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
@@ -24,17 +24,18 @@ beforeAll(async () => {
 });
 
 const availableColumns: TrackerColumnDef[] = [
-  { id: 'title', label: 'Title', defaultVisible: true },
-  { id: 'status', label: 'Status', defaultVisible: true },
+  { id: 'title', label: 'Title', labelSource: 'fixed', role: 'title', defaultVisible: true },
+  { id: 'status', label: 'Status', labelSource: 'fixed', role: 'workflowStatus', defaultVisible: true },
+  { id: 'customStatus', label: 'My workflow state', labelSource: 'custom', defaultVisible: false },
 ] as TrackerColumnDef[];
 
-function renderPanel() {
+function renderPanel(i18n = englishI18n, showColumnProperties = false) {
   const onGroupByChange = vi.fn();
   const onClose = vi.fn();
   const anchor = document.createElement('button');
   document.body.appendChild(anchor);
   const utils = render(
-    <I18nextProvider i18n={englishI18n}>
+    <I18nextProvider i18n={i18n}>
     <DisplayOptionsPanel
       availableColumns={availableColumns}
       config={{ visibleColumns: ['title'], columnWidths: {} }}
@@ -43,7 +44,7 @@ function renderPanel() {
       anchorElement={anchor}
       groupBy="none"
       onGroupByChange={onGroupByChange}
-      showColumnProperties={false}
+      showColumnProperties={showColumnProperties}
     />
     </I18nextProvider>,
   );
@@ -51,6 +52,25 @@ function renderPanel() {
 }
 
 describe('DisplayOptionsPanel grouping select', () => {
+  it('updates fixed column labels with the active language and preserves custom labels', async () => {
+    const i18n = await createI18nInstance('en');
+    renderPanel(i18n, true);
+
+    expect(screen.getByText('Title')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Show Status' })).toBeDefined();
+    expect(screen.getByText('My workflow state')).toBeDefined();
+
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(screen.getByText('タイトル')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'ステータスを表示' })).toBeDefined();
+    expect(screen.getByText('My workflow state')).toBeDefined();
+
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByText('Title')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Show Status' })).toBeDefined();
+    expect(screen.getByText('My workflow state')).toBeDefined();
+  });
+
   it('selects a grouping option instead of dismissing the panel', async () => {
     const { onGroupByChange, onClose } = renderPanel();
 
@@ -78,7 +98,7 @@ describe('DisplayOptionsPanel grouping select', () => {
  */
 describe('DisplayOptionsPanel type column display', () => {
   const typeColumns = [
-    { id: 'type', label: 'Type', defaultVisible: true },
+    { id: 'type', label: 'Type', labelSource: 'fixed', defaultVisible: true },
     ...availableColumns,
   ] as TrackerColumnDef[];
 

@@ -305,6 +305,7 @@
   },
   "columns": {
     "collection": "コレクション",
+    "publication": "公開状態",
     "type": "種類",
     "key": "キー",
     "updated": "更新日時",
@@ -554,6 +555,9 @@
     "updated": "更新日時",
     "key": "キー",
     "sync": "同期",
+    "sync_local": "ローカル",
+    "sync_pending": "同期待ち",
+    "sync_synced": "同期済み",
     "source": "ソース",
     "linked_from": "リンク元",
     "save": "保存",
@@ -968,6 +972,7 @@
     }
   },
   "grid": {
+    "open_details": "詳細を開く",
     "remove_favorite": "お気に入りから削除",
     "add_favorite": "お気に入りに追加",
     "column_filtered": "列にフィルター適用中",

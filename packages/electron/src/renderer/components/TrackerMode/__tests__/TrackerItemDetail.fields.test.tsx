@@ -10,6 +10,7 @@ import { act, cleanup, render, screen, fireEvent, waitFor } from '@testing-libra
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { I18nextProvider } from 'react-i18next';
 import { store } from '@nimbalyst/runtime/store';
 
 // The file-backed body editor is only reachable in content focus, and it drags
@@ -156,6 +157,29 @@ function renderPage({ collabScope = { scopeKey: '/ws' } as unknown } = {}) {
 }
 
 describe('TrackerItemDetail metadata region', () => {
+  it('translates known sync states while preserving unknown states and live language switching', async () => {
+    const i18n = await createI18nInstance('en');
+    for (const [state, en, ja] of [['local', 'Local', 'ローカル'], ['pending', 'Pending', '同期待ち'], ['synced', 'Synced', '同期済み']]) {
+      i18n.addResource('en', 'tracker', `detail.sync_${state}`, en);
+      i18n.addResource('ja', 'tracker', `detail.sync_${state}`, ja);
+    }
+    render(
+      <I18nextProvider i18n={i18n}><Provider store={store}>
+        <TrackerItemDetail itemId={ITEM.id} onClose={() => {}} />
+      </Provider></I18nextProvider>,
+    );
+    expect(await screen.findByText('Local')).toBeDefined();
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(screen.getByText('ローカル')).toBeDefined();
+    for (const [state, label] of [['pending', '同期待ち'], ['synced', '同期済み'], ['future-state', 'future-state']]) {
+      act(() => { store.set(replaceAllTrackerItemsAtom, [{ ...ITEM, syncStatus: state } as TrackerRecord]); });
+      expect(await screen.findByText(label)).toBeDefined();
+    }
+    act(() => { store.set(replaceAllTrackerItemsAtom, [{ ...ITEM, syncStatus: 'local' }]); });
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByText('Local')).toBeDefined();
+  });
+
   it('localizes tracker publication controls and notification text', async () => {
     const i18n = await createI18nInstance('ja');
     (window as any).electronAPI.invoke = vi.fn().mockImplementation((channel: string) => (

@@ -39,6 +39,17 @@ import {
 
 export { buildGridSource, ROW_ACTIONS, ROW_ITEM_ID, ROW_ITEM_TYPE };
 
+export interface TrackerGridLabels {
+  openDetails?: string;
+  openDocument?: string;
+  itemActions?: string;
+  addFavorite?: string;
+  removeFavorite?: string;
+  untitled?: string;
+  columnFiltered?: string;
+  filterColumn?: (column: string) => string;
+}
+
 function textNode(createElement: HyperFunc<VNode>, text: string, title?: string): VNode {
   return createElement('span', { class: 'tracker-grid-cell-text', ...(title ? { title } : {}) }, text);
 }
@@ -180,6 +191,7 @@ function favoriteNode(
   itemId: string,
   isFavorite: boolean,
   onToggleFavorite: (itemId: string) => void,
+  labels: TrackerGridLabels,
 ): VNode {
   return createElement(
     'span',
@@ -187,7 +199,7 @@ function favoriteNode(
       class: isFavorite
         ? 'tracker-grid-cell-favorite is-favorite'
         : 'tracker-grid-cell-favorite',
-      title: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+      title: isFavorite ? labels.removeFavorite ?? 'Remove from favorites' : labels.addFavorite ?? 'Add to favorites',
       // The grid focuses a cell on pointerdown, which would open the detail
       // panel behind the star. Swallow both events so the star is a pure toggle.
       onPointerDown: (e: MouseEvent) => {
@@ -212,14 +224,15 @@ function favoriteNode(
 function contextMenuNode(
   createElement: HyperFunc<VNode>,
   placement: 'title' | 'column',
+  labels: TrackerGridLabels = {},
 ): VNode {
   return createElement(
     'button',
     {
       type: 'button',
       class: `tracker-grid-cell-menu tracker-grid-cell-menu-${placement}`,
-      title: 'Item actions',
-      'aria-label': 'Item actions',
+      title: labels.itemActions ?? 'Item actions',
+      'aria-label': labels.itemActions ?? 'Item actions',
       // Preserve RevoGrid's current range so opening the menu can apply to the
       // whole selection when this row is already inside it.
       onPointerDown: (e: MouseEvent) => {
@@ -264,6 +277,7 @@ function keyLinkNode(
   text: string,
   itemId: string,
   keyLink: KeyLinkOptions,
+  labels: TrackerGridLabels,
 ): VNode {
   const swallow = (e: MouseEvent): void => {
     e.preventDefault();
@@ -286,8 +300,8 @@ function keyLinkNode(
         {
           type: 'button',
           class: 'tracker-grid-cell-key-link is-icon-only',
-          title: 'Open details',
-          'aria-label': 'Open details',
+          title: labels.openDetails ?? 'Open details',
+          'aria-label': labels.openDetails ?? 'Open details',
           onClick: openDetail,
         },
         createElement(
@@ -305,7 +319,7 @@ function keyLinkNode(
       {
         type: 'button',
         class: 'tracker-grid-cell-key-link',
-        title: 'Open details',
+        title: labels.openDetails ?? 'Open details',
         onClick: openDetail,
       },
       text,
@@ -315,8 +329,8 @@ function keyLinkNode(
         'span',
         {
           class: 'tracker-grid-cell-key-open',
-          title: 'Open as a document',
-          'aria-label': 'Open as a document',
+          title: labels.openDocument ?? 'Open as a document',
+          'aria-label': labels.openDocument ?? 'Open as a document',
           // The grid focuses a cell on pointerdown; keep this a pure action so
           // the icon does not also move the selection out from under the click.
           onPointerDown: swallow,
@@ -346,6 +360,7 @@ function titleLinkNode(
   text: string,
   itemId: string,
   keyLink: KeyLinkOptions,
+  labels: TrackerGridLabels,
 ): VNode {
   const swallow = (e: MouseEvent): void => {
     e.preventDefault();
@@ -356,7 +371,7 @@ function titleLinkNode(
     {
       type: 'button',
       class: 'tracker-grid-cell-title-link',
-      title: text || 'Untitled',
+      title: text || labels.untitled || 'Untitled',
       // The grid focuses a cell on pointerdown; keep the click a pure open.
       onPointerDown: swallow,
       onClick: (e: MouseEvent) => {
@@ -364,11 +379,12 @@ function titleLinkNode(
         keyLink.onOpenDetail(itemId);
       },
     },
-    text || 'Untitled',
+    text || labels.untitled || 'Untitled',
   );
 }
 
 interface CellTemplateOptions {
+  labels?: TrackerGridLabels;
   dateFormat?: TrackerDateFormatOptions;
   favorites?: FavoritesOptions;
   rowActions?: boolean;
@@ -380,7 +396,7 @@ interface CellTemplateOptions {
 function buildCellTemplate(
   col: TrackerColumnDef,
   trackerType: string,
-  { favorites, rowActions = false, resolveLabel, keyLink, dateFormat }: CellTemplateOptions = {},
+  { favorites, rowActions = false, resolveLabel, keyLink, dateFormat, labels = {} }: CellTemplateOptions = {},
 ) {
   return (createElement: HyperFunc<VNode>, props: CellTemplateProp): VNode => {
     const value = props.model?.[col.id];
@@ -399,12 +415,13 @@ function buildCellTemplate(
             itemId,
             favorites.favoriteItemIds.has(itemId),
             favorites.onToggleFavorite,
+            labels,
           )]
           : []),
         titleOpens && keyLink
-          ? titleLinkNode(createElement, text, itemId, keyLink)
+          ? titleLinkNode(createElement, text, itemId, keyLink, labels)
           : textNode(createElement, text),
-        ...(rowActions ? [contextMenuNode(createElement, 'title')] : []),
+        ...(rowActions ? [contextMenuNode(createElement, 'title', labels)] : []),
       ]);
     }
 
@@ -414,6 +431,7 @@ function buildCellTemplate(
         text,
         String(props.model?.[ROW_ITEM_ID] ?? ''),
         keyLink,
+        labels,
       );
     }
 
@@ -467,6 +485,7 @@ export interface KeyLinkOptions {
 }
 
 export interface BuildGridColumnsOptions {
+  labels?: TrackerGridLabels;
   dateFormat?: TrackerDateFormatOptions;
   /** Active tracker type; `'all'` means a mixed-type view. */
   trackerType: string;
@@ -493,7 +512,7 @@ export interface BuildGridColumnsOptions {
 }
 
 /** Always-present trailing action column, separate from editable tracker fields. */
-export function buildGridActionsColumn(): ColumnRegular {
+export function buildGridActionsColumn(labels: TrackerGridLabels = {}): ColumnRegular {
   return {
     prop: ROW_ACTIONS,
     name: '',
@@ -503,7 +522,7 @@ export function buildGridActionsColumn(): ColumnRegular {
     pin: 'colPinEnd',
     sortable: false,
     readonly: true,
-    cellTemplate: (createElement: HyperFunc<VNode>) => contextMenuNode(createElement, 'column'),
+    cellTemplate: (createElement: HyperFunc<VNode>) => contextMenuNode(createElement, 'column', labels),
   };
 }
 
@@ -532,6 +551,7 @@ function buildColumnTemplate(
   col: TrackerColumnDef,
   isFiltered: boolean,
   onOpenFilter?: (columnId: string, anchorRect: DOMRect) => void,
+  labels: TrackerGridLabels = {},
 ) {
   return (createElement: HyperFunc<VNode>): VNode => createElement(
     'span',
@@ -546,7 +566,7 @@ function buildColumnTemplate(
               class: isFiltered
                 ? 'tracker-grid-header-filter is-filtered'
                 : 'tracker-grid-header-filter',
-              title: isFiltered ? 'Column filtered' : `Filter ${col.label}`,
+              title: isFiltered ? labels.columnFiltered ?? 'Column filtered' : labels.filterColumn?.(col.label) ?? `Filter ${col.label}`,
               onClick: (e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -587,6 +607,7 @@ export function buildGridColumns(
     keyLink,
     resolveRelationshipLabel: resolveLabel,
     dateFormat,
+    labels,
   }: BuildGridColumnsOptions,
 ): ColumnRegular[] {
   return columns.map((col): ColumnRegular => {
@@ -625,6 +646,7 @@ export function buildGridColumns(
         return typeof itemId === 'string' ? !isRowEditable(itemId) : true;
       },
       cellTemplate: buildCellTemplate(col, trackerType, {
+        labels,
         dateFormat,
         favorites,
         rowActions,
@@ -637,6 +659,7 @@ export function buildGridColumns(
             col,
             filteredColumnIds?.has(col.id) ?? false,
             onOpenFilter,
+            labels,
           ),
         }
         : {}),

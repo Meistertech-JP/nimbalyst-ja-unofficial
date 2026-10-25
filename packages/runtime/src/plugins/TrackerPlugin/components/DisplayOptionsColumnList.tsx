@@ -6,7 +6,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
-import type { TrackerColumnDef, TypeColumnConfig } from './trackerColumns';
+import { localizeTrackerColumnLabel, type TrackerColumnDef, type TypeColumnConfig } from './trackerColumns';
 
 interface DisplayOptionsColumnListProps {
   availableColumns: TrackerColumnDef[];
@@ -20,6 +20,7 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
   onConfigChange,
 }) => {
   const { t } = useTranslation('tracker');
+  const displayLabel = (column: TrackerColumnDef) => localizeTrackerColumnLabel(column, key => t(key));
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -105,7 +106,7 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
               } ${draggedId === col.id ? 'opacity-50' : ''}`}
             >
               {col.id !== 'title' && (
-                <button type="button" aria-label={t('display.reorder_column', { column: col.label })} title={t('display.reorder_hint')} className="text-[var(--nim-text-faint)] cursor-grab" onKeyDown={event => {
+              <button type="button" aria-label={t('display.reorder_column', { column: displayLabel(col) })} title={t('display.reorder_hint')} className="text-[var(--nim-text-faint)] cursor-grab" onKeyDown={event => {
                   if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
                   event.preventDefault();
                   const visible = [...config.visibleColumns];
@@ -116,11 +117,11 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
                   onConfigChange({ ...config, visibleColumns: visible });
                 }}><span className="material-symbols-outlined text-[14px]" aria-hidden>drag_indicator</span></button>
               )}
-              <span className="flex-1 text-[var(--nim-text)]">{col.label}</span>
+              <span className="flex-1 text-[var(--nim-text)]">{displayLabel(col)}</span>
               {col.id !== 'title' && (
                 <button
                   type="button"
-                  aria-label={t('display.hide_named_column', { column: col.label })}
+                  aria-label={t('display.hide_named_column', { column: displayLabel(col) })}
                   onClick={() => toggleColumn(col.id)}
                   className="text-[var(--nim-text-faint)] hover:text-[var(--nim-text)] transition-colors"
                   title={t('display.hide_column')}
@@ -142,12 +143,12 @@ export const DisplayOptionsColumnList: React.FC<DisplayOptionsColumnListProps> =
               <button
                 key={col.id}
                 type="button"
-                aria-label={t('display.show_named_column', { column: col.label })}
+                aria-label={t('display.show_named_column', { column: displayLabel(col) })}
                 className="flex w-full items-center gap-2 px-1.5 py-1 rounded text-left text-xs hover:bg-[var(--nim-bg-hover)] cursor-pointer"
                 onClick={() => toggleColumn(col.id)}
               >
                 <span className="material-symbols-outlined text-[14px] text-[var(--nim-text-faint)]">visibility_off</span>
-                <span className="flex-1 text-[var(--nim-text-faint)]">{col.label}</span>
+                <span className="flex-1 text-[var(--nim-text-faint)]">{displayLabel(col)}</span>
                 <span className="text-[10px] text-[var(--nim-primary)]">{t('display.show')}</span>
               </button>
             ))}

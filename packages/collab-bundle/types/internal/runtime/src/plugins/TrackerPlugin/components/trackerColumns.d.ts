@@ -22,6 +22,8 @@ export interface TrackerColumnDef {
     id: string;
     /** Display label in header and settings */
     label: string;
+    /** Where the label came from, so explicit schema labels are never localized. */
+    labelSource?: 'fixed' | 'schema' | 'custom';
     /** Default width in px, or 'auto' for flex */
     width: number | 'auto';
     /** Minimum width in px */
@@ -49,6 +51,10 @@ export interface TrackerColumnDef {
      */
     typeDisplay?: TypeColumnDisplay;
 }
+/** Resolve a fixed UI column label without changing its ID, role, or schema values. */
+export declare function localizeTrackerColumnLabel(column: TrackerColumnDef, translate: (key: string) => string): string;
+/** Localize display labels while retaining every persisted/data-facing column property. */
+export declare function localizeTrackerColumns(columns: TrackerColumnDef[], translate: (key: string) => string): TrackerColumnDef[];
 /** Per-type column configuration (persisted) */
 export interface TypeColumnConfig {
     /** Ordered list of visible column IDs */

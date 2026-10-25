@@ -41,6 +41,7 @@ import {
   getFieldForColumn,
   resolveColumnFieldName,
   resolveColumnsForType,
+  localizeTrackerColumns,
   type TrackerColumnDef,
   type TypeColumnConfig,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
@@ -178,6 +179,16 @@ export function TrackerGridSurface({
 }: TrackerGridSurfaceProps) {
   const { t, i18n } = useTranslation('tracker');
   const dateLocale = i18n.resolvedLanguage ?? i18n.language;
+  const gridLabels = useMemo(() => ({
+    openDetails: t('grid.open_details'),
+    openDocument: t('kanban.open_document'),
+    itemActions: t('table.item_actions'),
+    addFavorite: t('grid.add_favorite'),
+    removeFavorite: t('grid.remove_favorite'),
+    untitled: t('collaboration_surface.untitled'),
+    columnFiltered: t('grid.column_filtered'),
+    filterColumn: (column: string) => t('grid.filter_column', { column }),
+  }), [t]);
   const [filterTarget, setFilterTarget] = useState<{
     columnId: string;
     rect: DOMRect;
@@ -207,8 +218,8 @@ export function TrackerGridSurface({
   // `afterfocus`; everything else is a pointer.
   const schemaType = trackerType === 'all' ? '' : trackerType;
   const allColumnDefs = useMemo(
-    () => resolveColumnsForType(schemaType),
-    [schemaType]
+    () => localizeTrackerColumns(resolveColumnsForType(schemaType), t),
+    [schemaType, t, dateLocale]
   );
   const effectiveConfig = useMemo(
     () => columnConfig ?? getDefaultColumnConfig(schemaType),
@@ -236,6 +247,7 @@ export function TrackerGridSurface({
   const gridColumns = useMemo(
     () => [
       ...placeDerivedColumns(buildGridColumns(visibleColumnDefs, {
+        labels: gridLabels,
         dateFormat: { t, locale: dateLocale },
         trackerType: schemaType,
         sortingEnabled: !!onSortChange,
@@ -252,12 +264,13 @@ export function TrackerGridSurface({
         keyLink: onOpenItem ? { onOpenDetail: onOpenItem, titleOpens: titleOpensItem } : undefined,
         resolveRelationshipLabel,
       }), derivedColumns ?? []),
-      ...(onRowContextMenu ? [buildGridActionsColumn()] : []),
+      ...(onRowContextMenu ? [buildGridActionsColumn(gridLabels)] : []),
     ],
     [
       visibleColumnDefs,
       t,
       dateLocale,
+      gridLabels,
       onSortChange,
       schemaType,
       effectiveConfig.columnWidths,
