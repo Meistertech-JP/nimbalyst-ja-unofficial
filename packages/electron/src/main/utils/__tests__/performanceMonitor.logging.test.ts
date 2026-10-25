@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { app } from 'electron';
+import path from 'node:path';
+import { pruneCpuProfiles } from '../cpuProfileRetention';
 
 const fixture = vi.hoisted(() => ({
   enabled: true, policyThrows: false, cpu: 0,
@@ -12,6 +14,7 @@ vi.mock('electron', () => ({
   BrowserWindow: { fromWebContents: vi.fn() },
 }));
 vi.mock('../ipcRegistry', () => ({ safeOn: vi.fn() }));
+vi.mock('../cpuProfileRetention', () => ({ pruneCpuProfiles: vi.fn(async () => ({ deletedCount: 0, deletedBytes: 0 })) }));
 vi.mock('../logger', () => ({ getLoggerConfig: () => {
   if (fixture.policyThrows) throw new Error('dummy policy failure');
   return { fileLogging: fixture.enabled };
@@ -46,6 +49,9 @@ describe('CPU profile respects ordinary fileLogging policy', () => {
 
   it('keeps CPU sampling and shutdown timers without constructing an inspector when disabled', async () => {
     fixture.enabled = false; monitor.startPerformanceMonitoring();
+    // Retention still owns old profiles even when new capture is disabled.
+    expect(pruneCpuProfiles).toHaveBeenCalledExactlyOnceWith(path.join('/dummy-profile', 'logs'));
+    vi.mocked(app.getPath).mockClear();
     await vi.advanceTimersByTimeAsync(25_000);
     expect(process.cpuUsage).toHaveBeenCalledTimes(3);
     expect(console.log).toHaveBeenCalledWith('[PERF] High CPU usage:', expect.any(String));
@@ -80,6 +86,8 @@ describe('CPU profile respects ordinary fileLogging policy', () => {
 
   it('discards a profile if disabled during capture and still disconnects', async () => {
     monitor.startPerformanceMonitoring(); await vi.advanceTimersByTimeAsync(20_000);
+    expect(pruneCpuProfiles).toHaveBeenCalledOnce();
+    vi.mocked(app.getPath).mockClear();
     fixture.enabled = false; await vi.advanceTimersByTimeAsync(5_000);
     expect(fixture.constructed).toHaveBeenCalledOnce(); expect(fixture.disconnect).toHaveBeenCalledOnce();
     expect(app.getPath).not.toHaveBeenCalled();

@@ -1,0 +1,71 @@
+# v0.82.3-ja.1 / Windows x64
+
+## 日本語
+
+Nimbalyst 日本語版（非公式）の次期配布候補です。本家v0.82.3、固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とします。現在公開されている正式版はv0.82.1-ja.1で、本候補はまだ公開していません。本プロジェクトはNimbalyst, Inc.による開発・サポート・承認を受けた製品ではありません。
+
+### v0.82.1-ja.1からの変更
+
+- 本家の17コミット・144ファイルの変更を履歴ごと統合しました。組織復旧、Codexの変更帰属、セッション管理、Wiki、画像貼り付け、Transcript表示、開発サーバーの復旧などの変更を含みます。
+- 設定の「セキュリティと暗号化」に、旧暗号化方式のチーム組織を元のチケット識別子・番号を保持して復旧する案内を追加しました。復旧の停止理由、診断情報の書き出し、暗号化された持ち運び用ソースの操作も日本語表示へ接続しています。
+- 復旧前に待機していた編集が、復旧後の内容を意図せず上書きしないためのTracker競合通知を追加しました。
+- Codexの並行実行で変更元を確定できない場合の案内と、貼り付け画像の既定ラベルを日本語化しました。ユーザーの文書・ファイル名や外部サービスの応答を自動翻訳するものではありません。
+- 本家の自動CPUプロファイル保持制限を取り込み、Windowsでの同時整理時の扱いを補強しました。ログのファイル保存設定は維持しています。
+- Windowsの数値版番号を0.82.3.1へ合わせ、製品版番号との不一致をパッケージ生成前に検出します。
+
+### データと組織復旧
+
+SQLiteの0055は、待機中のTracker編集へ同期基準リビジョンを保持する列を追加します。PGLiteにも対応する変更があります。合成テストデータで旧スキーマからの更新、既存行の保持、途中失敗のロールバック・再試行、PGLiteからSQLiteへの変換と再起動後の保持を確認しています。
+
+**組織復旧には更新された同期サーバーが必要です。** 復旧対象を編集する他のクライアントにも対応版が必要です。本番組織を使った復旧、独立した実クライアント間の全手順、サーバー側の対応状況は確認していません。ローカルのテスト成功をサーバーを含む復旧成功とは扱いません。
+
+### 表示言語と検証範囲
+
+表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,782キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
+
+38ワークスペースの型検査と、既存の7エントリの容量上限検査が成功しています。次期候補のLinux全体試験、iOSシミュレーター試験、通常Windows製品の実機検証・配布物監査は確定前です。旧正式版の実機成功を本候補の成功へ読み替えません。
+
+Windowsではsymlink fixture作成のEPERMが残っています。fixture作成で停止した試験は、symlinkの拒否・保持動作そのものを検証できていません。全Windows試験の成功は主張しません。外部スクリーンリーダー、全画面・DPI、動的翻訳の完全な実行時確認、WSL実環境での全経路、Google認証や特殊な復旧、サービス側セッション失効は未検証です。
+
+### 配布方針
+
+Windows x64の未署名NSIS、ポータブルZIP、対応するソースZIPとSHA256SUMS.txtを配布対象とします。正式公開時は通常正式リリースとする方針ですが、現時点で本候補のダウンロードは提供していません。
+
+公式版の自動更新と手動更新確認は無効です。本版の更新はこのリポジトリのGitHub Releasesから手動で行います。公式Nimbalystとの同時利用はサポートしません。アプリID `jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザーデータ `%APPDATA%\Nimbalyst 日本語版（非公式）`、既定の `nimbalyst://` ハンドラーを取得しない方針を維持します。認証メールはアプリを起動した同じPCで開いてください。
+
+未署名アプリに対する警告や保護を無効にせず、取得元・版番号・SHA-256を確認してください。ハッシュの一致はコード署名・無害性・動作保証を意味しません。MIT Licenseと本家の著作権表示を保持し、第三者ライセンス・通知を同梱します。
+
+## English
+
+This is the next Windows x64 distribution candidate for Nimbalyst — Unofficial Japanese Edition, based on upstream v0.82.3 at `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. The currently published stable release remains v0.82.1-ja.1. This candidate has not been released. The project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
+
+### Changes since v0.82.1-ja.1
+
+- Integrated the complete upstream history of 17 commits affecting 144 files, including organization recovery, Codex file attribution, sessions, Wiki, image paste, transcript rendering, and development-server recovery.
+- Added Japanese guidance to legacy-encryption organization recovery in Security & Encryption, including blocking conditions, diagnostics export, and encrypted portable source bundles. Recovery is designed to retain ticket identities and numbers.
+- Added Tracker notices for queued edits that require review after organization recovery rather than overwriting restored content.
+- Localized uncertain Codex ownership explanations and the default pasted-image label. User documents, filenames, and external service responses are not automatically translated.
+- Incorporated bounded automatic CPU-profile retention and improved handling of concurrent Windows cleanup while retaining diagnostic-file logging preferences.
+- Aligned the numeric Windows build version to 0.82.3.1 and added a pre-packaging check for product-version mismatches.
+
+### Data and organization recovery
+
+SQLite migration 0055 adds the base synchronization revision to queued Tracker edits, with a corresponding PGLite change. Synthetic-data tests cover populated-schema upgrade, existing-row preservation, transaction rollback and retry, PGLite-to-SQLite conversion, and retention after reopening.
+
+**Organization recovery requires the updated sync server.** Other clients editing recovered content must also be updated. Recovery of a production organization, the complete flow across independent real clients, and server deployment compatibility have not been verified. Local tests do not establish end-to-end recovery success.
+
+### Language and verification scope
+
+Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,782 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
+
+All 38 workspace typechecks and seven existing bundle budgets passed. Linux full-suite, iOS simulator, ordinary Windows product testing, and distribution-integrity results for this candidate are not yet final. Previous-release native results are not claimed as evidence for the new binaries.
+
+Windows symlink-fixture EPERM failures remain. A test stopped during fixture creation does not verify symlink rejection or retention. No all-Windows-tests-passed claim is made. External screen readers, every screen and DPI, complete runtime coverage of dynamic translations, all native WSL paths, Google sign-in, special recovery flows, and service-side session revocation remain unverified.
+
+### Distribution policy
+
+The intended assets are an unsigned Windows x64 NSIS installer, portable ZIP, matching source ZIP, and SHA256SUMS.txt. The intended publication is a regular stable release, but this candidate is not currently offered for download.
+
+Official automatic updates and manual update checks are disabled; updates are installed manually from this repository's GitHub Releases. Running alongside official Nimbalyst is unsupported. The application ID remains `jp.meistertech.nimbalyst.ja.unofficial`, the default profile remains `%APPDATA%\Nimbalyst 日本語版（非公式）`, and the Windows edition does not claim the default `nimbalyst://` handler. Open authentication email on the same PC running the application.
+
+Do not disable security warnings or protections for unsigned files. Verify the source, version, and SHA-256; a matching hash is not publisher signing, a safety guarantee, or an operational guarantee. The MIT License and upstream copyright are retained, with third-party licenses and notices included.
