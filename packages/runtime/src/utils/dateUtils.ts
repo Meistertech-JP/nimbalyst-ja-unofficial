@@ -225,10 +225,22 @@ export function formatShortTime(timestamp: number | string | Date | undefined | 
 export function formatTurnFinishedAt(
   timestamp: number | string | Date | undefined | null,
   reference: number | string | Date | undefined | null = new Date(),
+  locale: string = 'en',
 ): string {
   const date = parseTimestamp(timestamp);
   const now = parseTimestamp(reference);
   if (!date || !now) return '';
+
+  if (locale.toLowerCase().split('-')[0] === 'ja') {
+    const time = new Intl.DateTimeFormat('ja-JP', {
+      hour: 'numeric', minute: '2-digit', hour12: false,
+    }).format(date);
+    if (isToday(date, now)) return time;
+    const day = new Intl.DateTimeFormat('ja-JP', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    }).format(date);
+    return `${day} ${time}`;
+  }
 
   const timeLabel = formatLowercaseMeridiemTime(date);
   if (isToday(date, now)) {

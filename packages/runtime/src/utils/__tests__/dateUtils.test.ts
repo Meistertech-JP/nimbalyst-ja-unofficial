@@ -3,6 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { formatTurnFinishedAt } from '../dateUtils';
 
 describe('formatTurnFinishedAt', () => {
+  it('formats Japanese completion times without an English preposition or meridiem', () => {
+    const reference = new Date(2026, 4, 6, 23, 0);
+    expect(formatTurnFinishedAt(new Date(2026, 4, 6, 22, 18), reference, 'ja')).toBe('22:18');
+    expect(formatTurnFinishedAt(new Date(2026, 4, 6, 0, 5), reference, 'ja-JP')).toBe('0:05');
+    expect(formatTurnFinishedAt(new Date(2026, 4, 5, 10, 33), reference, 'ja')).toBe('2026年5月5日 10:33');
+    expect(formatTurnFinishedAt(new Date(2026, 4, 6, 22, 18), reference, 'en')).toBe('at 10:18 pm');
+    expect(formatTurnFinishedAt('not a date', reference, 'ja')).toBe('');
+  });
   it('shows only the time for turns that ended earlier today', () => {
     const turnEndedAt = new Date(2026, 4, 6, 10, 33, 0);
     const reference = new Date(2026, 4, 6, 16, 0, 0);

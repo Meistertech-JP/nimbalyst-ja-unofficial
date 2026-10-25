@@ -280,6 +280,8 @@ export interface TranscriptToolEntry {
 export interface TranscriptTurnSummary {
   duration: string;
   finishedAt: string;
+  /** Retain the instant so display-language changes do not require rebuilding every row. */
+  finishedAtTimestamp?: number;
   fileStats: { filesModified: number; linesAdded: number; linesRemoved: number } | null;
 }
 
@@ -342,7 +344,7 @@ const sameEntries = (
 const sameTurn = (a: TranscriptTurnSummary | null, b: TranscriptTurnSummary | null): boolean => {
   if (a === b) return true;
   if (!a || !b) return false;
-  if (a.duration !== b.duration || a.finishedAt !== b.finishedAt) return false;
+  if (a.duration !== b.duration || a.finishedAt !== b.finishedAt || a.finishedAtTimestamp !== b.finishedAtTimestamp) return false;
   const fa = a.fileStats;
   const fb = b.fileStats;
   if (fa === fb) return true;
@@ -542,6 +544,7 @@ export function computeTranscriptRowInfos(
           info.turn = {
             duration,
             finishedAt: formatTurnFinishedAt(endTimestamp),
+            finishedAtTimestamp: endTimestamp,
             fileStats: computeTurnFileStats(messages, lastUserIdx, i),
           };
         }
@@ -612,7 +615,7 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
   onCopy,
   registerMessageRef,
 }: TranscriptMessageRowProps) {
-  const { t } = useTranslation('aichat');
+  const { t, i18n } = useTranslation('aichat');
   const setRef = useCallback(
     (el: HTMLDivElement | null) => registerMessageRef(index, el),
     [registerMessageRef, index]
@@ -804,7 +807,11 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
       {turn && (
         <div className="rich-transcript-turn-elapsed text-xs text-[var(--nim-text-faint)] mt-2 ml-6">
           {t('rich_transcript.finished_in', { duration: turn.duration })}
-          {turn.finishedAt && <span> {t('rich_transcript.finished_at', { time: turn.finishedAt })}</span>}
+          {turn.finishedAt && <span> {t('rich_transcript.finished_at', {
+            time: turn.finishedAtTimestamp === undefined
+              ? turn.finishedAt
+              : formatTurnFinishedAt(turn.finishedAtTimestamp, new Date(), i18n.resolvedLanguage ?? i18n.language),
+          })}</span>}
           {turn.fileStats && (
             <span>
               {' · '}{t('rich_transcript.files', { count: turn.fileStats.filesModified })}

@@ -7,7 +7,7 @@
  * waste, hence a test.
  */
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -235,6 +235,27 @@ describe('transcript row memoization', () => {
     expect(screen.getByText('ツールの実行が拒否されました')).toBeTruthy();
     expect(screen.getByText('拒否元: 権限モード')).toBeTruthy();
     expect(screen.getByText('Permission was denied by policy.')).toBeTruthy();
+  });
+
+  it('updates a real completed turn timestamp when the display language changes without recomputing rows', async () => {
+    await testI18n.changeLanguage('ja');
+    const endedAt = new Date();
+    endedAt.setHours(22, 18, 0, 0);
+    const messages = [
+      msg(0, { type: 'user_message', text: 'Synthetic request', createdAt: new Date(endedAt.getTime() - 2000) }),
+      msg(1, { text: 'Synthetic reply', createdAt: endedAt }),
+    ];
+    const infos = computeTranscriptRowInfos(messages, {
+      showToolCalls: true, expandedTools: new Set(), supersededToolIndices: new Set(),
+      skippedQuestionIds: subagentContext.skippedQuestionIds, subagentContext,
+      isWaitingForResponse: false, restartAfterIndex: -1,
+    }, null);
+    renderWithI18n(<Rows messages={messages} infos={infos} tick={0} />);
+    expect(screen.getByText(/（22:18に完了）/).textContent).not.toContain('at ');
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText(/at 10:18 pm/).textContent).not.toContain('に完了');
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    expect(screen.getByText(/（22:18に完了）/).textContent).not.toMatch(/am|pm/);
   });
 
   it('localizes reminder, sender, action titles, restart marker, and turn summary', async () => {
