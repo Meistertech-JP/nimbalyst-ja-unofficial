@@ -38,6 +38,8 @@ export interface WalkthroughAction {
 export interface WalkthroughStep {
   /** Unique identifier for this step */
   id: string;
+  /** Help registry copy, independent of the element used for positioning. */
+  helpTestId?: string;
   /** Target element to attach the callout to */
   target: WalkthroughTarget;
   /**

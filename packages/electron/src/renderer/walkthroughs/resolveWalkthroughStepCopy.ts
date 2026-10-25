@@ -3,6 +3,7 @@ import { getHelpContent, localizeHelpEntry } from '../help';
 type HelpTranslator = (key: string, options?: { defaultValue?: string }) => string;
 
 interface WalkthroughCopyStep {
+  helpTestId?: string;
   title: string;
   body: string;
   target: { testId?: string };
@@ -17,7 +18,7 @@ export function resolveWalkthroughStepCopy(
   step: WalkthroughCopyStep,
   translate: HelpTranslator,
 ): { title: string; body: string } {
-  const testId = step.target.testId;
+  const testId = step.helpTestId ?? step.target.testId;
   if (testId) {
     const source = getHelpContent(testId);
     if (

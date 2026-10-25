@@ -5,8 +5,46 @@ import { localizeHelpEntry } from '../HelpContent';
 import { fileTreeTools } from '../../walkthroughs/definitions/file-tree-tools';
 import { agentModeIntro, filesModeIntro } from '../../walkthroughs/definitions/navigation-intro';
 import { resolveWalkthroughStepCopy } from '../../walkthroughs/resolveWalkthroughStepCopy';
+import { attachFilesIntro } from '../../walkthroughs/definitions/attach-files-intro';
+import { walkthroughs } from '../../walkthroughs/definitions';
+import { HelpContent } from '../HelpContent';
 
 describe('help display localization', () => {
+  it('resolves every built-in guide title and body rather than falling back to its English snapshot', async () => {
+    const i18n = await createI18nInstance('ja');
+    const translate = (key: string, options?: { defaultValue?: string }) =>
+      i18n.t(key, { ns: 'common', defaultValue: options?.defaultValue });
+    for (const guide of walkthroughs) {
+      for (const step of guide.steps) {
+        const copy = resolveWalkthroughStepCopy(guide.id, step, translate);
+        expect(copy.title, `${guide.id}/${step.id} title`).not.toBe(step.title);
+        expect(copy.body, `${guide.id}/${step.id} body`).not.toBe(step.body);
+      }
+    }
+    for (const key of ['model-picker-provider-claude-code', 'model-picker-provider-claude-code-cli']) {
+      await i18n.changeLanguage('en');
+      const copy = localizeHelpEntry(key, HelpContent[key], translate);
+      expect(copy.title).toBe(HelpContent[key].title);
+      expect(copy.body).toBe(HelpContent[key].body);
+    }
+  });
+  it('translates selector-targeted attachment guidance in both languages without changing its target', async () => {
+    const i18n = await createI18nInstance('ja');
+    const translate = (key: string, options?: { defaultValue?: string }) =>
+      i18n.t(key, { ns: 'common', defaultValue: options?.defaultValue });
+    const step = attachFilesIntro.steps[0];
+    expect(step.target).toEqual({ selector: '.ai-chat-input' });
+    expect(resolveWalkthroughStepCopy(attachFilesIntro.id, step, translate)).toEqual({
+      title: 'ファイルと画像を添付',
+      body: 'チャットにファイルをドラッグ＆ドロップしたり、画像を直接貼り付けたりできます。@を使ってプロジェクト内のファイルを指定することもできます。',
+    });
+    await i18n.changeLanguage('en');
+    expect(resolveWalkthroughStepCopy(attachFilesIntro.id, step, translate)).toEqual({
+      title: 'Attach Files & Images',
+      body: step.body,
+    });
+    expect(step.title).toBe('Attach Files & Images');
+  });
   it('translates help-backed walkthrough steps without changing the English registry snapshot', async () => {
     const i18n = await createI18nInstance('ja');
     const translate = (key: string, options?: { defaultValue?: string }) =>

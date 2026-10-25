@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import React from 'react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { WalkthroughCallout } from '../components/WalkthroughCallout';
+import { attachFilesIntro } from '../definitions/attach-files-intro';
 import { calculateCalloutPosition, shouldShowWalkthrough } from '../WalkthroughService';
 import type { WalkthroughDefinition, WalkthroughState } from '../types';
 
@@ -138,5 +144,41 @@ describe('shouldShowWalkthrough', () => {
 
   it('re-shows a walkthrough when the version changes', () => {
     expect(shouldShowWalkthrough(state, walkthrough)).toBe(true);
+  });
+});
+
+describe('attachment guide display language', () => {
+  afterEach(() => { cleanup(); document.querySelector('.ai-chat-input')?.remove(); });
+
+  it('updates the actual portaled attachment dialog and buttons live while retaining dismissal and completion', async () => {
+    const target = fakeTarget({ top: 400, left: 100, width: 200, height: 60 });
+    target.className = 'ai-chat-input';
+    document.body.appendChild(target);
+    const i18n = await createI18nInstance('ja');
+    const onDismiss = vi.fn();
+    const onComplete = vi.fn();
+    const { container } = render(React.createElement(I18nextProvider, { i18n },
+      React.createElement(WalkthroughCallout, {
+        definition: attachFilesIntro, stepIndex: 0,
+        onNext: vi.fn(), onBack: vi.fn(), onDismiss, onComplete,
+      }),
+    ));
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    const dialog = screen.getByRole('dialog', { name: 'ファイルと画像を添付' });
+    expect(dialog.textContent).toContain('チャットにファイルをドラッグ＆ドロップ');
+    screen.getByRole('button', { name: '閉じる' });
+    screen.getByRole('button', { name: '完了' });
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByRole('dialog', { name: 'Attach Files & Images' })).toBe(dialog);
+    expect(dialog.textContent).toContain('Drag and drop files or paste images');
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(onComplete).toHaveBeenCalledOnce();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onDismiss).toHaveBeenCalledOnce();
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(screen.getByRole('dialog', { name: 'ファイルと画像を添付' })).toBe(dialog);
+    fireEvent.click(screen.getByRole('button', { name: '閉じる' }));
+    expect(onDismiss).toHaveBeenCalledTimes(2);
+    expect(target.classList.contains('walkthrough-target-highlight')).toBe(true);
   });
 });

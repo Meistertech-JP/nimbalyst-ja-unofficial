@@ -32,6 +32,7 @@ export const agentWelcomeIntro: WalkthroughDefinition = {
   steps: [
     {
       id: 'welcome',
+      helpTestId: 'agent-welcome',
       target: {
         testId: 'new-dropdown-button',
       },

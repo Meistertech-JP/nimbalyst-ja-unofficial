@@ -31,6 +31,7 @@ export const attachFilesIntro: WalkthroughDefinition = {
   steps: [
     {
       id: 'attach-files',
+      helpTestId: 'attach-files-input',
       target: {
         selector: '.ai-chat-input',
       },

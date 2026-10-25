@@ -1582,12 +1582,12 @@
       "body": "使用するAIモデルを選びます。モデルごとに機能や速度が異なります。"
     },
     "model-picker-provider-claude-code": {
-      "title": "Claudeエージェント（Claude Codeベース）",
-      "body": "Claude Codeを基盤とし、Nimbalystと完全に統合されたアプリ内エージェントです。開いているドキュメントと選択範囲を認識し、会話をアプリ内で読みやすく表示し、編集したすべてのファイルを追跡します。設定済みのAnthropic APIキーを使用します。"
+      "title": "Claude Agent（推奨）",
+      "body": "Claude Codeを基盤とし、Nimbalystと完全に統合されたアプリ内エージェントです。開いているドキュメントと選択範囲を認識し、会話をアプリ内で読みやすく表示し、編集したすべてのファイルを追跡します。ClaudeプランでサインインするとClaudeのサブスクリプションを使用し、Anthropic APIキーでも利用できます。"
     },
     "model-picker-provider-claude-code-cli": {
       "title": "Claude Code CLI（ターミナルモード）",
-      "body": "埋め込みターミナルで正規のclaudeターミナルバイナリを実行し、Claudeのサブスクリプションで利用します。生ターミナルのドロワーではスラッシュコマンドやTUIなど本来のCLI操作を利用でき、同時にNimbalystが会話を読みやすいトランスクリプトへ反映します。"
+      "body": "コマンドラインツール自体を使いたい場合のモードです。埋め込みターミナルで正規のclaudeバイナリを実行し、生ターミナルのドロワーでスラッシュコマンドやTUIを利用できます。同時にNimbalystが会話を読みやすいトランスクリプトへ反映します。Claudeのサブスクリプションを使うために、このモードを選ぶ必要はありません。"
     },
     "action-prompts-dropdown": {
       "title": "アクションプロンプト",

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Integrated upstream v0.82.3 with Japanese organization-recovery guidance and retained desktop language switching.
-- Localized session timestamps and accessibility labels with live language switching while retaining idle updates.
+- Localized session timestamps, attachment guides, and model recommendations with live language switching.
 
 ## [0.82.1-ja.1] — 2026-10-25
 

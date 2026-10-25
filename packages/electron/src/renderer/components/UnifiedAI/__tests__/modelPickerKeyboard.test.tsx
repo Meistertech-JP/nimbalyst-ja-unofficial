@@ -19,7 +19,8 @@ vi.mock('@nimbalyst/runtime/ui/icons/ProviderIcons', async (importOriginal) => (
   getProviderIcon: () => null,
 }));
 
-vi.mock('@nimbalyst/runtime/ai/server/types', () => ({
+vi.mock('@nimbalyst/runtime/ai/server/types', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@nimbalyst/runtime/ai/server/types')>(),
   isAgentProvider: () => false,
   shouldBlockStartedSessionProviderSwitch: () => false,
 }));
@@ -48,6 +49,29 @@ function renderModelSelector(ui: React.ReactElement, showDirectChatProviders = f
 }
 
 describe('AI model picker keyboard controls', () => {
+  it('updates the recommended provider heading live without renaming or reselecting models', async () => {
+    const aiGetModels = vi.fn().mockResolvedValue({ success: true, grouped: {
+      'claude-code': [{ id: 'claude-code:sonnet', name: 'Claude Agent · Sonnet', provider: 'claude-code' }],
+      'external-agent': [{ id: 'external-agent:custom', name: 'Custom model', provider: 'external-agent' }],
+    }, providerLabels: { 'external-agent': 'External Provider' } });
+    Object.defineProperty(window, 'electronAPI', { configurable: true, value: { aiGetModels } });
+    const i18n = await createI18nInstance('ja');
+    const onModelChange = vi.fn();
+    renderModelSelector(<I18nextProvider i18n={i18n}>
+      <ModelSelector currentModel="claude-code:sonnet" onModelChange={onModelChange} />
+    </I18nextProvider>);
+    fireEvent.click(screen.getByTestId('model-picker'));
+    await screen.findByRole('button', { name: 'Claude Agent · Sonnet' });
+    expect(screen.getByTestId('model-picker-provider-claude-code').textContent).toBe('Claude Agent（推奨）');
+    expect(screen.getByTestId('model-picker-provider-external-agent').textContent).toBe('External Provider');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByTestId('model-picker-provider-claude-code').textContent).toBe('Claude Agent (Recommended)');
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(screen.getByTestId('model-picker-provider-claude-code').textContent).toBe('Claude Agent（推奨）');
+    screen.getByRole('button', { name: 'Claude Agent · Sonnet' });
+    expect(onModelChange).not.toHaveBeenCalled();
+    expect(aiGetModels).toHaveBeenCalledTimes(1);
+  });
   it('localizes picker labels and accessibility names in Japanese', async () => {
     const aiGetModels = vi.fn().mockResolvedValue({
       success: true,

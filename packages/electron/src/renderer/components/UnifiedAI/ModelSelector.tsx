@@ -281,7 +281,7 @@ export function ModelSelector({
       // The default agent, and the one a Claude subscription runs on without any
       // extra setup. What it's built on lives in the hover help, so the
       // parenthetical here is spent steering the choice instead.
-      case 'claude-code': return 'Claude Agent (Recommended)';
+      case 'claude-code': return t('common:help.model-picker-provider-claude-code.title');
       case 'claude-code-cli': return 'Claude Code CLI';
       case 'openai': return 'OpenAI';
       case 'openai-codex': return 'OpenAI Codex';
