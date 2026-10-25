@@ -207,6 +207,17 @@ final class PagesWebViewTests: XCTestCase {
                           "phase=\(harness.controller.phase) title=\(harness.controller.title)")
     }
 
+    private func assertTerminalNavigationSettled(_ harness: Harness, replacing oldNonce: String, expectedPath: String) async {
+        let controller = harness.controller!
+        harness.trace("terminalNavigation.enter")
+        let settled = await waitUntil {
+            controller.bridgeReady && controller.documentNonce != nil && controller.documentNonce != oldNonce
+                && controller.currentPath == expectedPath && !controller.webView.isLoading
+        }
+        harness.trace(settled ? "terminalNavigation.settled" : "terminalNavigation.failed")
+        XCTAssertTrue(settled, "The terminal navigation must finish in a new ready document before teardown")
+    }
+
     func testFixturePageSpeaksTheBridge() async throws {
         let harness = Harness()
         let controller = harness.controller!
@@ -249,11 +260,14 @@ final class PagesWebViewTests: XCTestCase {
 
         // Content process killed with unsynced edits: reload, and say so.
         controller.handle(.editState(editing: true, unsynced: true))
+        let nonceBeforeFinalLoad = try XCTUnwrap(controller.documentNonce)
         controller.webViewWebContentProcessDidTerminate(controller.webView)
         XCTAssertEqual(harness.loads.count, 2, "reloads the current URL")
         XCTAssertEqual(harness.loads.last?.path, "/org/organization-fixture/project/p1/wiki")
         XCTAssertTrue(controller.lostEditsNotice)
         XCTAssertFalse(controller.unsynced)
+        await assertTerminalNavigationSettled(harness, replacing: nonceBeforeFinalLoad,
+                                              expectedPath: "/org/organization-fixture/project/p1/wiki")
     }
 
     // R2-W1: a web view bound to a previous selection never receives a session,
@@ -327,6 +341,7 @@ final class PagesWebViewTests: XCTestCase {
         _ = controller.cancelPendingLeave()
 
         await controller.requestOpen(wiki)
+        let nonceBeforeFinalLoad = try XCTUnwrap(controller.documentNonce)
         let leave = try XCTUnwrap(controller.confirmPendingLeave())
         let leavesScreen = await leave.value
         XCTAssertFalse(leavesScreen)
@@ -334,6 +349,8 @@ final class PagesWebViewTests: XCTestCase {
         XCTAssertEqual(discardCalls, 1, "Leave discards the console's unacknowledged edits")
         XCTAssertEqual(harness.loads.count, loadsBefore + 1)
         XCTAssertEqual(harness.loads.last?.path, "/org/organization-fixture/project/p1/wiki")
+        await assertTerminalNavigationSettled(harness, replacing: nonceBeforeFinalLoad,
+                                              expectedPath: "/org/organization-fixture/project/p1/wiki")
     }
 
     // R2-W4: document-replacing loads that do not come from a sidebar row
@@ -364,10 +381,13 @@ final class PagesWebViewTests: XCTestCase {
         XCTAssertEqual(harness.loads.count, loadsBefore)
 
         // "Leave" discards, then loads exactly that document.
+        let nonceBeforeFinalLoad = try XCTUnwrap(controller.documentNonce)
         let leave = try XCTUnwrap(controller.confirmPendingLeave())
         _ = await leave.value
         XCTAssertEqual(harness.loads.count, loadsBefore + 1)
         XCTAssertEqual(harness.loads.last?.path, "/org/organization-fixture/project/p1/marks")
+        await assertTerminalNavigationSettled(harness, replacing: nonceBeforeFinalLoad,
+                                              expectedPath: "/org/organization-fixture/project/p1/marks")
     }
 
     // R2-W7: select B with unsynced edits, then C before B's flush returns.
