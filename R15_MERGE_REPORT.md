@@ -43,6 +43,10 @@
 
 ## 後続チェックポイント
 
+通常のpre-commitフックを使用した統合コミットは `e9b53cf59f291f32c5c1327962d7ccf16fc367e1`、treeは `e9963df6128c1f21d276d7797e22df22e4ca99e0`。第1親は既存正式版 `b0432ce85977040461bf026aff063059bf6ffd1e`、第2親は固定upstream `84dcc00f3cd0abbb36eafc6bfad9389f960076db`。両者のmerge-base --is-ancestorがexit 0。これは製品コード統合の固定点であり、後続のCI設定・文書・検証コミットを妨げない。
+
+Feature inventory updated: 本家の自己復旧・暗号化source bundle・チケットidentity保持の項目を保持し、更新された同期サーバーが必要である記述を確認した。日本語訳追加と同一統合サイクルの修正について、架空の新機能項目は追加していない。
+
 - ShellFileAttributionのfixtureと期待パスをホストの絶対パスへ正規化し、codexShellTrackingHostのURL.pathnameをfileURLToPathへ修正。帰属判定・フックHTTP境界の意味は変えず、2ファイル43テストPASS。`shell-windows-path-green.json`。
 - 追加SQLite移行試験を含むMigrationRunnerは全8テストPASS。PGLiteの配布SQL→SQLite変換→再起動も追加1テストPASS。フィルター対象外27件を合格件数には加えない。詳細はR15_DATABASE_MIGRATION_REPORT.md。
 - 正規のtypecheck:prepushで依存・Runtime・collab-bundleをビルドし、38ワークスペース全件PASS。7容量上限も維持。`typecheck-prepush-finalpass1.log`。以後のテストfixture修正分は最終再検査が必要。

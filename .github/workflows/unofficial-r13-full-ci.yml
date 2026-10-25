@@ -2,7 +2,7 @@ name: Unofficial R13 full validation
 
 on:
   push:
-    branches: [codex/r13-full-ci, codex/r13-upstream-0821, codex/r14-release-candidate-0821]
+    branches: [codex/r13-full-ci, codex/r13-upstream-0821, codex/r14-release-candidate-0821, codex/r15-upstream-0823]
 
 permissions:
   contents: read
