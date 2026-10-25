@@ -1,10 +1,10 @@
-# v0.82.1-ja.1 リリース候補 / Release candidate
+# v0.82.1-ja.1 正式リリース / Stable release
 
-この文書は未公開候補の検証状況です。現在の公開正式版は v0.81.7-ja.3 です。この候補の配布開始を示すものではありません。公開する場合は、未署名の通常正式リリースとします。
+Windows x64向けの未署名の通常正式リリースです。[配布物とSHA256SUMS.txt](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)で取得元とファイルの一致を確認してください。ハイフン付きの版名はSemVer上のプレリリース識別子ですが、GitHub Releaseの指定は通常正式版です。
 
 ## 日本語
 
-Nimbalyst 日本語版（非公式）は、Nimbalyst, Inc.による開発・サポート・承認を受けた製品ではありません。本候補は本家 v0.82.1、コミット `583ae0244dae266667be579733d6c571fd74e037` を基準とします。
+Nimbalyst 日本語版（非公式）は、Nimbalyst, Inc.による開発・サポート・承認を受けた製品ではありません。本版は本家 v0.82.1、コミット `583ae0244dae266667be579733d6c571fd74e037` を基準とします。
 
 ### v0.81.7-ja.3からの変更
 
@@ -27,6 +27,7 @@ Windows製品コード `9e1d8411d883b17de3e8f3f8fe0208691cde213e` に対応す�
 - 公式Nimbalystとの同時利用はサポートしません。アプリ識別子は `jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザーデータは `%APPDATA%\Nimbalyst 日本語版（非公式）` です。
 - Windows版は共有の `nimbalyst://` 既定ハンドラーを取得しません。認証はインスタンス専用のnonce付きlocalhost callbackを使います。認証メールのリンクはアプリを起動した同じPCで開いてください。
 - Windowsのsymlink fixture作成には既知のEPERM失敗があります。fixtureを作れなかった試験を、symlink拒否処理の成功として扱いません。
+- commit-hook検証での`/bin/sh`不在も既知のWindows環境依存失敗です。CLIのsymlink fixtureとsandboxの2つのsymlink fixture試験を含め、全Windows試験が成功したという判定ではありません。
 - 外部スクリーンリーダー、全画面・全DPI、動的翻訳参照の完全な実行時確認、Google認証、特殊な認証復旧経路、サービス側セッション失効は未検証です。通常ログアウトによるローカル認証削除とは区別します。
 - 専用テストプロファイルのNTFS権限継承は確認しましたが、他のアカウントからの実効アクセスは未検証です。暗号化保存・復元の成功を、所有者だけがファイルへアクセスできることの証明とは扱いません。
 
@@ -34,9 +35,9 @@ MITライセンスです。本家の著作権表示とLICENSEを保持します�
 
 ## English
 
-Nimbalyst — Unofficial Japanese Edition is not affiliated with, endorsed by, or supported by Nimbalyst, Inc. This candidate is based on upstream v0.82.1, commit `583ae0244dae266667be579733d6c571fd74e037`.
+Nimbalyst — Unofficial Japanese Edition is not affiliated with, endorsed by, or supported by Nimbalyst, Inc. This edition is based on upstream v0.82.1, commit `583ae0244dae266667be579733d6c571fd74e037`.
 
-This is an unpublished candidate verification record. The current public stable release remains v0.81.7-ja.3. If approved for publication, this candidate will be an unsigned regular stable release.
+This is an unsigned regular stable release for Windows x64. Verify the source and file hashes using the [release assets and SHA256SUMS.txt](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1). Although SemVer interprets the hyphen suffix as a prerelease identifier, this GitHub Release is designated stable.
 
 ### Changes since v0.81.7-ja.3
 
@@ -59,6 +60,7 @@ Ordinary Windows packages corresponding to product code `9e1d8411d883b17de3e8f3f
 - Running this edition alongside official Nimbalyst is unsupported. Its application ID is `jp.meistertech.nimbalyst.ja.unofficial`; default user data is stored in `%APPDATA%\Nimbalyst 日本語版（非公式）`.
 - The Windows edition does not claim the shared `nimbalyst://` default handler. Authentication uses an instance-owned nonce-protected localhost callback. Open the authentication email link on the same PC running the application.
 - Known Windows symlink fixture creation failures return EPERM. Tests unable to create their fixtures do not demonstrate successful symlink rejection.
+- Missing `/bin/sh` in commit-hook verification is another known Windows-dependent test failure. Together with the CLI symlink fixture and two sandbox symlink fixtures, these remain exceptions rather than an all-Windows-tests-passed result.
 - External screen readers, every screen and DPI, complete runtime coverage of dynamic translations, Google authentication, special recovery paths, and server-side session invalidation are unverified. Server-side invalidation is distinct from deleting local authentication state during ordinary logout.
 - NTFS permission inheritance was inspected for the dedicated test profile, but effective access from other accounts remains unverified. Successful encrypted storage and restoration do not establish owner-only filesystem access.
 

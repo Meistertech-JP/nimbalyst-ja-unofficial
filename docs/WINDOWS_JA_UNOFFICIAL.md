@@ -4,7 +4,7 @@
 
 ## 現在の提供状況
 
-v0.81.7-ja.3はWindows x64向けの正式リリースです。[最新版](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/latest)から、未署名NSISインストーラー、ポータブルZIP、ソースZIP、`SHA256SUMS.txt`を取得できます。通常Windows版によるメール認証、暗号化保存、アカウント表示の復元、ログアウト、インストール・アンインストールを確認しています。旧v0.81.7-ja.2はソース限定のまま保持しています。
+v0.82.1-ja.1は、本家v0.82.1（`583ae0244dae266667be579733d6c571fd74e037`）をベースとするWindows x64向けの通常正式リリースです。[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)から、未署名NSISインストーラー、ポータブルZIP、ソースZIP、`SHA256SUMS.txt`を取得できます。通常Windows製品によるメール認証、暗号化保存、アカウント復元、ログアウト、新規インストール、旧v0.81.7-ja.3からの更新とテスト文書・設定保持、通常アンインストールを確認しています。最終配布物と実機検証済み製品の対応は[リリースノート](../RELEASE_NOTES_v0.82.1-ja.1.md)に記載しています。旧v0.81.7-ja.3の[検証記録](../RELEASE_NOTES_v0.81.7-ja.3.md)と旧v0.81.7-ja.2のソース限定Releaseは保持しています。
 
 ## 未署名と取得元の確認
 
@@ -82,7 +82,7 @@ This guide covers an unsigned Windows x64 build. It is not an official product o
 
 ### Current availability
 
-v0.81.7-ja.3 is a regular Windows x64 release. Download the unsigned NSIS installer, portable ZIP, source ZIP, and `SHA256SUMS.txt` from the [latest release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/latest). Production email sign-in, encrypted storage, account UI restoration, logout, installation, and uninstallation were verified in the ordinary Windows build. The earlier v0.81.7-ja.2 remains source-only.
+v0.82.1-ja.1 is a regular Windows x64 release based on upstream v0.82.1 (`583ae0244dae266667be579733d6c571fd74e037`). Download the unsigned NSIS installer, portable ZIP, source ZIP, and `SHA256SUMS.txt` from the [versioned release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1). The ordinary Windows product was tested for production email sign-in, encrypted storage, account restoration, logout, fresh installation, upgrade from v0.81.7-ja.3 with test documents and settings retained, and normal uninstallation. See the [release notes](../RELEASE_NOTES_v0.82.1-ja.1.md#english) for correspondence between the final distribution and the native-tested product. The previous v0.81.7-ja.3 [verification record](../RELEASE_NOTES_v0.81.7-ja.3.md#english) is retained; v0.81.7-ja.2 remains source-only.
 
 ### Unsigned files and provenance
 

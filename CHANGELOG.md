@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.82.1-ja.1] — 2026-10-25
+
+- Released an unsigned Windows x64 update based on upstream v0.82.1; see the [bilingual release notes](RELEASE_NOTES_v0.82.1-ja.1.md) for verified behavior and limitations.
 - Disabled automatic development debugging endpoints in packaged desktop builds.
 - Localized completion menus and session-reference labels with live language switching.
 - Fixed database-worker source startup during regression tests and updated account-binding test fixtures for encrypted credential persistence.

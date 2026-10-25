@@ -1,83 +1,52 @@
 # Nimbalyst 日本語版（非公式）
 
-Nimbalyst v0.81.7をベースに、デスクトップアプリのユーザーインターフェースを日本語化した非公式版です。
+Nimbalyst v0.82.1をベースに、デスクトップアプリのユーザーインターフェースを日本語化した非公式版です。
 
 メニュー、設定、ファイル管理、AIセッション、トラッカー、ダイアログなどに日本語表示を追加しています。表示言語は日本語と英語から選択できます。
 
 本プロジェクトはNimbalyst, Inc.の公式製品ではなく、同社による開発・サポート・承認を受けたものではありません。
 
-[English](README.en.md) · [Wiki（日本語）](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki) · [Wiki (English)](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Home-English) · [Windows利用ガイド](docs/WINDOWS_JA_UNOFFICIAL.md) · [v0.81.7-ja.3の変更内容](RELEASE_NOTES_v0.81.7-ja.3.md)
+[English](README.en.md) · [日本語Wiki](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki) · [English Wiki](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Home-English) · [リリースノート](RELEASE_NOTES_v0.82.1-ja.1.md)
 
-## ドキュメント
+## ダウンロードと環境
 
-GitHub Wikiに利用・開発資料を掲載しています。各記事の冒頭から対応する英語版へ移動できます。これはGitHub上の文書であり、アプリ内のLocal Wiki・Team Wikiとは別のものです。
+**v0.82.1-ja.1はWindows x64向けの通常正式リリースです。** [対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)から、NSISインストーラー、ポータブルZIP、ソースZIP、`SHA256SUMS.txt`を取得します。導入・更新手順は[Windows導入ガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Windows-Installation)を参照してください。
 
-- [はじめに](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Getting-Started)
-- [Windowsへの導入と更新](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Windows-Installation)
-- [表示言語の設定](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Display-Language)
-- [アカウント認証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication)
-- [トラブルシューティング](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Troubleshooting)
-- 開発者向け資料：[日本語化アーキテクチャ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Localization-Architecture)、[ソースからのビルド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source)、[テストと品質検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)
+Windowsアプリとインストーラーは未署名です。SmartScreenなどの警告が出る場合があります。保護機能を無効にせず、取得元、バージョン、SHA-256を確認してください。ハッシュ一致はファイルのバイト一致を確認するもので、コード署名や安全性の保証ではありません。
 
-## 公開状況とダウンロード
+旧正式版[v0.81.7-ja.3](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.81.7-ja.3)と、その[検証記録](RELEASE_NOTES_v0.81.7-ja.3.md)は保持しています。v0.81.7-ja.2はソース限定Prereleaseです。`ja.1`は本版の更新番号で、SemVerではハイフン以降がプレリリース識別子になりますが、このGitHub Releaseは通常正式版として指定しています。
 
-**v0.81.7-ja.3はWindows x64向けの正式リリースです。** [最新版のダウンロード](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/latest)から、NSISインストーラー、ポータブルZIP、ソースZIP、`SHA256SUMS.txt`を取得してください。通常製品ビルドで、正規のNimbalystサービスによるメール認証、暗号化保存、再起動後のアカウント表示の復元、ログアウトを確認しています。
+ベースは本家v0.82.1、固定コミットは`583ae0244dae266667be579733d6c571fd74e037`です。公式最新版とは機能・修正内容が異なります。全Windows構成での動作保証ではなく、他OSの配布物は提供していません。
 
-過去のv0.81.7-ja.2はソース限定Prereleaseのまま保持しています。[当時のリリースノート](RELEASE_NOTES_v0.81.7-ja.2.md)は、その版の検証状況を記録しています。`ja.3`は日本語フォークの更新番号です。SemVer対応ツールではハイフン以降がプレリリース識別子になりますが、本版のGitHub Releaseは正式版として指定しています。パッケージ管理ツールの自動選択に頼らず、対象バージョンを確認してください。
+## 表示言語
 
-### 未署名版について
+設定の表示言語でSystem、English、日本語を選択できます。エージェントの回答言語とは別の設定で、利用者の文書や外部サービスの応答は自動翻訳しません。27名前空間、英日各14,608キーの対応・空翻訳・補間整合性を確認しています。キーの一致は全画面の翻訳完了を意味しません。
 
-配布する本版のWindowsアプリとインストーラーは未署名です。Windowsが証明書によって確認できる発行元はありません。アプリ情報に表示する名称や発行者の文字列は、コード署名の代わりにはなりません。
+入力候補やセッション参照のアクセシビリティ文字列も表示言語に追従します。外部スクリーンリーダーによる検証は行っていません。[表示言語ガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Display-Language)を参照してください。
 
-SmartScreenなどが警告する場合があります。保護機能や警告を無効にすることは案内しません。取得元、対象バージョン、SHA-256を確認できない場合は実行しないでください。SHA-256の一致は配布ファイルとのバイト一致を確認するもので、発行元の真正性や安全性を証明するものではありません。確認手順は[Windows利用ガイド](docs/WINDOWS_JA_UNOFFICIAL.md)に記載しています。
+## 更新と認証
 
-## バージョンと環境
+- 更新は本リポジトリのReleaseから手動で行います。公式版の自動更新と手動更新確認は無効です。
+- 公式Nimbalystとの同時利用はサポートしていません。アプリIDは`jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザーデータは`%APPDATA%\Nimbalyst 日本語版（非公式）`です。公式版のデータを移動・削除しません。
+- Windowsでは`nimbalyst://`の既定ハンドラーを取得しません。認証はインスタンス固有のnonce付きlocalhost callbackを使用します。認証メールはアプリを起動した同じPCで開いてください。認証URLやトークンを共有しないでください。
+- ログアウトはローカル認証状態を削除します。サービス側セッションの失効を保証するものではありません。
+- アンインストールは本版が所有する登録・ショートカットを対象とし、ユーザーデータは保持します。
 
-- ベース: Nimbalystデスクトップ版 v0.81.7
-- 固定upstream: `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`
-- Windows配布対象: x64。Windowsの全バージョン、構成、セキュリティ製品での動作を確認したものではありません。
-- ビルド: Node.js 24以降、pnpm 12以降。リポジトリの指定は **pnpm 12.9.1**、Electronは **43.7.0** です。依存関係は `pnpm-lock.yaml` に固定されています。
-- 現在の公式最新版とは機能・修正内容が異なります。公式mainの最新状態へ自動追従するものではありません。
-- macOS、Linux、Android、iOSの配布物・実機動作は、このWindows版の検証範囲に含めていません。
+詳しくは[アカウント認証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication)と[制限事項](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations)を参照してください。
 
-## 日本語表示
+## 検証範囲と制限
 
-設定の表示言語で日本語または英語を選択します。表示言語はエージェントへの回答言語の指示とは別の設定です。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
+通常Windows製品で日本語・英語切替、再起動後の言語保持、メール認証、暗号化保存、アカウント復元、通常ログアウト、未認証での再起動を確認しました。新規インストール、v0.81.7-ja.3からの更新とテスト文書・設定保持、通常アンインストールも確認しています。最終ペイロードは実機検証済み製品と1,910ファイルがバイト一致し、残る1ファイルは第三者ライセンスJSONの生成時刻だけが異なります。最終NSIS自体の導入・削除と1,911ペイロードの照合も成功しています。
 
-本版ではAbout、Settings、コメント通知、共有プロジェクトのエラー、Git修復用の入力下書き、ファイル作成・保存・エクスポート、同梱コマンドの説明などを追加で日本語化しています。日本語チュートリアルは新規作成時の表示言語に従って選択されます。既に作成・編集したチュートリアルを言語切替で書き換えません。
+38 workspace型検査と7エントリの容量検査が成功しています。Linuxでは19,130 PASS／30 SKIP／0 FAIL、iOSでは527実行／6 SKIP／0 FAILです。CI実行コミットは`ae08d2235bab5e9c832c0ae32631bb3a94544704`で、最終ソースSHAそのもののCI実行ではありません。以後の差分は文書・生成型宣言・法務生成時刻で、実装・試験コードは同じです。
 
-本版の翻訳リソースには27名前空間、英語・日本語それぞれ14,579キーがあります。対応するキー・補間の一致を確認していますが、全画面や動的参照の実行時確認を意味しません。
+Windowsでのsymlink fixture作成EPERMと`/bin/sh`不在による既知の試験失敗を保持しています。fixture作成で停止したsandbox試験は拒否処理そのものを検証できていません。全Windowsテスト成功とはしていません。
 
-ローカルWikiの静的出力は `nim wiki export --static <dir> --ui-language system|en|ja` で言語を指定します。CLIの省略時はシステム言語、プログラムAPIの省略時は互換性のため英語です。Wikiの翻訳は必要な名前空間を遅延読み込みします。この説明は本ソースの内容であり、公開済みnpmパッケージへの収録を示しません。
-
-## 更新・認証・公式版との関係
-
-- 公式版の更新の自動取得・適用と、手動更新確認は無効です。更新はこのリポジトリの公開内容を確認し、手動で行います。
-- **公式Nimbalystとの同時利用はサポートしていません。** アプリ識別子、既定のインストール先、ユーザーデータ保存先は分離していますが、同時利用の互換性保証ではありません。
-- Windowsアプリ識別子は `jp.meistertech.nimbalyst.ja.unofficial`。既定のユーザーデータ保存先は `%APPDATA%\Nimbalyst 日本語版（非公式）` です。公式版の既存データを移動・削除しません。
-- 認証コールバックはインスタンスごとのnonce付き `http://127.0.0.1:<port>/auth/callback` を使用します。認証メールはアプリを起動している同じPCで開いてください。スマートフォンで開くと `127.0.0.1` はスマートフォン自身を指し、PCのアプリへ戻れません。使用済み・期限切れのリンクはアプリから再送してください。認証URLやトークンを他者へ共有しないでください。
-- ログアウトは本版のローカル認証状態を削除します。サービス側セッションの失効までは保証しません。
-- Windowsでは `nimbalyst://` の既定ハンドラーを取得しません。認証以外の同プロトコルのリンクは、既存の登録先アプリで開かれる場合があります。
-- インストーラーは本版のMarkdown用「プログラムから開く」項目を追加し、拡張子の既定アプリやExplorerのUserChoiceは変更しない構成です。アンインストール時は本版自身が所有する登録だけを対象とし、ユーザーデータを保持します。
-
-## 検証状況と制限
-
-v0.81.7-ja.3の配布対象ビルドで、NSISによる更新インストール、インストール済みアプリとZIP展開版の起動、通常アンインストールを確認しました。通常製品ビルドで日本語・英語の切替、両言語の再起動後の設定保持、選択した作成メニュー・ダイアログ・使用量案内の表示を確認しています。インストール済みファイルとZIPの全1,911ファイルが検証対象の展開物と一致しました。
-
-メールによる本番認証、IPv4 localhost callback、暗号化保存、専用プロファイルでの再起動後のアカウント表示の復元、通常ログアウト、ログアウト後の未認証状態を確認しました。認証ファイル2個とSQLite関連ファイルの実測ACLは、現在のユーザー・SYSTEM・Administratorsに限定されていました。監査対象の既存設定、既定の関連付け、公式版ショートカットは維持され、アンインストールによる削除は本版自身の登録・ショートカットに限られていました。これは全ホスト状態の同一性や、他の端末での動作保証ではありません。
-
-- 検証対象ソースの型検査は38 workspace、関連テストは重複を除いた88ファイル925件で成功しています。全体テストの成功を意味しません。
-- 同一Windows環境の固定upstreamでも再現した4件の試験失敗を保持しています。CLIのsymlink fixture作成EPERM、commit-hookの `/bin/sh` 起動ENOENT、sandboxのsymlinkファイルfixture作成EPERM、sandboxのsymlink祖先ディレクトリfixture作成EPERMです。後者2件はfixture作成段階の失敗で、拒否処理そのものを検証できたとは扱いません。
-- 全体テストには未完走の履歴があり、全件成功とはしていません。特定環境での大容量CLIアップロード停止も、すべての環境で発生する不具合とは確定していません。
-- Google認証、サービス側のセッション失効、Stytchの一部の復旧経路、別ユーザーやグループを含むNTFS実効アクセスは未検証です。確認済みの脆弱性や不具合とは区別します。
-- 現在の静的監査で抽出した動的翻訳候補651件、翻訳スコープを確定できなかった382件、未訪問の画面・tooltip・アクセシビリティラベルなどの完全な実行時確認は未完了です。過去の119件・370件とは監査範囲・数え方が異なり、欠落キーや不具合の件数ではありません。
-- NSISの無効な管理者向け選択肢には英語注記が残っています。現在のユーザー向けのインストール・アンインストール完了画面は日本語で確認しています。
-- 全製品の固定英語が0件とは判定していません。利用者の文書、外部サービスのエラー、技術識別子、既存通知、旧形式の共同編集データには英語が残る場合があります。旧クライアントの「Teammate」は実名との区別ができないため変更しません。
-- 観察した画面・ズーム倍率・配置での結果は、すべての画面、DPI、端末、Browser/Embedホストの保証ではありません。
+Google認証、特殊な認証復旧、サーバー側失効、別ユーザーを含むNTFS実効アクセス、外部スクリーンリーダー、全画面・DPI・動的翻訳の完全な実行時確認は未完了です。静的監査の動的候補653件とスコープ未確定382件は、欠落キーや不具合の件数ではありません。確認済みの脆弱性とは区別します。[品質検証資料](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)に範囲を記載しています。
 
 ## ソースからのビルド
 
-Corepackを利用できるNode.js環境で、リポジトリのルートから実行します。ネイティブ依存関係の再ビルドが必要な環境では、対応するビルドツールも必要です。
+Node.js 24以降、リポジトリ指定のpnpm 12.9.1とWindowsネイティブビルドツールを使用します。
 
 ```sh
 corepack pnpm install --frozen-lockfile
@@ -88,14 +57,10 @@ corepack pnpm --filter @nimbalyst/runtime run build
 corepack pnpm --dir packages/electron run build:win
 ```
 
-`build:win` はElectron本体、Worker、Sandbox、拡張機能、リソース検査を実行し、Windows x64のNSISインストーラーを生成するリポジトリのスクリプトです。出力先は `packages/electron/release` です。署名用資格情報を渡さないローカルビルドは未署名になります。CIで意図的に未署名ビルドを行う場合の指定は `ALLOW_UNSIGNED_WINDOWS_BUILD=true` ですが、検証の省略や公開許可を意味しません。
-
-型検査は `corepack pnpm run typecheck` です。生成成功だけではインストール・起動・認証・アンインストールの保証になりません。最終候補のソースと配布物の対応、実起動、データ分離を別途確認してください。ポータブル版の扱いは[Windows利用ガイド](docs/WINDOWS_JA_UNOFFICIAL.md)を参照してください。
+NSIS出力先は`packages/electron/release`です。署名資格情報を指定しないローカルビルドは未署名です。型検査は`corepack pnpm run typecheck`で実行します。生成成功は実起動や認証成功の保証ではありません。[ビルド手順](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source)と[日本語化アーキテクチャ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Localization-Architecture)を参照してください。
 
 ## ライセンス
 
-[MIT License](LICENSE)で提供します。元の `Copyright (c) 2024-2026 Nimbalyst Inc.` とライセンス本文を保持しています。
+[MIT License](LICENSE)。元の`Copyright (c) 2024-2026 Nimbalyst Inc.`とライセンス本文を保持しています。同梱第三者ソフトウェアには各ライセンスが適用されます。[一覧](packages/electron/resources/generated/THIRD_PARTY_LICENSES.json)と[NOTICE](packages/electron/resources/generated/THIRD_PARTY_NOTICES.txt)はパッケージの`resources/legal`にも同梱します。
 
-同梱第三者ソフトウェアには各ライセンスが適用されます。[ライセンス一覧](packages/electron/resources/generated/THIRD_PARTY_LICENSES.json)、[NOTICE](packages/electron/resources/generated/THIRD_PARTY_NOTICES.txt)、[ライセンス監査資料](packages/electron/resources/generated/THIRD_PARTY_LICENSE_AUDIT.md)を参照してください。Windowsパッケージには `resources/legal` として同梱します。
-
-[本家Nimbalystリポジトリ](https://github.com/nimbalyst/nimbalyst) · [英語README](README.en.md)
+[本家Nimbalyst](https://github.com/nimbalyst/nimbalyst)
