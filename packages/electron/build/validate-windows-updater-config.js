@@ -17,6 +17,10 @@ function getWindowsPublisherNames() {
 
 function validateWindowsUpdaterConfig() {
   if (packageJson.build?.appId === 'jp.meistertech.nimbalyst.ja.unofficial') {
+    const version = /^(\d+\.\d+\.\d+)-ja\.(\d+)$/.exec(packageJson.version);
+    if (!version || packageJson.build.buildVersion !== `${version[1]}.${version[2]}`) {
+      throw new Error('Unofficial Windows buildVersion must match the numeric product version and Japanese revision.');
+    }
     if (packageJson.build?.publish !== null) {
       throw new Error(
         'Unofficial Japanese Edition must set build.publish to null so electron-builder does not generate an official update feed.'

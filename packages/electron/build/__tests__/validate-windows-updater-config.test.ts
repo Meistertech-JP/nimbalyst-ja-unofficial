@@ -17,6 +17,22 @@ function effectiveAssociations(platform: string) {
 }
 
 describe('Unofficial Windows file-class isolation', () => {
+  it('keeps the numeric Windows build version aligned with the Japanese product version', () => {
+    const version = /^(\d+\.\d+\.\d+)-ja\.(\d+)$/.exec(packageJson.version);
+    expect(version).not.toBeNull();
+    expect(packageJson.build.buildVersion).toBe(`${version![1]}.${version![2]}`);
+  });
+
+  it('refuses a stale Windows build version before packaging', () => {
+    const original = packageJson.build.buildVersion;
+    try {
+      packageJson.build.buildVersion = '0.0.0.0';
+      expect(() => validateWindowsUpdaterConfig()).toThrow(/buildVersion.*product version/i);
+    } finally {
+      packageJson.build.buildVersion = original;
+    }
+  });
+
   it('leaves Windows registration to the tested Open With policy while preserving other platforms', () => {
     const windows = effectiveAssociations('win');
     // nsis-isolation.test.ts executes the custom registration/unregistration
