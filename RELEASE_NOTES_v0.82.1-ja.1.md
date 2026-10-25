@@ -16,7 +16,9 @@ Nimbalyst 日本語版（非公式）は、Nimbalyst, Inc.による開発・サ�
 
 ### 検証状況
 
-候補の検証を継続しています。全38ワークスペースの型検査、7エントリの容量制限、翻訳キー・補間の整合、対象コンポーネントおよび認証契約の単体テストが成功しています。通常製品パッケージでの本番メール認証、新規・更新インストール、アンインストール、および最終コミットのLinux／iOS検証は未完了です。過去の製品ビルドの結果を本候補の実機成功として扱いません。
+候補の検証を継続しています。全38ワークスペースの型検査、7エントリの容量制限、翻訳キー・補間の整合、対象コンポーネントおよび認証契約の単体テストが成功しています。コミット `ae08d2235bab5e9c832c0ae32631bb3a94544704` のLinux検証は19,130 PASS・0 FAIL・30 SKIP、iOS検証は527実行・6 SKIP・0 FAILです。iOSのページ置換・再読み込み試験では、新しいページの準備と読み込みが完了してから終了する検証を追加しました。以前の初期読み込み試験の失敗記録は保持しています。
+
+Windows製品コード `9e1d8411d883b17de3e8f3f8fe0208691cde213e` に対応する通常パッケージで、新規NSISインストール、起動・正常終了、日英切替と再起動後の設定保持、ローカルWikiの作成・名前変更、エディターの候補選択を確認しました。同じパッケージで本番メール認証、暗号化保存、再起動後の認証復元、通常サインアウトと再起動後の未認証状態保持を確認しました。旧正式版 v0.81.7-ja.3 からの更新でも、英語設定・プロジェクト・文書・SQLiteバックエンドの保持と、文書のSHA-256一致を確認しました。新規・更新の両インストールで通常アンインストール後も専用テストデータを保持し、確認対象の関連付け12項目が事前状態に戻りました。これはレジストリ全体の比較ではありません。最終ソースから再生成する配布候補との対応確認を継続しています。
 
 ### 配布・更新・制限
 
@@ -26,6 +28,7 @@ Nimbalyst 日本語版（非公式）は、Nimbalyst, Inc.による開発・サ�
 - Windows版は共有の `nimbalyst://` 既定ハンドラーを取得しません。認証はインスタンス専用のnonce付きlocalhost callbackを使います。認証メールのリンクはアプリを起動した同じPCで開いてください。
 - Windowsのsymlink fixture作成には既知のEPERM失敗があります。fixtureを作れなかった試験を、symlink拒否処理の成功として扱いません。
 - 外部スクリーンリーダー、全画面・全DPI、動的翻訳参照の完全な実行時確認、Google認証、特殊な認証復旧経路、サービス側セッション失効は未検証です。通常ログアウトによるローカル認証削除とは区別します。
+- 専用テストプロファイルのNTFS権限継承は確認しましたが、他のアカウントからの実効アクセスは未検証です。暗号化保存・復元の成功を、所有者だけがファイルへアクセスできることの証明とは扱いません。
 
 MITライセンスです。本家の著作権表示とLICENSEを保持します。同梱依存関係の条件は第三者ライセンス一覧を参照してください。
 
@@ -45,7 +48,9 @@ This is an unpublished candidate verification record. The current public stable 
 
 ### Verification status
 
-Candidate verification is ongoing. All 38 workspace typechecks, seven bundle budgets, translation-key and interpolation consistency checks, and focused component and authentication-contract unit tests passed. Production email authentication in the ordinary product package, clean installation, upgrade, uninstallation, and final-commit Linux/iOS validation remain incomplete. Results from earlier product builds are not treated as native acceptance of this candidate.
+Candidate verification is ongoing. All 38 workspace typechecks, seven bundle budgets, translation-key and interpolation consistency checks, and focused component and authentication-contract unit tests passed. At commit `ae08d2235bab5e9c832c0ae32631bb3a94544704`, Linux verification reported 19,130 passed, zero failed and 30 skipped tests; iOS verification reported 527 executed, six skipped and zero failures. The iOS page replacement and reload tests now verify that the new page is ready and has finished loading before teardown. The earlier initial-loading test failure remains recorded.
+
+Ordinary Windows packages corresponding to product code `9e1d8411d883b17de3e8f3f8fe0208691cde213e` passed clean NSIS installation, startup and normal shutdown, Japanese/English switching and restart persistence, local Wiki creation and rename, and editor completion selection. The same packages passed production email authentication, encrypted storage, authentication restoration after restart, ordinary sign-out and persistence of the signed-out state after restart. Upgrade from stable v0.81.7-ja.3 retained the English setting, project, document and SQLite backend, with an unchanged document SHA-256. Normal uninstallation of both fresh and upgraded installations retained dedicated test data and restored the 12 sampled association entries to their prior state. This was not a comparison of the entire registry. Correspondence with distribution candidates rebuilt from the final source remains under verification.
 
 ### Distribution, updates, and limitations
 
@@ -55,5 +60,6 @@ Candidate verification is ongoing. All 38 workspace typechecks, seven bundle bud
 - The Windows edition does not claim the shared `nimbalyst://` default handler. Authentication uses an instance-owned nonce-protected localhost callback. Open the authentication email link on the same PC running the application.
 - Known Windows symlink fixture creation failures return EPERM. Tests unable to create their fixtures do not demonstrate successful symlink rejection.
 - External screen readers, every screen and DPI, complete runtime coverage of dynamic translations, Google authentication, special recovery paths, and server-side session invalidation are unverified. Server-side invalidation is distinct from deleting local authentication state during ordinary logout.
+- NTFS permission inheritance was inspected for the dedicated test profile, but effective access from other accounts remains unverified. Successful encrypted storage and restoration do not establish owner-only filesystem access.
 
 MIT-licensed. The upstream copyright notices and LICENSE are retained. Consult the bundled third-party license inventory for dependency terms.

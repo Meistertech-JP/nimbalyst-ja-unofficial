@@ -1,4 +1,5 @@
-export * from './CollabCreateItemDialog';
+export type { CollabCreateItemDialogProps } from './CollabCreateItemDialog';
+export declare const loadCollabCreateItemDialog: () => Promise<typeof import("./CollabCreateItemDialog")>;
 export * from './CollabDocsUIProvider';
 export * from './useCollabPagesState';
 export * from './CollabNewDocumentMenu';
