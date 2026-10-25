@@ -12,11 +12,17 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import type { TrackerItemPublicationState } from '../trackerRecordAccessors';
 
-export function trackerPublicationLabel(state: TrackerItemPublicationState): string {
-  return state === 'published' ? 'Published' : 'Draft';
+export function trackerPublicationLabel(
+  state: TrackerItemPublicationState,
+  translate?: (key: string) => string,
+): string {
+  return state === 'published'
+    ? translate?.('publication.published') ?? 'Published'
+    : translate?.('publication.draft') ?? 'Draft';
 }
 
 export function trackerPublicationIcon(state: TrackerItemPublicationState): string {
@@ -24,10 +30,13 @@ export function trackerPublicationIcon(state: TrackerItemPublicationState): stri
 }
 
 /** One line saying who can see this item. */
-export function trackerPublicationDescription(state: TrackerItemPublicationState): string {
+export function trackerPublicationDescription(
+  state: TrackerItemPublicationState,
+  translate?: (key: string) => string,
+): string {
   return state === 'published'
-    ? 'Your team can see this item.'
-    : 'Only you can see this. Publish it when it is ready.';
+    ? translate?.('publication.published_description') ?? 'Your team can see this item.'
+    : translate?.('publication.draft_description') ?? 'Only you can see this. Publish it when it is ready.';
 }
 
 /**
@@ -38,7 +47,9 @@ export const TrackerPublicationChip: React.FC<{
   state: TrackerItemPublicationState;
   className?: string;
 }> = ({ state, className = '' }) => {
+  const { t } = useTranslation('tracker');
   if (state === 'n/a') return null;
+  const translate = (key: string) => t(key);
   const published = state === 'published';
   return (
     <span
@@ -49,10 +60,10 @@ export const TrackerPublicationChip: React.FC<{
       } ${className}`}
       data-publication={state}
       data-testid="tracker-publication-chip"
-      title={trackerPublicationDescription(state)}
+      title={trackerPublicationDescription(state, translate)}
     >
       <MaterialSymbol icon={trackerPublicationIcon(state)} size={11} />
-      {trackerPublicationLabel(state)}
+      {trackerPublicationLabel(state, translate)}
     </span>
   );
 };

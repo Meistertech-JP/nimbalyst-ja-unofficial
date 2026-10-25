@@ -304,6 +304,7 @@
     }
   },
   "columns": {
+    "collection": "Collection",
     "type": "Type",
     "key": "Key",
     "updated": "Updated",
@@ -369,6 +370,8 @@
     "create_name": "Create “{{name}}”"
   },
   "fields": {
+    "set_tooltip": "Set {{field}}",
+    "read_only_tooltip": "{{field}} is read-only",
     "required": "Required",
     "optional": "Optional",
     "add_tag": "Add tag...",
@@ -378,6 +381,12 @@
     "loading_citations": "Loading citations...",
     "undeclared_properties": "Undeclared properties:",
     "undeclared_property_title": "'{{property}}' is listed by the '{{label}}' label but is neither a field property nor a predicate"
+  },
+  "publication": {
+    "published": "Published",
+    "draft": "Draft",
+    "published_description": "Your team can see this item.",
+    "draft_description": "Only you can see this. Publish it when it is ready."
   },
   "status_bar": {
     "expand": "Expand status bar",

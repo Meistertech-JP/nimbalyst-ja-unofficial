@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { getDefaultStore } from 'jotai';
@@ -50,6 +50,21 @@ describe('TrackerTable context menu trigger', () => {
     (window as any).electronAPI = {
       documentService: { updateTrackerItem: vi.fn() },
     };
+  });
+
+  it('updates rendered relative date cells when the UI language changes', async () => {
+    const recent = record('recent-date');
+    recent.system.lastIndexed = new Date(Date.now() - 3 * 3_600_000).toISOString();
+    recent.system.updatedAt = recent.system.lastIndexed;
+    const { container } = renderWithI18n(
+      <TrackerTable filterType="bug" hideTypeTabs hideToolbar overrideItems={[recent]} />,
+    );
+    const cell = () => container.querySelector('[data-column-id="updated"]')?.textContent;
+    expect(cell()).toBe('3h ago');
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    expect(cell()).toBe('3時間前');
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(cell()).toBe('3h ago');
   });
 
   it('preserves a multi-selection when its overflow action opens the shared menu', () => {

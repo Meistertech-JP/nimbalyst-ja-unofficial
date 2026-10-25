@@ -8,6 +8,7 @@
  */
 
 import { afterAll, describe, expect, it } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 const originalTz = process.env.TZ;
 
@@ -22,13 +23,13 @@ afterAll(() => { process.env.TZ = originalTz; });
 describe('tracker date-only display in a behind-UTC timezone', () => {
   it('renders a calendar-day string as the day that was entered', async () => {
     const { formatDateTimeDisplay } = await import('../TrackerFieldEditor');
-    expect(formatDateTimeDisplay('2026-07-31').display).toBe('Jul 31, 2026');
+    expect(formatDateTimeDisplay('2026-07-31').display).toBe(new Date(2026, 6, 31).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }));
   });
 
   it('still renders a datetime instant in local time', async () => {
     const { formatDateTimeDisplay } = await import('../TrackerFieldEditor');
     // 2026-07-31T02:00Z is 10pm on Jul 30 in New York.
-    expect(formatDateTimeDisplay('2026-07-31T02:00:00.000Z').display).toBe('Jul 30, 2026');
+    expect(formatDateTimeDisplay('2026-07-31T02:00:00.000Z').display).toBe(new Date(2026, 6, 30).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }));
   });
 
   /**
@@ -53,6 +54,24 @@ describe('relative tracker date labels around the reported 8pm-ET boundary', () 
   // Aug 4 2026, 8:00pm in New York -- the moment from the bug report.
   const now = new Date(2026, 7, 4, 20, 0, 0);
 
+  it('localizes elapsed times, calendar days, and exact hover dates without changing stored values', async () => {
+    const { formatRelativeDate, formatTrackerDateCell } = await import('../trackerColumns');
+    const i18n = await createI18nInstance('ja');
+    const options = { locale: 'ja', t: i18n.getFixedT('ja', 'tracker') };
+    expect(formatRelativeDate(new Date(now.getTime() - 30_000), now, options)).toBe('たった今');
+    expect(formatRelativeDate(new Date(now.getTime() - 3 * 60_000), now, options)).toBe('3分前');
+    expect(formatRelativeDate(new Date(now.getTime() - 3 * 3_600_000), now, options)).toBe('3時間前');
+    expect(formatRelativeDate(new Date(now.getTime() + 3 * 3_600_000), now, options)).toMatch(/^3\s?時間後$/);
+    expect(formatRelativeDate(new Date(2026, 6, 21, 20), now, options)).toMatch(/^2\s?週間前$/);
+    expect(formatTrackerDateCell('2026-08-04', now, options).display).toBe('今日');
+    expect(formatTrackerDateCell('2026-08-05', now, options).display).toBe('明日');
+    expect(formatTrackerDateCell('2026-08-03', now, options).display).toBe('昨日');
+    expect(formatTrackerDateCell('2026-08-09', now, options).display).toMatch(/^5\s?日後$/);
+    expect(formatTrackerDateCell('2026-07-30', now, options).display).toMatch(/^5\s?日前$/);
+    expect(formatTrackerDateCell('2026-08-09', now, options).title).toBe('2026年8月9日日曜日');
+    expect(formatTrackerDateCell('2026-12-25', now, options).display).toBe('2026/12/25');
+  });
+
   it('labels a date-only field by calendar day in both directions', async () => {
     const { formatTrackerDateCell } = await import('../trackerColumns');
     expect(formatTrackerDateCell('2026-08-04', now).display).toBe('Today');
@@ -64,14 +83,14 @@ describe('relative tracker date labels around the reported 8pm-ET boundary', () 
 
   it('falls back to an absolute date well outside the relative window', async () => {
     const { formatTrackerDateCell } = await import('../trackerColumns');
-    expect(formatTrackerDateCell('2026-12-25', now).display).toBe('12/25/2026');
+    expect(formatTrackerDateCell('2026-12-25', now, { locale: 'en-US' }).display).toBe('12/25/2026');
   });
 
   it('carries the exact date as hover text', async () => {
     const { formatTrackerDateCell } = await import('../trackerColumns');
-    expect(formatTrackerDateCell('2026-08-09', now).title).toBe('Sunday, August 9, 2026');
+    expect(formatTrackerDateCell('2026-08-09', now, { locale: 'en-US' }).title).toBe('Sunday, August 9, 2026');
     // A real instant keeps its time of day in the tooltip.
-    expect(formatTrackerDateCell('2026-08-09T18:30:00.000Z', now).title)
+    expect(formatTrackerDateCell('2026-08-09T18:30:00.000Z', now, { locale: 'en-US' }).title)
       .toBe('Aug 9, 2026, 2:30 PM');
   });
 

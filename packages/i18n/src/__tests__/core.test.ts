@@ -269,7 +269,23 @@ describe('UI language preference', () => {
     expect(resources.ja.orgSharing.team_recovery.blockers.missing_body).toContain('暗号化した復旧バンドル');
     expect(resources.ja.orgSharing.team_recovery.errors.sign_in).toBe('組織の復旧を続けるにはサインインしてください');
     expect(resources.ja.aichat.clipboard_image).toBe('クリップボードの画像');
-    expect(totalKeys).toBe(14782);
+    expect(resources.en.tracker.fields.set_tooltip).toBe('Set {{field}}');
+    expect(resources.ja.tracker.fields.set_tooltip).toBe('{{field}}を設定');
+    expect(resources.en.tracker.fields.read_only_tooltip).toBe('{{field}} is read-only');
+    expect(resources.ja.tracker.fields.read_only_tooltip).toBe('{{field}}は読み取り専用です');
+    expect(resources.en.tracker.publication).toEqual({
+      published: 'Published', draft: 'Draft',
+      published_description: 'Your team can see this item.',
+      draft_description: 'Only you can see this. Publish it when it is ready.',
+    });
+    expect(resources.ja.tracker.publication).toEqual({
+      published: '公開済み', draft: '下書き',
+      published_description: 'この項目はチームに公開されています。',
+      draft_description: 'この項目は自分だけに表示されます。準備ができたら公開してください。',
+    });
+    expect(resources.en.tracker.columns.collection).toBe('Collection');
+    expect(resources.ja.tracker.columns.collection).toBe('コレクション');
+    expect(totalKeys).toBe(14789);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

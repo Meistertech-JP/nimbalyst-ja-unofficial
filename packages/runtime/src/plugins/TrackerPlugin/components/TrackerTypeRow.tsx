@@ -94,7 +94,9 @@ export const TrackerAddFieldMenu: React.FC<TrackerAddFieldMenuProps> = ({ fields
                     onAdd(field.name);
                   }}
                 >
-                  <span className="tracker-field-choice-label">{trackerFieldDisplayLabel(field)}</span>
+                  <span className="tracker-field-choice-label">
+                    {trackerFieldDisplayLabel(field, (key) => t(key))}
+                  </span>
                 </button>
               ))}
             </div>

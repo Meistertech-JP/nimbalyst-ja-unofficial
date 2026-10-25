@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { act } from 'react';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { DataStore, gatherGrouping } from '@revolist/revogrid';
 // RevoGrid does not export ColumnService publicly. This test intentionally
 // exercises the pinned runtime bundle that patch-package repairs.
@@ -68,6 +69,25 @@ describe('buildGridColumns', () => {
 
   const build = (ids: string[], isRowEditable: (id: string) => boolean = () => true) =>
     buildGridColumns(columnsFor(ids), { trackerType: gridType, isRowEditable });
+
+  it('renders date cell text and hover dates in the active UI locale', async () => {
+    registerType();
+    const date = new Date(Date.now() - 3 * 3_600_000);
+    const i18n = await createI18nInstance('en');
+    const h = (tag: string, props: unknown, children: unknown) => ({ tag, props, children });
+    for (const locale of ['en', 'ja', 'en'] as const) {
+      await i18n.changeLanguage(locale);
+      const [column] = buildGridColumns(columnsFor(['updated']), {
+        trackerType: gridType, isRowEditable: () => false,
+        dateFormat: { locale, t: i18n.getFixedT(locale, 'tracker') },
+      });
+      const cell = (column.cellTemplate as any)(h, { model: { updated: date } });
+      expect(cell.children).toBe(locale === 'ja' ? '3時間前' : '3h ago');
+      expect(cell.props.title).toBe(date.toLocaleString(locale, {
+        month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      }));
+    }
+  });
 
   it('attaches an editor to schema-backed columns', () => {
     registerType();

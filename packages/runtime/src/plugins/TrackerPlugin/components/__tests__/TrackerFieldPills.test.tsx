@@ -1,9 +1,32 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import { resources } from '@nimbalyst/i18n/resources';
 import { TrackerFieldPills } from '../TrackerFieldPills';
 import { globalRegistry, emptyLabelRegistry, type FieldDefinition } from '@nimbalyst/tracker-schema';
 import { labelPropertyToFieldDefinition, unwrapLabelFieldValues } from '../trackerLabelFields';
+
+const testI18n = createInstance();
+const testI18nReady = testI18n.init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources,
+  ns: Object.keys(resources.en),
+  defaultNS: 'common',
+  interpolation: { escapeValue: false },
+});
+
+beforeEach(async () => {
+  await testI18nReady;
+  await testI18n.changeLanguage('en');
+});
+
+afterEach(async () => {
+  cleanup();
+  await testI18n.changeLanguage('en');
+});
 
 const statusField: FieldDefinition = {
   name: 'state',
@@ -35,7 +58,89 @@ function renderPills(
   return { onSave };
 }
 
+function renderPillsWithI18n(
+  fields: FieldDefinition[],
+  values: Record<string, unknown>,
+  overrides: Partial<React.ComponentProps<typeof TrackerFieldPills>> = {},
+) {
+  const onSave = vi.fn();
+  render(
+    <I18nextProvider i18n={testI18n}>
+      <TrackerFieldPills fields={fields} values={values} onSave={onSave} {...overrides} />
+    </I18nextProvider>,
+  );
+  return { onSave };
+}
+
 describe('TrackerFieldPills', () => {
+  it('localizes built-in field labels and accessible titles without translating custom labels or values', async () => {
+    await testI18n.changeLanguage('ja');
+    const customLabelFields: Array<FieldDefinition & { displayLabel: string }> = [
+      { name: 'customRelation', type: 'relationship', displayLabel: 'Custom dependency' },
+      { name: 'customDate', type: 'date', displayLabel: '予定日' },
+    ];
+    renderPillsWithI18n(
+      [
+        { name: 'tags', type: 'array' },
+        { name: 'owner', type: 'user' },
+        { name: 'status', type: 'select', options: [{ value: 'todo', label: 'To Do' }] },
+        { name: 'priority', type: 'select', options: [{ value: 'medium', label: 'Medium' }] },
+        { name: 'dependsOn', type: 'relationship' },
+        { name: 'blocks', type: 'relationship' },
+        { name: 'collection', type: 'relationship' },
+        { name: 'goal', type: 'relationship' },
+        { name: 'startDate', type: 'date' },
+        { name: 'dueDate', type: 'date' },
+        { name: 'progress', type: 'number' },
+        ...customLabelFields,
+        { name: 'customField', type: 'text' },
+        { name: 'constructor', type: 'text' },
+      ],
+      {
+        tags: [],
+        owner: '',
+        status: 'todo',
+        priority: 'medium',
+        dependsOn: '',
+        customRelation: '',
+        customDate: '2026-08-01',
+        customField: 'keep this value',
+        constructor: 'keep built-in-like custom field',
+      },
+      { editable: false },
+    );
+
+    expect(screen.getByTestId('tracker-field-pill-tags').getAttribute('aria-label')).toContain('タグ');
+    expect(screen.getByTestId('tracker-field-pill-owner').getAttribute('aria-label')).toContain('担当者');
+    expect(screen.getByTestId('tracker-field-pill-owner').textContent).toContain('担当者');
+    expect(screen.getByTestId('tracker-field-pill-status').getAttribute('aria-label')).toBe('ステータス: To Do');
+    expect(screen.getByTestId('tracker-field-pill-priority').getAttribute('aria-label')).toBe('優先度: Medium');
+    expect(screen.getByTestId('tracker-field-pill-dependsOn').getAttribute('aria-label')).toContain('依存先');
+    for (const [field, label] of [
+      ['blocks', 'ブロック'], ['collection', 'コレクション'], ['goal', '目標'],
+      ['startDate', '開始日'], ['dueDate', '期限'], ['progress', '進捗'],
+    ]) {
+      expect(screen.getByTestId(`tracker-field-pill-${field}`).textContent).toContain(label);
+      expect(screen.getByTestId(`tracker-field-pill-${field}`).getAttribute('title')).toBe(`${label}は読み取り専用です`);
+    }
+    expect(screen.getByTestId('tracker-field-pill-customRelation').getAttribute('aria-label')).toContain('Custom dependency');
+    expect(screen.getByTestId('tracker-field-pill-customDate').getAttribute('aria-label')).toContain('予定日');
+    expect(screen.getByTestId('tracker-field-pill-customField').getAttribute('aria-label')).toContain('Custom Field');
+    expect(screen.getByTestId('tracker-field-pill-constructor').getAttribute('aria-label')).toContain('Constructor');
+    expect(screen.getByTestId('tracker-field-pill-owner').getAttribute('title')).toBe('担当者は読み取り専用です');
+    expect(screen.getByTestId('tracker-field-pill-customField').textContent).toContain('keep this value');
+  });
+
+  it('shows translated set and read-only titles and switches field labels back to English', async () => {
+    await testI18n.changeLanguage('ja');
+    renderPillsWithI18n([ownerField], { owner: '' });
+    expect(screen.getByTestId('tracker-field-pill-owner').getAttribute('title')).toBe('担当者を設定');
+
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByTestId('tracker-field-pill-owner').getAttribute('title')).toBe('Set Owner');
+    expect(screen.getByTestId('tracker-field-pill-owner').getAttribute('aria-label')).toContain('Owner');
+  });
+
   it('names the field in the popover of a select chip and saves the choice', () => {
     const { onSave } = renderPills([statusField], { state: 'open' });
 
@@ -80,8 +185,9 @@ describe('TrackerFieldPills', () => {
 
     const chip = screen.getByTestId('tracker-field-pill-dueDate');
     expect(chip.getAttribute('data-empty')).toBe('false');
-    expect(chip.textContent).toContain('Jul');
-    expect(chip.textContent).toContain('30');
+    expect(chip.textContent).toContain(new Date(2026, 6, 30).toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    }));
   });
 
   it('renders read-only chips without opening an editor', () => {

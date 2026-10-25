@@ -49,6 +49,7 @@ import {
   resolveColumnFieldName,
   type TrackerColumnDef,
   type TypeColumnConfig,
+  type TrackerDateFormatOptions,
 } from './trackerColumns';
 import { UserAvatar } from './UserAvatar';
 import { TrackerPublicationChip } from './TrackerPublicationChip';
@@ -417,6 +418,7 @@ export function renderCell(
   resolveLabel?: TrackerRelationshipLabelResolver,
   databaseLabel = 'Database',
   databaseTitle = 'Stored in database',
+  dateFormat: TrackerDateFormatOptions = {},
 ): React.ReactNode {
   // Resolve field values via schema roles (generic for any schema)
   const title = getRecordTitle(item);
@@ -540,16 +542,16 @@ export function renderCell(
 
     case 'updated': {
       const lastIndexed = item.system.lastIndexed ? new Date(item.system.lastIndexed) : new Date(0);
-      return <span className="text-[var(--nim-text-faint)] text-xs">{formatRelativeDate(lastIndexed)}</span>;
+      return <span className="text-[var(--nim-text-faint)] text-xs">{formatRelativeDate(lastIndexed, undefined, dateFormat)}</span>;
     }
 
     case 'created':
       if (!value) return null;
       if (typeof value === 'string') {
         const d = new Date(value);
-        return <span className="text-[var(--nim-text-faint)] text-xs">{isNaN(d.getTime()) ? value : formatRelativeDate(d)}</span>;
+        return <span className="text-[var(--nim-text-faint)] text-xs">{isNaN(d.getTime()) ? value : formatRelativeDate(d, undefined, dateFormat)}</span>;
       }
-      return <span className="text-[var(--nim-text-faint)] text-xs">{formatRelativeDate(value as Date)}</span>;
+      return <span className="text-[var(--nim-text-faint)] text-xs">{formatRelativeDate(value as Date, undefined, dateFormat)}</span>;
 
     case 'shared':
       return <TrackerPublicationChip state={getItemPublicationState(item)} />;
@@ -588,7 +590,7 @@ export function renderCell(
           // formatTrackerDateCell, not `new Date`: a calendar-day string is
           // local midnight, not UTC midnight, and reads by day rather than by
           // elapsed time (nimbalyst#1135, #1156).
-          const { display, title } = formatTrackerDateCell(value);
+          const { display, title } = formatTrackerDateCell(value, undefined, dateFormat);
           if (!display) return null;
           return <span className="text-[var(--nim-text-faint)] text-xs" title={title || undefined}>{display}</span>;
         }
@@ -696,7 +698,7 @@ export function TrackerTable({
   preserveItemOrder = false,
   hideToolbar = false,
 }: TrackerTableProps): JSX.Element {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
   const getTypeDisplayName = (type: string) => {
     const builtInTypes: Record<string, string> = {
       plan: t('table.types.plan'),
@@ -1375,7 +1377,7 @@ export function TrackerTable({
                         className={getTrackerTableCellClassName(col.id)}
                         data-column-id={col.id}
                       >
-                        {renderCell(col, item, value, editingCell, isItemEditable, setEditingCell, editingTitle, setEditingTitle, titleInputRef, handleFieldUpdate, relationshipLabel, t('table.database'), t('table.stored_in_database'))}
+                        {renderCell(col, item, value, editingCell, isItemEditable, setEditingCell, editingTitle, setEditingTitle, titleInputRef, handleFieldUpdate, relationshipLabel, t('table.database'), t('table.stored_in_database'), { t, locale: i18n.resolvedLanguage ?? i18n.language })}
                       </div>
                     );
                   })}

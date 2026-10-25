@@ -304,6 +304,7 @@
     }
   },
   "columns": {
+    "collection": "コレクション",
     "type": "種類",
     "key": "キー",
     "updated": "更新日時",
@@ -369,6 +370,8 @@
     "create_name": "「{{name}}」を作成"
   },
   "fields": {
+    "set_tooltip": "{{field}}を設定",
+    "read_only_tooltip": "{{field}}は読み取り専用です",
     "required": "必須",
     "optional": "任意",
     "add_tag": "タグを追加…",
@@ -378,6 +381,12 @@
     "loading_citations": "引用を読み込み中…",
     "undeclared_properties": "未定義のプロパティ:",
     "undeclared_property_title": "「{{label}}」ラベルに{{property}}が定義されていますが、フィールドプロパティでも述語でもありません。"
+  },
+  "publication": {
+    "published": "公開済み",
+    "draft": "下書き",
+    "published_description": "この項目はチームに公開されています。",
+    "draft_description": "この項目は自分だけに表示されます。準備ができたら公開してください。"
   },
   "status_bar": {
     "expand": "ステータスバーを展開",

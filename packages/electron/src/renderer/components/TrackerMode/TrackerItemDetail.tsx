@@ -33,6 +33,7 @@ import { isLocalIssueKey } from '../../../shared/localIssueKey';
 import { TrackerFieldEditor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldEditor';
 import { TrackerFieldPills } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldPills';
 import { getTrackerTagsField, useTrackerChipFieldSections } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerChipFields';
+import { trackerFieldDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerFieldLabels';
 import { isTrackerFieldEmpty } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerFieldLayout';
 import { useTrackerRelationshipCandidates } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/useTrackerRelationshipCandidates';
 import { useTrackerCitationHost } from './useTrackerCitationHost';
@@ -1396,10 +1397,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
 /** Read-only field display for non-editable items (e.g. inline items) */
 const ReadOnlyField: React.FC<{ field: FieldDefinition; value: any }> = ({ field, value }) => {
   const { t } = useTranslation('tracker');
-  const label = field.name
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, s => s.toUpperCase())
-    .trim();
+  const label = trackerFieldDisplayLabel(field, (key) => t(key));
 
   let displayValue: string;
   if (value == null || value === '') {

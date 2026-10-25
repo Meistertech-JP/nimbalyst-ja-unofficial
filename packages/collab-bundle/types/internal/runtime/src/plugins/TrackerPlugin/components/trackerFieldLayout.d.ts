@@ -7,6 +7,7 @@
  */
 import { type FieldDefinition } from '../../../../../tracker-schema/src/browser';
 import type { TrackerRecord } from '../../../core/TrackerRecord';
+export { formatTrackerFieldLabel, trackerFieldDisplayLabel } from './trackerFieldLabels';
 /**
  * Resolve semantic fields first, then type-specific metadata in schema order.
  * Opaque objects, structural fields, and read-only values stay in the ordinary
@@ -22,13 +23,6 @@ export declare function getTrackerFieldLayout(trackerType: string, labelFields?:
 }): FieldDefinition[];
 /** Memoized `getTrackerFieldLayout` for component use. */
 export declare function useTrackerFieldLayout(trackerType: string, labelFields?: readonly FieldDefinition[]): FieldDefinition[];
-/** Header text for a field: a label property's own label, else the formatted name. */
-export declare function trackerFieldDisplayLabel(field: FieldDefinition): string;
-/**
- * Format a display label from a camelCase field name.
- * e.g. "publishDate" -> "Publish Date", "storyPoints" -> "Story Points"
- */
-export declare function formatTrackerFieldLabel(name: string): string;
 /** Empty pills already show their field name. Selected option icons identify compact selects. */
 export declare function shouldLabelTrackerField(field: FieldDefinition, value: unknown, labelFields?: boolean): boolean;
 /** True when a field value should render as "not set". */

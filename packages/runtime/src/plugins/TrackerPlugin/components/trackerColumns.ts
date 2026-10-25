@@ -367,7 +367,12 @@ export function getTypeLabel(type: string): string {
  * `minutes < 1` branch, which used to render every future date as "Just now"
  * (nimbalyst#1156). For a calendar day use `formatRelativeCalendarDay`.
  */
-export function formatRelativeDate(date: Date, now: Date = new Date()): string {
+export interface TrackerDateFormatOptions {
+  locale?: string;
+  t?: (key: string, options?: { count?: number }) => string;
+}
+
+export function formatRelativeDate(date: Date, now: Date = new Date(), options: TrackerDateFormatOptions = {}): string {
   if (!date || date.getTime() === 0 || isNaN(date.getTime())) return '';
   const diff = now.getTime() - date.getTime();
   const isFuture = diff < 0;
@@ -375,6 +380,16 @@ export function formatRelativeDate(date: Date, now: Date = new Date()): string {
   const minutes = Math.floor(elapsed / (1000 * 60));
   const hours = Math.floor(elapsed / (1000 * 60 * 60));
   const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
+  if (options.locale?.startsWith('ja')) {
+    if (minutes < 1) return options.t?.('collaboration_surface.just_now') ?? new Intl.RelativeTimeFormat(options.locale, { numeric: 'auto' }).format(0, 'second');
+    const unit = minutes < 60 ? 'minute' : hours < 24 ? 'hour' : days < 7 ? 'day' : 'week';
+    const count = unit === 'minute' ? minutes : unit === 'hour' ? hours : unit === 'day' ? days : Math.floor(days / 7);
+    if (!isFuture && days < 7 && (hours < 24 || days !== 1) && options.t) {
+      const key = unit === 'minute' ? 'minutes_ago' : unit === 'hour' ? 'hours_ago' : 'days_ago';
+      return options.t(`collaboration_surface.${key}`, { count });
+    }
+    if (days < 30) return new Intl.RelativeTimeFormat(options.locale, { numeric: 'auto' }).format(isFuture ? count : -count, unit);
+  }
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return isFuture ? `in ${minutes}m` : `${minutes}m ago`;
   if (hours < 24) return isFuture ? `in ${hours}h` : `${hours}h ago`;
@@ -384,7 +399,7 @@ export function formatRelativeDate(date: Date, now: Date = new Date()): string {
     const weeks = Math.floor(days / 7);
     return isFuture ? `in ${weeks}w` : `${weeks}w ago`;
   }
-  return date.toLocaleDateString();
+  return date.toLocaleDateString(options.locale);
 }
 
 /** Local midnight of the day `date` falls on. */
@@ -408,18 +423,23 @@ function pluralWeeks(count: number): string {
  * once the evening arrives, and a date a few days out should name the distance
  * rather than collapsing to a timestamp label.
  */
-export function formatRelativeCalendarDay(date: Date, now: Date = new Date()): string {
+export function formatRelativeCalendarDay(date: Date, now: Date = new Date(), options: TrackerDateFormatOptions = {}): string {
   if (!date || isNaN(date.getTime())) return '';
   const dayMs = 1000 * 60 * 60 * 24;
   // Positive is in the future. Round because DST makes some local days 23 or 25 hours.
   const days = Math.round(
     (startOfLocalDay(date).getTime() - startOfLocalDay(now).getTime()) / dayMs,
   );
+  if (options.locale?.startsWith('ja')) {
+    if (Math.abs(days) >= 30) return date.toLocaleDateString(options.locale);
+    const weeks = Math.trunc(days / 7);
+    return new Intl.RelativeTimeFormat(options.locale, { numeric: 'auto' }).format(Math.abs(days) < 7 ? days : weeks, Math.abs(days) < 7 ? 'day' : 'week');
+  }
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   if (days === -1) return 'Yesterday';
   const distance = Math.abs(days);
-  if (distance >= 30) return date.toLocaleDateString();
+  if (distance >= 30) return date.toLocaleDateString(options.locale);
   const label = distance < 7 ? pluralDays(distance) : pluralWeeks(Math.floor(distance / 7));
   return days > 0 ? `in ${label}` : `${label} ago`;
 }
@@ -434,6 +454,7 @@ export function formatRelativeCalendarDay(date: Date, now: Date = new Date()): s
 export function formatTrackerDateCell(
   value: unknown,
   now: Date = new Date(),
+  options: TrackerDateFormatOptions = {},
 ): { display: string; title: string } {
   if (value === undefined || value === null || value === '') return { display: '', title: '' };
 
@@ -442,8 +463,8 @@ export function formatTrackerDateCell(
 
   if (isDateOnlyValue(value)) {
     return {
-      display: formatRelativeCalendarDay(date, now),
-      title: date.toLocaleDateString(undefined, {
+      display: formatRelativeCalendarDay(date, now, options),
+      title: date.toLocaleDateString(options.locale, {
         weekday: 'long',
         month: 'long',
         day: 'numeric',
@@ -453,8 +474,8 @@ export function formatTrackerDateCell(
   }
 
   return {
-    display: formatRelativeDate(date, now),
-    title: date.toLocaleString(undefined, {
+    display: formatRelativeDate(date, now, options),
+    title: date.toLocaleString(options.locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

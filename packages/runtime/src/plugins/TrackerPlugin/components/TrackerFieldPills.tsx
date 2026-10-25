@@ -225,6 +225,7 @@ export const TrackerFieldPill: React.FC<TrackerFieldPillProps> = ({
   testIdBase = DEFAULT_TEST_ID_BASE,
 }) => {
   const { t } = useTranslation('git');
+  const { t: tTracker } = useTranslation('tracker');
   const [isOpen, setIsOpen] = useState(false);
   const [localValue, setLocalValue] = useState(value);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -242,8 +243,8 @@ export const TrackerFieldPill: React.FC<TrackerFieldPillProps> = ({
   // and starting a new one are the whole job, and the generic relationship
   // typeahead does neither well.
   const isCollectionField = isCollectionRelationshipField(field);
-  const label = trackerFieldDisplayLabel(field);
-  const displayValue = fieldDisplayValue(field, localValue, members, relationshipCandidates);
+  const label = trackerFieldDisplayLabel(field, (key) => tTracker(key));
+  const displayValue = empty ? label : fieldDisplayValue(field, localValue, members, relationshipCandidates);
   // An empty chip already reads as its label, so only a filled one needs one.
   const showLabel = shouldLabelTrackerField(field, localValue, labelFields);
 
@@ -336,9 +337,9 @@ export const TrackerFieldPill: React.FC<TrackerFieldPillProps> = ({
   }, [field.options, field.type, members]);
 
   const pillTitle = !editable
-    ? `${label} is read-only`
+    ? tTracker('fields.read_only_tooltip', { field: label })
     : empty
-      ? `Set ${label}`
+      ? tTracker('fields.set_tooltip', { field: label })
       : `${label}: ${displayValue}`;
 
   return (

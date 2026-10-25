@@ -176,7 +176,8 @@ export function TrackerGridSurface({
   loaded,
   derivedColumns,
 }: TrackerGridSurfaceProps) {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
+  const dateLocale = i18n.resolvedLanguage ?? i18n.language;
   const [filterTarget, setFilterTarget] = useState<{
     columnId: string;
     rect: DOMRect;
@@ -235,6 +236,7 @@ export function TrackerGridSurface({
   const gridColumns = useMemo(
     () => [
       ...placeDerivedColumns(buildGridColumns(visibleColumnDefs, {
+        dateFormat: { t, locale: dateLocale },
         trackerType: schemaType,
         sortingEnabled: !!onSortChange,
         columnWidths: effectiveConfig.columnWidths,
@@ -254,6 +256,8 @@ export function TrackerGridSurface({
     ],
     [
       visibleColumnDefs,
+      t,
+      dateLocale,
       onSortChange,
       schemaType,
       effectiveConfig.columnWidths,

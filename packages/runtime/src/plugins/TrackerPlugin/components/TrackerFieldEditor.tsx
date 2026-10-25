@@ -13,6 +13,7 @@ import { getInitials, stringToColor } from './trackerColumns';
 import { formatLocalDateOnly, parseDate } from '../models/dateUtils';
 import { RelationshipFieldEditor, type RelationshipCandidate } from './RelationshipFieldEditor';
 import type { CitationInspectorHost } from './CitationInspector';
+import { trackerFieldDisplayLabel } from './trackerFieldLabels';
 
 /**
  * Lazy on purpose. The citation editor and its inspector pull `@floating-ui/react`
@@ -70,17 +71,6 @@ const labelClasses = "text-[11px] font-medium text-[var(--nim-text-muted)] upper
 const inputClasses = "py-1.5 px-2 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text)] text-[13px] font-inherit transition-colors duration-200 focus:outline-none focus:border-[var(--nim-primary)] focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]";
 
 /**
- * Format a display label from a camelCase field name.
- * e.g. "publishDate" -> "Publish Date", "storyPoints" -> "Story Points"
- */
-function formatFieldLabel(name: string): string {
-  return name
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, s => s.toUpperCase())
-    .trim();
-}
-
-/**
  * Format a datetime value for read-only display.
  * Shows relative date (e.g. "Mar 14, 2026") with full timestamp on hover.
  *
@@ -129,7 +119,7 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
   const { t } = useTranslation('tracker');
   const fieldId = `field-${field.name}`;
   // A field a label brought carries its property's own label.
-  const label = (field as { displayLabel?: string }).displayLabel || formatFieldLabel(field.name);
+  const label = trackerFieldDisplayLabel(field, (key) => t(key));
   // Field type is authoritative from the schema definition
   const effectiveType = field.type;
 

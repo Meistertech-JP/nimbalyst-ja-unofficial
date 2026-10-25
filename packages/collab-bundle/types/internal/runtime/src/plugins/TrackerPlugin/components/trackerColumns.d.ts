@@ -111,7 +111,13 @@ export declare function getTypeLabel(type: string): string;
  * `minutes < 1` branch, which used to render every future date as "Just now"
  * (nimbalyst#1156). For a calendar day use `formatRelativeCalendarDay`.
  */
-export declare function formatRelativeDate(date: Date, now?: Date): string;
+export interface TrackerDateFormatOptions {
+    locale?: string;
+    t?: (key: string, options?: {
+        count?: number;
+    }) => string;
+}
+export declare function formatRelativeDate(date: Date, now?: Date, options?: TrackerDateFormatOptions): string;
 /**
  * Relative label for a calendar day, compared by local date rather than by
  * elapsed milliseconds.
@@ -120,7 +126,7 @@ export declare function formatRelativeDate(date: Date, now?: Date): string;
  * once the evening arrives, and a date a few days out should name the distance
  * rather than collapsing to a timestamp label.
  */
-export declare function formatRelativeCalendarDay(date: Date, now?: Date): string;
+export declare function formatRelativeCalendarDay(date: Date, now?: Date, options?: TrackerDateFormatOptions): string;
 /**
  * Display text and hover title for a tracker date cell.
  *
@@ -128,7 +134,7 @@ export declare function formatRelativeCalendarDay(date: Date, now?: Date): strin
  * by local date, anything else is treated as an instant. The title always
  * carries the exact value so the relative label never hides the real date.
  */
-export declare function formatTrackerDateCell(value: unknown, now?: Date): {
+export declare function formatTrackerDateCell(value: unknown, now?: Date, options?: TrackerDateFormatOptions): {
     display: string;
     title: string;
 };

@@ -6,13 +6,13 @@
  * `cellTemplate` is responsible for turning those into display text.
  */
 import type { ColumnRegular } from '@revolist/revogrid';
-import { type TrackerColumnDef } from '../../../../runtime/src/plugins/TrackerPlugin/components/trackerColumns';
+import { type TrackerColumnDef, type TrackerDateFormatOptions } from '../../../../runtime/src/plugins/TrackerPlugin/components/trackerColumns';
 import { type TrackerRelationshipLabelResolver } from '../../../../runtime/src/plugins/TrackerPlugin/models/index';
 import { type TrackerEditorContext } from './trackerGridEditors';
 import { buildGridSource, ROW_ACTIONS, ROW_ITEM_ID, ROW_ITEM_TYPE } from '../../trackers/index';
 export { buildGridSource, ROW_ACTIONS, ROW_ITEM_ID, ROW_ITEM_TYPE };
 /** Human-readable text for a stored value, by column render type. */
-export declare function formatValue(col: TrackerColumnDef, value: unknown, trackerType: string, resolveLabel?: TrackerRelationshipLabelResolver): string;
+export declare function formatValue(col: TrackerColumnDef, value: unknown, trackerType: string, resolveLabel?: TrackerRelationshipLabelResolver, dateFormat?: TrackerDateFormatOptions): string;
 export interface FavoritesOptions {
     favoriteItemIds: ReadonlySet<string>;
     onToggleFavorite: (itemId: string) => void;
@@ -27,6 +27,7 @@ export interface KeyLinkOptions {
     titleOpens?: boolean;
 }
 export interface BuildGridColumnsOptions {
+    dateFormat?: TrackerDateFormatOptions;
     /** Active tracker type; `'all'` means a mixed-type view. */
     trackerType: string;
     /** Persisted per-column width overrides. */
@@ -62,4 +63,4 @@ export declare function buildDerivedGridColumn(column: {
  * Map visible tracker columns to RevoGrid columns, attaching the per-field
  * editor and a per-cell readonly gate.
  */
-export declare function buildGridColumns(columns: TrackerColumnDef[], { trackerType, columnWidths, isRowEditable, editorContext, filteredColumnIds, onOpenFilter, sortingEnabled, favorites, rowActions, keyLink, resolveRelationshipLabel: resolveLabel, }: BuildGridColumnsOptions): ColumnRegular[];
+export declare function buildGridColumns(columns: TrackerColumnDef[], { trackerType, columnWidths, isRowEditable, editorContext, filteredColumnIds, onOpenFilter, sortingEnabled, favorites, rowActions, keyLink, resolveRelationshipLabel: resolveLabel, dateFormat, }: BuildGridColumnsOptions): ColumnRegular[];

@@ -4,6 +4,11 @@
  */
 import React from 'react';
 
+interface PageTimeFormatOptions {
+  t?: (key: string, options?: { count?: number }) => string;
+  locale?: string;
+}
+
 export interface PageFact {
   id: string;
   label?: string;
@@ -11,25 +16,25 @@ export interface PageFact {
   title?: string;
 }
 
-export function relativePageTime(timestamp: number, now = Date.now()): string {
+export function relativePageTime(timestamp: number, now = Date.now(), options: PageTimeFormatOptions = {}): string {
   const minutes = Math.floor((now - timestamp) / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return options.t?.('collaboration_surface.just_now') ?? 'just now';
+  if (minutes < 60) return options.t?.('collaboration_surface.minutes_ago', { count: minutes }) ?? `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return options.t?.('collaboration_surface.hours_ago', { count: hours }) ?? `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString();
+  if (days < 7) return options.t?.('collaboration_surface.days_ago', { count: days }) ?? `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString(options.locale);
 }
 
 /** "Updated", then "Created" when known; timestamps in epoch milliseconds. */
-export function pageTimeFacts(times: { updatedAt?: number | null; createdAt?: number | null }, now = Date.now()): PageFact[] {
+export function pageTimeFacts(times: { updatedAt?: number | null; createdAt?: number | null }, now = Date.now(), options: PageTimeFormatOptions = {}): PageFact[] {
   const facts: PageFact[] = [];
   if (times.updatedAt) {
-    facts.push({ id: 'updated', label: 'Updated', value: relativePageTime(times.updatedAt, now), title: new Date(times.updatedAt).toLocaleString() });
+    facts.push({ id: 'updated', label: options.t?.('columns.updated') ?? 'Updated', value: relativePageTime(times.updatedAt, now, options), title: new Date(times.updatedAt).toLocaleString(options.locale) });
   }
   if (times.createdAt) {
-    facts.push({ id: 'created', label: 'Created', value: new Date(times.createdAt).toLocaleDateString(), title: new Date(times.createdAt).toLocaleString() });
+    facts.push({ id: 'created', label: options.t?.('columns.created') ?? 'Created', value: new Date(times.createdAt).toLocaleDateString(options.locale), title: new Date(times.createdAt).toLocaleString(options.locale) });
   }
   return facts;
 }

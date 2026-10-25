@@ -102,7 +102,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   onArchive,
   headerBar,
 }) => {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
   const model = useMemo(() => globalRegistry.get(item?.primaryType ?? ''), [item?.primaryType]);
   const titleRef = useAutoSizedTitle(localTitle);
 
@@ -206,7 +206,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
             className="border-b border-nim pb-3"
             end={headerBar && (
               <PageFacts facts={[
-                ...pageTimeFacts({ updatedAt: Date.parse(item.system.updatedAt) || null }),
+                ...pageTimeFacts({ updatedAt: Date.parse(item.system.updatedAt) || null }, undefined, { t, locale: i18n.resolvedLanguage ?? i18n.language }),
                 ...(item.issueKey ? [{ id: 'key', value: item.issueKey, title: t('detail.key') }] : []),
               ]} />
             )}

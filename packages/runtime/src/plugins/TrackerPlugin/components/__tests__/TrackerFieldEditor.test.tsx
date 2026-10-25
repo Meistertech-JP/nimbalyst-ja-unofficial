@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { createInstance } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrackerFieldEditor } from '../TrackerFieldEditor';
 import { TrackerFieldChoiceList } from '../TrackerFieldChoiceList';
 import { TrackerAddFieldMenu } from '../TrackerTypeRow';
+import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 
 const testI18n = createInstance();
 const testI18nReady = testI18n.init({
@@ -68,6 +69,8 @@ describe('TrackerFieldEditor array values', () => {
 
     expect(screen.getByPlaceholderText('必須')).toBeDefined();
     expect(screen.getByPlaceholderText('タグを追加…')).toBeDefined();
+    expect(screen.getByText('タグ', { selector: 'label' }).textContent).toBe('タグ');
+    expect(screen.getByText('担当者', { selector: 'label' }).textContent).toBe('担当者');
     fireEvent.click(screen.getByTitle('クリア'));
     expect(onChange).toHaveBeenCalledWith('');
     expect(screen.getByTitle('リンクを開く')).toBeDefined();
@@ -75,18 +78,44 @@ describe('TrackerFieldEditor array values', () => {
     expect(screen.getByText('なし')).toBeDefined();
   });
 
+  it('updates built-in labels live without changing custom labels or field values', async () => {
+    await testI18n.changeLanguage('ja');
+    const onChange = vi.fn();
+    const customOwner: FieldDefinition & { displayLabel: string } = {
+      name: 'owner', type: 'user', displayLabel: 'Review lead',
+    };
+    renderWithI18n(<>
+      <TrackerFieldEditor field={{ name: 'tags', type: 'array' }} value={['user-label']} onChange={onChange} />
+      <TrackerFieldEditor field={customOwner} value="member@example.com" onChange={onChange} />
+      <TrackerFieldEditor field={{ name: 'releaseNotes', type: 'text' }} value="Keep this English content" onChange={onChange} />
+    </>);
+    expect(screen.getByText('タグ', { selector: 'label' }).textContent).toBe('タグ');
+    expect(screen.getByText('Review lead', { selector: 'label' }).textContent).toBe('Review lead');
+    expect(screen.getByText('Release Notes', { selector: 'label' }).textContent).toBe('Release Notes');
+    expect(screen.getByDisplayValue('Keep this English content').textContent).toBe('Keep this English content');
+
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText('Tags', { selector: 'label' }).textContent).toBe('Tags');
+    expect(screen.getByText('Review lead', { selector: 'label' }).textContent).toBe('Review lead');
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    expect(screen.getByText('タグ', { selector: 'label' }).textContent).toBe('タグ');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('localizes the add-field menu and preserves the selected schema field', async () => {
     await testI18n.changeLanguage('ja');
     const onAdd = vi.fn();
     renderWithI18n(
       <TrackerAddFieldMenu
-        fields={[{ name: 'releaseDate', type: 'date' }]}
+        fields={[{ name: 'releaseDate', type: 'date' }, { name: 'owner', type: 'user' }, { name: 'dependsOn', type: 'relationship' }]}
         onAdd={onAdd}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'フィールドを追加' }));
     expect(screen.getByText('フィールドを追加')).toBeDefined();
+    expect(screen.getByRole('menuitem', { name: '担当者' }).textContent).toContain('担当者');
+    expect(screen.getByRole('menuitem', { name: '依存先' }).textContent).toContain('依存先');
     fireEvent.click(screen.getByRole('menuitem', { name: 'Release Date' }));
     expect(onAdd).toHaveBeenCalledWith('releaseDate');
   });

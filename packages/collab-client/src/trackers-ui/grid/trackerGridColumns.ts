@@ -16,6 +16,7 @@ import {
   getTypeIcon,
   resolveColumnFieldName,
   type TrackerColumnDef,
+  type TrackerDateFormatOptions,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import {
   normalizeRelationshipValue,
@@ -93,6 +94,7 @@ export function formatValue(
   value: unknown,
   trackerType: string,
   resolveLabel?: TrackerRelationshipLabelResolver,
+  dateFormat: TrackerDateFormatOptions = {},
 ): string {
   if (value === undefined || value === null || value === '') return '';
 
@@ -101,7 +103,7 @@ export function formatValue(
       // formatTrackerDateCell, not `new Date`: a calendar-day string is local
       // midnight, not UTC midnight, and reads by day rather than by elapsed
       // time (nimbalyst#1135, #1156).
-      return formatTrackerDateCell(value).display;
+      return formatTrackerDateCell(value, undefined, dateFormat).display;
     case 'tags':
       return (formatValueParts(col, value, resolveLabel) ?? []).join(', ');
     case 'url': {
@@ -367,6 +369,7 @@ function titleLinkNode(
 }
 
 interface CellTemplateOptions {
+  dateFormat?: TrackerDateFormatOptions;
   favorites?: FavoritesOptions;
   rowActions?: boolean;
   resolveLabel?: TrackerRelationshipLabelResolver;
@@ -377,12 +380,12 @@ interface CellTemplateOptions {
 function buildCellTemplate(
   col: TrackerColumnDef,
   trackerType: string,
-  { favorites, rowActions = false, resolveLabel, keyLink }: CellTemplateOptions = {},
+  { favorites, rowActions = false, resolveLabel, keyLink, dateFormat }: CellTemplateOptions = {},
 ) {
   return (createElement: HyperFunc<VNode>, props: CellTemplateProp): VNode => {
     const value = props.model?.[col.id];
     const rowType = trackerType || String(props.model?.[ROW_ITEM_TYPE] ?? '');
-    const text = formatValue(col, value, rowType, resolveLabel);
+    const text = formatValue(col, value, rowType, resolveLabel, dateFormat);
 
     // The title column carries its inline affordances, so it renders even when
     // the title itself is empty.
@@ -441,7 +444,7 @@ function buildCellTemplate(
     // A relative label ("in 5 days") hides the real value, so keep the exact
     // date reachable on hover.
     if (col.render === 'date') {
-      return textNode(createElement, text, formatTrackerDateCell(value).title);
+      return textNode(createElement, text, formatTrackerDateCell(value, undefined, dateFormat).title);
     }
 
     return textNode(createElement, text);
@@ -464,6 +467,7 @@ export interface KeyLinkOptions {
 }
 
 export interface BuildGridColumnsOptions {
+  dateFormat?: TrackerDateFormatOptions;
   /** Active tracker type; `'all'` means a mixed-type view. */
   trackerType: string;
   /** Persisted per-column width overrides. */
@@ -582,6 +586,7 @@ export function buildGridColumns(
     rowActions = false,
     keyLink,
     resolveRelationshipLabel: resolveLabel,
+    dateFormat,
   }: BuildGridColumnsOptions,
 ): ColumnRegular[] {
   return columns.map((col): ColumnRegular => {
@@ -620,6 +625,7 @@ export function buildGridColumns(
         return typeof itemId === 'string' ? !isRowEditable(itemId) : true;
       },
       cellTemplate: buildCellTemplate(col, trackerType, {
+        dateFormat,
         favorites,
         rowActions,
         resolveLabel,

@@ -4,7 +4,7 @@
  * crumb and field values, a body to render and a links source.
  */
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { resources } from '@nimbalyst/i18n/resources';
@@ -48,6 +48,30 @@ beforeEach(async () => { await testI18n.changeLanguage('en'); });
 afterAll(() => globalRegistry.unregister('tpv-module'));
 
 describe('TrackerPageView', () => {
+  it('updates rendered page timestamp facts on live language switching', async () => {
+    const datedItem: TrackerRecord = {
+      ...item,
+      system: { ...item.system, updatedAt: new Date(Date.now() - 3 * 3_600_000).toISOString() },
+    };
+    const { container } = renderWithI18n(
+      <TrackerPageView
+        item={datedItem} loaded crumb={{ ancestors: [], underType: false }} editable title="Sync engine"
+        onRename={vi.fn()} fieldValues={item.fields} onUpdateField={vi.fn()} renderBody={() => null}
+        headerBar={{}}
+      />,
+    );
+    const fact = () => container.querySelector('[data-fact="updated"]');
+    expect(fact()?.textContent).toContain('Updated');
+    expect(fact()?.textContent).toContain('3h ago');
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    expect(fact()?.textContent).toContain('更新日');
+    expect(fact()?.textContent).toContain('3時間前');
+    expect(fact()?.getAttribute('title')).toBe(new Date(datedItem.system.updatedAt).toLocaleString('ja'));
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(fact()?.textContent).toContain('Updated');
+    expect(fact()?.textContent).toContain('3h ago');
+  });
+
   it('localizes page history, archive, and the editable-title placeholder', async () => {
     await testI18n.changeLanguage('ja');
     renderWithI18n(

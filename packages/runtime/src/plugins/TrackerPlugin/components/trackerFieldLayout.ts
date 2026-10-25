@@ -15,6 +15,8 @@ import {
 } from '@nimbalyst/tracker-schema';
 import type { TrackerRecord } from '../../../core/TrackerRecord';
 
+export { formatTrackerFieldLabel, trackerFieldDisplayLabel } from './trackerFieldLabels';
+
 /** Semantic roles, in the order a reader scans them. */
 const ROLE_ORDER: readonly TrackerSchemaRole[] = [
   'workflowStatus',
@@ -100,23 +102,6 @@ export function useTrackerFieldLayout(
 }
 
 const NO_FIELDS: readonly FieldDefinition[] = [];
-
-/** Header text for a field: a label property's own label, else the formatted name. */
-export function trackerFieldDisplayLabel(field: FieldDefinition): string {
-  const displayLabel = (field as { displayLabel?: unknown }).displayLabel;
-  return typeof displayLabel === 'string' && displayLabel ? displayLabel : formatTrackerFieldLabel(field.name);
-}
-
-/**
- * Format a display label from a camelCase field name.
- * e.g. "publishDate" -> "Publish Date", "storyPoints" -> "Story Points"
- */
-export function formatTrackerFieldLabel(name: string): string {
-  return name
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (character) => character.toUpperCase())
-    .trim();
-}
 
 const SELF_ANONYMOUS_FIELD_TYPES = new Set([
   'date', 'datetime', 'url', 'user', 'relationship', 'reference', 'citation',
