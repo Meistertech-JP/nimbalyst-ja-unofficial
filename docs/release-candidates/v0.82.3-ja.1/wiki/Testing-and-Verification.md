@@ -12,12 +12,12 @@
 | Windows | 通常製品の日英切替、両言語の再起動後保持、ZIP実展開版の起動 |
 | 配布物 | Windows ZIP全1,913ファイルの照合、CRC、ASAR1,021ファイルのintegrity、ビルド出力341ファイルと法務4ファイルの一致 |
 | ネイティブ | ElectronによるSQLite WorkerとONNX backendの実dlopen、SDK import・配置解決 |
-| iOS | 最新CIは前段2試験中1件の性能試験失敗で停止。修正後のSwift実行は未確認 |
-| Linux | Windows製品コミット49e52c53fで19,264 PASS、0 FAIL、30 SKIP、対象2,344ファイル |
+| iOS | 修正後の全体528実行（522 PASS、6 SKIP、0 FAIL）。追加SQL検索計画の回帰試験と既存性能条件も通過 |
+| Linux | 19,284 PASS、0 FAIL、30 SKIP。Test Filesは2,339 PASS、7 SKIP、0 FAIL、計2,346 |
 
 Linux初回は19,250 PASS、2 FAIL、30 SKIPと、別途1件の収集時エラーがありました。CPU保持処理と新規キャプチャのpath参照を同一視したテスト、およびloggerが合成パスへ書き込むテスト初期化が原因でした。製品の保持処理は削らず、狭いmockと独立した検証へ修正し、全体CIを再実行して成功しました。失敗記録を成功結果へ書き換えていません。
 
-CIのチェックポイントは `49e52c53ffe1225ce7d411f53f7e20c7758c49a7`。[Linux](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40201861327)は成功、[iOS](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40201861401)は前段の性能試験で失敗しました。1,000件と10,000件の履歴を比較する既存6倍条件を超えたため、全体試験へ進んでいません。更新対象を探すSQLが無関係な履歴まで走査する原因を確認し、既存indexによる変更セッション単位の検索へ修正しました。合成SQLiteでは検索計画と結果を確認しましたが、修正後のSwift試験は未実行です。過去のiOS全体成功を今回の成功として扱いません。新しいWindows製品ソースは `057883f8bd230280dfeaa298a5c5e45f8252b508` で、hosted Linux/iOS結果はまだこのソースを対象としていません。
+CIのチェックポイントは `eabb8c5d6e0d951c77c79f2d5ab4439e056512ef`。[Linux](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40243528521)と[iOS](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40243528554)が成功し、最新Windows製品ソース `057883f8bd230280dfeaa298a5c5e45f8252b508` を含みます。先行[iOS試験](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40201861401)では既存6倍性能条件を超えて停止しました。更新対象を探すSQLが無関係な履歴まで走査する原因を修正し、実refresh SQLの検索計画を検査する回帰試験と全体試験を通過しました。閾値は変更せず、失敗記録も保持しています。前段2試験は全体528実行へ二重加算していません。
 
 最新の通常ZIP製品057883f8bでは、Tracker列名・操作とフィルター案内・同期状態の日英表示、ライブ切替、両言語それぞれの再起動保持、詳細を開く操作、正常終了を確認しました。関連回帰試験は10ファイル135件が成功しています。先行49e52c53fでは英語完了時刻、日本語の展開ヘルプ、Wiki/Tracker保持、文書へのネイティブ画像貼り付け・Undo／Redoを確認しました。幅1,040での日本語メニューとAI入力の画像貼り付けによる下書き保持はさらに先行する表示修正候補の確認です。すべてを最新バイナリで再実行したという意味ではありません。
 

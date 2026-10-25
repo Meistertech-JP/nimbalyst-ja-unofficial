@@ -47,6 +47,16 @@ Linuxのtracker-ui初期容量は197,104 gzip bytes、同じコミットのWindo
 
 49e52c53ffe1225ce7d411f53f7e20c7758c49a7の [40201861327](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40201861327) もsuccess。artifact linux-ci-49e52c53f/.vitest/last-run.jsonはcomplete=true、head一致、19,264 PASS／0 FAIL／30 SKIP、2,344ファイル、失敗一覧空。ログlinux-ci-49e52c53f.logを保存。iOS側の性能試験failureは別の検査であり、Linux成功で代用しない。
 
-## 最新ローカル修正のhosted検証待ち
+## eabb8c5d6のhosted検証完了（後段の待機記録より優先）
+
+所有者の同じ3件限定承認後、通常ゲートと後続検査で既知fixture EPERM以外の失敗がないことを再確認し、R15開発ブランチだけをfast-forward pushした。[run40243528521](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40243528521)はsuccessで、headは `eabb8c5d6e0d951c77c79f2d5ab4439e056512ef`。最新製品057883f8bとiOS検索計画修正を含む。38型、7容量、scripts、sandboxがLinuxで例外なしに成功した。
+
+取得したartifactのlast-run.jsonはcomplete=true、reason=passed、result=PASS、fingerprint.head一致、failingFiles=[]。独立してunit原ログの末尾を確認し、Test Filesは2,339 passed／0 failed／7 skipped／2,346 total、Testsは19,284 passed／0 failed／30 skipped／19,314 total。elapsedSecondsは972.054。以前の件数へ追加バッチを足して集計していない。
+
+実ログはtmp/r15-evidence/linux-ci-eabb8c5d6.log、artifactのlast-run.json／last-run.log／r13-full-unit.logはlinux-ci-eabb8c5d6/へ保存した。Windowsでfixture作成が止まった拒否処理をWindows実動作成功へ読み替えず、Linux上で試験が通過した結果として記録する。先行失敗とWindowsの原ログを保持し、テスト削除・skip条件変更・容量上限変更は行っていない。main・タグ・Release・公開Wikiは未変更。
+
+実Linuxログの初期gzip bytesはcommenting-ui40,177／44,000、canvas151,352／160,000、editor369,922／370,000、docs-ui89,138／92,000、feedback-ui35,089／35,500、trackers-ui198,364／200,000、inbox5,542／6,000。trackers-uiのWindows測定198,511とはバイト差があるが、双方が既存上限を通過する。editorの余裕78 bytesは制限事項として保持する。
+
+## 最新ローカル修正のhosted検証待ち（後続承認前の履歴）
 
 最新製品コミット057883f8bd230280dfeaa298a5c5e45f8252b508の通常pushは38型・7容量を通過した後、同じCLI fixture symlink EPERMで停止した。手動sandboxも既知fixture EPERM2件だけで、後続静的3検査はPASS。既存の承認はこの新規コミットへ適用せず、bypassは実行していない。GitHub読み戻しでR15ブランチは49e52c53fのままであり、最新コミットに対するLinux全体結果は存在しない。ローカルの関連10ファイル135 PASSを全体CI成功へ読み替えない。

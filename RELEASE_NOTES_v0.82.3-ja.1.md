@@ -23,9 +23,9 @@ SQLiteの0055は、待機中のTracker編集へ同期基準リビジョンを保
 
 表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,794キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
 
-最新製品ソース057883f8bで38ワークスペースの型検査、既存7エントリの容量上限、関連135テストが成功しています。同ソースの通常ZIPでTrackerの列名・操作案内・同期状態の日英切替と両言語再起動保持、全1,913ファイルの照合・CRC・ASAR監査を確認しました。先行49e52c53fのLinuxは19,264 PASS／0 FAIL／30 SKIPで、英語完了時刻、日本語の展開ヘルプ、文書画像の貼り付け・Undo／Redoも同先行製品で確認しています。最新ソースのhosted Linux/iOS CIは未実施です。
+最新製品ソース057883f8bで38ワークスペースの型検査、既存7エントリの容量上限、関連135テストが成功しています。同ソースの通常ZIPでTrackerの列名・操作案内・同期状態の日英切替と両言語再起動保持、全1,913ファイルの照合・CRC・ASAR監査を確認しました。英語完了時刻、日本語の展開ヘルプ、文書画像の新規貼り付け・Undo／Redoは先行49e52c53fで確認しています。最新製品ソースを含むeabb8c5d6のLinux CIは19,284 PASS／0 FAIL／30 SKIP、Test Filesは2,339 PASS／7 SKIP／0 FAILでした。
 
-最新iOS CIは履歴件数に対する更新性能の試験で失敗し、全体試験は未実行です。変更セッションへ検索範囲を限定する修正と回帰テストを追加しましたが、修正後のiOS実行は未確認です。先行候補の認証・インストール・更新検証には適用範囲を明示し、新しいバイナリの実行成功と混同しません。最終ソースと配布候補の確定は継続中です。
+先行iOS性能試験の失敗原因を修正し、eabb8c5d6のシミュレーター試験は528実行（522 PASS／6 SKIP／0 FAIL）でした。実refresh SQLを検査する回帰と既存6倍性能条件を通過し、閾値は緩和していません。先行候補の認証・インストール・更新検証には適用範囲を明示し、新しいバイナリの実行成功と混同しません。最終ソースと配布候補の確定は継続中です。
 
 Windowsではsymlink fixture作成のEPERMが残っています。fixture作成で停止した試験は、symlinkの拒否・保持動作そのものを検証できていません。全Windows試験の成功は主張しません。外部スクリーンリーダー、全画面・DPI、動的翻訳の完全な実行時確認、WSL実環境での全経路、Google認証や特殊な復旧、サービス側セッション失効は未検証です。
 
@@ -60,9 +60,9 @@ SQLite migration 0055 adds the base synchronization revision to queued Tracker e
 
 Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,794 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
 
-Latest product source 057883f8b passed all 38 workspace typechecks, seven existing bundle budgets, and 135 related tests. Its ordinary ZIP was checked for bilingual tracker column/action/sync-state display, persistence after restart in both languages, all 1,913 file hashes, CRC, and ASAR integrity. Earlier 49e52c53f passed Linux with 19,264 passed / zero failed / 30 skipped; English completion times, Japanese expanded help, and document image paste with Undo/Redo were also checked on that earlier product. Hosted Linux/iOS CI has not run on the latest source.
+Latest product source 057883f8b passed all 38 workspace typechecks, seven existing bundle budgets, and 135 related tests. Its ordinary ZIP was checked for bilingual tracker column/action/sync-state display, persistence after restart in both languages, all 1,913 file hashes, CRC, and ASAR integrity. English completion times, Japanese expanded help, and fresh document image paste with Undo/Redo were checked on earlier 49e52c53f. Linux CI at eabb8c5d6 includes the latest product source and passed 19,284 tests with zero failures and 30 skips; Test Files were 2,339 passed / seven skipped / zero failed.
 
-The latest iOS CI failed its history-size performance test before the full suite ran. A fix restricting lookups to changed sessions and a regression test have been added, but have not yet run on iOS. Authentication, installation, and upgrade results from earlier candidates have a separately stated scope; they are not claimed as new-binary executions. The final source and distribution candidate remain under validation.
+The cause of the preceding iOS performance-test failure was corrected. Simulator CI at eabb8c5d6 executed 528 tests: 522 passed / six skipped / zero failed. The actual-refresh SQL regression and existing six-times performance threshold passed without relaxing the threshold. Authentication, installation, and upgrade results from earlier candidates have a separately stated scope; they are not claimed as new-binary executions. The final source and distribution candidate remain under validation.
 
 Windows symlink-fixture EPERM failures remain. A test stopped during fixture creation does not verify symlink rejection or retention. No all-Windows-tests-passed claim is made. External screen readers, every screen and DPI, complete runtime coverage of dynamic translations, all native WSL paths, Google sign-in, special recovery flows, and service-side session revocation remain unverified.
 

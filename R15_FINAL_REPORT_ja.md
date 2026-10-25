@@ -2,7 +2,17 @@
 
 正式公開は行っていない。本書は最終成果物の確定前の監査用原稿であり、READYの判定ではない。新しい製品コードへの確認を終えるまで、過去の候補の成功を最新候補へ自動的に適用しない。
 
-## 最新チェックポイント（以下の履歴表より優先）
+## 最新hosted検証結果（後段の未実行記録より優先）
+
+所有者の既知3件限定承認に基づき、通常ゲートと後続検査で新規失敗がないことを再確認した後、R15開発ブランチを `eabb8c5d6e0d951c77c79f2d5ab4439e056512ef` へfast-forward pushした。Git treeは `4e7353a7054adb448974fcfd0e766e72de2a14ba`。公開mainはb0432ce85977040461bf026aff063059bf6ffd1e、旧タグは2548c7f85fae0c88243a71ea63021090225be16aのままである。main・タグ・Release・公開Wikiを変更していない。
+
+同じHEADのLinux run40243528521はsuccess。実artifactのcomplete=true、result=PASS、fingerprint.head一致、失敗一覧空を確認した。Test Filesは2,339 PASS／0 FAIL／7 SKIP／2,346 total。Testsは19,284 PASS／0 FAIL／30 SKIP／19,314 total。38型・7容量・scripts・sandboxもLinuxでは例外なしで成功した。
+
+iOS run40243528554もsuccess。全体528実行は522 PASS／6 SKIP／0 FAILで、前段2試験を二重加算していない。実refresh SQLを捕捉する追加回帰も成功し、既存6倍性能条件を緩和せず通過した。先行run40201861401の失敗と原ログは保持した。物理iOS端末の動作保証ではない。
+
+eabb時点のソースZIPは9,715 Git blob・CRC・実復元一致、SHA-256 `03fd0051618304045f1d1943a43cccbc11fe2a182adeaa0392f69ee97ebb4069`。この後の結果報告書の編集は同ZIPに含まれない。製品バイナリは下記057883f8bのままである。最終製品に対する認証・NSIS全工程・新規画像貼り付けの再実行をCI成功から推測しない。現判定はCONDITIONALで、READYとはしていない。
+
+## 前段チェックポイント（後続の検証結果は上記）
 
 最新製品ソースは057883f8bd230280dfeaa298a5c5e45f8252b508、treeは8b82354cca919ca0c8850121507dc213e9ff7413。Trackerの固定フィールド・公開状態・日時に加え、実画面で追加発見した列名・操作ラベル・同期状態を修正した。関連10ファイル135テスト、38型、7容量が成功し、最新通常NSIS/ZIPとASAR・全1,913ファイル照合を確認。実展開版で日英切替・両言語の再起動保持・Tracker修正表示・正常終了を確認した。最新ソースのLinux/iOS hosted CIは未実施で、通常pushは既知CLI fixture EPERMで停止。未承認bypassは使っていない。後述の過去チェックポイントと最新候補を混同しない。
 

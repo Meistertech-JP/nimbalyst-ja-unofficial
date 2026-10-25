@@ -1,5 +1,7 @@
 {
-  "status": "IN_PROGRESS",
+  "status": "CONDITIONAL",
+  "hostedCheckpoint": {"commit":"eabb8c5d6e0d951c77c79f2d5ab4439e056512ef","linuxRun":40243528521,"linuxStatus":"PASS","iosRun":40243528554,"iosStatus":"PASS","productSourceCovered":true},
+  "reportSourceCheckpoint": {"commit":"eabb8c5d6e0d951c77c79f2d5ab4439e056512ef","tree":"4e7353a7054adb448974fcfd0e766e72de2a14ba","files":9715,"sha256":"03fd0051618304045f1d1943a43cccbc11fe2a182adeaa0392f69ee97ebb4069","evidence":"tmp/r15-evidence/source-reports-grid-controls-eabb8c5d6/RESULT.json","scope":"Hosted-tested source checkpoint. Later result-report edits require a separate externally checksummed source archive; Windows product bytes are unchanged."},
   "newerVerifiedCheckpoint": "tmp/r15-evidence/windows-product-057883f8b.json",
   "newerCheckpointScope": "Ordinary NSIS/ZIP generated, CRC/1913-file restore and ASAR verified; actual ZIP languages/restarts/grid checks passed. New NSIS lifecycle and new authentication were not executed. Previous candidates remain preserved under their own evidence directories.",
   "latestProductCommit": "057883f8bd230280dfeaa298a5c5e45f8252b508",

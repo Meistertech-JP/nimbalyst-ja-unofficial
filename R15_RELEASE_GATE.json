@@ -1,13 +1,15 @@
 {
-  "status": "IN_PROGRESS",
+  "status": "CONDITIONAL",
+  "latestHostedCheckpoint": "eabb8c5d6e0d951c77c79f2d5ab4439e056512ef",
+  "checkpointNote": "The completed hosted results below supersede historical pending statements. Product source is unchanged since 057883f8b; latest-product authentication, NSIS lifecycle and fresh image-paste repetitions are not established by hosted CI. Final report edits are not included in the eabb source archive.",
   "latestNativeFinding": "057883f8b ordinary restored ZIP confirms translated grid headers/actions/filter descriptions and detail sync state after prior 67a004c7c findings. Both language switches, restart persistence and normal quit passed bounded native checks. Custom schema labels and values are retained, not mechanically translated.",
   "latestSourceFix": "057883f8bd230280dfeaa298a5c5e45f8252b508",
   "latestWindowsBuild": {"commit":"057883f8bd230280dfeaa298a5c5e45f8252b508","status":"NSIS_ZIP_PASS","evidence":"tmp/r15-evidence/windows-build-grid-controls.log","asar":"PASS: 1021 entries, 341 output files and four legal files matched; unchanged after ZIP packaging","zip":"PASS: CRC, path safety and 1913 restored file hashes at checkpoint 7","nativeVerification":"PASS_WITH_BOUNDED_SCOPE: both language switches/restarts, grid labels/actions/detail sync, normal quit","nativeEvidence":"tmp/r15-evidence/tracker-native-057883f8b.json","finalQualified":false},
   "latestProductCommit": "057883f8bd230280dfeaa298a5c5e45f8252b508",
   "latestSourceCommit": "057883f8bd230280dfeaa298a5c5e45f8252b508",
-  "latestUnverifiedDelta": "iOS projection queries now use the existing dirty-session index. Actual-source synthetic SQLite RED/GREEN and independent review PASS; Swift regression and hosted iOS suite remain unexecuted for this commit. Normal push stopped at the known CLI symlink fixture EPERM. Earlier no-verify approvals do not cover this new commit; no bypass push performed. Final source archive/manifests incomplete.",
-  "pendingProductChanges": "057883f8b source regressions (10 files / 135 tests), ordinary Windows NSIS/ZIP, ASAR/1913-file restore, native grid labels and both-language restarts passed. Normal push passed 38 typechecks and seven budgets, then failed at the same CLI fixture symlink EPERM; manual sandbox has only the two known fixture EPERM failures and three later static checks passed. Hosted CI remains pending and no bypass authorization covers these commits.",
-  "checkpointScope": "Latest native grid/sync/language-restart checks cover 057883f8b. Image/help checks cover 49e52c53f. Authentication and install/update evidence is historical with explicitly bounded source scope. Hosted CI entries identify their actual tested commit; no previous success substitutes for the latest iOS failure.",
+  "latestUnverifiedDelta": "Hosted verification passed on eabb8c5d6, including the Swift SQL-plan regression and unchanged performance threshold. Remaining latest-product native scope must be distinguished from historical authentication/install/image-paste checks. Final reporting edits require a new source checkpoint.",
+  "pendingProductChanges": "No product-source edits after 057883f8b. eabb8c5d6 contains reports and matching generated legal inventory. The explicitly approved push exception was used only for that R15 development-branch push after normal gates confirmed the known three fixture failures and all other checks passed.",
+  "checkpointScope": "Latest grid/sync/language-restart and retained Wiki/conversation/image native checks cover 057883f8b. Fresh image-paste/help checks cover 49e52c53f. Authentication and install/update evidence is historical. Hosted Linux and iOS cover eabb8c5d6, including current product source. The preceding iOS failure remains preserved as history.",
   "candidateVersion": "v0.82.3-ja.1",
   "productCommit": "057883f8bd230280dfeaa298a5c5e45f8252b508",
   "fixedUpstream": "84dcc00f3cd0abbb36eafc6bfad9389f960076db",
@@ -16,8 +18,8 @@
   "typecheck": {"workspaces":38,"status":"PASS"},
   "bundleBudgets": {"entries":7,"status":"PASS","limitsChanged":false},
   "i18n": {"namespaces":27,"enKeys":14794,"jaKeys":14794,"keyDifference":0,"emptyJapanese":0,"interpolationDifference":0,"missingResolvedReferences":0,"dynamicCandidates":672,"unresolvedLexicalScopes":412,"finiteTrackerReferences":42,"finiteTrackerMissing":0,"wholeUiCoverageProven":false},
-  "linux": {"runId":40201861327,"head":"49e52c53ffe1225ce7d411f53f7e20c7758c49a7","status":"PASS","files":2344,"passedTests":19264,"failedTests":0,"skippedTests":30,"latestSourceCommitCovered":false},
-  "ios": {"runId":40201861401,"head":"49e52c53ffe1225ce7d411f53f7e20c7758c49a7","status":"FAIL","isolatedExecuted":2,"isolatedFailed":1,"fullSuiteExecuted":false,"physicalDeviceTested":false,"failure":"testIncrementalRefreshCostDoesNotTrackHistorySize","fixCommit":"1e4033ed9005faf11a68ad3277148fdf2c7d1e1c","fixHostedVerification":"PENDING"},
+  "linux": {"runId":40243528521,"head":"eabb8c5d6e0d951c77c79f2d5ab4439e056512ef","status":"PASS","files":2346,"passedFiles":2339,"failedFiles":0,"skippedFiles":7,"passedTests":19284,"failedTests":0,"skippedTests":30,"totalTests":19314,"latestSourceCommitCovered":true,"scriptsAndSandboxWithoutExceptions":"PASS","evidence":"tmp/r15-evidence/linux-ci-eabb8c5d6/.vitest/last-run.json"},
+  "ios": {"runId":40243528554,"head":"eabb8c5d6e0d951c77c79f2d5ab4439e056512ef","status":"PASS","isolatedExecuted":2,"isolatedFailed":0,"fullSuiteExecuted":true,"fullExecutedIncludingSkipped":528,"passedTests":522,"skippedTests":6,"failedTests":0,"physicalDeviceTested":false,"fixCommit":"1e4033ed9005faf11a68ad3277148fdf2c7d1e1c","fixHostedVerification":"PASS","newSqlPlanRegression":"PASS","previousFailure":{"runId":40201861401,"test":"testIncrementalRefreshCostDoesNotTrackHistorySize","rawEvidencePreserved":true}},
   "windowsGateExceptions": {
     "count":3,
     "scope":"Explicitly approved R15 development-branch pushes only",
@@ -40,10 +42,8 @@
   },
   "serverTeamRecovery":"Synthetic local tests only; production recovery and updated-server end-to-end compatibility unverified",
   "remaining": [
-    "Hosted iOS verification of 1e4033ed9 remains pending; normal push failed at known fixture EPERM and no bypass authorization covers this commit",
-    "Obtain hosted Linux/iOS CI for 057883f8b; normal push stopped at known fixture EPERM and no new bypass approval covers it",
-    "Finalize bilingual publication documents with bounded evidence",
-    "Final source commit, tree, source ZIP blob/CRC/restore verification",
+    "Assess remaining final-product native scope separately from historical authentication/install/image-paste checkpoints",
+    "Commit updated bilingual results and preserve their separate source ZIP/hash/restore checkpoint",
     "Complete final candidate preservation manifest; R14 197-file readback and verified old-restore cleanup completed"
   ],
   "publication": {"performed":false,"mainChanged":false,"tagsChanged":false,"releaseCreated":false,"publicWikiChanged":false}

@@ -32,7 +32,7 @@ WindowsアプリIDは `jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザ
 
 38ワークスペース型検査、7エントリの容量上限を確認しています。Windows製品コミット `49e52c53ffe1225ce7d411f53f7e20c7758c49a7` のLinuxは19,264 PASS／0 FAIL／30 SKIPでした。同製品の通常ZIPでは日英それぞれの再起動後保持、英語完了時刻、日本語の展開ヘルプ、文書への画像貼り付け・Undo／Redoを確認し、全1,913ファイルの照合とCRCに成功しました。幅1,040でのメニュー操作は先行する表示修正候補で確認しました。
 
-最新のiOS CIは、履歴件数に対する更新性能の試験が失敗し、全体試験へ進んでいません。検索範囲を変更セッションへ限定する修正と回帰テストを追加しましたが、修正後のiOS実行は未確認です。過去の527実行／6 SKIP／0 FAILを最新ソースの成功とは扱いません。
+最新製品ソース057883f8bを含む `eabb8c5d6e0d951c77c79f2d5ab4439e056512ef` の[Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40243528521)は19,284 PASS／0 FAIL／30 SKIP、[iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40243528554)は528実行（522 PASS／6 SKIP／0 FAIL）でした。先行iOS性能試験の失敗原因を修正し、追加回帰と既存性能条件を通過しています。シミュレーターの成功を物理端末での全面保証とは扱いません。
 
 メール認証・暗号化保存・復元・ログアウト、新規導入は先行候補の通常製品で確認しました。時刻表示修正時点の候補では旧正式版からの更新、マイグレーション55、英語設定と全10文書の保持、アンインストール後の専用設定・文書183ファイルの保持を確認しています。その後の表示修正を含む最新バイナリへ、先行候補の結果を無条件に適用していません。機能別GUIの残りと最終ソースZIP照合は継続中です。[検証範囲](wiki/Testing-and-Verification.md)と[制限事項](wiki/Compatibility-and-Limitations.md)を参照してください。
 

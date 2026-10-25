@@ -39,3 +39,13 @@ Swiftの実DDL・SQLを抽出した合成in-memory SQLiteで、履歴1k・10kに
 既存Swift試験ファイルへ、実際のrefreshが発行したSQLをGRDB traceで捕捉して両検索のEXPLAINを検証する回帰テストを先に追加した。旧→新グループへの移動、membership・時刻・live queryとの一致も確認する。既存6倍wallclock閾値と全assertionは変更していない。既存schemaVersion3が作成するindexを利用するため、新DDL・migrationは不要。Swift変更2ファイルはWindowsバイナリのソース対象ではないが、新しいmacOS/iOS CI検証は必要である。
 
 性能修正1e4033ed9を祖先に持つ最新製品コミット057883f8bd230280dfeaa298a5c5e45f8252b508についても、通常pushは既知Windows fixture EPERMで停止し、GitHubのR15ブランチは49e52c53fのままである。新規コミットへ以前のpush例外を自動適用しておらず、新しいSwift compile・回帰・全体iOS試験は未実施。Windows製品GUIや合成SQLの成功をその代用とはしない。
+
+## eabb8c5d6での修正後hosted検証
+
+所有者の今回の既知3件限定承認を受け、通常ゲートを改めて実行して型38・容量7・後続静的検査が成功し、既知fixture EPERMだけであることを確認した。R15開発ブランチのみをfast-forward更新し、[run40243528554](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40243528554)を同一HEAD `eabb8c5d6e0d951c77c79f2d5ab4439e056512ef` で実行した。workflow・checkout・validation-sourceの実SHAを読み戻し、conclusion=successを確認した。main・タグ・Release・公開Wikiは変更していない。
+
+実artifactの前段ログは2試験実行・0 FAIL、全体ログは528実行（6 SKIPを含む）・0 FAIL。Test Case行を独立集計すると522 PASS／6 SKIP／0 FAILで、先行527件へ新規回帰1件が加わっている。追加したtestActualIncrementalRefreshLooksUpTouchedGroupsByDirtySessionも0.373秒でPASS。前段と全体の件数を加えて「530件の全体母集団」とは表現しない。
+
+既存性能試験の固定groupで無関係な履歴だけを増やす計測は、前段1k=1.86ms／10k=3.02ms、全体1k=1.75ms／10k=2.56msで既存6倍条件を通過した。一つの巨大group自体を増やす参考計測は前段2.73ms／18.76msであり、これを全条件の定数時間保証と読み替えない。閾値・期待値・SKIP条件は緩めていない。
+
+全ログはios-ci-eabb8c5d6.log、artifactのr13-isolated.log／r13-hosted.logと両xcresultはtmp/r15-evidence/ios-ci-eabb8c5d6/に保存した。artifact ID12617539262、要約はios-ci-eabb8c5d6-result.json。前回の性能FAILと生ログは保持している。これはmacOS hosted iOSシミュレーターの成功で、物理端末での全面的な動作保証ではない。
