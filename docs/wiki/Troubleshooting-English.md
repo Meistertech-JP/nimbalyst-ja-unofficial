@@ -2,7 +2,7 @@
 
 # Troubleshooting
 
-This page applies to v0.82.3-ja.1. Possible causes below are starting points for diagnosis, not defects confirmed in every environment.
+This page applies to v0.82.3-ja.2. Possible causes below are starting points for diagnosis, not defects confirmed in every environment.
 
 ## Windows warns about an unsigned application
 

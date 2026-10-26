@@ -4,6 +4,12 @@
 
 Each release and tag identifies its source and available distributions.
 
+## v0.82.3-ja.2
+
+This [Windows x64 stable revision](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2) excludes pre-publication working materials from distributed source and corrects user/developer documentation and 16 bundled guides. Unsigned NSIS and portable ZIP packages are newly generated from the corrected source. The fixed upstream baseline and existing product features are unchanged. Publication-content checks distinguish internal materials from product source and technical documentation.
+
+Older tags, releases, distributions and Git/Wiki history are retained; these corrections do not completely erase earlier materials from history. See [Testing and Verification](Testing-and-Verification-English) for version-specific verification scope.
+
 ## v0.82.3-ja.1
 
 Integrated 17 upstream commits affecting 144 files through fixed v0.82.3 commit `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. Changes include legacy-encryption team recovery, SQLite migration 0055's recovery revision, Codex file attribution, CPU-profile retention, Wiki and transcript updates. Recovery has not been tested against a real organization and requires the updated sync server.

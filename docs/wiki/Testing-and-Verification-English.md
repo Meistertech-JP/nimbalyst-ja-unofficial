@@ -2,6 +2,34 @@
 
 # Testing and Verification
 
+## v0.82.3-ja.2
+
+This revision covers the corrected publication source and new Windows NSIS and portable ZIP packages with 16 updated bundled guides. The fixed upstream baseline remains `84dcc00f3cd0abbb36eafc6bfad9389f960076db`; older binaries are not simply renamed. Native observations, resource/unit tests, type/budget checks, CI on the publication commit and full payload comparisons cover distinct requirements.
+
+### Static checks and related tests
+
+- All 38 workspace typechecks and seven initial-load size budgets passed without raising their limits. The editor measures 369,922 / 370,000 gzip bytes and docs-ui 89,138 / 92,000 gzip bytes.
+- Resources contain 27 namespaces and 14,795 keys in each language. Key/interpolation differences, unapproved empty translations and missing statically resolved references were zero. The 436 dynamic candidates and 200 unresolved scopes have not been exhaustively exercised at runtime; these are not defect counts.
+- After correcting the About baseline label, the final related batch covering language behavior, authentication contracts and update isolation passed with 11 test files and 83 tests, zero failures and zero skips. The separately passing 17 tests in four About/Main/core/React files overlap this batch and are not added to its total. Windows credential tests use a disposable private-profile fixture to check real DACLs, junction rejection and an unchanged target. They do not establish repair of arbitrary permissive ACLs or effective access by another user.
+- The Windows ZIP, NSIS application payload and win-unpacked were regenerated in the normal build configuration after correcting About's baseline label to 0.82.3. Each contains 1,913 files with matching paths, sizes and SHA-256 hashes. CRC and physical extraction, integrity of all 1,021 ASAR files and byte-for-byte equality of the 16 bundled guides with their Git blobs were checked again, rather than reusing results from the earlier binary.
+- Packaged Electron 43.7.0 / ABI 148 loaded better-sqlite3 through the resolution paths used by the SQLite Workers and queried an in-memory database. The ONNX module loaded, and node-pty produced the expected output and normal exit from a dedicated child process. These checks did not start Worker threads or establish GUI behavior, every terminal feature or authentication with agent services.
+
+### Startup and upgrade in the ordinary Windows product
+
+The new NSIS containing the About correction was installed with a dedicated fresh profile. Native checks covered Japanese resolved from System, settings, menus, Workspace and the editor. Explicit Japanese selection survived a normal exit and restart of the installed application. About displayed application version 0.82.3-ja.2 and upstream baseline 0.82.3 in Japanese and English. After selecting English and exiting, the ZIP edition with the same payload retained English. Switching back to Japanese, exiting and restarting retained Japanese and displayed Tracker. Each run ended normally. Four fresh-profile starts recorded no measured long Main-process lag or unresponsive window.
+
+A separate dedicated profile was upgraded from v0.82.3-ja.1 using the new NSIS. Native observations confirmed retention of the English setting/display, one test document's contents and SHA-256 (120 bytes), and one Tracker item's title, including after restart. All 1,913 application-payload files in the updated installation match the new win-unpacked. Ordinary uninstall retained all file hashes for 90 fresh-profile files and 101 upgrade-profile files. Removal of this edition's owned registrations/shortcuts and preservation of 13 sampled protocol/default-association/UserChoice entries were checked. This does not establish compatibility with every existing dataset or preservation of the entire Windows registry.
+
+### Observed startup delay and guide-display scope
+
+The first restart in the upgrade test recorded roughly 10–125-second Main-process stalls and a temporarily unresponsive window on this Windows host. A security product displayed connection prompts during the same period; this does not establish it as the cause. The application recovered without changing protection settings. A contained recheck of the same older profile using the final ZIP with the same payload displayed the screen in about seven seconds and completed document/Tracker operations and normal shutdown. It still recorded one roughly 550ms Main-process delay, not zero lag. The original long delay's cause and recurrence conditions remain unknown; these observations do not establish a permanent fix.
+
+Selecting a bundled guide through File → Open displayed “Open a workspace to get started” rather than its contents; this guidance remained in English even with Japanese UI selected. The relevant code matches the baseline source, but this was not reproduced in a baseline product binary. Separately, one copied SDK guide with bytes and SHA-256 identical to the bundled file was displayed in the ordinary editor from a dedicated workspace. Placement and byte equality of all 16 guides are distinguished from rendering that single copy. Direct access through the dedicated documentation entry and native display of all 16 guides have not been verified.
+
+Production authentication has not been repeated on this binary. Email sign-in, encrypted storage, restoration and logout observed in earlier products remain historical results for those versions. Google sign-in, special recovery, service-side session revocation, cross-user NTFS effective access, external screen readers, every DPI configuration and complete dynamic-translation coverage remain unverified.
+
+Known Windows tests fail with EPERM when creating the CLI symlink fixture and sandbox symlink-file and ancestor-directory fixtures, before the relevant assertions run. Success on Linux does not establish the rejection behavior on Windows. Results for earlier versions and development commits below are not reused as CI execution results for this release.
+
 ## v0.82.3-ja.1
 
 Qualification covers the Windows NSIS and portable ZIP rebuilt from product-fix commit `1c1d54a851c340a8f0f9afc304379882a7319fa1`. Both package payloads, ASAR, native ABI, Workers and all 1,913 ZIP files were checked; actual SQLite Worker, ONNX and node-pty loading was observed. In the ordinary product, English Settings, menus, Project Manager and Workspace views were observed and English persisted after restart. With the language setting set to System, Japanese appeared in the Renderer and native menus and remained after Ctrl+Q shutdown and restart. Persistence of an explicit `ja` setting has not been checked. The auxiliary-error warning passed English and Japanese DOM tests but has not been observed in the ordinary product. Authentication and NSIS installation, upgrade and removal were not exercised on this build; earlier product records are historical.

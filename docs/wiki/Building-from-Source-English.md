@@ -2,9 +2,9 @@
 
 # Building from Source
 
-These instructions apply to the source and scripts at v0.82.3-ja.1. Check `package.json` and the lockfile again for later upstream-following versions. The published npm CLI does not necessarily include every feature of this fork.
+These instructions apply to the source and scripts at v0.82.3-ja.2. Check `package.json` and the lockfile again for later upstream-following versions. The published npm CLI does not necessarily include every feature of this fork.
 
-Use the `v0.82.3-ja.1` tag for the source corresponding to the published Windows assets. `main` is the development head with documentation, publication-check and bundled-guide corrections; it is not guaranteed to match every file in those assets. A new Windows package incorporating these corrections is not yet available.
+Use the `v0.82.3-ja.2` tag for the source corresponding to its Windows assets, rather than the continuously changing `main` branch. To reproduce an older release, use that version's tag and lockfile.
 
 ## Obtaining the source and dependencies
 
@@ -13,7 +13,7 @@ Use Node.js 24 or later and pnpm 12 or later. `packageManager` specifies `pnpm@1
 ```powershell
 git clone https://github.com/Meistertech-JP/nimbalyst-ja-unofficial.git
 Set-Location nimbalyst-ja-unofficial
-git switch --detach v0.82.3-ja.1
+git switch --detach v0.82.3-ja.2
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps

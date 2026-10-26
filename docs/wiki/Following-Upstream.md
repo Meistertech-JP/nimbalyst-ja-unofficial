@@ -2,7 +2,7 @@
 
 # 本家Nimbalystへの追従
 
-v0.82.3-ja.1は本家v0.82.3の固定コミット[`84dcc00f3cd0abbb36eafc6bfad9389f960076db`](https://github.com/nimbalyst/nimbalyst/commit/84dcc00f3cd0abbb36eafc6bfad9389f960076db)を基準とします。前版v0.82.1-ja.1の基準は `583ae0244dae266667be579733d6c571fd74e037` です。両履歴を保持して17コミット・144ファイルを統合しました。本家の最新mainを常に取り込む構成ではありません。
+v0.82.3-ja.2は本家v0.82.3の固定コミット[`84dcc00f3cd0abbb36eafc6bfad9389f960076db`](https://github.com/nimbalyst/nimbalyst/commit/84dcc00f3cd0abbb36eafc6bfad9389f960076db)を基準とします。v0.82.3-ja.1で、v0.82.1-ja.1の基準 `583ae0244dae266667be579733d6c571fd74e037` から両履歴を保持して17コミット・144ファイルを統合しました。ja.2は文書と配布内容の是正版で、新たなupstreamコミットを取り込んでいません。本家の最新mainを常に取り込む構成ではありません。
 
 ## 作業の基準を固定する
 

@@ -1,6 +1,6 @@
 # 非公式日本語版のリリース
 
-Nimbalyst 日本語版（非公式）は、Windows x64向けの未署名NSISインストーラーとポータブルZIPを配布します。現行公開版は[v0.82.3-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)で、本家v0.82.3のコミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とします。公式版の公開用スクリプトや更新フィードは使用しません。
+Nimbalyst 日本語版（非公式）は、Windows x64向けの未署名NSISインストーラーとポータブルZIPを配布します。現行版は[v0.82.3-ja.2](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)で、本家v0.82.3のコミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とします。公式版の公開用スクリプトや更新フィードは使用しません。
 
 ## 公開対象
 

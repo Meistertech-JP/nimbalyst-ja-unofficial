@@ -4,11 +4,11 @@
 
 NimbalystのデスクトップUIを日本語で利用するための、非公式フォークの利用・開発資料です。Nimbalyst, Inc.の公式製品ではなく、同社による承認・サポートを受けていません。
 
-対象版は **v0.82.3-ja.1** です。本家v0.82.3の固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とし、Windows x64向け未署名NSISインストーラーとポータブルZIPを提供します。通常製品で英語表示と再起動後の保持、日本語表示言語をSystemにした際のRenderer・ネイティブメニュー表示と再起動後の保持を確認しています。明示的な`ja`設定値の保持は未確認です。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
+対象版は **v0.82.3-ja.2** です。本家v0.82.3の固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とし、Windows x64向け未署名NSISインストーラーとポータブルZIPを提供します。公開ソースの文書を整理・訂正し、更新した同梱ガイドを新しいWindowsパッケージに反映しています。版ごとの実機確認と未検証事項は[テストと品質検証](Testing-and-Verification)を参照してください。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
 
-- [ダウンロードと変更内容](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)
+- [ダウンロードと変更内容](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)
 - [ソースコード・README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.3-ja.1/LICENSE)
+- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.3-ja.2/LICENSE)
 
 このWikiはGitHub上の文書です。アプリ内のLocal Wiki・Team Wikiとは別のものです。
 

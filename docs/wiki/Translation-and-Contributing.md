@@ -26,6 +26,6 @@ ReactのHookはコンポーネントのトップレベルで取得します。ca
 
 [ビルド手順](Building-from-Source)に従い、型検査・i18n資源試験・変更部分の回帰試験を実行します。画面変更は日本語と英語で操作し、言語切替、長いラベル、モーダルやtooltipの表示を確認します。初期importを変更した場合はバンドル容量も測定します。
 
-PRには目的、変更範囲、実施したコマンドと結果、未検証範囲を記載します。本家由来の[CONTRIBUTING.md](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.1-ja.1/CONTRIBUTING.md)にはDCO・ライセンス・依存更新の注意があります。ただし、本家の担当者や署名付き公式Releaseの権限が、この非公式フォークにも存在するとは解釈しません。秘密鍵・認証情報・個人プロファイルを添付しないでください。
+PRには目的、変更範囲、実施したコマンドと結果、未検証範囲を記載します。本家由来の[CONTRIBUTING.md](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.3-ja.2/CONTRIBUTING.md)にはDCO・ライセンス・依存更新の注意があります。ただし、本家の担当者や署名付き公式Releaseの権限が、この非公式フォークにも存在するとは解釈しません。秘密鍵・認証情報・個人プロファイルを添付しないでください。
 
 [アーキテクチャ](Localization-Architecture)・[品質検証](Testing-and-Verification)・[本家への追従](Following-Upstream)。

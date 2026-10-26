@@ -4,7 +4,7 @@
 
 ## 現在の提供状況
 
-v0.82.3-ja.1は、本家v0.82.3（`84dcc00f3cd0abbb36eafc6bfad9389f960076db`）をベースとするWindows x64向けの通常正式リリースです。[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)から、未署名NSIS `nimbalyst-0.82.3-ja.1-windows-x64-setup.exe`、ポータブルZIP `nimbalyst-0.82.3-ja.1-windows-x64-portable.zip`、ソースZIPと `SHA256SUMS.txt` を取得できます。本家v0.82.3はPrereleaseですが、日本語版のGitHub Releaseは通常正式版です。[リリースノート](../RELEASE_NOTES_v0.82.3-ja.1.md)に検証範囲と制限を記載しています。旧v0.82.1-ja.1および以前のRelease・検証履歴は保持しています。
+v0.82.3-ja.2は、本家v0.82.3（`84dcc00f3cd0abbb36eafc6bfad9389f960076db`）をベースとするWindows x64向けの通常正式リリースです。[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)から、未署名NSIS `nimbalyst-0.82.3-ja.2-windows-x64-setup.exe`、ポータブルZIP `nimbalyst-0.82.3-ja.2-windows-x64-portable.zip`、ソースZIPと `SHA256SUMS.txt` を取得できます。本家v0.82.3はPrereleaseですが、日本語版のGitHub Releaseは通常正式版です。[リリースノート](../RELEASE_NOTES_v0.82.3-ja.2.md)に検証範囲と制限を記載しています。旧版のRelease・検証履歴は保持しています。
 
 ## 未署名と取得元の確認
 
@@ -46,7 +46,7 @@ ZIPの全内容を新しい書込み可能なディレクトリへ展開し、�
 
 ## 表示言語とデータ
 
-設定の表示言語でSystem、English、日本語を選びます。今回の通常Windows製品ではEnglish設定とSystem解決による日本語の表示・ネイティブメニュー・正常終了後の再起動保持を確認しました。明示的な`ja`設定値での実機再起動保持は未確認です。全画面・端末・DPIでの表示保証ではありません。
+設定の表示言語でSystem、English、日本語を選びます。エージェントの回答言語とは別の設定です。旧版での観測と本版での確認は[テストと品質検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)に区別して記載しています。全画面・端末・DPIでの表示保証ではありません。
 
 既定の保存先は `%APPDATA%\Nimbalyst 日本語版（非公式）` です。公式版の保存先とは分離しています。既存の公式版データを本版へ自動移動・コピーしません。認証情報を含むプロファイル全体を第三者へ送らないでください。
 
@@ -54,7 +54,7 @@ ZIPの全内容を新しい書込み可能なディレクトリへ展開し、�
 
 本版の認証フローは、その起動インスタンスのためのnonceを含むlocalhost callbackを使用します。ブラウザでの認証後に `http://127.0.0.1:<port>/auth/callback` へ戻ります。**認証メールはアプリを起動している同じPCで開いてください。** `127.0.0.1` はそのブラウザを実行している端末自身です。スマートフォンでメールを開くとスマートフォン自身へ接続するため、PCのアプリへ認証を返せません。使用済み・期限切れのリンクは、PCのアプリから新しいメールを送ってください。URLを書き換えたり、外部端末へ向けてポートを開放したりする必要はありません。
 
-認証リンクやトークンを共有、転載、診断レポートへ添付しないでください。ログインできない場合に別アプリのURL関連付けやセキュリティ設定を変更することも推奨しません。以前の製品の専用プロファイルでメール認証、暗号化保存、認証ファイルACL、アカウント復元、通常ログアウトを確認しています。本版では関連入力の不変性を確認しましたが、認証・新規導入・更新・削除・画像コピー・SQLite移行の旧実機証拠を、本版バイナリでの再実行結果とは扱いません。ログアウトはローカル状態の削除であり、サービス側失効を保証しません。Google認証、特殊復旧、他ユーザーの実効アクセス等は未検証です。
+認証リンクやトークンを共有、転載、診断レポートへ添付しないでください。ログインできない場合に別アプリのURL関連付けやセキュリティ設定を変更することも推奨しません。以前の製品の専用プロファイルでメール認証、暗号化保存、認証ファイルACL、アカウント復元、通常ログアウトを確認しています。本版では本番認証を再実施しておらず、旧実機証拠を本版バイナリでの再実行結果とは扱いません。ログアウトはローカル状態の削除であり、サービス側失効を保証しません。Google認証、特殊復旧、他ユーザーの実効アクセス等は未検証です。
 
 公式Nimbalystとの同時利用はサポートしません。認証以外の `nimbalyst://` リンクは、現在そのプロトコルを登録しているアプリで開かれる場合があります。
 
@@ -82,7 +82,7 @@ This guide covers an unsigned Windows x64 build. It is not an official product o
 
 ### Current availability
 
-v0.82.3-ja.1 is a regular Windows x64 release based on upstream v0.82.3 (`84dcc00f3cd0abbb36eafc6bfad9389f960076db`). Download unsigned `nimbalyst-0.82.3-ja.1-windows-x64-setup.exe`, `nimbalyst-0.82.3-ja.1-windows-x64-portable.zip`, the source ZIP and `SHA256SUMS.txt` from the [versioned release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1). Upstream v0.82.3 was a prerelease; this edition's GitHub Release is a regular stable release. See the [release notes](../RELEASE_NOTES_v0.82.3-ja.1.md) for verification limits. Previous releases and their historical verification records are retained.
+v0.82.3-ja.2 is a regular Windows x64 release based on upstream v0.82.3 (`84dcc00f3cd0abbb36eafc6bfad9389f960076db`). Download unsigned `nimbalyst-0.82.3-ja.2-windows-x64-setup.exe`, `nimbalyst-0.82.3-ja.2-windows-x64-portable.zip`, the source ZIP and `SHA256SUMS.txt` from the [versioned release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2). Upstream v0.82.3 was a prerelease; this edition's GitHub Release is a regular stable release. See the [release notes](../RELEASE_NOTES_v0.82.3-ja.2.md) for verification limits. Previous releases and their historical verification records are retained.
 
 ### Unsigned files and provenance
 
@@ -124,7 +124,7 @@ Extract the entire ZIP into a new writable directory and run `Nimbalyst 日本�
 
 ### Language and user data
 
-Select System, English or Japanese in display-language settings. The ordinary Windows product was checked with English selected and with Japanese resolved from System, including Renderer/native menus, normal shutdown and restart persistence. Native restart persistence with the explicit `ja` setting remains unverified. This is not coverage of every screen, device or DPI.
+Select System, English or Japanese in display-language settings. This is separate from the agent response language. [Testing and Verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) distinguishes observations from older versions and checks performed on this edition. This is not coverage of every screen, device or DPI.
 
 The default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`, separate from the official application. Official data is not automatically copied or moved. Do not send a profile containing authentication information to others.
 
@@ -132,7 +132,7 @@ The default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`, separa
 
 Authentication returns from the browser to `http://127.0.0.1:<port>/auth/callback` using a nonce for the current instance. **Open authentication email on the same PC running the application.** `127.0.0.1` refers to the device running that browser. Opening the email on a smartphone tries to connect to the phone itself, not the PC. Request a fresh email from the PC application if a link is consumed or expired. Do not rewrite the URL or expose the callback port to another device.
 
-Do not share, publish or attach authentication links or tokens to diagnostic reports. Changing protocol associations or bypassing security settings is not a sign-in remedy. Email sign-in, encrypted storage, credential-file ACLs, restoration and logout were observed in an earlier product's dedicated profile. Relevant inputs are unchanged, but those authentication, installation/upgrade/removal, image-copy and SQLite-migration observations are not re-executions on this binary. Logout clears local state without guaranteeing service-side revocation. Google sign-in, special recovery and cross-user effective access remain unverified.
+Do not share, publish or attach authentication links or tokens to diagnostic reports. Changing protocol associations or bypassing security settings is not a sign-in remedy. Email sign-in, encrypted storage, credential-file ACLs, restoration and logout were observed in an earlier product's dedicated profile. Production authentication has not been repeated on this binary, and earlier observations are not re-executions on this version. Logout clears local state without guaranteeing service-side revocation. Google sign-in, special recovery and cross-user effective access remain unverified.
 
 Running alongside the official application is unsupported. Non-authentication `nimbalyst://` links may open in the application's current registered handler.
 

@@ -2,6 +2,18 @@
 
 # Compatibility and Limitations
 
+## v0.82.3-ja.2
+
+This unsigned Windows x64 stable revision corrects and organizes distributed source documentation and updates 16 bundled guides. The upstream baseline, existing product features, data locations and manual-update policy are retained. Older tags, releases, assets and history remain available; this does not completely erase historical internal materials.
+
+The first restart after upgrade on this Windows host recorded Main-process stalls of up to about 125 seconds and a temporarily unresponsive window. It recovered; a final-ZIP recheck of the same profile completed normal operations, shutdown and data retention, but still recorded one roughly 550ms delay. Four fresh-profile starts did not record the same long delay. The cause and recurrence conditions remain unknown. Connection prompts from a security product during that period are not established as the cause, and a permanent fix is not claimed.
+
+Placement and SHA-256 hashes of all 16 bundled guides were checked, and a byte-identical copy of one SDK guide was displayed in the normal editor. A File → Open test without a workspace displayed “Open a workspace to get started” rather than the document, in English even when Japanese UI was selected. Direct display of all guides through the dedicated documentation entry remains unverified.
+
+Production authentication has not been repeated on this binary. Google sign-in, special recovery, server-side session revocation, every upgrade path for authenticated profiles, cross-user NTFS effective access, external screen readers, every DPI/screen configuration and complete dynamic-translation coverage remain unverified. The complete team-recovery procedure using a real organization and independent real clients is also unverified and requires a compatible sync server. Unverified areas are not confirmed defects or vulnerabilities.
+
+EPERM during creation of one CLI and two sandbox symlink fixtures leaves untested Windows behavior. Linux success is not proof of rejection assertions that could not run on Windows. [Testing and Verification](Testing-and-Verification-English) distinguishes native observations and CI results by version.
+
 ## v0.82.3-ja.1
 
 This unsigned Windows x64 edition is based on upstream v0.82.3 commit `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. Each language contains 27 namespaces and 14,795 keys. The 672 dynamic candidates, 412 unresolved scopes and 378 JSX English candidates are not defect counts and do not establish complete runtime coverage.
@@ -42,7 +54,7 @@ Google authentication, some Stytch recovery paths, service-side session invalida
 
 ## Translation and platforms
 
-For v0.82.1-ja.1, matching 14,608 keys per language across 27 namespaces does not prove complete translation on every screen. That version's 653 dynamic candidates and 382 unresolved scopes are not missing-key or defect counts. Counts and verification limits for v0.82.3-ja.1 appear at the beginning of this article.
+For v0.82.1-ja.1, matching 14,608 keys per language across 27 namespaces does not prove complete translation on every screen. That version's 653 dynamic candidates and 382 unresolved scopes are not missing-key or defect counts. Counts for v0.82.3-ja.1 appear in that version's section; current verification limits appear at the beginning of this article.
 
 English may remain in user documents, external-service responses, technical identifiers, existing notifications, and older collaboration data. The disabled administrator-installation option in NSIS has an English note. Complete display verification covering unvisited screens, tooltips, accessibility labels, and Browser/Embed hosts has not been performed.
 

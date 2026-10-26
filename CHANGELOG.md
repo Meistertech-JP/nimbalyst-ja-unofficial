@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.82.3-ja.2] — 2026-10-27
+
+- Rebuilt unsigned Windows packages with corrected bundled guides, distribution documentation and the About baseline label, retaining the v0.82.3-based product features.
+
 ## [0.82.3-ja.1] — 2026-10-26
 
 - Released unsigned Windows x64 packages based on upstream v0.82.3; see the [bilingual release notes](RELEASE_NOTES_v0.82.3-ja.1.md) for verification scope and limitations.

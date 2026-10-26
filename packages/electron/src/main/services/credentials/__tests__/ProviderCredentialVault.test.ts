@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import {
   ProviderCredentialVault,
   type CredentialEncryption,
@@ -16,8 +17,62 @@ import { withCredentialLock } from "../credentialLock";
 let dir: string;
 let available: boolean;
 let encryption: CredentialEncryption;
+const windowsFixtureAcl = (file: string, initialize = false) => {
+  const script = `
+    $ErrorActionPreference = 'Stop'
+    $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    if ($env:NIMBALYST_VAULT_FIXTURE_INITIALIZE -eq '1') {
+      $acl = [System.IO.Directory]::GetAccessControl($env:NIMBALYST_VAULT_FIXTURE_PATH)
+      $acl.SetAccessRuleProtection($true, $false)
+      foreach ($existing in $acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier])) {
+        $acl.RemoveAccessRuleSpecific($existing)
+      }
+      $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+      $acl.AddAccessRule($rule)
+      [System.IO.Directory]::SetAccessControl($env:NIMBALYST_VAULT_FIXTURE_PATH, $acl)
+    }
+    $acl = if ([System.IO.Directory]::Exists($env:NIMBALYST_VAULT_FIXTURE_PATH)) {
+      [System.IO.Directory]::GetAccessControl($env:NIMBALYST_VAULT_FIXTURE_PATH)
+    } else {
+      [System.IO.File]::GetAccessControl($env:NIMBALYST_VAULT_FIXTURE_PATH)
+    }
+    @{
+      owner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+      currentUser = $sid.Value
+      sddl = $acl.Sddl
+      rules = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | ForEach-Object {
+        @{ sid = $_.IdentityReference.Value; allow = $_.AccessControlType -eq 'Allow'; rights = [int]$_.FileSystemRights }
+      })
+    } | ConvertTo-Json -Depth 4 -Compress
+  `;
+  return JSON.parse(execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+    encoding: "utf8",
+    windowsHide: true,
+    env: { ...process.env, NIMBALYST_VAULT_FIXTURE_PATH: file, NIMBALYST_VAULT_FIXTURE_INITIALIZE: initialize ? "1" : "0" },
+  })) as { owner: string; currentUser: string; sddl: string; rules: Array<{ sid: string; allow: boolean; rights: number }> };
+};
+const expectPrivateFile = (file: string) => {
+  if (process.platform !== "win32") {
+    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    return;
+  }
+  // Node's Windows stat mode is not a DACL. Check the real inherited owner-only
+  // ACL instead; the fixture models an already-private application profile.
+  // This does not claim chmod can repair a permissive Windows profile ACL.
+  const acl = windowsFixtureAcl(file);
+  expect(acl.owner).toBe(acl.currentUser);
+  expect(acl.rules.length).toBeGreaterThan(0);
+  expect(acl.rules.every(rule => rule.allow && rule.sid === acl.currentUser)).toBe(true);
+  expect(acl.rules.some(rule => (rule.rights & 0x1f01ff) === 0x1f01ff)).toBe(true);
+};
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), "provider-vault-"));
+  if (process.platform === "win32") {
+    // Tighten only this disposable directory, never the user's profile or OS.
+    const acl = windowsFixtureAcl(dir, true);
+    expect(acl.owner).toBe(acl.currentUser);
+    expect(acl.rules.every(rule => rule.allow && rule.sid === acl.currentUser)).toBe(true);
+  }
   available = true;
   const key = randomBytes(32);
   encryption = {
@@ -91,9 +146,7 @@ it("migrates global, dynamic, and project keys, retains ordinary settings, and s
   expect(vault().get("openai", { workspacePath: "/project" })).toBe(
     "dummy-project-secret"
   );
-  expect(
-    fs.statSync(path.join(dir, "provider-credentials/vault.bin")).mode & 0o777
-  ).toBe(0o600);
+  expectPrivateFile(path.join(dir, "provider-credentials/vault.bin"));
 });
 
 it("pauses keys without destroying legacy data when storage is unavailable, then retries", () => {
@@ -108,9 +161,7 @@ it("pauses keys without destroying legacy data when storage is unavailable, then
       .readFileSync(path.join(dir, "ai-settings.json"), "utf8")
       .includes("dummy-pending-secret")
   ).toBe(true);
-  expect(fs.statSync(path.join(dir, "ai-settings.json")).mode & 0o777).toBe(
-    0o600
-  );
+  expectPrivateFile(path.join(dir, "ai-settings.json"));
   available = true;
   expect(vault().get("openai")).toBe("dummy-pending-secret");
 });
@@ -187,11 +238,16 @@ it("leaves a symlinked vault directory untouched and retains keys if source clea
   try {
     fs.writeFileSync(path.join(external, "vault.bin"), "untouched");
     fs.chmodSync(path.join(external, "vault.bin"), 0o666);
-    fs.symlinkSync(external, path.join(dir, "provider-credentials"));
+    const originalAcl = process.platform === "win32" ? windowsFixtureAcl(path.join(external, "vault.bin")).sddl : undefined;
+    fs.symlinkSync(external, path.join(dir, "provider-credentials"), process.platform === "win32" ? "junction" : "dir");
+    expect(fs.lstatSync(path.join(dir, "provider-credentials")).isSymbolicLink()).toBe(true);
     expect(vault().snapshot().state).toBe("unreadable");
-    expect(fs.statSync(path.join(external, "vault.bin")).mode & 0o777).toBe(
-      0o666
-    );
+    expect(fs.readFileSync(path.join(external, "vault.bin"), "utf8")).toBe("untouched");
+    if (process.platform === "win32") {
+      expect(windowsFixtureAcl(path.join(external, "vault.bin")).sddl).toBe(originalAcl);
+    } else {
+      expect(fs.statSync(path.join(external, "vault.bin")).mode & 0o777).toBe(0o666);
+    }
     fs.unlinkSync(path.join(dir, "provider-credentials"));
   } finally {
     fs.rmSync(external, { recursive: true });

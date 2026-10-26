@@ -2,6 +2,10 @@
 
 # Account and Authentication
 
+## v0.82.3-ja.2
+
+Production authentication has not been repeated on this binary. Existing policies for nonce-protected localhost callbacks, encrypted storage and ordinary sign-out are retained, but source/contract-test checks differ from live sign-in in the ordinary product. Earlier authentication results remain historical results for those versions. Google sign-in, special recovery, server-side session revocation and cross-user NTFS effective access remain unverified.
+
 ## v0.82.3-ja.1
 
 Authentication, NSIS installation, upgrade and removal were not repeated on the v0.82.3-ja.1 Windows build. The product changes did not alter authentication or installer inputs, but that is not a substitute for runtime checks. Authentication results from earlier products apply only to those versions. Google sign-in, special recovery, server-side session revocation and effective NTFS access by another user also remain unverified. The procedures and storage policies below describe the implementation.
@@ -27,7 +31,7 @@ The callback is `http://127.0.0.1:<port>/auth/callback`. It has an instance-spec
 
 On Windows, credentials are stored encrypted, and the implementation reflects the signed-in state only after storage succeeds. If encrypted storage fails, it reports an error rather than falling back to plaintext storage. To avoid races between local credentials and logout state, stale asynchronous update responses are prevented from restoring the state.
 
-Live authentication was checked for v0.82.1-ja.1, but has not been repeated for v0.82.3-ja.1. Earlier versions retain their own verification scope in their release notes.
+Live authentication was checked for v0.82.1-ja.1, but has not been repeated for v0.82.3-ja.1 or v0.82.3-ja.2. Earlier versions retain their own verification scope in their release notes.
 
 Removing local information during logout is different from invalidating service-side sessions, covering every token-refresh path, or deleting an account. Service-side invalidation is not guaranteed. Google authentication and some Stytch recovery paths are unverified.
 

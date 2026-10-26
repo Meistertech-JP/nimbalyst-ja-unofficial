@@ -2,6 +2,10 @@
 
 # Windowsへの導入と更新
 
+## v0.82.3-ja.2
+
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)から `nimbalyst-0.82.3-ja.2-windows-x64-setup.exe`、`nimbalyst-0.82.3-ja.2-windows-x64-portable.zip`、対応ソースZIPと `SHA256SUMS.txt` を取得します。未署名の通常正式版です。修正した同梱ガイドを含む新しいパッケージであり、旧版を改名したものではありません。実機検証と未検証事項は[テストと品質検証](Testing-and-Verification)を参照してください。以下の旧版結果は履歴として保持します。
+
 ## v0.82.3-ja.1
 
 v0.82.3-ja.1は未署名のWindows x64版です。NSISとポータブルZIPを製品修正から再生成し、ペイロードを照合しました。この版のインストール・更新・削除は実施していません。以前の製品での操作記録は、この版の検証結果ではありません。配布物は[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)を参照してください。以下はWindows配布物の一般的な手順です。
@@ -16,7 +20,7 @@ v0.81.7-ja.3からの更新で英語設定、プロジェクト、テスト文�
 
 ## ダウンロードと照合
 
-[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)の添付一覧から、NSISインストーラー、WindowsポータブルZIP、対応ソースZIP、SHA256SUMS.txtを取得してください。
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)の添付一覧から、NSISインストーラー、WindowsポータブルZIP、対応ソースZIP、SHA256SUMS.txtを取得してください。
 
 ファイル名とハッシュは同じReleaseの添付一覧とSHA256SUMS.txtで照合します。
 

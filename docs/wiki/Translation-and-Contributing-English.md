@@ -26,6 +26,6 @@ Do not replace brand names, model IDs, API identifiers, protocol values, file pa
 
 Follow [Building from Source](Building-from-Source-English) and run type checks, i18n resource tests, and regression tests for the changed area. Exercise screen changes in Japanese and English, checking language switching, long labels, modals, and tooltips. Measure bundle size when changing initial imports.
 
-Describe the purpose, scope, commands run, results, and unverified areas in the pull request. The upstream-derived [CONTRIBUTING.md](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.1-ja.1/CONTRIBUTING.md) contains guidance on the DCO, licensing, and dependency updates. Do not interpret it as establishing upstream maintainers or authority to issue signed official releases within this unofficial fork. Do not attach private keys, credentials, or personal profiles.
+Describe the purpose, scope, commands run, results, and unverified areas in the pull request. The upstream-derived [CONTRIBUTING.md](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.3-ja.2/CONTRIBUTING.md) contains guidance on the DCO, licensing, and dependency updates. Do not interpret it as establishing upstream maintainers or authority to issue signed official releases within this unofficial fork. Do not attach private keys, credentials, or personal profiles.
 
 [Localization Architecture](Localization-Architecture-English), [Testing and Verification](Testing-and-Verification-English), and [Following Upstream](Following-Upstream-English).

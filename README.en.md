@@ -8,15 +8,15 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 ## Availability
 
-v0.82.3-ja.1 is an unsigned Windows x64 edition. The NSIS installer, portable ZIP, matching source and SHA256SUMS.txt are listed in the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1).
+v0.82.3-ja.2 is an unsigned Windows x64 edition. Download the NSIS installer, portable ZIP, matching source and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2).
 
-The source for the published assets is the `v0.82.3-ja.1` tag. `main` is the development head with publication-documentation and validation corrections, including changes to bundled guides; it is not a file-for-file match for the existing Windows packages. No new binary has been released for these corrections.
+The source corresponding to these assets is tagged `v0.82.3-ja.2`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. Older tags, releases and distributions are retained.
 
 The source is based on upstream v0.82.3 at `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. Features and fixes differ from the latest official release. Upstream distributed v0.82.3 as a prerelease.
 
 ## Changes
 
-This edition incorporates legacy-encryption team recovery, Tracker recovery-conflict guidance, concurrent Codex file attribution, bounded CPU-profile retention, image paste, and fixes to Wiki, transcripts, and the development server.
+This revision excludes pre-publication working materials from the distributed source, corrects user and developer documentation, and rebuilds the Windows packages with 16 updated Extension SDK and Plugin guides. Publication-content checks are strengthened. Existing localization and product features based on upstream v0.82.3 are retained. See the [release notes](RELEASE_NOTES_v0.82.3-ja.2.md).
 
 **Team recovery requires the updated sync server.** Other editing clients must also support recovery. Production-organization recovery and the complete procedure across independent clients have not been verified. Check server compatibility and the intended recovery target before attempting recovery of an existing organization.
 
@@ -30,13 +30,11 @@ Updates are manual through this repository's Releases. Official automatic update
 
 ## Windows distribution and validation
 
-The Windows packages were rebuilt from product-fix commit `1c1d54a851c340a8f0f9afc304379882a7319fa1`. Their NSIS and portable ZIP payloads, ASAR, native ABI, Workers and all 1,913 ZIP files were checked. In the ordinary product, English settings, menus, Project Manager and Workspace views were observed, and English remained selected after restart. With the display-language setting set to System, Japanese appeared in the Renderer and native menus and remained after a normal Ctrl+Q shutdown and restart. Persistence of an explicit `ja` setting has not been checked. The auxiliary-error warning passed English and Japanese DOM tests, but its display in the ordinary product has not been observed. Authentication, NSIS installation, upgrade and removal were not exercised on this build; relevant authentication and installer source inputs were unchanged, which does not replace those runtime checks.
-
-Qualification commit `4a642e5c95d174a9df8deaf8712ca8560b738d11` passed Linux run `40277550288`: 2,340 test files passed, seven skipped, zero failed (2,347 total); 19,296 tests passed, 30 skipped, zero failed (19,326 total). iOS run `40277550251` completed with 528 executed, 522 passed, six skipped and zero failed. The publication commit changes documents only; its product inputs are compared with the qualified source.
+The [verification record](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) distinguishes native observations, automated tests and unverified areas for each version. Observations from earlier binaries are not treated as re-execution on a new distribution. Coverage does not extend to every screen, DPI setting or authentication path.
 
 Release assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
 
-After the product fix, 51 Provider/Protocol tests and 54 Main/parser/UI/i18n tests passed; 38 workspace typechecks and seven existing bundle budgets also passed. These test results do not verify authentication or NSIS installation in the ordinary product. See [validation](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) and [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
+Google sign-in, special recovery paths, server-side session revocation, cross-user NTFS effective access, external screen readers and complete dynamic-translation coverage remain unverified. EPERM during Windows symlink-fixture setup leaves untested behavior; Linux success is recorded separately. See [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
 
 ## Build from source
 

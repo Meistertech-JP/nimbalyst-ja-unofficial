@@ -8,7 +8,7 @@ Nimbalystは、ファイルの編集、AIエージェントとの作業、セッ
 
 ## 入手する版
 
-[v0.82.3-ja.1のRelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)から取得します。Windows x64向けの未署名版です。インストーラーはWindowsのアプリ一覧とショートカットを使う配置、ポータブルZIPは展開したディレクトリから実行する配置です。ZIP版も設定をEXEの横に保存するわけではありません。提供ファイルと検証範囲はReleaseノートを参照してください。
+[v0.82.3-ja.2のRelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)から取得します。Windows x64向けの未署名版です。インストーラーはWindowsのアプリ一覧とショートカットを使う配置、ポータブルZIPは展開したディレクトリから実行する配置です。ZIP版も設定をEXEの横に保存するわけではありません。提供ファイルと検証範囲はReleaseノートを参照してください。
 
 [Windowsへの導入と更新](Windows-Installation)で、取得するファイル名、チェックサム照合、配置方法を確認してください。旧v0.81.7-ja.2はソース限定Prereleaseで、現在のWindows配布物とは異なります。
 

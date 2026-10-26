@@ -2,7 +2,7 @@
 
 # Following Upstream Nimbalyst
 
-v0.82.3-ja.1 is based on fixed upstream v0.82.3 commit [`84dcc00f3cd0abbb36eafc6bfad9389f960076db`](https://github.com/nimbalyst/nimbalyst/commit/84dcc00f3cd0abbb36eafc6bfad9389f960076db). The previous v0.82.1-ja.1 baseline was `583ae0244dae266667be579733d6c571fd74e037`. Integration preserved both histories and incorporated 17 commits affecting 144 files. The fork does not automatically track the latest upstream main.
+v0.82.3-ja.2 is based on fixed upstream v0.82.3 commit [`84dcc00f3cd0abbb36eafc6bfad9389f960076db`](https://github.com/nimbalyst/nimbalyst/commit/84dcc00f3cd0abbb36eafc6bfad9389f960076db). In v0.82.3-ja.1, integration from the v0.82.1-ja.1 baseline `583ae0244dae266667be579733d6c571fd74e037` preserved both histories and incorporated 17 commits affecting 144 files. ja.2 corrects documentation and distribution contents without integrating further upstream commits. The fork does not automatically track the latest upstream main.
 
 ## Establishing a fixed starting point
 
