@@ -61,7 +61,12 @@ final class IndexIngestionTests: XCTestCase {
         sync.onSessionCreated = { completedRequestId, id in
             XCTAssertEqual(completedRequestId, requestId)
             XCTAssertEqual(id, "created")
-            XCTAssertNotNil(try db.session(byId: id), "Readiness must expose a locally readable row")
+            do {
+                let session = try db.session(byId: id)
+                XCTAssertNotNil(session, "Readiness must expose a locally readable row")
+            } catch {
+                XCTFail("Reading the ready session failed: \(error)")
+            }
             opened.append(id)
             ready.fulfill()
         }
