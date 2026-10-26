@@ -55,8 +55,16 @@ final class IndexIngestionTests: XCTestCase {
         let db = try DatabaseManager()
         let sync = manager(db)
         var opened: [String] = []
-        sync.onSessionCreated = { _, id in opened.append(id) }
         let requestId = try sync.createSession(projectId: projectPath)
+        let ready = expectation(description: "Committed row makes the requested session ready")
+        ready.assertForOverFulfill = true
+        sync.onSessionCreated = { completedRequestId, id in
+            XCTAssertEqual(completedRequestId, requestId)
+            XCTAssertEqual(id, "created")
+            XCTAssertNotNil(try db.session(byId: id), "Readiness must expose a locally readable row")
+            opened.append(id)
+            ready.fulfill()
+        }
         func response(_ request: String, _ session: String) throws -> Data {
             try JSONSerialization.data(withJSONObject: [
                 "type": "createSessionResponseBroadcast",
@@ -67,7 +75,11 @@ final class IndexIngestionTests: XCTestCase {
         XCTAssertTrue(opened.isEmpty, "Another device must not steal navigation")
         await sync.receiveIndexMessage(try response(requestId, "created"))
         XCTAssertTrue(opened.isEmpty, "A creation acknowledgement is not yet a locally resolvable session")
-        _ = try await receive(sync, sessions: [try entry("created", updatedAt: 10)])
+        let state = try await receive(sync, sessions: [try entry("created", updatedAt: 10)])
+        XCTAssertEqual(state, .loaded)
+        XCTAssertNotNil(try db.session(byId: "created"))
+        // Index completion and GRDB's readiness observation are separate deliveries.
+        await fulfillment(of: [ready], timeout: 3)
         XCTAssertEqual(opened, ["created"])
         await sync.receiveIndexMessage(try response(requestId, "created"))
         XCTAssertEqual(opened, ["created"], "A replay must not reopen the session")
