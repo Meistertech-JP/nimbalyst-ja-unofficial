@@ -4,7 +4,7 @@
 
 ## 最新の判定と残作業（2026-10-26）
 
-目標変更により、R15は開発成果と保全・清掃を確定して終了し、正式公開判断はR16 Release Qualificationへ分離する。新機能開発・本家追加追従・READYへの引き上げは今回行わない。Development Statusは保全完了後にCOMPLETE、Release ReadinessはCONDITIONAL、PublicationはNOT AUTHORIZEDとする。復旧フォーム実機表示などの未確認はR16へ明示的に移管し、未検証の免除や重大な既知不具合の隠蔽には使わない。最終の保全・清掃・Git状態はR15_FINALIZATION_REPORT.md、具体的な公開前条件はR15_R16_HANDOFF.mdを正とする。以降の旧目標によるREADY待ち記録は履歴である。
+目標変更により、R15は開発成果と保全・清掃を確定して終了し、正式公開判断はR16 Release Qualificationへ分離する。新機能開発・本家追加追従・READYへの引き上げは今回行わない。清掃前の保全113件を独立再ハッシュしてSEALEDを確認し、Development StatusはCOMPLETE、Release ReadinessはCONDITIONAL、PublicationはNOT AUTHORIZEDとした。復旧フォーム実機表示などの未確認はR16へ明示的に移管し、未検証の免除や重大な既知不具合の隠蔽には使わない。最終の保全・清掃・Git状態はR15_FINALIZATION_REPORT.md、具体的な公開前条件はR15_R16_HANDOFF.mdを正とする。以降の旧目標によるREADY待ち記録は履歴である。
 
 ### 現在の要件対応表
 

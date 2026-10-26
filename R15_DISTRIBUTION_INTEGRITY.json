@@ -1,9 +1,9 @@
 {
   "status": "CONDITIONAL",
-  "developmentStatus": "FINALIZING",
+  "developmentStatus": "COMPLETE",
   "releaseReadiness": "CONDITIONAL",
   "publicationAuthorized": false,
-  "preservationStatus": "PENDING",
+  "preservationStatus": "SEALED",
   "finalPreservationIndex": "R15_PRESERVATION_MANIFEST.json",
   "hostedCheckpoint": {"commit":"f0c7b7929f18f57c6efac96f61154cfe442b4c74","linuxRun":40249364701,"linuxStatus":"PASS","iosRun":40249364731,"iosStatus":"PASS","productSourceCovered":true},
   "reportSourceCheckpoint": {"commit":"eabb8c5d6e0d951c77c79f2d5ab4439e056512ef","tree":"4e7353a7054adb448974fcfd0e766e72de2a14ba","files":9715,"sha256":"03fd0051618304045f1d1943a43cccbc11fe2a182adeaa0392f69ee97ebb4069","evidence":"tmp/r15-evidence/source-reports-grid-controls-eabb8c5d6/RESULT.json","scope":"Hosted-tested source checkpoint. Later result-report edits require a separate externally checksummed source archive; Windows product bytes are unchanged."},
@@ -76,8 +76,8 @@
     "latestAuthenticationEvidence": "tmp/r15-evidence/auth-scheme-fixed-logout-restart.json"
   },
   "remaining": [
-    "Final source commit and source ZIP blob/hash/CRC/restore verification",
-    "Final SHA256SUMS and preservation/cleanup audit"
+    "R16 publication qualification and immediately-prepublication artifact rehash; no publication is currently authorized",
+    "Exact final documentation commit/source-ZIP metadata and independent full-file verification receipt are external to avoid self-reference"
   ],
   "published": false
 }
