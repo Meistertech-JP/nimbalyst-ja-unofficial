@@ -7,7 +7,8 @@
   "latestSourceFix": "7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7",
   "latestWindowsBuild": {"commit":"7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7","status":"NSIS_ZIP_PASS","evidence":"tmp/r15-evidence/windows-build-app-schemes.log","asar":"PASS: 1021 entries, 341 output files and four legal files matched","zip":"PASS: CRC, path safety and 1913 restored file hashes at checkpoint 8","nativeVerification":"PASS_WITH_BOUNDED_SCOPE: image copy/paste/Undo/Redo, local authentication cycle, both-language restarts and fresh/upgrade NSIS lifecycles","nativeEvidence":"tmp/r15-evidence/image-copy-native-fixed-7d5407c51.json","authEvidence":"tmp/r15-evidence/auth-scheme-fixed-logout-restart.json","finalQualified":false},
   "latestProductCommit": "7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7",
-  "latestSourceCommit": "f0c7b7929f18f57c6efac96f61154cfe442b4c74",
+  "hostedSourceCommit": "f0c7b7929f18f57c6efac96f61154cfe442b4c74",
+  "finalReportSource": "The external PRESERVATION_MANIFEST.json identifies the exact report-only commit/tree and source ZIP without self-referential hashing",
   "latestUnverifiedDelta": "Latest-product upgrade verification passed. Final report/source archive preservation remains incomplete. No new product-source edits are pending.",
   "pendingProductChanges": "No product-source edits after 7d5407c51. Owner-approved three-fixture exception was used once to push f0c7b7929 to the R15 development branch; main, tags and Releases were unchanged. Linux scripts and sandbox passed without exceptions. New report edits are not covered by that one-use approval.",
   "checkpointScope": "Latest ZIP8 image, authentication/logout and language restart checks, latest NSIS fresh/upgrade lifecycles and hosted f0c7b7929 Linux/iOS cover product 7d5407c51. Earlier checkpoints remain separately preserved.",
@@ -42,11 +43,10 @@
     "finalUpdatedCandidateUninstall":"PASS on latest 7d5407c51 product; 274 isolated profile/document files unchanged, target and shortcuts removed, eight existing default association keys unchanged. Evidence: nsis-upgrade8 and associations-final-readback-nsis-old-upgrade8.json"
   },
   "serverTeamRecovery":"Synthetic local tests only; production recovery and updated-server end-to-end compatibility unverified",
+  "latestNativeCodex": {"product":"7d5407c51","manualSends":1,"mainResponse":"PASS: R15 最終Codex検証OK in 9.8s","automaticMetadataFollowup":"Provider-reported capacity failure after automatic session-metadata reminder; not a full-flow PASS","manualResends":0,"evidence":"tmp/r15-evidence/final-codex-ordinary-zip8.json"},
+  "nativeRecoveryForm": {"status":"UNVERIFIED_RESOURCE_UNAVAILABLE","ownerConfirmedNoEligibleTestOrganization":true,"domTestsNotNativeProof":true,"evidence":"tmp/r15-evidence/recovery-native-resource-unavailable.json"},
   "remaining": [
-    "Final audit: observe a new Codex request on ordinary ZIP8; exact signed-in send approval requested, still unsent",
-    "Final audit: ordinary-product Japanese recovery form remains unobserved; an authenticated isolated unmigrated test organization is required, DOM unit tests are not native proof",
-    "Commit updated bilingual results and preserve their separate source ZIP/hash/restore checkpoint",
-    "Complete final candidate preservation manifest; R14 197-file readback and verified old-restore cleanup completed"
+    "Ordinary-product Japanese recovery form remains unobserved; owner confirmed no eligible isolated unmigrated test organization. Preserve this verification limitation; do not claim READY without resolving the native-evidence requirement or an explicit scope decision"
   ],
   "publication": {"performed":false,"mainChanged":false,"tagsChanged":false,"releaseCreated":false,"publicWikiChanged":false}
 }

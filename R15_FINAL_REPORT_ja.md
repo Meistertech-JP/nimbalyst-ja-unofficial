@@ -1,8 +1,38 @@
 # R15 最終報告書（検証中・未確定）
 
-正式公開は行っていない。本書は最終成果物の確定前の監査用原稿であり、READYの判定ではない。新しい製品コードへの確認を終えるまで、過去の候補の成功を最新候補へ自動的に適用しない。
+正式公開は行っていない。判定はCONDITIONALで、READYではない。最終の文書コミット・Git tree・ソースZIP SHA-256と保全物は、自己参照を避けて外部PRESERVATION_MANIFEST.jsonとSHA256SUMS.txtで対応付ける。以降の過去記録は履歴として残し、最新の確認範囲へ無条件に流用しない。
 
 ## 最新の判定と残作業（2026-10-26）
+
+### 現在の要件対応表
+
+| 項目 | 確認結果 |
+|---|---|
+| 1–2. 最終コミット・tree | 外部PRESERVATION_MANIFEST.jsonで本書を含む正確な文書コミットとtreeを固定。製品ソースは7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7、tree 36b4d681e3a5b959addfaae18bd88e929c589fad |
+| 3. 固定upstream | 84dcc00f3cd0abbb36eafc6bfad9389f960076dbを維持。後続版への追従なし |
+| 4–6. 統合・差分・競合 | 17コミット・144ファイルを監査、重複24・競合10ファイルを個別解決。e9b53cf59の両親は公開版b0432ce859と固定upstream、双方の祖先関係を確認 |
+| 7. 翻訳追加 | 組織復旧・停止理由、Tracker競合・固定列・操作と同期状態、Codex帰属、画像・添付案内・時刻表示を既存基盤へ接続 |
+| 8. 翻訳キー | 英日各27名前空間・14,794キー。キー差分・空訳・補間差・解決済み欠落0。動的672・scope未確定412と全UI保証は区別 |
+| 9. 型 | 最新製品を含む38ワークスペースPASS。app-schemes-typecheck38.log／通常pushログとf0c7b7929 hosted結果 |
+| 10. 容量 | 既存7エントリPASS、上限不変。docs-ui 89,138/92,000、editor 369,922/370,000、trackers-ui 198,511/200,000 gzip bytes。editor余裕78 bytes |
+| 11. Linux | f0c7b7929: Test Files 2,340 PASS／0 FAIL／7 SKIP（2,347）、Tests 19,285 PASS／0 FAIL／30 SKIP（19,315） |
+| 12. iOS | f0c7b7929: 522 PASS／0 FAIL／6 SKIP（528）。SQL検索計画回帰と既存性能条件PASS、前段2件の二重加算なし。物理端末未検証 |
+| 13. Windows | 最新ZIP8で起動・終了、日英再起動、画像copy/paste/Undo/Redo、認証一連とCodex主要求を確認。Codex自動後続要求の容量不足は別記。復旧フォーム実機表示は未確認 |
+| 14. DB | 合成DBの旧スキーマ・行保持・rollback/retry・PGLite変換に加え、最新NSIS更新でmigration55を確認。実製品DBの外部接続なし |
+| 15. チーム復旧 | 本家実装とDOM／ローカル試験を保持。更新サーバー必須、本番復旧・完全E2E・通常製品フォーム表示は未検証 |
+| 16. 本番認証 | 最新ZIP8で本人メール認証・暗号化保存・再起動復元・本人ログアウト・ファイル消失・未認証再起動を確認。サーバー失効とは別 |
+| 17. 更新互換性 | 最新NSISで公開0.82.1-ja.1→0.82.3-ja.1。英語・文書全文/hash・Tracker 1件保持。削除後274ファイルと既定関連付け8項目が不変。旧認証状態付き更新は未検証 |
+| 18. 配布物 | NSIS 5369e55bbd1eb61cfc9756bfc2d6d9422da44544fa433a28495fbccef056d068、ZIP 4a784689a04f43c0a933a3cb077240ca3a9d9523d0d81bae985034c11d13ae12。最終文書ソースZIPは外部SHA256SUMS.txtで固定 |
+| 19. 公開原稿 | 日英READMEとWiki14ファイル・相対リンク42件PASS、日英Release Notes。公開main・Wikiは未変更 |
+| 20. Windows既知失敗 | CLI fixture1・sandbox fixture2のsymlink EPERMのみを承認範囲で区別。テストを維持し、Linuxではscripts／sandbox例外なしPASS。Windows拒否動作の実証とは扱わない |
+| 21. 限界 | 全動的翻訳・全DPI・外部スクリーンリーダー・WSL全経路・本番組織復旧・Google/特殊認証・サーバー失効・別ユーザーNTFS実効アクセスは未検証 |
+| 22. 判定 | CONDITIONAL。復旧フォームの通常製品実表示を証明する隔離テスト組織がなく、READYへ読み替えない。正式公開・新規pushなし |
+
+独立コード確認では、Codex初回応答後の命名リマインダーは既存のsendSessionNamingReminder経路で、providerファイルは固定upstreamから差分0。汎用の日本語エラーと展開した生の技術詳細は現在の表示設計と一致した。容量不足の根拠はUI上の応答文に限定し、サーバー内部状態の確認とは扱わない。`tmp/r15-evidence/codex-capacity-independent-source-review.json`。
+
+所有者が最小Codex要求1回の送信を承認し、最新通常ZIP8で実送信した。実応答「R15 最終Codex検証OK」と9.8秒の完了を確認。続くアプリ生成のセッション情報リマインダーは「Selected model is at capacity. Please try a different model.」で失敗した。要求の成功と後続のプロバイダー容量不足は分け、全フローPASSや日本語版のソース回帰とは断定しない。追加送信・再試行は0。`tmp/r15-evidence/final-codex-ordinary-zip8.json`。
+
+所有者から旧暗号化方式の隔離テスト組織がないとの回答を得た。復旧フォームの通常製品での日本語表示は未確認のままで、DOM試験の成功を実機PASSへ読み替えない。本番組織の復旧や状態注入は行わない。`tmp/r15-evidence/recovery-native-resource-unavailable.json`。この要件は外部資源または明示的な範囲判断が必要なためCONDITIONALを維持する。以下の承認待ち記録は回答前の履歴である。
 
 最終独立監査では、通常ZIP8の新規Codex要求と復旧フォームの日本語実表示が未確認である点を抽出した。前者は最小プロンプトを用意したが、送信は自動審査で拒否され、本人へこの1回の送信承認を依頼中。別経路で送信していない。後者は選択した組織が旧暗号化方式と判定されたときだけ表示され、現在の専用プロファイルは未認証。隔離された該当テスト組織がなく、DOM単体試験を通常製品の表示確認とは扱わない。復旧処理や状態注入はしていない。`tmp/r15-evidence/final-native-coverage-gap.json`。この2点と最終文書・保全を残すため、現時点のCONDITIONALを維持する。
 

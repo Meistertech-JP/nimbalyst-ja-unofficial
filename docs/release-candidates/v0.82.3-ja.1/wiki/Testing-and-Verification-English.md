@@ -6,6 +6,8 @@ This covers the v0.82.3-ja.1 candidate. The following is bounded evidence, not a
 
 ## Current Windows candidate
 
+A new Codex request in ordinary ZIP8 returned the expected fixed response and completed in 9.8 seconds. A subsequent automatic session-metadata reminder failed with a "Selected model is at capacity" response. The successful request and provider-reported capacity failure are recorded separately; no manual resend was made. Recovery-form localization is covered by DOM unit tests only: no eligible isolated legacy-encryption organization was available for observing the ordinary product's Japanese form.
+
 Current product source is `7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7`. All 1,913 ZIP files, CRC and ASAR checks passed. The extracted product passed image copy, AI-input attachment preserving the draft, document paste with Undo/Redo, production email sign-in, account restoration, signed-out persistence and restarts in both display languages.
 
 The same product's NSIS passed fresh installation, launch and removal. Upgrade from published v0.82.1-ja.1 used a separate profile and retained English, the complete Japanese/English document and its hash, and one Tracker item, with migration 55 applied. Uninstallation retained all 274 dedicated data-file hashes and eight existing default-association keys. This was not an external full-row comparison of the product database; upgrading an authenticated old profile remains unverified. Final source-ZIP verification is in progress.
