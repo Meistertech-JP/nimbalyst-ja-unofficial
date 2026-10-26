@@ -8,20 +8,14 @@ Tools for iOS development including XcodeGen project generation, simulator manag
 
 The extension provides the following tools that Claude can use:
 
-**XcodeGen:**
-- `ios-dev.validate-project-yml` - Validate XcodeGen configuration
-- `ios-dev.generate-xcode-project` - Generate Xcode project from YAML
+| Tool | `action` values | Purpose |
+| --- | --- | --- |
+| `ios-dev.xcodegen` | `check-install`, `validate`, `generate`, `get-template` | XcodeGen command guidance and project template |
+| `ios-dev.simulator` | `list`, `boot`, `shutdown` | Simulator management command guidance; `deviceId` selects a device |
+| `ios-dev.build` | `schemes`, `build`, `clean` | xcodebuild command guidance; `scheme` is required for `build` |
+| `ios-dev.app` | `install`, `launch`, `logs` | Simulator app command guidance; install uses `deviceId`/`appPath`, launch uses `deviceId`/`bundleId` |
 
-**Simulator Management:**
-- `ios-dev.list-simulators` - List available iOS simulators
-- `ios-dev.launch-simulator` - Launch a specific simulator
-- `ios-dev.get-simulator-logs` - Retrieve simulator console logs
-
-**Building & Deployment:**
-- `ios-dev.build-app` - Build iOS app with xcodebuild
-- `ios-dev.install-app` - Install app on simulator
-- `ios-dev.launch-app` - Launch installed app
-- `ios-dev.get-simulator-logs` - View app console output
+These tools return instructions for the agent to execute; calling them does not itself run Xcode or simulator commands. The `validate` action currently returns `xcodegen generate --spec project.yml`, which can write project output and is not a read-only validation command. The `logs` action streams logs rather than accepting a line-count parameter.
 
 ### Claude Commands
 
@@ -111,7 +105,7 @@ The extension uses:
 - **Claude Commands** for guided workflows
 - **File Icons** for better visual organization
 
-All tools execute shell commands via Node.js `child_process.execSync()` to interact with Xcode command-line tools.
+The tool handlers in `src/index.tsx` return shell-command instructions or template text. The agent executes approved commands through its shell tool on macOS. This extension does not provide Xcode or an iOS simulator on Windows.
 
 ## License
 

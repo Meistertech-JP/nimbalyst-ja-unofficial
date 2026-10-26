@@ -5,8 +5,8 @@
 Run the native iOS test population in the application-hosted scheme, not the
 Swift package's hostless simulator xctest process. The latter reports that it
 has no UIApplication and cannot receive events; the first PagesWebView test
-can time out before WebKit starts. This reproduced on pinned upstream,
-the published Japanese release, and the R13 candidate with unchanged Swift code.
+can time out before WebKit starts. Use the application-hosted scheme below
+to provide the UIApplication lifecycle required by these WebKit tests.
 
 ```bash
 cd packages/ios/NimbalystNativeTestHost
@@ -35,10 +35,9 @@ Each tested controller's actual web view is attached to that window, and its
 existing teardown removes it. The bootstrap view stays alive for the suite.
 
 This verifies bridge/navigation behavior with WebKit prepared, not product
-cold-start performance. The three-source comparison applies the identical
-bootstrap helper and Pages harness to each fixed product source, preserving
-all seven behavior bodies, their origin/nonce checks, and leave-race assertions.
-Original baseline test files and prior failing run logs remain separate evidence.
+cold-start performance. The bootstrap helper prepares WebKit without replacing
+the Pages behavior tests, including their origin/nonce checks and leave-race
+assertions. A prepared test host is not evidence of product startup acceptance.
 
 This document describes the automated testing strategy for the iOS transcript integration.
 

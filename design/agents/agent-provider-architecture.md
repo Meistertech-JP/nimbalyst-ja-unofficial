@@ -21,7 +21,7 @@ planStatus:
 
 This document is a reference for implementing a new **agent provider** in Nimbalyst. It is the architectural counterpart to `docs/AI_PROVIDER_TYPES.md` (which is end-user / product oriented) and walks through every seam a new agent has to fit through: session start and resume, prompt handling, transcript output, tool calling, MCP configuration, and file-edit tracking.
 
-A companion document, [`agent-providers-as-extensions.md`](./agent-providers-as-extensions.md), explores how the same surfaces could one day be exposed to extensions.
+A historical companion design, `agent-providers-as-extensions.md`, explored how the same surfaces could one day be exposed to extensions. That document is not included in this checkout.
 
 ## 1. Two-layer abstraction
 
@@ -232,7 +232,7 @@ Sources, in priority order (later wins):
 1. **Built-in Nimbalyst servers** (HTTP/SSE on localhost, ports injected into the provider at init).
 2. **User config** at `~/.config/claude/mcp.json`.
 3. **Workspace config** at `<workspace>/.mcp.json`.
-4. **Extension plugins** loaded via `PluginLoader` (`packages/runtime/src/ai/server/mcp/PluginLoader.ts`) — currently used by the Claude SDK's plugin system; see [`design/Extensions/claude-sdk-plugin-integration.md`](../Extensions/claude-sdk-plugin-integration.md).
+4. **Extension plugins** loaded via `PluginLoader` (`packages/runtime/src/ai/server/mcp/PluginLoader.ts`) — currently used by the Claude SDK's plugin system; see the historical `design/Extensions/claude-sdk-plugin-integration.md` design (not included in this checkout).
 
 Provider responsibilities:
 

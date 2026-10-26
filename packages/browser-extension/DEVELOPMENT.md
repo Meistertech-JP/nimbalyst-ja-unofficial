@@ -75,8 +75,8 @@ Test the extension on different types of web pages:
 2. Click the extension icon
 3. Click "Clip Page"
 4. Verify:
-   - Nimbalyst opens/activates
-   - New markdown file created in `.nimbalyst/web-clippings/`
+   - The already-running desktop app receives the HTTP request
+   - New markdown file created in `nimbalyst-local/clips/`
    - Content is properly formatted
    - Images are referenced as URLs
    - Metadata (title, URL, timestamp) is in frontmatter
@@ -98,29 +98,23 @@ Test the extension on different types of web pages:
 2. Verify context menu shows:
    - "Clip page to Nimbalyst"
    - "Clip selection to Nimbalyst" (if text selected)
-   - "Extract with AI..."
 3. Test each option
 
-#### 4. AI Extraction
+#### 4. Desktop Connection Errors
 
-1. Navigate to a product page
-2. Click extension icon
-3. Click "Extract with AI"
-4. Enter prompt: "Extract product name, price, and main features"
-5. Click "Extract"
-6. Verify:
-   - AI prompt is included in clip
-   - Nimbalyst processes with AI
-   - Extracted content is formatted as requested
+1. Use an isolated desktop test workspace
+2. Clip with the desktop app running and check the response
+3. Close that test instance and repeat
+4. Verify that the popup reports a connection failure instead of opening a protocol URL
 
 #### 5. Large Content Handling
 
 1. Navigate to a very long article (>100KB)
 2. Clip the page
 3. Verify:
-   - Extension handles encoding
-   - If content >1.5MB, fallback to URL-only mode triggers
-   - Nimbalyst receives and processes correctly
+   - Extension sends a JSON body rather than a base64 protocol URL
+   - The desktop response is handled, including any server-side size limit
+   - Failure is reported rather than silently dropping content
 
 #### 6. Image Handling
 
@@ -128,9 +122,8 @@ Test the extension on different types of web pages:
 2. Clip the page
 3. Verify in Nimbalyst:
    - Images appear as markdown references
-   - Nimbalyst downloads images to `.nimbalyst/assets/`
-   - Markdown is updated with local paths
-   - Images render correctly in editor
+   - Referenced images render when their URLs are accessible
+   - Record any desktop-side image processing separately; the extension does not download images
 
 ### Testing Different Websites
 
@@ -183,11 +176,11 @@ Access different console outputs:
 - Ensure background.js is valid ES module
 - Try unloading and reloading extension
 
-#### Clipping doesn't trigger Nimbalyst
-- Verify `nimbalyst://` protocol is registered
-- Test protocol manually: open `nimbalyst://clip?url=test&title=test` in browser
-- Check that Nimbalyst app is installed
-- Look for OS-level protocol handler issues
+#### Clipping cannot connect to Nimbalyst
+- Check that the desktop app is running with the intended test workspace
+- Inspect the service worker's HTTP requests to `127.0.0.1`, ports 3456–3465, path `/clip`
+- Check the response status and error message; the first responding server can return a desktop-side error
+- Do not change `nimbalyst://` registration: clipping no longer uses that transport
 
 #### Markdown conversion issues
 - Check Turndown configuration
@@ -195,11 +188,10 @@ Access different console outputs:
 - Look for JavaScript errors in content script
 - Verify HTML structure is being parsed
 
-#### Base64 encoding errors
-- Check for special characters in content
-- Verify UTF-8 encoding is handled correctly
-- Test with different character sets
-- Look for truncation or corruption
+#### Content serialization errors
+- Inspect the JSON request body in the service worker debugger
+- Test Unicode content and compare the saved markdown with the original selection
+- Avoid recording private page content in shared logs
 
 ### Debugging Tips
 
@@ -209,22 +201,9 @@ Access different console outputs:
 4. **Storage inspection**: Check chrome.storage to verify saved data
 5. **Incremental testing**: Test each component separately before integration
 
-### Testing Protocol URLs
+### Testing the HTTP Transport
 
-You can test protocol URL generation manually:
-
-```javascript
-// In browser console
-const params = new URLSearchParams({
-  url: 'https://example.com',
-  title: 'Test Page',
-  content: btoa('# Test\n\nContent here')
-});
-const url = `nimbalyst://clip?${params.toString()}`;
-console.log(url);
-
-// Then paste the URL in browser to test
-```
+Use the popup in an isolated workspace and inspect `sendClipToNimbalyst()` in `src/background/background.js`. It posts JSON to `/clip`, starts at port 3456, and tries ten ports with a one-second request timeout. A successful response means the request was accepted; inspect the resulting file separately to verify its content. The previous base64/protocol-URL design is retained only as history in [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md).
 
 ## Build Configuration
 
@@ -268,30 +247,25 @@ Key functions:
 Responsibilities:
 - Create and manage context menus
 - Handle context menu clicks
-- Generate `nimbalyst://` protocol URLs
-- Base64 encode content
-- Handle size limits and fallbacks
+- Send JSON clips to the desktop's loopback HTTP endpoint
+- Try the configured port range and return connection/server errors
 - Route messages between components
 
 Key functions:
-- `generateClipURL()`: Create protocol URL
-- `sendClipToNimbalyst()`: Open protocol URL
-- `base64Encode()`: UTF-8 safe encoding
-- `handleClipPage()`: Process clip requests
+- `sendClipToNimbalyst()`: POST the clip and return success or an error
+- Context-menu and runtime-message listeners: collect and route clip requests
 
 ### Popup UI (popup.js/html/css)
 
 Responsibilities:
 - Display quick action buttons
 - Show current page info
-- Handle AI prompt input
 - Communicate with background script
 - Show status messages
 
 Components:
 - Clip Page button
 - Clip Selection button (enabled only with selection)
-- Extract with AI button (shows prompt input)
 - Status message area
 - Page info display
 
@@ -344,7 +318,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 - **Content size**: Monitor memory usage for large pages
 - **Image count**: Markdown with many images can be large
 - **DOM traversal**: Optimize content extraction for complex pages
-- **Encoding speed**: Base64 encoding is fast but memory-intensive
+- **Serialization**: Large JSON payloads still consume memory; test desktop response handling
 - **Background tasks**: Service worker can be terminated by Chrome, keep stateless
 
 ## Security Considerations

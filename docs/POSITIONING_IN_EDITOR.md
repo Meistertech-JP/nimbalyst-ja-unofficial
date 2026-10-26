@@ -1,5 +1,7 @@
 # Floating Element Positioning in Rexical Editor
 
+This document describes the inherited Lexical/Rexical positioning utilities. It is historical implementation context, not the pattern for new application popovers. New popovers, tooltips and menus follow the root [Floating UI rule](../CLAUDE.md#code-conventions) and use `@floating-ui/react` with `FloatingPortal`; do not introduce manual fixed-coordinate positioning by copying these examples.
+
 ## DOM Structure
 
 The editor uses a scroller container that serves as the anchor element for all floating UI:
@@ -85,7 +87,7 @@ useEffect(() => {
 }, [anchorElem, editor, $updatePosition]);
 ```
 
-## Adding New Floating Elements
+## Historical Floating-Element Integration
 
 When creating new floating UI:
 

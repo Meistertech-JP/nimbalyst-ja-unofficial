@@ -4,6 +4,8 @@
 
 This document tracks the status of DiffPlugin reliability testing and telemetry infrastructure added as part of the diff-plugin-reliability.md plan.
 
+This is inherited historical test/design documentation, not the current unofficial release's acceptance report. The dated triage, earlier baseline, and planned work below describe different points in development. Keep their historical results separate from a newly executed test run. Older `packages/rexical` paths name the former package layout; the current sources are under `packages/runtime/src/editor/plugins/DiffPlugin`.
+
 ## Test Status (as of 2026-04-29 triage)
 
 ### Unit Tests
@@ -36,7 +38,7 @@ None of the skipped tests block the current Lexical Diff System Investigation an
 
 ### E2E Diff Reliability Tests
 
-**Location**: `packages/electron/e2e/ai/diff-reliability.spec.ts`
+**Historical location**: `packages/electron/e2e/ai/diff-reliability.spec.ts`. Current diff E2E coverage includes `packages/electron/e2e/ai/diff.spec.ts` and `diff-visual.spec.ts`; the inventory below describes the earlier suite, not a current test count.
 
 **Test Suites**:
 
@@ -63,12 +65,12 @@ None of the skipped tests block the current Lexical Diff System Investigation an
 
 **Usage**:
 ```bash
-# Run all diff reliability tests
+# Run the current diff spec (the suite inventory above is historical)
 cd packages/electron
-pnpm exec playwright test e2e/ai/diff-reliability.spec.ts
+pnpm exec playwright test e2e/ai/diff.spec.ts
 
-# Run specific test suite
-pnpm exec playwright test e2e/ai/diff-reliability.spec.ts -g "Complex Structures"
+# List that spec's current test names before selecting a case
+pnpm exec playwright test e2e/ai/diff.spec.ts --list
 ```
 
 ### Telemetry System
@@ -185,7 +187,7 @@ Based on the diff-plugin-reliability.md plan:
 
 ## Metrics Baseline
 
-**Current State**:
+**Earlier baseline retained from the original plan (not the later 2026-04-29 triage)**:
 - Success rate: 82% (392/476 tests)
 - Critical failures: Table operations, List formatting
 - Performance: Not yet measured systematically
@@ -199,19 +201,14 @@ Based on the diff-plugin-reliability.md plan:
 ## Running Tests
 
 ```bash
-# Run all DiffPlugin unit tests
-cd packages/rexical
-pnpm exec vitest run src/plugins/DiffPlugin/__tests__
+# From the repository root, run the current DiffPlugin unit tests
+pnpm exec vitest run packages/runtime/src/editor/plugins/DiffPlugin/__tests__
 
-# Run specific test file
-pnpm exec vitest run src/plugins/DiffPlugin/__tests__/unit/TreeMatcher.test.ts
-
-# Run E2E diff reliability tests
-cd packages/electron
-pnpm exec playwright test e2e/ai/diff-reliability.spec.ts
+# Run one existing diff E2E spec using the isolated-profile setup
+pnpm --dir packages/electron exec playwright test e2e/ai/diff.spec.ts
 
 # Run with telemetry enabled
-DIFF_TELEMETRY=true pnpm exec vitest run src/plugins/DiffPlugin/__tests__
+DIFF_TELEMETRY=true pnpm exec vitest run packages/runtime/src/editor/plugins/DiffPlugin/__tests__
 ```
 
 ## Debugging

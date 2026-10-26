@@ -79,7 +79,7 @@ packages/android/
 - Android Studio Ladybug / AGP-compatible version for this project
 - A JDK for Gradle builds. The project targets `JavaVersion.VERSION_17` and `jvmTarget = "17"`; CI uses Temurin 17, and OpenJDK 20 also works locally. GraalVM can fail the AGP `jlink` step.
 - Android SDK + emulator tooling
-- Node.js 20+ for transcript bundle builds
+- The Node.js requirements and pinned pnpm version declared by the repository root for transcript builds
 
 ### Commands
 

@@ -1,5 +1,7 @@
 # sendMessage() Refactoring Analysis
 
+This historical upstream proposal contains illustrative, incomplete code, including placeholder helpers. It is not a drop-in implementation or the current provider contract. Phase estimates and unchecked criteria describe the original proposal. Consult [AI_PROVIDER_TYPES.md](AI_PROVIDER_TYPES.md) and the checked-out provider sources before implementing changes.
+
 ## Overview
 
 The `sendMessage()` method in ClaudeCodeProvider is ~1,700 lines and handles the entire agent interaction loop. This document proposes how to refactor it into smaller, testable helper methods without changing the architecture.

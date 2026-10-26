@@ -2,8 +2,9 @@
 
 ## Current state
 
-As of the Lexical 0.44.0 upgrade, we no longer fork the markdown importer. Both
-import and export call upstream `@lexical/markdown` directly:
+As of the Lexical 0.44.0 upgrade, the markdown importer delegates to upstream
+`@lexical/markdown`. Export uses a local enhanced traversal that mirrors upstream
+behavior while supporting the additions listed below:
 
 - `$convertFromEnhancedMarkdownString` (in `EnhancedMarkdownImport.ts`) wraps
   upstream `$convertFromMarkdownString` with frontmatter extraction, list-indent

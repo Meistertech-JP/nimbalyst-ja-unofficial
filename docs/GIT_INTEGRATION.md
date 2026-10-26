@@ -133,7 +133,7 @@ The 5-second cache TTL in GitStatusService is NOT a polling mechanism. It:
 
 ### Event-Driven Updates
 
-All git UI updates should follow this pattern:
+Git UI updates are event-driven. The following component-level subscription is a historical payload/lifecycle example, not the current registration pattern. Register IPC subscriptions in the centralized [store listeners](IPC_LISTENERS.md), update the owning atoms, and let components read those atoms. Do not add a component-level IPC listener by copying this example:
 
 ```typescript
 // Initial fetch on mount

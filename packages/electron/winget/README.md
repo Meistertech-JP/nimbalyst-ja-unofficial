@@ -2,6 +2,8 @@
 
 Source-of-truth copies of the winget-pkgs manifests for `Nimbalyst.Nimbalyst`.
 
+These inherited manifests describe the official upstream package, not Nimbalyst — Unofficial Japanese Edition. They do not register or publish this edition in winget. The installation directory and automatic-update notes below apply to the upstream channel; this edition uses a separate identity and manual updates with its automatic updater disabled. See the [Windows guide](../../../docs/WINDOWS_JA_UNOFFICIAL.md).
+
 ## Files
 
 - `Nimbalyst.Nimbalyst.yaml` — version manifest

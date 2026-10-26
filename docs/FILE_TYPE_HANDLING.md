@@ -2,11 +2,13 @@
 
 This document explains how Nimbalyst handles different file types and how extensions can register custom editors for new file formats.
 
+The API examples below describe the earlier custom-editor wiring and are illustrative, not the current extension contract. For current editor registration and lifecycle APIs, use [Extension Architecture](EXTENSION_ARCHITECTURE.md) and the [SDK custom-editor guide](../packages/extension-sdk-docs/custom-editors.md), then check the source types before copying an example.
+
 ## Overview
 
 Nimbalyst has a multi-layered approach to file type handling:
 
-1. **Default text-based files**: Markdown, plain text, code files open in the Lexical editor
+1. **Text-based files**: Markdown and plain text use the Lexical editor; code formats can use the Monaco extension. Routing depends on registered editors, not simply whether a file is text.
 2. **Built-in custom editors**: Mockup files (.mockup.html), DataModel files (.datamodel.json)
 3. **Extension-provided editors**: PDF Viewer, and any future extension-based editors
 4. **Excluded file types**: Binary files that should open in external apps
@@ -99,7 +101,7 @@ const auto = await window.electronAPI.readFileContent('file.txt', { encoding: 'a
 
 ### When to Use Each Mode
 
-- **Default (no options)**: Let the system auto-detect - works for 99% of cases
+- **Default (no options)**: Use the implementation's detection policy; verify the result for the encodings and file types your extension supports
 - **`{ binary: true }`**: When your extension needs raw binary data (PDFs, images, custom formats)
 - **`{ encoding: 'latin1' }`**: When you know the file uses a specific encoding
 - **`{ encoding: 'auto' }`**: Explicitly request auto-detection (same as default)

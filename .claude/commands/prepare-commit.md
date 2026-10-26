@@ -51,7 +51,7 @@ Review the current git diff and comment out logging statements that are inapprop
 
 ## Plan Status Check
 
-If a plan document (in `plans/` or `nimbalyst-local/plans/`) is being committed, quickly check its frontmatter:
+Never include `nimbalyst-local/` plans in a commit; they are local-only regardless of status. If a legitimate public plan document in `plans/` is being committed, check its frontmatter:
 - If `status` is not `completed` or `progress` is less than 100, mention this to the user
 - This is just a note, not a blocker - they may be intentionally committing a partial plan
 

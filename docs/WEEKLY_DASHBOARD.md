@@ -1,5 +1,7 @@
 # Weekly Users Dashboard
 
+This is an upstream analytics runbook. Dashboard identifiers and service links belong to the upstream project; they do not establish analytics access, operational ownership or a dashboard maintained by the unofficial Japanese edition.
+
 Rules and conventions for the PostHog "Weeklys" dashboard (ID: 1331038).
 
 ## Base View

@@ -11,7 +11,7 @@ When an AI agent runs in Nimbalyst, it can execute various tools: reading files,
 1. **Trust is per-project** - Each workspace has its own trust status and permission settings
 2. **Patterns, not individual calls** - Approve tool patterns once, remembered forever (not just for the session)
 3. **Read-only by default** - Safe read operations are auto-approved within the workspace
-4. **Workspace-scoped by default** - The agent cannot read or write files outside the project unless you explicitly grant access
+4. **Provider- and mode-specific scope** - Workspace restrictions depend on the provider and selected autonomy level; Allow everything uses unrestricted access where supported
 5. **Fine-grained bash control** - The system understands command structure (allow `npm test` but block `rm -rf`)
 6. **URL pattern matching** - Control which domains the agent can access
 
@@ -102,13 +102,12 @@ When you approve "git push origin main", the pattern `bash:git:push` is saved, a
 
 ## Path Controls
 
-By default, the agent is **sandboxed to your project directory**. It cannot read or write files outside the workspace root.
+Path checks depend on the provider and autonomy level described above. The approval-based path controls below are not a universal filesystem sandbox: Allow everything uses unrestricted provider access where supported, and native provider policies can differ.
 
 ### What Happens When Agent Tries to Access Outside Files
 
-- **Read outside workspace** - Requires approval (will ask)
-- **Write outside workspace** - Requires approval (will ask)
-- **Sensitive paths** (e.g., `~/.ssh`, `~/.aws`, `/etc`) - Always blocked
+- **Read/write outside workspace** - Approval-based paths check workspace and additional-directory permissions; consult the provider's effective policy before relying on an approval prompt.
+- **Sensitive paths** (e.g., `~/.ssh`, `~/.aws`, `/etc`) - Application path validators include sensitive-path checks, but this is not a guarantee that every provider, shell command, or unrestricted mode blocks those paths.
 
 ### Why This Matters
 
@@ -117,7 +116,7 @@ Even read access to files outside your project can be dangerous:
 - Reading other project directories could leak proprietary code
 - System files could reveal information about your environment
 
-The agent will ask before accessing any path outside the project, giving you a chance to review.
+Choose an approval-based mode when outside-workspace access must be reviewed. Do not treat the absence of a prompt as proof that a path was confined.
 
 ## Additional Directories
 
@@ -412,8 +411,8 @@ Modal dialog shown when opening an untrusted project. User must choose a permiss
 
 **Features:**
 - Clear explanation of trust implications
-- Two options: "Smart Permissions" and "Always Allow"
-- Highlights benefits of Smart Permissions (permanent patterns, fine-grained control)
+- Four autonomy levels: Agent-verified, Allow everything, Allow edits only, and Ask every time (see Permission Modes above)
+- The older two-option Smart Permissions / Always Allow presentation is historical, not the current dialog contract
 - Link to advanced settings
 
 ### TrustIndicator
@@ -470,7 +469,7 @@ The `ClaudeSettingsManager.addAllowedTool()` method includes security validation
 
 ### Path Validation
 
-All file paths are validated against:
+Application path validators check the following where that validation path applies; provider-native and unrestricted execution must not be assumed to pass through the same validator:
 1. Workspace root directory
 2. Additional allowed directories
 3. Sensitive path blocklist (e.g., `~/.ssh`, `~/.aws`)

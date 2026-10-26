@@ -1,6 +1,6 @@
 # Architecture Diagrams for Decisions
 
-Whenever an architectural change or decision is made — whether proposed by the human or the AI — create an Excalidraw diagram to visualize it and share it in the conversation. A markdown link to the `.excalidraw` file is usually sufficient because Lexical now live-renders custom-editor links inline. Apply this to decisions like:
+Default to no diagram for a small or local change. Create an Excalidraw diagram when component boundaries, multiple data-flow paths or before/after relationships are materially clearer visually than in a short explanation. A markdown link to the `.excalidraw` file is usually sufficient because Lexical can render supported custom-editor links inline. Consider diagrams for changes such as:
 
 - New module boundaries, data flow changes, or service decomposition
 - Changes to IPC channels, state management patterns, or persistence layers
@@ -21,4 +21,4 @@ Whenever an architectural change or decision is made — whether proposed by the
 4. Use `capture_editor_screenshot` only when visual verification is needed or the user explicitly wants a static inline image.
 5. Reference the diagram file path so the user can open and edit it later.
 
-The goal is that architectural decisions are always visually communicated, never just described in text. Prefer the live-rendered file link over duplicating the same content as a screenshot. Diagrams should be clear enough that someone unfamiliar with the decision can understand the before/after or the proposed structure at a glance.
+Use a diagram only when it helps explain the decision. Prefer the live-rendered file link over duplicating the same content as a screenshot. Diagrams should be clear enough that someone unfamiliar with the decision can understand the before/after or the proposed structure at a glance.

@@ -1,5 +1,7 @@
 # GitHub Actions Secrets Setup Guide
 
+This is upstream Nimbalyst's signing and release-automation reference, not setup instructions for the unofficial Japanese edition. This edition distributes unsigned Windows builds, disables official automatic and manual update checks, and follows [its own release process](../docs/UNOFFICIAL_RELEASE.md). Do not register upstream signing credentials or enable the automation below for this fork. Statements about upstream secret history and release services are not independently verified claims about this repository.
+
 This guide explains how to set up the required secrets for building and releasing the Electron app via GitHub Actions.
 
 ## Required Secrets

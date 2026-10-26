@@ -7,6 +7,8 @@ export const fullSuiteInvocation = fullSuiteArgs.join(' ');
 export const isFullSuiteInvocation = (argv) => argv.join(' ') === fullSuiteInvocation;
 
 export const scriptTests = [
+  "scripts/check-publication-content.test.mjs",
+  "scripts/check-publication-push.test.mjs",
   "scripts/__tests__/prepush-test-gate.test.mjs",
   "scripts/__tests__/build-wiki-plugin.test.mjs",
   "scripts/__tests__/npm-publish-status.test.mjs",

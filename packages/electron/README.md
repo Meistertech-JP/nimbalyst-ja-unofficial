@@ -2,6 +2,8 @@
 
 This package contains the Electron desktop application for Nimbalyst - a rich text editor built with Meta's Lexical framework.
 
+This package guide includes upstream development and macOS examples. For the unofficial edition's supported unsigned Windows distribution, profile locations, and manual update policy, use the [Windows guide](../../docs/WINDOWS_JA_UNOFFICIAL.md) and [release process](../../docs/UNOFFICIAL_RELEASE.md). Other platform build commands do not establish that this edition publishes tested packages for those platforms. Use the Node.js and pnpm versions declared by the repository root.
+
 ## Development
 
 ```bash
@@ -14,8 +16,8 @@ pnpm run dev
 # Build for production
 pnpm run build
 
-# Package for distribution (unsigned)
-pnpm run dist
+# Package locally; signing depends on the platform and configured credentials
+pnpm run build:dist --publish never
 
 # Build notarized macOS app (requires signing certificates)
 pnpm run build:mac:notarized
@@ -42,7 +44,7 @@ If a saved workspace or session prevents the app from becoming usable, launch El
 - **Dark theme**: Standard dark theme with warm gray colors (#2d2d2d)
 - **Crystal Dark theme**: Premium theme with Tailwind gray scale (#0f172a)
 - **Auto theme**: Follows system preference
-- **Single source of truth**: All theme colors defined in `/src/renderer/index.css`
+- **Theme sources**: Base colors in `packages/runtime/src/editor/themes/registry.ts`, with file-based overrides in `packages/runtime/src/themes/builtin/`; see [THEMING.md](./THEMING.md)
 - **CSS Variables**: All components use CSS variables, never hardcoded colors
 - **Documentation**: See `/packages/electron/THEMING.md` for theming guidelines
 
@@ -137,10 +139,7 @@ For distribution on macOS without security warnings:
 
 In development mode (`NODE_ENV !== 'production'`), the Electron app automatically captures all browser console messages and writes them to a debug log file. This is useful for debugging browser load issues and renderer-side problems.
 
-The debug log file location:
-- **macOS**: `~/Library/Application Support/nimbalyst/nimbalyst-debug.log`
-- **Windows**: `%APPDATA%/nimbalyst/nimbalyst-debug.log`
-- **Linux**: `~/.config/nimbalyst/nimbalyst-debug.log`
+The debug log is `nimbalyst-debug.log` under the running instance's Electron `userData` directory. The unofficial Windows edition defaults to `%APPDATA%\Nimbalyst 日本語版（非公式）`; development and test profiles can override that directory. Do not infer the active profile from an upstream application name.
 
 The log file includes:
 - All browser console messages (log, warn, error, info, debug)

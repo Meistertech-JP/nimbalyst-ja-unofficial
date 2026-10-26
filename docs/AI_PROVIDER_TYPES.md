@@ -294,11 +294,11 @@ Use these as starting points depending on the integration style:
 - **ACP / stdio CLI agent**: `packages/runtime/src/ai/server/providers/OpenAICodexACPProvider.ts`
 - **Open-source server-backed agent**: `packages/runtime/src/ai/server/providers/OpenCodeProvider.ts`
 - **Minimal CLI-auth ACP agent**: `packages/runtime/src/ai/server/providers/CopilotCLIProvider.ts`
-- **Headless per-turn NDJSON CLI agent**: `packages/runtime/src/ai/server/providers/HeadlessCliAgentProvider.ts` with `protocols/headless/HeadlessNdjsonProcess.ts`. Subclass the provider and write only a protocol adapter that maps the CLI's records onto `ProtocolEvent`s — see `GrokBuildProvider` / `CursorAgentProvider`, which are ~120 lines each.
+- **Headless per-turn NDJSON CLI agent**: `packages/runtime/src/ai/server/providers/HeadlessCliAgentProvider.ts` with `protocols/headless/HeadlessNdjsonProcess.ts`. Subclass the provider and write only a protocol adapter that maps the CLI's records onto `ProtocolEvent`s — see `CursorAgentProvider`. Grok Build now uses `GrokACPProtocol`, as listed in the provider inventory above.
 
 ### Choosing a transport
 
-**Pick the surface that reports file edits as structured data, not the one that shares the most code.** ACP is tempting because four providers could share a client, but ACP has no authoritative file-change item: every ACP provider here is stuck on watcher-inferred attribution. Both `grok-build` and `cursor-agent` were measured across every surface their CLI offers before choosing, and both landed off ACP for exactly this reason.
+**Choose a transport from its actual capabilities, not only shared client code.** Cursor Agent uses per-turn NDJSON and reports structured file changes. Grok Build uses ACP through `GrokACPProtocol` with tool-argument file attribution; it retains the watcher because its tool surface has no delete or move operation. The earlier conclusion that both providers run off ACP is superseded. Consult the provider inventory and `providerFileTracking.ts` for each lane's current fidelity.
 
 Declare what you found in `packages/runtime/src/ai/server/providerFileTracking.ts`:
 

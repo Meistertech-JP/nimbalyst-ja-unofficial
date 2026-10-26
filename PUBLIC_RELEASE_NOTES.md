@@ -1,5 +1,7 @@
 # October 16th, 2026 Release
 
+These are historical upstream Nimbalyst release notes. For the unofficial Japanese edition's published versions and verification limits, see [this repository's Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases).
+
 ### New Features
 
 - Claude Code sessions suggest your next prompt in the empty input after a turn; press Tab to fill it in (toggle in Agent Features).

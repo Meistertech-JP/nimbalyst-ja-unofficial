@@ -2,6 +2,8 @@
 
 The application includes a walkthrough guide system for feature discovery and contextual help.
 
+The English strings below illustrate the entry structure. In the unofficial Japanese edition, application-owned titles, bodies and tooltips must resolve through the shared i18n resources and follow the display language. Check the current help registry and walkthrough types before copying an example; a data structure example is not verification of its runtime rendering.
+
 ## Key Concepts
 
 - **HelpContent**: Centralized registry of help text in `packages/electron/src/renderer/help/HelpContent.ts`, keyed by `data-testid`

@@ -23,6 +23,8 @@ Guide the user through creating, modifying, and generating Xcode projects using 
 4. **Validate**: Use ios-dev.xcodegen with action "validate" to check the configuration
 5. **Generate**: Use ios-dev.xcodegen with action "generate" to create the Xcode project
 
+The tools return command instructions rather than executing XcodeGen themselves. The current `validate` action returns `xcodegen generate --spec project.yml`, so it can write project output; do not describe it as a read-only check. Review the destination and existing project files before executing a generated command.
+
 # XcodeGen project.yml Structure
 
 A typical project.yml has these main sections:
@@ -88,7 +90,7 @@ schemes:
 
 ## Adding Dependencies
 
-For CocoaPods:
+For Carthage:
 ```yaml
 targets:
   MyApp:

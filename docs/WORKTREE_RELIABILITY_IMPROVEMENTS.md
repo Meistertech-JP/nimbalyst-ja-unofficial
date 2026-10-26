@@ -1,6 +1,6 @@
 # Worktree Reliability Improvements
 
-This document outlines critical, high, and medium priority improvements to make git worktree operations bulletproof and ensure users are never left in a bad state.
+This historical upstream review records worktree failure scenarios and proposed mitigations. Severity labels, line numbers and proposed changes refer to the reviewed snapshot, not a verified current defect inventory. Compare the checked-out worktree services and regression tests before applying any proposal; these notes do not guarantee recovery from every failure.
 
 ## Critical Priority
 

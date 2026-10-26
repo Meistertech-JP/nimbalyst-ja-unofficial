@@ -2,6 +2,8 @@
 
 This repository uses [Playwright](https://playwright.dev) for automated end-to-end coverage across the web playground and the Electron desktop shell.
 
+**Execution scope:** The default for agents is one explicitly selected spec per command with `--max-failures=1`, in a dedicated test workspace/profile. Directory, multi-directory, glob, and full-suite commands in this guide are available only when the user explicitly requests that broader run; a pre-push or pre-release checklist is not that authorization. These runs open real windows. See [desktop side effects](#e2e-runs-take-over-the-users-desktop) before launching. Check the checked-out scripts and helpers for build/server and profile-isolation prerequisites.
+
 ## AI Agent Guidelines for E2E Tests
 
 **IMPORTANT**: These guidelines are for AI agents running E2E tests in this codebase.
@@ -59,7 +61,7 @@ This lets the user see the test run directly in the conversation without opening
 # Run specific test file with max-failures
 pnpm exec playwright test e2e/monaco/file-watcher-updates.spec.ts --max-failures=1
 
-# Run tests in a directory
+# Broader directory run: only after explicit user request and test isolation
 pnpm exec playwright test e2e/monaco/
 
 # Run all E2E tests (avoid unless explicitly asked)
@@ -87,10 +89,10 @@ All commands below should be run from `packages/electron/`.
 # Smoke test (1 file, ~15s) - run after any UI change
 pnpm exec playwright test e2e/smoke/visual-smoke.spec.ts
 
-# Core tests (~5 files, ~1 min) - run before pushing
+# Core group: only after explicit user request and test isolation
 pnpm exec playwright test e2e/core/ e2e/files/ e2e/editors/
 
-# Full suite (~29 files, ~5 min) - run before releases
+# Full suite: only after explicit user request and test isolation
 pnpm exec playwright test
 
 # Single file
@@ -119,6 +121,8 @@ background check.
 
 ### What to Run and When
 
+The grouped commands below describe coverage options, not permission to start them. Without an explicit broader request, choose one relevant spec and use `--max-failures=1`.
+
 | Scenario | Command | Time |
 | --- | --- | --- |
 | Quick sanity check | `pnpm exec playwright test e2e/smoke/` | ~15s |
@@ -131,8 +135,8 @@ background check.
 ### Pre-Release Checklist
 
 1. Make sure `pnpm run dev` is running (tests connect to the dev server on port 5273)
-2. Run the full suite: `pnpm exec playwright test --reporter=line`
-3. Review failures - known flaky tests are documented in the [e2e-test-inventory.md](./../nimbalyst-local/plans/e2e-test-inventory.md)
+2. If the user explicitly requested a full-suite run in the isolated test environment, run `pnpm exec playwright test --reporter=line --max-failures=1`; otherwise select the required specs individually.
+3. Review the saved failure output from the actual run and the checked-in specs. An optional local inventory may exist at `nimbalyst-local/plans/e2e-test-inventory.md`; it is gitignored and is not a published prerequisite or evidence of the current result.
 4. Fix any new failures before releasing
 
 ### Important Constraints

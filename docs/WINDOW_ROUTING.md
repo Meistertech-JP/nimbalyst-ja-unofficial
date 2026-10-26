@@ -231,8 +231,8 @@ ipcMain.handle('ai:sendMessage', async (event, message) => {
 **Golden Rules:**
 
 1. **Workspace paths are stable** - Use them for any async/deferred routing
-2. **Window IDs are transient** - Only use them for immediate responses or as fallback
-3. **Always implement fallback strategy** - Gracefully handle cases where routing fails
+2. **Window IDs are transient** - Use them only for immediate responses during the same window lifetime
+3. **Do not reroute by fallback** - Reject missing routing identifiers; if the identified window has closed, report or stop that operation without targeting another window
 4. **Sessions belong to workspaces** - Not to specific window instances
 
 **Quick Decision Tree:**

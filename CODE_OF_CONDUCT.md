@@ -1,5 +1,7 @@
 # Contributor Covenant Code of Conduct
 
+This upstream policy is retained with its attribution. Its named reporting contact and community-leadership commitments refer to upstream Nimbalyst and do not imply that the upstream organization operates or supports this unofficial fork. Do not disclose private information in public reports.
+
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our

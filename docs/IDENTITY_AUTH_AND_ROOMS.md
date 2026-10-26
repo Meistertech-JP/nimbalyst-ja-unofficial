@@ -1,5 +1,7 @@
 # Identity, Auth, Encryption, and Rooms
 
+This is a historical upstream working-tree analysis, not a security certification of the current fork or the deployed sibling server. Dates, line references, gap descriptions and test results apply to the source snapshots discussed below; subsequent design updates do not imply that every server or client check was repeated. Verify current contracts and deployment state before relying on a claim. The unofficial edition's current recovery verification limits are documented in the [release notes](../RELEASE_NOTES_v0.82.3-ja.1.md).
+
 Where the design actually is, derived from the code in both repos as of 2026-07-27. Every substantive claim cites `file:line`. Paths starting with `packages/collabv3/` are in the **nimbalyst-collab** repo; everything else is **stravu-editor**. Both working trees have substantial uncommitted work; this doc reads the working trees, not HEAD.
 
 **Revised after the client-managed-custody removal.** Legacy client-managed (`legacy-e2e`) team encryption has been deleted from both repos. Team content is server-managed only, and a team that never migrated is now **refused**, not degraded. The NIM-2212 personal-index inbox fanout and its D1 identity directory went with it. Sections 3, 5, and 6 were rewritten; sections 7 and 8 re-verified. Personal/mobile sync is untouched and remains zero-knowledge.

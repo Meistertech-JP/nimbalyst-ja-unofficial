@@ -335,7 +335,7 @@ class CapacitorExtensionPlatformService implements ExtensionPlatformService {
   - manifest.json declaring capabilities
   - Vite/esbuild config for bundling
 
-  - Copy from `/Users/ghinkle/sources/datamodellm/`
+  - Use the selected DatamodelLM source checkout and record its revision before adapting components
   - Adapt Zustand store for file-based model
   - Create DatamodelLMEditor implementing CustomEditorProps
   - Bundle with dependencies (React Flow, Zustand)
@@ -766,7 +766,7 @@ Phase 4: Advanced Features
 
 ## References
 
-- DatamodelLM source: `/Users/ghinkle/sources/datamodellm/`
+- DatamodelLM source: the separate source checkout selected for the integration, not included in this repository
 - Nimbalyst extension design: `/design/Extensions/nimbalyst-extension-system.md`
 - Nimbalyst extension API: `/design/Extensions/nimbalyst-extension-api.md`
 - CustomEditorRegistry: `/packages/electron/src/renderer/components/CustomEditors/`

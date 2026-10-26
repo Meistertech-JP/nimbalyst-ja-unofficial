@@ -621,11 +621,11 @@ Bridge between local workspace and shared filesystem.
 
 ## Dependencies
 
-- **Requires**: [Team Management & Trust UI](./team-management-trust-ui.md) (team membership + ECDH keys) -- COMPLETE
+- **Requires**: Team Management & Trust UI (historical design reference; `team-management-trust-ui.md` is not included in this checkout) (team membership + ECDH keys) -- COMPLETE
 - **Requires**: TrackerSyncService (collaborative tracker sync) -- COMPLETE
 - **Requires**: DocumentSync (client-side Yjs + encryption) -- COMPLETE
 - **Requires**: FolderIndex DO (Phase 5 of this plan) -- NOT STARTED
 - **Requires**: `collab://` tab infrastructure (Phase 9 / Document Collaboration Phase 6) -- NOT STARTED
 - **Enables**: Full collaborative workspace with organized shared documents and granular access control
 
-[Tracker Mode Layout](design/Collaboration/tracker-mode-layout.mockup.html)
+[Tracker Mode Layout](./tracker-mode-layout.mockup.html)

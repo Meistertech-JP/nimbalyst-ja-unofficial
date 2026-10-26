@@ -94,7 +94,7 @@ Users can override these defaults in project settings.
 
 ### 2. Trust Model: Stytch B2B (Complete)
 
-**See \*\***[stytch-b2b-migration.md](./stytch-b2b-migration.md) for design details.**
+Historical design reference: `stytch-b2b-migration.md` (not included in this checkout).
 
 Done. Every user has a personal Organization. Team projects get their own Organizations. Single login, single JWT, org context determined by which project is open. No dual auth, no B2C fallback. [10,000 MAUs + unlimited orgs free](https://stytch.com/pricing).
 
@@ -232,7 +232,7 @@ ENCRYPTED (AES-256-GCM, per-resource key distributed via ECDH):
 
 > **Not current, and not replaced.** This merge shipped as `mergeTrackerItems()` in the v1 `TrackerSync.ts`, driven by a per-field `updatedAt` map. Both were removed when ordering moved to the server-assigned `syncId`, and **nothing took over** — writes are whole-item blind LWW today, with no conflict detection on either side. Restoring per-field merge (server-side, since the server can now read the payload) is planned separately.
 
-**Key management: per-resource keys, same pattern everywhere.** Each shared resource (tracker project, document) gets its own random AES-256 key, wrapped for each participant via ECDH. TrackerRoom needs a `key_envelopes` table (same schema as DocumentRoom). For personal orgs (single-user multi-device), the personal QR seed derivation is still valid. For team orgs, per-resource ECDH keys are required. See [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) Finding 0 and the Key Granularity Decision.
+**Key management: per-resource keys, same pattern everywhere.** Each shared resource (tracker project, document) gets its own random AES-256 key, wrapped for each participant via ECDH. TrackerRoom needs a `key_envelopes` table (same schema as DocumentRoom). For personal orgs (single-user multi-device), the personal QR seed derivation is still valid. For team orgs, per-resource ECDH keys are required. See the historical collaboration `SECURITY_REVIEW.md` (not included in this checkout) Finding 0 and the Key Granularity Decision.
 
 ### 5. Data Model Extensions for Collaboration
 
@@ -429,7 +429,7 @@ This is a deliberate design choice. Inline trackers are low-friction personal an
 - Org-level encryption key derivation and sharing (for team orgs) -- ECDH infrastructure built in Phase 1, needs org-level key wrapping UX
 - UI: "Create Team" / "Join Team" flows, org switcher concept tied to projects
 
-**See [Team Management & Trust UI](./team-management-trust-ui.md)** for the full design of team creation, member management, roles/permissions, git remote linking, ECDH key distribution, and the Tracker Config panel (admin sync policy + local tracker management).
+**See Team Management & Trust UI (historical design reference; `team-management-trust-ui.md` is not included in this checkout)** for the full design of team creation, member management, roles/permissions, git remote linking, ECDH key distribution, and the Tracker Config panel (admin sync policy + local tracker management).
 
 ### Phase 1: DocumentRoom Durable Object (Realtime Document Collaboration) -- COMPLETE
 **The foundational piece. Provides immediate value for any shared document and establishes the ECDH key exchange infrastructure that TrackerRoom reuses.**
@@ -560,7 +560,7 @@ Completed files:
 
 5. **~~Stytch B2B pricing~~**: **Resolved.** B2B migration complete. 10,000 MAUs + unlimited orgs free. Same tier as previous B2C usage.
 
-6. ~~**Shared encryption key distribution**~~: **Partially resolved, critical bug found.** The QR-paired `encryptionKeySeed` is a personal per-user secret for single-user multi-device sync. TrackerSyncManager incorrectly uses it for team encryption -- each user derives a different key, so team members can't decrypt each other's items. The fix is to use ECDH-distributed per-project keys (the infrastructure exists in `ECDHKeyManager` but isn't wired to TrackerSyncManager). See [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) Finding 0.
+6. ~~**Shared encryption key distribution**~~: **Partially resolved, critical bug found.** The QR-paired `encryptionKeySeed` is a personal per-user secret for single-user multi-device sync. TrackerSyncManager incorrectly uses it for team encryption -- each user derives a different key, so team members can't decrypt each other's items. The fix is to use ECDH-distributed per-project keys (the infrastructure exists in `ECDHKeyManager` but isn't wired to TrackerSyncManager). See the historical collaboration `SECURITY_REVIEW.md` (not included in this checkout) Finding 0.
 
 7. ~~**Plan documents as shared items**~~: **Resolved.** Two-layer architecture. Tracker metadata (status, assignee, priority) syncs through TrackerRoom as encrypted blobs. Document content (the actual plan text, bug description, design spec) syncs through DocumentRoom using Yjs CRDTs with E2E encryption. Each tracker item has an optional `documentId` linking to its DocumentRoom. See Section 8 and [Realtime Document Collaboration](./realtime-document-collaboration.md).
 
@@ -568,7 +568,7 @@ Completed files:
 
 ## Security Review Findings
 
-A code-level security audit was conducted on 2026-02-23 covering all implementation files. See [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) for the full report. Key items affecting this plan:
+A code-level security audit was conducted on 2026-02-23 covering all implementation files. See the historical collaboration `SECURITY_REVIEW.md` (not included in this checkout) for the full report. Key items affecting this plan:
 
 ### P0 -- Must fix before team collaboration ships
 
@@ -593,7 +593,7 @@ A code-level security audit was conducted on 2026-02-23 covering all implementat
 | --- | --- | --- |
 | ~~B2B auth migration~~ | ~~High~~ | ~~Complete. All-in on B2B, no dual auth, no B2C fallback.~~ |
 | Conflict resolution edge cases | Medium | LWW is well-understood. Add CRDT for arrays later if needed. |
-| ~~Encryption key management for teams~~ | ~~High~~ | Security review found TrackerSyncManager uses wrong key. Fix: ECDH-distributed per-project keys. See [SECURITY_REVIEW.md](./SECURITY_REVIEW.md). |
+| ~~Encryption key management for teams~~ | ~~High~~ | Security review found TrackerSyncManager uses wrong key. Fix: ECDH-distributed per-project keys. See the historical collaboration `SECURITY_REVIEW.md` (not included in this checkout). |
 | Enterprise key lifecycle (recovery, rotation, audit) | High | Required for team customers. Admin recovery key, audit log, and key rotation not yet implemented. |
 | Scope creep toward full Linear clone | High | Focus on bugs + tasks first. Kanban + comments in later phases. |
 | Performance with many connected clients | Medium | Cloudflare DOs handle this well. Test with 20+ concurrent connections. |

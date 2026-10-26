@@ -783,7 +783,7 @@ Both TrackerRoom and DocumentRoom use **per-resource keys distributed via ECDH**
 
 ## Security Review Findings
 
-A code-level security audit was conducted on 2026-02-23 covering all implementation files. See [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) for the full report. Key items affecting this plan:
+A code-level security audit was conducted on 2026-02-23 covering all implementation files. See the historical collaboration `SECURITY_REVIEW.md` (not included in this checkout) for the full report. Key items affecting this plan:
 
 ### P0 -- Must fix before multi-user collaboration ships
 
@@ -801,8 +801,8 @@ A code-level security audit was conducted on 2026-02-23 covering all implementat
 
 ## Related Documents
 
-- [Security Review](./SECURITY_REVIEW.md) - E2E encryption and trust model security audit
+- Security Review (historical collaboration `SECURITY_REVIEW.md`; not included in this checkout) - E2E encryption and trust model security audit
 - [Collaborative Tracker System](./collaborative-tracker-system.md) - Realtime collaborative bug/task tracking
 - [Session Share via Cloudflare](./session-share-cloudflare-hosting.md) - Phase 2 session sharing (complete)
 - [Shared File Viewer](./shared-file-viewer.md) - Phase 3 file sharing with read-only viewers
-- [CollabV3 CLAUDE.md](../../packages/collabv3/CLAUDE.md) - Sync server architecture reference
+- CollabV3 `CLAUDE.md` (historical server-repository reference; `packages/collabv3/CLAUDE.md` is not included in this checkout) - Sync server architecture reference

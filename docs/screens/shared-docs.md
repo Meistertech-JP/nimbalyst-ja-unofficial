@@ -13,7 +13,7 @@ captureStatus: needed
 
 Navigation: Application / Shared Docs.
 
-[Implementation entry point](../../packages/electron/src/renderer/components/CollabMode/SharedDocsHome.tsx). This is a discovery pointer, not proof that every visual state has been verified.
+[Implementation entry point](../../packages/electron/src/renderer/components/CollabMode/CollabMode.tsx). This is a discovery pointer, not proof that every visual state has been verified.
 
 Capture gap: add a reproducible full-app view and record its fixture, capture date, viewport, theme, and revision.
 

@@ -486,4 +486,4 @@ Largest effort -- requires Lexical and all Rexical plugins. But gives pixel-perf
 
 ## Relationship to Existing Plans
 
-This design extends and deepens Phase 3c from [shared-file-viewer.md](./shared-file-viewer.md). That document outlines the phased approach (3a: static HTML, 3b: Rexical, 3c: extensions). This document focuses specifically on the extension viewer architecture -- the "web runtime" that makes Phase 3c possible.
+This design extends and deepens Phase 3c from [shared-file-viewer.md](../Collaboration/shared-file-viewer.md). That document outlines the phased approach (3a: static HTML, 3b: Rexical, 3c: extensions). This document focuses specifically on the extension viewer architecture -- the "web runtime" that makes Phase 3c possible.

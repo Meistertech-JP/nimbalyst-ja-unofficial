@@ -2,6 +2,8 @@
 
 This document defines the conventions and patterns for building consistent E2E test coverage across all editor types in Nimbalyst.
 
+**Execution scope:** Follow [E2E Testing](E2E_TESTING.md#e2e-runs-take-over-the-users-desktop). Agents run one selected spec per command with `--max-failures=1` in a dedicated test workspace/profile. The directory/glob commands and all-tests checklist below require an explicit request for that broader run; they are not default instructions to take over the desktop. Confirm current scripts/helpers and isolation before launching.
+
 ## Directory Structure
 
 All editor tests live under `packages/electron/e2e/editors/`, organized by editor type:

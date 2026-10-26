@@ -3,7 +3,7 @@
 ## Directory Structure
 
 - **`core/`** - Critical smoke tests (app launch, files, editing, saving)
-- **`tabs/`** - Tab management (autosave, reordering, switching)
+- **`editors/`**, **`files/`** - Editor and file-operation scenarios
 - **`ai/`** - AI provider integration (Claude Code CLI)
 - **`backup/`** - Old test backups
 
@@ -11,14 +11,7 @@
 
 Central configuration and utilities:
 
-- **`TEST_TIMEOUTS`** - Centralized timeout values
-  - `APP_LAUNCH: 5000ms` - App startup
-  - `SIDEBAR_LOAD: 5000ms` - Sidebar appearance
-  - `FILE_TREE_LOAD: 5000ms` - File tree items
-  - `TAB_SWITCH: 3000ms` - Tab switching
-  - `EDITOR_LOAD: 3000ms` - Editor loading
-  - `SAVE_OPERATION: 2000ms` - File saves
-  - `DEFAULT_WAIT: 500ms` - General waits
+- **`TEST_TIMEOUTS`** - Centralized timeout values in `helpers.ts`. Import the constants rather than copying timeout values from documentation.
 
 - **`launchElectronApp(options)`** - Launch app with workspace
 - **`createTempWorkspace()`** - Create temp test workspace
@@ -28,19 +21,16 @@ Central configuration and utilities:
 
 ## Running Tests
 
+From `packages/electron`, run one spec per invocation:
+
 ```bash
-# Run all e2e tests
-pnpm run test:e2e
+pnpm exec playwright test e2e/i18n.spec.ts
 
-# Run specific test file
-pnpm run test:e2e core/app-startup.spec.ts
-
-# Run specific directory
-pnpm run test:e2e tabs/
-
-# Run with UI
-pnpm run test:e2e:ui
+# The same single spec with Playwright UI
+pnpm exec playwright test e2e/i18n.spec.ts --ui
 ```
+
+Do not run Electron E2E invocations in parallel. Check the isolated profile and development-server prerequisites in the [E2E guide](../../../docs/E2E_TESTING.md) before launching.
 
 ## Test Rules
 

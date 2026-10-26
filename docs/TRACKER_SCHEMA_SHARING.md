@@ -73,7 +73,7 @@ Both operations run through the same `tracker_define_type` path the agent tools 
 
 ## Additive and destructive schema changes
 
-The classifier in [`packages/runtime/src/plugins/TrackerPlugin/models/trackerSchemaChangeClassifier.ts`](../packages/runtime/src/plugins/TrackerPlugin/models/trackerSchemaChangeClassifier.ts) divides data-bearing changes into three results: none, additive, or destructive. It only calls a change additive when it can prove the new schema accepts everything the old schema accepted; unknown cases default to destructive.
+The classifier in [`packages/tracker-schema/src/trackerSchemaChangeClassifier.ts`](../packages/tracker-schema/src/trackerSchemaChangeClassifier.ts) divides data-bearing changes into three results: none, additive, or destructive. It only calls a change additive when it can prove the new schema accepts everything the old schema accepted; unknown cases default to destructive.
 
 Additive changes include adding a field, status, or select option and widening a supported constraint. Destructive changes include removing a field, status, or option; changing a field type; narrowing a constraint; changing unclassified data-bearing field wiring; or changing which field owns the workflow-status role. A remove-plus-add is reported as destructive with possible rename candidates rather than guessed to be a rename.
 
@@ -144,7 +144,7 @@ Deleting a team-owned YAML file does not delete the team's tracker; explicit tea
 
 ## Implementation pointers
 
-- Sharing shape and legacy YAML parsing: [`TrackerDataModel.ts`](../packages/runtime/src/plugins/TrackerPlugin/models/TrackerDataModel.ts) and [`YAMLParser.ts`](../packages/runtime/src/plugins/TrackerPlugin/models/YAMLParser.ts)
+- Sharing shape and legacy YAML parsing: [`TrackerDataModel.ts`](../packages/tracker-schema/src/TrackerDataModel.ts) and [`YAMLParser.ts`](../packages/tracker-schema/src/YAMLParser.ts)
 - Legacy per-machine policy migration and Draft/Published compatibility: [`TrackerPolicyService.ts`](../packages/electron/src/main/services/TrackerPolicyService.ts)
 - Team schema ownership, baseline diffing, and the pending outbox: [`trackerTypeDefStore.ts`](../packages/electron/src/main/services/tracker/trackerTypeDefStore.ts)
 - YAML projection and watcher behavior: [`TrackerSchemaService.ts`](../packages/electron/src/main/services/TrackerSchemaService.ts)

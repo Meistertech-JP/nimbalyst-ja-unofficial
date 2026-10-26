@@ -1,5 +1,7 @@
 # ClaudeCodeProvider Refactoring Analysis
 
+This historical upstream analysis records an earlier refactoring proposal and its intermediate checkpoints. Line counts, phase status, projected benefits and success markers below are snapshot-specific; they do not certify the current implementation. See [AI_PROVIDER_TYPES.md](AI_PROVIDER_TYPES.md) and the checked-out provider and service sources for current contracts.
+
 ## Executive Summary
 
 **Current Size:** 3,472 lines (was 3,612)

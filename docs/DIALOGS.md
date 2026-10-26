@@ -138,9 +138,9 @@ In `packages/electron/src/main/menu/ApplicationMenu.ts`:
 }
 ```
 
-### 2. Add IPC Listener (Renderer)
+### 2. Route through a centralized listener (Renderer)
 
-In `App.tsx`, add an effect to listen for the IPC event:
+The following lifecycle example is retained as a historical illustration of the event payload. Do not copy its component-level subscription into new code. Register the event once in `store/listeners/`, update a request atom, and let the dialog host react to that atom. [IPC_LISTENERS.md](./IPC_LISTENERS.md) defines the current contract and cleanup requirements.
 
 ```typescript
 useEffect(() => {
@@ -163,7 +163,7 @@ useEffect(() => {
 }, [workspacePath]);
 ```
 
-Unsubscribe with the closure `on()` returns. There is no `off(channel, callback)` — see [IPC_LISTENERS.md](./IPC_LISTENERS.md).
+For the centralized subscription, unsubscribe with the closure `on()` returns. There is no `off(channel, callback)` — see [IPC_LISTENERS.md](./IPC_LISTENERS.md).
 
 ## Best Practices
 

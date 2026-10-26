@@ -2,24 +2,24 @@
 
 ## Overview
 
-This document describes the security measures implemented to protect against unauthorized filesystem access when AI tools interact with the local filesystem.
+This document describes path validation used by `ElectronFileSystemService` when its read, list, and search APIs access the local filesystem. It is not a description of an OS sandbox or a guarantee that every editor, external agent, terminal command, or filesystem API uses this boundary. Static path validation alone does not establish symlink confinement or runtime acceptance on each operating system.
 
 ## Security Architecture
 
 ### 1. SafePathValidator
 
-The `SafePathValidator` class (`src/main/security/SafePathValidator.ts`) is the core security component that validates all filesystem paths before any operations are performed.
+The `SafePathValidator` class (`src/main/security/SafePathValidator.ts`) validates paths supplied to this service before those operations proceed.
 
 **Key Features:**
 - Path traversal prevention (blocks `..`, absolute paths)
 - Command injection prevention (blocks shell metacharacters)
-- Forbidden path detection (blocks access to sensitive directories)
+- Forbidden path detection (rejects the configured directory patterns)
 - File extension filtering (blocks sensitive file types)
-- Comprehensive logging of all access attempts
+- Service access-log entries and diagnostic logging
 
 ### 2. Security Boundaries
 
-All filesystem operations are strictly confined to the user-selected workspace directory:
+The validator rejects absolute paths and traversal syntax and resolves accepted relative paths against the selected workspace. These lexical checks are not a proof that symlinks, other filesystem APIs, or external tools cannot reach outside that directory:
 
 ```typescript
 // Valid paths (within workspace)
@@ -37,14 +37,14 @@ All filesystem operations are strictly confined to the user-selected workspace d
 
 ### 3. Defense in Depth
 
-Multiple layers of security ensure robust protection:
+The service combines several checks; these do not replace an OS-level sandbox:
 
-1. **Input Validation**: All paths validated before processing
-2. **Path Normalization**: Paths normalized to prevent bypasses
-3. **Sandboxing**: Operations confined to workspace directory
+1. **Input Validation**: Supplied service paths are validated before processing
+2. **Path Normalization**: Paths are lexically normalized and resolved
+3. **Workspace-relative Checks**: The resolved path is checked against the configured workspace; symlink behavior needs separate verification
 4. **Command Safety**: Using `execFile` instead of `exec` to prevent shell injection
-5. **Logging**: All access attempts logged for audit
-6. **Rate Limiting**: Access logs capped to prevent DoS
+5. **Logging**: The service records access attempts in a bounded in-memory log
+6. **Log Bound**: Old entries are discarded when the log reaches its entry limit; this is not an operation-rate limiter
 
 ## Protected Resources
 
@@ -60,7 +60,7 @@ Multiple layers of security ensure robust protection:
 
 ### Blocked File Types
 - `.pem`, `.key`, `.cert`, `.crt` - Certificates and keys
-- `.env`, `.env.*` - Environment files with secrets
+- `.env`, `.env.local`, `.env.production` - Explicitly blocked environment-file basenames; this is not a wildcard block of every `.env.*` name
 - `.sqlite`, `.db` - Database files
 - `.wallet` - Cryptocurrency wallets
 - `.keychain`, `.keystore` - Key stores
@@ -107,9 +107,9 @@ These tests verify protection against:
 
 ### Access Logs
 
-All filesystem access attempts are logged with:
+The service's in-memory access-log entries contain:
 - Timestamp
-- Sanitized path (no full paths exposed)
+- Shortened path (the last two components)
 - Operation type (read, list, search)
 - Success/failure status
 
@@ -117,6 +117,8 @@ Access logs can be retrieved via:
 ```typescript
 const logs = fileSystemService.getAccessLog(100); // Last 100 entries
 ```
+
+Other diagnostic messages, including validator failures, can contain input or resolved paths. The shortened access log does not guarantee that all diagnostic logs are sanitized. Review logs before sharing them and do not include credentials or personal file contents.
 
 ### Failed Access Alerts
 
@@ -158,4 +160,4 @@ Potential future security improvements:
 
 ## Contact
 
-For security concerns or to report vulnerabilities, please contact the security team or file an issue with the `security` label.
+Use the repository's [security policy](../../SECURITY.md) for reporting guidance. Do not publish credentials or sensitive diagnostic logs in a public issue.

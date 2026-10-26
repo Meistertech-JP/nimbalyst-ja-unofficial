@@ -1,5 +1,7 @@
 # Nimbalyst Release Guide
 
+This is a historical upstream release-system reference. Version `0.36.6`, Preditor filenames, official signing credentials and automatic-update examples below are not the current unofficial release procedure. This fork publishes unsigned Windows packages and disables official automatic/manual update checks. Use the [unofficial release process](../../docs/UNOFFICIAL_RELEASE.md) and [Windows guide](../../docs/WINDOWS_JA_UNOFFICIAL.md) for its current distribution policy. Historical examples are retained as history, not as runnable publication instructions for this edition.
+
 ## Overview
 
 Nimbalyst uses an automated release system that builds, signs, notarizes, and distributes the application through GitHub Releases. The auto-update system allows users to seamlessly receive updates.
@@ -113,7 +115,7 @@ pnpm run build
 ### Production Builds
 
 ```bash
-# macOS (local, unsigned)
+# macOS (local, notarization skipped; signing depends on credentials)
 pnpm run build:mac:local
 
 # macOS (signed and notarized)

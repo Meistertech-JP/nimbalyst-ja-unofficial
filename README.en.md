@@ -10,6 +10,8 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 v0.82.3-ja.1 is an unsigned Windows x64 edition. The NSIS installer, portable ZIP, matching source and SHA256SUMS.txt are listed in the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1).
 
+The source for the published assets is the `v0.82.3-ja.1` tag. `main` is the development head with publication-documentation and validation corrections, including changes to bundled guides; it is not a file-for-file match for the existing Windows packages. No new binary has been released for these corrections.
+
 The source is based on upstream v0.82.3 at `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. Features and fixes differ from the latest official release. Upstream distributed v0.82.3 as a prerelease.
 
 ## Changes
@@ -32,7 +34,7 @@ The Windows packages were rebuilt from product-fix commit `1c1d54a851c340a8f0f9a
 
 Qualification commit `4a642e5c95d174a9df8deaf8712ca8560b738d11` passed Linux run `40277550288`: 2,340 test files passed, seven skipped, zero failed (2,347 total); 19,296 tests passed, 30 skipped, zero failed (19,326 total). iOS run `40277550251` completed with 528 executed, 522 passed, six skipped and zero failed. The publication commit changes documents only; its product inputs are compared with the qualified source.
 
-Intended assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
+Release assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
 
 After the product fix, 51 Provider/Protocol tests and 54 Main/parser/UI/i18n tests passed; 38 workspace typechecks and seven existing bundle budgets also passed. These test results do not verify authentication or NSIS installation in the ordinary product. See [validation](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) and [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
 

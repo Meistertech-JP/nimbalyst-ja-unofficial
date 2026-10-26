@@ -1,5 +1,7 @@
 # Question 12: Slash Command Usage Analysis
 
+This is a historical upstream analysis of aggregate events from 2025–2026, not telemetry from the unofficial Japanese edition. The recorded counts below have not been independently re-queried here. Messages, clicks, sessions and unique users are different populations; unmatched totals do not establish discovery, conversion, repeat use or a user-adoption rate. Product suggestions are hypotheses for further research, not measured causes.
+
 ## Research Question
 
 What percentage of AI chat messages use slash commands, which slash commands are most frequently used, and how do users discover them (suggestion pills vs manual typing)?
@@ -70,11 +72,7 @@ Trends Query:
 **Commands actually used**: 58 messages
 **Suggestion pills clicked**: 47 events
 
-**Key Insight**: 47 suggestion clicks vs. 58 actual slash command uses suggests that:
-- **Approximately 81% discovered via suggestions** (47/58 = 81%)
-- **Approximately 19% typed manually** (11/58 = 19%)
-
-Note: This assumes a 1:1 relationship between suggestion click and subsequent use, which may not be exact.
+The numerical ratio of these totals is 47/58, approximately 81%. It is not the share of uses discovered through suggestions. Clicks have not been joined to messages or users, and subtracting 47 from 58 does not identify manually typed uses. The discovery split remains unknown.
 
 ## Visualizations
 
@@ -102,38 +100,30 @@ analyze-code:          ██                  4.3% (2)
 user-research:         ██                  4.3% (2)
 ```
 
-### Discovery Method
+### Aggregate totals, not a discovery funnel
 ```
-Via Suggestion Pills: ████████████████████████████ 81% (47/58)
-Manually Typed:       ██████                       19% (11/58)
+Suggestion clicks recorded: 47
+Slash-command messages recorded: 58
+Click-to-message attribution: not measured
 ```
 
 ### Claude Code Sessions Without Slash Commands
 
 **Total Claude Code Sessions (Nov 14 - Jan 5)**: 2,695
-**Sessions with slash commands (Dec 10 - Jan 5, estimated)**: ~58
-**Sessions without slash commands**: ~2,637 (97.8%)
+**Slash-command messages (Dec 10 - Jan 5)**: 58, not a count of sessions.
 
-**Note**: Due to PostHog performance limitations preventing user-level analysis, we cannot calculate the exact distribution of "users by number of sessions without slash commands". However, we can infer:
-
-**Estimated Distribution** (based on 2,695 sessions, ~58 with slash commands):
-```
-Users with 0 slash commands across ALL sessions: ████████████████████████████████████ ~97-98%
-Users who used slash commands at least once:     ██                                    ~2-3%
-```
-
-**Key Finding**: The vast majority of Claude Code users (97-98%) have **never used a slash command** across any of their sessions, despite having access to this feature.
+The session total covers a different observation window. Neither subtraction from 2,695 nor a unique-user percentage is justified by these message counts. Sessions without commands, users who have never used a command, and users who returned to a command remain unmeasured.
 
 ## Takeaways
 
-### 1. Extremely Low Slash Command Adoption (0.53%)
+### 1. Recorded slash-command message share (0.53%)
 
-Only 1 in 189 AI messages uses a slash command. This is **critically low** adoption for what appears to be a key feature differentiation.
+About 1 in 189 recorded AI messages carries the slash-command property. This is a message share, not a unique-user adoption rate or evidence of product differentiation.
 
 **Why this matters**:
 - Slash commands provide structured, predefined AI workflows
-- Low usage suggests either poor discoverability or lack of perceived value
-- Users are defaulting to freeform chat instead of guided commands
+- Discoverability and perceived value are possible research questions, not conclusions from message share
+- Messages without the property need not represent users who rejected guided commands
 
 **Possible reasons for low adoption**:
 - Users don't know slash commands exist
@@ -143,69 +133,54 @@ Only 1 in 189 AI messages uses a slash command. This is **critically low** adopt
 
 ### 2. /plan Dominates Usage (71% of Slash Command Messages)
 
-When users DO use slash commands, they overwhelmingly choose `/plan` (41 uses vs. 17 for `/mockup`).
+The recorded command-message breakdown contains 41 `/plan` and 17 `/mockup` messages. It does not establish preferences across unique users.
 
 **Insights**:
-- Planning workflows are the primary use case for structured commands
-- `/plan` likely provides unique value that freeform chat doesn't
-- `/mockup` serves a more niche use case
+- `/plan` is the most common command name in the recorded message breakdown.
+- Whether it provides value beyond freeform chat needs separate investigation.
+- The smaller `/mockup` count does not by itself establish a distinct user segment.
 
-**Strategic implication**: If slash commands are valuable, `/plan` is the proof point. Study what makes it successful.
+**Research direction**: Study the workflows behind these messages before drawing conclusions about command value.
 
-### 3. Suggestion Pills Drive Discovery (81% of Usage)
+### 3. Discovery attribution is not established
 
-The vast majority of slash command usage comes from clicking suggestion pills rather than manual typing.
+Suggestion pills received 47 recorded clicks. Without impression data and a user/session-level join to later messages, these counts do not show how many clicks led to use, how often commands were typed, or whether suggestions caused adoption.
 
-**This reveals**:
-- **Discoverability is key**: Users don't know commands exist until they see them
-- **Suggestion pills work**: 47 clicks led to ~47 uses (strong conversion)
-- **Manual typing is rare**: Only ~11 instances of users typing slash commands from memory
-
-**Critical dependency**: Slash command adoption is almost entirely dependent on the suggestion pill UI being visible and compelling.
-
-### 4. Suggestion Clicks Show Broader Interest Than Actual Usage
+### 4. Click and Message Breakdowns Contain Different Command Names
 
 8 different commands were clicked (47 total clicks) but only 2 commands were actually used in messages (58 uses).
 
 **Discrepancy analysis**:
 - `datamodellm:datamodel`: 16 clicks but **NOT in top 2 used commands**
-- `/plan`: 12 clicks, 41 uses (users returned to it multiple times after first discovery)
-- `/mockup`: 6 clicks, 17 uses (also shows repeat usage)
+- `/plan`: 12 recorded clicks and 41 command messages; repeat use by the same users is not established
+- `/mockup`: 6 recorded clicks and 17 command messages; repeat use by the same users is not established
 
 **Interpretation**:
-- Users click suggestions to explore, but many commands don't lead to actual use
-- `datamodellm:datamodel` had high initial interest (34% of clicks) but low follow-through
-- `/plan` and `/mockup` have high **repeat** usage after discovery (more uses than clicks)
-- This suggests `/plan` and `/mockup` provide real value; others may not
+- Different event names, instrumentation coverage or populations may explain the discrepancy; the recorded tables alone do not distinguish them.
+- `datamodellm:datamodel` accounts for 34% of clicks in this table, but its follow-through is unknown.
+- More messages than clicks does not measure repeat users or comparative value.
 
-### 5. Many Commands Available But Underutilized
+### 5. Available Commands and Observed Names Need Coverage Checks
 
 8 different commands were clicked via suggestions:
 - datamodellm:datamodel, plan, mockup, roadmap, track, write-tests, analyze-code, user-research
 
-But only 2 actually get used regularly: /plan and /mockup.
+Only `/plan` and `/mockup` appear in the recorded message breakdown. Regular use by individual people is not established.
 
 **Implications**:
-- Command proliferation without clear value proposition
-- Most commands tried once (via suggestion) then abandoned
-- Need to either improve less-used commands or remove them to reduce cognitive load
+- Whether the command set has a clear value proposition requires usability research
+- Whether commands were tried once and abandoned is not established by these aggregates
+- Do not remove commands on the basis of these aggregate counts alone
 
-### 6. The "Suggestion Click to Usage" Funnel is Leaky
+### 6. A click-to-use funnel requires linked events
 
-47 suggestion clicks → 58 actual slash command uses in messages
-
-**If we assume**:
-- ~47 users clicked suggestions and tried slash commands
-- ~11 additional users typed commands manually
-- Total: ~58 instances of slash command usage
-
-**Funnel insight**: Almost no one types slash commands without seeing a suggestion first. This means **visibility = adoption**.
+There are 47 recorded suggestion-click events and 58 command messages. These are not sequential funnel stages with known membership. No unique-user totals, manual-entry count, conversion rate or causal effect of visibility can be inferred from this comparison.
 
 ## Suggested Actions / Product Direction
 
-### 1. Dramatically Increase Slash Command Discoverability
+### 1. Test Slash Command Discoverability
 
-**Finding**: 99.5% of users never use slash commands; 81% of usage comes from suggestion pills.
+**Recorded observation**: 99.47% of messages in this sample did not carry the slash-command property. User adoption and discovery source are unknown.
 
 **Recommendations**:
 - **Always show suggestion pills** for first-time users in every new AI session
@@ -216,35 +191,35 @@ But only 2 actually get used regularly: /plan and /mockup.
 
 ### 2. Double Down on /plan; Investigate /mockup
 
-**Finding**: /plan accounts for 71% of slash command usage with strong repeat adoption.
+**Recorded observation**: /plan accounts for about 71% of the 58 command messages. Repeat adoption was not measured.
 
 **Recommendations**:
 - **Feature /plan prominently**: Make it the default suggestion shown to new users
 - **Study /plan workflows**: Interview or survey users who use /plan to understand its value
 - **Expand /plan capabilities**: If it's working, make it more powerful
-- **Promote /plan in marketing**: "AI-powered planning assistant" as a core feature
+- **Validate value before promotion**: Message counts alone are not effectiveness evidence
 - **A/B test**: Show /plan suggestion to 100% of new AI sessions for one cohort
 
 **For /mockup**:
-- Also valuable (29% of usage, repeat users) but more niche
+- Accounts for 29% of the recorded command messages; comparative value and repeat users remain unknown
 - Investigate if it should be promoted to specific user segments (designers, PMs)
 
 ### 3. Deprecate or Improve Underperforming Commands
 
-**Finding**: 6 commands (roadmap, track, write-tests, analyze-code, user-research, datamodellm:datamodel) had clicks but little to no actual usage.
+**Recorded observation**: Six names in the click breakdown do not appear in the message breakdown. Check naming and instrumentation coverage before interpreting this as little or no use.
 
 **Recommendations**:
 - **Audit low-performing commands**: Why were they clicked but not used?
-  - `datamodellm:datamodel`: 16 clicks (most popular!) but 0 uses - what went wrong?
+  - `datamodellm:datamodel`: 16 recorded clicks, but no corresponding name in the message table; first check event coverage
   - Interview users who clicked but didn't use
   - Check error logs for failures
-- **Remove clutter**: Too many commands = decision paralysis
-- **Focus on winners**: Better to have 2 excellent commands than 8 mediocre ones
+- **Evaluate cognitive load**: Compare alternatives through usability research
+- **Compare outcomes**: Do not rank command quality from aggregate frequency alone
 - **Test and iterate**: For promising commands (datamodel?), fix issues and relaunch
 
 ### 4. Make Slash Commands a Standalone Feature
 
-**Finding**: Current adoption is so low (<1%) that slash commands are effectively undiscovered.
+**Recorded observation**: Command messages comprise less than 1% of this sample; exposure, discovery and user adoption were not measured.
 
 **Recommendations**:
 - **Dedicated "Commands" panel**: Like Slack's slash command menu
@@ -267,25 +242,25 @@ But only 2 actually get used regularly: /plan and /mockup.
   - First-use-to-repeat rate
 - **Set targets**: E.g., "Increase slash command usage from 0.53% to 5% of messages"
 
-### 6. Investigate Why datamodellm:datamodel Failed to Convert
+### 6. Investigate the datamodellm:datamodel measurement discrepancy
 
-**Finding**: 34% of suggestion clicks (16/47) but 0 uses afterward.
+**Recorded observation**: 34% of suggestion clicks (16/47), with no corresponding command name in the message breakdown shown here. Whether those clicks led to later use is unknown.
 
-**Urgent investigation needed**:
+**Questions for investigation**:
 - Is the command broken? Check error logs.
 - Is the output confusing? Test the command yourself.
 - Is the name unclear? "datamodellm:datamodel" is not intuitive.
 - Did users click by mistake?
 
-**Action**: Fix or rebrand this command - it clearly has initial interest.
+**Research action**: Check event coverage and linked outcomes before attributing the discrepancy to a broken command or deciding to rebrand it.
 
 ### 7. Consider Renaming/Rebranding Slash Commands
 
-**Finding**: Command names like "datamodellm:datamodel" are technical and unclear.
+**Hypothesis**: Technical names such as "datamodellm:datamodel" may be unclear to some users; this analysis did not test comprehension.
 
 **Recommendations**:
 - **Use clear, action-oriented names**:
-  - `/plan` ✓ (works great)
+  - `/plan` (short action-oriented example; effectiveness not measured here)
   - `/create-mockup` instead of `/mockup`?
   - `/build-datamodel` instead of `datamodellm:datamodel`
 - **Add descriptions**: When showing suggestions, include a one-line "what this does"
@@ -293,16 +268,16 @@ But only 2 actually get used regularly: /plan and /mockup.
 
 ## Confidence Level
 
-**Medium-High (70%)** for the data we have, but with significant limitations.
+The counts are retained as historical query output. No statistical confidence level or independent raw-data validation is established by this document.
 
-### Why we're moderately confident:
-- **Event counts are accurate**: 11,007 messages, 58 with slash commands, 47 suggestion clicks
-- **Breakdown data is reliable**: /plan (41), /mockup (17) are actual usage numbers
+### Recorded evidence and its limits:
+- **Recorded event counts**: 11,007 messages, 58 with slash commands, 47 suggestion clicks; not re-queried for this audit
+- **Recorded breakdown**: /plan (41), /mockup (17); not counts of unique or returning users
 - **Trends data worked**: Unlike retention queries, trends aggregations succeeded
 
 ### Limitations reducing confidence:
 - **Cannot track user-level funnel**: Don't know if the same users click and use, or if they're different groups
-- **Cannot calculate conversion rates precisely**: Assumption of 81% via suggestions vs 19% manual is estimated
+- **Cannot calculate conversion rates**: The 81% aggregate ratio is not an estimate of suggestion-attributed usage, and its complement is not a manual-entry count
 - **No impression data**: Don't know how many users SAW suggestions but didn't click
 - **No cohort analysis**: Can't segment by user characteristics (new vs experienced, etc.)
 - **Short time window**: Only 27 days of data (Dec 10 - Jan 5) since properties added

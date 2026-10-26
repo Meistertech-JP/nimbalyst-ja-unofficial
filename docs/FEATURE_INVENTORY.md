@@ -575,7 +575,7 @@ Companion app; pairs with a desktop over encrypted sync. Voice mode is not inclu
 
 ## Analytics
 
-- PostHog integration (opt-in, anonymous)
+- PostHog integration with an analytics preference and an anonymous installation ID; a startup retention ping remains after opt-out, and supplied onboarding email can be stored as a person property. See [Analytics Guide](ANALYTICS_GUIDE.md) and [PostHog Events](POSTHOG_EVENTS.md) for the upstream behavior and scope; this inventory is not observation of live transmission from the unofficial release
 - AI usage report with historical graph and activity heatmap
 - Claude model-specific weekly usage percentages and reset times, including Fable
 - Per-project usage breakdown

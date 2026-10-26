@@ -543,7 +543,9 @@ export const MyCollabContentAdapter: CollabContentAdapter = {
 
 ### Structured Edits and AI Write Access
 
-`toPlainText` enables AI **read** on every adapter (good enough for prompts). AI **write** is only enabled on adapters that implement both `toStructured` and `applyStructuredPatch`. Visual-only adapters that skip the structured surface stay read-only to AI -- intentional, so the host has a typed patch shape to validate.
+`toPlainText` provides the AI read projection used in prompts. Implementing both `toStructured` and `applyStructuredPatch` is the preferred AI-write surface, not an access gate. Without that pair, agent edits fall back to `exportToFile` → text replacement → `applyFromFile`. An adapter without structured methods is therefore not read-only to AI.
+
+`applyFromFile` must safely handle a populated Y.Doc and consume its own `exportToFile` output unchanged, including agent-authored replacements. The fallback rewrites the whole document, so concurrent human edits can interleave. Implement the structured pair for minimal deltas rather than relying on the fallback as a concurrency guarantee.
 
 ### Where Adapters Run -- and Don't
 

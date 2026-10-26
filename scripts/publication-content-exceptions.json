@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "exceptions": [
+    {
+      "path": "design/Collaboration/collaborative-tracker-system.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "b56aee8aa937f1e50dded66d62ba31f8c4080345cce4b07a59e5cc9001243308",
+      "occurrences": 1,
+      "classification": "fictional-collaboration-example",
+      "rationale": "Flow illustrates a fictional team member opening the same sample project on another machine, normalized against a generic organization remote. It demonstrates identity across differing local paths, not a measured user environment."
+    },
+    {
+      "path": "docs/AGENT_PERMISSIONS.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "46cca84005951a1d62626ebf17b2291ef8552f92ddf62b40b7c5f37da8773b94",
+      "occurrences": 1,
+      "classification": "generic-settings-example",
+      "rationale": "Fenced JSON illustrates additionalDirectories beside generic tool allow patterns. The generic developer account segment and shared-config suffix are sample settings, not an exported real settings record."
+    },
+    {
+      "path": "docs/ANALYTICS_GUIDE.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "8ac016978183dcb295e762ece8b144329a497a8d49ee062753a3f0fcd6346ca4",
+      "occurrences": 1,
+      "classification": "deliberate-negative-privacy-example",
+      "rationale": "Under Bad (contains PII or customer secrets) and DO NOT DO THIS, the sample deliberately demonstrates why filesystem paths must not be sent to analytics. Adjacent fictitious mail and contract names support example context. No evidence identifies this as a real event log."
+    },
+    {
+      "path": "docs/MCPCONFIGSERVICE_IMPLEMENTATION.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "861602ba3b57255f7ad52d2edc7240733d50455dc8f57e24db8cb8a5fa07522c",
+      "occurrences": 1,
+      "classification": "synthetic-environment-expansion-test-example",
+      "rationale": "Fenced unit-test strategy creates a local HOME dictionary and checks simple/nested variable expansion. The account text is a test value, not a host environment dump."
+    },
+    {
+      "path": "docs/MCPCONFIGSERVICE_IMPLEMENTATION.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "51ca6ba234d6ea2f3bce38ab8665e59973df5b488c6f33962e0c1aa1c2a2f66c",
+      "occurrences": 1,
+      "classification": "synthetic-environment-expansion-test-example",
+      "rationale": "Fenced unit-test strategy creates a local HOME dictionary and checks simple/nested variable expansion. The account text is a test value, not a host environment dump."
+    },
+    {
+      "path": "docs/MCPCONFIGSERVICE_IMPLEMENTATION.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "6ff10f3bf5b0d9e6e24ff095eb63ccdaa99f000c426d3b1f1d1a505607367ae2",
+      "occurrences": 2,
+      "classification": "synthetic-environment-expansion-test-example",
+      "rationale": "Fenced unit-test strategy creates a local HOME dictionary and checks simple/nested variable expansion. The account text is a test value, not a host environment dump."
+    },
+    {
+      "path": "docs/MCPCONFIGSERVICE_IMPLEMENTATION.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "e6a624ebff0c64c06e5cd6c6e8b228c8a2b3be4c70dbedfac62c9cd84841f618",
+      "occurrences": 1,
+      "classification": "synthetic-environment-expansion-test-example",
+      "rationale": "Fenced unit-test strategy creates a local HOME dictionary and checks simple/nested variable expansion. The account text is a test value, not a host environment dump."
+    },
+    {
+      "path": "docs/WINDOW_ROUTING.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "5d50e3601d21739e052d9b33710d4ef0a123cfd50a03e9f266055f6053ad5df0",
+      "occurrences": 1,
+      "classification": "generic-workspace-routing-example",
+      "rationale": "Explicit Example or GOOD session-object sample teaches stable workspace path routing. A common example name alone cannot establish a real user; these are neither machine logs nor stored production session records."
+    },
+    {
+      "path": "docs/WINDOW_ROUTING.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "d7baf06a58274ccbfa227ab5160f8236239e95594da89a6ce41bb739cea82376",
+      "occurrences": 1,
+      "classification": "generic-workspace-routing-example",
+      "rationale": "Explicit Example or GOOD session-object sample teaches stable workspace path routing. A common example name alone cannot establish a real user; these are neither machine logs nor stored production session records."
+    },
+    {
+      "path": "packages/android/app/src/test/resources/crypto/test-vectors.json",
+      "reason": "personal-absolute-path",
+      "lineSha256": "d4cbcfb35efeb08b0e33e7c0bbaa50186ce40c5c531cc059554ba9318a9dd8fa",
+      "occurrences": 1,
+      "classification": "fixed-cryptographic-compatibility-fixture",
+      "rationale": "Named deterministic project-id plaintext paired with fixed IV and expected ciphertext, identical in Android and Swift compatibility vectors. Android consumer decrypts every case and asserts deterministic project-id encryption equals the expected ciphertext. Changing only this plaintext would invalidate the compatibility contract; not a live credential."
+    },
+    {
+      "path": "packages/cloudflare-sandbox/README.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "943b2da1172d660187ea727d4926b5f16b02899b3ae12e8d3e9724a216a3bd68",
+      "occurrences": 1,
+      "classification": "container-system-account-path",
+      "rationale": "Documented fixed application account home, not a developer home. Dockerfile creates the account and sets its HOME/UID; management.ts validates provisioned paths under that home."
+    },
+    {
+      "path": "packages/cloudflare-sandbox/container/README.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "f33f5105b78528b4e14a5fcc3020316ee4c390f3ee8ce58c1ba50eb7bcd7ebcd",
+      "occurrences": 1,
+      "classification": "container-system-account-path",
+      "rationale": "Documented fixed application account home, not a developer home. Dockerfile creates the account and sets its HOME/UID; management.ts validates provisioned paths under that home."
+    },
+    {
+      "path": "packages/i18n/src/resources/en/mcp.json",
+      "reason": "personal-absolute-path",
+      "lineSha256": "f33e37e5e9f0a043444485c414672d64fa86a4bf8b12b6754a63a0ef7af35ff7",
+      "occurrences": 1,
+      "classification": "generic-ui-input-example",
+      "rationale": "Allowed-directory help text explicitly marks the path as an example in both English and Japanese. Its account segment is second-person placeholder text, not an actual profile value."
+    },
+    {
+      "path": "packages/i18n/src/resources/en/settings.json",
+      "reason": "personal-absolute-path",
+      "lineSha256": "cf9cff16ef7f9e254559c53ff910387649b22ac59c5319ec31927590752eaf6c",
+      "occurrences": 1,
+      "classification": "generic-ui-input-example",
+      "rationale": "Allowed-directory help text explicitly marks the path as an example in both English and Japanese. Its account segment is second-person placeholder text, not an actual profile value."
+    },
+    {
+      "path": "packages/i18n/src/resources/ja/mcp.json",
+      "reason": "personal-absolute-path",
+      "lineSha256": "057d99966ef95470d4ca9b409722f4315c7b0234afa4fd8d63e04224e4e5e0ed",
+      "occurrences": 1,
+      "classification": "generic-ui-input-example",
+      "rationale": "Allowed-directory help text explicitly marks the path as an example in both English and Japanese. Its account segment is second-person placeholder text, not an actual profile value."
+    },
+    {
+      "path": "packages/i18n/src/resources/ja/settings.json",
+      "reason": "personal-absolute-path",
+      "lineSha256": "6ef319091cac0c2eb16f139cfdc203efc873ee0de7e60a391b26fc2fbfb4d198",
+      "occurrences": 1,
+      "classification": "generic-ui-input-example",
+      "rationale": "Allowed-directory help text explicitly marks the path as an example in both English and Japanese. Its account segment is second-person placeholder text, not an actual profile value."
+    },
+    {
+      "path": "packages/ios/CryptoCompatibility/test-vectors.json",
+      "reason": "personal-absolute-path",
+      "lineSha256": "d4cbcfb35efeb08b0e33e7c0bbaa50186ce40c5c531cc059554ba9318a9dd8fa",
+      "occurrences": 1,
+      "classification": "fixed-cryptographic-compatibility-fixture",
+      "rationale": "Named deterministic project-id plaintext paired with fixed IV and expected ciphertext, identical in Android and Swift compatibility vectors. Android consumer decrypts every case and asserts deterministic project-id encryption equals the expected ciphertext. Changing only this plaintext would invalidate the compatibility contract; not a live credential."
+    },
+    {
+      "path": "packages/node/README.md",
+      "reason": "personal-absolute-path",
+      "lineSha256": "6b8a65e0ed52aaf2426f16654ad4b55accfd59c5b93ee6c4eba82742e03c94ff",
+      "occurrences": 1,
+      "classification": "generic-headless-mapping-example",
+      "rationale": "Workspaces mapping is explicitly an example, using an indefinite generic account segment. README explains the requester path is a logical projectId from another device, not the container checkout. The paired example JSON matches that explanation."
+    },
+    {
+      "path": "packages/node/workspaces.example.json",
+      "reason": "personal-absolute-path",
+      "lineSha256": "6b8a65e0ed52aaf2426f16654ad4b55accfd59c5b93ee6c4eba82742e03c94ff",
+      "occurrences": 1,
+      "classification": "generic-headless-mapping-example",
+      "rationale": "Workspaces mapping is explicitly an example, using an indefinite generic account segment. README explains the requester path is a logical projectId from another device, not the container checkout. The paired example JSON matches that explanation."
+    }
+  ]
+}

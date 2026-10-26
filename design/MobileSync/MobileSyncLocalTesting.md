@@ -1,6 +1,14 @@
 # Mobile Sync Local Testing Guide
 
-This guide explains how to set up and test the Nimbalyst mobile sync system locally. The sync system consists of three main components:
+## Historical scope — not a current setup procedure
+
+This document records the earlier CollabV3/Capacitor development layout. Those packages are absent from this checkout; the collaboration server now lives in a separate repository and the current iOS client is native. The old npm commands, package locations and authentication examples below are retained as historical design context, not instructions to execute against the current application.
+
+Do not apply the state-deletion, direct SQLite access, token-injection or port-owner termination examples to a real profile, account, database or unrelated process. They are not approved current troubleshooting procedures. Current database access must use the documented application/MCP interface; do not open live database files separately. Any future reproduction requires a disposable test environment, explicit target and process ownership checks, non-production credentials and separately authorized deployment. Never copy real tokens into command lines, logs or reports.
+
+For the current architecture and platform-specific test entry points, use [identity and rooms](../../docs/IDENTITY_AUTH_AND_ROOMS.md), [desktop database guidance](../../packages/electron/DATABASE.md), [iOS testing](../../packages/ios/TESTING.md), and [Android testing](../../packages/android/TESTING.md). These links do not certify that the old examples below remain executable.
+
+The historical sync system described below consisted of three main components:
 
 1. **CollabV3 Server** - Cloudflare Workers-based sync server with Durable Objects
 2. **Desktop App** - Electron app that syncs AI sessions
@@ -385,7 +393,7 @@ pod install --repo-update
 
 **iOS build fails in Xcode:**
 - Clean build folder: Product > Clean Build Folder
-- Delete derived data: `rm -rf ~/Library/Developer/Xcode/DerivedData`
+- Inspect this test project's DerivedData location and, only after stopping its build and confirming the exact generated directory, remove that project's disposable build output. Do not delete the shared DerivedData root or unrelated projects' data.
 - Re-sync: `npm run cap:sync`
 
 ### Sync Issues
@@ -431,10 +439,10 @@ The sync uses encrypted Y.js documents. All message content is end-to-end encryp
 
 ## Related Documentation
 
-- [Stytch Authentication System](./stytch-consumer-auth-system.md)
-- [Local Development Plan](./local-development.md)
+- Stytch Authentication System — historical `stytch-consumer-auth-system.md`, not in this checkout
+- Local Development Plan — historical `local-development.md`, not in this checkout
 - [Sync Architecture](./SYNC_ARCHITECTURE.md)
 - [Security Review](./SECURITY_REVIEW.md)
-- [Capacitor README](../../packages/capacitor/README.md)
+- Capacitor README — historical `packages/capacitor/README.md`, not in this checkout
 
 

@@ -21,6 +21,12 @@ fi
 # Maintainer-only allowlist from local git config; a no-op for contributors.
 printf '%s\n' "$push_refs" | node scripts/check-push-destination.mjs "${2:-$remote_name}"
 
+# Publication content is a property of each actual outgoing commit tree, not
+# the checked-out working tree. Keep this guard before the no-new-commits
+# shortcut so an annotated-tag-only push is also inspected.
+echo "[pre-push] Checking publication content for outgoing objects..."
+printf '%s\n' "$push_refs" | node scripts/check-publication-push.mjs
+
 # A release pushes main and then the tag on that same commit. The tag delivers no
 # commit the remote lacks, so every gate below would re-validate the tree the
 # branch push just proved. Skip it rather than spend the suite twice per release.

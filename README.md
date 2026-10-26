@@ -8,7 +8,9 @@ Nimbalyst v0.82.3をベースに、デスクトップアプリのユーザーイ
 
 ## 提供状況
 
-v0.82.3-ja.1はWindows x64向けの未署名版です。NSISインストーラー、ポータブルZIP、対応ソース、SHA256SUMS.txtは[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)に掲載します。
+v0.82.3-ja.1はWindows x64向けの未署名版です。NSISインストーラー、ポータブルZIP、対応ソース、SHA256SUMS.txtは[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)に掲載されています。
+
+公開済み配布物のソースはタグ `v0.82.3-ja.1` を基準とします。`main` は公開文書と検査を是正した開発先頭で、同梱ガイドにも差分があるため、既存Windows配布物と全ファイルが一致するソースではありません。この是正に伴う新版バイナリは公開していません。
 
 対象ソースは本家v0.82.3の固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準にしています。公式最新版とは機能・修正内容が異なります。本家がPrereleaseとして提供したv0.82.3を基準としています。
 

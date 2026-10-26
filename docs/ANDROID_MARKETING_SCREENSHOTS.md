@@ -81,7 +81,7 @@ The first cold start after an install is slow enough to capture the splash scree
 
 ## Play Console asset requirements
 
-From [android-play-store-listing.md](../design/MobileSync/android-play-store-listing.md): 512x512 app icon, 1024x500 feature graphic, 2-8 phone screenshots. Tablet screenshots are only needed if the listing claims tablet support.
+The historical `android-play-store-listing.md` plan (not included in this checkout) listed: 512x512 app icon, 1024x500 feature graphic, 2-8 phone screenshots. Tablet screenshots are only needed if the listing claims tablet support.
 
 Screenshot rules as of 2026-10 ([Play help](https://support.google.com/googleplay/android-developer/answer/9866151)), confirm at upload time since Google changes them:
 

@@ -26,7 +26,9 @@ collab-backups/<orgId>/<projectId-or-_primary>/
   bodies/<itemId>.md
 ```
 
-Typical `userData` roots are:
+For the unofficial Japanese Windows edition, the default `userData` root is `%APPDATA%\Nimbalyst 日本語版（非公式）\`. An explicitly configured `NIMBALYST_USER_DATA_DIR` overrides the default. Confirm the edition, Windows account and actual profile before restoring; do not use the official application's profile. See the [Windows guide](../docs/WINDOWS_JA_UNOFFICIAL.md#表示言語とデータ).
+
+Upstream/development reference roots are:
 
 - macOS: `~/Library/Application Support/@nimbalyst/electron/`
 - Windows: `%APPDATA%\@nimbalyst\electron\`

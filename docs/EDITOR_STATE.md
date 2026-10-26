@@ -18,7 +18,7 @@ The "lift state up" pattern is appropriate for simple React apps but becomes an 
 - Tab metadata - dirty, processing (atom families by tab ID)
 - Session state - unread, processing (atom families by session ID)
 - File tree git status (atom per file/directory)
-- **IMPORTANT**: Atoms are updated by centralized IPC listeners, NOT by components directly
+- **IMPORTANT**: IPC-originated updates flow through centralized listeners. UI interactions use the owning action/setter atoms rather than creating competing copies of the same state in components.
 
 ### 3. Communication via EditorHost, Not Props
 
@@ -33,11 +33,11 @@ The "lift state up" pattern is appropriate for simple React apps but becomes an 
 // Editor calls host.setDirty() on changes
 ```
 
-### 4. Stateful Editors Cannot Be Re-Rendered
+### 4. Preserve Stateful Editor Instances
 
 - RevoGrid, Monaco, Lexical manage internal state
-- Parent re-renders will break them
-- Changes flow through callbacks, not props
+- A React re-render is not itself a remount. Preserve the editor instance and avoid recreating it or replacing its document on every parent render.
+- Content changes flow through the editor lifecycle and callbacks; ordinary reactive presentation props can still update.
 
 ## EditorHost Contract
 

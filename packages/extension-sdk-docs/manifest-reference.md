@@ -156,8 +156,7 @@ by both renderer-side code (e.g., `host.data.query()`) and backend modules
 
 Backend modules declare their additional brokered permissions on the module
 contribution itself (`contributions.backendModules[].permissions`). See
-[permissions.md](./permissions.md) for the full catalog, the backend-module
-allowlist, and the consent flow.
+[permissions.md](./permissions.md) for the full catalog and the consent flow. Backend modules are not restricted by a provenance allowlist.
 
 ## Contributions
 
@@ -471,9 +470,9 @@ full policy.
 | Field | Type | Description |
 | --- | --- | --- |
 | `id` | `string` | Unique within the extension. Lowercase, `[a-z0-9._-]`, max 64 chars |
-| `entry` | `string` | Relative path to a compiled JS file. No `/` or `..` segments |
+| `entry` | `string` | Relative path to a compiled JS file within the extension root. Subdirectories are allowed; no leading `/` or `..` |
 | `runtime` | `"utility-process"` \| `"worker-thread"` | OS-isolated process vs. in-process worker thread |
-| `permissions` | `string[]` | Granular permission ids from the [permission catalog](./permissions.md#granular-permission-catalog). Non-empty |
+| `permissions` | `string[]` | Additional host-brokered ids from the [permission catalog](./permissions.md#catalog-of-host-brokered-permissions). May be empty or omitted; enabling the module itself grants native-code execution |
 | `enablement.default` | `"disabled"` | Required value -- privileged code is always opt-in |
 | `enablement.promptOn` | `"firstUse"` | Defer the consent prompt until the user invokes the capability |
 | `enablement.purpose` | `string` | Shown verbatim in the consent prompt. Max 280 chars |

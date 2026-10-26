@@ -2,6 +2,8 @@
 
 This document provides concise instructions for AI agents working with projects that use Nimbalyst's structured planning and tracking systems.
 
+The plan-file format below is inherited integration guidance, not an instruction to publish private development plans. Follow the target project's own storage and contribution rules. For development of Nimbalyst itself, use the current [tracker workflow](TRACKER_WORKFLOWS.md) and root instructions; local plans and individual work records remain outside the public candidate.
+
 ## Plan Documents
 
 ### Location and Naming

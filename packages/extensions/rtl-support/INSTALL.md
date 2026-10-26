@@ -47,24 +47,26 @@ If Method 1 doesn't work or Dev Tools isn't available.
    ```
    After build, a `dist/` folder is created.
 
-3. Copy the extension folder to the user extensions path:
+3. Copy the extension folder to the running application's `userData/extensions` directory. For the unofficial Japanese Windows edition, use the Windows path below; do not copy into the official application's profile. A custom `NIMBALYST_USER_DATA_DIR` changes the profile root.
 
    | OS | Path |
    |----|------|
-   | **Windows** | `%APPDATA%\@nimbalyst\electron\extensions\` |
-   | **macOS** | `~/Library/Application Support/@nimbalyst/electron/extensions/` |
-   | **Linux** | `~/.config/@nimbalyst/electron/extensions/` |
+   | **Windows — unofficial Japanese edition** | `%APPDATA%\Nimbalyst 日本語版（非公式）\extensions\` |
+   | **macOS — upstream development profile example** | `~/Library/Application Support/@nimbalyst/electron/extensions/` |
+   | **Linux — upstream development profile example** | `~/.config/@nimbalyst/electron/extensions/` |
+
+   The macOS/Linux examples are inherited upstream development paths, not verified release locations for this Windows edition. Confirm the active application's userData path before copying.
 
    The folder name should be `rtl-support` (or `com.nimbalyst.rtl-support`).
 
    **Windows (PowerShell):**
    ```powershell
    Copy-Item -Path "C:\path\to\rtl-support" `
-             -Destination "$env:APPDATA\@nimbalyst\electron\extensions\" `
+             -Destination "$env:APPDATA\Nimbalyst 日本語版（非公式）\extensions\" `
              -Recurse
    ```
 
-   **macOS/Linux:**
+   **macOS/Linux (upstream development profile examples only):**
    ```bash
    cp -r rtl-support \
      ~/Library/Application\ Support/@nimbalyst/electron/extensions/
@@ -137,7 +139,7 @@ typeof window.nimbalystRtlSupport
 ## Troubleshooting
 
 **Extension doesn't load:**
-- Verify the path (`%APPDATA%\@nimbalyst\electron\extensions\` on Windows)
+- Verify the active profile path (`%APPDATA%\Nimbalyst 日本語版（非公式）\extensions\` for this edition's default Windows profile)
 - Restart Nimbalyst (extensions are only discovered on startup)
 - Check the DevTools console for errors
 

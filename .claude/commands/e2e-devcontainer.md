@@ -39,10 +39,7 @@ This ensures:
 ```bash
 # 1. Ensure Docker is running
 if ! docker info > /dev/null 2>&1; then
-  # Kill any stuck Docker processes before starting fresh
-  pkill -9 -f "com.docker" 2>/dev/null
-  pkill -9 -f "Docker Desktop" 2>/dev/null
-  sleep 3
+  # Do not kill shared Docker processes or other worktrees' containers.
   echo "Starting Docker Desktop..."
   open -a Docker
   # Wait for Docker to be ready (max 120 seconds — cold starts can take 1-2 min)
@@ -87,7 +84,7 @@ exit $TEST_EXIT
 ## Test Patterns
 
 When running tests, you can specify:
-- No args: Run all E2E tests
+- No args: Run all E2E tests only when explicitly requested. If no scope was supplied, ask rather than defaulting to the full suite.
 - Specific file: `e2e/core/app-startup.spec.ts`
 - Directory: `e2e/monaco/`
 - Multiple files: `e2e/core/app-startup.spec.ts e2e/ai/claude-code-basic.spec.ts`
@@ -142,13 +139,11 @@ If previous runs crashed or were interrupted, you may need to clean up:
 # List all E2E containers (running and stopped)
 docker ps -a --filter "name=nimbalyst-e2e-"
 
-# Remove all E2E containers from this worktree
-WORKTREE_NAME=$(basename "$(pwd)")
-docker rm -f $(docker ps -aq --filter "name=nimbalyst-e2e-${WORKTREE_NAME}-")
-
-# Remove ALL E2E containers (all worktrees)
-docker rm -f $(docker ps -aq --filter "name=nimbalyst-e2e-")
+# After confirming its identity and ownership, remove only this invocation's container
+docker rm -f "${CONTAINER_NAME}"
 ```
+
+Other runs may still be active, even in this worktree. Do not delete their containers or terminate shared Docker processes. Broader cleanup needs an inventory, ownership checks and separate explicit authorization.
 
 ## Workflow Summary
 

@@ -1,9 +1,0 @@
-# R16 認証の適用範囲
-
-R15の最新通常ZIP製品7d5407c51で、本人の本番メール認証、同じWindows PCのlocalhost callback、暗号化保存、正常終了、再起動後のアカウント復元、通常サインアウト、認証ファイル削除、未認証状態での再起動を確認した。根拠は `auth-scheme-fixed-restored.json` と `auth-scheme-fixed-logout-restart.json`。古い057883f8b候補の未実施記録を、最新7d製品の未実施と取り違えない。
-
-認証保存はsafeStorage利用可能性とencryptString成功を要求し、暗号化失敗時は平文へfallbackしない。保存ファイルのv10 prefixとLocal Stateのencrypted_key存在は観測したが、秘密の値・生認証URL・Cookie・tokenは保存していない。nonce不一致・再受理拒否等の契約試験と本番callback改変試験は区別する。
-
-R16の製品修正はCodexの補助要求/Protocol購読と表示案内に限定し、Nimbalystのlocalhost callback、nonce、Stytch credential保存、logout競合処理、アプリID/profile分離は変更していない。したがって既存本番認証を履歴証拠として適用するが、新R16バイナリそのもので本番再認証したとは記載しない。不要な本番認証の反復は行わない。
-
-Google認証、特殊復旧、サービス側セッション失効、別ユーザーによるNTFS実効アクセス、旧認証済みプロファイル更新は未検証。ローカル認証ファイル削除とサーバーセッション失効を同一視しない。組織・アカウント作成、権限変更、実ユーザープロファイルへの操作はしていない。

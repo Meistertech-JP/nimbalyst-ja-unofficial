@@ -13,11 +13,13 @@ Readers open a page in the Nimbalyst desktop app, the team web console, or, for 
 | `decision` block | yes | yes | yes |
 | Mentions, decision and open marks, sized images | yes | yes | yes |
 | `action`, `new-item` buttons | yes | shown, disabled | shown, disabled |
-| Embedded editor page | yes | "preview unavailable" | yes |
-| Embedded HTML page | yes | yes | yes |
+| Embedded editor page | yes | depends on host renderer; may show "preview unavailable" | yes, for supported types |
+| Embedded HTML page | yes | depends on the deployed host's HTML renderer | yes |
 | Placed view, marks list | yes | yes | no, a note |
 | Link preview card | yes, with page details | yes, URL and site | yes, URL and site |
 | Transclusion | yes | a note, open the page | a note, open the page |
+
+Browser embeds require the host to supply a renderer for the linked page or file type. Without one, the shared browser editor displays a preview-unavailable note. Do not promise a live team-web preview from the link syntax alone: deployed team-web rendering has not been verified for this edition. Check the intended host and type, and provide an ordinary page link when a preview is unavailable.
 
 **Never write these in a wiki page:** math (`$x$`, `$$`), `<details>` collapsibles, and ` ```board-table `. Pages written through the wiki tools keep them as literal text (a collapsible or board-table can also stop the local browser view from showing the page). Use tabs for content a reader should be able to fold away, and a placed view for a board of items.
 
@@ -199,7 +201,7 @@ A person is `[@Dana Lee](mailto:dana@example.com)`; a date is a bare `@2026-10-0
 
 ## Embedded pages
 
-A link alone in its paragraph to an editor page (a drawing, spreadsheet, mockup, HTML page and the rest) shows that page live inside this one. The title can set its size: `"width=800 height=500"`. See `editor-pages.md` for each type and the exact link to write.
+A link alone in its paragraph requests an embedded editor page (a drawing, spreadsheet, mockup, HTML page and the rest). It shows a live preview when the host supports that type; otherwise it can show an unavailable note. The title can set its size: `"width=800 height=500"`. See `editor-pages.md` for each type and the exact link to write.
 
 ## Placed views
 

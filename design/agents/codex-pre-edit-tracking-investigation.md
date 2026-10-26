@@ -1,8 +1,8 @@
-# Codex Pre-Edit Tracking — Investigation State
+# Codex Pre-Edit Tracking — Historical Investigation
 
-Status: **STUCK**. Three approaches tried, none reliably solves the pre-edit race for `update`-kind file_change items. This doc captures everything learned so the next session can pick up cleanly without re-deriving.
+This document records an upstream investigation through 2026-05-14 using the SDK and CLI versions discussed below. Three approaches did not reliably solve the pre-edit race for `update`-kind file-change items at that snapshot. Observations, failed experiments and hypotheses are retained as technical history, not as current fork behavior, current CLI documentation or instructions to resume an uncommitted development session.
 
-Tracker: **NIM-586** ("Codex sessions miss post-edit snapshot; sidebar diff peek uses git instead of session history") — the part about post-edit snapshots is solved. The pre-edit race for updates is still open.
+The investigation distinguishes post-edit snapshot capture and session-aware diff rendering from the separate problem of obtaining the correct pre-edit baseline. Completion of the first two did not establish resolution of the pre-edit race.
 
 ## The user-visible problem
 
@@ -14,12 +14,12 @@ In the **FilesEditedSidebar peek popover**, AI-edited files render as all-green 
 
 The peek calls `git:file-diff` with `group: 'working'` (see `FilesEditedSidebar.tsx:162-170`). For files not in HEAD, the handler falls through to `git diff --no-index -- /dev/null <file>` which produces an all-added unified diff. See `GitHandlers.ts:879-905`.
 
-## What we shipped this session (works, do not regress)
+## Implementation observed in the investigated source
 
 ### 1. Codex SDK upgrade 0.128.0 → 0.130.0
 
 - Bumped in `packages/runtime/package.json:206` and `packages/electron/package.json:61`
-- npm lockfile had to be manually patched: 16 codex-related entries under `packages/electron/node_modules/@openai/` and `packages/runtime/node_modules/@openai/` were stale. Deleted those entries via a Node script, ran `npm install`, codex-sdk hoisted to root `node_modules/@openai/codex-sdk@0.130.0`.
+- The historical npm installation had 16 stale Codex-related lock entries, which were repaired during the experiment. This is not the current dependency-update procedure; the repository now uses pinned pnpm and its workspace lockfile.
 - Verified native binary present at `node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin`
 - `peer: true` count unchanged (17 → 17)
 
@@ -31,7 +31,7 @@ Codex's `file_change` `item.completed` now triggers a `post_edit_snapshot` chunk
 - `OpenAICodexProvider.maybeBuildFileChangePostEditSnapshot` at `OpenAICodexProvider.ts:~2110` — fires on `item.completed` for `file_change`, reads each affected path from disk, reuses the synthetic edit-group ID via `lookupCodexEditGroupId`, skips `delete` kinds.
 - Yielded in main loop at `OpenAICodexProvider.ts:~1010` right after pre-edit yield, wrapped in try/catch.
 - Handler in `MessageStreamingHandler.ts:~1329` writes via `historyManager.createSnapshot(absPath, content, 'ai-edit', desc, { sessionId, toolUseId })`.
-- Verified: 3 pre-edit + 3 ai-edit rows landed for test session, all stamped with same `toolUseId = nimtc|item_15|...`
+- The experiment recorded 3 pre-edit and 3 ai-edit rows with the same tool-use identifier. That observation established attribution, not correctness of every baseline.
 
 ### 3. Session-aware diff IPC (NIM-586 part 2)
 
@@ -66,14 +66,14 @@ The host's existing fallback (use `FileSnapshotCache` from `HooklessAgentFileWat
 
 ### Observed data
 
-For test session `dfaed934-117f-4fb5-bc26-6d40877dd133` (post-edit snapshot working, but pre-edit raced):
+For test run A (post-edit snapshot working, but pre-edit raced):
 
 | file | pre-edit MD5 | ai-edit MD5 | identical? |
 |---|---|---|---|
 | change-tracking-note.md | 4d43...352a | 2b6a...b40e | no (lucky timing — small file, fired first) |
 | fruits.md | c79e...aa51 | c79e...aa51 | **YES (race hit)** |
 
-For session `801a2eb4-e3a4-45a7-8e63-1f6822219d77` (after hook plumbing landed):
+For test run B (after hook plumbing was added):
 
 | file | pre-edit MD5 | ai-edit MD5 | identical? |
 |---|---|---|---|
@@ -81,7 +81,7 @@ For session `801a2eb4-e3a4-45a7-8e63-1f6822219d77` (after hook plumbing landed):
 | fruits.md | 3dcb...7988 | 3dcb...7988 | **YES (race STILL hit)** |
 | sidecar dir | N/A | N/A | **does not exist** — hook never ran |
 
-Bottom line: **the hook never fired**, so my pre-edit pipeline still reads disk and still races for fruits.md.
+In these runs, **the hook did not fire**, so the investigated pre-edit pipeline continued to read disk and race for fruits.md.
 
 ## Why the hook didn't fire (hypothesis)
 
@@ -98,7 +98,7 @@ The codex CLI loads hooks from `$CODEX_HOME/hooks.json` or `[hooks.PreToolUse]` 
 
 This needs to be confirmed by reading codex-rs source. If confirmed, **the hook must be configured via a file**, not `--config`.
 
-## The "awful design choice" — why CODEX_HOME override sucks
+## Constraints of overriding CODEX_HOME
 
 Setting `CODEX_HOME=<our_per_session_dir>` would let us drop a `hooks.json` and codex would load it. **But** that breaks the user's CLI codex experience because:
 
@@ -106,17 +106,17 @@ Setting `CODEX_HOME=<our_per_session_dir>` would let us drop a `hooks.json` and 
 - `~/.codex/sessions/` (the user's chat history) would not be visible
 - Any user-configured hooks, MCP servers, plugins would be invisible
 
-Workarounds (all suboptimal):
+Historical alternatives considered, not recommended configuration changes:
 
 1. **Copy/symlink user's CODEX_HOME contents** into per-session dir. Adds disk overhead per session. Fragile (auth.toml refresh races, symlink resolution).
 2. **Project-level `<workspace>/.codex/config.toml`**. Adds a file to the user's repo (gitignore via `.codex/`). Persistent on disk between sessions unless cleaned up. Could clash with the user's own project-level hooks.
 3. **Patch the user's `~/.codex/config.toml` to add our hook**. Pollutes user config. Cleanup is fragile.
 
-None of these is good. **A clean fix requires codex itself to honor hooks via `--config` overrides or expose a `--hooks-file` CLI arg.** Could be an upstream feature request to openai/codex.
+These alternatives can hide existing configuration, copy sensitive data or overwrite project settings. Do not copy credentials, alter a real user's configuration or pre-authorize hooks to reproduce this investigation. A supported hook configuration mechanism would need verification against the selected CLI version.
 
-## NEW LEADS (2026-05-14 session) — what changes the picture
+## Additional findings recorded on 2026-05-14
 
-Spent a session reverse-engineering the packaged `codex` binary (strings dump + `app-server generate-json-schema`). Found several things the prior investigation missed.
+Inspection of the packaged binary and generated app-server schema produced the following leads. Their availability and semantics are version-specific; they were not revalidated against the current service for this document revision.
 
 ### Lead 1 — The app-server protocol exposes the patch diff text directly
 
@@ -125,7 +125,7 @@ Spent a session reverse-engineering the packaged `codex` binary (strings dump + 
 - **`item/fileChange/patchUpdated`** notification carries `changes[].diff` — the **full unified-diff text** that's about to be (or has just been) applied for each affected path. See `/tmp/codex-schema/v2/FileChangePatchUpdatedNotification.json`.
 - The exec mode strips this — the SDK's `FileChangeItem` only has `{path, kind}`.
 
-This is the unlock. With the diff text in hand, we can compute pre-edit content **deterministically** by reverse-applying the diff against the post-edit disk content — no hook, no race, no FileSnapshotCache dependency. For `add` kinds the pre-edit is "did not exist". For `delete` and `update` kinds the diff contains both `-` and `+` lines.
+A complete patch could permit reconstruction of pre-edit content by reverse-applying it to the matching post-edit bytes. This requires a verified matching revision, complete hunks and handling of concurrent writes; an arbitrary later disk read is not a race-free baseline. The protocol and edge cases require regression tests before adopting the approach.
 
 ### Lead 2 — Hooks have a trust system; `--config` hooks are likely untrusted by default
 
@@ -155,27 +155,27 @@ Plugins are stable; `plugin_hooks` is "under development". The plugin system has
 
 Less explored than the others.
 
-## Recommended order to try the new leads
+## Historical experiment candidates
 
 1. **Smallest experiment: `--enable apply_patch_streaming_events`** in our existing OpenAICodexProvider. If the exec JSON stream starts including diff text per `item.updated` or pre-`item.completed` events, the whole hooks rabbit hole is moot.
 
-2. **Mid-size fix: switch from `codex exec` to `codex app-server` (stdio)** and consume `item/fileChange/patchUpdated` directly. This is the **most reliable** path — race-free by construction, no hooks, no trust dance. Tradeoff: requires writing our own JSON-RPC v2 client (the codex-sdk only speaks exec). The `codex app-server generate-ts` subcommand can generate TypeScript bindings for us. Likely 1–2 days of work but eliminates the whole class of bugs.
+2. **Evaluate `codex app-server` (stdio)** and `item/fileChange/patchUpdated` using the investigated protocol. A JSON-RPC client, complete patch handling, revision checks and regression tests would be required. The historical SDK's exec interface did not provide the same data. This was a proposed approach, not a verified race-free implementation.
 
-3. **Trust-state workaround**: locate where codex persists `currentHash` + `trustStatus` for hooks (likely `$CODEX_HOME/hook_state.json` or under a `hooks/` subdir based on the schema fields). Pre-write a trust record for our `sessionFlags` hook so it executes. Brittle — codex could change the format — but might be a 1-hour fix.
+3. **Investigate documented hook trust semantics** without writing trust records or bypassing approval. The storage location and effects of `currentHash` and `trustStatus` were hypotheses, not supported integration APIs.
 
 4. **Plugin path**: package our hook as a codex plugin and reference it via `--config plugins.local_path=...` (or whatever the config key is — would need to grep the binary). If plugins from a local path are auto-trusted, this is cleaner than the trust workaround.
 
-## Why the diff-reverse approach (lead 1+2) is the right end state
+## Potential benefits and conditions of diff reconstruction
 
-- **Deterministic**: pre-edit = patch.reverse(post-edit content). No I/O race.
-- **Works for any kind**: add (pre = empty), update (reverse hunks), delete (pre = `-` lines from patch).
+- **Conditional reconstruction**: pre-edit content can be reconstructed only when the complete patch and matching post-edit revision are available.
+- **Operation-specific handling**: add, update and delete need separate validation; binary changes, incomplete hunks and intervening writes cannot be assumed covered.
 - **No host-side hook subprocess**: less moving parts, no env plumbing, no sidecar dirs.
 - **Composable with post-edit snapshot we already ship**: post-edit snapshot is already correct; reverse-applied diff gives pre-edit.
 - **No upstream dependency on codex hooks-via-CLI**: stops blocking us on whatever codex does or doesn't do with `--config hooks`.
 
-The only reason to keep the hook plumbing alive is if app-server migration is judged too expensive; in that case lead 3 (trust workaround) is the fallback.
+Selection between supported hooks and protocol-based reconstruction requires current-version verification. A trust-state bypass is not a fallback integration mechanism.
 
-## Alternatives the prior session listed (kept for reference, mostly superseded)
+## Other historical alternatives
 
 1. **Test `--config hooks.PreToolUse=[{...}]` directly via codex CLI** to definitively confirm it's ignored. Run `codex exec --config 'hooks.PreToolUse=[{matcher = "^apply_patch$", hooks = [{type = "command", command = "echo hello > /tmp/hook-ran"}]}]' ...` and see if `/tmp/hook-ran` appears.
 2. **Use codex's `--config` to point at a hook file**. Maybe codex supports something like `--config hooks_file=/path/to/hooks.json` even when CLI override of inline hooks is rejected. Worth grepping codex source.
@@ -189,7 +189,9 @@ The only reason to keep the hook plumbing alive is if app-server migration is ju
 6. **Tee codex's stdin/stdout/stderr** to intercept the apply_patch arguments and snapshot before forwarding the call. Requires SDK-internal hooks or wrapping the binary. Brittle.
 7. **Watch the kernel's file-write events via fsevents/fanotify with sub-millisecond precision** to capture the moment before write. Cross-platform nightmare.
 
-## Files modified in this set of sessions (uncommitted)
+## Files involved in the historical experiment
+
+This list identifies the investigated changes; it is not a statement about the current working tree or an instruction to stage, revert or commit these paths.
 
 - `package-lock.json` (codex-sdk 0.128.0 → 0.130.0; ~1300 line diff)
 - `packages/electron/package.json` (codex-sdk bump + extraResources entry for hook script)
@@ -219,17 +221,11 @@ The only reason to keep the hook plumbing alive is if app-server migration is ju
 - **`CodexOptions.env` REPLACES `process.env` entirely** (not merge). Whoever sets it must include PATH and everything else. We layer onto `buildCodexEnvironment()`'s output for safety.
 - **PR #20540 (apply_patch as TurnItem) lands `item.started` BEFORE writing**, per the PR body. But in practice the events are emitted via async streaming that lets the disk write win the race.
 - **`replaceSpeculative: true` on `createTag`** lets later pre-edit captures overwrite earlier ones for the same file in the same session. The current pre-edit pipeline relies on this to handle the multi-patch-per-turn case.
-- **Codex codes file_change kind as `'add' | 'update' | 'delete'`** (not 'create' / 'remove'). My hook script's regex handles all variants defensively.
+- **The investigated file-change kinds were `'add' | 'update' | 'delete'`** (not 'create' / 'remove'). Compatibility with other spellings requires an explicit versioned contract rather than an assumption.
 
-## State to clean up before next session
+## Reproduction considerations
 
-The current workstream has uncommitted changes across many files. Nothing has been committed. The next session should decide:
-
-1. Whether to revert the hook plumbing (since it doesn't work) or leave it dormant pending a fix
-2. Whether to commit the working pieces (SDK upgrade, post-edit snapshot, session-aware diff IPC) as a standalone NIM-586 fix and tackle the pre-edit race separately
-3. Whether to file an upstream issue at openai/codex requesting `--config` support for hooks
-
-## What I'd do next if I were sane
+Reproduction requires a disposable workspace and a deliberately selected historical CLI version. Do not infer that the following speculative commands are supported by a current CLI or run them against an existing account or project configuration.
 
 1. **First, definitively test whether codex `--config hooks.PreToolUse=[...]` is honored.** Open a shell:
    ```bash
@@ -238,10 +234,10 @@ The current workstream has uncommitted changes across many files. Nothing has be
    +hello
    *** End Patch' | codex exec --config 'hooks.PreToolUse=[{matcher = "^apply_patch$", hooks = [{type = "command", command = "touch /tmp/hook-ran"}]}]' apply_patch
    ```
-   If `/tmp/hook-ran` appears → CLI overrides DO honor hooks, and my issue is something else (maybe TOML serialization quoting). If not → confirmed CLI overrides don't honor hooks, and the file-based path is the only way.
+   A marker proves that the test hook executed in that environment. Its absence alone does not distinguish configuration parsing, trust policy, tool invocation or other failures; inspect those paths separately.
 
-2. **If CLI overrides don't work, switch to a per-session config file** without polluting user's CODEX_HOME. Cleanest path: write a project-level `<workspace>/.codex/config.toml` with the hook, with cleanup logic to remove it after session ends. Add `.codex/` to a recommended gitignore.
+2. **Evaluate a supported per-session configuration mechanism** in an empty disposable project only. Never overwrite an existing project configuration or treat cleanup as permission to delete user-created files.
 
 3. **Alternative cleaner path: file an upstream issue** at openai/codex asking for `--hooks-file <path>` support, or for `--config hooks.PreToolUse` to merge into the hooks layer. The team is actively working on hooks (multiple PRs in April-May 2026), so this is reasonable to ask for.
 
-4. **Commit the working parts of NIM-586** (post-edit snapshot, session-aware diff IPC) so the user has at least *some* improvement in the meantime. Even with a racey pre-edit, the post-edit ai-edit row gives the chat-transcript diff a stable "after" reference, and for new-file creates the sidebar peek now works correctly.
+4. **Validate the post-edit and pre-edit paths independently.** A captured after-state can improve inspection without proving a correct before-state. Publication and Git changes require their own review and authorization.

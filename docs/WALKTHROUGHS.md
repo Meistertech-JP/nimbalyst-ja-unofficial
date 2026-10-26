@@ -192,7 +192,7 @@ export const myFeatureIntro: WalkthroughDefinition = {
       return document.querySelector('[data-testid="my-feature-button"]') !== null;
     },
     delay: 2000,                     // Wait for UI to settle (ms)
-    priority: 10,                    // Lower = higher priority
+    priority: 10,                    // Higher = higher priority
   },
   steps: [
     {
@@ -241,7 +241,7 @@ interface WalkthroughDefinition {
     screen?: 'files' | 'agent' | '*';  // Which mode triggers it
     condition?: () => boolean;          // Additional condition
     delay?: number;                     // Delay before showing (ms)
-    priority?: number;                  // Lower = higher priority (default: 10)
+    priority?: number;                  // Higher = higher priority (default: 10)
   };
   steps: WalkthroughStep[];
 }

@@ -1,5 +1,7 @@
 # Lexical Diff
 
+This is a historical standalone-package API guide. Its `@lexical/diff` installation/import examples and `DiffPlugin`/`DiffControls` components are not the current integration contract for this repository. Do not install a package solely to follow those examples. Current runtime registrations live in [DiffExtension.ts](../../extensions/builtin/DiffExtension.ts); [index.tsx](./index.tsx) provides the command hook. The `@nimbalyst/runtime/plugins/DiffPlugin` package export targets the core exports, not the historical React component API below. Historical design examples are retained for context and must be checked against the current source before reuse.
+
 A package for creating, visualizing, and managing differences in [Lexical](https://lexical.dev/) documents.
 
 ## Overview
@@ -11,9 +13,9 @@ The `lexical-diff` package provides tools and components for:
 - Accepting and rejecting changes
 - Converting markdown diffs to Lexical nodes
 
-## Installation
+## Historical Standalone Installation Example
 
-Install via npm:
+The former standalone usage documented this npm command; it is not a dependency-installation instruction for the current monorepo:
 
 ```bash
 npm install @lexical/diff

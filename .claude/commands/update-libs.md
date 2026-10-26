@@ -22,7 +22,7 @@ If the argument is ambiguous or names something not in the table, ask the user w
 
 ## Libraries
 
-1. **@anthropic-ai/claude-agent-sdk** — root `package.json` (also pinned in `overrides`)
+1. **@anthropic-ai/claude-agent-sdk** — workspace `package.json` dependency entries, also pinned in root `pnpm-workspace.yaml` `overrides`
 2. **@modelcontextprotocol/sdk** — `packages/electron/package.json`
 3. **@openai/codex-sdk** — `packages/runtime/package.json` (and `packages/electron/package.json` if present)
 
@@ -32,7 +32,7 @@ If the argument is ambiguous or names something not in the table, ask the user w
 
 Goal: tell the user what would change and what to consider, without modifying anything.
 
-1. **Check current versions** by reading the relevant package.json files (root, `packages/electron`, `packages/runtime`). For claude-agent-sdk also note the `overrides` pin in the root `package.json`.
+1. **Check current versions** by reading the relevant package.json files (root, `packages/electron`, `packages/runtime`). For claude-agent-sdk also note the `overrides` pin in root `pnpm-workspace.yaml`.
 2. **Fetch latest versions** from npm for each in-scope package:
   - `pnpm view @anthropic-ai/claude-agent-sdk version`
   - `pnpm view @modelcontextprotocol/sdk version`
@@ -71,7 +71,7 @@ If an in-scope package is already at the latest version, say so and drop it from
 Include a section only for in-scope libraries.
 
 ### <package name>
-- **Current**: [version] (for claude-agent-sdk, also root `overrides`: [version])
+- **Current**: [version] (for claude-agent-sdk, also `pnpm-workspace.yaml` `overrides`: [version])
 - **Latest**: [version]
 - **Versions in gap**: [list]
 - **Fixes that help us**: [bullets — each tied to a concrete Nimbalyst code path or tracker item, or "none relevant"]

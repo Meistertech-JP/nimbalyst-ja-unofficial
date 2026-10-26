@@ -2,6 +2,8 @@
 
 When a user's Nimbalyst database is in a bad state, they can manually restore from the most recent verified backup.
 
+Before changing files, identify the exact application edition, Windows account, active profile and storage engine. Quit that application completely and preserve a separate copy of the whole profile and backup. The unofficial Windows edition defaults to `%APPDATA%\Nimbalyst 日本語版（非公式）`; it does not use the official/development profile below. If `NIMBALYST_USER_DATA_DIR` was explicitly configured, use that confirmed directory instead. Do not try restoration against another edition's data.
+
 ## Step 0: find out which storage engine the install is using
 
 **Do this first.** Nimbalyst runs on one of two storage engines, each with its own database and its own backups. Restoring the wrong engine's backup will not recover anything, and can overwrite a good database with an empty one.
@@ -23,7 +25,8 @@ Or read the first line the database layer logs at startup, in `<app data>/logs/m
 | Platform | Path |
 | --- | --- |
 | macOS | `~/Library/Application Support/@nimbalyst/electron` |
-| Windows | `%APPDATA%\@nimbalyst\electron` |
+| Unofficial Japanese edition on Windows | `%APPDATA%\Nimbalyst 日本語版（非公式）` |
+| Upstream/development Windows reference | `%APPDATA%\@nimbalyst\electron` |
 | Linux | `~/.config/@nimbalyst/electron` |
 
 Then follow the matching section below. If the two engines disagree, or the flag names an engine whose folder does not exist, go to [When the flag file is wrong](#when-the-flag-file-is-wrong).
@@ -58,13 +61,19 @@ cp sqlite-db.backups/nimbalyst.backup-current.sqlite sqlite-db/nimbalyst.sqlite
 
 Use `nimbalyst.backup-previous.sqlite` or `nimbalyst.backup-oldest.sqlite` if the most recent one is also bad.
 
-On Windows, the same steps in PowerShell:
+On Windows, after quitting the application and confirming its profile, use PowerShell. The default below is for the unofficial Japanese edition; change it only to an explicitly verified custom profile. Stop if a previous recovery directory already exists, rather than mixing recovery attempts.
 
 ```powershell
-cd "$env:APPDATA\@nimbalyst\electron"
-New-Item -ItemType Directory -Force sqlite-db.bad
-Move-Item sqlite-db\nimbalyst.sqlite* sqlite-db.bad\
-Copy-Item sqlite-db.backups\nimbalyst.backup-current.sqlite sqlite-db\nimbalyst.sqlite
+$profilePath = Join-Path $env:APPDATA 'Nimbalyst 日本語版（非公式）'
+Set-Location -LiteralPath $profilePath
+if (!(Test-Path -LiteralPath 'sqlite-db.backups\nimbalyst.backup-current.sqlite' -PathType Leaf)) { throw 'Backup not found' }
+if (Test-Path -LiteralPath 'sqlite-db.bad') { throw 'Preserve the existing recovery directory before continuing' }
+New-Item -ItemType Directory -Path 'sqlite-db.bad'
+foreach ($databaseFile in @('nimbalyst.sqlite', 'nimbalyst.sqlite-wal', 'nimbalyst.sqlite-shm')) {
+    $databasePath = Join-Path 'sqlite-db' $databaseFile
+    if (Test-Path -LiteralPath $databasePath) { Move-Item -LiteralPath $databasePath -Destination 'sqlite-db.bad' }
+}
+Copy-Item -LiteralPath 'sqlite-db.backups\nimbalyst.backup-current.sqlite' -Destination 'sqlite-db\nimbalyst.sqlite'
 ```
 
 ## Restoring on PGLite
@@ -86,12 +95,15 @@ cp -r db-backups/pglite-db.backup-current pglite-db
 
 Use `pglite-db.backup-previous` or `pglite-db.backup-oldest` if the most recent one is also bad.
 
-On Windows, the same steps in PowerShell:
+On Windows, after quitting the application and confirming its profile:
 
 ```powershell
-cd "$env:APPDATA\@nimbalyst\electron"
-Rename-Item pglite-db pglite-db.bad
-Copy-Item -Recurse db-backups\pglite-db.backup-current pglite-db
+$profilePath = Join-Path $env:APPDATA 'Nimbalyst 日本語版（非公式）'
+Set-Location -LiteralPath $profilePath
+if (!(Test-Path -LiteralPath 'db-backups\pglite-db.backup-current' -PathType Container)) { throw 'Backup not found' }
+if (Test-Path -LiteralPath 'pglite-db.bad') { throw 'Preserve the existing recovery directory before continuing' }
+Rename-Item -LiteralPath 'pglite-db' -NewName 'pglite-db.bad'
+Copy-Item -LiteralPath 'db-backups\pglite-db.backup-current' -Destination 'pglite-db' -Recurse
 ```
 
 ## When the flag file is wrong

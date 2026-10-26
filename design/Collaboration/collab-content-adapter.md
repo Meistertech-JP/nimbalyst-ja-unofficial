@@ -20,6 +20,8 @@ planStatus:
 ---
 # CollabContentAdapter
 
+This is a dated upstream design and implementation record. Earlier zero-trust assumptions and later server-managed-content decisions describe different design states; do not combine them into a current no-server-plaintext guarantee. Compare the current [adapter contract](../../packages/extension-sdk/src/types/collab.ts) and [identity/encryption documentation](../../docs/IDENTITY_AUTH_AND_ROOMS.md) before implementing an integration. Historical progress and test records below have not been rerun by this document revision.
+
 ## Implementation Progress
 
 - [x] Scaffold `@nimbalyst/collab-adapters` package: interface, registry, exports, build config

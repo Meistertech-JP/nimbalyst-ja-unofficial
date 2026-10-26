@@ -2,6 +2,8 @@
 
 Cloudflare Worker that serves the extension registry and routes downloads to the CDN.
 
+This package documents the upstream marketplace infrastructure. The unofficial Japanese edition does not operate these Cloudflare accounts or domains. Deployment, login, and resource-creation commands below are upstream-maintainer procedures, not installation steps for this edition; they require authorization for the destination account. These instructions do not grant access to upstream infrastructure.
+
 ## Architecture
 
 ```
@@ -80,7 +82,7 @@ All scripts are in `scripts/` and are meant to be run from the `packages/marketp
 ### Build a single extension
 
 ```bash
-./scripts/build-extension.sh ../../extensions/csv-spreadsheet
+./scripts/build-extension.sh ../extensions/csv-spreadsheet
 ```
 
 Runs the extension's build step, zips it into a `.nimext` file in `dist/`, and writes a `.sha256` checksum file alongside it.
@@ -204,7 +206,7 @@ Add a DNS record for `cdn.extensions.nimbalyst.com` pointing at the R2 bucket's 
 The client code is in `packages/electron/src/main/ipc/ExtensionMarketplaceHandlers.ts`.
 
 1. **Registry fetch** -- `net.fetch('https://extensions.nimbalyst.com/registry')`. Falls back to a bundled mock registry if the live endpoint is unreachable.
-2. **Install** -- Downloads the `.nimext` from the `downloadUrl` in the registry entry (which points to `/dl/:id/:version`, which 302s to CDN). Verifies the SHA-256 checksum. Extracts with `extract-zip` to `~/.nimbalyst/extensions/{id}/`.
+2. **Install** -- Downloads the `.nimext` from the `downloadUrl` in the registry entry (which points to `/dl/:id/:version`, which 302s to CDN). Verifies the SHA-256 checksum. Extracts with `extract-zip` to the running application's `userData/extensions/{id}/`. This edition's default Windows root is `%APPDATA%\Nimbalyst 日本語版（非公式）\extensions\`; a custom userData directory changes it.
 3. **Screenshots** -- Displayed in the marketplace detail modal. URLs point to `/screenshots/:id/:filename` which 302s to CDN.
 
 The marketplace is gated behind an alpha feature flag (`marketplace` in `alphaFeatures.ts`) and requires users to accept a security warning before browsing.
@@ -221,5 +223,5 @@ Before publishing a new extension to the registry:
   - Dependencies with known vulnerabilities
 3. **Build and test locally** -- Install via the "Install from GitHub" flow in the marketplace panel and verify the extension loads, renders correctly, and does what it claims.
 4. **Verify screenshots** -- Run the screenshot pipeline to ensure the screenshots accurately represent the extension.
-5. **Check the \****`.nimext`**\*\* package** -- Unzip it and verify it only contains `manifest.json`, `dist/`, `screenshots/`, and optionally `README.md`. No source code, `.env` files, or credentials should be included.
+5. **Check the `.nimext` package** -- Unzip it and verify the expected `manifest.json`, `dist/`, optional screenshots/README, and any manifest-declared plugin or agent-workflow assets. No unrelated source code, `.env` files, or credentials should be included.
 6. **Publish** -- Run the build + generate + publish pipeline described above.

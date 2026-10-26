@@ -27,7 +27,7 @@ Nimbalystデスクトップ版 v0.81.7をベースとする、Windows x64向け�
 
 本番サービスへの実アカウントのメール認証、IPv4 localhost callback、nonceと単回使用の受理、暗号化保存、専用プロファイルの再起動後のアカウント表示、通常ログアウト、ログアウト後の未認証状態を確認しました。認証ファイル2個とSQLite関連ファイルの実測ACLは、現在のユーザー・SYSTEM・Administratorsに限定されていました。認証値やCookieを検証成果へ含めていません。既存設定・既定の関連付け・公式版ショートカットは監査範囲で保持され、アンインストールによる変更は本版の登録とショートカットの削除だけでした。全ホスト状態や他の端末への保証ではありません。
 
-認証・インストールに関する上記の実機結果はR11製品ビルドの検証記録です。今回のアプリケーションはコードコミット `bb7a7b2af7ef60f7df2d92157f45ca09e32a960e` から再生成しています。認証コードはR11から変更していません。共有ドキュメントの作成・名前変更フォームと宛先一覧を必要時に読み込むようにし、読み込み失敗をダイアログ内に留める処理と、空エディターの入力案内の翻訳を追加しました。開いたエディターも言語切替へ追従します。38 workspaceの型検査と今回の関連34テストが成功しています。再生成したWindows展開版で日英切替・両言語の再起動後保持・フォーム表示・読み込み失敗時の日本語通知を確認しました。R11の関連88ファイル925テストは過去の検証記録であり、今回の全体テスト成功を意味しません。
+認証・インストールに関する上記の実機結果は先行製品ビルドの検証記録です。今回のアプリケーションはコードコミット `bb7a7b2af7ef60f7df2d92157f45ca09e32a960e` から再生成しています。認証コードはその先行ビルドから変更していません。共有ドキュメントの作成・名前変更フォームと宛先一覧を必要時に読み込むようにし、読み込み失敗をダイアログ内に留める処理と、空エディターの入力案内の翻訳を追加しました。開いたエディターも言語切替へ追従します。38 workspaceの型検査と今回の関連34テストが成功しています。再生成したWindows展開版で日英切替・両言語の再起動後保持・フォーム表示・読み込み失敗時の日本語通知を確認しました。先行ビルドの関連88ファイル925テストは過去の検証記録であり、今回の全体テスト成功を意味しません。
 
 ## 配布・署名・更新
 
@@ -88,7 +88,7 @@ The ordinary production build was tested for NSIS update installation, installed
 
 Real-account production email sign-in, IPv4 localhost callback, nonce/single-use acceptance, encrypted persistence, account UI restoration in the dedicated profile, ordinary logout, and an unauthenticated post-logout restart were observed. Actual ACLs for both credential files and SQLite-related files were limited to the current user, SYSTEM, and Administrators. Verification artifacts exclude authentication values and cookies. Monitored existing settings, default associations, and official shortcuts were retained; uninstall changed only this edition's own registrations and shortcuts. This is not whole-host equality or coverage of other systems.
 
-The authentication and installation results above refer to the R11 product build. This application is rebuilt from code commit `bb7a7b2af7ef60f7df2d92157f45ca09e32a960e`; authentication code is unchanged from R11. Creation and rename forms and their destination lists now load on demand, failed imports stay inside the dialog, and open editors follow display-language changes. Typecheck passed in 38 workspaces, together with 34 tests related to this update. The rebuilt Windows unpacked application was checked for language switching, persistence after restarting in both languages, form rendering, and a Japanese notification after an import failure. The R11 result of 925 related tests across 88 files is historical evidence, not a claim that the current full suite passed.
+The authentication and installation results above refer to an earlier product build. This application is rebuilt from code commit `bb7a7b2af7ef60f7df2d92157f45ca09e32a960e`; authentication code is unchanged from that earlier build. Creation and rename forms and their destination lists now load on demand, failed imports stay inside the dialog, and open editors follow display-language changes. Typecheck passed in 38 workspaces, together with 34 tests related to this update. The rebuilt Windows unpacked application was checked for language switching, persistence after restarting in both languages, form rendering, and a Japanese notification after an import failure. The earlier build's result of 925 related tests across 88 files is historical evidence, not a claim that the current full suite passed.
 
 ### Distribution, signing, and updates
 

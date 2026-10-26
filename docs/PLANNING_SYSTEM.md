@@ -1,5 +1,7 @@
 # Nimbalyst Planning System
 
+This historical upstream overview describes the planStatus-based planning workflow. Some component names, future-work sections and references to the root CLAUDE.md predate the current tracker architecture. For current tracker state and schema contracts, see [TRACKER_SCHEMA_SHARING.md](TRACKER_SCHEMA_SHARING.md); for the historical frontmatter format, see [Agent-Instructions.md](Agent-Instructions.md).
+
 ## Overview
 
 Nimbalyst includes a comprehensive markdown-based planning system that enables developers and AI coding agents to collaboratively manage development workstreams. The system uses structured markdown files with YAML frontmatter to track features, bugs, refactors, and other development tasks.

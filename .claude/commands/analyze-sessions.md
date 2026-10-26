@@ -35,7 +35,7 @@ A mistake the agent makes once is a log entry. A mistake repeated across multipl
 For each repeated mistake, decide whether it needs:
 - A new entry in `.claude/agent-mistakes.md` (one-off but notable)
 - A new rule file in `.claude/rules/` (recurring, deserves a permanent rule)
-- A new memory entry under `/Users/ghinkle/.claude/projects/-Users-ghinkle-sources-stravu-editor/memory/` (feedback type, with **Why:** and **How to apply:**)
+- A new private memory entry under `~/.claude/projects/<workspace-slug>/memory/` (feedback type, with **Why:** and **How to apply:**); do not publish the local profile or its contents
 - An update to an existing rule/memory (the rule was written but didn't catch this variant)
 
 ### 2. Speed losses — where the right answer took too long
@@ -243,7 +243,7 @@ Do **not**:
 - Read-only until the user confirms via the prompt.
 - Don't open or query the PGLite database directly — use `mcp__nimbalyst-extension-dev__database_query` if you need DB state for a finding (rare for this command).
 - Don't call `get_session_summary` more than `list_recent_sessions` returned. No expanding the scope mid-run.
-- Don't propose adding feature flags, env-var gates, or "safety toggles" — those are anti-patterns per the user's standing feedback (see `feedback_no_unrequested_feature_flags.md`).
+- Do not introduce feature flags, environment-variable gates or unrelated toggles as a substitute for fixing the observed issue. Keep proposed changes within the requested scope and the repository's documented configuration policy; private feedback files are not a prerequisite for using this command.
 - When suggesting rule/memory edits, **read the existing file first** — almost every "missing rule" is actually a "rule needs one more bullet."
 - Don't propose suggestions that are already covered by an existing rule/memory/agent-mistakes entry — the finding is then "the agent didn't follow X," and the fix is usually to make X more prominent (e.g. move it earlier in CLAUDE.md), not to write a second copy.
 - Match scope to what the user asked. If they passed a tight window (e.g. `1d`), don't expand into older sessions.

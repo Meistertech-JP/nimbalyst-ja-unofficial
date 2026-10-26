@@ -7,6 +7,8 @@ allowed-tools: ["Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS", "mcp
 
 You are helping the user file a feature request on the public Nimbalyst GitHub repo (`nimbalyst/nimbalyst`). Use the `feature_request.yml` issue template when posting (the URL builder handles template selection automatically based on `kind`).
 
+Choose the reporting scope before opening a form. Requests about Japanese localization or unofficial-edition packaging belong at [Meistertech-JP/nimbalyst-ja-unofficial](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/issues); prepare the draft and let the user open that repository manually. Do not use the URL builder for a fork-specific request: it targets upstream and has no repository parameter. For general Nimbalyst requests, explain that the destination is the official upstream repository and use the flow below only with the user's approval. Do not imply that the unofficial edition is an official product or that upstream is committed to implementing the request.
+
 ## Context from the intake dialog
 
 The first user message in this session may contain:

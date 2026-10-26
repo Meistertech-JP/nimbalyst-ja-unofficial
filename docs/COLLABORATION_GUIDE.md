@@ -2,13 +2,15 @@
 
 How to add real-time collaboration ("Share to Team") to a Nimbalyst extension editor.
 
+The binding and seeding examples below are developer references, not release verification. Earlier versions of this guide described client-held team encryption and a transport review gate. Team collaboration now uses server-managed custody, not zero-knowledge encryption; see [Identity, auth, encryption, and rooms](IDENTITY_AUTH_AND_ROOMS.md) for the custody model and its snapshot/deployment limits. Personal sync and encrypted local replicas are separate lanes.
+
 ## What you get from the host
 
 The host owns the entire transport stack:
 
-- **`DocumentRoom` Durable Object** — encrypted update relay on Cloudflare Workers.
-- **`DocumentSyncProvider`** (`packages/runtime/src/sync/DocumentSync.ts`) — Y.Doc + AES-256-GCM + WebSocket + offline queue + reconnection + snapshot compaction.
-- **Connection status bar, collaborator avatars, key-rotation handling** — implemented once in `CollaborativeTabEditor` for every collab editor type.
+- **`DocumentRoom` Durable Object** — team document transport and server-managed encrypted-at-rest storage on Cloudflare Workers, rather than a client-encrypted relay.
+- **`DocumentSyncProvider`** (`packages/runtime/src/sync/DocumentSync.ts`) — Y.Doc transport, offline queue, reconnection, and snapshot handling; names inherited from the retired team-encryption lane do not establish client-held encryption.
+- **Connection status bar and collaborator avatars** — shared through `CollaborativeTabEditor`; do not infer the retired client-key-rotation flow from older examples.
 
 What your extension implements is small: a yJS binding that maps your editor's internal state to/from a shared `Y.Doc`, plus a deterministic seed routine for first-open.
 
@@ -266,7 +268,7 @@ awareness.on('change', ({ added, updated, removed }) => {
 });
 ```
 
-The host runs awareness updates through DocumentSync's encrypted broadcast at ~2 Hz (throttled). For very high-frequency events (mouse drags), Excalidraw's `onPointerUpdate` is already debounced inside the binding via `awareness.setLocalStateField` -> DocumentSync throttle.
+The host throttles awareness updates through DocumentSync (historically described here as ~2 Hz). This is not a claim of client-held team wire encryption. For high-frequency events, consult the current binding and transport throttle rather than treating this historical rate as an API guarantee.
 
 ## Step 7: Undo / redo
 
@@ -346,7 +348,7 @@ Sign in as different team members in each. Share a `.yourext` file from instance
 
 - **Mobile viewer.** The shared file viewer at `share.nimbalyst.com` renders extension formats as static snapshots, not real-time. Collaborative edits land for collaborators in-app; viewer URLs refresh on the next snapshot.
 
-- **Review gate.** The `host.collaboration` surface does not yet expose review-gate hooks for non-markdown editors. The transport-level review gate (block autosave until accept) is in place, but extensions can't yet render per-element "remote change pending" overlays. An optional `onReviewGateChange` SDK callback is planned but not in this round.
+- **Historical review-gate proposal.** Earlier revisions described a transport-level gate and a planned `onReviewGateChange` callback. This is not a current SDK guarantee. Use the checked-out `EditorHost` collaboration types and host implementation before designing remote-change review UI.
 
 ## Reference implementation
 

@@ -1,6 +1,6 @@
 # Release Process
 
-This document describes the release process for Nimbalyst.
+This document describes the upstream Nimbalyst release process. It is retained for upstream development context. The unofficial Japanese edition uses unsigned Windows distributions, manual updates and a separate [release process](docs/UNOFFICIAL_RELEASE.md); the signing credentials, official update channels and promotion commands below do not apply to this fork.
 
 ## Overview
 

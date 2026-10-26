@@ -61,7 +61,7 @@ export const components = {
 };
 ```
 
-See the [custom editors guide](packages/extension-sdk-docs/custom-editors.md) for architecture patterns and advanced options.
+See the [custom editors guide](../extension-sdk-docs/custom-editors.md) for architecture patterns and advanced options.
 
 ## Shared Editor Components
 

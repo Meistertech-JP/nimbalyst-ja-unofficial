@@ -1,9 +1,6 @@
 <p align="center">
   <a href="https://nimbalyst.com/wiki/coding-agents/">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
-      <img src="docs/images/logo-light.svg" alt="Nimbalyst" width="220">
-    </picture>
+    <span>Nimbalyst.</span>
   </a>
 </p>
 
@@ -41,10 +38,7 @@
 <br>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.webp">
-    <img src="docs/images/hero-light.webp" alt="Claude Code building the wiki with the Nimbalyst Wiki plugin, and the same wiki open in the browser with the Home page and the page tree" width="900">
-  </picture>
+  <span>Claude Code building the wiki with the Nimbalyst Wiki plugin, and the same wiki open in the browser with the Home page and the page tree.</span>
 </p>
 
 Overwhelmed and disorganized working with agents? Your agent distills what you worked on into a wiki of plain markdown files: a Home page, the decisions you made and why, open questions with owners, and the things you track. You read and edit it in your browser, and every agent you use works on the same files.
@@ -103,10 +97,7 @@ Using Cursor, VS Code, Cowork or the Codex app? See [Other agents](#other-agents
 Claude asks who the wiki is for, then writes a Home page, a writing guide and starter pages from your README and docs, as markdown files in your repo. In Codex, ask it to "set up a wiki for this repo." For a short tour first, run `/nimbalyst-wiki:start`.
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-dark.webp">
-    <img src="docs/images/setup-light.webp" alt="Claude Code after installing the Nimbalyst Wiki plugin, with /nimbalyst-wiki:setup typed at the prompt" width="700">
-  </picture>
+  <span>Claude Code after installing the Nimbalyst Wiki plugin, with /nimbalyst-wiki:setup typed at the prompt.</span>
 </p>
 
 ### 3. Capture what you decided
@@ -122,10 +113,7 @@ At the end of a session, capture writes each decision into the page it affects, 
 Ask your agent to "open the wiki in my browser," with nothing to install. You get the page tree and the page editor, and you can edit pages, drawings, mind maps, spreadsheets and mockups. Edits save straight to the files, and what your agent writes shows up live. From a terminal, run `nim wiki serve` (see [`nim` command line](#nim-command-line)).
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.webp">
-    <img src="docs/images/home-light.webp" alt="The wiki Home page in the browser, with the page tree on the left and links to every area of the wiki" width="900">
-  </picture>
+  <span>The wiki Home page in the browser, with the page tree on the left and links to every area of the wiki.</span>
 </p>
 
 > [!TIP]
@@ -141,19 +129,13 @@ Ask your agent to "open the wiki in my browser," with nothing to install. You ge
       <h3>Decisions in the page they affect</h3>
       Each decision is marked with who decided, when and what was not chosen.
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/retries-dark.webp">
-        <img src="docs/images/retries-light.webp" alt="The Payment retries page in the browser, with two decisions marked with who decided, when and what was not chosen">
-      </picture>
+      <span>The Payment retries page in the browser, with two decisions marked with who decided, when and what was not chosen.</span>
     </td>
     <td width="50%" valign="top">
       <h3>What is decided and what is still open</h3>
       An index page links to every decision and open question, so you can catch up in a few minutes.
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/decisions-dark.webp">
-        <img src="docs/images/decisions-light.webp" alt="The Decisions and open questions page in the browser, listing what was decided and what is still open">
-      </picture>
+      <span>The Decisions and open questions page in the browser, listing what was decided and what is still open.</span>
     </td>
   </tr>
   <tr>
@@ -163,10 +145,7 @@ Ask your agent to "open the wiki in my browser," with nothing to install. You ge
       <br><br>
       <code>Track our competitors in the wiki: category, threat, setup speed and payment recovery for each.</code>
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/types-dark.webp">
-        <img src="docs/images/types-light.webp" alt="The Competitors type in the browser, a table listing Cartwell, Paylane and Tillpoint, each one its own page">
-      </picture>
+      <span>The Competitors type in the browser, a table listing Cartwell, Paylane and Tillpoint, each one its own page.</span>
     </td>
   </tr>
 </table>
@@ -187,10 +166,7 @@ Pages hold more than text. Ask your agent for a drawing, a mind map, a spreadshe
       <br><br>
       <code>Draw the payment retry flow as a page under Payment retries.</code>
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-drawing-dark.webp">
-        <img src="docs/images/editor-drawing-light.webp" alt="An Excalidraw drawing of the payment retry flow open in the wiki browser view">
-      </picture>
+      <span>An Excalidraw drawing of the payment retry flow open in the wiki browser view.</span>
     </td>
     <td width="50%" valign="top">
       <h3>Mind maps</h3>
@@ -198,10 +174,7 @@ Pages hold more than text. Ask your agent for a drawing, a mind map, a spreadshe
       <br><br>
       <code>Make a mind map of the open questions and risks for retries.</code>
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-mindmap-dark.webp">
-        <img src="docs/images/editor-mindmap-light.webp" alt="A mind map of open questions and risks for payment retries open in the wiki browser view">
-      </picture>
+      <span>A mind map of open questions and risks for payment retries open in the wiki browser view.</span>
     </td>
   </tr>
   <tr>
@@ -211,10 +184,7 @@ Pages hold more than text. Ask your agent for a drawing, a mind map, a spreadshe
       <br><br>
       <code>Add a spreadsheet of retry outcomes by decline code.</code>
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-spreadsheet-dark.webp">
-        <img src="docs/images/editor-spreadsheet-light.webp" alt="A spreadsheet of retry outcomes by decline code open in the wiki browser view">
-      </picture>
+      <span>A spreadsheet of retry outcomes by decline code open in the wiki browser view.</span>
     </td>
     <td width="50%" valign="top">
       <h3>Data models</h3>
@@ -222,10 +192,7 @@ Pages hold more than text. Ask your agent for a drawing, a mind map, a spreadshe
       <br><br>
       <code>Model the retry attempts we store as a data model page.</code>
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-datamodel-dark.webp">
-        <img src="docs/images/editor-datamodel-light.webp" alt="A data model of payment retry attempts open in the wiki browser view">
-      </picture>
+      <span>A data model of payment retry attempts open in the wiki browser view.</span>
     </td>
   </tr>
   <tr>
@@ -235,10 +202,7 @@ Pages hold more than text. Ask your agent for a drawing, a mind map, a spreadshe
       <br><br>
       <code>Mock up the retry settings screen.</code>
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-mockup-dark.webp">
-        <img src="docs/images/editor-mockup-light.webp" alt="A mockup of the retry settings screen open in the wiki browser view">
-      </picture>
+      <span>A mockup of the retry settings screen open in the wiki browser view.</span>
     </td>
     <td width="50%" valign="top">
       <h3>Canvases</h3>
@@ -246,10 +210,7 @@ Pages hold more than text. Ask your agent for a drawing, a mind map, a spreadshe
       <br><br>
       <code>Put the retry pages together on one canvas.</code>
       <br><br>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-canvas-dark.webp">
-        <img src="docs/images/editor-canvas-light.webp" alt="A canvas laying out the payment retry pages side by side in the wiki browser view">
-      </picture>
+      <span>A canvas laying out the payment retry pages side by side in the wiki browser view.</span>
     </td>
   </tr>
 </table>
@@ -265,10 +226,7 @@ Start with a local wiki and move it to [Nimbalyst Teams](https://nimbalyst.com/w
 - The team wiki runs on Nimbalyst's servers on Cloudflare, at [console.nimbalyst.com](https://console.nimbalyst.com).
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/team-home-dark.webp">
-    <img src="docs/images/team-home-light.webp" alt="The team wiki home page in the Nimbalyst web console, with the page tree, the open questions that need the team and recently decided items" width="900">
-  </picture>
+  <span>The team wiki home page in the Nimbalyst web console, with the page tree, the open questions that need the team and recently decided items.</span>
 </p>
 
 ### Upgrade a local wiki to a team wiki
@@ -567,20 +525,14 @@ The Nimbalyst Wiki is built from the main [Nimbalyst repository](https://github.
 The same files open in the free, open-source [Nimbalyst app](https://nimbalyst.com/wiki/local/), with live tables, 2x2s, mockups and diagrams you edit in place, next to your sessions and code. Open **Wiki** in the navigation gutter (Cmd+D) and choose **Local**. Nothing moves: the app reads the same folder your agent writes to. Inside the app, agents already have the wiki tools, and the plugin stands aside so each page has one write path.
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/app-dark.webp">
-    <img src="docs/images/app-light.webp" alt="The Competitors page in the Nimbalyst app's Local wiki, with a live table of competitors and a 2x2 below it" width="900">
-  </picture>
+  <span>The Competitors page in the Nimbalyst app's Local wiki, with a live table of competitors and a 2x2 below it.</span>
 </p>
 
 ---
 
 <p align="center">
   <a href="https://nimbalyst.com">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
-      <img src="docs/images/logo-light.svg" alt="Nimbalyst" width="140">
-    </picture>
+    <span>Nimbalyst.</span>
   </a>
 </p>
 

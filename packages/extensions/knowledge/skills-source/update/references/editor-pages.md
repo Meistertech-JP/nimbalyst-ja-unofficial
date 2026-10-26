@@ -35,7 +35,7 @@ On a local wiki, create the page with `createSharedDoc` (`documentType`, `title`
 
 ## Embedding one in a page
 
-A link alone in its paragraph shows the page live inside the one that links it. The title sets its size; leave it out to use the default.
+A link alone in its paragraph requests a preview inside the page that links it. A live preview requires a renderer for that page type in the current host. The title sets its size; leave it out to use the default.
 
 <!-- desktop-only -->
 - Team: `[Login flow](nimbalyst://doc/<documentId>?orgId=<orgId> "embedType=.excalidraw width=1000 height=600")`, with `orgId` from `listPages` (`consoleScope`) and the page's `id`. `embedType` is the file suffix from the table above and is required: an ordinary console link to the page stays a link.
@@ -48,7 +48,7 @@ A link alone in its paragraph shows the page live inside the one that links it. 
 - On a local wiki: `[Login flow](Login%20flow.excalidraw "id=<id> width=1000 height=600")`, the path relative to the linking page's file, as for any local link.
 <!-- /local-only -->
 
-Embedded editor pages render live in the desktop app and in the team web console, at the `width` and `height` you set. Embed a page where the reader needs to see it; link it from a list.
+The desktop app and local browser provide editor previews for their supported types. The shared browser editor delegates document/file previews to its host and shows a preview-unavailable note when no renderer is supplied. Team-web availability therefore depends on the deployed host and page type; it has not been verified for this edition. Do not promise that every editor page renders live there. Use an ordinary page link when the intended host cannot preview it. See `components.md` for the host-specific scope.
 
 ## File formats
 

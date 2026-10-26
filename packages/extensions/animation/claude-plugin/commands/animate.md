@@ -26,7 +26,7 @@ Include the interesting beat. The retry, the cache miss, the rejected review. An
 
 ## 4. Lay out the scene
 
-- Default stage `1200 x 640`, `fps` 25, no `background` override (so it follows the user's theme).
+- Default stage `1200 x 640`, `fps` 25, no `background` override. The scene uses its stamped `stage.theme` palette, or the fixed dark fallback when no palette is stamped; changing the app theme does not restamp an existing document.
 - Place nodes on a grid: aligned tops and bottoms, equal gutters, flow left-to-right or top-to-bottom.
 - Size each node to its rows: `h = 32 × rows + 80` with a subtitle, `+ 64` without. A row that overflows is silently dropped.
 - Add a header (title label + caps subtitle) and a bottom rail of caps labels that light in sequence.
@@ -62,8 +62,9 @@ If they want it outside Nimbalyst, ask where it is going and pick accordingly:
 
 - **A web page, docs, anywhere that renders HTML** -> `animation.export_html`. Instant, sharp, a few tens of kilobytes.
 - **A GitHub issue, README, chat message, slide** -> `animation.export_gif`. Recording plays the animation in real time, so it takes as long as the animation runs, and the file is much larger. Keep `fps` around 8-12 and `maxWidth` at 720 unless they ask otherwise.
+- **A destination that plays video** -> `animation.export_mp4` for H.264 MP4. It requires the desktop app's recording bridge; surface export failures rather than claiming that a video was produced.
 
-Default to HTML when either would work. There is no video export -- say so plainly rather than implying the GIF is a substitute.
+Default to HTML for interactive web playback. Prefer MP4 over GIF when the destination accepts video; use GIF for image-only destinations.
 
 ## Error handling
 

@@ -26,7 +26,7 @@ This creates a `dist/` directory with the packaged extension.
 
 ## Step 3: Try It Out
 
-**Note**: The extension is fully functional, but requires the Nimbalyst app to have the protocol handler implemented (Phase 2).
+The desktop app must already be running. Clipping uses its local HTTP endpoint, not a `nimbalyst://` URL handler. See the [current user guide](./README.md) for usage and troubleshooting; the older implementation summary records a previous design.
 
 ### Test the Extension UI
 
@@ -35,7 +35,6 @@ This creates a `dist/` directory with the packaged extension.
 3. You should see:
    - "Clip Page" button
    - "Clip Selection" button (enabled if text is selected)
-   - "Extract with AI" button
 
 ### Test the Context Menu
 
@@ -43,35 +42,15 @@ This creates a `dist/` directory with the packaged extension.
 2. You should see Nimbalyst options:
    - "Clip page to Nimbalyst"
    - "Clip selection to Nimbalyst" (if text is selected)
-   - "Extract with AI..."
 
 ### What Happens When You Click?
 
-Currently, when you click to clip:
+When you click to clip:
 1. Extension converts the page to markdown
-2. Generates a `nimbalyst://clip?...` protocol URL
-3. Attempts to open the URL
-4. **Browser shows error** (protocol not registered yet)
+2. Sends JSON to `http://127.0.0.1:3456/clip`, trying ports through 3465 when a connection fails
+3. Reports the desktop response; the desktop handles saving the clip in the workspace
 
-This is expected - the Nimbalyst app needs to implement the protocol handler (Phase 2).
-
-## What Works Now
-
-- ✅ Extension installs and loads correctly
-- ✅ Popup UI displays and functions
-- ✅ Context menus appear
-- ✅ Content script converts HTML to markdown
-- ✅ Metadata extraction works
-- ✅ Base64 encoding functions
-- ✅ Protocol URLs are generated
-
-## What Needs Phase 2 (Nimbalyst App)
-
-- ⏸️ Protocol handler registration
-- ⏸️ Clip processing and file creation
-- ⏸️ Image downloading
-- ⏸️ AI integration
-- ⏸️ Tracker system integration
+If no desktop instance responds, the popup reports a connection error. Do not register or replace a URL handler to fix this HTTP connection. Browser-to-desktop operation still needs to be tested in the intended environment; this guide is not a test result.
 
 ## Debugging
 
@@ -115,7 +94,7 @@ This is expected - the Nimbalyst app needs to implement the protocol handler (Ph
 
 2. **For testing**: See `DEVELOPMENT.md` Testing section for comprehensive test cases
 
-3. **For Nimbalyst integration**: See the plan document at `nimbalyst-local/plans/browser-extension-web-clipping.md`
+3. **For Nimbalyst integration**: See the HTTP architecture and prerequisites in [README.md](./README.md)
 
 ## File Structure
 
@@ -126,7 +105,7 @@ packages/browser-extension/
 │   ├── background/         # Service worker
 │   ├── content/            # Content script
 │   └── popup/              # Popup UI
-├── icons/                  # Extension icons (needs real icons)
+├── icons/                  # Included PNG icons (16/32/48/128px)
 ├── manifest.json           # Extension manifest
 ├── README.md              # Full user documentation
 ├── DEVELOPMENT.md         # Developer guide

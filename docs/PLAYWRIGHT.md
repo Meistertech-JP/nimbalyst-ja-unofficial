@@ -2,6 +2,8 @@
 
 This repository uses [Playwright](https://playwright.dev) for automated end-to-end coverage across the web playground and the Electron desktop shell.
 
+**Current execution rules:** [E2E Testing](E2E_TESTING.md#e2e-runs-take-over-the-users-desktop) is the canonical guide for launch scope and desktop side effects. Agents default to one selected spec with `--max-failures=1` in a dedicated test workspace/profile. Full-suite, directory, UI-mode, and headed commands below are reference options, not authorization to run broader or interactive checks. Confirm the checked-out scripts, server prerequisites, and helpers before launch. Do not open the HTML report automatically; read the text reporter unless the user explicitly asks to open the report.
+
 ## Installation
 
 ```bash

@@ -1,5 +1,7 @@
 # Developing Nimbalyst
 
+This upstream development guide describes development instances and official release-channel behavior. The unofficial Japanese edition uses the same development tools but disables official updates; selecting an alpha channel does not enable official updates for this fork. See [UNOFFICIAL_RELEASE.md](UNOFFICIAL_RELEASE.md) for its distribution process.
+
 There is not one single Nimbalyst development workflow. Which setup makes sense depends on what you are changing.
 
 The two common patterns are:

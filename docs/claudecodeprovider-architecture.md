@@ -1,5 +1,7 @@
 # ClaudeCodeProvider Architecture Diagram
 
+This historical upstream design compares an earlier provider layout with a proposed refactor. Line counts, phase labels and proposed components describe that snapshot, rather than a verified inventory of the current implementation. Use [AI_PROVIDER_TYPES.md](AI_PROVIDER_TYPES.md) and the checked-out provider sources for current contracts.
+
 ## Current Architecture
 
 ```mermaid

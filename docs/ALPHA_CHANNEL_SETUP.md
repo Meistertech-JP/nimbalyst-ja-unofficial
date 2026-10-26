@@ -1,5 +1,7 @@
 # Alpha Release Channel Setup Guide
 
+This historical upstream guide describes official release channels. The unofficial Japanese edition disables official automatic updates and manual update checks, and does not distribute alpha-channel update manifests. Use the [unofficial Windows release process](UNOFFICIAL_RELEASE.md) for this fork. The migration narrative below includes historical states and is not a current deployment instruction for this repository.
+
 This document describes the current alpha-channel release flow and the temporary migration bridge from Cloudflare R2 to GitHub pre-releases.
 
 ## Overview

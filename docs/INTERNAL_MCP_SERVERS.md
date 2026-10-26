@@ -93,7 +93,13 @@ Comment writes require `clientMutationId` for idempotency. Main derives the agen
 
 `RequestFeedback` is the nonblocking, organization-delivered counterpart to the local interactive prompt tools. `AskUserQuestion` and `PromptForUserInput` address the person at the current session, wait for that local answer, and do not use a server. `RequestFeedback` addresses other organization members, resolves them through `findOrgMembers`, checks subjects through `getResourceSharingStatus`, and returns a validated compose draft immediately. It never publishes or sends during the MCP call; the transcript compose widget requires the author to confirm before its host creates the request and delivers it through Messaging.
 
-## How to Add a New Internal MCP Server
+## Extending the Current Internal MCP Surface
+
+Start from the [consolidated topology](#consolidated-topology-one-port-many-endpoints), `mcpTopology.ts`, and the existing authenticated routing in `httpServer.ts`. Preserve its bearer authentication and origin policy rather than opening another unauthenticated standalone server. For renderer IPC, follow [IPC Guide](IPC_GUIDE.md) and its `safeHandle` boundary; route only to the owning workspace/window and fail when that target is unavailable.
+
+### Historical standalone-server walkthrough — do not copy
+
+Steps 1–5 below retain an older architecture for reference, not an implementation template. They predate the unified authenticated surface: the wildcard CORS server, raw `ipcMain.handle` registration, and unfiltered context logging shown there must not be used for a new endpoint. Use the current source and linked guides above; these snippets do not establish current security or routing behavior.
 
 ### Step 1: Create the MCP Server Module
 
@@ -601,36 +607,13 @@ public handleResponse(requestId: string, result: any): void {
 
 ### Pattern 3: Workspace to Window Routing
 
-Used in `httpServer.ts`:
-
-```typescript
-function findWindowForWorkspace(workspacePath: string): BrowserWindow | null {
-  // First try to find window by workspace path
-  let targetWindow = findWindowByWorkspace(workspacePath);
-
-  // Fall back to first available window
-  if (!targetWindow) {
-    const allWindows = BrowserWindow.getAllWindows().filter(w => !w.isDestroyed());
-    if (allWindows.length > 0) {
-      targetWindow = allWindows[0];
-    }
-  }
-
-  return targetWindow;
-}
-```
+Use the current workspace resolver and authenticated request context in `httpServer.ts`. The former example fell back to the first available window; that is not an acceptable fallback for workspace-scoped operations. Resolve the owning window explicitly and return an error when it is unavailable instead of targeting an unrelated project.
 
 ## Debugging
 
 ### Enable Verbose Logging
 
-Uncomment console.log statements in MCP server files for detailed flow:
-
-```typescript
-console.log('[Your MCP] Connection established with context:', context);
-console.log('[Your MCP] Tool called:', name, 'with args:', args);
-console.log('[Your MCP] Result:', result);
-```
+Use allowlisted diagnostic fields such as a fixed operation name, outcome category, or count. Do not log entire contexts, arguments, results, authorization headers, or configuration objects: these can contain user content, paths, API keys, or tokens. Historical logging calls in the walkthrough above are not safe debugging templates. Follow [Debugging logs](DEBUGGING_LOGS.md) for the current observation tools.
 
 ### Test MCP Server Health
 
@@ -649,12 +632,7 @@ console.log('[Your MCP] Active transports:', activeTransports.size);
 
 ### Inspect Claude Code Configuration
 
-In ClaudeCodeProvider, log the MCP config:
-
-```typescript
-const config = await this.getMcpServersConfig(sessionId, workspacePath);
-console.log('[CLAUDE-CODE] MCP config:', JSON.stringify(config, null, 2));
-```
+Inspect only the server count and explicitly allowlisted topology/load-policy metadata. Never serialize the full MCP configuration into logs: transport headers and environment fields may contain credentials. Use the current `McpConfigService` and `mcpTopology.ts` sources to inspect wiring without exposing configuration values.
 
 ## Examples
 

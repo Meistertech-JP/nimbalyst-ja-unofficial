@@ -12,10 +12,8 @@ The Nimbalyst desktop app, built with Electron.
 
 ### Testing
 
-From the repository root:
-- Run one spec: `pnpm exec playwright test e2e/monaco/file-watcher-updates.spec.ts`
-- Run a directory: `pnpm exec playwright test e2e/monaco/`
-- Run all: `pnpm exec playwright test`
+From `packages/electron`, run one spec per invocation, for example:
+`pnpm exec playwright test e2e/i18n.spec.ts`.
 
 **Always use `pnpm exec playwright test` directly.** Never use parallel execution — it corrupts PGLite. See [/docs/E2E_TESTING.md](/docs/E2E_TESTING.md).
 
@@ -89,7 +87,7 @@ Themes: Light, Dark (#2d2d2d / #1a1a1a / #3a3a3a), Crystal Dark (Tailwind gray s
 
 **Critical rules:**
 - Never hardcode colors in CSS files — use CSS variables.
-- `src/renderer/index.css` is the only place theme colors are defined.
+- Base theme colors are defined in `packages/runtime/src/editor/themes/registry.ts`; file-based overrides live under `packages/runtime/src/themes/builtin/`. See `THEMING.md` for the active CSS-variable mapping.
 - Apply themes by setting both the `data-theme` attribute and the CSS class on the root element.
 
 Comprehensive: [THEMING.md](./THEMING.md).

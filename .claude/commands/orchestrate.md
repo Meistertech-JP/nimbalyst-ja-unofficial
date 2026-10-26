@@ -17,7 +17,7 @@ This file is the canonical source. Nimbalyst exports it to provider skills; do n
 
 ## Preferences and run setup
 
-Read the [local orchestration policy](../../nimbalyst-local/agent-policy/orchestration.md) if present. It is the single source for model choices, effort, and concurrency defaults. Current user instructions override it. If it is absent, use preferences explicitly supplied in the conversation; ask once for missing routing choices rather than inventing them. Do not silently substitute a model that is unavailable or change an existing session's model.
+Read the optional, gitignored local orchestration policy at `nimbalyst-local/agent-policy/orchestration.md` (repository-relative) if present. It is the single source for model choices, effort, and concurrency defaults. Current user instructions override it. If it is absent, use preferences explicitly supplied in the conversation; ask once for missing routing choices rather than inventing them. Do not silently substitute a model that is unavailable or change an existing session's model.
 
 Read the governing plan and applicable repository instructions. For tracker-linked work, use `work_radar` when available, then link the session. For plan implementation, follow the progress conventions in [implement](implement.md), with the orchestrator owning the plan edits. Inspect `get_workstream_overview` and relevant active sessions before assigning work.
 

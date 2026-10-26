@@ -15,5 +15,7 @@ their respective authors.
 
 ## Contact
 
+The following address is an upstream contact, not a licensing or support service operated by this unofficial fork. The MIT License and third-party notices determine the applicable permissions; see [the Wiki licensing guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/License-and-Attribution-English) for this edition's distribution contents.
+
 - General licensing questions: `legal@nimbalyst.com`
 - Security reports: see [SECURITY.md](./SECURITY.md)

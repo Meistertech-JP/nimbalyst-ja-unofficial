@@ -3,6 +3,8 @@ description: Build, refine, and publish cumulative public release notes, then pr
 ---
 Promote the current GitHub alpha prerelease to the public stable release.
 
+This is upstream release-automation reference material, not the publication procedure for the unofficial Japanese edition. Do not use it to change official releases or to imply authority over upstream services. This fork uses [its reviewed release process](../../docs/UNOFFICIAL_RELEASE.md); publication requires separate authorization.
+
 This command's main job is to build the **proper cumulative public release notes** covering everything since the last stable public release, let the user edit them, then use the final text to update the existing GitHub release before making it public.
 
 ## Contract: `PUBLIC_RELEASE_NOTES.md` is regenerated every run

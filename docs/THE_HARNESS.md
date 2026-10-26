@@ -1,5 +1,7 @@
 # The Nimbalyst Agent Harness
 
+This is an upstream development-tooling catalog. Its private-memory and incident-log paths describe local inputs, not files to publish with this fork. Individual conversation records are excluded from the public source; reusable lessons are maintained in [Development safety](DEVELOPMENT_SAFETY.md). Tool availability and workflows vary by host, and this catalog is not evidence that every integration was exercised for the unofficial Windows release.
+
 This document is a living catalog of everything we put **around** the AI agent to make it effective at developing Nimbalyst itself. The "harness" is the scaffolding of rules, tools, workflows, and observability that turns a general-purpose coding agent into a reliable contributor to this codebase.
 
 **Audience:** Other developers (and contributors) joining the project who want to understand how AI sessions actually work here — what the agent reads, what tools it has, how it verifies its work, how multiple sessions coordinate. Also a checklist for ongoing harness improvements.
@@ -522,4 +524,4 @@ Keep the entries terse — one line per item is the goal. The point is to have a
 - [INTERACTIVE_PROMPTS.md](./../docs/INTERACTIVE_PROMPTS.md) — communication layer details
 - [INTERNAL_MCP_SERVERS.md](./../docs/INTERNAL_MCP_SERVERS.md) — capability layer details
 - [AGENT_PERMISSIONS.md](./../docs/AGENT_PERMISSIONS.md) — the permission gate that sits in front of capability tools
-- [agent-mistakes.md](./../.claude/agent-mistakes.md) — the running log of "what we learned the hard way"
+- [Development safety](DEVELOPMENT_SAFETY.md) — reusable guidance on shared work, verification and public/private records; individual incident logs remain local

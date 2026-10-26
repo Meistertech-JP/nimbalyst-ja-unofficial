@@ -90,7 +90,7 @@ This takes several minutes as it:
 
 ### Step 5: Execute Tests
 
-Run the tests using the provided pattern or all tests if no pattern specified:
+Run only the provided test pattern. If none was provided, ask for the intended scope. The no-argument command below is permitted only when the full suite was explicitly requested:
 
 ```bash
 # For specific tests:
@@ -126,7 +126,7 @@ Exit with the test exit code and provide a summary:
 ## Test Patterns
 
 Users can specify tests in these formats:
-- **All tests**: No argument
+- **All tests**: No argument, only after an explicit full-suite request; omission of a requested pattern is not authorization
 - **Single file**: `e2e/core/app-startup.spec.ts`
 - **Directory**: `e2e/monaco/`
 - **Multiple files**: `e2e/core/app-startup.spec.ts e2e/ai/claude-code-basic.spec.ts`
@@ -150,8 +150,8 @@ docker info
 # Check for name conflicts
 docker ps -a --filter "name=nimbalyst-e2e-"
 
-# Remove stale containers
-docker rm -f $(docker ps -aq --filter "name=nimbalyst-e2e-")
+# Remove only the exact container recorded for this invocation, after confirming ownership
+docker rm -f "${CONTAINER_NAME}"
 ```
 
 ### Setup Fails
@@ -184,13 +184,11 @@ If previous runs were interrupted:
 # List all E2E containers
 docker ps -a --filter "name=nimbalyst-e2e-"
 
-# Remove all from current worktree
-WORKTREE_NAME=$(basename "$(pwd)")
-docker rm -f $(docker ps -aq --filter "name=nimbalyst-e2e-${WORKTREE_NAME}-")
-
-# Remove ALL E2E containers (all worktrees)
-docker rm -f $(docker ps -aq --filter "name=nimbalyst-e2e-")
+# After confirming its identity and ownership, remove only this invocation's container
+docker rm -f "${CONTAINER_NAME}"
 ```
+
+Do not remove other runs' containers, including containers in the same worktree. Broader cleanup requires an inventory, ownership checks and separate explicit authorization.
 
 ## Important Notes
 

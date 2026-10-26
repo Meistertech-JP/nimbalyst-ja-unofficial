@@ -7,6 +7,8 @@ allowed-tools: ["mcp__nimbalyst-situational__feedback_anonymize_text", "mcp__nim
 
 You are helping the user file a bug report on the public Nimbalyst GitHub repo (`nimbalyst/nimbalyst`). Use the `bug_report.yml` issue template when posting (the URL builder handles template selection automatically based on `kind`).
 
+First distinguish upstream behavior from unofficial-edition behavior. Japanese translation, unofficial packaging/identity, or fork-only changes belong at [Meistertech-JP/nimbalyst-ja-unofficial](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/issues). For those reports, prepare an anonymized draft and direct the user to that repository manually; do not call the URL builder, whose destination remains the upstream repository and cannot be selected by an argument. Do not represent an unconfirmed fork-only issue as a defect in the official release. Use the upstream flow below only when that destination is appropriate and the user approves it; include the unofficial build version and clearly state any unverified upstream reproduction.
+
 ## Context from the intake dialog
 
 The user opened this session from the in-app feedback button. The first user message in this session contains a status line that looks like one of:

@@ -7,6 +7,8 @@ description: Prepare and execute an alpha release (patch/minor/major)
 
 Prepare an alpha release following this workflow.
 
+This is upstream alpha-release reference material. The unofficial Japanese edition uses unsigned Windows releases and [a separate publication process](../../docs/UNOFFICIAL_RELEASE.md). The `auto` argument below is not authorization to publish this fork or change official releases; verify the repository, target and explicit publication authority first.
+
 **Inventory check (both auto and interactive modes):** Before running the release script, reconcile the release's notable Added/Changed/Removed capabilities and relevant commits against `docs/FEATURE_INVENTORY.md`, following the root `CLAUDE.md` feature-inventory rule. Update missing, incomplete, or obsolete entries; verify unclear scope against current code. Report the updated sections or a short "No inventory impact" reason. Preserve unrelated pending edits, and do not treat uncommitted or planned work as shipped.
 
 ## AUTO MODE DETECTION

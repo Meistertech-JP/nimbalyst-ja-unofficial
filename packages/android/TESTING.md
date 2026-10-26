@@ -12,7 +12,7 @@ pnpm run sync:transcript-assets
 ./gradlew :app:testDebugUnitTest
 ```
 
-On this machine, those Gradle tasks passed when `JAVA_HOME` was set to `/Users/ghinkle/Library/Java/JavaVirtualMachines/openjdk-20.0.2/Contents/Home` instead of the default GraalVM install.
+Use the repository's Node.js and pnpm toolchain and a JDK compatible with the Gradle configuration. The Android project targets Java 17; point `JAVA_HOME` at the selected JDK rather than relying on a default GraalVM installation, which can fail the AGP `jlink` step. These commands describe validation procedures, not evidence of a completed runtime test on the unofficial Windows edition.
 
 ## Expected Next Additions
 

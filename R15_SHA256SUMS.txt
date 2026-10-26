@@ -1,7 +1,0 @@
-# Local candidate checkpoint; not published or a READY verdict.
-# Windows payload source: 7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7
-# Tests-only followup: 8da3b66e6db7a4155cdac44401c964c967fe27bc
-# Exact final source-ZIP and sealed-copy checksums are in the external SHA256SUMS.txt indexed by R15_PRESERVATION_MANIFEST.json.
-# Historical products and their checksum records remain in their original evidence checkpoints.
-5369e55bbd1eb61cfc9756bfc2d6d9422da44544fa433a28495fbccef056d068  packages/electron/release/Nimbalyst 日本語版（非公式）-Windows-x64.exe
-4a784689a04f43c0a933a3cb077240ca3a9d9523d0d81bae985034c11d13ae12  packages/electron/release/Nimbalyst 日本語版（非公式）-Windows-x64.zip

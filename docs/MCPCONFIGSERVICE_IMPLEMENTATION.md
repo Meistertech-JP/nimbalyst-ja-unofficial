@@ -1,5 +1,7 @@
 # McpConfigService Implementation
 
+This historical upstream extraction record mixes the original proposal, sample code and intermediate completion notes. The sample contains placeholders and obsolete paths; the COMPLETE heading and test counts refer to that checkpoint, not current release qualification. Use [MCP_CONFIG_MIGRATION.md](MCP_CONFIG_MIGRATION.md), [MCP_OAUTH.md](MCP_OAUTH.md) and the checked-out service implementation for current configuration behavior.
+
 ## Status: COMPLETE
 
 Extracted MCP configuration logic from ClaudeCodeProvider into a reusable service that can be shared by CodexProvider and future providers.

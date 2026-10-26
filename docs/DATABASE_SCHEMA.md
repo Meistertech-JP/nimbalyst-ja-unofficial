@@ -1,5 +1,7 @@
 # Database Schema Documentation
 
+This is a historical PGLite schema overview, not a complete schema reference for v0.82.3. Current desktop storage supports both PGLite and better-sqlite3; consult [DATABASE.md](../packages/electron/DATABASE.md), migrations and repository implementations for authoritative column definitions and backend differences. Diagrams below retain historical types and fields for context.
+
 
 [![nimbalyst-schema](assets/nimbalyst-schema.prisma.png)](nimbalyst-schema.prisma){911x570}
 
@@ -104,7 +106,7 @@ Stores AI chat conversation sessions with complete message history and provider 
 - `model` (TEXT): AI model identifier
 - `title` (TEXT): Human-readable session title
 - `session_type` (TEXT): Structural type of session ('session', 'workstream', 'blitz')
-- `parent_session_id` (TEXT, FK → ai_sessions.id, ON DELETE SET NULL): Parent session for workstream children. **Always `NULL` for worktree-resident sessions.**
+- `parent_session_id` (TEXT, FK → ai_sessions.id, ON DELETE SET NULL): Immediate parent in the session tree. Worktree-resident sessions may have a parent in the same worktree; worktree roots have a null parent. See the current hierarchy contract below.
 - `worktree_id` (TEXT, FK → worktrees.id): Worktree this session lives in. **Always `NULL` on `session_type='workstream'` rows.**
 - `document_context` (JSONB): Document context sent with messages
 - `provider_config` (JSONB): Provider-specific configuration
@@ -115,7 +117,7 @@ Stores AI chat conversation sessions with complete message history and provider 
 - `updated_at` (TIMESTAMP): Last update timestamp
 
 **Hierarchy rules — READ BEFORE WRITING CODE THAT CREATES SESSIONS:**
-See [SESSION_HIERARCHY.md](./SESSION_HIERARCHY.md) for the authoritative two-layer invariant, the "worktree IS the workstream" rule, and the legal combinations of `session_type` / `parent_session_id` / `worktree_id`. Violating those rules silently breaks the left-pane grouping.
+See [SESSION_HIERARCHY.md](./SESSION_HIERARCHY.md) for the current tree, container and manager rules and the legal combinations of `session_type` / `parent_session_id` / `worktree_id`. Worktrees may contain multiple session-tree roots and descendants; workstream and Blitz wrappers remain separate root types.
 
 **Note:** Message history is now stored in the `ai_agent_messages` table, not as a JSONB column in this table.
 

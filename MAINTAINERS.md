@@ -1,5 +1,7 @@
 # Maintainers
 
+This is the upstream Nimbalyst maintainer record, retained as upstream project documentation. The people and release authority listed below are not maintainers, endorsers or support providers for the unofficial Japanese edition. Fork-specific changes are reviewed in [Meistertech-JP/nimbalyst-ja-unofficial](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial).
+
 This file records who maintains Nimbalyst, what each role can do, and why a small set of paths needs a specific reviewer. It is meant to make the project's authority legible to contributors rather than something you have to infer from who merges what.
 
 ## Roles

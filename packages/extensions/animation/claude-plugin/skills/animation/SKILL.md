@@ -42,7 +42,7 @@ Times are **integer milliseconds**. Never frame indices, never floats.
 | --- | --- |
 | `width`, `height` | Clamped to 16..8192. The stage scales to fit the pane, so these set the aspect ratio and the coordinate system, not the pixel size. |
 | `fps` | Only affects frame snapping and the readout. Use 25 unless you have a reason. Whole-millisecond frame rates: 10, 20, 25, 50. |
-| `background` | Optional override. Omit it and the stage uses the theme surface, which is what you want -- the scene then follows the user's light/dark theme. |
+| `background` | Optional override. Omit it to use the stamped `stage.theme` background, or the fixed dark fallback when no palette is stamped. Existing documents do not follow later app-theme changes automatically. |
 
 1200x640 is a good default. Landscape, room for a header row and a bottom rail.
 
@@ -222,7 +222,7 @@ Constraints worth knowing before you reach for it:
 
 `neutral` `accent` `data` `success` `warning` `error` `muted`
 
-They map to theme tokens, so they follow the user's theme: accent is blue, data purple, success green, warning amber, error red, neutral/muted a faint grey. **Assign them semantically and keep the meaning fixed for the whole animation** -- if amber means "under review" in step 4 it cannot mean "slow" in step 7.
+They map to the document's stamped theme tokens, or the fixed dark fallback: the fallback uses blue for accent, purple for data, green for success, amber for warning, red for error, and faint grey for neutral/muted. **Assign them semantically and keep the meaning fixed for the whole animation** -- if amber means "under review" in step 4 it cannot mean "slow" in step 7.
 
 ### states
 
@@ -357,7 +357,14 @@ All four renderers -- the editor preview, `export_html`, both recorders -- use t
 
 Keep GIFs small: `fps` 8-12 is plenty for this kind of diagram, and `maxWidth` 720 is usually enough. Both file size and recording memory scale with the square of the width.
 
-There is **no video export**. If someone wants MP4, say so rather than implying the GIF is a substitute.
+`animation.export_mp4` writes an H.264 MP4 for destinations that play video. Like GIF recording, it needs the desktop app's IPC recording bridge and captures real-time playback. Prefer it over GIF when video is accepted; report an unavailable bridge or export error instead of claiming success.
+
+```
+animation.export_mp4 { filePath: "docs/cache.anim.json", fps: 30, maxWidth: 1440 }
+-> docs/cache.mp4
+```
+
+`outputPath` overrides the sibling `.mp4` destination. Supported parameters are `filePath`, `outputPath`, `fps` (2–60), and `maxWidth` (160–1920). These describe the implemented tool contract, not a guarantee of recording performance on every host.
 
 ### Showing it live inside Nimbalyst
 

@@ -28,9 +28,9 @@ export const MyToolWidget: React.FC<CustomToolWidgetProps> = ({
 };
 ```
 
-2. **Create CSS file** for the widget (e.g., `MyToolWidget.css`):
-   - Use CSS variables from `PlaygroundEditorTheme.css` for theming
-   - Follow existing patterns in `EditorScreenshotWidget.tsx`
+2. **Style the widget using the destination package's conventions**:
+   - Runtime transcript widgets normally use Tailwind utilities and `--nim-*` theme variables; do not copy an extension-only stylesheet into runtime by default.
+   - Follow neighboring widgets and [theming guidance](../packages/electron/THEMING.md). Add a separate stylesheet only when the integration requires it.
 
 3. **Register the widget** in `CustomToolWidgets/index.ts`:
 ```typescript

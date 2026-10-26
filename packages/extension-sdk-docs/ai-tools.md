@@ -106,11 +106,11 @@ Use `editor-write` for tools that intentionally mutate editor state, such as Exc
 
 `filePath` does not imply editor access. If your tool compiles/analyzes from disk, declare `access: { kind: 'filesystem' }` even if it accepts a `filePath` argument.
 
-### Safety: you cannot accidentally clobber a file
+### Conflict-aware post-tool editor saving
 
 The access mode is the contract you declare, but it is not what enforces safety. The host owns the only path that writes a mounted editor back to disk, and that path is conflict-aware: after an `editor-write` tool runs, the host re-reads disk and commits the editor's content **only if disk still matches what the editor loaded**. If anything changed the file out of band while the tool ran (for example the agent's own `Edit`), the host aborts the write and reloads the editor from disk instead of overwriting. A hidden editor never saves on its own; it persists only through this post-tool commit.
 
-This means a mis-declared or undeclared tool cannot silently destroy a file: the worst case for a tool that forgets `access` is a needless editor mount, never data loss. Declaring `filesystem` is still strongly preferred for disk-first tools — it avoids the mount entirely and always reads the latest content — but correctness does not depend on every author getting the declaration right.
+This conflict check protects the host's post-tool editor commit; it is not a guarantee against data loss from a tool's own filesystem writes or other side effects. Tool handlers remain responsible for validating inputs and preserving data on those paths. Declare `filesystem` for disk-first tools to avoid an unnecessary editor mount and read current disk content; declare `editor-write` only for intentional editor mutations.
 
 ## Example: Spreadsheet Tools
 
@@ -391,7 +391,7 @@ handler: async (args, context) => {
     // ... do work ...
     return { success: true, data: result };
   } catch (e) {
-    return { error: `Failed to process: ${e.message}` };
+    return { success: false, error: `Failed to process: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 ```

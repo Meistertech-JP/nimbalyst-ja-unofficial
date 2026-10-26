@@ -6,6 +6,8 @@ allowed-tools: Bash, Read, Edit, mcp__nimbalyst__AskUserQuestion, mcp__nimbalyst
 
 Publish the npm packages this repo ships, but only the ones whose source changed since their last publish. Publishing runs in GitHub Actions with npm Trusted Publishing; this command checks, bumps, commits and dispatches. It never publishes from this machine and never uses an npm token.
 
+This is an upstream registry-maintenance reference. The unofficial Japanese fork does not obtain authority to publish official npm packages by retaining these instructions. Do not dispatch an official publishing workflow or modify registry credentials. Fork releases use [the unofficial release process](../../docs/UNOFFICIAL_RELEASE.md) with a separately reviewed target and explicit authorization.
+
 | Group | Packages (one shared version) | Workflow |
 | --- | --- | --- |
 | `cli` | `@nimbalyst/cli` (`nim`) and `@nimbalyst/wiki-web` (the `nim wiki serve` browser app) | `publish-cli.yml` |

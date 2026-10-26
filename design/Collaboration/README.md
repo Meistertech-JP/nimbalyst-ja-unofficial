@@ -22,6 +22,10 @@ planStatus:
 ---
 # Nimbalyst Team
 
+This is a historical upstream design with the status and date recorded above. Its early end-to-end-encryption and server-plaintext assumptions are not a current security guarantee. Later designs changed team key custody; consult the current client source, deployed server contract and [identity/encryption analysis](../../docs/IDENTITY_AUTH_AND_ROOMS.md), preserving the version limits of that analysis.
+
+Historical references marked "not in this checkout" below retain the original document or mockup names without implying that those files are available here.
+
 A set of features that lets teams work together with AI. The system is built on a zero-trust architecture where the server never sees plaintext content -- all collaboration is end-to-end encrypted, with the server acting as a dumb encrypted relay between clients.
 
 ## Architecture Overview
@@ -58,8 +62,8 @@ The Stytch B2B session is scoped to one org at a time. Session exchanges switch 
 
 | Document | Status | Description |
 | --- | --- | --- |
-| [stytch-b2b-migration.md](./../../plans/stytch-b2b-migration.md) | Done | B2C-to-B2B auth migration for collabv3 server + desktop + iOS |
-| [stytch-consumer-auth-system.md](./../MobileSync/stytch-consumer-auth-system.md) | Done | Original B2C auth system (historical reference) |
+| `stytch-b2b-migration.md` (not in this checkout) | Done | B2C-to-B2B auth migration for collabv3 server + desktop + iOS |
+| `stytch-consumer-auth-system.md` (not in this checkout) | Done | Original B2C auth system (historical reference) |
 
 ### 2. Team Trust Model
 
@@ -69,10 +73,10 @@ ECDH P-256 key exchange establishes trust between team members. Each user has an
 
 | Document | Status | Description |
 | --- | --- | --- |
-| [team-management-trust-ui.md](./team-management-trust-ui.md) | Implemented | Team creation, member roles, ECDH trust, git remote linking |
-| [KEY_ENVELOPE_DESIGN_ANALYSIS.md](./KEY_ENVELOPE_DESIGN_ANALYSIS.md) | Ready | Infrastructure audit and Phase B design for key distribution |
-| [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) | Complete | Code-level audit of encryption architecture (8 findings, P0s still open) |
-| [team-room-consolidation.md](./team-room-consolidation.md) | Done | Migrated team data from D1 into isolated per-org TeamRoom DO |
+| `team-management-trust-ui.md` (not in this checkout) | Implemented | Team creation, member roles, ECDH trust, git remote linking |
+| `KEY_ENVELOPE_DESIGN_ANALYSIS.md` (not in this checkout) | Ready | Infrastructure audit and Phase B design for key distribution |
+| `SECURITY_REVIEW.md` (Collaboration review; not in this checkout) | Complete | Code-level audit of encryption architecture (8 findings, P0s still open) |
+| `team-room-consolidation.md` (not in this checkout) | Done | Migrated team data from D1 into isolated per-org TeamRoom DO |
 
 ### 3. Realtime Collaborative Document Editing
 
@@ -83,7 +87,7 @@ Yjs CRDTs over E2E encrypted WebSocket channels. The DocumentRoom Durable Object
 | Document | Status | Description |
 | --- | --- | --- |
 | [realtime-document-collaboration.md](./realtime-document-collaboration.md) | Implemented | Zero-trust architecture: Yjs + Cloudflare DOs + E2E encryption |
-| [implement-document-room.md](./prompts/implement-document-room.md) | Reference | Implementation prompt for DocumentRoom DO and desktop wiring |
+| `implement-document-room.md` (not in this checkout) | Reference | Implementation prompt for DocumentRoom DO and desktop wiring |
 
 ### 4. Collaborative Tracker System
 
@@ -94,9 +98,9 @@ A Linear-like experience for tracking bugs, tasks, ideas, architecture decisions
 | Document | Status | Description |
 | --- | --- | --- |
 | [collaborative-tracker-system.md](./collaborative-tracker-system.md) | Implemented | Full system design: TrackerRoom, sync, data models, kanban |
-| [implement-tracker-room.md](./prompts/implement-tracker-room.md) | Reference | Implementation prompt for TrackerRoom DO and sync wiring |
-| [unified-tracker-system-refactor.md](./../../plans/unified-tracker-system-refactor.md) | 65% | Original local tracker system (foundation for collab layer) |
-| [TRACKER_EDIT_PANEL_PATTERNS_ANALYSIS.md](./TRACKER_EDIT_PANEL_PATTERNS_ANALYSIS.md) | Complete | UI patterns analysis for tracker item detail views |
+| `implement-tracker-room.md` (not in this checkout) | Reference | Implementation prompt for TrackerRoom DO and sync wiring |
+| `unified-tracker-system-refactor.md` (not in this checkout) | 65% | Original local tracker system (foundation for collab layer) |
+| `TRACKER_EDIT_PANEL_PATTERNS_ANALYSIS.md` (not in this checkout) | Complete | UI patterns analysis for tracker item detail views |
 
 ### 5. Navigation & UX
 
@@ -119,7 +123,7 @@ One-click sharing of sessions and files to Cloudflare with URL-fragment encrypti
 
 ## Server Infrastructure
 
-The collabv3 Cloudflare Worker hosts all collaboration Durable Objects. See [CLAUDE.md](./../../packages/collabv3/CLAUDE.md) for architecture details.
+The historical collabv3 Cloudflare Worker hosted these collaboration Durable Objects. Its `packages/collabv3/CLAUDE.md` is not in this checkout; see the [current identity/encryption analysis](../../docs/IDENTITY_AUTH_AND_ROOMS.md) for the client snapshot and external-server boundary.
 
 | Durable Object | Scope | Auth Check | Org Source | Purpose |
 | --- | --- | --- | --- | --- |
@@ -149,8 +153,8 @@ All team content is encrypted client-side before transmission. The server is gen
 
 | File | Shows |
 | --- | --- |
-| [team-panel.mockup.html](./team-panel.mockup.html) | Team creation, member management, trust verification |
-| [tracker-config-panel.mockup.html](./tracker-config-panel.mockup.html) | Tracker type configuration and sync settings |
+| `team-panel.mockup.html` (not in this checkout) | Team creation, member management, trust verification |
+| `tracker-config-panel.mockup.html` (not in this checkout) | Tracker type configuration and sync settings |
 | [tracker-mode-layout.mockup.html](./tracker-mode-layout.mockup.html) | Full-screen tracker with list/kanban views |
 
 ## Implementation Summary (2026-02-26)
@@ -167,7 +171,7 @@ The full collaborative stack has been implemented end-to-end:
 
 ## Open Security Findings
 
-From the [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) (2026-02-23):
+From the historical Collaboration `SECURITY_REVIEW.md` (2026-02-23; not in this checkout):
 
 1. ~~**P0 -- TrackerSyncManager uses personal QR seed** instead of ECDH-distributed team key.~~ **Fixed** -- TrackerSyncManager now fetches org key via ECDH envelope.
 2. **P0 -- Key envelope overwrite vulnerability.** Any org member can overwrite another member's envelope. Needs authorization check in TeamRoom.
@@ -183,7 +187,7 @@ Near-term priorities (unordered):
 - **Tracker promotion flow** -- Promote inline `#bug[...]` annotations to synced tracked items.
 - **Stress testing** -- 10+ concurrent users on same document/tracker, 1000+ tracker items.
 - **Network resilience** -- Disconnection/reconnection testing, offline queue replay, server restart recovery.
-- **camelCase wire protocol** -- Migrate WebSocket protocol from snake_case to camelCase ([camelcase-wire-protocol-migration.md](./../../plans/camelcase-wire-protocol-migration.md)).
+- **camelCase wire protocol** -- Migrate WebSocket protocol from snake_case to camelCase (historical `camelcase-wire-protocol-migration.md`; not in this checkout).
 
 Longer-term:
 

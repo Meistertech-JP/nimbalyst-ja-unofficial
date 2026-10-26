@@ -193,7 +193,7 @@ When `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is enabled, the system prompt (`pack
 - Applied at every boundary: spawn, config update, inbox paths, message routing
 
 **Teammate permissions:**
-- Teammates run with `permissionMode: 'bypassPermissions'` and `canUseTool` always returning `allow`
+- The earlier bypass-permissions design is superseded. `TeammateManager` uses `permissionMode: 'default'`, isolates `settingSources`, and delegates tool decisions to the lead's permission handler; do not implement an unconditional `allow` callback from this historical description.
 - PreToolUse/PostToolUse hooks from the lead session are applied to teammate sessions (file tracking, snapshot creation)
 - Lead agent's abort signal propagates to all teammate abort controllers
 

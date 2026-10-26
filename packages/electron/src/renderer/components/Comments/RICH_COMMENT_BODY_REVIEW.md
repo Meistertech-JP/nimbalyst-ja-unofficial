@@ -1,8 +1,8 @@
 # Design review: `RichCommentBody`
 
-Reviewer: the shared comment renderer/composer workstream. Subject: `RichCommentBody` in `packages/collab-protocol/src/comments.ts:40`.
+Subject: the `RichCommentBody` contract used by the comment renderer and composer in `packages/collab-protocol/src/comments.ts`.
 
-This is a report, not a patch. The protocol package is owned by another workstream and this change needs coordination across the renderer, the composer, server-side validation, and per-room FTS.
+This historical design review describes a proposed protocol change, not an implementation guarantee. Such a change requires coordination across the renderer, composer, server-side validation, and per-room FTS. Compare the proposal with the current protocol before implementing it.
 
 ## The contract under review
 
@@ -15,7 +15,7 @@ export type RichCommentBody = {
 
 Validated by `validateRichCommentBody`, which bounds `JSON.stringify(body)` at 32 KiB.
 
-The plan referenced `RichCommentBody` in the `Comment` shape but never defined it. An earlier session invented the two-field form above so the contract would compile. That inference is reasonable and the bounded-body intent is right. It is also, as it stands, **not adequate** for the surfaces that now depend on it.
+The two-field shape above provides a bounded text representation. The review below considers whether that representation is sufficient for presentation, mention recipients, and search indexing across surfaces.
 
 ## Verdict
 
@@ -27,7 +27,7 @@ Three defects, in descending order of consequence.
 
 `resourceRefs` and `deliveryHints` live beside the body, not inside it, so nothing in the contract says *where* in the sentence a mention or a pill appears. A body reading "ship it" with `mentionedUserIds: ["user-dana"]` is well-formed and unrenderable.
 
-To render at all, this workstream had to invent a renderer-local token grammar inside `text` (`commentBodyParser.ts`):
+The renderer-local token grammar inside `text` (`commentBodyParser.ts`) represents these entities:
 
 ```
 [Label](nimbalyst://user/<userId>)     person mention
@@ -39,7 +39,7 @@ nimbalyst://...                        bare form, as produced by paste
 
 with the safety rule that a token becomes a pill or a mention **only if corroborated** by `resourceRefs` / `deliveryHints`. That inversion is sound and is tested (`CommentRow.test.tsx`, "does not turn an uncorroborated mention token into a mention"). But it is a convention held in one renderer, not in the protocol:
 
-- The **server** must parse the identical grammar to recompute mention recipients. It has no contractual basis to. Any drift between the two parsers is a silent misrouted notification — the class of bug [NIM-2212](nimbalyst://NIM-2212) already demonstrates is expensive here.
+- The **server** must parse the identical grammar to recompute mention recipients. It has no contractual basis to. Drift between parsers can cause a notification to be routed to a different recipient than the rendered mention implies.
 - **iOS** and any future surface must reimplement the same regex from a code comment.
 - The two halves **can disagree**. `deliveryHints` naming a user with no token in the body notifies someone whose name is nowhere in the message. A token with no hint renders as literal `[@Dana Okafor](nimbalyst://user/user-dana)` — which is what the renderer does today, correctly and ugly.
 
@@ -95,8 +95,8 @@ Two smaller changes, independent of the above and cheap:
 
 The token grammar has to move somewhere shared regardless. The minimum acceptable outcome is a parser exported from `@nimbalyst/collab-protocol` that the renderer, the composer, the server's mention recomputation, and the FTS indexer all import, with contract tests asserting the four agree on the same corpus. Leaving four independent implementations of an undocumented regex is the shape of the next misrouted-notification incident.
 
-## What this workstream did in the meantime
+## Renderer conventions at the time of review
 
 - Implemented the grammar in `commentBodyParser.ts`, documented at the top of that file, with the corroboration rule as its stated safety property.
 - Enforced the existing bounds exactly as `validateRichCommentBody` computes them, so the composer and the server agree today (`commentViewModel.validateDraft`, pinned by tests at the limit and one byte over).
-- Did not modify `packages/collab-protocol`.
+- These renderer conventions do not themselves change the protocol contract in `packages/collab-protocol`.

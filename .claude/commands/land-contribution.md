@@ -5,6 +5,8 @@ description: Merge a reviewed contribution into local main with any maintainer f
 
 Land a worthwhile contribution by merging it into local `main` with `scripts/land-pr.mjs`, applying any needed fixes, validating, and pushing `main`. GitHub marks the PR merged as soon as its head commit is on `main`. Do not default to sending the contributor a revision checklist.
 
+This is upstream maintainer-workflow reference material. It does not confer upstream merge or push authority on this unofficial fork or authorize changes to a public branch. Confirm the intended repository and explicit authorization before applying a workflow. Fork publication follows [the unofficial release process](../../docs/UNOFFICIAL_RELEASE.md).
+
 The merge itself is done by the script, never by hand. It fetches the PR head, checks the PR's history and file count against what GitHub reports, performs the `--no-ff` merge into local `main`, proves the merge commit's shape, and stops before any push. Do not reproduce its steps with your own git commands; if it refuses, report the reason.
 
 ## Hard rules

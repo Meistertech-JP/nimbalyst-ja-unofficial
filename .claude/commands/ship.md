@@ -6,6 +6,8 @@ allowed-tools: Bash, Read, Edit, mcp__nimbalyst__AskUserQuestion, mcp__nimbalyst
 
 Find everything Nimbalyst ships outside the desktop app that has changed since its last release, then ship it in dependency order. Each target keeps its own procedure; this command decides what is due, orders it, and runs those procedures.
 
+This is upstream deployment and registry reference material. The destinations below are not services operated by this unofficial fork, and these instructions do not authorize changes to them. Use [the unofficial release process](../../docs/UNOFFICIAL_RELEASE.md) for this edition. Server, marketplace, plugin or registry publication requires its own verified target and explicit authorization.
+
 Arguments: `$ARGUMENTS`. Area names limit the run (`collab`, `npm`, `plugins`, `marketplace`); `wiki` is an alias for `plugins`. With no area argument, inventory every target below, including Claude Code and Codex plugins. Do not silently narrow the inventory to npm or to the feature discussed earlier. `--check` reports and stops.
 
 | Area | Target | Published to | Status command (run from) | Procedure |

@@ -1,5 +1,7 @@
 # Custom Tracker Implementation Plan
 
+This is a historical upstream design and implementation record from October 2025. Its completion statement and test output refer to that implementation snapshot, not current acceptance of every proposed task below. Some later checklist items and example paths were proposals or have since changed. Use the current [tracker workflow](../docs/TRACKER_WORKFLOWS.md), [schema-sharing guidance](../docs/TRACKER_SCHEMA_SHARING.md), and source contracts for development; do not treat unchecked criteria as completed or the old test output as a new run.
+
 This document outlines what needs to be implemented to support the custom tracker user experience described in `creating-custom-trackers.md`.
 
 ## ✅ IMPLEMENTATION COMPLETE (2025-10-29)

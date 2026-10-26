@@ -127,14 +127,25 @@ Paint / animation load:
 
 ```js
 // Frame + mutation + animation census over 1s
-await new Promise(r => {
-  let raf = 0, mut = 0;
-  const t = (function tick(){ raf++; return requestAnimationFrame(tick); })();
-  const mo = new MutationObserver(rs => { mut += rs.length; });
+  const activity = await new Promise(resolve => {
+    let frames = 0, mutations = 0, frameHandle = 0, stopped = false;
+    const mo = new MutationObserver(records => { mutations += records.length; });
   mo.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
-  setTimeout(() => { cancelAnimationFrame(t); mo.disconnect(); r(); }, 1000);
+    const tick = () => {
+      if (stopped) return;
+      frames++;
+      frameHandle = requestAnimationFrame(tick);
+    };
+    frameHandle = requestAnimationFrame(tick);
+    setTimeout(() => {
+      stopped = true;
+      cancelAnimationFrame(frameHandle);
+      mo.disconnect();
+      resolve({ frames, mutations });
+    }, 1000);
 });
 ({
+    ...activity,
   visibility: document.visibilityState, focused: document.hasFocus(),
   infiniteAnimations: document.getAnimations()
     .filter(a => a.effect?.getTiming().iterations === Infinity)

@@ -1,5 +1,7 @@
 # Browser Extension Implementation Summary
 
+> Historical implementation record. The sections below preserve the earlier protocol/base64 design, planned AI controls, and its original testing status; they are not current setup instructions or current test evidence. The checked-in extension now posts JSON to the desktop's loopback HTTP `/clip` endpoint, has two popup actions, and includes PNG icons. Use [README.md](./README.md), [QUICK_START.md](./QUICK_START.md), and [DEVELOPMENT.md](./DEVELOPMENT.md) for the current implementation. Do not register or replace `nimbalyst://` based on the historical next steps below.
+
 ## What Was Built
 
 A complete Chrome browser extension for clipping web content into Nimbalyst projects. The extension supports:

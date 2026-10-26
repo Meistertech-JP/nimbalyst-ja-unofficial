@@ -1,5 +1,7 @@
 # Contributing
 
+This guide is inherited from upstream Nimbalyst. For contributions to the unofficial Japanese edition, use [this fork's Issues](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/issues) and [Pull Requests](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/pulls). Upstream maintainer roles, review requirements and signed-release authority described below do not establish those roles or services in this fork. Edition-specific release checks are documented in [UNOFFICIAL_RELEASE.md](docs/UNOFFICIAL_RELEASE.md).
+
 Thanks for your interest in contributing to Nimbalyst.
 
 ## Scope
@@ -29,7 +31,7 @@ corepack enable
 pnpm install
 ```
 
-npm is blocked at the repository root: `devEngines` in `package.json` makes any `npm` command there fail with `EBADDEVENGINES`. Use the pnpm equivalent.
+Use the pinned pnpm version for root commands and dependency resolution. The current `devEngines.packageManager.onFail` setting is `warn`; it does not guarantee that an npm invocation will be blocked. Running npm can produce a different dependency resolution and is not the documented installation workflow.
 
 All pnpm settings live in the root `pnpm-workspace.yaml`; `.npmrc` holds registry and auth only. Two settings affect day-to-day work:
 

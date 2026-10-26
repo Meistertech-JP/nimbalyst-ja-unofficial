@@ -1,5 +1,7 @@
 # Linux installation
 
+This guide applies to official upstream Linux packages. The unofficial Japanese edition currently publishes Windows x64 packages only; the upstream Linux downloads below do not include this fork's Japanese-edition changes.
+
 Nimbalyst publishes two Linux builds on the [releases page](https://github.com/Nimbalyst/nimbalyst/releases/latest):
 
 | Package | Use it when |

@@ -37,13 +37,15 @@ pnpm install
 pnpm run build
 ```
 
-Then copy the folder to the user extensions directory:
+Then copy the folder to the running application's `userData/extensions` directory. Do not install this edition's extension into the official application's profile. A custom `NIMBALYST_USER_DATA_DIR` changes the profile root.
 
 | OS | Path |
 |----|------|
-| Windows | `%APPDATA%\@nimbalyst\electron\extensions\` |
-| macOS | `~/Library/Application Support/@nimbalyst/electron/extensions/` |
-| Linux | `~/.config/@nimbalyst/electron/extensions/` |
+| Windows — unofficial Japanese edition | `%APPDATA%\Nimbalyst 日本語版（非公式）\extensions\` |
+| macOS — upstream development profile example | `~/Library/Application Support/@nimbalyst/electron/extensions/` |
+| Linux — upstream development profile example | `~/.config/@nimbalyst/electron/extensions/` |
+
+The macOS/Linux paths are inherited upstream examples, not verified release locations for this Windows edition. Confirm the active application's userData path first.
 
 Restart Nimbalyst. See [INSTALL.md](./INSTALL.md) for detailed methods.
 

@@ -46,11 +46,13 @@ Sets a value at a path. Returns `newContent` to update the file.
 
 ## Usage
 
-1. Copy this folder to a new location
-2. Run `npm install`
-3. Ask Claude: "Build and install my extension from [path]"
+1. In this monorepo, install dependencies from the repository root with `pnpm install`.
+2. Build the SDK with `pnpm --filter @nimbalyst/extension-sdk run build`, then the example with `pnpm --filter json-viewer-extension run build`, from that root.
+3. Install the example through the extension development tools using its folder path.
 4. Create a `.jsonview` file with JSON content
 5. Try asking Claude: "What's the structure of this JSON?"
+
+The checked-in package uses `@nimbalyst/extension-sdk: workspace:*`. For a standalone copy, replace that dependency with a compatible published SDK version or an explicit local `file:` dependency before installing and building outside this monorepo. `npm install` cannot resolve the unchanged workspace dependency there. See the [getting started guide](../../getting-started.md).
 
 ## Key Patterns
 

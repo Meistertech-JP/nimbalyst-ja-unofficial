@@ -2,6 +2,8 @@
 
 Native Android companion app for Nimbalyst. It follows the iOS app's architecture: a Kotlin + Jetpack Compose shell, a Room database, WebSocket sync with the collab server, and one `WebView` that renders the shared React transcript. Voice features are out of scope on Android.
 
+This is upstream mobile-source documentation. The unofficial Japanese edition's published packages target Windows x64; this page does not announce a separately tested or distributed unofficial Android application. Development uses the Node.js requirements and pinned pnpm version declared at the repository root.
+
 ## What works today
 
 - **Pairing:** scan the desktop's pairing QR code with the in-app CameraX + ML Kit scanner. Settings also accepts a pasted QR payload. Pairing links (`nimbalyst://pair`) are deliberately **not** routed from outside the app, because a pairing payload selects the sync server and encryption context.

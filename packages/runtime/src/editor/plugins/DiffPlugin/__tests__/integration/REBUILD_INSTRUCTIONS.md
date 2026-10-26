@@ -1,19 +1,21 @@
 # How to Apply the Fixes to Your App
 
-## The fixes are in place, but you need to rebuild
+This is historical troubleshooting guidance for a particular diff fix, not a diagnosis that every highlighting problem is caused by an old build. The observations and expected outputs below belong to that historical investigation. Compare the current source and logs before attributing a failure to stale artifacts. The former `rexical` package is now part of `packages/runtime`.
 
-The test suite shows that the fixes ARE working:
+## Historical Fix Observations
+
+The original investigation recorded these outcomes:
 - Exact matches are being skipped ✓
 - Unchanged nodes have `diffState: null` ✓
 - Only actual changes are marked ✓
 
-But if you're still seeing unchanged content marked in the app, it's because the app needs to be rebuilt with the new code.
+If unchanged content still appears marked, first check whether the running application contains the intended source. A rebuild can resolve stale artifacts but does not establish the cause of a different failure.
 
 ## Steps to Apply Fixes
 
-### 1. Rebuild the rexical package
+### 1. Rebuild the runtime package
 ```bash
-cd packages/rexical
+cd packages/runtime
 pnpm run build
 ```
 
@@ -25,10 +27,9 @@ pnpm run build
 
 ### 3. Restart the development server (if running)
 ```bash
-# Kill any running dev servers
-pkill -f "pnpm run dev"
-
-# Start fresh
+# Stop only the development instance started for this test, then restart it.
+# Do not terminate unrelated development processes.
+# From the repository root:
 cd packages/electron
 pnpm run dev
 ```
@@ -37,11 +38,11 @@ pnpm run dev
 
 ### Test 1: Run the unit tests
 ```bash
-cd packages/rexical
-pnpm exec vitest run src/plugins/DiffPlugin/__tests__/unit/larger-doc-test2.test.ts
+# From the repository root:
+pnpm exec vitest run packages/runtime/src/editor/plugins/DiffPlugin/__tests__
 ```
 
-You should see:
+Historical output from the original investigation (not an exact-output requirement for today's suite):
 ```
 After applying diff: 2831 bytes, contains title: true ✓
 After accepting all: 2831 bytes, contains title: true ✓
@@ -49,10 +50,11 @@ After accepting all: 2831 bytes, contains title: true ✓
 
 ### Test 2: Run the integration tests
 ```bash
-pnpm exec vitest run src/plugins/DiffPlugin/__tests__/integration/debug-unchanged-marked.test.ts
+# From the repository root:
+pnpm exec vitest run packages/runtime/src/editor/plugins/DiffPlugin/__tests__/integration
 ```
 
-You should see:
+Historical output from the original investigation (not an exact-output requirement for today's suite):
 ```
 Unchanged: 3
 Modified: 0

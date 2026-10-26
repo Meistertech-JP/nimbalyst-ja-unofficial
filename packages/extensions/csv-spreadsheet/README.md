@@ -36,6 +36,8 @@ A Nimbalyst extension that provides a Google Sheets-like editing experience for 
 
 ## Todo List
 
+Historical planning checklist, retained to show the original scope rather than current missing functionality. Undo/redo, clipboard operations, range selection, keyboard handling, and context menus now have implementations under [src/editor](./src/editor/). For the dated source audit and its limitations, see [csv-spreadsheet-extension.md](./csv-spreadsheet-extension.md). Unchecked items below must not be interpreted as a current runtime test result.
+
 ### Core Editing Features
 
 - [ ] **Undo/Redo stack** - Track edit history for Cmd+Z/Cmd+Shift+Z support
@@ -146,6 +148,8 @@ A Nimbalyst extension that provides a Google Sheets-like editing experience for 
 
 ## Architecture
 
+Historical layout snapshot. It includes earlier or planned files, such as `aiTools.ts`, that are not present in the current tree. Use [src](./src/), [src/editor](./src/editor/), and [src/components](./src/components/) for the current layout; this snapshot is not an inventory of shipped files.
+
 ```
 packages/extensions/csv-spreadsheet/
   manifest.json
@@ -190,4 +194,4 @@ pnpm run build
 - [RevoGrid Documentation](https://rv-grid.com/)
 - [Formula.js Functions](https://formulajs.info/functions/)
 - [Papa Parse Documentation](https://www.papaparse.com/docs)
-- [nimbalyst-extension-system.md](./../../../design/Extensions/nimbalyst-extension-system.md)
+- [Extension architecture](../../../docs/EXTENSION_ARCHITECTURE.md)

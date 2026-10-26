@@ -239,11 +239,14 @@ ASC_KEY_CONTENT=<base64-encoded .p8 content>
 ## Code Signing Errors
 
 "No signing certificate found" or "Provisioning profile doesn't match":
+
+Start with read-only diagnosis: check the selected Apple team and bundle identifier, the certificate/profile expiry, Xcode's signing settings, and access to the configured Match repository. Do not log signing secrets or private-key material. Use the existing read-only sync path when retrieving shared assets:
+
 ```bash
-# Reset and regenerate certificates
-bundle exec fastlane match nuke distribution
-bundle exec fastlane match appstore
+bundle exec fastlane match appstore --readonly
 ```
+
+`match nuke distribution` revokes shared distribution signing assets and can affect other projects and team members. It is not a routine fix for a missing local certificate. Never run it automatically. Before any revocation/reset, explain the exact team, signing type, affected apps, recovery plan, and team impact, and obtain explicit operator approval. Regenerating certificates is also a separate authorized operation, not part of read-only diagnosis.
 
 ## Build Number Rejected
 

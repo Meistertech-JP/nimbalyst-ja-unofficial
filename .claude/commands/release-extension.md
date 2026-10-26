@@ -5,10 +5,12 @@ description: Release a new version of a marketplace extension
 
 Release a new version of a Nimbalyst marketplace extension. Handles version bumping, building, registry generation, and publishing to the CDN.
 
+This is an upstream marketplace-maintenance reference. It does not authorize publication to the official registry or CDN from the unofficial Japanese fork. Fork publication follows [the unofficial release process](../../docs/UNOFFICIAL_RELEASE.md) and requires its own reviewed target and authorization.
+
 ## Argument Parsing
 
 `$ARGUMENTS` may contain:
-- **Extension name or path** (optional): Either a folder name in `packages/extensions/` (e.g., `csv-spreadsheet`, `excalidraw`) or an absolute path to an extension outside the monorepo (e.g., `/Users/ghinkle/sources/nimbalyst-mindmap`)
+- **Extension name or path** (optional): Either a folder name in `packages/extensions/` (e.g., `csv-spreadsheet`, `excalidraw`) or the selected absolute path to an external extension checkout (e.g., `/path/to/mindmap-extension`)
 - **Bump type** (optional, default `patch`): `patch`, `minor`, or `major`
 
 **If no extension name/path is given, run [Detect Mode](#detect-mode-no-arguments) first** to find which extensions have changed since their last publish, then release the ones the user picks.
@@ -17,7 +19,7 @@ Examples:
 - `/release-extension` -- scan all extensions, report which need re-publishing, let the user choose
 - `/release-extension csv-spreadsheet` -- patch bump csv-spreadsheet
 - `/release-extension excalidraw minor` -- minor bump excalidraw
-- `/release-extension /Users/ghinkle/sources/nimbalyst-mindmap patch` -- patch bump external mindmap extension
+- `/release-extension /path/to/mindmap-extension patch` -- patch bump an external mindmap extension
 
 ## Detect Mode (no arguments)
 

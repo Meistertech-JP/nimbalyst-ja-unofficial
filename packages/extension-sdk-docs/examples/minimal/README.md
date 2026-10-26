@@ -17,10 +17,12 @@ minimal/
 
 ## Usage
 
-1. Copy this folder to a new location
-2. Run `npm install`
-3. Ask Claude: "Build and install my extension from [path]"
+1. In this monorepo, install dependencies from the repository root with `pnpm install`.
+2. Build the SDK with `pnpm --filter @nimbalyst/extension-sdk run build`, then the example with `pnpm --filter minimal-extension run build`, from that root.
+3. Install this example through the extension development tools using its folder path.
 4. Create a `.minimal` file to test
+
+The checked-in `package.json` uses `@nimbalyst/extension-sdk: workspace:*`. For a standalone copy outside this workspace, first replace that dependency with a compatible published SDK version or an explicit local `file:` dependency, then install and build in the copied folder. `npm install` cannot resolve the unchanged workspace dependency outside the monorepo. See the [getting started guide](../../getting-started.md).
 
 ## Key Concepts
 

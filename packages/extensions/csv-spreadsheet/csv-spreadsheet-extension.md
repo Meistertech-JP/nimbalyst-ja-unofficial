@@ -4,7 +4,7 @@ A Nimbalyst extension that provides a Google Sheets-like editing experience for 
 
 ## Current Status
 
-Shipped as marketplace extension v1.0.2. The todo list below was re-audited against the source on 2026-08-04; items that had shipped since it was first written have been moved into "What Works Now."
+Historical status and source audit dated 2026-08-04, when the extension was recorded as marketplace v1.0.2. Items that had shipped since the original checklist were moved into "What Works Now." The findings and live-probe results below retain that date; they are not a fresh validation of the current release. Current editor code is organized under [src/editor](./src/editor/).
 
 ### What Works Now
 
@@ -164,6 +164,8 @@ The entire Phase 3 of the original plan was never built. There is no `aiTools.ts
 
 ## Architecture
 
+Historical layout accompanying the dated audit. Some listed files have since moved or been removed. Consult [src](./src/) for current files, including the editor hooks under [src/editor](./src/editor/), rather than treating this snapshot as the current build input list.
+
 ```
 packages/extensions/csv-spreadsheet/
   manifest.json
@@ -227,4 +229,4 @@ Selection is also painted asynchronously, so allow a frame after `pointerup` bef
 - [RevoGrid Documentation](https://rv-grid.com/)
 - [Formula.js Functions](https://formulajs.info/functions/)
 - [Papa Parse Documentation](https://www.papaparse.com/docs)
-- [nimbalyst-extension-system.md](./../design/Extensions/nimbalyst-extension-system.md)
+- [Extension architecture](../../../docs/EXTENSION_ARCHITECTURE.md)

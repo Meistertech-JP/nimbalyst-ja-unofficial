@@ -56,8 +56,8 @@ Every handler module exports a function that is invoked from `index.ts` (for exa
 
 ## Naming Conventions
 
-- **Invoke-style requests** use `ipcMain.handle(channel, async () => …)` and are consumed through `ipcRenderer.invoke(channel, …)`. Return values resolve as Promises in the renderer.
-- **Fire-and-forget events** use `ipcMain.on(channel, (event, payload) => …)` and correspond to `ipcRenderer.send(channel, payload)`.
+- **Invoke-style requests** register through `safeHandle(channel, async () => …)` from the main-process IPC registry and are consumed through `ipcRenderer.invoke(channel, …)`. Return values resolve as Promises in the renderer.
+- **Fire-and-forget events** register through `safeOn(channel, (event, payload) => …)` and correspond to `ipcRenderer.send(channel, payload)`. Do not register new main-process handlers with raw `ipcMain.handle` or `ipcMain.on`.
 - Channel names follow a `namespace:action` pattern (`'history:create-snapshot'`, `'session-files:get-by-session'`) to avoid collisions and to make debugging easier.
 - Renderer-to-renderer broadcasts always go through the main process: `window.webContents.send('theme-change', theme)`.
 
@@ -168,9 +168,9 @@ function MyComponent({ sessionId }: { sessionId: string }) {
 | `useIPCListener` hook in component | Central listener + atom |
 
 **If you think you need a component-local IPC listener:**
-1. You probably don't - rethink the architecture
-2. If truly necessary, add explicit ESLint disable with justification comment
-3. Consider whether this should be a new centralized listener instead
+1. Route the event through a centralized listener and an atom.
+2. If an extension or service needs a singleton subscription, use one of the sanctioned locations and an install-once lifecycle described in [IPC_LISTENERS.md](IPC_LISTENERS.md).
+3. Do not bypass the component-subscription guard with an ESLint disable.
 
 ### Why This Architecture?
 
@@ -178,7 +178,7 @@ function MyComponent({ sessionId }: { sessionId: string }) {
 - **No listener churn** - Components re-render freely without affecting subscriptions
 - **No stale closures** - Atoms always have current state
 - **Components are pure views** - Easier to reason about and test
-- **Multi-window works automatically** - Atoms sync across windows via store
+- **Per-renderer state stays consistent** - Components sharing a Jotai store observe the same atom updates. Separate windows have separate stores; main-process broadcasts and each renderer's listeners must propagate changes between them.
 
 ## Renderer → Main Communication
 
@@ -260,7 +260,7 @@ For legacy channels where the preload signature is locked, you can resolve the w
 
 ### Request/Response (Renderer → Main → Renderer)
 
-1. **Define the main handler.** Choose the file that owns the feature (create a new module under `src/main/ipc/` if necessary). Use `ipcMain.handle` for request/response. Validate inputs and prefer returning structured objects (`{ success, data?, error? }`). If the channel is workspace-scoped, take `workspacePath` as a required parameter (see [Workspace-Scoped IPC](#workspace-scoped-ipc-workspacepath-is-required) above).
+1. **Define the main handler.** Choose the file that owns the feature (create a new module under `src/main/ipc/` if necessary). Use `safeHandle` for request/response. Validate inputs and prefer returning structured objects (`{ success, data?, error? }`). If the channel is workspace-scoped, take `workspacePath` as a required parameter (see [Workspace-Scoped IPC](#workspace-scoped-ipc-workspacepath-is-required) above).
 2. **Expose it through the preload bridge.** Add a function in `src/preload/index.ts` that invokes the new channel.
 3. **Type it.** Update `src/renderer/electron.d.ts` so `window.electronAPI` reflects the new capability.
 4. **Call it from the renderer.** Use the bridge helper inside your React code or service layer.
@@ -289,10 +289,9 @@ For legacy channels where the preload signature is locked, you can resolve the w
 - Validate arguments in the main handler before touching the filesystem or executing shell commands.
 - Prefer whitelisting operations instead of passing through arbitrary channel names from the renderer.
 
-Following this pattern keeps Nimbalyst's IPC predictable, testable, and secure while still letting features evolve quickly.
+These patterns support consistent registration and testing; they do not replace input validation, authorization checks or a security review of each privileged operation.
 
 ## Related Documentation
 
-- **CLAUDE.md** - Contains the authoritative "Centralized IPC Listener Architecture" section with implementation patterns
-- **JOTAI.md** - Jotai atom patterns for state management
-- `plans/centralized-ipc-listener-architecture.md` - Original design document for the centralized listener pattern
+- [IPC_LISTENERS.md](./IPC_LISTENERS.md) - Centralized IPC listener architecture and implementation patterns
+- [JOTAI.md](./JOTAI.md) - Jotai atom patterns for state management

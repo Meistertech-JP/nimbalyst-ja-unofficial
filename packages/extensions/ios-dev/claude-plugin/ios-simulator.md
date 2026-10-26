@@ -23,7 +23,7 @@ Help the user discover, launch, and work with iOS simulators.
 ## Finding the Right Simulator
 
 When the user wants to launch a simulator:
-1. Call ios-dev.list-simulators to show options
+1. Call `ios-dev.simulator` with `action: "list"` to obtain the command for available devices, then execute it when authorized
 2. Look for currently booted simulators (state: "Booted")
 3. Suggest the most appropriate device based on their needs
 
@@ -33,11 +33,11 @@ You can launch by:
 - Device name: "iPhone 15 Pro"
 - UDID: Full unique device identifier
 
-The tool will boot the device and open the Simulator app.
+The tool returns the command to boot the device and open the Simulator app. Run that command when authorized; the tool call alone does not boot it. Supply `deviceId` for a specific device; omitting it for shutdown produces a command that shuts down all running simulators, so do not use that form for a single-device request.
 
 ## Viewing Logs
 
-When debugging, use ios-dev.get-simulator-logs to retrieve recent console output. You can adjust the number of lines to retrieve.
+When debugging, use `ios-dev.app` with `action: "logs"` and an optional `deviceId`. It returns an `xcrun simctl ... log stream` command; execute and stop that stream within the requested diagnostic scope. The tool has no line-count argument.
 
 # Tips
 

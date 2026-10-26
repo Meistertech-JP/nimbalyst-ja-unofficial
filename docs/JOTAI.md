@@ -8,7 +8,9 @@ This document outlines Nimbalyst's patterns for using Jotai atoms, with a focus 
 
 ## State & Persistence Overview
 
-Nimbalyst has two persistent storage backends, each with different characteristics:
+The storage diagram and macOS paths below originate from the earlier PGLite layout. Current desktop code also supports better-sqlite3; use [DATABASE.md](../packages/electron/DATABASE.md) for backend-specific behavior. The unofficial Windows edition uses its own [profile location](WINDOWS_JA_UNOFFICIAL.md#表示言語とデータ). These examples do not identify a universal profile path.
+
+The historical diagram distinguishes database storage from JSON-backed settings. PGLite and better-sqlite3 are alternative database engines, not the same distinction as database versus settings storage:
 
 | Storage | Location | Use Case | Access Pattern |
 |---------|----------|----------|----------------|
@@ -335,9 +337,7 @@ export const sessionTempInputAtom = atomFamily((_sessionId: string) =>
 );
 ```
 
-**Note:** `sessionDraftInputAtom` is NOT UI-only - it is persisted to the database via
-debounced IPC calls to survive app restarts. It's loaded from `sessionData.draftInput`
-in `loadSessionDataAtom` and saved via `ai:saveDraftInput` with 1-second debounce.
+**Note:** `sessionDraftInputAtom` is not equivalent to UI-only history-navigation input. `setSessionDraftInputAtom` updates it immediately and calls `ai:saveDraftInput` when persistence is enabled and a workspace path is provided. Hydration reads `sessionData.draftInput`; this setter does not itself implement a one-second debounce. Callers must supply the correct workspace context and handle the persistence lifecycle.
 
 ### 5. Action Atoms
 
@@ -407,7 +407,7 @@ window.electronAPI.on('ai:message-logged', (data) => {
 1. **Single update point**: `reloadSessionDataAtom` updates `sessionStoreAtom`
 2. **Automatic propagation**: All derived atoms read from `sessionStoreAtom`
 3. **No manual sync**: No need to remember to update N atoms when data changes
-4. **No race conditions**: Derived atoms always reflect current store state
+4. **Consistent derived state**: Derived atoms reflect their store dependencies. This does not prevent races between asynchronous requests; listeners and write paths still need appropriate ordering and stale-response handling.
 
 ## Common Anti-Patterns
 
@@ -550,7 +550,7 @@ describe('sessionModeAtom', () => {
 | Open editor tabs | Workspace JSON | Per-project, restored on workspace open |
 | API keys | App Settings JSON | Global, sensitive (encrypted at rest) |
 | Default model preference | App Settings JSON | Global user preference |
-| Draft input text | Atom only (no persistence) | Transient, lost on refresh is OK |
+| Draft input text | Database-backed draft with renderer atom | Persisted through `ai:saveDraftInput`; not equivalent to temporary history-navigation input |
 
 ### Pattern: Persisted Atom with Debounced Write
 
@@ -609,7 +609,7 @@ store.set(agentModeSettingsAtom, settings);
 
 ### Pattern: Two-Way Sync with Database
 
-For session data that's both read and written:
+For session data that's both read and written, the following is a schematic example rather than a complete production implementation. Real calls must carry the required workspace context and handle failed writes, stale reads and rollback; an optimistic update alone does not establish persistence:
 
 ```typescript
 // Reading: Atom populated from DB via IPC
@@ -689,4 +689,4 @@ export async function initAgentModeSettings(): Promise<AgentModeSettings> {
 }
 ```
 
-See also: "State Persistence Migration Safety" in CLAUDE.md for the full pattern.
+See [State Persistence Migration Safety](./STATE_PERSISTENCE.md) for default merging and persisted-state compatibility patterns.

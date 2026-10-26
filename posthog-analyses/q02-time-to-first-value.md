@@ -1,5 +1,7 @@
 # Question 2: Time-to-First-Value for New Users
 
+This is a historical upstream analysis, not current telemetry or acceptance evidence for the unofficial Japanese edition. Reported output is retained below but has not been independently re-queried. The tables use different subsets (472, 159 and 197 users); their denominators must not be interchanged. Without raw output and censoring/selection checks, the reported 100% values do not establish universal activation, and no statistical confidence level is provided.
+
 ## Research Question
 
 What is the time-to-first-value for new users: how long between app launch and their first meaningful action (file saved with 500+ words, workspace opened, or AI session started)?
@@ -201,46 +203,40 @@ Meaningful Save:                                        0.0% (0)
 
 ## Takeaways
 
-### 1. Universal Activation - 100% Adoption of All Core Actions
+### 1. Reported 100% values require population validation
 
-Every single user who starts Nimbalyst completes all three meaningful actions:
+The recorded aggregate table reports 472 users for each of these actions:
 - Opens a workspace
 - Creates an AI session
 - Saves a file (including a 500+ word file)
 
-This is exceptional and indicates:
-- **Excellent onboarding**: Users immediately understand core value
-- **Clear product direction**: The product successfully guides users to all key features
-- **No friction in activation funnel**: No drop-off at any stage
+This does not establish that every new user completes the actions. Check the query joins, missing-event handling, observation window and non-completing users before treating it as an activation funnel. Onboarding quality and absence of friction cannot be concluded from this table alone.
 
-### 2. Extremely Fast Time-to-First-Value
+### 2. Reported Median Time-to-First-Value
 
 **Median time to workspace open: 28 seconds**
 **Median time to AI session: 30 seconds**
 
-Users reach their first meaningful interaction in under 30 seconds. This suggests:
-- The app launches quickly and presents a clear path forward
-- Users don't encounter confusion or setup barriers
-- The core workflow (open workspace → start AI) is intuitive
+These are reported medians among the query's completed-event population, not a bound for every user, a cold-start benchmark or a direct measure of interface clarity. Launch performance, setup barriers and workflow usability need separate measurement.
 
-### 3. Workspace Opening is the Entry Point for 99.4% of Users
+### 3. Workspace Opening Was First for 158 of 159 Selected Users
 
-Almost all users open a workspace first, before creating an AI session or saving files. This reveals the actual user journey:
+Among the 159 selected users with all three actions, 158 opened a workspace first. This subset excludes users missing one of those actions. The following sequence combines reported aggregate medians; it is not an individual user trace:
 
 **App Launch → Workspace Open (28s) → AI Session (30s) → File Save (17.5 min) → Meaningful File Save (32 min)**
 
-This differs from what might be expected in a traditional editor where file creation comes first. Nimbalyst users:
+One workflow hypothesis to investigate, rather than an observed individual sequence, is:
 1. Select/open a workspace (project context)
 2. Start an AI session (likely for assistance)
 3. Create and save content
 
 ### 4. File Saving Takes Significantly Longer
 
-While workspace opening and AI sessions happen within seconds, file saving takes much longer:
+The reported file-save medians are longer than the workspace and AI-session medians; these aggregate values do not describe every user's sequence:
 - **Any file save**: Median 17.5 minutes
 - **Meaningful file save (500+ words)**: Median 32.3 minutes
 
-This makes sense: users need time to:
+Possible explanations to investigate include time spent to:
 - Interact with AI to generate content
 - Edit and refine the content
 - Accumulate enough content to warrant saving
@@ -248,29 +244,26 @@ This makes sense: users need time to:
 ### 5. Wide Distribution in Meaningful File Save Timing
 
 The time to first meaningful file save varies dramatically:
-- **Fastest**: 47 seconds (likely testing or very quick users)
-- **P25**: 7.2 minutes (quick adopters)
-- **Median**: 32.3 minutes (typical users)
-- **P75**: 9.8 hours (users who explore before creating)
-- **Longest**: 23 days (users who returned after initial exploration)
+- **Fastest**: 47 seconds
+- **P25**: 7.2 minutes
+- **Median**: 32.3 minutes
+- **P75**: 9.8 hours
+- **Longest**: 23 days
 
-This wide distribution suggests different user personas:
+Possible timing groups for follow-up research are listed below. The counts alone do not establish these personas or their reasons for acting:
 - **Power users**: Immediately productive (< 10 minutes)
 - **Explorers**: Take time to learn (30 min - 2 hours)
 - **Returners**: Try the app, leave, come back later (hours to days)
 
-### 6. AI Adoption is Near-Instant
+### 6. AI-session Timing in the 197-user Subset
 
-75% of users create their first AI session within 60 seconds of app launch. This indicates:
-- AI features are prominently presented
-- Users are specifically seeking AI assistance
-- The AI session creation flow is frictionless
+The time-bucket subset records 148 of 197 users (75.1%) creating an AI session within 60 seconds. This is not 75% of all 472 users, and it does not establish why they acted or whether the interaction was frictionless.
 
 ## Suggested Actions / Product Direction
 
 ### 1. Optimize the Critical First 30 Seconds
 
-**Finding**: Users complete workspace opening and AI session creation in under 30 seconds.
+**Recorded observation**: Median workspace and AI-session times are 28 and 30 seconds in the reported query output, not a completion bound for every user.
 
 **Recommendations**:
 - Ensure this flow remains fast and reliable in all future updates
@@ -278,19 +271,18 @@ This wide distribution suggests different user personas:
 - Track and alert on any regression in these metrics
 - Consider this 30-second window as the "make or break" moment for new users
 
-### 2. Celebrate the 100% Activation Rate
+### 2. Validate the reported activation denominator
 
-**Finding**: Every user completes all meaningful actions.
+**Recorded observation**: The aggregate table reports 100% for 472 selected users; the selection and completeness of that population need validation.
 
 **Recommendations**:
-- Use this as a competitive differentiator in marketing
-- Document what makes this onboarding successful for other products to learn from
-- Be extremely cautious about any changes to the onboarding flow that might reduce this rate
-- Consider this the baseline - any drop below 100% is a critical issue
+- Do not use this unvalidated result as a marketing claim.
+- Reproduce the query with explicit denominators and include non-completing users.
+- Define the conversion window and treatment of censored observations before establishing an alert baseline.
 
 ### 3. Study the Workspace-First Pattern
 
-**Finding**: 99.4% of users open a workspace before doing anything else.
+**Recorded observation**: 158 of the 159 users selected for having all three actions opened a workspace first. Users without all actions are not represented in that percentage.
 
 **Recommendations**:
 - Optimize the workspace selection/opening experience as the primary entry point
@@ -310,10 +302,10 @@ This wide distribution suggests different user personas:
 
 ### 5. Monitor for Activation Degradation
 
-**Finding**: Current activation is perfect; any change could break it.
+**Hypothesis to investigate**: Changes in observed activation may reflect product behavior, instrumentation or population changes; a validated baseline is required.
 
 **Recommendations**:
-- Set up alerts for any drop in workspace opening rate below 100%
+- Set alert thresholds only after validating the population and historical variability
 - Track median time-to-workspace and alert if it exceeds 60 seconds
 - A/B test any onboarding changes carefully before full rollout
 - Create a daily dashboard showing these activation metrics
@@ -328,37 +320,37 @@ This wide distribution suggests different user personas:
 - Determine if these users eventually become active or churn
 - May indicate users who downloaded app but weren't ready to use it
 
-### 7. Leverage Fast AI Adoption in Marketing
+### 7. Validate AI-session timing before using it publicly
 
-**Finding**: 75% create AI session within 60 seconds.
+**Recorded observation**: 148 of 197 users in the time-bucket subset created an AI session within 60 seconds; this is not a general product guarantee.
 
 **Recommendations**:
-- Highlight "AI-powered from the start" in marketing materials
-- Use this metric to demonstrate ease of AI access compared to competitors
+- Reproduce the metric and its population before using it in public material.
+- Do not infer comparative usability without a suitable comparison and direct usability evidence.
 - Consider showcasing the AI session creation flow in demos and tutorials
-- Market Nimbalyst as an "AI-first editor" given this behavior
+- Do not use these aggregate timings alone to support a product-positioning claim
 
 ## Confidence Level
 
-**Very High (95%)** for the data accuracy and insights.
+No calculated statistical confidence level is established here. The original 95% judgment was not a confidence interval or independent validation of the queries.
 
-### Why we're confident:
-- **Large sample size**: 472 users provides statistical significance
-- **100% adoption**: Clear, unambiguous signal of success
-- **Consistent patterns**: The workspace-first pattern is overwhelmingly dominant (99.4%)
-- **Well-defined metrics**: Events are clearly tracked with precise timestamps
-- **Clean data**: All events have been tracked since the same date (2025-11-14)
+### Recorded observations and limits:
+- **Sample size**: 472 recorded users alone does not establish statistical significance or freedom from selection bias
+- **Reported 100% adoption**: Requires verification of the denominator and missing observations
+- **Workspace-first subset**: 158 of 159 selected users; not a population-wide result
+- **Event timestamps**: Their precision and meaning require instrumentation checks
+- **Start-date filter**: A shared cutoff does not establish complete or unbiased data
 
-### Minor limitations:
+### Additional limitations:
 - **Word count bucketing**: We know "medium" or "large" = 500+ words, but can't distinguish between 500 words and 2000+ words
 - **Session definition**: We assume `nimbalyst_session_start` represents true app launch, but some users may have multiple sessions
 - **Outliers**: The 23-day maximum suggests some users may be returning after abandonment, not continuously using
 
-### No concerns about:
-- Data filtering (cohort 200405 properly excluded)
-- Event timeline (all events available since 2025-11-14)
-- Sample size (472 users is sufficient)
-- Measurement accuracy (events fire automatically, not user-reported)
+### Checks still required before relying on the results:
+- Reproduce cohort exclusion and establish the actual query population
+- Check event availability, timestamps and instrumentation changes
+- Validate sample selection and the precision needed for each comparison
+- Check event semantics; automatic emission alone does not establish measurement accuracy
 
 ## Recommended Follow-up Analysis
 

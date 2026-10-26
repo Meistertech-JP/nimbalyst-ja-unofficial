@@ -75,13 +75,13 @@ Anything user-facing on the card that can be expressed as a pure function belong
 
 ### Prerequisites
 - Xcode 16+
-- Node.js 20+ (for transcript bundle)
+- The Node.js requirements and pinned pnpm version declared by the repository root (for transcript builds)
 - XcodeGen (`brew install xcodegen`)
 
 ### Commands
 ```bash
 # From monorepo root:
-pnpm run ios:test:swift          # Run all 68 Swift tests
+pnpm run ios:test:swift          # Run the Swift package test suite
 pnpm run ios:build:transcript    # Build transcript web bundle
 
 # From packages/ios/:

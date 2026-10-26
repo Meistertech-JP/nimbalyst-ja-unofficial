@@ -46,7 +46,7 @@ When adding or modifying events:
 
 ## Overview
 
-Nimbalyst uses PostHog for anonymous usage analytics with two tracking contexts:
+Nimbalyst uses PostHog with an anonymous installation ID and two tracking contexts. This does not mean every recorded property is anonymous: supplied onboarding email has a documented person-property path. Ordinary analytics follow the analytics preference, while `nimbalyst_session_start` uses the startup retention-ping exception even after opt-out (see [Analytics Guide](ANALYTICS_GUIDE.md#opt-in-and-opt-out)). This upstream catalog describes source contracts and historical observations, not independently observed live transmission from the unofficial release.
 - **Main Process**: Server-side events via `AnalyticsService.getInstance().sendEvent()`
 - **Renderer Process**: Client-side events via `usePostHog()` hook from posthog-js/react
 
@@ -256,7 +256,7 @@ Several of these seams are reached by debounced autosave or by a retrying transp
 | `collab_document_first_edited` | Once per open lifecycle | Fired from the Yjs local-update callback, which fires per keystroke. |
 | `tutorial_progressed` | Once per milestone per tutorial workspace per app run (`tutorialAnalytics.ts`) | `prompt_sent` sits on the send path, which a user in the tutorial hits repeatedly. The question is "did they ever get this far", not how often. |
 
-Health-event caps apply to **every outcome equally**. Suppressing only successes (or only failures) would bias the failure-rate alerts these events feed.
+Health-event caps apply to **every outcome equally**. Outcome-dependent suppression adds bias, but applying the same cap to both outcomes still does not establish an unbiased attempt-level rate. Reliability alerts describe the retained capped observations, not all attempts; see [Teams Analytics](TEAMS_ANALYTICS.md#dashboard-5-collaboration-reliability).
 
 ### Session Export
 
@@ -551,7 +551,7 @@ Surveys are configured in PostHog and can be either popover (shown in-app) or AP
 
 All events MUST follow these privacy rules:
 
-1. **Never include PII**: No usernames, emails, IP addresses, or identifying information
+1. **Do not add PII to ordinary event properties**: No usernames, emails, IP addresses, or identifying information. The supplied-email person-property path documented above is a separate existing behavior, not permission to add email to arbitrary events; do not describe the entire analytics dataset as anonymous.
 2. **No file paths**: Use categories/buckets instead of actual paths
 3. **No API keys**: Never include authentication tokens or credentials
 4. **Anonymous distinctId**: Use auto-generated anonymous ID, never override

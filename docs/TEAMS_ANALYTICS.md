@@ -1,5 +1,7 @@
 # Nimbalyst Teams Analytics Runbook
 
+This upstream runbook specifies analytics contracts and proposed operational dashboards. It does not mean that this unofficial fork operates the upstream service or has created the dashboards and alerts below. Pending asset links remain historical planning state.
+
 This runbook defines the saved PostHog assets for Nimbalyst Teams. Create them only after a public build has emitted the contract events; until then, use development traffic only to validate schemas and keep production dashboards release-gated.
 
 All production insights must exclude dev users with `is_dev_user != true`. Default breakdowns are `nimbalyst_version`, platform, `surface`, and the event-specific low-cardinality properties. Do not add identifiers or PostHog Groups for organizations, projects, documents, rooms, or members.
@@ -43,7 +45,7 @@ Read `action=field_changed` as "this item was edited at least once in a 10-minut
 
 ## Dashboard 5: Collaboration reliability
 
-Create attempt-level trends from `collab_sync_attempt_completed`:
+Create trends over the reported observations from `collab_sync_attempt_completed`:
 
 - success, offline-ready, and failed rate by `resourceType`;
 - failure breakdown by `errorCategory`;
@@ -54,14 +56,14 @@ Add replay/migration/rejection trends for `collab_outbox_replay_completed`, `col
 
 Client telemetry is not a substitute for Cloudflare logs or Durable Object metrics. It measures anonymous client-observed outcomes, not room-level incidents or exact server request traces.
 
-`collab_sync_attempt_completed` is capped at one event per resource per 60 seconds and `collab_outbox_replay_completed` at one per document per 5 minutes, so a client stuck in a reconnect loop is visible as a sustained low rate rather than a spike. Both caps apply to successes and failures alike, so failure *rates* remain valid; absolute attempt *counts* are a lower bound and should not be read as connection volume.
+`collab_sync_attempt_completed` is capped at one event per resource per 60 seconds and `collab_outbox_replay_completed` at one per document per 5 minutes, so a client stuck in a reconnect loop is visible as a sustained low rate rather than a spike. Counts and failure proportions describe the observations that survive these caps, not all connection attempts. Applying a cap to both successes and failures does not establish an unbiased attempt-level failure rate: the first retained outcome and retry frequency can change the mix. Absolute counts are a lower bound, not connection volume.
 
 ## Alerts
 
 Create four PostHog alerts after the first public schema validation:
 
-1. Document sync failed rate exceeds 5% over 60 minutes with at least 20 attempts.
-2. Tracker sync failed rate exceeds 5% over 60 minutes with at least 20 attempts.
+1. Document sync failed proportion among reported capped observations exceeds 5% over 60 minutes with at least 20 observations.
+2. Tracker sync failed proportion among reported capped observations exceeds 5% over 60 minutes with at least 20 observations.
 3. Shared mutation rejections exceed 10 events over 30 minutes.
 4. Share to Team failed or partial outcomes exceed 10% over 24 hours with at least 20 migrations.
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The markdown system in Nimbalyst is designed to support both core markdown functionality and plugin-specific extensions. The architecture separates transformers into two categories to prepare for future plugin-based configuration.
+The markdown system combines core transformers with transformers contributed by enabled editor extensions.
 
 ## Structure
 
@@ -71,30 +71,11 @@ For the deeper rationale (why the `&#42;` encoding is needed, what stays
 forked, and what to re-audit on each upstream bump) see
 [`FORKED_MARKDOWN_IMPORT.md`](./FORKED_MARKDOWN_IMPORT.md).
 
-## Future Plugin-Based Architecture
+## Extension-Based Transformer Collection
 
-In the future, transformers will be dynamically loaded based on configuration:
+Extensions publish their `markdownTransformers` through `setExtensionContributions` in `../extensions/extensionContributionsStore.ts`. `getEditorTransformers()` reads `getAllExtensionTransformers()` and puts the extension transformers before `CORE_TRANSFORMERS`. There is no exported `PLUGIN_TRANSFORMERS` list to edit in `markdown/index.ts`.
 
-```typescript
-// Example future usage
-const config = {
-  plugins: [TablePlugin, ImagesPlugin], // User-specified plugins
-};
-
-// Transformers would be collected from enabled plugins
-const transformers = createTransformers(
-  config.plugins.flatMap(p => p.transformers)
-);
-```
-
-## Migration Path
-
-The current architecture prepares for this transition by:
-
-1. **Separating core from plugin transformers** - Core transformers are in `core-transformers.ts`
-2. **Exposing both sets** - `CORE_TRANSFORMERS` and `PLUGIN_TRANSFORMERS` exports
-3. **Providing `createTransformers` function** - Preview of future API
-4. **Moving transformers to plugins** - Each plugin owns its transformer
+For an explicitly selected transformer set outside the main editor, the existing `createTransformers(pluginTransformers)` helper combines that array with the core transformers. This helper does not load or register an extension by itself. See the [editor-extension guide](../extensions/README.md) for registration and editor composition.
 
 ## Adding New Transformers
 
@@ -107,8 +88,8 @@ Add to `core-transformers.ts` if the feature is:
 ### For Plugin Features
 1. Create transformer in the plugin directory: `plugins/[PluginName]/[Name]Transformer.ts`
 2. Export from plugin's index file
-3. Currently: Add to `PLUGIN_TRANSFORMERS` in `markdown/index.ts`
-4. Future: Will be auto-registered by plugin system
+3. Publish its transformer through the owning extension's `setExtensionContributions` call
+4. Include the owning extension in the editor's extension graph or renderer extension bridge, as described in the editor-extension guide
 
 ## Transformer Order
 
