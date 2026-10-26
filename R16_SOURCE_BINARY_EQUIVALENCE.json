@@ -1,0 +1,20 @@
+{
+  "status": "CURRENT_PRODUCT_INPUTS_MATCH_VALIDATED_HEAD_FINAL_COMMIT_BINDING_PENDING",
+  "productCommit": "1c1d54a851c340a8f0f9afc304379882a7319fa1",
+  "productTree": "9e8a80830970e3a4172387ad65de5163d143b32b",
+  "validatedSourceCommit": "07eac5ae2f00c3a22ff15bbcaf05c74c80f29f37",
+  "validatedSourceTree": "f8f13c91055ba8a19ea7ffb6662f60b25db7f658",
+  "matchedProductInputs": 6397,
+  "perFileEvidence": "tmp/r16-evidence/FIXED_SOURCE_BINARY_EQUIVALENCE.json",
+  "legalDifference": "THIRD_PARTY_LICENSES.json generatedAt only; inventory body deep-equal",
+  "otherCommittedDifferences": [".github/workflows/unofficial-r13-full-ci.yml", ".github/workflows/unofficial-r13-ios-host.yml"],
+  "asarSHA256": "d6dc0009167aa3a6b9b203a66cd55ffdad3c678fbf7cef83d45dd2c5dda12a7c",
+  "compiledOutputsMatched": 341,
+  "asarIntegrityEntriesMatched": 1021,
+  "legalFilesMatched": 4,
+  "rebuiltR16Binary": true,
+  "r15BinaryReusedAsR16": false,
+  "historicalR15InventoryPreserved": "../r16-evidence-checkpoint-20261026-fixed1/payload/R16_SOURCE_BINARY_EQUIVALENCE.json",
+  "finalBindingRule": "After the qualification-document commit, compare every product input again, archive exactly that commit and record its SHA/tree/ZIP manifest in the independent final-source receipt. Do not label an earlier archive as the new commit.",
+  "limits": ["Input equivalence and compiled-byte audit do not prove every native behavior", "Current pending documents are qualification reports/publication templates, not product-input changes", "Final source commit, remote readback and source ZIP are not yet sealed"]
+}
