@@ -69,3 +69,46 @@ test('CLI refuses a range whose commits leak local files or exceed the limit, in
 test('the pre-push hook runs the range check on merge-base..HEAD', () => {
   assert.match(readFileSync(PRE_PUSH, 'utf8'), /check-push-range\.mjs "\$base\.\.HEAD"/);
 });
+
+test('CLI permits pure removal of previously committed forbidden files', (t) => {
+  const { repo, git } = makeScratchRepo(t, 'nim-push-delete-');
+  const base = commitFiles(repo, git, 'historical files', ['.claude/agent-mistakes.md', 'nimbalyst-local/old plan.md', 'src/app.ts']);
+  assertInSandbox(repo, git);
+  git(['rm', '--', '.claude/agent-mistakes.md', 'nimbalyst-local/old plan.md']);
+  git(['commit', '-q', '-m', 'remove private records']);
+  assert.match(runCheck(repo, `${base}..HEAD`), /OK: 1 outgoing commit/);
+});
+
+test('CLI still rejects forbidden modifications even if a later commit removes them', (t) => {
+  const { repo, git } = makeScratchRepo(t, 'nim-push-modify-');
+  const base = commitFiles(repo, git, 'historical file', ['.claude/agent-mistakes.md']);
+  writeFile(repo, '.claude/agent-mistakes.md', 'new private content\n');
+  const modified = commitFiles(repo, git, 'modify private file', ['.claude/agent-mistakes.md']);
+  expectRefusal(() => runCheck(repo, `${base}..HEAD`), /forbidden: \.claude\/agent-mistakes\.md/);
+  assertInSandbox(repo, git);
+  git(['rm', '--', '.claude/agent-mistakes.md']);
+  git(['commit', '-q', '-m', 'remove private file']);
+  expectRefusal(() => runCheck(repo, `${base}..HEAD`), new RegExp(`${modified.slice(0, 9)} forbidden`));
+});
+
+for (const [from,to] of [['docs/source.md','docs/agent-mistakes.md'],['docs/agent-mistakes.md','docs/renamed.md']]) {
+  test(`CLI rejects forbidden rename endpoints: ${from} -> ${to}`, (t) => {
+    const { repo, git } = makeScratchRepo(t, 'nim-push-rename-');
+    const base = commitFiles(repo, git, 'original file', [from]);
+    assertInSandbox(repo, git);
+    git(['mv', '--', from, to]);
+    git(['commit', '-q', '-m', 'rename file']);
+    expectRefusal(() => runCheck(repo, `${base}..HEAD`), /forbidden: docs\/agent-mistakes\.md/);
+  });
+}
+
+test('pure deletions still count toward the existing commit-size limit', (t) => {
+  const { repo, git } = makeScratchRepo(t, 'nim-push-delete-size-');
+  const files = Array.from({length:LARGE_COMMIT_FILE_LIMIT+1},(_,i)=>`old/f${i}.md`);
+  const base = commitFiles(repo, git, 'old files', files);
+  assertInSandbox(repo, git);
+  git(['rm', '-r', '--', 'old']);
+  git(['commit', '-q', '-m', 'remove old files']);
+  git(['config', SIZE_LIMIT_CONFIG_KEY, 'true']);
+  expectRefusal(() => runCheck(repo, `${base}..HEAD`), /size: 201 files changed/);
+});

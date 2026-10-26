@@ -2,7 +2,8 @@
 // Pre-push gate over every outgoing commit. A commit made with --no-verify
 // skips pre-commit, so this re-applies the same policy to the range about to
 // leave the machine:
-//   - no commit may touch nimbalyst-local/ or any agent-mistakes.md
+//   - no commit may add, modify or rename forbidden local-only paths;
+//     pure deletion of an already tracked forbidden file is allowed
 //   - no commit may change more than LARGE_COMMIT_FILE_LIMIT files, on clones
 //     that opted in with `git config nimbalyst.commitSizeLimit true` (a merge is
 //     measured against its first parent, which is what GitHub shows)
@@ -10,9 +11,10 @@
 // NIMBALYST_LARGE_COMMIT=1 lifts the file-count limit for one deliberate push.
 //
 // Only the given range is inspected (the hook passes merge-base..HEAD), so the
-// cost is one rev-list plus one diff-tree per outgoing commit.
+// cost is one rev-list plus two diff-tree calls per outgoing commit.
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { parseNameStatus } from './check-commit-safety.mjs';
 import {
   LARGE_COMMIT_FILE_LIMIT,
   LARGE_COMMIT_OVERRIDE_ENV,
@@ -41,11 +43,11 @@ export function parseRevListParents(output) {
  */
 export function evaluateCommits(commits, env = process.env, sizeLimitEnforced = true) {
   const problems = [];
-  for (const { sha, parents, paths } of commits) {
+  for (const { sha, parents, paths, forbiddenCheckPaths = paths } of commits) {
     if (parents.length > MAX_PARENTS) {
       problems.push({ sha, kind: 'parents', detail: `${parents.length} parents (octopus merge)` });
     }
-    const forbidden = findForbiddenPaths(paths);
+    const forbidden = findForbiddenPaths(forbiddenCheckPaths);
     if (forbidden.length > 0) {
       problems.push({ sha, kind: 'forbidden', detail: forbidden.map(({ path }) => path).join(', ') });
     }
@@ -65,7 +67,17 @@ export function readCommits(range) {
     const args = parents.length === 0
       ? ['diff-tree', '-r', '--root', '--no-commit-id', '--name-only', '-z', sha]
       : ['diff-tree', '-r', '--no-commit-id', '--name-only', '-z', parents[0], sha];
-    return { sha, parents, paths: splitNul(git(args)) };
+    // Keep the original all-change population for the size limit. Only the
+    // forbidden-path decision excludes pure deletions; both rename endpoints
+    // remain subject to that policy so a rename is not mistaken for cleanup.
+    const paths = splitNul(git(args));
+    const statusArgs = parents.length === 0
+      ? ['diff-tree', '-r', '--root', '--no-commit-id', '--name-status', '-M', '-z', sha]
+      : ['diff-tree', '-r', '--no-commit-id', '--name-status', '-M', '-z', parents[0], sha];
+    const changes = parseNameStatus(git(statusArgs));
+    const forbiddenCheckPaths = [...new Set(changes.filter(change => change.status !== 'D')
+      .flatMap(change => change.from ? [change.from, change.path] : [change.path]))];
+    return { sha, parents, paths, forbiddenCheckPaths };
   });
 }
 
