@@ -1,5 +1,10 @@
 {
   "status": "CONDITIONAL",
+  "developmentStatus": "FINALIZING",
+  "releaseReadiness": "CONDITIONAL",
+  "publicationAuthorized": false,
+  "preservationStatus": "PENDING",
+  "finalPreservationIndex": "R15_PRESERVATION_MANIFEST.json",
   "hostedCheckpoint": {"commit":"f0c7b7929f18f57c6efac96f61154cfe442b4c74","linuxRun":40249364701,"linuxStatus":"PASS","iosRun":40249364731,"iosStatus":"PASS","productSourceCovered":true},
   "reportSourceCheckpoint": {"commit":"eabb8c5d6e0d951c77c79f2d5ab4439e056512ef","tree":"4e7353a7054adb448974fcfd0e766e72de2a14ba","files":9715,"sha256":"03fd0051618304045f1d1943a43cccbc11fe2a182adeaa0392f69ee97ebb4069","evidence":"tmp/r15-evidence/source-reports-grid-controls-eabb8c5d6/RESULT.json","scope":"Hosted-tested source checkpoint. Later result-report edits require a separate externally checksummed source archive; Windows product bytes are unchanged."},
   "newerVerifiedCheckpoint": "tmp/r15-evidence/image-copy-native-fixed-7d5407c51.json",
@@ -11,7 +16,7 @@
   "intermediateBuild": {"commit":"5306786dab05015fb83f2cb74212393f2d170e87","nsisBuildExit":0,"finalCandidate":false,"evidence":"tmp/r15-evidence/windows-build-tracker-fields-CHECKPOINT.json"},
   "productCommit": "7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7",
   "productTree": "36b4d681e3a5b959addfaae18bd88e929c589fad",
-  "sourceCheckpoint": "f0c7b7929f18f57c6efac96f61154cfe442b4c74",
+  "hostedSourceCheckpoint": "f0c7b7929f18f57c6efac96f61154cfe442b4c74",
   "version": "0.82.3-ja.1",
   "numericBuildVersion": "0.82.3.1",
   "appId": "jp.meistertech.nimbalyst.ja.unofficial",
@@ -19,7 +24,7 @@
   "assets": {
     "nsis": {"file":"Nimbalyst 日本語版（非公式）-Windows-x64.exe","bytes":443176978,"sha256":"5369e55bbd1eb61cfc9756bfc2d6d9422da44544fa433a28495fbccef056d068","installationVerified":true,"freshLifecycleEvidence":"tmp/r15-evidence/nsis-fresh8/","latestProductUpgradeVerified":true,"upgradeEvidence":"tmp/r15-evidence/nsis-upgrade8/","evidence":"tmp/r15-evidence/windows-build-app-schemes.log"},
     "portableZip": {"file":"Nimbalyst 日本語版（非公式）-Windows-x64.zip","bytes":576221038,"sha256":"4a784689a04f43c0a933a3cb077240ca3a9d9523d0d81bae985034c11d13ae12","crcPassed":true,"entryPathSafetyPassed":true,"originalFiles":1913,"restoredFiles":1913,"allFileHashesMatched":true,"evidence":"tmp/r15-evidence/windows-zip-integrity8/RESULT.json","nativeEvidence":"tmp/r15-evidence/image-copy-native-fixed-7d5407c51.json","authEvidence":"tmp/r15-evidence/auth-scheme-fixed-restored.json"},
-    "sourceZip": {"status":"PENDING_FINAL_REPORT_SOURCE_CHECKPOINT","olderArchivesAreNotCurrent":true}
+    "sourceZip": {"status":"EXTERNAL_FINAL_COMMIT_MANIFEST","manifestIndex":"R15_PRESERVATION_MANIFEST.json","olderArchivesAreNotCurrent":true,"policy":"Use the external sealed manifest for the exact final report-source commit/tree and source-ZIP checksum; never relabel an older archive"}
   },
   "historicalAssetRoot": "tmp/r15-evidence/pre-scheme-registration-candidate7",
   "historical057883f8bAssets": {

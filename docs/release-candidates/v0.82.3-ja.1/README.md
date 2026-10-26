@@ -8,7 +8,7 @@ Nimbalyst v0.82.3をベースに、デスクトップアプリのユーザーイ
 
 ## 提供状況
 
-v0.82.3-ja.1は検証中のWindows x64配布候補です。まだ公開していません。現在の正式版は[v0.82.1-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)です。配布物は[このリポジトリのReleases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases)から取得してください。
+v0.82.3-ja.1は未公開のWindows x64配布候補です。現在の正式版は[v0.82.1-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)です。公開済み配布物は[このリポジトリのReleases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases)から取得してください。
 
 対象ソースは本家v0.82.3の固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` です。公式最新版とは機能・修正内容が異なります。本家ではv0.82.3をPrereleaseとして提供しています。本版は検証後の通常正式版を予定していますが、現時点で公開済みとは扱いません。
 
@@ -30,7 +30,7 @@ WindowsアプリIDは `jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザ
 
 現在のWindows候補は製品ソース `7d5407c51` を基準とします。実展開ZIPで画像コピー・貼り付け・Undo／Redo、本番メール認証、再起動後の復元、ログアウト後の未認証保持、両言語での再起動後保持を確認しました。同じ製品のNSISで新規導入・通常起動・削除を確認しています。公開v0.82.1-ja.1からの更新でも英語設定、日英文書、Tracker項目とマイグレーション55を確認し、削除後も専用データ274ファイルが不変でした。
 
-最新ソース `f0c7b7929` の[Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701)は19,285 PASS／30 SKIP／0 FAIL、[iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731)は522 PASS／6 SKIP／0 FAILでした。最終ソースZIPの確定は継続中です。以下は先行候補に限定した履歴です。
+検証コミット `f0c7b7929` の[Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701)は19,285 PASS／30 SKIP／0 FAIL、[iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731)は522 PASS／6 SKIP／0 FAILでした。ソースZIPは対応コミットから生成し、Git blob・CRC・復元後のファイルを照合します。
 
 配布対象は未署名Windows x64 NSIS、ポータブルZIP、対応するソースZIPとSHA256SUMS.txtです。警告や保護機能を無効にせず、取得元・バージョン・SHA-256を確認してください。ハッシュ一致は電子署名や安全性の保証ではありません。
 

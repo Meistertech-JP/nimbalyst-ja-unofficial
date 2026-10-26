@@ -8,7 +8,7 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 ## Availability
 
-v0.82.3-ja.1 is a Windows x64 distribution candidate under validation, not a published release. The current stable version remains [v0.82.1-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1). Download published files from [this repository's Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases).
+v0.82.3-ja.1 is an unpublished Windows x64 distribution candidate. The current stable version remains [v0.82.1-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1). Download published files from [this repository's Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases).
 
 The source is pinned to upstream v0.82.3 at `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. Features and fixes differ from the latest official release. Upstream designates v0.82.3 a prerelease. This edition is intended to become a regular stable release after validation, but has not been published.
 
@@ -30,7 +30,7 @@ Updates are manual through this repository's Releases. Official automatic update
 
 The current Windows candidate uses product source `7d5407c51`. The extracted ZIP passed image copy/paste, Undo/Redo, production email sign-in, account restoration, signed-out persistence and restarts in both display languages. The same product's NSIS passed fresh installation, launch and removal. Upgrade from published v0.82.1-ja.1 retained English, a Japanese/English document and a Tracker item, and applied migration 55. Uninstallation retained all 274 dedicated data-file hashes.
 
-Source checkpoint `f0c7b7929` passed [Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701) with 19,285 passed / 30 skipped / zero failed and [iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731) with 522 passed / six skipped / zero failed. Final source-ZIP verification remains in progress. Earlier-candidate results below are historical and limited to their stated commits.
+Source checkpoint `f0c7b7929` passed [Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701) with 19,285 passed / 30 skipped / zero failed and [iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731) with 522 passed / six skipped / zero failed. Source ZIPs are generated from their corresponding commits and checked against Git blobs, CRC and restored files.
 
 Intended assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
 

@@ -1,6 +1,8 @@
-# R15 Linux CI（初回失敗・修正検証中）
+# R15 Linux 最終CI — 固定対象PASS
 
 ## 最新確定結果（f0c7b7929）
+
+このrunをR15最終Linux検証として凍結する。後続の報告書・公開原稿コミットは製品・テスト・依存関係を変更せず、最終Git差分と保全manifestに対応付ける。形式的なHEAD相違だけを理由にCIを再実行しない。初回失敗は後段の履歴として保持する。
 
 [run 40249364701](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701) はsuccess。HEADは `f0c7b7929f18f57c6efac96f61154cfe442b4c74` で、画像コピー修正の製品ソース `7d5407c51` とprotocol fixture修正を含む。
 

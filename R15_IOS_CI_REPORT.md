@@ -1,6 +1,8 @@
-# R15 iOS CI（初回PASS）
+# R15 iOS 最終CI — シミュレーターPASS
 
 ## 最新確定結果（f0c7b7929）
+
+このrunをR15最終iOS検証として凍結する。追加SQL検索計画回帰と既存性能条件を含む。後続は報告書のみの差分として対応付け、形式的なHEAD相違による再実行はしない。過去の性能失敗とログ・xcresultは保持する。物理iOS端末の保証ではない。
 
 [run 40249364731](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731) はsuccess。HEADは `f0c7b7929f18f57c6efac96f61154cfe442b4c74`。全体528実行は522 PASS／6 SKIP／0 FAILである。XCTestの終了行だけを厳密に集計し、全体summaryとも一致した。名前にFailedを含む試験の開始行を失敗件数へ誤算入しない。前段2試験は全体へ二重加算していない。
 

@@ -1,0 +1,11 @@
+{
+  "kind": "external-preservation-index",
+  "developmentStatus": "FINALIZING",
+  "releaseReadiness": "CONDITIONAL",
+  "preservationStatus": "PENDING",
+  "externalDirectory": "../r15-final-preservation-20261026",
+  "canonicalManifest": "R15_PRESERVATION_MANIFEST.json",
+  "checksumFile": "SHA256SUMS.txt",
+  "commitAndTreeSource": "External manifest generated from the exact final Git commit",
+  "selfReferencePolicy": "This Git-tracked index intentionally does not contain its own commit/hash or final source-ZIP hash. The external manifest inventories this file and the exact source archive."
+}

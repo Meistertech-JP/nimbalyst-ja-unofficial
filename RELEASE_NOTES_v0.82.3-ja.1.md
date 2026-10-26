@@ -21,7 +21,7 @@ SQLiteの0055は、待機中のTracker編集へ同期基準リビジョンを保
 
 ### 表示言語と検証範囲
 
-現在のWindows製品ソースは `7d5407c51` です。通常製品で画像コピー・貼り付け・Undo／Redo、本番メール認証・再起動復元・ログアウト後の未認証保持、両言語の再起動後保持、新規NSIS導入・起動・削除を確認しました。公開v0.82.1-ja.1からの更新でも英語設定・日英文書・Tracker項目とmigration55を確認し、削除後の専用データ274ファイルは不変でした。修正を含む `f0c7b7929` のLinuxは19,285 PASS／30 SKIP／0 FAIL、iOSは522 PASS／6 SKIP／0 FAILでした。最終ソースZIPの確定は継続中です。以下は先行候補の履歴です。
+現在のWindows製品ソースは `7d5407c51` です。通常製品で画像コピー・貼り付け・Undo／Redo、本番メール認証・再起動復元・ログアウト後の未認証保持、両言語の再起動後保持、新規NSIS導入・起動・削除を確認しました。公開v0.82.1-ja.1からの更新でも英語設定・日英文書・Tracker項目とmigration55を確認し、削除後の専用データ274ファイルは不変でした。修正を含む `f0c7b7929` のLinuxは19,285 PASS／30 SKIP／0 FAIL、iOSは522 PASS／6 SKIP／0 FAILでした。対応するソースZIPは最終文書コミットから生成し、全Git blob・CRC・実展開ファイルを照合します。以下は先行候補の履歴です。
 
 表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,794キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
 
@@ -60,7 +60,7 @@ SQLite migration 0055 adds the base synchronization revision to queued Tracker e
 
 ### Language and verification scope
 
-Current Windows product source is `7d5407c51`. Ordinary products passed image copy/paste, Undo/Redo, production email sign-in, account restoration, signed-out persistence, restarts in both languages, and fresh NSIS installation/launch/removal. Upgrade from published v0.82.1-ja.1 retained English, a Japanese/English document and a Tracker item, and applied migration 55. Removal retained all 274 dedicated data-file hashes. Checkpoint `f0c7b7929` passed Linux with 19,285 passed / 30 skipped / zero failed and iOS with 522 passed / six skipped / zero failed. Final source-ZIP verification is in progress. Earlier results below are historical.
+Current Windows product source is `7d5407c51`. Ordinary products passed image copy/paste, Undo/Redo, production email sign-in, account restoration, signed-out persistence, restarts in both languages, and fresh NSIS installation/launch/removal. Upgrade from published v0.82.1-ja.1 retained English, a Japanese/English document and a Tracker item, and applied migration 55. Removal retained all 274 dedicated data-file hashes. Checkpoint `f0c7b7929` passed Linux with 19,285 passed / 30 skipped / zero failed and iOS with 522 passed / six skipped / zero failed. The corresponding source ZIP is generated from the final documentation commit and checked against every Git blob, CRC and restored file. Earlier results below are historical.
 
 Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,794 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
 

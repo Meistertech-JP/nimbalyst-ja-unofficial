@@ -1,5 +1,19 @@
 {
   "status": "CONDITIONAL",
+  "developmentStatus": "FINALIZING",
+  "releaseReadiness": "CONDITIONAL",
+  "publicationAuthorized": false,
+  "releaseAllowedNow": false,
+  "nextPhase": "R16 Release Qualification",
+  "preservationStatus": "PENDING",
+  "preservationIndex": "R15_PRESERVATION_MANIFEST.json",
+  "remainingReleaseChecks": [
+    "Confirm the final distribution hashes and the applicable authentication/installer/upgrade evidence; rerun only when the product inputs or package bytes change",
+    "Decide the release impact of the unavailable native Japanese legacy-recovery form, updated-server dependency and unverified independent-client recovery",
+    "Keep successful Codex main request distinct from the provider-reported capacity failure of automatic metadata followup",
+    "Match final Release Notes and bilingual publication documents to the authorized assets and source commit",
+    "Rehash all distribution assets immediately before a separately authorized publication"
+  ],
   "newNativeRegression": {"productCommit":"057883f8bd230280dfeaa298a5c5e45f8252b508","area":"Local document image copy","observed":"Two context-menu copies failed with renderer fetch rejecting nim-asset scheme","cause":"Three separate registerSchemesAsPrivileged calls leave only the last scheme fetch-capable in Electron 43.7.0","fixCommit":"7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7","fixStatus":"New ordinary NSIS/ZIP, 1913-file restore, native copy/paste/Undo/Redo and f0c7b7929 full hosted CI PASS","evidence":"tmp/r15-evidence/image-copy-native-057883f8b-RED.json","nativeGreenEvidence":"tmp/r15-evidence/image-copy-native-fixed-7d5407c51.json","scope":"Observed RED-to-GREEN and current-source hosted verification; remaining release scope tracked separately"},
   "latestHostedCheckpoint": "f0c7b7929f18f57c6efac96f61154cfe442b4c74",
   "checkpointNote": "Hosted f0c7b7929 covers current product 7d5407c51 and the canonical protocol fixtures. Raw earlier failure/success records are preserved. Later report edits require a separate final source archive.",
@@ -46,7 +60,7 @@
   "latestNativeCodex": {"product":"7d5407c51","manualSends":1,"mainResponse":"PASS: R15 最終Codex検証OK in 9.8s","automaticMetadataFollowup":"Provider-reported capacity failure after automatic session-metadata reminder; not a full-flow PASS","manualResends":0,"evidence":"tmp/r15-evidence/final-codex-ordinary-zip8.json"},
   "nativeRecoveryForm": {"status":"UNVERIFIED_RESOURCE_UNAVAILABLE","ownerConfirmedNoEligibleTestOrganization":true,"domTestsNotNativeProof":true,"evidence":"tmp/r15-evidence/recovery-native-resource-unavailable.json"},
   "remaining": [
-    "Ordinary-product Japanese recovery form remains unobserved; owner confirmed no eligible isolated unmigrated test organization. Preserve this verification limitation; do not claim READY without resolving the native-evidence requirement or an explicit scope decision"
+    "R16 release qualification: native Japanese recovery form remains unobserved because no eligible isolated legacy-encryption organization is available. This is an explicit release condition, not a new R15 feature-development task"
   ],
   "publication": {"performed":false,"mainChanged":false,"tagsChanged":false,"releaseCreated":false,"publicWikiChanged":false}
 }

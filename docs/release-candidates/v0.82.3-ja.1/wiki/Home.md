@@ -2,7 +2,7 @@
 
 [English](Home-English.md)
 
-本家Nimbalyst v0.82.3を基準とするWindows x64向け日本語版の利用資料です。v0.82.3-ja.1は検証中の候補で、現在の公開正式版はv0.82.1-ja.1です。本プロジェクトはNimbalyst, Inc.の公式製品ではありません。
+本家Nimbalyst v0.82.3を基準とするWindows x64向け日本語版の利用資料です。v0.82.3-ja.1は未公開候補で、現在の公開正式版はv0.82.1-ja.1です。本プロジェクトはNimbalyst, Inc.の公式製品ではありません。
 
 - [Windows導入・更新](Windows-Installation.md)
 - [日本語化アーキテクチャ](Localization-Architecture.md)

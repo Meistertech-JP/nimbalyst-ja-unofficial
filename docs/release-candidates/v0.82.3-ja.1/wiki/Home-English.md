@@ -2,7 +2,7 @@
 
 [日本語](Home.md)
 
-User documentation for the Windows x64 Japanese edition based on upstream Nimbalyst v0.82.3. v0.82.3-ja.1 is a candidate under validation; the current published stable version remains v0.82.1-ja.1. This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
+User documentation for the Windows x64 Japanese edition based on upstream Nimbalyst v0.82.3. v0.82.3-ja.1 is an unpublished candidate; the current published stable version remains v0.82.1-ja.1. This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
 
 - [Windows installation and updates](Windows-Installation-English.md)
 - [Localization architecture](Localization-Architecture-English.md)
