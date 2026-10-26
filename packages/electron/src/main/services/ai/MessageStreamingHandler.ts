@@ -2266,6 +2266,16 @@ export class MessageStreamingHandler {
             }
             break;
 
+          case 'auxiliary_error':
+            if (chunk.auxiliaryKind === 'session_naming') {
+              // Naming is a best-effort follow-up. Keep its raw error out of
+              // main-process logs and leave the primary response lifecycle intact.
+              logger.main.warn(
+                `[AIService] Auxiliary session_naming request failed for session ${session.id}`,
+              );
+            }
+            break;
+
           case 'complete':
             await sessionInbox.end(inboxTurn, !hadError);
             await codexQuestionTurns.end(questionTurn);

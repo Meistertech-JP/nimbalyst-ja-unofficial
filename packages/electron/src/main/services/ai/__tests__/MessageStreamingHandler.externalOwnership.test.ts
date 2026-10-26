@@ -302,15 +302,17 @@ async function runTurn(options: {
     createToolHandler: vi.fn(() => vi.fn()),
   };
 
-  await new MessageStreamingHandler(service as never).handle(
+  const send = vi.fn();
+  const result = await new MessageStreamingHandler(service as never).handle(
     {
-      sender: { id: 7, isDestroyed: vi.fn(() => false), send: vi.fn() },
+      sender: { id: 7, isDestroyed: vi.fn(() => false), send },
     } as never,
     "Prompt",
     undefined,
     options.session.id as string,
     options.session.workspacePath as string
   );
+  return { result, send, service };
 }
 
 describe("MessageStreamingHandler external ownership", () => {
@@ -361,5 +363,47 @@ describe("MessageStreamingHandler external ownership", () => {
     release();
     await running;
     expect(addMessage).toHaveBeenCalledOnce();
+  });
+
+  it("treats session-naming auxiliary errors as warnings without failing the completed turn", async () => {
+    const provider = new RecordingProvider([
+      { type: "text", content: "Main answer" },
+      { type: "complete", isComplete: true },
+      { type: "auxiliary_error", auxiliaryKind: "session_naming", error: "title request failed" },
+    ]);
+
+    const { result, send } = await runTurn({
+      session: openCodeSession({ id: "auxiliary-title-session" }),
+      provider,
+    });
+
+    expect(result).toEqual({ content: "Main answer" });
+    expect(send.mock.calls.map(([channel]) => channel)).not.toContain("ai:error");
+    expect(mocks.stateManager.endSession).toHaveBeenCalledWith("auxiliary-title-session");
+    expect(logger.main.warn).toHaveBeenCalledWith(
+      "[AIService] Auxiliary session_naming request failed for session auxiliary-title-session",
+    );
+    expect(logger.main.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("title request failed"),
+    );
+  });
+
+  it("keeps provider error chunks on the existing ai:error path", async () => {
+    const provider = new RecordingProvider([
+      { type: "error", error: "primary request failed" },
+    ]);
+
+    const { send } = await runTurn({
+      session: openCodeSession({ id: "primary-error-session" }),
+      provider,
+    });
+
+    expect(send.mock.calls).toContainEqual([
+      "ai:error",
+      expect.objectContaining({
+        sessionId: "primary-error-session",
+        message: "primary request failed",
+      }),
+    ]);
   });
 });

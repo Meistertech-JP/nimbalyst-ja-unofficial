@@ -1426,7 +1426,22 @@ export class OpenAICodexProvider extends BaseAgentProvider {
         !usedSessionNamingToolThisTurn &&
         !abortController.signal.aborted
       ) {
-        await this.sendSessionNamingReminder(session, sessionId);
+        try {
+          const reminderError = await this.sendSessionNamingReminder(session, sessionId);
+          if (reminderError) {
+            await this.storeSessionNamingFailure(sessionId, reminderError);
+            yield { type: 'auxiliary_error', auxiliaryKind: 'session_naming', error: reminderError };
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!abortController.signal.aborted && !/abort|cancel/i.test(message)) {
+            // The primary response has already completed. Retire a possibly dead
+            // child, retaining its thread ID, without reclassifying that response.
+            this.evictLiveProtocolSession(sessionId);
+            await this.storeSessionNamingFailure(sessionId, message);
+            yield { type: 'auxiliary_error', auxiliaryKind: 'session_naming', error: message };
+          }
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1809,7 +1824,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
   private async sendSessionNamingReminder(
     session: ProtocolSession,
     sessionId: string
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     console.log('[CODEX] First turn completed without session naming; sending reminder instruction');
 
     await this.logAgentMessageBestEffort(
@@ -1839,7 +1854,14 @@ export class OpenAICodexProvider extends BaseAgentProvider {
       await this.storeRawEventIfPresent(reminderEvent, sessionId, {
         promptType: 'system_reminder',
         reminderKind: 'session_naming',
+        auxiliaryErrorHandled: true,
       });
+
+      if (reminderEvent.type === 'error') {
+        // The protocol has exhausted its own retries. Stop this auxiliary turn
+        // once and let the caller report it separately from the primary result.
+        return reminderEvent.error || 'Session naming reminder failed';
+      }
 
       if (reminderEvent.type === 'tool_call' && reminderEvent.toolCall) {
         if (OpenAICodexProvider.isSessionNamingToolCall(reminderEvent.toolCall.name)) {
@@ -1852,6 +1874,16 @@ export class OpenAICodexProvider extends BaseAgentProvider {
     if (!reminderTriggeredNaming) {
       console.warn('[CODEX] Session naming reminder turn completed without update_session_meta call');
     }
+    return undefined;
+  }
+
+  private async storeSessionNamingFailure(sessionId: string, message: string): Promise<void> {
+    await this.logAgentMessageBestEffort(sessionId, 'output', JSON.stringify({
+      method: 'nimbalyst/auxiliaryError',
+      params: { kind: 'session_naming', message },
+    }), {
+      metadata: { transport: 'app-server', eventType: 'nimbalyst/auxiliaryError' },
+    });
   }
 
   abort(): void {

@@ -9,6 +9,7 @@ import {setCodexShellTrackingHost} from '../codexAppServer/shellTracking';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
+import path from 'node:path';
 
 // IMPORTANT: mock `node:child_process` BEFORE importing the protocol so the
 // module under test picks up the stub.
@@ -201,6 +202,13 @@ describe('CodexAppServerProtocol', () => {
     child.emitLine({ id: init.id, result: {} });
     const request = await nextWrittenMatching(child, 'thread/' + kind);
     child.emitLine({ id: request.id, result: { thread: { id: 'existing' }, sandbox: { type: 'readOnly' } } });
+    if (process.platform === 'win32') {
+      // The real Windows validator checks policy/readiness before rejecting.
+      const policy = await nextWrittenMatching(child, 'configRequirements/read');
+      child.emitLine({ id: policy.id, result: { requirements: null } });
+      const readiness = await nextWrittenMatching(child, 'windowsSandbox/readiness');
+      child.emitLine({ id: readiness.id, result: { status: 'ready' } });
+    }
     await rejected;
     expect(child.killed).toBe(true);
     expect(child.writtenLines.some((line: any) => line.method === 'turn/start')).toBe(false);
@@ -518,7 +526,7 @@ describe('CodexAppServerProtocol', () => {
 
     const rootsReq = await nextWrittenMatching(child, 'skills/extraRoots/set');
     expect(rootsReq.params).toEqual({
-      extraRoots: ['/tmp/ws/.agents/skills/.nimbalyst-generated'],
+      extraRoots: [path.join('/tmp/ws', '.agents', 'skills', '.nimbalyst-generated')],
     });
     child.emitLine({ id: rootsReq.id, result: {} });
 
@@ -639,6 +647,33 @@ describe('CodexAppServerProtocol', () => {
     expect(meta.fileChangeBaselines[1]).toMatchObject({ kind: 'update', preEditContent: 'requires-post-edit-content' });
 
     protocol.cleanupSession(session);
+  });
+
+  it('retires notification and abort subscriptions when turn/start rejects', async () => {
+    const protocol = new CodexAppServerProtocol();
+    const listeners = new Set<unknown>();
+    const abortController = new AbortController();
+    const removeAbort = vi.spyOn(abortController.signal, 'removeEventListener');
+    const endTurn = vi.fn();
+    const session = {
+      id: 'synthetic-cleanup-thread', platform: 'codex-app-server',
+      raw: {
+        child: {}, threadId: 'synthetic-cleanup-thread', options: {}, activeTurnId: null, stderrTail: [],
+        shellTracking: { endTurn },
+        client: {
+          onNotification: (listener: unknown) => { listeners.add(listener); return () => listeners.delete(listener); },
+          request: vi.fn().mockRejectedValue(new Error('synthetic turn/start failure')),
+        },
+      },
+    } as any;
+    const events: ProtocolEvent[] = [];
+    for await (const event of protocol.sendMessage(session, { content: 'synthetic', abortSignal: abortController.signal })) events.push(event);
+    expect(events.filter(event => event.type === 'error')).toHaveLength(1);
+    expect(events.some(event => event.type === 'complete')).toBe(false);
+    expect(listeners.size).toBe(0);
+    expect(removeAbort).toHaveBeenCalledWith('abort', expect.any(Function));
+    expect(session.raw.activeTurnId).toBeNull();
+    expect(endTurn).toHaveBeenCalledOnce();
   });
 
   it('surfaces turn/failed as an error event', async () => {

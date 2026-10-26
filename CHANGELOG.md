@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Localized session and tracker timestamps, tracker fields and table controls, attachment guides, and model recommendations with live language switching.
 - Kept iOS session-list refreshes from scanning unrelated session history.
 - Restored copying local document images by registering desktop URL schemes together at startup.
+- Reported failed Codex session-information updates separately from successful responses and released failed-request listeners.
 
 ## [0.82.1-ja.1] — 2026-10-25
 

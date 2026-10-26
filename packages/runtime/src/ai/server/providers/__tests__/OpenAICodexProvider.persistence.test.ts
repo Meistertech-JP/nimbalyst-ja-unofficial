@@ -386,6 +386,131 @@ describe('OpenAICodexProvider persistence', () => {
     expect(outputRows).toHaveLength(0);
   });
 
+
+  // Synthetic in-memory peer drives the real protocol; no provider child or external request.
+  it.each(['error_event', 'failed_turn_completed', 'rpc_throw', 'protocol_throw', 'willRetry_recovery'] as const)(
+    'preserves a successful primary turn and reports auxiliary reminder outcome separately: %s',
+    async (scenario) => {
+      const { CodexAppServerProtocol } = await import('../../protocols/CodexAppServerProtocol');
+      configureMcpServers({ mcpServerPort: 41001 });
+      const capacity = 'Selected model is at capacity. Please try a different model.';
+      const threadId = 'r16-synthetic-thread';
+      const sessionId = 'r16-synthetic-session';
+      const listeners = new Set<(method: string, params: unknown) => void>();
+      const sentContents: string[] = [];
+      const protocolEvents: Array<{ turn: number; type: string; error?: string }> = [];
+      let turn = 0;
+      const emit = (method: string, params: unknown) => {
+        for (const listener of [...listeners]) listener(method, params);
+      };
+      const client = {
+        onNotification(listener: (method: string, params: unknown) => void) {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        async request(method: string, params: any) {
+          if (method !== 'turn/start') throw new Error('Unexpected synthetic RPC: ' + method);
+          turn += 1;
+          sentContents.push(params.input[0].text);
+          const turnId = 'r16-turn-' + turn;
+          if (turn === 2 && scenario === 'rpc_throw') throw new Error(capacity);
+          if (turn === 2 && scenario === 'error_event') {
+            emit('error', { threadId, turnId, error: { message: capacity }, willRetry: false });
+          } else if (turn === 2 && scenario === 'failed_turn_completed') {
+            emit('turn/completed', { threadId, turn: { id: turnId, status: 'failed', error: { message: capacity } } });
+          } else {
+            if (turn === 2) {
+              emit('error', { threadId, turnId, error: { message: 'Synthetic reconnecting' }, willRetry: true });
+            }
+            emit('item/agentMessage/delta', {
+              threadId, turnId, itemId: 'message-' + turn,
+              delta: turn === 1 ? 'R16 MAIN RESPONSE OK' : 'R16 RECOVERED',
+            });
+            emit('turn/completed', { threadId, turn: { id: turnId, status: 'completed' } });
+          }
+          return { turn: { id: turnId } };
+        },
+      };
+      const session = {
+        id: threadId, platform: 'codex-app-server',
+        raw: { child: {}, client, threadId, options: {}, dynamicTools: [], activeTurnId: null, stderrTail: [] },
+      };
+      const realProtocol = new CodexAppServerProtocol();
+      const createSession = vi.fn(async () => session);
+      const resumeSession = vi.fn(async () => session);
+      const protocol = {
+        platform: 'codex-app-server', createSession, resumeSession,
+        forkSession: vi.fn(), abortSession: vi.fn(), cleanupSession: vi.fn(),
+        async *sendMessage(currentSession: any, message: any) {
+          const currentTurn = turn + 1;
+          if (currentTurn === 2 && scenario === 'protocol_throw') {
+            turn += 1;
+            sentContents.push(message.content);
+            throw new Error(capacity);
+          }
+          for await (const event of realProtocol.sendMessage(currentSession, message)) {
+            protocolEvents.push({ turn: currentTurn, type: event.type, ...(event.type === 'error' ? { error: event.error } : {}) });
+            yield event;
+          }
+        },
+      };
+      const provider = new OpenAICodexProvider({ apiKey: 'test-key' }, {
+        protocol, transport: 'app-server', idleProtocolSessionTimeoutMs: -1,
+        permissionService: { resolvePermission: vi.fn(), rejectAllPending: vi.fn(), clearSessionCache: vi.fn() },
+      } as any);
+      await provider.initialize({ apiKey: 'test-key', model: 'openai-codex:gpt-5' });
+      const chunks: any[] = [];
+      try {
+        for await (const chunk of provider.sendMessage('R16 synthetic primary', undefined, sessionId, [], process.cwd())) chunks.push(chunk);
+        const retainedThread = provider.getProviderSessionData(sessionId)?.providerSessionId;
+        const initialSent = [...sentContents];
+        const nextChunks: any[] = [];
+        for await (const chunk of provider.sendMessage('R16 synthetic next', undefined, sessionId, [], process.cwd())) nextChunks.push(chunk);
+        const expectedFailure = scenario !== 'willRetry_recovery';
+        const outcome = {
+          scenario, firstRequestSends: initialSent.length, totalSendsAfterNextRequest: sentContents.length,
+          reminderSends: sentContents.filter(text => text.includes('<SYSTEM_REMINDER>')).length,
+          protocolReminderErrors: protocolEvents.filter(event => event.turn === 2 && event.type === 'error'),
+          auxiliaryErrors: chunks.filter(chunk => chunk.type === 'auxiliary_error').map(chunk => ({ kind: chunk.auxiliaryKind, error: chunk.error })),
+          upperErrors: chunks.filter(chunk => chunk.type === 'error').map(chunk => chunk.error),
+          mainCompleteCount: chunks.filter(chunk => chunk.type === 'complete').length,
+          mainTextPreserved: chunks.some(chunk => chunk.type === 'text' && chunk.content === 'R16 MAIN RESPONSE OK'),
+          retainedThread, nextComplete: nextChunks.some(chunk => chunk.type === 'complete'),
+          nextThread: provider.getProviderSessionData(sessionId)?.providerSessionId,
+          notificationSubscribersAfterNextTurn: listeners.size,
+          persistedReminderOutputs: createdMessages.filter(row => row.direction === 'output' && row.metadata?.reminderKind === 'session_naming').length,
+        };
+        console.log('R16_REMINDER_QUALIFICATION ' + JSON.stringify(outcome));
+        expect.soft(initialSent).toHaveLength(2);
+        expect.soft(outcome.reminderSends).toBe(1);
+        expect.soft(outcome.totalSendsAfterNextRequest).toBe(3);
+        expect.soft(outcome.mainTextPreserved).toBe(true);
+        expect.soft(outcome.mainCompleteCount).toBe(1);
+        expect.soft(outcome.retainedThread).toBe(threadId);
+        expect.soft(outcome.nextThread).toBe(threadId);
+        expect.soft(outcome.nextComplete).toBe(true);
+        expect.soft(outcome.notificationSubscribersAfterNextTurn).toBe(0);
+        expect.soft(outcome.protocolReminderErrors).toHaveLength(expectedFailure && scenario !== 'protocol_throw' ? 1 : 0);
+        // Auxiliary failures are surfaced without relabeling the successful primary turn.
+        expect.soft(outcome.upperErrors).toEqual([]);
+        expect.soft(outcome.auxiliaryErrors).toEqual(expectedFailure ? [{ kind: 'session_naming', error: capacity }] : []);
+        const summaries = createdMessages.filter(row => row.direction === 'output' && row.metadata?.eventType === 'nimbalyst/auxiliaryError');
+        expect.soft(summaries).toHaveLength(expectedFailure ? 1 : 0);
+        if (expectedFailure) {
+          expect.soft(JSON.parse(summaries[0]?.content as string)).toEqual({
+            method: 'nimbalyst/auxiliaryError', params: { kind: 'session_naming', message: capacity },
+          });
+          expect.soft(summaries[0]?.metadata?.promptType).toBeUndefined();
+          expect.soft(summaries[0]?.metadata?.transport).toBe('app-server');
+        }
+        const reminderRows = createdMessages.filter(row => row.direction === 'output' && row.metadata?.reminderKind === 'session_naming');
+        expect.soft(reminderRows.every(row => row.metadata?.auxiliaryErrorHandled === true)).toBe(true);
+      } finally {
+        provider.destroy();
+      }
+    },
+  );
+
   it('persists the session naming reminder as a tagged non-searchable input row', async () => {
     // update_session_meta now rides on the eager core `nimbalyst` server (MCP
     // consolidation Phase 5); registering it triggers the naming-reminder gate.

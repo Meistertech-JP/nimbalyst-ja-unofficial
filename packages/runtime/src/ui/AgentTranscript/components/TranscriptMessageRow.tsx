@@ -695,7 +695,10 @@ export const TranscriptMessageRow = React.memo(function TranscriptMessageRow({
     case 'system':
       return (
         <div data-message-index={index} ref={setRef}>
-          <SystemReminderCard message={message} />
+          {message.systemMessage?.reminderKind === 'session_naming_failed' ? (
+            <MessageSegment message={message} isUser={false} showToolCalls={false} showThinking={false}
+              expandedTools={NO_EXPANDED_TOOLS} onToggleToolExpand={toolShared.onToggleTool} />
+          ) : <SystemReminderCard message={message} />}
         </div>
       );
 

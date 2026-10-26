@@ -199,6 +199,18 @@ export const MessageSegment = React.memo(function MessageSegment({
     // This prevents duplicate LoginRequiredWidget rendering
     if (message.isError) return null;
 
+    if (message.systemMessage?.reminderKind === 'session_naming_failed') {
+      return (
+        <div className="session-naming-failure my-2 rounded-lg border border-[var(--nim-border)] p-3" role="status">
+          <p className="m-0 text-sm">{t('session_naming_failure')}</p>
+          <details className="mt-2 text-xs text-[var(--nim-text-muted)]">
+            <summary className="cursor-pointer">{t('auth.show_technical_details')}</summary>
+            <pre className="mt-2 whitespace-pre-wrap break-words">{message.text}</pre>
+          </details>
+        </div>
+      );
+    }
+
     // Check if this is a rate limit event embedded in text content
     if (!isUser && isRateLimitContent(message.text ?? '')) {
       return <RateLimitWidget content={message.text ?? ''} sessionId={sessionId} isLastMessage={isLastMessage} />;

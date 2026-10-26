@@ -101,6 +101,7 @@ export function isAppServerToolItem(item: unknown): boolean {
 interface AppServerEnvelope {
   method?: string;
   params?: {
+    kind?: string;
     threadId?: string;
     turnId?: string;
     item?: AppServerItem;
@@ -212,6 +213,21 @@ export class CodexAppServerRawParser implements IRawMessageParser {
     const method = envelope.method;
     const params = envelope.params;
     if (!method || !params) return descriptors;
+    if (method === 'nimbalyst/auxiliaryError' && params.kind === 'session_naming' && typeof params.message === 'string') {
+      return [{
+        type: 'system_message', text: params.message, systemType: 'status',
+        reminderKind: 'session_naming_failed', createdAt: msg.createdAt,
+      }];
+    }
+    // A new writer persists a single visible summary for the auxiliary failure.
+    // Keep historical raw errors visible and preserve all raw rows for replay.
+    if (msg.metadata?.auxiliaryErrorHandled === true
+      && msg.metadata?.promptType === 'system_reminder'
+      && msg.metadata?.reminderKind === 'session_naming'
+      && (method === 'error' || method === 'turn/failed'
+        || (method === 'turn/completed' && params.turn?.status === 'failed'))) {
+      return [];
+    }
     if (this.isDuplicateNotification(method, params)) {
       return descriptors;
     }

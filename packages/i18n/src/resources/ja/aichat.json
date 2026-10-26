@@ -1,5 +1,6 @@
 {
   "clipboard_image": "クリップボードの画像",
+  "session_naming_failure": "応答は完了しましたが、セッション情報を更新できませんでした。",
   "conversation_controls": {
     "wrap": "折り返す",
     "not_handled": "未対応",

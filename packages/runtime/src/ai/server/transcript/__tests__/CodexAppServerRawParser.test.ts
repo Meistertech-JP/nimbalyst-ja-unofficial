@@ -43,6 +43,35 @@ function makeContext(overrides?: Partial<ParseContext>): ParseContext {
 }
 
 describe('CodexAppServerRawParser', () => {
+  it('replays one auxiliary failure separately from the successful response and suppresses its handled raw error', async () => {
+    const parser = new CodexAppServerRawParser();
+    const context = makeContext();
+    const detail = 'Selected model is at capacity.';
+    const handled = makeRawMessage({
+      metadata: { transport: 'app-server', promptType: 'system_reminder', reminderKind: 'session_naming', auxiliaryErrorHandled: true },
+      content: envelope('error', { turnId: 'reminder-turn', error: { message: detail } }),
+    });
+    expect(await parser.parseMessage(handled, context)).toEqual([]);
+    const summary = makeRawMessage({
+      id: 2,
+      content: envelope('nimbalyst/auxiliaryError', { kind: 'session_naming', message: detail }),
+    });
+    const expected = [{
+      type: 'system_message', text: detail, systemType: 'status',
+      reminderKind: 'session_naming_failed', createdAt: summary.createdAt,
+    }];
+    expect(await parser.parseMessage(summary, context)).toEqual(expected);
+    // Replaying on a fresh parser after restart produces the same warning.
+    expect(await new CodexAppServerRawParser().parseMessage(summary, context)).toEqual(expected);
+    const historical = makeRawMessage({
+      id: 3, metadata: { transport: 'app-server', promptType: 'system_reminder', reminderKind: 'session_naming' },
+      content: envelope('error', { turnId: 'historical-turn', error: { message: detail } }),
+    });
+    expect(await parser.parseMessage(historical, context)).toEqual([
+      { type: 'system_message', text: detail, systemType: 'error', createdAt: historical.createdAt },
+    ]);
+  });
+
   it('parses item/completed agentMessage into an assistant_message descriptor', async () => {
     const parser = new CodexAppServerRawParser();
     const msg = makeRawMessage({

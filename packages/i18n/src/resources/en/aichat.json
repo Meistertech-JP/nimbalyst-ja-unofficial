@@ -1,5 +1,6 @@
 {
   "clipboard_image": "Clipboard image",
+  "session_naming_failure": "The response is complete, but session information could not be updated.",
   "conversation_controls": {
     "wrap": "Wrap",
     "not_handled": "Not Handled",

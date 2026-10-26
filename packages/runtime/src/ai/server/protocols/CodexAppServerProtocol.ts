@@ -354,31 +354,33 @@ export class CodexAppServerProtocol implements AgentProtocol {
       }
     }
 
-    // Start the turn. Errors from the request itself are surfaced as fail.
-    const turnInput = await this.buildInput(message);
-    let turnStartResultId: string | null = null;
+    // Include input preparation and turn/start in the cleanup boundary: an RPC
+    // rejection must retire its notification/abort listeners just like a turn.
     try {
-      const turnStart = await raw.client.request<{ turn?: { id?: string } }>('turn/start', {
-        threadId: raw.threadId,
-        input: turnInput,
-      } as TurnStartParams);
-      turnStartResultId = turnStart?.turn?.id ?? null;
-      raw.activeTurnId = turnStartResultId;
-      turnStartResolved = true;
-      for (const pending of pendingTurnNotifications.splice(0)) {
-        dispatchOwnedNotification(pending.method, pending.params);
+      // Start the turn. Errors from the request itself are surfaced as fail.
+      const turnInput = await this.buildInput(message);
+      let turnStartResultId: string | null = null;
+      try {
+        const turnStart = await raw.client.request<{ turn?: { id?: string } }>('turn/start', {
+          threadId: raw.threadId,
+          input: turnInput,
+        } as TurnStartParams);
+        turnStartResultId = turnStart?.turn?.id ?? null;
+        raw.activeTurnId = turnStartResultId;
+        turnStartResolved = true;
+        for (const pending of pendingTurnNotifications.splice(0)) {
+          dispatchOwnedNotification(pending.method, pending.params);
+        }
+      } catch (err) {
+        const baseMsg = err instanceof Error ? err.message : String(err);
+        yield {
+          type: 'error',
+          error: appendStderrTail(baseMsg, raw),
+        };
+        return;
       }
-    } catch (err) {
-      const baseMsg = err instanceof Error ? err.message : String(err);
-      yield {
-        type: 'error',
-        error: appendStderrTail(baseMsg, raw),
-      };
-      return;
-    }
 
-    // Pump events until we see the terminating queue entry.
-    try {
+      // Pump events until we see the terminating queue entry.
       while (true) {
         if (abortSignal?.aborted) {
           requestInterrupt();
