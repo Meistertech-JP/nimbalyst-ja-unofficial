@@ -1,6 +1,8 @@
-# R16 認定進捗報告（最終確定前）
+# R16 最終認定結果と検証履歴
 
-判定は **VALIDATING / RELEASE QUALIFICATION PENDING / PUBLICATION NOT AUTHORIZED**。READYを宣言していない。本書は最終コミット・ZIP・独立保全seal確定後に最終報告へ更新する。
+最終判定は **DEVELOPMENT COMPLETE / RELEASE READY / EVIDENCE VERIFIED AND SEALED / DISTRIBUTION FINAL CANDIDATE**。認定コミットは `4a642e5c95d174a9df8deaf8712ca8560b738d11`、treeは `c61903615fcef46e719e40a11f38075cc9862006`。後続の独立receiptは保全201件・不一致0、manifest SHA-256 `24bd0d4c0021e3535be9522100055c622da049d0dc0ab79864e78c5ef4edcc83` を確認した。本書の以下の「現在」「未完了」「残工程」は認定作業中に保存したチェックポイントの履歴であり、現在も認定未完了という意味ではない。
+
+今回、別途正式公開が承認された。公開用文書コミットは認定コミットとは別になり、実SHA/treeと新ソースZIPはGit外の公開監査記録で確定する。正式公開は検査・main/tag/Release/Wikiの順序を守って実施し、この時点では公開完了を主張しない。
 
 ## 固定基準と修正
 

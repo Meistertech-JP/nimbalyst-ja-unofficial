@@ -1,5 +1,13 @@
 # R16 公開文書の認定状況
 
+## 最終認定追補
+
+R16の文書認定は完了している。認定ソース `4a642e5c95d174a9df8deaf8712ca8560b738d11` と、全201件を独立再ハッシュした最終receipt（manifest SHA256 `24bd0d4c0021e3535be9522100055c622da049d0dc0ab79864e78c5ef4edcc83`）で確定した。最終文書監査FIXED2は34原稿・31 Wikiファイル・181内部リンクを確認した。後続27リンクは公開後に実到達を検証する。
+
+以下は認定途中の時点履歴であり、「未完了」「PENDING」は当時の状態を示す。今回の公開指示に基づきroot READMEとRelease Notesへ完成原稿を反映し、認定文書を追補した。新しい公開文書コミットのSHA/treeおよび新ソースZIPはGit外の公開記録で確定する。公開main/tag/Release/Wikiの書込みは検査・配布物照合後に実施し、公開後読み戻しを終えるまでPUBLISHED_AND_VERIFIEDとはしない。
+
+## 認定途中のチェックポイント
+
 公開Wikiは変更していない。公開Wikiの固定読戻し `530e76544dad3165c1241055c9e624e37906820a` を基準に、29記事（日英14組とEnglish Overview）・Sidebar・Footerの全31ファイルを確認した。日英README・日英併記Release Notesと合わせた34原稿は `docs/release-qualified/v0.82.3-ja.1/` に置く。
 
 初期監査 `tmp/r16-evidence/DOCUMENTATION_AUDIT.json` は旧製品を対象とした時点の記録で、現候補の完成を示すものではない。今回の製品修正後に全原稿を読み直し、旧14,794キーを14,795キーへ更新し、製品修正1c1d54a85、新CI07eac5ae2、旧R15製品の履歴証拠を区別する修正を進めた。

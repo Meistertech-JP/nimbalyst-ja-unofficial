@@ -1,66 +1,64 @@
 # Nimbalyst — Unofficial Japanese Edition
 
-An unofficial Japanese-language build of Nimbalyst, based on version 0.82.1.
-
-Japanese localization covers desktop menus, settings, file management, AI sessions, trackers, dialogs, and other parts of the user interface. The display language can be switched between Japanese and English.
+An unofficial Japanese-language build of Nimbalyst, based on version 0.82.3. Japanese localization covers desktop menus, settings, file management, AI sessions, trackers, dialogs, and other parts of the user interface. The display language can be switched between Japanese and English.
 
 This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
 
-[日本語](README.md) · [English Wiki](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Home-English) · [Japanese Wiki](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki) · [Release notes](RELEASE_NOTES_v0.82.1-ja.1.md#english)
+[日本語](README.md) · [Windows installation](docs/WINDOWS_JA_UNOFFICIAL.md#english) · [User guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Home-English) · [Upstream Nimbalyst](https://github.com/nimbalyst/nimbalyst)
 
-## Downloads and requirements
+## Availability
 
-**v0.82.1-ja.1 is a regular Windows x64 release.** Download the NSIS installer, portable ZIP, source ZIP, and `SHA256SUMS.txt` from the [versioned release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1). See the [Windows installation guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Windows-Installation-English) for installation and updates.
+v0.82.3-ja.1 is an unsigned Windows x64 edition. The NSIS installer, portable ZIP, matching source and SHA256SUMS.txt are listed in the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1).
 
-The Windows application and installer are unsigned. SmartScreen or other security software may display warnings. Do not disable protections; verify the source, version, and SHA-256. A matching hash establishes byte equality, not a verified publisher or a safety guarantee.
+The source is based on upstream v0.82.3 at `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. Features and fixes differ from the latest official release. Upstream distributed v0.82.3 as a prerelease.
 
-The previous stable [v0.81.7-ja.3](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.81.7-ja.3) and its [verification record](RELEASE_NOTES_v0.81.7-ja.3.md) are retained. v0.81.7-ja.2 remains a source-only prerelease. `ja.1` is this edition's update number. SemVer treats the hyphen suffix as a prerelease identifier, but this GitHub Release is designated a regular stable release.
+## Changes
 
-The base is upstream v0.82.1, pinned to `583ae0244dae266667be579733d6c571fd74e037`. Features and fixes differ from the latest official release. Testing does not cover every Windows configuration. No distributions for other operating systems are provided.
+This edition incorporates legacy-encryption team recovery, Tracker recovery-conflict guidance, concurrent Codex file attribution, bounded CPU-profile retention, image paste, and fixes to Wiki, transcripts, and the development server.
 
-## Display language
+**Team recovery requires the updated sync server.** Other editing clients must also support recovery. Production-organization recovery and the complete procedure across independent clients have not been verified. Check server compatibility and the intended recovery target before attempting recovery of an existing organization.
 
-Select System, English, or Japanese in display-language settings. This is separate from the agent's response language and does not translate user documents or external service responses. Resources contain 27 namespaces and 14,608 keys in each language. Key parity, empty translations, and interpolation consistency were checked; matching keys do not establish complete UI translation.
+## Language and data
 
-Typeahead and session-reference accessibility strings follow the display language. External screen-reader behavior has not been tested. See the [display-language guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Display-Language-English).
+Select System, English, or Japanese in display-language settings. This is independent of the agent response language. User documents and external service responses are not automatically translated. Resources contain 27 namespaces and 14,795 keys per language; key parity does not establish complete UI translation.
 
-## Updates and authentication
+The Windows application ID is `jp.meistertech.nimbalyst.ja.unofficial`; the default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official settings are not moved or deleted. Running alongside the official application is unsupported. This edition does not claim the default `nimbalyst://` handler; authentication uses an instance-specific, nonce-protected localhost callback. Open authentication email on the same Windows PC.
 
-- Updates are manual through this repository's Releases. Official automatic updates and manual update checks are disabled.
-- Running alongside the official Nimbalyst application is not supported. The application ID is `jp.meistertech.nimbalyst.ja.unofficial`; default user data is stored under `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official data is not moved or deleted.
-- The Windows build does not claim the default `nimbalyst://` handler. Authentication uses an instance-specific, nonce-protected localhost callback. Open authentication email on the same PC running the application. Do not share authentication URLs or tokens.
-- Logout clears local authentication state; it does not guarantee service-side session revocation.
-- Uninstallation targets registrations and shortcuts owned by this edition and retains user data.
+Updates are manual through this repository's Releases. Official automatic updates and manual update checks are disabled. Uninstallation is configured to retain user data.
 
-See [account authentication](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication-English) and [compatibility and limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
+## Windows distribution and validation
 
-## Verification and limitations
+The Windows packages were rebuilt from product-fix commit `1c1d54a851c340a8f0f9afc304379882a7319fa1`. Their NSIS and portable ZIP payloads, ASAR, native ABI, Workers and all 1,913 ZIP files were checked. In the ordinary product, English settings, menus, Project Manager and Workspace views were observed, and English remained selected after restart. With the display-language setting set to System, Japanese appeared in the Renderer and native menus and remained after a normal Ctrl+Q shutdown and restart. Persistence of an explicit `ja` setting has not been checked. The auxiliary-error warning passed English and Japanese DOM tests, but its display in the ordinary product has not been observed. Authentication, NSIS installation, upgrade and removal were not exercised on this build; relevant authentication and installer source inputs were unchanged, which does not replace those runtime checks.
 
-The ordinary Windows product was observed switching languages, retaining each language after restart, completing email sign-in, saving encrypted credentials, restoring the account, logging out, and remaining signed out after restart. Fresh installation, updating from v0.81.7-ja.3 with test settings and documents retained, and ordinary uninstallation were also checked. The final payload has 1,910 files byte-identical to the natively tested product; the remaining file differs only in the third-party license JSON generation timestamp. Installation and removal of the final NSIS itself, and verification of all 1,911 payload files, also succeeded.
+Qualification commit `4a642e5c95d174a9df8deaf8712ca8560b738d11` passed Linux run `40277550288`: 2,340 test files passed, seven skipped, zero failed (2,347 total); 19,296 tests passed, 30 skipped, zero failed (19,326 total). iOS run `40277550251` completed with 528 executed, 522 passed, six skipped and zero failed. The publication commit changes documents only; its product inputs are compared with the qualified source.
 
-Typecheck passed in 38 workspaces, and all seven bundle budgets passed. Linux recorded 19,130 passed, 30 skipped, and zero failed tests. iOS recorded 527 executed, six skipped, and zero failed tests. CI ran on `ae08d2235bab5e9c832c0ae32631bb3a94544704`, not the exact final source SHA. Subsequent changes are documentation, generated declarations, and license-generation timestamps; implementation and test code are unchanged.
+Intended assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
 
-Known Windows test failures involving symlink-fixture EPERM and missing `/bin/sh` remain recorded. Sandbox tests that stop during fixture creation do not verify the rejection behavior itself. No all-Windows-tests-passed claim is made.
-
-Google sign-in, special authentication recovery, server-side revocation, effective NTFS access involving other users, external screen readers, and complete coverage of screens, DPI settings, and dynamic translations remain unverified. The static audit's 653 dynamic candidates and 382 unresolved scopes are not counts of missing keys or confirmed defects. Unverified areas are not established vulnerabilities. See [testing and verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English).
+After the product fix, 51 Provider/Protocol tests and 54 Main/parser/UI/i18n tests passed; 38 workspace typechecks and seven existing bundle budgets also passed. These test results do not verify authentication or NSIS installation in the ordinary product. See [validation](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) and [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
 
 ## Build from source
 
-Use Node.js 24 or later, the repository's pnpm 12.9.1, and the required Windows native build tools.
+Use Node.js 24 or later, the repository's pnpm 12.9.1, and Windows native build tools.
 
-```sh
+```powershell
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps
 corepack pnpm --filter @nimbalyst/collab-bundle run build
 corepack pnpm --filter @nimbalyst/runtime run build
-corepack pnpm --dir packages/electron run build:win
+$env:ALLOW_UNSIGNED_WINDOWS_BUILD = 'true'
+$env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
+corepack pnpm --dir packages/electron run build:win --publish never
 ```
 
-NSIS output is written to `packages/electron/release`. Local builds without signing credentials are unsigned. Run typecheck with `corepack pnpm run typecheck`. Successful packaging does not establish successful startup or authentication. See [building from source](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source-English) and the [localization architecture](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Localization-Architecture-English).
+Create a ZIP from the same completed payload in `packages/electron/release/win-unpacked`:
+
+```powershell
+corepack pnpm --dir packages/electron exec electron-builder --prepackaged release/win-unpacked --win zip --x64 --publish never
+```
+
+Successful generation does not establish successful startup, authentication, or upgrade. An unsigned build requires no signing credentials. Run typecheck with `corepack pnpm run typecheck`.
 
 ## License
 
-[MIT License](LICENSE). The original `Copyright (c) 2024-2026 Nimbalyst Inc.` and license text are retained. Bundled third-party software remains subject to its own licenses. The [inventory](packages/electron/resources/generated/THIRD_PARTY_LICENSES.json) and [notices](packages/electron/resources/generated/THIRD_PARTY_NOTICES.txt) are included under `resources/legal` in Windows packages.
-
-[Original Nimbalyst repository](https://github.com/nimbalyst/nimbalyst)
+MIT License. The original `Copyright (c) 2024-2026 Nimbalyst Inc.` and license text are retained. Third-party software remains subject to its own licenses. Inventories and notices are included under `packages/electron/resources/generated` in source and `resources/legal` in Windows packages.

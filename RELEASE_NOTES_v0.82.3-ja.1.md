@@ -1,79 +1,69 @@
-# v0.82.3-ja.1 / Windows x64
+# v0.82.3-ja.1 — Nimbalyst 日本語版（非公式）
 
-## 日本語
+本家Nimbalyst v0.82.3の固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とするWindows x64版です。公式最新版のすべての変更を含むものではありません。Nimbalyst, Inc.による承認・サポートは受けていません。
 
-Nimbalyst 日本語版（非公式）の次期配布候補です。本家v0.82.3、固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とします。現在公開されている正式版はv0.82.1-ja.1で、本候補はまだ公開していません。本プロジェクトはNimbalyst, Inc.による開発・サポート・承認を受けた製品ではありません。
+本家v0.82.3はPrereleaseとして提供されています。本日本語版は未署名の通常正式Releaseとして公開します。`v0.82.3-ja.1`のハイフン識別子はSemVer上のプレリリース識別子ですが、GitHub Releaseの設定は`prerelease=false`です。
 
-### v0.82.1-ja.1からの変更
+## 変更
 
-- 本家の17コミット・144ファイルの変更を履歴ごと統合しました。組織復旧、Codexの変更帰属、セッション管理、Wiki、画像貼り付け、Transcript表示、開発サーバーの復旧などの変更を含みます。
-- 設定の「セキュリティと暗号化」に、旧暗号化方式のチーム組織を元のチケット識別子・番号を保持して復旧する案内を追加しました。復旧の停止理由、診断情報の書き出し、暗号化された持ち運び用ソースの操作も日本語表示へ接続しています。
-- 復旧前に待機していた編集が、復旧後の内容を意図せず上書きしないためのTracker競合通知を追加しました。
-- Codexの並行実行で変更元を確定できない場合の案内と、貼り付け画像の既定ラベルを日本語化しました。ユーザーの文書・ファイル名や外部サービスの応答を自動翻訳するものではありません。
-- 本家の自動CPUプロファイル保持制限を取り込み、Windowsでの同時整理時の扱いを補強しました。ログのファイル保存設定は維持しています。
-- Windowsの数値版番号を0.82.3.1へ合わせ、製品版番号との不一致をパッケージ生成前に検出します。
+- 本家の17コミット・144ファイルを統合し、チーム組織復旧、Trackerの復旧リビジョン、Codex並行セッションの変更帰属、CPUプロファイル保持制限、Wiki・Transcriptの修正を取り込みました。
+- 復旧画面、Trackerの標準フィールド・列・操作・同期状態、セッション時刻、入力・添付案内、アクセシビリティ表示を既存の日本語資源へ接続しました。27名前空間、英日各14,795キーです。
+- Windowsでカスタムschemeをまとめて登録し、ローカル文書画像のコピー取得失敗を修正しました。
+- SQLite0055は待機中Tracker編集の基準リビジョンを保持する列を追加します。既存行保持、失敗時rollbackと再試行、PGLite変換を合成試験で確認しています。
+- iOSセッション一覧の検索計画を修正し、シミュレーター性能回帰試験を追加しました。iOSバイナリの提供や実機動作保証ではありません。
 
-### データと組織復旧
+## 確認範囲
 
-SQLiteの0055は、待機中のTracker編集へ同期基準リビジョンを保持する列を追加します。PGLiteにも対応する変更があります。合成テストデータで旧スキーマからの更新、既存行の保持、途中失敗のロールバック・再試行、PGLiteからSQLiteへの変換と再起動後の保持を確認しています。
+製品修正コミット `1c1d54a851c340a8f0f9afc304379882a7319fa1` でWindows NSIS・ポータブルZIPを再生成し、ASAR/ABI/Worker、ZIP全1,913ファイルを照合しました。通常製品で英語のSettings・menus・Project Manager・Workspaceを確認し、英語設定後の再起動保持も確認しました。表示言語をSystemにした状態で、日本語Renderer・ネイティブメニューと、Ctrl+Qによる正常終了・再起動後の日本語保持を確認しました。明示的な`ja`設定値の保持は未確認です。補助エラー警告は日英DOM試験で確認しましたが、通常製品の実画面では未確認です。認証・NSIS導入・更新・削除の製品操作はこの版では行っていません。関連する認証・インストーラー入力は変更していませんが、過去製品での成功記録は本版の実操作結果ではありません。
 
-**組織復旧には更新された同期サーバーが必要です。** 復旧対象を編集する他のクライアントにも対応版が必要です。本番組織を使った復旧、独立した実クライアント間の全手順、サーバー側の対応状況は確認していません。ローカルのテスト成功をサーバーを含む復旧成功とは扱いません。
+修正の回帰検査はProvider/Protocol 51件、Main/parser/UI/i18n 54件がPASS。38ワークスペース型検査と7つの既存容量上限もPASSしました。認定コミット `4a642e5c95d174a9df8deaf8712ca8560b738d11` のLinux run `40277550288` はTest Files 2,340 PASS・7 SKIP・0 FAIL（計2,347）、Tests 19,296 PASS・30 SKIP・0 FAIL（計19,326）で成功しました。iOS run `40277550251` は528件実行・522 PASS・6 SKIP・0 FAILで成功しました。今回の正式公開用コミットは認定後の文書変更のみで、製品入力・テストとの一致を別途照合しています。
 
-### 表示言語と検証範囲
+## 制限と既知の問題
 
-現在のWindows製品ソースは `7d5407c51` です。通常製品で画像コピー・貼り付け・Undo／Redo、本番メール認証・再起動復元・ログアウト後の未認証保持、両言語の再起動後保持、新規NSIS導入・起動・削除を確認しました。公開v0.82.1-ja.1からの更新でも英語設定・日英文書・Tracker項目とmigration55を確認し、削除後の専用データ274ファイルは不変でした。修正を含む `f0c7b7929` のLinuxは19,285 PASS／30 SKIP／0 FAIL、iOSは522 PASS／6 SKIP／0 FAILでした。対応するソースZIPは最終文書コミットから生成し、全Git blob・CRC・実展開ファイルを照合します。以下は先行候補の履歴です。
+チーム組織復旧には更新された同期サーバーと対応クライアントが必要です。既存のモック・DOM・単体・統合試験とソース監査までを確認し、実組織・ダミー組織の作成やサービス登録、本番復旧は行っていません。実製品フォーム表示、サーバー状態遷移、独立実クライアントでの復旧・読戻し、チームデータの完全性と復旧後同期は未検証です。
 
-表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,794キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
+過去の製品で、Codexの主要求が成功した後、自動セッション情報リマインダーにprovider報告のcapacityエラーが発生しました。後続検査では、補助要求の終端失敗を主要求成功と分離し、状態表示する処理とRPC失敗時の購読解放に不足があることを模擬試験で確認し、修正しました。修正後は主応答・完了を保つ回帰試験が成功しています。過去に観測したcapacity事象の原因が同じ経路だったか、また新製品で実際にcapacity制限が発生しないかは未確定です。プロバイダー側の容量制限自体を解消したものではありません。
 
-38ワークスペースの型検査、既存7エントリの容量上限、起動時のscheme登録・許可範囲に関する関連174テストが成功しています。Windows ZIP全1,913ファイル、CRC、ASARと法務ファイルを照合しました。Tracker・Wiki・既存Codex会話の詳細表示は、RendererとRuntimeのソースが変わっていない先行候補の実画面記録と区別しています。
+Google認証、特殊な復旧、サーバー側セッション失効、別ユーザーACL、外部スクリーンリーダー、全DPI・全動的翻訳・WSL全経路は未検証です。静的解析候補672／412／378は欠落や不具合件数ではありません。Windowsのsymlink fixture EPERM3件は未通過で、fixtureが作れない拒否試験の動作は未検証です。Linuxの成功でWindows試験をPASSへ変更していません。
 
-iOSでは変更対象を探すSQLの走査範囲を修正し、実refresh SQLの検索計画回帰と既存6倍性能条件を通過しました。閾値は緩和していません。シミュレーターの成功は物理端末の全面保証ではありません。
+## 配布・ライセンス
 
-Windowsではsymlink fixture作成のEPERMが残っています。fixture作成で停止した試験は、symlinkの拒否・保持動作そのものを検証できていません。全Windows試験の成功は主張しません。外部スクリーンリーダー、全画面・DPI、動的翻訳の完全な実行時確認、WSL実環境での全経路、Google認証や特殊な復旧、サービス側セッション失効は未検証です。
+WindowsアプリとNSISは未署名です。警告・保護を無効化せず、同じReleaseのSHA256SUMS.txtで全ファイルを照合してください。公式更新は自動・手動とも無効で、本リポジトリのReleasesから手動更新します。公式版との同時利用はサポートしません。
 
-### 配布方針
+MIT Licenseと `Copyright (c) 2024-2026 Nimbalyst Inc.` を保持しています。第三者ライセンス・NOTICEは配布物の `resources/legal` に含みます。
 
-Windows x64の未署名NSIS、ポータブルZIP、対応するソースZIPとSHA256SUMS.txtを配布対象とします。正式公開時は通常正式リリースとする方針ですが、現時点で本候補のダウンロードは提供していません。
+---
 
-公式版の自動更新と手動更新確認は無効です。本版の更新はこのリポジトリのGitHub Releasesから手動で行います。公式Nimbalystとの同時利用はサポートしません。アプリID `jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザーデータ `%APPDATA%\Nimbalyst 日本語版（非公式）`、既定の `nimbalyst://` ハンドラーを取得しない方針を維持します。認証メールはアプリを起動した同じPCで開いてください。
+# v0.82.3-ja.1 — Nimbalyst — Unofficial Japanese Edition
 
-未署名アプリに対する警告や保護を無効にせず、取得元・版番号・SHA-256を確認してください。ハッシュの一致はコード署名・無害性・動作保証を意味しません。MIT Licenseと本家の著作権表示を保持し、第三者ライセンス・通知を同梱します。
+A Windows x64 edition pinned to upstream Nimbalyst v0.82.3 commit `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. It does not include every subsequent official change and is not endorsed or supported by Nimbalyst, Inc.
 
-## English
+Upstream v0.82.3 was distributed as a prerelease. This unsigned Japanese edition is a regular stable GitHub Release with `prerelease=false`. The hyphenated identifier in `v0.82.3-ja.1` is a SemVer prerelease identifier; that is separate from the GitHub Release classification.
 
-This is the next Windows x64 distribution candidate for Nimbalyst — Unofficial Japanese Edition, based on upstream v0.82.3 at `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. The currently published stable release remains v0.82.1-ja.1. This candidate has not been released. The project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
+## Changes
 
-### Changes since v0.82.1-ja.1
+- Integrated 17 upstream commits affecting 144 files, including team recovery, Tracker recovery revisions, concurrent Codex file attribution, CPU-profile retention, Wiki and transcript fixes.
+- Localized recovery, Tracker fields/columns/actions/sync state, session times, input/attachment guidance and accessibility text using the existing resources: 27 namespaces and 14,795 keys per language.
+- Fixed local document image-copy fetch failures on Windows by registering custom schemes together.
+- SQLite migration 0055 adds the base revision of pending Tracker edits. Synthetic tests cover existing-row retention, rollback/retry and PGLite conversion.
+- Corrected the iOS session-list query plan and added simulator performance regression coverage. No iOS binary or physical-device guarantee is provided.
 
-- Integrated the complete upstream history of 17 commits affecting 144 files, including organization recovery, Codex file attribution, sessions, Wiki, image paste, transcript rendering, and development-server recovery.
-- Added Japanese guidance to legacy-encryption organization recovery in Security & Encryption, including blocking conditions, diagnostics export, and encrypted portable source bundles. Recovery is designed to retain ticket identities and numbers.
-- Added Tracker notices for queued edits that require review after organization recovery rather than overwriting restored content.
-- Localized uncertain Codex ownership explanations and the default pasted-image label. User documents, filenames, and external service responses are not automatically translated.
-- Incorporated bounded automatic CPU-profile retention and improved handling of concurrent Windows cleanup while retaining diagnostic-file logging preferences.
-- Aligned the numeric Windows build version to 0.82.3.1 and added a pre-packaging check for product-version mismatches.
+## Verification scope
 
-### Data and organization recovery
+The Windows NSIS and portable ZIP packages were rebuilt from product-fix commit `1c1d54a851c340a8f0f9afc304379882a7319fa1`. Their payloads, ASAR, native ABI, Workers and all 1,913 ZIP files were checked. The ordinary product displayed English in Settings, menus, Project Manager and Workspace, and retained English after restart. With the display-language setting set to System, Japanese appeared in the Renderer and native menus and remained after a normal Ctrl+Q shutdown and restart. Persistence of an explicit `ja` value has not been checked. The auxiliary-error warning passed English and Japanese DOM tests; its display in the ordinary product has not been observed. Authentication, installation, upgrade and removal were not exercised on this build. Relevant authentication and installer inputs were unchanged, but prior product results do not substitute for these runtime checks.
 
-SQLite migration 0055 adds the base synchronization revision to queued Tracker edits, with a corresponding PGLite change. Synthetic-data tests cover populated-schema upgrade, existing-row preservation, transaction rollback and retry, PGLite-to-SQLite conversion, and retention after reopening.
+The product fix is at commit `1c1d54a851c340a8f0f9afc304379882a7319fa1`. Provider/Protocol: 51 tests passed. Main/parser/UI/i18n: 54 tests passed. All 38 workspace typechecks and seven unchanged bundle limits passed. Qualification commit `4a642e5c95d174a9df8deaf8712ca8560b738d11` passed Linux run `40277550288`: 2,340 test files passed, seven skipped, zero failed (2,347 total); 19,296 tests passed, 30 skipped, zero failed (19,326 total). iOS run `40277550251` passed 528 tests (522 passed, six skipped, zero failed). The publication commit changes documents only; product inputs and tests are independently compared with the qualified source.
 
-**Organization recovery requires the updated sync server.** Other clients editing recovered content must also be updated. Recovery of a production organization, the complete flow across independent real clients, and server deployment compatibility have not been verified. Local tests do not establish end-to-end recovery success.
+## Limitations and known issues
 
-### Language and verification scope
+Team recovery requires the updated sync server and compatible editing clients. Assessment covers existing mocks, DOM/unit/integration tests and source review only. No real or dummy organization was created or registered, and no production recovery was performed. Ordinary-product form display, server transitions, independent real-client recovery/readback, production team-data integrity and resumed synchronization remain unverified.
 
-Current Windows product source is `7d5407c51`. Ordinary products passed image copy/paste, Undo/Redo, production email sign-in, account restoration, signed-out persistence, restarts in both languages, and fresh NSIS installation/launch/removal. Upgrade from published v0.82.1-ja.1 retained English, a Japanese/English document and a Tracker item, and applied migration 55. Removal retained all 274 dedicated data-file hashes. Checkpoint `f0c7b7929` passed Linux with 19,285 passed / 30 skipped / zero failed and iOS with 522 passed / six skipped / zero failed. The corresponding source ZIP is generated from the final documentation commit and checked against every Git blob, CRC and restored file. Earlier results below are historical.
+An earlier product run completed its main Codex request while its automatic session-metadata reminder reported a provider capacity error. Synthetic regression tests later identified and fixed auxiliary-error propagation and cleanup behavior. The main response/completion path and the normal provider-error path have regression coverage. Whether the earlier capacity incident used the same failure path remains unknown; provider capacity limits themselves are not changed by this fix.
 
-Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,794 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
+Google sign-in, special recovery, server-side revocation, cross-user ACLs, external screen readers, all DPI settings, complete dynamic-translation coverage and all WSL paths remain unverified. Static candidate counts 672/412/378 are not missing-key or defect counts. Three Windows symlink-fixture EPERM failures remain unpassed; rejection behavior that could not run is unverified. Linux success does not convert those Windows tests into passes.
 
-All 38 workspace typechecks, seven existing bundle budgets and 174 related startup-scheme/security tests passed. All 1,913 Windows ZIP files, CRC, ASAR and legal files were verified. Detailed Tracker, Wiki and retained Codex-conversation UI checks remain separately scoped to the preceding candidate; renderer/runtime sources are unchanged.
+## Distribution and licensing
 
-The iOS affected-group query was restricted to the relevant sessions. The actual refresh-SQL plan regression and existing six-times performance threshold passed without relaxing the threshold. Simulator success is not a comprehensive physical-device guarantee.
+The Windows application and NSIS installer are unsigned. Do not disable warnings or protections; verify all files against SHA256SUMS.txt from the same release. Official automatic and manual update checks are disabled; update manually through this repository's Releases. Simultaneous use with the official application is unsupported.
 
-Windows symlink-fixture EPERM failures remain. A test stopped during fixture creation does not verify symlink rejection or retention. No all-Windows-tests-passed claim is made. External screen readers, every screen and DPI, complete runtime coverage of dynamic translations, all native WSL paths, Google sign-in, special recovery flows, and service-side session revocation remain unverified.
-
-### Distribution policy
-
-The intended assets are an unsigned Windows x64 NSIS installer, portable ZIP, matching source ZIP, and SHA256SUMS.txt. The intended publication is a regular stable release, but this candidate is not currently offered for download.
-
-Official automatic updates and manual update checks are disabled; updates are installed manually from this repository's GitHub Releases. Running alongside official Nimbalyst is unsupported. The application ID remains `jp.meistertech.nimbalyst.ja.unofficial`, the default profile remains `%APPDATA%\Nimbalyst 日本語版（非公式）`, and the Windows edition does not claim the default `nimbalyst://` handler. Open authentication email on the same PC running the application.
-
-Do not disable security warnings or protections for unsigned files. Verify the source, version, and SHA-256; a matching hash is not publisher signing, a safety guarantee, or an operational guarantee. The MIT License and upstream copyright are retained, with third-party licenses and notices included.
+The MIT License and `Copyright (c) 2024-2026 Nimbalyst Inc.` are retained. Bundled third-party licenses and notices are under `resources/legal`.

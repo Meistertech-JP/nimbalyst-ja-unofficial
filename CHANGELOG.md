@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.82.3-ja.1] — 2026-10-26
+
+- Released unsigned Windows x64 packages based on upstream v0.82.3; see the [bilingual release notes](RELEASE_NOTES_v0.82.3-ja.1.md) for verification scope and limitations.
 - Integrated upstream v0.82.3 with Japanese organization-recovery guidance and retained desktop language switching.
 - Localized session and tracker timestamps, tracker fields and table controls, attachment guides, and model recommendations with live language switching.
 - Kept iOS session-list refreshes from scanning unrelated session history.

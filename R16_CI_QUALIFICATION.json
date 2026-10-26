@@ -1,5 +1,8 @@
 {
   "status": "PASS_FIXED_PRODUCT_CI",
+  "finalQualificationCommit": "4a642e5c95d174a9df8deaf8712ca8560b738d11",
+  "finalQualificationCI": {"status":"PASS","linuxRun":40277550288,"linuxFiles":{"passed":2340,"failed":0,"skipped":7,"total":2347},"linuxTests":{"passed":19296,"failed":0,"skipped":30,"total":19326},"iosRun":40277550251,"iosTests":{"passed":522,"failed":0,"skipped":6,"total":528}},
+  "historicalDetailsBelow": "The following 07eac5ae2 checkpoint was also successful; it is not the separate documentation-only publication commit. Final publication CI state is recorded outside Git.",
   "checkedAt": "2026-10-26T04:52:39.585Z",
   "commit": "07eac5ae2f00c3a22ff15bbcaf05c74c80f29f37",
   "linux": {

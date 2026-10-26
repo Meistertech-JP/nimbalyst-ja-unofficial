@@ -1,8 +1,13 @@
 {
-  "developmentStatus": "FIX_IMPLEMENTED_VALIDATING",
-  "releaseQualification": "PENDING",
-  "distribution": "REBUILT_STATIC_INTEGRITY_PASS_NATIVE_QUALIFICATION_PENDING",
-  "publicationAuthorized": false,
+  "developmentStatus": "COMPLETE",
+  "releaseQualification": "READY_WITH_DISCLOSED_VERIFICATION_LIMITS",
+  "distribution": "FINAL_CANDIDATE",
+  "evidence": "VERIFIED_AND_SEALED",
+  "qualificationCommit": "4a642e5c95d174a9df8deaf8712ca8560b738d11",
+  "qualificationTree": "c61903615fcef46e719e40a11f38075cc9862006",
+  "independentSeal": {"status":"SEALED","files":201,"mismatches":0,"manifestSHA256":"24bd0d4c0021e3535be9522100055c622da049d0dc0ab79864e78c5ef4edcc83"},
+  "publicationAuthorized": true,
+  "publicationStatus": "AUTHORIZED_NOT_YET_PERFORMED",
   "releaseAllowedNow": false,
   "fixedUpstream": "84dcc00f3cd0abbb36eafc6bfad9389f960076db",
   "r15Base": "4198cb720bda3318f58b38e0b22e0dd9ccefbfbe",
@@ -11,12 +16,14 @@
   "codexErrorPropagation": {"syntheticRedConfirmed":true,"productFixImplemented":true,"providerProtocolTests":51,"mainTranscriptResourceTests":54,"externalRequests":0,"nativeFailureWireShape":"UNKNOWN"},
   "typecheck": {"workspaces":38,"status":"PASS_AFTER_EXPLICIT_RETURN_FIX","originalFailureRetained":true},
   "budgets": {"entries":7,"status":"PASS","limitsChanged":false,"editorGzipBytes":369922,"editorLimit":370000},
-  "remaining": [
+  "historicalCheckpointRemainingBeforeIndependentSeal": [
     "Normal candidate GUI passed English and system-resolved Japanese display/restart persistence and graceful exit; explicit ja native persistence and auxiliary warning native display remain disclosed coverage limits",
     "Normal push gates recorded; one-use known-three-EPERM exception consumed for 07eac5ae2 only; any future bypass requires fresh approval",
     "Current 07eac5ae2 fetched from remote; Linux 40269849525 and iOS 40269849613 PASS; final documentation source not yet committed",
     "Complete qualification documents, exact final source ZIP, checksums and independent preservation"
   ],
   "organizationPolicy": {"creationForbidden":true,"realRecoveryE2ERequired":false,"lackOfOrganizationAloneBlocksReady":false},
+  "currentRemaining": ["Publish documentation-only final commit after product-input and new source-ZIP verification", "Use normal hooks; a new bypass approval is required if main push stops", "Verify public main/tag/Release/assets and then publish and read back Wiki"],
+  "verificationLimits": ["Explicit ja native persistence unverified; English and system-resolved Japanese native restarts passed", "Auxiliary failure card native display unverified; bilingual component/history tests passed", "R15 authentication/installer evidence is historical, not rerun on R16", "Windows CLI1+sandbox2 fixture EPERM remain not passed", "No real/dummy organization or production recovery E2E"],
   "publicMainTagsReleaseWikiChanged": false
 }

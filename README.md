@@ -1,66 +1,64 @@
 # Nimbalyst 日本語版（非公式）
 
-Nimbalyst v0.82.1をベースに、デスクトップアプリのユーザーインターフェースを日本語化した非公式版です。
-
-メニュー、設定、ファイル管理、AIセッション、トラッカー、ダイアログなどに日本語表示を追加しています。表示言語は日本語と英語から選択できます。
+Nimbalyst v0.82.3をベースに、デスクトップアプリのユーザーインターフェースを日本語化した非公式版です。メニュー、設定、ファイル管理、AIセッション、トラッカー、ダイアログなどに日本語表示を追加しています。表示言語は日本語と英語から選択できます。
 
 本プロジェクトはNimbalyst, Inc.の公式製品ではなく、同社による開発・サポート・承認を受けたものではありません。
 
-[English](README.en.md) · [日本語Wiki](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki) · [English Wiki](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Home-English) · [リリースノート](RELEASE_NOTES_v0.82.1-ja.1.md)
+[English](README.en.md) · [Windows導入手順](docs/WINDOWS_JA_UNOFFICIAL.md) · [利用ガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki) · [本家Nimbalyst](https://github.com/nimbalyst/nimbalyst)
 
-## ダウンロードと環境
+## 提供状況
 
-**v0.82.1-ja.1はWindows x64向けの通常正式リリースです。** [対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)から、NSISインストーラー、ポータブルZIP、ソースZIP、`SHA256SUMS.txt`を取得します。導入・更新手順は[Windows導入ガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Windows-Installation)を参照してください。
+v0.82.3-ja.1はWindows x64向けの未署名版です。NSISインストーラー、ポータブルZIP、対応ソース、SHA256SUMS.txtは[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)に掲載します。
 
-Windowsアプリとインストーラーは未署名です。SmartScreenなどの警告が出る場合があります。保護機能を無効にせず、取得元、バージョン、SHA-256を確認してください。ハッシュ一致はファイルのバイト一致を確認するもので、コード署名や安全性の保証ではありません。
+対象ソースは本家v0.82.3の固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準にしています。公式最新版とは機能・修正内容が異なります。本家がPrereleaseとして提供したv0.82.3を基準としています。
 
-旧正式版[v0.81.7-ja.3](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.81.7-ja.3)と、その[検証記録](RELEASE_NOTES_v0.81.7-ja.3.md)は保持しています。v0.81.7-ja.2はソース限定Prereleaseです。`ja.1`は本版の更新番号で、SemVerではハイフン以降がプレリリース識別子になりますが、このGitHub Releaseは通常正式版として指定しています。
+## 主な変更
 
-ベースは本家v0.82.1、固定コミットは`583ae0244dae266667be579733d6c571fd74e037`です。公式最新版とは機能・修正内容が異なります。全Windows構成での動作保証ではなく、他OSの配布物は提供していません。
+旧暗号化方式のチーム復旧、Trackerの復旧後競合案内、Codexの並行セッションにおける変更帰属、CPUプロファイルの保持制限、画像貼り付け、Wiki・Transcript・開発サーバーの修正を取り込んでいます。
 
-## 表示言語
+**チーム復旧には更新された同期サーバーが必要です。** 他の編集クライアントにも対応版が必要です。本番組織の復旧や独立クライアント間の完全な復旧手順は未検証です。既存組織の復旧を試す前に、サーバーの対応状況と復旧対象を確認してください。
 
-設定の表示言語でSystem、English、日本語を選択できます。エージェントの回答言語とは別の設定で、利用者の文書や外部サービスの応答は自動翻訳しません。27名前空間、英日各14,608キーの対応・空翻訳・補間整合性を確認しています。キーの一致は全画面の翻訳完了を意味しません。
+## 表示言語とデータ
 
-入力候補やセッション参照のアクセシビリティ文字列も表示言語に追従します。外部スクリーンリーダーによる検証は行っていません。[表示言語ガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Display-Language)を参照してください。
+設定の表示言語でSystem、English、日本語を選択します。エージェントの回答言語とは別の設定です。ユーザー文書や外部サービスの応答を自動翻訳しません。翻訳資源は27名前空間・英日各14,795キーです。キー一致は全画面の翻訳完了を意味しません。
 
-## 更新と認証
+WindowsアプリIDは `jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザーデータは `%APPDATA%\Nimbalyst 日本語版（非公式）` です。公式版の設定を移動・削除しません。公式版との同時利用はサポートしません。本版は `nimbalyst://` の既定ハンドラーを取得せず、認証にはインスタンス固有のnonce付きlocalhost callbackを使用します。認証メールは同じWindows PCで開いてください。
 
-- 更新は本リポジトリのReleaseから手動で行います。公式版の自動更新と手動更新確認は無効です。
-- 公式Nimbalystとの同時利用はサポートしていません。アプリIDは`jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザーデータは`%APPDATA%\Nimbalyst 日本語版（非公式）`です。公式版のデータを移動・削除しません。
-- Windowsでは`nimbalyst://`の既定ハンドラーを取得しません。認証はインスタンス固有のnonce付きlocalhost callbackを使用します。認証メールはアプリを起動した同じPCで開いてください。認証URLやトークンを共有しないでください。
-- ログアウトはローカル認証状態を削除します。サービス側セッションの失効を保証するものではありません。
-- アンインストールは本版が所有する登録・ショートカットを対象とし、ユーザーデータは保持します。
+更新は本リポジトリのReleasesから手動で行います。公式版の自動更新と手動更新確認は無効です。アンインストールはユーザーデータを保持する構成です。
 
-詳しくは[アカウント認証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication)と[制限事項](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations)を参照してください。
+## Windows配布と検証範囲
 
-## 検証範囲と制限
+製品修正コミット `1c1d54a851c340a8f0f9afc304379882a7319fa1` からWindows NSIS・ポータブルZIPを再生成し、ASAR、ネイティブABI、Worker、ZIP全1,913ファイルを照合しました。通常製品で英語の設定・メニュー・Project Manager・Workspace表示と、英語選択後の再起動保持を確認しました。日本語は表示言語をSystemに設定した状態でRendererとネイティブメニューに表示され、Ctrl+Qによる正常終了後の再起動でも保持されました。明示的な`ja`設定値の再起動保持は未確認です。修正後の補助エラー警告は日英DOM試験で確認しましたが、通常製品の実画面表示は未確認です。認証・NSIS導入/更新/削除の製品操作は本版では実施していません。関連ソース入力に変更はありませんが、それは実操作の確認に代わるものではありません。
 
-通常Windows製品で日本語・英語切替、再起動後の言語保持、メール認証、暗号化保存、アカウント復元、通常ログアウト、未認証での再起動を確認しました。新規インストール、v0.81.7-ja.3からの更新とテスト文書・設定保持、通常アンインストールも確認しています。最終ペイロードは実機検証済み製品と1,910ファイルがバイト一致し、残る1ファイルは第三者ライセンスJSONの生成時刻だけが異なります。最終NSIS自体の導入・削除と1,911ペイロードの照合も成功しています。
+認定コミット `4a642e5c95d174a9df8deaf8712ca8560b738d11` のLinux run `40277550288` はTest Files 2,340 PASS・7 SKIP・0 FAIL（計2,347）、Tests 19,296 PASS・30 SKIP・0 FAIL（計19,326）で成功しました。iOS run `40277550251` は528実行・522成功・6スキップ・0失敗で完了しました。正式公開用コミットは認定後の文書変更のみで、製品入力との対応を確認しています。[検証記録](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)も参照してください。
 
-38 workspace型検査と7エントリの容量検査が成功しています。Linuxでは19,130 PASS／30 SKIP／0 FAIL、iOSでは527実行／6 SKIP／0 FAILです。CI実行コミットは`ae08d2235bab5e9c832c0ae32631bb3a94544704`で、最終ソースSHAそのもののCI実行ではありません。以後の差分は文書・生成型宣言・法務生成時刻で、実装・試験コードは同じです。
+配布対象は未署名Windows x64 NSIS、ポータブルZIP、対応するソースZIPとSHA256SUMS.txtです。警告や保護機能を無効にせず、取得元・バージョン・SHA-256を確認してください。ハッシュ一致は電子署名や安全性の保証ではありません。
 
-Windowsでのsymlink fixture作成EPERMと`/bin/sh`不在による既知の試験失敗を保持しています。fixture作成で停止したsandbox試験は拒否処理そのものを検証できていません。全Windowsテスト成功とはしていません。
-
-Google認証、特殊な認証復旧、サーバー側失効、別ユーザーを含むNTFS実効アクセス、外部スクリーンリーダー、全画面・DPI・動的翻訳の完全な実行時確認は未完了です。静的監査の動的候補653件とスコープ未確定382件は、欠落キーや不具合の件数ではありません。確認済みの脆弱性とは区別します。[品質検証資料](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)に範囲を記載しています。
+製品修正後の回帰ではProvider/Protocol 51件、Main/parser/UI/i18n 54件が成功し、38ワークスペース型検査と既存7エントリの容量上限もPASSしました。これらのテスト結果は、新しい通常製品での認証やNSIS導入を意味しません。[検証範囲](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)と[制限事項](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations)を参照してください。
 
 ## ソースからのビルド
 
-Node.js 24以降、リポジトリ指定のpnpm 12.9.1とWindowsネイティブビルドツールを使用します。
+Node.js 24以降、リポジトリ指定のpnpm 12.9.1、Windowsネイティブビルドツールを使用します。
 
-```sh
+```powershell
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps
 corepack pnpm --filter @nimbalyst/collab-bundle run build
 corepack pnpm --filter @nimbalyst/runtime run build
-corepack pnpm --dir packages/electron run build:win
+$env:ALLOW_UNSIGNED_WINDOWS_BUILD = 'true'
+$env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
+corepack pnpm --dir packages/electron run build:win --publish never
 ```
 
-NSIS出力先は`packages/electron/release`です。署名資格情報を指定しないローカルビルドは未署名です。型検査は`corepack pnpm run typecheck`で実行します。生成成功は実起動や認証成功の保証ではありません。[ビルド手順](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source)と[日本語化アーキテクチャ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Localization-Architecture)を参照してください。
+完成した `packages/electron/release/win-unpacked` から同じペイロードのZIPを生成できます。
+
+```powershell
+corepack pnpm --dir packages/electron exec electron-builder --prepackaged release/win-unpacked --win zip --x64 --publish never
+```
+
+生成成功は実起動・認証・更新成功の保証ではありません。未署名ビルドに署名資格情報は不要です。型検査は `corepack pnpm run typecheck` で実行します。
 
 ## ライセンス
 
-[MIT License](LICENSE)。元の`Copyright (c) 2024-2026 Nimbalyst Inc.`とライセンス本文を保持しています。同梱第三者ソフトウェアには各ライセンスが適用されます。[一覧](packages/electron/resources/generated/THIRD_PARTY_LICENSES.json)と[NOTICE](packages/electron/resources/generated/THIRD_PARTY_NOTICES.txt)はパッケージの`resources/legal`にも同梱します。
-
-[本家Nimbalyst](https://github.com/nimbalyst/nimbalyst)
+MIT Licenseです。元の `Copyright (c) 2024-2026 Nimbalyst Inc.` とライセンス本文を保持しています。同梱第三者ソフトウェアには各ライセンスが適用されます。ソース内の `packages/electron/resources/generated` と配布物の `resources/legal` に一覧・NOTICEを同梱します。
