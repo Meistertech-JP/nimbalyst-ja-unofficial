@@ -1,5 +1,6 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { sep } from 'path';
+import { resolve, sep } from 'path';
 import {
   encodeNimPreviewUrl,
   validateNimPreviewPath,
@@ -14,8 +15,8 @@ import {
 import { HTML_EMBED_SHELL_CSP } from '@nimbalyst/runtime/ui/htmlEmbed/htmlEmbedShell';
 import { DESKTOP_HTML_EMBED_SHELL_URL } from '../../../renderer/components/EmbedFrame/htmlEmbedShellUrl';
 
-const ROOT = `${sep}tmp${sep}preview-root`;
-const OTHER = `${sep}tmp${sep}preview-other`;
+const ROOT = resolve(`${sep}tmp${sep}preview-root`);
+const OTHER = resolve(`${sep}tmp${sep}preview-other`);
 
 describe('nimPreviewProtocol', () => {
   describe('encodeNimPreviewUrl', () => {

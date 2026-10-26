@@ -1,10 +1,11 @@
+// @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
-import { sep } from 'path';
+import { resolve, sep } from 'path';
 import { registerSessionWorktreeAssetRoot } from '../nimAssetWorktreeRoots';
 import { validateNimAssetPath } from '../nimAssetProtocol';
 
-const WS = `${sep}dev${sep}Foo`;
-const WORKTREE = `${sep}dev${sep}Foo_worktrees${sep}bar`;
+const WS = resolve(`${sep}dev${sep}Foo`);
+const WORKTREE = resolve(`${sep}dev${sep}Foo_worktrees${sep}bar`);
 
 function deps(dirExists: (path: string) => boolean = () => true) {
   return {
