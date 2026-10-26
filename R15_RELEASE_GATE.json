@@ -43,6 +43,8 @@
   },
   "serverTeamRecovery":"Synthetic local tests only; production recovery and updated-server end-to-end compatibility unverified",
   "remaining": [
+    "Final audit: observe a new Codex request on ordinary ZIP8; exact signed-in send approval requested, still unsent",
+    "Final audit: ordinary-product Japanese recovery form remains unobserved; an authenticated isolated unmigrated test organization is required, DOM unit tests are not native proof",
     "Commit updated bilingual results and preserve their separate source ZIP/hash/restore checkpoint",
     "Complete final candidate preservation manifest; R14 197-file readback and verified old-restore cleanup completed"
   ],

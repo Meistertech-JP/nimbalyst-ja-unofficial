@@ -2,10 +2,11 @@
 
 [日本語](Compatibility-and-Limitations.md) · [Home](Home-English.md)
 
-- v0.82.3-ja.1 is an unpublished candidate. The current stable release remains v0.82.1-ja.1. Final candidate qualification is incomplete.
+- v0.82.3-ja.1 is an unpublished candidate. The current stable release remains v0.82.1-ja.1. Candidate verification is separate from publication.
 - Distribution targets unsigned Windows x64 only. No other operating-system binaries are provided. iOS simulator tests are not comprehensive Windows or physical-iOS-device guarantees.
 - Running alongside official Nimbalyst is unsupported. Do not concurrently use multiple placements sharing this edition's default profile.
 - Legacy-encryption team recovery requires the updated sync server and compatible clients. The complete production-organization and independent-client recovery flow remains unverified.
+- Japanese recovery-form text is covered by DOM unit tests. The ordinary packaged-product form has not been observed using an isolated legacy-encryption test organization; unit tests are not native-display verification.
 - Synthetic database migration tests do not establish compatibility with every existing profile. Back up documents before updating. Downgrade compatibility is not guaranteed.
 - Google sign-in, special authentication recovery, service-side session revocation, and effective NTFS access involving other users remain unverified. Local logout and server-side revocation are separate operations.
 - Windows symlink-fixture EPERM failures remain recorded. Sandbox rejection is unverified where fixture creation stops the test. Unverified behavior is not an established vulnerability.

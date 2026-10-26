@@ -24,7 +24,7 @@ Portable means installation is unnecessary, not that the profile resides beside 
 
 Official automatic updates and manual update checks are disabled. Update manually through this repository's Releases. Save work, close the application, back up project documents, and review target-version changes and limitations. Extract ZIP updates into a new directory rather than overwriting the old one. Downgrade compatibility is not guaranteed.
 
-SQLite schema 0055 in v0.82.3 adds the base synchronization revision to queued Tracker edits. Synthetic-data migration, retention, and rollback tests passed. An ordinary installer upgrade from v0.82.1-ja.1 also applied 55, retained the English setting and all ten test-document hashes, and displayed existing Tracker data. This is not a guarantee for every existing profile or for downgrades.
+SQLite schema 0055 in v0.82.3 adds the base synchronization revision to queued Tracker edits. Synthetic-data migration, retention and rollback tests passed. The latest ordinary installer upgraded v0.82.1-ja.1, applied 55, retained English and the complete Japanese/English test document with its hash, and displayed the existing Tracker item. This does not guarantee compatibility for every profile, upgrading an authenticated old profile, or downgrading.
 
 ## Authentication and language
 

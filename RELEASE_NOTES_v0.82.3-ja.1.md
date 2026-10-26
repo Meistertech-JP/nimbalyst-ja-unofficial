@@ -25,9 +25,9 @@ SQLiteの0055は、待機中のTracker編集へ同期基準リビジョンを保
 
 表示言語はSystem、English、日本語から選択します。エージェントの回答言語とは独立しています。翻訳リソースは27名前空間・英日各14,794キーで、キー・補間変数の差分と空の日本語訳を検査しています。キー数の一致は全画面の翻訳完了を意味しません。
 
-最新製品ソース057883f8bで38ワークスペースの型検査、既存7エントリの容量上限、関連135テストが成功しています。同ソースの通常ZIPでTrackerの列名・操作案内・同期状態の日英切替と両言語再起動保持、全1,913ファイルの照合・CRC・ASAR監査を確認しました。英語完了時刻、日本語の展開ヘルプ、文書画像の新規貼り付け・Undo／Redoは先行49e52c53fで確認しています。最新製品ソースを含むeabb8c5d6のLinux CIは19,284 PASS／0 FAIL／30 SKIP、Test Filesは2,339 PASS／7 SKIP／0 FAILでした。
+38ワークスペースの型検査、既存7エントリの容量上限、起動時のscheme登録・許可範囲に関する関連174テストが成功しています。Windows ZIP全1,913ファイル、CRC、ASARと法務ファイルを照合しました。Tracker・Wiki・既存Codex会話の詳細表示は、RendererとRuntimeのソースが変わっていない先行候補の実画面記録と区別しています。
 
-先行iOS性能試験の失敗原因を修正し、eabb8c5d6のシミュレーター試験は528実行（522 PASS／6 SKIP／0 FAIL）でした。実refresh SQLを検査する回帰と既存6倍性能条件を通過し、閾値は緩和していません。先行候補の認証・インストール・更新検証には適用範囲を明示し、新しいバイナリの実行成功と混同しません。最終ソースと配布候補の確定は継続中です。
+iOSでは変更対象を探すSQLの走査範囲を修正し、実refresh SQLの検索計画回帰と既存6倍性能条件を通過しました。閾値は緩和していません。シミュレーターの成功は物理端末の全面保証ではありません。
 
 Windowsではsymlink fixture作成のEPERMが残っています。fixture作成で停止した試験は、symlinkの拒否・保持動作そのものを検証できていません。全Windows試験の成功は主張しません。外部スクリーンリーダー、全画面・DPI、動的翻訳の完全な実行時確認、WSL実環境での全経路、Google認証や特殊な復旧、サービス側セッション失効は未検証です。
 
@@ -64,9 +64,9 @@ Current Windows product source is `7d5407c51`. Ordinary products passed image co
 
 Display-language options remain System, English, and Japanese, independent of the agent response language. Resources contain 27 namespaces and 14,794 keys per language. Key parity, interpolation consistency, and empty Japanese values are checked; equal key counts do not establish complete UI translation.
 
-Latest product source 057883f8b passed all 38 workspace typechecks, seven existing bundle budgets, and 135 related tests. Its ordinary ZIP was checked for bilingual tracker column/action/sync-state display, persistence after restart in both languages, all 1,913 file hashes, CRC, and ASAR integrity. English completion times, Japanese expanded help, and fresh document image paste with Undo/Redo were checked on earlier 49e52c53f. Linux CI at eabb8c5d6 includes the latest product source and passed 19,284 tests with zero failures and 30 skips; Test Files were 2,339 passed / seven skipped / zero failed.
+All 38 workspace typechecks, seven existing bundle budgets and 174 related startup-scheme/security tests passed. All 1,913 Windows ZIP files, CRC, ASAR and legal files were verified. Detailed Tracker, Wiki and retained Codex-conversation UI checks remain separately scoped to the preceding candidate; renderer/runtime sources are unchanged.
 
-The cause of the preceding iOS performance-test failure was corrected. Simulator CI at eabb8c5d6 executed 528 tests: 522 passed / six skipped / zero failed. The actual-refresh SQL regression and existing six-times performance threshold passed without relaxing the threshold. Authentication, installation, and upgrade results from earlier candidates have a separately stated scope; they are not claimed as new-binary executions. The final source and distribution candidate remain under validation.
+The iOS affected-group query was restricted to the relevant sessions. The actual refresh-SQL plan regression and existing six-times performance threshold passed without relaxing the threshold. Simulator success is not a comprehensive physical-device guarantee.
 
 Windows symlink-fixture EPERM failures remain. A test stopped during fixture creation does not verify symlink rejection or retention. No all-Windows-tests-passed claim is made. External screen readers, every screen and DPI, complete runtime coverage of dynamic translations, all native WSL paths, Google sign-in, special recovery flows, and service-side session revocation remain unverified.
 
