@@ -1,5 +1,20 @@
 # R15 Windows統合検証（継続中）
 
+## 最新チェックポイント（2026-10-26）
+
+以下は製品 `7d5407c51`、照合済みZIP8と同じペイロードのNSISについての更新である。後続の旧記録は履歴として保持する。
+
+公開v0.82.1-ja.1のNSISを保全済み公開SHA-256と再照合し、空の別専用プロファイルで起動した。UIからEnglishへ切り替え、日英混在の検証文書とTracker項目1件を保存。正常終了後の閉じたSQLite・設定・文書を保全し、最新NSISで同じ専用インストール先を更新した。exit 0、数値版0.82.3.1、ペイロード1,913ファイル全一致。新製品の通常起動でFileメニュー、同じworkspace、Tasks 1と元の項目タイトル、文書全文の表示を確認し、migration55適用と旧1〜54のskipを記録した。正常終了後はEnglishと文書125 bytesのSHA-256が一致。実製品DBを別プロセスで開かず、全行比較の合成DB試験とは区別する。
+
+更新後の付属アンインストーラーはexit 0。専用設定・文書274ファイルが全ハッシュ一致し、対象・ショートカット・本版所有Markdown ProgIDは消失。導入前からの既存関連付け8項目も不変。証拠は `upgrade8-before/`、`upgrade8-after/`、`upgrade8-running.json`、`nsis-upgrade8/`、`associations-final-readback-nsis-old-upgrade8.json`。未認証の旧版プロファイルは更新後も認証ファイルなしで、旧認証状態付きの更新まで確認したものではない。
+
+- 所有者のメール認証、通常終了・再起動後の復元、所有者のサインアウト、暗号化認証ファイル2件の消失、さらに通常再起動後の未認証表示を確認した。`tmp/r15-evidence/auth-scheme-fixed-logout-restart.json`。サーバー側失効やGoogle認証の成功とは扱わない。
+- Englishと日本語への切替、各言語での正常終了・再起動後の表示・設定保持を確認した。`tmp/r15-evidence/native-language-restored8.json`。
+- 最新NSISの新規導入はexit 0。1,913ペイロードファイルが全一致し、追加は付属アンインストーラー1件だけ。導入先EXEの日本語起動と正常終了を確認した。付属アンインストーラー実行後はアプリ・専用ショートカット・本版所有Markdown ProgIDが消失し、専用データ198ファイルのハッシュが全一致した。`tmp/r15-evidence/nsis-fresh8/`。
+- アンインストール後の既存関連付け8項目は導入前と不変。`tmp/r15-evidence/associations-final-readback-nsis-fresh8.json`。
+- f0c7b7929のLinux CIはTest Files 2,340 PASS／7 SKIP／0 FAIL（計2,347）、Tests 19,285 PASS／30 SKIP／0 FAIL（計19,315）。iOSシミュレーターは522 PASS／6 SKIP／0 FAIL（計528）。`tmp/r15-evidence/hosted-results-f0c7b7929-verified.json`。Windowsでfixture作成に失敗した拒否試験自体の確認とは区別する。
+- 最新製品への旧公開版からの更新は上記の別プロファイルで再実行して成功。最終ソースZIP・保全は別の最終チェックポイントで確定する。
+
 ## 初期候補の固定点（履歴）
 
 製品ソースは `a9fcc204e44c39a0602342f8a8da763af32969bf`。本家v0.82.3統合コミットは `e9b53cf59f291f32c5c1327962d7ccf16fc367e1`。アプリ版番号は0.82.3-ja.1、数値buildVersionは0.82.3.1。
@@ -175,7 +190,7 @@ Trackerの実画面とアクセシビリティツリーにTAGS、4h ago、Status
 
 追加で、テーブルのType／Key／Title／Status／Priority／Owner／Due Date／Updated、表示設定のCreated by／Updated by、操作ラベルOpen details／Item actions／Filter、詳細同期欄pendingが固定UIの英語として残ることを発見した。独立したソース確認でも保存schema値とは区別できたため、表示専用の修正と回帰試験を進めている。既存の独自フィールド名・選択肢値を翻訳によって書き換えない。したがって67a004c7cの製品を最終合格とは判定しない。
 
-## 057883f8bの最新通常製品と実画面
+## 057883f8bの通常製品と実画面（後続製品は最終報告書参照）
 
 通常Windows buildと完成ペイロードのZIP生成はともにexit0。NSIS443,182,715 bytes、SHA-256 `25c698a4b595679478b7b4611b10f1c69ff4a1ebb82de4b925228b49ad48ac89`。ZIP576,220,113 bytes、SHA-256 `32107b617abec817688b3113e14cc3fcd04dc851561d88574c7f74546540ccd4`。windows-zip-integrity7/RESULT.jsonでCRC・パス安全性・全1,913ファイルの実展開照合が成功。ASARは `d1c037f9e6a77ebb5bc5ebe55d6ad18a4049b38044e373fcfa010c6b027a61ba`、全1,021エントリ・出力341ファイル・法務4ファイル一致でZIP後も同じだった。SDK4、native3、Worker8、SQLite3workerとONNXのElectron dlopenも成功。製品名・Meistertech-JP・数値版番号0.82.3.0/0.82.3.1を確認し、アプリとNSISはNotSigned。
 

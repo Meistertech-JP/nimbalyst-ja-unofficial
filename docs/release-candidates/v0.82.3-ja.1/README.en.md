@@ -28,6 +28,10 @@ Updates are manual through this repository's Releases. Official automatic update
 
 ## Windows distribution and validation
 
+The current Windows candidate uses product source `7d5407c51`. The extracted ZIP passed image copy/paste, Undo/Redo, production email sign-in, account restoration, signed-out persistence and restarts in both display languages. The same product's NSIS passed fresh installation, launch and removal. Upgrade from published v0.82.1-ja.1 retained English, a Japanese/English document and a Tracker item, and applied migration 55. Uninstallation retained all 274 dedicated data-file hashes.
+
+Source checkpoint `f0c7b7929` passed [Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701) with 19,285 passed / 30 skipped / zero failed and [iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731) with 522 passed / six skipped / zero failed. Final source-ZIP verification remains in progress. Earlier-candidate results below are historical and limited to their stated commits.
+
 Intended assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
 
 All 38 workspace typechecks and seven bundle budgets passed. Windows product commit `49e52c53ffe1225ce7d411f53f7e20c7758c49a7` passed Linux with 19,264 passed / zero failed / 30 skipped. Its ordinary ZIP was checked for persistence after restart in both languages, English completion times, Japanese expanded help, and document image paste with Undo/Redo. All 1,913 extracted files matched and CRC verification passed. Menu access at a width of 1,040 pixels was verified on the preceding display-fix candidate.

@@ -1,5 +1,11 @@
 # R15 iOS CI（初回PASS）
 
+## 最新確定結果（f0c7b7929）
+
+[run 40249364731](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731) はsuccess。HEADは `f0c7b7929f18f57c6efac96f61154cfe442b4c74`。全体528実行は522 PASS／6 SKIP／0 FAILである。XCTestの終了行だけを厳密に集計し、全体summaryとも一致した。名前にFailedを含む試験の開始行を失敗件数へ誤算入しない。前段2試験は全体へ二重加算していない。
+
+追加した実refresh SQLの検索計画回帰も成功した。既存性能閾値・SKIP設定は緩和していない。`tmp/r15-evidence/hosted-results-f0c7b7929-verified.json` と同名artifactディレクトリにログ・xcresultを保全した。iOSシミュレーターの結果であり、物理端末での全面検証ではない。以下は先行チェックポイントの履歴である。
+
 対象コミット: `a9fcc204e44c39a0602342f8a8da763af32969bf`。
 
 [macOS hosted iOS検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40182435823)、job ID `121136116413`。macos-15、Xcode 26.2、既存のhosted test projectでcandidateの全テストを実行する。workflow名のR13は過去から維持された名前であり、固定upstreamを古い版へ変更してはいない。

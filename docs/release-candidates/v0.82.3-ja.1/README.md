@@ -28,6 +28,10 @@ WindowsアプリIDは `jp.meistertech.nimbalyst.ja.unofficial`、既定ユーザ
 
 ## Windows配布と検証範囲
 
+現在のWindows候補は製品ソース `7d5407c51` を基準とします。実展開ZIPで画像コピー・貼り付け・Undo／Redo、本番メール認証、再起動後の復元、ログアウト後の未認証保持、両言語での再起動後保持を確認しました。同じ製品のNSISで新規導入・通常起動・削除を確認しています。公開v0.82.1-ja.1からの更新でも英語設定、日英文書、Tracker項目とマイグレーション55を確認し、削除後も専用データ274ファイルが不変でした。
+
+最新ソース `f0c7b7929` の[Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701)は19,285 PASS／30 SKIP／0 FAIL、[iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731)は522 PASS／6 SKIP／0 FAILでした。最終ソースZIPの確定は継続中です。以下は先行候補に限定した履歴です。
+
 配布対象は未署名Windows x64 NSIS、ポータブルZIP、対応するソースZIPとSHA256SUMS.txtです。警告や保護機能を無効にせず、取得元・バージョン・SHA-256を確認してください。ハッシュ一致は電子署名や安全性の保証ではありません。
 
 38ワークスペース型検査、7エントリの容量上限を確認しています。Windows製品コミット `49e52c53ffe1225ce7d411f53f7e20c7758c49a7` のLinuxは19,264 PASS／0 FAIL／30 SKIPでした。同製品の通常ZIPでは日英それぞれの再起動後保持、英語完了時刻、日本語の展開ヘルプ、文書への画像貼り付け・Undo／Redoを確認し、全1,913ファイルの照合とCRCに成功しました。幅1,040でのメニュー操作は先行する表示修正候補で確認しました。

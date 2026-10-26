@@ -4,6 +4,16 @@
 
 This covers the v0.82.3-ja.1 candidate. The following is bounded evidence, not a published-release claim or a comprehensive operational guarantee.
 
+## Current Windows candidate
+
+Current product source is `7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7`. All 1,913 ZIP files, CRC and ASAR checks passed. The extracted product passed image copy, AI-input attachment preserving the draft, document paste with Undo/Redo, production email sign-in, account restoration, signed-out persistence and restarts in both display languages.
+
+The same product's NSIS passed fresh installation, launch and removal. Upgrade from published v0.82.1-ja.1 used a separate profile and retained English, the complete Japanese/English document and its hash, and one Tracker item, with migration 55 applied. Uninstallation retained all 274 dedicated data-file hashes and eight existing default-association keys. This was not an external full-row comparison of the product database; upgrading an authenticated old profile remains unverified. Final source-ZIP verification is in progress.
+
+This fix changes Main-process startup scheme registration. Checkpoint `f0c7b7929`, including the fix, passed [Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701): Test Files 2,340 passed / seven skipped / zero failed (2,347 total); Tests 19,285 passed / 30 skipped / zero failed (19,315 total). [iOS CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364731) passed 522 tests with six skipped and zero failed (528 total). All 38 typechecks, seven existing bundle budgets and 174 related tests passed. Earlier checkpoints below remain separate historical evidence.
+
+## Preceding checkpoint verification
+
 | Area | Evidence |
 |---|---|
 | Types and budgets | 38 workspace typechecks and all seven existing bundle budgets passed |

@@ -1,7 +1,7 @@
 # Local candidate checkpoint; not published or a READY verdict.
-# Windows payload source: 057883f8bd230280dfeaa298a5c5e45f8252b508
-# The source ZIP below is that exact product checkpoint, not a later report-only commit.
-# A later final-source checkpoint has its own external checksum to avoid self-referential ZIP hashing.
-25c698a4b595679478b7b4611b10f1c69ff4a1ebb82de4b925228b49ad48ac89  packages/electron/release/Nimbalyst 日本語版（非公式）-Windows-x64.exe
-32107b617abec817688b3113e14cc3fcd04dc851561d88574c7f74546540ccd4  packages/electron/release/Nimbalyst 日本語版（非公式）-Windows-x64.zip
-da9c453b9ef05cde2f163a27ef2064e10c374b1ff76fcc4abeacd89622b79e03  tmp/r15-evidence/source-grid-controls-057883f8b/nimbalyst-0.82.3-ja.1-source.zip
+# Windows payload source: 7d5407c51a6be1a4b8fb27ea5e3f694ade109ef7
+# Tests-only followup: 8da3b66e6db7a4155cdac44401c964c967fe27bc
+# Final report source ZIP is pending; its checksum will be external to avoid a self-referential source archive.
+# Historical products and their checksum records remain in their original evidence checkpoints.
+5369e55bbd1eb61cfc9756bfc2d6d9422da44544fa433a28495fbccef056d068  packages/electron/release/Nimbalyst 日本語版（非公式）-Windows-x64.exe
+4a784689a04f43c0a933a3cb077240ca3a9d9523d0d81bae985034c11d13ae12  packages/electron/release/Nimbalyst 日本語版（非公式）-Windows-x64.zip

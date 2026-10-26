@@ -1,5 +1,16 @@
 # R15 Linux CI（初回失敗・修正検証中）
 
+## 最新確定結果（f0c7b7929）
+
+[run 40249364701](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40249364701) はsuccess。HEADは `f0c7b7929f18f57c6efac96f61154cfe442b4c74` で、画像コピー修正の製品ソース `7d5407c51` とprotocol fixture修正を含む。
+
+| 母集団 | PASS | FAIL | SKIP | TOTAL |
+|---|---:|---:|---:|---:|
+| Test Files | 2,340 | 0 | 7 | 2,347 |
+| Tests | 19,285 | 0 | 30 | 19,315 |
+
+artifactのcomplete=true、result=PASS、fingerprint.head一致、failingFiles空と、生ログの両母集団を独立に確認した。型38件・容量7件・scripts・sandboxもLinuxでは例外なしで成功。`tmp/r15-evidence/hosted-results-f0c7b7929-verified.json` にログのSHA-256を保存した。Windowsでfixture作成に失敗するsandbox拒否動作の確認とは区別する。以下は失敗を含む過去チェックポイントの記録である。
+
 対象コミット: `a9fcc204e44c39a0602342f8a8da763af32969bf`。
 
 [Linux全体検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40182435743)、job ID `121136115957`。既存の読み取り専用workflowの対象へR15ブランチを追加し、通常の全体検証を開始した。workflow名に過去のR13という名前が残るが、checkout対象は上記R15コミットである。
