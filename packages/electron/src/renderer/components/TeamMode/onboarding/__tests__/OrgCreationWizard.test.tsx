@@ -32,6 +32,12 @@ function fakeApi(overrides: Partial<OrgWizardApi> = {}): OrgWizardApi {
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((finish) => { resolve = finish; });
+  return { promise, resolve };
+}
+
 const settings = new Map<string, unknown>();
 let jotaiStore = createStore();
 let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
@@ -297,6 +303,104 @@ describe('OrgCreationWizard', () => {
     renderWithStore(<OrgCreationWizard isOpen onClose={vi.fn()} api={api} />);
     await screen.findByTestId('org-wizard-identity-step');
     expect(screen.queryByTestId('org-wizard-invite-step')).toBeNull();
+  });
+
+  it('does not resurrect a discarded draft when the account reply lands during its clear', async () => {
+    const accounts = deferred<Array<{ personalOrgId: string; email: string }>>();
+    const clear = deferred<boolean>();
+    const order: string[] = [];
+    const invoke = window.electronAPI.invoke as ReturnType<typeof vi.fn>;
+    const originalInvoke = invoke.getMockImplementation()! as (
+      channel: string, key: string, value?: unknown
+    ) => Promise<unknown>;
+    invoke.mockImplementation(async (channel: string, key: string, value?: unknown) => {
+      if (channel === 'app-settings:set' && key === 'orgWizardDraft') {
+        if (value === null) {
+          order.push('clear-start');
+          settings.set(key, null);
+          await clear.promise;
+          order.push('clear-finished');
+          return true;
+        }
+        order.push(`draft-write:${(value as { step: string }).step}`);
+      }
+      return originalInvoke(channel, key, value);
+    });
+    (window.electronAPI.stytch.getAccounts as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      order.push('accounts-start');
+      return accounts.promise.then((rows) => {
+        order.push('accounts-reply');
+        return rows;
+      });
+    });
+    settings.set('orgWizardDraft', {
+      version: 1, step: 'invite', orgName: 'Acme', owner: 'a@example.com',
+      sourcePersonalOrgId: 'account-1', workspacePath: null, createdOrgId: 'org-1',
+      emails: [], invitedEmails: [],
+    });
+    const onClose = vi.fn(() => { order.push('closed'); });
+    const first = renderWithStore(<OrgCreationWizard isOpen onClose={onClose} api={fakeApi()} />);
+    await screen.findByTestId('org-wizard-invite-step');
+    await waitFor(() => expect(order).toEqual(['accounts-start']));
+
+    fireEvent.click(screen.getByTestId('org-wizard-close'));
+    expect(settings.get('orgWizardDraft')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+    await act(async () => {
+      accounts.resolve([{ personalOrgId: 'account-1', email: 'a@example.com' }]);
+      await accounts.promise;
+    });
+    expect(order).toEqual(['accounts-start', 'clear-start', 'accounts-reply']);
+    await act(async () => {
+      clear.resolve(true);
+      await clear.promise;
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    first.unmount();
+    await act(async () => {});
+
+    expect.soft(settings.get('orgWizardDraft'), order.join(' -> ')).toBeNull();
+    renderWithStore(<OrgCreationWizard isOpen onClose={vi.fn()} api={fakeApi()} />);
+    await screen.findByTestId('org-wizard-identity-step');
+    expect(screen.queryByTestId('org-wizard-invite-step')).toBeNull();
+    expect(order.filter((event) => event.startsWith('draft-write:invite'))).toEqual([]);
+  });
+
+  it('retains the created draft when finishing later instead of discarding', async () => {
+    settings.set('orgWizardDraft', {
+      version: 1, step: 'invite', orgName: 'Acme', owner: 'a@example.com',
+      sourcePersonalOrgId: 'account-1', workspacePath: null, createdOrgId: 'org-1',
+      emails: [], invitedEmails: [],
+    });
+    const onClose = vi.fn();
+    const first = renderWithStore(<OrgCreationWizard isOpen onClose={onClose} api={fakeApi()} />);
+    await screen.findByTestId('org-wizard-invite-step');
+    fireEvent.click(screen.getByTestId('org-wizard-cancel'));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    first.unmount();
+    expect(settings.get('orgWizardDraft')).toMatchObject({ step: 'invite', createdOrgId: 'org-1', orgName: 'Acme' });
+    renderWithStore(<OrgCreationWizard isOpen onClose={vi.fn()} api={fakeApi()} />);
+    await screen.findByTestId('org-wizard-invite-step');
+  });
+
+  it('flushes an ordinary unmount after a delayed account reply so its draft still resumes', async () => {
+    const accounts = deferred<Array<{ personalOrgId: string; email: string }>>();
+    (window.electronAPI.stytch.getAccounts as ReturnType<typeof vi.fn>).mockReturnValue(accounts.promise);
+    settings.set('orgWizardDraft', {
+      version: 1, step: 'invite', orgName: 'Acme', owner: 'a@example.com',
+      sourcePersonalOrgId: 'account-1', workspacePath: null, createdOrgId: 'org-1',
+      emails: [], invitedEmails: [],
+    });
+    const first = renderWithStore(<OrgCreationWizard isOpen onClose={vi.fn()} api={fakeApi()} />);
+    await screen.findByTestId('org-wizard-invite-step');
+    await act(async () => {
+      accounts.resolve([{ personalOrgId: 'account-1', email: 'a@example.com' }]);
+      await accounts.promise;
+    });
+    first.unmount();
+    expect(settings.get('orgWizardDraft')).toMatchObject({ step: 'invite', createdOrgId: 'org-1', orgName: 'Acme' });
+    renderWithStore(<OrgCreationWizard isOpen onClose={vi.fn()} api={fakeApi()} />);
+    await screen.findByTestId('org-wizard-invite-step');
   });
 
   it('numbers the steps across the whole journey', async () => {

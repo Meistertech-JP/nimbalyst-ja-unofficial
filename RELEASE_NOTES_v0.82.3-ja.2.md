@@ -9,6 +9,7 @@
 - 公開前の作業資料を配布ソースから除外し、利用者・開発者向け文書を訂正しました。過去のタグ・Git履歴・旧ReleaseのソースZIPは保持されており、この整理で過去の資料が消去されたわけではありません。
 - Extension SDKとPluginの同梱ガイド16件を更新し、新しいWindowsパッケージへ反映しました。
 - アプリ情報に残っていた古い基準バージョン表記を、実際の本家基準0.82.3へ訂正しました。
+- 組織作成を破棄した後、遅れて届いたアカウント情報によって下書きが復活する問題を修正しました。
 - 公開対象ファイルの検査とCIを強化しました。通常の技術文書、ソース、テスト、ライセンス・第三者通知は保持しています。
 - 既存の日本語化機能、製品識別子、データ保存先、手動更新方針を維持しています。翻訳キー数の一致は、すべての画面や動的参照の確認を意味しません。
 
@@ -56,6 +57,7 @@ This unsigned edition is a regular stable GitHub Release with `prerelease=false`
 - Excluded pre-publication working materials from the distributed source and corrected user and developer documentation. Older tags, Git history and previous release source ZIPs are retained; this cleanup does not erase historical materials.
 - Updated 16 bundled Extension SDK and Plugin guides and included them in newly generated Windows packages.
 - Corrected the outdated upstream baseline label in About to the actual baseline, 0.82.3.
+- Fixed discarded organization-setup drafts reappearing when account information arrives late.
 - Strengthened publication-content checks and CI while retaining ordinary technical documentation, source, tests, licenses and third-party notices.
 - Retained existing localization, product identifiers, data locations and manual updates. Resource-key parity is not proof that every screen or dynamic reference has been exercised.
 

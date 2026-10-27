@@ -218,6 +218,8 @@ export function OrgCreationWizard({
   }, [cancelDraft]);
 
   const commit = useCallback((next: OrgWizardState) => {
+    // Late initialization must not requeue a draft after the user discarded it.
+    if (dismissedRef.current) return;
     const stepChanged = stateRef.current.step !== next.step;
     stateRef.current = next;
     setState(next);
