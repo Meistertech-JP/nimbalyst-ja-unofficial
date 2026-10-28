@@ -1037,7 +1037,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                             {session.title || t('detail_extra.untitled_session')}
                           </span>
                           <span className="shrink-0 text-[10px] text-nim-faint">
-                            {linkingSessionId === session.id ? t('detail_extra.linking') : getRelativeTimeString(session.updatedAt)}
+                            {linkingSessionId === session.id ? t('detail_extra.linking') : getRelativeTimeString(session.updatedAt, (key, options) => tSessions(key, options))}
                           </span>
                         </div>
                       </button>
@@ -1071,7 +1071,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                       {session.title || t('detail_extra.untitled_session')}
                     </span>
                     <span className="text-[10px] text-nim-faint shrink-0">
-                      {getRelativeTimeString(session.updatedAt)}
+                      {getRelativeTimeString(session.updatedAt, (key, options) => tSessions(key, options))}
                     </span>
                   </button>
                 ))}
@@ -1280,7 +1280,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                     </button>
                   )}
                   <span className="text-[10px] text-nim-faint shrink-0">
-                    {getRelativeTimeString(new Date(commit.timestamp).getTime())}
+                    {getRelativeTimeString(new Date(commit.timestamp).getTime(), (key, options) => tSessions(key, options))}
                   </span>
                 </div>
               ))}

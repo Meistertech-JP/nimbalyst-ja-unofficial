@@ -76,6 +76,7 @@ import { globalRegistry, loadBuiltinTrackers } from '@nimbalyst/runtime/plugins/
 import { replaceAllTrackerItemsAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerDataAtoms';
 import { TrackerItemDetail } from '../TrackerItemDetail';
 import { TrackerPageView } from '../TrackerPageView';
+import { sessionRegistryAtom } from '../../../store/atoms/sessions';
 
 const ITEM = {
   id: 'item-a',
@@ -157,6 +158,28 @@ function renderPage({ collabScope = { scopeKey: '/ws' } as unknown } = {}) {
 }
 
 describe('TrackerItemDetail metadata region', () => {
+  it('localizes linked-session and commit timestamps when the language changes', async () => {
+    const i18n = await createI18nInstance('ja');
+    const timestamp = Date.now() - 3 * 60 * 60 * 1000;
+    store.set(sessionRegistryAtom, new Map([
+      ['session-1', { id: 'session-1', title: 'Linked session', provider: 'claude', workspaceId: '/ws', updatedAt: timestamp } as any],
+      ['session-2', { id: 'session-2', title: 'Available session', provider: 'claude', workspaceId: '/ws', updatedAt: timestamp } as any],
+    ]));
+    store.set(replaceAllTrackerItemsAtom, [{ ...ITEM, system: { ...ITEM.system, linkedSessions: ['session-1'], linkedCommits: [{ sha: '1234567', message: 'Commit', timestamp: new Date(timestamp).toISOString() }] } } as TrackerRecord]);
+    try {
+      render(<I18nextProvider i18n={i18n}><Provider store={store}>
+        <TrackerItemDetail itemId={ITEM.id} workspacePath="/ws" onClose={() => {}} />
+      </Provider></I18nextProvider>);
+      expect(await screen.findAllByText('3時間前')).toHaveLength(2);
+      fireEvent.click(screen.getByTitle(i18n.t('ui.link_session', { ns: 'tracker' })));
+      expect(await screen.findAllByText('3時間前')).toHaveLength(3);
+      await act(async () => { await i18n.changeLanguage('en'); });
+      expect(screen.getAllByText('3 hrs ago')).toHaveLength(3);
+    } finally {
+      cleanup();
+      store.set(sessionRegistryAtom, new Map());
+    }
+  });
   it('updates activity timestamps when the display language changes', async () => {
     const i18n = await createI18nInstance('ja');
     const timestamp = Date.now() - 3 * 60 * 60 * 1000;
