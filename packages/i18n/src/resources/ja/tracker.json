@@ -1819,6 +1819,14 @@
     "no_other_item": "「{{value}}」に一致する別の項目はありません",
     "cancel": "キャンセル"
   },
+  "ontology_gap_titles": {
+    "stale_one": "{{days}}日を超える古い事実が{{count}}件あります",
+    "stale_other": "{{days}}日を超える古い事実が{{count}}件あります",
+    "duplicates_one": "{{count}}件の重複があります",
+    "duplicates_other": "{{count}}件の重複があります",
+    "uncategorized_one": "分類が不明確なナレッジページが{{count}}件あります",
+    "uncategorized_other": "分類が不明確なナレッジページが{{count}}件あります"
+  },
   "page_status": {
     "draft": "下書き",
     "current": "最新",

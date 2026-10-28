@@ -1819,6 +1819,14 @@
     "no_other_item": "No other item {{value}}",
     "cancel": "Cancel"
   },
+  "ontology_gap_titles": {
+    "stale_one": "{{count}} fact is more than {{days}} days old",
+    "stale_other": "{{count}} facts are more than {{days}} days old",
+    "duplicates_one": "{{count}} thing is recorded twice",
+    "duplicates_other": "{{count}} things are recorded twice",
+    "uncategorized_one": "{{count}} knowledge page has no real category",
+    "uncategorized_other": "{{count}} knowledge pages have no real category"
+  },
   "page_status": {
     "draft": "Draft",
     "current": "Current",

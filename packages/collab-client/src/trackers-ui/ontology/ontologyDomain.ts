@@ -159,6 +159,7 @@ export type DomainGapTone = 'gap' | 'opportunity';
 
 /** A gap is a health item, so the existing proposal request and open-proposal lookup take it as is. */
 export interface DomainGap<T extends OntologyRecordLike = OntologyRecordLike> extends HealthItem<T> {
+  displayTitle?: { key: 'stale' | 'duplicates' | 'uncategorized'; days?: number };
   tone: DomainGapTone;
   categoryIds: string[];
 }
@@ -721,6 +722,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       const subjects = [...new Map(stale.map((fact) => [fact.subject.id, fact.subject])).values()];
       gaps.push(withGap({
         id: 'stale-facts', check: 'stale-facts',
+        displayTitle: { key: 'stale', days: STALE_FACT_DAYS },
         title: `${plural(stale.length, 'fact is', 'facts are')} more than ${STALE_FACT_DAYS} days old`,
         detail: `${parts.join(', ')}.`,
         count: stale.length, items: subjects,
@@ -730,6 +732,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     if (duplicates.length) {
       gaps.push(withGap({
         id: 'duplicates', check: 'duplicates',
+        displayTitle: { key: 'duplicates' },
         title: `${plural(duplicates.length, 'thing is', 'things are')} recorded twice`,
         detail: `${duplicates.slice(0, 3).map((group) => group.map(ontologyRecordTitle).join(' = ')).join('; ')}${duplicates.length > 3 ? `; and ${duplicates.length - 3} more` : ''}.`,
         count: duplicates.length, items: duplicates.flat(), groups: duplicates,
@@ -740,6 +743,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       if (!pages?.length) continue;
       gaps.push(withGap({
         id: `catch-all-kind:${kind}`, check: 'catch-all-kind',
+        displayTitle: { key: 'uncategorized' },
         title: `${plural(pages.length, 'knowledge page has', 'knowledge pages have')} no real category`,
         detail: kind === 'other' ? `They do not say what they are: ${nameList(pages.sort(byTitle))}` : `Filed as ${kind}, which says nothing about what they are: ${nameList(pages.sort(byTitle))}`,
         count: pages.length, items: pages,
@@ -885,7 +889,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
   };
 }
 
-function withGap<T extends OntologyRecordLike>(draft: Omit<HealthItem<T>, 'itemIds' | 'groupIds'>, tone: DomainGapTone, categoryIds: string[]): DomainGap<T> {
+function withGap<T extends OntologyRecordLike>(draft: Omit<HealthItem<T>, 'itemIds' | 'groupIds'> & Pick<DomainGap<T>, 'displayTitle'>, tone: DomainGapTone, categoryIds: string[]): DomainGap<T> {
   return { ...withHealthIds(draft), tone, categoryIds };
 }
 

@@ -66,11 +66,15 @@ export function OntologyLineRow({ category, line, targetName, dense, onOpenCateg
 export type GapAction = { label: string; open: () => void };
 
 export function OntologyGapRow({ gap, action }: { gap: DomainGap; action: GapAction }) {
+  const { t } = useTranslation('tracker');
+  const title = gap.displayTitle
+    ? t(`ontology_gap_titles.${gap.displayTitle.key}_${gap.count === 1 ? 'one' : 'other'}`, { count: gap.count, days: gap.displayTitle.days, defaultValue: gap.title })
+    : gap.title;
   return (
     <div className="ontology-gap" data-tone={gap.tone} data-gap={gap.id}>
       <span className="ontology-dot" />
       <div>
-        <div className="ontology-gap-title">{gap.title}</div>
+        <div className="ontology-gap-title">{title}</div>
         <div className="ontology-gap-detail">{gap.detail}</div>
       </div>
       <button type="button" className="ontology-button ontology-button-sm" onClick={action.open}>{action.label}</button>
