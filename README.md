@@ -46,6 +46,7 @@ Node.js 24以降、リポジトリ指定のpnpm 12.9.1、Windowsネイティブ�
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps
+corepack pnpm --filter @nimbalyst/memory-engine run build
 corepack pnpm --filter @nimbalyst/tracker-builtins run build
 corepack pnpm --filter @nimbalyst/collab-bundle run build
 corepack pnpm --filter @nimbalyst/runtime run build
