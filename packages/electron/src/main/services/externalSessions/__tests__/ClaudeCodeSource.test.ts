@@ -10,7 +10,7 @@ import { entryToMessage } from "../claudeCodeImportCodec";
 vi.mock("node:fs/promises", { spy: true });
 let dir: string;
 let source: ClaudeCodeSource;
-const cwd = "/workspace/a.b";
+const cwd = path.resolve("/workspace/a.b");
 const timestamp = "2026-09-14T10:00:00.000Z";
 const entry = (uuid: string, content: unknown = "hello") => ({
   type: "user",
@@ -114,7 +114,10 @@ it("follows a session whose shell cwd moves after launch, including its sidecars
 
 it("rejects cwd encoding collisions, forged references and symlinks outside the source root", async () => {
   const file = path.join(dir, encodeWorkspaceDir(cwd), "parent.jsonl");
-  await write(file, [{ ...entry("u1"), cwd: "/workspace/a-b" }]);
+  const collisionCwd = path.join(path.dirname(cwd), "a-b");
+  expect(collisionCwd).not.toBe(cwd);
+  expect(encodeWorkspaceDir(collisionCwd)).toBe(encodeWorkspaceDir(cwd));
+  await write(file, [{ ...entry("u1"), cwd: collisionCwd }]);
   expect(await source.discover(cwd)).toEqual([]);
   await expect(
     source.readSince(

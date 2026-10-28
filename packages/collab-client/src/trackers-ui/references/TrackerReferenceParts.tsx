@@ -5,6 +5,7 @@
  */
 
 import type { JSX, KeyboardEvent, MouseEvent } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { TrackerItem } from '../../trackers/dataSource';
 import { useTrackerReference } from './TrackerReferenceResolverContext';
@@ -67,6 +68,7 @@ export function displayKey(item: TrackerItem, fallback: string): string {
 }
 
 export function LiveChip({ resolver, referenceKey }: ResolverProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const resolution = useTrackerReference(resolver, referenceKey);
   if (resolution.state !== 'resolved') {
     return (
@@ -75,7 +77,7 @@ export function LiveChip({ resolver, referenceKey }: ResolverProps): JSX.Element
         data-issue-key={referenceKey}
         data-resolved="false"
         data-state={resolution.state}
-        title={resolution.state === 'loading' ? `${referenceKey} (loading)` : `${referenceKey} (not found)`}
+        title={t(resolution.state === 'loading' ? 'references.loading' : 'references.not_found', { referenceKey })}
       >
         <span className="tracker-reference-live-chip-key">{referenceKey}</span>
       </span>

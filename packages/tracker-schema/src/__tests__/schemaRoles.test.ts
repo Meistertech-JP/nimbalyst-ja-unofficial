@@ -107,6 +107,71 @@ describe('getFieldByRole', () => {
 });
 
 describe('TrackerDataModelRegistry workspace overrides', () => {
+  it('does not establish unmodified fields from builtin identity when a derived seed inherits a workspace override', () => {
+    const registry = new TrackerDataModelRegistry();
+    const base = makeBugModel();
+    registry.register(base, true);
+    registry.register({ type: 'bug-child', extends: 'bug' }, true);
+    const override = makeBugModel();
+    override.fields = override.fields.map(field => field.name === 'state'
+      ? { ...field, options: [{ value: 'open', label: 'Workspace-specific label' }] }
+      : field);
+    registry.register(override);
+    const derived = registry.get('bug-child')!;
+    expect(derived).toBe(registry.getBuiltinModel('bug-child'));
+    expect(derived.fields.find(field => field.name === 'state')?.options?.[0].label).toBe('Workspace-specific label');
+  });
+
+  it('keeps seed identity separate from identical overrides in each scoped workspace', () => {
+    const registry = new TrackerDataModelRegistry();
+    registry.register(makeBugModel(), true);
+    const seed = registry.getBuiltinModel('bug')!;
+    registry.setActiveWorkspace('workspace-a');
+    registry.register(JSON.parse(JSON.stringify(seed)));
+    registry.setWorkspaceLayer('workspace-b', [JSON.parse(JSON.stringify(seed))]);
+    registry.setWorkspaceLayer('workspace-c', []);
+    let scope = 'workspace-a';
+    registry.setScopeProvider(() => scope);
+    expect(registry.get('bug')).not.toBe(seed);
+    scope = 'workspace-b';
+    expect(registry.get('bug')).not.toBe(seed);
+    expect(JSON.stringify(registry.get('bug'))).toBe(JSON.stringify(seed));
+    scope = 'workspace-c';
+    expect(registry.get('bug')).toBe(seed);
+    expect(registry.getAll().find(model => model.type === 'bug')).toBe(seed);
+  });
+
+  it('cannot infer seed provenance from a serialized same-content override', () => {
+    const registry = new TrackerDataModelRegistry();
+    registry.register(makeBugModel(), true);
+    const seed = registry.getBuiltinModel('bug')!;
+    const serializedSeed = JSON.stringify(seed);
+
+    // A workspace can explicitly author a model identical to the built-in.
+    // JSON equality survives IPC, while the original object identity does not.
+    registry.register(JSON.parse(serializedSeed));
+    const override = registry.get('bug')!;
+    expect(override).not.toBe(seed);
+    expect(JSON.stringify(override)).toBe(serializedSeed);
+    expect(registry.isBuiltin('bug')).toBe(true);
+    expect(JSON.parse(JSON.stringify(override))).toEqual(JSON.parse(serializedSeed));
+  });
+
+  it('distinguishes a builtin seed from a workspace override even when its name is identical', () => {
+    const registry = new TrackerDataModelRegistry();
+    registry.register(makeBugModel(), true);
+    const seed = registry.getBuiltinModel('bug');
+
+    expect(registry.get('bug')).toBe(seed);
+    registry.register({ ...makeBugModel(), displayName: seed!.displayName });
+    expect(registry.isBuiltin('bug')).toBe(true);
+    expect(registry.get('bug')?.displayName).toBe(seed?.displayName);
+    expect(registry.get('bug')).not.toBe(seed);
+
+    registry.clearWorkspaceSchema('bug');
+    expect(registry.get('bug')).toBe(seed);
+  });
+
   it('restores a built-in model after clearing workspace overrides', () => {
     const registry = new TrackerDataModelRegistry();
     const builtin = makeBugModel();

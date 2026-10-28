@@ -7,6 +7,7 @@ import {
   AcceptedHeaderCache,
   contentMarkerAt,
   cursorContentMatches,
+  cursorInode,
   DEFAULT_LINE_BYTES,
   type JsonlEntry,
   positiveLimit,
@@ -440,11 +441,12 @@ export class CodexSource implements ExternalSessionSource {
     );
     const anchor = cursor?.byteOffset ?? 0;
     const stat = await fs.stat(file);
+    const inode = cursorInode((await fs.stat(file, { bigint: true })).ino);
     let group = this.toolGroups.get(file);
     if (
       group &&
       (group.anchor !== anchor ||
-        group.inode !== stat.ino ||
+        group.inode !== inode ||
         stat.size < group.scan.fileSize ||
         (group.done &&
           (group.scan.fileSize !== stat.size ||
@@ -851,7 +853,7 @@ function rolloutTitle(entries: Record<string, any>[]): string | undefined {
 type CoveredEntry = JsonlEntry & { toolMode?: boolean };
 interface ToolGroup {
   anchor: number;
-  inode: number | null;
+  inode: ExternalCursor["inode"];
   scan: ExternalCursor;
   mtimeMs: number;
   records: CoveredEntry[];

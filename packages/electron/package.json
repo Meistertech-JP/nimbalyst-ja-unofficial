@@ -1,6 +1,6 @@
 {
   "name": "@nimbalyst/electron",
-  "version": "0.82.3-ja.2",
+  "version": "0.82.4-ja.1",
   "private": true,
   "license": "MIT",
   "author": "Meistertech-JP",
@@ -566,6 +566,6 @@
       "category": "Development",
       "maintainer": "Nimbalyst Team <support@nimbalyst.com>"
     },
-    "buildVersion": "0.82.3.2"
+    "buildVersion": "0.82.4.1"
   }
 }

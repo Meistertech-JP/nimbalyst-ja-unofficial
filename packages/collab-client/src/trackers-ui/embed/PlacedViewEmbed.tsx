@@ -78,7 +78,7 @@ function OutOfScopeViewNote({ target, label, onOpenLink }: {
 }): JSX.Element {
   const { t } = useTranslation('tracker');
   const href = createPlacedViewUrl(target);
-  const name = label || (target.kind === 'type' ? target.typeId : 'View');
+  const name = label || (target.kind === 'type' ? target.typeId : t('placed_view_embed.default_view_name'));
   const open = onOpenLink
     ? <button type="button" className="ml-1 text-nim-link hover:underline" data-testid="placed-view-open-link" onClick={() => onOpenLink(href)}>{t('placed_view_embed.open')}</button>
     : <a className="ml-1 text-nim-link hover:underline" data-testid="placed-view-open-link" href={href} target="_blank" rel="noreferrer">{t('placed_view_embed.open')}</a>;
@@ -117,7 +117,7 @@ function TypeViewEmbed({ typeId, label, attrs: savedAttrs, onAttrsChange, onOpen
     setWriteError(null);
     try {
       const next = Object.fromEntries(Object.entries({ ...attrs, ...patch }).filter((entry): entry is [string, string] => entry[1] !== null));
-      placedViewDefinition(typeId, label, next, model ? createTrackerFilterFields(availableColumns, typeId, [model]) : undefined);
+      placedViewDefinition(typeId, label, next, model ? createTrackerFilterFields(availableColumns, typeId, [model], key => t(key)) : undefined);
       if (onAttrsChange) onAttrsChange(patch);
       else setTemporary(current => ({ ...current, ...patch }));
     } catch (error) { setWriteError(error instanceof Error ? error.message : t('placed_view_embed.save_failed')); }
@@ -133,18 +133,18 @@ function TypeViewEmbed({ typeId, label, attrs: savedAttrs, onAttrsChange, onOpen
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const parsed = useMemo(() => {
     try {
-      const fields = model ? createTrackerFilterFields(availableColumns, typeId, [model]) : undefined;
+      const fields = model ? createTrackerFilterFields(availableColumns, typeId, [model], key => t(key)) : undefined;
       return { placed: placedViewDefinition(typeId, label, attrs, fields) };
     } catch (error) {
       return { error: error instanceof Error ? error.message : t('placed_view_embed.invalid_definition') };
     }
-  }, [typeId, label, attrsKey, model, day, availableColumns]);
+  }, [typeId, label, attrsKey, model, day, availableColumns, t]);
 
   if (loaded && !model) {
     return <PlacedViewNote>{t('placed_view_embed.no_type', { name: label || typeId, type: typeId })}</PlacedViewNote>;
   }
   if (!model) return <PlacedViewNote>{t('placed_view_embed.loading_type', { name: label || typeId })}</PlacedViewNote>;
-  const fields = createTrackerFilterFields(availableColumns, typeId, [model]);
+  const fields = createTrackerFilterFields(availableColumns, typeId, [model], key => t(key));
   const actions = <div className="placed-view-actions flex shrink-0 items-center gap-1">
     <PlacedViewSettings availableColumns={availableColumns} defaultColumns={getDefaultColumnConfig(typeId).visibleColumns} attrs={attrs} fields={fields} temporary={settingsTemporary || !onAttrsChange} onChange={change} />
     {onOpenFullView && parsed.placed ? <button type="button" className="whitespace-nowrap rounded border-none bg-transparent px-2 py-1 text-xs text-nim-muted hover:bg-nim-hover hover:text-nim focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => onOpenFullView(typeId, { label, attrs: { ...attrs } })}>{t('placed_view_embed.open_full_view')}</button> : null}

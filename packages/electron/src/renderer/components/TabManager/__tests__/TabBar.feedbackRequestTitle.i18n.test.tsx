@@ -93,4 +93,10 @@ it('localizes an untitled personal page tab without storing a fallback as its na
   expect(screen.getByText('無題')).toBeDefined();
   const tabElement = document.querySelector('[data-tab-id="personal-page-tab"]');
   expect(tabElement?.getAttribute('data-filename')).toBe('');
+
+  await act(async () => {
+    await i18n.changeLanguage('en');
+  });
+  expect(screen.getByText('Untitled')).toBeDefined();
+  expect(tabElement?.getAttribute('data-filename')).toBe('');
 });

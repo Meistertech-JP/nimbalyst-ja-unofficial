@@ -57,7 +57,7 @@ export function PageEditor({
   /** When given, the host shows the save state (in its header); otherwise it is a line under the body. */
   onSaveState?: (state: SaveState, error: string | null) => void;
 }) {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const drafts = useContext(DraftStoreContext);
   const services = useContext(PageEditorServicesContext);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -225,6 +225,7 @@ export function PageEditor({
       }
       handle = mountCollabEditor({
         element,
+        i18n,
         source: { kind: 'in-memory', document: doc },
         user: LOCAL_USER,
         // A file whose frontmatter does not parse is shown whole and not written until fixed by hand.

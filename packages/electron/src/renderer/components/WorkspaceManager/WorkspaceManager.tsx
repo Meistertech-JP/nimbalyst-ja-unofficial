@@ -798,7 +798,7 @@ export const WorkspaceManager: React.FC = () => {
               >
                 <div className="workspace-manager-welcome-feature flex gap-3 rounded-[10px] border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3.5 py-3">
                   <div className="workspace-manager-welcome-feature-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--nim-primary)_14%,transparent)] text-[var(--nim-primary)]">
-                    <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>description</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>description</span>
                   </div>
                   <div>
                     <h2 className="m-0 mb-0.5 text-[13.5px] font-semibold text-[var(--nim-text)]">{t('workspace.feature_documents_title')}</h2>
@@ -807,7 +807,7 @@ export const WorkspaceManager: React.FC = () => {
                 </div>
                 <div className="workspace-manager-welcome-feature flex gap-3 rounded-[10px] border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3.5 py-3">
                   <div className="workspace-manager-welcome-feature-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--nim-purple)_14%,transparent)] text-[var(--nim-purple)]">
-                    <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>code</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>code</span>
                   </div>
                   <div>
                     <h2 className="m-0 mb-0.5 text-[13.5px] font-semibold text-[var(--nim-text)]">{t('workspace.feature_agents_title')}</h2>
@@ -816,7 +816,7 @@ export const WorkspaceManager: React.FC = () => {
                 </div>
                 <div className="workspace-manager-welcome-feature flex gap-3 rounded-[10px] border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3.5 py-3">
                   <div className="workspace-manager-welcome-feature-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--nim-success)_14%,transparent)] text-[var(--nim-success)]">
-                    <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>checklist</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>checklist</span>
                   </div>
                   <div>
                     <h2 className="m-0 mb-0.5 text-[13.5px] font-semibold text-[var(--nim-text)]">{t('workspace.feature_trackers_title')}</h2>
@@ -825,7 +825,7 @@ export const WorkspaceManager: React.FC = () => {
                 </div>
                 <div className="workspace-manager-welcome-feature flex gap-3 rounded-[10px] border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] px-3.5 py-3">
                   <div className="workspace-manager-welcome-feature-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--nim-warning)_14%,transparent)] text-[var(--nim-warning)]">
-                    <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>draw</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>draw</span>
                   </div>
                   <div>
                     <h2 className="m-0 mb-0.5 text-[13.5px] font-semibold text-[var(--nim-text)]">{t('workspace.feature_diagrams_title')}</h2>
@@ -844,7 +844,7 @@ export const WorkspaceManager: React.FC = () => {
                   onClick={() => handleTutorial('welcome_pane')}
                   disabled={operationInProgress}
                 >
-                  <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20" }}>play_arrow</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 20" }}>play_arrow</span>
                   {tutorialExists ? t('workspace.open_tutorial') : t('workspace.try_tutorial')}
                   {!tutorialExists && (
                     <span className="workspace-manager-welcome-new-badge absolute -right-4 -top-2 rounded-full border border-[color-mix(in_srgb,var(--nim-success)_48%,transparent)] bg-[color-mix(in_srgb,var(--nim-success)_18%,var(--nim-bg))] px-2 py-0.5 text-[10.5px] font-bold leading-none text-[var(--nim-success)]">

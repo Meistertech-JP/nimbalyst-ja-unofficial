@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useMemo } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { TrackerFilterValueMenu } from '../../../../../../collab-client/src/trackers-ui/TrackerFilterValueMenu';
+import { createTrackerFilterFields } from '../../../../../../collab-client/src/trackers-ui/createTrackerFilterFields';
 import type { TrackerFilterField } from '@nimbalyst/collab-client/trackers-ui';
 
 const STATUS: TrackerFilterField = {
@@ -168,6 +171,26 @@ describe('TrackerFilterValueMenu keyboard navigation', () => {
     expect(screen.getByTestId('tracker-filter-option-false').textContent).toContain('偽');
     fireEvent.click(screen.getByTestId('tracker-filter-option-true'));
     expect(onSelect).toHaveBeenCalledWith('true', '=');
+  });
+
+  it('updates generated filter options after a live language change without changing values', async () => {
+    const i18n = await createI18nInstance('en');
+    const onSelect = vi.fn();
+    function Menu() {
+      const { t } = useTranslation('tracker');
+      const fields = useMemo(() => createTrackerFilterFields([], '', [], key => t(key)), [t]);
+      const field = fields.find(item => item.id === 'favorite')!;
+      return <TrackerFilterValueMenu field={field} anchorRect={null} onSelect={onSelect} onClose={vi.fn()} />;
+    }
+    render(<I18nextProvider i18n={i18n}><Menu /></I18nextProvider>);
+    expect(screen.getByTestId('tracker-filter-option-true').textContent).toContain('Yes');
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(screen.getByTestId('tracker-filter-option-true').textContent).toContain(i18n.t('tracker:placed_view_filter.yes'));
+    expect(i18n.t('tracker:placed_view_filter.yes')).not.toBe('Yes');
+    fireEvent.click(screen.getByTestId('tracker-filter-option-true'));
+    expect(onSelect).toHaveBeenCalledWith('true', '=');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByTestId('tracker-filter-option-true').textContent).toContain('Yes');
   });
 
   it('filters a field with no option list on exactly what was typed', () => {

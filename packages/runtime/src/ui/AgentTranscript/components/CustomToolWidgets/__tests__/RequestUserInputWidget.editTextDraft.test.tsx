@@ -147,3 +147,31 @@ it('localizes the shared reorder controls and removed-item summary', async () =>
   expect(screen.getAllByRole('button', { name: '項目を削除' })).toHaveLength(2);
   expect(screen.getByText('削除済み: 1件').textContent).toBe('削除済み: 1件');
 });
+
+it('updates the dynamic reorder voice hint when the language changes', async () => {
+  const i18n = await createI18nInstance('ja');
+  const message = {
+    toolCall: {
+      providerToolCallId: 'voice-hint-localization-test',
+      arguments: {
+        fields: [{
+          type: 'reorder', id: 'order', label: 'Order',
+          items: Array.from({ length: 7 }, (_, index) => ({ id: `item-${index}`, title: `Item ${index}` })),
+        }],
+      },
+      result: null,
+    },
+  } as any;
+
+  render(
+    <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+      <JotaiProvider store={store}>
+        <RequestUserInputWidget message={message} sessionId={SESSION_ID} isExpanded onToggle={() => {}} />
+      </JotaiProvider>
+    </UiLanguageProvider>,
+  );
+
+  expect(screen.getByText('音声では対応できません。並べ替える項目が多すぎます（7件）')).toBeTruthy();
+  await act(async () => { await i18n.changeLanguage('en'); });
+  expect(screen.getByText('Voice will defer — too many items to reorder verbally (7)')).toBeTruthy();
+});

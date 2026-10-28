@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 import type { TrackerRecord } from '../../../../core/TrackerRecord';
 import { globalRegistry, type TrackerDataModel } from '../../models';
@@ -56,6 +58,44 @@ function makeRecord(id: string): TrackerRecord {
 }
 
 describe('useTrackerRows bulk status update', () => {
+  it('localizes fallback statuses without modifying custom schema labels', async () => {
+    const i18n = await createI18nInstance('ja');
+    registerCustomType();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">{children}</UiLanguageProvider>
+    );
+    const { result, rerender } = renderHook(
+      ({ activeTypeFilter }) => useTrackerRows({ items: [], activeTypeFilter }),
+      { wrapper, initialProps: { activeTypeFilter: 'all' as string } },
+    );
+    expect(result.current.statusOptionsForBulk).toEqual([
+      { value: 'to-do', label: '未対応' },
+      { value: 'in-progress', label: '進行中' },
+      { value: 'in-review', label: 'レビュー中' },
+      { value: 'done', label: '完了' },
+      { value: 'blocked', label: 'ブロック中' },
+    ]);
+    rerender({ activeTypeFilter: customType });
+    expect(result.current.statusOptionsForBulk).toEqual([
+      { value: 'draft', label: 'Draft' },
+      { value: 'reviewing', label: 'Reviewing' },
+    ]);
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(result.current.statusOptionsForBulk).toEqual([
+      { value: 'draft', label: 'Draft' },
+      { value: 'reviewing', label: 'Reviewing' },
+    ]);
+    rerender({ activeTypeFilter: 'all' });
+    expect(result.current.statusOptionsForBulk).toEqual([
+      { value: 'to-do', label: 'To Do' },
+      { value: 'in-progress', label: 'In Progress' },
+      { value: 'in-review', label: 'In Review' },
+      { value: 'done', label: 'Done' },
+      { value: 'blocked', label: 'Blocked' },
+    ]);
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(result.current.statusOptionsForBulk[0]).toEqual({ value: 'to-do', label: '未対応' });
+  });
   afterEach(() => {
     globalRegistry.unregister(customType);
     delete (window as any).electronAPI;

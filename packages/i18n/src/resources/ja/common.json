@@ -1,5 +1,6 @@
 {
   "cancel": "キャンセル",
+  "browser_embed": { "preview_unavailable": "{{label}}: この画面ではプレビューを表示できません。", "shared_document": "共有ドキュメント", "view": "ビュー", "view_unavailable": "{{name}}: このライブビューはNimbalystのデスクトップアプリで表示できます。", "open_view": "{{name}}を開く", "author_device_title": "作成者のデバイスに保存された個人ページです。そのデバイスのNimbalystで開きます。", "author_device": "作成者のデバイス上" },
   "editor_breadcrumb": "パンくずリスト",
   "file_path_breadcrumb_title": "ファイルツリーで{{name}}を開く",
   "html_export": {

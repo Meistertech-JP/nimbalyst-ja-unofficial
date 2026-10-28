@@ -10,7 +10,7 @@ import type { ParseContext } from "@nimbalyst/runtime/ai/server/transcript/parse
 vi.mock("node:fs/promises", { spy: true });
 let dir: string;
 let source: CodexSource;
-const cwd = "/workspace/project";
+const cwd = path.resolve("/workspace/project");
 const timestamp = "2026-09-14T10:00:00.000Z";
 beforeEach(async () => {
   dir = await fs.mkdtemp(path.join(os.tmpdir(), "external-codex-"));
@@ -236,11 +236,12 @@ it("reads forked rollout history across restart without accepting unrelated iden
   expect(replay.messages.map(m => m.sourceEntryId)).toEqual(rest.messages.map(m => m.sourceEntryId));
 
   // An appended identity change is not inherited fork metadata.
+  expect(parent).toContain(JSON.stringify(cwd));
   await fs.appendFile(file, parent);
   await expect(drain(source, ref, rest.cursor)).rejects.toThrow("identity changed");
   await fs.writeFile(file, header + parent.replace('"parent"', '"unrelated"') + message);
   await expect(drain(source, ref)).rejects.toThrow("identity changed");
-  await fs.writeFile(file, header + parent.replace(cwd, "/foreign") + message);
+  await fs.writeFile(file, header + parent.replace(JSON.stringify(cwd), JSON.stringify("/foreign")) + message);
   await expect(drain(source, ref)).rejects.toThrow("cwd changed");
 });
 
@@ -453,7 +454,7 @@ it("separates bounded live date discovery from all-workspace historical manual p
     if (!page.hasMore) break;
   }
   expect(sessions).toMatchObject([
-    { externalId: "old", workspacePath: "/historical", title: "Old prompt..." },
+    { externalId: "old", workspacePath: path.resolve("/historical"), title: "Old prompt..." },
   ]);
   expect(
     (await source.readSince(sessions[0], null, { includeFinalLine: true }))
@@ -915,6 +916,7 @@ it("reuses accepted headers on append and revalidates rewritten cwd and symlink 
       type: "session_meta",
       payload: { id: "cache", cwd, instructions: "x".repeat(18000) },
     }) + "\n";
+  expect(header).toContain(JSON.stringify(cwd));
   await fs.writeFile(file, header);
   const ref = (await source.identify(file, [cwd]))!;
   const first = await source.readSince(ref, null);
@@ -944,7 +946,7 @@ it("reuses accepted headers on append and revalidates rewritten cwd and symlink 
   expect(readBytes).toBeLessThan(50 * 1024);
   await fs.writeFile(
     file,
-    header.replace(cwd, "/foreign/workspace") + "\n".repeat(100)
+    header.replace(JSON.stringify(cwd), JSON.stringify("/foreign/workspace")) + "\n".repeat(100)
   );
   await expect(source.readSince(ref, first.cursor)).rejects.toThrow(
     "validation"

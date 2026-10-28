@@ -24,6 +24,23 @@ const model = (type: string): TrackerDataModel => ({
 });
 
 describe('buildTrackerNavigationTree', () => {
+  it('preserves model identity through folder grouping and ownership partitioning', () => {
+    const personal = model('plan');
+    const team = { ...model('bug'), sharing: 'team' as const };
+    const tree = buildTrackerNavigationTree([personal, team], [
+      { entryId: 'folder:delivery', kind: 'folder', folderId: 'delivery', name: 'Delivery', sortKey: 'a0', ownership: 'personal' },
+      { entryId: 'type:plan', kind: 'type-placement', trackerType: 'plan', folderId: 'delivery', sortKey: 'a0' },
+      { entryId: 'type:bug', kind: 'type-placement', trackerType: 'bug', folderId: 'delivery', sortKey: 'a1' },
+    ]);
+    expect(tree.folders[0].trackerTypes.map((row) => row.tracker)).toEqual([personal, team]);
+    expect(tree.folders[0].trackerTypes[0].tracker).toBe(personal);
+    expect(tree.folders[0].trackerTypes[1].tracker).toBe(team);
+
+    const sections = partitionTrackerNavigationByOwnership(tree, { hasTeam: true })!;
+    expect(sections[0].tree.rootTypes[0].tracker).toBe(team);
+    expect(sections[1].tree.folders[0].trackerTypes[0].tracker).toBe(personal);
+  });
+
   it('files built-in and custom types, preserves manual order, and leaves each type exactly once', () => {
     const tree = buildTrackerNavigationTree([model('bug'), model('custom'), model('task')], [
       { entryId: 'folder:delivery', kind: 'folder', folderId: 'delivery', name: 'Delivery', sortKey: 'a0', ownership: 'personal' },

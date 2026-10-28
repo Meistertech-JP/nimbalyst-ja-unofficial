@@ -21,12 +21,15 @@ const host = vi.hoisted(() => ({
   getDocuments: vi.fn(),
   getTeamProvider: vi.fn(),
   findOtherProject: vi.fn((_scopeKey: unknown, _documentId: unknown): unknown => null),
+  resolveScope: vi.fn(async (_scopeKey: unknown): Promise<unknown> => ({ scope: null, retryable: false })),
+  applyMarkdown: vi.fn(),
 }));
 
 vi.mock('../../store/atoms/collabDocuments', () => ({
   getSharedDocumentsForScopeKey: host.getDocuments,
   getTeamSyncProviderForScopeKey: host.getTeamProvider,
   findOtherProjectDocument: host.findOtherProject,
+  resolveDesktopCollabScope: host.resolveScope,
 }));
 
 vi.mock('../CollaborativeEmbedProviderCache', () => ({
@@ -43,12 +46,21 @@ vi.mock('../CollaborativeDocumentTypeCatalog', () => ({
   }),
 }));
 
+vi.mock('../headlessMarkdownEdit', () => ({
+  applyMarkdownReplacementsToYDoc: host.applyMarkdown,
+}));
+
+vi.mock('../../utils/agentEditedPage', () => ({
+  agentPageTitle: () => null,
+}));
+
 import { editorRegistry } from '@nimbalyst/runtime/ai/EditorRegistry';
 
 import {
   HeadlessCollabDocumentError,
   readHeadlessCollabDocContent,
 } from '../HeadlessCollabDocument';
+import { applyHeadlessCollabDocEdit } from '../HeadlessCollabDocEdit';
 import { applyAgentDiff, readCollabDocForAgent } from '../agentDocumentAccess';
 
 const DOCUMENT_URI = 'collab://org:org-1:doc:doc-1';
@@ -77,6 +89,7 @@ function stubRoom(options: {
   synced?: boolean;
   undecoded?: boolean;
   body?: string;
+  acked?: boolean;
 } = {}) {
   const yDoc = new Y.Doc();
   yDoc.getText('body').insert(0, options.body ?? BODY);
@@ -91,6 +104,7 @@ function stubRoom(options: {
         isSynced: () => options.synced ?? true,
         getStatus: () => (options.synced ?? true ? 'connected' : 'connecting'),
         hasUndecodedContent: () => options.undecoded ?? false,
+        flushWithAck: vi.fn().mockResolvedValue(options.acked ?? true),
       },
     },
   });
@@ -299,5 +313,115 @@ describe('another project\'s page', () => {
     mount();
     await expect(readCollabDocForAgent(DOCUMENT_URI, WORKSPACE_PATH))
       .rejects.toMatchObject({ code: 'OTHER_PROJECT', projectId: 'project-b' });
+  });
+});
+
+/**
+ * A typed page's body is the room `tracker-content/<itemId>` on the team's org.
+ * It is not in the shared-docs index, and agents are handed it in its short
+ * form, which carries no org (#1879).
+ */
+describe('a shared typed-page body', () => {
+  const SHORT_URI = 'collab://tracker-content/item-7';
+  const ORG_URI = 'collab://org:org-1:doc:tracker-content/item-7';
+
+  beforeEach(() => {
+    host.acquire.mockReset();
+    host.getDocuments.mockReturnValue([]);
+    host.resolveScope.mockResolvedValue({ scope: { orgId: 'org-1' }, retryable: false });
+    host.applyMarkdown.mockReset();
+    registerCollabContentAdapter({ ...TEST_CODEC, documentType: 'markdown', fileExtensions: ['.md'] });
+  });
+
+  afterEach(() => {
+    clearCollabContentAdapters();
+    host.resolveScope.mockReset().mockResolvedValue({ scope: null, retryable: false });
+    vi.unstubAllGlobals();
+  });
+
+  it.each([SHORT_URI, ORG_URI])('reads %s from the body room on the team org', async (uri) => {
+    stubRoom();
+
+    await expect(readCollabDocForAgent(uri, WORKSPACE_PATH)).resolves.toEqual({ content: BODY, route: 'headless' });
+    expect(host.acquire).toHaveBeenCalledWith(expect.objectContaining({
+      orgId: 'org-1',
+      documentId: 'tracker-content/item-7',
+      documentType: 'markdown',
+    }));
+  });
+
+  it('refuses the short form when the project has no team', async () => {
+    host.resolveScope.mockResolvedValue({ scope: null, retryable: false });
+    stubRoom();
+
+    await expect(readCollabDocForAgent(SHORT_URI, WORKSPACE_PATH)).rejects.toMatchObject({ code: 'DOCUMENT_NOT_AVAILABLE' });
+    expect(host.acquire).not.toHaveBeenCalled();
+  });
+
+  it.each([SHORT_URI, ORG_URI])('rejects an unsynced %s body instead of returning empty content', async (uri) => {
+    const { release } = stubRoom({ synced: false, body: '' });
+
+    await expect(readHeadlessCollabDocContent(uri, WORKSPACE_PATH, { hydrationTimeoutMs: 50 }))
+      .rejects.toMatchObject({ code: 'ROOM_UNREACHABLE' });
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([SHORT_URI, ORG_URI])('rejects an undecodable %s body', async (uri) => {
+    const { release } = stubRoom({ undecoded: true });
+
+    await expect(readHeadlessCollabDocContent(uri, WORKSPACE_PATH))
+      .rejects.toMatchObject({ code: 'UNDECODABLE_CONTENT' });
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([SHORT_URI, ORG_URI])('does not edit an unsynced or undecodable %s body', async (uri) => {
+    for (const roomState of [{ synced: false }, { undecoded: true }]) {
+      host.applyMarkdown.mockClear();
+      const { yDoc, release } = stubRoom(roomState);
+      await expect(applyHeadlessCollabDocEdit(uri, WORKSPACE_PATH, [{ oldText: BODY, newText: 'changed' }], { hydrationTimeoutMs: 0 }))
+        .rejects.toMatchObject({ code: roomState.synced === false ? 'ROOM_UNREACHABLE' : 'UNDECODABLE_CONTENT' });
+      expect(host.applyMarkdown).not.toHaveBeenCalled();
+      expect(yDoc.getText('body').toString()).toBe(BODY);
+      expect(release).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it.each([SHORT_URI, ORG_URI])('does not report an unacknowledged %s edit as successful', async (uri) => {
+    const { release } = stubRoom({ acked: false });
+    await expect(applyHeadlessCollabDocEdit(uri, WORKSPACE_PATH, [{ oldText: BODY, newText: 'changed' }]))
+      .rejects.toMatchObject({ code: 'FLUSH_TIMEOUT' });
+    expect(host.applyMarkdown).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([SHORT_URI, ORG_URI])('updates the local typed-page copy after an acknowledged edit of %s', async (uri) => {
+    const updateTrackerItemContent = vi.fn().mockResolvedValue({ success: true });
+    vi.stubGlobal('window', { electronAPI: { documentService: { updateTrackerItemContent } } });
+    stubRoom();
+    host.applyMarkdown.mockImplementation((doc: Y.Doc) => {
+      const text = doc.getText('body');
+      text.delete(0, text.length);
+      text.insert(0, 'updated body');
+    });
+
+    await expect(applyAgentDiff(uri, [{ oldText: BODY, newText: 'updated body' }], { workspacePath: WORKSPACE_PATH }))
+      .resolves.toMatchObject({ success: true });
+    expect(updateTrackerItemContent).toHaveBeenCalledWith({ itemId: 'item-7', content: 'updated body' });
+  });
+
+  it('does not report the acknowledged room edit as failed when local-copy updating fails', async () => {
+    const updateTrackerItemContent = vi.fn().mockResolvedValue({ success: false, error: 'local update failed' });
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('window', { electronAPI: { documentService: { updateTrackerItemContent } } });
+    stubRoom();
+
+    try {
+      await expect(applyAgentDiff(SHORT_URI, [{ oldText: BODY, newText: 'updated body' }], { workspacePath: WORKSPACE_PATH }))
+        .resolves.toMatchObject({ success: true });
+      expect(updateTrackerItemContent).toHaveBeenCalledTimes(1);
+      expect(log).toHaveBeenCalledTimes(1);
+    } finally {
+      log.mockRestore();
+    }
   });
 });

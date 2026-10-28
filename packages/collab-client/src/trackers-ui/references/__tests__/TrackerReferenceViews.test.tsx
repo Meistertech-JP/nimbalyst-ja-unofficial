@@ -19,6 +19,7 @@ import { setTrackerReferenceNodeRenderer } from '@nimbalyst/runtime/plugins/Trac
 import { createTrackerReferenceResolver } from '../trackerReferenceResolver';
 import { TrackerReferenceResolverProvider } from '../TrackerReferenceResolverContext';
 import { LiveTrackerReferenceRenderer } from '../TrackerReferenceViews';
+import { plural } from '../TrackerReferenceParts';
 import { TrackerReferenceInlineAppearanceContext } from '../TrackerReferenceQuietLink';
 import { fakeDataSource, fakeSchema, item } from './referenceFixtures';
 
@@ -32,6 +33,61 @@ beforeAll(async () => {
 });
 
 describe('LiveTrackerReferenceRenderer', () => {
+  it('retains the existing English plural helper for callers', () => {
+    expect(plural(1, 'citation')).toBe('1 citation');
+    expect(plural(2, 'citation')).toBe('2 citations');
+  });
+  it('localizes citation counts and preserves English singular and plural', async () => {
+    const fake = fakeDataSource();
+    const resolver = createTrackerReferenceResolver(fake.source, { schema: fakeSchema() });
+    const view = (i18n: typeof japaneseI18n, preference: 'ja' | 'en') => (
+      <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="en-US">
+        <TrackerReferenceResolverProvider resolver={resolver}>
+          <LiveTrackerReferenceRenderer referenceKey="KB-1" nodeKey="n1" view="statements" />
+        </TrackerReferenceResolverProvider>
+      </UiLanguageProvider>
+    );
+    const { rerender } = render(view(japaneseI18n, 'ja'));
+    await act(() => fake.release([
+      item({ id: 'entity-1', issueKey: 'KB-1', type: 'entity', title: 'Gateway' }),
+      item({ id: 'claim-1', type: 'claim', title: 'First', customFields: { subject: { itemId: 'entity-1' }, predicate: 'rate-limit', citations: [{ url: 'a' }] } }),
+      item({ id: 'claim-2', type: 'claim', title: 'Second', customFields: { subject: { itemId: 'entity-1' }, predicate: 'rate-limit', citations: [{ url: 'a' }, { url: 'b' }] } }),
+    ]));
+    expect(screen.getByTitle('引用1件')).toBeTruthy();
+    expect(screen.getByTitle('引用2件')).toBeTruthy();
+    rerender(view(englishI18n, 'en'));
+    expect(screen.getByTitle('1 citation')).toBeTruthy();
+    expect(screen.getByTitle('2 citations')).toBeTruthy();
+    resolver.dispose();
+  });
+  it.each(['chip', 'quiet'] as const)('localizes %s reference loading and missing tooltips', async (appearance) => {
+    const fake = fakeDataSource();
+    const resolver = createTrackerReferenceResolver(fake.source, { schema: fakeSchema() });
+    const { container, rerender } = render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <TrackerReferenceResolverProvider resolver={resolver}>
+          <TrackerReferenceInlineAppearanceContext.Provider value={appearance}>
+            <LiveTrackerReferenceRenderer referenceKey="KB-99" nodeKey="n1" view="chip" />
+          </TrackerReferenceInlineAppearanceContext.Provider>
+        </TrackerReferenceResolverProvider>
+      </UiLanguageProvider>,
+    );
+    const reference = () => container.querySelector('[data-issue-key="KB-99"]')!;
+    expect(reference().getAttribute('title')).toBe('KB-99 を読み込み中…');
+    await act(() => fake.release([]));
+    expect(reference().getAttribute('title')).toBe('KB-99 が見つかりません');
+    rerender(
+      <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        <TrackerReferenceResolverProvider resolver={resolver}>
+          <TrackerReferenceInlineAppearanceContext.Provider value={appearance}>
+            <LiveTrackerReferenceRenderer referenceKey="KB-99" nodeKey="n1" view="chip" />
+          </TrackerReferenceInlineAppearanceContext.Provider>
+        </TrackerReferenceResolverProvider>
+      </UiLanguageProvider>,
+    );
+    expect(reference().getAttribute('title')).toBe('KB-99 was not found');
+    resolver.dispose();
+  });
   it('localizes statement view labels and loading state', async () => {
     const fake = fakeDataSource();
     const resolver = createTrackerReferenceResolver(fake.source, { schema: fakeSchema() });

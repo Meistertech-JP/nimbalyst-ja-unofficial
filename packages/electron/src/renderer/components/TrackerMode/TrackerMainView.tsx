@@ -388,8 +388,8 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
   );
 
   const filterFields = useMemo<TrackerFilterField[]>(
-    () => createTrackerFilterFields(availableColumns, schemaType, trackerTypes),
-    [availableColumns, schemaType, trackerTypes],
+    () => createTrackerFilterFields(availableColumns, schemaType, trackerTypes, key => t(key)),
+    [availableColumns, schemaType, trackerTypes, t],
   );
   const getViewFilterValue = useCallback(
     (item: TrackerRecord, field: string): unknown => getTrackerHeaderFilterValue(

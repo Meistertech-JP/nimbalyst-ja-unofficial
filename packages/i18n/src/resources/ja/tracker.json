@@ -33,6 +33,7 @@
     "center": "中央に表示"
   },
   "placed_view_embed": {
+    "default_view_name": "ビュー",
     "new_item": "新規",
     "new_item_title": "新しい項目のタイトル",
     "creating": "作成中…",
@@ -74,6 +75,14 @@
     "decided": "決定済み",
     "open": "未解決",
     "over": "対象"
+  },
+  "placed_filter_fields": {
+    "starred": "お気に入り",
+    "archived": "アーカイブ済み",
+    "readiness": "準備状況",
+    "ready": "準備完了",
+    "blocked": "ブロック中",
+    "closed": "完了"
   },
   "placed_view_filter": {
     "items": "項目",
@@ -1751,7 +1760,9 @@
     "statements_heading": "関連する主張",
     "statements_empty": "主張はまだありません。",
     "loading": "{{referenceKey}} を読み込み中…",
-    "not_found": "{{referenceKey}} が見つかりません"
+    "not_found": "{{referenceKey}} が見つかりません",
+    "citations_one": "引用{{count}}件",
+    "citations_other": "引用{{count}}件"
   },
   "dependency_cycle": {
     "count_one": "{{count}}件の項目が依存関係の循環にあります。",

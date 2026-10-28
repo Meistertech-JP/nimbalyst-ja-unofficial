@@ -202,6 +202,30 @@ describe("shareFolderToTeam", () => {
     expect(mocks.showError.mock.calls[0][1]).toContain("101 shareable documents");
   });
 
+  it("shows the folder limit error in Japanese with the actual counts", async () => {
+    const i18n = await createI18nInstance("ja");
+    const result = await shareFolderToTeam({
+      target: { folderPath: "/workspace/design", folderName: "design" },
+      candidateSet: {
+        candidates: Array.from({ length: 101 }, (_, index) => candidate(`f${index}.md`)),
+        skipped: [],
+        subfolderPaths: [],
+      },
+      answers,
+      t: i18n.getFixedT("ja", "collabSidebar"),
+    });
+
+    expect(result).toMatchObject({ status: "failed" });
+    expect(mocks.shareFileToTeam).not.toHaveBeenCalled();
+    expect(mocks.ensureSharedFolderSegments).not.toHaveBeenCalled();
+    expect(mocks.showError).toHaveBeenCalledWith(
+      "フォルダーを共有できません",
+      expect.stringContaining("共有可能なドキュメントが101件"),
+      { duration: 10000 },
+    );
+    expect(mocks.showError.mock.calls[0][1]).toContain("上限の100件");
+  });
+
   it("keeps going after one file fails and reports the survivors and the failure", async () => {
     mocks.shareFileToTeam
       .mockResolvedValueOnce({ status: "failed", error: "disk on fire" })

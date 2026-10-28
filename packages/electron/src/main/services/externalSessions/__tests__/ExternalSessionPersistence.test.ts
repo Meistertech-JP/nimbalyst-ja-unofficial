@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import { PGlite } from '@electric-sql/pglite';
@@ -8,6 +8,7 @@ import { SQLiteDatabase } from '../../../database/sqlite/SQLiteDatabase';
 import { runTransactionStatements } from '../../../database/transactionStatements';
 import { createPGLiteSessionStore } from '../../PGLiteSessionStore';
 import { ExternalSessionPersistence } from '../ExternalSessionPersistence';
+import { readJsonl } from '../jsonlReader';
 import type { ExternalCursor } from '../types';
 
 const schemaDir = path.resolve(__dirname, '../../../database/sqlite/schemas');
@@ -48,6 +49,42 @@ describe.each(['pglite', 'sqlite'] as const)('ExternalSessionPersistence (%s)', 
   afterEach(async () => { await db?.close(); if (dir) rmSync(dir, { recursive: true, force: true }); });
   const append = (expectedCursor: ExternalCursor | null, next: ExternalCursor, ids: string[], target = ref) => persistence.appendAndAdvance({ ref: target, sessionId: 'local', expectedCursor, cursor: next, messages: ids.map(message) });
   async function ids() { return (await db.query<{ provider_message_id: string }>('SELECT provider_message_id FROM ai_agent_messages ORDER BY id')).rows.map(row => row.provider_message_id); }
+
+  it('persists and restores a cursor read from a real local file', async () => {
+    const file = path.join(dir, 'session.jsonl');
+    writeFileSync(file, '{"uuid":"real-file-entry"}\n');
+    const page = await readJsonl(file, null);
+    const fileRef = { ...ref, filePath: file };
+    try {
+      await append(null, page.cursor, [], fileRef);
+    } catch (error) {
+      throw new Error(`Real-file cursor rejected: inode=${page.cursor.inode}, safe=${Number.isSafeInteger(page.cursor.inode)}, offset=${page.cursor.byteOffset}, size=${page.cursor.fileSize}`, { cause: error });
+    }
+    expect(await persistence.getCursor(fileRef)).toEqual(page.cursor);
+  });
+
+  it('round-trips exact large inode strings and fences stale cursors across restart', async () => {
+    const legacy = cursor(10);
+    const large = { ...cursor(20), inode: '19140298416820750' };
+    await append(null, legacy, ['a']);
+    await append(legacy, large, ['b']);
+    await db.close();
+    await open();
+    expect(await persistence.getCursor(ref)).toEqual(large);
+    await expect(append(legacy, cursor(30), ['stale'])).rejects.toThrow(/conflict/i);
+    const advanced = { ...cursor(30), inode: large.inode };
+    await append(large, advanced, ['b', 'c']);
+    expect(await ids()).toEqual(['a', 'b', 'c']);
+    expect(await persistence.getCursor(ref)).toEqual(advanced);
+  });
+
+  it('rejects malformed and noncanonical string inode values before writing', async () => {
+    for (const inode of ['', '01', '-1', '1', '9007199254740991', '9007199254740992\n', '18446744073709551616', 'a'.repeat(20), '9'.repeat(21)]) {
+      await expect(append(null, { ...cursor(10), inode }, ['invalid'])).rejects.toThrow(/cursor/i);
+    }
+    expect(await ids()).toEqual([]);
+    expect(await persistence.getCursor(ref)).toBeNull();
+  });
 
   it('appends new entries, deduplicates replay and survives close/reopen with independent sidecar cursors', async () => {
     expect(await persistence.getCursor(ref)).toBeNull();

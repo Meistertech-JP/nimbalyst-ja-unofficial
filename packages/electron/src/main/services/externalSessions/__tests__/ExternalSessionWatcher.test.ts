@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
+import * as path from "node:path";
 import { ExternalSessionWatcher } from "../ExternalSessionWatcher";
 import { logger } from "../../../utils/logger";
 import type { ExternalSessionIngestor } from "../ExternalSessionIngestor";
@@ -52,6 +53,8 @@ describe("ExternalSessionWatcher", () => {
     async (failure) => {
       vi.useFakeTimers();
       const h = harness();
+      const logRoot = path.resolve("/logs");
+      h.source.watchRoots.mockReturnValue([logRoot]);
       const warning = vi.spyOn(logger.main, "warn");
       const poisonedError = Object.assign(
         new TypeError("private source content"),
@@ -65,7 +68,7 @@ describe("ExternalSessionWatcher", () => {
           providerId: "claude-code" as const,
           externalId: id,
           workspacePath: "/workspace",
-          filePath: `/logs/${id}.jsonl`,
+          filePath: path.join(logRoot, `${id}.jsonl`),
           updatedAt: 1,
         });
         h.source.identify.mockImplementation(async (file: string) => {
@@ -79,8 +82,8 @@ describe("ExternalSessionWatcher", () => {
           return { messagesAdded: 1, hasMore: false };
         });
         h.source.discover.mockResolvedValue([makeRef("healthy-discovery")]);
-        h.emit("/logs", "poison.jsonl");
-        h.emit("/logs", "healthy.jsonl");
+        h.emit(logRoot, "poison.jsonl");
+        h.emit(logRoot, "healthy.jsonl");
         await vi.advanceTimersToNextTimerAsync();
         expect(h.ingest.mock.calls.map(([, ref]) => ref.externalId)).toContain(
           "healthy-event"
@@ -92,7 +95,7 @@ describe("ExternalSessionWatcher", () => {
           "[ExternalSessions] Event batch failed; scoped discovery will retry",
           {
             providerId: "claude-code",
-            filePath: "/logs/poison.jsonl",
+            filePath: path.join(logRoot, "poison.jsonl"),
             errorName: "TypeError",
           }
         );
@@ -230,7 +233,7 @@ describe("ExternalSessionWatcher", () => {
     const start = h.watcher.start();
     await vi.waitFor(() =>
       expect(h.source.discover).toHaveBeenCalledWith(
-        "/workspace",
+        path.resolve("/workspace"),
         expect.anything()
       )
     );
@@ -251,31 +254,35 @@ describe("ExternalSessionWatcher", () => {
   it("watches each root as one directory, recursive only for leaves, and ignores historical Codex trees", async () => {
     vi.useFakeTimers();
     const h = harness();
+    const root = path.resolve("/codex/sessions");
+    const year = path.join(root, "2026");
+    const month = path.join(year, "09");
+    const day = path.join(month, "14");
     h.source.watchRoots.mockReturnValue([
-      "/codex/sessions",
-      "/codex/sessions/2026",
-      "/codex/sessions/2026/09",
-      "/codex/sessions/2026/09/14",
+      root,
+      year,
+      month,
+      day,
     ]);
     await h.watcher.start();
     // One directory handle per root, never one per file under it.
     expect(
       h.watch.mock.calls.map(([root, options]) => [root, options.recursive])
     ).toEqual([
-      ["/codex/sessions", false],
-      ["/codex/sessions/2026", false],
-      ["/codex/sessions/2026/09", false],
-      ["/codex/sessions/2026/09/14", process.platform !== "linux"],
+      [root, false],
+      [year, false],
+      [month, false],
+      [day, process.platform !== "linux"],
     ]);
-    h.emit("/codex/sessions", "2025/01/01/rollout-old.jsonl");
-    h.emit("/codex/sessions/2026/09/14", "rollout-live.jsonl");
+    h.emit(root, path.join("2025", "01", "01", "rollout-old.jsonl"));
+    h.emit(day, "rollout-live.jsonl");
     await vi.advanceTimersToNextTimerAsync();
     expect(h.source.identify).toHaveBeenCalledWith(
-      "/codex/sessions/2026/09/14/rollout-live.jsonl",
-      ["/workspace"]
+      path.join(day, "rollout-live.jsonl"),
+      [path.resolve("/workspace")]
     );
     expect(h.source.identify).not.toHaveBeenCalledWith(
-      "/codex/sessions/2025/01/01/rollout-old.jsonl",
+      path.join(root, "2025", "01", "01", "rollout-old.jsonl"),
       expect.anything()
     );
     await h.watcher.stop();

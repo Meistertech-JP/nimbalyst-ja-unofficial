@@ -11,6 +11,7 @@ export function classifyPath(path) {
   if (/(?:^|\/)agent-mistakes\.md$/i.test(path)) return 'private-incident-diary';
   if (/(?:^|\/)R\d+_[^/]+\.(?:md|mdx|rst|json|txt)$/i.test(path)) return 'internal-round-record';
   if (/(?:^|\/)release-(?:candidates|qualified)\//i.test(path)) return 'intermediate-release-material';
+  if (/^packages\/electron\/release-r\d+(?:-[^/]+)?\//i.test(path)) return 'intermediate-release-material';
   if (/(?:^|\/)(?:node_modules|\.git|private-evidence|publication-receipts)\//.test(path)) return 'private-or-generated-directory';
   return null;
 }

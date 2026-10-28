@@ -33,6 +33,7 @@
     "center": "Center"
   },
   "placed_view_embed": {
+    "default_view_name": "View",
     "new_item": "New",
     "new_item_title": "New item title",
     "creating": "Creating…",
@@ -74,6 +75,14 @@
     "decided": "Decided",
     "open": "Open",
     "over": "over"
+  },
+  "placed_filter_fields": {
+    "starred": "Starred",
+    "archived": "Archived",
+    "readiness": "Readiness",
+    "ready": "Ready",
+    "blocked": "Blocked",
+    "closed": "Closed"
   },
   "placed_view_filter": {
     "items": "Items",
@@ -1751,7 +1760,9 @@
     "statements_heading": "Statements about",
     "statements_empty": "No statements yet.",
     "loading": "Loading {{referenceKey}}...",
-    "not_found": "{{referenceKey}} was not found"
+    "not_found": "{{referenceKey}} was not found",
+    "citations_one": "{{count}} citation",
+    "citations_other": "{{count}} citations"
   },
   "dependency_cycle": {
     "count_one": "{{count}} item is in a dependency cycle.",

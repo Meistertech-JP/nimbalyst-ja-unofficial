@@ -1,6 +1,7 @@
 import type { Binding, Provider, ProviderAwareness } from '@lexical/yjs';
 import type { Klass, LexicalEditor, LexicalNode, TextFormatType } from 'lexical';
 import type { ComponentType, ReactNode } from 'react';
+import type { I18nextProviderProps } from 'react-i18next';
 import type { Awareness } from 'y-protocols/awareness';
 import type { Doc } from 'yjs';
 import type { TeamJwt, TeamMemberId } from './internal/runtime/src/auth/jwtScopes';
@@ -246,6 +247,8 @@ export interface PageLinkSource {
 }
 
 export interface CollabEditorMountOptions {
+  /** Host-owned translator for this independent React root. */
+  i18n?: I18nextProviderProps['i18n'];
   element: HTMLElement;
   source: CollabEditorSource;
   user: CollabEditorUser;

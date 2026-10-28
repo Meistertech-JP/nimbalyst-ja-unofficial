@@ -152,6 +152,18 @@ describe('TabsContext tracker tabs', () => {
     expect(watchedPaths('stop')).not.toContain('personal://doc-1');
   });
 
+  it('keeps an unnamed personal page name empty for localized display', () => {
+    const { result } = renderHook(() => useTabs(), { wrapper });
+
+    act(() => {
+      result.current.addTab('personal://doc-untitled', '', true);
+    });
+
+    const tab = result.current.tabs.find((t) => t.filePath === 'personal://doc-untitled');
+    expect(tab?.kind).toBe('personal-page');
+    expect(tab?.fileName).toBe('');
+  });
+
   it('still watches real file tabs (file behavior unchanged)', () => {
     const { result } = renderHook(() => useTabs(), { wrapper });
 

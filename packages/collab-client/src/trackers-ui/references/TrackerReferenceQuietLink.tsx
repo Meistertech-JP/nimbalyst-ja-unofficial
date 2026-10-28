@@ -10,6 +10,7 @@
 
 import type { CSSProperties, JSX } from 'react';
 import { Suspense, createContext, lazy, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 
 import type { TrackerItem } from '../../trackers/dataSource';
 import { displayKey, openHandlers, text, type ResolverProps } from './TrackerReferenceParts';
@@ -77,6 +78,7 @@ function usePeekOpenState(enabled: boolean) {
 }
 
 export function QuietLink({ resolver, referenceKey }: ResolverProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const resolution = useTrackerReference(resolver, referenceKey);
   const resolved = resolution.state === 'resolved';
   const [anchor, setAnchor] = useState<HTMLSpanElement | null>(null);
@@ -89,7 +91,7 @@ export function QuietLink({ resolver, referenceKey }: ResolverProps): JSX.Elemen
         data-issue-key={referenceKey}
         data-resolved="false"
         data-state={resolution.state}
-        title={resolution.state === 'loading' ? `${referenceKey} (loading)` : `${referenceKey} (not found)`}
+        title={t(resolution.state === 'loading' ? 'references.loading' : 'references.not_found', { referenceKey })}
       >
         {referenceKey}
       </span>

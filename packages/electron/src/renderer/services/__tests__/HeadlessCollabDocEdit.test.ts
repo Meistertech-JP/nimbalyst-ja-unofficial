@@ -18,6 +18,7 @@ const host = vi.hoisted(() => ({
   acquire: vi.fn(),
   getDocuments: vi.fn(),
   getTeamProvider: vi.fn(),
+  resolveScope: vi.fn(async () => ({ scope: { orgId: 'org-1' }, retryable: false })),
   applyMarkdown: vi.fn(),
   createRevision: vi.fn(),
 }));
@@ -25,6 +26,7 @@ const host = vi.hoisted(() => ({
 vi.mock('../../store/atoms/collabDocuments', () => ({
   getSharedDocumentsForScopeKey: host.getDocuments,
   getTeamSyncProviderForScopeKey: host.getTeamProvider,
+  resolveDesktopCollabScope: host.resolveScope,
 }));
 
 vi.mock('../CollaborativeEmbedProviderCache', () => ({
@@ -200,6 +202,67 @@ describe('applyHeadlessCollabDocEdit', () => {
     ).rejects.toMatchObject({ code: 'ROOM_UNREACHABLE' });
     expect(body(yDoc)).toBe(BODY);
     expect(flushWithAck).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'collab://tracker-content/item-7',
+    'collab://org:org-1:doc:tracker-content/item-7',
+  ])('edits an acknowledged typed-page body %s in the team room', async (uri) => {
+    const { yDoc, release, flushWithAck } = stubRoom();
+    host.applyMarkdown.mockImplementation((doc: Y.Doc) => {
+      const text = doc.getText('body');
+      text.delete(0, text.length);
+      text.insert(0, 'alpha BETA gamma');
+    });
+
+    await expect(applyHeadlessCollabDocEdit(uri, WORKSPACE_PATH, EDIT))
+      .resolves.toBe('alpha BETA gamma');
+    expect(host.acquire).toHaveBeenCalledWith(expect.objectContaining({
+      orgId: 'org-1', documentId: 'tracker-content/item-7', documentType: 'markdown',
+    }));
+    expect(host.applyMarkdown).toHaveBeenCalledWith(yDoc, EDIT);
+    expect(flushWithAck).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    'collab://tracker-content/item-7',
+    'collab://org:org-1:doc:tracker-content/item-7',
+  ])('does not report success for an unacknowledged typed-page edit %s', async (uri) => {
+    const { release, flushWithAck } = stubRoom({ acked: false });
+
+    await expect(applyHeadlessCollabDocEdit(uri, WORKSPACE_PATH, EDIT))
+      .rejects.toMatchObject({ code: 'FLUSH_TIMEOUT' });
+    expect(flushWithAck).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    'collab://tracker-content/item-7',
+    'collab://org:org-1:doc:tracker-content/item-7',
+  ])('does not edit or flush an unsynced typed-page body %s', async (uri) => {
+    const { yDoc, release, flushWithAck } = stubRoom({ synced: false });
+
+    await expect(applyHeadlessCollabDocEdit(uri, WORKSPACE_PATH, EDIT, { hydrationTimeoutMs: 50 }))
+      .rejects.toMatchObject({ code: 'ROOM_UNREACHABLE' });
+    expect(body(yDoc)).toBe(BODY);
+    expect(host.applyMarkdown).not.toHaveBeenCalled();
+    expect(flushWithAck).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    'collab://tracker-content/item-7',
+    'collab://org:org-1:doc:tracker-content/item-7',
+  ])('does not edit or flush an undecodable typed-page body %s', async (uri) => {
+    const { yDoc, release, flushWithAck } = stubRoom({ undecoded: true });
+
+    await expect(applyHeadlessCollabDocEdit(uri, WORKSPACE_PATH, EDIT))
+      .rejects.toMatchObject({ code: 'UNDECODABLE_CONTENT' });
+    expect(body(yDoc)).toBe(BODY);
+    expect(host.applyMarkdown).not.toHaveBeenCalled();
+    expect(flushWithAck).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledTimes(1);
   });
 
   it('fails loudly when the text to replace is not in the document', async () => {

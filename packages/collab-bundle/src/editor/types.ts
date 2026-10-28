@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { I18nextProviderProps } from 'react-i18next';
 import type { LexicalEditor, TextFormatType } from 'lexical';
 import {
   asTeamJwt,
@@ -223,6 +224,8 @@ export interface PageLinkSource {
 }
 
 export interface CollabEditorMountOptions {
+  /** Host-owned translator for this independent React root. */
+  i18n?: I18nextProviderProps['i18n'];
   element: HTMLElement;
   source: CollabEditorSource;
   user: CollabEditorUser;

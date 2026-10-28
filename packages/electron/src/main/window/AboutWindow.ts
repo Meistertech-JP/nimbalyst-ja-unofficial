@@ -23,8 +23,8 @@ function getAboutPageModel() {
         ]));
         copy.title = String(t?.('about.title', { product: copy.product, defaultValue: fallback.title })
             ?? fallback.title.replace('{{product}}', copy.product));
-        copy.base_version = String(t?.('about.base_version', { version: '0.82.3', defaultValue: fallback.base_version })
-            ?? fallback.base_version.replace('{{version}}', '0.82.3'));
+        copy.base_version = String(t?.('about.base_version', { version: '0.82.4', defaultValue: fallback.base_version })
+            ?? fallback.base_version.replace('{{version}}', '0.82.4'));
         return [locale, copy];
     }));
     const systemLocale = resolveSystemLocale(app.getLocale());

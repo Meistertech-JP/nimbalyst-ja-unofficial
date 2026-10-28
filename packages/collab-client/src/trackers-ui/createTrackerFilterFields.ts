@@ -46,6 +46,7 @@ export function createTrackerFilterFields(
   availableColumns: TrackerColumnDef[],
   schemaType: string,
   trackerTypes: TrackerDataModel[],
+  translate: (key: string, fallback: string) => string = (_key, fallback) => fallback,
 ): TrackerFilterField[] {
   const orderedColumns = [...availableColumns].sort((left, right) => {
     const leftOrder = left.role
@@ -88,8 +89,8 @@ export function createTrackerFilterFields(
         type: 'select',
         group: 'system',
         options: [
-          { value: 'draft', label: 'Draft' },
-          { value: 'published', label: 'Published' },
+          { value: 'draft', label: translate('publication.draft', 'Draft') },
+          { value: 'published', label: translate('publication.published', 'Published') },
         ],
       };
     }
@@ -125,7 +126,7 @@ export function createTrackerFilterFields(
   ))) {
     fields.splice(Math.min(3, fields.length), 0, {
       id: 'owner',
-      label: 'Owner',
+      label: translate('filters.owner', 'Owner'),
       type: 'user',
       group: 'common',
     });
@@ -133,28 +134,28 @@ export function createTrackerFilterFields(
   if (!fields.some(field => field.id === 'favorite')) {
     fields.push({
       id: 'favorite',
-      label: 'Starred',
+      label: translate('placed_filter_fields.starred', 'Starred'),
       type: 'boolean',
       group: 'system',
       options: [
-        { value: 'true', label: 'Yes' },
-        { value: 'false', label: 'No' },
+        { value: 'true', label: translate('placed_view_filter.yes', 'Yes') },
+        { value: 'false', label: translate('placed_view_filter.no', 'No') },
       ],
     });
   }
   if (!fields.some(field => field.id === 'archived')) {
-    fields.push({ id: 'archived', label: 'Archived', type: 'boolean', group: 'system' });
+    fields.push({ id: 'archived', label: translate('placed_filter_fields.archived', 'Archived'), type: 'boolean', group: 'system' });
   }
   if (!fields.some(field => field.id === READINESS_FILTER_FIELD)) {
     fields.push({
       id: READINESS_FILTER_FIELD,
-      label: 'Readiness',
+      label: translate('placed_filter_fields.readiness', 'Readiness'),
       type: 'select',
       group: 'system',
       options: [
-        { value: 'ready', label: 'Ready' },
-        { value: 'blocked', label: 'Blocked' },
-        { value: 'closed', label: 'Closed' },
+        { value: 'ready', label: translate('placed_filter_fields.ready', 'Ready') },
+        { value: 'blocked', label: translate('placed_filter_fields.blocked', 'Blocked') },
+        { value: 'closed', label: translate('placed_filter_fields.closed', 'Closed') },
       ],
     });
   }
@@ -182,14 +183,14 @@ export function createTrackerFilterFields(
   const transitionFields: TrackerFilterField[] = [
     {
       id: STATUS_CHANGED_TO_FILTER_FIELD,
-      label: 'Status changed to',
+      label: translate('filters.status_changed_to', 'Status changed to'),
       type: 'select',
       group: 'common',
       options: Array.from(statusOptions.values()),
     },
     {
       id: STATUS_CHANGED_FROM_FILTER_FIELD,
-      label: 'Status changed from',
+      label: translate('filters.status_changed_from', 'Status changed from'),
       type: 'select',
       group: 'common',
       options: Array.from(statusOptions.values()),

@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { parseConsoleLink } from '@nimbalyst/collab-protocol';
 import type { TrackerReferenceNodeRendererProps } from '@nimbalyst/runtime/plugins/TrackerLinkPlugin/TrackerReferenceNodeRenderer';
 import { LiveTrackerReferenceRenderer } from '@nimbalyst/collab-client/trackers-ui/references';
@@ -20,6 +21,7 @@ function isAuthorDeviceLink(href: string | null | undefined): href is string {
 }
 
 export function AuthorDeviceReferenceChip({ referenceKey, href }: { referenceKey: string; href: string }): React.JSX.Element {
+  const { t } = useTranslation('common');
   return (
     <a
       className="tracker-reference-chip tracker-reference-chip--author-device"
@@ -27,7 +29,7 @@ export function AuthorDeviceReferenceChip({ referenceKey, href }: { referenceKey
       data-issue-key={referenceKey}
       data-resolved="false"
       href={href}
-      title="A Personal page, kept on its author's device. Opens in Nimbalyst there."
+      title={t('browser_embed.author_device_title', { defaultValue: "A Personal page, kept on its author's device. Opens in Nimbalyst there." })}
       onClick={(event) => {
         if (openConsoleLink(href)) event.preventDefault();
       }}
@@ -52,7 +54,7 @@ export function AuthorDeviceReferenceChip({ referenceKey, href }: { referenceKey
       }}
     >
       {referenceKey}
-      <span style={{ fontWeight: 400, fontSize: '0.9em' }}>on the author&apos;s device</span>
+      <span style={{ fontWeight: 400, fontSize: '0.9em' }}>{t('browser_embed.author_device', { defaultValue: "on the author's device" })}</span>
     </a>
   );
 }

@@ -40,6 +40,7 @@ import { workspaceLocalKeyStore } from '../services/tracker/workspaceLocalKeySto
 import { database } from '../database/PGLiteDatabaseWorker';
 import { findWorkspaceFiles, listContentSearchRoots, searchFileContent } from '../file/QuickOpenFileScanner';
 import { quickOpenFileNameCache } from '../file/QuickOpenFileNameCache';
+import { describeWorkspaceFileOpenError } from './workspaceFileOpenError';
 
 /**
  * Deep merge utility for workspace state updates.
@@ -239,7 +240,7 @@ export function registerWorkspaceHandlers() {
             };
         } catch (error) {
             console.error('[SWITCH_FILE] Error switching workspace file:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Failed to open file';
+            const errorMessage = describeWorkspaceFileOpenError(error);
             return { error: errorMessage };
         }
     });

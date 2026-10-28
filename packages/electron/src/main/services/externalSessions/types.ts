@@ -21,7 +21,8 @@ export interface ExternalCursor {
   byteOffset: number;
   lastEntryUuid: string | null;
   fileSize: number;
-  inode: number | null;
+  /** Safe legacy numbers remain numbers; larger exact file IDs are decimal strings. */
+  inode: number | string | null;
   /** Unfinished wrappers emitted by manual/idle/cap fallback; sorted unique IDs, absent when empty. */
   codexFallbackCalls?: string[];
   /** SHA256 of bounded committed prefix/boundary samples; absent on legacy cursors. */

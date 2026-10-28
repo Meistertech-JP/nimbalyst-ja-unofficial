@@ -949,7 +949,7 @@ describe("production source -> persistence -> canonical delivery", () => {
     });
     await db.initialize();
     fixtureDb.current = db;
-    const cwd = "/workspace/project";
+    const cwd = path.join(dir, "workspace", "project");
     const logs = path.join(dir, "logs");
     const file = path.join(logs, encodeWorkspaceDir(cwd), "external.jsonl");
     source = new ClaudeCodeSource({ rootDir: logs });
@@ -1097,7 +1097,7 @@ describe("production source -> persistence -> canonical delivery", () => {
     });
     await db.initialize();
     fixtureDb.current = db;
-    const cwd = "/workspace/project";
+    const cwd = path.join(dir, "workspace", "project");
     const logs = path.join(dir, "sessions");
     const file = path.join(logs, "2026/09/15/rollout-external.jsonl");
     const index = path.join(dir, "session_index.jsonl");
@@ -1188,7 +1188,7 @@ describe("production source -> persistence -> canonical delivery", () => {
     });
     await db.initialize();
     fixtureDb.current = db;
-    const cwd = "/workspace/project";
+    const cwd = path.join(dir, "workspace", "project");
     const logs = path.join(dir, "logs");
     const file = path.join(logs, encodeWorkspaceDir(cwd), "external.jsonl");
     const header =
@@ -1294,7 +1294,7 @@ describe("production source -> persistence -> canonical delivery", () => {
         fixtureDb.current = db;
       };
       await open();
-      const cwd = "/workspace/project";
+      const cwd = path.join(dir, "workspace", "project");
       const logs = path.join(dir, "logs");
       source =
         providerId === "claude-code"

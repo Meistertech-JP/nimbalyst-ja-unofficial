@@ -13,6 +13,8 @@ import { uint8ArrayToBase64, base64ToUint8Array } from '@nimbalyst/runtime/sync/
 import { $createEmbeddedFileNode } from '@nimbalyst/runtime/editor/plugins/EmbedPlugin/EmbeddedFileNode';
 import { createNamedPageViewsController } from '@nimbalyst/runtime/editor/plugins/EmbedPlugin/namedPageViewsController';
 import { MarkdownCollabContentAdapter } from '@nimbalyst/runtime/sync/MarkdownCollabContentAdapter';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { SearchReplaceStateManager } from '@nimbalyst/runtime/plugins/SearchReplace/SearchReplaceStateManager';
 import { buildTrackerReferenceHref } from '@nimbalyst/runtime/plugins/TrackerLinkPlugin/trackerReferenceHref';
 import { decisionMembersFromComments, mountCollabEditor } from '../mount';
 import { registerEmbeddableExtension } from '@nimbalyst/runtime/editor/plugins/EmbedPlugin/embeddableExtensions';
@@ -42,6 +44,29 @@ afterEach(() => {
 });
 
 describe('in-memory collaborative editor harness', () => {
+  it('keeps the host language independent for each editor root and reacts to language changes', async () => {
+    const english = await createI18nInstance('en');
+    const japanese = await createI18nInstance('ja');
+    const mounts = [english, japanese].map((i18n) => {
+      const document = new Y.Doc();
+      withHeadlessLexicalBridge(document, { nodes: HeadlessBodyNodes }, ({ editor }) => editor.update(() => {
+        $getRoot().append($createEmbeddedFileNode({ src: '/private/preview.mockup.html', label: 'My own label', attrs: { embedType: '.mockup.html' } }));
+      }, { discrete: true }));
+      const element = globalThis.document.createElement('div');
+      globalThis.document.body.append(element);
+      const handle = mountCollabEditor({ element, source: { kind: 'in-memory', document }, user: { memberId: asTeamMemberId('member'), name: 'Member' }, i18n });
+      mountedHandles.push(handle);
+      return element;
+    });
+    await settle();
+    await waitFor(() => expect(mounts[1].querySelector('.collab-bundle-document-embed-unavailable')?.textContent).toContain('プレビュー'));
+    expect(mounts[0].textContent).toContain('preview unavailable');
+    expect(mounts[1].textContent).toContain('My own label');
+    await act(async () => { await japanese.changeLanguage('en'); });
+    await waitFor(() => expect(mounts[1].textContent).toContain('preview unavailable'));
+    expect(mounts[0].textContent).toContain('preview unavailable');
+  });
+
   it('edits named views through the browser document and withdraws the editor on teardown', async () => {
     const yDocument = new Y.Doc();
     MarkdownCollabContentAdapter.seedFromFile(yDocument, 'Preserve the type description.');
@@ -449,6 +474,7 @@ describe('in-memory collaborative editor harness', () => {
   });
 
   it('opens find in the document on Cmd+F and asks the host to save on Cmd+S, only when the host opts in', async () => {
+    const clearSearch = vi.spyOn(SearchReplaceStateManager, 'clearState');
     const mount = (findInPage: boolean, onSaveRequest?: () => void) => {
       const yDocument = new Y.Doc();
       MarkdownCollabContentAdapter.seedFromFile(yDocument, 'Find marker');
@@ -467,6 +493,12 @@ describe('in-memory collaborative editor harness', () => {
     act(() => { editable.dispatchEvent(find); });
     expect(find.defaultPrevented).toBe(true);
     await waitFor(() => expect(withFind.querySelector('[data-testid="search-input"]')).toBe(document.activeElement));
+    act(() => { editable.focus(); editable.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', metaKey: true, bubbles: true, cancelable: true })); });
+    await waitFor(() => expect(withFind.querySelector('[data-testid="search-input"]')).toBe(document.activeElement));
+    fireEvent.keyDown(withFind.querySelector('[data-testid="search-input"]')!, { key: 'Escape' });
+    await waitFor(() => expect(withFind.querySelector('[data-testid="search-input"]')).toBeNull());
+    act(() => { editable.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', metaKey: true, bubbles: true, cancelable: true })); });
+    await waitFor(() => expect(withFind.querySelector('[data-testid="search-input"]')).toBe(document.activeElement));
 
     // The editor reads Cmd on Apple platforms and Ctrl elsewhere, as Lexical decides it.
     const apple = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
@@ -483,6 +515,12 @@ describe('in-memory collaborative editor harness', () => {
     act(() => { plainEditable.dispatchEvent(browserFind); });
     expect(browserFind.defaultPrevented).toBe(false);
     expect(plain.querySelector('[data-testid="search-input"]')).toBeNull();
+    act(() => mountedHandles[0].destroy());
+    expect(clearSearch).toHaveBeenCalledWith(expect.stringMatching(/^browser-find-/));
+    const clearedId = clearSearch.mock.calls.at(-1)![0];
+    expect(SearchReplaceStateManager.getState(clearedId).isOpen).toBe(false);
+    SearchReplaceStateManager.clearState(clearedId);
+    clearSearch.mockRestore();
   });
 
   it('carries no formatting toolbar and applies the browser-host chrome', async () => {

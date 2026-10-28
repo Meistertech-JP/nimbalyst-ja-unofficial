@@ -110,9 +110,14 @@ function encodeCursor(cursor: ExternalCursor): string {
 }
 
 function normalizeCursor(cursor: ExternalCursor): ExternalCursor {
+  const inodeValid = cursor.inode === null ||
+    (typeof cursor.inode === 'number' && Number.isSafeInteger(cursor.inode) && cursor.inode >= 0) ||
+    (typeof cursor.inode === 'string' && /^[1-9][0-9]{0,19}$/.test(cursor.inode) &&
+      BigInt(cursor.inode).toString() === cursor.inode && BigInt(cursor.inode) > BigInt(Number.MAX_SAFE_INTEGER) &&
+      BigInt(cursor.inode) <= 0xffffffffffffffffn);
   if (!Number.isSafeInteger(cursor.byteOffset) || cursor.byteOffset < 0 ||
       !Number.isSafeInteger(cursor.fileSize) || cursor.fileSize < cursor.byteOffset ||
-      (cursor.inode !== null && (!Number.isSafeInteger(cursor.inode) || cursor.inode < 0)) ||
+      !inodeValid ||
       (cursor.lastEntryUuid !== null && typeof cursor.lastEntryUuid !== 'string')) {
     throw new Error('Invalid external session cursor');
   }

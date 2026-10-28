@@ -18,6 +18,12 @@ export interface JsonlEntry {
 
 export const DEFAULT_READ_BYTES = 256 * 1024;
 export const DEFAULT_LINE_BYTES = 8 * 1024 * 1024;
+/** Keep legacy cursor JSON stable while retaining exact large filesystem IDs. */
+export function cursorInode(inode: bigint): number | string {
+  return inode >= 0n && inode <= BigInt(Number.MAX_SAFE_INTEGER)
+    ? Number(inode)
+    : inode.toString();
+}
 export function positiveLimit(
   value: number | undefined,
   fallback: number
@@ -87,7 +93,8 @@ export async function readJsonl(
     const stat = await handle.stat();
     if (!stat.isFile())
       throw new Error("External session source is not a file");
-    const inode = stat.ino;
+    // Number-valued stats can round Windows file IDs before they reach the cursor.
+    const inode = cursorInode((await handle.stat({ bigint: true })).ino);
     if (
       cursor?.contentMarker !== undefined &&
       (typeof cursor.contentMarker !== "string" ||
@@ -360,9 +367,11 @@ export class AcceptedHeaderCache {
       stat = await fs.lstat(current);
       if (stat.isSymbolicLink()) return null;
     }
+    const identityStat = await fs.lstat(file, { bigint: true });
     if (
       !stat?.isFile() ||
-      stat.ino !== cached.cursor.inode ||
+      !identityStat.isFile() ||
+      cursorInode(identityStat.ino) !== cached.cursor.inode ||
       stat.size < cached.cursor.fileSize ||
       (stat.size === cached.cursor.fileSize &&
         stat.mtimeMs !== cached.mtimeMs) ||

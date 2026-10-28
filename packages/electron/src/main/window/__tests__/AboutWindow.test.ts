@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
   constructor: vi.fn(), windows: [] as any[],
 }));
 vi.mock('electron', () => ({
-  app: { getAppPath: () => '/application', isPackaged: true, getVersion: () => '0.82.3-ja.2', getLocale: () => 'en-US' },
+  app: { getAppPath: () => '/application', isPackaged: true, getVersion: () => '0.82.4-ja.1', getLocale: () => 'en-US' },
   nativeTheme: { get shouldUseDarkColors() { return state.osDark; } },
   BrowserWindow: class {
     callbacks = new Map<string, () => void>();
@@ -64,7 +64,7 @@ async function render(win: any, distinctId: string | null = 'test-support-id') {
       getTheme: async () => state.theme, getResolvedThemeSync: () => state.resolvedTheme,
       settingsGetAll: async () => ({ 'app.uiLanguage': controller.i18n.resolvedLanguage }),
       onSettingsChanged: (callback: (payload: any) => void) => { handlers.set('settings:changed', callback); return () => handlers.delete('settings:changed'); },
-      getAppVersion: async () => '0.82.3-ja.2', analytics: { getDistinctId: async () => distinctId },
+      getAppVersion: async () => '0.82.4-ja.1', analytics: { getDistinctId: async () => distinctId },
       openExternal: external, openThirdPartyNotices: notices,
     };
   } });
@@ -84,8 +84,8 @@ describe('About window display language and identity', () => {
     expect(doc.getElementById('feature-tracking')?.textContent).toContain('計画・不具合・タスク');
     expect(doc.getElementById('support-id')?.getAttribute('title')).toBe('クリックしてコピー');
     expect(doc.getElementById('support-id')?.getAttribute('aria-label')).toBe('サポートIDをコピー');
-    expect(doc.getElementById('about-base')?.textContent).toBe('公式Nimbalyst 0.82.3をベースにしています。');
-    expect(doc.querySelector('.about-version')?.textContent).toBe('バージョン 0.82.3-ja.2');
+    expect(doc.getElementById('about-base')?.textContent).toBe('公式Nimbalyst 0.82.4をベースにしています。');
+    expect(doc.querySelector('.about-version')?.textContent).toBe('バージョン 0.82.4-ja.1');
     expect(doc.querySelector('.about-copyright')?.textContent).toBe('© 2025-2026  Nimbalyst');
     expect(doc.querySelector('img')?.getAttribute('src')).toBe('nimbalyst-logo.png');
     (doc.getElementById('nimbalyst-link') as HTMLElement).click(); (doc.getElementById('third-party-notices-link') as HTMLElement).click();
@@ -101,20 +101,20 @@ describe('About window display language and identity', () => {
     expect(dom.window.document.documentElement.lang).toBe('en');
     expect(dom.window.document.body.textContent).toContain('Nimbalyst — Unofficial Japanese Edition');
     expect(dom.window.document.body.textContent).toContain('not affiliated with, endorsed by, or supported by Nimbalyst, Inc.');
-    expect(dom.window.document.getElementById('about-version')?.textContent).toBe('Version 0.82.3-ja.2');
-    expect(dom.window.document.getElementById('about-base')?.textContent).toBe('Based on official Nimbalyst 0.82.3.');
+    expect(dom.window.document.getElementById('about-version')?.textContent).toBe('Version 0.82.4-ja.1');
+    expect(dom.window.document.getElementById('about-base')?.textContent).toBe('Based on official Nimbalyst 0.82.4.');
     expect(win.setTitle).toHaveBeenLastCalledWith('About Nimbalyst — Unofficial Japanese Edition');
     const second = win.sent.length; await controller.i18n.changeLanguage('ja');
     for (const [channel, value] of win.sent.slice(second)) handlers.get(channel)?.(value);
     handlers.get('settings:changed')?.({ key: 'app.uiLanguage', value: 'ja' });
     expect(dom.window.document.documentElement.lang).toBe('ja');
-    expect(dom.window.document.getElementById('about-base')?.textContent).toBe('公式Nimbalyst 0.82.3をベースにしています。');
+    expect(dom.window.document.getElementById('about-base')?.textContent).toBe('公式Nimbalyst 0.82.4をベースにしています。');
     expect(dom.window.document.getElementById('support-id-text')?.textContent).toBe('test-support-id');
   });
   it('keeps the standalone fallback baseline accurate without a Main text model', async () => {
     const dom: { window: Window & typeof globalThis } = new JSDOM(html, { runScripts: 'dangerously', url: 'https://about.invalid/' });
     documents.push(dom); await settle();
-    expect(dom.window.document.getElementById('about-base')?.textContent).toBe('Based on official Nimbalyst 0.82.3.');
+    expect(dom.window.document.getElementById('about-base')?.textContent).toBe('Based on official Nimbalyst 0.82.4.');
   });
   it('does not copy missing support IDs and retranslates unavailable state', async () => {
     const win = open(), { dom, clipboard, handlers } = await render(win, null);

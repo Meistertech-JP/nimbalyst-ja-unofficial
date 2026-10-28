@@ -30,7 +30,6 @@ import { TrackerStateMenuFocusContext } from './TrackerStateMenu';
 import {
   LiveChip,
   openHandlers,
-  plural,
   StatementObject,
   StatusBadge,
   type ResolverProps,
@@ -101,7 +100,7 @@ function StatementsFor({ resolver, item, referenceKey }: {
                       <span className="tracker-reference-statement-basis">{statement.basisLabel}</span>
                     ) : null}
                     {statement.citationCount > 0 ? (
-                      <span className="tracker-reference-statement-citations" title={plural(statement.citationCount, 'citation')}>
+                      <span className="tracker-reference-statement-citations" title={t('references.citations', { count: statement.citationCount })}>
                         <span className="material-symbols-outlined" aria-hidden="true">format_quote</span>
                         {statement.citationCount}
                       </span>

@@ -19,6 +19,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerDataModel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 
@@ -49,6 +50,7 @@ export function TrackerNavTypeRow({
   className = '',
   ...buttonProps
 }: TrackerNavTypeRowProps) {
+  const { t } = useTranslation('tracker');
   return (
     <button
       type="button"
@@ -68,7 +70,9 @@ export function TrackerNavTypeRow({
         <MaterialSymbol icon={tracker.icon || 'checklist'} size={16} />
       </span>
       <span className="min-w-0 flex-1 text-left truncate">
-        {tracker.displayNamePlural || tracker.displayName || tracker.type}
+        {tracker === ALL_TRACKERS_NAV_MODEL
+          ? t('type_page_views.all')
+          : tracker.displayNamePlural || tracker.displayName || tracker.type}
       </span>
       <span className="shrink-0 min-w-[20px] text-right text-[10px] font-semibold tabular-nums text-nim-muted">
         {count}

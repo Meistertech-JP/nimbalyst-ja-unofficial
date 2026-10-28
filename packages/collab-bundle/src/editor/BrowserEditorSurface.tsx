@@ -12,7 +12,6 @@ import {
 } from './presenceAnnouncements';
 import type { CollabEditorPresence } from './types';
 import { openClickedPageReference } from './consoleLinkOpener';
-import { SearchReplaceStateManager } from '@nimbalyst/runtime/plugins/SearchReplace/SearchReplaceStateManager';
 
 /** Long enough to fold a reconnect's leave/rejoin pair into one message. */
 const PRESENCE_ANNOUNCE_DEBOUNCE_MS = 900;
@@ -29,8 +28,7 @@ interface BrowserEditorSurfaceProps {
 }
 
 /** Loaded with the first document that offers find, so hosts without it never pay for the bar. */
-const SearchReplaceBar = React.lazy(() =>
-  import('@nimbalyst/runtime/plugins/SearchReplace/SearchReplaceBar').then((module) => ({ default: module.SearchReplaceBar })));
+const BrowserFind = React.lazy(() => import('./BrowserFind'));
 
 const isFindShortcut = (event: React.KeyboardEvent) =>
   (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'f';
@@ -138,16 +136,16 @@ export function BrowserEditorSurface({
   findInPage = false,
 }: BrowserEditorSurfaceProps): React.JSX.Element {
   const [editor, setEditor] = React.useState<LexicalEditor | null>(null);
+  const [findRequests, setFindRequests] = React.useState(0);
   // The bar keys its state by "tab"; each mounted document is its own.
   const findId = `browser-find-${React.useId()}`;
-  React.useEffect(() => () => SearchReplaceStateManager.clearState(findId), [findId]);
   const onKeyDownCapture = (event: React.KeyboardEvent<HTMLDivElement>) => {
     releaseTabFromDocument(event);
     // Only from inside this document: the browser's own find stays everywhere else.
     if (findInPage && isFindShortcut(event)) {
       event.preventDefault();
       event.stopPropagation();
-      SearchReplaceStateManager.openAndFocus(findId);
+      setFindRequests((count) => count + 1);
     }
   };
   const editorConfig = React.useMemo(() => ({
@@ -167,9 +165,9 @@ export function BrowserEditorSurface({
       {subscribeToPresence && (
         <PresenceAnnouncements subscribeToPresence={subscribeToPresence} />
       )}
-      {findInPage && editor ? (
+      {findInPage && findRequests > 0 && editor ? (
         <React.Suspense fallback={null}>
-          <SearchReplaceBar filePath={findId} fileName="" editor={editor} />
+          <BrowserFind findId={findId} editor={editor} requests={findRequests} />
         </React.Suspense>
       ) : null}
       <DecisionOutline editor={editor} />

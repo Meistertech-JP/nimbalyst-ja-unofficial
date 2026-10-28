@@ -98,6 +98,15 @@ test('rejects internal reports and draft trees while preserving product terminol
   assert.equal(result.errors.length,2);
   assert.equal(result.review.length,0);
 });
+test('rejects generated Electron release trees without rejecting release documentation',()=>{
+  const result=auditFiles([
+    {path:'packages/electron/release-r20-current-09/win-unpacked/resources/app.asar',text:''},
+    {path:'packages/electron/release-r20-current-09/README.md',text:''},
+    {path:'packages/electron/release-notes.md',text:'Release notes'},
+    {path:'docs/release-guide.md',text:'Release guide'},
+  ]);
+  assert.deepEqual(result.errors.map(e=>e.reason),['intermediate-release-material','intermediate-release-material']);
+});
 test('flags personal paths without reproducing their values',()=>{
   const result=auditFiles([{path:'docs/guide.md',text:'C:\\Users\\example\\private\n全ファイル人口'}]);
   assert.deepEqual(result.review.map(x=>x.reason),['personal-absolute-path','audience-or-wording']);

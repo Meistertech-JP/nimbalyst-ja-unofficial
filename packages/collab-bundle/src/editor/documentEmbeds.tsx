@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { usePlacedViewAttrs } from '@nimbalyst/runtime/editor/plugins/EmbedPlugin/usePlacedViewAttrs';
 import { PlacedViewResizeFrame } from '@nimbalyst/runtime/editor/plugins/EmbedPlugin/PlacedViewResizeFrame';
 import { buildCollabUri, isCollabUri, parseCollabUri } from '@nimbalyst/collab-protocol';
@@ -63,17 +64,19 @@ export function setBrowserPlacedViewRenderer(renderer: BrowserPlacedViewRenderer
  * console view link links to its own console page.
  */
 function BrowserPlacedViewNote({ src, label }: { src: string; label: string }): React.JSX.Element {
-  const name = label || 'View';
+  const { t } = useTranslation('common');
+  const name = label || t('browser_embed.view', { defaultValue: 'View' });
   const consoleHref = /^https:/i.test(src) ? src : null;
   return <div className="collab-bundle-document-embed" contentEditable={false}>
     <div className="collab-bundle-document-embed-unavailable" data-testid="placed-view-unavailable">
-      {name}: this live view shows in the Nimbalyst desktop app.
-      {consoleHref ? <> <a href={consoleHref}>Open {name}</a></> : null}
+      {t('browser_embed.view_unavailable', { name, defaultValue: `${name}: this live view shows in the Nimbalyst desktop app.` })}
+      {consoleHref ? <> <a href={consoleHref}>{t('browser_embed.open_view', { name, defaultValue: `Open ${name}` })}</a></> : null}
     </div>
   </div>;
 }
 
 function BrowserDocumentEmbed({ src, label, nodeKey, attrs }: EmbedFrameProps): React.JSX.Element {
+  const { t } = useTranslation('common');
   const render = React.useContext(BrowserDocumentEmbedContext);
   const renderFile = React.useContext(BrowserFileEmbedContext);
   const onAttrsChange = usePlacedViewAttrs(nodeKey);
@@ -85,8 +88,9 @@ function BrowserDocumentEmbed({ src, label, nodeKey, attrs }: EmbedFrameProps): 
   }
   const artifact = sharedArtifact(src);
   const preview = artifact ? render?.(nodeKey, artifact, { label, attrs }) : isFilePath(src) ? renderFile?.({ src, label, attrs }) ?? null : null;
+  const name = label || t('browser_embed.shared_document', { defaultValue: 'Shared document' });
   return <div className="collab-bundle-document-embed" contentEditable={false}>
-    {preview ?? <div className="collab-bundle-document-embed-unavailable">{label || 'Shared document'}: preview unavailable in this view.</div>}
+    {preview ?? <div className="collab-bundle-document-embed-unavailable">{t('browser_embed.preview_unavailable', { label: name, defaultValue: `${name}: preview unavailable in this view.` })}</div>}
   </div>;
 }
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { I18nextProvider } from 'react-i18next';
 import {
   $getRoot,
   $setSelection,
@@ -331,7 +332,7 @@ export function mountCollabEditor(options: CollabEditorMountOptions): CollabEdit
       },
     };
 
-    root.render(
+    const content = (
       <BundleEditorErrorBoundary onError={(error) => options.onError?.(error)}>
         <BrowserDocumentEmbedContext.Provider value={options.renderDecisionArtifact}>
         <BrowserFileEmbedContext.Provider value={options.renderFileEmbed}>
@@ -352,8 +353,9 @@ export function mountCollabEditor(options: CollabEditorMountOptions): CollabEdit
           </TrackerReferenceResolverProvider>
         </BrowserFileEmbedContext.Provider>
         </BrowserDocumentEmbedContext.Provider>
-      </BundleEditorErrorBoundary>,
+      </BundleEditorErrorBoundary>
     );
+    root.render(options.i18n ? <I18nextProvider i18n={options.i18n}>{content}</I18nextProvider> : content);
   }
 
   renderEditor();

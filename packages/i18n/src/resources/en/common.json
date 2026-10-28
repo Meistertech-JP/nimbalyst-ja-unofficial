@@ -1,5 +1,6 @@
 {
   "cancel": "Cancel",
+  "browser_embed": { "preview_unavailable": "{{label}}: preview unavailable in this view.", "shared_document": "Shared document", "view": "View", "view_unavailable": "{{name}}: this live view shows in the Nimbalyst desktop app.", "open_view": "Open {{name}}", "author_device_title": "A Personal page, kept on its author's device. Opens in Nimbalyst there.", "author_device": "on the author's device" },
   "editor_breadcrumb": "Breadcrumb",
   "file_path_breadcrumb_title": "Go to {{name}} in file tree",
   "html_export": {

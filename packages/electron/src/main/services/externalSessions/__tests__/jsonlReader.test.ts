@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { readJsonl, validateSourcePath, contentMarkerAt } from "../jsonlReader";
+import { AcceptedHeaderCache, readJsonl, validateSourcePath, contentMarkerAt, cursorInode } from "../jsonlReader";
 import type { ExternalCursor } from "../types";
 let dir: string;
 beforeEach(async () => {
@@ -11,6 +11,33 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await fs.rm(dir, { recursive: true, force: true });
+});
+
+it("keeps safe inode values compatible and represents larger IDs exactly", () => {
+  expect(cursorInode(0n)).toBe(0);
+  expect(cursorInode(9007199254740991n)).toBe(9007199254740991);
+  expect(cursorInode(9007199254740992n)).toBe("9007199254740992");
+  expect(cursorInode(19140298416820751n)).toBe("19140298416820751");
+  expect(cursorInode(19140298416820750n)).not.toBe(cursorInode(19140298416820751n));
+});
+
+it("reuses a real-file header on append but rejects an identical replacement", async () => {
+  const file = path.join(dir, "cache.jsonl");
+  const line = '{"uuid":"first"}\n';
+  await fs.writeFile(file, line);
+  const first = await readJsonl(file, null);
+  const stat = await fs.stat(file);
+  const ref = { providerId: "openai-codex" as const, externalId: "test", workspacePath: dir, filePath: file, updatedAt: stat.mtimeMs };
+  const cache = new AcceptedHeaderCache();
+  cache.set(ref, first.cursor);
+  await fs.appendFile(file, '{"uuid":"second"}\n');
+  expect(await cache.get(dir, file, dir)).toMatchObject({ externalId: "test" });
+  const before = await fs.stat(file, { bigint: true });
+  await fs.rename(file, `${file}.old`);
+  await fs.writeFile(file, line + '{"uuid":"second"}\n');
+  const after = await fs.stat(file, { bigint: true });
+  expect(after.ino).not.toBe(before.ino);
+  expect(await cache.get(dir, file, dir)).toBeNull();
 });
 
 it("commits only complete lines, retaining partial UTF8 and bounded unread data", async () => {
@@ -84,7 +111,7 @@ it("rejects nonabsolute source references even when they resolve to a valid file
   const file = path.join(dir, "log.jsonl");
   await fs.writeFile(file, "{}\n");
   await expect(
-    validateSourcePath(dir, path.relative(process.cwd(), file))
+    validateSourcePath(dir, path.relative(dir, file))
   ).rejects.toThrow("absolute");
 });
 

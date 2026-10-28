@@ -7,6 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { useFloating } from '@floating-ui/react';
 import { useScrollableMenuFloating } from '../../../ui/floating/useScrollableMenuFloating';
 import { usePostHog } from 'posthog-js/react';
@@ -183,6 +184,7 @@ export function useTrackerRows({
   resolveRecordById,
 }: UseTrackerRowsOptions): UseTrackerRowsResult {
   const posthog = usePostHog();
+  const { t } = useTranslation('tracker');
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<EditingCellRef | null>(null);
@@ -932,13 +934,13 @@ export function useTrackerRows({
       }
     }
     return [
-      { value: 'to-do', label: 'To Do' },
-      { value: 'in-progress', label: 'In Progress' },
-      { value: 'in-review', label: 'In Review' },
-      { value: 'done', label: 'Done' },
-      { value: 'blocked', label: 'Blocked' },
+      { value: 'to-do', label: t('table.statuses.to_do') },
+      { value: 'in-progress', label: t('table.statuses.in_progress') },
+      { value: 'in-review', label: t('table.statuses.in_review') },
+      { value: 'done', label: t('table.statuses.done') },
+      { value: 'blocked', label: t('table.statuses.blocked') },
     ];
-  }, [activeTypeFilter]);
+  }, [activeTypeFilter, t]);
 
   return {
     selectedIds,

@@ -69,6 +69,23 @@ afterEach(() => {
 });
 
 describe("WorkspaceManager tutorial actions", () => {
+  it.each([
+    ['en', 'Try the interactive tutorial New'],
+    ['ja', '操作チュートリアルを試す 新着'],
+  ] as const)("excludes decorative icon ligatures from the %s welcome card's accessibility tree", async (locale, buttonName) => {
+    const i18n = await createI18nInstance(locale);
+    render(
+      <UiLanguageProvider i18n={i18n} preference={locale} systemLocale={locale}>
+        <WorkspaceManager />
+      </UiLanguageProvider>,
+    );
+    const grid = await screen.findByTestId("workspace-manager-welcome-feature-grid");
+    const icons = grid.querySelectorAll(".workspace-manager-welcome-feature-icon span");
+    expect(icons).toHaveLength(4);
+    for (const icon of icons) expect(icon.getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByRole("button", { name: buttonName })).not.toBeNull();
+  });
+
   it("starts the tutorial from the welcome card CTA", async () => {
     renderEnglish(<WorkspaceManager />);
 

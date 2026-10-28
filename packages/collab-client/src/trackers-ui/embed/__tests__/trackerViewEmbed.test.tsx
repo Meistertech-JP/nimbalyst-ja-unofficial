@@ -10,7 +10,7 @@ import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { I18nextProvider } from 'react-i18next';
 import { trackerRecordToItem, type TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
-import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
+import { globalRegistry, READINESS_FILTER_FIELD, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import {
   createDefaultViewDefinition,
   serializeSharedSavedView,
@@ -100,6 +100,38 @@ afterAll(() => {
 });
 
 describe('TrackerViewEmbed', () => {
+  it('localizes an unnamed out-of-scope marks view when the language changes', async () => {
+    const i18n = await createI18nInstance('ja');
+    renderWithI18n(
+      <TrackersUIProvider dataSource={fakeSource()} identity={null}>
+        <PlacedViewEmbed target={{ kind: 'marks', marks: 'all', scope: 'local' }} label="" attrs={{}} reach={{ local: false, team: null }} />
+      </TrackersUIProvider>,
+      i18n,
+    );
+    expect(screen.getByTestId('placed-view-out-of-scope').textContent).toContain('ビュー：');
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByTestId('placed-view-out-of-scope').textContent).toContain('View');
+  });
+  it('updates placed-view filter labels on language change without changing filter values', async () => {
+    const i18n = await createI18nInstance('en');
+    const change = vi.fn();
+    renderWithI18n(
+      <TrackersUIProvider dataSource={fakeSource()} identity={null}>
+        <PlacedViewEmbed target={{ kind: 'type', typeId: 'ev-target' }} label="Targets" attrs={{}} onAttrsChange={change} />
+      </TrackersUIProvider>,
+      i18n,
+    );
+    await screen.findByTestId('tracker-saved-view-embed');
+    fireEvent.click(screen.getByRole('button', { name: 'View settings' }));
+    fireEvent.click(screen.getByRole('button', { name: /Filter/ }));
+    fireEvent.change(screen.getByLabelText('Filter field'), { target: { value: READINESS_FILTER_FIELD } });
+    expect(screen.getByRole('option', { name: 'Ready' }).getAttribute('value')).toBe('ready');
+    await act(async () => { await i18n.changeLanguage('ja'); });
+    expect(screen.getByRole('option', { name: '準備完了' }).getAttribute('value')).toBe('ready');
+    fireEvent.change(screen.getByLabelText('フィルター値'), { target: { value: 'ready' } });
+    fireEvent.click(screen.getByRole('button', { name: /フィルターを追加/ }));
+    expect(change).toHaveBeenLastCalledWith({ filter: `${READINESS_FILTER_FIELD}:=ready` });
+  });
   it('opens the explored definition full size without changing the source page', async () => {
     const open = vi.fn();
     render(<TrackersUIProvider dataSource={fakeSource()} identity={null}><PlacedViewEmbed target={{ kind: 'type', typeId: 'ev-target' }} label="Targets" attrs={{ custom: 'preserved' }} onOpenFullView={open} /></TrackersUIProvider>);
