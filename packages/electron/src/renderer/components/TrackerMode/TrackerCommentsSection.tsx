@@ -7,6 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TrackerIdentity } from '@nimbalyst/runtime';
 import type { TrackerCommentEntry } from '@nimbalyst/tracker-engine';
 import {
@@ -22,6 +23,7 @@ export interface TrackerCommentsSectionProps {
 }
 
 export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({ itemId, comments }) => {
+  const { t } = useTranslation('sessions');
   const [identity, setIdentity] = useState<TrackerIdentity | null>(null);
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export const TrackerCommentsSection: React.FC<TrackerCommentsSectionProps> = ({ 
       comments={comments}
       identity={identity}
       mutate={mutate}
-      formatTimestamp={getRelativeTimeString}
+      formatTimestamp={(timestamp) => getRelativeTimeString(timestamp, (key, options) => t(key, options))}
     />
   );
 };

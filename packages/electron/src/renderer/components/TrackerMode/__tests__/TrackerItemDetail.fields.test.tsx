@@ -157,6 +157,19 @@ function renderPage({ collabScope = { scopeKey: '/ws' } as unknown } = {}) {
 }
 
 describe('TrackerItemDetail metadata region', () => {
+  it('updates activity timestamps when the display language changes', async () => {
+    const i18n = await createI18nInstance('ja');
+    const timestamp = Date.now() - 3 * 60 * 60 * 1000;
+    act(() => { store.set(replaceAllTrackerItemsAtom, [{ ...ITEM, system: { ...ITEM.system, activity: [{ id: 'a1', action: 'created', timestamp }] } } as TrackerRecord]); });
+    render(
+      <I18nextProvider i18n={i18n}><Provider store={store}>
+        <TrackerItemDetail itemId={ITEM.id} onClose={() => {}} />
+      </Provider></I18nextProvider>,
+    );
+    expect(await screen.findByText('3時間前')).toBeDefined();
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByText('3 hrs ago')).toBeDefined();
+  });
   it('translates known sync states while preserving unknown states and live language switching', async () => {
     const i18n = await createI18nInstance('en');
     for (const [state, en, ja] of [['local', 'Local', 'ローカル'], ['pending', 'Pending', '同期待ち'], ['synced', 'Synced', '同期済み']]) {

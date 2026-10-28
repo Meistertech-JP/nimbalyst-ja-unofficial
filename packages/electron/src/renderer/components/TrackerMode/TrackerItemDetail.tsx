@@ -169,6 +169,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
   onBodyEditorReady,
 }) => {
   const { t } = useTranslation('tracker');
+  const { t: tSessions } = useTranslation('sessions');
   // Content-focus layout: collapse metadata sections and let the collaborative
   // body fill the surface. Toggling this does NOT remount the editor (same
   // NimbalystEditor key), so the Y.Doc/provider is preserved. Controlled by the
@@ -1316,7 +1317,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                   <span className="text-nim-faint">
                     {formatTrackerActivity(entry, t)}
                   </span>
-                  <span className="text-nim-faint ml-auto shrink-0">{getRelativeTimeString(entry.timestamp)}</span>
+                  <span className="text-nim-faint ml-auto shrink-0">{getRelativeTimeString(entry.timestamp, (key, options) => tSessions(key, options))}</span>
                 </div>
               ))}
             </div>
