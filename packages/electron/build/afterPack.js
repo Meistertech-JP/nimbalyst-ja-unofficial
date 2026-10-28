@@ -32,6 +32,8 @@ exports.default = async function(context) {
     ? path.join(appOutDir, `${packager.appInfo.productName}.app`, 'Contents/Resources')
     : path.join(appOutDir, 'resources');
 
+  validatePackagedRipgrep(resourcesDir, platformName, arch);
+
   // Prune unused platform binaries from claude-agent-sdk vendor/ripgrep directory
   // The SDK vendors ripgrep binaries for all 6 platform/arch combos (~61MB total).
   // We only need the one matching the build target.
@@ -400,6 +402,27 @@ function configureWindowsNsisCompression(platformName, arch, environment = proce
   if (platformName !== 'win32' || arch !== 'x64') return false;
   environment.ELECTRON_BUILDER_7Z_FILTER = 'BCJ';
   return true;
+}
+
+// File existence alone does not detect truncated executables. For native
+// Windows builds exercise the exact binary packaged for file search.
+exports.validatePackagedRipgrep = validatePackagedRipgrep;
+function validatePackagedRipgrep(resourcesDir, platformName, arch, host = {
+  platform: process.platform, arch: process.arch, spawn: spawnSync,
+}) {
+  if (platformName !== 'win32') return 'not-applicable';
+  const binary = path.join(resourcesDir, 'app.asar.unpacked', 'node_modules', '@vscode', 'ripgrep', 'bin', 'rg.exe');
+  if (!fs.existsSync(binary)) throw new Error(`AfterPack: packaged ripgrep is missing: ${binary}`);
+  if (host.platform !== platformName || host.arch !== arch) {
+    console.warn(`AfterPack: packaged ripgrep exists but cannot be executed on ${host.platform}-${host.arch}; validate it on ${platformName}-${arch}.`);
+    return 'not-executed';
+  }
+  const result = host.spawn(binary, ['--version'], { encoding: 'utf8', timeout: 10000, windowsHide: true });
+  if (result.error || result.status !== 0 || !/^ripgrep\s/m.test(result.stdout || '')) {
+    throw new Error(`AfterPack: packaged ripgrep failed its execution check: ${result.error?.message || result.stderr || `exit ${result.status}`}`);
+  }
+  console.log('AfterPack: packaged ripgrep execution check passed');
+  return 'executed';
 }
 
 function getDirSize(dirPath) {
