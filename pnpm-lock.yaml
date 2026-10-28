@@ -180,6 +180,7 @@ patchedDependencies:
   '@lexical/yjs@0.44.0': 81c6b5edf6a448a1b58989a2f66ee89f52e78871c1dba49750e93b7739de3020
   '@revolist/revogrid@4.21.4': c1fbe0323c46436ce9bf37b5f96fbeff48a5755ed400b4452b80555a92e728dd
   app-builder-lib@26.15.3: 15db002513a1606730bfa3575668ce8edccfbcdd5b3381e48768ccf73764989e
+  fd-slicer@1.1.0: aa254d572a4bd29b59b3176218f695609e14e9add1a71ade56cd8fc885f4102f
   ghostty-web@0.4.0-next.20.g1858a59: a70c3bb0f157195d17505fc2837ad9b7a9477e0a282265838ce3da4b896ca413
   react-dom@19.2.7: ae8a3da582fb1e2f191ccdf6230837b3647f17abb2c7c203bd45dcd04b8e8e2e
 
@@ -15096,7 +15097,7 @@ snapshots:
     dependencies:
       format: 0.2.2
 
-  fd-slicer@1.1.0:
+  fd-slicer@1.1.0(patch_hash=aa254d572a4bd29b59b3176218f695609e14e9add1a71ade56cd8fc885f4102f):
     dependencies:
       pend: 1.2.0
 
@@ -18954,7 +18955,7 @@ snapshots:
   yauzl@2.10.0:
     dependencies:
       buffer-crc32: 0.2.13
-      fd-slicer: 1.1.0
+      fd-slicer: 1.1.0(patch_hash=aa254d572a4bd29b59b3176218f695609e14e9add1a71ade56cd8fc885f4102f)
 
   yjs@13.6.32:
     dependencies:

@@ -1,0 +1,30 @@
+diff --git a/index.js b/index.js
+--- a/index.js
++++ b/index.js
+@@ -90,0 +91 @@ function ReadStream(context, options) {
++  this.rangeEnded = false;
+@@ -95 +96 @@ ReadStream.prototype._read = function(n) {
+-  if (self.destroyed) return;
++  if (self.destroyed || self.rangeEnded) return;
+@@ -102 +103 @@ ReadStream.prototype._read = function(n) {
+-    self.destroyed = true;
++    self.rangeEnded = true;
+@@ -110,0 +112 @@ ReadStream.prototype._read = function(n) {
++      if (self.destroyed) return cb();
+@@ -114 +116 @@ ReadStream.prototype._read = function(n) {
+-        self.destroyed = true;
++        self.rangeEnded = true;
+@@ -126,6 +128,7 @@ ReadStream.prototype._read = function(n) {
+-ReadStream.prototype.destroy = function(err) {
+-  if (this.destroyed) return;
+-  err = err || new Error("stream destroyed");
+-  this.destroyed = true;
+-  this.emit('error', err);
+-  this.context.unref();
++ReadStream.prototype._destroy = function(err, callback) {
++  if (!this.rangeEnded) {
++    this.rangeEnded = true;
++    err = err || new Error("stream destroyed");
++    this.context.unref();
++  }
++  callback(err);
