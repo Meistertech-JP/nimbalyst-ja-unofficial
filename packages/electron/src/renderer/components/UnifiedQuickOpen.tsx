@@ -1027,6 +1027,7 @@ const SharedDocsPane: React.FC<SharedDocsPaneProps> = memo(({
   onClose,
 }) => {
   const { t } = useTranslation('agents');
+  const { t: tSessions } = useTranslation('sessions');
   const documents = useAtomValue(sharedDocumentsAtom);
   const folders = useAtomValue(sharedFoldersAtom);
   const favorites = useAtomValue(collabFavoritesAtom);
@@ -1181,7 +1182,7 @@ const SharedDocsPane: React.FC<SharedDocsPaneProps> = memo(({
                     {getSharedDocumentDisplayName(doc.title, doc.documentId)}
                   </div>
                   <div className="text-xs text-nim-faint mt-0.5">
-                    {getRelativeTimeString(doc.updatedAt ?? doc.createdAt ?? Date.now())}
+                    {getRelativeTimeString(doc.updatedAt ?? doc.createdAt ?? Date.now(), (key, options) => tSessions(key, options))}
                   </div>
                 </div>
                 {isChanged && (
@@ -1868,6 +1869,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
   onClose,
 }) => {
   const { t } = useTranslation('agents');
+  const { t: tSessions } = useTranslation('sessions');
   const [allSessions, setAllSessions] = useState<SessionItem[]>([]);
   const [fileFilteredIds, setFileFilteredIds] = useState<string[] | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -2230,7 +2232,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
                     )}
                   </div>
                   <div className="text-xs text-nim-faint mt-0.5">
-                    {getRelativeTimeString(session.updatedAt)}
+                    {getRelativeTimeString(session.updatedAt, (key, options) => tSessions(key, options))}
                   </div>
                 </div>
                 <div className="shrink-0 flex items-center gap-1.5 ml-auto">
@@ -2353,6 +2355,7 @@ const PromptsPane: React.FC<PromptsPaneProps> = memo(({
   onClose,
 }) => {
   const { t } = useTranslation('agents');
+  const { t: tSessions } = useTranslation('sessions');
   const [allPrompts, setAllPrompts] = useState<PromptItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -2527,7 +2530,7 @@ const PromptsPane: React.FC<PromptsPaneProps> = memo(({
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 ml-auto">{getRelativeTimeString(prompt.createdAt)}</span>
+                  <span className="shrink-0 ml-auto">{getRelativeTimeString(prompt.createdAt, (key, options) => tSessions(key, options))}</span>
                 </div>
               </div>
             </li>
@@ -3105,6 +3108,7 @@ const TrackersPane: React.FC<TrackersPaneProps> = memo(({
   onClose,
 }) => {
   const { t } = useTranslation('agents');
+  const { t: tSessions } = useTranslation('sessions');
   const [items, setItems] = useState<TrackerItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [semanticResultIds, setSemanticResultIds] = useState<string[]>([]);
@@ -3313,7 +3317,7 @@ const TrackersPane: React.FC<TrackersPaneProps> = memo(({
                   {it.updated && (
                     <>
                       <span className="text-nim-faint">·</span>
-                      <span>{getRelativeTimeString(Date.parse(it.updated))}</span>
+                      <span>{getRelativeTimeString(Date.parse(it.updated), (key, options) => tSessions(key, options))}</span>
                     </>
                   )}
                 </div>

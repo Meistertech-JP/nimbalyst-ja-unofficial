@@ -115,6 +115,7 @@ const FeedbackBacklinkRows: React.FC<FeedbackBacklinkRowsProps> = ({
   onOpen,
 }) => {
   const { t } = useTranslation('feedback');
+  const { t: tSessions } = useTranslation('sessions');
   return (
   <div className="feedback-backlink-rows space-y-0.5">
     {entries.map((entry) => {
@@ -152,7 +153,7 @@ const FeedbackBacklinkRows: React.FC<FeedbackBacklinkRowsProps> = ({
                 total: entry.progress.totalRecipientCount,
               })}</span>
               {author && <span>{author}</span>}
-              <span>{getRelativeTimeString(entry.updatedAt)}</span>
+              <span>{getRelativeTimeString(entry.updatedAt, (key, options) => tSessions(key, options))}</span>
             </span>
           </span>
         </button>

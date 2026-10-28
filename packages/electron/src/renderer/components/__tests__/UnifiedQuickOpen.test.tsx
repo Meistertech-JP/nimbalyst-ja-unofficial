@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { Provider as JotaiProvider, createStore } from 'jotai';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { I18nextProvider } from 'react-i18next';
 import { asTeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 import { activeWorkspacePathAtom } from '../../store/atoms/openProjects';
 import {
@@ -380,6 +381,59 @@ describe('UnifiedQuickOpen — Projects tab', () => {
       expect(screen.getByRole('tab', { name: /Trackers/ }).getAttribute('aria-selected')).toBe('true');
       screen.getByPlaceholderText('custom-type');
     });
+  });
+});
+
+describe('UnifiedQuickOpen relative timestamps', () => {
+  it('switches shared document timestamps with the display language', async () => {
+    setupElectronApiMock();
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    const i18n = await createI18nInstance('ja');
+    const store = createStore();
+    store.set(activeWorkspacePathAtom, WORKSPACE);
+    activateTeam(store);
+    store.set(sharedDocumentsAtom, [sharedDoc('doc-time', 'Document', { updatedAt: Date.now() - 3 * 60 * 60 * 1000 })]);
+    render(<I18nextProvider i18n={i18n}><JotaiProvider store={store}>
+      <UnifiedQuickOpen isOpen onClose={vi.fn()} workspacePath={WORKSPACE} initialTab="team" onFileSelect={vi.fn()} onSessionSelect={vi.fn()} onPromptSelect={vi.fn()} />
+    </JotaiProvider></I18nextProvider>);
+    expect(await screen.findByText('3時間前')).toBeDefined();
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByText('3 hrs ago')).toBeDefined();
+  });
+
+  it('switches prompt timestamps with the display language', async () => {
+    const { listUserPrompts } = setupElectronApiMock();
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    listUserPrompts.mockResolvedValue({ success: true, prompts: [{ id: 'prompt-1', sessionId: 'session-1', content: 'Example prompt', createdAt: Date.now() - 3 * 60 * 60 * 1000, sessionTitle: 'Session', provider: 'claude-code', promptActor: 'human' }] });
+    const i18n = await createI18nInstance('ja');
+    render(<I18nextProvider i18n={i18n}><JotaiProvider store={createStore()}>
+      <UnifiedQuickOpen isOpen onClose={vi.fn()} workspacePath={WORKSPACE} initialTab="prompts" onFileSelect={vi.fn()} onSessionSelect={vi.fn()} onPromptSelect={vi.fn()} />
+    </JotaiProvider></I18nextProvider>);
+    expect(await screen.findByText('3時間前')).toBeDefined();
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(screen.getByText('3 hrs ago')).toBeDefined();
+  });
+
+  it.each(['sessions', 'trackers'] as const)('switches %s timestamps with the display language', async (tab) => {
+    const timestamp = Date.now() - 3 * 60 * 60 * 1000;
+    const { invoke } = setupElectronApiMock([{
+      id: 'item-1', title: 'Tracker item', type: 'bug', typeTags: [], status: 'open', priority: 'high', tags: [], archived: false, updated: new Date(timestamp).toISOString(),
+    }]);
+    const originalInvoke = invoke.getMockImplementation()!;
+    invoke.mockImplementation((channel: string, ...args: unknown[]) => channel === 'sessions:list'
+      ? Promise.resolve({ success: true, sessions: [{ id: 'session-1', title: 'Session', provider: 'claude-code', updatedAt: timestamp }] })
+      : originalInvoke(channel, ...args));
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    const i18n = await createI18nInstance('ja');
+    render(<I18nextProvider i18n={i18n}><JotaiProvider store={createStore()}>
+      <UnifiedQuickOpen isOpen onClose={vi.fn()} workspacePath={WORKSPACE} initialTab={tab} onFileSelect={vi.fn()} onSessionSelect={vi.fn()} onPromptSelect={vi.fn()} />
+    </JotaiProvider></I18nextProvider>);
+    const title = await screen.findByText(tab === 'sessions' ? 'Session' : 'Tracker item');
+    const row = title.closest('li');
+    expect(row).not.toBeNull();
+    expect(within(row!).getByText('3時間前')).toBeDefined();
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(within(row!).getByText('3 hrs ago')).toBeDefined();
   });
 });
 

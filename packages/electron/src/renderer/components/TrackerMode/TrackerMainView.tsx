@@ -192,6 +192,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
   onExitSavedView,
 }) => {
   const { t } = useTranslation('tracker');
+  const { t: tSessions } = useTranslation('sessions');
   const trackerWorkspaceErrorMessages = useMemo<TrackerWorkspaceErrorMessages>(() => ({
     itemNotLoaded: t('main_extra.launch_item_not_loaded'),
     wrongWorkspace: (itemWorkspace, activeWorkspace) => t('main_extra.launch_item_wrong_workspace', {
@@ -453,9 +454,9 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
       id: session.id,
       title: session.title || t('detail_extra.untitled_session'),
       provider: session.provider,
-      timeLabel: getRelativeTimeString(session.updatedAt),
+      timeLabel: getRelativeTimeString(session.updatedAt, (key, options) => tSessions(key, options)),
     }));
-  }, [store, t]);
+  }, [store, t, tSessions]);
 
   /** Launch a new AI session linked to a tracker item */
   const handleLaunchSession = useCallback(async (trackerItemId: string) => {
