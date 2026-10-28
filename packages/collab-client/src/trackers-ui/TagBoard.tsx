@@ -79,7 +79,7 @@ export const TagBoard: React.FC<TagBoardProps> = ({
                   className="text-nim-faint shrink-0"
                 />
                 <span className="text-xs font-semibold text-nim truncate">
-                  {col.tag === null ? 'Untagged' : `#${col.label}`}
+                  {col.tag === null ? t('tag_board.untagged') : `#${col.label}`}
                 </span>
                 <span className="text-[10px] font-semibold text-nim-faint ml-auto">{col.items.length}</span>
               </div>
