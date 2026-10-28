@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildSync } from 'esbuild';
@@ -53,9 +53,13 @@ it('terminates an active SQLite worker without aborting its parent process', () 
     })().catch(e => { console.error(e); process.exitCode = 1; });
   `;
   try {
+    // Windows limits command-line length; keep the complete worker program in
+    // the test's isolated directory so the subprocess runs the same assertions.
+    const scriptPath = path.join(temp, 'worker-termination.cjs');
+    writeFileSync(scriptPath, script);
     // ~15s alone; 100 fresh databases ran past 25s under a loaded full suite. The
     // bound only stops a hung child, so it is generous rather than tight.
-    const result = spawnSync(process.execPath, ['-e', script], {
+    const result = spawnSync(process.execPath, [scriptPath], {
       timeout: 75_000, encoding: 'utf8', maxBuffer: 1024 * 1024,
       env: { ...process.env, NIMBALYST_BETTER_SQLITE3_NATIVE: '' },
     });
