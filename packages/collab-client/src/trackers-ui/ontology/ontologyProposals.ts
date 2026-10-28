@@ -15,6 +15,7 @@
  * and render.
  */
 import type { LabelRegistry } from '@nimbalyst/tracker-schema';
+import type { PartialWriteReason } from './partialWriteNotice';
 import { claimPredicate, entityKind, type HealthItem, type KnowledgeGraph } from './ontologyKnowledge';
 import {
   LABEL_CHANGE_TYPES,
@@ -37,10 +38,9 @@ export const ONTOLOGY_PROPOSAL_TYPE = 'ontology-proposal';
 export type ProposalStatus = 'proposed' | 'accepted' | 'applied' | 'rejected' | 'undone';
 export type ChangeDecision = 'pending' | 'accepted' | 'rejected';
 
-interface ChangeBase {
+interface ChangeBase extends PartialWriteReason {
   /** Unique within the proposal. */
   id: string;
-  reason?: string;
   decision?: ChangeDecision;
   decidedBy?: string;
   decidedAt?: string;

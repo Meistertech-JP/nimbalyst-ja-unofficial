@@ -1655,6 +1655,7 @@
     "how_they_connect": "How they connect"
   },
   "ontology_proposals": {
+    "partial_write_notice": "Partly applied ({{executed}} of {{total}} writes) before an error; undo reverses what ran.",
     "drawer_label": "Ontology proposal",
     "proposal_kicker": "Proposal",
     "waiting_title": "Waiting for the proposal",

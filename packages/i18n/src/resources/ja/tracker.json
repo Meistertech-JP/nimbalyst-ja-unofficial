@@ -1655,6 +1655,7 @@
     "how_they_connect": "項目間のつながり"
   },
   "ontology_proposals": {
+    "partial_write_notice": "エラー発生前に{{total}}件中{{executed}}件を適用しました。取り消しで適用済みの操作を元に戻します。",
     "drawer_label": "オントロジー提案",
     "proposal_kicker": "提案",
     "waiting_title": "提案を待っています",

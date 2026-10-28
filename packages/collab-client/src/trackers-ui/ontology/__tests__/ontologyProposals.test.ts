@@ -136,7 +136,7 @@ test('apply writes accepted changes through the tracker commands, keeps rejected
 });
 
 test('a write that fails part-way records undo for the writes that ran', async () => {
-  const store = room([...knowledgeFixture(), proposal([{ id: 'r', type: 'reclassify-pages', toKind: 'topic', pageIds: ['Blog strategy', 'Pricing'], decision: 'accepted' }])]);
+  const store = room([...knowledgeFixture(), proposal([{ id: 'r', type: 'reclassify-pages', toKind: 'topic', pageIds: ['Blog strategy', 'Pricing'], decision: 'accepted', reason: 'User reason' }])]);
   let calls = 0;
   const failing: WriteContext['command'] = async (input) => {
     if (input.type === 'update-item' && input.input.itemId !== 'P1' && ++calls === 2) throw new Error('room refused');
@@ -145,9 +145,13 @@ test('a write that fails part-way records undo for the writes that ran', async (
   const result = await applyAcceptedChanges(store.byId.get('P1')!, buildKnowledgeGraph(store.records()), env(), context(failing));
   expect(result).toMatchObject({ applied: [], error: 'r: room refused', status: 'accepted' });
   expect(store.byId.get('Blog strategy')!.fields.kind).toBe('topic');
+  const saved = parseProposalChanges(store.byId.get('P1')!.fields.changes).changes[0];
+  expect(saved.reason).toBe('User reason\nPartly applied (1 of 2 writes) before an error; undo reverses what ran.');
+  expect(saved.nimbalystJaPartialWrites).toEqual([{ start: 'User reason\n'.length, executed: 1, total: 2 }]);
   await undoAppliedChanges(store.byId.get('P1')!, context(store.command));
   expect(store.byId.get('Blog strategy')!.fields.kind).toBe('concept');
   expect(store.byId.get('Pricing')!.fields.kind).toBe('concept');
+  expect(parseProposalChanges(store.byId.get('P1')!.fields.changes).changes[0]).toMatchObject({ reason: saved.reason, nimbalystJaPartialWrites: saved.nimbalystJaPartialWrites });
 });
 
 test('label changes: add-label waits on an agent until the registry has it; apply-label writes labels and undoes them', async () => {

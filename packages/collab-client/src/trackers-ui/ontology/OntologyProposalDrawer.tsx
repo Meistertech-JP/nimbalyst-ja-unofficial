@@ -7,6 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { displayPartialWriteReason } from './partialWriteNotice';
 import {
   FloatingFocusManager,
   FloatingOverlay,
@@ -329,7 +330,7 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
             {live && <> · {t('ontology_proposals.applied_status')}</>}
             {change.undoneAt && !live && <> · {t('ontology_proposals.undone_status')}</>}
           </div>
-          {change.reason && <div className="ontology-change-meta">{change.reason}</div>}
+          {change.reason && <div className="ontology-change-meta">{displayPartialWriteReason(change, (key, options) => t(key, options))}</div>}
         </div>
       </div>
       {preview && <div className="ontology-change-indent"><PageLinks pages={plan.pages} onOpenItem={onOpenItem} limit={40} /></div>}

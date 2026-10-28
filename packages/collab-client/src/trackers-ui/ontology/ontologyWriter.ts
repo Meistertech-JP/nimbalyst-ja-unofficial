@@ -8,6 +8,7 @@
  * so a half-applied change can always be reversed.
  */
 import type { TrackerDataCommand } from '../../trackers/dataSource';
+import { appendPartialWriteNotice } from './partialWriteNotice';
 import type { KnowledgeGraph } from './ontologyKnowledge';
 import { ontologyFieldValue, type OntologyRecordLike } from './ontologyRecords';
 import {
@@ -128,7 +129,7 @@ export async function applyAcceptedChanges<T extends OntologyRecordLike>(
       undo.entries.push({ changeId: change.id, appliedAt: at, ...(context.actor ? { appliedBy: context.actor } : {}), ops: ranUndo });
     }
     if (result.error) {
-      if (executed > 0) change.reason = `${change.reason ? `${change.reason}\n` : ''}Partly applied (${executed} of ${plan.ops.length} writes) before an error; undo reverses what ran.`;
+      if (executed > 0) appendPartialWriteNotice(change, executed, plan.ops.length);
       break;
     }
     change.appliedAt = at;
