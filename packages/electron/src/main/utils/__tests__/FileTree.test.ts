@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { stat } from 'fs/promises';
+import { readdir, stat } from 'fs/promises';
 import { getFolderContents, listFolderFilesRecursive } from '../FileTree';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -8,7 +8,7 @@ import * as os from 'os';
 
 vi.mock('fs/promises', async (importOriginal) => {
     const actual = await importOriginal<typeof import('fs/promises')>();
-    return { ...actual, stat: vi.fn(actual.stat) };
+    return { ...actual, readdir: vi.fn(actual.readdir), stat: vi.fn(actual.stat) };
 });
 
 describe('FileTree All Files Mode', () => {
@@ -92,11 +92,15 @@ describe('FileTree All Files Mode', () => {
 
     it('applies the per-directory cap to the sorted list, not to raw readdir order', async () => {
         const names = Array.from({ length: 250 }, (_, i) => `a-${String(i + 1).padStart(3, '0')}.md`);
-        // Create in reverse so the first entries returned by readdir are the ones that sort last.
         for (const name of [...names].reverse()) fs.writeFileSync(path.join(tempDir, name), '');
         fs.writeFileSync(path.join(tempDir, 'zz-last.md'), '');
         fs.mkdirSync(path.join(tempDir, 'zz-dir'));
 
+        const actualFs = await vi.importActual<typeof import('fs/promises')>('fs/promises');
+        const entries = await actualFs.readdir(tempDir, { withFileTypes: true });
+        const descending = entries.sort((a, b) => b.name.localeCompare(a.name));
+        expect(descending[0].name).toBe('zz-last.md');
+        vi.mocked(readdir).mockResolvedValueOnce(descending as never);
         const result = await getFolderContents(tempDir);
 
         expect(result).toHaveLength(200);
