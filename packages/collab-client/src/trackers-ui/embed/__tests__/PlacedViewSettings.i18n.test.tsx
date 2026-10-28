@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { PlacedViewSettings } from '../PlacedViewSettings';
@@ -75,5 +75,45 @@ describe('PlacedViewSettings localization', () => {
     );
     expect(screen.getByLabelText('グループ化するプロパティを検索').getAttribute('placeholder')).toBe('プロパティを検索…');
     expect(screen.getByRole('button', { name: 'なし check' })).toBeTruthy();
+  });
+
+  it('localizes built-in grouping fallbacks without changing custom field labels', async () => {
+    const i18n = await createI18nInstance('ja');
+    const onChange = vi.fn();
+    const view = render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+        <PlacedViewSettingsSection section="group" attrs={{ group: 'none' }}
+          fields={[{ id: 'custom', label: 'My custom field', type: 'select' }]}
+          availableColumns={[]} temporary={false} onChange={onChange} />
+      </UiLanguageProvider>,
+    );
+    for (const label of ['ステータス', '優先度', '担当者', 'タイプ', 'タグ', 'マイルストーン', '目標']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy();
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'タグ' }));
+    expect(onChange).toHaveBeenCalledWith({ group: 'tag' });
+    expect(screen.getByRole('button', { name: 'My custom field' })).toBeTruthy();
+    view.unmount();
+
+    const customLabelView = render(
+      <UiLanguageProvider i18n={i18n} preference="ja" systemLocale="ja-JP">
+        <PlacedViewSettingsSection section="group" attrs={{ group: 'none' }}
+          fields={[{ id: 'status', label: 'Custom status', type: 'select' }]}
+          availableColumns={[]} temporary={false} onChange={onChange} />
+      </UiLanguageProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Custom status' })).toBeTruthy();
+    customLabelView.unmount();
+
+    const english = await createI18nInstance('en');
+    render(
+      <UiLanguageProvider i18n={english} preference="en" systemLocale="en-US">
+        <PlacedViewSettingsSection section="group" attrs={{ group: 'none' }} fields={[]}
+          availableColumns={[]} temporary={false} onChange={onChange} />
+      </UiLanguageProvider>,
+    );
+    for (const label of ['Status', 'Priority', 'Assignee', 'Type', 'Tag', 'Milestone', 'Goal']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy();
+    }
   });
 });

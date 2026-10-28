@@ -146,7 +146,14 @@
     "remove_sort": "並べ替え{{index}}を削除",
     "add_sort": "並べ替えを追加",
     "find_grouping_property": "グループ化するプロパティを検索",
-    "find_property": "プロパティを検索…"
+    "find_property": "プロパティを検索…",
+    "group_field_status": "ステータス",
+    "group_field_priority": "優先度",
+    "group_field_assignee": "担当者",
+    "group_field_type": "タイプ",
+    "group_field_tag": "タグ",
+    "group_field_milestone": "マイルストーン",
+    "group_field_goal": "目標"
   },
   "type_map": {
     "minimap_aria": "マップ概要。クリックしてその位置へ移動",

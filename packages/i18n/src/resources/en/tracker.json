@@ -146,7 +146,14 @@
     "remove_sort": "Remove sort {{index}}",
     "add_sort": "Add sort",
     "find_grouping_property": "Find grouping property",
-    "find_property": "Find a property…"
+    "find_property": "Find a property…",
+    "group_field_status": "Status",
+    "group_field_priority": "Priority",
+    "group_field_assignee": "Assignee",
+    "group_field_type": "Type",
+    "group_field_tag": "Tag",
+    "group_field_milestone": "Milestone",
+    "group_field_goal": "Goal"
   },
   "type_map": {
     "minimap_aria": "Map overview: click to move there",

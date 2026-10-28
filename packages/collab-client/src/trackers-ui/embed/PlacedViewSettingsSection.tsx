@@ -57,7 +57,7 @@ export function PlacedViewSettingsSection({ section, attrs, fields, availableCol
   const groups = [...new Set(['none', 'status', 'priority', 'assignee', 'type', 'tag', 'milestone', 'goal', ...fields.filter(field => !field.multiValue && ['select', 'boolean', 'user', 'relationship'].includes(field.type ?? '')).map(field => field.id)])];
   return <div className="placed-view-group-settings px-2">
     <input aria-label={t('placed_view_settings.find_grouping_property')} placeholder={t('placed_view_settings.find_property')} className={`${SETTINGS_INPUT} mb-2 w-full`} value={search} onChange={event => setSearch(event.target.value)} />
-    {groups.map(id => ({ id, label: id === 'none' ? t('groups.none') : fields.find(field => field.id === id)?.label || t(`fields.${id}`, id.charAt(0).toUpperCase() + id.slice(1)) })).filter(option => option.label.toLowerCase().includes(search.toLowerCase())).map(option => <button key={option.id} type="button" className={OPTION} aria-pressed={option.id === group} onClick={() => onChange({ group: option.id })}>
+    {groups.map(id => ({ id, label: id === 'none' ? t('groups.none') : fields.find(field => field.id === id)?.label || t(`placed_view_settings.group_field_${id}`, id.charAt(0).toUpperCase() + id.slice(1)) })).filter(option => option.label.toLowerCase().includes(search.toLowerCase())).map(option => <button key={option.id} type="button" className={OPTION} aria-pressed={option.id === group} onClick={() => onChange({ group: option.id })}>
       <span className="flex-1">{option.label}</span>{option.id === group && <MaterialSymbol icon="check" size={16} className="text-nim-link" />}
     </button>)}
   </div>;
