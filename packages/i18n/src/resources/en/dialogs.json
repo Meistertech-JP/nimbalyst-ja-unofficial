@@ -986,6 +986,11 @@
     "folder_not_empty_detail": "The selected folder already contains files:\n{{path}}",
     "ok": "OK"
   },
+  "tutorial": {
+    "tracker_create_failed": "Failed to create {{key}}",
+    "tracker_create_no_result": "Tracker create returned no result for {{key}}",
+    "tracker_fixture_empty": "Tutorial tracker fixture is empty: {{path}}"
+  },
   "main_process": {
     "windows_protocol_association_title": "Check URL protocol association",
     "windows_protocol_association_message": "nimbalyst:// links are currently handled by another application.",

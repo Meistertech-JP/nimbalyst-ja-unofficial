@@ -4,6 +4,7 @@ import * as path from "path";
 import { handleTrackerCreate } from "../../mcp/tools/trackerToolHandlers";
 import { ElectronDocumentService } from "../ElectronDocumentService";
 import { getTutorialTemplateDirectory } from "./tutorialTemplateDirectory";
+import { translateMainDialogLabel } from "../../i18n/mainI18n";
 
 export interface TutorialTrackerFixture {
   key: string;
@@ -44,13 +45,13 @@ function parseCreatedTracker(
     throw new Error(
       message?.type === "text" && typeof message.text === "string"
         ? message.text
-        : `Failed to create ${fixture.key}`
+        : translateMainDialogLabel('tutorial.tracker_create_failed', `Failed to create ${fixture.key}`, { key: fixture.key })
     );
   }
 
   const text = result.content.find((entry) => entry.type === "text");
   if (!text || text.type !== "text" || typeof text.text !== "string") {
-    throw new Error(`Tracker create returned no result for ${fixture.key}`);
+    throw new Error(translateMainDialogLabel('tutorial.tracker_create_no_result', `Tracker create returned no result for ${fixture.key}`, { key: fixture.key }));
   }
   const payload = JSON.parse(text.text) as {
     structured?: { item?: { id?: string; issueKey?: string } };
@@ -104,7 +105,7 @@ async function loadFixtures(
   const raw = await fs.readFile(fixturePath, "utf8");
   const fixtures = JSON.parse(raw) as TutorialTrackerFixture[];
   if (!Array.isArray(fixtures) || fixtures.length === 0) {
-    throw new Error(`Tutorial tracker fixture is empty: ${fixturePath}`);
+    throw new Error(translateMainDialogLabel('tutorial.tracker_fixture_empty', `Tutorial tracker fixture is empty: ${fixturePath}`, { path: fixturePath }));
   }
   return fixtures;
 }

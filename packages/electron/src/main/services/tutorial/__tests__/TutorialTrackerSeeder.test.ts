@@ -1,6 +1,7 @@
 // @vitest-environment node
 import * as path from "path";
 import { describe, expect, it, vi } from "vitest";
+import { createMainI18nController } from "../../../i18n/mainI18n";
 import {
   seedTutorialTrackers,
   type SeededTutorialTracker,
@@ -11,7 +12,39 @@ const FIXTURE_PATH = path.resolve(
   "../../../../../resources/tutorial-project/trackers.json"
 );
 
+const createResult = vi.hoisted(() => vi.fn());
+vi.mock('../../../mcp/tools/trackerToolHandlers', () => ({ handleTrackerCreate: createResult }));
+
 describe("seedTutorialTrackers", () => {
+  it('localizes internally generated tracker creation errors in Japanese and English', async () => {
+    const settings = { get: () => 'ja', subscribe: () => () => undefined };
+    const controller = await createMainI18nController(settings, 'ja-JP', () => undefined);
+    try {
+      createResult.mockResolvedValue({ isError: true, content: [] });
+      await expect(seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => FIXTURE_PATH }))
+        .rejects.toThrow('チュートリアルのTracker項目を作成できませんでした: PLAN_DASHBOARD_REFINEMENT');
+      createResult.mockResolvedValue({ isError: false, content: [] });
+      await expect(seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => FIXTURE_PATH }))
+        .rejects.toThrow('チュートリアルのTracker項目の作成結果がありません: PLAN_DASHBOARD_REFINEMENT');
+      const nonArrayFixture = path.join(path.dirname(FIXTURE_PATH), 'architecture.excalidraw');
+      await expect(seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => nonArrayFixture }))
+        .rejects.toThrow(`チュートリアルのTrackerデータが空です: ${nonArrayFixture}`);
+      createResult.mockResolvedValue({ isError: true, content: [{ type: 'text', text: 'external error detail' }] });
+      await expect(seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => FIXTURE_PATH }))
+        .rejects.toThrow('external error detail');
+      await controller.i18n.changeLanguage('en');
+      createResult.mockResolvedValue({ isError: true, content: [] });
+      await expect(seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => FIXTURE_PATH }))
+        .rejects.toThrow('Failed to create PLAN_DASHBOARD_REFINEMENT');
+      createResult.mockResolvedValue({ isError: false, content: [] });
+      await expect(seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => FIXTURE_PATH }))
+        .rejects.toThrow('Tracker create returned no result for PLAN_DASHBOARD_REFINEMENT');
+      await expect(seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => nonArrayFixture }))
+        .rejects.toThrow(`Tutorial tracker fixture is empty: ${nonArrayFixture}`);
+    } finally {
+      controller.dispose();
+    }
+  });
   it('uses the captured Japanese template while preserving stable tracker identities and fields', async () => {
     const createdFixtures: any[] = [];
     const result = await seedTutorialTrackers('/tmp/Nimbalyst Tutorial', {

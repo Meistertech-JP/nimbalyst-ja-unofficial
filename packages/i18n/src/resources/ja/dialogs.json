@@ -986,6 +986,11 @@
     "folder_not_empty_detail": "選択したフォルダーにはすでにファイルがあります:\n{{path}}",
     "ok": "OK"
   },
+  "tutorial": {
+    "tracker_create_failed": "チュートリアルのTracker項目を作成できませんでした: {{key}}",
+    "tracker_create_no_result": "チュートリアルのTracker項目の作成結果がありません: {{key}}",
+    "tracker_fixture_empty": "チュートリアルのTrackerデータが空です: {{path}}"
+  },
   "main_process": {
     "windows_protocol_association_title": "URLプロトコルの関連付けを確認してください",
     "windows_protocol_association_message": "nimbalyst:// のリンクは現在、別のアプリで処理されます。",

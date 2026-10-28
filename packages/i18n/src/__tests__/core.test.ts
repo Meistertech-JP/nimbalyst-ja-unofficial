@@ -297,7 +297,7 @@ describe('UI language preference', () => {
     expect(resources.ja.tracker.columns.publication).toBe('公開状態');
     expect(resources.en.aichat.session_naming_failure).toBe('The response is complete, but session information could not be updated.');
     expect(resources.ja.aichat.session_naming_failure).toBe('応答は完了しましたが、セッション情報を更新できませんでした。');
-    expect(totalKeys).toBe(14819);
+    expect(totalKeys).toBe(14822);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {
