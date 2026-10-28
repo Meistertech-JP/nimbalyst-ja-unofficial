@@ -1794,7 +1794,15 @@
     "fallback": "The server refused this change."
   },
   "board_card_staleness": {
-    "guidance": "Nothing has been changed. Read the commits and decide for yourself -- a linked session committing is not proof that this plan shipped."
+    "guidance": "Nothing has been changed. Read the commits and decide for yourself -- a linked session committing is not proof that this plan shipped.",
+    "draft_chip": "Draft, but committed?",
+    "draft_headline": "Marked draft, but a linked session committed.",
+    "ready_chip": "Ready, but committed?",
+    "ready_headline": "Marked ready for development, but a linked session committed.",
+    "commit_single": "Commit",
+    "commit_multiple": "Commits ({{count}})",
+    "session_single": "Session",
+    "session_multiple": "Sessions ({{count}})"
   },
   "state_menu": {
     "change_for_everyone": "Changes {{item}} for everyone.",

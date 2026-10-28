@@ -11,6 +11,7 @@
  */
 
 import React, { lazy, Suspense, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { resolvePlanStatusDriftPresentation } from '@nimbalyst/collab-client/trackers';
@@ -31,11 +32,14 @@ interface TrackerCardStalenessChipProps {
 export const TrackerCardStalenessChip: React.FC<
   TrackerCardStalenessChipProps
 > = ({ item }) => {
+  const { t } = useTranslation('tracker');
   const [open, setOpen] = useState(false);
   const [reference, setReference] = useState<HTMLButtonElement | null>(null);
   const drift = resolvePlanStatusDriftPresentation(item);
 
   if (!drift) return null;
+  const wording = drift.status === 'draft' ? 'draft' : 'ready';
+  const headline = t(`board_card_staleness.${wording}_headline`);
 
   return (
     <>
@@ -47,8 +51,8 @@ export const TrackerCardStalenessChip: React.FC<
         data-testid="tracker-card-staleness-chip"
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={drift.headline}
-        title={drift.headline}
+        aria-label={headline}
+        title={headline}
         onPointerEnter={() => {
           void loadTrackerCardStalenessPopover();
         }}
@@ -65,7 +69,7 @@ export const TrackerCardStalenessChip: React.FC<
         onDoubleClick={(event) => event.stopPropagation()}
       >
         <MaterialSymbol icon="help" size={11} />
-        <span className="tracker-card-chip-label">{drift.chipLabel}</span>
+        <span className="tracker-card-chip-label">{t(`board_card_staleness.${wording}_chip`)}</span>
       </button>
 
       {open && reference && (

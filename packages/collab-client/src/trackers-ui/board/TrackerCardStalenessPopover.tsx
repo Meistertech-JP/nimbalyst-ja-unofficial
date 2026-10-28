@@ -68,15 +68,15 @@ export function TrackerCardStalenessPopover({
         data-testid="tracker-card-staleness-popover"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="tracker-card-drift-headline">{drift.headline}</div>
+        <div className="tracker-card-drift-headline">{t(drift.status === 'draft' ? 'board_card_staleness.draft_headline' : 'board_card_staleness.ready_headline')}</div>
         <div className="tracker-card-drift-note">
           {t('board_card_staleness.guidance')}
         </div>
 
         <div className="tracker-card-drift-evidence-label">
           {drift.commitShas.length === 1
-            ? 'Commit'
-            : `Commits (${drift.commitShas.length})`}
+            ? t('board_card_staleness.commit_single')
+            : t('board_card_staleness.commit_multiple', { count: drift.commitShas.length })}
         </div>
         <div className="tracker-card-drift-evidence-list">
           {drift.commitShas.map((sha) => (
@@ -88,8 +88,8 @@ export function TrackerCardStalenessPopover({
 
         <div className="tracker-card-drift-evidence-label">
           {drift.committedSessionIds.length === 1
-            ? 'Session'
-            : `Sessions (${drift.committedSessionIds.length})`}
+            ? t('board_card_staleness.session_single')
+            : t('board_card_staleness.session_multiple', { count: drift.committedSessionIds.length })}
         </div>
         <div className="tracker-card-drift-evidence-list">
           {drift.committedSessionIds.map((sessionId) => (

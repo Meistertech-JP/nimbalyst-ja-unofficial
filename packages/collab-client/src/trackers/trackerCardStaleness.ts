@@ -26,6 +26,8 @@ import {
 import { getRecordStatus } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 
 export interface PlanStatusDriftPresentation {
+  /** Canonical signal status, for locale-specific presentation. */
+  status: PlanStatusDriftSignal['status'];
   /** Short chip label; phrased as a question because the signal can be wrong. */
   chipLabel: string;
   /** One-line statement of what disagrees, for the popover heading. */
@@ -71,6 +73,7 @@ export function resolvePlanStatusDriftPresentation(
   const wording = STATUS_WORDING[signal.status];
   if (!wording) return null;
   return {
+    status: signal.status,
     chipLabel: wording.chip,
     headline: wording.headline,
     commitShas: [...signal.commitShas],
