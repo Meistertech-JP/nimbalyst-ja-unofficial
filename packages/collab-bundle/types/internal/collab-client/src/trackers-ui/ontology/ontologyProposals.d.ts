@@ -15,16 +15,16 @@
  * and render.
  */
 import type { LabelRegistry } from '../../../../tracker-schema/src/browser';
+import type { PartialWriteReason } from './partialWriteNotice';
 import { type HealthItem, type KnowledgeGraph } from './ontologyKnowledge';
 import { type LabelChange } from './ontologyLabelProposals';
 import { type OntologyRecordLike } from './ontologyRecords';
 export declare const ONTOLOGY_PROPOSAL_TYPE = "ontology-proposal";
 export type ProposalStatus = 'proposed' | 'accepted' | 'applied' | 'rejected' | 'undone';
 export type ChangeDecision = 'pending' | 'accepted' | 'rejected';
-interface ChangeBase {
+interface ChangeBase extends PartialWriteReason {
     /** Unique within the proposal. */
     id: string;
-    reason?: string;
     decision?: ChangeDecision;
     decidedBy?: string;
     decidedAt?: string;
