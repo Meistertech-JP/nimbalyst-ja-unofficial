@@ -66,6 +66,7 @@
   "placed_view_marks": {
     "open_questions": "Open questions",
     "decisions": "Decisions",
+    "all_marks": "All marks",
     "source_unavailable": "{{name}}: this host cannot read page marks yet.",
     "loading": "Loading...",
     "partial_results": "Results are incomplete. Some pages may still be indexing, offline, or unsupported by this server.",

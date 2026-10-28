@@ -37,6 +37,28 @@ function record(text: string): PageMarkRecord {
 afterEach(() => setPageMarksSource(null));
 
 describe('MarksListEmbed', () => {
+  it.each([
+    ['en', 'All marks'],
+    ['ja', 'すべてのマーク'],
+  ] as const)('labels an unfiltered marks list in %s', async (language, title) => {
+    setPageMarksSource({ listMarks: async () => [record('Decision'), { ...record('Question'), kind: 'open' }] });
+    renderMarks('all', language);
+    expect(await screen.findByText(title)).toBeTruthy();
+    expect(await screen.findByText('Decision')).toBeTruthy();
+    expect(await screen.findByText('Question')).toBeTruthy();
+  });
+
+  it('preserves a user-provided label for an unfiltered marks list', async () => {
+    setPageMarksSource({ listMarks: async () => [] });
+    render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <MarksListEmbed kind="all" label="カスタム見出し" attrs={{}} />
+      </UiLanguageProvider>,
+    );
+    expect(await screen.findByText('カスタム見出し')).toBeTruthy();
+    expect(screen.queryByText('すべてのマーク')).toBeNull();
+  });
+
   it('never claims there are no decisions while the result is partial', async () => {
     setPageMarksSource({ listMarks: async () => [], listMarksResult: async () => ({ marks: [], status: 'partial' }) });
     renderMarks('decided');

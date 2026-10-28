@@ -105,7 +105,7 @@ export function MarksListEmbed({ kind, label, attrs, onOpenPage }: MarksListEmbe
   const source = useMarksSource();
   const queryKey = JSON.stringify(marksQuery(kind, attrs));
   const { marks, error, status } = useMarks(source, queryKey);
-  const name = label || t(kind === 'open' ? 'placed_view_marks.open_questions' : 'placed_view_marks.decisions');
+  const name = label || t(kind === 'open' ? 'placed_view_marks.open_questions' : kind === 'decided' ? 'placed_view_marks.decisions' : 'placed_view_marks.all_marks');
   if (!source) return <PlacedViewNote>{t('placed_view_marks.source_unavailable', { name })}</PlacedViewNote>;
 
   return (
