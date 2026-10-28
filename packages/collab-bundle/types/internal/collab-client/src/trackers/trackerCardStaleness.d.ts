@@ -17,7 +17,10 @@
  * the attach step, without introducing a second definition of the signal.
  */
 import type { TrackerRecord } from '../../../runtime/src/core/TrackerRecord';
+import { type PlanStatusDriftSignal } from '../../../runtime/src/plugins/TrackerPlugin/models/planStatusIntegrity';
 export interface PlanStatusDriftPresentation {
+    /** Canonical signal status, for locale-specific presentation. */
+    status: PlanStatusDriftSignal['status'];
     /** Short chip label; phrased as a question because the signal can be wrong. */
     chipLabel: string;
     /** One-line statement of what disagrees, for the popover heading. */
