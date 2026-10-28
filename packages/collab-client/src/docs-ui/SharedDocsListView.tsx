@@ -151,6 +151,7 @@ function memberName(
 
 export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId, onSelectFolder, onCreateDocument, title, headerActions }) => {
   const { t } = useTranslation('collabSidebar');
+  const { t: tCommon, i18n } = useTranslation('common');
   const { scope, host, session } = useCollabDocsUI();
 
   const documentTypesRevision = useSyncExternalStore(
@@ -765,7 +766,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                       <UserAvatar identity={memberName(folder.createdBy, members, myMemberIds, t('list.unknown'), t('list.you'))} showName size={20} />
                     </td>
                     <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px] text-[var(--nim-text-muted)]">
-                      {folder.updatedAt ? getRelativeTimeString(folder.updatedAt) : <span className="text-[var(--nim-text-faint)]">—</span>}
+                      {folder.updatedAt ? getRelativeTimeString(folder.updatedAt, (key, options) => tCommon(key, options), i18n.resolvedLanguage || i18n.language) : <span className="text-[var(--nim-text-faint)]">—</span>}
                     </td>
                     {readReceiptsAvailable && <td className="px-2 py-2" />}
                   </tr>
@@ -849,7 +850,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                     <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px] text-[var(--nim-text-muted)]">
                       {doc.updatedAt ? (
                         <span>
-                          {getRelativeTimeString(doc.updatedAt)}
+                          {getRelativeTimeString(doc.updatedAt, (key, options) => tCommon(key, options), i18n.resolvedLanguage || i18n.language)}
                           {lastWriter && (
                             <span className="text-[var(--nim-text-faint)]"> · {memberName(lastWriter, members, myMemberIds, t('list.unknown'), t('list.you'))}</span>
                           )}
@@ -861,7 +862,7 @@ export const SharedDocsListView: React.FC<SharedDocsListViewProps> = ({ folderId
                     {readReceiptsAvailable && (
                       <td className="px-2 py-2 align-middle whitespace-nowrap text-[12.5px]">
                         {viewedAt > 0 ? (
-                          <span className="text-[var(--nim-text-muted)]">{getRelativeTimeString(viewedAt)}</span>
+                          <span className="text-[var(--nim-text-muted)]">{getRelativeTimeString(viewedAt, (key, options) => tCommon(key, options), i18n.resolvedLanguage || i18n.language)}</span>
                         ) : (
                           <span className="flex items-center gap-1 text-[var(--nim-warning)]">
                             <MaterialSymbol icon="visibility_off" size={14} />

@@ -52,7 +52,7 @@ export interface CollabTrashDialogProps {
 }
 
 export default function CollabTrashDialog({ sectionLabel, onClose }: CollabTrashDialogProps) {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const { scope, host, session } = useCollabDocsUI();
   const personal = isPersonalCollabScope(scope);
   const all = useAtomValue(session.atoms.allSharedDocuments);
@@ -163,7 +163,7 @@ export default function CollabTrashDialog({ sectionLabel, onClose }: CollabTrash
                             {nameOf(document, t('collab.untitled'))}
                           </div>
                           <div className="text-[11.5px] text-[var(--nim-text-faint)]">
-                            {t('collab.trashed_time', { time: getRelativeTimeString(document.trashedAt ?? Date.now()) })}
+                            {t('collab.trashed_time', { time: getRelativeTimeString(document.trashedAt ?? Date.now(), (key, options) => t(key, options), i18n.resolvedLanguage || i18n.language) })}
                             {by ? t('collab.trashed_by', { name: by }) : ''}
                             {insideCount > 0 ? t('collab.trash_inside_count', { count: insideCount }) : ''}
                           </div>
