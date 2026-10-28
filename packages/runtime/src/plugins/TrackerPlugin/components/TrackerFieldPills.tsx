@@ -145,6 +145,7 @@ function fieldDisplayValue(
   value: unknown,
   teamMembers: TeamMemberOption[],
   relationshipCandidates?: RelationshipCandidate[],
+  translate?: (key: string, options?: { count: number }) => string,
 ): string {
   if (isTrackerFieldEmpty(value)) return trackerFieldDisplayLabel(field);
   if (field.type === 'label-ref') {
@@ -170,12 +171,12 @@ function fieldDisplayValue(
     // Citations are plural by definition; the chip says how many and the
     // inspector behind it says what they are.
     const entries = Array.isArray(value) ? value : [value];
-    return entries.length === 1 ? '1 citation' : `${entries.length} citations`;
+    return translate?.('references.citations', { count: entries.length }) ?? (entries.length === 1 ? '1 citation' : `${entries.length} citations`);
   }
   if (field.type === 'date' || field.type === 'datetime') {
     return formatDateTimeDisplay(value).display;
   }
-  if (field.type === 'boolean') return value ? 'Yes' : 'No';
+  if (field.type === 'boolean') return translate?.(value ? 'grid.boolean_yes' : 'grid.boolean_no') ?? (value ? 'Yes' : 'No');
   if (field.type === 'url' && typeof value === 'object') {
     const url = value as { label?: unknown; url?: unknown };
     return String(url.label ?? url.url ?? trackerFieldDisplayLabel(field));
@@ -244,7 +245,7 @@ export const TrackerFieldPill: React.FC<TrackerFieldPillProps> = ({
   // typeahead does neither well.
   const isCollectionField = isCollectionRelationshipField(field);
   const label = trackerFieldDisplayLabel(field, (key) => tTracker(key));
-  const displayValue = empty ? label : fieldDisplayValue(field, localValue, members, relationshipCandidates);
+  const displayValue = empty ? label : fieldDisplayValue(field, localValue, members, relationshipCandidates, (key, options) => tTracker(key, options));
   // An empty chip already reads as its label, so only a filled one needs one.
   const showLabel = shouldLabelTrackerField(field, localValue, labelFields);
 

@@ -73,6 +73,32 @@ function renderPillsWithI18n(
 }
 
 describe('TrackerFieldPills', () => {
+  it('localizes citation counts and boolean values when the language changes', async () => {
+    await testI18n.changeLanguage('ja');
+    renderPillsWithI18n(
+      [{ name: 'sources', type: 'citation' }, { name: 'verified', type: 'boolean' }],
+      { sources: [{ id: 'source-1' }], verified: true },
+    );
+    expect(screen.getByText('引用1件')).toBeDefined();
+    expect(screen.getByText('はい')).toBeDefined();
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText('1 citation')).toBeDefined();
+    expect(screen.getByText('Yes')).toBeDefined();
+  });
+
+  it('localizes plural citations and a false boolean without changing custom choice values', async () => {
+    await testI18n.changeLanguage('ja');
+    renderPillsWithI18n(
+      [{ name: 'sources', type: 'citation' }, { name: 'verified', type: 'boolean' }, statusField],
+      { sources: [{ id: 'one' }, { id: 'two' }], verified: false, state: 'open' },
+    );
+    expect(screen.getByText('引用2件')).toBeDefined();
+    expect(screen.getByText('いいえ')).toBeDefined();
+    expect(screen.getByText('Open')).toBeDefined();
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText('2 citations')).toBeDefined();
+    expect(screen.getByText('No')).toBeDefined();
+  });
   it('localizes built-in field labels and accessible titles without translating custom labels or values', async () => {
     await testI18n.changeLanguage('ja');
     const customLabelFields: Array<FieldDefinition & { displayLabel: string }> = [
