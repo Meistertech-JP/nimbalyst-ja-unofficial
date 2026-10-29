@@ -33,6 +33,17 @@ beforeEach(() => {
 });
 
 describe('launchTutorialFromMenu', () => {
+    it('translates structured template failures in the native dialog', async () => {
+        const controller = await createMainI18nController({ get: () => 'ja', subscribe: () => () => undefined }, 'en-US', () => undefined);
+        startTutorialProject.mockResolvedValue({ success: false, error: 'legacy diagnostic', templateFailure: { code: 'readme_missing', path: '/fixture/template' } });
+        try {
+            await launchTutorialFromMenu();
+            expect(showErrorBox).toHaveBeenLastCalledWith('チュートリアルを開けません', expect.stringContaining('チュートリアルのテンプレートにREADMEが見つかりません：/fixture/template'));
+            await controller.i18n.changeLanguage('en');
+            await launchTutorialFromMenu();
+            expect(showErrorBox).toHaveBeenLastCalledWith('Tutorial Unavailable', expect.stringContaining('The tutorial template README was not found: /fixture/template'));
+        } finally { controller.dispose(); }
+    });
     it('localizes missing recent project details without changing names or paths', async () => {
         const controller = await createMainI18nController({ get: () => 'ja', subscribe: () => () => undefined }, 'en-US', () => undefined);
         try {

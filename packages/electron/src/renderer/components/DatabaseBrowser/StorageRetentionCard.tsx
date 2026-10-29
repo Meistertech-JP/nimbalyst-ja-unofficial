@@ -69,6 +69,7 @@ type StorageRetentionErrorKey =
   | 'database.storage_retention.read_settings_failed'
   | 'database.storage_retention.save_settings_failed'
   | 'database.storage_retention.estimate_failed'
+  | 'database.storage_retention.sqlite_required'
   | 'database.reclaim_failed';
 
 type StorageRetentionError =
@@ -158,7 +159,9 @@ export function StorageRetentionCard() {
         retentionDays: pendingDays,
       });
       if (res.success) setEstimate(res.estimate);
-      else setError(res.error
+      else setError(res.error === 'Tool-output retention requires the SQLite backend'
+        ? { kind: 'translation', key: 'database.storage_retention.sqlite_required' }
+        : res.error
         ? { kind: 'message', message: res.error }
         : { kind: 'translation', key: 'database.storage_retention.estimate_failed' });
     } catch (err) {
@@ -174,7 +177,9 @@ export function StorageRetentionCard() {
         retentionDays: pendingDays,
       });
       if (res.success) setResult(res.result);
-      else setError(res.error
+      else setError(res.error === 'Tool-output retention requires the SQLite backend'
+        ? { kind: 'translation', key: 'database.storage_retention.sqlite_required' }
+        : res.error
         ? { kind: 'message', message: res.error }
         : { kind: 'translation', key: 'database.reclaim_failed' });
     } catch (err) {

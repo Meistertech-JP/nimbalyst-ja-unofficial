@@ -713,10 +713,7 @@ interface ElectronAPI {
         | 'welcome_pane'
         | 'project_manager_sidebar'
         | 'help_menu'
-    ) => Promise<
-      | { success: true; workspacePath: string; reused: boolean }
-      | { success: false; error: string }
-    >;
+    ) => Promise<import('../shared/tutorial').TutorialStartResult>;
   };
 
   // Project Migration (move/rename)

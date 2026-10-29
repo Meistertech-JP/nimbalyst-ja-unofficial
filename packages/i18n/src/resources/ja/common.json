@@ -274,7 +274,8 @@
       "restart_hint": "バックアップ間隔の変更は次回の再起動後に反映されます。",
       "read_settings_failed": "メンテナンス設定を読み込めませんでした",
       "save_settings_failed": "設定を保存できませんでした",
-      "estimate_failed": "見積もりに失敗しました"
+      "estimate_failed": "見積もりに失敗しました",
+      "sqlite_required": "ツール出力の保持期間を管理するにはSQLiteバックエンドが必要です。"
     }
   },
   "extension_console": {

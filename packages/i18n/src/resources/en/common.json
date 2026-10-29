@@ -274,7 +274,8 @@
       "restart_hint": "Backup cadence changes take effect on the next restart.",
       "read_settings_failed": "Could not read maintenance settings",
       "save_settings_failed": "Could not save settings",
-      "estimate_failed": "Estimate failed"
+      "estimate_failed": "Estimate failed",
+      "sqlite_required": "Tool-output retention requires the SQLite backend"
     }
   },
   "extension_console": {

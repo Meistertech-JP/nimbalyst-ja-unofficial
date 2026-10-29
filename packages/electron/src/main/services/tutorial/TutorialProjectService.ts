@@ -4,7 +4,9 @@ import * as path from "path";
 import type {
   TutorialStartResult,
   TutorialStatusResult,
+  TutorialTemplateFailure,
 } from "../../../shared/tutorial";
+
 import {
   addToRecentItems,
   getWorkspaceWindowState,
@@ -32,6 +34,12 @@ import {
   captureTutorialStarted,
   type TutorialEntryPoint,
 } from "./tutorialAnalytics";
+
+class TutorialTemplateError extends Error {
+  constructor(message: string, readonly failure: TutorialTemplateFailure) {
+    super(message);
+  }
+}
 
 const TUTORIAL_DIRECTORY_NAME = "Nimbalyst Tutorial";
 const TUTORIAL_TEMPLATE_VERSION = 1;
@@ -176,6 +184,7 @@ export class TutorialProjectService {
       return {
         success: false,
         error: this.errorMessage(error),
+        ...(error instanceof TutorialTemplateError ? { templateFailure: error.failure } : {}),
       };
     }
   }
@@ -187,22 +196,25 @@ export class TutorialProjectService {
     try {
       stats = await fs.stat(templateDirectory);
     } catch {
-      throw new Error(
-        `Tutorial template directory does not exist: ${templateDirectory}`
+      throw new TutorialTemplateError(
+        `Tutorial template directory does not exist: ${templateDirectory}`,
+        { code: 'directory_missing', path: templateDirectory }
       );
     }
 
     if (!stats.isDirectory()) {
-      throw new Error(
-        `Tutorial template directory is not a directory: ${templateDirectory}`
+      throw new TutorialTemplateError(
+        `Tutorial template directory is not a directory: ${templateDirectory}`,
+        { code: 'not_directory', path: templateDirectory }
       );
     }
 
     try {
       await fs.access(path.join(templateDirectory, "README.md"));
     } catch {
-      throw new Error(
-        `Tutorial template README is missing: ${templateDirectory}`
+      throw new TutorialTemplateError(
+        `Tutorial template README is missing: ${templateDirectory}`,
+        { code: 'readme_missing', path: templateDirectory }
       );
     }
   }

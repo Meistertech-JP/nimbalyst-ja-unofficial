@@ -239,6 +239,7 @@ describe("TutorialProjectService", () => {
     expect(result).toMatchObject({ success: false });
     if (result.success) throw new Error("Expected tutorial start to fail");
     expect(result.error).toMatch(/template directory.*does not exist/i);
+    expect(result.templateFailure).toEqual({ code: 'directory_missing', path: harness.templateDirectory });
     await expect(
       fs.access(path.join(harness.documentsDirectory, "Nimbalyst Tutorial"))
     ).rejects.toThrow();

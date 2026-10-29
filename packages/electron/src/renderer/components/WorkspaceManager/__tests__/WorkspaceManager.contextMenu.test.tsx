@@ -89,6 +89,17 @@ describe('WorkspaceManager context menu positioning', () => {
 });
 
 describe('WorkspaceManager project migration errors', () => {
+  it('translates structured tutorial errors and follows language changes', async () => {
+    await japaneseI18n.changeLanguage('ja');
+    const start = window.electronAPI.tutorial.start as ReturnType<typeof vi.fn>;
+    start.mockResolvedValueOnce({ success: false, error: 'fixture diagnostic', templateFailure: { code: 'directory_missing', path: '/fixture/tutorial' } });
+    renderJapanese(<WorkspaceManager />);
+    const tutorialButtons = await screen.findAllByRole('button', { name: /チュートリアル/ });
+    fireEvent.click(tutorialButtons[0]);
+    expect(await screen.findByText('チュートリアルのテンプレートフォルダーが見つかりません：/fixture/tutorial')).toBeDefined();
+    await act(async () => { await japaneseI18n.changeLanguage('en'); });
+    expect(await screen.findByText('The tutorial template folder was not found: /fixture/tutorial')).toBeDefined();
+  });
   it('localizes a fixed project-migration reason from the main process', async () => {
     await japaneseI18n.changeLanguage('ja');
     projectMigration.canMove.mockResolvedValueOnce({

@@ -1,4 +1,9 @@
 {
+  "tutorial_template": {
+    "directory_missing": "The tutorial template folder was not found: {{path}}",
+    "not_directory": "The tutorial template path is not a folder: {{path}}",
+    "readme_missing": "The tutorial template README was not found: {{path}}"
+  },
   "system_shell": {
     "syntax_error": "Error in command line syntax",
     "item_missing": "The item does not exist",

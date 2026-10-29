@@ -9,6 +9,13 @@ export type TutorialEntryPoint =
   | 'help_menu'
   | 'unknown';
 
+export type TutorialTemplateFailureCode = 'directory_missing' | 'not_directory' | 'readme_missing';
+
+export interface TutorialTemplateFailure {
+  code: TutorialTemplateFailureCode;
+  path: string;
+}
+
 export type TutorialStartResult =
   | {
       success: true;
@@ -18,6 +25,7 @@ export type TutorialStartResult =
   | {
       success: false;
       error: string;
+      templateFailure?: TutorialTemplateFailure;
     };
 
 export type TutorialStatusResult =

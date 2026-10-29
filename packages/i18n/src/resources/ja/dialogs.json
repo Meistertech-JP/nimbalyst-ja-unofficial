@@ -1,4 +1,9 @@
 {
+  "tutorial_template": {
+    "directory_missing": "チュートリアルのテンプレートフォルダーが見つかりません：{{path}}",
+    "not_directory": "チュートリアルのテンプレートパスはフォルダーではありません：{{path}}",
+    "readme_missing": "チュートリアルのテンプレートにREADMEが見つかりません：{{path}}"
+  },
   "system_shell": {
     "syntax_error": "コマンドライン構文に誤りがあります",
     "item_missing": "項目が存在しません",

@@ -28,10 +28,13 @@ export async function launchTutorialFromMenu(): Promise<void> {
 
     const result = await startTutorialProject('help_menu');
     if (!result.success) {
+        const tutorialError = result.templateFailure
+            ? translateMainDialogLabel(`tutorial_template.${result.templateFailure.code}`, result.error, { path: result.templateFailure.path })
+            : result.error;
         logger.menu.error('Failed to launch tutorial:', result.error);
         dialog.showErrorBox(
             translateMainDialogLabel('native_dialogs.tutorial_unavailable_title', 'Tutorial Unavailable'),
-            translateMainDialogLabel('native_dialogs.tutorial_unavailable_message', `The tutorial project could not be opened.\n\n${result.error}`, { error: String(result.error) })
+            translateMainDialogLabel('native_dialogs.tutorial_unavailable_message', `The tutorial project could not be opened.\n\n${tutorialError}`, { error: String(tutorialError) })
         );
     }
 }

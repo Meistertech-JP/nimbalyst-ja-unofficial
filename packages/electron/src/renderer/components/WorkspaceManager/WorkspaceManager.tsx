@@ -82,6 +82,7 @@ interface ContextMenuState {
 type WorkspaceManagerError =
   | { kind: 'migration'; failure: ProjectMigrationFailure }
   | { kind: 'message'; message: string }
+  | { kind: 'tutorial'; failure: import('../../../shared/tutorial').TutorialTemplateFailure }
   | { kind: 'translation'; key: 'workspace.cannot_rename' | 'workspace.cannot_move' | 'workspace.move_failed' | 'workspace.rename_failed' | 'workspace.invalid_name' }
   | { kind: 'detail'; key: 'workspace.migration.backup_failed_detail' | 'workspace.migration.move_failed_detail' | 'workspace.migration.rename_failed_detail'; detail: string };
 
@@ -125,6 +126,8 @@ export const WorkspaceManager: React.FC = () => {
         return migrationFailureMessage(error.failure);
       case 'message':
         return error.message;
+      case 'tutorial':
+        return t(`dialogs:tutorial_template.${error.failure.code}`, { path: error.failure.path });
       case 'translation':
         return t(error.key);
       case 'detail':
@@ -346,7 +349,9 @@ export const WorkspaceManager: React.FC = () => {
     try {
       const result = await window.electronAPI.tutorial.start(entryPoint);
       if (!result.success) {
-        setOperationError({ kind: 'message', message: result.error });
+        setOperationError(result.templateFailure
+          ? { kind: 'tutorial', failure: result.templateFailure }
+          : { kind: 'message', message: result.error });
         return;
       }
       setTutorialExists(true);

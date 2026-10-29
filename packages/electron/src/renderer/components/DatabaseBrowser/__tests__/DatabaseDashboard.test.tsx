@@ -166,4 +166,18 @@ describe('DatabaseDashboard backup size rendering', () => {
 
     expect(screen.getByText('Database is busy')).toBeDefined();
   });
+
+  it('localizes the app-owned SQLite retention refusal and follows language changes', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { invoke: vi.fn().mockImplementation(async (channel: string) => channel === 'database:maintenance:get'
+        ? { success: true, settings: { backupCopiesKept: 2, backupIntervalHours: 12, toolOutputRetentionDays: 30 } }
+        : { success: false, error: 'Tool-output retention requires the SQLite backend' }) },
+    });
+    const view = render(withLanguage(<StorageRetentionCard />, 'ja'));
+    fireEvent.click(await screen.findByRole('button', { name: '回収容量を見積もる' }));
+    expect(await screen.findByText('ツール出力の保持期間を管理するにはSQLiteバックエンドが必要です。')).toBeDefined();
+    view.rerender(withLanguage(<StorageRetentionCard />, 'en'));
+    expect(await screen.findByText('Tool-output retention requires the SQLite backend')).toBeDefined();
+  });
 });
