@@ -11,7 +11,7 @@ const TrackerRadarViewImpl = lazy(() => import('./TrackerRadarView').then(module
 export function LazyTrackerRadarView(props: TrackerRadarViewProps): JSX.Element {
   const { t } = useTranslation('tracker');
   return (
-    <Suspense fallback={<TrackerSurfaceMessage icon="radar" message={t('detail.loading_item')} />}>
+    <Suspense fallback={<TrackerSurfaceMessage icon="radar" message={t('detail_extra.loading_item')} />}>
       <TrackerRadarViewImpl {...props} />
     </Suspense>
   );

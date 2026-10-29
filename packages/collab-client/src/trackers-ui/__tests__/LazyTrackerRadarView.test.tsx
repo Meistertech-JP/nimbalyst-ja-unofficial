@@ -20,6 +20,7 @@ it('does not load Radar until mounted and preserves the selected-view props and 
   const i18n = await createI18nInstance('ja');
   const select = vi.fn();
   render(<I18nextProvider i18n={i18n}><LazyTrackerRadarView items={[]} onItemSelect={select} /></I18nextProvider>);
+  expect(screen.getByText(i18n.t('detail_extra.loading_item', { ns: 'tracker' }))).toBeDefined();
   const radar = await screen.findByTestId('loaded-radar');
   expect(state.loads).toBe(1);
   expect(radar.textContent).toBe('0');
