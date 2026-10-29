@@ -721,9 +721,9 @@ interface ElectronAPI {
 
   // Project Migration (move/rename)
   projectMigration: {
-    canMove: (oldPath: string) => Promise<{ canMove: boolean; reason?: string }>;
-    move: (oldPath: string, newPath: string) => Promise<{ success: boolean; error?: string; newPath?: string }>;
-    rename: (oldPath: string, newName: string) => Promise<{ success: boolean; error?: string; newPath?: string }>;
+    canMove: (oldPath: string) => Promise<import('../shared/projectMigration').CanMoveResult>;
+    move: (oldPath: string, newPath: string) => Promise<import('../shared/projectMigration').MoveResult>;
+    rename: (oldPath: string, newName: string) => Promise<import('../shared/projectMigration').MoveResult>;
   };
 
   // Tracker lifecycle: personal -> team promotion (one-way) and archive.

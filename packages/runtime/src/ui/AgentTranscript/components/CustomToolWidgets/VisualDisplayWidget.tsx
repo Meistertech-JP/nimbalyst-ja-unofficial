@@ -637,7 +637,9 @@ const ChartItemRenderer: React.FC<{
     area: 'visual.chart_area',
     scatter: 'visual.chart_scatter'
   };
-  const chartLabel = t(chartTranslationKeys[chartConfig.chartType]);
+  const chartLabel = Object.hasOwn(chartTranslationKeys, chartConfig.chartType)
+    ? t(chartTranslationKeys[chartConfig.chartType])
+    : String(chartConfig.chartType);
   const errorFallback = (
     <div className="p-3 rounded-md border border-nim-error bg-[color-mix(in_srgb,var(--nim-error)_10%,var(--nim-bg))]">
       <p className="text-nim-muted text-sm mb-2">{item.description}</p>

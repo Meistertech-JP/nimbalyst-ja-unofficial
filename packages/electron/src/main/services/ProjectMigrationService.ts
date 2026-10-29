@@ -1,5 +1,7 @@
 import PrivateSettingsStore from '../utils/privateSettingsStore';
 import { getProviderCredentials } from './credentials/providerCredentials';
+import type { CanMoveResult, MoveResult } from '../../shared/projectMigration';
+export type { CanMoveResult, MoveResult } from '../../shared/projectMigration';
 /**
  * ProjectMigrationService.ts
  *
@@ -40,23 +42,6 @@ function workspaceKey(workspacePath: string): string {
 }
 
 /**
- * Result type for canMoveProject check
- */
-export interface CanMoveResult {
-  canMove: boolean;
-  reason?: string;
-}
-
-/**
- * Result type for move/rename operations
- */
-export interface MoveResult {
-  success: boolean;
-  error?: string;
-  newPath?: string;
-}
-
-/**
  * ProjectMigrationService handles safe migration of projects to new locations.
  *
  * Migration is performed in this order:
@@ -89,13 +74,13 @@ export class ProjectMigrationService {
 
     // Validate old path exists
     if (!existsSync(oldPath)) {
-      return { canMove: false, reason: 'Project directory does not exist' };
+      return { canMove: false, reason: { code: 'project_directory_missing' } };
     }
 
     // Check if project is open in any window
     const window = findWindowByWorkspace(oldPath);
     if (window) {
-      return { canMove: false, reason: 'Project is currently open. Please close it first.' };
+      return { canMove: false, reason: { code: 'project_open' } };
     }
 
     // Check for existing worktrees
@@ -108,7 +93,7 @@ export class ProjectMigrationService {
       if (count > 0) {
         return {
           canMove: false,
-          reason: `Project has ${count} worktree${count > 1 ? 's' : ''}. Please delete worktrees before moving.`
+          reason: { code: 'worktrees_exist', count },
         };
       }
     } catch (error) {
@@ -137,13 +122,13 @@ export class ProjectMigrationService {
 
     // Validate destination doesn't exist
     if (existsSync(newPath)) {
-      return { success: false, error: 'Destination already exists' };
+      return { success: false, error: { code: 'destination_exists' } };
     }
 
     // Ensure parent directory exists
     const parentDir = path.dirname(newPath);
     if (!existsSync(parentDir)) {
-      return { success: false, error: 'Destination parent directory does not exist' };
+      return { success: false, error: { code: 'destination_parent_missing' } };
     }
 
     // Track what's been done for rollback
@@ -157,7 +142,7 @@ export class ProjectMigrationService {
       logger.main.info('[ProjectMigration] Creating database backup...');
       const backupResult = await this.dbWorker.createBackup();
       if (!backupResult.success) {
-        return { success: false, error: `Failed to create backup: ${backupResult.error}` };
+        return { success: false, error: { code: 'backup_failed', detail: backupResult.error } };
       }
       logger.main.info('[ProjectMigration] Database backup created successfully');
 
@@ -220,7 +205,7 @@ export class ProjectMigrationService {
         logger.main.warn('[ProjectMigration] Partial copy may exist at:', newPath);
       }
 
-      return { success: false, error: error.message || 'Migration failed' };
+      return { success: false, error: { code: 'move_failed', detail: error.message || undefined } };
     }
   }
 
@@ -239,13 +224,13 @@ export class ProjectMigrationService {
   async renameProject(oldPath: string, newName: string): Promise<MoveResult> {
     // Validate new name
     if (!newName || newName.trim().length === 0) {
-      return { success: false, error: 'New name cannot be empty' };
+      return { success: false, error: { code: 'new_name_empty' } };
     }
 
     // Check for invalid characters in name
     const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
     if (invalidChars.test(newName)) {
-      return { success: false, error: 'Name contains invalid characters' };
+      return { success: false, error: { code: 'invalid_name_characters' } };
     }
 
     const parentDir = path.dirname(oldPath);
@@ -261,7 +246,7 @@ export class ProjectMigrationService {
 
     // Validate destination doesn't exist
     if (existsSync(newPath)) {
-      return { success: false, error: 'Destination already exists' };
+      return { success: false, error: { code: 'destination_exists' } };
     }
 
     let claudeDirRenamed = false;
@@ -273,7 +258,7 @@ export class ProjectMigrationService {
       logger.main.info('[ProjectMigration] Creating database backup...');
       const backupResult = await this.dbWorker.createBackup();
       if (!backupResult.success) {
-        return { success: false, error: `Failed to create backup: ${backupResult.error}` };
+        return { success: false, error: { code: 'backup_failed', detail: backupResult.error } };
       }
       logger.main.info('[ProjectMigration] Database backup created successfully');
 
@@ -337,7 +322,7 @@ export class ProjectMigrationService {
         }
       }
 
-      return { success: false, error: error.message || 'Rename failed' };
+      return { success: false, error: { code: 'rename_failed', detail: error.message || undefined } };
     }
   }
 

@@ -97,4 +97,17 @@ describe('ProjectMigrationService.migrateDatabase (SQLite backend)', () => {
     expect(history.rows[0].workspace_id).toBe(newPath);
     expect(history.rows[0].file_path).toBe(`${newPath}/notes/foo.md`);
   });
+
+  it('returns stable reason codes for fixed project-migration failures', async () => {
+    const service = new ProjectMigrationService(sqlite as any);
+
+    await expect(service.canMoveProject(path.join(tmp, 'missing-project'))).resolves.toEqual({
+      canMove: false,
+      reason: { code: 'project_directory_missing' },
+    });
+    await expect(service.renameProject(oldPath, 'invalid/name')).resolves.toEqual({
+      success: false,
+      error: { code: 'invalid_name_characters' },
+    });
+  });
 });

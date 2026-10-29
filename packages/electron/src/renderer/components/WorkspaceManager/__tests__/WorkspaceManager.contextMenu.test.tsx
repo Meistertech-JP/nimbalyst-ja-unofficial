@@ -1,13 +1,19 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 
 const recentWorkspaces = [
   { path: '/projects/alpha', name: 'alpha', lastOpened: 1700000000000, exists: true, markdownCount: 2 },
 ];
+
+const projectMigration = {
+  canMove: vi.fn().mockResolvedValue({ canMove: true }),
+  move: vi.fn(),
+  rename: vi.fn(),
+};
 
 (window as unknown as { electronAPI: unknown }).electronAPI = {
   getResolvedThemeSync: () => 'dark',
@@ -21,19 +27,32 @@ const recentWorkspaces = [
     getStatus: vi.fn().mockResolvedValue({ success: true, exists: false }),
     start: vi.fn(),
   },
+  projectMigration,
 };
 
 const { WorkspaceManager } = await import('../WorkspaceManager');
 
 let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
+let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 beforeAll(async () => {
   englishI18n = await createI18nInstance('en');
+  japaneseI18n = await createI18nInstance('ja');
 });
 
 function renderEnglish(tree: React.ReactElement) {
   return render(tree, {
     wrapper: ({ children }) => (
       <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
+        {children}
+      </UiLanguageProvider>
+    ),
+  });
+}
+
+function renderJapanese(tree: React.ReactElement) {
+  return render(tree, {
+    wrapper: ({ children }) => (
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
         {children}
       </UiLanguageProvider>
     ),
@@ -66,5 +85,46 @@ describe('WorkspaceManager context menu positioning', () => {
     expect(menu.style.left).not.toBe('5000px');
     expect(menu.style.top).not.toBe('4000px');
     expect(menu.style.position).toBe('absolute');
+  });
+});
+
+describe('WorkspaceManager project migration errors', () => {
+  it('localizes a fixed project-migration reason from the main process', async () => {
+    await japaneseI18n.changeLanguage('ja');
+    projectMigration.canMove.mockResolvedValueOnce({
+      canMove: false,
+      reason: { code: 'project_open' },
+    });
+
+    renderJapanese(<WorkspaceManager />);
+    const row = await screen.findByText('alpha');
+    fireEvent.contextMenu(row, { clientX: 120, clientY: 200 });
+    fireEvent.click(await screen.findByText('名前を変更…'));
+
+    expect(await screen.findByText('このプロジェクトは現在開かれています。移動または名前を変更する前に閉じてください。')).toBeDefined();
+
+    await act(async () => {
+      await japaneseI18n.changeLanguage('en');
+    });
+
+    expect(await screen.findByText('This project is currently open. Close it before moving or renaming it.')).toBeDefined();
+  });
+
+  it('preserves OS details while retranslating a rename failure', async () => {
+    await japaneseI18n.changeLanguage('ja');
+    projectMigration.rename.mockResolvedValueOnce({
+      success: false,
+      error: { code: 'rename_failed', detail: 'EACCES: test destination' },
+    });
+
+    renderJapanese(<WorkspaceManager />);
+    fireEvent.contextMenu(await screen.findByText('alpha'), { clientX: 120, clientY: 200 });
+    fireEvent.click(await screen.findByText('名前を変更…'));
+    fireEvent.change(await screen.findByDisplayValue('alpha'), { target: { value: 'beta' } });
+    fireEvent.click(screen.getByRole('button', { name: '名前を変更' }));
+
+    expect(await screen.findByText('プロジェクト名を変更できませんでした：EACCES: test destination')).toBeDefined();
+    await act(async () => { await japaneseI18n.changeLanguage('en'); });
+    expect(await screen.findByText('Could not rename the project: EACCES: test destination')).toBeDefined();
   });
 });

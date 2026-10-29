@@ -498,6 +498,7 @@
     "resolving_file": "埋め込みファイルを解決中…",
     "no_extension": "インストール済みの拡張機能では<code>{{file}}</code>をインライン表示できません。",
     "loading": "埋め込みを読み込み中…",
+    "loading_title": "{{title}}を読み込み中…",
     "render_failed": "埋め込みの表示に失敗しました",
     "unknown_error": "不明なエラー",
     "shared_loading": "共有埋め込みを読み込み中…",

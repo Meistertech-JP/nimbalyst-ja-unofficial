@@ -32,6 +32,7 @@ import type {
   FeedbackRequestServiceTarget,
 } from '../shared/feedbackRequest.ts';
 import type { TutorialEntryPoint, TutorialStartResult, TutorialStatusResult } from '../shared/tutorial.ts';
+import type { CanMoveResult, MoveResult } from '../shared/projectMigration.ts';
 import type {
   OpenCodeModelCatalogIpcResponse,
   OpenCodeModelCatalogRefreshRequest,
@@ -927,9 +928,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Project Migration (move/rename)
   projectMigration: {
-    canMove: (oldPath: string) => ipcRenderer.invoke('project:can-move', oldPath) as Promise<{ canMove: boolean; reason?: string }>,
-    move: (oldPath: string, newPath: string) => ipcRenderer.invoke('project:move', oldPath, newPath) as Promise<{ success: boolean; error?: string; newPath?: string }>,
-    rename: (oldPath: string, newName: string) => ipcRenderer.invoke('project:rename', oldPath, newName) as Promise<{ success: boolean; error?: string; newPath?: string }>,
+    canMove: (oldPath: string) => ipcRenderer.invoke('project:can-move', oldPath) as Promise<CanMoveResult>,
+    move: (oldPath: string, newPath: string) => ipcRenderer.invoke('project:move', oldPath, newPath) as Promise<MoveResult>,
+    rename: (oldPath: string, newName: string) => ipcRenderer.invoke('project:rename', oldPath, newName) as Promise<MoveResult>,
   },
 
 

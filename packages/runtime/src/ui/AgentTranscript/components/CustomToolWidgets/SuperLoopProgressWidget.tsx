@@ -101,8 +101,8 @@ const ReadOnlyProgressCard: React.FC<{ args: ProgressUpdateArgs }> = ({ args }) 
         <span style={{ fontWeight: 600, color: 'var(--nim-text)' }}>
           {t('super_loop_progress.progress_update')}
         </span>
-        <Badge label={t(`super_loop_progress.${PHASE_LABEL_KEYS[args.phase]}`)} bg={phaseStyle.bg} color={phaseStyle.text} />
-        <Badge label={t(`super_loop_progress.${STATUS_LABEL_KEYS[args.status]}`)} bg={statusStyle.bg} color={statusStyle.text} />
+        <Badge label={Object.hasOwn(PHASE_LABEL_KEYS, args.phase) ? t(`super_loop_progress.${PHASE_LABEL_KEYS[args.phase]}`) : String(args.phase)} bg={phaseStyle.bg} color={phaseStyle.text} />
+        <Badge label={Object.hasOwn(STATUS_LABEL_KEYS, args.status) ? t(`super_loop_progress.${STATUS_LABEL_KEYS[args.status]}`) : String(args.status)} bg={statusStyle.bg} color={statusStyle.text} />
         {args.completionSignal && (
           <Badge label={t('super_loop_progress.status_completed')} bg="rgba(74,222,128,0.15)" color="#4ade80" />
         )}
@@ -206,7 +206,7 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
         <span style={{ fontWeight: 600, color: '#f97316' }}>
           {t('super_loop_progress.status_blocked')}
         </span>
-        <Badge label={t(`super_loop_progress.${PHASE_LABEL_KEYS[args.phase]}`)} bg={phaseStyle.bg} color={phaseStyle.text} />
+        <Badge label={Object.hasOwn(PHASE_LABEL_KEYS, args.phase) ? t(`super_loop_progress.${PHASE_LABEL_KEYS[args.phase]}`) : String(args.phase)} bg={phaseStyle.bg} color={phaseStyle.text} />
         <span
           style={{
             marginLeft: 'auto',

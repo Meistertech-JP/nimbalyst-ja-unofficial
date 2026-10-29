@@ -4,6 +4,7 @@
  * resolve beside the HTML page itself, as when it is opened on its own.
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
 import { HtmlEmbedFrame } from '@nimbalyst/runtime-source/ui/htmlEmbed/HtmlEmbedFrame';
 import { wikiApi, wikiChanges } from '../../api/client';
 import { navigateFromHtml, useWikiHtmlEmbedTheme, WIKI_HTML_EMBED_SHELL_URL } from './htmlPages';
@@ -30,9 +31,10 @@ export function useWikiPageText(pageId: string): string | null {
 }
 
 export function WikiHtmlEmbed({ pageId, title, height }: { pageId: string; title: string; height?: number }) {
+  const { t } = useTranslation('common');
   const html = useWikiPageText(pageId);
   const theme = useWikiHtmlEmbedTheme();
-  if (html === null) return <div className="p-4 text-xs text-nim-faint">Loading {title}…</div>;
+  if (html === null) return <div className="p-4 text-xs text-nim-faint">{t('embed.loading_title', { title })}</div>;
   return (
     <HtmlEmbedFrame
       html={html}

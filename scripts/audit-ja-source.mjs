@@ -363,7 +363,9 @@ function auditReferences(root, resources) {
 }
 
 function git(root, args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  // Retained package candidates can make the untracked inventory exceed Node's
+  // default 1 MiB buffer. Keep the full inventory rather than truncating it.
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
 function publicationInventory(root) {

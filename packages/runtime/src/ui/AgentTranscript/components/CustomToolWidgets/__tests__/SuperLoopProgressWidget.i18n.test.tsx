@@ -13,11 +13,11 @@ import { SuperLoopProgressWidget } from '../SuperLoopProgressWidget';
 const SESSION_ID = 'super-loop-i18n-session';
 let testI18n: i18n;
 
-function makeMessage(status: 'completed' | 'blocked') {
+function makeMessage(status: string, phase = 'planning') {
   return {
     toolCall: {
       arguments: {
-        phase: 'planning',
+        phase,
         status,
         completionSignal: false,
         learnings: [],
@@ -28,12 +28,12 @@ function makeMessage(status: 'completed' | 'blocked') {
   } as any;
 }
 
-function renderWidget(status: 'completed' | 'blocked') {
+function renderWidget(status: string, phase = 'planning') {
   return render(
     <I18nextProvider i18n={testI18n}>
       <JotaiProvider store={store}>
         <SuperLoopProgressWidget
-          message={makeMessage(status)}
+          message={makeMessage(status, phase)}
           sessionId={SESSION_ID}
           isExpanded={false}
           onToggle={vi.fn()}
@@ -70,6 +70,23 @@ describe('SuperLoopProgressWidget localization', () => {
     expect(screen.getByText('計画')).toBeTruthy();
     expect(screen.getByText('完了')).toBeTruthy();
     expect(screen.getByText('1回目')).toBeTruthy();
+  });
+
+  it.each([
+    ['future-status', 'future-phase'],
+    ['constructor', '__proto__'],
+  ])('preserves unknown status %s and phase %s as external identifiers', (status, phase) => {
+    renderWidget(status, phase);
+
+    expect(screen.getByText(status)).toBeTruthy();
+    expect(screen.getByText(phase)).toBeTruthy();
+    expect(screen.queryByText('super_loop_progress.undefined')).toBeNull();
+  });
+
+  it('preserves an unknown phase on the blocked feedback card', () => {
+    renderWidget('blocked', 'future-phase');
+    expect(screen.getByText('future-phase')).toBeTruthy();
+    expect(screen.getByText('フィードバックを送信')).toBeTruthy();
   });
 
   it('renders snapshot learnings and diagnostics labels in Japanese', async () => {

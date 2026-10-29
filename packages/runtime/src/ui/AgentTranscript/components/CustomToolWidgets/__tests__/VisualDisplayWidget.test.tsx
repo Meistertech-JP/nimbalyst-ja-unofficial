@@ -1,4 +1,6 @@
 import React from 'react';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VisualDisplayWidget } from '../VisualDisplayWidget';
@@ -59,6 +61,35 @@ describe('VisualDisplayWidget', () => {
         && message.includes('of chart should be greater than 0');
     });
     expect(invalidSizeWarning).toBeUndefined();
+  });
+
+  it.each(['future-chart', '__proto__'])('does not translate an unknown chart identifier %s', async (chartType) => {
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'en', fallbackLng: 'en',
+      resources: { en: { aichat: { visual: { chart_description: '{{chart}}: {{description}}' } } } },
+    });
+    const translate = vi.spyOn(i18n, 't');
+    try {
+      const view = render(
+        <I18nextProvider i18n={i18n}>
+          <VisualDisplayWidget
+            message={{ toolCall: { toolName: 'display_to_user', arguments: { items: [{
+              description: 'Unknown chart fixture',
+              chart: { chartType, data: [{ category: 'A', value: 1 }], xAxisKey: 'category', yAxisKey: 'value' },
+            }] } } } as any}
+            isExpanded={true}
+            onToggle={() => {}}
+            sessionId="unknown-chart-session"
+          />
+        </I18nextProvider>,
+      );
+      expect(translate).toHaveBeenCalled();
+      expect(translate.mock.calls.some(([key]) => key === undefined || typeof key !== 'string')).toBe(false);
+      expect(view.getByRole('img', { name: `${chartType}: Unknown chart fixture` })).toBeTruthy();
+    } finally {
+      translate.mockRestore();
+    }
   });
 
   it('renders inline synced bytes instead of the unreachable desktop path (no readFile, as on iOS)', async () => {

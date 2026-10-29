@@ -12,6 +12,7 @@ import {
   type VirtualElement,
 } from '@floating-ui/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
+import type { ProjectMigrationFailure } from '../../../shared/projectMigration';
 
 // Apply the active theme as a base dark/light class on the WorkspaceManager
 // (project picker) window. The picker does not load the extension theme
@@ -78,8 +79,58 @@ interface ContextMenuState {
   workspace: WorkspaceInfo | null;
 }
 
+type WorkspaceManagerError =
+  | { kind: 'migration'; failure: ProjectMigrationFailure }
+  | { kind: 'message'; message: string }
+  | { kind: 'translation'; key: 'workspace.cannot_rename' | 'workspace.cannot_move' | 'workspace.move_failed' | 'workspace.rename_failed' | 'workspace.invalid_name' }
+  | { kind: 'detail'; key: 'workspace.migration.backup_failed_detail' | 'workspace.migration.move_failed_detail' | 'workspace.migration.rename_failed_detail'; detail: string };
+
 export const WorkspaceManager: React.FC = () => {
   const { t, i18n } = useTranslation('project');
+  const migrationFailureMessage = (failure: ProjectMigrationFailure): string => {
+    switch (failure.code) {
+      case 'project_directory_missing':
+        return t('workspace.migration.project_directory_missing');
+      case 'project_open':
+        return t('workspace.migration.project_open');
+      case 'worktrees_exist':
+        return t(failure.count === 1
+          ? 'workspace.migration.worktree_exists'
+          : 'workspace.migration.worktrees_exist', { count: failure.count });
+      case 'destination_exists':
+        return t('workspace.migration.destination_exists');
+      case 'destination_parent_missing':
+        return t('workspace.migration.destination_parent_missing');
+      case 'backup_failed':
+        return failure.detail
+          ? t('workspace.migration.backup_failed_detail', { detail: failure.detail })
+          : t('workspace.migration.backup_failed');
+      case 'new_name_empty':
+        return t('workspace.migration.new_name_empty');
+      case 'invalid_name_characters':
+        return t('workspace.invalid_name');
+      case 'move_failed':
+        return failure.detail
+          ? t('workspace.migration.move_failed_detail', { detail: failure.detail })
+          : t('workspace.move_failed');
+      case 'rename_failed':
+        return failure.detail
+          ? t('workspace.migration.rename_failed_detail', { detail: failure.detail })
+          : t('workspace.rename_failed');
+    }
+  };
+  const workspaceManagerErrorMessage = (error: WorkspaceManagerError): string => {
+    switch (error.kind) {
+      case 'migration':
+        return migrationFailureMessage(error.failure);
+      case 'message':
+        return error.message;
+      case 'translation':
+        return t(error.key);
+      case 'detail':
+        return t(error.key, { detail: error.detail });
+    }
+  };
   const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceInfo | null>(null);
   const [workspaceStats, setWorkspaceStats] = useState<WorkspaceStats | null>(null);
@@ -113,7 +164,7 @@ export const WorkspaceManager: React.FC = () => {
     visible: boolean;
     workspace: WorkspaceInfo | null;
     newName: string;
-    error: string | null;
+    error: WorkspaceManagerError | null;
     stats?: WorkspaceStats | null;
   }>({
     visible: false,
@@ -139,7 +190,7 @@ export const WorkspaceManager: React.FC = () => {
   // Operation state
   const [operationInProgress, setOperationInProgress] = useState(false);
   const [operationLabel, setOperationLabel] = useState(t('workspace.moving'));
-  const [operationError, setOperationError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<WorkspaceManagerError | null>(null);
 
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -295,12 +346,12 @@ export const WorkspaceManager: React.FC = () => {
     try {
       const result = await window.electronAPI.tutorial.start(entryPoint);
       if (!result.success) {
-        setOperationError(result.error);
+        setOperationError({ kind: 'message', message: result.error });
         return;
       }
       setTutorialExists(true);
     } catch (error) {
-      setOperationError(error instanceof Error ? error.message : String(error));
+      setOperationError({ kind: 'message', message: error instanceof Error ? error.message : String(error) });
     } finally {
       setOperationInProgress(false);
     }
@@ -336,7 +387,9 @@ export const WorkspaceManager: React.FC = () => {
   const openRenameDialog = async (workspace: WorkspaceInfo) => {
     const canMoveResult = await window.electronAPI.projectMigration.canMove(workspace.path);
     if (!canMoveResult.canMove) {
-      setOperationError(canMoveResult.reason || t('workspace.cannot_rename'));
+      setOperationError(canMoveResult.reason
+        ? { kind: 'migration', failure: canMoveResult.reason }
+        : { kind: 'translation', key: 'workspace.cannot_rename' });
       return;
     }
 
@@ -385,7 +438,9 @@ export const WorkspaceManager: React.FC = () => {
     // Check if can move first
     const canMoveResult = await window.electronAPI.projectMigration.canMove(workspace.path);
     if (!canMoveResult.canMove) {
-      setOperationError(canMoveResult.reason || t('workspace.cannot_move'));
+      setOperationError(canMoveResult.reason
+        ? { kind: 'migration', failure: canMoveResult.reason }
+        : { kind: 'translation', key: 'workspace.cannot_move' });
       return;
     }
 
@@ -439,10 +494,15 @@ export const WorkspaceManager: React.FC = () => {
           }
         }
       } else {
-        setOperationError(moveResult.error || t('workspace.move_failed'));
+        setOperationError(moveResult.error
+          ? { kind: 'migration', failure: moveResult.error }
+          : { kind: 'translation', key: 'workspace.move_failed' });
       }
     } catch (error: any) {
-      setOperationError(error.message || t('workspace.move_failed'));
+      const detail = error instanceof Error ? error.message : String(error);
+      setOperationError(detail
+        ? { kind: 'detail', key: 'workspace.migration.move_failed_detail', detail }
+        : { kind: 'translation', key: 'workspace.move_failed' });
     } finally {
       setOperationInProgress(false);
     }
@@ -464,7 +524,7 @@ export const WorkspaceManager: React.FC = () => {
     if (invalidChars.test(newName)) {
       setRenameDialog(prev => ({
         ...prev,
-        error: t('workspace.invalid_name'),
+        error: { kind: 'translation', key: 'workspace.invalid_name' },
       }));
       return;
     }
@@ -493,13 +553,18 @@ export const WorkspaceManager: React.FC = () => {
       } else {
         setRenameDialog(prev => ({
           ...prev,
-          error: result.error || t('workspace.rename_failed'),
+          error: result.error
+            ? { kind: 'migration', failure: result.error }
+            : { kind: 'translation', key: 'workspace.rename_failed' },
         }));
       }
     } catch (error: any) {
+      const detail = error instanceof Error ? error.message : String(error);
       setRenameDialog(prev => ({
         ...prev,
-        error: error.message || t('workspace.rename_failed'),
+        error: detail
+          ? { kind: 'detail', key: 'workspace.migration.rename_failed_detail', detail }
+          : { kind: 'translation', key: 'workspace.rename_failed' },
       }));
     } finally {
       setOperationInProgress(false);
@@ -951,7 +1016,7 @@ export const WorkspaceManager: React.FC = () => {
                 disabled={operationInProgress}
               />
               {renameDialog.error && (
-                <p className="text-[12px] text-[var(--nim-error)] mt-1 m-0">{renameDialog.error}</p>
+                <p className="text-[12px] text-[var(--nim-error)] mt-1 m-0">{workspaceManagerErrorMessage(renameDialog.error)}</p>
               )}
             </div>
             <div className="flex justify-end gap-2">
@@ -1028,7 +1093,7 @@ export const WorkspaceManager: React.FC = () => {
       {operationError && (
         <div className="fixed bottom-4 right-4 bg-[var(--nim-error)] text-white px-4 py-3 rounded-lg shadow-lg z-[3000] flex items-center gap-3 max-w-[400px]">
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>error</span>
-          <span className="text-[13px] flex-1">{operationError}</span>
+          <span className="text-[13px] flex-1">{workspaceManagerErrorMessage(operationError)}</span>
           <button
             className="text-white/80 hover:text-white"
             onClick={() => setOperationError(null)}

@@ -498,6 +498,7 @@
     "resolving_file": "Resolving embedded file…",
     "no_extension": "No installed extension can render <code>{{file}}</code> inline.",
     "loading": "Loading embed…",
+    "loading_title": "Loading {{title}}…",
     "render_failed": "Failed to render embed",
     "unknown_error": "Unknown error",
     "shared_loading": "Loading shared embed...",
