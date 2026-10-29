@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 const electronApp = vi.hoisted(() => ({
-  getPath: vi.fn(() => 'C:\\Users\\test\\AppData\\Roaming'),
+  getPath: vi.fn(() => 'C:\Users\test\AppData\Roaming'),
   setName: vi.fn(),
   setPath: vi.fn(),
 }));
@@ -38,7 +38,7 @@ describe('bootstrap profile path selection', () => {
     process.env.NIMBALYST_USER_DATA_DIR = profileDir;
     process.env.NIMBALYST_TEST_DOCUMENTS_DIR = workspaceDir;
 
-    await import('./bootstrapProfile');
+    await import('../bootstrapProfile');
 
     expect(electronApp.setPath).toHaveBeenCalledWith('userData', profileDir);
     expect(electronApp.setPath).toHaveBeenCalledWith('appData', profileRoot);
@@ -50,7 +50,7 @@ describe('bootstrap profile path selection', () => {
     process.env.NIMBALYST_USER_DATA_DIR = path.join(profileRoot, 'profile');
     process.env.NIMBALYST_TEST_DOCUMENTS_DIR = path.join(os.homedir(), 'Documents');
 
-    await expect(import('./bootstrapProfile')).rejects.toThrow(
+    await expect(import('../bootstrapProfile')).rejects.toThrow(
       'NIMBALYST_TEST_DOCUMENTS_DIR must be the isolated profile workspace'
     );
   });
@@ -59,7 +59,7 @@ describe('bootstrap profile path selection', () => {
     process.env.NIMBALYST_USER_DATA_DIR = path.join(os.homedir(), 'profile-root', 'profile');
     process.env.NIMBALYST_TEST_DOCUMENTS_DIR = path.join(os.homedir(), 'profile-root', 'workspace');
 
-    await expect(import('./bootstrapProfile')).rejects.toThrow(
+    await expect(import('../bootstrapProfile')).rejects.toThrow(
       'NIMBALYST_TEST_DOCUMENTS_DIR must be the isolated profile workspace'
     );
   });
@@ -67,7 +67,7 @@ describe('bootstrap profile path selection', () => {
   it('rejects the test Documents override without an explicit isolated userData profile', async () => {
     process.env.NIMBALYST_TEST_DOCUMENTS_DIR = path.join(os.tmpdir(), 'profile-root', 'workspace');
 
-    await expect(import('./bootstrapProfile')).rejects.toThrow(
+    await expect(import('../bootstrapProfile')).rejects.toThrow(
       'NIMBALYST_TEST_DOCUMENTS_DIR requires NIMBALYST_USER_DATA_DIR'
     );
   });
@@ -75,7 +75,7 @@ describe('bootstrap profile path selection', () => {
   it('does not override the operating-system Documents path for a normal launch', async () => {
     process.env.NIMBALYST_USER_DATA_DIR = path.join(os.tmpdir(), 'profile-root', 'profile');
 
-    await import('./bootstrapProfile');
+    await import('../bootstrapProfile');
 
     expect(electronApp.setPath).not.toHaveBeenCalledWith('documents', expect.anything());
   });
