@@ -1,4 +1,5 @@
 import { usePendingFileOpen } from '../../hooks/usePendingFileOpen';
+import { useCommandVersion } from '../../hooks/useCommandVersion';
 import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSetAtom, useAtomValue, useAtom } from 'jotai';
@@ -1215,9 +1216,9 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
   // React to the "new mockup" command from the menu. The IPC subscription
   // lives in store/listeners/appCommandListeners.ts; here we watch the counter.
   const newMockupVersion = useAtomValue(newMockupRequestAtom);
-  const newMockupInitialVersionRef = useRef(newMockupVersion);
+  const claimNewMockupVersion = useCommandVersion(newMockupVersion);
   useEffect(() => {
-    if (newMockupVersion === newMockupInitialVersionRef.current) return;
+    if (!workspacePath || !window.electronAPI || !claimNewMockupVersion(newMockupVersion)) return;
     const handleNewMockup = async () => {
       if (!workspacePath || !window.electronAPI) return;
 
@@ -1246,7 +1247,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
     };
 
     void handleNewMockup();
-  }, [newMockupVersion, workspacePath, selectedFolderPath, handleWorkspaceFileSelect, i18n.resolvedLanguage, tFiles]);
+  }, [newMockupVersion, workspacePath, selectedFolderPath, handleWorkspaceFileSelect, i18n.resolvedLanguage, tFiles, claimNewMockupVersion]);
 
   // React to the "New Browser Tab" command (Cmd+Shift+B) from the menu. The IPC
   // subscription lives in store/listeners/appCommandListeners.ts; here we watch
@@ -1331,7 +1332,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
     } catch (error) {
       console.error('Error creating new file:', error);
     }
-  }, [workspacePath, newFileDirectory, handleWorkspaceFileSelect, extensionFileTypes]);
+  }, [workspacePath, newFileDirectory, handleWorkspaceFileSelect, extensionFileTypes, i18n.resolvedLanguage, tFiles]);
 
   return (
     <>

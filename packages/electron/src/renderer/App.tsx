@@ -1,6 +1,7 @@
 // Side-effect: patch window.addEventListener to guard text inputs from extension key handlers.
 // MUST be the very first import so it patches before any listeners are registered.
 import './hooks/useExtensionInputGuard';
+import { useCommandVersion } from './hooks/useCommandVersion';
 
 // Side-effect: ensure atomFamily registry is initialized and window.__atomFamilyStats is set
 import './store/debug/atomFamilyRegistry';
@@ -2691,10 +2692,10 @@ export default function App() {
   // React to "confirm close (unsaved)" command. The IPC subscription lives
   // in store/listeners/appCommandListeners.ts.
   const confirmCloseUnsavedVersion = useAtomValue(confirmCloseUnsavedRequestAtom);
-  const confirmCloseUnsavedInitialRef = useRef(confirmCloseUnsavedVersion);
+  const claimConfirmCloseUnsavedVersion = useCommandVersion(confirmCloseUnsavedVersion);
   useEffect(() => {
-    if (confirmCloseUnsavedVersion === confirmCloseUnsavedInitialRef.current) return;
     if (!window.electronAPI) return;
+    if (!claimConfirmCloseUnsavedVersion(confirmCloseUnsavedVersion)) return;
 
     const handleConfirmClose = async () => {
       console.log('[WINDOW CLOSE] Has unsaved changes');
@@ -2742,7 +2743,7 @@ export default function App() {
     };
 
     void handleConfirmClose();
-  }, [confirmCloseUnsavedVersion, confirmDialog, tDialogs]);
+  }, [confirmCloseUnsavedVersion, confirmDialog, tDialogs, claimConfirmCloseUnsavedVersion]);
 
   // React to close-active-tab from the menu. IPC subscription lives in
   // store/listeners/appCommandListeners.ts.
