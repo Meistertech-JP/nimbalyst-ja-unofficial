@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { displayPartialWriteReason } from './partialWriteNotice';
 import { displayGap, type GapDisplay } from './ontologyGapCopy';
+import { displayProposalCopy } from './ontologyProposalCopy';
 import {
   FloatingFocusManager,
   FloatingOverlay,
@@ -179,7 +180,7 @@ function ProposalPanel({ proposal, graph, env, context, onClose, onOpenItem }: {
   onClose: () => void;
   onOpenItem?: (itemId: string) => void;
 }) {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
   const { t: tCommon } = useTranslation('common');
   const parsed = useMemo(() => parseProposalChanges(ontologyFieldValue(proposal, 'changes')), [proposal]);
   const plans = useMemo(() => new Map(parsed.changes.map((change) => [change.id, planOntologyChange(change, graph, env)])), [parsed, graph, env]);
@@ -251,7 +252,7 @@ function ProposalPanel({ proposal, graph, env, context, onClose, onOpenItem }: {
           </div>
         )}
         {parsed.errors.length > 0 && (
-          <ul className="ontology-drawer-error">{parsed.errors.map((line) => <li key={line}>{line}</li>)}</ul>
+          <ul className="ontology-drawer-error">{parsed.errors.map((line, index) => <li key={line}>{displayProposalCopy(line, parsed.displayErrors?.[index], i18n.resolvedLanguage, (key, values) => t(key, values))}</li>)}</ul>
         )}
         {parsed.changes.map((change, index) => (
           <ChangeRow
@@ -313,7 +314,8 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
   onDecide: (decision: ChangeDecision, rejectReason?: string) => void;
   onOpenItem?: (itemId: string) => void;
 }) {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
+  const copy = (raw: string, descriptor: Parameters<typeof displayProposalCopy>[1]) => displayProposalCopy(raw, descriptor, i18n.resolvedLanguage, (key, values) => t(key, values));
   const { t: tCommon } = useTranslation('common');
   const decision = decisionOf(change);
   const live = isLive(change);
@@ -327,7 +329,7 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
       <div className="ontology-change-top">
         <span className="ontology-change-no">{marker}</span>
         <div>
-          <div className="ontology-change-title">{plan.summary}</div>
+          <div className="ontology-change-title">{copy(plan.summary, plan.displaySummary)}</div>
           <div className="ontology-change-meta">
             {schema ? t('ontology_proposals.schema_applied') : t(plan.pages.length === 1 ? 'ontology_proposals.affects_one' : 'ontology_proposals.affects_other', { count: plan.pages.length })}
             {plan.pages.length > 0 && <> · <button type="button" className="ontology-link" onClick={() => setPreview(!preview)}>{preview ? t('ontology_proposals.hide_pages') : t('ontology_proposals.preview_pages')}</button></>}
@@ -340,11 +342,11 @@ function ChangeRow({ index, change, plan, canDecide, onDecide, onOpenItem }: {
       {preview && <div className="ontology-change-indent"><PageLinks pages={plan.pages} onOpenItem={onOpenItem} limit={40} /></div>}
       {plan.example && (
         <div className="ontology-change-indent ontology-change-example">
-          {plan.example.before.map((line, i) => <div key={`b${i}`} className="ontology-change-before">{t('ontology_proposals.before')}: {line.label}: {line.value}</div>)}
-          {plan.example.after.map((line, i) => <div key={`a${i}`} className="ontology-change-after">{t('ontology_proposals.after')}: {line.label}: {line.value}</div>)}
+          {plan.example.before.map((line, i) => <div key={`b${i}`} className="ontology-change-before">{t('ontology_proposals.before')}: {copy(line.label, line.displayLabel)}: {copy(line.value, line.displayValue)}</div>)}
+          {plan.example.after.map((line, i) => <div key={`a${i}`} className="ontology-change-after">{t('ontology_proposals.after')}: {copy(line.label, line.displayLabel)}: {copy(line.value, line.displayValue)}</div>)}
         </div>
       )}
-      {decision === 'accepted' && !live && plan.blocked && <div className="ontology-change-indent ontology-change-blocked">{plan.blocked}</div>}
+      {decision === 'accepted' && !live && plan.blocked && <div className="ontology-change-indent ontology-change-blocked">{copy(plan.blocked, plan.displayBlocked)}</div>}
       {decision === 'rejected' && change.rejectReason && <div className="ontology-change-indent ontology-change-meta">{t('ontology_proposals.rejected_reason', { reason: change.rejectReason })}</div>}
       {!live && (
         <div className="ontology-change-indent ontology-change-actions">

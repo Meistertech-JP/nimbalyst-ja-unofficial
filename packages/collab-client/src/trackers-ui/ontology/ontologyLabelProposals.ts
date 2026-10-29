@@ -15,6 +15,7 @@ import type { KnowledgeGraph } from './ontologyKnowledge';
 import { propertyRange } from './ontologyLabels';
 import { ontologyRecordTitle, stringList, ontologyFieldValue, type OntologyRecordLike } from './ontologyRecords';
 import type { ApplyOp, ChangePlan, PlanEnv, UndoOp } from './ontologyProposals';
+import { proposalCopy, type ProposalCopy } from './ontologyProposalCopy';
 
 /**
  * The change shapes the wiki update skill drafts (its "Ontology proposals"
@@ -102,10 +103,16 @@ function schemaPlan<T extends OntologyRecordLike>(
   title: string,
   before: string,
   after: string,
+  displaySummary: ProposalCopy,
+  displayLabel?: ProposalCopy,
+  displayBefore?: ProposalCopy,
+  displayAfter?: ProposalCopy,
 ): ChangePlan<T> {
   const done = satisfied || Boolean(appliedAt);
   return plan(summary, {
-    example: { itemId: null, title, before: [{ label: title, value: before }], after: [{ label: title, value: after }] },
+    displaySummary,
+    displayBlocked: proposalCopy('schema_label'),
+    example: { itemId: null, title, before: [{ label: title, value: before, displayLabel, displayValue: displayBefore }], after: [{ label: title, value: after, displayLabel, displayValue: displayAfter }] },
     satisfied: done,
     blocked: done ? null : SCHEMA_BLOCKED,
   });
@@ -146,7 +153,10 @@ export function planLabelChange<T extends OntologyRecordLike>(
       const parents = draft.broader?.length ? `, under ${draft.broader.map(labelTitle).join(' and ')}` : '';
       return schemaPlan(`Add the label "${draft.label}" (${draft.id})${parents}`, Boolean(label(draft.id)), change.appliedAt, 'Labels',
         label(draft.id) ? `includes ${draft.id}` : `no ${draft.id}`,
-        `+ ${draft.id}${draft.properties?.length ? ` with ${draft.properties.join(', ')}` : ''}`);
+        `+ ${draft.id}${draft.properties?.length ? ` with ${draft.properties.join(', ')}` : ''}`,
+        proposalCopy(draft.broader?.length ? 'add_label_under' : 'add_label', { label: draft.label, id: draft.id, parents: draft.broader?.map(labelTitle).join(', ') ?? '' }), proposalCopy('labels.labels'),
+        proposalCopy(label(draft.id) ? 'values.includes' : 'values.absent', { value: draft.id }),
+        draft.properties?.length ? proposalCopy('values.with_properties', { id: draft.id, properties: draft.properties.join(', ') }) : undefined);
     }
     case 'add-property': {
       const { property, storage } = change;
@@ -161,6 +171,10 @@ export function planLabelChange<T extends OntologyRecordLike>(
         exists && listed, change.appliedAt, 'Properties',
         exists ? `includes ${property.id}` : `no ${property.id}`,
         `+ ${property.id}: ${storage}, ${shape}${range?.length ? `, range ${range.join(' | ')}` : ''}`,
+        proposalCopy(`add_property_${storage}${change.labelIds?.length ? '_to' : ''}`, { label: property.label, id: property.id, labels: change.labelIds?.map(labelTitle).join(', ') ?? '' }),
+        proposalCopy('labels.properties'),
+        proposalCopy(exists ? 'values.includes' : 'values.absent', { value: property.id }),
+        range?.length ? proposalCopy('values.property_range', { id: property.id, storage, shape, range: range.join(' | ') }) : undefined,
       );
     }
     case 'add-label-property': {
@@ -170,30 +184,43 @@ export function planLabelChange<T extends OntologyRecordLike>(
       const has = Boolean(target?.properties?.includes(change.propertyId)) && expected;
       return schemaPlan(`Give ${labelTitle(change.labelId)} the property ${env.predicateLabel(change.propertyId)}`, has, change.appliedAt, labelTitle(change.labelId),
         (target?.properties ?? []).join(', ') || '(no properties)',
-        `+ ${change.propertyId}${change.expects ? ` (expects ${change.expects.min !== undefined ? `at least ${change.expects.min}` : ''}${change.expects.min !== undefined && change.expects.max !== undefined ? ', ' : ''}${change.expects.max !== undefined ? `at most ${change.expects.max}` : ''})` : ''}`);
+        `+ ${change.propertyId}${change.expects ? ` (expects ${change.expects.min !== undefined ? `at least ${change.expects.min}` : ''}${change.expects.min !== undefined && change.expects.max !== undefined ? ', ' : ''}${change.expects.max !== undefined ? `at most ${change.expects.max}` : ''})` : ''}`,
+        proposalCopy('add_label_property', { label: labelTitle(change.labelId), property: env.predicateLabel(change.propertyId) }), undefined,
+        (target?.properties ?? []).join(', ') ? undefined : proposalCopy('values.no_properties'),
+        change.expects ? proposalCopy('values.expects', { property: change.propertyId, bounds:
+          change.expects.min !== undefined && change.expects.max !== undefined ? proposalCopy('values.bounds', { min: change.expects.min, max: change.expects.max })
+            : change.expects.min !== undefined ? proposalCopy('values.minimum', { min: change.expects.min })
+              : change.expects.max !== undefined ? proposalCopy('values.maximum', { max: change.expects.max }) : '',
+        }) : undefined);
     }
     case 'add-broader': {
       const has = Boolean(label(change.labelId)?.broader?.includes(change.broaderId));
       return schemaPlan(`Put ${labelTitle(change.labelId)} under ${labelTitle(change.broaderId)}`, has, change.appliedAt, `${labelTitle(change.labelId)} broader`,
-        (label(change.labelId)?.broader ?? []).join(', ') || '(top level)', `+ ${change.broaderId}`);
+        (label(change.labelId)?.broader ?? []).join(', ') || '(top level)', `+ ${change.broaderId}`,
+        proposalCopy('add_broader', { label: labelTitle(change.labelId), parent: labelTitle(change.broaderId) }), proposalCopy('labels.broader', { label: labelTitle(change.labelId) }),
+        (label(change.labelId)?.broader ?? []).join(', ') ? undefined : proposalCopy('values.top_level'));
     }
     case 'extend-range': {
       const range = propertyRange(registry, change.propertyId);
       const has = change.labelIds.every((id) => range.includes(id));
       return schemaPlan(`Let ${env.predicateLabel(change.propertyId)} also point at ${change.labelIds.map(labelTitle).join(', ')}`, has, change.appliedAt, `${change.propertyId} range`,
-        range.join(' | ') || '(any)', [...new Set([...range, ...change.labelIds])].join(' | '));
+        range.join(' | ') || '(any)', [...new Set([...range, ...change.labelIds])].join(' | '),
+        proposalCopy('extend_range', { property: env.predicateLabel(change.propertyId), labels: change.labelIds.map(labelTitle).join(', ') }), proposalCopy('labels.range', { property: change.propertyId }),
+        range.join(' | ') ? undefined : proposalCopy('values.any'));
     }
     case 'apply-label': {
       const pages = pagesOf(change.pageIds);
       const { ops, undo } = relabel(pages, (current) => (current.includes(change.labelId) ? current : [...current, change.labelId]));
       const first = pages.find((page) => !ownLabelList(page).includes(change.labelId)) ?? pages[0];
       return plan(`Label ${pages.length} ${pages.length === 1 ? 'page' : 'pages'} ${labelTitle(change.labelId)}`, {
+        displaySummary: proposalCopy('apply_label', { count: pages.length, label: labelTitle(change.labelId) }),
+        displayBlocked: proposalCopy('waiting_label', { label: change.labelId }),
         pages,
         example: first ? {
           itemId: first.id,
           title: ontologyRecordTitle(first),
-          before: [{ label: 'Labels', value: ownLabelList(first).join(', ') || '(none)' }],
-          after: [{ label: 'Labels', value: [...new Set([...ownLabelList(first), change.labelId])].join(', ') }],
+          before: [{ label: 'Labels', displayLabel: proposalCopy('labels.labels'), displayValue: ownLabelList(first).join(', ') ? undefined : proposalCopy('values.none'), value: ownLabelList(first).join(', ') || '(none)' }],
+          after: [{ label: 'Labels', displayLabel: proposalCopy('labels.labels'), value: [...new Set([...ownLabelList(first), change.labelId])].join(', ') }],
         } : null,
         ops,
         undo,
@@ -215,12 +242,14 @@ export function planLabelChange<T extends OntologyRecordLike>(
       const { ops, undo } = relabel(pages, (current, page) => [...new Set([...current.filter((entry) => entry !== change.labelId), ...targets.get(page)!])]);
       const first = assigned.find((entry) => entry.pages.length);
       return plan(`Split ${labelTitle(change.labelId)} into ${change.into.map((draft) => draft.label).join(', ')}`, {
+        displaySummary: proposalCopy('split_label', { label: labelTitle(change.labelId), labels: change.into.map((draft) => draft.label).join(', ') }),
+        displayBlocked: proposalCopy('split_waiting', { labels: missing.map((draft) => draft.id).join(', '), label: change.labelId }),
         pages,
         example: first ? {
           itemId: first.pages[0]!.id,
           title: ontologyRecordTitle(first.pages[0]!),
-          before: [{ label: 'Labels', value: ownLabelList(first.pages[0]!).join(', ') || labelTitle(change.labelId) }],
-          after: [{ label: 'Labels', value: first.id }],
+          before: [{ label: 'Labels', displayLabel: proposalCopy('labels.labels'), value: ownLabelList(first.pages[0]!).join(', ') || labelTitle(change.labelId) }],
+          after: [{ label: 'Labels', displayLabel: proposalCopy('labels.labels'), value: first.id }],
         } : null,
         ops: missing.length ? [] : ops,
         undo: missing.length ? [] : undo,

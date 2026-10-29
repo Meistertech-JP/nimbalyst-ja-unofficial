@@ -7,10 +7,88 @@ import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { OntologyGapRow } from '../OntologyParts';
 import { buildDomainModel } from '../ontologyDomain';
+import { OntologyWhatWeTrack } from '../OntologyWhatWeTrack';
 import { STALE_FACT_DAYS } from '../ontologyKnowledge';
-import { domainFixture, knowledgeFixture, rec, ref, NOW } from './ontologyFixture';
+import { displayDomainModel } from '../ontologyDomainVocabulary';
+import { claim, domainFixture, knowledgeFixture, rec, ref, NOW } from './ontologyFixture';
 
 afterEach(cleanup);
+
+test('domain display switches language without rewriting names, links, schema data or raw requests', async () => {
+  const model = buildDomainModel({ types: [], predicates: null, records: domainFixture(), now: NOW });
+  const before = JSON.stringify(model);
+  const onSelect = vi.fn();
+  const onOpenItem = vi.fn();
+  const i18n = await createI18nInstance('ja');
+  const content = (preference: 'ja' | 'en', selected: string | null = null) => (
+    <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="ja">
+      <OntologyWhatWeTrack model={model} selected={selected} onSelect={onSelect} now={NOW}
+        gapAction={() => ({ label: 'Custom action', open: vi.fn() })} proposals={[]}
+        onOpenProposal={vi.fn()} onOpenItem={onOpenItem} />
+    </UiLanguageProvider>
+  );
+  const view = render(content('ja'));
+  expect(view.container.querySelector('[data-group="market"] h3')?.textContent).toBe('市場');
+  expect(view.container.querySelector('[data-category="competitors"] .ontology-card-name')?.textContent).toBe('競合製品');
+  expect(view.container.querySelector('[data-category="competitors"] .ontology-card-gap')?.textContent).toContain('メーカーが不明な競合製品が1件あります');
+  expect(view.container.textContent).toContain('Cursor');
+  const summaryLink = view.container.querySelector<HTMLButtonElement>('.ontology-hero-count')!;
+  expect(summaryLink.textContent).toContain('競合製品');
+  fireEvent.click(summaryLink);
+  expect(onSelect).toHaveBeenCalledWith('competitors');
+  view.rerender(content('ja', 'us'));
+  expect(view.container.querySelector('.ontology-members th')?.textContent).toBe('記録内容');
+  expect(view.container.querySelectorAll('.ontology-members tbody button')).toHaveLength(0);
+  expect(view.container.querySelector('.ontology-schema-stored')?.textContent).toContain('ナレッジページ');
+  expect(view.container.querySelector('.ontology-schema-stored code')?.textContent).toBe('entity');
+  view.rerender(content('ja', 'competitors'));
+  fireEvent.click(view.container.querySelector<HTMLButtonElement>('.ontology-members tbody button')!);
+  expect(onOpenItem).toHaveBeenCalledWith('Cursor');
+  view.rerender(content('en'));
+  await screen.findByText('The market');
+  expect(view.container.querySelector('.ontology-hero')?.textContent).toBe(model.summary.map(part => part.text).join(''));
+  expect(JSON.stringify(model)).toBe(before);
+  expect(onOpenItem).toHaveBeenCalledTimes(1);
+});
+
+test('domain metadata localizes built-in statuses and precise dates without guessing custom data', async () => {
+  const types = [{ type: 'bug', fields: [{ name: 'status', type: 'select', options: [
+    { value: 'to-do', label: 'To Do', category: 'unstarted' },
+    { value: 'done', label: 'Done', category: 'done' },
+    { value: 'in-progress', label: 'Custom Active', category: 'started' },
+    { value: 'custom', label: 'To Do', category: 'started' },
+  ] }] }] as TrackerDataModel[];
+  const records = [...domainFixture(), rec('Custom value', 'bug', { status: 'in-progress' }), rec('Custom option', 'bug', { status: 'custom' }),
+    ...['year', 'month', 'day', 'undated'].flatMap(precision => [
+      rec(`Company ${precision}`, 'entity', { kind: 'organization' }),
+      claim(`Revenue ${precision}`, `Company ${precision}`, 'annual-revenue', undefined, {
+        valueText: 'unknown', qualifiers: precision === 'undated' ? {} : { asOf: '2026-09-04', asOfPrecision: precision },
+      }),
+    ]),
+  ];
+  const model = buildDomainModel({ types, records, predicates: null, now: NOW });
+  const before = JSON.stringify(model);
+  const i18n = await createI18nInstance('ja');
+  const display = displayDomainModel(model, 'ja', (key, options) => i18n.t(key, { ns: 'tracker', ...options }));
+  const bugs = display.categories.find(category => category.id === 'bugs')!;
+  expect(bugs.role).toBe('全6件、未完了5件');
+  expect(bugs.example).toContain('3 未着手');
+  expect(bugs.example).toContain('Custom Active');
+  expect(bugs.table.rows.find(row => row.id === 'B1')?.cells[1]?.text).toBe('未着手');
+  expect(bugs.table.rows.find(row => row.id === 'Custom value')?.cells[1]?.text).toBe('Custom Active');
+  expect(bugs.table.rows.find(row => row.id === 'Custom option')?.cells[1]?.text).toBe('To Do');
+  const companies = display.categories.find(category => category.id === 'organizations')!;
+  const revenue = (precision: string) => companies.table.rows.find(row => row.id === `Company ${precision}`)?.cells[2]?.text;
+  expect(revenue('year')).toBe('unknown · 2026年');
+  expect(revenue('month')).toBe('unknown · 2026年9月');
+  expect(revenue('day')).toBe('unknown · 2026年9月4日');
+  expect(revenue('undated')).toBe('unknown · 日付なし (日付なし)');
+  expect(companies.table.rows.find(row => row.id === 'Anysphere')?.cells[2]?.text).toBe('$500M ARR · 2026年3月1日 (古い情報)');
+  expect(companies.table.columns).toEqual(['企業', '提供製品', '売上', 'その他の事実']);
+  expect(companies.schema?.stored.filter(part => part.code).map(part => part.text)).toEqual(['organization']);
+  expect(displayDomainModel(model, 'en', (key, options) => i18n.t(key, options))).toBe(model);
+  expect(JSON.stringify(model)).toBe(before);
+});
 
 test('sparse links localize built-in relations while unknown schema fields stay literal', async () => {
   const types = [{ type: 'decision', fields: [

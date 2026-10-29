@@ -1,4 +1,18 @@
 import { type OntologyRecordLike } from './ontologyRecords';
+import type { DomainModel } from './ontologyDomain';
+/** Provenance for product copy only. User strings are values, never lookup keys. */
+export interface DisplayCopy {
+    key: string;
+    english: string;
+    values?: Record<string, string | number>;
+}
+export declare const displayCopy: (key: string, english: string, values?: DisplayCopy["values"]) => DisplayCopy;
+export declare function productStatusCopy(type: string, field: string, value: unknown, label: string): DisplayCopy | undefined;
+/** Called only for product-owned verbs at their producer, not for schema labels. */
+export declare function productVerbCopy(verb: string): DisplayCopy | undefined;
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+/** A disposable display projection; raw domain text remains authoritative for requests. */
+export declare function displayDomainModel(model: DomainModel, language: string | undefined, t: Translate): DomainModel;
 export type DomainGroupId = 'market' | 'product' | 'customers' | 'work';
 export interface CategoryCopy {
     id: string;
@@ -41,3 +55,4 @@ export declare function singularVerb(verb: string): string;
 export declare function nameList(records: readonly OntologyRecordLike[], limit?: number): string;
 export declare function humanize(value: string): string;
 export declare function fill(template: string, us: string): string;
+export {};

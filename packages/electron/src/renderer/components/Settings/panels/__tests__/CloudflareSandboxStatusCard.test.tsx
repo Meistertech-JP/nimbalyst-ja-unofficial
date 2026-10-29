@@ -59,6 +59,19 @@ function render(ui: React.ReactElement) {
 
 describe('CloudflareSandboxStatusCard', () => {
   it.each([
+    ['Wrangler could not finish the deployment.', 'Wranglerでデプロイを完了できませんでした。'],
+    ['Nimbalyst could not confirm deletion. This sandbox may still exist in your Cloudflare account.', '削除を確認できませんでした。Cloudflareアカウントにサンドボックスが残っている可能性があります。'],
+    ["The sandbox was removed from Cloudflare, but Nimbalyst could not revoke the agent node's sync credential and could not record it for cleanup. This sandbox is kept listed so you can retry.", 'Cloudflareからサンドボックスを削除しましたが、エージェントノードの同期資格情報を失効できず、後で削除するための記録も保存できませんでした。再試行できるよう一覧に残しています。'],
+  ])('localizes persisted deployment failure %s without invoking lifecycle operations', async (message, japanese) => {
+    await testI18n.changeLanguage('ja');
+    render(<CloudflareSandboxStatusCard deployment={deployment({ errorMessage: message })} onDeploymentChange={vi.fn()} onRefresh={vi.fn()} />);
+    expect(screen.getByText(japanese).textContent).toBe(japanese);
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText(message).textContent).toBe(message);
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ['The sandbox process exited on its own.', 'サンドボックスのプロセスが自発的に終了しました。'],
     ['The sandbox container could not be reached.', 'サンドボックスのコンテナに接続できませんでした。'],
   ])('localizes the application message %s and updates it when the language changes', async (message, japanese) => {
@@ -81,18 +94,21 @@ describe('CloudflareSandboxStatusCard', () => {
 
   it('preserves unrelated external container messages across language changes', async () => {
     const message = 'Upstream diagnostic: The sandbox container could not be reached. Request abc-123';
+    const externalError = 'External deployment diagnostic: Wrangler could not finish the deployment.';
     await testI18n.changeLanguage('ja');
     render(
       <CloudflareSandboxStatusCard
-        deployment={deployment({ container: { status: 'unknown', observedAt: null, message } })}
+        deployment={deployment({ container: { status: 'unknown', observedAt: null, message }, errorMessage: externalError })}
         onDeploymentChange={vi.fn()}
         onRefresh={vi.fn()}
       />,
     );
 
     expect(screen.getByText(message).textContent).toBe(message);
+    expect(screen.getByText(externalError).textContent).toBe(externalError);
     await act(async () => { await testI18n.changeLanguage('en'); });
     expect(screen.getByText(message).textContent).toBe(message);
+    expect(screen.getByText(externalError).textContent).toBe(externalError);
     expect(invoke).not.toHaveBeenCalled();
   });
 

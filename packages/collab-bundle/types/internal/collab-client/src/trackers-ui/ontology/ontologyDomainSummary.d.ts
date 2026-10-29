@@ -3,6 +3,8 @@
  * agent to suggest improvements" writes. Split from `ontologyDomain.ts`.
  */
 import type { DomainCategory, DomainModel, SummaryPart } from './ontologyDomain';
+/** Grouped clauses keep category links structural instead of translating English fragments. */
+export declare function buildDisplaySummary(categories: readonly DomainCategory[], name: (id: string, raw: string) => string, t: (key: string, english: string, values?: Record<string, unknown>) => string): SummaryPart[];
 /**
  * "Your team tracks 59 competitors across 11 markets and the 42 companies
  * behind them; what Nimbalyst can do, as 19 capabilities on 14 technologies;

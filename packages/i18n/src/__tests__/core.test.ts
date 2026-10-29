@@ -84,7 +84,7 @@ describe('UI language preference', () => {
           continue;
         }
         if (typeof japaneseValue === 'string') {
-          expect(japaneseValue.trim().length).toBeGreaterThan(0);
+          expect(japaneseValue.trim().length, `${namespace}.${key} must not be empty`).toBeGreaterThan(0);
           if (typeof englishValue === 'string' && japaneseValue === englishValue) {
             // Exact equivalents are intentional for brands, file formats,
             // commands, identifiers and user-provided input examples.
@@ -299,7 +299,7 @@ describe('UI language preference', () => {
     expect(resources.ja.aichat.session_naming_failure).toBe('応答は完了しましたが、セッション情報を更新できませんでした。');
     expect(resources.en.tracker.placed_view_marks.all_marks).toBe('All marks');
     expect(resources.ja.tracker.placed_view_marks.all_marks).toBe('すべてのマーク');
-    expect(totalKeys).toBe(14903);
+    expect(totalKeys).toBe(15170);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

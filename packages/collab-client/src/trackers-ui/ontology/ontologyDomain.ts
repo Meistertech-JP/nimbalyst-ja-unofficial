@@ -38,6 +38,10 @@ import {
   nameList,
   humanize,
   fill,
+  displayCopy,
+  productVerbCopy,
+  productStatusCopy,
+  type DisplayCopy,
   type CategoryCopy,
   type DomainGroupId,
 } from './ontologyDomainVocabulary';
@@ -72,6 +76,8 @@ export const DOMAIN_GROUP_ORDER: readonly DomainGroupId[] = ['market', 'product'
 export type LineState = 'full' | 'partial' | 'low' | 'untracked';
 
 export interface DomainLine {
+  displayVerb?: DisplayCopy;
+  displayVia?: DisplayCopy;
   /** `${categoryId}:${key}` */
   id: string;
   /** Plural present tense, read after the category name: "Competitors *sit in* markets". */
@@ -94,9 +100,10 @@ export interface DomainLine {
   gapId: string | null;
 }
 
-export type StoredPart = { text: string; code?: boolean };
+export type StoredPart = { text: string; code?: boolean; displayCopy?: DisplayCopy };
 
 export interface SchemaRow {
+  displayCopy?: DisplayCopy;
   label: string;
   /** Null when the value is not a per-item fill (an inverse field, say). */
   filled: number | null;
@@ -111,6 +118,9 @@ export interface DomainSchema {
 }
 
 export interface MemberCell {
+  displayParts?: Array<{ text: string; displayCopy?: DisplayCopy }>;
+  displayCopy?: DisplayCopy;
+  displayFact?: { value: string; asOf: string | null; precision: string; state: string };
   text: string;
   tone?: 'warn' | 'faint';
   /** A threat level, rendered as a pill. */
@@ -123,11 +133,17 @@ export interface MemberRow {
 }
 
 export interface MemberTable {
+  displayColumns?: Array<DisplayCopy | undefined>;
+  openable?: boolean;
   columns: string[];
   rows: MemberRow[];
 }
 
 export interface DomainCategory<T extends OntologyRecordLike = OntologyRecordLike> {
+  displayExampleParts?: MemberCell['displayParts'];
+  displayExample?: DisplayCopy;
+  displayBuiltIn?: boolean;
+  displayNote?: DisplayCopy;
   id: string;
   name: string;
   singular: string;
@@ -226,6 +242,8 @@ export interface LineCalc {
 }
 
 interface LineSpec {
+  displayVerb?: DisplayCopy;
+  displayVia?: DisplayCopy;
   key: string;
   verb: string;
   targetId: string | null;
@@ -251,7 +269,7 @@ function makeLine(categoryId: string, members: readonly OntologyRecordLike[], sp
   const rate = total ? have / total : 0;
   const state: LineState = spec.untracked || total === 0 ? 'untracked' : rate >= 0.98 ? 'full' : rate < 0.6 ? 'low' : 'partial';
   return {
-    line: { id: `${categoryId}:${spec.key}`, verb: spec.verb, targetId: spec.targetId, have, total, links, rate, state, missingIds, missing: spec.missing ?? null, via: spec.via, gapId: null },
+    line: { id: `${categoryId}:${spec.key}`, verb: spec.verb, displayVerb: spec.displayVerb, displayVia: spec.displayVia, targetId: spec.targetId, have, total, links, rate, state, missingIds, missing: spec.missing ?? null, via: spec.via, gapId: null },
     targets: spec.targets,
     linkKey: spec.linkKey,
     owner: spec.owner ?? true,
@@ -294,7 +312,7 @@ function hasClosedStatuses(model: TrackerDataModel | undefined): boolean {
     ?.some((option) => CLOSED_CATEGORIES.has((option as { category?: string }).category ?? '')));
 }
 
-function statusBreakdown(model: TrackerDataModel | undefined, members: readonly OntologyRecordLike[]): string {
+function statusBreakdown(model: TrackerDataModel | undefined, members: readonly OntologyRecordLike[]): MemberCell | undefined {
   const statusField = model?.roles?.workflowStatus ?? 'status';
   const options = model?.fields.find((field) => field.name === statusField)?.options ?? [];
   const counts = new Map<string, number>();
@@ -302,13 +320,23 @@ function statusBreakdown(model: TrackerDataModel | undefined, members: readonly 
     const value = ontologyFieldValue(member, statusField);
     if (typeof value === 'string' && value) counts.set(value, (counts.get(value) ?? 0) + 1);
   }
-  if (!counts.size) return '';
+  if (!counts.size) return undefined;
   const order = new Map(options.map((option, index) => [option.value, index]));
-  return [...counts.entries()]
+  const entries = [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || (order.get(a[0]) ?? 99) - (order.get(b[0]) ?? 99))
-    .slice(0, 4)
-    .map(([value, count]) => `${formatCount(count)} ${(options.find((option) => option.value === value)?.label ?? value).toLowerCase()}`)
-    .join(', ');
+    .slice(0, 4);
+  const displayParts = entries.flatMap(([value, count], index) => {
+    const label = options.find(option => option.value === value)?.label ?? value;
+    return [
+      { text: index ? ', ' : '', displayCopy: index ? displayCopy('summary.separator', ', ') : undefined },
+      { text: `${formatCount(count)} ` },
+      { text: label, displayCopy: model ? productStatusCopy(model.type, statusField, value, label) : undefined },
+    ];
+  });
+  return {
+    text: entries.map(([value, count]) => `${formatCount(count)} ${(options.find(option => option.value === value)?.label ?? value).toLowerCase()}`).join(', '),
+    displayParts,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -332,6 +360,9 @@ export interface DomainContext<T extends OntologyRecordLike = OntologyRecordLike
 }
 
 interface Draft<T extends OntologyRecordLike> {
+  displayExampleParts?: MemberCell['displayParts'];
+  displayExample?: DisplayCopy;
+  displayNote?: DisplayCopy;
   copy: CategoryCopy;
   members: T[];
   count: number;
@@ -438,6 +469,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
   const OPP_CAPABILITY_AREAS = 'link-capabilities-areas';
   const OPP_COMPETITOR_CAPABILITIES = 'competitor-capabilities';
   const opportunityLine = (key: string, verb: string, targetId: string, gapId: string): LineSpec => ({
+    displayVerb: productVerbCopy(verb), displayVia: displayCopy('via.untracked', 'nothing records this yet'),
     key, verb, targetId, targets: new Map(), via: 'nothing records this yet', linkKey: `opp:${gapId}`, untracked: true,
   });
 
@@ -465,6 +497,11 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     return {
       key,
       verb,
+      displayVerb: extra.verb || PREDICATE_VERBS[predicates[0]!]
+        ? productVerbCopy(verb)
+        : dir === 'in' && !registry.get(predicates[0]!)?.inverseLabel
+          ? displayCopy('verbs.object_of', verb, { predicate: humanize(predicates[0]!) }) : undefined,
+      displayVia: displayCopy('via.statements', `${predicates.join(' / ')} statements`, { names: predicates.join(' / ') }),
       targetId,
       targets,
       via: `${predicates.join(' / ')} statements`,
@@ -482,7 +519,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       list.push(fact.predicate);
       targets.set(fact.subject.id, list);
     }
-    return { key, verb, targetId: null, targets, via: `${predicates.join(', ')} facts`, linkKey: `fact:${key}`, missing };
+    return { key, verb, displayVerb: productVerbCopy(verb), displayVia: displayCopy('via.facts', `${predicates.join(', ')} facts`, { names: predicates.join(', ') }), targetId: null, targets, via: `${predicates.join(', ')} facts`, linkKey: `fact:${key}`, missing };
   };
   const fieldLine = (members: readonly T[], key: string, field: string, verb: string): LineSpec => {
     const targets = new Map<string, string[]>();
@@ -490,7 +527,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       const value = ontologyFieldValue(member, field);
       if (!isEmptyFieldValue(value)) targets.set(member.id, [field]);
     }
-    return { key, verb, targetId: null, targets, via: `the ${field} field`, linkKey: `field:${key}` };
+    return { key, verb, displayVerb: productVerbCopy(verb), displayVia: displayCopy('via.field', `the ${field} field`, { field }), targetId: null, targets, via: `the ${field} field`, linkKey: `field:${key}` };
   };
 
   if (knowledge) {
@@ -508,6 +545,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         copy: { id: 'us', name: usName, singular: usName, group: 'product', role: 'The product everything else is compared to', blurb: 'Our own product page. Competitors, markets, and technologies are all recorded relative to it.' },
         members: self, count: 1, countLabel: null, us: true, ghost: false, calcs,
         example: markets.map((id) => ontologyRecordTitle(graph.byId.get(id)!)).join(', ') || 'The product we compare to',
+        displayExample: markets.length ? undefined : displayCopy('examples.us', 'The product we compare to'),
         note: null,
       });
     }
@@ -531,7 +569,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       const specs: LineSpec[] = [
         claimLine(competitors, 'in-market', ['in-market'], 'out', 'markets', { missing: 'sit in no market' }),
         claimLine(competitors, 'made-by', ['made-by'], 'out', 'organizations', { missing: 'have no known maker' }),
-        { key: 'threat', verb: 'have a threat level', targetId: null, targets: threats, via: 'the threat qualifier on competes-with', linkKey: 'qualifier:threat', missing: 'have no threat level' },
+        { key: 'threat', verb: 'have a threat level', displayVerb: productVerbCopy('have a threat level'), displayVia: displayCopy('via.threat', 'the threat qualifier on competes-with'), targetId: null, targets: threats, via: 'the threat qualifier on competes-with', linkKey: 'qualifier:threat', missing: 'have no threat level' },
         factLine(competitors, 'lifecycle', ['lifecycle'], 'have a status (active, defunct...)', 'have no recorded status'),
       ];
       if (wantsCompetitorCapabilities) specs.push(opportunityLine('capabilities', 'have which of our', 'capabilities', OPP_COMPETITOR_CAPABILITIES));
@@ -545,6 +583,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         calcs: specs.map((spec) => makeLine('competitors', competitors, spec)),
         example: competitors.slice(0, 6).map(ontologyRecordTitle).join(', '),
         note,
+        displayNote: displayCopy('notes.threat', note ?? '', Object.fromEntries(Object.keys(THREAT_RANK).map(level => [level, tally.get(level) ?? 0]))),
       });
     }
 
@@ -565,6 +604,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         calcs: [include, fieldLine(markets, 'summary', 'summary', 'have a written summary')].map((spec) => makeLine('markets', markets, spec)),
         example: leaves.filter((market) => (totals.get(market.id) ?? 0) > 0).slice(0, 3).map((market) => `${ontologyRecordTitle(market)} (${totals.get(market.id)})`).join(', '),
         note: marketTree.length ? `${plural(marketTree.length, 'top-level group')}: ${marketTree.map((node) => ontologyRecordTitle(node.record)).join(', ')}` : null,
+        displayNote: displayCopy('notes.market', '', { count: marketTree.length, names: marketTree.map((node) => ontologyRecordTitle(node.record)).join('、') }),
       });
     }
 
@@ -581,6 +621,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         calcs: [makes, size].map((spec) => makeLine('organizations', organizations, spec)),
         example: organizations.slice(0, 6).map(ontologyRecordTitle).join(', '),
         note: orgFacts.length ? `${plural(orgFacts.length, 'fact')} in all${staleCount ? `; ${staleCount} older than ${STALE_FACT_DAYS} days` : ''}.` : null,
+        displayNote: displayCopy('notes.facts', '', { count: orgFacts.length, stale: staleCount, days: STALE_FACT_DAYS }),
       });
     }
 
@@ -597,6 +638,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         calcs: specs.map((spec) => makeLine('capabilities', capabilities, spec)),
         example: capabilities.slice(0, 4).map(ontologyRecordTitle).join(', '),
         note: unlinked ? `${unlinked} of ${capabilities.length} have no statements at all.` : null,
+        displayNote: displayCopy('notes.capabilities', '', { count: unlinked, total: capabilities.length }),
       });
     }
 
@@ -617,6 +659,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         calcs: [makeLine('technologies', technologies, usedBy)],
         example: technologies.slice(0, 5).map(ontologyRecordTitle).join(', '),
         note: unlinked ? `${unlinked} have no statements.` : null,
+        displayNote: displayCopy('notes.technologies', '', { count: unlinked }),
       });
     }
   }
@@ -654,6 +697,8 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       calcs.push(makeLine(categoryId, items, {
         key: field.name,
         verb: FIELD_VERBS[`${type}.${field.name}`] ?? KEY_VERBS[field.relationshipTypeKey ?? ''] ?? humanize(field.name),
+        displayVerb: productVerbCopy(FIELD_VERBS[`${type}.${field.name}`] ?? KEY_VERBS[field.relationshipTypeKey ?? ''] ?? ''),
+        displayVia: displayCopy(inverse ? 'via.inverse_field' : 'via.field', '', { field: field.name, inverse: inverse?.name ?? '', type: models.get(targetType)?.displayNamePlural ?? targetType }),
         targetId: targetCategory,
         targets,
         via: `the ${field.name} field${inverse ? ` (and ${inverse.name} on ${models.get(targetType)?.displayNamePlural?.toLowerCase() ?? targetType})` : ''}`,
@@ -666,10 +711,12 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     const members = items.slice().sort((a, b) => Number(workOpen(model, b)) - Number(workOpen(model, a))
       || String(b.system?.updatedAt ?? '').localeCompare(String(a.system?.updatedAt ?? '')) || byTitle(a, b));
     const countLabel = closable && open.length !== items.length ? 'open' : null;
+    const breakdown = statusBreakdown(model, countLabel ? open : items);
     drafts.push({
       copy: { ...copy, role: countLabel ? `${formatCount(items.length)} in all, ${formatCount(open.length)} open` : copy.role },
       members, count: countLabel ? open.length : items.length, countLabel, us: false, ghost: false, calcs,
-      example: statusBreakdown(model, countLabel ? open : items) || members.slice(0, 3).map(ontologyRecordTitle).join('; '),
+      example: breakdown?.text || members.slice(0, 3).map(ontologyRecordTitle).join('; '),
+      displayExampleParts: breakdown?.displayParts,
       note: null,
     });
   }
@@ -681,6 +728,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     drafts.push({
       copy: PERSONA_COPY, members: [], count: 0, countLabel: 'not tracked', us: false, ghost: true, calcs: [],
       example: `You know ${names.join(' and ')}, but not what kind of buyer they are.`,
+      displayExample: displayCopy('examples.personas', ''),
       note: null,
     });
   }
@@ -871,6 +919,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     const detail = buildCategoryDetail(context, draft.copy.id, draft.members, draft.calcs);
     return {
       id: draft.copy.id,
+      displayBuiltIn: true,
       name: draft.copy.name,
       singular: draft.copy.singular,
       group: draft.copy.group,
@@ -883,9 +932,12 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       ghost: draft.ghost,
       members: draft.members,
       example: draft.example,
+      displayExample: draft.displayExample,
+      displayExampleParts: draft.displayExampleParts,
       lines: draft.calcs.map((calc) => calc.line),
       gapIds: gaps.filter((gap) => gap.categoryIds.includes(draft.copy.id)).map((gap) => gap.id),
       note: draft.note,
+      displayNote: draft.displayNote,
       schema: detail.schema,
       table: detail.table,
     };

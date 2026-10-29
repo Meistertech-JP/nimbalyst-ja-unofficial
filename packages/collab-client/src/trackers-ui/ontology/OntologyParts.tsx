@@ -31,7 +31,8 @@ export function OntologyLineRow({ category, line, targetName, dense, onOpenCateg
   dense?: boolean;
   onOpenCategory?: OpenCategory;
 }) {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
+  const verb = category.us && !i18n.resolvedLanguage?.startsWith('ja') ? singularVerb(line.verb) : line.verb;
   const value = line.state === 'untracked'
     ? t('ontology_parts.not_recorded')
     : category.us
@@ -43,13 +44,12 @@ export function OntologyLineRow({ category, line, targetName, dense, onOpenCateg
     const denseValue = line.state === 'untracked' ? t('ontology_parts.not_yet') : category.us ? formatCount(line.links) : `${Math.round(line.rate * 100)}%`;
     return (
       <div className="ontology-line-dense">
-        <span>{category.us ? singularVerb(line.verb) : line.verb}{targetName && <> <b>{targetLabel(line, targetName)}</b></>}</span>
+        <span>{verb}{targetName && <> <b>{targetLabel(line, targetName)}</b></>}</span>
         <Meter line={line} />
         <span className="ontology-line-value" data-state={line.state}>{denseValue}</span>
       </div>
     );
   }
-  const verb = category.us ? singularVerb(line.verb) : line.verb;
   return (
     <div className="ontology-line" title={t('ontology_parts.recorded_as', { via: line.via })}>
       <div className="ontology-line-text">
@@ -119,7 +119,7 @@ export function OntologyMembersTable({ table, onOpenItem, limit = TABLE_PAGE }: 
   if (!table.rows.length) return <p className="ontology-empty">{t('ontology_parts.nothing_recorded')}</p>;
   const rows = table.rows.slice(0, shown);
   // The "us" table lists what is recorded about us, not items, so its rows open nothing.
-  const openable = Boolean(onOpenItem) && table.columns[0] !== 'Recorded';
+  const openable = Boolean(onOpenItem) && (table.openable ?? table.columns[0] !== 'Recorded');
   return (
     <>
       <table className="ontology-members">

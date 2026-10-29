@@ -16,6 +16,7 @@
  */
 import type { LabelRegistry } from '@nimbalyst/tracker-schema';
 import type { PartialWriteReason } from './partialWriteNotice';
+import { proposalCopy, type ProposalCopy } from './ontologyProposalCopy';
 import { claimPredicate, entityKind, type HealthItem, type KnowledgeGraph } from './ontologyKnowledge';
 import {
   LABEL_CHANGE_TYPES,
@@ -140,22 +141,25 @@ export interface ParsedChanges {
   changes: OntologyChange[];
   /** One line per change that could not be read; never silently dropped. */
   errors: string[];
+  displayErrors?: ProposalCopy[];
 }
 
 /** `changes` as the room stores it: a JSON string (or an array an agent wrote directly). */
 export function parseProposalChanges(value: unknown): ParsedChanges {
   const parsed = parseJson(value);
   if (parsed === null || parsed === undefined) {
-    return { changes: [], errors: parsed === undefined ? ['changes is not valid JSON'] : [] };
+    return { changes: [], errors: parsed === undefined ? ['changes is not valid JSON'] : [], displayErrors: parsed === undefined ? [proposalCopy('invalid_json')] : [] };
   }
   const list = Array.isArray(parsed) ? parsed : (parsed as { changes?: unknown }).changes;
-  if (!Array.isArray(list)) return { changes: [], errors: ['changes is not a list'] };
+  if (!Array.isArray(list)) return { changes: [], errors: ['changes is not a list'], displayErrors: [proposalCopy('not_list')] };
   const changes: OntologyChange[] = [];
   const errors: string[] = [];
+  const displayErrors: ProposalCopy[] = [];
   const ids = new Set<string>();
   list.forEach((entry, index) => {
     if (!entry || typeof entry !== 'object') {
       errors.push(`change ${index + 1}: not an object`);
+      displayErrors.push(proposalCopy('not_object', { index: index + 1 }));
       return;
     }
     const change = { ...(entry as Record<string, unknown>) };
@@ -163,12 +167,14 @@ export function parseProposalChanges(value: unknown): ParsedChanges {
     const problem = changeProblem(change);
     if (problem) {
       errors.push(`change ${index + 1}: ${problem}`);
+      const known = [...CHANGE_TYPES, ...RETIRED_CHANGE_TYPES].includes(change.type as OntologyChangeType);
+      displayErrors.push(proposalCopy(known ? `invalid.${String(change.type)}` : 'unknown_type', { index: index + 1, type: JSON.stringify(change.type) ?? 'undefined' }));
       return;
     }
     ids.add(change.id as string);
     changes.push(change as unknown as OntologyChange);
   });
-  return { changes, errors };
+  return { changes, errors, displayErrors };
 }
 
 export function serializeChanges(changes: readonly OntologyChange[]): string {
@@ -258,6 +264,8 @@ export type ApplyOp =
 export interface PreviewLine {
   label: string;
   value: string;
+  displayLabel?: ProposalCopy;
+  displayValue?: ProposalCopy;
 }
 
 export interface ChangePreview {
@@ -269,6 +277,8 @@ export interface ChangePreview {
 
 export interface ChangePlan<T extends OntologyRecordLike = OntologyRecordLike> {
   summary: string;
+  displaySummary?: ProposalCopy;
+  displayBlocked?: ProposalCopy;
   /** Pages the change touches. */
   pages: T[];
   example: ChangePreview | null;
@@ -304,6 +314,16 @@ function display(value: unknown): string {
     return typeof itemId === 'string' ? itemId : JSON.stringify(value);
   }
   return String(value);
+}
+
+/** Annotate missing values from their source, never by comparing displayed text. */
+function emptyValueCopy(value: unknown): ProposalCopy | undefined {
+  if (isEmptyFieldValue(value)) return { ...proposalCopy('values.empty'), fallback: display(value) };
+  if (Array.isArray(value)) {
+    const parts = value.map(item => emptyValueCopy(item) ?? display(item));
+    if (parts.some(part => typeof part !== 'string')) return { key: '', parts: parts.flatMap((part, index) => index ? [', ', part] : [part]) };
+  }
+  return undefined;
 }
 
 function emptyPlan<T extends OntologyRecordLike>(summary: string, extra: Partial<ChangePlan<T>> = {}): ChangePlan<T> {
@@ -349,7 +369,9 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
     case 'add-kind-option': {
       const exists = env.kindOptions.has(change.value);
       return emptyPlan(`Add the kind "${change.label}" (${change.value})`, {
-        example: { itemId: null, title: 'entity.kind', before: [{ label: 'Kind options', value: exists ? `includes ${change.value}` : `no ${change.value}` }], after: [{ label: 'Kind options', value: `+ ${change.value} (${change.label})` }] },
+        displaySummary: proposalCopy('add_kind', { label: change.label, value: change.value }),
+        displayBlocked: proposalCopy('schema_kind'),
+        example: { itemId: null, title: 'entity.kind', before: [{ label: 'Kind options', displayLabel: proposalCopy('labels.kind_options'), displayValue: proposalCopy(exists ? 'values.includes' : 'values.absent', { value: change.value }), value: exists ? `includes ${change.value}` : `no ${change.value}` }], after: [{ label: 'Kind options', displayLabel: proposalCopy('labels.kind_options'), value: `+ ${change.value} (${change.label})` }] },
         satisfied: exists || Boolean(change.appliedAt),
         blocked: exists || change.appliedAt ? null : 'Schema change: an agent adds this option to entity.kind, then marks the change applied.',
       });
@@ -358,12 +380,14 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
       const { predicate } = change;
       const used = graph.claims.some((claim) => claimPredicate(claim) === predicate.id);
       return emptyPlan(`Add the predicate "${predicate.label}" (${predicate.id})`, {
+        displaySummary: proposalCopy('add_predicate', { label: predicate.label, id: predicate.id }),
+        displayBlocked: proposalCopy('schema_predicate'),
         example: {
           itemId: null,
           title: 'Predicate registry',
-          before: [{ label: predicate.id, value: used ? 'in use' : 'not declared' }],
+          before: [{ label: predicate.id, displayValue: proposalCopy(used ? 'values.in_use' : 'values.undeclared'), value: used ? 'in use' : 'not declared' }],
           after: [
-            { label: predicate.id, value: `${predicate.direction}, ${predicate.valueShape}${predicate.inverseLabel ? `, inverse "${predicate.inverseLabel}"` : ''}` },
+            { label: predicate.id, displayValue: predicate.inverseLabel ? proposalCopy('values.inverse', { direction: predicate.direction, shape: predicate.valueShape, inverse: predicate.inverseLabel }) : undefined, value: `${predicate.direction}, ${predicate.valueShape}${predicate.inverseLabel ? `, inverse "${predicate.inverseLabel}"` : ''}` },
           ],
         },
         satisfied: Boolean(change.appliedAt),
@@ -375,12 +399,14 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
       const moving = pages.filter((page) => entityKind(page) !== change.toKind);
       const first = moving[0] ?? pages[0];
       return emptyPlan(`Reclassify ${pages.length} ${pages.length === 1 ? 'page' : 'pages'} as ${change.toKind}`, {
+        displaySummary: proposalCopy('reclassify', { count: pages.length, kind: change.toKind }),
+        displayBlocked: proposalCopy('waiting_kind', { kind: change.toKind }),
         pages,
         example: first ? {
           itemId: first.id,
           title: ontologyRecordTitle(first),
-          before: [{ label: 'Kind', value: display(ontologyFieldValue(first, 'kind')) }],
-          after: [{ label: 'Kind', value: change.toKind }],
+          before: [{ label: 'Kind', displayLabel: proposalCopy('labels.kind'), displayValue: emptyValueCopy(ontologyFieldValue(first, 'kind')), value: display(ontologyFieldValue(first, 'kind')) }],
+          after: [{ label: 'Kind', displayLabel: proposalCopy('labels.kind'), value: change.toKind }],
         } : null,
         ops: moving.map((page) => ({ op: 'update', itemId: page.id, updates: { kind: change.toKind } })),
         undo: moving.slice().reverse().map((page) => ({ op: 'restore-fields', itemId: page.id, fields: { kind: ontologyFieldValue(page, 'kind') ?? null } })),
@@ -401,12 +427,14 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
       if (change.summary) customFields.summary = change.summary;
       if (change.aliases?.length) customFields.aliases = change.aliases;
       return emptyPlan(`Add the market "${change.title}" under ${parent ? ontologyRecordTitle(parent) : '(missing parent)'}`, {
+        displaySummary: proposalCopy(parent ? 'add_market' : 'add_market_missing', { title: change.title, parent: parent ? ontologyRecordTitle(parent) : '' }),
+        displayBlocked: !env.kindOptions.has('market') ? proposalCopy('waiting_kind', { kind: 'market' }) : proposalCopy(change.parentId ? 'missing_parent' : 'no_markets'),
         pages: existing ? [existing] : parent ? [parent] : [],
         example: {
           itemId: existing?.id ?? null,
           title: change.title,
-          before: [{ label: 'Page', value: existing ? 'already exists' : '(none)' }],
-          after: [{ label: 'Kind', value: 'market' }, { label: 'Parent', value: parent ? ontologyRecordTitle(parent) : '(missing)' }, ...change.summary ? [{ label: 'Summary', value: change.summary }] : []],
+          before: [{ label: 'Page', displayLabel: proposalCopy('labels.page'), displayValue: proposalCopy(existing ? 'values.exists' : 'values.none'), value: existing ? 'already exists' : '(none)' }],
+          after: [{ label: 'Kind', displayLabel: proposalCopy('labels.kind'), value: 'market' }, { label: 'Parent', displayLabel: proposalCopy('labels.parent'), displayValue: parent ? undefined : proposalCopy('values.missing'), value: parent ? ontologyRecordTitle(parent) : '(missing)' }, ...change.summary ? [{ label: 'Summary', displayLabel: proposalCopy('labels.summary'), value: change.summary }] : []],
         },
         ops: existing || blocked ? [] : [{ op: 'create', item: { id, type: 'entity', title: change.title, status: 'active', customFields } }],
         undo: existing || blocked ? [] : [{ op: 'archive', itemId: id }],
@@ -417,8 +445,8 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
     case 'merge-duplicates': {
       const keep = graph.byId.get(change.keepId);
       const merged = change.mergeIds.filter((id) => id !== change.keepId).map((id) => graph.byId.get(id)).filter((page): page is T => Boolean(page));
-      if (!keep) return emptyPlan(`Merge into ${change.keepId}`, { blocked: 'The item to keep is not in this project (or is archived).' });
-      if (merged.length === 0) return emptyPlan(`Merge into ${ontologyRecordTitle(keep)}`, { pages: [keep], satisfied: Boolean(change.appliedAt), blocked: change.appliedAt ? null : 'None of the pages to merge are live.' });
+      if (!keep) return emptyPlan(`Merge into ${change.keepId}`, { displaySummary: proposalCopy('merge_into', { keep: change.keepId }), displayBlocked: proposalCopy('missing_keep'), blocked: 'The item to keep is not in this project (or is archived).' });
+      if (merged.length === 0) return emptyPlan(`Merge into ${ontologyRecordTitle(keep)}`, { displaySummary: proposalCopy('merge_into', { keep: ontologyRecordTitle(keep) }), displayBlocked: proposalCopy('no_merge_pages'), pages: [keep], satisfied: Boolean(change.appliedAt), blocked: change.appliedAt ? null : 'None of the pages to merge are live.' });
       const from = new Set(merged.map((page) => page.id));
       const ops: ApplyOp[] = [];
       const undo: UndoOp[] = [];
@@ -462,18 +490,19 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
         undo.push({ op: 'unarchive', itemId: page.id });
       }
       return emptyPlan(`Merge ${merged.map((page) => ontologyRecordTitle(page)).join(', ')} into ${ontologyRecordTitle(keep)}`, {
+        displaySummary: proposalCopy('merge', { names: merged.map(ontologyRecordTitle).join(', '), keep: ontologyRecordTitle(keep) }),
         pages: [keep, ...merged],
         example: {
           itemId: keep.id,
           title: ontologyRecordTitle(keep),
           before: [
-            { label: 'Aliases', value: display(aliasesBefore) },
+            { label: 'Aliases', displayLabel: proposalCopy('labels.aliases'), displayValue: emptyValueCopy(aliasesBefore), value: display(aliasesBefore) },
             ...merged.map((page) => ({ label: `${page.primaryType} ${page.issueKey ?? ''}`.trim(), value: ontologyRecordTitle(page) })),
           ],
           after: [
-            { label: 'Aliases', value: display(aliasesAfter) },
-            { label: 'References moved here', value: String(repointed) },
-            { label: 'Archived', value: merged.map((page) => ontologyRecordTitle(page)).join(', ') },
+            { label: 'Aliases', displayLabel: proposalCopy('labels.aliases'), displayValue: emptyValueCopy(aliasesAfter), value: display(aliasesAfter) },
+            { label: 'References moved here', displayLabel: proposalCopy('labels.references'), value: String(repointed) },
+            { label: 'Archived', displayLabel: proposalCopy('labels.archived'), value: merged.map((page) => ontologyRecordTitle(page)).join(', ') },
           ],
         },
         ops,
@@ -482,7 +511,7 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
     }
     case 'move-field-to-claims': {
       const subject = change.subjectId ? graph.byId.get(change.subjectId) : undefined;
-      if (change.subjectId && !subject) return emptyPlan(`Move ${change.field} into ${change.predicate} claims`, { blocked: 'The subject page is not in this project.' });
+      if (change.subjectId && !subject) return emptyPlan(`Move ${change.field} into ${change.predicate} claims`, { displaySummary: proposalCopy('move_field', { field: change.field, predicate: change.predicate }), displayBlocked: proposalCopy('missing_subject'), blocked: 'The subject page is not in this project.' });
       const scope = change.pageIds ? new Set(change.pageIds) : null;
       const pages = graph.entities
         .filter((page) => (!scope || scope.has(page.id)) && page.id !== subject?.id && !isEmptyFieldValue(ontologyFieldValue(page, change.field)))
@@ -517,15 +546,16 @@ export function planOntologyChange<T extends OntologyRecordLike>(change: Ontolog
       }
       const first = drafts[0];
       return emptyPlan(`Move ${change.field} on ${pages.length} ${pages.length === 1 ? 'page' : 'pages'} into ${change.predicate} claims`, {
+        displaySummary: proposalCopy('move_field_pages', { field: change.field, count: pages.length, predicate: change.predicate }),
         pages,
         example: first ? {
           itemId: first.page.id,
           title: ontologyRecordTitle(first.page),
-          before: [{ label: change.field, value: display(ontologyFieldValue(first.page, change.field)) }],
+          before: [{ label: change.field, displayValue: emptyValueCopy(ontologyFieldValue(first.page, change.field)), value: display(ontologyFieldValue(first.page, change.field)) }],
           after: [
-            { label: 'New claim', value: first.title },
-            ...Object.entries(first.qualifiers).map(([name, value]) => ({ label: name, value: display(value) })),
-            { label: change.field, value: `${display(ontologyFieldValue(first.page, change.field))} (kept, deprecated)` },
+            { label: 'New claim', displayLabel: proposalCopy('labels.claim'), value: first.title },
+            ...Object.entries(first.qualifiers).map(([name, value]) => ({ label: name, displayValue: emptyValueCopy(value), value: display(value) })),
+            { label: change.field, displayValue: proposalCopy('values.kept', { value: emptyValueCopy(ontologyFieldValue(first.page, change.field)) ?? display(ontologyFieldValue(first.page, change.field)) }), value: `${display(ontologyFieldValue(first.page, change.field))} (kept, deprecated)` },
           ],
         } : null,
         ops,

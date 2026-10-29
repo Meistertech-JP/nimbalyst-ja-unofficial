@@ -6,6 +6,92 @@
  */
 import { ENTITY_TYPE, CLAIM_TYPE } from './ontologyKnowledge';
 import { ontologyRecordTitle, type OntologyRecordLike } from './ontologyRecords';
+import type { DomainModel, MemberCell } from './ontologyDomain';
+import { buildDisplaySummary } from './ontologyDomainSummary';
+
+/** Provenance for product copy only. User strings are values, never lookup keys. */
+export interface DisplayCopy {
+  key: string;
+  english: string;
+  values?: Record<string, string | number>;
+}
+export const displayCopy = (key: string, english: string, values?: DisplayCopy['values']): DisplayCopy => ({ key, english, values });
+
+// Exact built-in option identities. Overrides, unknown values and other fields
+// remain schema-owned, even when their text resembles a product status.
+const BUILT_IN_STATUSES: Record<string, Record<string, string>> = {
+  bug: { 'to-do': 'To Do', 'in-progress': 'In Progress', 'in-review': 'In Review', 'changes-requested': 'Changes Requested', approved: 'Approved', done: 'Done', 'wont-do': "Won't Do", duplicate: 'Duplicate' },
+  decision: { 'to-do': 'To Decide', 'in-progress': 'Evaluating', decided: 'Decided', implemented: 'Implemented' },
+  plan: { draft: 'Draft', 'ready-for-development': 'Ready', 'in-development': 'In Development', 'in-review': 'In Review', 'changes-requested': 'Changes Requested', approved: 'Approved', completed: 'Completed', rejected: 'Rejected', blocked: 'Blocked' },
+};
+
+export function productStatusCopy(type: string, field: string, value: unknown, label: string): DisplayCopy | undefined {
+  return field === 'status' && typeof value === 'string' && BUILT_IN_STATUSES[type]?.[value] === label
+    ? displayCopy(`statuses.${type}.${value}`, label) : undefined;
+}
+
+/** Called only for product-owned verbs at their producer, not for schema labels. */
+export function productVerbCopy(verb: string): DisplayCopy | undefined {
+  return verb ? displayCopy(`verbs.${verb.replace(/[^a-z]+/g, '_').replace(/_$/, '')}`, verb) : undefined;
+}
+
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+/** A disposable display projection; raw domain text remains authoritative for requests. */
+export function displayDomainModel(model: DomainModel, language: string | undefined, t: Translate): DomainModel {
+  if (!language || language.startsWith('en')) return model;
+  const tr = (key: string, english: string, values?: Record<string, unknown>) => t(`ontology_domain_display.${key}`, { ...values, defaultValue: english });
+  const copy = (value: DisplayCopy | undefined, raw: string) => value ? tr(value.key, raw, value.values) : raw;
+  const us = model.categories.find(category => category.us)?.name ?? 'us';
+  const categoryName = (id: string, raw: string) => model.categories.find(category => category.id === id)?.displayBuiltIn && id !== 'us'
+    ? tr(`categories.${id}.name`, raw) : raw;
+  const cell = (value: MemberCell): MemberCell => {
+    if (value.displayParts) return { ...value, text: value.displayParts.map(part => copy(part.displayCopy, part.text)).join('') };
+    if (value.displayFact) {
+      const fact = value.displayFact;
+      const date = fact.asOf?.match(/^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?/);
+      const asOf = date ? tr('date.year', date[1]!, { year: date[1] })
+        + (fact.precision !== 'year' && date[2] ? tr('date.month', date[2], { month: Number(date[2]) }) : '')
+        + (fact.precision !== 'year' && fact.precision !== 'month' && date[3] ? tr('date.day', date[3], { day: Number(date[3]) }) : '')
+        : tr('cells.undated', 'undated');
+      return { ...value, text: `${fact.value} · ${asOf}${fact.state === 'current' ? '' : ` (${tr(`cells.${fact.state}`, fact.state)})`}` };
+    }
+    return { ...value, text: copy(value.displayCopy, value.text) };
+  };
+  const categories = model.categories.map(category => ({
+    ...category,
+    name: categoryName(category.id, category.name),
+    singular: categoryName(category.id, category.singular),
+    role: category.displayBuiltIn ? category.countLabel === 'open'
+      ? tr('role_counts', category.role, { total: category.total, count: category.count })
+      : tr(`categories.${category.id}.role`, category.role, { us }) : category.role,
+    blurb: category.displayBuiltIn ? tr(`categories.${category.id}.blurb`, category.blurb, { us }) : category.blurb,
+    countLabel: category.countLabel === 'open' ? tr('open', 'open') : category.countLabel,
+    example: category.displayExampleParts
+      ? category.displayExampleParts.map(part => copy(part.displayCopy, part.text)).join('')
+      : copy(category.displayExample, category.example),
+    note: category.note ? copy(category.displayNote, category.note) : null,
+    lines: category.lines.map(line => ({ ...line, verb: copy(line.displayVerb, line.verb), via: copy(line.displayVia, line.via) })),
+    schema: category.schema ? {
+      stored: category.schema.stored.map(part => ({ ...part, text: copy(part.displayCopy, part.text) })),
+      rows: category.schema.rows.map(row => ({ ...row, label: copy(row.displayCopy, row.label) })),
+    } : null,
+    table: {
+      ...category.table,
+      openable: category.table.openable ?? category.table.columns[0] !== 'Recorded',
+      columns: category.table.columns.map((column, index) => copy(category.table.displayColumns?.[index], column)),
+      rows: category.table.rows.map(row => ({ ...row, cells: row.cells.map(cell) })),
+    },
+  }));
+  const lineById = new Map(categories.flatMap(category => category.lines.map(line => [line.id, line] as const)));
+  return {
+    ...model, categories,
+    groups: model.groups.map(group => ({ ...group, label: tr(`groups.${group.id}.label`, group.label), question: tr(`groups.${group.id}.question`, group.question, { us }) })),
+    edges: model.edges.map(edge => ({ ...edge, verb: lineById.get(edge.id)?.verb ?? edge.verb })),
+    also: model.also.map(chip => chip.id === 'type:competitor' ? { ...chip, name: tr('competitor_chip', chip.name) } : chip),
+    summary: buildDisplaySummary(model.categories, categoryName, tr),
+  };
+}
 
 export type DomainGroupId = 'market' | 'product' | 'customers' | 'work';
 // ---------------------------------------------------------------------------

@@ -5,6 +5,30 @@
 import type { DomainCategory, DomainGroupId, DomainModel, SummaryPart } from './ontologyDomain';
 import { formatCount } from './ontologyDomainVocabulary';
 
+/** Grouped clauses keep category links structural instead of translating English fragments. */
+export function buildDisplaySummary(categories: readonly DomainCategory[], name: (id: string, raw: string) => string,
+  t: (key: string, english: string, values?: Record<string, unknown>) => string): SummaryPart[] {
+  const shown = categories.filter(category => !category.us && !category.ghost && category.count > 0);
+  if (!shown.length) return [{ text: t('summary.empty', 'Your team does not track anything here yet.') }];
+  const parts: SummaryPart[] = [{ text: t('summary.start', 'Your team tracks ') }];
+  for (const group of ['market', 'product', 'customers', 'work'] as const) {
+    const members = shown.filter(category => category.group === group);
+    if (!members.length) continue;
+    if (parts.length > 1) parts.push({ text: t('summary.group_separator', '; ') });
+    const groupName = { market: 'Market: ', product: 'Product: ', customers: 'Customers: ', work: 'Work: ' }[group];
+    parts.push({ text: t(`summary.${group}`, groupName) });
+    members.forEach((category, index) => {
+      if (index) parts.push({ text: t('summary.separator', ', ') });
+      parts.push({ categoryId: category.id, text: t(category.countLabel === 'open' ? 'summary.open_count' : 'summary.count',
+        category.countLabel === 'open' ? '{{count}} open {{name}}' : '{{count}} {{name}}', {
+        name: name(category.id, category.name), count: category.count,
+      }) });
+    });
+  }
+  parts.push({ text: t('summary.end', '.') });
+  return parts;
+}
+
 function countPhrase(category: DomainCategory): string {
   const noun = category.count === 1 ? category.singular : category.name.toLowerCase();
   return `${formatCount(category.count)} ${category.countLabel === 'open' ? 'open ' : ''}${noun}`;

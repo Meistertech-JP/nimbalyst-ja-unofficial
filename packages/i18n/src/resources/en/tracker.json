@@ -1,4 +1,92 @@
 {
+  "ontology_plan": {
+    "values": {
+      "empty": "(empty)",
+      "none": "(none)",
+      "missing": "(missing)",
+      "exists": "already exists",
+      "includes": "includes {{value}}",
+      "absent": "no {{value}}",
+      "in_use": "in use",
+      "undeclared": "not declared",
+      "inverse": "{{direction}}, {{shape}}, inverse \"{{inverse}}\"",
+      "with_properties": "+ {{id}} with {{properties}}",
+      "property_range": "+ {{id}}: {{storage}}, {{shape}}, range {{range}}",
+      "no_properties": "(no properties)",
+      "top_level": "(top level)",
+      "any": "(any)",
+      "expects": "+ {{property}} (expects {{bounds}})",
+      "minimum": "at least {{min}}",
+      "maximum": "at most {{max}}",
+      "bounds": "at least {{min}}, at most {{max}}",
+      "kept": "{{value}} (kept, deprecated)"
+    },
+    "add_kind": "Add the kind \"{{label}}\" ({{value}})",
+    "schema_kind": "Schema change: an agent adds this option to entity.kind, then marks the change applied.",
+    "add_predicate": "Add the predicate \"{{label}}\" ({{id}})",
+    "schema_predicate": "Schema change: an agent adds this predicate to the registry, then marks the change applied.",
+    "reclassify": "Reclassify {{count}} pages as {{kind}}",
+    "waiting_kind": "Waiting for the kind \"{{kind}}\" to exist in the schema.",
+    "add_market": "Add the market \"{{title}}\" under {{parent}}",
+    "add_market_missing": "Add the market \"{{title}}\" under (missing parent)",
+    "missing_parent": "The parent market is not in this project.",
+    "no_markets": "There is no Markets area to put it under.",
+    "merge_into": "Merge into {{keep}}",
+    "missing_keep": "The item to keep is not in this project (or is archived).",
+    "no_merge_pages": "None of the pages to merge are live.",
+    "merge": "Merge {{names}} into {{keep}}",
+    "move_field": "Move {{field}} into {{predicate}} claims",
+    "move_field_pages": "Move {{field}} on {{count}} pages into {{predicate}} claims",
+    "missing_subject": "The subject page is not in this project.",
+    "schema_label": "Schema change: an agent adds this to the label registry, then marks the change applied.",
+    "add_label": "Add the label \"{{label}}\" ({{id}})",
+    "add_label_under": "Add the label \"{{label}}\" ({{id}}), under {{parents}}",
+    "add_property_field": "Add the field property \"{{label}}\" ({{id}})",
+    "add_property_claim": "Add the claim property \"{{label}}\" ({{id}})",
+    "add_property_field_to": "Add the field property \"{{label}}\" ({{id}}) to {{labels}}",
+    "add_property_claim_to": "Add the claim property \"{{label}}\" ({{id}}) to {{labels}}",
+    "add_label_property": "Give {{label}} the property {{property}}",
+    "add_broader": "Put {{label}} under {{parent}}",
+    "extend_range": "Let {{property}} also point at {{labels}}",
+    "apply_label": "Label {{count}} pages {{label}}",
+    "waiting_label": "Waiting for the label \"{{label}}\" to exist in the registry.",
+    "split_label": "Split {{label}} into {{labels}}",
+    "split_waiting": "Schema change first: an agent adds {{labels}} under {{label}}, then this relabels the pages here.",
+    "invalid_json": "changes is not valid JSON",
+    "not_list": "changes is not a list",
+    "not_object": "change {{index}}: not an object",
+    "unknown_type": "change {{index}}: unknown type {{type}}",
+    "labels": {
+      "kind_options": "Kind options",
+      "kind": "Kind",
+      "page": "Page",
+      "parent": "Parent",
+      "summary": "Summary",
+      "aliases": "Aliases",
+      "references": "References moved here",
+      "archived": "Archived",
+      "claim": "New claim",
+      "labels": "Labels",
+      "properties": "Properties",
+      "broader": "{{label}} broader",
+      "range": "{{property}} range"
+    },
+    "invalid": {
+      "add-kind-option": "change {{index}}: needs value and label",
+      "reclassify-pages": "change {{index}}: needs toKind and pageIds",
+      "add-market-node": "change {{index}}: needs title",
+      "add-predicate": "change {{index}}: needs predicate.id, label, valueShape and direction",
+      "merge-duplicates": "change {{index}}: needs keepId and mergeIds",
+      "move-field-to-claims": "change {{index}}: needs field and predicate",
+      "add-label": "change {{index}}: needs label.id and label.label",
+      "add-property": "change {{index}}: needs storage (field or claim) and property.id and label",
+      "add-label-property": "change {{index}}: needs labelId and propertyId",
+      "add-broader": "change {{index}}: needs labelId and broaderId",
+      "extend-range": "change {{index}}: needs propertyId and labelIds",
+      "apply-label": "change {{index}}: needs labelId and pageIds",
+      "split-label": "change {{index}}: needs labelId, into and pageIds (new label id -> page ids)"
+    }
+  },
   "ontology_gap_copy": {
     "separator": ", ",
     "names": "{{names}}.",
@@ -1900,6 +1988,242 @@
     "duplicates_other": "{{count}} things are recorded twice",
     "uncategorized_one": "{{count}} knowledge page has no real category",
     "uncategorized_other": "{{count}} knowledge pages have no real category"
+  },
+  "ontology_domain_display": {
+    "statuses": {
+      "bug": {
+        "to-do": "To Do", "in-progress": "In Progress", "in-review": "In Review", "changes-requested": "Changes Requested",
+        "approved": "Approved", "done": "Done", "wont-do": "Won't Do", "duplicate": "Duplicate"
+      },
+      "decision": { "to-do": "To Decide", "in-progress": "Evaluating", "decided": "Decided", "implemented": "Implemented" },
+      "plan": {
+        "draft": "Draft", "ready-for-development": "Ready", "in-development": "In Development", "in-review": "In Review",
+        "changes-requested": "Changes Requested", "approved": "Approved", "completed": "Completed", "rejected": "Rejected", "blocked": "Blocked"
+      }
+    },
+    "open": "open",
+    "role_counts": "{{total}} in all, {{count}} open",
+    "competitor_chip": "Competitor tracker items",
+    "groups": {
+      "market": {
+        "label": "The market",
+        "question": "Who else is out there, and where do they play?"
+      },
+      "product": {
+        "label": "Our product",
+        "question": "What {{us}} can do and what it is built on"
+      },
+      "customers": {
+        "label": "Customers",
+        "question": "Who uses and buys it"
+      },
+      "work": {
+        "label": "The work",
+        "question": "What we are fixing, building, and deciding"
+      }
+    },
+    "summary": {
+      "empty": "Your team does not track anything here yet.",
+      "start": "Your team tracks ",
+      "group_separator": "; ",
+      "separator": ", ",
+      "market": "Market: ",
+      "product": "Product: ",
+      "customers": "Customers: ",
+      "work": "Work: ",
+      "count": "{{count}} {{name}}",
+      "open_count": "{{count}} open {{name}}",
+      "end": "."
+    },
+    "via": {
+      "untracked": "nothing records this yet",
+      "statements": "{{names}} statements",
+      "facts": "{{names}} facts",
+      "field": "the {{field}} field",
+      "inverse_field": "the {{field}} field (and {{inverse}} on {{type}})",
+      "threat": "the threat qualifier on competes-with"
+    },
+    "notes": {
+      "market": "{{count}} top-level groups: {{names}}",
+      "facts": "{{count}} facts in all; {{stale}} older than {{days}} days.",
+      "capabilities": "{{count}} of {{total}} have no statements at all.",
+      "technologies": "{{count}} have no statements.",
+      "threat": "Threat: critical {{critical}}, high {{high}}, medium {{medium}}, low {{low}}"
+    },
+    "cells": {
+      "unknown": "unknown",
+      "undated": "undated",
+      "stale": "stale",
+      "current": "current",
+      "not_recorded": "not recorded",
+      "not_rated": "not rated",
+      "no_statements": "no statements",
+      "critical": "critical",
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "columns": {
+      "recorded": "Recorded",
+      "what": "What",
+      "competitor": "Competitor",
+      "market": "Market",
+      "threat": "Threat",
+      "made_by": "Made by",
+      "part_of": "Part of",
+      "products": "Products",
+      "highest_threat": "Highest threat",
+      "company": "Company",
+      "makes": "Makes",
+      "revenue": "Revenue",
+      "other_facts": "Other facts",
+      "name": "Name",
+      "status": "Status",
+      "recorded_as": "Recorded as"
+    },
+    "date": {
+      "year": "{{year}}",
+      "month": " {{month}}",
+      "day": " {{day}}"
+    },
+    "schema": {
+      "knowledge_page": "A knowledge page, ",
+      "with_kind": " with kind ",
+      "on_statement": "{{name}} (on statement)",
+      "old_field": "{{name}} (old page field)",
+      "knowledge_open": "A knowledge page (",
+      "kind": ", kind ",
+      "object": ") that is the object of a ",
+      "competitor_statement": " statement from {{us}}. The threat, market, overlap, and difference live on that statement.",
+      "knowledge_kinds": "Knowledge pages with kind ",
+      "or": " or ",
+      "nested": ", nested by ",
+      "products_join": ". Products join through ",
+      "statements_end": " statements.",
+      "tracker_type": "Tracker type "
+    },
+    "examples": {
+      "us": "The product we compare to",
+      "personas": "Customers and people are recorded, but not their kinds of buyer."
+    },
+    "categories": {
+      "competitors": {
+        "name": "Competitors",
+        "role": "Products that compete with {{us}}",
+        "blurb": "Every product we record a \"competes with\" statement for, each with the market it competes in and a threat level. Not a page type: a product becomes a competitor when that statement exists."
+      },
+      "markets": {
+        "name": "Markets",
+        "role": "The spaces products compete in",
+        "blurb": "A tree of market categories. A product can sit in several."
+      },
+      "organizations": {
+        "name": "Companies",
+        "role": "Who makes the products",
+        "blurb": "The companies behind products. Revenue, valuation, and headcount are dated, cited facts on the company."
+      },
+      "capabilities": {
+        "name": "Capabilities",
+        "role": "What {{us}} can do, as the wiki describes it",
+        "blurb": "Wiki pages for what the product does."
+      },
+      "technologies": {
+        "name": "Technologies",
+        "role": "What it is built on",
+        "blurb": "Libraries, protocols, and infrastructure the product depends on, including ones we moved away from."
+      },
+      "areas": {
+        "name": "Product areas",
+        "role": "How the work is organized",
+        "blurb": "The modules bugs, features, and decisions are filed against."
+      },
+      "features": {
+        "name": "Features",
+        "role": "What exists in the product, feature by feature",
+        "blurb": "The fine-grained catalog of what the product can do."
+      },
+      "customers": {
+        "name": "Customers",
+        "role": "Companies and individuals using {{us}}",
+        "blurb": "Who uses the product, from targets to teams with several users."
+      },
+      "people": {
+        "name": "People",
+        "role": "Individual users",
+        "blurb": "Individual users and their activity, each tied to a customer."
+      },
+      "bugs": {
+        "name": "Bugs",
+        "role": "Defects",
+        "blurb": "Defects, filed against a product area when someone says which."
+      },
+      "decisions": {
+        "name": "Decisions",
+        "role": "Choices the team made or is making",
+        "blurb": "Choices the team made or is making, and what they affect."
+      },
+      "plans": {
+        "name": "Plans",
+        "role": "Design and implementation plans",
+        "blurb": "Design and implementation plans."
+      },
+      "goals": {
+        "name": "Goals",
+        "role": "What the company is aiming for",
+        "blurb": "Company-level goals."
+      },
+      "personas": {
+        "name": "Personas",
+        "role": "Kinds of buyer and user",
+        "blurb": "Nothing records who your customers are as types of buyer, so you cannot ask which persona a capability serves or which one a competitor targets."
+      },
+      "us": {
+        "role": "The product everything else is compared to",
+        "blurb": "Our own product page. Competitors, markets, and technologies are all recorded relative to it."
+      }
+    },
+    "verbs": {
+      "are_filed_against": "are filed against",
+      "are_about": "are about",
+      "work_at": "work at",
+      "have": "have",
+      "asked_for": "asked for",
+      "were_asked_for_by": "were asked for by",
+      "belong_to": "belong to",
+      "serve": "serve",
+      "are_served_by": "are served by",
+      "group": "group",
+      "collect": "collect",
+      "are_the_subject_of": "are the subject of",
+      "include": "include",
+      "relate_to": "relate to",
+      "contribute_to": "contribute to",
+      "block": "block",
+      "depend_on": "depend on",
+      "sit_in": "sit in",
+      "are_made_by": "are made by",
+      "make": "make",
+      "compete_with": "compete with",
+      "are_built_on": "are built on",
+      "are_used_by": "are used by",
+      "are_depended_on_by": "are depended on by",
+      "are_part_of": "are part of",
+      "are_made_of": "are made of",
+      "implement": "implement",
+      "are_implemented_by": "are implemented by",
+      "are_inspired_by": "are inspired by",
+      "inspired": "inspired",
+      "integrate_with": "integrate with",
+      "have_a_threat_level": "have a threat level",
+      "have_a_status_active_defunct": "have a status (active, defunct...)",
+      "have_which_of_our": "have which of our",
+      "have_a_written_summary": "have a written summary",
+      "have_revenue_or_size_facts": "have revenue or size facts",
+      "are_tracked_as": "are tracked as",
+      "match": "match",
+      "fit": "fit",
+      "object_of": "are the object of {{predicate}}"
+    }
   },
   "page_status": {
     "draft": "Draft",

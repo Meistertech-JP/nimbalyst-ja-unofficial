@@ -14,7 +14,7 @@
  */
 import type { TrackerDataModel } from '../../../../tracker-schema/src/browser';
 import { type OntologyInput, type TypeSummary } from './ontologyAnalysis';
-import { type DomainGroupId } from './ontologyDomainVocabulary';
+import { type DisplayCopy, type DomainGroupId } from './ontologyDomainVocabulary';
 import { type FactValue, type HealthItem, type KnowledgeGraph, type MarketNode } from './ontologyKnowledge';
 import { type OntologyRecordLike } from './ontologyRecords';
 export type { DomainGroupId };
@@ -22,6 +22,8 @@ export declare const DOMAIN_GROUP_ORDER: readonly DomainGroupId[];
 /** `full` is (nearly) every member; `low` under 60%; `untracked` means nothing can record it yet. */
 export type LineState = 'full' | 'partial' | 'low' | 'untracked';
 export interface DomainLine {
+    displayVerb?: DisplayCopy;
+    displayVia?: DisplayCopy;
     /** `${categoryId}:${key}` */
     id: string;
     /** Plural present tense, read after the category name: "Competitors *sit in* markets". */
@@ -46,8 +48,10 @@ export interface DomainLine {
 export type StoredPart = {
     text: string;
     code?: boolean;
+    displayCopy?: DisplayCopy;
 };
 export interface SchemaRow {
+    displayCopy?: DisplayCopy;
     label: string;
     /** Null when the value is not a per-item fill (an inverse field, say). */
     filled: number | null;
@@ -60,6 +64,17 @@ export interface DomainSchema {
     rows: SchemaRow[];
 }
 export interface MemberCell {
+    displayParts?: Array<{
+        text: string;
+        displayCopy?: DisplayCopy;
+    }>;
+    displayCopy?: DisplayCopy;
+    displayFact?: {
+        value: string;
+        asOf: string | null;
+        precision: string;
+        state: string;
+    };
     text: string;
     tone?: 'warn' | 'faint';
     /** A threat level, rendered as a pill. */
@@ -70,10 +85,16 @@ export interface MemberRow {
     cells: MemberCell[];
 }
 export interface MemberTable {
+    displayColumns?: Array<DisplayCopy | undefined>;
+    openable?: boolean;
     columns: string[];
     rows: MemberRow[];
 }
 export interface DomainCategory<T extends OntologyRecordLike = OntologyRecordLike> {
+    displayExampleParts?: MemberCell['displayParts'];
+    displayExample?: DisplayCopy;
+    displayBuiltIn?: boolean;
+    displayNote?: DisplayCopy;
     id: string;
     name: string;
     singular: string;

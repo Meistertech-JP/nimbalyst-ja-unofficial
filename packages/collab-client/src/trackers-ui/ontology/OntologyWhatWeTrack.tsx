@@ -9,6 +9,8 @@ import type { KeyboardEvent } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { formatCount, type DomainCategory, type DomainGap, type DomainModel } from './ontologyDomain';
 import { OntologyNeighborhood } from './OntologyNeighborhood';
+import { displayDomainModel } from './ontologyDomainVocabulary';
+import { displayGap } from './ontologyGapCopy';
 import {
   CategoryLines,
   categoryName,
@@ -59,7 +61,7 @@ function OntologyCard({ model, category, onOpen, gapAction }: {
   onOpen: OpenCategory;
   gapAction: (gap: DomainGap) => GapAction;
 }) {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
   const gaps = model.gaps.filter((gap) => category.gapIds.includes(gap.id));
   if (category.ghost) {
     const gap = gaps[0];
@@ -103,7 +105,7 @@ function OntologyCard({ model, category, onOpen, gapAction }: {
       {firstGap && (
         <div className="ontology-card-gap">
           <span className="ontology-dot ontology-dot-warn" />
-          {firstGap.title}
+          {displayGap(firstGap, i18n.resolvedLanguage, (key, options) => t(key, options)).title}
         </div>
       )}
     </div>
@@ -202,12 +204,13 @@ export function OntologyCategoryDetail({ model, category, onOpen, onBack, onOpen
 }
 
 /** The whole "What we track" screen: overview or one category, with the gaps rail beside it. */
-export function OntologyWhatWeTrack({ model, gapAction, proposals, onOpenProposal, onOpenItem, selected, onSelect, now }: OntologyViewProps & {
+export function OntologyWhatWeTrack({ model: rawModel, gapAction, proposals, onOpenProposal, onOpenItem, selected, onSelect, now }: OntologyViewProps & {
   selected: string | null;
   onSelect: (categoryId: string | null) => void;
   now: number;
 }) {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
+  const model = displayDomainModel(rawModel, i18n.resolvedLanguage, (key, options) => t(key, options));
   const category = selected ? model.categories.find((entry) => entry.id === selected && !entry.ghost) ?? null : null;
   const openGap = (gapId: string) => {
     const gap = model.gaps.find((entry) => entry.id === gapId);

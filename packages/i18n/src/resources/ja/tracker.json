@@ -1,4 +1,92 @@
 {
+  "ontology_plan": {
+    "values": {
+      "empty": "（空欄）",
+      "none": "（なし）",
+      "missing": "（見つかりません）",
+      "exists": "すでに存在します",
+      "includes": "{{value}}を含みます",
+      "absent": "{{value}}はありません",
+      "in_use": "使用中",
+      "undeclared": "未定義",
+      "inverse": "{{direction}}、{{shape}}、逆方向「{{inverse}}」",
+      "with_properties": "+ {{id}}（プロパティ: {{properties}}）",
+      "property_range": "+ {{id}}: {{storage}}、{{shape}}、参照範囲 {{range}}",
+      "no_properties": "（プロパティなし）",
+      "top_level": "（最上位）",
+      "any": "（任意）",
+      "expects": "+ {{property}}（期待値: {{bounds}}）",
+      "minimum": "最小{{min}}件",
+      "maximum": "最大{{max}}件",
+      "bounds": "最小{{min}}件、最大{{max}}件",
+      "kept": "{{value}}（保持・非推奨）"
+    },
+    "add_kind": "種類「{{label}}」（{{value}}）を追加",
+    "schema_kind": "スキーマ変更: エージェントがこの選択肢をentity.kindに追加し、適用済みにします。",
+    "add_predicate": "述語「{{label}}」（{{id}}）を追加",
+    "schema_predicate": "スキーマ変更: エージェントがこの述語をレジストリに追加し、適用済みにします。",
+    "reclassify": "{{count}}件のページを{{kind}}に再分類",
+    "waiting_kind": "種類「{{kind}}」がスキーマに追加されるのを待っています。",
+    "add_market": "{{parent}}の下に市場「{{title}}」を追加",
+    "add_market_missing": "市場「{{title}}」を追加（親がありません）",
+    "missing_parent": "親の市場がこのプロジェクトにありません。",
+    "no_markets": "追加先となるMarkets領域がありません。",
+    "merge_into": "{{keep}}に統合",
+    "missing_keep": "保持する項目がこのプロジェクトに存在しないか、アーカイブされています。",
+    "no_merge_pages": "統合する有効なページがありません。",
+    "merge": "{{names}}を{{keep}}に統合",
+    "move_field": "{{field}}を{{predicate}}のステートメントに移行",
+    "move_field_pages": "{{count}}件のページの{{field}}を{{predicate}}のステートメントに移行",
+    "missing_subject": "主語のページがこのプロジェクトにありません。",
+    "schema_label": "スキーマ変更: エージェントがラベルレジストリに追加し、適用済みにします。",
+    "add_label": "ラベル「{{label}}」（{{id}}）を追加",
+    "add_label_under": "{{parents}}の下にラベル「{{label}}」（{{id}}）を追加",
+    "add_property_field": "フィールドプロパティ「{{label}}」（{{id}}）を追加",
+    "add_property_claim": "ステートメントプロパティ「{{label}}」（{{id}}）を追加",
+    "add_property_field_to": "{{labels}}にフィールドプロパティ「{{label}}」（{{id}}）を追加",
+    "add_property_claim_to": "{{labels}}にステートメントプロパティ「{{label}}」（{{id}}）を追加",
+    "add_label_property": "{{label}}にプロパティ{{property}}を追加",
+    "add_broader": "{{label}}を{{parent}}の下に配置",
+    "extend_range": "{{property}}の参照先に{{labels}}を追加",
+    "apply_label": "{{count}}件のページに{{label}}ラベルを付与",
+    "waiting_label": "ラベル「{{label}}」がレジストリに追加されるのを待っています。",
+    "split_label": "{{label}}を{{labels}}に分割",
+    "split_waiting": "先にスキーマを変更します。エージェントが{{label}}の下に{{labels}}を追加した後、ページのラベルを変更します。",
+    "invalid_json": "changesが有効なJSONではありません",
+    "not_list": "changesがリストではありません",
+    "not_object": "変更{{index}}: オブジェクトではありません",
+    "unknown_type": "変更{{index}}: 不明なタイプ{{type}}",
+    "labels": {
+      "kind_options": "種類の選択肢",
+      "kind": "種類",
+      "page": "ページ",
+      "parent": "親",
+      "summary": "概要",
+      "aliases": "別名",
+      "references": "移動した参照",
+      "archived": "アーカイブ済み",
+      "claim": "新しいステートメント",
+      "labels": "ラベル",
+      "properties": "プロパティ",
+      "broader": "{{label}}の上位ラベル",
+      "range": "{{property}}の参照範囲"
+    },
+    "invalid": {
+      "add-kind-option": "変更{{index}}: valueとlabelが必要です",
+      "reclassify-pages": "変更{{index}}: toKindとpageIdsが必要です",
+      "add-market-node": "変更{{index}}: titleが必要です",
+      "add-predicate": "変更{{index}}: predicate.id、label、valueShape、directionが必要です",
+      "merge-duplicates": "変更{{index}}: keepIdとmergeIdsが必要です",
+      "move-field-to-claims": "変更{{index}}: fieldとpredicateが必要です",
+      "add-label": "変更{{index}}: label.idとlabel.labelが必要です",
+      "add-property": "変更{{index}}: storage（fieldまたはclaim）、property.id、labelが必要です",
+      "add-label-property": "変更{{index}}: labelIdとpropertyIdが必要です",
+      "add-broader": "変更{{index}}: labelIdとbroaderIdが必要です",
+      "extend-range": "変更{{index}}: propertyIdとlabelIdsが必要です",
+      "apply-label": "変更{{index}}: labelIdとpageIdsが必要です",
+      "split-label": "変更{{index}}: labelId、into、pageIds（新ラベルIDからページIDへの対応）が必要です"
+    }
+  },
   "ontology_gap_copy": {
     "separator": "、",
     "names": "{{names}}。",
@@ -1900,6 +1988,242 @@
     "duplicates_other": "{{count}}件の重複があります",
     "uncategorized_one": "分類が不明確なナレッジページが{{count}}件あります",
     "uncategorized_other": "分類が不明確なナレッジページが{{count}}件あります"
+  },
+  "ontology_domain_display": {
+    "statuses": {
+      "bug": {
+        "to-do": "未着手", "in-progress": "進行中", "in-review": "レビュー中", "changes-requested": "変更依頼あり",
+        "approved": "承認済み", "done": "完了", "wont-do": "対応しない", "duplicate": "重複"
+      },
+      "decision": { "to-do": "未決定", "in-progress": "評価中", "decided": "決定済み", "implemented": "実施済み" },
+      "plan": {
+        "draft": "下書き", "ready-for-development": "準備完了", "in-development": "開発中", "in-review": "レビュー中",
+        "changes-requested": "変更依頼あり", "approved": "承認済み", "completed": "完了", "rejected": "却下", "blocked": "ブロック中"
+      }
+    },
+    "open": "未完了",
+    "role_counts": "全{{total}}件、未完了{{count}}件",
+    "competitor_chip": "競合トラッカー項目",
+    "groups": {
+      "market": {
+        "label": "市場",
+        "question": "他にどのような製品があり、どの市場で競合していますか？"
+      },
+      "product": {
+        "label": "自社製品",
+        "question": "{{us}}でできることと、それを支える技術"
+      },
+      "customers": {
+        "label": "顧客",
+        "question": "利用者と購入者"
+      },
+      "work": {
+        "label": "作業",
+        "question": "修正・開発・意思決定の対象"
+      }
+    },
+    "summary": {
+      "empty": "まだ管理対象はありません。",
+      "start": "チームの管理対象：",
+      "group_separator": "。",
+      "separator": "、",
+      "market": "市場：",
+      "product": "製品：",
+      "customers": "顧客：",
+      "work": "作業：",
+      "count": "{{name}}{{count}}件",
+      "open_count": "未完了の{{name}}{{count}}件",
+      "end": "。"
+    },
+    "via": {
+      "untracked": "まだ記録方法がありません",
+      "statements": "{{names}}の関係記録",
+      "facts": "{{names}}の事実",
+      "field": "{{field}}フィールド",
+      "inverse_field": "{{field}}フィールド（および{{type}}の{{inverse}}）",
+      "threat": "competes-withのthreat修飾子"
+    },
+    "notes": {
+      "market": "最上位グループ{{count}}件：{{names}}",
+      "facts": "事実は全{{count}}件（{{days}}日を超えるもの：{{stale}}件）。",
+      "capabilities": "全{{total}}件中{{count}}件に関係の記録がありません。",
+      "technologies": "{{count}}件に関係の記録がありません。",
+      "threat": "脅威度：最優先{{critical}}件、高{{high}}件、中{{medium}}件、低{{low}}件"
+    },
+    "cells": {
+      "unknown": "不明",
+      "undated": "日付なし",
+      "stale": "古い情報",
+      "current": "最新",
+      "not_recorded": "未記録",
+      "not_rated": "未評価",
+      "no_statements": "関係の記録なし",
+      "critical": "最優先",
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "columns": {
+      "recorded": "記録内容",
+      "what": "対象",
+      "competitor": "競合製品",
+      "market": "市場",
+      "threat": "脅威度",
+      "made_by": "提供元",
+      "part_of": "所属先",
+      "products": "製品",
+      "highest_threat": "最大の脅威度",
+      "company": "企業",
+      "makes": "提供製品",
+      "revenue": "売上",
+      "other_facts": "その他の事実",
+      "name": "名前",
+      "status": "状態",
+      "recorded_as": "記録されている関係"
+    },
+    "date": {
+      "year": "{{year}}年",
+      "month": "{{month}}月",
+      "day": "{{day}}日"
+    },
+    "schema": {
+      "knowledge_page": "ナレッジページ：",
+      "with_kind": "、種類：",
+      "on_statement": "{{name}}（関係記録上）",
+      "old_field": "{{name}}（旧ページフィールド）",
+      "knowledge_open": "ナレッジページ（",
+      "kind": "、種類：",
+      "object": "）。関係種別：",
+      "competitor_statement": "。{{us}}を主語とする関係の対象です。脅威度、市場、共通点、相違点はその関係上に記録されます。",
+      "knowledge_kinds": "ナレッジページの種類：",
+      "or": "または",
+      "nested": "、階層フィールド：",
+      "products_join": "。製品との関係種別：",
+      "statements_end": "。",
+      "tracker_type": "トラッカー種別："
+    },
+    "examples": {
+      "us": "比較の基準となる製品",
+      "personas": "顧客やユーザーは記録されていますが、購入者としての類型は未記録です。"
+    },
+    "categories": {
+      "competitors": {
+        "name": "競合製品",
+        "role": "{{us}}と競合する製品",
+        "blurb": "「競合する」という関係が記録された製品と、その市場・脅威度です。ページの種類ではなく、関係の記録によって競合製品になります。"
+      },
+      "markets": {
+        "name": "市場",
+        "role": "製品が競合する市場",
+        "blurb": "市場カテゴリの階層です。製品は複数の市場に属することがあります。"
+      },
+      "organizations": {
+        "name": "企業",
+        "role": "製品を提供する企業",
+        "blurb": "製品を提供する企業です。売上、評価額、従業員数は、日付と出典を持つ企業の事実として記録されます。"
+      },
+      "capabilities": {
+        "name": "機能",
+        "role": "Wikiに記録された{{us}}の機能",
+        "blurb": "製品でできることを記したWikiページです。"
+      },
+      "technologies": {
+        "name": "技術",
+        "role": "製品を支える技術",
+        "blurb": "製品が依存するライブラリ、プロトコル、基盤です。過去に利用したものも含みます。"
+      },
+      "areas": {
+        "name": "製品領域",
+        "role": "作業の分類",
+        "blurb": "不具合、機能、決定を分類するモジュールです。"
+      },
+      "features": {
+        "name": "製品機能",
+        "role": "製品の個々の機能",
+        "blurb": "製品でできることを詳細にまとめた一覧です。"
+      },
+      "customers": {
+        "name": "顧客",
+        "role": "{{us}}を利用する企業と個人",
+        "blurb": "見込み顧客から複数ユーザーのチームまで、製品を利用する顧客です。"
+      },
+      "people": {
+        "name": "ユーザー",
+        "role": "個々のユーザー",
+        "blurb": "顧客に紐づく個々のユーザーと、その活動です。"
+      },
+      "bugs": {
+        "name": "不具合",
+        "role": "製品の不具合",
+        "blurb": "製品領域が指定されている場合は、その領域に分類された不具合です。"
+      },
+      "decisions": {
+        "name": "決定",
+        "role": "チームで決めたこと・検討中のこと",
+        "blurb": "チームで決めたことや検討中のことと、その影響範囲です。"
+      },
+      "plans": {
+        "name": "計画",
+        "role": "設計・実装の計画",
+        "blurb": "設計と実装の計画です。"
+      },
+      "goals": {
+        "name": "目標",
+        "role": "会社が目指すこと",
+        "blurb": "会社全体の目標です。"
+      },
+      "personas": {
+        "name": "ペルソナ",
+        "role": "購入者・ユーザーの類型",
+        "blurb": "顧客の購入者としての類型が未記録のため、機能や競合製品がどのペルソナを対象にするか確認できません。"
+      },
+      "us": {
+        "role": "比較の基準となる自社製品",
+        "blurb": "自社製品のページです。競合製品、市場、技術はこの製品との関係として記録されます。"
+      }
+    },
+    "verbs": {
+      "are_filed_against": "分類先",
+      "are_about": "対象",
+      "work_at": "勤務先",
+      "have": "所属ユーザー",
+      "asked_for": "要望した機能",
+      "were_asked_for_by": "要望元",
+      "belong_to": "所属先",
+      "serve": "対象の目標",
+      "are_served_by": "貢献するもの",
+      "group": "含む機能",
+      "collect": "含む不具合",
+      "are_the_subject_of": "関連する決定",
+      "include": "含む製品",
+      "relate_to": "関連先",
+      "contribute_to": "貢献先",
+      "block": "阻害先",
+      "depend_on": "依存先",
+      "sit_in": "属する市場",
+      "are_made_by": "提供元",
+      "make": "提供する製品",
+      "compete_with": "競合相手",
+      "are_built_on": "基盤となる技術",
+      "are_used_by": "利用元",
+      "are_depended_on_by": "依存元",
+      "are_part_of": "構成先",
+      "are_made_of": "構成要素",
+      "implement": "実装するもの",
+      "are_implemented_by": "実装元",
+      "are_inspired_by": "着想元",
+      "inspired": "着想を与えたもの",
+      "integrate_with": "連携先",
+      "have_a_threat_level": "脅威度の記録",
+      "have_a_status_active_defunct": "稼働状況の記録",
+      "have_which_of_our": "対応する自社の機能",
+      "have_a_written_summary": "概要の記録",
+      "have_revenue_or_size_facts": "売上・規模の記録",
+      "are_tracked_as": "管理する製品領域",
+      "match": "対応する機能",
+      "fit": "該当するペルソナ",
+      "object_of": "{{predicate}}の対象"
+    }
   },
   "page_status": {
     "draft": "下書き",

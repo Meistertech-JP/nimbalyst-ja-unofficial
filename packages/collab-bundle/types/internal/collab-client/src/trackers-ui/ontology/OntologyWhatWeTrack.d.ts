@@ -29,7 +29,7 @@ export declare function OntologyCategoryDetail({ model, category, onOpen, onBack
     backLabel: string;
 }): import("react").JSX.Element;
 /** The whole "What we track" screen: overview or one category, with the gaps rail beside it. */
-export declare function OntologyWhatWeTrack({ model, gapAction, proposals, onOpenProposal, onOpenItem, selected, onSelect, now }: OntologyViewProps & {
+export declare function OntologyWhatWeTrack({ model: rawModel, gapAction, proposals, onOpenProposal, onOpenItem, selected, onSelect, now }: OntologyViewProps & {
     selected: string | null;
     onSelect: (categoryId: string | null) => void;
     now: number;

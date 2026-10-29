@@ -4,7 +4,7 @@
  * categories and their relationship lines are; this only lays them out.
  */
 import type { DomainContext, DomainSchema, LineCalc, MemberCell, MemberRow, MemberTable, SchemaRow, StoredPart } from './ontologyDomain';
-import { singularVerb } from './ontologyDomainVocabulary';
+import { singularVerb, displayCopy, productStatusCopy } from './ontologyDomainVocabulary';
 import { claimPredicate, claimQualifiers, DEPRECATED_ENTITY_FIELDS, ENTITY_TYPE, entityKind, type FactValue, type MarketNode } from './ontologyKnowledge';
 import { isEmptyFieldValue, ontologyFieldValue, ontologyRecordTitle, recordRefs, type OntologyRecordLike } from './ontologyRecords';
 
@@ -59,10 +59,11 @@ function threatOf(context: DomainContext, id: string): string | null {
 }
 
 function factCell(fact: FactValue | undefined): MemberCell {
-  if (!fact) return { text: 'unknown', tone: 'warn' };
+  if (!fact) return { text: 'unknown', displayCopy: displayCopy('cells.unknown', 'unknown'), tone: 'warn' };
   const value = ontologyFieldValue(fact.claim, 'valueText');
   const text = `${typeof value === 'string' && value ? value : fact.predicate} · ${formatAsOf(fact.asOf, fact.precision)}`;
-  return fact.state === 'current' ? { text } : { text: `${text} (${fact.state})`, tone: 'warn' };
+  const displayFact = { value: typeof value === 'string' && value ? value : fact.predicate, asOf: fact.asOf, precision: fact.precision, state: fact.state };
+  return fact.state === 'current' ? { text, displayFact } : { text: `${text} (${fact.state})`, displayFact, tone: 'warn' };
 }
 
 function linkedCell(context: DomainContext, calc: LineCalc | undefined, id: string, missing: MemberCell): MemberCell {
@@ -77,7 +78,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
   calcs: readonly LineCalc[],
 ): { table: MemberTable; schema: DomainSchema | null } {
   if (categoryId === 'personas') return { table: { columns: [], rows: [] }, schema: null };
-  const unknown: MemberCell = { text: 'unknown', tone: 'warn' };
+  const unknown: MemberCell = { text: 'unknown', displayCopy: displayCopy('cells.unknown', 'unknown'), tone: 'warn' };
   const none: MemberCell = { text: '—', tone: 'faint' };
   let table: MemberTable;
 
@@ -85,9 +86,11 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
     const us = members[0]!;
     table = {
       columns: ['Recorded', 'What'],
+      openable: false,
+      displayColumns: ['recorded', 'what'].map(key => displayCopy(`columns.${key}`, '')),
       rows: calcs.map((calc) => ({
         id: calc.line.id,
-        cells: [{ text: capitalize(singularVerb(calc.line.verb)) }, linkedCell(context, calc, us.id, { text: 'not recorded', tone: 'warn' })],
+        cells: [{ text: capitalize(singularVerb(calc.line.verb)), displayCopy: calc.line.displayVerb }, linkedCell(context, calc, us.id, { text: 'not recorded', displayCopy: displayCopy('cells.not_recorded', 'not recorded'), tone: 'warn' })],
       })),
     };
   } else if (categoryId === 'competitors') {
@@ -95,6 +98,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
     const maker = lineCalc(calcs, 'made-by');
     table = {
       columns: ['Competitor', 'Market', 'Threat', 'Made by'],
+      displayColumns: ['competitor', 'market', 'threat', 'made_by'].map(key => displayCopy(`columns.${key}`, '')),
       rows: members.map((member) => {
         const threat = threatOf(context, member.id);
         return {
@@ -102,7 +106,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
           cells: [
             { text: ontologyRecordTitle(member) },
             linkedCell(context, market, member.id, unknown),
-            threat ? { text: threat, threat } : { text: 'not rated', tone: 'faint' },
+            threat ? { text: threat, threat, displayCopy: displayCopy(`cells.${threat}`, threat) } : { text: 'not rated', displayCopy: displayCopy('cells.not_rated', 'not rated'), tone: 'faint' },
             linkedCell(context, maker, member.id, unknown),
           ],
         };
@@ -115,6 +119,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
     const membersUnder = (node: MarketNode<T> | undefined): string[] => node ? [...node.direct.map((page) => page.id), ...node.children.flatMap(membersUnder)] : [];
     table = {
       columns: ['Market', 'Part of', 'Products', 'Highest threat'],
+      displayColumns: ['market', 'part_of', 'products', 'highest_threat'].map(key => displayCopy(`columns.${key}`, '')),
       rows: members.map((member) => {
         const node = nodes.get(member.id);
         const parent = context.graph.byId.get(recordRefs(member, 'parent')[0] ?? '');
@@ -129,7 +134,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
             { text: ontologyRecordTitle(member) },
             parent && entityKind(parent) === 'market' ? { text: ontologyRecordTitle(parent) } : none,
             { text: String(node?.total ?? 0), tone: node?.total ? undefined : 'warn' },
-            best ? { text: best, threat: best } : none,
+            best ? { text: best, threat: best, displayCopy: displayCopy(`cells.${best}`, best) } : none,
           ],
         };
       }),
@@ -143,6 +148,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
     }
     table = {
       columns: ['Company', 'Makes', 'Revenue', 'Other facts'],
+      displayColumns: ['company', 'makes', 'revenue', 'other_facts'].map(key => displayCopy(`columns.${key}`, '')),
       rows: members.map((member) => {
         const facts = factsOf.get(member.id) ?? [];
         const makes = (context.graph.claimsByObject.get(member.id) ?? []).filter((claim) => claimPredicate(claim) === 'made-by').flatMap((claim) => recordRefs(claim, 'subject'));
@@ -169,6 +175,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
     const linked = calcs.filter((calc) => calc.line.targetId && calc.line.state !== 'untracked');
     table = {
       columns: ['Name', 'Status', ...linked.map((calc) => capitalize(context.categoryName(calc.line.targetId!)))],
+      displayColumns: [displayCopy('columns.name', 'Name'), displayCopy('columns.status', 'Status'), ...linked.map(calc => displayCopy(`categories.${calc.line.targetId}.name`, ''))],
       rows: members.map((member) => {
         const status = ontologyFieldValue(member, statusField);
         const label = options.find((option) => option.value === status)?.label ?? (typeof status === 'string' ? status : '');
@@ -176,7 +183,7 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
           id: member.id,
           cells: [
             { text: ontologyRecordTitle(member) },
-            label ? { text: label } : none,
+            label ? { text: label, displayCopy: productStatusCopy(type, statusField, status, label) } : none,
             ...linked.map((calc) => linkedCell(context, calc, member.id, none)),
           ],
         };
@@ -185,11 +192,17 @@ export function buildCategoryDetail<T extends OntologyRecordLike>(
   } else {
     table = {
       columns: ['Name', 'Recorded as'],
+      displayColumns: ['name', 'recorded_as'].map(key => displayCopy(`columns.${key}`, '')),
       rows: members.map((member): MemberRow => {
         const parts = calcs
           .filter((calc) => calc.targets.get(member.id)?.length)
           .map((calc) => `${calc.line.verb.replace(/^are /, '')} ${titles(context, calc.targets.get(member.id), 2)}`);
-        return { id: member.id, cells: [{ text: ontologyRecordTitle(member) }, parts.length ? { text: parts.join(' · ') } : { text: 'no statements', tone: 'warn' }] };
+        const displayParts = calcs.filter(calc => calc.targets.get(member.id)?.length).flatMap((calc, index) => [
+          { text: index ? ' · ' : '' },
+          { text: calc.line.verb.replace(/^are /, ''), displayCopy: calc.line.displayVerb },
+          { text: ` ${titles(context, calc.targets.get(member.id), 2)}` },
+        ]);
+        return { id: member.id, cells: [{ text: ontologyRecordTitle(member) }, parts.length ? { text: parts.join(' · '), displayParts } : { text: 'no statements', displayCopy: displayCopy('cells.no_statements', 'no statements'), tone: 'warn' }] };
       }),
     };
   }
@@ -218,14 +231,14 @@ function entityRows<T extends OntologyRecordLike>(context: DomainContext<T>, kin
 function statementRows(calcs: readonly LineCalc[]): SchemaRow[] {
   return calcs
     .filter((calc) => calc.linkKey.startsWith('claim:') || calc.linkKey.startsWith('fact:'))
-    .map((calc) => ({ label: calc.line.via.replace(/ statements$/, ' statement').replace(/ facts$/, ' fact'), filled: calc.line.have, total: calc.line.total, retired: false }));
+    .map((calc) => ({ label: calc.line.via.replace(/ statements$/, ' statement').replace(/ facts$/, ' fact'), displayCopy: calc.line.displayVia, filled: calc.line.have, total: calc.line.total, retired: false }));
 }
 
 function buildSchema<T extends OntologyRecordLike>(context: DomainContext<T>, categoryId: string, members: readonly T[], calcs: readonly LineCalc[]): DomainSchema | null {
   const usName = context.us ? ontologyRecordTitle(context.us) : 'us';
   if (categoryId === 'us') {
     return {
-      stored: [{ text: 'A knowledge page, ' }, code(ENTITY_TYPE), { text: ' with kind ' }, code(context.us ? entityKind(context.us) : 'product'), { text: '.' }],
+      stored: [{ text: 'A knowledge page, ', displayCopy: displayCopy('schema.knowledge_page', '') }, code(ENTITY_TYPE), { text: ' with kind ', displayCopy: displayCopy('schema.with_kind', '') }, code(context.us ? entityKind(context.us) : 'product'), { text: '.' }],
       rows: [...entityRows(context, ['product'], members), ...statementRows(calcs)].slice(0, MAX_SCHEMA_ROWS),
     };
   }
@@ -235,41 +248,43 @@ function buildSchema<T extends OntologyRecordLike>(context: DomainContext<T>, ca
       && [...recordRefs(claim, 'subject'), ...recordRefs(claim, 'object')].some((id) => ids.has(id)));
     const qualifierRows = COMPETES_QUALIFIERS.map((name) => ({
       label: `${name} (on statement)`,
+      displayCopy: displayCopy('schema.on_statement', '', { name }),
       filled: claims.filter((claim) => !isEmptyFieldValue(claimQualifiers(claim)[name])).length,
       total: claims.length,
       retired: false,
     }));
     const retired = [...DEPRECATED_ENTITY_FIELDS].map((name) => ({
       label: `${name} (old page field)`,
+      displayCopy: displayCopy('schema.old_field', '', { name }),
       filled: members.filter((member) => !isEmptyFieldValue(ontologyFieldValue(member, name))).length,
       total: members.length,
       retired: true,
     })).filter((row) => row.filled > 0);
     return {
       stored: [
-        { text: 'A knowledge page (' }, code(ENTITY_TYPE), { text: ', kind ' }, code('product'),
-        { text: ') that is the object of a ' }, code('competes-with'),
-        { text: ` statement from ${usName}. The threat, market, overlap, and difference live on that statement.` },
+        { text: 'A knowledge page (', displayCopy: displayCopy('schema.knowledge_open', '') }, code(ENTITY_TYPE), { text: ', kind ', displayCopy: displayCopy('schema.kind', '') }, code('product'),
+        { text: ') that is the object of a ', displayCopy: displayCopy('schema.object', '') }, code('competes-with'),
+        { text: ` statement from ${usName}. The threat, market, overlap, and difference live on that statement.`, displayCopy: displayCopy('schema.competitor_statement', '', { us: usName }) },
       ],
       rows: [...qualifierRows, ...statementRows(calcs), ...retired].slice(0, MAX_SCHEMA_ROWS),
     };
   }
   const kinds = KNOWLEDGE_KINDS[categoryId];
   if (kinds) {
-    const stored: StoredPart[] = [{ text: 'Knowledge pages with kind ' }];
+    const stored: StoredPart[] = [{ text: 'Knowledge pages with kind ', displayCopy: displayCopy('schema.knowledge_kinds', '') }];
     kinds.forEach((kind, index) => {
-      if (index > 0) stored.push({ text: ' or ' });
+      if (index > 0) stored.push({ text: ' or ', displayCopy: displayCopy('schema.or', '') });
       stored.push(code(kind));
     });
-    stored.push({ text: categoryId === 'markets' ? ', nested by ' : '.' });
-    if (categoryId === 'markets') stored.push(code('parent'), { text: '. Products join through ' }, code('in-market'), { text: ' statements.' });
+    stored.push({ text: categoryId === 'markets' ? ', nested by ' : '.', displayCopy: categoryId === 'markets' ? displayCopy('schema.nested', '') : undefined });
+    if (categoryId === 'markets') stored.push(code('parent'), { text: '. Products join through ', displayCopy: displayCopy('schema.products_join', '') }, code('in-market'), { text: ' statements.', displayCopy: displayCopy('schema.statements_end', '') });
     return { stored, rows: [...statementRows(calcs), ...entityRows(context, kinds, members)].slice(0, MAX_SCHEMA_ROWS) };
   }
   const type = context.workType.get(categoryId);
   if (type) {
     const summary = context.summaries.get(type);
     return {
-      stored: [{ text: 'Tracker type ' }, code(type), { text: '.' }],
+      stored: [{ text: 'Tracker type ', displayCopy: displayCopy('schema.tracker_type', '') }, code(type), { text: '.' }],
       rows: (summary?.fields ?? []).slice(0, MAX_SCHEMA_ROWS).map((field) => ({ label: field.name, filled: field.filled, total: summary?.count ?? 0, retired: false })),
     };
   }

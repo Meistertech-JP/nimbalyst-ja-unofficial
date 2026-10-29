@@ -16,6 +16,7 @@
  */
 import type { LabelRegistry } from '../../../../tracker-schema/src/browser';
 import type { PartialWriteReason } from './partialWriteNotice';
+import { type ProposalCopy } from './ontologyProposalCopy';
 import { type HealthItem, type KnowledgeGraph } from './ontologyKnowledge';
 import { type LabelChange } from './ontologyLabelProposals';
 import { type OntologyRecordLike } from './ontologyRecords';
@@ -91,6 +92,7 @@ export interface ParsedChanges {
     changes: OntologyChange[];
     /** One line per change that could not be read; never silently dropped. */
     errors: string[];
+    displayErrors?: ProposalCopy[];
 }
 /** `changes` as the room stores it: a JSON string (or an array an agent wrote directly). */
 export declare function parseProposalChanges(value: unknown): ParsedChanges;
@@ -144,6 +146,8 @@ export type ApplyOp = {
 export interface PreviewLine {
     label: string;
     value: string;
+    displayLabel?: ProposalCopy;
+    displayValue?: ProposalCopy;
 }
 export interface ChangePreview {
     itemId: string | null;
@@ -153,6 +157,8 @@ export interface ChangePreview {
 }
 export interface ChangePlan<T extends OntologyRecordLike = OntologyRecordLike> {
     summary: string;
+    displaySummary?: ProposalCopy;
+    displayBlocked?: ProposalCopy;
     /** Pages the change touches. */
     pages: T[];
     example: ChangePreview | null;

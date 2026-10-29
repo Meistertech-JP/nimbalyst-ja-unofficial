@@ -179,7 +179,15 @@ export function CloudflareSandboxStatusCard({
         </p>
       )}
       {deployment.errorMessage && (
-        <p className="text-[12px] text-[var(--nim-error)] mt-2">{deployment.errorMessage}</p>
+        <p className="text-[12px] text-[var(--nim-error)] mt-2">
+          {deployment.errorMessage === 'Wrangler could not finish the deployment.'
+            ? t('status_card.deployment_incomplete')
+            : deployment.errorMessage === 'Nimbalyst could not confirm deletion. This sandbox may still exist in your Cloudflare account.'
+              ? t('status_card.deletion_unconfirmed')
+              : deployment.errorMessage === "The sandbox was removed from Cloudflare, but Nimbalyst could not revoke the agent node's sync credential and could not record it for cleanup. This sandbox is kept listed so you can retry."
+                ? t('status_card.credential_cleanup_unrecorded')
+                : deployment.errorMessage}
+        </p>
       )}
 
       <div className="flex flex-wrap items-center gap-2 mt-3">

@@ -15,12 +15,27 @@ import {
 import type { OntologyRecordLike } from '../ontologyRecords';
 import { applyAcceptedChanges, undoAppliedChanges, type WriteContext } from '../ontologyWriter';
 import { claim, knowledgeFixture, NOW, rec } from './ontologyFixture';
+import { displayProposalCopy } from '../ontologyProposalCopy';
 
 let ids = 0;
 const env = (kinds: string[] = ['product', 'market', 'topic', 'concept', 'area', 'organization']): PlanEnv => ({
   kindOptions: new Set(kinds),
   predicateLabel: (id) => id.replace(/-/g, ' '),
   newId: () => `new-${++ids}`,
+});
+
+test('nested generated preview fragments retain raw fallbacks without translating literal lookalikes', () => {
+  const graph = buildKnowledgeGraph([rec('array', 'entity', { value: ['(empty)', null] })]);
+  const plan = planOntologyChange({ id: 'move', type: 'move-field-to-claims', field: 'value', predicate: 'p' }, graph, env());
+  const line = plan.example!.before[0]!;
+  const rawPlan = JSON.stringify(plan);
+  const missingTranslation = (_key: string, values: Record<string, string | number>) => String(values.defaultValue);
+  expect(displayProposalCopy(line.value, line.displayValue, 'ja', missingTranslation)).toBe('(empty), (empty)');
+  const translated = (key: string, values: Record<string, string | number>) => key === 'ontology_plan.values.empty' ? '（空欄）' : String(values.defaultValue);
+  expect(displayProposalCopy(line.value, line.displayValue, 'ja', translated)).toBe('(empty), （空欄）');
+  expect(displayProposalCopy(line.value, line.displayValue, 'en', translated)).toBe(line.value);
+  expect(JSON.stringify(plan)).toBe(rawPlan);
+  expect(plan.ops).toMatchObject([{ op: 'create', item: { customFields: { valueText: '(empty), (empty)' } } }]);
 });
 
 /** The tracker write path as the room applies it, over plain records. */
@@ -84,6 +99,10 @@ test('each change plans the pages it touches, a before/after, and writes that wa
   expect(parseProposalChanges('[{"type":"reclassify-pages","toKind":"topic"},{"type":"nope"},{"id":"x","type":"add-market-node","title":"T"}]')).toEqual({
     changes: [{ id: 'x', type: 'add-market-node', title: 'T' }],
     errors: ['change 1: needs toKind and pageIds', 'change 2: unknown type "nope"'],
+    displayErrors: [
+      { key: 'invalid.reclassify-pages', values: { index: 1, type: '"reclassify-pages"' } },
+      { key: 'unknown_type', values: { index: 2, type: '"nope"' } },
+    ],
   });
 
   const request = proposalRequestFor(computeContentHealth(graph, { now: NOW }).find((item) => item.id === 'duplicates')!);
