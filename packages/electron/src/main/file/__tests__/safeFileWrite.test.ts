@@ -69,7 +69,7 @@ describe('writeFileAtomicSync', () => {
     expect(fs.readdirSync(dir)).toEqual(['note.md']);
   });
 
-  it('preserves the file mode', () => {
+  it.runIf(process.platform !== 'win32')('preserves POSIX file mode bits', () => {
     fs.chmodSync(target, 0o640);
 
     writeFileAtomicSync(target, 'new content');

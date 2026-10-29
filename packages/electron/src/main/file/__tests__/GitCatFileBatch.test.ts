@@ -52,8 +52,17 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-afterAll(() => {
-  fs.rmSync(repo, { recursive: true, force: true });
+afterAll(async () => {
+  const deadline = Date.now() + 2_000;
+  while (true) {
+    try {
+      fs.rmSync(repo, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EPERM' || Date.now() >= deadline) throw error;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
 });
 
 describe('GitCatFileBatch', () => {

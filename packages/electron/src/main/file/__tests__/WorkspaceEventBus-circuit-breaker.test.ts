@@ -13,6 +13,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks — must run before vi.mock() factories
@@ -30,7 +32,9 @@ const {
   // Force the fs.watch recursive path (macOS/Windows) even on Linux CI,
   // since this test mocks fs.watch, not chokidar.
   const originalPlatform = process.platform;
-  Object.defineProperty(process, 'platform', { value: 'darwin', writable: true });
+  if (originalPlatform === 'linux') {
+    Object.defineProperty(process, 'platform', { value: 'darwin', writable: true });
+  }
 
   const mockWatcherCallbacks: Array<(eventType: string, filename: string | null) => void> = [];
   // Parallel array: the close() mock for the watcher created on each fs.watch call.
@@ -113,7 +117,10 @@ vi.mock('../../utils/logger', () => ({
 vi.mock('../../utils/workspaceDetection', () => ({
   isPathInWorkspace: (filePath: string, workspacePath: string) => {
     if (!filePath || !workspacePath) return false;
-    return filePath === workspacePath || filePath.startsWith(workspacePath + '/');
+    const normalize = (value: string) => value.replaceAll('\\', '/').replace(/\/+$/, '');
+    const file = normalize(filePath);
+    const workspace = normalize(workspacePath);
+    return file === workspace || file.startsWith(`${workspace}/`);
   },
 }));
 
@@ -143,7 +150,7 @@ import { logger } from '../../utils/logger';
 // which happens one event after the buffer first wraps — i.e. event THRESHOLD+1.
 const CIRCUIT_BREAKER_THRESHOLD = 16384;
 
-const WORKSPACE = '/Users/test/project';
+const WORKSPACE = path.join(tmpdir(), 'nimbalyst-circuit-breaker');
 
 function createListener(): WorkspaceEventListener {
   return {
@@ -163,7 +170,7 @@ function fireWatchEvent(eventType: string, filename: string) {
 /** Fire `count` change events in one synchronous burst. */
 function fireBurst(count: number) {
   for (let i = 0; i < count; i++) {
-    fireWatchEvent('change', `src/file-${i}.ts`);
+    fireWatchEvent('change', path.join('src', `file-${i}.ts`));
   }
 }
 
@@ -246,7 +253,7 @@ describe('WorkspaceEventBus circuit breaker teardown (#629)', () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(mockFsWatch).toHaveBeenCalledTimes(2);
     fireWatchEvent('change', 'note.md');
-    expect(listener.onChange).toHaveBeenCalledWith(`${WORKSPACE}/note.md`, undefined);
+    expect(listener.onChange).toHaveBeenCalledWith(path.join(WORKSPACE, 'note.md'), undefined);
     staleCallback('change', 'stale.md');
     expect(listener.onChange).toHaveBeenCalledTimes(1);
   });
