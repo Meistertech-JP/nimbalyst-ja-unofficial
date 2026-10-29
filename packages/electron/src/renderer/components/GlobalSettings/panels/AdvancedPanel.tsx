@@ -61,6 +61,7 @@ function DropdownRow({
           </span>
         </div>
         <select
+          aria-label={name}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="setting-select shrink-0 py-1.5 px-2 pr-7 rounded-md text-sm bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] text-[var(--nim-text)] outline-none appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M3%204.5L6%207.5L9%204.5%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center] focus:border-[var(--nim-primary)]"
@@ -209,8 +210,6 @@ export function AdvancedPanel() {
       </div>
 
       <div className="provider-panel-section mb-6">
-        <h4 className="provider-panel-section-title">{t('ui_language.label')}</h4>
-        <p className="provider-panel-hint">{t('ui_language.description')}</p>
         <DropdownRow
           value={uiLanguage}
           name={t('ui_language.label')}
