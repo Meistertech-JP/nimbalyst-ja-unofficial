@@ -80,6 +80,25 @@ describe('reloadIntoWindowWithFile', () => {
     expect(fileOperations.getPendingFileOpens(first.webContents as any, '/ws').map(request => request.path)).toEqual(['/ws/b.md']);
   });
 
+  it('disposes pending opens without reading a destroyed BrowserWindow', () => {
+    const window = makeWindow(1);
+    const contents = window.webContents;
+    let destroyed = false;
+    Object.defineProperty(window, 'webContents', {
+      get() {
+        if (destroyed) throw new TypeError('Object has been destroyed');
+        return contents;
+      },
+    });
+    loadFileIntoWindow(window as unknown as BrowserWindow, '/ws/a.md');
+    loadFileIntoWindow(window as unknown as BrowserWindow, '/ws/b.md');
+    expect(contents.listenerCount('destroyed')).toBe(1);
+    expect(fileOperations.getPendingFileOpens(contents as any, '/ws')).toHaveLength(2);
+    destroyed = true;
+    expect(() => contents.emit('destroyed')).not.toThrow();
+    expect(fileOperations.getPendingFileOpens(contents as any, '/ws')).toEqual([]);
+  });
+
   it('keeps requests across renderer navigation, but disposes them when the window is destroyed', () => {
     const window = makeWindow(1);
     Object.assign(windowStates.get(1)!, { workspacePath: '/ws', activeWorkspacePath: '/other' });
