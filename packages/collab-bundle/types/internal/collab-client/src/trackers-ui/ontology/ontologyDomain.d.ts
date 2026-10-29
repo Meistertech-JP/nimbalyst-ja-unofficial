@@ -103,6 +103,10 @@ export interface DomainCategory<T extends OntologyRecordLike = OntologyRecordLik
 export type DomainGapTone = 'gap' | 'opportunity';
 /** A gap is a health item, so the existing proposal request and open-proposal lookup take it as is. */
 export interface DomainGap<T extends OntologyRecordLike = OntologyRecordLike> extends HealthItem<T> {
+    displayTitle?: {
+        key: 'stale' | 'duplicates' | 'uncategorized';
+        days?: number;
+    };
     tone: DomainGapTone;
     categoryIds: string[];
 }
