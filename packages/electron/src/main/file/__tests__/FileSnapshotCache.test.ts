@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 
@@ -124,9 +125,9 @@ describe('FileSnapshotCache', () => {
       });
 
       mockReadFile.mockImplementation(async (filePath: string) => {
-        if (filePath.endsWith('src/modified.ts')) return 'working modified content';
-        if (filePath.endsWith('src/staged.ts')) return 'working staged content';
-        if (filePath.endsWith('src/new.ts')) return 'working new content';
+        if (filePath.endsWith(path.join('src', 'modified.ts'))) return 'working modified content';
+        if (filePath.endsWith(path.join('src', 'staged.ts'))) return 'working staged content';
+        if (filePath.endsWith(path.join('src', 'new.ts'))) return 'working new content';
         throw new Error('not found');
       });
 
@@ -160,6 +161,28 @@ describe('FileSnapshotCache', () => {
       const stats = cache.getStats();
       expect(stats.fileCount).toBe(1); // Only code.ts, not image.png
     });
+  });
+
+  it('reads nested baseline objects using Git separators without changing filesystem paths', async () => {
+    setupGitMocks({
+      'show abc123:nested/space name.md': 'nested baseline',
+      'show abc123:日本語/文書.md': 'Japanese baseline',
+    });
+    const cache = new FileSnapshotCache();
+    await cache.startSession(workspacePath, 'git-path-boundary');
+
+    expect(await cache.getBeforeState(path.join(workspacePath, 'nested', 'space name.md'))).toBe('nested baseline');
+    expect(await cache.getBeforeState(path.join(workspacePath, '日本語', '文書.md'))).toBe('Japanese baseline');
+    expect(mockRealpath).not.toHaveBeenCalled();
+    expect(mockReadFile).not.toHaveBeenCalled();
+  });
+
+  it.runIf(path.sep === '/')('preserves literal backslashes in POSIX Git filenames', async () => {
+    setupGitMocks({ 'show abc123:literal\\name.md': 'literal backslash baseline' });
+    const cache = new FileSnapshotCache();
+    await cache.startSession(workspacePath, 'posix-git-path-boundary');
+
+    expect(await cache.getBeforeState(path.join(workspacePath, 'literal\\name.md'))).toBe('literal backslash baseline');
   });
 
   describe('startSession - non-git repo', () => {
@@ -325,7 +348,7 @@ describe('FileSnapshotCache', () => {
         'show abc123:src/clean.ts': 'committed clean content',
       });
       mockReadFile.mockImplementation(async (filePath: string) => {
-        if (filePath.endsWith('src/dirty.ts')) return 'working dirty content';
+        if (filePath.endsWith(path.join('src', 'dirty.ts'))) return 'working dirty content';
         throw new Error('not found');
       });
 

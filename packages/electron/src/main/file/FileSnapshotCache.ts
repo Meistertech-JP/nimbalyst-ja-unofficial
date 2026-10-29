@@ -305,7 +305,10 @@ export class FileSnapshotCache {
     if (!this.catFile) {
       this.catFile = new GitCatFileBatch(workspacePath, { maxObjectBytes: MAX_FILE_SIZE });
     }
-    const content = await this.catFile.read(sha, relativePath);
+    // Git object paths always use '/', while POSIX filenames may contain '\\'.
+    // Convert only the host separator here; filesystem paths remain untouched.
+    const gitPath = relativePath.split(path.sep).join('/');
+    const content = await this.catFile.read(sha, gitPath);
     if (content === null) {
       throw new Error(`not in ${sha}: ${relativePath}`);
     }
