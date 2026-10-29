@@ -209,7 +209,7 @@ describe("resolveViewMode", () => {
 });
 
 describe("browser Radar parity", () => {
-  it("renders synced activity with every local enrichment field absent", () => {
+  it("renders synced activity with every local enrichment field absent", async () => {
     const now = Date.now();
     const item = record("radar", {
       title: "Shared work",
@@ -230,13 +230,13 @@ describe("browser Radar parity", () => {
     ];
     render(<TrackerRadarView items={[item]} currentIdentity={null} />);
 
-    expect(screen.getByTestId("tracker-radar")).toBeTruthy();
+    expect(await screen.findByTestId("tracker-radar")).toBeTruthy();
     expect(screen.getByLabelText("People")).toBeTruthy();
     expect(screen.getAllByText("Dana").length).toBeGreaterThan(0);
     expect(screen.getByText(/Shared work/)).toBeTruthy();
   });
 
-  it("filters the digest when a person card is selected", () => {
+  it("filters the digest when a person card is selected", async () => {
     const now = Date.now();
     const danaWork = record("dana-work", {
       title: "Dana work",
@@ -277,9 +277,7 @@ describe("browser Radar parity", () => {
       <TrackerRadarView items={[danaWork, samWork]} currentIdentity={null} />
     );
 
-    const moved = screen
-      .getByRole("heading", { name: /Moved/ })
-      .closest("section")!;
+    const moved = (await screen.findByRole("heading", { name: /Moved/ })).closest("section")!;
     expect(within(moved).getByText("Dana work")).toBeTruthy();
     expect(within(moved).getByText("Sam work")).toBeTruthy();
 

@@ -6,10 +6,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import type { TrackerRecord } from '../../../../core/TrackerRecord';
 import { TrackerRowContextMenu } from '../TrackerRowContextMenu';
+import { globalRegistry } from '@nimbalyst/tracker-schema';
+import { parseBuiltinTrackers } from '../../models/ModelLoader';
 
 let i18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
 beforeEach(async () => {
+  globalRegistry.clearWorkspaceSchemas();
+  for (const seed of parseBuiltinTrackers()) globalRegistry.register(seed, true);
   i18n = await createI18nInstance('ja');
 });
 
