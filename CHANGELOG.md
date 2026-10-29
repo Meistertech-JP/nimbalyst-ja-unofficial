@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restore selection menus in tables containing multiple tracker types.
 - Prevent an exit error after opening files from outside the app.
 - Read the correct starting revision for files under nested folders on Windows.
+- Keep long-document search highlights aligned after the editor layout changes.
 
 ## [0.82.3-ja.2] — 2026-10-27
 

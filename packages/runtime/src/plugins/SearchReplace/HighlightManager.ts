@@ -27,8 +27,18 @@ export class HighlightManager {
   private highlightElements: HTMLElement[] = [];
   private wrapperElement: HTMLElement;
   private observer: MutationObserver | null = null;
+  private resizeObserver: ResizeObserver | null = null;
   private rootElement: HTMLElement | null = null;
   private parentElement: HTMLElement | null = null;
+  private lastMatches: SearchMatch[] = [];
+  private lastCurrentIndex = -1;
+  private hasWindowResizeListener = false;
+
+  private readonly handleLayoutChange = () => {
+    if (this.lastMatches.length > 0) {
+      this.updateHighlights(this.lastMatches, this.lastCurrentIndex);
+    }
+  };
 
   constructor(editor: LexicalEditor) {
     this.editor = editor;
@@ -50,6 +60,8 @@ export class HighlightManager {
     }
 
     this.clearHighlights();
+    this.lastMatches = matches;
+    this.lastCurrentIndex = currentIndex;
 
     if (!this.wrapperElement.isConnected) {
       parentElement.insertBefore(this.wrapperElement, parentElement.firstChild);
@@ -107,6 +119,8 @@ export class HighlightManager {
   clearHighlights() {
     this.highlightElements.forEach((element) => element.remove());
     this.highlightElements = [];
+    this.lastMatches = [];
+    this.lastCurrentIndex = -1;
   }
 
   destroy() {
@@ -114,6 +128,12 @@ export class HighlightManager {
     this.wrapperElement.remove();
     if (this.observer) {
       this.observer.disconnect();
+    }
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.hasWindowResizeListener) {
+      window.removeEventListener('resize', this.handleLayoutChange);
+      this.hasWindowResizeListener = false;
     }
   }
 
@@ -140,5 +160,17 @@ export class HighlightManager {
       childList: true,
       subtree: true,
     });
+
+    this.resizeObserver?.disconnect();
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(this.handleLayoutChange);
+      this.resizeObserver.observe(rootElement);
+      this.resizeObserver.observe(parentElement);
+    }
+
+    if (!this.hasWindowResizeListener) {
+      window.addEventListener('resize', this.handleLayoutChange);
+      this.hasWindowResizeListener = true;
+    }
   }
 }

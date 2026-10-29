@@ -31,26 +31,46 @@ function setup(matchCount: number) {
     getElementByKey: (key: string) => spans.get(key) ?? null,
   } as any;
 
-  return { parent, matches, manager: new HighlightManager(editor) };
+  return { parent, root, matches, manager: new HighlightManager(editor) };
 }
 
 describe('HighlightManager.updateHighlights', () => {
   let wrapperChildCountAtRead: number[];
   let wrapper: () => Element | null;
+  let rectLeft: number;
+  let resizeObserverCallback: ResizeObserverCallback | undefined;
+  let resizeObservedElements: Element[];
 
   beforeEach(() => {
     wrapperChildCountAtRead = [];
     wrapper = () => document.querySelector('.search-highlights-wrapper');
+    rectLeft = 10;
+    resizeObserverCallback = undefined;
+    resizeObservedElements = [];
+    class TestResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeObserverCallback = callback;
+      }
+
+      observe(target: Element) {
+        resizeObservedElements.push(target);
+      }
+
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', TestResizeObserver);
     // jsdom has no layout; report one rect per range and record how many highlights are
     // already in the DOM each time layout would be read.
     (Range.prototype as any).getClientRects = function () {
       wrapperChildCountAtRead.push(wrapper()?.childElementCount ?? 0);
-      return [{ left: 10, top: 20, width: 5, height: 12 }];
+      return [{ left: rectLeft, top: 20, width: 5, height: 12 }];
     };
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
+    vi.unstubAllGlobals();
     delete (Range.prototype as any).getClientRects;
   });
 
@@ -87,5 +107,23 @@ describe('HighlightManager.updateHighlights', () => {
     manager.updateHighlights(matches, total - 1);
     expect(wrapper()?.childElementCount).toBe(MAX_RENDERED_HIGHLIGHTS);
     expect(wrapper()?.querySelectorAll('.search-highlight-current')).toHaveLength(1);
+  });
+
+  it('repositions highlights after the editor layout changes', () => {
+    const { parent, root, matches, manager } = setup(1);
+
+    manager.updateHighlights(matches, 0);
+
+    const highlight = () => wrapper()?.firstElementChild as HTMLElement | null;
+    expect(highlight()?.style.left).toBe('10px');
+    expect(resizeObservedElements).toContain(parent);
+    expect(resizeObservedElements).toContain(root);
+    expect(resizeObserverCallback).toBeTypeOf('function');
+
+    // Simulate the same text reflowing horizontally after its container is resized.
+    rectLeft = 46;
+    resizeObserverCallback?.([], {} as ResizeObserver);
+
+    expect(highlight()?.style.left).toBe('46px');
   });
 });
