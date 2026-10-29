@@ -958,6 +958,7 @@
     },
     "boolean_style": { "true_false": "TRUE / FALSE", "yes_no": "はい / いいえ", "check": "チェックマーク" },
     "formula_assist": {
+      "named_range_description": "名前付き範囲: {{range}}",
       "functions": "関数",
       "categories": {
         "logical": "論理", "lookup": "検索", "information": "情報",
@@ -1321,7 +1322,9 @@
       "err_invalid_chars": "名前に使えるのは英数字とアンダースコアのみで、先頭は数字にできません。",
       "err_reserved": "TRUEとFALSEは名前にできません。",
       "err_cell_ref": "セル参照と同じ形の名前は使えません。",
-      "err_enter_range": "A1やB2:D20のような範囲を入力してください。"
+      "err_enter_range": "A1やB2:D20のような範囲を入力してください。",
+      "err_too_long": "名前は{{max}}文字以内で入力してください。",
+      "err_duplicate": "{{name}} は既に存在します。"
     },
     "cell_format": {
       "title": "セルの書式設定 {{range}}", "text_color": "文字色", "fill": "塗りつぶし",

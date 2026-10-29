@@ -71,7 +71,9 @@ export function FormulaAssistPopover({
 }: FormulaAssistPopoverProps) {
   const { t } = useTranslation('editor');
   const descriptionFor = (entry: FunctionCatalogEntry) =>
-    t(`spreadsheet_ui.formula_assist.descriptions.${entry.name}`, { defaultValue: entry.description });
+    entry.category === 'named range'
+      ? t('spreadsheet_ui.formula_assist.named_range_description', { range: entry.signature })
+      : t(`spreadsheet_ui.formula_assist.descriptions.${entry.name}`, { defaultValue: entry.description });
   const [highlighted, setHighlighted] = useState(0);
   const candidates = autocomplete?.candidates ?? [];
   const visible = anchor !== null && (candidates.length > 0 || signatureHelp !== null);

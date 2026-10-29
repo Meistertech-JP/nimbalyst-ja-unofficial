@@ -20,10 +20,10 @@ beforeAll(async () => {
   englishI18n = await createI18nInstance('en');
 });
 
-function renderPanel() {
+function renderPanel(host = makeHost()) {
   return render(
     <UiLanguageProvider i18n={englishI18n} preference="en" systemLocale="en-US">
-      <GitLogPanel host={makeHost()} />
+      <GitLogPanel host={host} />
     </UiLanguageProvider>,
   );
 }
@@ -48,6 +48,17 @@ function workingChangesCalls() {
 }
 
 describe('GitLogPanel refresh', () => {
+  it.each(['future-strategy', '__proto__'])('uses the default pull strategy for invalid saved value %s', async (saved) => {
+    const host = makeHost();
+    await host.storage.setGlobal('pullStrategy', saved);
+    const view = renderPanel(host);
+    await waitFor(() => {
+      const label = englishI18n.t('log_panel.pull_title', {
+        ns: 'git', strategy: englishI18n.t('log_panel.pull_strategies.rebase', { ns: 'git' }),
+      });
+      expect(view.getByTitle(label)).toBeTruthy();
+    });
+  });
   beforeEach(async () => {
     await englishI18n.changeLanguage('en');
     invoke.mockReset();

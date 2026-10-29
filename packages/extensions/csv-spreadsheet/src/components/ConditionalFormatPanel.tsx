@@ -74,7 +74,7 @@ function ColorField({ value, onChange, label }: { value: ConditionalColor | unde
         <select className={FIELD} value={value?.startsWith('#') ? 'custom' : value ?? 'none'}
           onChange={(event) => onChange(event.target.value === 'none' ? undefined : event.target.value === 'custom' ? hex as HexColor : event.target.value as CellColor)}>
           <option value="none">{t('spreadsheet_ui.conditional.none')}</option>
-          {THEME.map((color) => <option key={color} value={color}>{color}</option>)}
+          {THEME.map((color) => <option key={color} value={color}>{t(`spreadsheet_ui.colors.color_${color}`)}</option>)}
           <option value="custom">{t('spreadsheet_ui.conditional.custom')}</option>
         </select>
         {value?.startsWith('#') && (

@@ -205,7 +205,7 @@ function ChangeRows({ rows, opts }: { rows: ChangeRow[]; opts: RowRenderOptions 
               {row.dirPrefix && <span className="git-changes-file-dir-prefix">{row.dirPrefix}</span>}
               <span
                 className={`git-changes-file-name ${statusColorClass(row.status)}${row.status === 'D' ? ' git-changes-file-name--strike' : ''}`}
-                title={t(statusTitleKeys[row.status] ?? row.status)}
+                title={Object.prototype.hasOwnProperty.call(statusTitleKeys, row.status) ? t(statusTitleKeys[row.status]) : row.status}
               >
                 {name}
               </span>

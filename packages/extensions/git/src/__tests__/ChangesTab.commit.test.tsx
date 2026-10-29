@@ -41,6 +41,13 @@ function renderTab() {
 }
 
 describe('ChangesTab commit', () => {
+  it.each(['future-status', '__proto__'])('preserves unknown status %s in the file tooltip', async (status) => {
+    invoke.mockImplementation((channel: string) => channel === 'git:working-changes'
+      ? Promise.resolve({ staged: [], unstaged: [{ path: 'src/unknown.ts', status }], untracked: [], conflicted: [] })
+      : Promise.resolve(null));
+    const view = renderTab();
+    expect(await view.findByTitle(status)).toBeTruthy();
+  });
   beforeEach(() => {
     invoke.mockReset();
     invoke.mockImplementation((channel: string) => {

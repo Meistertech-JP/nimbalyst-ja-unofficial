@@ -196,7 +196,10 @@ export function GitLogPanel({ host }: PanelHostProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   type PullStrategy = 'rebase' | 'merge' | 'ff-only';
   const [pullStrategy, setPullStrategy] = useState<PullStrategy>(
-    () => host.storage.getGlobal<PullStrategy>('pullStrategy') ?? 'rebase'
+    () => {
+      const saved = host.storage.getGlobal<unknown>('pullStrategy');
+      return saved === 'rebase' || saved === 'merge' || saved === 'ff-only' ? saved : 'rebase';
+    }
   );
   const [pullMenuOpen, setPullMenuOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);

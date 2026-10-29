@@ -10,20 +10,12 @@ import { useTranslation } from '@nimbalyst/i18n/react';
 import {
   defineNamedRangeCommand,
   normalizeRangeTarget,
-  rangeNameError,
+  rangeNameFailure,
+  type RangeNameFailure,
   type NamedRanges,
 } from '../sheetMeta/namedRanges';
 
 const FIELD = 'px-2 py-1 text-[12px] bg-nim-secondary border border-nim rounded text-nim outline-none focus:border-[var(--nim-primary)] min-w-0';
-
-/** Maps the pure helper's English messages to resource keys for display. */
-const ERROR_KEYS: Record<string, string> = {
-  'Enter a name.': 'spreadsheet_ui.named_ranges.err_enter_name',
-  'Names can contain only letters, numbers and underscores, and cannot start with a number.': 'spreadsheet_ui.named_ranges.err_invalid_chars',
-  'TRUE and FALSE cannot be names.': 'spreadsheet_ui.named_ranges.err_reserved',
-  'A name cannot look like a cell reference.': 'spreadsheet_ui.named_ranges.err_cell_ref',
-  'Enter a range like A1 or B2:D20.': 'spreadsheet_ui.named_ranges.err_enter_range',
-};
 
 export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }: {
   core: EditorCore;
@@ -35,7 +27,7 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
   const { t } = useTranslation('editor');
   const [newName, setNewName] = useState('');
   const [newRange, setNewRange] = useState(selectionKey);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<RangeNameFailure | { code: 'err_enter_range' } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -52,8 +44,7 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
     if (!gridOps || core.editingLockedRef.current) return false;
     const name = nameText.trim();
     const range = normalizeRangeTarget(rangeText);
-    const raw = rangeNameError(name, names, previous) ?? (range ? null : 'Enter a range like A1 or B2:D20.');
-    const problem = raw ? (ERROR_KEYS[raw] ?? raw) : null;
+    const problem = rangeNameFailure(name, names, previous) ?? (range ? null : { code: 'err_enter_range' as const });
     setError(problem);
     if (problem || !range) return false;
     void gridOps.executor.execute(({ state }) => defineNamedRangeCommand(state, name, range, previous));
@@ -102,7 +93,7 @@ export function NamedRangesDialog({ core, isOpen, names, selectionKey, onClose }
           <input className={`${FIELD} w-[110px] font-mono`} placeholder="A1:B10" aria-label={t('spreadsheet_ui.named_ranges.new_range')} value={newRange} onChange={(event) => setNewRange(event.target.value)} />
           <button type="submit" className="px-3 py-1 text-[12px] rounded cursor-pointer bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:opacity-90">{t('spreadsheet_ui.named_ranges.add')}</button>
         </form>
-        {error && <p className="csv-named-range-error m-0 px-5 pb-3 text-[12px] text-[var(--nim-error)]">{t(error)}</p>}
+        {error && <p className="csv-named-range-error m-0 px-5 pb-3 text-[12px] text-[var(--nim-error)]">{t(`spreadsheet_ui.named_ranges.${error.code}`, { ...error })}</p>}
       </div>
     </div>
   );

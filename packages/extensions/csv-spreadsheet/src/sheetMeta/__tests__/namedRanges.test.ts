@@ -4,7 +4,7 @@ import { createGridOperations, FormulaViewState } from '../../utils/gridOperatio
 import { createFakeGrid, createMetaStore } from '../../commands/__tests__/fakeGrid';
 import { parseCSV } from '../../utils/csvParser';
 import { evaluateFormula } from '../../utils/formulaEngine';
-import { defineNamedRangeCommand, normalizeRangeTarget, rangeNameError, renameNamedRangeCommand } from '../namedRanges';
+import { defineNamedRangeCommand, normalizeRangeTarget, rangeNameError, rangeNameFailure, renameNamedRangeCommand } from '../namedRanges';
 import { scanFormulaTokens } from '../../formula/referenceScanner';
 import { referenceHighlights } from '../../formula/pointMode';
 
@@ -108,5 +108,13 @@ describe('named ranges', () => {
     }
     expect(normalizeRangeTarget('$b$2:$a$1')).toBe('A1:B2');
     expect(normalizeRangeTarget('Sheet!A1')).toBeNull();
+  });
+
+  it('exposes stable reasons without changing limits or stored name spelling', () => {
+    expect(rangeNameFailure('x'.repeat(250), {})).toBeNull();
+    expect(rangeNameFailure('x'.repeat(251), {})).toEqual({ code: 'err_too_long', max: 250 });
+    expect(rangeNameError('x'.repeat(251), {})).toBe('Names can be at most 250 characters.');
+    expect(rangeNameFailure('sales', { Sales: 'B2:B4' })).toEqual({ code: 'err_duplicate', name: 'Sales' });
+    expect(rangeNameFailure('sales', { Sales: 'B2:B4' }, 'Sales')).toBeNull();
   });
 });

@@ -8,11 +8,12 @@ import { getFormulaAutocomplete } from '../../formula/formulaAssist';
 import { FormulaAssistPopover } from '../FormulaAssistPopover';
 import { FormulaBar, type FormulaBarHandle } from '../FormulaBar';
 
-function Harness({ onAccept, onDismiss, onEditorKey, formula = '=COU' }: {
+function Harness({ onAccept, onDismiss, onEditorKey, formula = '=COU', names }: {
   onAccept: (name: string) => void;
   onDismiss: () => void;
   onEditorKey: (key: string) => void;
   formula?: string;
+  names?: Record<string, string>;
 }) {
   const [input, setInput] = useState<HTMLInputElement | null>(null);
   return (
@@ -20,7 +21,7 @@ function Harness({ onAccept, onDismiss, onEditorKey, formula = '=COU' }: {
       <input ref={setInput} defaultValue={formula} onKeyDown={(event) => onEditorKey(event.key)} />
       <FormulaAssistPopover
         anchor={input}
-        autocomplete={getFormulaAutocomplete(formula, formula.length)}
+        autocomplete={getFormulaAutocomplete(formula, formula.length, undefined, names)}
         signatureHelp={null}
         onAccept={(entry) => onAccept(entry.name)}
         onDismiss={onDismiss}
@@ -44,6 +45,16 @@ function renderBar(ui: React.ReactElement, i18n = englishI18n) {
 }
 
 describe('FormulaAssistPopover localization', () => {
+  it('localizes named-range descriptions and preserves the accepted name', () => {
+    const onAccept = vi.fn();
+    const view = renderBar(
+      <Harness formula="=Sales" names={{ Sales: 'B2:B4' }} onAccept={onAccept} onDismiss={vi.fn()} onEditorKey={vi.fn()} />,
+      japaneseI18n,
+    );
+    expect(view.getAllByText('名前付き範囲: B2:B4').length).toBeGreaterThan(0);
+    fireEvent.keyDown(view.getByRole('textbox'), { key: 'Enter' });
+    expect(onAccept).toHaveBeenCalledWith('Sales');
+  });
   it('translates the list label and formula category in Japanese', () => {
     const { getByRole, getAllByText } = renderBar(
       <Harness onAccept={vi.fn()} onDismiss={vi.fn()} onEditorKey={vi.fn()} />,

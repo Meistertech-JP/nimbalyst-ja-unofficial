@@ -946,6 +946,7 @@
     },
     "boolean_style": { "true_false": "TRUE / FALSE", "yes_no": "Yes / No", "check": "Checkmark" },
     "formula_assist": {
+      "named_range_description": "Named range: {{range}}",
       "functions": "Functions",
       "categories": {
         "logical": "Logical", "lookup": "Lookup", "information": "Information",
@@ -1309,7 +1310,9 @@
       "err_invalid_chars": "Names can contain only letters, numbers and underscores, and cannot start with a number.",
       "err_reserved": "TRUE and FALSE cannot be names.",
       "err_cell_ref": "A name cannot look like a cell reference.",
-      "err_enter_range": "Enter a range like A1 or B2:D20."
+      "err_enter_range": "Enter a range like A1 or B2:D20.",
+      "err_too_long": "Names can be at most {{max}} characters.",
+      "err_duplicate": "{{name}} already exists."
     },
     "cell_format": {
       "title": "Format Cells {{range}}", "text_color": "Text color", "fill": "Fill",

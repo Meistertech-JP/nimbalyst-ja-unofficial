@@ -12,8 +12,32 @@ import { ColorPalette } from '../toolbar/ColorPalette';
 import { ConditionalFormatPanel } from '../ConditionalFormatPanel';
 import { FormulaErrorHoverCard } from '../FormulaErrorHoverCard';
 import { ColumnFormatDialog } from '../ColumnFormatDialog';
+import { NamedRangesDialog } from '../NamedRangesDialog';
 
 afterEach(cleanup);
+
+it.each([
+  ['ja', 'Sales は既に存在します。', '名前は250文字以内で入力してください。'],
+  ['en', 'Sales already exists.', 'Names can be at most 250 characters.'],
+] as const)('localizes named-range validation in %s without executing rejected edits', async (language, duplicate, tooLong) => {
+  const i18n = await createI18nInstance(language);
+  const execute = vi.fn();
+  const core = { gridOpsRef: { current: { executor: { execute } } }, editingLockedRef: { current: false } } as unknown as EditorCore;
+  const view = render(
+    <UiLanguageProvider i18n={i18n} preference={language} systemLocale="en-US">
+      <NamedRangesDialog core={core} isOpen names={{ Sales: 'B2:B4' }} selectionKey="A1" onClose={vi.fn()} />
+    </UiLanguageProvider>,
+  );
+  const form = view.container.querySelector('form')!;
+  const input = form.querySelector('input')!;
+  fireEvent.change(input, { target: { value: 'sales' } });
+  fireEvent.submit(form);
+  expect(view.getByText(duplicate)).toBeTruthy();
+  fireEvent.change(input, { target: { value: 'x'.repeat(251) } });
+  fireEvent.submit(form);
+  expect(view.getByText(tooLong)).toBeTruthy();
+  expect(execute).not.toHaveBeenCalled();
+});
 
 let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 beforeAll(async () => {
@@ -21,6 +45,23 @@ beforeAll(async () => {
 });
 
 describe('spreadsheet accessibility labels and formula errors', () => {
+  it('localizes conditional color choices while saving the original color identifier', () => {
+    const onChange = vi.fn();
+    const view = render(
+      <UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja-JP">
+        <ConditionalFormatPanel
+          formats={[{ id: 'value', ranges: ['A1'], rule: { kind: 'valueCompare', operator: '>', value: 0 }, style: {} }]}
+          selectionKey="A1" onChange={onChange} onClose={vi.fn()}
+        />
+      </UiLanguageProvider>,
+    );
+    fireEvent.click(view.getByRole('button', { name: '編集' }));
+    const red = view.getAllByRole('option', { name: '赤' })[0] as HTMLOptionElement;
+    expect(red.value).toBe('red');
+    fireEvent.change(red.closest('select')!, { target: { value: 'red' } });
+    fireEvent.click(view.container.querySelector('[data-conditional="save"]')!);
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ style: expect.objectContaining({ fillColor: 'red' }) })]);
+  });
   it.each([
     ['en', '(1,234.57) in red', 'Apply'],
     ['ja', '(1,234.57)(赤)', '適用'],

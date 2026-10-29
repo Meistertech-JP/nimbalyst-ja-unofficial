@@ -30,20 +30,38 @@ const NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const R1C1_LIKE = /^[Rr]\d*[Cc]\d*$/;
 const MAX_NAME_LENGTH = 250;
 
+export type RangeNameFailure = {
+  code: 'err_enter_name' | 'err_too_long' | 'err_invalid_chars' | 'err_reserved' | 'err_cell_ref' | 'err_duplicate';
+  max?: number;
+  name?: string;
+};
+
+export function rangeNameFailure(name: string, existing: NamedRanges, renaming?: string): RangeNameFailure | null {
+  if (name.length === 0) return { code: 'err_enter_name' };
+  if (name.length > MAX_NAME_LENGTH) return { code: 'err_too_long', max: MAX_NAME_LENGTH };
+  if (!NAME_PATTERN.test(name)) return { code: 'err_invalid_chars' };
+  if (/^(TRUE|FALSE)$/i.test(name)) return { code: 'err_reserved' };
+  if (parseCellReference(name) || R1C1_LIKE.test(name)) return { code: 'err_cell_ref' };
+  const taken = findName(existing, name);
+  if (taken !== undefined && taken.toUpperCase() !== renaming?.toUpperCase()) return { code: 'err_duplicate', name: taken };
+  return null;
+}
+
 /**
  * Why `name` cannot name a range, or null when it can. `renaming` is the
  * current name of the entry being renamed, which does not collide with itself.
  */
 export function rangeNameError(name: string, existing: NamedRanges, renaming?: string): string | null {
-  if (name.length === 0) return 'Enter a name.';
-  if (name.length > MAX_NAME_LENGTH) return `Names can be at most ${MAX_NAME_LENGTH} characters.`;
-  if (!NAME_PATTERN.test(name)) return 'Names can contain only letters, numbers and underscores, and cannot start with a number.';
-  if (/^(TRUE|FALSE)$/i.test(name)) return 'TRUE and FALSE cannot be names.';
-  // Exactly the words the formula tokenizer reads as cell references, so every accepted name tokenizes as a name.
-  if (parseCellReference(name) || R1C1_LIKE.test(name)) return 'A name cannot look like a cell reference.';
-  const taken = findName(existing, name);
-  if (taken !== undefined && taken.toUpperCase() !== renaming?.toUpperCase()) return `${taken} already exists.`;
-  return null;
+  const failure = rangeNameFailure(name, existing, renaming);
+  if (!failure) return null;
+  switch (failure.code) {
+    case 'err_enter_name': return 'Enter a name.';
+    case 'err_too_long': return `Names can be at most ${failure.max} characters.`;
+    case 'err_invalid_chars': return 'Names can contain only letters, numbers and underscores, and cannot start with a number.';
+    case 'err_reserved': return 'TRUE and FALSE cannot be names.';
+    case 'err_cell_ref': return 'A name cannot look like a cell reference.';
+    case 'err_duplicate': return `${failure.name} already exists.`;
+  }
 }
 
 /** The A1 range key for what the user typed (`$A$1:$B$5`, `b2`), or null when it is not a cell range. */
