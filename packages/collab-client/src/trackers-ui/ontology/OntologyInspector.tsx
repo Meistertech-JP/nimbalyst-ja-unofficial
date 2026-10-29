@@ -102,7 +102,9 @@ export function OntologyInspector({ types, predicates = null, labels = null, rec
     if (existing) return { label: t('ontology_inspector.view_proposal'), open: () => openProposal(existing.id) };
     return {
       label: gap.tone === 'opportunity' ? t('ontology_inspector.propose') : t('ontology_inspector.fix'),
-      open: () => setDrawer({ kind: 'request', draft: proposalRequestFor(gap), detail: gap.detail, pages: gap.items }),
+      open: () => setDrawer({ kind: 'request', draft: proposalRequestFor(gap), detail: gap.detail, pages: gap.items,
+        gapDisplay: { title: gap.title, detail: gap.detail, count: gap.count, displayTitle: gap.displayTitle, displayCopy: gap.displayCopy },
+      }),
     };
   };
   const suggest = () => {

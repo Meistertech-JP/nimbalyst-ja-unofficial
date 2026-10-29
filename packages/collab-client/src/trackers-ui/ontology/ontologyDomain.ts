@@ -157,9 +157,27 @@ export interface DomainCategory<T extends OntologyRecordLike = OntologyRecordLik
 
 export type DomainGapTone = 'gap' | 'opportunity';
 
+/** Display-only copy. Raw strings in values are user/schema data, never translation keys. */
+export interface GapCopy {
+  key: string;
+  english: string;
+  values?: Record<string, string | number | GapCopy | GapCopy[]>;
+}
+
+function gapCopy(key: string, english: string, values?: GapCopy['values']): GapCopy {
+  return { key, english, values };
+}
+
+function gapNames(records: readonly OntologyRecordLike[]): GapCopy {
+  return gapCopy(records.length > 4 ? 'names_more' : 'names', nameList(records), {
+    names: records.slice(0, 4).map(ontologyRecordTitle).join('、'), more: records.length - 4,
+  });
+}
+
 /** A gap is a health item, so the existing proposal request and open-proposal lookup take it as is. */
 export interface DomainGap<T extends OntologyRecordLike = OntologyRecordLike> extends HealthItem<T> {
   displayTitle?: { key: 'stale' | 'duplicates' | 'uncategorized'; days?: number };
+  displayCopy?: { title?: GapCopy; detail?: GapCopy };
   tone: DomainGapTone;
   categoryIds: string[];
 }
@@ -687,7 +705,9 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
       const title = count / line.total > 0.5 && count !== line.total
         ? `${count} of ${line.total} ${noun(line.total)} ${line.missing}`
         : `${count} ${noun(count)} ${count === 1 ? singularVerb(line.missing) : line.missing}`;
-      return withGap({ id: `line:${line.id}`, check: 'domain-line', title, detail: nameList(missing), count, items: missing }, 'gap', categoryIds);
+      return withGap({ id: `line:${line.id}`, check: 'domain-line', title, detail: nameList(missing), count, items: missing,
+        displayCopy: { title: gapCopy(`missing.${line.id.replace(':', '_')}`, title, { count, total: line.total }), detail: gapNames(missing) },
+      }, 'gap', categoryIds);
     }
     // Links between work trackers: only worth fixing once they are rarely recorded.
     // A knowledge line with no `missing` phrase is context, not a gap.
@@ -698,7 +718,18 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     const detail = line.have === 0
       ? `The link exists on ${source} but is used 0 times out of ${formatCount(line.total)}.`
       : `${formatCount(line.have)} of ${formatCount(line.total)} do.`;
-    return withGap({ id: `line:${line.id}`, check: 'domain-line', title, detail, count: missing.length, items: missing }, 'gap', categoryIds);
+    // Only built-in verbs get keys; a schema-authored field remains literal data.
+    const field = models.get(workType.get(draft.copy.id)!)?.fields.find((entry) => entry.name === line.id.split(':')[1]);
+    const knownVerb = field && (FIELD_VERBS[`${workType.get(draft.copy.id)}.${field.name}`] ?? KEY_VERBS[field.relationshipTypeKey ?? '']);
+    const values = {
+      source: gapCopy(`categories.${draft.copy.id}`, source),
+      target: gapCopy(`categories.${line.targetId}`, target),
+      relation: knownVerb ? gapCopy(`verbs.${knownVerb.replaceAll(' ', '_')}`, line.verb) : line.verb,
+      have: formatCount(line.have), total: formatCount(line.total),
+    };
+    return withGap({ id: `line:${line.id}`, check: 'domain-line', title, detail, count: missing.length, items: missing,
+      displayCopy: { title: gapCopy(line.have === 0 ? 'link_none' : 'link_few', title, values), detail: gapCopy(line.have === 0 ? 'link_detail_none' : 'link_detail_few', detail, values) },
+    }, 'gap', categoryIds);
   };
   for (const draft of drafts) {
     for (const calc of draft.calcs) {
@@ -725,6 +756,8 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         displayTitle: { key: 'stale', days: STALE_FACT_DAYS },
         title: `${plural(stale.length, 'fact is', 'facts are')} more than ${STALE_FACT_DAYS} days old`,
         detail: `${parts.join(', ')}.`,
+        displayCopy: { detail: gapCopy('facts', `${parts.join(', ')}.`, { facts: [...byPredicate.entries()].sort((a, b) => b[1] - a[1]).map(([predicate, count]) =>
+          gapCopy('fact', '', { name: FACT_NOUNS[predicate] ? gapCopy(`facts_names.${predicate}`, FACT_NOUNS[predicate]![0]) : predicate, count })) }) },
         count: stale.length, items: subjects,
       }, 'gap', [...new Set(subjects.map((subject) => categoryOf.get(subject.id)).filter((id): id is string => Boolean(id)))]));
     }
@@ -735,6 +768,9 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         displayTitle: { key: 'duplicates' },
         title: `${plural(duplicates.length, 'thing is', 'things are')} recorded twice`,
         detail: `${duplicates.slice(0, 3).map((group) => group.map(ontologyRecordTitle).join(' = ')).join('; ')}${duplicates.length > 3 ? `; and ${duplicates.length - 3} more` : ''}.`,
+        displayCopy: { detail: gapCopy(duplicates.length > 3 ? 'duplicates_more' : 'duplicates', '', {
+          names: duplicates.slice(0, 3).map((group) => group.map(ontologyRecordTitle).join(' = ')).join('、'), more: duplicates.length - 3,
+        }) },
         count: duplicates.length, items: duplicates.flat(), groups: duplicates,
       }, 'gap', ['competitors']));
     }
@@ -746,6 +782,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
         displayTitle: { key: 'uncategorized' },
         title: `${plural(pages.length, 'knowledge page has', 'knowledge pages have')} no real category`,
         detail: kind === 'other' ? `They do not say what they are: ${nameList(pages.sort(byTitle))}` : `Filed as ${kind}, which says nothing about what they are: ${nameList(pages.sort(byTitle))}`,
+        displayCopy: { detail: gapCopy(kind === 'other' ? 'uncategorized' : 'catch_all', '', { kind, names: gapNames(pages) }) },
         count: pages.length, items: pages,
       }, 'gap', []));
     }
@@ -755,6 +792,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     gaps.push(withGap({
       id: OPP_COMPETITOR_CAPABILITIES, check: 'opportunity',
       title: 'No record of which competitors have which capabilities',
+      displayCopy: { title: gapCopy('competitor_capabilities_title', ''), detail: gapCopy('competitor_capabilities_detail', '', { competitors: competitors.length, capabilities: knowledgeMembers.get('capabilities')?.length ?? 0 }) },
       detail: `${plural(competitors.length, 'competitor')} and ${plural(knowledgeMembers.get('capabilities')?.length ?? 0, 'capability', 'capabilities')}, but overlap is only written as prose.`,
       count: competitors.length, items: competitors,
     }, 'opportunity', ['competitors', 'capabilities']));
@@ -764,6 +802,7 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     gaps.push(withGap({
       id: OPP_CAPABILITY_AREAS, check: 'opportunity',
       title: "Capabilities and product areas aren't linked",
+      displayCopy: { title: gapCopy('capability_areas_title', ''), detail: gapCopy('capability_areas_detail', '', { capabilities: capabilities.length, areas: liveByType.get(areaType!)?.length ?? 0 }) },
       detail: `${plural(capabilities.length, 'wiki capability', 'wiki capabilities')} and ${plural(liveByType.get(areaType!)?.length ?? 0, 'product area')} describe the same product. Bugs and features never reach the wiki.`,
       count: capabilities.length, items: capabilities,
     }, 'opportunity', ['capabilities', 'areas']));
@@ -773,6 +812,11 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
     gaps.push(withGap({
       id: OPP_PERSONA, check: 'opportunity',
       title: "You don't track personas yet",
+      displayCopy: { title: gapCopy('personas_title', ''), detail: gapCopy('personas_detail', '', {
+        groups: ['customers', 'people'].filter((id) => workType.has(id)).map((id) => gapCopy('category_count', '', {
+          category: gapCopy(`categories.${id}`, id), count: drafts.find((draft) => draft.copy.id === id)!.members.length,
+        })),
+      }) },
       detail: persona.example,
       count: 0, items: [],
     }, 'opportunity', ['personas', 'customers', 'people']));
@@ -889,7 +933,9 @@ export function buildDomainModel<T extends OntologyRecordLike>(input: OntologyIn
   };
 }
 
-function withGap<T extends OntologyRecordLike>(draft: Omit<HealthItem<T>, 'itemIds' | 'groupIds'> & Pick<DomainGap<T>, 'displayTitle'>, tone: DomainGapTone, categoryIds: string[]): DomainGap<T> {
+function withGap<T extends OntologyRecordLike>(draft: Omit<HealthItem<T>, 'itemIds' | 'groupIds'> & Pick<DomainGap<T>, 'displayTitle' | 'displayCopy'>, tone: DomainGapTone, categoryIds: string[]): DomainGap<T> {
+  if (draft.displayCopy?.title) draft.displayCopy.title.english = draft.title;
+  if (draft.displayCopy?.detail) draft.displayCopy.detail.english = draft.detail;
   return { ...withHealthIds(draft), tone, categoryIds };
 }
 

@@ -8,6 +8,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { displayPartialWriteReason } from './partialWriteNotice';
+import { displayGap, type GapDisplay } from './ontologyGapCopy';
 import {
   FloatingFocusManager,
   FloatingOverlay,
@@ -37,7 +38,7 @@ import { applyAcceptedChanges, createProposalRequest, saveDecisions, undoApplied
 import { proposalStatusLabel } from './OntologyRail';
 
 export type DrawerTarget =
-  | { kind: 'request'; draft: ProposalRequestDraft; detail: string; pages: readonly OntologyRecordLike[] }
+  | { kind: 'request'; draft: ProposalRequestDraft; detail: string; pages: readonly OntologyRecordLike[]; gapDisplay?: GapDisplay }
   | { kind: 'proposal'; id: string };
 
 const PAGE_PREVIEW = 10;
@@ -121,7 +122,8 @@ function RequestPanel({ target, context, onClose, onOpenItem, onCreated }: {
   onOpenItem?: (itemId: string) => void;
   onCreated: (id: string) => void;
 }) {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
+  const gapText = target.gapDisplay ? displayGap(target.gapDisplay, i18n.resolvedLanguage, (key, options) => t(key, options)) : null;
   const { t: tCommon } = useTranslation('common');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +141,7 @@ function RequestPanel({ target, context, onClose, onOpenItem, onCreated }: {
   };
   return (
     <>
-      <DrawerHead kicker={t('ontology_proposals.new_kicker')} title={target.draft.title.replace(/^Improve: /, '')} reason={target.detail} onClose={onClose} />
+      <DrawerHead kicker={t('ontology_proposals.new_kicker')} title={gapText?.title ?? target.draft.title.replace(/^Improve: /, '')} reason={gapText?.detail ?? target.detail} onClose={onClose} />
       <div className="ontology-drawer-body">
         {target.pages.length > 0 && (
           <>

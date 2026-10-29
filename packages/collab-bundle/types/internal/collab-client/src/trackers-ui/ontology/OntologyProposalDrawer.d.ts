@@ -1,3 +1,4 @@
+import { type GapDisplay } from './ontologyGapCopy';
 import type { KnowledgeGraph } from './ontologyKnowledge';
 import { type PlanEnv, type ProposalRequestDraft } from './ontologyProposals';
 import { type OntologyRecordLike } from './ontologyRecords';
@@ -7,6 +8,7 @@ export type DrawerTarget = {
     draft: ProposalRequestDraft;
     detail: string;
     pages: readonly OntologyRecordLike[];
+    gapDisplay?: GapDisplay;
 } | {
     kind: 'proposal';
     id: string;

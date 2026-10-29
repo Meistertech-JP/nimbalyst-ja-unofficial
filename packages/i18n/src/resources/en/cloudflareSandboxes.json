@@ -92,6 +92,8 @@
   },
   "status_card": {
     "title": "Deployed sandbox",
+    "container_exited": "The sandbox process exited on its own.",
+    "container_unreachable": "The sandbox container could not be reached.",
     "labels": { "deployment": "Deployment", "container": "Container", "access": "Access" },
     "profile": "profile",
     "as_of": "as of {{time}}",

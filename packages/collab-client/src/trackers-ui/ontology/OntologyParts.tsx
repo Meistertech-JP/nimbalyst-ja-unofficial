@@ -6,6 +6,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { formatCount, singularVerb, type DomainCategory, type DomainGap, type DomainLine, type DomainModel, type DomainSchema, type MemberTable } from './ontologyDomain';
+import { displayGap } from './ontologyGapCopy';
 
 export type OpenCategory = (categoryId: string) => void;
 
@@ -66,16 +67,14 @@ export function OntologyLineRow({ category, line, targetName, dense, onOpenCateg
 export type GapAction = { label: string; open: () => void };
 
 export function OntologyGapRow({ gap, action }: { gap: DomainGap; action: GapAction }) {
-  const { t } = useTranslation('tracker');
-  const title = gap.displayTitle
-    ? t(`ontology_gap_titles.${gap.displayTitle.key}_${gap.count === 1 ? 'one' : 'other'}`, { count: gap.count, days: gap.displayTitle.days, defaultValue: gap.title })
-    : gap.title;
+  const { t, i18n } = useTranslation('tracker');
+  const { title, detail } = displayGap(gap, i18n.resolvedLanguage, (key, options) => t(key, options));
   return (
     <div className="ontology-gap" data-tone={gap.tone} data-gap={gap.id}>
       <span className="ontology-dot" />
       <div>
         <div className="ontology-gap-title">{title}</div>
-        <div className="ontology-gap-detail">{gap.detail}</div>
+        <div className="ontology-gap-detail">{detail}</div>
       </div>
       <button type="button" className="ontology-button ontology-button-sm" onClick={action.open}>{action.label}</button>
     </div>

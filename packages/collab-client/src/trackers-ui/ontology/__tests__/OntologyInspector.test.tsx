@@ -8,7 +8,7 @@
  */
 import React from 'react';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
@@ -66,6 +66,39 @@ test('the What we track cards localize their fixed labels in Japanese', async ()
   expect(screen.getByText('スキーマ：保存方法')).toBeDefined();
   expect(screen.getByText('構成要素')).toBeDefined();
   expect(screen.getByText('このカテゴリで修正する点')).toBeDefined();
+});
+
+test('an open gap request follows language changes without rewriting the request or records', async () => {
+  const i18n = await createI18nInstance('ja');
+  const records = domainFixture();
+  const before = JSON.stringify(records);
+  const command = vi.fn(async () => ({ ok: true as const }));
+  const content = (preference: 'ja' | 'en') => <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="ja">
+    <OntologyInspector types={[ENTITY]} records={records} writer={{ command, workspace: 'project-1', actor: null }} now={NOW} />
+  </UiLanguageProvider>;
+  const view = render(content('ja'));
+  fireEvent.click(view.container.querySelector('[data-gap="catch-all-kind:concept"] button') as HTMLButtonElement);
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByRole('heading').textContent).toBe('分類が不明確なナレッジページが2件あります');
+  expect(dialog.querySelector('.ontology-drawer-head p')?.textContent).toBe('「concept」に分類されていますが、何を表すページか不明です: Blog strategy、Pricing。');
+  const request = dialog.querySelector('pre')!.textContent;
+  expect(request).toContain('Blog strategy');
+  view.rerender(content('en'));
+  await within(dialog).findByRole('heading', { name: '2 knowledge pages have no real category' });
+  expect(dialog.querySelector('.ontology-drawer-head p')?.textContent).toBe('Filed as concept, which says nothing about what they are: Blog strategy and Pricing.');
+  expect(dialog.querySelector('pre')!.textContent).toBe(request);
+  view.rerender(content('ja'));
+  await within(dialog).findByRole('heading', { name: '分類が不明確なナレッジページが2件あります' });
+  expect(dialog.querySelector('pre')!.textContent).toBe(request);
+  expect(JSON.stringify(records)).toBe(before);
+  expect(command).not.toHaveBeenCalled();
+  fireEvent.click(within(dialog).getByRole('button', { name: i18n.t('ontology_proposals.send_request', { ns: 'tracker' }) }));
+  await waitFor(() => expect(command).toHaveBeenCalledWith(expect.objectContaining({
+    type: 'create-item', item: expect.objectContaining({
+      title: 'Improve: 2 knowledge pages have no real category',
+      customFields: expect.objectContaining({ request, healthCheck: 'catch-all-kind:concept' }),
+    }),
+  })));
 });
 
 test('the type-map relationship panel localizes its status and missing-page controls', async () => {

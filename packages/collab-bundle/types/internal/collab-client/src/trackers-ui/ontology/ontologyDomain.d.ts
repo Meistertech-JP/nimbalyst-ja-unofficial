@@ -101,11 +101,21 @@ export interface DomainCategory<T extends OntologyRecordLike = OntologyRecordLik
     table: MemberTable;
 }
 export type DomainGapTone = 'gap' | 'opportunity';
+/** Display-only copy. Raw strings in values are user/schema data, never translation keys. */
+export interface GapCopy {
+    key: string;
+    english: string;
+    values?: Record<string, string | number | GapCopy | GapCopy[]>;
+}
 /** A gap is a health item, so the existing proposal request and open-proposal lookup take it as is. */
 export interface DomainGap<T extends OntologyRecordLike = OntologyRecordLike> extends HealthItem<T> {
     displayTitle?: {
         key: 'stale' | 'duplicates' | 'uncategorized';
         days?: number;
+    };
+    displayCopy?: {
+        title?: GapCopy;
+        detail?: GapCopy;
     };
     tone: DomainGapTone;
     categoryIds: string[];

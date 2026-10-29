@@ -169,7 +169,14 @@ export function CloudflareSandboxStatusCard({
       </dl>
 
       {deployment.container.message && (
-        <p className="text-[12px] text-[var(--nim-text-muted)] mt-2">{deployment.container.message}</p>
+        <p className="text-[12px] text-[var(--nim-text-muted)] mt-2">
+          {/* Match only application-owned messages; preserve other diagnostics verbatim. */}
+          {deployment.container.message === 'The sandbox process exited on its own.'
+            ? t('status_card.container_exited')
+            : deployment.container.message === 'The sandbox container could not be reached.'
+              ? t('status_card.container_unreachable')
+              : deployment.container.message}
+        </p>
       )}
       {deployment.errorMessage && (
         <p className="text-[12px] text-[var(--nim-error)] mt-2">{deployment.errorMessage}</p>

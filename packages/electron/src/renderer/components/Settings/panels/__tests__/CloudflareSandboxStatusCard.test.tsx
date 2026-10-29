@@ -58,6 +58,44 @@ function render(ui: React.ReactElement) {
 }
 
 describe('CloudflareSandboxStatusCard', () => {
+  it.each([
+    ['The sandbox process exited on its own.', 'サンドボックスのプロセスが自発的に終了しました。'],
+    ['The sandbox container could not be reached.', 'サンドボックスのコンテナに接続できませんでした。'],
+  ])('localizes the application message %s and updates it when the language changes', async (message, japanese) => {
+    await testI18n.changeLanguage('ja');
+    render(
+      <CloudflareSandboxStatusCard
+        deployment={deployment({ container: { status: 'unknown', observedAt: null, message } })}
+        onDeploymentChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(japanese).textContent).toBe(japanese);
+    expect(screen.queryByText(message)).toBeNull();
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText(message).textContent).toBe(message);
+    expect(screen.queryByText(japanese)).toBeNull();
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('preserves unrelated external container messages across language changes', async () => {
+    const message = 'Upstream diagnostic: The sandbox container could not be reached. Request abc-123';
+    await testI18n.changeLanguage('ja');
+    render(
+      <CloudflareSandboxStatusCard
+        deployment={deployment({ container: { status: 'unknown', observedAt: null, message } })}
+        onDeploymentChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(message).textContent).toBe(message);
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText(message).textContent).toBe(message);
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
   it('renders lifecycle state and controls in Japanese when Japanese is selected', async () => {
     await testI18n.changeLanguage('ja');
     render(

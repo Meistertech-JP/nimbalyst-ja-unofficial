@@ -92,6 +92,8 @@
   },
   "status_card": {
     "title": "デプロイ済みサンドボックス",
+    "container_exited": "サンドボックスのプロセスが自発的に終了しました。",
+    "container_unreachable": "サンドボックスのコンテナに接続できませんでした。",
     "labels": { "deployment": "デプロイ", "container": "コンテナ", "access": "アクセス" },
     "profile": "プロファイル",
     "as_of": "確認時刻：{{time}}",
