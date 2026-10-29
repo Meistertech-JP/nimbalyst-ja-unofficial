@@ -9169,9 +9169,9 @@ Copyright (C) 2013-present  SheetJS
 better-sqlite3@13.0.3
 Selected license: MIT
 Declared license: MIT
-Install paths: packages/electron/node_modules/better-sqlite3
+Install paths: node_modules/better-sqlite3
 
---- LICENSE (packages\electron\node_modules\better-sqlite3\LICENSE) ---
+--- LICENSE (node_modules\better-sqlite3\LICENSE) ---
 The MIT License (MIT)
 
 Copyright (c) 2017 Joshua Wise
