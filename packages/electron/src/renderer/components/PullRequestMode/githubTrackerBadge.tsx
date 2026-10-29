@@ -78,7 +78,7 @@ export function GithubTrackerBadge({
         <span
           className="w-1.5 h-1.5 rounded-full shrink-0"
           style={{ backgroundColor: priorityColor }}
-          title={t('pull_request.tracker.priority', { priority: t(`pull_request.tracker.priorities.${priority}`, { defaultValue: priority }) })}
+          title={t('pull_request.tracker.priority', { priority: t(`pull_request.tracker.priorities.${priority}`) })}
         />
       )}
     </>
