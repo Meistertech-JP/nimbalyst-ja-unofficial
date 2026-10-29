@@ -79,7 +79,8 @@ const defaultDependencies: TutorialTrackerSeederDependencies = {
         priority: fixture.priority,
         description: fixture.description,
         tags: fixture.tags,
-        fields: fixture.fields,
+        // Tutorial examples stay local even when their type defaults to published.
+        fields: { ...fixture.fields, shared: false },
         linkSession: false,
       },
       workspacePath

@@ -1,7 +1,10 @@
 // @vitest-environment node
 import * as path from "path";
+import { mkdtemp, readFile, rmdir, unlink, writeFile } from "fs/promises";
+import { tmpdir } from "os";
 import { describe, expect, it, vi } from "vitest";
 import { createMainI18nController } from "../../../i18n/mainI18n";
+import { getInitialTrackerSyncStatus, shouldSyncTrackerItem } from "../../TrackerPolicyService";
 import {
   seedTutorialTrackers,
   type SeededTutorialTracker,
@@ -16,6 +19,69 @@ const createResult = vi.hoisted(() => vi.fn());
 vi.mock('../../../mcp/tools/trackerToolHandlers', () => ({ handleTrackerCreate: createResult }));
 
 describe("seedTutorialTrackers", () => {
+  it.each(['tutorial-project', 'tutorial-project-ja'])(
+    'creates every %s fixture privately without changing its content or custom fields',
+    async (templateName) => {
+      const fixturePath = path.resolve(FIXTURE_PATH, `../../${templateName}/trackers.json`);
+      const fixtures = JSON.parse(await readFile(fixturePath, 'utf8'));
+      createResult.mockReset();
+      createResult.mockImplementation(async (args) => ({
+        isError: false,
+        content: [{ type: 'text', text: JSON.stringify({ structured: { item: { id: args.id } } }) }],
+      }));
+
+      const result = await seedTutorialTrackers('/tmp/Nimbalyst Tutorial', {
+        getFixturePath: () => fixturePath,
+      });
+
+      expect(result).toHaveLength(11);
+      expect(createResult).toHaveBeenCalledTimes(fixtures.length);
+      for (const [index, fixture] of fixtures.entries()) {
+        const [args, workspacePath] = createResult.mock.calls[index];
+        expect(workspacePath).toBe('/tmp/Nimbalyst Tutorial');
+        expect(args).toEqual({
+          id: result[index].id,
+          type: fixture.type,
+          title: fixture.title,
+          status: fixture.status,
+          priority: fixture.priority,
+          description: fixture.description,
+          tags: fixture.tags,
+          fields: { ...fixture.fields, shared: false },
+          linkSession: false,
+        });
+        expect(args.id).toMatch(/^tk_tutorial_[a-f0-9]{24}$/);
+        const policy = { sharing: 'team' as const, draftByDefault: false };
+        expect(shouldSyncTrackerItem(policy, args.fields)).toBe(false);
+        expect(getInitialTrackerSyncStatus(policy, args.fields)).toBe('local');
+      }
+    },
+  );
+
+  it('does not let a fixture override tutorial privacy', async () => {
+    const fixtures = JSON.parse(await readFile(FIXTURE_PATH, 'utf8'));
+    const fixture = { ...fixtures[0], fields: { ...fixtures[0].fields, shared: true } };
+    const directory = await mkdtemp(path.join(tmpdir(), 'tutorial-private-fixture-'));
+    const fixturePath = path.join(directory, 'trackers.json');
+    try {
+      await writeFile(fixturePath, JSON.stringify([fixture]), 'utf8');
+      createResult.mockReset();
+      createResult.mockImplementation(async (args) => ({
+        isError: false,
+        content: [{ type: 'text', text: JSON.stringify({ structured: { item: { id: args.id } } }) }],
+      }));
+
+      await seedTutorialTrackers('/tmp/Nimbalyst Tutorial', { getFixturePath: () => fixturePath });
+
+      expect(createResult).toHaveBeenCalledTimes(1);
+      expect(createResult.mock.calls[0][0].fields).toEqual({ ...fixture.fields, shared: false });
+      expect(fixture.fields.shared).toBe(true);
+    } finally {
+      await unlink(fixturePath);
+      await rmdir(directory);
+    }
+  });
+
   it('localizes internally generated tracker creation errors in Japanese and English', async () => {
     const settings = { get: () => 'ja', subscribe: () => () => undefined };
     const controller = await createMainI18nController(settings, 'ja-JP', () => undefined);
