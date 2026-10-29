@@ -289,14 +289,25 @@ test('npx runs the published CLI even in a project that has its own @nimbalyst/c
     writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({ name: '@nimbalyst/cli', version, bin: { nim: 'bin/nim.js' } }));
     writeFileSync(path.join(pkg, 'bin', 'nim.js'), '#!/usr/bin/env node\nconsole.log("LOCAL COPY");\n', { mode: 0o755 });
     mkdirSync(path.join(project, 'node_modules', '.bin'));
-    symlinkSync('../@nimbalyst/cli/bin/nim.js', path.join(project, 'node_modules', '.bin', 'nim'));
+    if (process.platform === 'win32') {
+      const shim = path.join(project, 'node_modules', '.bin', 'nim.cmd');
+      writeFileSync(shim, `@echo off\r\n\"${process.execPath}\" \"%~dp0..\\@nimbalyst\\cli\\bin\\nim.js\" %*\r\n`);
+    } else {
+      symlinkSync('../@nimbalyst/cli/bin/nim.js', path.join(project, 'node_modules', '.bin', 'nim'));
+    }
     writeFileSync(path.join(project, 'package.json'), JSON.stringify({ name: 'host', private: true }));
     const configs = buildPluginConfigs();
     const args = JSON.parse(configs.get('.mcp.json')).mcpServers['nimbalyst-session'].args
       .map((arg) => (arg === cliSpec() ? `@nimbalyst/cli@${version}` : arg));
     // --offline: the fake version is in no registry, so npx fails unless it picks the project's copy.
-    const run = spawnSync('npx', ['--offline', ...args], { cwd: project, encoding: 'utf8', input: '' });
-    assert.doesNotMatch(run.stdout, /LOCAL COPY/);
+    const windowsNpx = path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js');
+    const command = process.platform === 'win32' ? process.execPath : 'npx';
+    const commandArgs = process.platform === 'win32' ? [windowsNpx, '--offline', ...args] : ['--offline', ...args];
+    const run = spawnSync(command, commandArgs, { cwd: project, encoding: 'utf8', input: '' });
+    assert.equal(run.error, undefined, run.error?.message);
+    assert.notEqual(run.status, 0, 'the fake version is absent from the offline cache');
+    assert.match(run.stderr, /ENOTCACHED|offline/i);
+    assert.doesNotMatch(`${run.stdout}\n${run.stderr}`, /LOCAL COPY/);
   } finally {
     rmSync(project, { recursive: true, force: true });
   }
