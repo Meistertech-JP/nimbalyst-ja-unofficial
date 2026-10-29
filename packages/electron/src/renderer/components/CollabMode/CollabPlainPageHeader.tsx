@@ -24,6 +24,7 @@ export const CollabPlainPageHeader: React.FC<{
   lane?: PageTypeLane;
 }> = ({ scope, documentId, lane = 'team' }) => {
   const { t } = useTranslation('collabSidebar');
+  const { t: tTracker, i18n } = useTranslation('tracker');
   const session = useMemo(() => getElectronCollabDocsSession(scope), [scope]);
   const pageAtom = useMemo(
     () => atom((get) => get(session.atoms.allSharedDocuments ?? NO_DOCUMENTS).find((document) => document.documentId === documentId) ?? null),
@@ -56,7 +57,7 @@ export const CollabPlainPageHeader: React.FC<{
       onRename={handleRename}
       // Set type converts markdown pages only.
       onSetType={page.documentType === 'markdown' ? () => requestType({ lane, page }) : undefined}
-      facts={pageTimeFacts(page)}
+      facts={pageTimeFacts(page, undefined, { t: tTracker, locale: i18n.resolvedLanguage ?? i18n.language })}
       fields={page.fields}
       onUpdateField={fieldsSupported ? handleUpdateField : undefined}
     />

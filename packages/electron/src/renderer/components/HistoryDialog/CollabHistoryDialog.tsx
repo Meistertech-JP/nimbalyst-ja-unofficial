@@ -16,7 +16,6 @@ import {
   type CollabHistoryDiffProps,
 } from '@nimbalyst/collab-client/docs-ui/history';
 import { collabHistoryControllerAtom } from '../../store/atoms/collabHistoryControllers';
-import { getRelativeTimeString } from '../../utils/dateFormatting';
 import { DiffPreviewEditor } from './DiffPreviewEditor';
 import { TextDiffViewer } from './TextDiffViewer';
 
@@ -64,7 +63,6 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
       onClose={onClose}
       previewRevision={previewRevisionSnapshot}
       renderDiff={renderDiff}
-      formatRelativeTime={getRelativeTimeString}
     />
   );
 };
