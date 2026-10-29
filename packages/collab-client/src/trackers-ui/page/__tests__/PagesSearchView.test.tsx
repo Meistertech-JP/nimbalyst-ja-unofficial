@@ -69,6 +69,31 @@ describe('PagesSearchView', () => {
     expect(screen.getByRole('columnheader', { name: '更新日時' })).toBeDefined();
   });
 
+  it('localizes relative page timestamps across live language changes', async () => {
+    const updatedAt = Date.now() - 3 * 60_000;
+    const { container } = render(
+      <PagesSearchView
+        lane="team"
+        pages={[{ documentId: 'time-page', title: 'Timestamp page', updatedAt, fields: {} }]}
+        typePlacements={[]}
+        authorLabel={(author) => author}
+        search=""
+        onSearchChange={vi.fn()}
+        onOpenPage={vi.fn()}
+        onOpenItem={vi.fn()}
+      />,
+      { wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider> },
+    );
+
+    const timestamp = () => container.querySelector('.pages-search-row td:last-child');
+    expect(timestamp()?.textContent).toBe('3m ago');
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    expect(timestamp()?.textContent).toBe('3分前');
+    expect(screen.getByRole('columnheader', { name: '更新日時' })).toBeDefined();
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(timestamp()?.textContent).toBe('3m ago');
+  });
+
   it('keeps a committed tag filter as a pill in the box and narrows the rows to it', () => {
     render(<Host />, { wrapper: ({ children }) => <I18nextProvider i18n={testI18n}>{children}</I18nextProvider> });
     const input = screen.getByTestId('tracker-filter-omnibox-input');
