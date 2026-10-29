@@ -3,6 +3,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { loadBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { I18nextProvider } from 'react-i18next';
 
 const {
   handleItemUpdate,
@@ -132,6 +134,31 @@ function record(id = 'bug-1', status = 'to-do'): TrackerRecord {
 }
 
 describe('TrackerGridView range edits', () => {
+  it('passes the actual desktop host catalog into its independently mounted cell menu', async () => {
+    const i18n = await createI18nInstance('ja');
+    render(<I18nextProvider i18n={i18n}><TrackerGridView filterType="bug" overrideItems={[record()]} columnConfig={{ visibleColumns: ['title', 'status'], columnWidths: {} }} /></I18nextProvider>);
+    const status = gridProps.current!.columns.find((column: { prop: string }) => column.prop === 'status');
+    const save = vi.fn();
+    const editor = status.editor({ prop: 'status' }, save, vi.fn());
+    editor.editCell = { val: 'to-do', model: { status: 'to-do' } };
+    editor.render((tag: string) => ({ tag }));
+    editor.element = document.body.appendChild(document.createElement('div'));
+    try {
+      await act(async () => { editor.componentDidRender(); });
+      for (const language of ['ja', 'en', 'ja']) {
+        await act(async () => { await i18n.changeLanguage(language); });
+        expect(i18n.language).toBe(language);
+        await waitFor(() => {
+          expect(document.querySelector<HTMLInputElement>('.tracker-grid-choice-filter')?.placeholder).toBe(language === 'ja' ? '絞り込む…' : 'Filter...');
+          expect(document.querySelector('.tracker-grid-choice-popover')?.textContent).toContain(language === 'ja' ? 'なし' : 'None');
+        });
+      }
+      expect(save).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => { editor.disconnectedCallback?.(); });
+      editor.element.remove();
+    }
+  });
   beforeAll(() => loadBuiltinTrackers());
 
   beforeEach(() => {

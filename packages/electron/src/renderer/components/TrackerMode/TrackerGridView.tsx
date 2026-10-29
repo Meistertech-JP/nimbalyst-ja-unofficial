@@ -12,8 +12,9 @@
  */
 
 import type { JSX, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { I18nContext, getI18n } from 'react-i18next';
 import { RevoGrid, type RevoGridCustomEvent } from '@revolist/react-datagrid';
 import { expandSvgIconVNode, GROUP_EXPAND_BTN } from '@revolist/revogrid';
 import type {
@@ -164,6 +165,7 @@ export function TrackerGridView({
   onToggleFavorite,
 }: TrackerGridViewProps): JSX.Element {
   const { t, i18n } = useTranslation('tracker');
+  const hostI18n = useContext(I18nContext)?.i18n ?? getI18n();
   const dateLocale = i18n.resolvedLanguage ?? i18n.language;
   const gridLabels = useMemo(() => ({
     openDetails: t('grid.open_details'),
@@ -405,7 +407,7 @@ export function TrackerGridView({
         trackerType: schemaType,
         columnWidths: effectiveColumnConfig.columnWidths,
         isRowEditable,
-        editorContext: { relationshipCandidates },
+        editorContext: { i18n: hostI18n, relationshipCandidates },
         filteredColumnIds,
         onOpenFilter: onColumnFiltersChange
           ? (columnId, rect) => setFilterTarget({ columnId, rect })
@@ -421,7 +423,7 @@ export function TrackerGridView({
       buildGridActionsColumn(gridLabels),
     ],
     [
-      visibleColumnDefs, schemaType, effectiveColumnConfig.columnWidths, t, dateLocale, gridLabels,
+      visibleColumnDefs, schemaType, effectiveColumnConfig.columnWidths, t, hostI18n, dateLocale, gridLabels,
       isRowEditable, relationshipCandidates, filteredColumnIds, onColumnFiltersChange,
       sortingEnabled, favorites, onItemSelect, onOpenDocument, relationshipLabel,
     ],

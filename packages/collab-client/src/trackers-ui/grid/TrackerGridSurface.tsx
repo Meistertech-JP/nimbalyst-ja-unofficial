@@ -20,6 +20,7 @@
 
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -28,6 +29,7 @@ import React, {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { I18nContext, getI18n } from 'react-i18next';
 import { RevoGrid, type RevoGridCustomEvent } from '@revolist/react-datagrid';
 import type {
   AfterEditEvent,
@@ -178,6 +180,9 @@ export function TrackerGridSurface({
   derivedColumns,
 }: TrackerGridSurfaceProps) {
   const { t, i18n } = useTranslation('tracker');
+  // useTranslation may return a language snapshot wrapper; new roots need
+  // the Provider's original mutable instance to observe later changes.
+  const hostI18n = useContext(I18nContext)?.i18n ?? getI18n();
   const dateLocale = i18n.resolvedLanguage ?? i18n.language;
   const gridLabels = useMemo(() => ({
     openDetails: t('grid.open_details'),
@@ -242,7 +247,7 @@ export function TrackerGridSurface({
   const teamMembers = useTrackersUITeamMembers();
   const teamMembersRef = useRef(teamMembers);
   teamMembersRef.current = teamMembers;
-  const editorContext = useMemo(() => ({ i18n, teamMembers: () => teamMembersRef.current }), [i18n]);
+  const editorContext = useMemo(() => ({ i18n: hostI18n, teamMembers: () => teamMembersRef.current }), [hostI18n]);
 
   const gridColumns = useMemo(
     () => [
