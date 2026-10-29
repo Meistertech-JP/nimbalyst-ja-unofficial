@@ -134,4 +134,36 @@ describe('DatabaseDashboard backup size rendering', () => {
     expect(await screen.findByText(/サンプル20件/)).toBeDefined();
     expect(screen.queryByText(/sampled rows/)).toBeNull();
   });
+
+  it('updates the initial settings error when the UI language changes', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        invoke: vi.fn().mockResolvedValue({ success: false }),
+      },
+    });
+
+    const { rerender } = render(withLanguage(<StorageRetentionCard />, 'ja'));
+    expect(await screen.findByText('メンテナンス設定を読み込めませんでした')).toBeDefined();
+
+    rerender(withLanguage(<StorageRetentionCard />, 'en'));
+
+    expect(await screen.findByText('Could not read maintenance settings')).toBeDefined();
+  });
+
+  it('preserves an error message returned by the host across language changes', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        invoke: vi.fn().mockResolvedValue({ success: false, error: 'Database is busy' }),
+      },
+    });
+
+    const { rerender } = render(withLanguage(<StorageRetentionCard />, 'ja'));
+    expect(await screen.findByText('Database is busy')).toBeDefined();
+
+    rerender(withLanguage(<StorageRetentionCard />, 'en'));
+
+    expect(screen.getByText('Database is busy')).toBeDefined();
+  });
 });

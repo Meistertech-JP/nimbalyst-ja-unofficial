@@ -65,6 +65,16 @@ const INTERVAL_CHOICES = [
   { value: 24, key: 'daily' },
 ];
 
+type StorageRetentionErrorKey =
+  | 'database.storage_retention.read_settings_failed'
+  | 'database.storage_retention.save_settings_failed'
+  | 'database.storage_retention.estimate_failed'
+  | 'database.reclaim_failed';
+
+type StorageRetentionError =
+  | { kind: 'translation'; key: StorageRetentionErrorKey }
+  | { kind: 'message'; message: string };
+
 const selectClass =
   'text-xs bg-nim-primary border border-[var(--nim-border)] rounded px-2 py-1 text-[var(--nim-text)]';
 
@@ -74,7 +84,7 @@ export function StorageRetentionCard() {
   const [estimate, setEstimate] = useState<RetentionEstimate | null>(null);
   const [result, setResult] = useState<RetentionRunResult | null>(null);
   const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<StorageRetentionError | null>(null);
   const [pendingDays, setPendingDays] = useState(30);
   const estimateNoteText = (() => {
     const note = estimate?.note;
@@ -116,10 +126,12 @@ export function StorageRetentionCard() {
             setPendingDays(res.settings.toolOutputRetentionDays);
           }
         } else {
-          setError(res.error || t('database.storage_retention.read_settings_failed'));
+          setError(res.error
+            ? { kind: 'message', message: res.error }
+            : { kind: 'translation', key: 'database.storage_retention.read_settings_failed' });
         }
       } catch (err) {
-        if (!cancelled) setError(String(err));
+        if (!cancelled) setError({ kind: 'message', message: String(err) });
       }
     })();
     return () => { cancelled = true; };
@@ -130,9 +142,11 @@ export function StorageRetentionCard() {
     try {
       const res = await window.electronAPI.invoke('database:maintenance:set', next);
       if (res.success) setSettings(res.settings);
-      else setError(res.error || t('database.storage_retention.save_settings_failed'));
+      else setError(res.error
+        ? { kind: 'message', message: res.error }
+        : { kind: 'translation', key: 'database.storage_retention.save_settings_failed' });
     } catch (err) {
-      setError(String(err));
+      setError({ kind: 'message', message: String(err) });
     }
   };
 
@@ -144,9 +158,11 @@ export function StorageRetentionCard() {
         retentionDays: pendingDays,
       });
       if (res.success) setEstimate(res.estimate);
-      else setError(res.error || t('database.storage_retention.estimate_failed'));
+      else setError(res.error
+        ? { kind: 'message', message: res.error }
+        : { kind: 'translation', key: 'database.storage_retention.estimate_failed' });
     } catch (err) {
-      setError(String(err));
+      setError({ kind: 'message', message: String(err) });
     }
   };
 
@@ -158,9 +174,11 @@ export function StorageRetentionCard() {
         retentionDays: pendingDays,
       });
       if (res.success) setResult(res.result);
-      else setError(res.error || t('database.reclaim_failed'));
+      else setError(res.error
+        ? { kind: 'message', message: res.error }
+        : { kind: 'translation', key: 'database.reclaim_failed' });
     } catch (err) {
-      setError(String(err));
+      setError({ kind: 'message', message: String(err) });
     } finally {
       setRunning(false);
     }
@@ -293,7 +311,11 @@ export function StorageRetentionCard() {
         </div>
       </div>
 
-      {error && <div className="text-xs text-[var(--nim-error)] mt-2">{error}</div>}
+      {error && (
+        <div className="text-xs text-[var(--nim-error)] mt-2">
+          {error.kind === 'translation' ? t(error.key) : error.message}
+        </div>
+      )}
     </div>
   );
 }
