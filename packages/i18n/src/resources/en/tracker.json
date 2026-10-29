@@ -2225,6 +2225,21 @@
       "object_of": "are the object of {{predicate}}"
     }
   },
+  "builtin_display": {
+    "types": {
+      "source": "Source", "source_plural": "Sources",
+      "capture": "Capture", "capture_plural": "Captures",
+      "citation": "Citation", "citation_plural": "Citations"
+    },
+    "statuses": {
+      "idea": { "new": "New", "considering": "Considering", "accepted": "Accepted", "rejected": "Rejected" },
+      "milestone": { "planned": "Planned", "active": "Active", "done": "Done", "cancelled": "Cancelled" },
+      "release": { "planned": "Planned", "in-progress": "In Progress", "released": "Released", "cancelled": "Cancelled" },
+      "source": { "active": "Active", "superseded": "Superseded", "unavailable": "Unavailable" },
+      "capture": { "recorded": "Recorded", "stale": "Stale", "unresolvable": "Unresolvable" },
+      "citation": { "asserted": "Asserted", "verified": "Verified", "stale": "Stale", "broken": "Broken" }
+    }
+  },
   "page_status": {
     "draft": "Draft",
     "current": "Current",

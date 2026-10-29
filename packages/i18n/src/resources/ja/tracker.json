@@ -2225,6 +2225,21 @@
       "object_of": "{{predicate}}の対象"
     }
   },
+  "builtin_display": {
+    "types": {
+      "source": "情報源", "source_plural": "情報源",
+      "capture": "取得記録", "capture_plural": "取得記録",
+      "citation": "引用", "citation_plural": "引用"
+    },
+    "statuses": {
+      "idea": { "new": "新規", "considering": "検討中", "accepted": "採用済み", "rejected": "却下" },
+      "milestone": { "planned": "計画済み", "active": "進行中", "done": "完了", "cancelled": "キャンセル済み" },
+      "release": { "planned": "計画済み", "in-progress": "進行中", "released": "リリース済み", "cancelled": "キャンセル済み" },
+      "source": { "active": "有効", "superseded": "置換済み", "unavailable": "利用不可" },
+      "capture": { "recorded": "記録済み", "stale": "古い", "unresolvable": "解決不可" },
+      "citation": { "asserted": "提示済み", "verified": "確認済み", "stale": "古い", "broken": "参照不可" }
+    }
+  },
   "page_status": {
     "draft": "下書き",
     "current": "最新",

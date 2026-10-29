@@ -33,7 +33,10 @@ export const TrackerSavedViewsSection: React.FC<{
       </div>
     ) : (
       <div className="flex flex-col gap-0.5">
-        {savedViews.map((view) => (
+        {savedViews.map((view) => {
+          const name = view.builtIn && view.id === 'builtin:ready' && view.name === 'Ready'
+            ? t('placed_filter_fields.ready') : view.name;
+          return (
           <div
             key={view.id}
             className={`group flex items-center gap-1 rounded-md ${
@@ -44,14 +47,14 @@ export const TrackerSavedViewsSection: React.FC<{
             <button
               className="flex-1 flex items-center gap-2 px-2 py-1.5 text-left text-[12px] text-nim-muted hover:text-nim min-w-0"
               onClick={() => onApplyView(view)}
-              title={t('ui.apply_view', { name: view.name })}
+              title={t('ui.apply_view', { name })}
             >
               <MaterialSymbol
                 icon={view.builtIn ? 'bolt' : 'bookmark'}
                 size={13}
                 className="shrink-0"
               />
-              <span className="flex-1 truncate">{view.name}</span>
+              <span className="flex-1 truncate">{name}</span>
               {view.shared && (
                 <MaterialSymbol
                   icon="group"
@@ -84,7 +87,8 @@ export const TrackerSavedViewsSection: React.FC<{
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     )}
     </div>

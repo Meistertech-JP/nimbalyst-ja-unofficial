@@ -10,7 +10,9 @@
  */
 
 import React from 'react';
-import { getTypeColor, getTypeIcon, getTypeLabel, type TypeColumnDisplay } from './trackerColumns';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { getTypeColor, getTypeIcon, type TypeColumnDisplay } from './trackerColumns';
+import { resolveTrackerTypeDisplayLabel } from '../models/trackerDisplayLabels';
 
 interface TrackerTypeCellProps {
   type: string;
@@ -24,8 +26,9 @@ interface TrackerTypeCellProps {
 }
 
 export const TrackerTypeCell: React.FC<TrackerTypeCellProps> = ({ type, display, variant = 'cell' }) => {
+  const { t } = useTranslation('tracker');
   const color = getTypeColor(type);
-  const label = getTypeLabel(type);
+  const label = resolveTrackerTypeDisplayLabel(type, t);
   const isRow = variant === 'row';
 
   if (display === 'label') {

@@ -22,6 +22,7 @@ import React from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerDataModel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 
 /** Only the presentation fields, so a host can pass a synthetic row like "All". */
 export type TrackerNavTypeModel = Pick<TrackerDataModel, 'type'>
@@ -72,7 +73,7 @@ export function TrackerNavTypeRow({
       <span className="min-w-0 flex-1 text-left truncate">
         {tracker === ALL_TRACKERS_NAV_MODEL
           ? t('type_page_views.all')
-          : tracker.displayNamePlural || tracker.displayName || tracker.type}
+          : resolveTrackerTypeDisplayLabel(tracker.type, t, true, tracker)}
       </span>
       <span className="shrink-0 min-w-[20px] text-right text-[10px] font-semibold tabular-nums text-nim-muted">
         {count}

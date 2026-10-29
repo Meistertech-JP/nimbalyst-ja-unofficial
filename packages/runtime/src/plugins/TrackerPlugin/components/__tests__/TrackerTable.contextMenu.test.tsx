@@ -9,6 +9,7 @@ import type { TrackerRecord } from '../../../../core/TrackerRecord';
 import { globalRegistry, loadBuiltinTrackers } from '../../models';
 import { trackerItemsMapAtom } from '../../trackerDataAtoms';
 import { TrackerTable } from '../TrackerTable';
+import { TrackerTypeCell } from '../TrackerTypeCell';
 
 vi.mock('posthog-js/react', () => ({
   usePostHog: () => ({ capture: vi.fn() }),
@@ -50,6 +51,43 @@ describe('TrackerTable context menu trigger', () => {
     (window as any).electronAPI = {
       documentService: { updateTrackerItem: vi.fn() },
     };
+  });
+
+  it('updates built-in status and priority labels without changing stored field values', async () => {
+    const plan = {
+      ...record('localized-plan'),
+      primaryType: 'plan',
+      typeTags: ['plan'],
+      fields: { title: 'Keep this user title', status: 'in-development', priority: 'medium' },
+    } as TrackerRecord;
+    const { container } = renderWithI18n(
+      <TrackerTable filterType="plan" hideTypeTabs hideToolbar overrideItems={[plan]}
+        columnConfig={{ visibleColumns: ['type', 'title', 'status', 'priority'], columnWidths: {}, typeColumnDisplay: 'label' }} />,
+    );
+    const row = () => container.querySelector('[data-item-id="localized-plan"]')!;
+    const cell = (name: string) => row().querySelector(`[data-column-id="${name}"]`)?.textContent;
+    expect(cell('status')).toBe('In Development');
+    expect(cell('priority')).toBe('Medium');
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    expect(cell('status')).toBe('開発中');
+    expect(cell('priority')).toBe('中');
+    expect(row().textContent).toContain('Keep this user title');
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(cell('status')).toBe('In Development');
+    expect(cell('priority')).toBe('Medium');
+    expect(plan.fields).toEqual({ title: 'Keep this user title', status: 'in-development', priority: 'medium' });
+  });
+
+  it('updates the built-in type label and tooltip when the display language changes', async () => {
+    const { container } = renderWithI18n(<TrackerTypeCell type="plan" display="label" />);
+    const label = () => container.querySelector('.tracker-type-indicator')!;
+    expect(label().textContent).toBe('Plan');
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(async () => { await testI18n.changeLanguage(language); });
+      const expected = testI18n.t('table.types.plan', { ns: 'tracker' });
+      expect(label().textContent).toBe(expected);
+      expect(label().getAttribute('title')).toBe(expected);
+    }
   });
 
   it('updates rendered relative date cells when the UI language changes', async () => {

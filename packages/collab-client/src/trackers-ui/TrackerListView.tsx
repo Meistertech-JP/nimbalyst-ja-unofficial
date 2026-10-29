@@ -13,13 +13,14 @@ import { globalRegistry } from '@nimbalyst/tracker-schema';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { TrackerGroupBy } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
-import { getTrackerTypeLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerGrouping';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { getStatusColor, getTypeColor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import {
   getFieldByRole,
   getRecordPriority,
   getRecordStatus,
   getRecordTitle,
+  resolveRoleFieldName,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import { UserAvatar } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/UserAvatar';
 import { groupTrackerItems } from '@nimbalyst/collab-client/trackers';
@@ -67,6 +68,7 @@ function TrackerListRow({
   onOpen: (event: React.MouseEvent) => void;
   onContextMenu?: (event: React.MouseEvent) => void;
 }) {
+  const { t } = useTranslation('tracker');
   const status = getRecordStatus(item);
   const priority = getRecordPriority(item);
   const owner = getFieldByRole(item, 'assignee') as string | undefined;
@@ -96,13 +98,13 @@ function TrackerListRow({
       ) : null}
       <span className="min-w-0 flex-1 truncate text-sm text-nim">{getRecordTitle(item)}</span>
       <TrackerSwatchBadge
-        label={getTrackerTypeLabel(item.primaryType)}
+        label={resolveTrackerTypeDisplayLabel(item.primaryType, t)}
         color={getTypeColor(item.primaryType)}
         className="tracker-swatch-badge-column"
       />
       {status ? (
         <TrackerSwatchBadge
-          label={status}
+          label={resolveTrackerFieldDisplayLabel(item.primaryType, resolveRoleFieldName(item.primaryType, 'workflowStatus'), status, t)}
           color={getStatusColor(status, item.primaryType)}
           className="tracker-swatch-badge-column"
         />

@@ -32,6 +32,7 @@ import {
   type TrackerRelationshipLabelResolver,
 } from '../models';
 import { resolveDisplayIssueKey } from '../models/localIssueKey';
+import { resolveTrackerFieldDisplayLabel } from '../models/trackerDisplayLabels';
 import {usePostHog} from "posthog-js/react";
 import {
   resolveColumnsForType,
@@ -427,6 +428,8 @@ export function renderCell(
   const progress = getFieldByRole(item, 'progress') as number | undefined;
   const labels = getFieldByRole(item, 'tags') as string[] | undefined;
   const module = item.system.documentPath;
+  const fieldLabel = (fieldName: string, fieldValue: string, fallback = fieldValue) =>
+    resolveTrackerFieldDisplayLabel(item.primaryType, fieldName, fieldValue, dateFormat.t, fallback);
 
   switch (col.id) {
     case 'type':
@@ -484,7 +487,7 @@ export function renderCell(
             {rawOptions.map(opt => {
               const val = typeof opt === 'string' ? opt : opt.value;
               const lbl = typeof opt === 'string' ? opt.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : opt.label;
-              return <option key={val} value={val}>{lbl}</option>;
+              return <option key={val} value={val}>{fieldLabel(resolveRoleFieldName(item.primaryType, 'workflowStatus'), val, lbl)}</option>;
             })}
           </select>
         );
@@ -496,7 +499,7 @@ export function renderCell(
           style={{ backgroundColor: `${statusColor}20`, color: statusColor, borderColor: statusColor }}
           onClick={(e) => { if (isItemEditable(item)) { e.stopPropagation(); setEditingCell({ itemId: item.id, field: 'status' }); } }}
         >
-          {status.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+          {fieldLabel(resolveRoleFieldName(item.primaryType, 'workflowStatus'), status, status.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))}
         </span>
       );
     }
@@ -513,7 +516,7 @@ export function renderCell(
             className="bg-[var(--nim-bg-secondary)] border border-[var(--nim-primary)] rounded text-xs text-[var(--nim-text)] px-1 py-0.5 outline-none"
           >
             {['low', 'medium', 'high', 'critical'].map(p => (
-              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              <option key={p} value={p}>{fieldLabel(resolveRoleFieldName(item.primaryType, 'priority'), p, p.charAt(0).toUpperCase() + p.slice(1))}</option>
             ))}
           </select>
         );
@@ -524,7 +527,7 @@ export function renderCell(
           style={{ color: getPriorityColor(priority || 'medium') }}
           onClick={(e) => { if (isItemEditable(item)) { e.stopPropagation(); setEditingCell({ itemId: item.id, field: 'priority' }); } }}
         >
-          {(priority || 'medium').charAt(0).toUpperCase() + (priority || 'medium').slice(1)}
+          {fieldLabel(resolveRoleFieldName(item.primaryType, 'priority'), priority || 'medium', (priority || 'medium').charAt(0).toUpperCase() + (priority || 'medium').slice(1))}
         </span>
       );
     }
@@ -606,7 +609,7 @@ export function renderCell(
               style={{ backgroundColor: `${badgeColor}20`, color: badgeColor, borderColor: badgeColor }}
               onClick={(e) => { if (isItemEditable(item)) { e.stopPropagation(); setEditingCell({ itemId: item.id, field: col.id as any }); } }}
             >
-              {strVal.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+              {fieldLabel(resolveColumnFieldName(item.primaryType, col), strVal, strVal.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))}
             </span>
           );
         }
