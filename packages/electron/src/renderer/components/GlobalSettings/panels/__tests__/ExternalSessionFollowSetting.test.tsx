@@ -52,6 +52,7 @@ it('offers external following only in Agent Features and persists deliberate tog
   let changed!: (event: { key: string; value: unknown }) => void;
   const originalApi = window.electronAPI;
   window.electronAPI = { ...originalApi, settingsSet,
+    terminal: { ...originalApi?.terminal, getAvailableShells: vi.fn().mockResolvedValue([]) },
     claudeCode: { ...originalApi?.claudeCode, getSettings: vi.fn().mockResolvedValue({}) },
     agentWorkflows: { ...originalApi?.agentWorkflows, getSettings: vi.fn().mockResolvedValue({
       sourceSettings: { workspaceClaudeCompatibilityEnabled: false, includeProjectClaudeSources: false, includeUserClaudeSources: false, extensionWorkflowsEnabled: false },
