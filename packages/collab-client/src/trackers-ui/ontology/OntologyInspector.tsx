@@ -114,7 +114,7 @@ export function OntologyInspector({ types, predicates = null, labels = null, rec
       return;
     }
     const draft = suggestStructureRequest(model);
-    setDrawer({ kind: 'request', draft, detail: t('ontology_inspector.suggest_detail'), pages: [] });
+    setDrawer({ kind: 'request', draft, detail: '', displayKind: 'suggest-structure', pages: [] });
   };
 
   return (

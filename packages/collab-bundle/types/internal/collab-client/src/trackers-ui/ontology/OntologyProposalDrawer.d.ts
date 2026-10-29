@@ -9,6 +9,7 @@ export type DrawerTarget = {
     detail: string;
     pages: readonly OntologyRecordLike[];
     gapDisplay?: GapDisplay;
+    displayKind?: 'suggest-structure';
 } | {
     kind: 'proposal';
     id: string;

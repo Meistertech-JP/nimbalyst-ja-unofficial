@@ -101,6 +101,28 @@ test('an open gap request follows language changes without rewriting the request
   })));
 });
 
+test('suggest-structure display follows language changes while the agent request stays unchanged', async () => {
+  const i18n = await createI18nInstance('ja');
+  const records = domainFixture();
+  const content = (preference: 'ja' | 'en') => <UiLanguageProvider i18n={i18n} preference={preference} systemLocale="ja">
+    <OntologyInspector types={[ENTITY]} records={records} writer={null} now={NOW} />
+  </UiLanguageProvider>;
+  const view = render(content('ja'));
+  fireEvent.click(screen.getByRole('button', { name: 'エージェントに改善案を依頼' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByRole('heading').textContent).toBe('構造の改善を提案');
+  const request = dialog.querySelector('pre')!.textContent;
+  expect(request).toContain('Review what this project tracks');
+  expect(dialog.querySelector('.ontology-drawer-head p')?.textContent).toBe(i18n.t('ontology_inspector.suggest_detail', { ns: 'tracker' }));
+  view.rerender(content('en'));
+  await within(dialog).findByRole('heading', { name: 'Suggest structure improvements' });
+  expect(dialog.querySelector('.ontology-drawer-head p')?.textContent).toBe(i18n.t('ontology_inspector.suggest_detail', { ns: 'tracker' }));
+  expect(dialog.querySelector('pre')!.textContent).toBe(request);
+  view.rerender(content('ja'));
+  await within(dialog).findByRole('heading', { name: '構造の改善を提案' });
+  expect(dialog.querySelector('pre')!.textContent).toBe(request);
+});
+
 test('the type-map relationship panel localizes its status and missing-page controls', async () => {
   const i18n = await createI18nInstance('ja');
   const from: TypeMapType = {

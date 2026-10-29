@@ -1635,6 +1635,7 @@
     "proposals": "Proposals"
   },
   "ontology_inspector": {
+    "suggest_title": "Suggest structure improvements",
     "view_proposal": "View proposal",
     "propose": "Propose",
     "fix": "Fix",

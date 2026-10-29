@@ -299,7 +299,7 @@ describe('UI language preference', () => {
     expect(resources.ja.aichat.session_naming_failure).toBe('応答は完了しましたが、セッション情報を更新できませんでした。');
     expect(resources.en.tracker.placed_view_marks.all_marks).toBe('All marks');
     expect(resources.ja.tracker.placed_view_marks.all_marks).toBe('すべてのマーク');
-    expect(totalKeys).toBe(14902);
+    expect(totalKeys).toBe(14903);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

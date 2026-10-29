@@ -38,7 +38,7 @@ import { applyAcceptedChanges, createProposalRequest, saveDecisions, undoApplied
 import { proposalStatusLabel } from './OntologyRail';
 
 export type DrawerTarget =
-  | { kind: 'request'; draft: ProposalRequestDraft; detail: string; pages: readonly OntologyRecordLike[]; gapDisplay?: GapDisplay }
+  | { kind: 'request'; draft: ProposalRequestDraft; detail: string; pages: readonly OntologyRecordLike[]; gapDisplay?: GapDisplay; displayKind?: 'suggest-structure' }
   | { kind: 'proposal'; id: string };
 
 const PAGE_PREVIEW = 10;
@@ -124,6 +124,8 @@ function RequestPanel({ target, context, onClose, onOpenItem, onCreated }: {
 }) {
   const { t, i18n } = useTranslation('tracker');
   const gapText = target.gapDisplay ? displayGap(target.gapDisplay, i18n.resolvedLanguage, (key, options) => t(key, options)) : null;
+  const heading = target.displayKind === 'suggest-structure' ? t('ontology_inspector.suggest_title') : gapText?.title ?? target.draft.title.replace(/^Improve: /, '');
+  const detail = target.displayKind === 'suggest-structure' ? t('ontology_inspector.suggest_detail') : gapText?.detail ?? target.detail;
   const { t: tCommon } = useTranslation('common');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +143,7 @@ function RequestPanel({ target, context, onClose, onOpenItem, onCreated }: {
   };
   return (
     <>
-      <DrawerHead kicker={t('ontology_proposals.new_kicker')} title={gapText?.title ?? target.draft.title.replace(/^Improve: /, '')} reason={gapText?.detail ?? target.detail} onClose={onClose} />
+      <DrawerHead kicker={t('ontology_proposals.new_kicker')} title={heading} reason={detail} onClose={onClose} />
       <div className="ontology-drawer-body">
         {target.pages.length > 0 && (
           <>

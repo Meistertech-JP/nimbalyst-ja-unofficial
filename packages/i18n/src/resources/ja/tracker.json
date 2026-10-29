@@ -1635,6 +1635,7 @@
     "proposals": "提案"
   },
   "ontology_inspector": {
+    "suggest_title": "構造の改善を提案",
     "view_proposal": "提案を表示",
     "propose": "提案する",
     "fix": "修正する",
