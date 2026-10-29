@@ -11,6 +11,7 @@
 import type { EditorCtr, EditCell } from '@revolist/revogrid';
 import type { CellEditorDescriptor } from '../../../../runtime/src/plugins/TrackerPlugin/components/trackerCellEditors';
 import type { TeamMemberOption } from '../../../../runtime/src/plugins/TrackerPlugin/components/TrackerFieldEditor';
+import type { i18n } from 'i18next';
 /** A tracker item the relationship editor can target. */
 export interface RelationshipCandidate {
     itemId: string;
@@ -19,6 +20,8 @@ export interface RelationshipCandidate {
     trackerType: string;
 }
 export interface TrackerEditorContext {
+    /** The host-owned catalog for independently mounted React editors. */
+    i18n?: i18n;
     /** Candidates for relationship cells, narrowed by the field's target types. */
     relationshipCandidates?: () => RelationshipCandidate[];
     /** Who a `user` cell can name; without any, the cell is free text. */

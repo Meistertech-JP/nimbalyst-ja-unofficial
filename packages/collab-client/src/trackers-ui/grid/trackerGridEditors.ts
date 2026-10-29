@@ -25,6 +25,7 @@ import {
   type TrackerFieldChoice,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldChoiceList';
 import { mountTrackerGridChoicePopover } from './TrackerGridChoicePopover';
+import type { i18n } from 'i18next';
 
 /** A tracker item the relationship editor can target. */
 export interface RelationshipCandidate {
@@ -35,6 +36,8 @@ export interface RelationshipCandidate {
 }
 
 export interface TrackerEditorContext {
+  /** The host-owned catalog for independently mounted React editors. */
+  i18n?: i18n;
   /** Candidates for relationship cells, narrowed by the field's target types. */
   relationshipCandidates?: () => RelationshipCandidate[];
   /** Who a `user` cell can name; without any, the cell is free text. */
@@ -148,7 +151,7 @@ function createInputEditor(
  * a popover under the cell. Picking commits (and "None" clears); Escape or a
  * click away leaves the cell as it was.
  */
-function createChoiceEditor(known: readonly TrackerFieldChoice[]): EditorCtr {
+function createChoiceEditor(known: readonly TrackerFieldChoice[], context: TrackerEditorContext): EditorCtr {
   return (_column, save, close): EditorBase => {
     let unmount: (() => void) | null = null;
     // `val` is the key typed to start the edit when there was one; `value` is
@@ -176,7 +179,7 @@ function createChoiceEditor(known: readonly TrackerFieldChoice[]): EditorCtr {
           initialQuery: typed !== value ? typed : '',
           onPick: picked => save(picked, false),
           onCancel: () => close(false),
-        });
+        }, context.i18n);
       },
       disconnectedCallback() {
         unmount?.();
@@ -202,7 +205,7 @@ function createChoiceEditor(known: readonly TrackerFieldChoice[]): EditorCtr {
 function createUserEditor(descriptor: CellEditorDescriptor, context: TrackerEditorContext): EditorCtr {
   return (column, save, close): EditorBase => {
     const members = context.teamMembers?.() ?? [];
-    const editor = members.length === 0 ? createInputEditor(descriptor) : createChoiceEditor(teamMemberChoices(members));
+    const editor = members.length === 0 ? createInputEditor(descriptor) : createChoiceEditor(teamMemberChoices(members), context);
     return (editor as EditorCtrCallable)(column, save, close);
   };
 }
@@ -415,7 +418,7 @@ export function createTrackerCellEditor(
         label: option.label,
         icon: option.icon,
         color: option.color,
-      })));
+      })), context);
     case 'multiselect':
       return createMultiselectEditor(descriptor);
     case 'date':

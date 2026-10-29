@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { act } from 'react';
+import { fireEvent, within } from '@testing-library/react';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { DataStore, gatherGrouping } from '@revolist/revogrid';
 // RevoGrid does not export ColumnService publicly. This test intentionally
@@ -104,6 +105,49 @@ describe('buildGridColumns', () => {
       expect(inDevelopment).toBeTruthy();
       await act(async () => { inDevelopment.click(); });
       expect(save).toHaveBeenCalledWith('in-development', false);
+    } finally {
+      await act(async () => { editor.disconnectedCallback?.(); });
+      editor.element.remove();
+    }
+  });
+
+  it.each(['plan', ''])('keeps the independent choice root on the host language (type=%s)', async trackerType => {
+    const seed = parseBuiltinTrackers().find(model => model.type === 'plan')!;
+    globalRegistry.register(seed, true);
+    const i18n = await createI18nInstance('ja');
+    const status = resolveColumnsForType('plan').find(column => column.id === 'status')!;
+    const editorContext = { i18n, teamMembers: () => [] };
+    const [column] = buildGridColumns([status], {
+      trackerType, isRowEditable: () => true, editorContext,
+      dateFormat: { t: key => i18n.t(key, { ns: 'tracker' }) },
+    });
+    const save = vi.fn();
+    const close = vi.fn();
+    const editor = (column.editor as any)({ prop: 'status' }, save, close);
+    editor.editCell = { val: 'draft', model: { [ROW_ITEM_TYPE]: 'plan' } };
+    editor.render((tag: string) => ({ tag }));
+    editor.element = document.body.appendChild(document.createElement('div'));
+    try {
+      await act(async () => { editor.componentDidRender(); });
+      const popover = document.querySelector<HTMLElement>('.tracker-grid-choice-popover')!;
+      const filter = within(popover).getByRole('textbox') as HTMLInputElement;
+      for (const language of ['ja', 'en', 'ja'] as const) {
+        await act(async () => { await i18n.changeLanguage(language); });
+        const placeholder = language === 'ja' ? '絞り込む…' : 'Filter...';
+        expect(filter.placeholder).toBe(placeholder);
+        expect(filter.getAttribute('aria-label')).toBe(placeholder);
+        expect(within(popover).getByText(language === 'ja' ? 'なし' : 'None').closest('[role="option"]')).not.toBeNull();
+        await act(async () => { fireEvent.change(filter, { target: { value: 'no-such-choice' } }); });
+        expect(within(popover).getByText(language === 'ja' ? '一致する項目はありません' : 'No matches')).toBeDefined();
+        await act(async () => { fireEvent.change(filter, { target: { value: '' } }); });
+      }
+      expect(save).not.toHaveBeenCalled();
+      expect(editor.getValue()).toBe('draft');
+      await act(async () => { fireEvent.click(within(popover).getByText('なし').closest('[role="option"]')!); });
+      expect(save).toHaveBeenCalledWith('', false);
+      await act(async () => { fireEvent.keyDown(filter, { key: 'Escape' }); });
+      expect(close).toHaveBeenCalledWith(false);
+      expect(seed.fields.find(field => field.name === 'status')!.options!.find(option => option.value === 'draft')!.label).toBe('Draft');
     } finally {
       await act(async () => { editor.disconnectedCallback?.(); });
       editor.element.remove();
@@ -580,6 +624,34 @@ describe('user cell editor', () => {
     return { tag, editor, save, labels, press };
   }
   afterEach(() => { document.body.innerHTML = ''; });
+
+  it('uses the host catalog and follows live language changes in the independent people picker', async () => {
+    const i18n = await createI18nInstance('ja');
+    const editorContext = { i18n, teamMembers: () => members };
+    const save = vi.fn();
+    const editor = (createTrackerCellEditor({ kind: 'user' }, editorContext) as any)({ prop: 'owner' }, save, vi.fn());
+    editor.editCell = { val: 'ada@example.com' };
+    editor.render(h);
+    editor.element = document.body.appendChild(document.createElement('div'));
+    try {
+      await act(async () => { editor.componentDidRender(); });
+      const popover = document.querySelector<HTMLElement>('.tracker-grid-choice-popover')!;
+      const filter = within(popover).getByRole('textbox') as HTMLInputElement;
+      for (const language of ['ja', 'en', 'ja'] as const) {
+        await act(async () => { await i18n.changeLanguage(language); });
+        expect(filter.placeholder).toBe(language === 'ja' ? '絞り込む…' : 'Filter...');
+        expect(within(popover).getByText(language === 'ja' ? 'なし' : 'None').closest('[role="option"]')).not.toBeNull();
+        expect(within(popover).getByText('Ada').closest('[role="option"]')?.getAttribute('aria-selected')).toBe('true');
+        expect(editor.getValue()).toBe('ada@example.com');
+      }
+      expect(save).not.toHaveBeenCalled();
+      await act(async () => { fireEvent.click(within(popover).getByText('Bo').closest('[role="option"]')!); });
+      expect(save).toHaveBeenCalledWith('bo@example.com', false);
+    } finally {
+      await act(async () => { editor.disconnectedCallback?.(); });
+      editor.element.remove();
+    }
+  });
 
   it('opens the chip choice list of members, keeps a non-member value, and commits the email', async () => {
     const { tag, editor, save, labels } = await open(members, { val: 'old-name' });

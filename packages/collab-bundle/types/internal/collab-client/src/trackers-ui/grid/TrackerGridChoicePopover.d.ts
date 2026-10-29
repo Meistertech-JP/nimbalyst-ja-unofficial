@@ -12,6 +12,7 @@
  * popover keeps its own keys from reaching the grid.
  */
 import React from 'react';
+import type { i18n } from 'i18next';
 import { type TrackerFieldChoice } from '../../../../runtime/src/plugins/TrackerPlugin/components/TrackerFieldChoiceList';
 export interface TrackerGridChoicePopoverProps {
     anchor: Element;
@@ -31,4 +32,4 @@ export interface TrackerGridChoicePopoverProps {
 export declare function filterTrackerFieldChoices(choices: readonly TrackerFieldChoice[], query: string): TrackerFieldChoice[];
 export declare function TrackerGridChoicePopover({ anchor, choices, value, initialQuery, onPick, onCancel }: TrackerGridChoicePopoverProps): React.JSX.Element;
 /** Mounts the popover in its own root; the returned function unmounts it. */
-export declare function mountTrackerGridChoicePopover(props: TrackerGridChoicePopoverProps): () => void;
+export declare function mountTrackerGridChoicePopover(props: TrackerGridChoicePopoverProps, hostI18n?: i18n): () => void;

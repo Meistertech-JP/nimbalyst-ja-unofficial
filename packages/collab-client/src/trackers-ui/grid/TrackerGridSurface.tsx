@@ -242,7 +242,7 @@ export function TrackerGridSurface({
   const teamMembers = useTrackersUITeamMembers();
   const teamMembersRef = useRef(teamMembers);
   teamMembersRef.current = teamMembers;
-  const editorContext = useMemo(() => ({ teamMembers: () => teamMembersRef.current }), []);
+  const editorContext = useMemo(() => ({ i18n, teamMembers: () => teamMembersRef.current }), [i18n]);
 
   const gridColumns = useMemo(
     () => [

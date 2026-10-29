@@ -15,6 +15,8 @@
 import React, { useCallback, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { createRoot } from 'react-dom/client';
+import { I18nextProvider } from 'react-i18next';
+import type { i18n } from 'i18next';
 import {
   FloatingPortal,
   autoUpdate,
@@ -160,14 +162,15 @@ export function TrackerGridChoicePopover({ anchor, choices, value, initialQuery 
 }
 
 /** Mounts the popover in its own root; the returned function unmounts it. */
-export function mountTrackerGridChoicePopover(props: TrackerGridChoicePopoverProps): () => void {
+export function mountTrackerGridChoicePopover(props: TrackerGridChoicePopoverProps, hostI18n?: i18n): () => void {
   // The grid cell the edit started from, so closing hands the keys back to it.
   const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const container = document.createElement('div');
   container.className = 'tracker-grid-choice-root';
   document.body.appendChild(container);
   const root = createRoot(container);
-  root.render(<TrackerGridChoicePopover {...props} />);
+  const popover = <TrackerGridChoicePopover {...props} />;
+  root.render(hostI18n ? <I18nextProvider i18n={hostI18n}>{popover}</I18nextProvider> : popover);
   return () => {
     // Only if focus is still ours: a click on another cell has already moved it there.
     const active = document.activeElement;
