@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
-import { globalRegistry } from '@nimbalyst/tracker-schema';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { TrackerOwnershipChip } from '../common/TrackerOwnershipChip';
 import {
   selectTrackerSharingMigrationNotice,
@@ -74,7 +74,7 @@ export const TrackerSharingMigrationBanner: React.FC<{
           {notice.changes.map((change) => (
             <li key={change.trackerType} className="flex items-center gap-1.5 flex-wrap">
               <span className="font-medium">
-                {globalRegistry.get(change.trackerType)?.displayNamePlural ?? change.trackerType}
+                {resolveTrackerTypeDisplayLabel(change.trackerType, t, true)}
               </span>
               <span className="text-nim-muted">
                 {change.sharing === 'personal'

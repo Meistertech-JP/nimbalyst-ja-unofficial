@@ -7,7 +7,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { collabOpenOptions, type CollabOpenOptions } from '@nimbalyst/collab-client/core';
-import { globalRegistry } from '@nimbalyst/tracker-schema';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { groupTrackerPageLinks, type LinkedPage, type PageLinksSource, type TrackerPageLink } from './pageLinks';
 
 export interface TrackerLinksSectionProps {
@@ -66,7 +66,7 @@ export const TrackerLinksSection: React.FC<TrackerLinksSectionProps> = ({ linksS
       disabled={!onOpenItem}
       onClick={(e) => { e.stopPropagation(); onOpenItem?.(page.itemId, collabOpenOptions(e)); }}
     >
-      <span className="text-[11px] text-nim-faint">{globalRegistry.get(page.typeId)?.displayName ?? page.typeId}</span>
+      <span className="text-[11px] text-nim-faint">{resolveTrackerTypeDisplayLabel(page.typeId, t)}</span>
       <span className="truncate">{page.title}</span>
     </button>
   );

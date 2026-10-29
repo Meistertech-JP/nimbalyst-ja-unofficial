@@ -5,11 +5,13 @@
  */
 
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { builtinTrackerTypeCopy } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/builtinTrackerCopy';
 import { FloatingPortal, autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
 
 import type { TrackerItem } from '../../trackers/dataSource';
-import { displayKey } from './TrackerReferenceParts';
+import { displayKey, referenceStatusDisplayLabel } from './TrackerReferenceParts';
 import type { TrackerReferenceStatusInfo, TrackerReferenceTypeInfo } from './trackerReferenceResolver';
 
 export interface TrackerReferenceQuietPeekProps {
@@ -33,6 +35,7 @@ export function TrackerReferenceQuietPeek({
   onPointerEnter,
   onPointerLeave,
 }: TrackerReferenceQuietPeekProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const { refs, floatingStyles } = useFloating({
     open: true,
     elements: { reference: anchor },
@@ -51,7 +54,7 @@ export function TrackerReferenceQuietPeek({
         onPointerLeave={onPointerLeave}
       >
         <span className="tracker-reference-peek-meta">
-          <span>{typeInfo.displayName}{status ? ` · ${status.label}` : ''}</span>
+          <span>{builtinTrackerTypeCopy(typeInfo.type, typeInfo.displayName, t)}{status ? ` · ${referenceStatusDisplayLabel(item.type, status, t)}` : ''}</span>
           <span className="tracker-reference-peek-key">{displayKey(item, referenceKey)}</span>
         </span>
         <span className="tracker-reference-peek-title">{item.title}</span>

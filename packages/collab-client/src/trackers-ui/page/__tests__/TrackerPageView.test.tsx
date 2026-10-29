@@ -10,6 +10,7 @@ import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { resources } from '@nimbalyst/i18n/resources';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
+import { parseBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/ModelLoader';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { TrackerPageView } from '../TrackerPageView';
 import { PlainPageHeader } from '../PlainPageHeader';
@@ -48,6 +49,22 @@ beforeEach(async () => { await testI18n.changeLanguage('en'); });
 afterAll(() => globalRegistry.unregister('tpv-module'));
 
 describe('TrackerPageView', () => {
+  it('localizes the builtin type crumb while preserving the item title', async () => {
+    const task = parseBuiltinTrackers().find(model => model.type === 'task')!;
+    globalRegistry.register(task, true);
+    const builtinItem = { ...item, id: 'builtin-page', primaryType: 'task', fields: { title: 'User title' } } as TrackerRecord;
+    const { container } = renderWithI18n(
+      <TrackerPageView item={builtinItem} loaded crumb={{ ancestors: [], underType: true }} editable={false}
+        title="User title" onRename={vi.fn()} fieldValues={builtinItem.fields} onUpdateField={vi.fn()} renderBody={() => null} />,
+    );
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(async () => { await testI18n.changeLanguage(language); });
+      expect(container.querySelector('.tracker-page-view-crumb')?.textContent).toContain(language === 'ja' ? 'タスク' : 'Task');
+      expect(container.querySelector('h1')?.textContent).toBe('User title');
+    }
+    expect(builtinItem.primaryType).toBe('task');
+  });
+
   it('updates rendered page timestamp facts on live language switching', async () => {
     const datedItem: TrackerRecord = {
       ...item,

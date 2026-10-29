@@ -9,7 +9,7 @@
  * focus, closing hands it back with the editor's previous selection.
  */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX, KeyboardEvent, MouseEvent } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 
@@ -24,15 +24,11 @@ import {
   type StateTransition,
 } from './trackerReferenceLifecycle';
 import type { TrackerReferenceResolver } from './trackerReferenceResolver';
+import { referenceStatusDisplayLabel } from './referenceDisplayLabels';
+import { transitionDisplayCopy } from './transitionDisplayCopy';
+import { TrackerStateMenuFocusContext } from './TrackerStateMenuFocusContext';
+export { TrackerStateMenuFocusContext } from './TrackerStateMenuFocusContext';
 import './trackerReferenceViews.css';
-
-/**
- * Returns focus to the enclosing editor with its previous selection. Provided
- * by the embedded views, which already load the editor; a context rather than
- * a direct import keeps Lexical out of the tracker surfaces that reuse this
- * menu. Absent means focus goes back to whatever held it before.
- */
-export const TrackerStateMenuFocusContext = createContext<(() => void) | null>(null);
 
 /** A committed change, with what it overwrote so the caller can offer Undo. */
 export interface TrackerStateChange {
@@ -208,11 +204,12 @@ export function TrackerStateMenu({
   }, [item, onChanged, onPending, resolver, setIsOpen]);
 
   if (!status) return null;
+  const statusLabel = referenceStatusDisplayLabel(item.type, status, t);
   const tone = stateTone(item.type, status);
   const editable = !readOnly && Boolean(resolver.updateItem) && transitions.length > 0;
   const wordClass = `tracker-state-word${className ? ` ${className}` : ''}`;
   if (!editable) {
-    return <span className={wordClass} data-tone={tone} data-status={status.value}>{status.label}</span>;
+    return <span className={wordClass} data-tone={tone} data-status={status.value}>{statusLabel}</span>;
   }
 
   // A replacement is a key; it commits only once it names another existing item.
@@ -251,7 +248,7 @@ export function TrackerStateMenu({
           setIsOpen(!isOpen);
         }}
       >
-        {status.label}
+        {statusLabel}
         <span className="tracker-state-word-chevron" aria-hidden="true" />
       </button>
       {isOpen ? (
@@ -265,7 +262,14 @@ export function TrackerStateMenu({
               if (!(event.target instanceof HTMLTextAreaElement)) event.preventDefault();
             }}
           >
-            {transitions.map((transition) => (
+            {transitions.map((transition) => {
+              const position = resolver.fieldValue(item, 'position');
+              const display = transitionDisplayCopy(transition, t, {
+                type: item.type,
+                position: typeof position === 'string' ? position : null,
+                owner: personLabel(resolver, resolver.fieldValue(item, 'owner') ?? item.owner),
+              });
+              return (
               <div key={transition.id} className="tracker-state-menu-entry">
                 {transition.separatorBefore ? <div className="tracker-state-menu-rule" aria-hidden="true" /> : null}
                 <button
@@ -284,16 +288,18 @@ export function TrackerStateMenu({
                   }}
                 >
                   <span className="tracker-state-menu-label" data-tone={transition.opensItem ? undefined : transition.tone}>
-                    {transition.label}
+                    {transition.id.startsWith('status:') && transition.toStatus
+                      ? referenceStatusDisplayLabel(item.type, { value: transition.toStatus, label: transition.label, color: '', fieldName: status.fieldName }, t)
+                      : display.label}
                   </span>
                   {transition.description ? (
-                    <span className="tracker-state-menu-description">{transition.description}</span>
+                    <span className="tracker-state-menu-description">{display.description}</span>
                   ) : null}
                 </button>
                 {prompt?.id === transition.id && transition.prompt ? (
                   <div className="tracker-state-menu-prompt">
                     <label className="tracker-state-menu-description" htmlFor={`tracker-state-prompt-${item.id}`}>
-                      {transition.prompt.label}
+                      {display.prompt?.label}
                     </label>
                     <textarea
                       id={`tracker-state-prompt-${item.id}`}
@@ -301,7 +307,7 @@ export function TrackerStateMenu({
                       rows={transition.prompt.field === 'supersededBy' ? 1 : 2}
                       autoFocus
                       value={input}
-                      placeholder={transition.prompt.placeholder}
+                      placeholder={display.prompt?.placeholder}
                       onFocus={() => { promptHadFocus.current = true; }}
                       onChange={(event) => setInput(event.target.value)}
                       onKeyDown={onPromptKeyDown}
@@ -318,13 +324,14 @@ export function TrackerStateMenu({
                         disabled={busy || !value}
                         onClick={() => void commit(transition, value!)}
                       >
-                        {transition.prompt.confirmLabel}
+                        {display.prompt?.confirmLabel}
                       </button>
                     </div>
                   </div>
                 ) : null}
               </div>
-            ))}
+              );
+            })}
             {error ? <div className="tracker-state-menu-error" role="alert">{error}</div> : null}
             <div className="tracker-state-menu-footer">
               {t('state_menu.change_for_everyone', { item: item.issueKey ?? item.title })}

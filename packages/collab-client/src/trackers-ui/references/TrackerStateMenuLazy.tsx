@@ -7,6 +7,8 @@
 
 import { lazy, Suspense } from 'react';
 import type { JSX } from 'react';
+import { useTranslation } from '@nimbalyst/i18n/react';
+import { referenceStatusDisplayLabel } from './referenceDisplayLabels';
 
 import { stateTone } from './trackerReferenceLifecycle';
 import type { TrackerStateMenuProps } from './TrackerStateMenu';
@@ -14,11 +16,12 @@ import type { TrackerStateMenuProps } from './TrackerStateMenu';
 const Menu = lazy(() => import('./TrackerStateMenu').then((module) => ({ default: module.TrackerStateMenu })));
 
 export function TrackerStateMenu(props: TrackerStateMenuProps): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   const status = props.resolver.statusInfo(props.item);
   if (!status) return null;
   const word = (
     <span className="tracker-state-word" data-tone={stateTone(props.item.type, status)} data-status={status.value}>
-      {status.label}
+      {referenceStatusDisplayLabel(props.item.type, status, t)}
     </span>
   );
   return <Suspense fallback={word}><Menu {...props} /></Suspense>;

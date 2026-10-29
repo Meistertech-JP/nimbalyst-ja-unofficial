@@ -24,6 +24,8 @@ import {
   type TrackerRelationshipLabelResolver,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { compareCellValues } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerRowData';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
+import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import { resolveCellEditor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerCellEditors';
 import {
   createRowAwareTrackerCellEditor,
@@ -110,6 +112,8 @@ export function formatValue(
   if (value === undefined || value === null || value === '') return '';
 
   switch (col.render) {
+    case 'type-icon':
+      return resolveTrackerTypeDisplayLabel(String(value), dateFormat.t);
     case 'date':
       // formatTrackerDateCell, not `new Date`: a calendar-day string is local
       // midnight, not UTC midnight, and reads by day rather than by elapsed
@@ -146,14 +150,12 @@ export function formatValue(
     }
     case 'badge': {
       // Prefer the schema option's label over the raw stored value.
-      const field = getFieldForColumn(trackerType, resolveColumnFieldName(trackerType, col));
-      const option = field?.options?.find(o => o.value === String(value));
-      return option?.label ?? String(value);
+      return resolveTrackerFieldDisplayLabel(trackerType, resolveColumnFieldName(trackerType, col), String(value), dateFormat.t);
     }
     case 'progress':
       return typeof value === 'number' ? `${value}%` : String(value);
     default:
-      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (typeof value === 'boolean') return dateFormat.t?.(value ? 'grid.boolean_yes' : 'grid.boolean_no') ?? (value ? 'Yes' : 'No');
       return String(value);
   }
 }
@@ -610,9 +612,16 @@ export function buildGridColumns(
     labels,
   }: BuildGridColumnsOptions,
 ): ColumnRegular[] {
+  const displayEditor = (type: string, field: FieldDefinition | undefined) => resolveCellEditor(field && {
+    ...field,
+    options: field.options?.map(option => ({
+      ...option,
+      label: resolveTrackerFieldDisplayLabel(type, field.name, option.value, dateFormat?.t, option.label),
+    })),
+  });
   return columns.map((col): ColumnRegular => {
     const field = getFieldForColumn(trackerType, col.id);
-    const descriptor = resolveCellEditor(field);
+    const descriptor = displayEditor(trackerType, field);
     const editor = !col.editable
       ? undefined
       : trackerType
@@ -620,7 +629,7 @@ export function buildGridColumns(
         : createRowAwareTrackerCellEditor((editCell) => {
           const rowType = String(editCell?.model?.[ROW_ITEM_TYPE] ?? '');
           const rowField = getFieldForColumn(rowType, resolveColumnFieldName(rowType, col));
-          return resolveCellEditor(rowField);
+          return displayEditor(rowType, rowField);
         }, editorContext);
 
     return {

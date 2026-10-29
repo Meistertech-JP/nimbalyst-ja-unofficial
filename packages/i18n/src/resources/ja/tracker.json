@@ -506,7 +506,8 @@
   },
   "groups": {
     "none": "なし",
-    "unassigned": "未割り当て"
+    "unassigned": "未割り当て",
+    "no_goal": "目標なし"
   },
   "relationship": {
     "linked_as": "関連付け",
@@ -1976,6 +1977,49 @@
     "session_multiple": "セッション（{{count}}件）"
   },
   "state_menu": {
+    "transition_descriptions": {
+      "proposed": "再び議論できる状態にします",
+      "accepted": "決定済みです。あなたが決定者として記録されます。",
+      "superseded": "後の決定に置き換えられています",
+      "open": "まだ誰も取り組んでいません",
+      "investigating": "調査中です",
+      "reopened": "以前の回答が有効ではなくなりました",
+      "blocked": "別の作業の完了を待っています",
+      "abandoned": "中止し、記録として残します",
+      "draft": "執筆中です",
+      "in-review": "レビューを待っています",
+      "changes-requested": "作成者へ差し戻されています",
+      "approved": "レビュー担当者が承認しました",
+      "building": "実装中です",
+      "shipped": "完了し、リリースされています",
+      "rejected_prompt": "却下する理由を入力します",
+      "deferred_prompt": "再検討する時期を入力します",
+      "superseded_prompt": "置き換え先を入力します"
+    },
+    "transition_prompts": {
+      "rejected": {
+        "label": "却下する理由は？ページと「実施しないと決めたこと」に表示されます。",
+        "placeholder": "実施しない理由",
+        "confirm": "却下"
+      },
+      "deferred": {
+        "label": "いつ再検討しますか？",
+        "placeholder": "ベータ版の後、または日付",
+        "confirm": "延期"
+      },
+      "superseded": {
+        "label": "どの項目に置き換えますか？キーを入力してください。",
+        "confirm": "置き換え"
+      }
+    },
+    "question": {
+      "write_position": "見解を記入…",
+      "write_different_position": "別の見解を記入…",
+      "opens_question": "質問を開きます",
+      "accept_owner_position": "回答済み：{{owner}}の見解を採用",
+      "accept_proposed_position": "回答済み：提案された見解を採用",
+      "position_decision": "「{{position}}」あなたが決定者として記録されます。"
+    },
     "change_for_everyone": "{{item}}の変更は全員に反映されます。",
     "looking_up": "検索中…",
     "no_other_item": "「{{value}}」に一致する別の項目はありません",
@@ -2226,6 +2270,7 @@
     }
   },
   "builtin_display": {
+    "categories": { "backlog": "バックログ", "unstarted": "未着手", "started": "進行中", "done": "完了", "cancelled": "キャンセル済み" },
     "types": {
       "source": "情報源", "source_plural": "情報源",
       "capture": "取得記録", "capture_plural": "取得記録",

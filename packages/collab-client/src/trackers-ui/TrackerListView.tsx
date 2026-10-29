@@ -14,6 +14,7 @@ import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { TrackerGroupBy } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
+import { resolveTrackerGroupDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerGroupDisplayLabels';
 import { getStatusColor, getTypeColor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import {
   getFieldByRole,
@@ -167,7 +168,7 @@ export function TrackerListView({
           {groupBy === 'none' ? null : (
             <div className="sticky top-0 z-[1] flex items-center gap-2 bg-nim-secondary px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-nim-muted">
               <MaterialSymbol icon="chevron_right" size={12} />
-              <span className="flex-1 truncate">{group.label}</span>
+              <span className="flex-1 truncate">{resolveTrackerGroupDisplayLabel(group, groupBy, group.items, t)}</span>
               <span>{group.items.length}</span>
             </div>
           )}

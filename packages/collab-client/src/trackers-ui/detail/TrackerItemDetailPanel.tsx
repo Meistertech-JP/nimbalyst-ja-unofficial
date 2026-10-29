@@ -38,6 +38,7 @@ import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import type { TrackerMutationRejection } from '@nimbalyst/collab-client/trackers';
 import { globalRegistry } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { getTypeColor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import {
   TrackerFieldEditor,
@@ -127,7 +128,14 @@ export function TrackerItemDetailPanel({
 }: TrackerItemDetailPanelProps) {
   const { t } = useTranslation('tracker');
   const effectiveBackLabel = backLabel ?? t('collaboration_surface.back_to_trackers');
-  const fields = detailFields(item.primaryType);
+  const displayField = (field: FieldDefinition): FieldDefinition => field.options ? {
+    ...field,
+    options: field.options.map(option => ({
+      ...option,
+      label: resolveTrackerFieldDisplayLabel(item.primaryType, field.name, option.value, t, option.label),
+    })),
+  } : field;
+  const fields = detailFields(item.primaryType).map(displayField);
   const readOnly = !onFieldChange;
   const [propertiesOpen, setPropertiesOpen] = useState(false);
   const model = globalRegistry.get(item.primaryType);
@@ -147,7 +155,7 @@ export function TrackerItemDetailPanel({
       </div> : null}
       <div className="tracker-item-detail-header border-b border-nim px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <TrackerSwatchBadge label={item.primaryType} color={getTypeColor(item.primaryType)} />
+          <TrackerSwatchBadge label={resolveTrackerTypeDisplayLabel(item.primaryType, t)} color={getTypeColor(item.primaryType)} />
           {item.issueKey ? (
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-nim-faint select-text">
               {item.issueKey}
@@ -176,14 +184,14 @@ export function TrackerItemDetailPanel({
         <h2 className={`mt-1 text-base font-semibold text-nim select-text${compact ? ' tracker-phone-title' : ' truncate'}`}>
           {getRecordTitle(item)}
         </h2>
-        {compact ? <div className="tracker-phone-summary"><span>{getRecordStatus(item)}</span>{typeof progress === 'number' ? <span>{progress}%</span> : null}{editing ? <span>{t('collaboration_surface.live_edits')}</span> : null}</div> : null}
+        {compact ? <div className="tracker-phone-summary"><span>{resolveTrackerFieldDisplayLabel(item.primaryType, resolveRoleFieldName(item.primaryType, 'workflowStatus'), getRecordStatus(item), t)}</span>{typeof progress === 'number' ? <span>{progress}%</span> : null}{editing ? <span>{t('collaboration_surface.live_edits')}</span> : null}</div> : null}
       </div>
 
       <div className="tracker-item-detail-scroll min-h-0 flex-1 overflow-y-auto">
         <div className="tracker-item-detail-fields grid gap-3 border-b border-nim px-4 py-3">
           {compact ? <>
             <button type="button" className="tracker-phone-properties-toggle" aria-expanded={propertiesOpen || editing} onClick={() => setPropertiesOpen(!propertiesOpen)} disabled={editing}>{t('collaboration_surface.properties')}{editing ? ` · ${t('collaboration_surface.editing')}` : propertiesOpen ? ' −' : ' +'}</button>
-            {propertiesOpen || editing ? <TrackerPhoneProperties fields={editing ? model?.fields ?? fields : fields} values={item.fields} editing={editing && !readOnly} onChange={onFieldChange} teamMembers={teamMembers} /> : null}
+            {propertiesOpen || editing ? <TrackerPhoneProperties fields={editing ? model?.fields.map(displayField) ?? fields : fields} values={item.fields} editing={editing && !readOnly} onChange={onFieldChange} teamMembers={teamMembers} /> : null}
           </> : null}
           {!compact && onEditingChange && !editing ? <TrackerPhoneProperties fields={fields} values={item.fields} editing={false} teamMembers={teamMembers} /> : null}
           {!compact && (!onEditingChange || editing) ? <>

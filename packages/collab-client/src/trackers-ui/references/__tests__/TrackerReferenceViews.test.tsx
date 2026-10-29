@@ -9,6 +9,8 @@ import { $createNodeSelection, $createParagraphNode, $getRoot, $setSelection } f
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
+import { globalRegistry } from '@nimbalyst/tracker-schema';
+import { parseBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/ModelLoader';
 
 import {
   $createTrackerReferenceNode,
@@ -19,7 +21,9 @@ import { setTrackerReferenceNodeRenderer } from '@nimbalyst/runtime/plugins/Trac
 import { createTrackerReferenceResolver } from '../trackerReferenceResolver';
 import { TrackerReferenceResolverProvider } from '../TrackerReferenceResolverContext';
 import { LiveTrackerReferenceRenderer } from '../TrackerReferenceViews';
-import { plural } from '../TrackerReferenceParts';
+import { LiveChip, plural } from '../TrackerReferenceParts';
+import { LiveCard } from '../TrackerReferenceCard';
+import { TrackerReferenceQuietPeek } from '../TrackerReferenceQuietPeek';
 import { TrackerReferenceInlineAppearanceContext } from '../TrackerReferenceQuietLink';
 import { fakeDataSource, fakeSchema, item } from './referenceFixtures';
 
@@ -33,6 +37,56 @@ beforeAll(async () => {
 });
 
 describe('LiveTrackerReferenceRenderer', () => {
+  it('updates builtin chip accessibility and status tooltips while keeping resolver data and open identities unchanged', async () => {
+    const seed = parseBuiltinTrackers().find(model => model.type === 'task')!;
+    globalRegistry.register(seed, true);
+    const i18n = await createI18nInstance('en');
+    const data = fakeDataSource();
+    const open = vi.fn();
+    const resolver = createTrackerReferenceResolver(data.source, { schema: { ...fakeSchema(), get: type => globalRegistry.get(type) }, onOpenItem: open });
+    const trackerItem = item({ id: 'builtin-task', issueKey: 'TASK-1', type: 'task', title: 'Keep this user title', status: 'to-do' });
+    const before = JSON.stringify(trackerItem);
+    const { container } = render(<UiLanguageProvider i18n={i18n} preference="en" systemLocale="en-US">
+      <LiveChip resolver={resolver} referenceKey="TASK-1" />
+      <LiveCard resolver={resolver} referenceKey="TASK-1" />
+      <TrackerReferenceQuietPeek anchor={document.body} item={trackerItem} referenceKey="TASK-1"
+        typeInfo={resolver.typeInfo('task')} status={resolver.statusInfo(trackerItem)} summary={null}
+        onPointerEnter={vi.fn()} onPointerLeave={vi.fn()} />
+    </UiLanguageProvider>);
+    await act(() => data.release([trackerItem]));
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(() => i18n.changeLanguage(language));
+      const chip = container.querySelector('[data-issue-key="TASK-1"]')!;
+      const status = language === 'ja' ? '未着手' : 'To Do';
+      expect(chip.getAttribute('title')).toBe(`TASK-1: Keep this user title (${status})`);
+      expect(chip.querySelector('.tracker-reference-type-icon')?.getAttribute('aria-label')).toBe(language === 'ja' ? 'タスク' : 'Task');
+      expect(chip.querySelector('.tracker-reference-status-dot')?.getAttribute('aria-label')).toBe(status);
+      expect(container.querySelector('.tracker-reference-card-kind')?.textContent).toBe(language === 'ja' ? 'タスク' : 'Task');
+      expect(document.querySelector('.tracker-reference-peek-meta')?.textContent).toContain(`${language === 'ja' ? 'タスク' : 'Task'} · ${status}`);
+      fireEvent.click(chip);
+      expect(open).toHaveBeenLastCalledWith('builtin-task');
+    }
+    expect(JSON.stringify(trackerItem)).toBe(before);
+    resolver.dispose();
+  });
+
+  it('preserves resolver-specific schema labels even when the global registry has an unchanged builtin', async () => {
+    const seed = parseBuiltinTrackers().find(model => model.type === 'task')!;
+    globalRegistry.register(seed, true);
+    const custom = structuredClone(seed);
+    custom.displayName = 'User Task';
+    custom.fields.find(field => field.name === 'status')!.options!.find(option => option.value === 'to-do')!.label = 'Custom Ready';
+    const data = fakeDataSource();
+    const resolver = createTrackerReferenceResolver(data.source, { schema: { ...fakeSchema(), get: type => type === 'task' ? custom : undefined } });
+    const { container } = render(<UiLanguageProvider i18n={japaneseI18n} preference="ja" systemLocale="ja"><LiveChip resolver={resolver} referenceKey="TASK-2" /></UiLanguageProvider>);
+    await act(() => data.release([item({ id: 'custom-task', issueKey: 'TASK-2', type: 'task', title: 'User content', status: 'to-do' })]));
+    const chip = container.querySelector('[data-issue-key="TASK-2"]')!;
+    expect(chip.getAttribute('title')).toBe('TASK-2: User content (Custom Ready)');
+    expect(chip.querySelector('.tracker-reference-type-icon')?.getAttribute('aria-label')).toBe('User Task');
+    expect(chip.querySelector('.tracker-reference-status-dot')?.getAttribute('aria-label')).toBe('Custom Ready');
+    resolver.dispose();
+  });
+
   it('retains the existing English plural helper for callers', () => {
     expect(plural(1, 'citation')).toBe('1 citation');
     expect(plural(2, 'citation')).toBe('2 citations');

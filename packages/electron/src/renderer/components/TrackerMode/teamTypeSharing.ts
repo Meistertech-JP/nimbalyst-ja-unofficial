@@ -15,6 +15,7 @@ import { store } from '@nimbalyst/runtime/store';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { trackerItemCountByTypeAtom } from '@nimbalyst/runtime/plugins/TrackerPlugin';
 import { resolveTrackerPromotionEligibility } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerLifecycle';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { requestConfirmation } from '../../dialogs/requestConfirmation';
 import { errorNotificationService } from '../../services/ErrorNotificationService';
 import { trackerSyncConnectionAtom } from '../../store/atoms/trackerSync';
@@ -35,10 +36,11 @@ export async function shareTrackerTypeWithTeam(
     ? t('config.lifecycle.one_item')
     : t('config.lifecycle.many_items', { count: itemCount });
   const isResume = model.sharing === 'team';
+  const displayName = resolveTrackerTypeDisplayLabel(model.type, t, true, model);
   const approved = await requestConfirmation({
-    title: t(isResume ? 'config.lifecycle.resume_share_title' : 'config.lifecycle.promote_title', { name: model.displayNamePlural }),
+    title: t(isResume ? 'config.lifecycle.resume_share_title' : 'config.lifecycle.promote_title', { name: displayName }),
     message: t(isResume ? 'config.lifecycle.resume_share_message' : 'config.lifecycle.promote_message', {
-      name: model.displayNamePlural,
+      name: displayName,
       itemLabel,
     }),
     confirmLabel: t(isResume ? 'config.lifecycle.resume_share_confirm' : 'config.lifecycle.promote_confirm'),
@@ -55,7 +57,7 @@ export async function shareTrackerTypeWithTeam(
         'tracker',
         'config.lifecycle.promoted_title',
         "{{name}} is now your team's",
-        { name: model.displayNamePlural },
+        { name: resolveTrackerTypeDisplayLabel(model.type, key => errorNotificationService.getLocalizedText('tracker', key, key), true, model) },
       ),
       pendingKeyCount > 0
         ? errorNotificationService.getLocalizedText(

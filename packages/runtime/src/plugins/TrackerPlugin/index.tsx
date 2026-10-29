@@ -41,6 +41,8 @@ import { TRACKER_ITEM_TRANSFORMERS } from './TrackerItemTransformer';
 import { defineExtension } from 'lexical';
 import { type UserCommand, $convertToEnhancedMarkdownString, getEditorTransformers } from '../../editor';
 import { globalRegistry } from './models';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from './models/trackerDisplayLabels';
+import { trackerFieldDisplayLabel } from './components/trackerFieldLabels';
 import { trackerItemsArrayAtom } from './trackerDataAtoms';
 import { buildTrackerReferenceOptions, parseTypeScopedQuery, trackerRecordToCandidate } from '../TrackerLinkPlugin/trackerReferencePicker';
 import { collectCandidateTypes } from '../TrackerLinkPlugin/trackerReferenceSearch';
@@ -673,7 +675,7 @@ function TrackerPlugin(): JSX.Element | null {
     if (!editorState) return null;
 
     const value = (editorState.data as any)[fieldName] || '';
-    const label = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+    const label = trackerFieldDisplayLabel(field, t);
 
     const handleChange = (newValue: any) => {
       updateTrackerData(editorState.nodeKey, { [fieldName]: newValue || undefined });
@@ -705,7 +707,7 @@ function TrackerPlugin(): JSX.Element | null {
               {!field.required && <option value="">{t('inline.none')}</option>}
               {field.options?.map((option: any) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {resolveTrackerFieldDisplayLabel(editorState.data.type, fieldName, option.value, t, option.label)}
                 </option>
               ))}
             </select>
@@ -759,7 +761,7 @@ function TrackerPlugin(): JSX.Element | null {
         >
           <div className="tracker-item-popover-header">
             <span className="material-symbols-outlined">{model.icon}</span>
-            <span>{model.displayName}</span>
+            <span>{resolveTrackerTypeDisplayLabel(model.type, t, false, model)}</span>
           </div>
 
           {/* Title field - always first */}

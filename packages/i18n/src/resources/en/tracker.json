@@ -506,7 +506,8 @@
   },
   "groups": {
     "none": "None",
-    "unassigned": "Unassigned"
+    "unassigned": "Unassigned",
+    "no_goal": "No goal"
   },
   "relationship": {
     "linked_as": "Linked as",
@@ -1976,6 +1977,49 @@
     "session_multiple": "Sessions ({{count}})"
   },
   "state_menu": {
+    "transition_descriptions": {
+      "proposed": "Open for discussion again",
+      "accepted": "Settled. You are recorded as deciding.",
+      "superseded": "Replaced by a later decision",
+      "open": "Nobody is working on it yet",
+      "investigating": "Someone is working it out",
+      "reopened": "The answer no longer holds",
+      "blocked": "Waiting on something else",
+      "abandoned": "Stopped; kept for the record",
+      "draft": "Still being written",
+      "in-review": "Waiting on reviewers",
+      "changes-requested": "Back to the author",
+      "approved": "Reviewers agreed",
+      "building": "Being built",
+      "shipped": "Done and released",
+      "rejected_prompt": "Asks why not",
+      "deferred_prompt": "Asks when to revisit",
+      "superseded_prompt": "Asks for the replacement"
+    },
+    "transition_prompts": {
+      "rejected": {
+        "label": "Why not? Shown on the page and under \"What we decided not to do\".",
+        "placeholder": "What rules it out",
+        "confirm": "Reject"
+      },
+      "deferred": {
+        "label": "When should we revisit it?",
+        "placeholder": "After the beta, or a date",
+        "confirm": "Defer"
+      },
+      "superseded": {
+        "label": "Replaced by which item? Enter its key.",
+        "confirm": "Supersede"
+      }
+    },
+    "question": {
+      "write_position": "Write a position...",
+      "write_different_position": "Write a different position...",
+      "opens_question": "Opens the question",
+      "accept_owner_position": "Answered: accept {{owner}}'s position",
+      "accept_proposed_position": "Answered: accept the proposed position",
+      "position_decision": "\"{{position}}\" You are recorded as deciding."
+    },
     "change_for_everyone": "Changes {{item}} for everyone.",
     "looking_up": "Looking it up...",
     "no_other_item": "No other item {{value}}",
@@ -2226,6 +2270,7 @@
     }
   },
   "builtin_display": {
+    "categories": { "backlog": "Backlog", "unstarted": "Unstarted", "started": "Started", "done": "Done", "cancelled": "Cancelled" },
     "types": {
       "source": "Source", "source_plural": "Sources",
       "capture": "Capture", "capture_plural": "Captures",

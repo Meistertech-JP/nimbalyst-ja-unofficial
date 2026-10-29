@@ -10,6 +10,8 @@ import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import type { TrackerIdentity } from '@nimbalyst/runtime/core/DocumentService';
 import { type TrackerItemType, type TrackerLinkedSessionOption } from '@nimbalyst/runtime/plugins/TrackerPlugin';
 import { MANUAL_TRACKER_ORDERING, type TrackerGroupBy, type TrackerOrdering } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
+import { resolveTrackerGroupDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerGroupDisplayLabels';
+import { resolveTrackerFieldDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import {
   buildSelectionStatusChoices,
   getRecordTitle,
@@ -462,7 +464,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 style={col.empty ? undefined : { backgroundColor: color }}
               />
               <span className="text-xs font-semibold text-nim truncate">
-                {col.label}
+                {resolveTrackerGroupDisplayLabel(col, boardAxis, colItems, t, filterType)}
               </span>
               <span className="text-[10px] font-semibold text-nim-faint ml-auto">
                 {colItems.length}
@@ -574,7 +576,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       : STATUS_COLORS[choice.value]) || NEUTRAL_SWATCH,
                   }}
                 />
-                {choice.label}
+                {choice.kind === 'category'
+                  ? t(`builtin_display.categories.${choice.value}`, { defaultValue: choice.label })
+                  : selectedItems[0]
+                    ? resolveTrackerFieldDisplayLabel(selectedItems[0].primaryType, resolveRoleFieldName(selectedItems[0].primaryType, 'workflowStatus'), choice.value, t, choice.label)
+                    : choice.label}
               </button>
             ))}
           </KanbanContextSubmenu>

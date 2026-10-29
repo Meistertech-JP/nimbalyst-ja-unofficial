@@ -33,6 +33,7 @@ import {
 } from '../models';
 import { resolveDisplayIssueKey } from '../models/localIssueKey';
 import { resolveTrackerFieldDisplayLabel } from '../models/trackerDisplayLabels';
+import { resolveTrackerGroupDisplayLabel } from '../models/trackerGroupDisplayLabels';
 import {usePostHog} from "posthog-js/react";
 import {
   resolveColumnsForType,
@@ -884,10 +885,10 @@ export function TrackerTable({
     const headers = new Map<string, { label: string; count: number }>();
     for (const group of groupedRecords) {
       const first = group.items[0];
-      if (group.label && first) headers.set(first.id, { label: group.label, count: group.items.length });
+      if (group.label && first) headers.set(first.id, { label: resolveTrackerGroupDisplayLabel(group, groupBy, group.items, t), count: group.items.length });
     }
     return headers;
-  }, [groupedRecords]);
+  }, [groupedRecords, groupBy, t]);
 
   // Row interaction model -- shared with TrackerGridView via useTrackerRows.
   const rows = useTrackerRows({

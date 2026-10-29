@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import { TrackerFieldEditor, type TeamMemberOption } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldEditor';
+import { trackerFieldDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerFieldLabels';
 
 export function TrackerPhoneProperties({ fields, values, editing, onChange, teamMembers = [] }: {
   fields: FieldDefinition[];
@@ -14,7 +15,7 @@ export function TrackerPhoneProperties({ fields, values, editing, onChange, team
   return <div className="tracker-phone-properties">
     {fields.map(field => {
       const value = values[field.name];
-      const label = field.name.replace(/([A-Z])/g, ' $1').replace(/^./, text => text.toUpperCase());
+      const label = trackerFieldDisplayLabel(field, t);
       const change = (next: unknown) => { void Promise.resolve(onChange?.(field.name, next)).catch(() => {}); };
       if (!editing || field.readOnly) {
         const display = field.options?.find(option => option.value === value)?.label ??

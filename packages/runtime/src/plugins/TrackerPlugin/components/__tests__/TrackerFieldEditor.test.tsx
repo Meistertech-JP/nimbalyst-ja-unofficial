@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrackerFieldEditor } from '../TrackerFieldEditor';
 import { TrackerFieldChoiceList } from '../TrackerFieldChoiceList';
 import { TrackerAddFieldMenu } from '../TrackerTypeRow';
-import type { FieldDefinition } from '@nimbalyst/tracker-schema';
+import { globalRegistry, type FieldDefinition } from '@nimbalyst/tracker-schema';
+import { parseBuiltinTrackers } from '../../models/ModelLoader';
 
 const testI18n = createInstance();
 const testI18nReady = testI18n.init({
@@ -33,6 +34,29 @@ beforeEach(async () => {
 });
 
 describe('TrackerFieldEditor array values', () => {
+  it('localizes only registry-owned builtin choices and emits their unchanged values', async () => {
+    const task = parseBuiltinTrackers().find(model => model.type === 'task')!;
+    globalRegistry.register(task, true);
+    const field = globalRegistry.get('task')!.fields.find(field => field.name === 'status')!;
+    const custom = structuredClone(field);
+    const before = JSON.stringify(field);
+    const onChange = vi.fn();
+    const { container } = renderWithI18n(<>
+      <TrackerFieldEditor field={field} value="to-do" onChange={onChange} />
+      <TrackerFieldEditor field={custom} value="to-do" onChange={vi.fn()} />
+    </>);
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(async () => { await testI18n.changeLanguage(language); });
+      const triggers = container.querySelectorAll('.custom-select-trigger');
+      expect(triggers[0].textContent).toContain(language === 'ja' ? '未着手' : 'To Do');
+      expect(triggers[1].textContent).toContain('To Do');
+    }
+    fireEvent.click(container.querySelector('.custom-select-trigger')!);
+    fireEvent.click(await screen.findByText('進行中'));
+    expect(onChange).toHaveBeenLastCalledWith('in-progress');
+    expect(JSON.stringify(field)).toBe(before);
+  });
+
   it('renders structured runtime entries safely when legacy schema metadata says string array', () => {
     const requirement = {
       id: 'criterion-1',

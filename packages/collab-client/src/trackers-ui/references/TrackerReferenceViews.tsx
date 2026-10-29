@@ -14,7 +14,7 @@
  */
 
 import type { JSX, ReactNode } from 'react';
-import { useRef } from 'react';
+import { lazy, Suspense, useRef } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import type { TrackerReferenceNodeRendererProps } from '@nimbalyst/runtime/plugins/TrackerLinkPlugin/TrackerReferenceNodeRenderer';
 import {
@@ -24,9 +24,8 @@ import {
 import { TrackerReferenceReadOnlyChip } from '@nimbalyst/runtime/plugins/TrackerLinkPlugin/TrackerReferenceReadOnlyChip';
 
 import type { TrackerItem } from '../../trackers/dataSource';
-import { LiveCard } from './TrackerReferenceCard';
 import { QuietLink, useTrackerReferenceInlineAppearance } from './TrackerReferenceQuietLink';
-import { TrackerStateMenuFocusContext } from './TrackerStateMenu';
+import { TrackerStateMenuFocusContext } from './TrackerStateMenuFocusContext';
 import {
   LiveChip,
   openHandlers,
@@ -41,6 +40,9 @@ import {
 } from './TrackerReferenceResolverContext';
 import type { TrackerReferenceResolver } from './trackerReferenceResolver';
 import './trackerReferenceViews.css';
+
+// Inline references do not need the card's forms, state menu or mutation UI.
+const LiveCard = lazy(() => import('./TrackerReferenceCard').then(module => ({ default: module.LiveCard })));
 
 /** Mirrors the runtime node's `TrackerReferenceView`; optional so a pre-view node renders as a chip. */
 export type TrackerReferenceViewKind = 'chip' | 'card' | 'statements';
@@ -143,13 +145,20 @@ function LiveStatements({ resolver, referenceKey }: ResolverProps): JSX.Element 
  * back to the read-only chip, in every view, when none is provided.
  */
 export function LiveTrackerReferenceRenderer(props: LiveTrackerReferenceRendererProps): JSX.Element {
+  const { t } = useTranslation('tracker');
   const resolver = useTrackerReferenceResolver();
   if (!resolver) return <TrackerReferenceReadOnlyChip {...props} />;
   switch (props.view) {
     case 'card':
       return (
         <SelectableBlock nodeKey={props.nodeKey}>
-          <LiveCard resolver={resolver} referenceKey={props.referenceKey} />
+          <Suspense fallback={
+            <div className="tracker-reference-card" data-issue-key={props.referenceKey} data-state="loading" role="status">
+              {t('references.loading', { referenceKey: props.referenceKey })}
+            </div>
+          }>
+            <LiveCard resolver={resolver} referenceKey={props.referenceKey} />
+          </Suspense>
         </SelectableBlock>
       );
     case 'statements':

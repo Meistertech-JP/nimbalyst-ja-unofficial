@@ -16,6 +16,7 @@ import type { PageSearchRequest, PageSearchResponse } from '@nimbalyst/collab-pr
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/tracker-schema';
 import type { TrackerFilterSet } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerFilters';
 import { getRecordTitle } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import { TrackerFilterOmnibox } from '../TrackerFilterOmnibox';
 import { useTrackerDataSelector } from '../useTrackerData';
@@ -135,7 +136,7 @@ export function PagesSearchView({
   // A new search or sort starts from the top again.
   useEffect(() => setRowLimit(ROWS_PER_PAGE), [search, sort]);
 
-  const typeLabel = useMemo(() => (typeId: string) => (typeId === PLAIN_PAGE_TYPE ? t('collaboration_surface.page') : globalRegistry.get(typeId)?.displayName || typeId),
+  const typeLabel = useMemo(() => (typeId: string) => (typeId === PLAIN_PAGE_TYPE ? t('collaboration_surface.page') : resolveTrackerTypeDisplayLabel(typeId, t)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [registryRevision, t]);
   const rows = useMemo(() => buildPagesSearchRows(pages, records as readonly PagesSearchItemInput[], {
@@ -163,8 +164,10 @@ export function PagesSearchView({
   // every value the typeahead offers still has rows behind it.
   const queried = useMemo(() => matchPagesQuery(rows, state.query, body?.hits ?? null), [rows, state.query, body]);
   const fields = useMemo(() => buildPagesFilterFields(queried.map((match) => match.row), { type: typeLabel, author: authorLabel }, narrowed
-    ? { typeId: narrowed, fields: globalRegistry.get(narrowed)?.fields ?? [], titleOf }
-    : null), [queried, typeLabel, authorLabel, narrowed, titleOf]);
+    ? { typeId: narrowed, fields: (globalRegistry.get(narrowed)?.fields ?? []).map(field => field.options
+      ? { ...field, options: field.options.map(option => ({ ...option, label: resolveTrackerFieldDisplayLabel(narrowed, field.name, option.value, t, option.label) })) }
+      : field), titleOf }
+    : null), [queried, typeLabel, authorLabel, narrowed, titleOf, t]);
   const now = Date.now();
   const filtered = queried.filter((match) => matchesPagesFilters(match.row, state.filters, now, me));
   const shown = sortMatches(filtered, sort, typeLabel, authorLabel, Boolean(state.query.trim()));

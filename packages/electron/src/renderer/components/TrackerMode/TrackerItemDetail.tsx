@@ -29,6 +29,7 @@ import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 import { getRecordTitle, getRecordStatus, getRecordPriority, getRecordField, getItemPublicationState, type TrackerItemPublicationState } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import { TrackerPublicationChip } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerPublicationChip';
 import { resolveTrackerWriteAccess } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerLifecycle';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { isLocalIssueKey } from '../../../shared/localIssueKey';
 import { TrackerFieldEditor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldEditor';
 import { TrackerFieldPills } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldPills';
@@ -648,6 +649,14 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
             ? item.system.documentPath ? t('detail_extra.local_wiki_page') : t('detail_extra.local_wiki_table_row')
             : null;
 
+  const displayField = (field: FieldDefinition): FieldDefinition => field.options ? {
+    ...field,
+    options: field.options.map(option => ({
+      ...option,
+      label: resolveTrackerFieldDisplayLabel(item.primaryType, field.name, option.value, t, option.label),
+    })),
+  } : field;
+
   return (
     <div
       className="tracker-item-detail flex flex-col h-full bg-nim overflow-hidden"
@@ -689,17 +698,16 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
                 backgroundColor: `${typeColor}20`,
               }}
             >
-              {model?.displayName || item.primaryType}
+              {resolveTrackerTypeDisplayLabel(item.primaryType, t)}
             </span>
             {/* Secondary type tags */}
             {item.typeTags
               .filter(tag => tag !== item.primaryType)
               .map(tag => {
-                const tagModel = globalRegistry.get(tag);
                 return (
                   <TrackerSwatchBadge
                     key={tag}
-                    label={tagModel?.displayName || tag}
+                    label={resolveTrackerTypeDisplayLabel(tag, t)}
                     color={TYPE_COLORS[tag] || NEUTRAL_SWATCH}
                     variant="secondary"
                   />
@@ -746,7 +754,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
               <span
                 className="tracker-item-read-only inline-flex items-center gap-1 text-[10px] font-semibold px-[7px] py-[2px] rounded-[10px] bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-faint)]"
                 title={t('detail_extra.lifecycle.archived_read_only_reason', {
-                  trackerName: model?.displayNamePlural?.trim() || t('main_extra.archived_tracker'),
+                  trackerName: model?.displayNamePlural?.trim() ? resolveTrackerTypeDisplayLabel(item.primaryType, t, true) : t('main_extra.archived_tracker'),
                 })}
                 data-testid="tracker-item-read-only"
               >
@@ -1086,7 +1094,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         {chipFields.length > 0 && (
           <div className="tracker-detail-fields pt-1 border-t border-nim">
             <TrackerFieldPills
-              fields={chipFields}
+              fields={chipFields.map(displayField)}
               values={chipValues}
               editable={editable}
               teamMembers={teamMembers}
@@ -1106,12 +1114,12 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
           <div className="tracker-detail-tags" data-testid="tracker-detail-tags">
             {editable ? (
               <TrackerFieldEditor
-                field={tagsField}
+                field={displayField(tagsField)}
                 value={getFieldValue(tagsField.name)}
                 onChange={(value) => handleFieldChange(tagsField, value)}
               />
             ) : (
-              <ReadOnlyField field={tagsField} value={getFieldValue(tagsField.name)} />
+              <ReadOnlyField field={displayField(tagsField)} value={getFieldValue(tagsField.name)} />
             )}
           </div>
         )}
@@ -1136,7 +1144,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
         {overflowValues.length > 0 && (
           <div className="tracker-detail-overflow-fields space-y-3 pt-1 border-t border-nim">
             {overflowValues.map(({ field, value }) => (
-              <ReadOnlyField key={field.name} field={field} value={value} />
+              <ReadOnlyField key={field.name} field={displayField(field)} value={value} />
             ))}
           </div>
         )}

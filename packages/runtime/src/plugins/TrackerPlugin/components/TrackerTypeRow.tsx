@@ -25,6 +25,7 @@ import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import { windowControlsClearance } from '../../../ui/floating/windowControlsClearance';
 import { globalRegistry } from '../models';
+import { resolveTrackerTypeDisplayLabel } from '../models/trackerDisplayLabels';
 import { TrackerFieldPills } from './TrackerFieldPills';
 import type { TeamMemberOption } from './TrackerFieldEditor';
 import type { RelationshipCandidate } from './RelationshipFieldEditor';
@@ -157,6 +158,7 @@ export const TrackerTypeRow: React.FC<TrackerTypeRowProps> = ({
   testIdBase = 'tracker-page',
   className,
 }) => {
+  const { t } = useTranslation('tracker');
   const model = useMemo(() => globalRegistry.get(typeId), [typeId]);
   const pageFields = fieldSet === 'page';
   // Tags and label lists never reach the row; on a page neither does any relation.
@@ -211,7 +213,7 @@ export const TrackerTypeRow: React.FC<TrackerTypeRowProps> = ({
     pill?.click();
   }, [fieldToOpen, chipFields]);
 
-  const typeName = model?.displayName || typeId;
+  const typeName = resolveTrackerTypeDisplayLabel(typeId, t, false, model);
   const color = typeColor || model?.color || 'var(--nim-text-muted)';
 
   return (

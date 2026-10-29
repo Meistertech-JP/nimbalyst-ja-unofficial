@@ -18,6 +18,7 @@ import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { globalRegistry } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { getRecordTitle } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { TrackerTypeRow } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerTypeRow';
 import type { TrackerFieldPills } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/TrackerFieldPills';
 import { NEUTRAL_SWATCH, TYPE_COLORS } from '../board/trackerBoardTokens';
@@ -115,7 +116,7 @@ export const TrackerPageView: React.FC<TrackerPageViewProps> = ({
   }
 
   const title = getRecordTitle(item);
-  const typeName = model?.displayName || item.primaryType;
+  const typeName = resolveTrackerTypeDisplayLabel(item.primaryType, t, false, model);
   const confirmArchive = onArchive && (() => {
     void confirmDestructive(
       t('collaboration_surface.archive_page'),

@@ -15,7 +15,8 @@ import { useScrollableMenuFloating } from '../../../ui/floating/useScrollableMen
 import type { TrackerItemType } from '../../../core/DocumentService';
 import type { TrackerRecord } from '../../../core/TrackerRecord';
 import { ProviderIcon } from '../../../ui/icons/ProviderIcons';
-import { getRecordTitle } from '../trackerRecordAccessors';
+import { getRecordTitle, resolveRoleFieldName } from '../trackerRecordAccessors';
+import { resolveTrackerFieldDisplayLabel } from '../models/trackerDisplayLabels';
 import { getStatusColor, getPriorityColor, getTypeColor, getTypeIcon } from './trackerColumns';
 import type { ConfirmTrackerDelete } from './useTrackerRows';
 
@@ -144,11 +145,12 @@ export function TrackerRowContextMenu({
           {statusOptions.map(opt => {
             const value = typeof opt === 'string' ? opt : opt.value;
             const builtInStatusKey = BUILT_IN_STATUS_KEYS[value];
-            const label = builtInStatusKey
-              ? t(builtInStatusKey)
-              : typeof opt === 'string'
-                ? opt.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-                : opt.label;
+            const fallback = typeof opt === 'string'
+              ? opt.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+              : opt.label;
+            const label = statusType
+              ? resolveTrackerFieldDisplayLabel(statusType, resolveRoleFieldName(statusType, 'workflowStatus'), value, t, fallback)
+              : typeof opt === 'string' && builtInStatusKey ? t(builtInStatusKey) : fallback;
             return (
               <button
                 key={value}

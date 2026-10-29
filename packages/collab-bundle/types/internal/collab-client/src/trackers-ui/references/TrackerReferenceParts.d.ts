@@ -4,6 +4,7 @@
  * their own files without importing the view barrel.
  */
 import type { JSX, KeyboardEvent, MouseEvent } from 'react';
+export { referenceStatusDisplayLabel } from './referenceDisplayLabels';
 import type { TrackerItem } from '../../trackers/dataSource';
 import type { TrackerReferenceResolver, TrackerReferenceStatusInfo, TrackerReferenceTypeInfo, TrackerStatement } from './trackerReferenceResolver';
 export interface ResolverProps {

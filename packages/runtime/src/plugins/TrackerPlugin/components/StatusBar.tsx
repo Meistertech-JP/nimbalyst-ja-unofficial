@@ -15,6 +15,7 @@ import type { TeamMemberOption } from './TrackerFieldEditor';
 import type { RelationshipCandidate } from './RelationshipFieldEditor';
 import { MaterialSymbol } from '../../../ui/icons/MaterialSymbol';
 import { TrackerFieldPills } from './TrackerFieldPills';
+import { resolveTrackerTypeDisplayLabel } from '../models/trackerDisplayLabels';
 import { useTrackerChipFieldSections } from './trackerChipFields';
 import { unwrapLabelFieldValues, useTrackerLabelFields, wrapLabelFieldValue } from './trackerLabelFields';
 import './StatusBarSlider.css';
@@ -100,7 +101,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <div className="status-bar-title flex items-center gap-2 font-semibold text-[var(--nim-text)] text-sm">
           <MaterialSymbol icon={isCollapsed ? 'chevron_right' : 'expand_more'} size={18} />
           <MaterialSymbol icon={model.icon} size={18} />
-          <span>{model.displayName}</span>
+          <span>{resolveTrackerTypeDisplayLabel(model.type, t, false, model)}</span>
           {trackerItemLink && (
             <button
               type="button"

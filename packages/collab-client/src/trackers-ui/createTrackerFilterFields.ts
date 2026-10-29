@@ -5,6 +5,7 @@ import {
   type TrackerColumnDef,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
 import type { TrackerDataModel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
+import { resolveTrackerFieldDefinitionDisplayLabel, resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { READINESS_FILTER_FIELD } from '@nimbalyst/tracker-schema';
 import { resolveRoleFieldName } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
 import {
@@ -75,7 +76,7 @@ export function createTrackerFilterFields(
     for (const field of directField ? [directField] : roleFields) {
       for (const option of field.options ?? []) {
         optionMap.set(option.value, {
-          label: option.label,
+          label: resolveTrackerFieldDefinitionDisplayLabel(field, option.value, key => translate(key, key), option.label),
           color: option.color,
           icon: option.icon,
         });
@@ -100,7 +101,7 @@ export function createTrackerFilterFields(
         label: column.label,
         type: 'select',
         group: 'system',
-        options: trackerTypes.map(model => ({ value: model.type, label: model.displayName })),
+        options: trackerTypes.map(model => ({ value: model.type, label: resolveTrackerTypeDisplayLabel(model.type, key => translate(key, key), false, model) })),
       };
     }
     return {
@@ -174,7 +175,7 @@ export function createTrackerFilterFields(
     for (const option of statusField?.options ?? []) {
       statusOptions.set(option.value, {
         value: option.value,
-        label: option.label,
+        label: resolveTrackerFieldDefinitionDisplayLabel(statusField!, option.value, key => translate(key, key), option.label),
         color: option.color,
         icon: option.icon,
       });

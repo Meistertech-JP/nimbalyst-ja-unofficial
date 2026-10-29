@@ -158,6 +158,31 @@ function renderPage({ collabScope = { scopeKey: '/ws' } as unknown } = {}) {
 }
 
 describe('TrackerItemDetail metadata region', () => {
+  it('updates builtin detail type, status and priority labels without changing submitted status identities', async () => {
+    const i18n = await createI18nInstance('ja');
+    render(<I18nextProvider i18n={i18n}><Provider store={store}>
+      <TrackerItemDetail itemId={ITEM.id} onClose={() => {}} />
+    </Provider></I18nextProvider>);
+    try {
+      for (const [language, type, status, priority] of [
+        ['ja', 'プラン', '開発中', '高'],
+        ['en', 'Plan', 'In Development', 'High'],
+        ['ja', 'プラン', '開発中', '高'],
+      ]) {
+        await act(() => i18n.changeLanguage(language));
+        expect(document.querySelector('.tracker-item-detail-header')?.textContent).toContain(type);
+        expect(screen.getByTestId('tracker-detail-field-pill-status').textContent).toContain(status);
+        expect(screen.getByTestId('tracker-detail-field-pill-priority').textContent).toContain(priority);
+      }
+      fireEvent.click(screen.getByTestId('tracker-detail-field-pill-status'));
+      fireEvent.click(screen.getByText('完了'));
+      expect(updateTrackerItem).toHaveBeenCalledWith(expect.objectContaining({ updates: { status: 'completed' } }));
+      expect(globalRegistry.get('plan')?.fields.find(field => field.name === 'status')?.options?.find(option => option.value === 'completed')?.label).toBe('Completed');
+    } finally {
+      cleanup();
+    }
+  });
+
   it('localizes linked-session and commit timestamps when the language changes', async () => {
     const i18n = await createI18nInstance('ja');
     const timestamp = Date.now() - 3 * 60 * 60 * 1000;

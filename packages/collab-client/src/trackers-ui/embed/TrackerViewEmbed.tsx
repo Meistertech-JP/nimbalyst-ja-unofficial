@@ -13,6 +13,8 @@ import type { CollabOpenOptions } from '@nimbalyst/collab-client/core';
 import { computeReadiness } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerReadiness';
 import { globalRegistry, groupTrackerRecordsByAxis } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { getRecordStatus, getRecordTitle } from '@nimbalyst/runtime/plugins/TrackerPlugin/trackerRecordAccessors';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
+import { resolveTrackerGroupDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerGroupDisplayLabels';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { selectArchivedForView, type SavedView, type SavedViewDefinition, type TrackerIdentity } from '@nimbalyst/collab-client/trackers';
 import { useTrackersUI } from '../TrackersUIProvider';
@@ -44,9 +46,8 @@ const MODE_LABEL: Record<string, string> = {
   timeline: 'timeline', radar: 'list', 'tag-board': 'list', inbox: 'list',
 };
 
-function describeQuery(definition: SavedViewDefinition, mode: string): { subject: string; mode: string; filters: number } {
-  const model = definition.selectedType === 'all' ? null : globalRegistry.get(definition.selectedType);
-  const subject = definition.selectedType === 'all' ? '' : model?.displayNamePlural || definition.selectedType;
+function describeQuery(definition: SavedViewDefinition, mode: string, t: (key: string) => string): { subject: string; mode: string; filters: number } {
+  const subject = definition.selectedType === 'all' ? '' : resolveTrackerTypeDisplayLabel(definition.selectedType, t, true);
   const filters = definition.activeFilters.length
     + definition.tagFilter.length
     + (definition.columnFilters?.clauses.length ?? 0);
@@ -267,7 +268,7 @@ function LoadedViewEmbed({
       );
       body = definition.groupBy === 'none' || !rows.length ? grid(rows) : <div className="flex min-h-0 flex-1 flex-col overflow-auto">
         {groupTrackerRecordsByAxis(rows, definition.groupBy, resolveRelationshipLabel).map(group => <details key={group.key} open className="border-b border-nim">
-          <summary className="cursor-pointer bg-nim-secondary px-3 py-2 text-xs">{group.label} · {group.items.length}</summary>
+          <summary className="cursor-pointer bg-nim-secondary px-3 py-2 text-xs">{resolveTrackerGroupDisplayLabel(group, definition.groupBy, group.items, t)} · {group.items.length}</summary>
           <div style={{ height: fitTableBodyHeight(group.items.length, 100, 360) }}>{grid(group.items)}</div>
         </details>)}
       </div>;
@@ -330,7 +331,7 @@ function LoadedViewEmbed({
           <span className="min-w-0 truncate font-medium text-nim" title={view.name}>{view.name}</span>
           <span className="placed-view-query min-w-0 truncate rounded bg-nim-tertiary px-2 py-0.5 font-mono text-[11px] text-nim-muted">
             {(() => {
-              const query = describeQuery(definition, mode);
+              const query = describeQuery(definition, mode, t);
               const subject = query.subject || t('placed_view_embed.all_items');
               const modeLabel = MODE_LABEL[mode] ? t(`placed_view_settings.layout_${query.mode}`) : query.mode;
               return `${subject} · ${modeLabel}${query.filters > 0 ? ` · ${t('placed_view_embed.filter', { count: query.filters })}` : ''}`;

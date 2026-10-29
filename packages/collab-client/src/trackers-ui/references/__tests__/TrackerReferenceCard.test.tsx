@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
@@ -46,6 +46,9 @@ async function setup(items: TrackerItem[], options: { resolver?: (r: TrackerRefe
     </UiLanguageProvider>,
   );
   await act(() => fake.release(items));
+  // Card code is loaded only for an actual card; keep all write/Undo assertions
+  // below against the resolved form rather than its loading placeholder.
+  await waitFor(() => expect(document.querySelectorAll('.tracker-reference-card-title')).toHaveLength(items.length));
   const click = (element: HTMLElement) => act(async () => { element.click(); });
   const updates = () => command.mock.calls
     .map(([cmd]) => cmd)

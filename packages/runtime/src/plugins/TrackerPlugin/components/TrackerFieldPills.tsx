@@ -42,6 +42,7 @@ import { isCollectionRelationshipField } from '../models/trackerCollections';
 import { UserAvatar } from './UserAvatar';
 import { isTrackerFieldEmpty, shouldLabelTrackerField, trackerFieldDisplayLabel } from './trackerFieldLayout';
 import { labelRefDisplayNames } from './labelRefValue';
+import { resolveTrackerFieldDefinitionDisplayLabel } from '../models/trackerDisplayLabels';
 import './TrackerFieldPills.css';
 
 /** Default prefix for the `data-testid`s this component emits. */
@@ -153,7 +154,7 @@ function fieldDisplayValue(
     return names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
   }
   if (field.type === 'select') {
-    return field.options?.find((option) => option.value === value)?.label ?? String(value);
+    return resolveTrackerFieldDefinitionDisplayLabel(field, String(value), translate, String(value));
   }
   if (field.type === 'user') {
     const identity = String(value);
@@ -328,14 +329,14 @@ export const TrackerFieldPill: React.FC<TrackerFieldPillProps> = ({
     if (field.type === 'select') {
       return (field.options ?? []).map((option) => ({
         value: option.value,
-        label: option.label,
+        label: resolveTrackerFieldDefinitionDisplayLabel(field, option.value, tTracker, option.label),
         icon: option.icon,
         color: option.color,
       }));
     }
     if (field.type === 'user') return teamMemberChoices(members);
     return [];
-  }, [field.options, field.type, members]);
+  }, [field, members, tTracker]);
 
   const pillTitle = !editable
     ? tTracker('fields.read_only_tooltip', { field: label })

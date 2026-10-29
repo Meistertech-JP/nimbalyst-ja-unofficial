@@ -12,14 +12,8 @@ import type { JSX } from 'react';
 import type { TrackerItem } from '../../trackers/dataSource';
 import { type StateTransition } from './trackerReferenceLifecycle';
 import type { TrackerReferenceResolver } from './trackerReferenceResolver';
+export { TrackerStateMenuFocusContext } from './TrackerStateMenuFocusContext';
 import './trackerReferenceViews.css';
-/**
- * Returns focus to the enclosing editor with its previous selection. Provided
- * by the embedded views, which already load the editor; a context rather than
- * a direct import keeps Lexical out of the tracker surfaces that reuse this
- * menu. Absent means focus goes back to whatever held it before.
- */
-export declare const TrackerStateMenuFocusContext: import("react").Context<(() => void) | null>;
 /** A committed change, with what it overwrote so the caller can offer Undo. */
 export interface TrackerStateChange {
     itemId: string;

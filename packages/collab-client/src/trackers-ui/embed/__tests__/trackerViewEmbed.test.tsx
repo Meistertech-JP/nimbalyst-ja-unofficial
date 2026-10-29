@@ -11,6 +11,7 @@ import { UiLanguageProvider } from '@nimbalyst/i18n/react';
 import { I18nextProvider } from 'react-i18next';
 import { trackerRecordToItem, type TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { globalRegistry, READINESS_FILTER_FIELD, type TrackerDataModel } from '@nimbalyst/tracker-schema';
+import { parseBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/ModelLoader';
 import {
   createDefaultViewDefinition,
   serializeSharedSavedView,
@@ -100,6 +101,24 @@ afterAll(() => {
 });
 
 describe('TrackerViewEmbed', () => {
+  it('updates grouped table summaries without changing raw group order or saved view fields', async () => {
+    globalRegistry.register(parseBuiltinTrackers().find(model => model.type === 'plan')!, true);
+    const rows = [record('embedded-working', 'plan', { title: 'User title', status: 'in-development' })];
+    const source = fakeSource();
+    source.snapshot = async () => ({ items: rows.map(trackerRecordToItem), savedViews: [], presence: [], sync: source.status() });
+    const view = { id: 'builtin-grouped-view', name: 'User view name', definition: { ...createDefaultViewDefinition(), selectedType: 'plan', viewMode: 'table' as const, groupBy: 'status' as const, statusScope: 'all' as const } };
+    const before = JSON.stringify(view);
+    const i18n = await createI18nInstance('en');
+    const { container } = renderWithI18n(<TrackersUIProvider dataSource={source} identity={null}><TrackerViewEmbed view={view} /></TrackersUIProvider>, i18n);
+    await waitFor(() => expect(container.querySelector('summary')?.textContent).toContain('In Development'));
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(async () => { await i18n.changeLanguage(language); });
+      expect(container.querySelector('summary')?.textContent).toBe(`${language === 'ja' ? '開発中' : 'In Development'} · 1`);
+      expect(container.querySelectorAll('summary')).toHaveLength(1);
+      expect(JSON.stringify(view)).toBe(before);
+    }
+  });
+
   it('localizes an unnamed out-of-scope marks view when the language changes', async () => {
     const i18n = await createI18nInstance('ja');
     renderWithI18n(

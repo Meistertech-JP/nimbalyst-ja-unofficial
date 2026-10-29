@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Provider, createStore } from 'jotai';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SessionMeta } from '@nimbalyst/runtime';
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { loadBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
@@ -17,8 +17,32 @@ import { sessionProcessingAtom, sessionRegistryAtom } from '../../../store/atoms
 beforeAll(() => {
   loadBuiltinTrackers();
 });
+afterEach(cleanup);
 
 describe('KanbanBoard localization', () => {
+  it('switches builtin lane headings while retaining the raw lane order, values and cards', async () => {
+    const i18n = await createI18nInstance('en');
+    const plan = {
+      id: 'localized-lane-plan', primaryType: 'plan', typeTags: ['plan'], source: 'native', archived: false, syncStatus: 'local',
+      system: { workspace: '/test', createdAt: '', updatedAt: '' },
+      fields: { title: 'User plan title', status: 'in-development', priority: 'medium' },
+    } as TrackerRecord;
+    const before = JSON.stringify(plan);
+    const { container } = render(<UiLanguageProvider i18n={i18n} preference="en" systemLocale="en"><KanbanBoard filterType="plan" overrideItems={[plan]} /></UiLanguageProvider>);
+    const lanes = () => [...container.querySelectorAll('[data-column-key]')];
+    const keys = lanes().map(lane => lane.getAttribute('data-column-key'));
+    const heading = () => container.querySelector('[data-column-key="in-development"] .font-semibold.text-nim.truncate');
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(() => i18n.changeLanguage(language));
+      expect(heading()?.textContent).toBe(language === 'ja' ? '開発中' : 'In Development');
+      expect(lanes().map(lane => lane.getAttribute('data-column-key'))).toEqual(keys);
+      // virtua does not mount offscreen cards in jsdom; the lane's count still
+      // comes from the unchanged membership calculation, not the display label.
+      expect(container.querySelector('[data-column-key="in-development"] .text-nim-faint.ml-auto')?.textContent).toBe('1');
+    }
+    expect(JSON.stringify(plan)).toBe(before);
+  });
+
   it('renders the empty state in Japanese', async () => {
     const i18n = await createI18nInstance('ja');
 

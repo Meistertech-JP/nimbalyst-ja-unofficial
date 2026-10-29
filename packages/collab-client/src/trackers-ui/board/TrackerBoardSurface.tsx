@@ -35,6 +35,7 @@ import {
   type TrackerStatusScope,
 } from '@nimbalyst/collab-client/trackers';
 import { getStatusColor } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
+import { resolveTrackerGroupDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerGroupDisplayLabels';
 import { TrackerSurfaceMessage } from '../primitives/TrackerSurfaceMessage';
 import { NEUTRAL_SWATCH } from './trackerBoardTokens';
 import { TrackerBoardCard } from './TrackerBoardCard';
@@ -217,7 +218,7 @@ export function TrackerBoardSurface({
                   className={`w-2 h-2 rounded-full shrink-0 ${column.empty ? 'border border-nim' : ''}`}
                   style={column.empty ? undefined : { backgroundColor: color }}
                 />
-                <span className="flex-1 truncate text-xs font-medium text-nim">{column.label}</span>
+                <span className="flex-1 truncate text-xs font-medium text-nim">{resolveTrackerGroupDisplayLabel(column, axis, cards, t, trackerType)}</span>
                 <span className="text-[10px] font-semibold text-nim-faint">{cards.length}</span>
               </div>
               <div className="kanban-cards-container flex-1 overflow-y-auto px-1.5 pt-1.5 min-h-0">

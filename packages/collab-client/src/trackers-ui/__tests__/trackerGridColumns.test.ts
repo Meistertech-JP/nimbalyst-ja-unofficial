@@ -10,6 +10,7 @@ import { M as ColumnService } from '../../../../../node_modules/@revolist/revogr
 import type { TrackerRecord } from '@nimbalyst/runtime/core/TrackerRecord';
 import { globalRegistry, type TrackerDataModel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { resolveColumnsForType } from '@nimbalyst/runtime/plugins/TrackerPlugin/components/trackerColumns';
+import { parseBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/ModelLoader';
 import {
   buildGridColumns,
   buildGridActionsColumn,
@@ -17,6 +18,7 @@ import {
   ROW_ACTIONS,
   ROW_ITEM_ID,
   ROW_ITEM_TYPE,
+  formatValue,
 } from '../grid/trackerGridColumns';
 import { createTrackerCellEditor } from '../grid/trackerGridEditors';
 import { filterTrackerFieldChoices } from '../grid/TrackerGridChoicePopover';
@@ -69,6 +71,44 @@ describe('buildGridColumns', () => {
 
   const build = (ids: string[], isRowEditable: (id: string) => boolean = () => true) =>
     buildGridColumns(columnsFor(ids), { trackerType: gridType, isRowEditable });
+
+  it('localizes builtin badge values and type tooltips while keeping raw source values', async () => {
+    const seed = parseBuiltinTrackers().find(model => model.type === 'plan')!;
+    globalRegistry.register(seed, true);
+    const columns = resolveColumnsForType('plan');
+    const i18n = await createI18nInstance('ja');
+    const dateFormat = { t: (key: string) => i18n.t(key, { ns: 'tracker' }) };
+    for (const language of ['ja', 'en', 'ja']) {
+      await i18n.changeLanguage(language);
+      expect(formatValue(columns.find(column => column.id === 'status')!, 'in-development', 'plan', undefined, dateFormat)).toBe(language === 'ja' ? '開発中' : 'In Development');
+      expect(formatValue(columns.find(column => column.id === 'type')!, 'plan', 'plan', undefined, dateFormat)).toBe(i18n.t('table.types.plan', { ns: 'tracker' }));
+    }
+    expect(seed.fields.find(field => field.name === 'status')!.options!.find(option => option.value === 'in-development')!.label).toBe('In Development');
+  });
+
+  it.each(['plan', ''])('keeps builtin choice values when creating localized grid editors (type=%s)', async trackerType => {
+    const seed = parseBuiltinTrackers().find(model => model.type === 'plan')!;
+    globalRegistry.register(seed, true);
+    const i18n = await createI18nInstance('ja');
+    const status = resolveColumnsForType('plan').find(column => column.id === 'status')!;
+    const [column] = buildGridColumns([status], { trackerType, isRowEditable: () => true, dateFormat: { t: key => i18n.t(key, { ns: 'tracker' }) } });
+    const save = vi.fn();
+    const editor = (column.editor as any)({ prop: 'status' }, save, vi.fn());
+    editor.editCell = { val: 'draft', model: { [ROW_ITEM_TYPE]: 'plan' } };
+    editor.render((tag: string) => ({ tag }));
+    editor.element = document.body.appendChild(document.createElement('div'));
+    try {
+      await act(async () => { editor.componentDidRender(); });
+      const options = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'));
+      const inDevelopment = options.find(option => option.textContent?.includes('開発中'))!;
+      expect(inDevelopment).toBeTruthy();
+      await act(async () => { inDevelopment.click(); });
+      expect(save).toHaveBeenCalledWith('in-development', false);
+    } finally {
+      await act(async () => { editor.disconnectedCallback?.(); });
+      editor.element.remove();
+    }
+  });
 
   it('localizes grid action accessibility and filter titles without changing their handlers', () => {
     registerType();

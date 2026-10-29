@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Integrate upstream v0.82.4 fixes for files, search, sessions and shared pages.
 - Localize built-in Tracker labels, saved views, generated descriptions and sandbox status messages.
+- Load Radar and reference cards only when displayed to reduce initial loading.
+- Restore selection menus in tables containing multiple tracker types.
 
 ## [0.82.3-ja.2] — 2026-10-27
 

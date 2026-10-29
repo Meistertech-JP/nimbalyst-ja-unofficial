@@ -37,6 +37,8 @@ export interface TrackerReferenceTypeInfo {
 export interface TrackerReferenceStatusInfo {
     value: string;
     label: string;
+    /** Declared source field for display-only localization; absent for unknown values. */
+    fieldName?: string;
     /** CSS color: the option's own color, else one derived from its category. */
     color: string;
     category?: StatusCategory;

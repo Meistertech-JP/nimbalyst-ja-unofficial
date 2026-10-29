@@ -53,6 +53,17 @@ describe('TrackerTable context menu trigger', () => {
     };
   });
 
+  it('refreshes group headings without regrouping records when the language changes', async () => {
+    const plan = { ...record('grouped-plan'), primaryType: 'plan', typeTags: ['plan'], fields: { title: 'User plan', status: 'in-development', priority: 'medium' } } as TrackerRecord;
+    const { container } = renderWithI18n(<TrackerTable filterType="plan" groupBy="status" hideTypeTabs hideToolbar overrideItems={[plan]} />);
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(async () => { await testI18n.changeLanguage(language); });
+      expect(container.querySelector('[data-testid="tracker-table-group-header"]')?.textContent).toContain(language === 'ja' ? '開発中' : 'In Development');
+      expect(container.querySelector('[data-testid="tracker-table-row"]')?.getAttribute('data-item-id')).toBe('grouped-plan');
+    }
+    expect(plan.fields.status).toBe('in-development');
+  });
+
   it('updates built-in status and priority labels without changing stored field values', async () => {
     const plan = {
       ...record('localized-plan'),

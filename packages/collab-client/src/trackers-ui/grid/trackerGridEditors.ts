@@ -451,7 +451,12 @@ export function createRowAwareTrackerCellEditor(
       editCell: undefined,
       getValue: () => activeEditor?.getValue?.(),
       async componentDidRender() {
+        if (activeEditor) activeEditor.element = editor.element;
         await activeEditor?.componentDidRender?.();
+      },
+      disconnectedCallback() {
+        activeEditor?.disconnectedCallback?.();
+        activeEditor = undefined;
       },
       render(createElement: HyperFunc<VNode>) {
         const descriptor = resolveDescriptor(editor.editCell);

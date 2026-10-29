@@ -93,7 +93,7 @@ export {
   preloadTrackerTimelineView,
 } from './LazyTrackerTimelineView';
 export type { TrackerTimelineViewProps } from './TrackerTimelineView';
-export { TrackerRadarView } from './TrackerRadarView';
+export { LazyTrackerRadarView as TrackerRadarView } from './LazyTrackerRadarView';
 export type { TrackerRadarViewProps } from './TrackerRadarView';
 export { LazyTagBoard as TagBoard, preloadTagBoard } from './LazyTagBoard';
 export type { TagBoardProps } from './TagBoard';

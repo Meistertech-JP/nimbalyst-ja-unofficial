@@ -76,6 +76,7 @@ import {
   globalRegistry,
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { resolveTrackerWriteAccess } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerLifecycle';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 import { useTrackerBodyPrewarm } from '../../hooks/useTrackerBodyPrewarm';
 import { agentSessionAttentionAtom, setSelectedWorkstreamAtom, sessionRegistryAtom, refreshSessionListAtom, initSessionList } from '../../store/atoms/sessions';
 import {
@@ -983,7 +984,9 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
       errorNotificationService.showInfo(
         t('main_extra.archived_tracker'),
                 t('detail_extra.lifecycle.archived_read_only_reason', {
-          trackerName: globalRegistry.get(type)?.displayNamePlural?.trim() || t('main_extra.archived_tracker'),
+          trackerName: globalRegistry.get(type)
+            ? resolveTrackerTypeDisplayLabel(type, t, true)
+            : t('main_extra.archived_tracker'),
         }),
         { duration: 4000 },
       );
@@ -1031,7 +1034,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     const activeTracker = filterType !== 'all'
       ? trackerTypes.find(t => t.type === filterType)
       : null;
-    const typeName = activeTracker ? activeTracker.displayNamePlural : t('main_extra.items');
+    const typeName = activeTracker ? resolveTrackerTypeDisplayLabel(activeTracker.type, t, true, activeTracker) : t('main_extra.items');
 
     const parts: string[] = [];
     if (activeFilters.includes('archived')) parts.push(t('main_extra.filter_archived'));
@@ -1040,7 +1043,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
     if (activeFilters.includes('recently-updated')) parts.push(t('main_extra.filter_recent'));
 
     if (parts.length === 0) {
-      return activeTracker ? activeTracker.displayNamePlural : t('main_extra.all_items');
+      return activeTracker ? typeName : t('main_extra.all_items');
     }
     return `${parts.join(' ')} ${typeName}`;
   }, [filterType, activeFilters, trackerTypes, t]);

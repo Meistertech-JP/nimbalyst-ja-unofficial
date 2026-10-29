@@ -14,6 +14,7 @@ import { formatLocalDateOnly, parseDate } from '../models/dateUtils';
 import { RelationshipFieldEditor, type RelationshipCandidate } from './RelationshipFieldEditor';
 import type { CitationInspectorHost } from './CitationInspector';
 import { trackerFieldDisplayLabel } from './trackerFieldLabels';
+import { resolveTrackerFieldDefinitionDisplayLabel } from '../models/trackerDisplayLabels';
 
 /**
  * Lazy on purpose. The citation editor and its inspector pull `@floating-ui/react`
@@ -154,7 +155,10 @@ export const TrackerFieldEditor: React.FC<TrackerFieldEditorProps> = ({
           {renderLabel(fieldId)}
           <CustomSelect
             value={value || field.default || ''}
-            options={field.options || []}
+            options={(field.options || []).map(option => ({
+              ...option,
+              label: resolveTrackerFieldDefinitionDisplayLabel(field, option.value, t, option.label),
+            }))}
             onChange={onChange}
             required={field.required}
           />

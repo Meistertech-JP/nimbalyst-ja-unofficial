@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX, MouseEvent, ReactNode } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { builtinTrackerTypeCopy } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/builtinTrackerCopy';
 
 import type { TrackerItem } from '../../trackers/dataSource';
 import {
@@ -401,7 +402,7 @@ function ResolvedCard({ resolver, item, referenceKey }: { resolver: TrackerRefer
       data-ring={ring ? 'true' : undefined}
     >
       <div className="tracker-reference-card-header">
-        <span className="tracker-reference-card-kind">{typeInfo.displayName}</span>
+        <span className="tracker-reference-card-kind">{builtinTrackerTypeCopy(typeInfo.type, typeInfo.displayName, t)}</span>
         {(!normal || request) && status ? (
           <>
             <span className="tracker-reference-card-sep" aria-hidden="true">·</span>

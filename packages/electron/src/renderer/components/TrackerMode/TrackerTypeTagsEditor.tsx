@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NEUTRAL_SWATCH, TYPE_COLORS } from '@nimbalyst/collab-client/trackers-ui';
 import { globalRegistry } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
+import { resolveTrackerTypeDisplayLabel } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerDisplayLabels';
 
 /** Inline editor for adding/removing secondary type tags */
 export const TypeTagsEditor: React.FC<{
@@ -42,9 +43,9 @@ export const TypeTagsEditor: React.FC<{
                 className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded cursor-pointer group"
                 style={{ color: tagColor, backgroundColor: `${tagColor}15`, border: `1px solid ${tagColor}30` }}
                 onClick={() => onUpdate(typeTags.filter(t => t !== tag))}
-                title={t('remove_tag', { tag: tagModel?.displayName || tag })}
+                title={t('remove_tag', { tag: resolveTrackerTypeDisplayLabel(tag, t, false, tagModel) })}
               >
-                {tagModel?.displayName || tag}
+                {resolveTrackerTypeDisplayLabel(tag, t, false, tagModel)}
                 <span className="opacity-0 group-hover:opacity-100 text-[9px]">&times;</span>
               </span>
             );
@@ -64,7 +65,7 @@ export const TypeTagsEditor: React.FC<{
                   onUpdate([...typeTags, m.type]);
                 }}
               >
-                + {m.displayName}
+                + {resolveTrackerTypeDisplayLabel(m.type, t, false, m)}
               </button>
             );
           })}

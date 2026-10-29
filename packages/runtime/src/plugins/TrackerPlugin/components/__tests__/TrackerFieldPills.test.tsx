@@ -7,6 +7,7 @@ import { resources } from '@nimbalyst/i18n/resources';
 import { TrackerFieldPills } from '../TrackerFieldPills';
 import { globalRegistry, emptyLabelRegistry, type FieldDefinition } from '@nimbalyst/tracker-schema';
 import { labelPropertyToFieldDefinition, unwrapLabelFieldValues } from '../trackerLabelFields';
+import { parseBuiltinTrackers } from '../../models/ModelLoader';
 
 const testI18n = createInstance();
 const testI18nReady = testI18n.init({
@@ -73,6 +74,27 @@ function renderPillsWithI18n(
 }
 
 describe('TrackerFieldPills', () => {
+  it('updates builtin option chips and open choices across languages without changing their stored values', async () => {
+    const task = parseBuiltinTrackers().find(model => model.type === 'task')!;
+    globalRegistry.register(task, true);
+    const field = globalRegistry.get('task')!.fields.find(field => field.name === 'status')!;
+    const before = JSON.stringify(field);
+    const { onSave } = renderPillsWithI18n([field], { status: 'to-do' });
+    const pill = screen.getByTestId('tracker-field-pill-status');
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(async () => { await testI18n.changeLanguage(language); });
+      expect(pill.textContent).toContain(language === 'ja' ? '未着手' : 'To Do');
+    }
+    fireEvent.click(pill);
+    expect(screen.getByText('進行中')).toBeTruthy();
+    await act(async () => { await testI18n.changeLanguage('en'); });
+    expect(screen.getByText('In Progress')).toBeTruthy();
+    await act(async () => { await testI18n.changeLanguage('ja'); });
+    fireEvent.click(screen.getByText('進行中'));
+    expect(onSave).toHaveBeenLastCalledWith('status', 'in-progress');
+    expect(JSON.stringify(field)).toBe(before);
+  });
+
   it('localizes citation counts and boolean values when the language changes', async () => {
     await testI18n.changeLanguage('ja');
     renderPillsWithI18n(

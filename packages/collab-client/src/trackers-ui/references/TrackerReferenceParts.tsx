@@ -6,6 +6,9 @@
 
 import type { JSX, KeyboardEvent, MouseEvent } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { builtinTrackerTypeCopy } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/builtinTrackerCopy';
+import { referenceStatusDisplayLabel } from './referenceDisplayLabels';
+export { referenceStatusDisplayLabel } from './referenceDisplayLabels';
 
 import type { TrackerItem } from '../../trackers/dataSource';
 import { useTrackerReference } from './TrackerReferenceResolverContext';
@@ -40,12 +43,13 @@ export function openHandlers(resolver: TrackerReferenceResolver, itemId: string 
 }
 
 export function TypeIcon({ typeInfo }: { typeInfo: TrackerReferenceTypeInfo }): JSX.Element | null {
+  const { t } = useTranslation('tracker');
   if (!typeInfo.icon) return null;
   return (
     <span
       className="material-symbols-outlined tracker-reference-type-icon"
       role="img"
-      aria-label={typeInfo.displayName}
+      aria-label={builtinTrackerTypeCopy(typeInfo.type, typeInfo.displayName, t)}
       style={{ color: typeInfo.color }}
     >
       {typeInfo.icon}
@@ -84,6 +88,7 @@ export function LiveChip({ resolver, referenceKey }: ResolverProps): JSX.Element
     );
   }
   const { item, typeInfo, status } = resolution;
+  const statusLabel = status ? referenceStatusDisplayLabel(item.type, status, t) : '';
   const done = status?.category === 'done' || status?.category === 'cancelled';
   return (
     <span
@@ -92,7 +97,7 @@ export function LiveChip({ resolver, referenceKey }: ResolverProps): JSX.Element
       data-resolved="true"
       data-type={item.type}
       data-completed={done ? 'true' : 'false'}
-      title={`${displayKey(item, referenceKey)}: ${item.title}${status ? ` (${status.label})` : ''}`}
+      title={`${displayKey(item, referenceKey)}: ${item.title}${status ? ` (${statusLabel})` : ''}`}
       {...openHandlers(resolver, item.id)}
     >
       <TypeIcon typeInfo={typeInfo} />
@@ -107,7 +112,7 @@ export function LiveChip({ resolver, referenceKey }: ResolverProps): JSX.Element
           className="tracker-reference-status-dot"
           style={{ background: status.color }}
           role="img"
-          aria-label={status.label}
+          aria-label={statusLabel}
         />
       ) : null}
     </span>

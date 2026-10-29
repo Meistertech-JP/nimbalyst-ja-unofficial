@@ -48,6 +48,8 @@ it('explains the sharing migration in Japanese and records acknowledgement', asy
   );
 
   expect(await screen.findByText('共有設定がトラッカー単位になりました')).toBeDefined();
+  expect(screen.getByText('プラン')).toBeDefined();
+  expect(screen.queryByText('Plans')).toBeNull();
   expect(screen.getByText(/各トラッカーは、フィールドと項目をまとめて/).textContent)
     .toContain('実際に使用していた設定が引き継がれました');
   expect(screen.getByText('チームトラッカーとして共有され、新しい項目は下書きで作成されます'))

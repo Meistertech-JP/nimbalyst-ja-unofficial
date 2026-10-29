@@ -1,11 +1,13 @@
 import { beforeAll, describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render as testingRender, screen, fireEvent } from '@testing-library/react';
+import { act, render as testingRender, screen, fireEvent } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { globalRegistry } from '../../models';
 import type { TrackerDataModel } from '@nimbalyst/tracker-schema';
 import { StatusBar } from '../StatusBar';
+import { parseBuiltinTrackers } from '../../models/ModelLoader';
+import { TrackerTypeRow } from '../TrackerTypeRow';
 
 let testI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 
@@ -63,6 +65,29 @@ function renderStatusBar(data: Record<string, unknown> = {}) {
 }
 
 describe('StatusBar', () => {
+  it('updates builtin document and page type headers while preserving custom same-text names', async () => {
+    const seed = parseBuiltinTrackers().find(model => model.type === 'plan')!;
+    globalRegistry.register(seed, true);
+    globalRegistry.register(model);
+    const i18n = await createI18nInstance('ja');
+    const { container } = testingRender(
+      <I18nextProvider i18n={i18n}>
+        <StatusBar model={seed} data={{ title: 'User title', status: 'draft' }} onChange={vi.fn()} />
+        <StatusBar model={model} data={{ title: 'Custom title' }} onChange={vi.fn()} />
+        <TrackerTypeRow typeId="plan" values={{ status: 'draft' }} editable={false} onSaveField={vi.fn()} />
+      </I18nextProvider>,
+    );
+    for (const language of ['ja', 'en', 'ja']) {
+      await act(async () => { await i18n.changeLanguage(language); });
+      const expected = i18n.t('table.types.plan', { ns: 'tracker' });
+      const headers = container.querySelectorAll('.status-bar-title');
+      expect(headers[0].textContent).toContain(expected);
+      expect(headers[1].textContent).toContain('Plan');
+      expect(container.querySelector('.tracker-type-row-type')?.textContent).toContain(expected);
+    }
+    expect(seed.displayName).toBe('Plan');
+  });
+
   it('localizes accessibility labels in Japanese', async () => {
     const i18n = await createI18nInstance('ja');
     testingRender(

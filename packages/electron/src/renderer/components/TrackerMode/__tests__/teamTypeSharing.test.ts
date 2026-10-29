@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
+import { globalRegistry } from '@nimbalyst/tracker-schema';
+import { parseBuiltinTrackers } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/ModelLoader';
 
 const mocks = vi.hoisted(() => ({
   showInfo: vi.fn(),
@@ -33,6 +35,21 @@ describe('shareTrackerTypeWithTeam notifications', () => {
       value: { electronAPI: { trackerLifecycle: { promoteToTeam: mocks.promoteToTeam } } },
     });
   });
+
+  it.each([['ja', 'プランをチームと共有しますか？'], ['en', 'Share Plans with your team?']] as const)(
+    'localizes the builtin name in the %s sharing confirmation without changing its identity', async (language, title) => {
+      const model = structuredClone(parseBuiltinTrackers().find(seed => seed.type === 'plan')!);
+      model.sharing = 'personal';
+      globalRegistry.register(model, true);
+      const before = JSON.stringify(model);
+      const i18n = await createI18nInstance(language);
+      mocks.requestConfirmation.mockResolvedValueOnce(false);
+      await shareTrackerTypeWithTeam('/workspace', model, i18n.getFixedT(language, 'tracker'));
+      expect(mocks.requestConfirmation).toHaveBeenCalledWith(expect.objectContaining({ title }));
+      expect(JSON.stringify(model)).toBe(before);
+      expect(mocks.promoteToTeam).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ['ja', '課題をチームと共有しますか？', '3件すべて', 'チームと共有'],
