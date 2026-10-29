@@ -126,4 +126,22 @@ describe('HighlightManager.updateHighlights', () => {
 
     expect(highlight()?.style.left).toBe('46px');
   });
+
+  it('draws the actual last 1000 distinct match positions after a 2501-match wrap', () => {
+    const { matches, manager } = setup(2501);
+    (Range.prototype as any).getClientRects = function (this: Range) {
+      const index = Number(this.startContainer.parentElement!.textContent);
+      return [{ left: 10, top: index * 20, width: 5, height: 12 }];
+    };
+    const spans = document.querySelectorAll('span');
+    spans.forEach((span, index) => { span.textContent = String(index); });
+
+    manager.updateHighlights(matches, 0);
+    manager.updateHighlights(matches, 2500);
+
+    const tops = [...wrapper()!.children].map(element => (element as HTMLElement).style.top);
+    expect(tops).toEqual(Array.from({ length: 1000 }, (_, i) => `${(1501 + i) * 20}px`));
+    expect((wrapper()!.querySelector('.search-highlight-current') as HTMLElement).style.top).toBe('50000px');
+    manager.destroy();
+  });
 });

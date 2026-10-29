@@ -123,12 +123,15 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
     };
   }, [editor]);
 
-  // Clear highlights when closing
+  // Draw only from committed state. A state updater may run after a timer, so
+  // never pass an index captured through side effects inside an updater.
   useEffect(() => {
-    if (!isOpen) {
+    if (!editor || !isOpen || matches.length === 0) {
       highlightManagerRef.current?.clearHighlights();
+      return;
     }
-  }, [isOpen]);
+    highlightManagerRef.current?.updateHighlights(matches, currentMatchIndex);
+  }, [editor, isOpen, matches, currentMatchIndex]);
 
   // Navigate to a specific match - MUST be defined before performSearch
   const navigateToMatchInternal = useCallback(
@@ -229,31 +232,20 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
         setMatches(foundMatches);
 
         // Determine the new current index
-        let newIndex: number;
         if (preserveIndex) {
           // Keep the current index if it's still valid, otherwise clamp it
           setCurrentMatchIndex(prev => {
             if (foundMatches.length === 0) {
-              newIndex = -1;
               return -1;
             }
             if (prev < 0) {
-              newIndex = 0;
               return 0;
             }
-            newIndex = Math.min(prev, foundMatches.length - 1);
-            return newIndex;
+            return Math.min(prev, foundMatches.length - 1);
           });
         } else {
-          newIndex = foundMatches.length > 0 ? 0 : -1;
-          setCurrentMatchIndex(newIndex);
+          setCurrentMatchIndex(foundMatches.length > 0 ? 0 : -1);
         }
-
-        // Update highlights with the appropriate index
-        // Use setTimeout to ensure we get the updated index after state updates
-        setTimeout(() => {
-          highlightManagerRef.current?.updateHighlights(foundMatches, newIndex);
-        }, 0);
 
         // Only navigate to first match if autoNavigate is true (when user initiates search)
         if (autoNavigate && foundMatches.length > 0) {
@@ -334,7 +326,6 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
     if (matches.length === 0) return;
     const newIndex = currentMatchIndex <= 0 ? matches.length - 1 : currentMatchIndex - 1;
     setCurrentMatchIndex(newIndex);
-    highlightManagerRef.current?.updateHighlights(matches, newIndex);
     navigateToMatchInternal(matches, newIndex);
   }, [matches, currentMatchIndex, navigateToMatchInternal]);
 
@@ -343,7 +334,6 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
     if (matches.length === 0) return;
     const newIndex = currentMatchIndex >= matches.length - 1 ? 0 : currentMatchIndex + 1;
     setCurrentMatchIndex(newIndex);
-    highlightManagerRef.current?.updateHighlights(matches, newIndex);
     navigateToMatchInternal(matches, newIndex);
   }, [matches, currentMatchIndex, navigateToMatchInternal]);
 
@@ -432,14 +422,11 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
 
         setCurrentMatchIndex(newIndex);
 
-        // Update highlights and navigate to the new match
+        // Highlights follow committed state; navigate to the new match separately.
         // Schedule navigation for next tick to ensure state is fully updated
         requestAnimationFrame(() => {
           if (newIndex >= 0 && foundMatches[newIndex]) {
-            highlightManagerRef.current?.updateHighlights(foundMatches, newIndex);
             navigateToMatchInternal(foundMatches, newIndex, { refocusInput: false });
-          } else {
-            highlightManagerRef.current?.clearHighlights();
           }
         });
       });
