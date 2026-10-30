@@ -13,7 +13,8 @@ import type { FieldDefinition } from '@nimbalyst/tracker-schema';
 
 import type { TrackerRecord } from '../../core/TrackerRecord';
 import { globalRegistry } from '../TrackerPlugin/models';
-import { formatTrackerDateCell } from '../TrackerPlugin/components/trackerColumns';
+import { formatTrackerDateCell, type TrackerDateFormatOptions } from '../TrackerPlugin/components/trackerColumns';
+import { resolveTrackerFieldDefinitionDisplayLabel } from '../TrackerPlugin/models/trackerDisplayLabels';
 import {
   getTrackerFieldLayout,
   isTrackerFieldEmpty,
@@ -83,21 +84,23 @@ const SHOWN_ELSEWHERE_ROLES = ['workflowStatus', 'priority', 'assignee'] as cons
 /** Prose belongs in the excerpt; links belong in Connections. */
 const KEY_FIELD_SKIPPED_TYPES = new Set(['text', 'relationship', 'reference', 'citation']);
 
-function formatFieldValue(field: FieldDefinition, value: unknown): { value: string; title?: string } | null {
+function formatFieldValue(field: FieldDefinition, value: unknown, options: TrackerDateFormatOptions): { value: string; title?: string } | null {
   if (Array.isArray(value)) {
     const parts = value
-      .map(entry => formatFieldValue(field, entry)?.value)
+      .map(entry => formatFieldValue(field, entry, options)?.value)
       .filter((entry): entry is string => Boolean(entry));
     return parts.length ? { value: parts.join(', ') } : null;
   }
   if (field.type === 'date' || field.type === 'datetime') {
-    const { display, title } = formatTrackerDateCell(value);
+    const { display, title } = formatTrackerDateCell(value, new Date(), options);
     return display ? { value: display, title: title || undefined } : null;
   }
-  if (field.type === 'boolean' || typeof value === 'boolean') return { value: value ? 'Yes' : 'No' };
+  if (field.type === 'boolean' || typeof value === 'boolean') {
+    return { value: options.t?.(value ? 'grid.boolean_yes' : 'grid.boolean_no') ?? (value ? 'Yes' : 'No') };
+  }
   if (field.options?.length) {
     const option = field.options.find(candidate => candidate.value === value);
-    if (option) return { value: option.label };
+    if (option) return { value: resolveTrackerFieldDefinitionDisplayLabel(field, String(value), options.t, option.label) };
   }
   if (value && typeof value === 'object') {
     const { label, url } = value as { label?: unknown; url?: unknown };
@@ -118,7 +121,7 @@ function formatFieldValue(field: FieldDefinition, value: unknown): { value: stri
  * The type's first few filled-in fields, in the order every tracker surface
  * uses (roles first, then schema order), minus what the card already shows.
  */
-export function trackerReferenceKeyFields(record: TrackerRecord, max = 3): TrackerReferenceKeyField[] {
+export function trackerReferenceKeyFields(record: TrackerRecord, max = 3, options: TrackerDateFormatOptions = {}): TrackerReferenceKeyField[] {
   const model = globalRegistry.get(record.primaryType);
   const shown = new Set<string>();
   for (const role of SHOWN_ELSEWHERE_ROLES) {
@@ -134,9 +137,9 @@ export function trackerReferenceKeyFields(record: TrackerRecord, max = 3): Track
     if (shown.has(field.name) || KEY_FIELD_SKIPPED_TYPES.has(field.type) || field.predicate) continue;
     const raw = record.fields[field.name];
     if (isTrackerFieldEmpty(raw)) continue;
-    const formatted = formatFieldValue(field, raw);
+    const formatted = formatFieldValue(field, raw, options);
     if (!formatted) continue;
-    result.push({ name: field.name, label: trackerFieldDisplayLabel(field), ...formatted });
+    result.push({ name: field.name, label: trackerFieldDisplayLabel(field, options.t), ...formatted });
   }
   return result;
 }

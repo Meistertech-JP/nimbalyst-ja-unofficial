@@ -25,6 +25,33 @@ const record: TrackerRecord = {
 };
 
 describe('tracker reference builtin display localization', () => {
+  it('updates relative timestamps, date fields and boolean values without changing custom copy', async () => {
+    const model = structuredClone(globalRegistry.getBuiltinModel('bug')!);
+    model.fields.push(Object.assign({ name: 'confirmed', type: 'boolean' as const }, { displayLabel: 'Team confirmation' }));
+    model.fields.push({ name: 'dueDate', type: 'datetime' });
+    globalRegistry.register(model);
+    const updatedAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const item = { ...record, fields: { ...record.fields, dueDate: updatedAt, confirmed: true } };
+    const store = createStore();
+    store.set(trackerItemsMapAtom, new Map([[item.id, item]]));
+    const i18n = await createI18nInstance('ja');
+    const { container } = render(<I18nextProvider i18n={i18n}><Provider store={store}>
+      <TrackerReferencePreview referenceKey="BUG-LOCALE" displayLabel="BUG-LOCALE"
+        resolved={{ id: item.id, title: 'User-owned title', type: 'bug', updatedAt }} />
+    </Provider></I18nextProvider>);
+    for (const [language, relative, yes] of [['ja', '2時間前', 'はい'], ['en', '2h ago', 'Yes'], ['ja', '2時間前', 'はい']]) {
+      await act(async () => { await i18n.changeLanguage(language); });
+      expect(container.querySelector('.tracker-reference-preview-updated')?.textContent).toContain(relative);
+      expect(container.querySelector('.tracker-reference-preview-updated')?.getAttribute('title')).toBe(new Date(updatedAt).toLocaleString(language));
+      const fields = container.querySelector('.tracker-reference-preview-fields');
+      expect(fields?.textContent).toContain(relative);
+      expect(fields?.textContent).toContain(yes);
+      expect(fields?.textContent).toContain('Team confirmation');
+      expect(fields?.textContent).toContain(language === 'ja' ? '期限' : 'Due Date');
+    }
+    expect(store.get(trackerItemsMapAtom).get(item.id)?.fields.confirmed).toBe(true);
+  });
+
   it('updates chip, tooltip, type accessibility and preview metadata on ja-en-ja changes', async () => {
     const i18n = await createI18nInstance('ja');
     const store = createStore();

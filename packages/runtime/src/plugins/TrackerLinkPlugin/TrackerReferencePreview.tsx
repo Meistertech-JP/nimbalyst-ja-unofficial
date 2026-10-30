@@ -202,10 +202,11 @@ export function TrackerReferencePreview({
   onGoTo,
   onOpenItem,
 }: TrackerReferencePreviewProps): JSX.Element {
-  const { t } = useTranslation('tracker');
+  const { t, i18n } = useTranslation('tracker');
+  const locale = i18n.resolvedLanguage ?? i18n.language;
   const record = useAtomValue(trackerItemByReferenceKeyAtom(referenceKey));
   const excerpt = React.useMemo(() => (record ? trackerReferenceExcerpt(record) : null), [record]);
-  const keyFields = React.useMemo(() => (record ? trackerReferenceKeyFields(record) : []), [record]);
+  const keyFields = React.useMemo(() => (record ? trackerReferenceKeyFields(record, 3, { locale, t }) : []), [record, locale, t]);
   const linkGroups = useLinkGroups(resolved?.id, resolved?.type);
 
   const typeColor = resolved?.type
@@ -223,7 +224,7 @@ export function TrackerReferencePreview({
     : undefined;
   const updatedLabel =
     updatedDate && !Number.isNaN(updatedDate.getTime())
-      ? formatRelativeDate(updatedDate)
+      ? formatRelativeDate(updatedDate, new Date(), { locale, t })
       : '';
 
   return (
@@ -364,7 +365,7 @@ export function TrackerReferencePreview({
           >
             <div
               className="tracker-reference-preview-updated"
-              title={updatedDate?.toLocaleString()}
+              title={updatedDate?.toLocaleString(locale)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
