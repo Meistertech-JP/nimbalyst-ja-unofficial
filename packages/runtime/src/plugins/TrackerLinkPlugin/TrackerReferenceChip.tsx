@@ -56,6 +56,7 @@ import {
   getInitials,
 } from '../TrackerPlugin/components/trackerColumns';
 import { TrackerReferencePreview, displayLabel, normalizeStatus } from './TrackerReferencePreview';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '../TrackerPlugin/models/trackerDisplayLabels';
 
 type StatusTone =
   | 'to-do'
@@ -268,6 +269,12 @@ export function TrackerReferenceChip({
 
   const normalizedStatus = normalizeStatus(resolved?.status);
   const statusPresentation = getStatusPresentation(normalizedStatus, resolved?.type);
+  const statusLabel = resolved?.status
+    ? resolveTrackerFieldDisplayLabel(resolved.type ?? '', 'status', resolved.status, t, statusPresentation?.label ?? displayLabel(resolved.status))
+    : undefined;
+  const typeLabel = resolved?.type
+    ? (globalRegistry.get(resolved.type) ? resolveTrackerTypeDisplayLabel(resolved.type, t) : displayLabel(resolved.type))
+    : '';
   const isCompleted = statusPresentation?.tone === 'completed';
   const label = resolved?.issueKey ?? unresolvedLabel ?? referenceKey;
   const title = resolved?.title;
@@ -286,7 +293,7 @@ export function TrackerReferenceChip({
       )
     : undefined;
   const tooltip = resolved
-    ? `${label}${resolved.status ? ` · ${resolved.status}` : ''}${
+    ? `${label}${statusLabel ? ` · ${statusLabel}` : ''}${
         resolved.title ? ` — ${resolved.title}` : ''
       }`
     : `${label} — ${t('reference.unresolved')}`;
@@ -353,7 +360,7 @@ export function TrackerReferenceChip({
           <span
             className="material-symbols-outlined tracker-reference-chip-type-icon"
             role="img"
-            aria-label={t('reference.type_item', { type: displayLabel(resolved?.type ?? '') })}
+            aria-label={t('reference.type_item', { type: typeLabel })}
             style={{
               color: typeColor,
               flexShrink: 0,
@@ -421,7 +428,7 @@ export function TrackerReferenceChip({
                 {statusPresentation.icon}
               </span>
             ) : null}
-            {statusPresentation.label}
+            {statusLabel}
           </span>
         ) : null}
         {ownerInitials ? (

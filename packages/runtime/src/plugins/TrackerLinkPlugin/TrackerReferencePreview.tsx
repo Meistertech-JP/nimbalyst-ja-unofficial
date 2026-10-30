@@ -9,6 +9,8 @@ import type { JSX, MouseEvent as ReactMouseEvent } from 'react';
 import * as React from 'react';
 import { useAtomValue } from 'jotai';
 import { useTranslation } from 'react-i18next';
+import { globalRegistry } from '@nimbalyst/tracker-schema';
+import { resolveTrackerFieldDisplayLabel, resolveTrackerTypeDisplayLabel } from '../TrackerPlugin/models/trackerDisplayLabels';
 
 import { trackerItemByReferenceKeyAtom } from '../TrackerPlugin/trackerDataAtoms';
 import {
@@ -254,7 +256,7 @@ export function TrackerReferencePreview({
                 className="tracker-reference-preview-type"
                 color={typeColor}
                 icon={getTypeIcon(resolved.type)}
-                label={displayLabel(resolved.type)}
+                label={globalRegistry.get(resolved.type) ? resolveTrackerTypeDisplayLabel(resolved.type, t) : displayLabel(resolved.type)}
               />
             ) : null}
             <span
@@ -335,7 +337,7 @@ export function TrackerReferencePreview({
                 <MetadataBadge
                   className="tracker-reference-preview-status"
                   color={resolvedStatusColor}
-                  label={displayLabel(resolved.status)}
+                  label={resolveTrackerFieldDisplayLabel(resolved.type ?? '', 'status', resolved.status, t, displayLabel(resolved.status))}
                 />
               ) : null}
               {resolved.priority ? (
@@ -343,7 +345,7 @@ export function TrackerReferencePreview({
                   className="tracker-reference-preview-priority"
                   color={priorityColor}
                   icon="flag"
-                  label={t('reference.priority', { priority: displayLabel(resolved.priority) })}
+                  label={t('reference.priority', { priority: resolveTrackerFieldDisplayLabel(resolved.type ?? '', 'priority', resolved.priority, t, displayLabel(resolved.priority)) })}
                 />
               ) : null}
             </div>
