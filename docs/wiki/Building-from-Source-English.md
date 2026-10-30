@@ -2,9 +2,9 @@
 
 # Building from Source
 
-These instructions apply to the source and scripts at v0.82.3-ja.2. Check `package.json` and the lockfile again for later upstream-following versions. The published npm CLI does not necessarily include every feature of this fork.
+These instructions apply to the source and scripts at v0.82.4-ja.1. Check `package.json` and the lockfile again for later upstream-following versions. The published npm CLI does not necessarily include every feature of this fork.
 
-Use the `v0.82.3-ja.2` tag for the source corresponding to its Windows assets, rather than the continuously changing `main` branch. To reproduce an older release, use that version's tag and lockfile.
+Use the `v0.82.4-ja.1` tag for the source corresponding to its Windows assets, rather than the continuously changing `main` branch. To reproduce an older release, use that version's tag and lockfile.
 
 ## Obtaining the source and dependencies
 
@@ -13,10 +13,12 @@ Use Node.js 24 or later and pnpm 12 or later. `packageManager` specifies `pnpm@1
 ```powershell
 git clone https://github.com/Meistertech-JP/nimbalyst-ja-unofficial.git
 Set-Location nimbalyst-ja-unofficial
-git switch --detach v0.82.3-ja.2
+git switch --detach v0.82.4-ja.1
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps
+corepack pnpm --filter @nimbalyst/memory-engine run build
+corepack pnpm --filter @nimbalyst/tracker-builtins run build
 corepack pnpm --filter @nimbalyst/collab-bundle run build
 corepack pnpm --filter @nimbalyst/runtime run build
 ```
@@ -55,7 +57,9 @@ A local build without signing credentials is unsigned. To explicitly allow an un
 
 ## Checks before distribution
 
-Check the ASAR file inventory, contents and integrity block, every file in the unpacked application and ZIP, and Worker placement. Native modules such as SQLite must match Electron's ABI. Verification for v0.82.3-ja.1 used Electron 43.7.0 and ABI 148. Loading a module under the system Node.js alone does not establish Electron compatibility.
+Check the ASAR file inventory, contents and integrity block, every file in the unpacked application and ZIP, and Worker placement. Native modules such as SQLite must match Electron's ABI. Verification for v0.82.4-ja.1 uses Electron 43.7.0 and ABI 148. Loading a module under the system Node.js alone does not establish Electron compatibility.
+
+Preserve the correspondence between `patches/fd-slicer@1.1.0.patch` and the lockfile. Check the search executable `rg.exe` for size, hash and successful execution after dependency installation and packaging. An environment where a broken search binary was replaced by hand is not sufficient evidence of a reproducible build.
 
 Check PE product names, versions and identifiers, the absence of an official update feed, and the LICENSE and third-party notices in `resources/legal`. Record the difference between the product-code commit and the publication-documentation commit, hashes and restoration results for every source ZIP file, and distribution SHA-256 values.
 

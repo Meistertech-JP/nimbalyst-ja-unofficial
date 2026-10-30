@@ -1,5 +1,7 @@
 # Nimbalyst — Unofficial Japanese Edition
 
+Nimbalyst is an open-source workspace that lets you switch between multiple AI agents, including Claude Code and Codex, from a single app. It also lets you manage the files, tasks, and progress involved in writing and app development together in one place.
+
 An unofficial Japanese-language build of Nimbalyst, based on version 0.82.4. Japanese localization covers desktop menus, settings, file management, AI sessions, trackers, dialogs, and other parts of the user interface. The display language can be switched between Japanese and English.
 
 This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
@@ -8,15 +10,31 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 ## Availability
 
-v0.82.3-ja.2 is an unsigned Windows x64 edition. Download the NSIS installer, portable ZIP, matching source and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2).
+The latest version, v0.82.4-ja.1, is an unsigned Windows x64 edition. Download the NSIS installer, portable ZIP, matching source and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1).
 
-The source corresponding to these assets is tagged `v0.82.3-ja.2`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. Older tags, releases and distributions are retained.
+The source corresponding to these assets is tagged `v0.82.4-ja.1`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. The [previous v0.82.3-ja.2 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2), its tag and distributions are retained.
 
-This source is a release candidate for `v0.82.4-ja.1`, based on upstream v0.82.4 at `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. It does not correspond to the published assets above. Features and fixes may differ from the latest official release.
+This edition is based on upstream v0.82.4 at `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Features and fixes may differ from the latest official release.
 
-## Changes
+## Japanese interface
 
-This source incorporates upstream v0.82.4 changes to file operations, search, AI-session questions, shared pages and other features. See the [release notes](RELEASE_NOTES_v0.82.3-ja.2.md) for the published v0.82.3-ja.2 release.
+Screenshots from the Windows application. Documents and tasks use sample data.
+
+### Document editing
+
+![Japanese document editor](docs/screenshots/japanese-editor.png)
+
+### Tracker and AI sessions
+
+![Japanese Tracker details and session input](docs/screenshots/japanese-tracker.png)
+
+### Display language and application settings
+
+![Japanese advanced settings](docs/screenshots/japanese-settings.png)
+
+## Changes in this version
+
+This edition incorporates upstream v0.82.4 changes to file operations, search, image viewing, AI-session questions and shared pages. See the [release notes](RELEASE_NOTES_v0.82.4-ja.1.md) for changes and verification scope.
 
 **Team recovery requires the updated sync server.** Other editing clients must also support recovery. Production-organization recovery and the complete procedure across independent clients have not been verified. Check server compatibility and the intended recovery target before attempting recovery of an existing organization.
 

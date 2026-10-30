@@ -2,7 +2,7 @@
 
 # Following Upstream Nimbalyst
 
-v0.82.3-ja.2 is based on fixed upstream v0.82.3 commit [`84dcc00f3cd0abbb36eafc6bfad9389f960076db`](https://github.com/nimbalyst/nimbalyst/commit/84dcc00f3cd0abbb36eafc6bfad9389f960076db). In v0.82.3-ja.1, integration from the v0.82.1-ja.1 baseline `583ae0244dae266667be579733d6c571fd74e037` preserved both histories and incorporated 17 commits affecting 144 files. ja.2 corrects documentation and distribution contents without integrating further upstream commits. The fork does not automatically track the latest upstream main.
+v0.82.4-ja.1 is based on fixed upstream v0.82.4 commit [`031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`](https://github.com/nimbalyst/nimbalyst/commit/031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7). All 38 commits and 81 changed paths from the previous upstream baseline `84dcc00f3cd0abbb36eafc6bfad9389f960076db` were classified and integrated while preserving both histories and edition-specific behavior. The earlier v0.82.3-ja.2 corrected documentation and distribution contents at that old upstream baseline. The fork does not automatically track the latest upstream main.
 
 ## Establishing a fixed starting point
 
@@ -32,7 +32,7 @@ An authentication conflict is not resolved merely because its screen is translat
 
 ## Translation and verification
 
-Classify display strings in new UI and prefer existing keys. Add new keys in both English and Japanese with matching interpolation variables. Distinguish fixed UI from types, comments, model IDs, and user-entered values. Check the current workspace structure and run type checks; do not treat retaining the older count of 38 as the objective.
+Classify display strings in new UI and prefer existing keys. Add new keys in both English and Japanese with matching interpolation variables. Distinguish fixed UI from types, comments, model IDs, and user-entered values. Check the current workspace structure and run type checks. v0.82.4 checks 39 workspaces including tracker-builtins; retaining the older count of 38 is not the objective.
 
 Verify related unit tests, resource consistency, missing references, sizes for all 7 entries, Windows packages, language switching, and persistence after restart. If authentication or startup paths change, add runtime checks appropriate to the impact. Compare new failures against the fixed upstream baseline rather than automatically grouping them with the four old Windows fixture failures.
 

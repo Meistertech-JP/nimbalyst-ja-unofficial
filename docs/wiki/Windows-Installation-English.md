@@ -2,6 +2,12 @@
 
 # Windows Installation and Updates
 
+## v0.82.4-ja.1
+
+Download `nimbalyst-0.82.4-ja.1-windows-x64-setup.exe`, `nimbalyst-0.82.4-ja.1-windows-x64-portable.zip`, `nimbalyst-0.82.4-ja.1-source.zip` and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1). This is an unsigned Windows x64 regular stable release based on upstream v0.82.4. Automatic updates are disabled; follow the manual-update procedure below.
+
+The ordinary product was checked for Japanese/English switching, persistence of explicit Japanese and English settings after restart, Japanese resolved from System, and file, search and image display. An earlier build with matching relevant product code was used for production email sign-in, sign-out and clean installation. The final distribution payload was checked for upgrade installation, retained settings/documents/Tracker items, ordinary uninstall and retained data. This does not establish every data-upgrade or authentication path. See [Testing and Verification](Testing-and-Verification-English) for the scope.
+
 ## v0.82.3-ja.2
 
 Download `nimbalyst-0.82.3-ja.2-windows-x64-setup.exe`, `nimbalyst-0.82.3-ja.2-windows-x64-portable.zip`, the matching source ZIP and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2). This is an unsigned regular stable release. Its new packages include corrected bundled guides; they are not renamed older binaries. See [Testing and Verification](Testing-and-Verification-English) for native observations and unverified areas. Earlier results below remain historical.
@@ -20,7 +26,7 @@ This distribution targets Windows x64. v0.82.1-ja.1 is an unsigned stable releas
 
 ## Downloading and verifying files
 
-Obtain the NSIS installer, Windows portable ZIP, matching source ZIP and SHA256SUMS.txt from the [release assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2).
+Obtain the NSIS installer, Windows portable ZIP, matching source ZIP and SHA256SUMS.txt from the [release assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1).
 
 Compare filenames and hashes against the asset list and SHA256SUMS.txt from the same release.
 

@@ -2,6 +2,43 @@
 
 # Testing and Verification
 
+## v0.82.4-ja.1
+
+Qualification covers the Windows x64 edition integrating fixed upstream v0.82.4 commit `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Native product observations, automated tests, static checks and source/package comparisons cover distinct scopes. Publication-documentation changes apply to a distribution only after checking correspondence of execution code, dependencies and build inputs.
+
+### Fixed-source Linux validation
+
+[Comparison run `40994285881`](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/40994285881) executed candidate `68697952fac7b158201cf8ac56f4892b89d0e2f8` and unchanged fixed upstream using Node.js 24.16.0, pnpm 12.9.1 and each source's own frozen lockfile.
+
+| Source | Test Files: PASS / FAIL / SKIP / total | Tests: PASS / FAIL / SKIP / total | Job |
+| --- | --- | --- | --- |
+| Japanese-edition candidate | 2374 / 0 / 7 / 2381 | 19585 / 0 / 30 / 19615 | SUCCESS |
+| Fixed upstream v0.82.4 | 2143 / 1 / 7 / 2151 | 18373 / 1 / 30 / 18404 | FAILURE |
+
+Upstream failed one test: `SecurityEncryptionSection.test.tsx > keeps an open recovery session when the custody status is checked again`. The same test passed in the candidate. Therefore the comparison workflow's overall result is **FAILURE**, while the candidate job is **SUCCESS**. Comparison results are not rewritten, and different test populations are not added together.
+
+All 39 workspace typechecks, scripts/static checks, sandbox artifact/RPC tests (6), image/staging tests (17), publication-content checks and seven bundle budgets passed for the candidate. Linux sizes are commenting-ui 40,177 / 44,000; canvas 151,352 / 160,000; editor 361,344 / 370,000; docs-ui 89,202 / 92,000; feedback-ui 35,089 / 35,500; trackers-ui 196,249 / 200,000; inbox 5,542 / 6,000 gzip bytes. Windows measured trackers-ui at 196,386; the other six values match. Limits and measurement methods are unchanged.
+
+### Translation, builds and packages
+
+Resources contain 27 namespaces and 15,254 keys per language. Key/interpolation differences, unapproved empty translations and missing resolved static references were zero. The 735 dynamic candidates, 451 unresolved analysis scopes and 371 classified JSX English candidates are not missing-key or defect counts. They do not establish complete runtime or screen-reader coverage.
+
+Builds passed for Runtime, Extension SDK, Electron Main/Renderer, Workers, extensions and tracker-builtins. Windows checks compared ASAR contents, all 1,911 ZIP files and physical restoration, 16 bundled guides and legal files. SQLite in-memory queries, PTY loading and Worker placement/ABI were checked using Electron 43.7.0 / Node 24.21.0 / ABI 148. PE FileVersion is 0.82.4.1 and ProductVersion is 0.82.4.0; the application is unsigned. The source ZIP must match every file in the formal tag's Git tree; an earlier candidate's file count or hash is not a fixed expectation for the final source archive.
+
+### Ordinary Windows product observations
+
+The final distribution payload was observed in Japanese, switched to English, normally closed/restarted with English retained, switched back to Japanese and restarted with Japanese retained. System also resolved to Japanese after restart on an unchanged ja-JP host. Native checks covered a 205-file list and file display; the same search implementation with 2,501 matches, navigation and maximize/restore highlight alignment; and transcript-image zoom 100→125→100 and Fit. These are not exhaustive DPI or quantified-performance tests.
+
+Upgrade installation retained dedicated documents, language settings and Tracker metadata. Ordinary uninstall retained test settings and documents; the installed payload matched all 1,911 distribution files. ZIP startup and normal shutdown were also observed. The test data originated in an earlier official Japanese-edition release and passed through intermediate candidate updates; this is not a fresh direct upgrade from that release to the final payload. A sufficient retained Tracker-body fixture and every user-data compatibility path were not checked.
+
+Production email authentication, encrypted storage, restart restoration, normal sign-out, credential-file removal and a signed-out restart were observed on an earlier normal product build with unchanged authentication/startup code. A new email sign-in was not repeated on the final payload. Google sign-in, special recovery, server-side revocation and effective NTFS access by another user remain unverified.
+
+### NOT RUN and Windows limitations
+
+Live collaboration with a real server/organization, interoperability with old/updated sync servers and production-organization recovery are **NOT RUN** because an isolated environment is unavailable. Live Bedrock requests, a new paid Claude session, actual OS sleep/resume, every nonforeground browser path and live retry after granting backend trust are also **NOT RUN**. Related automated code tests do not establish successful service execution. Complete dynamic-translation, screen-configuration and external screen-reader coverage is not claimed.
+
+Windows retains unpassed or interrupted runs involving symlink-fixture EPERM, worktree path representation and large loopback writes on the host. The full Linux suite and all 17 sandbox staging/refusal tests passing do not turn unexecuted Windows assertions into successes. The failures and successes of earlier versions below remain historical for those versions.
+
 ## v0.82.3-ja.2
 
 This revision covers the corrected publication source and new Windows NSIS and portable ZIP packages with 16 updated bundled guides. The fixed upstream baseline remains `84dcc00f3cd0abbb36eafc6bfad9389f960076db`; older binaries are not simply renamed. Native observations, resource/unit tests, type/budget checks, CI on the publication commit and full payload comparisons cover distinct requirements.

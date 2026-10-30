@@ -2,6 +2,20 @@
 
 # Compatibility and Limitations
 
+## v0.82.4-ja.1
+
+This unsigned Windows x64 regular stable release is based on upstream v0.82.4 at `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Edition-specific identifiers and profiles, manual updates and nonce-protected localhost authentication are retained. Native checks in the ordinary Windows product covered Japanese/English switching, persistence of explicit Japanese and English settings after restart, Japanese resolved from System, principal file/search/image paths, upgrade and ordinary uninstall. These results are recorded separately from older versions in [Testing and Verification](Testing-and-Verification-English).
+
+Live collaboration with a real server and organization, older-server interoperability and production-organization recovery are **NOT RUN**. A compatible sync server is required; local unit/integration tests do not prove successful service connections. Live Bedrock requests, a new paid Claude session, actual OS sleep/resume, every nonforeground browser-input path and live retry of backends after granting trust are also **NOT RUN**, distinct from related automated regression tests.
+
+Resources contain 27 namespaces and 15,254 keys per language. The 735 dynamic candidates and 451 unresolved analysis scopes are not missing-key or defect counts and do not establish complete runtime coverage. Verification does not cover every screen, DPI setting, external screen reader, image interaction, OS language or existing Tracker-body upgrade path.
+
+Production email sign-in, encrypted storage, restoration and ordinary sign-out were observed on an earlier normal product build with unchanged relevant authentication/startup code. Authentication was not newly repeated on the final distribution itself. Google sign-in, special recovery, server-side session revocation and effective NTFS access by another user remain unverified.
+
+Windows retains unpassed or incomplete checks involving symlink-fixture EPERM, Git worktree path representation and large loopback writes on the host. The Linux candidate's full suite and symlink-refusal tests passed; this does not establish every Windows-specific behavior. Unverified areas are not confirmed defects or vulnerabilities.
+
+Startup delays and guide-display limits observed in v0.82.3-ja.2 remain recorded below for that version. They neither guarantee absence in a newer version nor establish recurrence there. Downgrade behavior has not been verified.
+
 ## v0.82.3-ja.2
 
 This unsigned Windows x64 stable revision corrects and organizes distributed source documentation and updates 16 bundled guides. The upstream baseline, existing product features, data locations and manual-update policy are retained. Older tags, releases, assets and history remain available; this does not completely erase historical internal materials.

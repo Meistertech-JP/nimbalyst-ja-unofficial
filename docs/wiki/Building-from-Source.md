@@ -2,9 +2,9 @@
 
 # ソースからのビルド
 
-この手順はv0.82.3-ja.2のソースとスクリプトを対象とします。追従後の版ではpackage.jsonとlockfileを再確認してください。公開済みnpm CLIが、このフォークの全機能を含むことを意味しません。
+この手順はv0.82.4-ja.1のソースとスクリプトを対象とします。追従後の版ではpackage.jsonとlockfileを再確認してください。公開済みnpm CLIが、このフォークの全機能を含むことを意味しません。
 
-Windows配布物に対応するソースはタグ `v0.82.3-ja.2` です。継続的に更新される `main` ではなく、対象Releaseのタグを使用します。旧版を再現する場合は、その版のタグとロックファイルを使用してください。
+Windows配布物に対応するソースはタグ `v0.82.4-ja.1` です。継続的に更新される `main` ではなく、対象Releaseのタグを使用します。旧版を再現する場合は、その版のタグとロックファイルを使用してください。
 
 ## 取得と依存関係
 
@@ -13,10 +13,12 @@ Node.js 24以降、pnpm 12以降を使用します。`packageManager`は`pnpm@12
 ```powershell
 git clone https://github.com/Meistertech-JP/nimbalyst-ja-unofficial.git
 Set-Location nimbalyst-ja-unofficial
-git switch --detach v0.82.3-ja.2
+git switch --detach v0.82.4-ja.1
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps
+corepack pnpm --filter @nimbalyst/memory-engine run build
+corepack pnpm --filter @nimbalyst/tracker-builtins run build
 corepack pnpm --filter @nimbalyst/collab-bundle run build
 corepack pnpm --filter @nimbalyst/runtime run build
 ```
@@ -55,7 +57,9 @@ corepack pnpm --dir packages/electron exec electron-builder --prepackaged releas
 
 ## 配布前の検査
 
-ASARの収録ファイル一覧・内容・整合性ブロック、展開版とZIPの全ファイル、Workerの配置を確認します。SQLiteなどのNativeモジュールはElectronのABIに対応している必要があります。v0.82.3-ja.1の検査対象はElectron 43.7.0・ABI 148でした。システムNodeで読み込めた結果だけでElectronの互換性を判定しません。
+ASARの収録ファイル一覧・内容・整合性ブロック、展開版とZIPの全ファイル、Workerの配置を確認します。SQLiteなどのNativeモジュールはElectronのABIに対応している必要があります。v0.82.4-ja.1の検査対象はElectron 43.7.0・ABI 148です。システムNodeで読み込めた結果だけでElectronの互換性を判定しません。
+
+`patches/fd-slicer@1.1.0.patch`とlockfileの対応を保持してください。検索用の`rg.exe`は依存導入時とパッケージ作成後にサイズ・ハッシュ・実行結果を検査します。破損した検索実行ファイルを手作業で置き換えた環境だけを、再現可能なビルドの証拠にはしません。
 
 PEの製品名・版・識別子、公式更新feedの不在、`resources/legal`のLICENSEと第三者通知を確認します。製品コードコミットと公開用文書コミットの差分、ソースZIPの全ファイルハッシュと復元結果、配布物SHA-256を記録します。
 

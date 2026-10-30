@@ -4,11 +4,13 @@
 
 User and developer documentation for an unofficial fork that adds Japanese display to the Nimbalyst desktop UI. This is not an official product of Nimbalyst, Inc. and is not endorsed or supported by the company.
 
-This edition is **v0.82.3-ja.2**, based on fixed upstream v0.82.3 commit `84dcc00f3cd0abbb36eafc6bfad9389f960076db`. It provides unsigned NSIS and portable ZIP packages for Windows x64. This revision cleans up and corrects distribution documentation and includes updated bundled guides in newly generated Windows packages. See [Testing and Verification](Testing-and-Verification-English) for native observations and unverified areas by version. It does not automatically translate user documents or responses from external services.
+This edition is **v0.82.4-ja.1**, based on fixed upstream v0.82.4 commit `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. It provides unsigned NSIS and portable ZIP packages for Windows x64, matching source and checksums. It incorporates upstream changes to file operations, long-document search, image viewing, AI sessions, Tracker and shared pages, with corresponding Japanese display. See [Testing and Verification](Testing-and-Verification-English) for native observations and unverified areas by version. It does not automatically translate user documents or responses from external services.
 
-- [Downloads and changes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)
+- [Downloads and changes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)
 - [Source code and README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.3-ja.2/LICENSE)
+- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.4-ja.1/LICENSE)
+
+Official automatic updates and manual update checks are disabled. Update manually through this repository's Releases. The v0.82.3-ja.2 tag, release and distributions remain available as a previous version.
 
 This Wiki is documentation hosted on GitHub. It is separate from the application's Local Wiki and Team Wiki features.
 

@@ -1,6 +1,6 @@
 # 非公式日本語版のリリース
 
-Nimbalyst 日本語版（非公式）は、Windows x64向けの未署名NSISインストーラーとポータブルZIPを配布します。現行版は[v0.82.3-ja.2](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)で、本家v0.82.3のコミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とします。公式版の公開用スクリプトや更新フィードは使用しません。
+Nimbalyst 日本語版（非公式）は、Windows x64向けの未署名NSISインストーラーとポータブルZIPを配布します。現行版は[v0.82.4-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)で、本家v0.82.4のコミット `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7` を基準とします。対応ソースZIPと `SHA256SUMS.txt` も同じReleaseから取得できます。旧[v0.82.3-ja.2](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)は過去版として保持しています。公式版の公開用スクリプトや更新フィードは使用しません。
 
 ## 公開対象
 
@@ -11,7 +11,7 @@ Nimbalyst 日本語版（非公式）は、Windows x64向けの未署名NSISイ�
 ## 公開前検査
 
 1. 直前の公開タグと候補のGitツリーを比較し、追加・変更・削除をすべて分類します。
-2. `node scripts/check-publication-content.mjs --ref HEAD --base v0.82.3-ja.1` を実行します。`--base` には準備中の版の直前に公開されたタグを指定します。警告は文脈を読んで分類します。成功だけで文書品質や秘密情報の不存在は保証されません。
+2. `node scripts/check-publication-content.mjs --ref HEAD --base v0.82.3-ja.2` を実行します。`--base` には準備中の版の直前に公開されたタグを指定します。警告は文脈を読んで分類します。成功だけで文書品質や秘密情報の不存在は保証されません。
 3. 日英README、Release Notes、Windowsガイド、Wikiを読み、版・手順・リンク・検証範囲を確認します。
 4. 通常の型検査・テスト・容量検査を実施し、最終コミットと製品入力を対応付けます。以前の実機結果を新しいバイナリでの再実行として扱いません。
 5. ソースZIPは確定コミットから生成し、Git blob、ファイル一覧、サイズ、SHA-256、CRC、実展開結果を照合します。`--archive-list` にZIP全収録パスのUTF-8ファイルを指定し、公開対象と一致することも検査します。

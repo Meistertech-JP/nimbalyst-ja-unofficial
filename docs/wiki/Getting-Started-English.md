@@ -8,7 +8,7 @@ The Unofficial Japanese Edition is a fork that adds Japanese desktop UI and a di
 
 ## Choosing a distribution
 
-Download the unsigned Windows x64 edition from the [v0.82.3-ja.2 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2). The installer provides Windows app-list entries and shortcuts; the portable ZIP runs from its extracted directory. The ZIP edition does not store settings next to the EXE. See the release notes for the package contents and verification scope.
+Download the unsigned Windows x64 edition based on upstream v0.82.4 from the [v0.82.4-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1). It provides NSIS, portable ZIP, matching source and SHA256SUMS.txt. The installer provides Windows app-list entries and shortcuts; the portable ZIP runs from its extracted directory. The ZIP edition does not store settings next to the EXE. See the release notes for the package contents and verification scope.
 
 See [Windows Installation and Updates](Windows-Installation-English) for filenames, checksum verification, and placement instructions. The older v0.81.7-ja.2 was a source-only prerelease and differs from the current Windows distributions.
 

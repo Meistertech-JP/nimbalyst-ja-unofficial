@@ -2,6 +2,10 @@
 
 # Account and Authentication
 
+## v0.82.4-ja.1
+
+An earlier ordinary Windows product build with unchanged authentication/startup code was checked for production email sign-in, a same-PC localhost callback, encrypted storage, restart restoration, normal sign-out and a signed-out restart. A new email sign-in was not repeated on the final distribution itself. Regression tests cover nonce handling, fail-closed storage and prevention of state restoration from stale responses. Live callback modification/replay, Google sign-in, special recovery, server-side session revocation and effective NTFS access by another user remain unverified.
+
 ## v0.82.3-ja.2
 
 Production authentication has not been repeated on this binary. Existing policies for nonce-protected localhost callbacks, encrypted storage and ordinary sign-out are retained, but source/contract-test checks differ from live sign-in in the ordinary product. Earlier authentication results remain historical results for those versions. Google sign-in, special recovery, server-side session revocation and cross-user NTFS effective access remain unverified.
@@ -31,7 +35,7 @@ The callback is `http://127.0.0.1:<port>/auth/callback`. It has an instance-spec
 
 On Windows, credentials are stored encrypted, and the implementation reflects the signed-in state only after storage succeeds. If encrypted storage fails, it reports an error rather than falling back to plaintext storage. To avoid races between local credentials and logout state, stale asynchronous update responses are prevented from restoring the state.
 
-Live authentication was checked for v0.82.1-ja.1, but has not been repeated for v0.82.3-ja.1 or v0.82.3-ja.2. Earlier versions retain their own verification scope in their release notes.
+The v0.82.4-ja.1 authentication scope is stated at the beginning of this article. Live authentication was also checked for v0.82.1-ja.1, but was not repeated for v0.82.3-ja.1 or v0.82.3-ja.2. Earlier versions retain their own verification scope in their release notes.
 
 Removing local information during logout is different from invalidating service-side sessions, covering every token-refresh path, or deleting an account. Service-side invalidation is not guaranteed. Google authentication and some Stytch recovery paths are unverified.
 

@@ -4,6 +4,12 @@
 
 公開版の配布物と対象ソースは、各Releaseとタグで確認できます。
 
+## v0.82.4-ja.1
+
+[Windows x64正式版](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)は、本家v0.82.4の固定コミット `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7` を基準とします。ファイル操作、長文検索、Transcript画像、AIセッションの質問処理、Tracker・共有ページの変更を取り込み、日本語表示を追加しました。英日各27名前空間・15,254キーで、日本語・英語・Systemの設定、独自Windows識別子、設定分離、手動更新とlocalhost認証を維持しています。
+
+39ワークスペースの型検査と全7容量検査が成功しました。固定ソースのLinux候補はTest Files 2,374 PASS・0 FAIL・7 SKIP、Tests 19,585 PASS・0 FAIL・30 SKIPです。比較用の未変更本家は復旧画面の試験1件が失敗し、候補側では同じ試験が成功しています。比較workflow全体のFAILUREと候補jobのSUCCESSを区別します。未署名Windows NSIS・ポータブルZIP、対応ソースZIPとチェックサムを提供します。実機検証とNOT RUNの範囲は[テストと品質検証](Testing-and-Verification)を参照してください。
+
 ## v0.82.3-ja.2
 
 [Windows x64正式版](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)では、公開前の作業資料を配布ソースから除外し、利用者・開発者向け文書と同梱ガイド16件を訂正しました。是正済みのソースから未署名NSISとポータブルZIPを新規生成しています。本家の固定基準と既存製品機能は変更していません。公開対象の自動検査を追加し、内部資料と製品ソース・技術文書を区別します。
@@ -16,13 +22,9 @@
 
 翻訳資源は英日各14,608キーから14,795キーとなり、復旧・Tracker・時刻・添付案内・アクセシビリティ表示を追加しました。Windows画像コピーでは、カスタムschemeを一度に登録する修正を行いました。製品修正後のLinuxはTest Files 2,340 PASS・7 SKIP・0 FAIL、Tests 19,296 PASS・30 SKIP・0 FAILで成功しました。iOSは528件実行・522 PASS・6 SKIP・0 FAILで成功しました。未署名Windows x64 NSIS・ポータブルZIPを製品修正から再生成し、ASAR・ABI・Worker・ZIP全1,913ファイルを照合しました。通常製品の英語Settings・メニュー・Project Manager・Workspace表示と、英語選択後の再起動保持を確認しました。表示言語をSystemにした場合の日本語Renderer・ネイティブメニュー、Ctrl+Qによる正常終了と再起動後の日本語保持も確認しました。明示的な`ja`設定値の保持、認証、およびNSIS導入・更新・削除は未確認です。補助エラー警告は日英DOM試験で確認しましたが、通常製品画面では未確認です。
 
-## v0.81.7-ja.1
+## v0.82.1-ja.1
 
-[ソース限定Prerelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.81.7-ja.1)として公開しました。デスクトップUIの日本語表示、表示言語設定、公式版と異なるWindows識別子、公式更新の無効化、localhost認証を含みます。Windowsバイナリは提供していません。
-
-## v0.81.7-ja.2
-
-[次のソース限定Prerelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.81.7-ja.2)では、固定upstream `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`までの変更を統合しました。ローカルWikiの静的出力と言語指定、バックアップ衝突時の保護などを含みます。
+[本家v0.82.1の固定コミット](https://github.com/nimbalyst/nimbalyst/commit/583ae0244dae266667be579733d6c571fd74e037)を基にした[Windows正式版](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)です。新機能の日本語表示、候補メニューとセッション参照のアクセシビリティ表示、製品起動時の開発用デバッグポート抑制を含みます。通常製品ビルドで本番メール認証、言語保持、旧版からの更新、新規導入と通常アンインストールを確認しています。
 
 ## v0.81.7-ja.3
 
@@ -32,6 +34,10 @@ About・設定・チュートリアル・認証通知などの日本語表示、
 
 認証・インストールを確認した先行製品ビルドと、再生成した最終配布ビルドの検証範囲は[リリースノート](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.81.7-ja.3/RELEASE_NOTES_v0.81.7-ja.3.md)に記録しています。公開後のCI失敗と開発ブランチでの対応は[テストと品質検証](Testing-and-Verification)を参照してください。
 
-## v0.82.1-ja.1
+## v0.81.7-ja.2
 
-[本家v0.82.1の固定コミット](https://github.com/nimbalyst/nimbalyst/commit/583ae0244dae266667be579733d6c571fd74e037)を基にした[Windows正式版](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)です。新機能の日本語表示、候補メニューとセッション参照のアクセシビリティ表示、製品起動時の開発用デバッグポート抑制を含みます。通常製品ビルドで本番メール認証、言語保持、旧版からの更新、新規導入と通常アンインストールを確認しています。
+[次のソース限定Prerelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.81.7-ja.2)では、固定upstream `e14ddf383a8dbb40e511fc2c2ea50273d08e3579`までの変更を統合しました。ローカルWikiの静的出力と言語指定、バックアップ衝突時の保護などを含みます。
+
+## v0.81.7-ja.1
+
+[ソース限定Prerelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.81.7-ja.1)として公開しました。デスクトップUIの日本語表示、表示言語設定、公式版と異なるWindows識別子、公式更新の無効化、localhost認証を含みます。Windowsバイナリは提供していません。
