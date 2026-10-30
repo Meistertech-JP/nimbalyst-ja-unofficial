@@ -1,0 +1,87 @@
+name: Unofficial R20 Linux validation
+
+on:
+  push:
+    branches: [codex/r20-upstream-0824]
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    name: Linux / ${{ matrix.source }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: candidate
+            ref: ${{ github.sha }}
+          - source: upstream-v0.82.4
+            ref: 031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ matrix.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - name: Record immutable inputs
+        env:
+          EXPECTED_SHA: ${{ matrix.ref }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/r20-evidence"
+          {
+            test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+            git rev-parse HEAD HEAD^{tree}
+            node --version
+            pnpm --version
+            sha256sum pnpm-lock.yaml
+          } | tee "$RUNNER_TEMP/r20-evidence/inputs.log"
+      - name: Install locked dependencies
+        id: install
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm install --frozen-lockfile 2>&1 | tee "$RUNNER_TEMP/r20-evidence/install.log"
+      - name: Publication content
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.source == 'candidate' }}
+        run: node scripts/check-publication-content.mjs --ref HEAD 2>&1 | tee "$RUNNER_TEMP/r20-evidence/publication.log"
+      - name: Override and text checks
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          pnpm run check:override-sync 2>&1 | tee "$RUNNER_TEMP/r20-evidence/override.log"
+          pnpm run check:text-nuls --ref HEAD 2>&1 | tee "$RUNNER_TEMP/r20-evidence/text-nuls.log"
+      - name: Full prepared typecheck and bundle budgets
+        id: prepared
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node scripts/run-validation.mjs typecheck 2>&1 | tee "$RUNNER_TEMP/r20-evidence/typecheck.log"
+      - name: Scripts gate without exceptions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node scripts/run-validation.mjs scripts 2>&1 | tee "$RUNNER_TEMP/r20-evidence/scripts.log"
+      - name: Sandbox gate without exceptions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node scripts/run-validation.mjs sandbox 2>&1 | tee "$RUNNER_TEMP/r20-evidence/sandbox.log"
+      - name: Full non-provider unit suite
+        if: ${{ !cancelled() && steps.prepared.outcome == 'success' }}
+        run: node scripts/run-validation.mjs unit 2>&1 | tee "$RUNNER_TEMP/r20-evidence/unit.log"
+      - name: Record Vitest summary
+        if: always()
+        run: node scripts/record-vitest-summary.mjs "$RUNNER_TEMP/r20-evidence/unit.log"
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: r20-linux-${{ matrix.source }}-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/r20-evidence/
+            .vitest/last-run.log
+            .vitest/last-run.json
