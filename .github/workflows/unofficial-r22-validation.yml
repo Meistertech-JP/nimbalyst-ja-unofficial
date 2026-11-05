@@ -1,0 +1,93 @@
+name: Unofficial R22 Linux validation
+
+on:
+  push:
+    branches: [codex/r22-validation-0827]
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    name: Linux / ${{ matrix.source }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: candidate
+            ref: bd3f2ea82ce802c2ff35d2b5a3d48ddd5d7bed56
+          - source: upstream-v0.82.7
+            ref: 826adb4f93dbe86db35b76ce2502a3a33abe0489
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ matrix.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - name: Record immutable inputs
+        env:
+          EXPECTED_SHA: ${{ matrix.ref }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/r22-evidence"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          {
+            git rev-parse HEAD HEAD^{tree}
+            node --version
+            pnpm --version
+            uname -a
+            sha256sum pnpm-lock.yaml vitest.config.ts
+            printf 'No timeout, worker-count, provider, or retry overrides.\n'
+          } | tee "$RUNNER_TEMP/r22-evidence/inputs.log"
+      - name: Install locked dependencies
+        id: install
+        run: pnpm install --frozen-lockfile 2>&1 | tee "$RUNNER_TEMP/r22-evidence/install.log"
+      - name: Edition publication content
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.source == 'candidate' }}
+        run: node scripts/check-publication-content.mjs --ref HEAD 2>&1 | tee "$RUNNER_TEMP/r22-evidence/edition-publication.log"
+      - name: Edition translation resources
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && matrix.source == 'candidate' }}
+        run: pnpm exec vitest run packages/i18n --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/r22-evidence/edition-i18n.json" 2>&1 | tee "$RUNNER_TEMP/r22-evidence/edition-i18n.log"
+      - name: Override consistency
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm run check:override-sync 2>&1 | tee "$RUNNER_TEMP/r22-evidence/override.log"
+      - name: Tracked text integrity
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm run check:text-nuls --ref HEAD 2>&1 | tee "$RUNNER_TEMP/r22-evidence/text-nuls.log"
+      - name: Prepared typechecks and bundle budgets
+        id: prepared
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node scripts/run-validation.mjs typecheck 2>&1 | tee "$RUNNER_TEMP/r22-evidence/typecheck.log"
+      - name: Scripts gate without exceptions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node scripts/run-validation.mjs scripts 2>&1 | tee "$RUNNER_TEMP/r22-evidence/scripts.log"
+      - name: Sandbox gate without exceptions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node scripts/run-validation.mjs sandbox 2>&1 | tee "$RUNNER_TEMP/r22-evidence/sandbox.log"
+      - name: Full non-provider unit suite
+        if: ${{ !cancelled() && steps.prepared.outcome == 'success' }}
+        run: pnpm exec vitest run --reporter=default --reporter=./scripts/vitest-run-log-reporter.mjs --reporter=json --outputFile="$RUNNER_TEMP/r22-evidence/unit.json" 2>&1 | tee "$RUNNER_TEMP/r22-evidence/unit.log"
+      - name: Record Vitest summary
+        if: always()
+        run: node scripts/record-vitest-summary.mjs "$RUNNER_TEMP/r22-evidence/unit.log"
+      - name: Preserve test evidence only
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: r22-linux-${{ matrix.source }}-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/r22-evidence/
+            .vitest/last-run.log
+            .vitest/last-run.json
