@@ -4,6 +4,12 @@
 
 公開版の配布物と対象ソースは、各Releaseとタグで確認できます。
 
+## v0.82.7-ja.1
+
+[Windows x64向け通常Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)は、本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とします。Lexical 0.53の色付きテキスト、PGLiteからSQLiteへの移行、Claude Code・Codex SDKとAIセッションの改善、週次使用量履歴、Claude in Chrome対応、WindowsのGit・CLI修正、Trackerのローカル番号修正、本家Issue #1889由来の修正、日本語UIの追従更新を含みます。これらの統合は、有料AIプロバイダーやChromeとの実通信を今回確認したことを意味しません。
+
+英日各27名前空間・15,321キーで、キー・補間の差0、空の日本語訳0を確認していますが、全画面・全動的経路の翻訳保証ではありません。Windows配布物では導入・更新・Portable・言語切替・移行などの範囲を確認した一方、Windows全体試験は正常完走していません。署名のない配布物、Linux比較、確認済み範囲と制限は[テストと品質検証](Testing-and-Verification)と[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。
+
 ## v0.82.4-ja.1
 
 [Windows x64正式版](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)は、本家v0.82.4の固定コミット `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7` を基準とします。ファイル操作、長文検索、Transcript画像、AIセッションの質問処理、Tracker・共有ページの変更を取り込み、日本語表示を追加しました。英日各27名前空間・15,254キーで、日本語・英語・Systemの設定、独自Windows識別子、設定分離、手動更新とlocalhost認証を維持しています。

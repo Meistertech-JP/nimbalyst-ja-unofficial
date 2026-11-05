@@ -2,7 +2,7 @@
 
 [Home](Home)
 
-- [v0.82.4-ja.1 ダウンロード](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)
+- [v0.82.7-ja.1 ダウンロード](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)
 
 ### 利用者向け
 
@@ -30,7 +30,7 @@
 
 [Home](Home-English)
 
-- [Download v0.82.4-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)
+- [Download v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)
 
 ### User Guide
 

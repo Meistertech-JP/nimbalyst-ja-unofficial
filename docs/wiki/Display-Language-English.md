@@ -2,7 +2,11 @@
 
 # Display Language
 
-The display-language choices are Japanese, English and System. The current v0.82.4-ja.1 ordinary Windows product was checked for switching both ways, persistence of explicit `en` and `ja` settings after restart, and Japanese resolved from System on a ja-JP host. This is not an exhaustive test of other OS languages or every screen configuration. [Testing and Verification](Testing-and-Verification-English) records earlier versions separately.
+## v0.82.7-ja.1
+
+Windows product checks observed immediate switching between Japanese and English and persistence of the selected language after restart. This does not cover every screen, dynamic display path, DPI configuration, or external screen reader. Translation resources contain 27 namespaces and 15,321 keys per language, with zero key differences, interpolation differences, or empty Japanese translations; resource consistency alone does not guarantee complete UI coverage.
+
+The display-language choices are Japanese, English and System. v0.82.4-ja.1 was checked for switching both ways, persistence of explicit `en` and `ja` settings after restart, and Japanese resolved from System on a ja-JP host. This is not an exhaustive test of other OS languages or every screen configuration. [Testing and Verification](Testing-and-Verification-English) records verification scopes by version.
 
 In v0.82.3-ja.1, English was observed in Settings, menus, Project Manager and Workspace and remained selected after restart. With System selected, Japanese appeared in the Renderer and native menus and remained after a normal Ctrl+Q shutdown and restart. Persistence of an explicit `ja` setting was not checked on that version. The auxiliary-error warning passed English and Japanese DOM tests, but was not observed in the ordinary product. These results and the v0.82.1-ja.1 observations below are historical.
 

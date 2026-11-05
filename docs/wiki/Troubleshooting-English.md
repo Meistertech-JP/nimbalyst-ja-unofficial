@@ -2,7 +2,13 @@
 
 # Troubleshooting
 
-This page applies to v0.82.4-ja.1. Possible causes below are starting points for diagnosis, not defects confirmed in every environment.
+This page applies to v0.82.7-ja.1. Possible causes below are starting points for diagnosis, not defects confirmed in every environment.
+
+## Memory increases after a terminal process exits naturally
+
+Symptom: on Windows, terminal resources and memory may remain while the app stays open after a shell or CLI process exits naturally. This was observed in both upstream and the Japanese edition: after 20 natural exits, Main-process memory had increased by about 156 MiB, with MessagePort and ConPTY-related resources remaining. This is not an increase for every command run inside a persistent shell.
+
+Action: close a running terminal through the app's normal terminal control. If memory use increases after repeated natural exits, save your work, quit Nimbalyst normally, and restart it. Closing the terminal panel after the process has exited does not guarantee that resources will be recovered. Within the tested 20-exit scope, no failure to create the next terminal, data loss, or inability to quit normally was observed; the underlying fix has not been made. See [Limitations](Compatibility-and-Limitations-English) and [Testing and Verification](Testing-and-Verification-English) for details.
 
 ## Windows warns about an unsigned application
 

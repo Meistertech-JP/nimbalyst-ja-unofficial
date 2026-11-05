@@ -4,13 +4,14 @@
 
 User and developer documentation for an unofficial fork that adds Japanese display to the Nimbalyst desktop UI. This is not an official product of Nimbalyst, Inc. and is not endorsed or supported by the company.
 
-This edition is **v0.82.4-ja.1**, based on fixed upstream v0.82.4 commit `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. It provides unsigned NSIS and portable ZIP packages for Windows x64, matching source and checksums. It incorporates upstream changes to file operations, long-document search, image viewing, AI sessions, Tracker and shared pages, with corresponding Japanese display. See [Testing and Verification](Testing-and-Verification-English) for native observations and unverified areas by version. It does not automatically translate user documents or responses from external services.
+This edition is **v0.82.7-ja.1**, based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). It is an unsigned Windows x64 edition. Upstream updates include colored text in Lexical 0.53, migration to SQLite, AI-session changes, Tracker updates, and Windows-specific Git/CLI fixes, with corresponding Japanese display. Matching translation resources do not guarantee every screen or dynamic path is translated. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md), [Testing and Verification](Testing-and-Verification-English), and [Compatibility and Limitations](Compatibility-and-Limitations-English) for changes, observed scope, and limitations. It does not automatically translate user documents or responses from external services.
 
-- [Downloads and changes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)
+- [Downloads and changes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)
+- [Release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)
 - [Source code and README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.4-ja.1/LICENSE)
+- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/LICENSE)
 
-Official automatic updates and manual update checks are disabled. Update manually through this repository's Releases. The v0.82.3-ja.2 tag, release and distributions remain available as a previous version.
+Official automatic updates and manual update checks are disabled. Update manually through this repository's Releases. This edition includes migration from PGLite to SQLite, but does not guarantee migration of every real user's data. Earlier releases remain available as previous versions.
 
 This Wiki is documentation hosted on GitHub. It is separate from the application's Local Wiki and Team Wiki features.
 

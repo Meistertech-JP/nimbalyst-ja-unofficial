@@ -4,6 +4,12 @@
 
 Each release and tag identifies its source and available distributions.
 
+## v0.82.7-ja.1
+
+This [regular Windows x64 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1) is based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). It incorporates colored text in Lexical 0.53, migration from PGLite to SQLite, Claude Code and Codex SDK and AI-session improvements, weekly usage history, Claude in Chrome support, Windows Git/CLI fixes, Tracker local-number fixes, changes from upstream issue #1889, and Japanese UI updates. Integration does not mean that live paid-provider or Chrome connections were tested for this release.
+
+Resources contain 27 namespaces and 15,321 keys per language, with zero key differences, zero interpolation differences and zero empty Japanese translations. This does not guarantee every screen or dynamic translation path. The Windows installer, upgrade, portable, language-switching and migration scopes were checked on the tested product distribution, but the Windows full suite did not complete successfully. See [Testing and Verification](Testing-and-Verification-English) and [Compatibility and Limitations](Compatibility-and-Limitations-English) for unsigned distributions, Linux comparison results, verified scope and limitations.
+
 ## v0.82.4-ja.1
 
 This [Windows x64 stable release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1) uses fixed upstream v0.82.4 commit `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. It incorporates changes to file operations, long-document search, transcript images, AI-session questions, Tracker and shared pages, with corresponding Japanese display. Resources contain 27 namespaces and 15,254 keys per language. Japanese/English/System settings, edition-specific Windows identifiers, separate profiles, manual updates and localhost authentication are retained.

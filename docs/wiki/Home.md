@@ -4,13 +4,14 @@
 
 NimbalystのデスクトップUIを日本語で利用するための、非公式フォークの利用・開発資料です。Nimbalyst, Inc.の公式製品ではなく、同社による承認・サポートを受けていません。
 
-対象版は **v0.82.4-ja.1** です。本家v0.82.4の固定コミット `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7` を基準とし、Windows x64向け未署名NSISインストーラー、ポータブルZIP、対応ソースZIPとチェックサムを提供します。ファイル操作、長文検索、画像表示、AIセッション、Tracker・共有ページの本家変更と、それに対応する日本語表示を含みます。版ごとの実機確認と未検証事項は[テストと品質検証](Testing-and-Verification)を参照してください。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
+対象版は **v0.82.7-ja.1** です。本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489) を基準とする、Windows x64向け未署名版です。Lexical 0.53の色付きテキスト、SQLiteへの移行、AIセッション関連の更新、TrackerとWindows固有の修正などを取り込み、日本語表示を追加しています。翻訳資源の一致は全画面・全動的経路の表示保証ではありません。主な更新は[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)、確認済み範囲と制限は[テストと品質検証](Testing-and-Verification)および[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
 
-- [ダウンロードと変更内容](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)
+- [ダウンロードと変更内容](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)
+- [Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)
 - [ソースコード・README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.4-ja.1/LICENSE)
+- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/LICENSE)
 
-公式版の自動更新・手動更新確認は無効です。本リポジトリのReleasesから手動で更新します。旧v0.82.3-ja.2のタグ・Release・配布物は過去版として保持しています。
+公式版の自動更新・手動更新確認は無効です。本リポジトリのReleasesから手動で更新します。PGLiteからSQLiteへの自動移行を含みますが、すべての実ユーザーデータの移行を保証するものではありません。旧Releaseと配布物は過去版として保持しています。
 
 このWikiはGitHub上の文書です。アプリ内のLocal Wiki・Team Wikiとは別のものです。
 

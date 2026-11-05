@@ -2,6 +2,12 @@
 
 # Windows Installation and Updates
 
+## v0.82.7-ja.1
+
+Obtain `nimbalyst-0.82.7-ja.1-windows-x64-setup.exe`, `nimbalyst-0.82.7-ja.1-windows-x64-portable.zip`, `nimbalyst-0.82.7-ja.1-source.zip`, and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1). This is an unsigned Windows x64 edition based on upstream v0.82.7. Verify each filename and hash against the asset list and checksums from that same release. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md).
+
+Windows installation, upgrade, portable launch, language switching and restart persistence, normal shutdown, uninstall, and migration from PGLite to SQLite with synthetic data were checked. Migration of every real user's data is not guaranteed. The Windows full suite also did not complete successfully. See [Testing and Verification](Testing-and-Verification-English) for the scope and [Compatibility and Limitations](Compatibility-and-Limitations-English) for limitations.
+
 ## v0.82.4-ja.1
 
 Download `nimbalyst-0.82.4-ja.1-windows-x64-setup.exe`, `nimbalyst-0.82.4-ja.1-windows-x64-portable.zip`, `nimbalyst-0.82.4-ja.1-source.zip` and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1). This is an unsigned Windows x64 regular stable release based on upstream v0.82.4. Automatic updates are disabled; follow the manual-update procedure below.
@@ -26,7 +32,7 @@ This distribution targets Windows x64. v0.82.1-ja.1 is an unsigned stable releas
 
 ## Downloading and verifying files
 
-Obtain the NSIS installer, Windows portable ZIP, matching source ZIP and SHA256SUMS.txt from the [release assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1).
+Obtain the NSIS installer, Windows portable ZIP, matching source ZIP and SHA256SUMS.txt from the [release assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1).
 
 Compare filenames and hashes against the asset list and SHA256SUMS.txt from the same release.
 

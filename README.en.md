@@ -10,13 +10,11 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 ## Availability
 
-The source on this branch is an unpublished `v0.82.7-ja.1` candidate based on upstream v0.82.7 at `826adb4f93dbe86db35b76ce2502a3a33abe0489`. Candidate verification includes untested and failing areas; it is not the published distribution.
+The latest version, **v0.82.7-ja.1**, is an unsigned Windows x64 edition based on upstream v0.82.7 at `826adb4f93dbe86db35b76ce2502a3a33abe0489`. Download the NSIS installer, portable ZIP, corresponding source ZIP and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1).
 
-The latest version, v0.82.4-ja.1, is an unsigned Windows x64 edition. Download the NSIS installer, portable ZIP, matching source and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1).
+The source corresponding to these assets is tagged `v0.82.7-ja.1`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. Earlier tags, releases and distributions, including [v0.82.4-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1), are retained. Features and fixes may differ from the latest official release.
 
-The source corresponding to these assets is tagged `v0.82.4-ja.1`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. The [previous v0.82.3-ja.2 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2), its tag and distributions are retained.
-
-The published v0.82.4-ja.1 edition is based on upstream v0.82.4 at `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Features and fixes may differ from the latest official release.
+The publication quality decision is **GO WITH KNOWN LIMITATIONS**. This does not mean a completely successful Windows full-suite run or verification of every live integration and display path. Read the [known limitations](docs/KNOWN_LIMITATIONS_v0.82.7-ja.1.md#english).
 
 ## Japanese interface
 
@@ -36,13 +34,15 @@ Screenshots from the Windows application. Documents and tasks use sample data.
 
 ## Changes in this version
 
-This edition incorporates upstream v0.82.4 changes to file operations, search, image viewing, AI-session questions and shared pages. See the [release notes](RELEASE_NOTES_v0.82.4-ja.1.md) for changes and verification scope.
+This edition incorporates upstream changes from v0.82.4 through v0.82.7, including Lexical 0.53 and colored Markdown text, migration from PGLite to SQLite, AI-session and SDK updates, session-history loading, weekly usage history, Windows Git/CLI fixes and Tracker local-number fixes. It also integrates fixes originating from upstream issue #1889 and adds Japanese display for new UI. The [release notes](RELEASE_NOTES_v0.82.7-ja.1.md) distinguish incorporated changes from behavior exercised during verification.
 
 **Team recovery requires the updated sync server.** Other editing clients must also support recovery. Production-organization recovery and the complete procedure across independent clients have not been verified. Check server compatibility and the intended recovery target before attempting recovery of an existing organization.
 
 ## Language and data
 
 Select System, English, or Japanese in display-language settings. This is independent of the agent response language. User documents and external service responses are not automatically translated. Some Tracker names and statuses remain in English.
+
+Shared resources contain 27 namespaces and 15,321 keys in each language, with zero key differences, empty Japanese translations or interpolation mismatches. Electron native menus are also covered. Resource consistency does not guarantee translation of every screen or dynamic reference path.
 
 The Windows application ID is `jp.meistertech.nimbalyst.ja.unofficial`; the default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official settings are not moved or deleted. Running alongside the official application is unsupported. This edition does not claim the default `nimbalyst://` handler; authentication uses an instance-specific, nonce-protected localhost callback. Open authentication email on the same Windows PC.
 
@@ -53,6 +53,10 @@ Updates are manual through this repository's Releases. Official automatic update
 The [verification record](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) distinguishes native observations, automated tests and unverified areas for each version. Observations from earlier binaries are not treated as re-execution on a new distribution. Coverage does not extend to every screen, DPI setting or authentication path.
 
 Release assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
+
+Repeated natural exits of outer shell/CLI processes can retain terminal resources and memory until the app closes, in both upstream and this edition. Twenty natural exits increased Main-process memory by about 156 MiB in each comparison. This is not an increase for every command inside a persistent shell or evidence of an unlimited linear growth rate. If memory increases, save work, quit normally and restart. The root cleanup issue remains unfixed.
+
+Large editable documents can cause elevated CPU use, and local-wiki startup context may be delayed or omitted under heavy load. The Windows full suite did not finish normally because of same-process loopback stalls and other host-sensitive failures; separate-process major API probes passed both editions. This edition's Linux unit suite recorded 19,754 PASS / 0 FAIL / 30 SKIP; this is not a Linux product distribution or runtime guarantee. See the [bilingual limitations](docs/KNOWN_LIMITATIONS_v0.82.7-ja.1.md#english).
 
 Google sign-in, special recovery paths, server-side session revocation, cross-user NTFS effective access, external screen readers and complete dynamic-translation coverage remain unverified. EPERM during Windows symlink-fixture setup leaves untested behavior; Linux success is recorded separately. See [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
 

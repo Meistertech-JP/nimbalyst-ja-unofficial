@@ -2,6 +2,36 @@
 
 # Testing and Verification
 
+## v0.82.7-ja.1
+
+This section covers the [v0.82.7-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1), an unofficial Windows x64 edition based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). The quality decision is **GO WITH KNOWN LIMITATIONS**. The results below distinguish observed scope from unresolved issues; they do not mean that the Windows full suite passed.
+
+### Translation resources and integrated changes
+
+Resources contain 27 namespaces and 15,321 keys per language, with zero key differences, zero interpolation differences, and zero empty Japanese translations. This static consistency does not guarantee complete translation on every screen or dynamic path, nor does it translate external responses. Integrated upstream changes include colored text in Lexical 0.53, migration from PGLite to SQLite, Claude Code and Codex SDK updates, improvements to approval/question handling and long session-history loading, weekly usage history, Claude in Chrome support, Windows-specific Git/CLI fixes, Tracker local-number fixes, and changes originating in upstream issue #1889. Live paid-provider communication, an actual Claude in Chrome connection, and live collaboration-server or organization environments were not tested.
+
+### Existing static and Linux verification
+
+The [Linux comparison run `42008631197`](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/42008631197) compared the fixed Japanese-edition source with fixed upstream: 19,754 PASS, 0 FAIL, 30 SKIP for the Japanese-edition candidate, and 18,533 PASS, 0 FAIL, 30 SKIP for upstream. This comparison covers Linux unit/static and related checks; it does not qualify Linux distributions or replace Windows testing.
+
+Existing product-verification records show PASS for 39 workspace typechecks and all seven bundle-budget checks. These results apply to product verification, not documentation quality checks. Windows installation, upgrade, portable launch, immediate Japanese/English switching and persistence after restart, normal shutdown, uninstall, and PGLite-to-SQLite migration with synthetic data were checked. Migration of all real-user data is not guaranteed.
+
+### Windows full suite and API paths
+
+The Windows full suite did not complete successfully. On the validation host, same-process native loopback I/O stalled, and response HTML/CSP rewriting caused test failures. Separately, a locally instrumented run targeting the REST server spec evaluated 12 tests: 8 passed and 4 failed (exit 1). The failures included two HTML/CSP differences and two POSIX-style file-mode expectations on Windows; these 12 tests are not a Windows full-suite total. Major API tests using a real server in a separate process passed for both upstream and the Japanese edition. This confirms a limited communication path; it is not a Windows full-suite pass.
+
+### Retained terminal resources
+
+After a shell or CLI process exits naturally, terminal resources may remain until the app closes. This was observed in both upstream and the Japanese edition: after 20 natural exits, Main-process memory had increased by about 156 MiB, with MessagePort and ConPTY-related resources remaining. This is not an increase for every command run inside a persistent shell, and the 20-exit observation does not establish unbounded linear growth. Within the tested scope, no failure to create the next terminal, data loss, or inability to quit normally was observed; tracked resources were recovered after normal app shutdown. The underlying fix has not been made. Close a running terminal using the app's normal terminal control. If memory use increases, save your work, quit the app normally, and restart it. Closing a panel after its process has exited does not guarantee recovery.
+
+### Long-document editing and Local Wiki
+
+Large editable Markdown documents can cause elevated CPU usage. No Japanese-edition-specific worsening relative to upstream was observed in the comparison scope, but the root cause and behavior under all conditions remain unknown. Disabling accessibility features is not recommended.
+
+Under heavy load, generation of additional context from the local Wiki at session startup may be delayed or omitted. A limited load comparison passed all three runs for each edition, but the direct cause of an earlier single timeout of about 4,450 ms remains unknown. This does not indicate data loss or corruption of ordinary Wiki editing.
+
+Live Nimbalyst-account email and Google sign-in, special recovery, service-side session revocation, authentication or data recovery with a live collaboration server or organization, paid AI-provider communication, a Chrome connection, every dynamic translation path, every DPI and screen-reader condition, and migration of every real user's data remain unverified. Collaboration also requires a compatible sync server. Historical results and their target commits are documented separately below.
+
 ## v0.82.4-ja.1
 
 Qualification covers the Windows x64 edition integrating fixed upstream v0.82.4 commit `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Native product observations, automated tests, static checks and source/package comparisons cover distinct scopes. Publication-documentation changes apply to a distribution only after checking correspondence of execution code, dependencies and build inputs.

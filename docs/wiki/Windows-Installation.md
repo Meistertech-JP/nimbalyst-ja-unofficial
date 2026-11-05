@@ -2,6 +2,12 @@
 
 # Windowsへの導入と更新
 
+## v0.82.7-ja.1
+
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)から、`nimbalyst-0.82.7-ja.1-windows-x64-setup.exe`、`nimbalyst-0.82.7-ja.1-windows-x64-portable.zip`、`nimbalyst-0.82.7-ja.1-source.zip`、`SHA256SUMS.txt`を取得します。本家v0.82.7を基準とする未署名Windows x64版です。ファイル名とハッシュは同じReleaseの一覧・チェックサムで照合してください。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)も参照してください。
+
+Windows版の新規導入・更新・Portable起動・言語切替と再起動後の保持・通常終了・アンインストール、および合成データでのPGLiteからSQLiteへの移行を確認しています。全ての実ユーザーデータの移行を保証するものではありません。Windows全体試験も正常完走していません。手順の詳細は[テストと品質検証](Testing-and-Verification)、制限事項は[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。
+
 ## v0.82.4-ja.1
 
 [対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)から `nimbalyst-0.82.4-ja.1-windows-x64-setup.exe`、`nimbalyst-0.82.4-ja.1-windows-x64-portable.zip`、`nimbalyst-0.82.4-ja.1-source.zip` と `SHA256SUMS.txt` を取得します。本家v0.82.4を基準とする、Windows x64向け未署名の通常正式版です。自動更新は行わず、以下の手順で手動更新します。
@@ -26,7 +32,7 @@ v0.81.7-ja.3からの更新で英語設定、プロジェクト、テスト文�
 
 ## ダウンロードと照合
 
-[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)の添付一覧から、NSISインストーラー、WindowsポータブルZIP、対応ソースZIP、SHA256SUMS.txtを取得してください。
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)の添付一覧から、NSISインストーラー、WindowsポータブルZIP、対応ソースZIP、SHA256SUMS.txtを取得してください。
 
 ファイル名とハッシュは同じReleaseの添付一覧とSHA256SUMS.txtで照合します。
 

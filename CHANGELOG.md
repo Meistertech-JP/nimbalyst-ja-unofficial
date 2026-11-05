@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.82.7-ja.1] — 2026-11-05
+
 - Integrate upstream v0.82.7, including SQLite migration, colored Markdown text, session loading and agent SDK updates.
 - Extend Japanese display for the new controls and migration screen while retaining live language switching.
 - Keep failed session submissions in the draft and show their errors in the current display language.
+- Release unsigned Windows x64 packages with documented terminal-resource, performance and test-coverage limitations; see the [bilingual release notes](RELEASE_NOTES_v0.82.7-ja.1.md).
 
 ## [0.82.4-ja.1] — 2026-10-30
 

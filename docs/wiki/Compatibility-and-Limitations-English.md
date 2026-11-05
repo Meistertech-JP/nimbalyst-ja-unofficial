@@ -2,6 +2,22 @@
 
 # Compatibility and Limitations
 
+## v0.82.7-ja.1
+
+The [v0.82.7-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1) is an unsigned, unofficial Windows x64 edition based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). It is not an official Nimbalyst, Inc. product and is not endorsed or supported by the company. The quality decision is **GO WITH KNOWN LIMITATIONS**. This does not mean that the Windows full suite passed, every execution path was verified, or the retained PTY resources were fundamentally fixed. Updates are manual through this repository's Releases.
+
+Translation resources contain 27 namespaces and 15,321 keys per language, with zero key differences, interpolation differences, or empty Japanese translations. This does not guarantee complete translation on every screen or dynamic path. Migration from PGLite to SQLite was checked with synthetic data, but migration of every real user's data is not guaranteed.
+
+On Windows, terminal resources may remain while the app is running after a shell or CLI process exits naturally. This was observed in both upstream and the Japanese edition: after 20 natural exits, Main-process memory had increased by about 156 MiB in each edition, with MessagePort and ConPTY-related resources remaining. This is not an increase for every command run inside a persistent shell, and the bounded observation does not establish unbounded linear growth. Within the tested scope, no failure to create the next terminal, data loss, or inability to quit normally was observed; the tracked resources were recovered after normal app shutdown. The underlying fix has not been made. Close a running terminal using the app's normal terminal control. If memory use increases, save your work, quit the app normally, and restart it. Closing a panel after its process has already exited does not guarantee recovery.
+
+Large editable documents can cause elevated CPU usage. No substantial worsening relative to upstream was observed in the comparison scope, but the cause and reproduction conditions are not fully known. Disabling accessibility features is not recommended as a workaround.
+
+Under heavy system load, generation of additional local-wiki context at session startup may be delayed or omitted. A limited comparison passed all three runs for each edition, but the cause of an earlier single timeout of about 4,450 ms remains unknown. This does not establish data loss or corruption of ordinary Wiki editing.
+
+The Windows full suite did not complete successfully. Same-process loopback communication stalled, and response HTML/CSP rewriting caused test failures, among other issues. Major API tests using a real server in a separate process passed for both upstream and the Japanese edition. These results do not constitute a blanket Windows test pass.
+
+Live Nimbalyst-account authentication, collaboration-server and organization environments, some paid AI-provider communications, an actual Claude in Chrome connection, every dynamic translation path, every DPI/accessibility configuration, and migration of all real-user data remain unverified. See [Testing and Verification](Testing-and-Verification-English) for the detailed test scope.
+
 ## v0.82.4-ja.1
 
 This unsigned Windows x64 regular stable release is based on upstream v0.82.4 at `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Edition-specific identifiers and profiles, manual updates and nonce-protected localhost authentication are retained. Native checks in the ordinary Windows product covered Japanese/English switching, persistence of explicit Japanese and English settings after restart, Japanese resolved from System, principal file/search/image paths, upgrade and ordinary uninstall. These results are recorded separately from older versions in [Testing and Verification](Testing-and-Verification-English).

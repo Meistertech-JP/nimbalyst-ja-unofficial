@@ -2,7 +2,7 @@
 
 # Following Upstream Nimbalyst
 
-v0.82.4-ja.1 is based on fixed upstream v0.82.4 commit [`031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`](https://github.com/nimbalyst/nimbalyst/commit/031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7). All 38 commits and 81 changed paths from the previous upstream baseline `84dcc00f3cd0abbb36eafc6bfad9389f960076db` were classified and integrated while preserving both histories and edition-specific behavior. The earlier v0.82.3-ja.2 corrected documentation and distribution contents at that old upstream baseline. The fork does not automatically track the latest upstream main.
+The [v0.82.7-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1) is based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). It incorporates upstream changes since the previous v0.82.4-ja.1 release while preserving both histories and edition-specific behavior. The fork does not automatically track the latest upstream main.
 
 ## Establishing a fixed starting point
 
@@ -10,7 +10,7 @@ Preserve the published tag's source, distributions, hashes, and verification rec
 
 ```text
 fixed upstream ── additional upstream commits ── fixed integration target
-      └─ Japanese fork ── published ja.3 ── integration development branch
+      └─ Japanese fork ── published v0.82.7-ja.1 ── integration development branch
 ```
 
 Preserve history; do not represent integration by force-pushing or moving published tags. Also verify that the Japanese edition's previous main remains an ancestor.
@@ -32,7 +32,7 @@ An authentication conflict is not resolved merely because its screen is translat
 
 ## Translation and verification
 
-Classify display strings in new UI and prefer existing keys. Add new keys in both English and Japanese with matching interpolation variables. Distinguish fixed UI from types, comments, model IDs, and user-entered values. Check the current workspace structure and run type checks. v0.82.4 checks 39 workspaces including tracker-builtins; retaining the older count of 38 is not the objective.
+Classify display strings in new UI and prefer existing keys. Add new keys in both English and Japanese with matching interpolation variables. Distinguish fixed UI from types, comments, model IDs, and user-entered values. Check the current workspace structure and run type checks. v0.82.7-ja.1 has a checked result for 39 workspace typechecks; retaining the older count of 38 is not the objective.
 
 Verify related unit tests, resource consistency, missing references, sizes for all 7 entries, Windows packages, language switching, and persistence after restart. If authentication or startup paths change, add runtime checks appropriate to the impact. Compare new failures against the fixed upstream baseline rather than automatically grouping them with the four old Windows fixture failures.
 

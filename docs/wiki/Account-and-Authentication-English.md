@@ -2,6 +2,10 @@
 
 # Account and Authentication
 
+## v0.82.7-ja.1
+
+Live email authentication for a Nimbalyst account was not newly tested for this release. Google sign-in, special recovery, and service-side session revocation also remain unverified. The procedures below and observations from earlier versions do not establish successful live authentication on the current release. See [Testing and Verification](Testing-and-Verification-English).
+
 ## v0.82.4-ja.1
 
 An earlier ordinary Windows product build with unchanged authentication/startup code was checked for production email sign-in, a same-PC localhost callback, encrypted storage, restart restoration, normal sign-out and a signed-out restart. A new email sign-in was not repeated on the final distribution itself. Regression tests cover nonce handling, fail-closed storage and prevention of state restoration from stale responses. Live callback modification/replay, Google sign-in, special recovery, server-side session revocation and effective NTFS access by another user remain unverified.
