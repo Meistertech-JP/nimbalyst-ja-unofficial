@@ -248,13 +248,19 @@ jobs:
             -parallel-testing-enabled NO
 
       - name: Build iOS app (simulator)
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: |
+          NIMBALYST_NODE_BINARY="$(command -v node)"
+          "$NIMBALYST_NODE_BINARY" -e 'if (Number(process.versions.node.split(".")[0]) < 24) process.exit(1); console.log("Xcode bundle Node:", process.version);'
           cd NimbalystApp
           xcodebuild \
             -project NimbalystApp.xcodeproj \
             -scheme NimbalystApp \
             -destination "$IOS_SIMULATOR_DESTINATION" \
             -configuration Debug \
+            NIMBALYST_NODE_BINARY="$NIMBALYST_NODE_BINARY" \
+            NODE_OPTIONS="$NODE_OPTIONS" \
             clean build
 
       - name: Verify transcript bundle in app

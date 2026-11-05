@@ -79,21 +79,26 @@ targets:
     preBuildScripts:
       - name: Build Transcript Web Bundle
         script: |
-          # Xcode build scripts run with a minimal PATH that excludes common
-          # node install locations (Homebrew, nvm). Augment PATH so `node` and
-          # the workspace-hoisted vite are resolvable.
-          export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(cat $HOME/.nvm/alias/default 2>/dev/null)/bin:$PATH"
+          # CI passes its selected runtime explicitly; local Xcode builds can
+          # fall back to PATH without replacing an already selected Node.
+          export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(cat $HOME/.nvm/alias/default 2>/dev/null)/bin"
+          NODE_BINARY="${NIMBALYST_NODE_BINARY:-$(command -v node || true)}"
+          if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then
+            echo "error: Node 24+ is required; set NIMBALYST_NODE_BINARY to its executable" >&2
+            exit 1
+          fi
+          "$NODE_BINARY" -e 'if (Number(process.versions.node.split(".")[0]) < 24) { console.error("Node 24+ is required"); process.exit(1); } console.log("Web bundle Node:", process.version, process.execPath);' || exit 1
           cd "${SRCROOT}/.."
           # The workspace install hoists vite to the monorepo root node_modules. The
           # previous package-local `node_modules/.bin/vite` check was always
           # false here and silently shipped a stale dist on every rebuild.
           # Invoke the hoisted binary directly and fail loudly if it's gone.
-          VITE_BIN="${SRCROOT}/../../../node_modules/.bin/vite"
-          if [ ! -x "$VITE_BIN" ]; then
-            echo "error: $VITE_BIN missing; run 'pnpm install' at the monorepo root" >&2
+          VITE_JS="${SRCROOT}/../../../node_modules/vite/bin/vite.js"
+          if [ ! -f "$VITE_JS" ]; then
+            echo "error: $VITE_JS missing; run 'pnpm install' at the monorepo root" >&2
             exit 1
           fi
-          "$VITE_BIN" build --config vite.config.transcript.ts
+          "$NODE_BINARY" "$VITE_JS" build --config vite.config.transcript.ts || exit 1
           # Copy transcript dist to Resources (clean first to remove stale hashed assets)
           rm -rf "${SRCROOT}/Resources/transcript-dist"
           mkdir -p "${SRCROOT}/Resources/transcript-dist"
@@ -102,14 +107,20 @@ targets:
         basedOnDependencyAnalysis: false
       - name: Build Editor Web Bundle
         script: |
-          export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(cat $HOME/.nvm/alias/default 2>/dev/null)/bin:$PATH"
-          cd "${SRCROOT}/.."
-          VITE_BIN="${SRCROOT}/../../../node_modules/.bin/vite"
-          if [ ! -x "$VITE_BIN" ]; then
-            echo "error: $VITE_BIN missing; run 'pnpm install' at the monorepo root" >&2
+          export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(cat $HOME/.nvm/alias/default 2>/dev/null)/bin"
+          NODE_BINARY="${NIMBALYST_NODE_BINARY:-$(command -v node || true)}"
+          if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then
+            echo "error: Node 24+ is required; set NIMBALYST_NODE_BINARY to its executable" >&2
             exit 1
           fi
-          "$VITE_BIN" build --config vite.config.editor.ts
+          "$NODE_BINARY" -e 'if (Number(process.versions.node.split(".")[0]) < 24) { console.error("Node 24+ is required"); process.exit(1); } console.log("Web bundle Node:", process.version, process.execPath);' || exit 1
+          cd "${SRCROOT}/.."
+          VITE_JS="${SRCROOT}/../../../node_modules/vite/bin/vite.js"
+          if [ ! -f "$VITE_JS" ]; then
+            echo "error: $VITE_JS missing; run 'pnpm install' at the monorepo root" >&2
+            exit 1
+          fi
+          "$NODE_BINARY" "$VITE_JS" build --config vite.config.editor.ts || exit 1
           # Copy editor dist to Resources (clean first to remove stale hashed assets)
           rm -rf "${SRCROOT}/Resources/editor-dist"
           mkdir -p "${SRCROOT}/Resources/editor-dist"
