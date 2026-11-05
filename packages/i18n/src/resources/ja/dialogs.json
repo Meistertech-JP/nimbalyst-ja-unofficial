@@ -1,4 +1,25 @@
 {
+  "startup_splash": {
+    "initializing": "初期化中",
+    "headline": "ローカルデータベースを更新しています",
+    "preparing": "準備中…",
+    "note": "この処理は一度だけ行われます。Nimbalystを開いたままお待ちください。完了すると自動的に再起動します。",
+    "phase_preparing": "準備中",
+    "phase_copying": "コピー中",
+    "phase_rebuilding-fts": "検索インデックスを再構築中",
+    "phase_verifying-counts": "行数を検証中",
+    "phase_verifying-integrity": "整合性を確認中",
+    "phase_verifying-foreign-keys": "参照を確認中",
+    "phase_verifying-spot-check": "行を抜き取り検査中",
+    "phase_finalizing": "最終処理中",
+    "working": "処理中",
+    "rows": "{{expected}}行中{{copied}}行",
+    "copying_table": "{{table}}をコピー中",
+    "eta_under_minute": "残り1分未満",
+    "eta_one_minute": "残り約1分",
+    "eta_minutes": "残り約{{minutes}}分",
+    "eta_minutes_plus": "残り約{{minutes}}分以上"
+  },
   "tutorial_template": {
     "directory_missing": "チュートリアルのテンプレートフォルダーが見つかりません：{{path}}",
     "not_directory": "チュートリアルのテンプレートパスはフォルダーではありません：{{path}}",

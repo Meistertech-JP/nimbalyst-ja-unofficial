@@ -147,3 +147,23 @@ it("localizes the delayed file-update warning and keeps the affected file name",
     { duration: 10_000 }
   );
 });
+
+it("never registers a fileless virtual:// tab for disk reconciliation (#1863)", async () => {
+  const invoke = vi.fn().mockRejectedValue(new Error("Invalid open-file registration"));
+  vi.stubGlobal("window", { electronAPI: { invoke } });
+  notificationMocks.showWarning.mockClear();
+  subscriptions.push(
+    new DiskChangeSubscription(
+      "virtual://com.example.reader/page/wiki/index.md",
+      vi.fn(),
+      vi.fn(),
+      vi.fn()
+    )
+  );
+  await vi.advanceTimersByTimeAsync(120_000);
+  expect(
+    invoke.mock.calls.filter(([channel]) => channel === "file:register-open")
+  ).toHaveLength(0);
+  expect(notificationMocks.showWarning).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+});

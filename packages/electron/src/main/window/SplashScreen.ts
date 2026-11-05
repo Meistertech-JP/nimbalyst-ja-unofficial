@@ -3,6 +3,7 @@ import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { getBackgroundColor } from '../theme/ThemeManager';
 import { getTheme, getThemeIsDark } from '../utils/store';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 
 let splashWindow: BrowserWindow | null = null;
 
@@ -41,6 +42,8 @@ function getIconDataUrl(): string | null {
  * Icon is embedded as base64 data URL directly in the HTML.
  */
 function buildSplashHTML(): string {
+    const text = (key: string, fallback: string) => translateMainDialogLabel(`startup_splash.${key}`, fallback)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const dark = isDark();
     const bg = dark ? '#1a1a1a' : '#ffffff';
     const textColor = dark ? '#e5e7eb' : '#374151';
@@ -147,16 +150,16 @@ function buildSplashHTML(): string {
 <body>
   ${iconHtml}
   <div class="title">Nimbalyst</div>
-  <div class="status">Initializing<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
+  <div class="status">${text('initializing', 'Initializing')}<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div>
   <div id="migration">
-    <div id="migration-headline">Upgrading your local database</div>
+    <div id="migration-headline">${text('headline', 'Upgrading your local database')}</div>
     <div id="migration-track"><div id="migration-fill"></div></div>
     <div id="migration-meta">
-      <span id="migration-primary">Preparing&hellip;</span>
+      <span id="migration-primary">${text('preparing', 'Preparing…')}</span>
       <span id="migration-eta"></span>
     </div>
     <div id="migration-phase"></div>
-    <div id="migration-note">This happens once. Please leave Nimbalyst open &mdash; it will restart itself when finished.</div>
+    <div id="migration-note">${text('note', 'This happens once. Please leave Nimbalyst open — it will restart itself when finished.')}</div>
   </div>
 </body>
 </html>`;

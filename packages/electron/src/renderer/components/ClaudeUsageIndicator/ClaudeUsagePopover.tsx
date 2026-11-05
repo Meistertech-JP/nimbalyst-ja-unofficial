@@ -1,8 +1,8 @@
 /**
  * ClaudeUsagePopover - Detailed usage information popover
  *
- * Shows both session (5-hour) and weekly (7-day) usage with progress bars
- * and reset times.
+ * Shows session (5-hour, when the plan has one) and weekly (7-day) usage with
+ * progress bars and reset times.
  */
 
 import React, { useEffect, RefObject } from 'react';
@@ -18,6 +18,7 @@ import {
 } from '../../store/atoms/claudeUsageAtoms';
 import { toggleGutterItemHiddenAtom } from '../../store/atoms/appSettings';
 import { useFloatingMenu, FloatingPortal } from '../../hooks/useFloatingMenu';
+import { WeeklyUsageHistory } from '../UsageHistory/WeeklyUsageHistory';
 
 interface ClaudeUsagePopoverProps {
   anchorRef: RefObject<HTMLElement | null>;
@@ -182,6 +183,8 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
             <div className="text-[13px] text-nim-error">{usageErrorDisplay(usage.error, t)}</div>
           ) : (
             <>
+              {/* Some plans have no 5-hour session limit. */}
+              {usage.fiveHour && (
               <UsageSection
                 title={t('usage_indicator.session')}
                 subtitle={t('usage_indicator.window_hour', { count: 5 })}
@@ -189,7 +192,8 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
                 resetsAt={usage.fiveHour.resetsAt}
                 color={sessionColor as 'green' | 'yellow' | 'red' | 'muted'}
                 windowDurationMs={5 * 60 * 60 * 1000} // 5 hours
-              />
+                />
+              )}
               <UsageSection
                 title={t('usage_indicator.weekly')}
                 subtitle={t('usage_indicator.window_day', { count: 7 })}
@@ -229,6 +233,8 @@ export const ClaudeUsagePopover: React.FC<ClaudeUsagePopoverProps> = ({
             </>
           )}
         </div>
+
+        <WeeklyUsageHistory history={usage.weeklyHistory} />
 
         {/* Footer */}
         <div className="px-4 py-2 border-t border-nim flex flex-col gap-1.5">

@@ -32,8 +32,6 @@ exports.default = async function(context) {
     ? path.join(appOutDir, `${packager.appInfo.productName}.app`, 'Contents/Resources')
     : path.join(appOutDir, 'resources');
 
-  validatePackagedRipgrep(resourcesDir, platformName, arch);
-
   // Prune unused platform binaries from claude-agent-sdk vendor/ripgrep directory
   // The SDK vendors ripgrep binaries for all 6 platform/arch combos (~61MB total).
   // We only need the one matching the build target.
@@ -175,6 +173,7 @@ exports.default = async function(context) {
   // the build instead of silently shipping.
   validateBundledExtensions(resourcesDir);
   validatePackagedTutorialProject(resourcesDir);
+  validatePackagedRipgrep(resourcesDir, platformName, arch);
 
   console.log('AfterPack: Complete');
 };
@@ -348,6 +347,39 @@ function pruneOnnxRuntimeBinaries(resourcesDir, platformName, arch) {
 // with its manifest.json (and dist/ when the source has one). Throws on any
 // miss. Derives the expected set from packages/extensions so it auto-adapts
 // as extensions are added/removed -- no hardcoded id list to drift.
+// A truncated rg.exe once passed every existence check (GitHub #1889) and would
+// ship a search that cannot start. When the build host can run the target binary
+// -- release CI builds each Windows architecture on a native runner -- execute the
+// exact file the app resolves (ripgrepPath.ts) rather than trusting its presence.
+// Returns whether execution was validated.
+exports.validatePackagedRipgrep = validatePackagedRipgrep;
+function validatePackagedRipgrep(
+  resourcesDir,
+  platformName,
+  arch,
+  { hostPlatform = process.platform, hostArch = process.arch, run = spawnSync } = {},
+) {
+  if (platformName !== 'win32') return false;
+
+  const rgPath = path.join(resourcesDir, 'app.asar.unpacked/node_modules/@vscode/ripgrep/bin/rg.exe');
+  if (!fs.existsSync(rgPath) || !fs.statSync(rgPath).isFile()) {
+    throw new Error(`AfterPack: packaged ripgrep is missing: ${rgPath}`);
+  }
+  if (hostPlatform !== platformName || hostArch !== arch) {
+    console.log(`AfterPack: ripgrep present; execution not validated on a ${hostPlatform}-${hostArch} host for ${platformName}-${arch}`);
+    return false;
+  }
+
+  const result = run(rgPath, ['--version'], { encoding: 'utf8', timeout: 15000, windowsHide: true });
+  const stdout = String(result.stdout ?? '');
+  if (result.error || result.status !== 0 || !stdout.startsWith('ripgrep ')) {
+    const reason = result.error ? result.error.message : `exit ${result.status}${result.signal ? ` (${result.signal})` : ''}`;
+    throw new Error(`AfterPack: packaged ripgrep does not run (${reason}): ${rgPath}\n${stdout}${result.stderr ?? ''}`);
+  }
+  console.log(`AfterPack: packaged ripgrep runs: ${stdout.split('\n')[0]}`);
+  return true;
+}
+
 exports.validateBundledExtensions = validateBundledExtensions;
 function validateBundledExtensions(resourcesDir) {
   const sourceExtDir = path.join(__dirname, '..', '..', 'extensions');
@@ -402,27 +434,6 @@ function configureWindowsNsisCompression(platformName, arch, environment = proce
   if (platformName !== 'win32' || arch !== 'x64') return false;
   environment.ELECTRON_BUILDER_7Z_FILTER = 'BCJ';
   return true;
-}
-
-// File existence alone does not detect truncated executables. For native
-// Windows builds exercise the exact binary packaged for file search.
-exports.validatePackagedRipgrep = validatePackagedRipgrep;
-function validatePackagedRipgrep(resourcesDir, platformName, arch, host = {
-  platform: process.platform, arch: process.arch, spawn: spawnSync,
-}) {
-  if (platformName !== 'win32') return 'not-applicable';
-  const binary = path.join(resourcesDir, 'app.asar.unpacked', 'node_modules', '@vscode', 'ripgrep', 'bin', 'rg.exe');
-  if (!fs.existsSync(binary)) throw new Error(`AfterPack: packaged ripgrep is missing: ${binary}`);
-  if (host.platform !== platformName || host.arch !== arch) {
-    console.warn(`AfterPack: packaged ripgrep exists but cannot be executed on ${host.platform}-${host.arch}; validate it on ${platformName}-${arch}.`);
-    return 'not-executed';
-  }
-  const result = host.spawn(binary, ['--version'], { encoding: 'utf8', timeout: 10000, windowsHide: true });
-  if (result.error || result.status !== 0 || !/^ripgrep\s/m.test(result.stdout || '')) {
-    throw new Error(`AfterPack: packaged ripgrep failed its execution check: ${result.error?.message || result.stderr || `exit ${result.status}`}`);
-  }
-  console.log('AfterPack: packaged ripgrep execution check passed');
-  return 'executed';
 }
 
 function getDirSize(dirPath) {

@@ -1,7 +1,8 @@
 /**
  * ClaudeUsageIndicator - Circular progress indicator for Claude Code usage
  *
- * Displays the 5-hour session utilization as a circular progress ring
+ * Displays the 5-hour session utilization (or weekly, on plans without a
+ * session limit) as a circular progress ring
  * in the navigation gutter. Clicking opens a popover with full details.
  */
 
@@ -15,6 +16,7 @@ import {
   claudeUsageSessionColorAtom,
 } from '../../store/atoms/claudeUsageAtoms';
 import { ClaudeUsagePopover } from './ClaudeUsagePopover';
+import { claudeUsageHeadline } from '../../../shared/claudeUsage';
 import { refreshClaudeUsage } from '../../store/listeners/claudeUsageListeners';
 
 const RING_RADIUS = 12;
@@ -46,7 +48,8 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
   }
 
   const hasLoadError = Boolean(usage?.error);
-  const utilization = hasLoadError ? 0 : usage?.fiveHour?.utilization ?? 0;
+  const headline = usage ? claudeUsageHeadline(usage) : null;
+  const utilization = hasLoadError ? 0 : headline?.utilization ?? 0;
   const strokeDashoffset = RING_CIRCUMFERENCE * (1 - utilization / 100);
 
   // Color mapping
@@ -62,13 +65,10 @@ export const ClaudeUsageIndicator: React.FC<ClaudeUsageIndicatorProps> = ({ clas
 
   const tooltipContent = usage?.error
     ? t('usage_indicator.error_unavailable', { provider: t('usage_indicator.claude_name'), error: usageErrorDisplay(usage.error, t) })
-    : usage
+    : headline
       ? [
-          t('usage_indicator.session_tooltip', {
-            percent: Math.round(utilization),
-            time: formatReset(usage.fiveHour.resetsAt, t),
-          }),
-          ...(usage.weeklyModelLimits ?? []).map(limit =>
+          `${t(headline.label === 'Session' ? 'usage_indicator.session' : 'usage_indicator.weekly')}: ${Math.round(utilization)}% ${t('usage_indicator.usage')} (${t('usage_indicator.resets_in', { time: formatReset(headline.resetsAt, t) })})`,
+          ...(usage?.weeklyModelLimits ?? []).map(limit =>
             `${limit.model}: ${Math.round(limit.utilization)}% ${t('usage_indicator.usage')} (${t('usage_indicator.resets_in', { time: formatReset(limit.resetsAt, t) })})`
           ),
         ].join('\n')

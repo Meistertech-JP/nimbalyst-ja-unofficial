@@ -614,6 +614,7 @@
     "mcp_status_name": "Show MCP Server Status",
     "mcp_status_desc": "Show a chip in the session header listing this session's MCP servers, which are connected, and which never reached it.",
     "prompt_suggestions_name": "Suggest next prompt",
+    "claude_in_chrome_description": "Let Claude Code sessions control your Chrome browser through the Claude in Chrome extension. Requires the extension to be installed and signed in. Applies to new sessions; existing sessions pick it up on their next message.",
     "prompt_suggestions_desc": "After a Claude Code turn you started, show a predicted next prompt in the input. Press Tab to fill it in, then Enter to send. Each suggestion is one extra model call that reuses the conversation cache.",
     "preferred_language_name": "Preferred Agent Language",
     "preferred_language_desc": "Preferred language for AI-generated session names (for example, Japanese, ja, or Spanish). Leave blank to let the agent choose based on the conversation.",

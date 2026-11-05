@@ -46,6 +46,8 @@ export function loadFileIntoWindow(window: BrowserWindow, filePath: string) {
             console.error('[LOAD_FILE] No window state found for window ID:', windowId);
         }
 
+        // Captured once: the BrowserWindow.webContents getter throws after the
+        // window is destroyed, which is when the 'destroyed' handler runs.
         const contents = window.webContents;
         let requests = pendingFileOpens.get(contents);
         if (!requests) {

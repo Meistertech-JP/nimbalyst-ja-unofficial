@@ -769,6 +769,15 @@ export const sessionLoadingAtom = atomFamily((_sessionId: string) =>
 );
 
 /**
+ * Per-session load failure: why the last load threw, or null. Lets the view
+ * tell a session that failed to load apart from one that does not exist
+ * (#1812).
+ */
+export const sessionLoadErrorAtom = atomFamily((_sessionId: string) =>
+  atom<string | null>(null)
+);
+
+/**
  * Per-session AI mode (plan vs agent).
  * This is a read-write derived atom that reads from sessionStoreAtom and writes through it.
  * This ensures the mode stays in sync with session data during reloads.
@@ -1181,6 +1190,9 @@ export const loadSessionChildrenAtom = atom(
         { includeArchived: false }
       );
       // console.log('[loadSessionChildrenAtom] IPC result:', result);
+      // The window may have switched projects while this was in flight.
+      const listWorkspace = get(sessionListWorkspaceAtom);
+      if (listWorkspace && listWorkspace !== workspacePath) return [];
       if (result.success && Array.isArray(result.children)) {
         const childIds = result.children.map((c: any) => c.id);
         // console.log('[loadSessionChildrenAtom] Setting children:', childIds);
@@ -1808,6 +1820,12 @@ export const setSessionWorkspaceOpenAtom = atom(
 );
 
 
+/** The thrown reason, without Electron's "Error invoking remote method" wrapper. */
+function describeSessionLoadError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/^Error invoking remote method '[^']*': /, '');
+}
+
 /**
  * Load session data into the atom.
  * Called by AISessionView on mount.
@@ -1831,6 +1849,7 @@ export const loadSessionDataAtom = atom(
     }
 
     set(sessionLoadingAtom(sessionId), true);
+    set(sessionLoadErrorAtom(sessionId), null);
     const draftWasHydrated = get(sessionDraftHydratedAtom(sessionId));
     const draftModifiedAtStart = get(sessionDraftLocalModifiedAtAtom(sessionId));
 
@@ -1880,6 +1899,9 @@ export const loadSessionDataAtom = atom(
       }
     } catch (error) {
       console.error(`[sessions] Failed to load session ${sessionId}:`, error);
+      if (get(sessionWorkspaceGenerationsAtom).get(workspacePath) === generation) {
+        set(sessionLoadErrorAtom(sessionId), describeSessionLoadError(error));
+      }
     } finally {
       if (get(sessionWorkspaceGenerationsAtom).get(workspacePath) === generation) {
         set(sessionLoadingAtom(sessionId), false);
@@ -2059,6 +2081,7 @@ export const cleanupSessionAtom = atom(null, (get, set, sessionId: string) => {
   // Remove all per-session atoms
   sessionStoreAtom.remove(sessionId);
   sessionLoadingAtom.remove(sessionId);
+  sessionLoadErrorAtom.remove(sessionId);
   sessionModeAtom.remove(sessionId);
   sessionModelAtom.remove(sessionId);
   sessionArchivedAtom.remove(sessionId);
@@ -2184,6 +2207,9 @@ export const sessionListRootAtom = atom<SessionListItem[]>((get) => {
 
   return Array.from(registry.values())
     .filter(s => {
+      // GitHub #1887: the send path rejects a session whose workspace_id is not
+      // this workspace, so never list one (the registry is shared per window).
+      if (workspacePath && s.workspaceId && s.workspaceId !== workspacePath) return false;
       if ((s.remoteHostDeviceId ?? "") !== host) return false;
       if (!showArchived && s.isArchived) return false;
       // Root sessions (no parent) are always included

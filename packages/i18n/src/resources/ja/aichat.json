@@ -1,5 +1,6 @@
 {
   "clipboard_image": "クリップボードの画像",
+  "session_load_error": "このセッションを読み込めませんでした",
   "session_naming_failure": "応答は完了しましたが、セッション情報を更新できませんでした。",
   "conversation_controls": {
     "wrap": "折り返す",
@@ -578,6 +579,8 @@
     "waiting": "待機中…",
     "exited": "計画モードを終了しました",
     "continued": "計画を継続します",
+    "handed_off": "計画を引き継ぎました",
+    "deferred": "新しいセッションに引き継ぎ",
     "approved": "承認",
     "denied": "却下",
     "plan": "計画:",

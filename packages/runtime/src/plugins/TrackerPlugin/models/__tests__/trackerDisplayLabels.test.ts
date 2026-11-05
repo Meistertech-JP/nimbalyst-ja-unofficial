@@ -69,6 +69,28 @@ describe('builtin tracker display labels', () => {
     expect(JSON.stringify(model)).toBe(before);
   });
 
+  it('localizes GitHub overlay labels without changing IDs or overriding workspace wording', async () => {
+    const i18n = await createI18nInstance('ja');
+    const t = (key: string) => i18n.t(key, { ns: 'tracker' });
+    const original = JSON.stringify(globalRegistry.get('github-issue'));
+    expect(resolveTrackerTypeDisplayLabel('github-issue', t, true)).toBe('GitHubの課題');
+    expect(resolveTrackerTypeDisplayLabel('github-pr', t, true)).toBe('GitHubのプルリクエスト');
+    expect(resolveTrackerFieldDisplayLabel('github-issue', 'status', 'close-fixed', t)).toBe('クローズ：修正済み');
+    expect(resolveTrackerFieldDisplayLabel('github-issue', 'priority', 'medium', t)).toBe('中');
+    await i18n.changeLanguage('en');
+    expect(resolveTrackerTypeDisplayLabel('github-issue', t, true)).toBe('GitHub Issues');
+    expect(resolveTrackerFieldDisplayLabel('github-pr', 'status', 'to-review', t)).toBe('To Review');
+    expect(JSON.stringify(globalRegistry.get('github-issue'))).toBe(original);
+
+    const customized = structuredClone(globalRegistry.getBuiltinModel('github-issue')!);
+    customized.displayName = 'Support tickets';
+    customized.fields.find(field => field.name === 'status')!.options!.find(option => option.value === 'needs-triage')!.label = 'Customer wording';
+    globalRegistry.register(customized);
+    await i18n.changeLanguage('ja');
+    expect(resolveTrackerTypeDisplayLabel('github-issue', t)).toBe('Support tickets');
+    expect(resolveTrackerFieldDisplayLabel('github-issue', 'status', 'needs-triage', t)).toBe('Customer wording');
+  });
+
   it('does not leak missing translation keys and supports all built-in status families', () => {
     for (const seed of parseBuiltinTrackers()) {
       const status = seed.fields.find(field => field.name === 'status')?.options?.[0];

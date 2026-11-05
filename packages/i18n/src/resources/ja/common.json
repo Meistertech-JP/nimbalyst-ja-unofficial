@@ -1,5 +1,14 @@
 {
   "cancel": "キャンセル",
+  "weekly_history": {
+    "title": "週間履歴", "this_week": "今週", "ended": "{{date}}に終了",
+    "chart_label": "{{label}}の1週間の使用量",
+    "partial_title": "最終記録：{{date}}（週の終了前）。最終的な使用量はこれより多い可能性があります",
+    "resets": "リセット：{{date}}", "week_ended": "週の終了：{{date}}",
+    "show_fewer": "表示を減らす", "show_all": "すべての週を表示",
+    "note": "破線は均等なペースを示します。日付は各週のリセット日です。Nimbalystの起動中のみ記録されます。",
+    "weekly": "週間", "model_weekly": "{{model}}（週間）"
+  },
   "browser_embed": { "preview_unavailable": "{{label}}: この画面ではプレビューを表示できません。", "shared_document": "共有ドキュメント", "view": "ビュー", "view_unavailable": "{{name}}: このライブビューはNimbalystのデスクトップアプリで表示できます。", "open_view": "{{name}}を開く", "author_device_title": "作成者のデバイスに保存された個人ページです。そのデバイスのNimbalystで開きます。", "author_device": "作成者のデバイス上" },
   "editor_breadcrumb": "パンくずリスト",
   "file_path_breadcrumb_title": "ファイルツリーで{{name}}を開く",

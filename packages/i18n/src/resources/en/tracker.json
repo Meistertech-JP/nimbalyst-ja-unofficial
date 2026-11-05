@@ -2274,7 +2274,9 @@
     "types": {
       "source": "Source", "source_plural": "Sources",
       "capture": "Capture", "capture_plural": "Captures",
-      "citation": "Citation", "citation_plural": "Citations"
+      "citation": "Citation", "citation_plural": "Citations",
+      "github-issue": "GitHub Issue", "github-issue_plural": "GitHub Issues",
+      "github-pr": "GitHub PR", "github-pr_plural": "GitHub PRs"
     },
     "statuses": {
       "idea": { "new": "New", "considering": "Considering", "accepted": "Accepted", "rejected": "Rejected" },
@@ -2282,7 +2284,9 @@
       "release": { "planned": "Planned", "in-progress": "In Progress", "released": "Released", "cancelled": "Cancelled" },
       "source": { "active": "Active", "superseded": "Superseded", "unavailable": "Unavailable" },
       "capture": { "recorded": "Recorded", "stale": "Stale", "unresolvable": "Unresolvable" },
-      "citation": { "asserted": "Asserted", "verified": "Verified", "stale": "Stale", "broken": "Broken" }
+      "citation": { "asserted": "Asserted", "verified": "Verified", "stale": "Stale", "broken": "Broken" },
+      "github-issue": { "needs-triage": "Needs Triage", "investigating": "Investigating", "needs-info": "Needs Info", "keep-accept": "Keep / Accept", "adopted": "Adopted", "close-fixed": "Close: Already Fixed", "close-duplicate": "Close: Duplicate", "close-wontfix": "Close: Won't Do" },
+      "github-pr": { "to-review": "To Review", "reviewing": "Reviewing", "approved": "Approved", "merged": "Merged", "closed": "Closed" }
     }
   },
   "page_status": {

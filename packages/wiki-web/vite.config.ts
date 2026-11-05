@@ -50,6 +50,7 @@ const hostSingletons = [
   'lexical',
   '@lexical/code',
   '@lexical/code-core',
+  '@lexical/code-prism',
   '@lexical/extension',
   '@lexical/hashtag',
   '@lexical/headless',

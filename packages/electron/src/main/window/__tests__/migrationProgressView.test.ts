@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
+import { createI18nInstance } from '@nimbalyst/i18n/core';
 
 import { buildSplashView } from '../migrationProgressView';
 import type { MigrationProgress, MigrationPhase } from '../../database/sqlite/PGLiteToSQLiteMigrator';
@@ -19,6 +20,19 @@ function progress(over: Partial<MigrationProgress> & { phase: MigrationPhase }):
 }
 
 describe('buildSplashView', () => {
+  it('localizes progress and ETA without changing counts, table IDs or percentages', async () => {
+    const i18n = await createI18nInstance('ja');
+    const translate = (key: string, fallback: string, values?: Record<string, string | number>) =>
+      String(i18n.t(key, { ns: 'dialogs', defaultValue: fallback, ...values }));
+    const input = progress({ phase: 'copying', rowsCopied: 100_000, rowsExpected: 900_000,
+      currentTable: 'ai_agent_messages', percentOfTotal: 11, elapsedMs: 60_000 });
+    const english = buildSplashView(input);
+    const japanese = buildSplashView(input, 0, translate);
+    expect(japanese).toMatchObject({ primary: '900,000行中100,000行', phase: 'ai_agent_messagesをコピー中', eta: '残り約10分以上', percent: english.percent });
+    expect(buildSplashView(progress({ phase: 'verifying-integrity' }), 0, translate).primary).toBe('整合性を確認中');
+    await i18n.changeLanguage('en');
+    expect(buildSplashView(input, 0, translate)).toEqual(english);
+  });
   it('never moves the bar backwards when a phase restarts its own percentage', () => {
     // The migrator reports percentOfTotal per phase, so every phase boundary
     // looks like a reset. A user watching a 10-minute migration must not see

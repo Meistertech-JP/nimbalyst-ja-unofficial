@@ -51,7 +51,7 @@ function readStringArray(source: string, key: string, searchFrom: number): strin
   // literals are real entries, so strip line comments before matching.
   const body = source
     .slice(open, close)
-    .split('\n')
+    .split(/\r?\n/)
     .map(line => line.replace(/\/\/.*$/, ''))
     .join('\n');
   return [...body.matchAll(/'([^']+)'/g)].map(match => match[1]);
@@ -78,5 +78,13 @@ describe('renderer optimizeDeps policy', () => {
     // above pass for the wrong reason.
     expect(include.length).toBeGreaterThan(50);
     expect(exclude).toContain('@nimbalyst/runtime');
+  });
+
+  it.each(['\n', '\r\n'])('reads package values without treating comments as values with %j line endings', lineEnding => {
+    const normalized = source.replace(/\r?\n/g, lineEnding);
+    const entries = readStringArray(normalized, 'exclude', normalized.indexOf('optimizeDeps: {'));
+    expect(entries).toContain('@revolist/react-datagrid');
+    expect(entries).toContain('@revolist/revogrid');
+    expect(entries.every(entry => !entry.includes('first mount'))).toBe(true);
   });
 });

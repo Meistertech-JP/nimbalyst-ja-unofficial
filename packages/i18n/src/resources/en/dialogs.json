@@ -1,4 +1,25 @@
 {
+  "startup_splash": {
+    "initializing": "Initializing",
+    "headline": "Upgrading your local database",
+    "preparing": "Preparing…",
+    "note": "This happens once. Please leave Nimbalyst open — it will restart itself when finished.",
+    "phase_preparing": "Preparing",
+    "phase_copying": "Copying",
+    "phase_rebuilding-fts": "Rebuilding search index",
+    "phase_verifying-counts": "Verifying row counts",
+    "phase_verifying-integrity": "Checking integrity",
+    "phase_verifying-foreign-keys": "Checking references",
+    "phase_verifying-spot-check": "Spot-checking rows",
+    "phase_finalizing": "Finishing up",
+    "working": "Working",
+    "rows": "{{copied}} of {{expected}} rows",
+    "copying_table": "Copying {{table}}",
+    "eta_under_minute": "under a minute",
+    "eta_one_minute": "about a minute left",
+    "eta_minutes": "about {{minutes}} min left",
+    "eta_minutes_plus": "{{minutes}}+ min left"
+  },
   "tutorial_template": {
     "directory_missing": "The tutorial template folder was not found: {{path}}",
     "not_directory": "The tutorial template path is not a folder: {{path}}",

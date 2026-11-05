@@ -32,7 +32,7 @@ describe('packaged Windows ripgrep validation', () => {
   it('rejects an executable that cannot start, even when the file exists', () => {
     const { resources } = resourcesWithRipgrep();
     const spawn = vi.fn(() => ({ status: null, error: new Error('spawn EFTYPE'), stdout: '' }));
-    expect(() => validatePackagedRipgrep(resources, 'win32', 'x64', { platform: 'win32', arch: 'x64', spawn })).toThrow(/EFTYPE/);
+    expect(() => validatePackagedRipgrep(resources, 'win32', 'x64', { hostPlatform: 'win32', hostArch: 'x64', run: spawn })).toThrow(/EFTYPE/);
   });
 
   it.each([
@@ -42,20 +42,20 @@ describe('packaged Windows ripgrep validation', () => {
   ])('rejects an invalid execution result %#', (result) => {
     const { resources } = resourcesWithRipgrep();
     const spawn = vi.fn(() => result);
-    expect(() => validatePackagedRipgrep(resources, 'win32', 'x64', { platform: 'win32', arch: 'x64', spawn })).toThrow(/ripgrep failed/i);
+    expect(() => validatePackagedRipgrep(resources, 'win32', 'x64', { hostPlatform: 'win32', hostArch: 'x64', run: spawn })).toThrow(/ripgrep does not run/i);
   });
 
   it('runs and checks the packaged executable on a matching host', () => {
     const { resources, binary } = resourcesWithRipgrep();
     const spawn = vi.fn(() => ({ status: 0, stdout: 'ripgrep 15.0.0\n' }));
-    expect(validatePackagedRipgrep(resources, 'win32', 'x64', { platform: 'win32', arch: 'x64', spawn })).toBe('executed');
+    expect(validatePackagedRipgrep(resources, 'win32', 'x64', { hostPlatform: 'win32', hostArch: 'x64', run: spawn })).toBe(true);
     expect(spawn).toHaveBeenCalledWith(binary, ['--version'], expect.objectContaining({ timeout: expect.any(Number) }));
   });
 
   it('does not claim execution on a cross-platform host', () => {
     const { resources } = resourcesWithRipgrep();
     const spawn = vi.fn();
-    expect(validatePackagedRipgrep(resources, 'win32', 'x64', { platform: 'linux', arch: 'x64', spawn })).toBe('not-executed');
+    expect(validatePackagedRipgrep(resources, 'win32', 'x64', { hostPlatform: 'linux', hostArch: 'x64', run: spawn })).toBe(false);
     expect(spawn).not.toHaveBeenCalled();
   });
 });

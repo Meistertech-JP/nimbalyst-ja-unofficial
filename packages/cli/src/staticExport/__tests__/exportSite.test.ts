@@ -14,7 +14,7 @@ import { gatewayTrackerSource, runWikiExport } from '../../commands/wikiExport.j
 import { parseArgs } from '../../cli/parse.js';
 import { createStaticExportI18n } from '../i18n.js';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
-import { renderBodyHtml, renderShell } from '../prerender.js';
+import { renderBodyHtml, renderShell, type PrerenderSite } from '../prerender.js';
 import { normalizeBasePath } from '../sitePaths.js';
 import type { TrackerGateway } from '../../gateway/types.js';
 
@@ -735,5 +735,21 @@ describe('exportStaticSite', () => {
       expect(output).toContain('Hidden (export-false)');
       expect(output).not.toContain('wiki_export.');
     }
+  });
+});
+
+describe('renderBodyHtml', () => {
+  const site: PrerenderSite = { pages: new Map(), included: new Set(), sitePaths: {}, basePath: '/' };
+  const render = (markdown: string) => renderBodyHtml(markdown, { path: 'page.md', dir: '' }, site, './');
+
+  it('keeps colored text colored, writing only the validated colors', () => {
+    expect(render(`<span style='COLOR:teal'>**late**</span> and <span style="background-color: #ffd43b4d; color: rgb(1, 2, 3)">both</span>`))
+      .toBe('<p><span style="color: teal"><strong>late</strong></span> and <span style="color: rgb(1, 2, 3); background-color: #ffd43b4d">both</span></p>\n');
+  });
+
+  it('leaves out other spans and their closing tags, and keeps escaped ones as text', () => {
+    expect(render('<span class="x" style="color: red">a</span> <span style="color: url(x)">b</span> <span style="color: red">c <span onclick="x">d</span></span>'))
+      .toBe('<p>a b <span style="color: red">c d</span></p>\n');
+    expect(render(String.raw`\<span style="color: red">e</span>`)).toBe('<p>&lt;span style=&quot;color: red&quot;&gt;e</p>\n');
   });
 });

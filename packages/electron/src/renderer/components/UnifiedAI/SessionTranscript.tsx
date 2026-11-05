@@ -20,6 +20,7 @@ import { useTranslation } from '@nimbalyst/i18n/react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { store, registerInteractiveWidgetHost, unregisterInteractiveWidgetHost } from '@nimbalyst/runtime/store';
 import type { SessionData, ChatAttachment, TranscriptViewMessage } from '@nimbalyst/runtime/ai/server/types';
+import type { ExitPlanModeDeferral } from '@nimbalyst/runtime/ai/exitPlanModeDeferral';
 import { agentCapabilitiesForProviderType } from '@nimbalyst/runtime/ai/server/agentCapabilities';
 import type { ToolCallDiffLoadResult } from '@nimbalyst/runtime/ai/server/transcript';
 import { AgentTranscriptPanel } from '@nimbalyst/runtime/ui/AgentTranscript/components/AgentTranscriptPanel';
@@ -77,6 +78,7 @@ import {
   sessionThinkingModeRawAtom,
   sessionOpenCodeRoleAtom,
   sessionLoadingAtom,
+  sessionLoadErrorAtom,
   sessionModeAtom,
   sessionModelAtom,
   sessionArchivedAtom,
@@ -419,6 +421,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
   const compactionSupport = agentCapabilitiesForProviderType(provider).compaction;
   const tokenUsage = useAtomValue(sessionTokenUsageAtom(sessionId));
   const isDataLoading = useAtomValue(sessionLoadingAtom(sessionId));
+  const loadError = useAtomValue(sessionLoadErrorAtom(sessionId));
   const chatShowToolCalls = useAtomValue(chatShowToolCallsAtom);
   const [aiMode, setAiMode] = useAtom(sessionModeAtom(sessionId));
   const [currentModel, setCurrentModel] = useAtom(sessionModelAtom(sessionId));
@@ -1375,7 +1378,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
       }
       setIsProcessing(false);
     }
-  }, [sessionId, sessionData, isLoading, getEffectiveDocumentContext, aiMode, workspacePath, setDraftInput, setDraftAttachments, setLastSubmitAt, resetHistory, updateSessionStore, handleQueue, setIsProcessing, messages, sessionHasMessages, startedCliSessionId, mode, onClearSession, onClearAgentSession, clearAIInputHistory, provider, recordClaudeActivity]);
+  }, [sessionId, sessionData, isLoading, getEffectiveDocumentContext, aiMode, workspacePath, setDraftInput, setDraftAttachments, setLastSubmitAt, resetHistory, updateSessionStore, handleQueue, setIsProcessing, messages, sessionHasMessages, startedCliSessionId, mode, onClearSession, onClearAgentSession, clearAIInputHistory, provider, recordClaudeActivity, tAIChat]);
 
   // Launch a sibling session from a `launch: new-session` action prompt.
   // Builds the originating-session mention prefix here (in the renderer) so the
@@ -1719,13 +1722,15 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
     }));
   }, [workspacePath]);
 
-  const stopExitPlanModeSession = useCallback(async (requestId: string, confirmSessionId: string) => {
+  // deferredTo is set when the plan is implemented in another session; the
+  // provider records it in the tool result so the plan card says so.
+  const stopExitPlanModeSession = useCallback(async (requestId: string, confirmSessionId: string, deferredTo?: ExitPlanModeDeferral) => {
     // Mark the prompt as cancelled in DB so it doesn't reappear
     await respondToPrompt({
       sessionId: confirmSessionId,
       promptId: requestId,
       promptType: 'exit_plan_mode_request',
-      response: { approved: false, cancelled: true },
+      response: { approved: false, cancelled: true, deferredTo },
     });
 
     // Cancel the entire agent session - this will abort the waiting ExitPlanMode request
@@ -1761,7 +1766,7 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
       });
 
       openSessionWithDraft(newSessionId, implementationPrompt);
-      await stopExitPlanModeSession(requestId, confirmSessionId);
+      await stopExitPlanModeSession(requestId, confirmSessionId, { kind: 'session' });
 
       posthog?.capture('exit_plan_mode_response', {
         decision: 'start_new_session',
@@ -2508,6 +2513,26 @@ const LocalSessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscrip
 
   // Loading state
   if (!sessionData) {
+    if (!isDataLoading && loadError) {
+      return (
+        <div
+          className="session-load-error flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-[var(--nim-text-muted)]"
+          data-session-id={sessionId}
+        >
+          <div className="session-load-error-title text-[var(--nim-text)]">{tAIChat('session_load_error')}</div>
+          <div className="session-load-error-detail max-w-[560px] break-words text-xs select-text">{loadError}</div>
+          <button
+            type="button"
+            className="session-load-error-retry nim-btn-secondary px-3 py-1.5 rounded text-sm"
+            onClick={() => {
+              if (workspacePath) loadSessionData({ sessionId, workspacePath });
+            }}
+          >
+            {tCommon('retry')}
+          </button>
+        </div>
+      );
+    }
     return (
       <div
         style={{

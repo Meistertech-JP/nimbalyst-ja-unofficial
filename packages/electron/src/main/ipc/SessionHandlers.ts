@@ -26,6 +26,8 @@ import { destroyProviderForArchivedSession } from '../services/ai/archiveSession
 import { resolveSessionModelSelection } from '../services/ai/sessionModelSelection';
 import { inheritedOwnership, stripOwnerControlledMetadata } from '../services/extensionSessions/sessionOwnership';
 import { readSessionSubtree } from '../services/sessionHierarchy';
+import { recordDeletedExternalSession } from '../services/externalSessions/deletedExternalSessions';
+import { externalIdentityForSession } from '../services/externalSessions/ExternalSessionPersistence';
 import { isLocalWikiItemId } from '../services/localWiki/localWikiItemIds';
 import { createTrailingSingleFlight } from '../utils/asyncCache';
 
@@ -795,6 +797,10 @@ export async function registerSessionHandlers() {
             ProviderFactory.destroyProvider(sessionId);
 
             const session = await AISessionsRepository.get(sessionId);
+            // GitHub #1825: record before removing the row, so the external-session
+            // follower never sees the log without a session and without the record.
+            const external = await externalIdentityForSession(database, sessionId);
+            if (external) recordDeletedExternalSession(external.providerId, external.externalId);
             await AISessionsRepository.delete(sessionId);
             if (session?.workspacePath) {
                 for (const window of BrowserWindow.getAllWindows()) {
@@ -1131,6 +1137,7 @@ export async function registerSessionHandlers() {
             return { success: false, error: 'Local wiki pages cannot be linked to sessions yet' };
         }
         try {
+            const { createBidirectionalLink, broadcastSessionLinkedTrackers } = await import('../mcp/tools/trackerToolHandlers');
             if (payload.trackerId.startsWith('file:')) {
                 // File-based link: only write to session metadata (no tracker_items row to update)
                 const { getDatabase } = await import('../database/initialize');
@@ -1157,9 +1164,12 @@ export async function registerSessionHandlers() {
                 }
             } else {
                 // DB tracker item: bidirectional link
-                const { createBidirectionalLink } = await import('../mcp/tools/trackerToolHandlers');
                 await createBidirectionalLink(payload.trackerId, payload.sessionId);
             }
+            // The renderer's session registry only learns about the link
+            // from this broadcast; the PR and issue panels resolve sessions
+            // from it.
+            await broadcastSessionLinkedTrackers(payload.sessionId);
             return { success: true };
         } catch (error) {
             console.error('[SessionHandlers] Failed to link tracker item to session:', error);

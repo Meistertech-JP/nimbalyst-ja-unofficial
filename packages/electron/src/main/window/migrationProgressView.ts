@@ -60,18 +60,23 @@ export interface MigrationSplashView {
   phase: string;
 }
 
-function coarseEta(msRemaining: number): string {
-  if (msRemaining < 45_000) return 'under a minute';
+type TranslateSplash = (key: string, fallback: string, values?: Record<string, string | number>) => string;
+const englishSplash: TranslateSplash = (_key, fallback, values) =>
+  fallback.replace(/{{(\w+)}}/g, (match, key: string) => String(values?.[key] ?? match));
+
+function coarseEta(msRemaining: number, translate: TranslateSplash): string {
+  if (msRemaining < 45_000) return translate('startup_splash.eta_under_minute', 'under a minute');
   const minutes = Math.round(msRemaining / 60_000);
-  if (minutes <= 1) return 'about a minute left';
-  if (minutes < 10) return `about ${minutes} min left`;
+  if (minutes <= 1) return translate('startup_splash.eta_one_minute', 'about a minute left');
+  if (minutes < 10) return translate('startup_splash.eta_minutes', 'about {{minutes}} min left', { minutes });
   // Past ten minutes the estimate is not accurate enough to imply precision.
-  return `${Math.round(minutes / 5) * 5}+ min left`;
+  return translate('startup_splash.eta_minutes_plus', '{{minutes}}+ min left', { minutes: Math.round(minutes / 5) * 5 });
 }
 
 export function buildSplashView(
   progress: MigrationProgress,
   previousPercent = 0,
+  translate: TranslateSplash = englishSplash,
 ): MigrationSplashView {
   const [start, end] = PHASE_BANDS[progress.phase] ?? [0, 100];
   const within = Math.min(Math.max(progress.percentOfTotal ?? 0, 0), 100) / 100;
@@ -80,8 +85,12 @@ export function buildSplashView(
 
   const primary =
     progress.phase === 'copying' && progress.rowsExpected > 0
-      ? `${progress.rowsCopied.toLocaleString()} of ${progress.rowsExpected.toLocaleString()} rows`
-      : PHASE_LABELS[progress.phase] ?? 'Working';
+      ? translate('startup_splash.rows', '{{copied}} of {{expected}} rows', {
+        copied: progress.rowsCopied.toLocaleString(), expected: progress.rowsExpected.toLocaleString(),
+      })
+      : PHASE_LABELS[progress.phase]
+        ? translate(`startup_splash.phase_${progress.phase}`, PHASE_LABELS[progress.phase])
+        : translate('startup_splash.working', 'Working');
 
   let eta = '';
   if (
@@ -95,14 +104,16 @@ export function buildSplashView(
       const copyMsRemaining = (progress.rowsExpected - progress.rowsCopied) / rowsPerMs;
       // Copying is 78 of the 100 points on the bar, so the tail of
       // verification work is roughly a further 28% of the copy time.
-      eta = coarseEta(copyMsRemaining * 1.28);
+      eta = coarseEta(copyMsRemaining * 1.28, translate);
     }
   }
 
   const phase =
     progress.phase === 'copying' && progress.currentTable
-      ? `Copying ${progress.currentTable}`
-      : PHASE_LABELS[progress.phase] ?? '';
+      ? translate('startup_splash.copying_table', 'Copying {{table}}', { table: progress.currentTable })
+      : PHASE_LABELS[progress.phase]
+        ? translate(`startup_splash.phase_${progress.phase}`, PHASE_LABELS[progress.phase])
+        : '';
 
   return { percent, primary, eta, phase };
 }

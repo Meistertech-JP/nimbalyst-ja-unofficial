@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Integrate upstream v0.82.7, including SQLite migration, colored Markdown text, session loading and agent SDK updates.
+- Extend Japanese display for the new controls and migration screen while retaining live language switching.
+- Keep failed session submissions in the draft and show their errors in the current display language.
+
 ## [0.82.4-ja.1] — 2026-10-30
 
 - Integrate upstream v0.82.4 fixes for files, search, session questions, images and shared pages.
@@ -63,6 +67,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented unsigned local packages and remaining Windows, authentication, and dynamic-translation verification limits in both languages.
 - Some unnamed collaborators may still appear as “Teammate”. Full-suite test failures remain under review.
 - See [the bilingual preview notes](RELEASE_NOTES_v0.81.7-ja.1.md) for limitations and distribution details.
+
+## [0.82.7] - 2026-11-04
+
+
+### Added
+<!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+- New tracker items get local numbers (like `NIM.75`) again; items created since early October without one are numbered on the next launch. A tracker type can opt out with `localNumbers: false`
+- The pull request panel no longer reports the GitHub CLI as signed out when `gh auth status` is slow to answer.
+- After you start a new session to implement a plan, the planning session's plan card says "Deferred to new session" instead of "Denied"
+- A session that fails to load now says why and offers Try again, instead of showing "Session not found"
+- Plan-approval and question dialogs no longer fail with "PreToolUse hook did not respond before its timeout" when you step away
+- Very long sessions open again instead of showing "Session not found" once their history grew too large to load in one read
+
+### Removed
+<!-- Removed features go here -->
+
+## [0.82.6] - 2026-11-03
+
+
+### Added
+<!-- New features go here -->
+- Colored text and highlight colors in Markdown documents, from a seven-color picker in the selection toolbar, saved as HTML spans that Obsidian also displays
+- Claude in Chrome for Claude Code sessions: an Agent Features setting (off by default) that lets the agent control your Chrome browser through the Claude in Chrome extension
+- Weekly usage history in the Claude and Codex usage popovers: a chart of each week's usage against an even pace, and past weeks' final percentages, recorded while Nimbalyst is running
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+- Extension tabs on `virtual://` paths no longer show a "File updates delayed" warning or retry file registration every minute
+- Browser agent tools no longer fail with "File has no extension" when given a folder path alongside a browser session
+- Clicking a meta agent's child session in the session list or on the Sessions board opens that child instead of the meta agent
+- Windows: git commands Nimbalyst runs in the background, including Project Graph indexing, no longer flash console windows
+- Windows: commit proposals whose file paths use forward slashes (`C:/...`) now commit to the right repository instead of failing with "None of the selected files are in a git repository"
+- Windows: the Claude Code CLI provider starts in "Ask every time" mode instead of exiting with "Settings file not found"
+- Files an agent changes through shell commands show up in its session's edited files again after a Codex session has run in the same project, instead of going untracked until restart
+- With auto-approve commits on, a commit proposed into another worktree shows the Confirm/Cancel card instead of spinning on "Committing changes..."
+- Checking for updates in the first minute after a release is published no longer fails with "Cannot download ... status 404"; releases now go public only after every download is uploaded
+- Deleted Codex and Claude Code sessions stay deleted instead of being re-imported, and imported Codex sessions are no longer titled with their `<environment_context>` text
+- The session list shows only the current project's sessions, and "Session not found" names the project a session belongs to
+
+### Removed
+<!-- Removed features go here -->
+
+## [0.82.5] - 2026-10-31
+
+
+### Added
+<!-- New features go here -->
+- GPT-6.1 Terra is available in the OpenAI Codex model picker
+
+### Changed
+<!-- Changes to existing functionality go here -->
+- Existing databases up to 1 GiB now move from PGLite to SQLite automatically at startup on every install; larger databases stay on PGLite until you choose Migrate to SQLite in Database settings
+- Cancelling a Claude Code agent's question card now tells the agent you dismissed the question and lets it keep working, instead of stopping the turn; the Stop button still stops it
+
+### Fixed
+<!-- Bug fixes go here -->
+- Meta-agent sessions can no longer call Claude Code built-in tools that were added after their blocked-tool list, such as PowerShell and LSP
+- A review session started from the GitHub Pull Requests panel now shows in the PR's chat pane when you come back to the PR, including for PRs with no tracker item; sessions started before this fix are found and linked the next time you open their PR
+- An agent can no longer start an independent top-level session that also reports its result back; a worker whose result the agent needs now nests under it in the session tree instead (#1876)
+- OpenAI Codex commands and edits that Codex wants approved now show the approval prompt instead of being rejected with "blocked by policy"; Codex also runs in Ask every time mode, and a declined command says so on its card (#1884)
+- On Windows, a file in a subfolder that an agent edits now gets its content from the start of the session as the diff baseline; the git lookup used to fail and the file was treated as if it had not existed (#1889)
+- Agent diffs for a file whose name has a space or non-ASCII character, and that had uncommitted changes when the session started, no longer count those earlier changes as the agent's
+- Closing a window that had opened a file from Finder or the terminal no longer throws an "Object has been destroyed" error in the main process
+- Find highlights in a markdown document are redrawn when the editor's width changes (window or side panel resize), instead of staying where the text used to be
+- The dashboard screenshot in the tutorial project's first sample session now displays, instead of a broken image, in tutorial projects created after this update
+- A backslash written before punctuation in a markdown document, such as `Cmd+\)`, is no longer removed when the editor saves the file
+- On Claude plans without a 5-hour session limit, the Claude usage popover no longer shows an empty Session bar (0%, "Resets in Unknown"), and the gutter ring shows weekly usage instead of 0%
+
+### Removed
+<!-- Removed features go here -->
 
 ## [0.82.4] - 2026-10-27
 

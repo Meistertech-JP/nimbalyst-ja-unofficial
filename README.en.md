@@ -2,7 +2,7 @@
 
 Nimbalyst is an open-source workspace that lets you switch between multiple AI agents, including Claude Code and Codex, from a single app. It also lets you manage the files, tasks, and progress involved in writing and app development together in one place.
 
-An unofficial Japanese-language build of Nimbalyst, based on version 0.82.4. Japanese localization covers desktop menus, settings, file management, AI sessions, trackers, dialogs, and other parts of the user interface. The display language can be switched between Japanese and English.
+An unofficial Japanese-language build of Nimbalyst. Japanese localization covers desktop menus, settings, file management, AI sessions, trackers, dialogs, and other parts of the user interface. The display language can be switched between Japanese and English.
 
 This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc.
 
@@ -10,11 +10,13 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 ## Availability
 
+The source on this branch is an unpublished `v0.82.7-ja.1` candidate based on upstream v0.82.7 at `826adb4f93dbe86db35b76ce2502a3a33abe0489`. Candidate verification includes untested and failing areas; it is not the published distribution.
+
 The latest version, v0.82.4-ja.1, is an unsigned Windows x64 edition. Download the NSIS installer, portable ZIP, matching source and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1).
 
 The source corresponding to these assets is tagged `v0.82.4-ja.1`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. The [previous v0.82.3-ja.2 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2), its tag and distributions are retained.
 
-This edition is based on upstream v0.82.4 at `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Features and fixes may differ from the latest official release.
+The published v0.82.4-ja.1 edition is based on upstream v0.82.4 at `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7`. Features and fixes may differ from the latest official release.
 
 ## Japanese interface
 

@@ -614,6 +614,7 @@
     "mcp_status_name": "MCPサーバーの状態を表示",
     "mcp_status_desc": "セッションヘッダーに、このセッションのMCPサーバーのうち接続済みのものと、接続されなかったものを表示します。",
     "prompt_suggestions_name": "次のプロンプトを提案",
+    "claude_in_chrome_description": "Claude in Chrome拡張機能を通じて、Claude CodeのセッションからChromeブラウザーを操作できるようにします。拡張機能のインストールとログインが必要です。新しいセッションに適用され、既存のセッションでは次のメッセージから有効になります。",
     "prompt_suggestions_desc": "自分で開始したClaude Codeの応答後に、入力欄へ次のプロンプト候補を表示します。Tabで入力し、Enterで送信します。候補ごとに会話キャッシュを再利用するモデル呼び出しが1回追加されます。",
     "preferred_language_name": "エージェントの優先言語",
     "preferred_language_desc": "AIが生成するセッション名の言語（日本語、ja、Spanishなど）。空欄にすると会話内容に応じてエージェントが選択します。",

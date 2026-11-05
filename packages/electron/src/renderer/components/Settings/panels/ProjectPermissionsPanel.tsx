@@ -304,6 +304,9 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
           <code className="text-xs bg-[var(--nim-bg-secondary)] px-1 py-0.5 rounded">.claude/settings.local.json</code>
           {permissionsDescriptionAfter}
         </p>
+        <p className="permissions-codex-rules-note text-sm text-[var(--nim-text-muted)] leading-relaxed mt-2">
+          {t('permissions.codex_rules_before')}<code className="text-xs bg-[var(--nim-bg-secondary)] px-1 py-0.5 rounded">~/.codex/rules/default.rules</code>{t('permissions.codex_rules_after')}
+        </p>
       </div>
 
       {(error || loadError) && (

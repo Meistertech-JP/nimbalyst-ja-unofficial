@@ -27,6 +27,7 @@ import { abortRequiresRelaunch } from './sqlite/cutoverMachine';
 import { withDatabaseOperationLock } from './databaseOperationLock';
 import { databaseRequiresRestart } from './databaseMaintenance';
 import { logger } from '../utils/logger';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 
 /**
  * Run the forced migration if this launch is due for one.
@@ -77,7 +78,7 @@ async function forcedMigration(args: {
       splashArmed = true;
       enterSplashMigrationMode();
     }
-    const view = buildSplashView(progress, lastPercent);
+    const view = buildSplashView(progress, lastPercent, translateMainDialogLabel);
     lastPercent = view.percent;
     updateSplashMigrationProgress(view);
   });

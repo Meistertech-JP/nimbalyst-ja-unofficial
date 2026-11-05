@@ -1,5 +1,14 @@
 {
   "cancel": "Cancel",
+  "weekly_history": {
+    "title": "Weekly history", "this_week": "This week", "ended": "Ended {{date}}",
+    "chart_label": "{{label}} utilization over the week",
+    "partial_title": "Last reading {{date}}, before the week ended; the final value may be higher",
+    "resets": "Resets {{date}}", "week_ended": "Week ended {{date}}",
+    "show_fewer": "Show fewer", "show_all": "Show all weeks",
+    "note": "Dashed line is an even pace. Dates are when each week reset. Recorded only while Nimbalyst is running.",
+    "weekly": "Weekly", "model_weekly": "{{model}} (Weekly)"
+  },
   "browser_embed": { "preview_unavailable": "{{label}}: preview unavailable in this view.", "shared_document": "Shared document", "view": "View", "view_unavailable": "{{name}}: this live view shows in the Nimbalyst desktop app.", "open_view": "Open {{name}}", "author_device_title": "A Personal page, kept on its author's device. Opens in Nimbalyst there.", "author_device": "on the author's device" },
   "editor_breadcrumb": "Breadcrumb",
   "file_path_breadcrumb_title": "Go to {{name}} in file tree",

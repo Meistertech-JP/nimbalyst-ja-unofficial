@@ -1,5 +1,10 @@
 {
   "loading": "Loading...",
+  "text_color_picker": {
+    "text": "Text", "background": "Background", "default": "Default text color", "none": "No background",
+    "text_swatch": "{{color}} text", "background_swatch": "{{color}} background",
+    "colors": { "red": "Red", "orange": "Orange", "yellow": "Yellow", "green": "Green", "blue": "Blue", "purple": "Purple", "gray": "Gray" }
+  },
   "typeahead_menu_label": "Typeahead menu",
   "load_failed": "Failed to load: {{error}}",
   "datamodel_template": {

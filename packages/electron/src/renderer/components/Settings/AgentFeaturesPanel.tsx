@@ -55,6 +55,10 @@ export function AgentFeaturesPanel() {
     settingAtom('ai.promptSuggestionsEnabled'),
   ) as [boolean, (value: boolean) => void];
 
+  const [claudeInChromeEnabled, setClaudeInChromeEnabled] = useAtom(
+    settingAtom('ai.claudeInChromeEnabled'),
+  ) as [boolean, (value: boolean) => void];
+
   const [aiDebugSettings] = useAtom(aiDebugSettingsAtom);
   const [, updateAIDebugSettings] = useAtom(setAIDebugSettingsAtom);
   const { showToolCalls, chatShowToolCalls, aiDebugLogging, showPromptAdditions } = aiDebugSettings;
@@ -293,6 +297,14 @@ export function AgentFeaturesPanel() {
           name={t('agent_features.prompt_suggestions_name')}
           description={t('agent_features.prompt_suggestions_desc')}
           testId="prompt-suggestions-toggle"
+        />
+
+        <SettingsToggle
+          checked={claudeInChromeEnabled}
+          onChange={(checked) => setClaudeInChromeEnabled(checked)}
+          name="Claude in Chrome"
+          description={t('agent_features.claude_in_chrome_description')}
+          testId="claude-in-chrome-toggle"
         />
 
         <div className="agent-preferred-language flex items-start justify-between gap-4 py-3">

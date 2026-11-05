@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { LexicalEditor } from 'lexical';
 import { $getRoot, $getNodeByKey, $isTextNode, $createRangeSelection, $setSelection } from 'lexical';
 import { SearchReplaceStateManager, type SearchNavigateDirection } from './SearchReplaceStateManager';
-import { HighlightManager, type SearchMatch } from './HighlightManager';
+import { HighlightManager, matchIndexAfterSearch, type SearchMatch } from './HighlightManager';
 // Only contains global highlight styles for dynamically applied classes
 import './SearchReplaceBar.css';
 
@@ -71,6 +71,10 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
   const [useRegex, setUseRegex] = useState(false);
   const [matches, setMatches] = useState<SearchMatch[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
+  // performSearch runs from timers and editor listeners, so it reads the index here
+  // rather than through a state updater, which React may run after the caller returns.
+  const currentMatchIndexRef = useRef(currentMatchIndex);
+  currentMatchIndexRef.current = currentMatchIndex;
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const highlightManagerRef = useRef<HighlightManager | null>(null);
@@ -231,21 +235,8 @@ export function SearchReplaceBar({ filePath, editor }: SearchReplaceBarProps) {
 
         setMatches(foundMatches);
 
-        // Determine the new current index
-        if (preserveIndex) {
-          // Keep the current index if it's still valid, otherwise clamp it
-          setCurrentMatchIndex(prev => {
-            if (foundMatches.length === 0) {
-              return -1;
-            }
-            if (prev < 0) {
-              return 0;
-            }
-            return Math.min(prev, foundMatches.length - 1);
-          });
-        } else {
-          setCurrentMatchIndex(foundMatches.length > 0 ? 0 : -1);
-        }
+        const newIndex = matchIndexAfterSearch(currentMatchIndexRef.current, foundMatches.length, preserveIndex);
+        setCurrentMatchIndex(newIndex);
 
         // Only navigate to first match if autoNavigate is true (when user initiates search)
         if (autoNavigate && foundMatches.length > 0) {

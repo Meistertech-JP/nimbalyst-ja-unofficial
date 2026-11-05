@@ -58,6 +58,8 @@
     }
   },
   "permissions": {
+    "codex_rules_before": "Choosing Always for an OpenAI Codex command can also add that exact command to Codex's own rules in ",
+    "codex_rules_after": ", which apply to every project. Remove the line there to revoke it in Codex.",
     "open_workspace": "Open a workspace to configure agent permissions.",
     "loading": "Loading permissions...",
     "title": "Agent Permissions",

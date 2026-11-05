@@ -1454,6 +1454,18 @@ app.whenReady().then(async () => {
         },
     });
 
+    // Resolve the persisted display language before startup/migration UI.
+    // SettingsService uses file-backed settings, not the application database.
+    await createMainI18nController(
+        getSettingsService(),
+        app.getLocale(),
+        async () => {
+            if (applicationMenuInitialized) {
+                await updateApplicationMenu();
+            }
+        },
+    );
+
     // Show splash screen immediately so the user sees something while we initialize
     // Skip splash in Playwright tests - the splash window would be returned by firstWindow()
     // instead of the actual workspace window, causing tests to fail
@@ -1555,15 +1567,6 @@ app.whenReady().then(async () => {
     registerWorkspaceHandlers();
     registerWorkspaceWatcherHandlers();
     registerSettingsHandlers();
-    await createMainI18nController(
-        getSettingsService(),
-        app.getLocale(),
-        async () => {
-            if (applicationMenuInitialized) {
-                await updateApplicationMenu();
-            }
-        },
-    );
     if (
         process.platform === 'win32' &&
         !app.isDefaultProtocolClient('nimbalyst')

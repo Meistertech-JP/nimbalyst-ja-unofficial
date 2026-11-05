@@ -10,6 +10,20 @@ const statuses: Record<string, string> = {
   source: 'active superseded unavailable',
   capture: 'recorded stale unresolvable',
   citation: 'asserted verified stale broken',
+  'github-issue': 'needs-triage investigating needs-info keep-accept adopted close-fixed close-duplicate close-wontfix',
+  'github-pr': 'to-review reviewing approved merged closed',
+};
+
+const typeNames: Record<string, [string, string]> = {
+  'github-issue': ['GitHub Issue', 'GitHub Issues'],
+  'github-pr': ['GitHub PR', 'GitHub PRs'],
+};
+
+const issueStatusNames: Record<string, string> = {
+  'keep-accept': 'Keep / Accept',
+  'close-fixed': 'Close: Already Fixed',
+  'close-duplicate': 'Close: Duplicate',
+  'close-wontfix': "Close: Won't Do",
 };
 
 function translate(key: string, label: string, t?: (key: string) => string): string {
@@ -22,8 +36,10 @@ function title(value: string): string {
 }
 
 export function builtinTrackerTypeCopy(type: string, label: string, t?: (key: string) => string, plural = false): string {
-  if (!Object.hasOwn(statuses, type) || label !== title(type) + (plural ? 's' : '')) return label;
-  const prefix = ['source', 'capture', 'citation'].includes(type) ? 'builtin_display.types' : 'table.types';
+  const names = typeNames[type];
+  const expected = names ? names[plural ? 1 : 0] : title(type) + (plural ? 's' : '');
+  if (!Object.hasOwn(statuses, type) || label !== expected) return label;
+  const prefix = ['source', 'capture', 'citation', 'github-issue', 'github-pr'].includes(type) ? 'builtin_display.types' : 'table.types';
   return translate(`${prefix}.${type}${plural ? '_plural' : ''}`, label, t);
 }
 
@@ -33,7 +49,8 @@ export function builtinTrackerOptionCopy(type: string, field: string, value: str
     return translate(`kanban.priority_${value}`, label, t);
   }
   if (field !== 'status' || !statuses[type].split(' ').includes(value)) return label;
-  const expected = type === 'decision' && value === 'to-do' ? 'To Decide'
+  const expected = type === 'github-issue' && issueStatusNames[value] ? issueStatusNames[value]
+    : type === 'decision' && value === 'to-do' ? 'To Decide'
     : type === 'decision' && value === 'in-progress' ? 'Evaluating'
       : value === 'ready-for-development' ? 'Ready' : value === 'wont-do' ? "Won't Do" : title(value);
   if (label !== expected) return label;

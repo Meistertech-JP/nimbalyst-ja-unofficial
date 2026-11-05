@@ -2,7 +2,7 @@
 
 ## Current state
 
-As of the Lexical 0.44.0 upgrade, the markdown importer delegates to upstream
+Since the Lexical 0.44.0 upgrade (now on 0.53.0), the markdown importer delegates to upstream
 `@lexical/markdown`. Export uses a local enhanced traversal that mirrors upstream
 behavior while supporting the additions listed below:
 
@@ -58,6 +58,19 @@ upstream import re-introduces drift on real Nimbalyst plan documents.
 - `utils.ts` — a stale copy of upstream's pre-`@lexical/markdown` "auto-format"
   criteria system, plus duplicates of `transformersByType` and
   `isEmptyParagraph`. Nothing live referenced its `MarkdownCriteria` exports.
+
+## Exporter rules added for Lexical 0.53
+
+0.53's importer applies formats and escapes more faithfully, which exposed gaps in the forked exporter. Each rule has a case in `__tests__/round-trip-corpus.test.ts`:
+
+- Inline code uses a content-sized fence (upstream's `getCodeSpanDelimiter`, which upstream does not export). Adjacent code nodes with identical formatting, such as a span the diff editor split into added and unchanged parts, are written as one span.
+- A plain text node closes any format a previous sibling left open, and the block-level call closes whatever is still open at its end.
+- A format opened inside a link closes before the link ends. A format that covers a link's whole text and continues into the text beside it is written outside the link (`**[a](u) more**`). A format confined to the link is written inside it (`[**a**](u)`): Lexical stores `**[a](u)**` and `[**a**](u)` identically, and the inside form is more common in our documents.
+- A literal backslash before ASCII punctuation is written `\\`, since the importer reads `\` plus punctuation as an escape.
+
+Block-level decorator nodes must return `false` from `isInline()`: since 0.53, core wraps inline children of the root in a paragraph on every update, and `DecoratorNode` defaults to inline.
+
+Known gap: unformatted text is otherwise written without escaping, so literal text such as `\*a\*`, `\[a\](b)`, `\#` or `1\.` at the start of a line is re-read as markup. Fixing that needs flanking-aware escaping, which is what `mdast-util-to-markdown` provides.
 
 ## Taking upstream fixes
 

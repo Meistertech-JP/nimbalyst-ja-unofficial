@@ -38,6 +38,7 @@ import {getDOMRangeRect} from '../../utils/getDOMRangeRect';
 import {getSelectedNode} from '../../utils/getSelectedNode';
 import {setFloatingElemPosition} from '../../utils/setFloatingElemPosition';
 import {SHORTCUTS} from '../ShortcutsPlugin/shortcuts';
+import {TextColorPicker} from '../TextColorPlugin/TextColorPicker';
 import type {FloatingTextToolbarAction} from './types';
 import {
   formatBulletList,
@@ -438,6 +439,7 @@ function TextFormatFloatingToolbar({
             aria-label={t('formatting.insert_link')}>
             <i className="format link" />
           </button>
+          <TextColorPicker editor={editor} buttonClassName="popup-item spaced" />
           {actions.length > 0 && <div className="divider" />}
           {actions.map((action) => (
             <button

@@ -1,5 +1,6 @@
 {
   "clipboard_image": "Clipboard image",
+  "session_load_error": "Couldn't load this session",
   "session_naming_failure": "The response is complete, but session information could not be updated.",
   "conversation_controls": {
     "wrap": "Wrap",
@@ -578,6 +579,8 @@
     "waiting": "Waiting...",
     "exited": "Exited Planning Mode",
     "continued": "Continued Planning",
+    "handed_off": "Plan Handed Off",
+    "deferred": "Deferred to new session",
     "approved": "Approved",
     "denied": "Denied",
     "plan": "Plan:",

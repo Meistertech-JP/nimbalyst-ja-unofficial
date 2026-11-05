@@ -2274,7 +2274,9 @@
     "types": {
       "source": "情報源", "source_plural": "情報源",
       "capture": "取得記録", "capture_plural": "取得記録",
-      "citation": "引用", "citation_plural": "引用"
+      "citation": "引用", "citation_plural": "引用",
+      "github-issue": "GitHubの課題", "github-issue_plural": "GitHubの課題",
+      "github-pr": "GitHubのプルリクエスト", "github-pr_plural": "GitHubのプルリクエスト"
     },
     "statuses": {
       "idea": { "new": "新規", "considering": "検討中", "accepted": "採用済み", "rejected": "却下" },
@@ -2282,7 +2284,9 @@
       "release": { "planned": "計画済み", "in-progress": "進行中", "released": "リリース済み", "cancelled": "キャンセル済み" },
       "source": { "active": "有効", "superseded": "置換済み", "unavailable": "利用不可" },
       "capture": { "recorded": "記録済み", "stale": "古い", "unresolvable": "解決不可" },
-      "citation": { "asserted": "提示済み", "verified": "確認済み", "stale": "古い", "broken": "参照不可" }
+      "citation": { "asserted": "提示済み", "verified": "確認済み", "stale": "古い", "broken": "参照不可" },
+      "github-issue": { "needs-triage": "要分類", "investigating": "調査中", "needs-info": "情報待ち", "keep-accept": "維持／受け入れ", "adopted": "採用済み", "close-fixed": "クローズ：修正済み", "close-duplicate": "クローズ：重複", "close-wontfix": "クローズ：対応しない" },
+      "github-pr": { "to-review": "レビュー待ち", "reviewing": "レビュー中", "approved": "承認済み", "merged": "マージ済み", "closed": "クローズ済み" }
     }
   },
   "page_status": {
