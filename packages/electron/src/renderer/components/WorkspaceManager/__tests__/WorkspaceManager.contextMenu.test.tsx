@@ -123,19 +123,30 @@ describe('WorkspaceManager project migration errors', () => {
 
   it('preserves OS details while retranslating a rename failure', async () => {
     await japaneseI18n.changeLanguage('ja');
-    projectMigration.rename.mockResolvedValueOnce({
+    const renameFailure = {
       success: false,
       error: { code: 'rename_failed', detail: 'EACCES: test destination' },
-    });
+    };
+    projectMigration.rename.mockResolvedValueOnce(renameFailure);
 
     renderJapanese(<WorkspaceManager />);
     fireEvent.contextMenu(await screen.findByText('alpha'), { clientX: 120, clientY: 200 });
     fireEvent.click(await screen.findByText('名前を変更…'));
-    fireEvent.change(await screen.findByDisplayValue('alpha'), { target: { value: 'beta' } });
-    fireEvent.click(screen.getByRole('button', { name: '名前を変更' }));
+    const renameInput = await screen.findByDisplayValue('alpha') as HTMLInputElement;
+    fireEvent.change(renameInput, { target: { value: 'beta' } });
+    expect(renameInput.value).toBe('beta');
+    const renameButton = screen.getByRole('button', { name: '名前を変更' }) as HTMLButtonElement;
+    expect(renameButton.disabled).toBe(false);
+    fireEvent.click(renameButton);
+
+    expect(projectMigration.rename).toHaveBeenCalledExactlyOnceWith('/projects/alpha', 'beta');
+    const renameResponse = projectMigration.rename.mock.results[0];
+    expect(renameResponse.type).toBe('return');
+    expect(japaneseI18n.resolvedLanguage).toBe('ja');
 
     expect(await screen.findByText('プロジェクト名を変更できませんでした：EACCES: test destination')).toBeDefined();
     await act(async () => { await japaneseI18n.changeLanguage('en'); });
     expect(await screen.findByText('Could not rename the project: EACCES: test destination')).toBeDefined();
+    await expect(renameResponse.value).resolves.toEqual(renameFailure);
   });
 });
