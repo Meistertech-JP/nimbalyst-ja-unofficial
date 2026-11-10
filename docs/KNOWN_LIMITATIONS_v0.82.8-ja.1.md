@@ -4,7 +4,7 @@
 
 ## 音声入力
 
-本家v0.82.8由来のDictationコードとUIを取り込み、UI文字列を英語・日本語リソースへ接続しています。音声入力の単体・統合・E2Eテスト、マイク録音、オンデバイス認識、OpenAI文字起こしAPIの動作試験は実施していません。正常動作を確認済みとは扱いません。
+本家v0.82.8由来のDictationコードとUIを取り込み、UI文字列を英語・日本語リソースへ接続しています。音声入力の機能動作は未検証です。マイク録音、オンデバイス認識、OpenAI文字起こしAPIとの連携、実機での一連の利用フローは確認していません。正常動作を確認済みとは扱いません。
 
 ## 共同編集・同期サーバー
 
@@ -24,7 +24,7 @@ R24候補の高負荷時におけるセッション開始文脈の遅延・省�
 
 ## 翻訳とアクセシビリティ
 
-共有翻訳資源は27名前空間、英日各15,401キーで静的整合性を確認しています。動的翻訳参照は484件あり、既知の有限定数・fallback等を分類しましたが、外部由来の全値・全実行経路を網羅した実画面確認ではありません。外部スクリーンリーダー、全DPI、全アクセシビリティ条件は未検証です。モデル名、ユーザー文書、外部サービス応答などは自動翻訳しません。
+共有翻訳資源は27名前空間、英日各15,401キーで静的整合性を確認しています。以前の監査記録では動的翻訳参照484件を分類していますが、この候補工程ではその全件一覧と分類を独立に再照合していません。今回差分のAST監査では変更された125ソース内の33箇所（基準27箇所から6箇所追加）を確認し、追加分に参照欠落はありませんでした。いずれも外部由来の全値・全実行経路を網羅した実画面確認ではありません。外部スクリーンリーダー、全DPI、全アクセシビリティ条件は未検証です。モデル名、ユーザー文書、外部サービス応答などは自動翻訳しません。
 
 ## Windows・配布物
 
@@ -42,7 +42,7 @@ This is an unpublished candidate record. The `v0.82.8-ja.1` Release and Windows 
 
 ### Dictation
 
-Upstream Dictation code and UI are included, and UI strings are connected to English and Japanese resources. Dictation unit, integration and E2E tests, microphone capture, on-device recognition and OpenAI transcription API behavior were not tested. No claim of verified voice-input behavior is made.
+Upstream Dictation code and UI are included, and UI strings are connected to English and Japanese resources. Voice-input behavior has not been validated. Microphone capture, on-device recognition, integration with the OpenAI transcription API, and the end-to-end user flow have not been verified. No claim of verified voice-input behavior is made.
 
 ### Collaboration and sync servers
 
@@ -62,7 +62,7 @@ R24 has not yet completed a same-condition comparison of delayed or omitted sess
 
 ### Localization and accessibility
 
-Static consistency was checked for 15,401 English and Japanese keys across 27 namespaces. The audit classified 484 dynamic translation references, including known finite constants and fallback paths, but did not visually exercise every external value and runtime path. External screen readers, every DPI setting and all accessibility conditions remain unverified. Model names, user documents and external service responses are not automatically translated.
+Static consistency was checked for 15,401 English and Japanese keys across 27 namespaces. An earlier audit record classifies 484 dynamic translation references, but this candidate pass did not independently reconcile the complete list and classifications. The AST audit of 125 changed sources examined 33 call sites (six more than the 27-site baseline) and found no missing references among the additions. This does not visually exercise every external value and runtime path. External screen readers, every DPI setting and all accessibility conditions remain unverified. Model names, user documents and external service responses are not automatically translated.
 
 ### Windows and distributions
 

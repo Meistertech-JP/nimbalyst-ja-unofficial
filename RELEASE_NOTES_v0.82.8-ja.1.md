@@ -21,13 +21,13 @@
 - v0.82.8で追加・変更されたユーザー向け文字列に日本語表示を追加しました。
 - 表示言語の日本語・英語・System切替、Electronネイティブメニュー、日本語版固有のアプリIDとデータ保存先を維持しています。
 - 公式版の自動更新・更新確認を無効にし、手動更新方式を維持しています。
-- 本家v0.82.8に含まれるDictationのUI文字列は翻訳していますが、音声入力の動作テストは実施していません。
+- 本家v0.82.8に含まれるDictationのUI文字列を翻訳しています。音声入力の機能動作は未検証です。
 
 ## 検証範囲
 
 候補ソースでは全ワークスペース型検査、翻訳資源の整合性、関連する通常UI・ファイル・セッション処理のテストを実施しています。英語・日本語は27名前空間・各15,401キーで、キー差、空の日本語値、補間変数差はありません。静的整合性は全画面・全動的参照経路の実表示確認を意味しません。
 
-音声入力の単体・統合・E2Eおよび実動作は未検証です。共同編集・同期サーバー、実組織、サーバー間互換性のテストも実施していません。Windows全体テストや高負荷時のすべての条件を網羅したものではありません。詳細は[候補の既知制限](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md)を参照してください。
+音声入力の機能動作は未検証です。マイク録音、音声認識、文字起こしAPIとの連携、実機での一連の利用フローは確認していません。共同編集・同期サーバー、実組織、サーバー間互換性のテストも実施していません。Windows全体テストや高負荷時のすべての条件を網羅したものではありません。詳細は[候補の既知制限](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md)を参照してください。
 
 ## 配布予定と注意事項
 
@@ -60,13 +60,13 @@ These are summaries of source changes, not guarantees that every listed path was
 - Added Japanese display for user-facing strings introduced or changed in v0.82.8.
 - Retained Japanese, English and System language selection, Electron native menus, and the edition-specific application ID and data directory.
 - Retained disabled official automatic updates and update checks, with manual updates.
-- Dictation UI strings are localized, but voice-input behavior was not tested.
+- Dictation UI strings are localized. Voice-input behavior has not been validated.
 
 ## Verification scope
 
 Candidate-source checks include workspace typechecking, translation-resource consistency and relevant ordinary UI, file and session tests. The English and Japanese resources contain 15,401 keys in each of 27 namespaces, with no key, empty-Japanese-value or interpolation differences. Static consistency does not mean every screen or dynamic reference path was visually verified.
 
-Dictation unit, integration, E2E and live behavior were not tested. Collaboration/sync servers, real organizations and server interoperability were also not tested. This does not cover every Windows full-suite or high-load condition. See the [candidate known limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
+Voice-input behavior has not been validated. Microphone capture, speech recognition, transcription API integration, and the end-to-end user flow have not been verified. Collaboration/sync servers, real organizations and server interoperability were also not tested. This does not cover every Windows full-suite or high-load condition. See the [candidate known limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
 
 ## Planned distribution and notice
 
