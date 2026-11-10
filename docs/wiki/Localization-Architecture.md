@@ -2,11 +2,11 @@
 
 # 日本語化アーキテクチャ
 
-対象は[v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)です。本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とします。Lexical 0.53の色付きテキスト対応と、本家から更新されたAIセッション・Tracker等のUI表示を含みます。
+対象は[v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)です。本家v0.82.8の固定コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6)を基準とします。本家から更新されたUI表示を含みます。
 
 ## 共通資源とホストの責務
 
-翻訳資源は`packages/i18n/src/resources/en`と`ja`にあり、27名前空間・英日各15,321キーです。キー差・補間差・空の日本語訳は0件です。この静的整合は全画面・動的キー・外部応答の実行時表示を保証するものではありません。`common`を既定の名前空間、`en`をfallbackとします。`createI18nInstance`はホストごとにi18nextインスタンスを作ります。MainとRendererが同じプロセスのオブジェクトを共有するのではなく、共通の資源・ロケール解決方針を使います。
+翻訳資源は`packages/i18n/src/resources/en`と`ja`にあり、27名前空間・英日各15,401キーです。キー差・補間差・空の日本語訳は0件です。この静的整合は全画面・動的キー・外部応答の実行時表示を保証するものではありません。`common`を既定の名前空間、`en`をfallbackとします。`createI18nInstance`はホストごとにi18nextインスタンスを作ります。MainとRendererが同じプロセスのオブジェクトを共有するのではなく、共通の資源・ロケール解決方針を使います。
 
 `@nimbalyst/i18n/locale`は資源を持たないロケール方針、`/core`は資源付きインスタンス作成、`/react`はReactへの接続を提供します。言語方針だけが必要なコードから資源全体をimportしないことが、初期依存を増やさないための境界になります。
 

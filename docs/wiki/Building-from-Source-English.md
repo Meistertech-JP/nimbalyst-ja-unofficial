@@ -2,9 +2,9 @@
 
 # Building from Source
 
-These instructions apply to the source and scripts at v0.82.7-ja.1. Check `package.json` and the lockfile again for later upstream-following versions. The published npm CLI does not necessarily include every feature of this fork.
+These instructions apply to the source and scripts at v0.82.8-ja.1. Check `package.json` and the lockfile again for later upstream-following versions. The published npm CLI does not necessarily include every feature of this fork.
 
-Use the `v0.82.7-ja.1` tag for the source corresponding to its Windows assets, rather than the continuously changing `main` branch. To reproduce an older release, use that version's tag and lockfile.
+Use the `v0.82.8-ja.1` tag for the source corresponding to its Windows assets, rather than the continuously changing `main` branch. To reproduce an older release, use that version's tag and lockfile.
 
 ## Obtaining the source and dependencies
 
@@ -13,7 +13,7 @@ Use Node.js 24 or later and pnpm 12 or later. `packageManager` specifies `pnpm@1
 ```powershell
 git clone https://github.com/Meistertech-JP/nimbalyst-ja-unofficial.git
 Set-Location nimbalyst-ja-unofficial
-git switch --detach v0.82.7-ja.1
+git switch --detach v0.82.8-ja.1
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps
@@ -57,11 +57,11 @@ A local build without signing credentials is unsigned. To explicitly allow an un
 
 ## Checks before distribution
 
-Check the ASAR file inventory, contents and integrity block, every file in the unpacked application and ZIP, and Worker placement. Native modules such as SQLite must match Electron's ABI. Verification for v0.82.7-ja.1 uses Electron 43.7.0 and ABI 148. Loading a module under the system Node.js alone does not establish Electron compatibility.
+Check the ASAR file inventory, contents and integrity block, every file in the unpacked application and ZIP, and Worker placement. Native modules such as SQLite must match Electron's ABI. Verification for this edition uses Electron 43.7.0 and ABI 148. Loading a module under the system Node.js alone does not establish Electron compatibility.
 
 Preserve the correspondence between `patches/fd-slicer@1.1.0.patch` and the lockfile. Check the search executable `rg.exe` for size, hash and successful execution after dependency installation and packaging. An environment where a broken search binary was replaced by hand is not sufficient evidence of a reproducible build. Migration from PGLite to SQLite is included, but testing migration with synthetic data does not guarantee migration of every real user's data.
 
-Check PE product names, versions and identifiers, the absence of an official update feed, and the LICENSE and third-party notices in `resources/legal`. Record the difference between the product-code commit and the publication-documentation commit, hashes and restoration results for every source ZIP file, and distribution SHA-256 values. See [Testing and Verification](Testing-and-Verification-English) for v0.82.7-ja.1's verified scope and unverified areas.
+Check PE product names, versions and identifiers, the absence of an official update feed, and the LICENSE and third-party notices in `resources/legal`. Record the difference between the product-code commit and the publication-documentation commit, hashes and restoration results for every source ZIP file, and distribution SHA-256 values. See [Testing and Verification](Testing-and-Verification-English) for this edition's verified scope and unverified areas.
 
 Finally, test startup and shutdown, language switching, persistence after restart, and the changed screens in a normal product build. Installation and authentication are separate verification items. Successful build commands do not guarantee these runtime behaviors.
 

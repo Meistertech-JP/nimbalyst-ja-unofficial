@@ -8,7 +8,7 @@ Nimbalystは、ファイルの編集、AIエージェントとの作業、セッ
 
 ## 入手する版
 
-[v0.82.7-ja.1のRelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)から取得します。本家v0.82.7の固定コミット `826adb4f93dbe86db35b76ce2502a3a33abe0489` を基準とするWindows x64向け未署名版です。NSIS、ポータブルZIP、対応ソースZIPとSHA256SUMS.txtを提供します。インストーラーはWindowsのアプリ一覧とショートカットを使う配置、ポータブルZIPは展開したディレクトリから実行する配置です。ZIP版も設定をEXEの横に保存するわけではありません。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)と[確認済み範囲・制限](Compatibility-and-Limitations)を参照してください。
+[v0.82.8-ja.1のRelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から取得します。本家v0.82.8の固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6` を基準とするWindows x64向け未署名版です。NSIS、ポータブルZIP、対応ソースZIPとSHA256SUMS.txtを提供します。インストーラーはWindowsのアプリ一覧とショートカットを使う配置、ポータブルZIPは展開したディレクトリから実行する配置です。ZIP版も設定をEXEの横に保存するわけではありません。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md)と[確認済み範囲・制限](Compatibility-and-Limitations)を参照してください。
 
 [Windowsへの導入と更新](Windows-Installation)で、取得するファイル名、チェックサム照合、配置方法を確認してください。SQLiteへの移行を含みますが、すべての実ユーザーデータの移行を保証するものではありません。
 

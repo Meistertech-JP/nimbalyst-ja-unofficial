@@ -2,7 +2,7 @@
 
 # Following Upstream Nimbalyst
 
-The next `v0.82.8-ja.1` candidate targets official upstream tag `v0.82.8` at fixed commit `ab9da8f121e4e6fddebc523ced671863e8892ff6`. It does not target the moving upstream main branch, and the candidate has not been published. Track its change classification and verification separately from the published v0.82.7-ja.1 results on this page and [Testing and Verification](Testing-and-Verification-English).
+`v0.82.8-ja.1` integrates official upstream tag `v0.82.8` at fixed commit `ab9da8f121e4e6fddebc523ced671863e8892ff6`. It does not automatically follow the moving upstream main branch. Its verification is recorded separately from earlier releases in [Testing and Verification](Testing-and-Verification-English).
 
 The [v0.82.7-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1) is based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). It incorporates upstream changes since the previous v0.82.4-ja.1 release while preserving both histories and edition-specific behavior. The fork does not automatically track the latest upstream main.
 

@@ -8,7 +8,7 @@ The Unofficial Japanese Edition is a fork that adds Japanese desktop UI and a di
 
 ## Choosing a distribution
 
-Download the unsigned Windows x64 edition based on fixed upstream v0.82.7 commit `826adb4f93dbe86db35b76ce2502a3a33abe0489` from the [v0.82.7-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1). It provides NSIS, portable ZIP, matching source and SHA256SUMS.txt. The installer provides Windows app-list entries and shortcuts; the portable ZIP runs from its extracted directory. The ZIP edition does not store settings next to the EXE. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md) and [verification limitations](Compatibility-and-Limitations-English) for package contents and scope.
+Download the unsigned Windows x64 edition based on fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6` from the [v0.82.8-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1). It provides NSIS, portable ZIP, matching source and SHA256SUMS.txt. The installer provides Windows app-list entries and shortcuts; the portable ZIP runs from its extracted directory. The ZIP edition does not store settings next to the EXE. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md) and [verification limitations](Compatibility-and-Limitations-English) for package contents and scope.
 
 See [Windows Installation and Updates](Windows-Installation-English) for filenames, checksum verification, and placement instructions. SQLite migration is included, but migration of every real user's data is not guaranteed.
 

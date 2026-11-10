@@ -2,11 +2,11 @@
 
 # Localization Architecture
 
-This page describes [v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1), based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). It includes the Japanese UI for upstream updates such as colored text in Lexical 0.53 and changes to AI sessions and Tracker.
+This page describes [v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1), based on fixed upstream v0.82.8 commit [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6). It includes Japanese UI for upstream updates.
 
 ## Shared resources and host responsibilities
 
-Translation resources are in `packages/i18n/src/resources/en` and `ja`, with 27 namespaces and 15,321 keys in each language. Key and interpolation differences and empty Japanese translations are zero. This static consistency does not guarantee runtime display across every screen or dynamic path. `common` is the default namespace and `en` is the fallback language. `createI18nInstance` creates an i18next instance for each host. Main and Renderer do not share the same in-process object; they use shared resources and locale-resolution policies.
+Translation resources are in `packages/i18n/src/resources/en` and `ja`, with 27 namespaces and 15,401 keys in each language. Key and interpolation differences and empty Japanese translations are zero. This static consistency does not guarantee runtime display across every screen or dynamic path. `common` is the default namespace and `en` is the fallback language. `createI18nInstance` creates an i18next instance for each host. Main and Renderer do not share the same in-process object; they use shared resources and locale-resolution policies.
 
 `@nimbalyst/i18n/locale` provides locale policy without resources, `/core` creates instances with resources, and `/react` connects them to React. Code that only needs language policy should not import the full resource set. This boundary prevents unnecessary initial dependencies.
 

@@ -2,17 +2,17 @@
 
 # Testing and Verification
 
-## v0.82.8-ja.1 candidate (unreleased; verification in progress)
+## v0.82.8-ja.1
 
-The fixed target is upstream release tag v0.82.8 at commit [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6). Candidate Release and Windows assets are not published and are distinct from the published v0.82.7-ja.1.
+The fixed target is upstream release tag v0.82.8 at commit [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6). The Windows edition is unsigned.
 
 - Typecheck: PASS across 39 workspaces.
-- Translation resources: 27 namespaces and 15,401 keys per language; zero key, empty-Japanese-value or interpolation differences. Zero missing static references. The 484 dynamic references and 211 unresolved-scope records were reviewed without finding a concrete missing UI string. This is not live verification of every external value or screen.
+- Translation resources: 27 namespaces and 15,401 keys per language; zero key, empty-Japanese-value or interpolation differences. Zero missing static references. The earlier classification of 484 dynamic references was not independently reconciled in full for this edition; this is not live verification of every external value or screen.
 - Seven collab-bundle budgets: PASS (commenting-ui 40,177/44,000; canvas 151,352/160,000; editor 366,452/370,000; docs-ui 89,202/92,000; feedback-ui 35,089/35,500; trackers-ui 197,427/200,000; inbox 5,542/6,000 gzip bytes).
 - Tests related to the latest localization changes: i18n 11 PASS, Settings routes 12 PASS, Windows shell-command installer 2 PASS / 4 SKIP. The four skipped cases exercise Unix shell/symlink conditions that do not apply on Windows; they are distinct from Linux/macOS results.
-- A real-UI search in a 12,000-item Markdown document found and displayed a match near the end. Main-process CPU samples were similar with the document open and closed, so no document-specific increase was observed. Accessibility-tree extraction took a long time and the cause remains inconclusive.
+- A real-UI search in a 5,000-item Markdown document displayed the results and a match. No idle comparison with the document closed was performed, and the high-CPU issue remains unresolved.
 
-Voice-input behavior and audio-specific tests, live collaboration/sync-server and organization tests are not run. Same-condition R24 comparisons for natural terminal-exit resource retention and Local Wiki context under high load, final Windows candidate authentication/upgrade/distribution checks, and Linux CI remain incomplete. No final candidate verdict is assigned yet.
+[Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/42800530294) on product-containing candidate commit `49eab4338e870e1f8b71c34662022f3cfbba2a8d` passed 19,896 tests, with 30 skipped and zero failures; [Android Build](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/42800530382) and [iOS Simulator](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/42802135881) also succeeded. These include voice and sync mocks but do not verify a real microphone, recognition API or external sync server. See [limitations](Compatibility-and-Limitations-English) for Windows authentication and update coverage, the incomplete Windows full suite, terminal resources and Wiki context under load.
 
 ## v0.82.7-ja.1
 

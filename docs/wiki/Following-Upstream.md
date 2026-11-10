@@ -2,7 +2,7 @@
 
 # 本家Nimbalystへの追従
 
-次期 `v0.82.8-ja.1`候補では、本家の正式タグ `v0.82.8`（固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6`）を取り込み対象とします。開発中の本家mainは対象にせず、候補の公開も行っていません。候補の差分分類・検証状態はこのページと[テストと品質検証](Testing-and-Verification)で追跡し、正式公開版v0.82.7-ja.1の記録とは分けます。
+`v0.82.8-ja.1`は、本家の正式タグ `v0.82.8`（固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6`）を取り込み対象としました。本家mainを自動的に追従するものではありません。検証状態は[テストと品質検証](Testing-and-Verification)で以前の版と分けて記録します。
 
 v0.82.7-ja.1の[Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)は、本家v0.82.7の固定コミット[`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とします。前回の公開版v0.82.4-ja.1から本家の変更を取り込みつつ、両履歴と日本語版固有仕様を保持しています。本家の最新mainを自動的に取り込む構成ではありません。
 

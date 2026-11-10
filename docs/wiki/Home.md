@@ -4,16 +4,12 @@
 
 NimbalystのデスクトップUIを日本語で利用するための、非公式フォークの利用・開発資料です。Nimbalyst, Inc.の公式製品ではなく、同社による承認・サポートを受けていません。
 
-## 次期候補（未公開）
+対象版は **v0.82.8-ja.1** です。本家v0.82.8の固定コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6) を基準とする、Windows x64向け未署名版です。複数プロジェクト、ファイル操作やAIセッション関連の更新に対応する日本語表示を追加しています。翻訳資源の一致は全画面・全動的経路の表示保証ではありません。主な更新は[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md)、確認済み範囲と制限は[テストと品質検証](Testing-and-Verification)および[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
 
-`v0.82.8-ja.1`候補は本家v0.82.8（`ab9da8f121e4e6fddebc523ced671863e8892ff6`）への追従版です。翻訳・互換性・Windows配布物を検証中で、Releaseと候補配布物はまだ公開されていません。現時点で取得できる最新版は引き続き[v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)です。音声入力と実サーバー接続は未検証であり、候補の結果は[テストと品質検証](Testing-and-Verification)に追記します。
-
-対象版は **v0.82.7-ja.1** です。本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489) を基準とする、Windows x64向け未署名版です。Lexical 0.53の色付きテキスト、SQLiteへの移行、AIセッション関連の更新、TrackerとWindows固有の修正などを取り込み、日本語表示を追加しています。翻訳資源の一致は全画面・全動的経路の表示保証ではありません。主な更新は[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)、確認済み範囲と制限は[テストと品質検証](Testing-and-Verification)および[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
-
-- [ダウンロードと変更内容](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)
-- [Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)
+- [ダウンロードと変更内容](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
+- [Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md)
 - [ソースコード・README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/LICENSE)
+- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/LICENSE)
 
 公式版の自動更新・手動更新確認は無効です。本リポジトリのReleasesから手動で更新します。PGLiteからSQLiteへの自動移行を含みますが、すべての実ユーザーデータの移行を保証するものではありません。旧Releaseと配布物は過去版として保持しています。
 

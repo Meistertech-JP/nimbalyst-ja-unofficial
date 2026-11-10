@@ -2,6 +2,10 @@
 
 # Display Language
 
+## v0.82.8-ja.1
+
+Japanese/English switching and persistence after restart were checked in the Windows product. Resources contain 27 namespaces and 15,401 keys per language. This does not cover every screen, dynamic display path, DPI setting or external screen reader.
+
 ## v0.82.7-ja.1
 
 Windows product checks observed immediate switching between Japanese and English and persistence of the selected language after restart. This does not cover every screen, dynamic display path, DPI configuration, or external screen reader. Translation resources contain 27 namespaces and 15,321 keys per language, with zero key differences, interpolation differences, or empty Japanese translations; resource consistency alone does not guarantee complete UI coverage.

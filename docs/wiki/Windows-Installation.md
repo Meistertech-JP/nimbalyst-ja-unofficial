@@ -2,6 +2,10 @@
 
 # Windowsへの導入と更新
 
+## v0.82.8-ja.1
+
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から未署名のWindows x64インストーラー、ポータブルZIP、対応ソースZIPと `SHA256SUMS.txt` を取得できます。各ファイルを同じReleaseのチェックサムと照合してください。本家v0.82.8に基づく非公式版です。[確認範囲](Testing-and-Verification)と[制限事項](Compatibility-and-Limitations)も参照してください。
+
 ## v0.82.7-ja.1
 
 [対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)から、`nimbalyst-0.82.7-ja.1-windows-x64-setup.exe`、`nimbalyst-0.82.7-ja.1-windows-x64-portable.zip`、`nimbalyst-0.82.7-ja.1-source.zip`、`SHA256SUMS.txt`を取得します。本家v0.82.7を基準とする未署名Windows x64版です。ファイル名とハッシュは同じReleaseの一覧・チェックサムで照合してください。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)も参照してください。

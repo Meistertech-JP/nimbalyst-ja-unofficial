@@ -1,6 +1,6 @@
-# v0.82.8-ja.1候補の検証範囲と既知制限
+# v0.82.8-ja.1の検証範囲と既知制限
 
-この文書は未公開候補の記録です。`v0.82.8-ja.1` ReleaseおよびWindows配布物はまだ公開されていません。本家v0.82.8（`ab9da8f121e4e6fddebc523ced671863e8892ff6`）を基準にしています。
+本版は本家v0.82.8（`ab9da8f121e4e6fddebc523ced671863e8892ff6`）を基準にしています。以下は実施した確認の範囲と未検証事項です。
 
 ## 音声入力
 
@@ -12,7 +12,7 @@
 
 ## Windowsターミナル自然終了後の資源
 
-過去のv0.82.7比較では、外側のshell／CLIプロセス自然終了後に端末資源とMainメモリが残る現象が本家・日本語版の双方で観測されました。R24で修正が入った可能性はありますが、R24候補の最終通常製品で同一条件の反復比較が終わるまでは解消済みと判定しません。
+旧版ではshellの自然終了3秒後も子プロセスが残りました。本版の同一ホストでの一回の比較では終了3秒後に子shellは観測されませんでした。改善を示す限定的な観測ですが、一般的な解消や原因の特定を証明するものではありません。
 
 ## 大きなMarkdown文書のCPU使用率
 
@@ -20,25 +20,25 @@
 
 ## 高負荷時のWiki文脈処理
 
-R24候補の高負荷時におけるセッション開始文脈の遅延・省略は、まだ同一条件で比較検証していません。過去版の結果をR24の合否へそのまま流用しません。
+高負荷時におけるセッション開始文脈の遅延・省略は、本版で同一条件の比較を行っていません。
 
 ## 翻訳とアクセシビリティ
 
-共有翻訳資源は27名前空間、英日各15,401キーで静的整合性を確認しています。以前の監査記録では動的翻訳参照484件を分類していますが、この候補工程ではその全件一覧と分類を独立に再照合していません。今回差分のAST監査では変更された125ソース内の33箇所（基準27箇所から6箇所追加）を確認し、追加分に参照欠落はありませんでした。いずれも外部由来の全値・全実行経路を網羅した実画面確認ではありません。外部スクリーンリーダー、全DPI、全アクセシビリティ条件は未検証です。モデル名、ユーザー文書、外部サービス応答などは自動翻訳しません。
+共有翻訳資源は27名前空間、英日各15,401キーで静的整合性を確認しています。動的参照の全実行経路や外部由来の全値を実画面で確認したものではありません。外部スクリーンリーダー、全DPI、全アクセシビリティ条件は未検証です。モデル名、ユーザー文書、外部サービス応答などは自動翻訳しません。
 
 ## Windows・配布物
 
-R24候補のWindows x64 NSIS・Portableを生成し、通常起動・終了、日本語／英語切替、再起動後の言語保持を確認しました。NSISの新規導入・旧版からの更新とユーザーデータ保持、Portable版の更新とテスト文書保持も専用環境で確認しています。製品は未署名です。Windows symlink fixture作成時のEPERMでは拒否動作まで到達しない場合があります。R20・R23以前の証拠はR24候補の実動作結果として扱っていません。
+Windows x64 NSIS・Portableの通常起動・終了、日本語／英語切替、再起動後の言語保持を確認しました。NSISの新規導入・旧版からの更新とユーザーデータ保持、Portable版の更新とテスト文書保持も専用環境で確認しています。製品は未署名です。Windowsローカルの全体Vitestは完走していません。また、symlink試験ではfixture作成時のEPERMにより拒否動作まで到達しなかったものがあります。Linux CIの成功とは区別します。
 
 ## 認証
 
-R24 `win-unpacked`候補の専用プロファイルでは、ユーザー操作による本番メール認証、サインイン状態の同一プロファイル再起動後復元、通常ログアウト時の暗号化認証ファイル削除を確認しました。ログアウト後の再起動ではサインイン画面を確認しています。認証ファイルの内容は読んでいません。後続の再読込では一時的に未サインインフォームと認証ファイル不在を確認しましたが、その後同じ専用プロファイルで再度ログインし、サインイン済みUIと暗号化認証ファイルの存在を読み戻しました（ファイル内容は不読）。この最新のログイン後の再起動保持とログアウトは再試験していません。NSIS専用プロファイルは再起動後にサインアウト状態で、同じNSISプロファイルでの認証成功は未確認です。nonce検証やlocalhost callback配送は独立計測していません。Google認証、サーバー側セッション失効、特殊な復旧経路も未検証です。ローカルのログアウトとサーバー側セッション失効を同一視しません。
+展開済みWindows製品の専用プロファイルで本番メール認証、暗号化認証ファイルの生成、再起動後の復元、通常ログアウト後の認証ファイル削除と未認証状態を確認しました。その後の再ログインではサインイン済み画面と暗号化ファイルを確認しましたが、再ログイン後の再起動・ログアウトは再試験していません。NSIS専用プロファイルでの認証成功、nonce検証やlocalhost callback配送の独立計測、Google認証、サーバー側セッション失効、特殊な復旧経路は未検証です。ローカルのログアウトはサーバー側のセッション失効を意味しません。
 
 ## English
 
-# Verification scope and known limitations for the v0.82.8-ja.1 candidate
+# Verification scope and known limitations for v0.82.8-ja.1
 
-This is an unpublished candidate record. The `v0.82.8-ja.1` Release and Windows distributions are not available. The fixed base is upstream v0.82.8 (`ab9da8f121e4e6fddebc523ced671863e8892ff6`).
+This edition is based on upstream v0.82.8 (`ab9da8f121e4e6fddebc523ced671863e8892ff6`). The sections below describe the verification performed and its limitations.
 
 ### Dictation
 
@@ -50,7 +50,7 @@ No live collaboration/sync server, organization or server-interoperability tests
 
 ### Resources retained after natural Windows terminal exits
 
-Earlier v0.82.7 comparisons observed retained terminal resources and Main-process memory after outer shell/CLI processes exited naturally in both upstream and this edition. R24 may include a fix, but it remains unconfirmed until the final regular product is tested repeatedly under the same conditions.
+An earlier version retained a child shell three seconds after natural exit. In one comparison on the same host, no child shell was observed three seconds after exit in this edition. This limited observation suggests improvement but does not establish a general resolution or identify the cause.
 
 ### CPU with large Markdown documents
 
@@ -62,12 +62,12 @@ R24 has not yet completed a same-condition comparison of delayed or omitted sess
 
 ### Localization and accessibility
 
-Static consistency was checked for 15,401 English and Japanese keys across 27 namespaces. An earlier audit record classifies 484 dynamic translation references, but this candidate pass did not independently reconcile the complete list and classifications. The AST audit of 125 changed sources examined 33 call sites (six more than the 27-site baseline) and found no missing references among the additions. This does not visually exercise every external value and runtime path. External screen readers, every DPI setting and all accessibility conditions remain unverified. Model names, user documents and external service responses are not automatically translated.
+Static consistency was checked for 15,401 English and Japanese keys across 27 namespaces. Not every dynamic reference, external value or execution path has been visually exercised. External screen readers, every DPI setting and all accessibility conditions remain unverified. Model names, user documents and external service responses are not automatically translated.
 
 ### Windows and distributions
 
-R24 Windows x64 NSIS and Portable candidates were generated. Normal launch/shutdown, Japanese/English switching and language persistence after restart were checked. NSIS fresh installation/update and data retention, plus Portable update and test-document retention, were checked in isolated environments. The Windows binaries are unsigned. Windows symlink-fixture EPERM may prevent a test from reaching the rejection behavior. R20/R23 evidence is not substituted for R24 runtime results.
+Windows x64 NSIS and Portable builds were checked for normal launch/shutdown, Japanese/English switching and language persistence after restart. NSIS fresh installation/update and data retention, plus Portable update and test-document retention, were checked in isolated environments. The Windows binaries are unsigned. The local Windows full Vitest suite did not complete; symlink-fixture EPERM also prevented some tests from reaching rejection behavior. These results are distinct from successful Linux CI.
 
 ### Authentication
 
-In the R24 `win-unpacked` candidate and an isolated profile, user-completed production email sign-in, signed-in state after a same-profile restart, and removal of encrypted credential files after normal logout were observed. The post-logout restart displayed the signed-out form. Credential file contents were not read. A later readback temporarily showed the signed-out form with no credential files; after another login in that same isolated profile, the account page showed the signed-in state and both encrypted credential files were present (contents unread). Restart persistence and logout were not repeated after this latest login. The dedicated NSIS profile was signed out after relaunch; successful authentication in that exact NSIS profile is unverified. Nonce validation and localhost callback delivery were not independently instrumented. Google sign-in, server-side session revocation and exceptional recovery paths remain unverified. Local logout is not the same as server-side session revocation.
+In an isolated profile using the unpacked Windows build, production email sign-in, encrypted credential-file creation, restart restoration, and credential-file removal and signed-out state after normal logout were observed. A later sign-in also showed the signed-in UI and encrypted files, but restart and logout after that sign-in were not repeated. Successful sign-in in the dedicated NSIS profile, independent nonce and localhost-callback instrumentation, Google sign-in, server-side session revocation and exceptional recovery paths remain unverified. Local logout is not the same as server-side session revocation.

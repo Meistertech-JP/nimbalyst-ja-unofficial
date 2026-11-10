@@ -10,15 +10,11 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 ## Availability
 
-The latest version, **v0.82.7-ja.1**, is an unsigned Windows x64 edition based on upstream v0.82.7 at `826adb4f93dbe86db35b76ce2502a3a33abe0489`. Download the NSIS installer, portable ZIP, corresponding source ZIP and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1).
+The latest version, **v0.82.8-ja.1**, is an unsigned Windows x64 edition based on upstream v0.82.8 at `ab9da8f121e4e6fddebc523ced671863e8892ff6`. Download the NSIS installer, portable ZIP, corresponding source ZIP and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1).
 
-The source corresponding to these assets is tagged `v0.82.7-ja.1`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. Earlier tags, releases and distributions, including [v0.82.4-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1), are retained. Features and fixes may differ from the latest official release.
+The source corresponding to these assets is tagged `v0.82.8-ja.1`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. Earlier tags, releases and distributions, including [v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1), are retained. Features and fixes may differ from the latest official release.
 
-The publication quality decision is **GO WITH KNOWN LIMITATIONS**. This does not mean a completely successful Windows full-suite run or verification of every live integration and display path. Read the [known limitations](docs/KNOWN_LIMITATIONS_v0.82.7-ja.1.md#english).
-
-### Next candidate (not released)
-
-`v0.82.8-ja.1` is a candidate following upstream v0.82.8. Localization, compatibility and Windows distributions are still being verified; **the Release has not been published** and candidate assets are not available for download. The latest published edition remains v0.82.7-ja.1. See the [candidate release notes](RELEASE_NOTES_v0.82.8-ja.1.md) and [candidate known limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english) for its changes and verification scope.
+The publication quality decision is **GO WITH KNOWN LIMITATIONS**. This does not mean a completely successful Windows full-suite run or verification of every live integration and display path. Read the [release notes](RELEASE_NOTES_v0.82.8-ja.1.md) and [known limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
 
 ## Japanese interface
 
@@ -38,7 +34,7 @@ Screenshots from the Windows application. Documents and tasks use sample data.
 
 ## Changes in this version
 
-This edition incorporates upstream changes from v0.82.4 through v0.82.7, including Lexical 0.53 and colored Markdown text, migration from PGLite to SQLite, AI-session and SDK updates, session-history loading, weekly usage history, Windows Git/CLI fixes and Tracker local-number fixes. It also integrates fixes originating from upstream issue #1889 and adds Japanese display for new UI. The [release notes](RELEASE_NOTES_v0.82.7-ja.1.md) distinguish incorporated changes from behavior exercised during verification.
+This edition incorporates upstream v0.82.8 changes and adds Japanese display for updates including multiple projects, file operations and AI sessions. It retains earlier changes such as the SQLite migration introduced in v0.82.7. The [release notes](RELEASE_NOTES_v0.82.8-ja.1.md) distinguish upstream changes from behavior exercised during verification.
 
 **Team recovery requires the updated sync server.** Other editing clients must also support recovery. Production-organization recovery and the complete procedure across independent clients have not been verified. Check server compatibility and the intended recovery target before attempting recovery of an existing organization.
 
@@ -46,7 +42,7 @@ This edition incorporates upstream changes from v0.82.4 through v0.82.7, includi
 
 Select System, English, or Japanese in display-language settings. This is independent of the agent response language. User documents and external service responses are not automatically translated. Some Tracker names and statuses remain in English.
 
-The R24 candidate's shared resources contain 27 namespaces and 15,401 keys in each language, with zero key differences, empty Japanese translations or interpolation mismatches. Electron native menus are also covered. This is static consistency for the candidate source; it does not guarantee translation of every screen or dynamic reference path. The published v0.82.7-ja.1 contains 15,321 keys per language.
+Shared resources contain 27 namespaces and 15,401 keys in each language, with zero key differences, empty Japanese translations or interpolation mismatches. Electron native menus are also covered. This is static consistency; it does not guarantee translation of every screen or dynamic reference path.
 
 The Windows application ID is `jp.meistertech.nimbalyst.ja.unofficial`; the default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official settings are not moved or deleted. Running alongside the official application is unsupported. This edition does not claim the default `nimbalyst://` handler; authentication uses an instance-specific, nonce-protected localhost callback. Open authentication email on the same Windows PC.
 
@@ -58,9 +54,9 @@ The [verification record](https://github.com/Meistertech-JP/nimbalyst-ja-unoffic
 
 Release assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
 
-Repeated natural exits of outer shell/CLI processes can retain terminal resources and memory until the app closes, in both upstream and this edition. Twenty natural exits increased Main-process memory by about 156 MiB in each comparison. This is not an increase for every command inside a persistent shell or evidence of an unlimited linear growth rate. If memory increases, save work, quit normally and restart. The root cleanup issue remains unfixed.
+An earlier version was observed retaining terminal resources after a shell/CLI exited naturally. In a single-host check of this edition, no child shell was observed three seconds after exit, but that does not establish a general resolution. If resource use grows, save work, quit normally and restart.
 
-The R24 candidate displayed 5,000 search results in the UI, but measured CPU use was nearly the same with matches and with no results, and no idle baseline with the document closed was captured. The large-document CPU issue is not considered resolved. Local-wiki startup context may also be delayed or omitted under heavy load. The Windows full suite did not finish normally because of same-process loopback stalls and other host-sensitive failures; separate-process major API probes passed both editions. A saved Linux test record reports 19,754 PASS / 0 FAIL / 30 SKIP, but its Run ID and target SHA could not be verified, so it is not attributed to this candidate's final commit. GitHub CI for the final commit was not run. See the [candidate limitations in Japanese and English](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
+The UI displayed 5,000 search results, but the large-document CPU issue is not considered resolved. Local Wiki session-start context under heavy load has not been compared. The Windows local full suite did not complete. Linux CI succeeded separately and is distinguished from Windows symlink-fixture setup failures. See the [limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
 
 Google sign-in, special recovery paths, server-side session revocation, cross-user NTFS effective access, external screen readers and complete dynamic-translation coverage remain unverified. EPERM during Windows symlink-fixture setup leaves untested behavior; Linux success is recorded separately. See [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
 

@@ -2,17 +2,17 @@
 
 # テストと品質検証
 
-## v0.82.8-ja.1候補（未公開・検証途中）
+## v0.82.8-ja.1
 
-固定対象は本家タグv0.82.8、コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6) です。候補ReleaseとWindows配布物は未公開で、正式公開版v0.82.7-ja.1とは区別します。
+固定対象は本家タグv0.82.8、コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6) です。Windows版は未署名です。
 
 - 39ワークスペース型検査：PASS。
-- 翻訳資源：27名前空間、英日各15,401キー。キー差・空の日本語・補間変数差0。静的参照欠落0。動的参照484件・スコープ未確定211件は調査し、具体的な欠落UIは確認されませんでした。ただし外部由来の全実行値・全画面を実動作確認したものではありません。
+- 翻訳資源：27名前空間、英日各15,401キー。キー差・空の日本語・補間変数差0。静的参照欠落0。以前の動的参照484件の分類は今回全件を独立再照合しておらず、全実行値・全画面を実動作確認したものではありません。
 - collab-bundleの7容量検査：PASS（commenting-ui 40,177/44,000、canvas 151,352/160,000、editor 366,452/370,000、docs-ui 89,202/92,000、feedback-ui 35,089/35,500、trackers-ui 197,427/200,000、inbox 5,542/6,000 gzip bytes）。
 - 今回の最終翻訳修正に関連するテスト：i18n 11 PASS、Settings route 12 PASS、Windows shell-command installer 2 PASS／4 SKIP。4件はWindowsで実行対象にならないUnix shell・symlink条件で、Linux/macOSでの実行結果とは区別します。
-- 実画面の大きなMarkdown検索では12,000項目の末尾付近を検索・表示できました。開閉間でMain CPU計測は同程度で、文書固有の上昇は確認できませんでしたが、アクセシビリティツリー取得が長時間化し、原因は未確定です。
+- 実画面の大きなMarkdown検索では5,000項目の検索結果と一致箇所の表示を確認しました。文書を閉じたアイドル状態との比較は行っておらず、高CPU問題は未解決です。
 
-音声入力動作・音声専用テスト、共同編集/同期サーバー・実組織の試験は実施しません。Windows端末自然終了後の資源残留と高負荷Local Wiki文脈処理のR24同条件比較、Windows最終候補の認証・更新・配布物検査、Linux CIは未完了です。よって候補の最終合否はまだ判定しません。
+製品コードを含む候補コミット `49eab4338e870e1f8b71c34662022f3cfbba2a8d` の[Linux CI](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/42800530294)は19,896 PASS／30 SKIP／0 FAIL、[Android Build](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/42800530382)と[iOS Simulator](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/42802135881)も成功しました。音声・同期関連のmockテストを含みますが、実マイク・認識API・外部同期サーバーの検証ではありません。Windowsの認証・更新の確認範囲、全体テスト未完走、端末資源と高負荷Wiki文脈の制限は[既知制限](Compatibility-and-Limitations)を参照してください。
 
 ## v0.82.7-ja.1
 

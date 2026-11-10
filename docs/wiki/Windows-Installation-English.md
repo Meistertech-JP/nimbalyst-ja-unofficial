@@ -2,6 +2,10 @@
 
 # Windows Installation and Updates
 
+## v0.82.8-ja.1
+
+Obtain the unsigned Windows x64 installer, portable ZIP, matching source ZIP and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1). Compare each file with the checksums from that release. This unofficial edition is based on upstream v0.82.8. See [verification scope](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English).
+
 ## v0.82.7-ja.1
 
 Obtain `nimbalyst-0.82.7-ja.1-windows-x64-setup.exe`, `nimbalyst-0.82.7-ja.1-windows-x64-portable.zip`, `nimbalyst-0.82.7-ja.1-source.zip`, and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1). This is an unsigned Windows x64 edition based on upstream v0.82.7. Verify each filename and hash against the asset list and checksums from that same release. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md).

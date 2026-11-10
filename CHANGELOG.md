@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Prepare the unpublished v0.82.8-ja.1 candidate with upstream v0.82.8 changes, Japanese UI resources, and updated Windows verification documentation. Audio input behavior and live collaboration/sync-server behavior are not tested; see the candidate release notes and known limitations.
+## [0.82.8-ja.1]
+
+- Integrate upstream v0.82.8 updates and extend Japanese UI resources.
+- Provide unsigned Windows x64 distributions; see the [release notes](RELEASE_NOTES_v0.82.8-ja.1.md) for verification scope and limitations.
 
 ## [0.82.7-ja.1] — 2026-11-05
 

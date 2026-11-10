@@ -4,9 +4,9 @@
 
 Each release and tag identifies its source and available distributions.
 
-## v0.82.8-ja.1 candidate (unreleased)
+## v0.82.8-ja.1
 
-Based on fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6`, this candidate integrates changes to multi-project/windows, file operations, sessions and question handling, transcript images, SQLite and terminals, Tracker and shared pages, among other areas. New UI strings are connected to English and Japanese resources; static consistency was checked for 15,401 keys in each of 27 namespaces. Dictation behavior, live server connections, and final Windows authentication/upgrade paths remain unverified or under verification. This is a candidate history entry, not a claim that a Release or Windows assets have been published. v0.82.7-ja.1 remains the latest stable release.
+Based on fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6`, this edition integrates changes to multiple projects and windows, file operations, sessions and question handling. New UI strings are connected to English and Japanese resources; static consistency was checked for 15,401 keys in each of 27 namespaces. Real Dictation behavior and live server connections remain unverified. See [Testing and Verification](Testing-and-Verification-English) for authentication and upgrade coverage.
 
 ## v0.82.7-ja.1
 

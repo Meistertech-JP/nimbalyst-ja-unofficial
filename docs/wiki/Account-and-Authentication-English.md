@@ -2,9 +2,13 @@
 
 # Account and Authentication
 
+## v0.82.8-ja.1
+
+Production email sign-in, encrypted credential-file creation, restart restoration and removal after normal logout were observed in an isolated profile using the unpacked Windows build. Restart and logout after the latest subsequent sign-in, and successful sign-in with the dedicated NSIS profile, were not reverified. Google sign-in, special recovery and service-side revocation remain unverified. See [details](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#authentication).
+
 ## v0.82.7-ja.1
 
-Live email authentication for a Nimbalyst account was not newly tested for this release. Google sign-in, special recovery, and service-side session revocation also remain unverified. The procedures below and observations from earlier versions do not establish successful live authentication on the current release. See [Testing and Verification](Testing-and-Verification-English).
+Live email authentication for a Nimbalyst account was not newly tested for v0.82.7-ja.1. Google sign-in, special recovery, and service-side session revocation also remained unverified. The procedures below and observations from earlier versions do not establish successful live authentication on that release. See [Testing and Verification](Testing-and-Verification-English).
 
 ## v0.82.4-ja.1
 

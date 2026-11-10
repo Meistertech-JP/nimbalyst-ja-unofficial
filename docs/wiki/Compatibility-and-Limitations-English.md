@@ -2,9 +2,9 @@
 
 # Compatibility and Limitations
 
-## v0.82.8-ja.1 candidate (unreleased)
+## v0.82.8-ja.1
 
-A candidate following fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6` is under verification. Its Release and distributions are not published; v0.82.7-ja.1 remains the latest published edition. Dictation code/UI is included, but voice-input tests are not run. Collaboration/sync-server and real-organization tests are also not run. A synthetic 5,000-item Markdown document produced 5,000 search results in the UI, but measured CPU use was nearly the same with matches and with no results; no idle baseline with the document closed was captured, so the high-CPU issue is not considered resolved. The same-condition comparison for Local Wiki context under load is incomplete. See the [candidate's known limitations](../KNOWN_LIMITATIONS_v0.82.8-ja.1.md).
+This unsigned Windows x64 edition is based on fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6`. Real voice-input behavior and recognition API use, as well as live collaboration-server and organization connections, remain unverified. The UI displayed 5,000 search results, but the large-Markdown CPU issue is not considered resolved. A same-condition comparison for Local Wiki context under load is incomplete. See the [known limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
 
 ## v0.82.7-ja.1
 
