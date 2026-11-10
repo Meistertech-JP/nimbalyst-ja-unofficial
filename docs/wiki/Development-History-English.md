@@ -4,6 +4,10 @@
 
 Each release and tag identifies its source and available distributions.
 
+## v0.82.8-ja.1 candidate (unreleased)
+
+Based on fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6`, this candidate integrates changes to multi-project/windows, file operations, sessions and question handling, transcript images, SQLite and terminals, Tracker and shared pages, among other areas. New UI strings are connected to English and Japanese resources; static consistency was checked for 15,401 keys in each of 27 namespaces. Dictation behavior, live server connections, and final Windows authentication/upgrade paths remain unverified or under verification. This is a candidate history entry, not a claim that a Release or Windows assets have been published. v0.82.7-ja.1 remains the latest stable release.
+
 ## v0.82.7-ja.1
 
 This [regular Windows x64 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1) is based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). It incorporates colored text in Lexical 0.53, migration from PGLite to SQLite, Claude Code and Codex SDK and AI-session improvements, weekly usage history, Claude in Chrome support, Windows Git/CLI fixes, Tracker local-number fixes, changes from upstream issue #1889, and Japanese UI updates. Integration does not mean that live paid-provider or Chrome connections were tested for this release.

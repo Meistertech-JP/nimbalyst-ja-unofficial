@@ -1,4 +1,43 @@
 {
+  "dictation": {
+    "title": "Dictation",
+    "description": "Speak instead of typing in the agent input and in documents. Words appear at the cursor for you to edit; nothing is sent until you send it. This is separate from Voice Mode.",
+    "enabled_description": "Click the microphone button, or hold {{shortcut}} to talk. A quick tap keeps it listening until you tap again. Esc discards the unfinished phrase.",
+    "disabled_description": "Off: microphone buttons and the shortcut are hidden everywhere.",
+    "speech_engine": "Speech engine",
+    "language_label": "Language",
+    "engine": {
+      "auto": "Auto",
+      "system": "macOS dictation",
+      "on_device": "On-device (macOS)",
+      "openai": "OpenAI"
+    },
+    "language": {
+      "system_default": "System default",
+      "en_us": "English (US)",
+      "en_gb": "English (UK)",
+      "de_de": "German",
+      "es_es": "Spanish",
+      "fr_fr": "French",
+      "it_it": "Italian",
+      "ja_jp": "Japanese",
+      "ko_kr": "Korean",
+      "pt_br": "Portuguese (Brazil)",
+      "zh_cn": "Chinese (Simplified)"
+    },
+    "status": {
+      "auto_uses_system": "Auto uses macOS dictation: it starts instantly and follows your Keyboard > Dictation settings in System Settings. The shortcut starts it when you release the keys; it stops after a pause.",
+      "uses_system": "Uses macOS dictation: it starts instantly and follows your Keyboard > Dictation settings in System Settings. The shortcut starts it when you release the keys; it stops after a pause.",
+      "system_unavailable": "macOS dictation is only available on a Mac. Choose Auto or OpenAI instead.",
+      "on_device_available": "On-device recognition is available. Audio stays on this Mac.",
+      "on_device_unavailable": "On-device recognition is not available here. It needs macOS with speech recognition support. Choose OpenAI or Auto instead.",
+      "openai_available": "Uses your OpenAI API key. Audio is sent to OpenAI and billed to that key.",
+      "openai_unavailable": "No OpenAI API key is set. Add one under Agent Providers > Saved API keys.",
+      "auto_uses_on_device": "Auto will use on-device recognition. Audio stays on this Mac.",
+      "auto_uses_openai": "Auto will use OpenAI with your API key. Audio is sent to OpenAI.",
+      "no_engine_available": "No speech engine is available. On macOS, on-device recognition needs a supported macOS version; elsewhere add an OpenAI API key under Agent Providers > Saved API keys. Your operating system's own dictation also works in any text field."
+    }
+  },
   "pending": {
     "command_placeholder": "Voice command...",
     "sending_countdown": "Sending in <time>{{seconds}}s</time>",

@@ -2,6 +2,18 @@
 
 # テストと品質検証
 
+## v0.82.8-ja.1候補（未公開・検証途中）
+
+固定対象は本家タグv0.82.8、コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6) です。候補ReleaseとWindows配布物は未公開で、正式公開版v0.82.7-ja.1とは区別します。
+
+- 39ワークスペース型検査：PASS。
+- 翻訳資源：27名前空間、英日各15,401キー。キー差・空の日本語・補間変数差0。静的参照欠落0。動的参照484件・スコープ未確定211件は調査し、具体的な欠落UIは確認されませんでした。ただし外部由来の全実行値・全画面を実動作確認したものではありません。
+- collab-bundleの7容量検査：PASS（commenting-ui 40,177/44,000、canvas 151,352/160,000、editor 366,452/370,000、docs-ui 89,202/92,000、feedback-ui 35,089/35,500、trackers-ui 197,427/200,000、inbox 5,542/6,000 gzip bytes）。
+- 今回の最終翻訳修正に関連するテスト：i18n 11 PASS、Settings route 12 PASS、Windows shell-command installer 2 PASS／4 SKIP。4件はWindowsで実行対象にならないUnix shell・symlink条件で、Linux/macOSでの実行結果とは区別します。
+- 実画面の大きなMarkdown検索では12,000項目の末尾付近を検索・表示できました。開閉間でMain CPU計測は同程度で、文書固有の上昇は確認できませんでしたが、アクセシビリティツリー取得が長時間化し、原因は未確定です。
+
+音声入力動作・音声専用テスト、共同編集/同期サーバー・実組織の試験は実施しません。Windows端末自然終了後の資源残留と高負荷Local Wiki文脈処理のR24同条件比較、Windows最終候補の認証・更新・配布物検査、Linux CIは未完了です。よって候補の最終合否はまだ判定しません。
+
 ## v0.82.7-ja.1
 
 [v0.82.7-ja.1 Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)のWindows x64向け非公式版を対象とします。本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とします。品質判定は **GO WITH KNOWN LIMITATIONS** です。以下は確認済みの範囲と未解決事項を分けた記録であり、Windows全体試験PASSを意味しません。

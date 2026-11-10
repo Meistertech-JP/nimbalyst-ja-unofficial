@@ -1017,6 +1017,22 @@
     "tracker_create_no_result": "Tracker create returned no result for {{key}}",
     "tracker_fixture_empty": "Tutorial tracker fixture is empty: {{path}}"
   },
+  "shell_command": {
+    "unavailable_title": "Shell command unavailable",
+    "unsupported_macos_only": "The nimbalyst shell command can be installed from the app on macOS only.",
+    "unsupported_packaged_only": "The nimbalyst shell command is only available in the packaged app.",
+    "replace_title": "Replace the existing \"nimbalyst\" command?",
+    "replace_detail_with_target": "{{path}} already exists and points to {{target}}. It was not installed by Nimbalyst.",
+    "replace_detail": "{{path}} already exists. It was not installed by Nimbalyst.",
+    "replace_button": "Replace",
+    "cancel_button": "Cancel",
+    "installed_title": "Installed the \"nimbalyst\" command",
+    "installed_detail": "Open a new terminal and run \"nimbalyst .\" to open the current folder in Nimbalyst.\n\nInstalled at {{path}}.",
+    "install_failed_title": "Could not install the \"nimbalyst\" command",
+    "error_detail": "Details: {{error}}",
+    "removed_title": "Removed the \"nimbalyst\" command",
+    "remove_failed_title": "Could not remove the \"nimbalyst\" command"
+  },
   "main_process": {
     "windows_protocol_association_title": "Check URL protocol association",
     "windows_protocol_association_message": "nimbalyst:// links are currently handled by another application.",

@@ -284,7 +284,8 @@
     "title": "ファイルビューア",
     "maximize_restore": "ファイルビューアを最大化または元に戻す",
     "empty": "表示するファイルを開いてください",
-    "open_file": "ファイルを開く…"
+    "open_file": "ファイルを開く…",
+    "show_edited_files": "編集済みファイルを表示"
   },
   "welcome": {
     "open_file_to_start": "ファイルを開いて始める",

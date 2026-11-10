@@ -37,6 +37,30 @@ describe('UI language preference', () => {
     expect(resolveUiLocale('system', 'ja-JP')).toBe('ja');
   });
 
+  it('pluralizes Project Rail session badge labels in English and Japanese', async () => {
+    const i18n = await createI18nInstance('en');
+    expect(i18n.t('rail.running_sessions', { ns: 'project', count: 1 })).toBe('1 running session');
+    expect(i18n.t('rail.running_sessions', { ns: 'project', count: 2 })).toBe('2 running sessions');
+    expect(i18n.t('rail.awaiting_input_sessions', { ns: 'project', count: 1 })).toBe('1 session awaiting input');
+    expect(i18n.t('rail.unread_badge_sessions', { ns: 'project', count: 2 })).toBe('2 unread sessions');
+
+    await i18n.changeLanguage('ja');
+    expect(i18n.t('rail.running_sessions', { ns: 'project', count: 1 })).toBe('実行中のセッション1件');
+    expect(i18n.t('rail.running_sessions', { ns: 'project', count: 2 })).toBe('実行中のセッション2件');
+  });
+
+  it('localizes shell command dialogs and interpolates paths in both languages', async () => {
+    const i18n = await createI18nInstance('en');
+    expect(i18n.t('shell_command.replace_detail_with_target', {
+      ns: 'dialogs', path: '/usr/local/bin/nimbalyst', target: '/Applications/Nimbalyst.app/Contents/Resources/bin/nimbalyst',
+    })).toContain('/Applications/Nimbalyst.app/Contents/Resources/bin/nimbalyst');
+    await i18n.changeLanguage('ja');
+    expect(i18n.t('shell_command.installed_title', { ns: 'dialogs' })).toBe('「nimbalyst」コマンドをインストールしました');
+    expect(i18n.t('shell_command.installed_detail', {
+      ns: 'dialogs', path: '/usr/local/bin/nimbalyst',
+    })).toContain('/usr/local/bin/nimbalyst');
+  });
+
   it('keeps English and Japanese resource namespaces and key shapes in lockstep', () => {
     expect(Object.keys(resources.en).sort()).toEqual(Object.keys(resources.ja).sort());
 
@@ -305,7 +329,7 @@ describe('UI language preference', () => {
     expect(resources.ja.aichat.plan_approval.deferred).toBe('新しいセッションに引き継ぎ');
     expect(resources.en.settings.agent_features.claude_in_chrome_description).toContain('Claude in Chrome');
     expect(resources.ja.settings.agent_features.claude_in_chrome_description).toContain('次のメッセージから有効');
-    expect(totalKeys).toBe(15321);
+    expect(totalKeys).toBe(15401);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

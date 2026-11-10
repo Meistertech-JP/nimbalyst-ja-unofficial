@@ -658,6 +658,7 @@
     "no_prompts": "このセッションにはプロンプトがありません",
     "prompts_menu": "プロンプトメニュー",
     "show_prompts": "このセッションのプロンプトを表示",
+    "from_another_session": "別のセッションから",
     "set_phase": "フェーズを設定",
     "current_phase": "フェーズ: {{phase}}",
     "set_kanban_phase": "カンバンのフェーズを設定",

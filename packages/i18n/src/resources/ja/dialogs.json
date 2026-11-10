@@ -1017,6 +1017,22 @@
     "tracker_create_no_result": "チュートリアルのTracker項目の作成結果がありません: {{key}}",
     "tracker_fixture_empty": "チュートリアルのTrackerデータが空です: {{path}}"
   },
+  "shell_command": {
+    "unavailable_title": "シェルコマンドを利用できません",
+    "unsupported_macos_only": "nimbalyst シェルコマンドをインストールできるのは macOS のみです。",
+    "unsupported_packaged_only": "nimbalyst シェルコマンドはインストール済みアプリでのみ利用できます。",
+    "replace_title": "既存の「nimbalyst」コマンドを置き換えますか？",
+    "replace_detail_with_target": "{{path}} はすでに存在し、{{target}} を参照しています。Nimbalystがインストールしたものではありません。",
+    "replace_detail": "{{path}} はすでに存在します。Nimbalystがインストールしたものではありません。",
+    "replace_button": "置き換える",
+    "cancel_button": "キャンセル",
+    "installed_title": "「nimbalyst」コマンドをインストールしました",
+    "installed_detail": "新しいターミナルを開き、「nimbalyst .」を実行すると現在のフォルダーをNimbalystで開けます。\n\nインストール先: {{path}}",
+    "install_failed_title": "「nimbalyst」コマンドをインストールできませんでした",
+    "error_detail": "詳細: {{error}}",
+    "removed_title": "「nimbalyst」コマンドを削除しました",
+    "remove_failed_title": "「nimbalyst」コマンドを削除できませんでした"
+  },
   "main_process": {
     "windows_protocol_association_title": "URLプロトコルの関連付けを確認してください",
     "windows_protocol_association_message": "nimbalyst:// のリンクは現在、別のアプリで処理されます。",

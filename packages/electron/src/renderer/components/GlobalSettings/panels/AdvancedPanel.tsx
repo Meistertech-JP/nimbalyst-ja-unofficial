@@ -88,6 +88,7 @@ type ShellCommandStatus =
 
 /** Install or remove the `nimbalyst` terminal command (`nimbalyst .` opens a folder). */
 function ShellCommandRow() {
+  const { t } = useTranslation('settings');
   const [status, setStatus] = useState<ShellCommandStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -105,33 +106,33 @@ function ShellCommandRow() {
   };
 
   const description = !status
-    ? 'Open folders and files from a terminal with "nimbalyst ."'
+    ? t('advanced.shell_command_description')
     : status.state === 'installed'
-      ? `Installed at ${status.linkPath}. Run "nimbalyst ." in a terminal to open the current folder.`
+      ? t('advanced.shell_command_installed', { path: status.linkPath })
       : status.state === 'unsupported'
-        ? status.reason
+        ? t('advanced.shell_command_unsupported')
         : status.state === 'other-nimbalyst'
-          ? `${status.linkPath} points to another copy of Nimbalyst. Reinstall to point it at this one.`
+          ? t('advanced.shell_command_other_copy', { path: status.linkPath })
           : status.state === 'foreign'
-            ? `${status.linkPath} already exists and was not installed by Nimbalyst.`
-            : 'Open folders and files from a terminal with "nimbalyst ." Installs a link in /usr/local/bin.';
+            ? t('advanced.shell_command_foreign', { path: status.linkPath })
+            : t('advanced.shell_command_description');
 
   return (
     <div className="shell-command-setting setting-item py-2 flex items-center justify-between gap-4">
       <div className="setting-text flex flex-col gap-0 min-w-0">
-        <span className="setting-name text-sm font-medium text-[var(--nim-text)]">Shell Command</span>
+        <span className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('advanced.shell_command_title')}</span>
         <span className="setting-description text-xs leading-snug text-[var(--nim-text-muted)] select-text">{description}</span>
       </div>
       {status && status.state !== 'unsupported' && (
         <div className="flex shrink-0 gap-2">
           {status.state !== 'installed' && (
             <button className="nim-btn-secondary text-xs" disabled={busy} onClick={() => run('shell-command:install')}>
-              Install
+              {t('advanced.shell_command_install')}
             </button>
           )}
           {(status.state === 'installed' || status.state === 'other-nimbalyst') && (
             <button className="nim-btn-secondary text-xs" disabled={busy} onClick={() => run('shell-command:uninstall')}>
-              Uninstall
+              {t('advanced.shell_command_uninstall')}
             </button>
           )}
         </div>

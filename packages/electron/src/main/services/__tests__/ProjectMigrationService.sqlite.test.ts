@@ -153,6 +153,11 @@ describe('ProjectMigrationService.moveProject with worktrees (SQLite backend)', 
       encoding: 'utf8',
       env: { ...process.env, GIT_DIR: undefined, GIT_WORK_TREE: undefined, GIT_INDEX_FILE: undefined },
     }).trim();
+  const normalizePath = (value: string, cwd = process.cwd()) => path.resolve(cwd, value);
+  const worktreePaths = (value: string) => value
+    .split(/\r?\n/)
+    .filter(line => line.startsWith('worktree '))
+    .map(line => normalizePath(line.slice('worktree '.length)));
 
   beforeEach(async () => {
     tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'nim-projmove-')));
@@ -178,7 +183,7 @@ describe('ProjectMigrationService.moveProject with worktrees (SQLite backend)', 
     fs.mkdirSync(projectPath, { recursive: true });
     git(projectPath, 'init', '-q', '-b', 'main');
     // Sandbox guard: the repo must be the temp project, never this checkout.
-    expect(git(projectPath, 'rev-parse', '--show-toplevel')).toBe(projectPath);
+    expect(normalizePath(git(projectPath, 'rev-parse', '--show-toplevel'))).toBe(normalizePath(projectPath));
     fs.writeFileSync(path.join(projectPath, 'a.txt'), 'a');
     git(projectPath, 'add', 'a.txt');
     git(projectPath, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'init');
@@ -210,21 +215,23 @@ describe('ProjectMigrationService.moveProject with worktrees (SQLite backend)', 
 
     expect(fs.existsSync(path.join(newWorktreePath, 'a.txt'))).toBe(true);
     // git sees the worktree from the new main repo, and the worktree resolves its repo.
-    expect(git(newPath, 'worktree', 'list', '--porcelain')).toContain(`worktree ${newWorktreePath}`);
+    expect(worktreePaths(git(newPath, 'worktree', 'list', '--porcelain'))).toContain(normalizePath(newWorktreePath));
     expect(git(newWorktreePath, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('worktree/wt1');
-    expect(git(newWorktreePath, 'rev-parse', '--git-common-dir')).toBe(path.join(newPath, '.git'));
+    expect(normalizePath(git(newWorktreePath, 'rev-parse', '--git-common-dir'), newWorktreePath)).toBe(normalizePath(path.join(newPath, '.git')));
 
     const wt = await sqlite.query<{ workspace_id: string; path: string }>(
       `SELECT workspace_id, path FROM worktrees WHERE id = $1`,
       ['w1'],
     );
-    expect(wt.rows[0]).toEqual({ workspace_id: newPath, path: newWorktreePath });
+    expect(normalizePath(wt.rows[0].workspace_id)).toBe(normalizePath(newPath));
+    expect(normalizePath(wt.rows[0].path)).toBe(normalizePath(newWorktreePath));
 
     const file = await sqlite.query<{ workspace_id: string; file_path: string }>(
       `SELECT workspace_id, file_path FROM session_files WHERE id = $1`,
       ['f1'],
     );
-    expect(file.rows[0]).toEqual({ workspace_id: newWorktreePath, file_path: `${newWorktreePath}/a.txt` });
+    expect(normalizePath(file.rows[0].workspace_id)).toBe(normalizePath(newWorktreePath));
+    expect(normalizePath(file.rows[0].file_path)).toBe(normalizePath(path.join(newWorktreePath, 'a.txt')));
   });
 
   it('copies across volumes, keeps the originals, and links the copied worktree to the copied repo', async () => {
@@ -241,7 +248,7 @@ describe('ProjectMigrationService.moveProject with worktrees (SQLite backend)', 
 
     expect(fs.existsSync(path.join(projectPath, 'a.txt'))).toBe(true);
     expect(fs.existsSync(path.join(worktreePath, 'a.txt'))).toBe(true);
-    expect(git(newWorktreePath, 'rev-parse', '--git-common-dir')).toBe(path.join(newPath, '.git'));
-    expect(git(newPath, 'worktree', 'list', '--porcelain')).toContain(`worktree ${newWorktreePath}`);
+    expect(normalizePath(git(newWorktreePath, 'rev-parse', '--git-common-dir'), newWorktreePath)).toBe(normalizePath(path.join(newPath, '.git')));
+    expect(worktreePaths(git(newPath, 'worktree', 'list', '--porcelain'))).toContain(normalizePath(newWorktreePath));
   });
 });

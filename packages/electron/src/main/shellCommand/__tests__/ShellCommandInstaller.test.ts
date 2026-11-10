@@ -38,7 +38,7 @@ afterEach(() => {
 });
 
 describe('ShellCommandInstaller', () => {
-    it('installs a link that launches the bundled app with the shell directory and arguments', async () => {
+    it.skipIf(process.platform === 'win32')('installs a link that launches the bundled app with the shell directory and arguments', async () => {
         const installer = new ShellCommandInstaller({ shimPath, installDir });
         expect(await installer.getStatus()).toEqual({ state: 'not-installed', linkPath: path.join(installDir, 'nimbalyst') });
 
@@ -59,7 +59,7 @@ describe('ShellCommandInstaller', () => {
         expect(existsSync(path.join(installDir, 'nimbalyst'))).toBe(false);
     });
 
-    it('never replaces or removes a nimbalyst command it did not create without consent', async () => {
+    it.skipIf(process.platform === 'win32')('never replaces or removes a nimbalyst command it did not create without consent', async () => {
         const foreign = path.join(installDir, 'nimbalyst');
         writeFileSync(foreign, '#!/bin/sh\necho mine\n');
         const installer = new ShellCommandInstaller({ shimPath, installDir });
@@ -73,7 +73,7 @@ describe('ShellCommandInstaller', () => {
         expect(replaced.status.state).toBe('installed');
     });
 
-    it('repoints a link left by another Nimbalyst copy', async () => {
+    it.skipIf(process.platform === 'win32')('repoints a link left by another Nimbalyst copy', async () => {
         const oldShim = makeBundle('Old Nimbalyst.app');
         symlinkSync(oldShim, path.join(installDir, 'nimbalyst'));
         const installer = new ShellCommandInstaller({ shimPath, installDir });
@@ -86,7 +86,7 @@ describe('ShellCommandInstaller', () => {
         expect((await installer.install()).status.state).toBe('installed');
     });
 
-    it('falls back to the administrator prompt when the directory is missing or not writable', async () => {
+    it.skipIf(process.platform === 'win32')('falls back to the administrator prompt when the directory is missing or not writable', async () => {
         const missingDir = path.join(root, 'usr', 'local', 'bin');
         const commands: string[] = [];
         const installer = new ShellCommandInstaller({

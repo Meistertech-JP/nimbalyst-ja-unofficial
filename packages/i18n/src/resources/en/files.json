@@ -284,7 +284,8 @@
     "title": "File viewer",
     "maximize_restore": "Maximize or restore file viewer",
     "empty": "Open a file to view it here",
-    "open_file": "Open file…"
+    "open_file": "Open file…",
+    "show_edited_files": "Show edited files"
   },
   "welcome": {
     "open_file_to_start": "Open a file to get started",

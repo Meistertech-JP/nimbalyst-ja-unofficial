@@ -178,7 +178,7 @@ it('commits a native drag only on drop, and ignores external drops and cancellat
   fireEvent.dragStart(source, { dataTransfer });
   fireEvent.dragOver(list, { clientY: 0, dataTransfer });
   expect(store.get(openProjectsAtom)).toBe(projects);
-  fireEvent.dragEnd(source);
+  fireEvent.dragEnd(source, { dataTransfer });
   expect(store.get(openProjectsAtom)).toBe(projects);
   fireEvent.dragStart(source, { dataTransfer });
   fireEvent(list, Object.assign(new MouseEvent('drop', { bubbles: true, clientY: 0 }), { dataTransfer }));

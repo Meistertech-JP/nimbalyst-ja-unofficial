@@ -76,6 +76,8 @@
   "open_project": "プロジェクトを開く...",
   "recent_projects": "最近開いたプロジェクト",
   "settings": "設定...",
+  "install_shell_command": "PATHに'nimbalyst'コマンドをインストール...",
+  "uninstall_shell_command": "'nimbalyst'コマンドをアンインストール...",
   "save": "保存",
   "close_tab": "タブを閉じる",
   "reopen_closed_tab": "閉じたタブを開く",

@@ -2,6 +2,7 @@
 
 [Home](Home)
 
+- [v0.82.8-ja.1候補の状態（未公開）](Compatibility-and-Limitations)
 - [v0.82.7-ja.1 ダウンロード](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)
 
 ### 利用者向け
@@ -30,6 +31,7 @@
 
 [Home](Home-English)
 
+- [v0.82.8-ja.1 candidate status (unreleased)](Compatibility-and-Limitations-English)
 - [Download v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)
 
 ### User Guide

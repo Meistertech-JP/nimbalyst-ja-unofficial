@@ -16,6 +16,10 @@ The source corresponding to these assets is tagged `v0.82.7-ja.1`. Use that rele
 
 The publication quality decision is **GO WITH KNOWN LIMITATIONS**. This does not mean a completely successful Windows full-suite run or verification of every live integration and display path. Read the [known limitations](docs/KNOWN_LIMITATIONS_v0.82.7-ja.1.md#english).
 
+### Next candidate (not released)
+
+`v0.82.8-ja.1` is a candidate following upstream v0.82.8. Localization, compatibility and Windows distributions are still being verified; **the Release has not been published** and candidate assets are not available for download. The latest published edition remains v0.82.7-ja.1. See the [candidate release notes](RELEASE_NOTES_v0.82.8-ja.1.md) and [candidate known limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english) for its changes and verification scope.
+
 ## Japanese interface
 
 Screenshots from the Windows application. Documents and tasks use sample data.
@@ -42,7 +46,7 @@ This edition incorporates upstream changes from v0.82.4 through v0.82.7, includi
 
 Select System, English, or Japanese in display-language settings. This is independent of the agent response language. User documents and external service responses are not automatically translated. Some Tracker names and statuses remain in English.
 
-Shared resources contain 27 namespaces and 15,321 keys in each language, with zero key differences, empty Japanese translations or interpolation mismatches. Electron native menus are also covered. Resource consistency does not guarantee translation of every screen or dynamic reference path.
+The R24 candidate's shared resources contain 27 namespaces and 15,401 keys in each language, with zero key differences, empty Japanese translations or interpolation mismatches. Electron native menus are also covered. This is static consistency for the candidate source; it does not guarantee translation of every screen or dynamic reference path. The published v0.82.7-ja.1 contains 15,321 keys per language.
 
 The Windows application ID is `jp.meistertech.nimbalyst.ja.unofficial`; the default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official settings are not moved or deleted. Running alongside the official application is unsupported. This edition does not claim the default `nimbalyst://` handler; authentication uses an instance-specific, nonce-protected localhost callback. Open authentication email on the same Windows PC.
 
@@ -56,7 +60,7 @@ Release assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresp
 
 Repeated natural exits of outer shell/CLI processes can retain terminal resources and memory until the app closes, in both upstream and this edition. Twenty natural exits increased Main-process memory by about 156 MiB in each comparison. This is not an increase for every command inside a persistent shell or evidence of an unlimited linear growth rate. If memory increases, save work, quit normally and restart. The root cleanup issue remains unfixed.
 
-Large editable documents can cause elevated CPU use, and local-wiki startup context may be delayed or omitted under heavy load. The Windows full suite did not finish normally because of same-process loopback stalls and other host-sensitive failures; separate-process major API probes passed both editions. This edition's Linux unit suite recorded 19,754 PASS / 0 FAIL / 30 SKIP; this is not a Linux product distribution or runtime guarantee. See the [bilingual limitations](docs/KNOWN_LIMITATIONS_v0.82.7-ja.1.md#english).
+The R24 candidate displayed 5,000 search results in the UI, but measured CPU use was nearly the same with matches and with no results, and no idle baseline with the document closed was captured. The large-document CPU issue is not considered resolved. Local-wiki startup context may also be delayed or omitted under heavy load. The Windows full suite did not finish normally because of same-process loopback stalls and other host-sensitive failures; separate-process major API probes passed both editions. This edition's Linux unit suite recorded 19,754 PASS / 0 FAIL / 30 SKIP; this is not a Linux product distribution or runtime guarantee. See the [candidate limitations in Japanese and English](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
 
 Google sign-in, special recovery paths, server-side session revocation, cross-user NTFS effective access, external screen readers and complete dynamic-translation coverage remain unverified. EPERM during Windows symlink-fixture setup leaves untested behavior; Linux success is recorded separately. See [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
 

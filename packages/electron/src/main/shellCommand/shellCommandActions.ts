@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, type MessageBoxOptions } from 'electron';
 import path from 'path';
+import { translateMainDialogLabel } from '../i18n/mainI18n';
 import { safeHandle } from '../utils/ipcRegistry';
 import { logger } from '../utils/logger';
 import { ShellCommandInstaller, type ShellCommandResult, type ShellCommandStatus } from './ShellCommandInstaller';
@@ -37,7 +38,15 @@ function showMessage(parent: BrowserWindow | null, options: MessageBoxOptions) {
 export async function installShellCommandInteractive(parent: BrowserWindow | null): Promise<ShellCommandResult | null> {
     const status = await getInstaller().getStatus();
     if (status.state === 'unsupported') {
-        await showMessage(parent, { type: 'info', message: 'Shell command unavailable', detail: status.reason });
+        const isMacOS = process.platform === 'darwin';
+        await showMessage(parent, {
+            type: 'info',
+            message: translateMainDialogLabel('shell_command.unavailable_title', 'Shell command unavailable'),
+            detail: translateMainDialogLabel(
+                isMacOS ? 'shell_command.unsupported_packaged_only' : 'shell_command.unsupported_macos_only',
+                status.reason,
+            ),
+        });
         return null;
     }
 
@@ -45,9 +54,19 @@ export async function installShellCommandInteractive(parent: BrowserWindow | nul
     if (status.state === 'foreign') {
         const { response } = await showMessage(parent, {
             type: 'warning',
-            message: `Replace the existing "nimbalyst" command?`,
-            detail: `${status.linkPath} already exists${status.target ? ` and points to ${status.target}` : ''}. It was not installed by Nimbalyst.`,
-            buttons: ['Replace', 'Cancel'],
+            message: translateMainDialogLabel('shell_command.replace_title', 'Replace the existing "nimbalyst" command?'),
+            detail: status.target
+                ? translateMainDialogLabel('shell_command.replace_detail_with_target', '{{path}} already exists and points to {{target}}. It was not installed by Nimbalyst.', {
+                    path: status.linkPath,
+                    target: status.target,
+                })
+                : translateMainDialogLabel('shell_command.replace_detail', '{{path}} already exists. It was not installed by Nimbalyst.', {
+                    path: status.linkPath,
+                }),
+            buttons: [
+                translateMainDialogLabel('shell_command.replace_button', 'Replace'),
+                translateMainDialogLabel('shell_command.cancel_button', 'Cancel'),
+            ],
             defaultId: 1,
             cancelId: 1,
         });
@@ -60,11 +79,17 @@ export async function installShellCommandInteractive(parent: BrowserWindow | nul
     if (result.ok) {
         await showMessage(parent, {
             type: 'info',
-            message: 'Installed the "nimbalyst" command',
-            detail: `Open a new terminal and run "nimbalyst ." to open the current folder in Nimbalyst.\n\nInstalled at ${linkPathOf(result.status)}.`,
+            message: translateMainDialogLabel('shell_command.installed_title', 'Installed the "nimbalyst" command'),
+            detail: translateMainDialogLabel('shell_command.installed_detail', 'Open a new terminal and run "nimbalyst ." to open the current folder in Nimbalyst.\n\nInstalled at {{path}}.', {
+                path: linkPathOf(result.status),
+            }),
         });
     } else if (!result.cancelled) {
-        await showMessage(parent, { type: 'error', message: 'Could not install the "nimbalyst" command', detail: result.error });
+        await showMessage(parent, {
+            type: 'error',
+            message: translateMainDialogLabel('shell_command.install_failed_title', 'Could not install the "nimbalyst" command'),
+            detail: translateMainDialogLabel('shell_command.error_detail', 'Details: {{error}}', { error: result.error ?? '' }),
+        });
     }
     return result;
 }
@@ -73,9 +98,16 @@ export async function uninstallShellCommandInteractive(parent: BrowserWindow | n
     const result = await getInstaller().uninstall();
     logger.main.info('[ShellCommand] uninstall:', { ok: result.ok, state: result.status.state, error: result.ok ? undefined : result.error });
     if (result.ok) {
-        await showMessage(parent, { type: 'info', message: 'Removed the "nimbalyst" command' });
+        await showMessage(parent, {
+            type: 'info',
+            message: translateMainDialogLabel('shell_command.removed_title', 'Removed the "nimbalyst" command'),
+        });
     } else if (!result.cancelled) {
-        await showMessage(parent, { type: 'error', message: 'Could not remove the "nimbalyst" command', detail: result.error });
+        await showMessage(parent, {
+            type: 'error',
+            message: translateMainDialogLabel('shell_command.remove_failed_title', 'Could not remove the "nimbalyst" command'),
+            detail: translateMainDialogLabel('shell_command.error_detail', 'Details: {{error}}', { error: result.error ?? '' }),
+        });
     }
     return result;
 }

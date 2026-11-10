@@ -438,7 +438,7 @@
     "searching": "検索中…", "searching_file_contents": "ファイル内容を検索中…", "loading": "読み込み中…", "loading_trackers": "トラッカーを読み込み中…", "searching_trackers": "トラッカーを検索中…",
     "filtered_sessions": "このファイルを編集したセッション：", "clear_file_filter": "ファイルの絞り込みを解除", "new_conversation": "新しい会話", "in_workstream": "ワークストリーム内", "worktree": "ワークツリー",
     "message_count_one": "{{count}}件のメッセージ", "message_count_other": "{{count}}件のメッセージ", "match_count_one": "{{count}}件一致", "match_count_other": "{{count}}件一致", "line_number": "{{line}}行目：", "more_matches": "…ほか{{count}}件", "copied_to_clipboard": "クリップボードにコピーしました",
-    "attach_folder": "フォルダーをワークスペースに追加…", "attach_folder_description": "このプロジェクトを離れずにここから参照し、エージェントが読み取れるようにします", "current": "現在", "open": "開いています", "search_in": "検索対象",
+    "attach_folder": "フォルダーをワークスペースに追加…", "attach_folder_description": "このプロジェクトを離れずにここから参照し、エージェントが読み取れるようにします", "open_folder_as_project": "フォルダーをプロジェクトとして開く…", "open_folder_as_project_description": "プロジェクトとして開くフォルダーを選択します", "current": "現在", "open": "開いています", "search_in": "検索対象",
     "scope_options": { "all": "すべて", "docs": "ドキュメント", "trackers": "トラッカー", "sessions": "セッション", "local": "ローカル", "shared": "共有" },
     "scope_descriptions": { "all": "トラッカー、ドキュメント、セッション", "docs": "インデックス済みドキュメント", "trackers": "トラッカー", "sessions": "セッション" },
     "search_by_meaning": "{{scope}}を意味から検索", "reference_types": { "tracker": "トラッカー", "session": "セッション", "doc-file": "ドキュメント" }, "semantic_match": "意味検索の一致結果", "prompts_from": "プロンプトの作成者",

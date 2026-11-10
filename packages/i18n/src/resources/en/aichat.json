@@ -658,6 +658,7 @@
     "no_prompts": "No prompts in this session",
     "prompts_menu": "Prompts Menu",
     "show_prompts": "Show prompts in this session",
+    "from_another_session": "From another session",
     "set_phase": "Set phase",
     "current_phase": "Phase: {{phase}}",
     "set_kanban_phase": "Set kanban phase",

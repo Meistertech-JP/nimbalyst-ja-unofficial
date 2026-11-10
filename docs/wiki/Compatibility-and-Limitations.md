@@ -2,6 +2,10 @@
 
 # 対応環境と制限事項
 
+## v0.82.8-ja.1候補（未公開）
+
+本家v0.82.8の固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6` に追従する候補を検証中です。候補Release・配布物は未公開で、現在の正式公開版はv0.82.7-ja.1です。Dictationのコード/UIは含みますが、音声入力テストは行いません。共同編集・同期サーバー・実組織の試験も行いません。5,000項目の合成Markdown文書で5,000件の検索結果表示を確認しましたが、検索あり・該当なしのCPU差はほぼなく、文書を閉じたアイドル基準も取得していません。高CPU問題は解消と判定していません。高負荷Wiki文脈処理の同条件比較は未完了です。候補の詳しい測定範囲は[候補の既知制限](../KNOWN_LIMITATIONS_v0.82.8-ja.1.md)に記載しています。
+
 ## v0.82.7-ja.1
 
 [v0.82.7-ja.1 Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)は、本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とするWindows x64向け非公式・未署名版です。Nimbalyst, Inc.の公式製品ではなく、同社の承認・サポートを受けていません。品質判定は **GO WITH KNOWN LIMITATIONS** です。Windows全体試験のPASS、すべての経路の検証完了、PTY資源残留の根本修正を意味しません。更新はこのリポジトリのReleaseから手動で行います。

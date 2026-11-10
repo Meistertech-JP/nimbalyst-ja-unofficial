@@ -7,6 +7,7 @@
 import { BrowserWindow } from 'electron';
 import { safeHandle } from '../utils/ipcRegistry';
 import { getProjectMigrationService, type MovePhase } from '../services/ProjectMigrationService';
+import type { ProjectMigrationFailure, ProjectMigrationWarning } from '../../shared/projectMigration';
 import { logger } from '../utils/logger';
 
 /** A project move running (or just finished) in the background */
@@ -15,8 +16,8 @@ export interface ProjectMoveJob {
   newPath: string;
   status: 'running' | 'succeeded' | 'failed';
   phase: MovePhase | null;
-  error?: string;
-  warnings?: string[];
+  error?: ProjectMigrationFailure;
+  warnings?: ProjectMigrationWarning[];
 }
 
 // Keyed by oldPath. Finished jobs stay until the next move of that path so a
@@ -73,7 +74,7 @@ export function registerProjectMigrationHandlers() {
     const service = getProjectMigrationService();
     const valid = await service.validateMove(oldPath, newPath);
     if (!valid.canMove) {
-      return { started: false, error: valid.reason || 'Cannot move project' };
+      return { started: false, error: valid.reason };
     }
 
     logger.main.info('[ProjectMigrationHandlers] Moving project in background:', oldPath, '->', newPath);
@@ -87,14 +88,20 @@ export function registerProjectMigrationHandlers() {
         broadcastMoveJob({ ...job });
       })
       .then((result) => {
-        job.status = result.success ? 'succeeded' : 'failed';
-        job.error = result.error;
-        job.warnings = result.warnings;
+        if (result.success) {
+          job.status = 'succeeded';
+          job.error = undefined;
+          job.warnings = result.warnings;
+        } else {
+          job.status = 'failed';
+          job.error = result.error;
+          job.warnings = undefined;
+        }
       })
       .catch((error: any) => {
         logger.main.error('[ProjectMigrationHandlers] Background move threw:', error);
         job.status = 'failed';
-        job.error = error?.message || 'Failed to move project';
+        job.error = { code: 'move_failed', detail: error?.message || undefined };
       })
       .finally(() => broadcastMoveJob({ ...job }));
 

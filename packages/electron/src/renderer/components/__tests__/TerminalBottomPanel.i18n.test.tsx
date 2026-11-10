@@ -9,9 +9,7 @@ import {
   terminalListAtom,
   terminalListWorkspaceAtom,
   activeTerminalIdAtom,
-  terminalPanelVisibleAtom,
-  terminalPanelHeightAtom,
-  terminalPanelHydratedAtom,
+  terminalPanelStateAtomFamily,
   type TerminalInstance,
 } from '../../store/atoms/terminals';
 
@@ -68,9 +66,11 @@ function renderPanel(
   listWorkspace = 'C:/workspace',
 ) {
   const store = createStore();
-  store.set(terminalPanelVisibleAtom, true);
-  store.set(terminalPanelHeightAtom, 240);
-  store.set(terminalPanelHydratedAtom, true);
+  store.set(terminalPanelStateAtomFamily('C:/workspace'), {
+    visible: true,
+    height: 240,
+    hydrated: true,
+  });
   store.set(terminalListAtom, terminals);
   store.set(terminalListWorkspaceAtom, listWorkspace);
   store.set(activeTerminalIdAtom, terminals[0]?.id);

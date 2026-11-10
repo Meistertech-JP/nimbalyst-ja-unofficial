@@ -2,6 +2,18 @@
 
 # Testing and Verification
 
+## v0.82.8-ja.1 candidate (unreleased; verification in progress)
+
+The fixed target is upstream release tag v0.82.8 at commit [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6). Candidate Release and Windows assets are not published and are distinct from the published v0.82.7-ja.1.
+
+- Typecheck: PASS across 39 workspaces.
+- Translation resources: 27 namespaces and 15,401 keys per language; zero key, empty-Japanese-value or interpolation differences. Zero missing static references. The 484 dynamic references and 211 unresolved-scope records were reviewed without finding a concrete missing UI string. This is not live verification of every external value or screen.
+- Seven collab-bundle budgets: PASS (commenting-ui 40,177/44,000; canvas 151,352/160,000; editor 366,452/370,000; docs-ui 89,202/92,000; feedback-ui 35,089/35,500; trackers-ui 197,427/200,000; inbox 5,542/6,000 gzip bytes).
+- Tests related to the latest localization changes: i18n 11 PASS, Settings routes 12 PASS, Windows shell-command installer 2 PASS / 4 SKIP. The four skipped cases exercise Unix shell/symlink conditions that do not apply on Windows; they are distinct from Linux/macOS results.
+- A real-UI search in a 12,000-item Markdown document found and displayed a match near the end. Main-process CPU samples were similar with the document open and closed, so no document-specific increase was observed. Accessibility-tree extraction took a long time and the cause remains inconclusive.
+
+Voice-input behavior and audio-specific tests, live collaboration/sync-server and organization tests are not run. Same-condition R24 comparisons for natural terminal-exit resource retention and Local Wiki context under high load, final Windows candidate authentication/upgrade/distribution checks, and Linux CI remain incomplete. No final candidate verdict is assigned yet.
+
 ## v0.82.7-ja.1
 
 This section covers the [v0.82.7-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1), an unofficial Windows x64 edition based on fixed upstream v0.82.7 commit [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489). The quality decision is **GO WITH KNOWN LIMITATIONS**. The results below distinguish observed scope from unresolved issues; they do not mean that the Windows full suite passed.

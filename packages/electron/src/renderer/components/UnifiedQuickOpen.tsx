@@ -392,7 +392,6 @@ export const UnifiedQuickOpen: React.FC<UnifiedQuickOpenProps> = ({
   onTrackerSelect,
 }) => {
   const { t } = useTranslation('agents');
-  const { t: tProject } = useTranslation('project');
   const [activeTab, setActiveTab] = useState<UnifiedQuickOpenTab>(initialTab);
   const [query, setQuery] = useState('');
   // Per-tab Sessions sub-filter: when the user picks a file via @typeahead, we
@@ -2595,6 +2594,7 @@ const ProjectsPane: React.FC<ProjectsPaneProps> = memo(({
   onClose,
 }) => {
   const { t } = useTranslation('agents');
+  const { t: tProject } = useTranslation('project');
   const jotaiStore = useStore();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);

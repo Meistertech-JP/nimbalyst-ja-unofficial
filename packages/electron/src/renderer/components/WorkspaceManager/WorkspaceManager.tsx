@@ -587,7 +587,10 @@ export const WorkspaceManager: React.FC = () => {
       if (result.success) {
         setRenameDialog({ visible: false, workspace: null, newName: '', error: null, stats: null });
         if (result.warnings?.length) {
-          setOperationError(result.warnings.map(migrationWarningMessage).join(' '));
+          setOperationError({
+            kind: 'message',
+            message: result.warnings.map(migrationWarningMessage).join(' '),
+          });
         }
         await loadWorkspaces();
         // Update selected workspace if it was the one that was renamed

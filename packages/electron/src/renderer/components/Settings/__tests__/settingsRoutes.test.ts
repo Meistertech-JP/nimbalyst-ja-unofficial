@@ -37,6 +37,20 @@ const extensionRoutes: ExtensionSettingsRoute[] = [
 ];
 
 describe('settings route registry', () => {
+  it('localizes the dictation settings route label', () => {
+    const route = getSettingsRoutesForScope('application', {
+      developerMode: false,
+      showDirectChatProviders: false,
+      teamsConfigured: false,
+    }).find((candidate) => candidate.id === 'dictation');
+    expect(route).toBeDefined();
+    if (!route) return;
+
+    const translate = (key: string, options?: { defaultValue?: string }) =>
+      key === 'sidebar.item_dictation' ? '音声入力' : options?.defaultValue ?? key;
+    expect(getSettingsRouteLabel(route, translate)).toBe('音声入力');
+  });
+
   it('localizes the built-in knowledge curator extension route label', () => {
     const route: ExtensionSettingsRoute = {
       source: 'extension',

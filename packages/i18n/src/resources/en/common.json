@@ -958,6 +958,7 @@
   "navigation": {
     "user_menu": "User menu",
     "user_menu_signed_out": "User menu (signed out -- sync requires sign in)",
+    "user_menu_sync_attention": "User menu (sync needs attention: {{detail}})",
     "files": "Files",
     "agent": "Agent",
     "tracker": "Tracker",

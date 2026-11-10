@@ -76,6 +76,8 @@
   "open_project": "Open Project...",
   "recent_projects": "Recent Projects",
   "settings": "Settings...",
+  "install_shell_command": "Install 'nimbalyst' Command in PATH...",
+  "uninstall_shell_command": "Uninstall 'nimbalyst' Command...",
   "save": "Save",
   "close_tab": "Close Tab",
   "reopen_closed_tab": "Reopen Closed Tab",

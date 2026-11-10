@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { useTranslation } from 'react-i18next';
 import type { DictationAvailability, DictationEngineSetting } from '../../../shared/dictation';
 import { getShortcutDisplay } from '../../../shared/KeyboardShortcuts';
 import {
@@ -11,61 +12,62 @@ import {
 import { DICTATION_SHORTCUT } from '../../dictation/dictationShortcut';
 import { SettingsToggle } from '../GlobalSettings/SettingsToggle';
 
-const ENGINE_OPTIONS: Array<{ value: DictationEngineSetting; label: string }> = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'system', label: 'macOS dictation' },
-  { value: 'on-device', label: 'On-device (macOS)' },
-  { value: 'openai', label: 'OpenAI' },
+const ENGINE_OPTIONS: Array<{ value: DictationEngineSetting; key: string }> = [
+  { value: 'auto', key: 'dictation.engine.auto' },
+  { value: 'system', key: 'dictation.engine.system' },
+  { value: 'on-device', key: 'dictation.engine.on_device' },
+  { value: 'openai', key: 'dictation.engine.openai' },
 ];
 
-const LANGUAGE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'System default' },
-  { value: 'en-US', label: 'English (US)' },
-  { value: 'en-GB', label: 'English (UK)' },
-  { value: 'de-DE', label: 'German' },
-  { value: 'es-ES', label: 'Spanish' },
-  { value: 'fr-FR', label: 'French' },
-  { value: 'it-IT', label: 'Italian' },
-  { value: 'ja-JP', label: 'Japanese' },
-  { value: 'ko-KR', label: 'Korean' },
-  { value: 'pt-BR', label: 'Portuguese (Brazil)' },
-  { value: 'zh-CN', label: 'Chinese (Simplified)' },
+const LANGUAGE_OPTIONS: Array<{ value: string; key: string }> = [
+  { value: '', key: 'dictation.language.system_default' },
+  { value: 'en-US', key: 'dictation.language.en_us' },
+  { value: 'en-GB', key: 'dictation.language.en_gb' },
+  { value: 'de-DE', key: 'dictation.language.de_de' },
+  { value: 'es-ES', key: 'dictation.language.es_es' },
+  { value: 'fr-FR', key: 'dictation.language.fr_fr' },
+  { value: 'it-IT', key: 'dictation.language.it_it' },
+  { value: 'ja-JP', key: 'dictation.language.ja_jp' },
+  { value: 'ko-KR', key: 'dictation.language.ko_kr' },
+  { value: 'pt-BR', key: 'dictation.language.pt_br' },
+  { value: 'zh-CN', key: 'dictation.language.zh_cn' },
 ];
 
 /** Explain which engine will run, or why none can. */
 function describeDictationAvailability(
   engine: DictationEngineSetting,
   availability: DictationAvailability | null,
-): { ok: boolean; text: string } | null {
+): { ok: boolean; key: string } | null {
   if (!availability) return null;
   const { system, onDevice, openai } = availability;
   if (engine === 'system' || (engine === 'auto' && system)) {
     return system
       ? {
           ok: true,
-          text: `${engine === 'auto' ? 'Auto uses macOS dictation' : 'Uses macOS dictation'}: it starts instantly and follows your Keyboard > Dictation settings in System Settings. The shortcut starts it when you release the keys; it stops after a pause.`,
+          key: engine === 'auto' ? 'dictation.status.auto_uses_system' : 'dictation.status.uses_system',
         }
-      : { ok: false, text: 'macOS dictation is only available on a Mac. Choose Auto or OpenAI instead.' };
+      : { ok: false, key: 'dictation.status.system_unavailable' };
   }
   if (engine === 'on-device') {
     return onDevice
-      ? { ok: true, text: 'On-device recognition is available. Audio stays on this Mac.' }
-      : { ok: false, text: 'On-device recognition is not available here. It needs macOS with speech recognition support. Choose OpenAI or Auto instead.' };
+      ? { ok: true, key: 'dictation.status.on_device_available' }
+      : { ok: false, key: 'dictation.status.on_device_unavailable' };
   }
   if (engine === 'openai') {
     return openai
-      ? { ok: true, text: 'Uses your OpenAI API key. Audio is sent to OpenAI and billed to that key.' }
-      : { ok: false, text: 'No OpenAI API key is set. Add one under Agent Providers > Saved API keys.' };
+      ? { ok: true, key: 'dictation.status.openai_available' }
+      : { ok: false, key: 'dictation.status.openai_unavailable' };
   }
-  if (onDevice) return { ok: true, text: 'Auto will use on-device recognition. Audio stays on this Mac.' };
-  if (openai) return { ok: true, text: 'Auto will use OpenAI with your API key. Audio is sent to OpenAI.' };
+  if (onDevice) return { ok: true, key: 'dictation.status.auto_uses_on_device' };
+  if (openai) return { ok: true, key: 'dictation.status.auto_uses_openai' };
   return {
     ok: false,
-    text: 'No speech engine is available. On macOS, on-device recognition needs a supported macOS version; elsewhere add an OpenAI API key under Agent Providers > Saved API keys. Your operating system\'s own dictation also works in any text field.',
+    key: 'dictation.status.no_engine_available',
   };
 }
 
 export function DictationPanel() {
+  const { t } = useTranslation('voice');
   const settings = useAtomValue(dictationSettingsAtom);
   const setSettings = useSetAtom(setDictationSettingsAtom);
   const availability = useAtomValue(dictationAvailabilityAtom);
@@ -81,19 +83,19 @@ export function DictationPanel() {
   return (
     <div className="dictation-panel provider-panel flex flex-col">
       <div className="provider-panel-header mb-6 pb-4 border-b border-[var(--nim-border)]">
-        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">Dictation</h3>
+        <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-2 text-[var(--nim-text)]">{t('dictation.title')}</h3>
         <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-          Speak instead of typing in the agent input and in documents. Words appear at the cursor for you to edit; nothing is sent until you send it. This is separate from Voice Mode.
+          {t('dictation.description')}
         </p>
       </div>
 
       <SettingsToggle
         variant="enable"
-        name="Dictation"
+        name={t('dictation.title')}
         description={
           settings.enabled
-            ? `Click the microphone button, or hold ${shortcut} to talk. A quick tap keeps it listening until you tap again. Esc discards the unfinished phrase.`
-            : 'Off: microphone buttons and the shortcut are hidden everywhere.'
+            ? t('dictation.enabled_description', { shortcut })
+            : t('dictation.disabled_description')
         }
         checked={settings.enabled}
         onChange={(enabled) => void setSettings({ enabled })}
@@ -103,7 +105,7 @@ export function DictationPanel() {
       {settings.enabled && (
         <div className="provider-panel-section mb-6 flex flex-col gap-4">
           <div className="setting-item">
-            <label htmlFor="dictation-engine" className="setting-name text-sm font-medium text-[var(--nim-text)]">Speech engine</label>
+            <label htmlFor="dictation-engine" className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('dictation.speech_engine')}</label>
             <select
               id="dictation-engine"
               value={settings.engine}
@@ -112,7 +114,7 @@ export function DictationPanel() {
               data-testid="dictation-engine-select"
             >
               {ENGINE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>{t(o.key)}</option>
               ))}
             </select>
             {status && (
@@ -120,13 +122,13 @@ export function DictationPanel() {
                 className={`dictation-availability mt-2 text-xs select-text ${status.ok ? 'text-[var(--nim-text-muted)]' : 'text-[var(--nim-warning)]'}`}
                 data-testid="dictation-availability"
               >
-                {status.text}
+                {t(status.key)}
               </p>
             )}
           </div>
 
           <div className="setting-item">
-            <label htmlFor="dictation-language" className="setting-name text-sm font-medium text-[var(--nim-text)]">Language</label>
+            <label htmlFor="dictation-language" className="setting-name text-sm font-medium text-[var(--nim-text)]">{t('dictation.language_label')}</label>
             <select
               id="dictation-language"
               value={settings.language ?? ''}
@@ -136,7 +138,7 @@ export function DictationPanel() {
               data-testid="dictation-language-select"
             >
               {LANGUAGE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>{t(o.key)}</option>
               ))}
               {settings.language && !LANGUAGE_OPTIONS.some((o) => o.value === settings.language) && (
                 <option value={settings.language}>{settings.language}</option>

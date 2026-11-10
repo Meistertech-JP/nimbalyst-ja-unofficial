@@ -4,6 +4,10 @@
 
 公開版の配布物と対象ソースは、各Releaseとタグで確認できます。
 
+## v0.82.8-ja.1候補（未公開）
+
+本家v0.82.8の固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6` を基準に、複数プロジェクト/ウィンドウ、ファイル操作、セッション・質問処理、Transcript画像、SQLite・ターミナル、Tracker・共有ページ等の変更を統合しています。新しい表示文字列には英日リソースを接続し、27名前空間・各15,401キーの静的整合を確認しました。音声入力の動作、実サーバー接続、Windows最終候補の認証・更新経路などは未検証または確認中です。これは候補履歴であり、ReleaseやWindows配布物が公開済みという意味ではありません。最新の正式公開版はv0.82.7-ja.1です。
+
 ## v0.82.7-ja.1
 
 [Windows x64向け通常Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)は、本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とします。Lexical 0.53の色付きテキスト、PGLiteからSQLiteへの移行、Claude Code・Codex SDKとAIセッションの改善、週次使用量履歴、Claude in Chrome対応、WindowsのGit・CLI修正、Trackerのローカル番号修正、本家Issue #1889由来の修正、日本語UIの追従更新を含みます。これらの統合は、有料AIプロバイダーやChromeとの実通信を今回確認したことを意味しません。

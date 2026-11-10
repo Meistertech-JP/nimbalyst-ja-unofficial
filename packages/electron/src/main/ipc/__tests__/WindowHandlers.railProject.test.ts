@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 const { handlers, windows, windowStates, fakeWindow, openPath } = vi.hoisted(() => {
   const fakeWindow = { isDestroyed: () => false };
@@ -86,7 +86,7 @@ describe('window handlers in a project-rail window', () => {
 
   it('workspace:get-current reports the project on screen, not the first rail project', () => {
     const current = handlers.get('workspace:get-current')!({ sender: {} });
-    expect(current).toEqual({ path: projectB, name: projectB.split('/').pop() });
+    expect(current).toEqual({ path: projectB, name: basename(projectB) });
   });
 
   it('stages a pasted image under the project on screen', async () => {

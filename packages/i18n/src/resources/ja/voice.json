@@ -1,4 +1,43 @@
 {
+  "dictation": {
+    "title": "音声入力",
+    "description": "エージェント入力欄や文書で、入力の代わりに話して文字を入力できます。文字はカーソル位置に表示され、送信するまでは送られません。音声モードとは別の機能です。",
+    "enabled_description": "マイクボタンをクリックするか、{{shortcut}}を押し続けて話します。短く押すと、もう一度押すまで聞き取りを続けます。Escで未確定の語句を破棄します。",
+    "disabled_description": "オフ：マイクボタンとショートカットはすべての画面で非表示になります。",
+    "speech_engine": "音声認識エンジン",
+    "language_label": "言語",
+    "engine": {
+      "auto": "自動",
+      "system": "macOS音声入力",
+      "on_device": "オンデバイス（macOS）",
+      "openai": "OpenAI音声入力"
+    },
+    "language": {
+      "system_default": "システムの既定値",
+      "en_us": "英語（米国）",
+      "en_gb": "英語（英国）",
+      "de_de": "ドイツ語",
+      "es_es": "スペイン語",
+      "fr_fr": "フランス語",
+      "it_it": "イタリア語",
+      "ja_jp": "日本語",
+      "ko_kr": "韓国語",
+      "pt_br": "ポルトガル語（ブラジル）",
+      "zh_cn": "中国語（簡体字）"
+    },
+    "status": {
+      "auto_uses_system": "自動設定ではmacOS音声入力を使用します。すぐに開始され、システム設定の「キーボード」＞「音声入力」に従います。キーを離すとショートカットで開始し、間が空くと停止します。",
+      "uses_system": "macOS音声入力を使用します。すぐに開始され、システム設定の「キーボード」＞「音声入力」に従います。キーを離すとショートカットで開始し、間が空くと停止します。",
+      "system_unavailable": "macOS音声入力はMacでのみ利用できます。代わりに「自動」または「OpenAI」を選択してください。",
+      "on_device_available": "オンデバイス音声認識を利用できます。音声はこのMacから送信されません。",
+      "on_device_unavailable": "この環境ではオンデバイス音声認識を利用できません。音声認識に対応するmacOSが必要です。代わりに「OpenAI」または「自動」を選択してください。",
+      "openai_available": "OpenAI APIキーを使用します。音声はOpenAIへ送信され、そのキーに課金されます。",
+      "openai_unavailable": "OpenAI APIキーが設定されていません。「エージェントプロバイダー」＞「保存済みAPIキー」で追加してください。",
+      "auto_uses_on_device": "自動設定ではオンデバイス音声認識を使用します。音声はこのMacから送信されません。",
+      "auto_uses_openai": "自動設定ではAPIキーを使ってOpenAIを使用します。音声はOpenAIへ送信されます。",
+      "no_engine_available": "音声認識エンジンを利用できません。macOSでは対応バージョンが必要です。それ以外の環境では「エージェントプロバイダー」＞「保存済みAPIキー」でOpenAI APIキーを追加してください。OS標準の音声入力は、どのテキスト欄でも利用できます。"
+    }
+  },
   "pending": {
     "command_placeholder": "音声コマンド…",
     "sending_countdown": "<time>{{seconds}}秒</time>後に送信",

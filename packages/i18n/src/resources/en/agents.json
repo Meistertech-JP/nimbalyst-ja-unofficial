@@ -438,7 +438,7 @@
     "searching": "Searching...", "searching_file_contents": "Searching file contents...", "loading": "Loading...", "loading_trackers": "Loading trackers...", "searching_trackers": "Searching trackers...",
     "filtered_sessions": "Filtered to sessions that edited:", "clear_file_filter": "Clear file filter", "new_conversation": "New conversation", "in_workstream": "In Workstream", "worktree": "Worktree",
     "message_count_one": "{{count}} msg", "message_count_other": "{{count}} msgs", "match_count_one": "{{count}} match", "match_count_other": "{{count}} matches", "line_number": "Line {{line}}:", "more_matches": "...and {{count}} more", "copied_to_clipboard": "Copied to clipboard",
-    "attach_folder": "Attach Folder to Workspace...", "attach_folder_description": "Browse it here and let agents read it, without leaving this project", "current": "Current", "open": "Open", "search_in": "Search in",
+    "attach_folder": "Attach Folder to Workspace...", "attach_folder_description": "Browse it here and let agents read it, without leaving this project", "open_folder_as_project": "Open Folder as Project...", "open_folder_as_project_description": "Choose a folder to open as its own project", "current": "Current", "open": "Open", "search_in": "Search in",
     "scope_options": { "all": "All", "docs": "Docs", "trackers": "Trackers", "sessions": "Sessions", "local": "Local", "shared": "Shared" },
     "scope_descriptions": { "all": "trackers, documents, and sessions", "docs": "indexed documents", "trackers": "trackers", "sessions": "sessions" },
     "search_by_meaning": "Search {{scope}} by meaning", "reference_types": { "tracker": "Tracker", "session": "Session", "doc-file": "Document" }, "semantic_match": "Semantic match", "prompts_from": "Prompts from",

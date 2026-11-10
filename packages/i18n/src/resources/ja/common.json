@@ -958,6 +958,7 @@
   "navigation": {
     "user_menu": "ユーザーメニュー",
     "user_menu_signed_out": "ユーザーメニュー（サインアウト中 — 同期にはサインインが必要です）",
+    "user_menu_sync_attention": "ユーザーメニュー（同期に注意が必要です：{{detail}}）",
     "files": "ファイル",
     "agent": "エージェント",
     "tracker": "トラッカー",
