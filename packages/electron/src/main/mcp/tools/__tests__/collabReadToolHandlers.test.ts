@@ -1,11 +1,15 @@
 // @vitest-environment node
+import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { asTeamMemberId } from '@nimbalyst/runtime/auth/jwtScopes';
 import {
   loadOrgDirectory,
   matchOrgMembers,
   readResourceSharingStatus,
+  readSharedDocumentFromRenderer,
 } from '../collabReadToolHandlers';
+import { findWorkspaceWindowMatch } from '../../../window/WindowManager';
+import { requestFromRenderer } from '../../rendererRequest';
 import type { TeamDetails, TeamMember } from '../../../services/TeamService';
 
 vi.mock('../../../services/TeamService', () => ({
@@ -13,6 +17,18 @@ vi.mock('../../../services/TeamService', () => ({
   resolveTeamForWorkspace: vi.fn(async () => ({ team: null, complete: false })),
   getOrgScopedJwt: vi.fn(),
   listMembersWithTeamJwt: vi.fn(),
+}));
+
+vi.mock('../../../window/WindowManager', () => ({
+  documentServices: new Map(),
+  findWorkspaceWindowMatch: vi.fn(() => null),
+}));
+
+vi.mock('../../rendererRequest', () => ({
+  requestFromRenderer: vi.fn(async () => ({
+    status: 'answered',
+    response: { success: true, result: { kind: 'document', sourceId: 'doc-1', teamVisible: false, orgId: null, reason: 'notShared' } },
+  })),
 }));
 
 const TEAM = {
@@ -82,14 +98,16 @@ describe('readResourceSharingStatus', () => {
     }));
     const deps = sharingDeps({ findLinkedDocument });
 
-    const relative = await readResourceSharingStatus('file', 'docs/spec.md', '/workspace/design', deps);
-    await readResourceSharingStatus('file', '/workspace/design/docs/spec.md', '/workspace/design', deps);
+    const workspacePath = path.join(path.parse(process.cwd()).root, 'workspace', 'design');
+    const absoluteFilePath = path.join(workspacePath, 'docs', 'spec.md');
+    const relative = await readResourceSharingStatus('file', 'docs/spec.md', workspacePath, deps);
+    await readResourceSharingStatus('file', absoluteFilePath, workspacePath, deps);
 
     // A raw relative path here would be resolved against the main process cwd
     // by the binding lookup, silently reporting a shared file as unshared.
     expect(findLinkedDocument.mock.calls.map((call) => call[1])).toEqual([
-      '/workspace/design/docs/spec.md',
-      '/workspace/design/docs/spec.md',
+      absoluteFilePath,
+      absoluteFilePath,
     ]);
     // The document id rides along because a `file` ref is only meaningful on
     // the machine that reported it; a caller handing the resource to someone
@@ -124,5 +142,27 @@ describe('readResourceSharingStatus', () => {
     expect(unpublished).toMatchObject({ teamVisible: false, orgId: null, reason: 'notShared' });
     expect(teamless).toMatchObject({ teamVisible: false, orgId: null, reason: 'noTeam' });
     expect(shared).toMatchObject({ teamVisible: true, orgId: 'org-design', reason: 'shared' });
+  });
+});
+
+describe('readSharedDocumentFromRenderer', () => {
+  // The renderer keys a team index by the project path its window holds. A
+  // worktree (or a symlinked spelling) of that project must ask about the
+  // project, or the open project answers "not loaded".
+  it('asks the window about the project the request resolves to, not the worktree path', async () => {
+    const window = { isDestroyed: () => false };
+    vi.mocked(findWorkspaceWindowMatch).mockReturnValue({
+      window, windowId: 1, matchedPath: '/projects/app', isActive: true, kind: 'worktree-parent',
+    } as never);
+
+    await readSharedDocumentFromRenderer('doc-1', '/projects/app_worktrees/brave-otter');
+
+    expect(findWorkspaceWindowMatch).toHaveBeenCalledWith('/projects/app_worktrees/brave-otter');
+    expect(requestFromRenderer).toHaveBeenCalledWith(
+      window,
+      'mcp:getResourceSharingStatus',
+      { sourceId: 'doc-1', workspacePath: '/projects/app' },
+      expect.anything(),
+    );
   });
 });

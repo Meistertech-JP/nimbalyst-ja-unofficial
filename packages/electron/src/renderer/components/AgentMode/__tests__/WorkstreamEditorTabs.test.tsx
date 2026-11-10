@@ -12,9 +12,11 @@ import {
   initWorkstreamState,
   workstreamStateAtom,
   workstreamStatesLoadedAtom,
+  setWorkstreamRightPanelModeAtom,
+  workstreamRightPanelModeAtom,
 } from "../../../store/atoms/workstreamState";
+import { agentFilePlacementAtom, setAgentFilePlacementAtom } from "../../../store/atoms/agentFilePlacement";
 import { revealEditorPosition } from "../../TabEditor/editorRevealCommand";
-import { agentFilePlacementAtom } from "../../../store/atoms/agentFilePlacement";
 
 let englishI18n: Awaited<ReturnType<typeof createI18nInstance>>;
 let japaneseI18n: Awaited<ReturnType<typeof createI18nInstance>>;
@@ -162,6 +164,7 @@ it("localizes the workstream file viewer and its maximize control", () => {
 it("localizes the empty viewer prompt and open-file action", () => {
   initWorkstreamState("/localized-empty-viewer");
   const store = createStore();
+  store.set(agentFilePlacementAtom, "right");
   render(
     <Provider store={store}>
       <I18nextProvider i18n={japaneseI18n}>
@@ -175,4 +178,22 @@ it("localizes the empty viewer prompt and open-file action", () => {
 
   expect(screen.getByText("表示するファイルを開いてください")).toBeDefined();
   expect(screen.getByRole("button", { name: "ファイルを開く…" })).toBeDefined();
+  expect(screen.getByRole("button", { name: "編集済みファイルを表示" })).toBeDefined();
+});
+
+it("lets the user return from the empty right-side file viewer to edited files", () => {
+  initWorkstreamState("/project");
+  const store = createStore();
+  const id = "empty-viewer";
+  store.set(setAgentFilePlacementAtom, "right");
+  store.set(setWorkstreamRightPanelModeAtom, { workstreamId: id, mode: "file-viewer" });
+  render(
+    <Provider store={store}>
+      <I18nextProvider i18n={englishI18n}>
+        <WorkstreamEditorTabs workstreamId={id} workspacePath="/project" basePath="/project" />
+      </I18nextProvider>
+    </Provider>
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Show edited files" }));
+  expect(store.get(workstreamRightPanelModeAtom(id))).toBe("edited-files");
 });

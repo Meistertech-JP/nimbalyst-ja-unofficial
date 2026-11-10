@@ -55,6 +55,15 @@ interface ArchiveTask {
   error?: string;
 }
 
+interface ProjectMoveJob {
+  oldPath: string;
+  newPath: string;
+  status: 'running' | 'succeeded' | 'failed';
+  phase: 'backup' | 'moving' | 'moving-worktrees' | 'database' | 'repairing-worktrees' | null;
+  error?: import('../shared/projectMigration').ProjectMigrationFailure;
+  warnings?: import('../shared/projectMigration').ProjectMigrationWarning[];
+}
+
 interface GhCliStatus {
   installed: boolean;
   version?: string;
@@ -650,7 +659,7 @@ interface ElectronAPI {
   onMcpRenameSharedItem: (callback: (data: { itemId: string, kind: 'doc' | 'folder', newName: string, resultChannel: string }) => void) => () => void;
   onMcpDeleteSharedItem: (callback: (data: { itemId: string, kind: 'doc' | 'folder', resultChannel: string }) => void) => () => void;
   sendMcpCollabIndexResult: (resultChannel: string, result: { success: boolean; error?: string; [key: string]: unknown }) => void;
-  onMcpGetResourceSharingStatus: (callback: (data: { sourceId: string; resultChannel: string }) => void) => () => void;
+  onMcpGetResourceSharingStatus: (callback: (data: { sourceId: string; workspacePath?: string; resultChannel: string }) => void) => () => void;
   sendMcpCollabReadResult: (resultChannel: string, result: { success: boolean; result?: unknown; error?: string }) => void;
   updateMcpDocumentState: (state: any) => void;
   clearMcpDocumentState: () => Promise<void>;
@@ -719,7 +728,10 @@ interface ElectronAPI {
   // Project Migration (move/rename)
   projectMigration: {
     canMove: (oldPath: string) => Promise<import('../shared/projectMigration').CanMoveResult>;
-    move: (oldPath: string, newPath: string) => Promise<import('../shared/projectMigration').MoveResult>;
+    /** Starts a background move; progress arrives through onMoveProgress. */
+    move: (oldPath: string, newPath: string) => Promise<import('../shared/projectMigration').MoveStartResult>;
+    getMoveJobs: () => Promise<ProjectMoveJob[]>;
+    onMoveProgress: (callback: (job: ProjectMoveJob) => void) => () => void;
     rename: (oldPath: string, newName: string) => Promise<import('../shared/projectMigration').MoveResult>;
   };
 

@@ -12,7 +12,17 @@ import {
   type VirtualElement,
 } from '@floating-ui/react';
 import { windowControlsClearance } from '@nimbalyst/runtime/ui/floating/windowControlsClearance';
-import type { ProjectMigrationFailure } from '../../../shared/projectMigration';
+import type { ProjectMigrationFailure, ProjectMigrationWarning } from '../../../shared/projectMigration';
+import { useAtomValue } from 'jotai';
+import { projectMoveJobsAtom } from '../../store/atoms/projectMoves';
+
+const MOVE_PHASE_KEYS: Record<NonNullable<ProjectMoveJob['phase']>, string> = {
+  backup: 'workspace.move_phase_backup',
+  moving: 'workspace.move_phase_moving',
+  'moving-worktrees': 'workspace.move_phase_moving_worktrees',
+  database: 'workspace.move_phase_database',
+  'repairing-worktrees': 'workspace.move_phase_repairing_worktrees',
+};
 
 // Apply the active theme as a base dark/light class on the WorkspaceManager
 // (project picker) window. The picker does not load the extension theme
@@ -92,6 +102,8 @@ export const WorkspaceManager: React.FC = () => {
     switch (failure.code) {
       case 'project_directory_missing':
         return t('workspace.migration.project_directory_missing');
+      case 'project_moving':
+        return t('workspace.migration.project_moving');
       case 'project_open':
         return t('workspace.migration.project_open');
       case 'worktrees_exist':
@@ -102,6 +114,8 @@ export const WorkspaceManager: React.FC = () => {
         return t('workspace.migration.destination_exists');
       case 'destination_parent_missing':
         return t('workspace.migration.destination_parent_missing');
+      case 'destination_worktrees_exists':
+        return t('workspace.migration.destination_worktrees_exists', { detail: failure.detail });
       case 'backup_failed':
         return failure.detail
           ? t('workspace.migration.backup_failed_detail', { detail: failure.detail })
@@ -118,6 +132,16 @@ export const WorkspaceManager: React.FC = () => {
         return failure.detail
           ? t('workspace.migration.rename_failed_detail', { detail: failure.detail })
           : t('workspace.rename_failed');
+    }
+  };
+  const migrationWarningMessage = (warning: ProjectMigrationWarning): string => {
+    switch (warning.code) {
+      case 'worktree_repair_failed':
+        return t('workspace.migration.worktree_repair_failed', {
+          projectPath: warning.projectPath,
+          command: 'git worktree repair',
+          detail: warning.detail,
+        });
     }
   };
   const workspaceManagerErrorMessage = (error: WorkspaceManagerError): string => {
@@ -194,6 +218,35 @@ export const WorkspaceManager: React.FC = () => {
   const [operationInProgress, setOperationInProgress] = useState(false);
   const [operationLabel, setOperationLabel] = useState(t('workspace.moving'));
   const [operationError, setOperationError] = useState<WorkspaceManagerError | null>(null);
+
+  // Background moves (see projectMoveListeners). A finished job is handled
+  // once: refresh the list on success, surface the error on failure.
+  const moveJobs = useAtomValue(projectMoveJobsAtom);
+  const [dismissedMoves, setDismissedMoves] = useState<Set<string>>(() => new Set());
+  const handledMoveResults = useRef(new Set<string>());
+  const isMoving = (workspacePath: string) => moveJobs[workspacePath]?.status === 'running';
+
+  useEffect(() => {
+    for (const job of Object.values(moveJobs)) {
+      const key = `${job.oldPath}->${job.newPath}`;
+      if (job.status === 'running' || handledMoveResults.current.has(key)) continue;
+      handledMoveResults.current.add(key);
+      if (job.status === 'failed') {
+        setOperationError(job.error
+          ? { kind: 'migration', failure: job.error }
+          : { kind: 'translation', key: 'workspace.move_failed' });
+        continue;
+      }
+      void (async () => {
+        await loadWorkspaces();
+        setSelectedWorkspace(prev => {
+          if (prev?.path !== job.oldPath) return prev;
+          const name = job.newPath.split(/[\\/]/).pop() || prev.name;
+          return { ...prev, path: job.newPath, name };
+        });
+      })();
+    }
+  }, [moveJobs]);
 
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -311,7 +364,7 @@ export const WorkspaceManager: React.FC = () => {
   };
 
   const handleOpenWorkspace = async () => {
-    if (!selectedWorkspace) return;
+    if (!selectedWorkspace || isMoving(selectedWorkspace.path)) return;
 
     try {
       await window.electronAPI.workspaceManager.openWorkspace(selectedWorkspace.path);
@@ -422,6 +475,7 @@ export const WorkspaceManager: React.FC = () => {
 
     switch (action) {
       case 'open':
+        if (isMoving(workspace.path)) return;
         await window.electronAPI.workspaceManager.openWorkspace(workspace.path);
         break;
 
@@ -475,6 +529,8 @@ export const WorkspaceManager: React.FC = () => {
     });
   };
 
+  // Starts the move and returns; progress and the result arrive through
+  // projectMoveJobsAtom, so the Project Manager stays usable meanwhile.
   const executeMoveProject = async () => {
     if (!confirmDialog.workspace || !confirmDialog.destinationPath) return;
 
@@ -482,34 +538,18 @@ export const WorkspaceManager: React.FC = () => {
     const newPath = confirmDialog.destinationPath;
 
     setConfirmDialog(prev => ({ ...prev, visible: false }));
-    setOperationLabel(t('workspace.moving'));
-    setOperationInProgress(true);
     setOperationError(null);
 
     try {
-      const moveResult = await window.electronAPI.projectMigration.move(workspace.path, newPath);
-      if (moveResult.success) {
-        await loadWorkspaces();
-        // Update selected workspace if it was the one that moved
-        if (selectedWorkspace?.path === workspace.path && moveResult.newPath) {
-          const updatedWorkspaces = await window.electronAPI.workspaceManager.getRecentWorkspaces();
-          const movedWorkspace = updatedWorkspaces.find((w: WorkspaceInfo) => w.path === moveResult.newPath);
-          if (movedWorkspace) {
-            setSelectedWorkspace(movedWorkspace);
-          }
-        }
-      } else {
-        setOperationError(moveResult.error
-          ? { kind: 'migration', failure: moveResult.error }
-          : { kind: 'translation', key: 'workspace.move_failed' });
+      const started = await window.electronAPI.projectMigration.move(workspace.path, newPath);
+      if (!started.started) {
+        setOperationError({ kind: 'migration', failure: started.error });
       }
     } catch (error: any) {
       const detail = error instanceof Error ? error.message : String(error);
       setOperationError(detail
         ? { kind: 'detail', key: 'workspace.migration.move_failed_detail', detail }
         : { kind: 'translation', key: 'workspace.move_failed' });
-    } finally {
-      setOperationInProgress(false);
     }
   };
 
@@ -546,6 +586,9 @@ export const WorkspaceManager: React.FC = () => {
 
       if (result.success) {
         setRenameDialog({ visible: false, workspace: null, newName: '', error: null, stats: null });
+        if (result.warnings?.length) {
+          setOperationError(result.warnings.map(migrationWarningMessage).join(' '));
+        }
         await loadWorkspaces();
         // Update selected workspace if it was the one that was renamed
         if (selectedWorkspace?.path === renameDialog.workspace.path && result.newPath) {
@@ -660,7 +703,9 @@ export const WorkspaceManager: React.FC = () => {
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < filteredWorkspaces.length) {
           const workspace = filteredWorkspaces[highlightedIndex];
-          window.electronAPI.workspaceManager.openWorkspace(workspace.path);
+          if (!isMoving(workspace.path)) {
+            window.electronAPI.workspaceManager.openWorkspace(workspace.path);
+          }
         } else if (selectedWorkspace) {
           handleOpenWorkspace();
         }
@@ -732,6 +777,7 @@ export const WorkspaceManager: React.FC = () => {
             filteredWorkspaces.map((workspace, index) => (
               <div
                 key={workspace.path}
+                data-moving={isMoving(workspace.path) ? 'true' : undefined}
                 className={`workspace-item flex gap-2 py-1.5 px-2 mb-0.5 rounded cursor-pointer transition-colors duration-100 border-none items-center hover:bg-[var(--nim-bg-hover)] ${selectedWorkspace?.path === workspace.path ? 'selected bg-[var(--nim-bg-selected)]' : ''} ${highlightedIndex === index ? 'highlighted bg-[var(--nim-bg-hover)]' : ''} ${highlightedIndex === index && selectedWorkspace?.path === workspace.path ? '!bg-[color-mix(in_srgb,var(--nim-primary)_22%,transparent)]' : ''}`}
                 onClick={(e) => {
                   // Command/Ctrl + click to deselect
@@ -752,7 +798,9 @@ export const WorkspaceManager: React.FC = () => {
                 </div>
                 <div className="workspace-info flex-1 min-w-0">
                   <div className={`workspace-name text-[13px] font-medium text-[var(--nim-text)] mb-0.5 overflow-hidden text-ellipsis whitespace-nowrap ${selectedWorkspace?.path === workspace.path ? '!text-[var(--nim-primary)]' : ''}`}>{workspace.name}</div>
-                  <div className="workspace-path text-[11px] text-[var(--nim-text-muted)] overflow-hidden text-ellipsis whitespace-nowrap mb-0.5">{workspace.path}</div>
+                  <div className="workspace-path text-[11px] text-[var(--nim-text-muted)] overflow-hidden text-ellipsis whitespace-nowrap mb-0.5">
+                    {isMoving(workspace.path) ? t('workspace.moving_to', { path: moveJobs[workspace.path].newPath }) : workspace.path}
+                  </div>
                   <div className="workspace-meta flex gap-3 text-[11px] text-[var(--nim-text-faint)]">
                     {workspace.markdownCount !== undefined && (
                       <span className="whitespace-nowrap">{t('workspace.markdown_count', { count: workspace.markdownCount })}</span>
@@ -1107,6 +1155,42 @@ export const WorkspaceManager: React.FC = () => {
           >
             <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>close</span>
           </button>
+        </div>
+      )}
+
+      {/* Background moves: running ones show progress; finished ones with
+          warnings stay until dismissed. Failures go to the error toast. */}
+      {Object.values(moveJobs).some(job => job.status === 'running' || (job.warnings?.length && !dismissedMoves.has(job.oldPath))) && (
+        <div className="project-move-status fixed bottom-4 left-4 z-[3000] flex flex-col gap-2 max-w-[420px]">
+          {Object.values(moveJobs).map(job => {
+            if (job.status === 'running') {
+              return (
+                <div key={job.oldPath} className="project-move-status-item bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
+                  <div className="spinner w-4 h-4 shrink-0 border-2 border-[var(--nim-border)] border-t-[var(--nim-primary)] rounded-full animate-spin"></div>
+                  <div className="min-w-0 select-text">
+                    <div className="text-[13px] text-[var(--nim-text)] overflow-hidden text-ellipsis whitespace-nowrap">{t('workspace.moving_project', { project: job.oldPath.split(/[\\/]/).pop() })}</div>
+                    <div className="text-[11px] text-[var(--nim-text-muted)]">{t(job.phase ? MOVE_PHASE_KEYS[job.phase] : 'workspace.move_starting')}</div>
+                  </div>
+                </div>
+              );
+            }
+            if (job.status === 'succeeded' && job.warnings?.length && !dismissedMoves.has(job.oldPath)) {
+              return (
+                <div key={job.oldPath} className="project-move-status-item bg-[var(--nim-bg)] border border-[var(--nim-warning)] rounded-lg shadow-lg px-4 py-3 flex items-start gap-3">
+                  <span className="text-[13px] text-[var(--nim-text)] flex-1 select-text">{job.warnings.map(migrationWarningMessage).join(' ')}</span>
+                  <button
+                    className="text-[var(--nim-text-muted)] hover:text-[var(--nim-text)]"
+                    onClick={() => setDismissedMoves(prev => new Set(prev).add(job.oldPath))}
+                aria-label={t('workspace.dismiss_error')}
+                title={t('workspace.dismiss_error')}
+                  >
+                    <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>close</span>
+                  </button>
+                </div>
+              );
+            }
+            return null;
+          })}
         </div>
       )}
 

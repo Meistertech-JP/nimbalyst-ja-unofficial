@@ -64,6 +64,7 @@ import {
   initExternalEditorSettings,
 } from './store/atoms/appSettings';
 import { initVoiceModeListeners } from './store/listeners/voiceModeListeners';
+import { dictationSettingsAtom, initDictationSettings } from './store/atoms/dictation';
 import { initDeepLinkNoticeListeners } from './store/listeners/deepLinkNoticeListeners';
 import {
   autoCommitEnabledAtom,
@@ -263,6 +264,9 @@ await Promise.allSettled([
   }),
   initDiffPeekSize().then((size) => {
     if (size) store.set(diffPeekSizeAtom, size);
+  }),
+  initDictationSettings().then((settings) => {
+    store.set(dictationSettingsAtom, settings);
   }),
   initTrackerAutomationSettings().then((settings) => {
     store.set(trackerAutomationAtom, settings);
