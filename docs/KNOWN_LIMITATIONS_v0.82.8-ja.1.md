@@ -32,7 +32,7 @@ R24候補のWindows x64 NSIS・Portableを生成し、通常起動・終了、�
 
 ## 認証
 
-R24 `win-unpacked`候補の専用プロファイルでは、ユーザー操作による本番メール認証、サインイン状態の同一プロファイル再起動後復元、通常ログアウト時の暗号化認証ファイル削除を確認しました。ログアウト後の再起動ではサインイン画面を確認しています。認証ファイルの内容は読んでいません。NSIS専用プロファイルは再起動後にサインアウト状態で、同じNSISプロファイルでの認証成功は未確認です。nonce検証やlocalhost callback配送は独立計測していません。Google認証、サーバー側セッション失効、特殊な復旧経路も未検証です。ローカルのログアウトとサーバー側セッション失効を同一視しません。
+R24 `win-unpacked`候補の専用プロファイルでは、ユーザー操作による本番メール認証、サインイン状態の同一プロファイル再起動後復元、通常ログアウト時の暗号化認証ファイル削除を確認しました。ログアウト後の再起動ではサインイン画面を確認しています。認証ファイルの内容は読んでいません。後続の再読込では一時的に未サインインフォームと認証ファイル不在を確認しましたが、その後同じ専用プロファイルで再度ログインし、サインイン済みUIと暗号化認証ファイルの存在を読み戻しました（ファイル内容は不読）。この最新のログイン後の再起動保持とログアウトは再試験していません。NSIS専用プロファイルは再起動後にサインアウト状態で、同じNSISプロファイルでの認証成功は未確認です。nonce検証やlocalhost callback配送は独立計測していません。Google認証、サーバー側セッション失効、特殊な復旧経路も未検証です。ローカルのログアウトとサーバー側セッション失効を同一視しません。
 
 ## English
 
@@ -70,4 +70,4 @@ R24 Windows x64 NSIS and Portable candidates were generated. Normal launch/shutd
 
 ### Authentication
 
-In the R24 `win-unpacked` candidate and an isolated profile, user-completed production email sign-in, signed-in state after a same-profile restart, and removal of encrypted credential files after normal logout were observed. The post-logout restart displayed the signed-out form. Credential file contents were not read. The dedicated NSIS profile was signed out after relaunch; successful authentication in that exact NSIS profile is unverified. Nonce validation and localhost callback delivery were not independently instrumented. Google sign-in, server-side session revocation and exceptional recovery paths remain unverified. Local logout is not the same as server-side session revocation.
+In the R24 `win-unpacked` candidate and an isolated profile, user-completed production email sign-in, signed-in state after a same-profile restart, and removal of encrypted credential files after normal logout were observed. The post-logout restart displayed the signed-out form. Credential file contents were not read. A later readback temporarily showed the signed-out form with no credential files; after another login in that same isolated profile, the account page showed the signed-in state and both encrypted credential files were present (contents unread). Restart persistence and logout were not repeated after this latest login. The dedicated NSIS profile was signed out after relaunch; successful authentication in that exact NSIS profile is unverified. Nonce validation and localhost callback delivery were not independently instrumented. Google sign-in, server-side session revocation and exceptional recovery paths remain unverified. Local logout is not the same as server-side session revocation.
