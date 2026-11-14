@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { store } from '@nimbalyst/runtime/store';
-import { FileTreeRow } from './FileTreeRow';
+import { FileTreeRow, OmittedEntriesRow } from './FileTreeRow';
 import { FileContextMenu } from './FileContextMenu';
 import type { NewFileType, ExtensionFileType } from './NewFileMenu';
 import { handleTreeKeyDown, type TreeActions } from '../utils/treeKeyboardHandler';
@@ -22,6 +22,7 @@ import {
   type RendererFileTreeItem,
   type FlatTreeNode,
 } from '../store';
+import { treeRenderRowsAtom } from '../store/atoms/fileTree';
 import { detachWorkspaceFolder } from '../store/actions/workspaceFolders';
 import { dialogRef } from '../contexts/DialogContext';
 import { DIALOG_IDS } from '../dialogs/registry';
@@ -80,6 +81,9 @@ export function FlatFileTree({
 
   // Atoms
   const visibleNodes = useAtomValue(visibleNodesAtom);
+  // What the virtual list renders: nodes plus "N more items" notes. Focus and
+  // selection use node indices; scrolling converts them with renderIndexOf.
+  const { rows: renderRows, renderIndexOf } = useAtomValue(treeRenderRowsAtom);
   const workspaceRootPaths = useAtomValue(workspaceRootPathsAtom);
   const expandedDirs = useAtomValue(expandedDirsAtom);
   const setExpandedDirs = useSetAtom(expandedDirsAtom);
@@ -235,7 +239,7 @@ export function FlatFileTree({
     const index = visibleNodes.findIndex(n => n.path === revealRequest.path);
     if (index >= 0) {
       virtuosoRef.current?.scrollToIndex({
-        index,
+        index: renderIndexOf[index] ?? index,
         behavior: 'smooth',
         align: 'center',
       });
@@ -263,7 +267,7 @@ export function FlatFileTree({
     // First attempt for this reveal request
     revealRetryRef.current = { ts: revealRequest.ts, itemsAtRefresh: items.length, attempts: 1 };
     onRefreshFileTree?.();
-  }, [revealRequest, visibleNodes, items, onRefreshFileTree, setRevealRequest]);
+  }, [revealRequest, visibleNodes, renderIndexOf, items, onRefreshFileTree, setRevealRequest]);
 
   // == Auto-scroll to active file when tab changes ==
   // Only scroll when the active file actually changes, NOT when visibleNodes
@@ -305,7 +309,7 @@ export function FlatFileTree({
     const index = visibleNodes.findIndex(n => n.path === pendingScrollPathRef.current);
     if (index >= 0) {
       virtuosoRef.current?.scrollToIndex({
-        index,
+        index: renderIndexOf[index] ?? index,
         behavior: 'smooth',
         align: 'center',
       });
@@ -315,7 +319,7 @@ export function FlatFileTree({
         pendingScrollTimerRef.current = null;
       }
     }
-  }, [visibleNodes]);
+  }, [visibleNodes, renderIndexOf]);
 
   // == Clear multi-selection when a file is opened from outside the tree ==
   useEffect(() => {
@@ -750,26 +754,27 @@ export function FlatFileTree({
       return;
     }
     keyboardFocusRef.current = false;
+    const renderIndex = renderIndexOf[focusedIndex] ?? focusedIndex;
 
     // Check if already visible by looking at scroll position vs item position
     const scrollEl = containerRef.current.querySelector('[data-testid="virtuoso-scroller"]')
       ?? containerRef.current.firstElementChild;
     if (!scrollEl) {
-      virtuosoRef.current?.scrollToIndex({ index: focusedIndex, align: 'center' });
+      virtuosoRef.current?.scrollToIndex({ index: renderIndex, align: 'center' });
       return;
     }
 
     const scrollTop = scrollEl.scrollTop;
     const viewportHeight = scrollEl.clientHeight;
-    const itemTop = focusedIndex * ROW_HEIGHT;
+    const itemTop = renderIndex * ROW_HEIGHT;
     const itemBottom = itemTop + ROW_HEIGHT;
 
     if (itemTop < scrollTop) {
       // Item is above viewport -- scroll up so it's at the top
-      virtuosoRef.current?.scrollToIndex({ index: focusedIndex, align: 'start' });
+      virtuosoRef.current?.scrollToIndex({ index: renderIndex, align: 'start' });
     } else if (itemBottom > scrollTop + viewportHeight) {
       // Item is below viewport -- scroll down so it's at the bottom
-      virtuosoRef.current?.scrollToIndex({ index: focusedIndex, align: 'end' });
+      virtuosoRef.current?.scrollToIndex({ index: renderIndex, align: 'end' });
     }
     // Otherwise it's already visible -- don't scroll at all
   }, [focusedIndex]);
@@ -981,9 +986,14 @@ export function FlatFileTree({
   };
 
   // == Row renderer ==
-  const itemContent = (index: number) => {
-    const node = visibleNodes[index];
-    if (!node) return null;
+  const itemContent = (renderIndex: number) => {
+    const row = renderRows[renderIndex];
+    if (!row) return null;
+    if (row.kind === 'omitted') {
+      return <OmittedEntriesRow count={row.count} depth={row.depth} isMinimum={row.isMinimum === true} />;
+    }
+    const node = row.node;
+    const index = node.index;
 
     return (
       <FileTreeRow
@@ -1025,8 +1035,8 @@ export function FlatFileTree({
       >
         <Virtuoso
           ref={virtuosoRef}
-          totalCount={visibleNodes.length}
-          fixedItemHeight={28}
+          totalCount={renderRows.length}
+          fixedItemHeight={ROW_HEIGHT}
           itemContent={itemContent}
           overscan={200}
         />

@@ -907,7 +907,8 @@
   },
   "remote_machine_selector": {
     "execution_machine": "実行マシン",
-    "this_mac": "このMac",
+    "this_mac": "このデバイス",
+    "named_device": "{{name}}（このデバイス）",
     "last_seen": "最終確認: {{time}}",
     "offline": "オフライン",
     "remote_offline": "リモートマシン · オフライン"

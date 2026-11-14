@@ -907,7 +907,8 @@
   },
   "remote_machine_selector": {
     "execution_machine": "Execution machine",
-    "this_mac": "This Mac",
+    "this_mac": "This device",
+    "named_device": "{{name}} (this device)",
     "last_seen": "Last seen {{time}}",
     "offline": "Offline",
     "remote_offline": "Remote machine · Offline"
