@@ -41,6 +41,21 @@ afterEach(() => {
 });
 
 describe('node credential refresh', () => {
+  it('keeps the fsynced credential usable when Windows cannot fsync a directory handle', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(process, 'platform');
+    try {
+      Object.defineProperty(process, 'platform', { ...descriptor, value: 'win32' });
+      writeCredentialFileAtomic(credentialPath, BASE);
+
+      expect(readCredentialFile(credentialPath)).toMatchObject(BASE);
+      // The file contents are flushed; directory fsync is the unsupported
+      // Windows operation and must not turn a completed atomic rename into a
+      // failed credential rotation.
+    } finally {
+      if (descriptor) Object.defineProperty(process, 'platform', descriptor);
+    }
+  });
+
   it('persists the rotated refresh token before reporting the refresh complete', async () => {
     const order: string[] = [];
     const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {

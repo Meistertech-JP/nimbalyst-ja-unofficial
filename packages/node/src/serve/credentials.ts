@@ -156,6 +156,11 @@ export function readCredentialFile(credentialPath: string): NodeCredential {
  * whole three-phase transaction above is decoration.
  */
 function fsyncDirectory(directory: string): void {
+  // On Windows the directory handle can be opened, but flushing it fails with
+  // EPERM. The credential file itself has already been fsynced before rename;
+  // the remaining directory-entry durability guarantee is weaker on Windows.
+  if (process.platform === 'win32') return;
+
   let handle: number | undefined;
   try {
     handle = openSync(directory, 'r');
