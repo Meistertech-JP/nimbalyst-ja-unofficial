@@ -2,6 +2,21 @@
 
 # Testing and Verification
 
+## v0.84.0-ja.1 (unpublished candidate)
+
+The fixed target is prerelease tag v0.84.0 at commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. The R25 candidate corresponds to commit `08242017e3f04d1cc84812d74cd8863c11ff44d5`. It remains local: public `main`, formal tags, Releases and the public Wiki were not changed.
+
+- Linux CI [Run 43625305313](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305313): 20,238 PASS / 0 FAIL / 30 SKIP; 2,428 test files passed and 7 were skipped. Includes publication-content, Transcript bundle and 39-workspace TypeScript checks.
+- Android [Run 43625305320](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305320): unsigned APK/AAB build succeeded; the conditional Signed Release job was skipped.
+- iOS [Run 43625305325](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305325): simulator build and Transcript bundle verification passed; 528 native tests ran, 0 failed and 6 were skipped.
+- Translation resources: 27 namespaces and 15,557 keys in each language, with zero key or interpolation differences. One single-space value is a formatting separator present in both locales. Static audit found no missing reference among 11,523 literal references. Complete runtime review of 489 dynamic-call candidates remains outstanding; namespace scope could not be statically resolved for 211 references. These are not missing-key counts.
+- All 39 workspace typechecks and seven bundle budgets passed. Publication-content audit of the final source covered 9,963 files with zero errors, review findings or broken public-guide links.
+- Windows candidate03 was built from commit `08242017...` in the normal configuration. NSIS: 484,688,867 bytes (SHA-256 `C62B919CD6B53CC122D0CA11976B3079B582F839B58C9F8FE0DB7C10BC56A51F`). Portable ZIP: 671,428,953 bytes (`D7446F54E4AB93D15D5204734E5C0CFCB51D0B45DF19F4676AA8889C06C97A62`). CRC and SHA verification of all 1,915 Portable files passed. The final-tree Source ZIP's 9,963 raw Git blobs, CRC and physical restoration passed (SHA-256 `D86ABC7944C1DF2B4D2884A099226F3AB5909AABFA784C29FB0E19AB00DA5C1A`). Windows candidates are unsigned.
+- Candidate03 was launched with an isolated profile; Japanese Project Manager/Welcome display was observed and the app exited. English switching and restart retention were checked on candidate02 before the final credential fix, not repeated on candidate03. Production authentication and NSIS new-install/upgrade flows were not run on candidate03.
+- The pre-fix Windows full Vitest run recorded 20,026 PASS / 183 FAIL / 37 SKIP. After the Windows directory-fsync `EPERM` fix, 16 targeted credential tests, typecheck and build passed, but the Windows full suite was not rerun. Two local symlink-fixture tests still fail during fixture creation with `EPERM`; these are distinct from the successful Linux CI.
+
+Large-Markdown CPU usage remains unresolved. Complete dynamic-translation coverage, semantic review of all 85 divergent upstream paths, production authentication, live collaboration server/organization, Bedrock and new paid-provider connections, real OS sleep/resume, all non-foreground browser paths, all DPI conditions and external screen readers remain incomplete or NOT RUN. Upstream v0.84.0 is a prerelease; this evidence is not formal release approval.
+
 ## v0.82.8-ja.1
 
 The fixed target is upstream release tag v0.82.8 at commit [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6). The Windows edition is unsigned.

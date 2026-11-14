@@ -2,6 +2,21 @@
 
 # テストと品質検証
 
+## v0.84.0-ja.1（未公開候補）
+
+固定対象は本家v0.84.0のPrereleaseタグとコミット `dc5a0ef938cf495a0667d797f871d09d0c44246f` です。候補はR25ブランチのコミット `08242017e3f04d1cc84812d74cd8863c11ff44d5` に対応します。これはローカル候補で、公開main・正式タグ・Release・Wikiには反映していません。
+
+- Linux CI [Run 43625305313](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305313): 20,238 PASS／0 FAIL／30 SKIP。2,428 test files PASS、7 SKIP。公開内容、Transcript bundle、39 workspace型検査を含みます。
+- Android [Run 43625305320](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305320): unsigned APK/AAB Build SUCCESS。条件付きSigned Release jobはSKIP。
+- iOS [Run 43625305325](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305325): Simulator buildとTranscript bundle確認PASS、Native tests 528実行／0失敗／6 SKIP。
+- 翻訳資源：27 namespace、英日各15,557キー。キー差・補間変数差0。単一スペース1件は英日共通の書式区切りです。静的監査では11,523リテラル参照の欠落0。489動的呼出し候補の全実行確認は未完了で、211参照のnamespace scopeを静的に確定できませんでした。これらは欠落キーの件数ではありません。
+- 39 workspace型検査と7 bundle容量予算はPASS。最終ソースの公開内容検査は9,963ファイルを対象にerrors 0、review 0、broken public-guide links 0。
+- Windows候補03はコミット `08242017...` から通常構成で生成。NSISは484,688,867 bytes（SHA-256 `C62B919CD6B53CC122D0CA11976B3079B582F839B58C9F8FE0DB7C10BC56A51F`）、Portable ZIPは671,428,953 bytes（`D7446F54E4AB93D15D5204734E5C0CFCB51D0B45DF19F4676AA8889C06C97A62`）。Portable 1,915ファイルのSHA照合とCRCはPASS。最終Git tree由来Source ZIP 9,963ファイルのraw blob照合・CRC・物理復元もPASS（SHA-256 `D86ABC7944C1DF2B4D2884A099226F3AB5909AABFA784C29FB0E19AB00DA5C1A`）。候補のNSIS・ZIPは未署名です。
+- 候補03を隔離プロファイルで起動し、日本語のProject Manager/Welcome表示を確認して終了しました。英語切替・再起動後保持は変更前の候補02でのみ確認し、候補03では再実施していません。候補03の本番認証・NSIS新規/更新導入は未実施です。
+- Windows全Vitestの修正前結果は20,026 PASS／183 FAIL／37 SKIPでした。Windowsのdirectory fsync `EPERM` 修正後は資格情報関連16テストとtypecheck/buildを通しましたが、Windows全Vitestは再実行していません。ローカルpre-pushのsymlink fixture 2件も作成時EPERMで未到達です。Linux CI成功とは分けて記録します。
+
+長文Markdownの高CPU問題、動的翻訳の全実行経路、全85 divergent upstream pathの意味的監査、本番認証、実共同編集サーバー／組織、Bedrock・新規有料AI接続、実OS sleep/resume、非前面ブラウザーの全経路、全DPI・外部スクリーンリーダーは未解決またはNOT RUNです。本家v0.84.0がPrereleaseであるため、本結果は正式Release承認ではありません。
+
 ## v0.82.8-ja.1
 
 固定対象は本家タグv0.82.8、コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6) です。Windows版は未署名です。

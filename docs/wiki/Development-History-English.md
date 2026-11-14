@@ -6,7 +6,7 @@ Each release and tag identifies its source and available distributions.
 
 ## v0.84.0-ja.1 (unpublished candidate)
 
-A candidate incorporating upstream v0.83.0/v0.84.0 changes at fixed v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a prerelease; a formal Japanese-edition release has not been decided. Japanese display covers updates such as Workstreams, Git branch switching, Wiki publishing and retention management. Final-source/Windows-artifact correspondence, CI, native verification and independent audit are not yet complete. Published distributions are described in the previous-version entries below.
+A candidate incorporating upstream v0.83.0/v0.84.0 changes at fixed v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a prerelease; a formal Japanese-edition release has not been decided. Linux CI, Android, iOS and final-source/Windows-artifact correspondence have been verified. A post-fix Windows full-suite run, candidate03 real authentication and installation/update flows, complete dynamic-translation verification and full semantic review are not complete. Published distributions are described in the previous-version entries below.
 
 ## v0.82.8-ja.1
 

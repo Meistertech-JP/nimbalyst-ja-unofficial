@@ -17,7 +17,7 @@ This Wiki is documentation hosted on GitHub. It is separate from the application
 
 ## Next version in development
 
-v0.84.0-ja.1 is an unpublished candidate based on fixed upstream v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. The upstream tag is a prerelease; a formal Japanese-edition release has not been decided. It integrates Git branch switching, Workstreams, Wiki publishing, retention management and Japanese display updates. Final-candidate full-suite, Windows-product, authentication and artifact checks remain incomplete. This is separate from the published downloads above.
+v0.84.0-ja.1 is an unpublished candidate based on fixed upstream v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. The upstream tag is a prerelease; a formal Japanese-edition release has not been decided. It integrates Git branch switching, Workstreams, Wiki publishing, retention management and Japanese display updates. Linux CI, Android, iOS and final-source/Windows-artifact correspondence are verified. A post-fix Windows full-suite run, candidate03 real authentication and installation/update flows, and complete dynamic-translation verification remain incomplete. This is separate from the published downloads above; see [Testing and Verification](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English).
 
 ## User Guide
 

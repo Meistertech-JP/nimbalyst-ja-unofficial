@@ -15,6 +15,10 @@ These describe integrated source changes, not complete live verification of ever
 
 Adds Japanese text for new Workstreams, Git operations, settings and confirmation screens. Retains Japanese/English/System selection, independent application settings and data, nonce-protected localhost authentication, disabled official updates and manual updating.
 
-Windows distributions are unsigned. This is not an official Nimbalyst, Inc. product. Final-candidate authentication, installation/update verification and artifact matching are not yet complete. See the [limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english).
+Windows distributions are unsigned. This is not an official Nimbalyst, Inc. product. Final-candidate authentication and NSIS new-install/upgrade verification are not yet complete. See the [limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english).
+
+## Verification status
+
+Linux CI, Android Build and iOS Simulator/Native Tests succeeded for the final candidate. Windows x64 NSIS and Portable candidates and a Source ZIP were generated from the final commit; ZIP and Git-tree correspondence was checked. Candidate03's Japanese initial screen was observed. A post-fix Windows full-suite run, production authentication, candidate03 NSIS new-install/upgrade, and English switching/restart retention were not run. The local assessment is GO WITH KNOWN LIMITATIONS; upstream v0.84.0 is a prerelease, and formal publication requires a separate decision. See the [verification record](docs/wiki/Testing-and-Verification-English.md) and [limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english) for verified scope and NOT RUN items.
 
 [日本語](RELEASE_NOTES_v0.84.0-ja.1.md)
