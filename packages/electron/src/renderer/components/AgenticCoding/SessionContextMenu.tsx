@@ -8,7 +8,8 @@
  * Internal actions (copy ID, export, share, set phase) are always available.
  */
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { atom, useAtomValue, useSetAtom } from 'jotai';
+import { sessionRegistryAtom } from '../../store/atoms/sessions';
 import { useTranslation } from '@nimbalyst/i18n/react';
 import { MaterialSymbol, copyToClipboard } from '@nimbalyst/runtime';
 import { sessionShareAtom, shareKeysAtom, removeSessionShareAtom, buildShareUrl } from '../../store';
@@ -27,6 +28,10 @@ export interface SessionContextMenuProps {
   // Session metadata for conditional menu items
   isArchived?: boolean;
   isPinned?: boolean;
+  /**
+   * Row groups other sessions (a container or a session with children). Labels
+   * do not use it: "Workstream" names only the container type, read from the registry.
+   */
   isWorkstream?: boolean;
   isWorktreeSession?: boolean;
   parentSessionId?: string | null;
@@ -37,12 +42,15 @@ export interface SessionContextMenuProps {
   onPinToggle?: (isPinned: boolean) => void;
   onBranch?: () => void;
   onMoveUnder?: () => void;
+  onMoveToWorkstream?: () => void;
   onRemoveFromWorkstream?: () => void;
   onArchive?: () => void;
   onUnarchive?: () => void;
   onDelete?: () => void;
   /** When part of a multiselect, how many items the action applies to */
   selectedCount?: number;
+  /** How many sessions "Move to workstream..." moves (the multi-selection, or this row). */
+  moveCount?: number;
 }
 
 export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
@@ -52,7 +60,6 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
   onClose,
   isArchived = false,
   isPinned = false,
-  isWorkstream = false,
   isWorktreeSession = false,
   parentSessionId = null,
   phase,
@@ -61,16 +68,21 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
   onBranch,
   onRemoveFromWorkstream,
   onMoveUnder,
+  onMoveToWorkstream,
   onArchive,
   onUnarchive,
   onDelete,
   selectedCount = 1,
+  moveCount = 1,
 }) => {
   const { t } = useTranslation('agents');
   const [showPhaseSubmenu, setShowPhaseSubmenu] = useState(false);
   const [submenuFlipped, setSubmenuFlipped] = useState(false);
   const submenuParentRef = useRef<HTMLDivElement>(null);
   const setSessionPhase = useSetAtom(setSessionPhaseAtom);
+  const isContainer = useAtomValue(
+    useMemo(() => atom((get) => get(sessionRegistryAtom).get(sessionId)?.sessionType === 'workstream'), [sessionId])
+  );
 
   // Share state
   const shareInfo = useAtomValue(sessionShareAtom(sessionId));
@@ -284,6 +296,14 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
           </button>
         )}
 
+        {onMoveToWorkstream && (
+          <button className={menuItemClass} onClick={(e) => handleAction(e, onMoveToWorkstream)}>
+            <MaterialSymbol icon="folder" size={14} />
+            {moveCount > 1
+              ? t('context.move_sessions_to_workstream', { count: moveCount })
+              : t('context.move_to_workstream')}
+          </button>
+        )}
         {onMoveUnder && <button className={menuItemClass} onClick={(e) => handleAction(e, onMoveUnder)}><MaterialSymbol icon="drive_file_move" size={14} />{t('context.move_under')}</button>}
 
         {/* Group 3: Copy to clipboard */}
@@ -348,14 +368,14 @@ export const SessionContextMenu: React.FC<SessionContextMenuProps> = ({
                 <MaterialSymbol icon="unarchive" size={14} />
                 {selectedCount > 1
                   ? t('context.unarchive_sessions', { count: selectedCount })
-                  : t('context.unarchive_item', { type: t(isWorkstream ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
+                  : t('context.unarchive_item', { type: t(isContainer ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
               </>
             ) : (
               <>
                 <MaterialSymbol icon="archive" size={14} />
                 {selectedCount > 1
                   ? t('context.archive_sessions', { count: selectedCount })
-                  : t('context.archive_item', { type: t(isWorkstream ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
+                  : t('context.archive_item', { type: t(isContainer ? 'context.workstream' : isWorktreeSession ? 'context.worktree' : 'context.session') })}
               </>
             )}
           </button>

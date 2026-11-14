@@ -16,6 +16,10 @@ The source corresponding to these assets is tagged `v0.82.8-ja.1`. Use that rele
 
 The publication quality decision is **GO WITH KNOWN LIMITATIONS**. This does not mean a completely successful Windows full-suite run or verification of every live integration and display path. Read the [release notes](RELEASE_NOTES_v0.82.8-ja.1.md) and [known limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
 
+## Next-version source
+
+This development branch targets **v0.84.0-ja.1**, based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a prerelease. This unofficial candidate is not yet published and is separate from the released version above. Read the [candidate changes](RELEASE_NOTES_v0.84.0-ja.1.en.md) and [limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english).
+
 ## Japanese interface
 
 Screenshots from the Windows application. Documents and tasks use sample data.
@@ -42,7 +46,7 @@ This edition incorporates upstream v0.82.8 changes and adds Japanese display for
 
 Select System, English, or Japanese in display-language settings. This is independent of the agent response language. User documents and external service responses are not automatically translated. Some Tracker names and statuses remain in English.
 
-Shared resources contain 27 namespaces and 15,401 keys in each language, with zero key differences, empty Japanese translations or interpolation mismatches. Electron native menus are also covered. This is static consistency; it does not guarantee translation of every screen or dynamic reference path.
+This development branch's shared resources contain 27 namespaces and 15,557 keys in each language, with zero key differences, empty Japanese translations or interpolation mismatches. Electron native menus are also covered. This is static consistency; it does not guarantee translation of every screen or dynamic reference path. Published v0.82.8-ja.1 contains 15,401 keys per language.
 
 The Windows application ID is `jp.meistertech.nimbalyst.ja.unofficial`; the default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official settings are not moved or deleted. Running alongside the official application is unsupported. This edition does not claim the default `nimbalyst://` handler; authentication uses an instance-specific, nonce-protected localhost callback. Open authentication email on the same Windows PC.
 

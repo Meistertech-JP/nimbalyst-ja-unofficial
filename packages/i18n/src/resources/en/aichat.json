@@ -82,7 +82,10 @@
     "exclude_hunk": "Exclude this hunk",
     "include_hunk": "Include this hunk",
     "collapse_hunks_for_file": "Collapse hunks for {{fileName}}",
-    "show_hunks_for_file": "Show hunks for {{fileName}}"
+    "show_hunks_for_file": "Show hunks for {{fileName}}",
+    "edited_by_session": "Edited by another session: {{session}}",
+    "edited_by": "edited by: {{session}}",
+    "another_session": "another session"
   },
   "tracker_tool": {
     "created": "Tracker Created",
@@ -1061,5 +1064,10 @@
   "mcp_lockdown": {
     "message": "This machine has an enterprise Claude Code MCP policy, so Nimbalyst's own tools are unavailable in this session — no interactive question widgets, session naming, tracker tools, or extension tools. Claude Code itself runs normally on your organization's servers.",
     "dismiss": "Dismiss"
+  },
+  "workstream_empty_state": {
+    "this_workstream": "This workstream",
+    "no_sessions": "{{title}} has no sessions yet.",
+    "new_session": "New session in this workstream"
   }
 }

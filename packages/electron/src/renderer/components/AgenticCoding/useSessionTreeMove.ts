@@ -31,16 +31,26 @@ function localizeMoveError(message: string, t: ReturnType<typeof useTranslation>
 let dragging: { sessionId: string; workspacePath: string } | null = null;
 let undoGeneration = 0;
 
+/** Moves made outside this hook (bulk, new workstream) make any open Undo toast stale. */
+export function invalidateSessionMoveUndo() {
+  ++undoGeneration;
+}
+
 export function useSessionTreeMove(id: string, workspacePath?: string) {
   const { t } = useTranslation('sessions');
   const store = useStore();
   const sessionType = useAtomValue(
     useMemo(() => atom((get) => get(sessionRegistryAtom).get(id)?.sessionType), [id])
   );
+  const inWorktree = useAtomValue(
+    useMemo(() => atom((get) => !!get(sessionRegistryAtom).get(id)?.worktreeId), [id])
+  );
   const reparent = useSetAtom(reparentSessionAtom);
   const [isDragging, setDragging] = useState(false);
   const [hint, setHint] = useState<{ valid: boolean; label: string; between: boolean } | null>(null);
   const isDraggable = !!workspacePath && sessionType !== 'workstream' && sessionType !== 'blitz';
+  // Workstreams never live in a worktree, so a worktree session cannot join one.
+  const canJoinWorkstream = isDraggable && !inWorktree;
 
   const move = useCallback(
     async (sourceId: string, newParentId: string | null, undo = false, restoreManagerId?: string | null) => {
@@ -77,7 +87,10 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
         errorNotificationService.showInfo(
           t('move.notification.success_title'),
           newParentId
-            ? t('move.notification.under', { name: currentRegistry.get(newParentId)?.title || t('move.session') })
+            ? t(
+                currentRegistry.get(newParentId)?.sessionType === 'workstream' ? 'move.notification.into' : 'move.notification.under',
+                { name: currentRegistry.get(newParentId)?.title || t('move.session') }
+              )
             : t('move.notification.top_level'),
           {
             duration: 8000,
@@ -95,6 +108,48 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
     [store, workspacePath, reparent, t]
   );
 
+  /**
+   * Move several sessions under one parent with a single summary toast. Rows the
+   * guard rejects (a container, a descendant of the target) are skipped and counted.
+   */
+  const moveMany = useCallback(
+    async (sourceIds: readonly string[], newParentId: string | null) => {
+      if (sourceIds.length === 1) return move(sourceIds[0], newParentId);
+      if (!workspacePath) return false;
+      // No bulk undo; any older single-move Undo would now restore a stale placement.
+      invalidateSessionMoveUndo();
+      let moved = 0;
+      let skipped = 0;
+      for (const sourceId of sourceIds) {
+        const registry = store.get(sessionRegistryAtom);
+        const oldParentId = registry.get(sourceId)?.parentSessionId ?? null;
+        if (oldParentId === newParentId) continue;
+        if (sessionMoveError(registry, sourceId, newParentId)) {
+          skipped++;
+          continue;
+        }
+        if (await reparent({ sessionId: sourceId, oldParentId, newParentId, workspacePath })) moved++;
+        else skipped++;
+      }
+      const targetRow = newParentId ? store.get(sessionRegistryAtom).get(newParentId) : undefined;
+      const destination = newParentId
+        ? t(targetRow?.sessionType === 'workstream' ? 'move.notification.destination_into' : 'move.notification.destination_under', {
+            name: targetRow?.title || t('move.session'),
+          })
+        : t('move.notification.destination_top_level');
+      if (moved)
+        errorNotificationService.showInfo(
+          t('move.notification.success_title'),
+          `${t('move.notification.moved_sessions', { count: moved, destination })}${skipped ? t('move.notification.skipped', { count: skipped }) : ''}`,
+          { duration: 8000 }
+        );
+      else if (skipped)
+        errorNotificationService.showError(t('move.notification.cannot_move_sessions'), t('move.notification.none_moved'));
+      return moved > 0;
+    },
+    [move, store, workspacePath, reparent]
+  );
+
   const target = (e: DragEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const between = e.clientY < rect.top + 5 || e.clientY > rect.bottom - 5;
@@ -105,8 +160,10 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
   };
   return {
     move,
+    moveMany,
     isDragging,
     isDraggable,
+    canJoinWorkstream,
     hint,
     onDragStart(e: DragEvent) {
       if (!isDraggable || !workspacePath) {
@@ -140,7 +197,10 @@ export function useSessionTreeMove(id: string, workspacePath?: string) {
         valid: !error,
         between,
         label: errorLabel || (parentId
-          ? t('move.hint.under', { name: registry.get(parentId)?.title || t('move.session') })
+          ? t(
+              registry.get(parentId)?.sessionType === 'workstream' ? 'move.hint.into' : 'move.hint.under',
+              { name: registry.get(parentId)?.title || t('move.session') }
+            )
           : t('move.notification.top_level')),
       });
     },

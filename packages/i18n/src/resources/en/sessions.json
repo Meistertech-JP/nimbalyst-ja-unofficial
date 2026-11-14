@@ -43,9 +43,28 @@
   "search_filter_tag": "Search sessions or filter by tag",
   "move_picker": {
     "title": "Move session under",
+    "workstreams_title": "Move session to workstream",
     "search_label": "Search parent sessions",
+    "search_workstreams_label": "Search workstreams",
+    "search_workstreams_placeholder": "Search workstreams…",
     "available_parents": "Available parent sessions",
-    "no_matching_parents": "No matching parent sessions"
+    "available_workstreams": "Available workstreams",
+    "no_matching_parents": "No matching parent sessions",
+    "no_matching_workstreams": "No matching workstreams",
+    "new_workstream": "New workstream...",
+    "new_workstream_named": "New workstream \"{{name}}\""
+  },
+  "workstream_notifications": {
+    "create_failed_title": "Cannot create workstream",
+    "create_failed_message": "The workstream could not be created. Try again.",
+    "none_moved_title": "Sessions not moved",
+    "none_moved_one_message": "Created \"{{name}}\", but the session could not be moved into it, so it is empty.",
+    "none_moved_other_message": "Created \"{{name}}\", but none of the {{count}} sessions could move into it, so it is empty.",
+    "some_not_moved_title": "Some sessions were not moved",
+    "some_not_moved_message": "Moved {{moved}} of {{total}} sessions into \"{{name}}\"; {{failed}} could not move.",
+    "moved_title": "Sessions moved",
+    "moved_one_message": "Moved the session into \"{{name}}\"",
+    "moved_other_message": "Moved {{count}} sessions into \"{{name}}\""
   },
   "move": {
     "validation": {
@@ -66,9 +85,18 @@
       "rejected": "The move was rejected. Refresh the list and try again.",
       "success_title": "Session moved",
       "under": "Moved under {{name}}",
-      "top_level": "Moved to top level"
+      "into": "Moved into {{name}}",
+      "top_level": "Moved to top level",
+      "moved_sessions_one": "Moved {{count}} session {{destination}}",
+      "moved_sessions_other": "Moved {{count}} sessions {{destination}}",
+      "destination_under": "under {{name}}",
+      "destination_into": "into {{name}}",
+      "destination_top_level": "to top level",
+      "skipped": "; {{count}} could not move",
+      "cannot_move_sessions": "Cannot move sessions",
+      "none_moved": "None of the selected sessions can move there."
     },
-    "hint": { "under": "under {{name}}" },
+    "hint": { "under": "under {{name}}", "into": "into {{name}}" },
     "session": "session",
     "undo": "Undo"
   },

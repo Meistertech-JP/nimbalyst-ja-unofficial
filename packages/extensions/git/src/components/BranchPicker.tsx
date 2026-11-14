@@ -5,10 +5,20 @@ import {
   useDismiss, useRole, useInteractions, autoUpdate,
 } from '@floating-ui/react';
 
+/**
+ * The Log's branch filter ("Showing: <branch>"). It only chooses which branch
+ * the Log lists; switching the checked-out branch is BranchSwitcher's job.
+ */
 interface BranchPickerProps {
   branches: string[];
+  /** The branch the Log shows. */
   current: string;
   onChange: (branch: string) => void;
+  /** The checked-out branch; when the filter is pinned elsewhere the menu offers to follow it again. */
+  checkedOut?: string;
+  /** True when the user pinned a branch instead of following the checked-out one. */
+  pinned?: boolean;
+  onFollowCheckedOut?: () => void;
 }
 
 // ---- Tree structure for "/" grouping ----
@@ -160,7 +170,7 @@ function renderTreeItems(
 
 // ---- Main picker ----
 
-export function BranchPicker({ branches, current, onChange }: BranchPickerProps) {
+export function BranchPicker({ branches, current, onChange, checkedOut, pinned, onFollowCheckedOut }: BranchPickerProps) {
   const { t } = useTranslation('git');
   const [isOpen, setIsOpen] = useState(false);
 
@@ -220,11 +230,13 @@ export function BranchPicker({ branches, current, onChange }: BranchPickerProps)
     <>
       <button
         ref={refs.setReference}
-        className="git-log-select git-branch-picker-trigger"
+        className="git-log-select git-branch-picker-trigger git-log-branch-filter"
         onClick={() => setIsOpen(v => !v)}
-        title={t('supplemental.branch_picker.title')}
+        title={pinned ? t('supplemental.branch_picker.pinned_title') : t('supplemental.branch_picker.following_title')}
+        aria-label={t('supplemental.branch_picker.filter_aria', { branch: displayLabel || t('supplemental.branch_picker.loading') })}
         {...getReferenceProps()}
       >
+        <span className="git-log-branch-filter-prefix">{t('supplemental.branch_picker.showing')}:</span>
         {displayLabel || t('supplemental.branch_picker.loading')}
         <span className="git-branch-picker-chevron">{isOpen ? '▲' : '▼'}</span>
       </button>
@@ -237,6 +249,22 @@ export function BranchPicker({ branches, current, onChange }: BranchPickerProps)
             className="git-branch-menu"
             {...getFloatingProps()}
           >
+            {pinned && onFollowCheckedOut && checkedOut && (
+              <>
+                <button
+                  className="git-branch-menu-item"
+                  onClick={() => { onFollowCheckedOut(); setIsOpen(false); }}
+                >
+                  <span className="git-branch-menu-item-name">
+                    {t('supplemental.branch_picker.follow_checked_out', {
+                      branch: checkedOut === 'HEAD' ? t('log_panel.detached_head_label') : checkedOut,
+                    })}
+                  </span>
+                </button>
+                <div className="git-branch-menu-sep" />
+              </>
+            )}
+
             {/* Local branches */}
             {hasLocal && (
               <>

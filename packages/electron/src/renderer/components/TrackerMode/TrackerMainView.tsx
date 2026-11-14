@@ -1455,6 +1455,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
         <WorktreeBaseBranchPicker
           isOpen
           repoPath={worktreeSourceRepoPath}
+          workspacePath={workspacePath ?? worktreeSourceRepoPath}
           initialName={pendingWorktreeLaunch.worktreeName}
           onCreate={handleCreateTrackerWorktree}
           onCancel={() => setPendingWorktreeLaunch(null)}

@@ -82,7 +82,10 @@
     "exclude_hunk": "この差分を除外",
     "include_hunk": "この差分を含める",
     "collapse_hunks_for_file": "{{fileName}}の差分を折りたたむ",
-    "show_hunks_for_file": "{{fileName}}の差分を表示"
+    "show_hunks_for_file": "{{fileName}}の差分を表示",
+    "edited_by_session": "別のセッションによる編集：{{session}}",
+    "edited_by": "編集者：{{session}}",
+    "another_session": "別のセッション"
   },
   "tracker_tool": {
     "created": "トラッカー項目を作成しました",
@@ -1061,5 +1064,10 @@
   "mcp_lockdown": {
     "message": "このマシンでは企業のClaude Code MCPポリシーが適用されているため、このセッションではNimbalyst独自のツールを利用できません。質問ウィジェット、セッション名設定、トラッカーツール、拡張機能ツールは使用できません。Claude Code自体は組織のサーバー上で通常どおり動作します。",
     "dismiss": "閉じる"
+  },
+  "workstream_empty_state": {
+    "this_workstream": "このワークストリーム",
+    "no_sessions": "{{title}}にはまだセッションがありません。",
+    "new_session": "このワークストリームで新しいセッションを開始"
   }
 }

@@ -384,7 +384,7 @@ export function TimelineView(props: TimelineViewProps) {
                 {t(rows.length === 1 ? 'project_graph.ui.item_count_one' : 'project_graph.ui.item_count_other', { count: rows.length })}
                 {hiddenRowCount > 0 && <span className="pg-tl-corner-more">{t('project_graph.ui.hidden_count', { count: hiddenRowCount })}</span>}
               </div>
-              <TimelineRuler rangeMin={range.min} rangeMax={range.max} pxPerDay={pxd} contentWidth={contentWidth} />
+              <TimelineRuler rangeMin={range.min} rangeMax={range.max} pxPerDay={pxd} contentWidth={contentWidth} locale={dateLocale} />
             </div>
 
             {/* rows */}

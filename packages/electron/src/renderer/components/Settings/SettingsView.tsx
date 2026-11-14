@@ -79,6 +79,9 @@ import {
 } from './panels/AccountSettingsPanel';
 import { ProjectSharingPanel, type ProjectSettingsTarget } from './panels/ProjectSharingPanel';
 import { ProjectAIProvidersPanel } from './panels/ProjectAIProvidersPanel';
+import { ProjectWorktreesPanel } from './panels/ProjectWorktreesPanel';
+import { fetchProviderModels } from './providerModelFetch';
+import { providerTestFailureMessage } from './providerTestFailureMessage';
 
 /**
  * Providers whose model catalog comes from their own CLI rather than from a
@@ -579,20 +582,13 @@ export function SettingsView({
     debouncedSave();
   };
 
-  const fetchModels = async (provider: string) => {
-    setLoading(prev => ({ ...prev, [provider]: true }));
-
-    try {
-      const response = await window.electronAPI.aiGetAllModels();
-      if (response.success && response.grouped) {
-        setAvailableModels(response.grouped);
-      }
-    } catch (error) {
-      console.error(`Failed to fetch models for ${provider}:`, error);
-    } finally {
-      setLoading(prev => ({ ...prev, [provider]: false }));
-    }
-  };
+  const fetchModels = (provider: string, options: { background?: boolean } = {}) =>
+    fetchProviderModels<Model>(provider, {
+      background: options.background,
+      setLoading,
+      setAvailableModels,
+      getAllModels: () => window.electronAPI.aiGetAllModels(),
+    });
 
   // Perform the actual save
   // NOTE: Most settings are now auto-saved via Jotai atom setters.
@@ -620,7 +616,7 @@ export function SettingsView({
       Promise.all(
         Object.entries(providers)
           .filter(([_, config]) => config.enabled)
-          .map(([provider, _]) => fetchModels(provider))
+          .map(([provider, _]) => fetchModels(provider, { background: true }))
       ).catch(error => {
         console.error('Failed to refresh models in background:', error);
       });
@@ -770,9 +766,12 @@ export function SettingsView({
             [selectedCategory]: {
               ...prev[selectedCategory],
               testStatus: result.success ? 'success' : 'error',
-              // Backend diagnostics can be English even in the Japanese UI;
-              // panels render the localized failure label, never this detail.
-              testMessage: result.success ? undefined : t('provider.connection_failed_detail')
+              // Keep useful backend diagnostics for troubleshooting, with a
+              // localized summary and credential-shaped values redacted.
+              testMessage: result.success ? undefined : providerTestFailureMessage(
+                t('provider.connection_failed_detail'),
+                result.error,
+              )
             }
           }));
 
@@ -786,7 +785,10 @@ export function SettingsView({
             [selectedCategory]: {
               ...prev[selectedCategory],
               testStatus: 'error',
-              testMessage: t('provider.connection_failed_detail')
+              testMessage: providerTestFailureMessage(
+                t('provider.connection_failed_detail'),
+                error,
+              )
             }
           }));
         }
@@ -1061,6 +1063,10 @@ export function SettingsView({
         return workspacePath
           ? <ProjectAIProvidersPanel workspacePath={workspacePath} workspaceName={workspaceName ?? 'this project'} />
           : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.provider_overrides')}</p>;
+      case 'project-worktrees':
+        return workspacePath
+          ? <ProjectWorktreesPanel key={workspacePath} workspacePath={workspacePath} workspaceName={workspaceName ?? 'this project'} />
+          : <p className="text-sm text-[var(--nim-text-muted)]">{t('project_required.worktrees')}</p>;
       case 'project-extensions':
         return <InstalledExtensionsPanel scope="project" workspacePath={workspacePath ?? undefined} />;
       case 'project-github':

@@ -52,6 +52,18 @@ export interface CommentThreadCardProps extends CommentThreadActions {
   isActive: boolean;
   /** False for a read-only viewer: reading stays, authoring disappears. */
   canComment: boolean;
+  /**
+   * Resolve, reopen and delete of the whole thread. Defaults to `canComment`;
+   * a commenter gets it only on threads they started.
+   */
+  canManageThread?: boolean;
+  /**
+   * Delete of the whole thread. Defaults to `canManageThread`; a commenter
+   * only when every comment in it is theirs.
+   */
+  canDeleteThread?: boolean;
+  /** Per-comment delete. Defaults to `canComment`; a commenter's own only. */
+  canDeleteComment?(comment: Comment): boolean;
   getMembers(): CommentMember[];
   /** Set by the panel's roving tabindex; defaults to focusable. */
   tabIndex?: number;
@@ -66,6 +78,9 @@ export function CommentThreadCard({
   anchorLabel,
   isActive,
   canComment,
+  canManageThread = canComment,
+  canDeleteThread = canManageThread,
+  canDeleteComment = () => canComment,
   getMembers,
   tabIndex = 0,
   cardRef,
@@ -170,7 +185,7 @@ export function CommentThreadCard({
             {t('thread_card.comment_count', { count: thread.comments.length })}
             {' · '}{t('thread_card.resolved')}
           </span>
-          {canComment && (
+          {canManageThread && (
             <>
               <button
                 type="button"
@@ -182,17 +197,19 @@ export function CommentThreadCard({
               >
                 {t('comments.unresolve')}
               </button>
-              <button
-                type="button"
-                className="nim-comment-btn nim-comment-btn-delete-thread"
-                title={t('comments.delete_thread')}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDeleteThread(thread);
-                }}
-              >
-                {t('thread_card.delete')}
-              </button>
+              {canDeleteThread && (
+                <button
+                  type="button"
+                  className="nim-comment-btn nim-comment-btn-delete-thread"
+                  title={t('comments.delete_thread')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteThread(thread);
+                  }}
+                >
+                  {t('thread_card.delete')}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -208,7 +225,7 @@ export function CommentThreadCard({
                 <span className="nim-comment-time">
                   {formatTimestamp(comment.timeStamp, i18n.language)}
                 </span>
-                {canComment && (
+                {canDeleteComment(comment) && (
                   <button
                     type="button"
                     className="nim-comment-delete"
@@ -251,27 +268,33 @@ export function CommentThreadCard({
                 onSubmit={(text, mentioned) => onReply(thread, text, mentioned)}
                 onCancel={handleComposerCancel}
               />
-              <button
-                type="button"
-                className="nim-comment-btn nim-comment-btn-resolve"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSetThreadResolved(thread, true);
-                }}
-              >
-                {t('comments.resolve')}
-              </button>
-              <button
-                type="button"
-                className="nim-comment-btn nim-comment-btn-delete-thread"
-                title={t('comments.delete_thread')}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDeleteThread(thread);
-                }}
-              >
-                {t('thread_card.delete')}
-              </button>
+              {canManageThread && (
+                <>
+                  <button
+                    type="button"
+                    className="nim-comment-btn nim-comment-btn-resolve"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSetThreadResolved(thread, true);
+                    }}
+                  >
+                    {t('comments.resolve')}
+                  </button>
+                  {canDeleteThread && (
+                    <button
+                      type="button"
+                      className="nim-comment-btn nim-comment-btn-delete-thread"
+                      title={t('comments.delete_thread')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDeleteThread(thread);
+                      }}
+                    >
+                      {t('thread_card.delete')}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           )}
         </>

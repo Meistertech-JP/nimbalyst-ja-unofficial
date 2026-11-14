@@ -8,7 +8,9 @@ The [v0.82.7-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unoffi
 
 ## Establishing a fixed starting point
 
-Preserve the published tag's source, distributions, hashes, and verification records. Do not reset or stash a development worktree with changes to reuse it; create an independent working branch and worktree. At the start, check upstream's default branch and actual HEAD, and record that SHA as the baseline for the integration.
+The current v0.84.0-ja.1 development target is an unpublished candidate based on fixed upstream v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a prerelease; a formal Japanese-edition release has not been decided. Integration covers v0.83.0 and v0.84.0 changes in order, including Workstreams, Git operations, Wiki publishing, retention management and Japanese display compatibility. Later upstream main changes are not included in this target.
+
+Preserve the published tag's source, distributions, hashes, and verification records. Do not reset or stash a development worktree with changes to reuse it; create an independent working branch and worktree. Verify the selected upstream tag, tag object and referenced commit and record that fixed baseline. Do not silently expand the target to a newer upstream main during the work.
 
 ```text
 fixed upstream ── additional upstream commits ── fixed integration target

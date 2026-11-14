@@ -14,7 +14,7 @@ import { CollapsibleGroup } from './CollapsibleGroup';
 import { WorktreeBaseBranchPicker } from './WorktreeBaseBranchPicker';
 import { SessionListItem } from './SessionListItem';
 import { SessionTreeRow, useVisibleSessionTreeRows, type VisibleSessionTreeRow } from './SessionTree.tsx';
-import { visibleSessionTreeIds, sessionTreeRootId } from './sessionTreeModel';
+import { visibleSessionTreeIds, sessionTreeRootId, rendersAsSessionTree } from './sessionTreeModel';
 import { resolveSessionArchiveSelection, sessionArchiveSubtreeIds } from './sessionArchiveSelection';
 import { WorkstreamGroup } from './WorkstreamGroup';
 import { BlitzGroup } from './BlitzGroup';
@@ -48,7 +48,7 @@ import { alphaFeatureEnabledAtom, worktreesFeatureAvailableAtom } from '../../st
 import { activeWorkspacePathAtom } from '../../store/atoms/openProjects';
 import { useGitRepoProbe } from '../../hooks/useGitRepoProbe';
 import { workstreamStateAtom } from '../../store/atoms/workstreamState';
-import { sessionProcessingAtom, sessionUnreadAtom, sessionHasPendingInteractivePromptAtom, activeSessionIdAtom as globalActiveSessionIdAtom, sessionPinnedUpdateAtom } from '../../store/atoms/sessions';
+import { sessionProcessingAtom, sessionUnreadAtom, sessionHasPendingInteractivePromptAtom, activeSessionIdAtom as globalActiveSessionIdAtom, sessionPinnedUpdateAtom, createWorkstreamAtom } from '../../store/atoms/sessions';
 import { collapsedGroupsAtom, compactRowsAtom, setCompactRowsAtom, showContextUsageAtom, setShowContextUsageAtom, sortOrderAtom, setCollapsedGroupsAtom, setSortOrderAtom } from '../../store/atoms/agentMode';
 import {
   recentlyRenamedSessionAtom,
@@ -228,6 +228,8 @@ function compareUnifiedItems(a: UnifiedListItem, b: UnifiedListItem) {
  */
 const SessionHistoryComponent: React.FC = () => {
   const { t } = useTranslation('sessions');
+  const tRef = useRef(t);
+  tRef.current = t;
   const { t: tAgents } = useTranslation('agents');
   const getTranslatedGroupLabel = (groupKey: string) => {
     const translationKeys: Record<string, string> = {
@@ -325,8 +327,13 @@ const SessionHistoryComponent: React.FC = () => {
     void dispatchBranchSession(sessionId);
   }, [dispatchBranchSession]);
   const onNewSession: (() => void) | undefined = useCallback(() => {
-    void dispatchCreateNewSession({ launchSource: 'session_history' });
+    void dispatchCreateNewSession({ launchSource: 'session_history', intoSelectedWorkstream: true });
   }, [dispatchCreateNewSession]);
+  const dispatchCreateWorkstream = useSetAtom(createWorkstreamAtom);
+  const onNewWorkstream = useCallback(() => {
+    if (!workspacePath) return;
+    void dispatchCreateWorkstream({ workspacePath, select: true, rename: true });
+  }, [dispatchCreateWorkstream, workspacePath]);
   const onNewWorktreeSession: ((options?: { baseBranch?: string; name?: string }) => void | Promise<void>) | undefined = isWorktreesFeatureAvailable
     ? async (options?: { baseBranch?: string; name?: string }) => {
         await dispatchCreateNewWorktreeSession(options);
@@ -459,6 +466,8 @@ const SessionHistoryComponent: React.FC = () => {
   const showArchived = showArchivedAtom;
   const setShowArchived = setShowArchivedAtom;
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
+  // One array per selection change, so memoized rows only repaint when it changes.
+  const selectedSessionIdList = useMemo(() => [...selectedSessionIds], [selectedSessionIds]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set()); // Format: "blitz:id", "worktree:id", "workstream:id", "superloop:id"
   const lastSelectedIdRef = useRef<string | null>(null); // For shift+click range selection
   // Tracks the last searchQuery|tagFilter|mode combination the title-filter effect ran for, so
@@ -683,9 +692,9 @@ const SessionHistoryComponent: React.FC = () => {
       });
     } catch (err) {
       console.error('[SessionHistory] Failed to load sessions:', err);
-      setError(t('errors.load_failed'));
+      setError(tRef.current('errors.load_failed'));
     }
-  }, [refreshSessions, t]);
+  }, [refreshSessions]);
 
   // Execute the actual search query
   const executeSearch = async (query: string, filters: SearchFilters = searchFilters) => {
@@ -702,7 +711,9 @@ const SessionHistoryComponent: React.FC = () => {
         if (result.success && Array.isArray(result.sessions)) {
           let searchResults: SessionItem[] = result.sessions.map((s: any) => ({
             id: s.id,
-            title: s.title || t('history.untitled_session'),
+            // Keep registry data language-neutral; rows render the localized
+            // fallback from an empty title so cached data follows locale changes.
+            title: s.title || '',
             createdAt: s.createdAt,
             updatedAt: s.updatedAt,
             provider: s.provider || 'claude',
@@ -1962,6 +1973,7 @@ const SessionHistoryComponent: React.FC = () => {
   // which re-rendered this, which republished: "Maximum update depth exceeded".
   const createHandlersRef = useRef({
     onNewSession,
+    onNewWorkstream,
     onNewBlitz,
     onNewTerminal,
     openWorktreeBaseBranchPicker,
@@ -1970,6 +1982,7 @@ const SessionHistoryComponent: React.FC = () => {
   });
   createHandlersRef.current = {
     onNewSession,
+    onNewWorkstream,
     onNewBlitz,
     onNewTerminal,
     openWorktreeBaseBranchPicker,
@@ -1982,7 +1995,13 @@ const SessionHistoryComponent: React.FC = () => {
   const hasTerminalOption = Boolean(onNewTerminal);
 
   useEffect(() => {
-    const items: TitleBarCreateMenuItem[] = [];
+    const items: TitleBarCreateMenuItem[] = [{
+      id: 'workstream',
+      label: t('move_picker.new_workstream'),
+      icon: 'create_new_folder',
+      testId: 'new-workstream-button',
+      onSelect: () => createHandlersRef.current.onNewWorkstream(),
+    }];
     if (hasWorktreeOption) {
       items.push({
         id: 'worktree',
@@ -2154,8 +2173,8 @@ const SessionHistoryComponent: React.FC = () => {
       if (session.sessionType === 'blitz') continue;
 
       if (!session.worktreeId) {
-        // Check if this is a workstream (has children)
-        const isWorkstream = (session.childCount ?? 0) > 0;
+        // A tree row: it has children, or it is a workstream container (even empty).
+        const isWorkstream = rendersAsSessionTree(session);
         if (isWorkstream) {
           // Create workstream item with cached children (or empty array if not loaded yet)
           const cachedChildren = (sessionTreeIndex.membersByRoot.get(session.id) ?? []).filter(child => showArchived || !child.isArchived);
@@ -2599,7 +2618,7 @@ const SessionHistoryComponent: React.FC = () => {
 
               const children: SessionItem[] = result.children.map((c: any) => ({
                 id: c.id,
-                title: c.title || t('history.untitled_session'),
+                title: c.title || '',
                 createdAt: c.createdAt,
                 updatedAt: c.updatedAt,
                 provider: c.provider || 'claude',
@@ -2679,7 +2698,7 @@ const SessionHistoryComponent: React.FC = () => {
     // omitted from deps — they're read via refs / store.get inside the
     // effect. Including them caused a self-trigger loop (this effect both
     // sets the cache and writes the registry atom).
-  }, [sessions, collapsedGroups, workspacePath, showArchived, t]);
+  }, [sessions, collapsedGroups, workspacePath, showArchived]);
 
   if (loading) {
     return (
@@ -2830,6 +2849,7 @@ const SessionHistoryComponent: React.FC = () => {
     <WorktreeBaseBranchPicker
       isOpen={worktreeBaseBranchPickerOpen}
       repoPath={worktreeSourceRepoPath}
+      workspacePath={workspacePath}
       onCreate={async ({ baseBranch, name }) => {
         // Await the parent's create handler so the picker can keep its
         // submitting state until creation actually resolves (and surface
@@ -3366,6 +3386,7 @@ const SessionHistoryComponent: React.FC = () => {
                       onSessionPinToggle={handleSessionPinToggle}
                       onSessionRename={onSessionRename}
                       onSessionBranch={onSessionBranch}
+                      selectedSessionIds={selectedSessionIds}
                     />
                   );
                 }
@@ -3560,6 +3581,7 @@ const SessionHistoryComponent: React.FC = () => {
                     isPinned={session.isPinned}
                     isSelected={selectedSessionIds.has(session.id)}
                     selectedCount={selectedSessionIds.has(session.id) ? selectedSessionIds.size : 1}
+                    selectedSessionIds={selectedSessionIds.has(session.id) ? selectedSessionIdList : undefined}
                     sortBy={sortBy}
                     onClick={(e) => handleSessionClick(session.id, e)}
                     onDelete={() => handleDeleteSession(session.id)}

@@ -562,9 +562,17 @@ describe('canvas authoring skill', () => {
     '../../../../extensions/canvas/claude-plugin/skills/canvas/SKILL.md'
   );
 
-  const blocks = [
-    ...readFileSync(SKILL_PATH, 'utf-8').matchAll(/```json\n([\s\S]*?)```/g),
-  ].map((match) => match[1]);
+  const jsonBlocks = (text: string) => [...text.matchAll(/```json\r?\n([\s\S]*?)```/g)]
+    .map((match) => match[1]);
+  const blocks = jsonBlocks(readFileSync(SKILL_PATH, 'utf-8'));
+
+  it('recognizes documented JSON fences with LF or CRLF checkout line endings', () => {
+    for (const newline of ['\n', '\r\n']) {
+      const snippets = jsonBlocks(['```json', '{"nodes":[]}', '```'].join(newline));
+      expect(snippets).toHaveLength(1);
+      expect(JSON.parse(snippets[0])).toEqual({ nodes: [] });
+    }
+  });
 
   it('every documented snippet is valid JSON', () => {
     expect(blocks.length).toBeGreaterThan(0);

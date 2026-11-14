@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, beforeAll } from 'vitest';
 import { createI18nInstance } from '@nimbalyst/i18n/core';
 import { UiLanguageProvider } from '@nimbalyst/i18n/react';
@@ -48,6 +48,29 @@ function workingChangesCalls() {
 }
 
 describe('GitLogPanel refresh', () => {
+  it.each(['en', 'ja'])('localizes a successful branch switch in %s and preserves the branch name', async language => {
+    const target = 'feature/日本語';
+    let current = 'main';
+    const original = invoke.getMockImplementation()!;
+    invoke.mockImplementation((channel: string, ...args: unknown[]) => {
+      if (channel === 'git:status') return Promise.resolve({ branch: current, ahead: 0, behind: 0, hasUncommitted: false });
+      if (channel === 'git:list-branches-detailed') return Promise.resolve({
+        current: { branch: current, detached: false, headSha: 'a'.repeat(40), headReachable: true },
+        local: ['main', target].map(name => ({ name, upstream: null, ahead: 0, behind: 0, upstreamGone: false, lastCommitDate: null, isCurrent: name === current, occupiedBy: null })),
+        remoteOnly: [], lastFetchedAt: null, managedWorktree: null, worktreeLookupFailed: false,
+      });
+      if (channel === 'git:switch-preflight') return Promise.resolve({ blocked: null, targetBranch: target, dirtyFiles: [], dirtyCount: 0, runningSessions: [], unreachableHead: null, localExists: false, needsConfirm: false, confirmToken: 'fixture-confirmation' });
+      if (channel === 'git:switch-branch') { current = target; return Promise.resolve({ success: true, branch: target }); }
+      return original(channel, ...args);
+    });
+    renderPanel();
+    fireEvent.click(await screen.findByRole('button', { name: /switch branch/i }));
+    const listbox = await screen.findByRole('listbox', { name: 'Branches' });
+    await act(async () => { await englishI18n.changeLanguage(language); });
+    fireEvent.click(within(listbox).getByText(target));
+    await screen.findByText(language === 'ja' ? `${target} に切り替えました` : `Switched to ${target}`);
+    expect(invoke.mock.calls.filter(([channel]) => channel === 'git:switch-branch')).toHaveLength(1);
+  });
   it.each(['future-strategy', '__proto__'])('uses the default pull strategy for invalid saved value %s', async (saved) => {
     const host = makeHost();
     await host.storage.setGlobal('pullStrategy', saved);
@@ -207,6 +230,108 @@ describe('GitLogPanel refresh', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /changes/i }).classList.contains('git-tab-btn--active')).toBe(true);
     });
+  });
+});
+
+// #1959: the Log follows the checked-out branch unless the "Showing:" filter
+// pins another one; a pinned filter survives a checkout.
+describe('GitLogPanel log branch filter', () => {
+  it('follows checkouts until the user pins a branch', async () => {
+    let branch = 'main';
+    invoke.mockReset();
+    invoke.mockImplementation((channel: string) => {
+      switch (channel) {
+        case 'git:status':
+          return Promise.resolve({ branch, ahead: 0, behind: 0, hasUncommitted: false });
+        case 'git:branches':
+          return Promise.resolve({ branches: ['main', 'feature/x', 'release'], current: branch });
+        case 'git:log':
+          return Promise.resolve([]);
+        case 'git:list-workspace-repos':
+          return Promise.resolve({ success: true, repos: [WORKSPACE] });
+        default:
+          return Promise.resolve(null);
+      }
+    });
+    const host = makeHost();
+    const statusHandlers: Array<(data: unknown) => void> = [];
+    (host.onWorkspaceEvent as ReturnType<typeof vi.fn>).mockImplementation((event: string, handler: (data: unknown) => void) => {
+      if (event === 'git:status-changed') statusHandlers.push(handler);
+      return () => {};
+    });
+    const lastLogBranch = () => {
+      const logCalls = invoke.mock.calls.filter(([channel]) => channel === 'git:log');
+      return (logCalls[logCalls.length - 1]?.[3] as { branch?: string } | undefined)?.branch;
+    };
+    const checkout = (next: string) => {
+      branch = next;
+      statusHandlers[statusHandlers.length - 1]({ workspacePath: WORKSPACE, status: { branch: next, ahead: 0, behind: 0, hasUncommitted: false } });
+    };
+
+    render(<GitLogPanel host={host} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^log$/i }));
+    await waitFor(() => expect(lastLogBranch()).toBe('main'));
+
+    checkout('feature/x');
+    await waitFor(() => expect(lastLogBranch()).toBe('feature/x'));
+
+    fireEvent.click(screen.getByRole('button', { name: /^Log branch filter/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'release' }));
+    await waitFor(() => expect(lastLogBranch()).toBe('release'));
+
+    const logCallsBefore = invoke.mock.calls.filter(([c]) => c === 'git:log').length;
+    checkout('main');
+    await waitFor(() => expect(invoke.mock.calls.filter(([c]) => c === 'git:log').length).toBeGreaterThan(logCallsBefore));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const afterCheckout = invoke.mock.calls.filter(([c]) => c === 'git:log').slice(logCallsBefore);
+    expect(afterCheckout.map(call => (call[3] as { branch?: string }).branch)).toEqual(afterCheckout.map(() => 'release'));
+  });
+});
+
+describe('GitLogPanel stale log responses', () => {
+  // A slow `git:log` for the branch the Log used to follow must not repaint
+  // over the newer branch's commits when it finally lands.
+  it('keeps the newest branch filter\'s commits when an older request resolves late', async () => {
+    let branch = 'main';
+    let resolveMainLog: (commits: unknown[]) => void = () => {};
+    invoke.mockReset();
+    invoke.mockImplementation((channel: string, _repo: string, _limit: number, opts?: { branch?: string }) => {
+      switch (channel) {
+        case 'git:status':
+          return Promise.resolve({ branch, ahead: 0, behind: 0, hasUncommitted: false });
+        case 'git:branches':
+          return Promise.resolve({ branches: ['main', 'feature/x'], current: branch });
+        case 'git:log':
+          if (opts?.branch === 'main') return new Promise(r => { resolveMainLog = r; });
+          if (opts?.branch === 'feature/x') {
+            return Promise.resolve([{ hash: 'f'.repeat(40), message: 'Feature commit', author: 'Dev', date: '2026-10-01T12:00:00Z' }]);
+          }
+          return Promise.resolve([]);
+        case 'git:list-workspace-repos':
+          return Promise.resolve({ success: true, repos: [WORKSPACE] });
+        default:
+          return Promise.resolve(null);
+      }
+    });
+    const host = makeHost();
+    const statusHandlers: Array<(data: unknown) => void> = [];
+    (host.onWorkspaceEvent as ReturnType<typeof vi.fn>).mockImplementation((event: string, handler: (data: unknown) => void) => {
+      if (event === 'git:status-changed') statusHandlers.push(handler);
+      return () => {};
+    });
+
+    render(<GitLogPanel host={host} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^log$/i }));
+    await waitFor(() => expect(invoke.mock.calls.some(([c, , , o]) => c === 'git:log' && (o as { branch?: string })?.branch === 'main')).toBe(true));
+
+    branch = 'feature/x';
+    statusHandlers[statusHandlers.length - 1]({ workspacePath: WORKSPACE, status: { branch: 'feature/x', ahead: 0, behind: 0, hasUncommitted: false } });
+    await screen.findByText('Feature commit');
+
+    resolveMainLog([{ hash: 'm'.repeat(40), message: 'Main commit', author: 'Dev', date: '2026-10-01T12:00:00Z' }]);
+    await new Promise(r => setTimeout(r, 20));
+    expect(screen.queryByText('Main commit')).toBeNull();
+    screen.getByText('Feature commit');
   });
 });
 

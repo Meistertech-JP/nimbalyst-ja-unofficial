@@ -147,6 +147,9 @@
     "remove_board": "Remove from board",
     "branch": "Branch conversation",
     "remove_workstream": "Remove from workstream",
+    "move_to_workstream": "Move to workstream...",
+    "move_sessions_to_workstream_one": "Move {{count}} session to workstream...",
+    "move_sessions_to_workstream_other": "Move {{count}} sessions to workstream...",
     "move_to_top_level": "Move to top level",
     "move_under": "Move under...",
     "copy_transcript": "Copy transcript",
@@ -219,6 +222,7 @@
     "branch_preview": "Branch: {{branch}}",
     "branch_preview_from": "Branch: {{branch}} · from {{base}}",
     "base_branch": "Base branch",
+    "project_default": "Project default",
     "current_branch": "current",
     "local_branches": "Local branches",
     "remote_branches": "Remote branches",
@@ -233,6 +237,15 @@
     "creating": "Creating…",
     "failed_to_load": "Failed to load branches",
     "failed_to_create": "Failed to create worktree",
+    "fetch_failed_cached": "Could not fetch from the remote; showing cached remote branches. {{error}}",
+    "project_default_fallback": "Project default: {{ref}} ({{reason}})",
+    "fallback_reason": {
+      "no_remote": "No remote is available to provide a default branch.",
+      "remote_no_default": "{{remote}} has no fetched default branch.",
+      "using_local": "{{reason}} Using local {{branch}}.",
+      "using_current": "{{reason}} No local main or master is available, so the current branch is used.",
+      "current_no_commits": "{{reason}} The current branch has no commits."
+    },
     "validation": {
       "too_long": "Name is too long (max 64 chars).",
       "starts_with_slash": "Name cannot start with \"/\".",

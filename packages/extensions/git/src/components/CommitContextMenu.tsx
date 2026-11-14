@@ -26,6 +26,8 @@ interface CommitContextMenuProps {
   onClose: () => void;
   onMessage: (msg: string, isError?: boolean) => void;
   onRefresh: () => void;
+  /** Opens the branch switcher's new-branch form starting at this commit. */
+  onCreateBranch: (hash: string) => void;
 }
 
 const ipc = (window as unknown as { electronAPI: { invoke: (channel: string, ...args: unknown[]) => Promise<unknown> } }).electronAPI;
@@ -43,6 +45,7 @@ export function CommitContextMenu({
   onClose,
   onMessage,
   onRefresh,
+  onCreateBranch,
 }: CommitContextMenuProps) {
   const { t } = useTranslation('extensions');
   const virtualRef = useMemo(() => ({
@@ -97,17 +100,11 @@ export function CommitContextMenu({
     }
   };
 
-  const handleCreateBranch = async () => {
-    const name = window.prompt(t('git_extension_ui.branch_name_prompt', { hash: shortHash }), '');
-    if (!name?.trim()) return;
+  // Electron does not implement window.prompt, so this hands off to the
+  // branch switcher's inline form, which creates with --no-track and switches.
+  const handleCreateBranch = () => {
     onClose();
-    const result = await ipc.invoke('git:create-branch', workspacePath, name.trim(), commit.hash) as ActionResult;
-    if (result.success) {
-      onMessage(t('git_extension_ui.created_branch', { name: name.trim() }));
-      onRefresh();
-    } else {
-      onMessage(result.error ?? t('git_extension_ui.create_branch_failed'), true);
-    }
+    onCreateBranch(commit.hash);
   };
 
   return (

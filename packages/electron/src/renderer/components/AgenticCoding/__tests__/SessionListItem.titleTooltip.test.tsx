@@ -26,7 +26,7 @@ vi.mock('../../../store', () => ({
   sessionWakeupAtom: () => ({}),
   sessionLastActivityAtom: () => ({}),
 }));
-vi.mock('../../../store/atoms/sessions', () => ({ convertToWorkstreamAtom: () => ({}) }));
+vi.mock('../../../store/atoms/sessions', () => ({ pendingSessionRenameAtom: {}, createWorkstreamAtom: {} }));
 vi.mock('../SessionContextMenu', () => ({ SessionContextMenu: () => null }));
 vi.mock('../SessionContextUsageBar', () => ({ SessionContextUsageBar: () => null }));
 
@@ -63,6 +63,11 @@ const setElementWidth = (element: Element, { clientWidth, scrollWidth }: { clien
 afterEach(() => cleanup());
 
 describe('SessionListItem - full name on hover (#577, #429)', () => {
+  it('renders an empty title through the current locale fallback', () => {
+    const { container } = render(<SessionListItem {...baseProps} title="" />);
+    expect(container.querySelector('.session-list-item-title')?.textContent).toBe('Untitled Session');
+  });
+
   it('expands the clipped title from the rendered title position', async () => {
     const long = 'A very long session name that runs well past the forty character cutoff';
     const { container } = render(<SessionListItem {...baseProps} title={long} />);

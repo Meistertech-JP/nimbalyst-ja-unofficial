@@ -147,6 +147,9 @@
     "remove_board": "ボードから削除",
     "branch": "会話を分岐",
     "remove_workstream": "ワークストリームから削除",
+    "move_to_workstream": "ワークストリームへ移動…",
+    "move_sessions_to_workstream_one": "{{count}}件のセッションをワークストリームへ移動…",
+    "move_sessions_to_workstream_other": "{{count}}件のセッションをワークストリームへ移動…",
     "move_to_top_level": "トップレベルに移動",
     "move_under": "配下に移動…",
     "copy_transcript": "トランスクリプトをコピー",
@@ -219,6 +222,7 @@
     "branch_preview": "ブランチ: {{branch}}",
     "branch_preview_from": "ブランチ: {{branch}} · 元ブランチ: {{base}}",
     "base_branch": "ベースブランチ",
+    "project_default": "プロジェクトの既定",
     "current_branch": "現在",
     "local_branches": "ローカルブランチ",
     "remote_branches": "リモートブランチ",
@@ -233,6 +237,15 @@
     "creating": "作成中…",
     "failed_to_load": "ブランチの読み込みに失敗しました",
     "failed_to_create": "ワークツリーの作成に失敗しました",
+    "fetch_failed_cached": "リモートから取得できなかったため、キャッシュ済みのリモートブランチを表示しています。{{error}}",
+    "project_default_fallback": "プロジェクトの既定：{{ref}}（{{reason}}）",
+    "fallback_reason": {
+      "no_remote": "既定ブランチを取得できるリモートがありません。",
+      "remote_no_default": "{{remote}}から既定ブランチを取得できていません。",
+      "using_local": "{{reason}}ローカルの{{branch}}を使用します。",
+      "using_current": "{{reason}}ローカルに main または master がないため、現在のブランチを使用します。",
+      "current_no_commits": "{{reason}}現在のブランチにコミットがありません。"
+    },
     "validation": {
       "too_long": "名前は64文字以内にしてください。",
       "starts_with_slash": "名前の先頭に「/」は使用できません。",

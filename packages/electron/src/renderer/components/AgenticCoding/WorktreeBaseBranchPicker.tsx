@@ -13,6 +13,13 @@
  * losing the user's input. Buttons disable and the primary action
  * shows a spinner while the request is in flight.
  *
+ * The base pre-selects the project's default (`worktree:resolve-default-base`:
+ * the remote default branch unless Project Settings > Worktrees says
+ * otherwise) and is labeled "(project default)". When the background fetch
+ * finishes, the default is resolved again and re-selected, but only if the
+ * user has not picked a branch themselves. A failed fetch shows a note
+ * instead of failing silently.
+ *
  * Any background work (initial branch load, `git:fetch` + remote
  * refresh) is tied to a per-open lifecycle: closing the modal
  * (cancel, ESC, overlay click, successful creation) marks it
@@ -22,6 +29,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '@nimbalyst/i18n/react';
+import { localizeWorktreeFallbackReason } from './worktreeFallbackReason';
 import { MaterialSymbol } from '@nimbalyst/runtime/ui/icons/MaterialSymbol';
 
 interface WorktreeBaseBranchPickerProps {
@@ -32,6 +40,12 @@ interface WorktreeBaseBranchPickerProps {
    * branches would offer bases that do not exist in the repo being branched.
    */
   repoPath: string;
+  /**
+   * Workspace that owns the project setting for the default base. Separate
+   * from `repoPath`: in a multi-root workspace the source repo is an attached
+   * folder, but the setting belongs to the workspace.
+   */
+  workspacePath: string;
   initialName?: string;
   onCreate: (options: { baseBranch: string; name?: string }) => Promise<void>;
   onCancel: () => void;
@@ -59,6 +73,39 @@ function partition(branches: string[], current: string): BranchSections {
   local.sort();
   remote.sort();
   return { local, remote, current };
+}
+
+interface ResolvedDefaultBase {
+  /** Fully qualified ref (`refs/remotes/origin/main`) or a SHA. */
+  ref: string;
+  /** Short form, as listed in the branch sections (`origin/main`, `main`, a SHA). */
+  displayRef: string;
+  source: 'project-setting' | 'remote-default' | 'current-branch' | 'fallback';
+  fallbackReason?: string;
+}
+
+async function resolveDefaultBase(workspacePath: string, repoPath: string): Promise<ResolvedDefaultBase | null> {
+  if (!window.electronAPI) return null;
+  try {
+    const result = (await window.electronAPI.invoke('worktree:resolve-default-base', workspacePath, repoPath)) as
+      | { success: true; resolved: ResolvedDefaultBase }
+      | { success: false; error?: string }
+      | undefined;
+    return result?.success ? result.resolved : null;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('[WorktreeBaseBranchPicker] resolve-default-base failed', error);
+    return null;
+  }
+}
+
+/** The project default when there is one, otherwise the old current/first-local choice. */
+function pickDefaultBranch(sections: BranchSections, defaultRef: string | null): string {
+  // A default outside the lists (a detached-HEAD SHA, a tag) gets its own
+  // selectable row, so it is still the right pick.
+  if (defaultRef) return defaultRef;
+  if (sections.current && sections.local.includes(sections.current)) return sections.current;
+  return sections.local[0] ?? '';
 }
 
 async function fetchBranches(repoPath: string): Promise<BranchSections> {
@@ -129,6 +176,7 @@ function validateName(name: string): NameValidationKey | null {
 export function WorktreeBaseBranchPicker({
   isOpen,
   repoPath,
+  workspacePath,
   initialName,
   onCreate,
   onCancel,
@@ -143,6 +191,14 @@ export function WorktreeBaseBranchPicker({
   const [name, setName] = useState(initialName ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [defaultBase, setDefaultBase] = useState<ResolvedDefaultBase | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  // Set once the user picks a branch; after that, a late default never
+  // overrides their choice.
+  const userChoseBranchRef = useRef(false);
+  // Set when the post-fetch refresh has been applied. The initial load can
+  // still be in flight then, and its older list and default must not win.
+  const refreshAppliedRef = useRef(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Lifecycle flag shared across the open session. Set to false on
@@ -169,7 +225,23 @@ export function WorktreeBaseBranchPicker({
     setName(initialName ?? '');
     setIsSubmitting(false);
     setSubmitError(null);
+    setDefaultBase(null);
+    setFetchError(null);
+    userChoseBranchRef.current = false;
+    refreshAppliedRef.current = false;
   }, [initialName, isOpen]);
+
+  const chooseBranch = useCallback((branch: string) => {
+    userChoseBranchRef.current = true;
+    setSelectedBranch(branch);
+  }, []);
+
+  // Follow the project default until the user picks something.
+  useEffect(() => {
+    if (!isOpen || userChoseBranchRef.current) return;
+    const pick = pickDefaultBranch(sections, defaultBase?.displayRef || null);
+    if (pick) setSelectedBranch(pick);
+  }, [isOpen, sections, defaultBase]);
 
   // Load branches + background fetch.
   useEffect(() => {
@@ -177,19 +249,23 @@ export function WorktreeBaseBranchPicker({
 
     const loadInitial = async () => {
       try {
-        const initial = await fetchBranches(repoPath);
+        // Resolve the default alongside the list so the first paint already
+        // selects it; the selection effect above does the picking.
+        const [initial, resolved] = await Promise.all([
+          fetchBranches(repoPath),
+          resolveDefaultBase(workspacePath, repoPath),
+        ]);
         if (!aliveRef.current) return;
-        setSections(initial);
-        // Pre-select current branch as a sensible default.
-        if (initial.current && initial.local.includes(initial.current)) {
-          setSelectedBranch(initial.current);
-        } else if (initial.local[0]) {
-          setSelectedBranch(initial.local[0]);
+        if (!refreshAppliedRef.current) {
+          setDefaultBase(resolved);
+          setSections(initial);
         }
         setIsLoading(false);
       } catch (error) {
         if (!aliveRef.current) return;
-        setLoadError(error instanceof Error ? error.message : t('worktree_picker.failed_to_load'));
+        // Empty marks a fallback message translated at render time, so locale
+        // changes do not restart/cancel this background work.
+        setLoadError(error instanceof Error ? error.message : '');
         setIsLoading(false);
       }
     };
@@ -198,14 +274,25 @@ export function WorktreeBaseBranchPicker({
       if (!window.electronAPI) return;
       setIsRefreshingRemotes(true);
       try {
-        await window.electronAPI.invoke('git:fetch', repoPath);
+        const fetched = (await window.electronAPI.invoke('git:fetch', repoPath)) as
+          | { success: boolean; error?: string }
+          | undefined;
         if (!aliveRef.current) return;
-        const refreshed = await fetchBranches(repoPath);
+        if (fetched && !fetched.success) setFetchError(fetched.error || '');
+        // Re-resolve: a configured remote ref may only exist after the fetch.
+        const [refreshed, resolved] = await Promise.all([
+          fetchBranches(repoPath),
+          resolveDefaultBase(workspacePath, repoPath),
+        ]);
         if (!aliveRef.current) return;
+        refreshAppliedRef.current = true;
+        if (resolved) setDefaultBase(resolved);
         setSections((prev) => ({ ...refreshed, current: refreshed.current || prev.current }));
+        setIsLoading(false);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('[WorktreeBaseBranchPicker] git:fetch failed', error);
+        if (aliveRef.current) setFetchError(error instanceof Error ? error.message : String(error));
       } finally {
         if (aliveRef.current) setIsRefreshingRemotes(false);
       }
@@ -217,7 +304,7 @@ export function WorktreeBaseBranchPicker({
     return () => {
       aliveRef.current = false;
     };
-  }, [isOpen, repoPath, t]);
+  }, [isOpen, repoPath, workspacePath]);
 
   // Focus name input when modal opens (after initial load completes).
   useEffect(() => {
@@ -271,15 +358,20 @@ export function WorktreeBaseBranchPicker({
   // preview line names the base branch, so a hidden selection stays visible
   // there instead of being pinned into a list it no longer matches.
   const query = branchQuery.trim().toLowerCase();
+  const defaultRef = defaultBase?.displayRef ?? '';
+  // The resolved default when neither list has it (a detached-HEAD SHA, a
+  // tag); shown as its own section so it stays selectable.
+  const unlistedDefault =
+    defaultRef && !sections.local.includes(defaultRef) && !sections.remote.includes(defaultRef) ? defaultRef : '';
   const visibleSections = useMemo(() => {
-    if (!query) return sections;
-    const matches = (branch: string) => branch.toLowerCase().includes(query);
+    const matches = (branch: string) => !query || branch.toLowerCase().includes(query);
     return {
       ...sections,
       local: sections.local.filter(matches),
       remote: sections.remote.filter(matches),
+      extra: unlistedDefault && matches(unlistedDefault) ? [unlistedDefault] : [],
     };
-  }, [sections, query]);
+  }, [sections, query, unlistedDefault]);
   const canSubmit =
     !isSubmitting && !isLoading && !loadError && Boolean(selectedBranch) && !nameError;
 
@@ -315,8 +407,9 @@ export function WorktreeBaseBranchPicker({
 
   if (!isOpen) return null;
 
-  const hasAnyBranch = sections.local.length > 0 || sections.remote.length > 0;
-  const hasVisibleBranch = visibleSections.local.length > 0 || visibleSections.remote.length > 0;
+  const hasAnyBranch = sections.local.length > 0 || sections.remote.length > 0 || Boolean(unlistedDefault);
+  const hasVisibleBranch =
+    visibleSections.local.length > 0 || visibleSections.remote.length > 0 || visibleSections.extra.length > 0;
   const branchPreview = name.trim()
     ? `worktree/${name.trim()}`
     : `worktree/<${t('worktree_picker.auto_generated')}>`;
@@ -401,6 +494,27 @@ export function WorktreeBaseBranchPicker({
               )}
             </div>
 
+            {fetchError !== null && !isRefreshingRemotes && (
+              <div
+                className="worktree-base-branch-fetch-note text-[11px] text-nim-muted select-text"
+                data-testid="worktree-base-branch-fetch-note"
+              >
+                {t('worktree_picker.fetch_failed_cached', { error: fetchError })}
+              </div>
+            )}
+
+            {defaultBase?.source === 'fallback' && defaultBase.fallbackReason && (
+              <div
+                className="worktree-base-branch-fallback-note text-[11px] text-nim-muted select-text"
+                data-testid="worktree-base-branch-fallback-note"
+              >
+                {t('worktree_picker.project_default_fallback', {
+                  ref: defaultBase.ref,
+                  reason: localizeWorktreeFallbackReason(defaultBase.fallbackReason, t, 'worktree_picker.fallback_reason'),
+                })}
+              </div>
+            )}
+
             {isLoading && (
               <div
                 className="px-3 py-3 text-[12px] text-nim-muted"
@@ -410,15 +524,15 @@ export function WorktreeBaseBranchPicker({
               </div>
             )}
 
-            {!isLoading && loadError && (
-              <div className="px-3 py-3 text-[12px] text-[var(--nim-error)]">{loadError}</div>
+            {!isLoading && loadError !== null && (
+              <div className="px-3 py-3 text-[12px] text-[var(--nim-error)]">{loadError || t('worktree_picker.failed_to_load')}</div>
             )}
 
-            {!isLoading && !loadError && !hasAnyBranch && (
+            {!isLoading && loadError === null && !hasAnyBranch && (
               <div className="px-3 py-3 text-[12px] text-nim-muted">{t('worktree_picker.no_branches')}</div>
             )}
 
-            {!isLoading && !loadError && hasAnyBranch && (
+            {!isLoading && loadError === null && hasAnyBranch && (
               <>
                 <div className="worktree-base-branch-search relative">
                   <MaterialSymbol
@@ -466,15 +580,30 @@ export function WorktreeBaseBranchPicker({
                     role="radiogroup"
                     aria-label={t('worktree_picker.base_branch')}
                   >
+                    {visibleSections.extra.length > 0 && (
+                      <BranchSection
+                        title={t('worktree_picker.project_default')}
+                        branches={visibleSections.extra}
+                        current={visibleSections.current}
+                        projectDefault={defaultRef}
+                        selected={selectedBranch}
+                        onSelect={chooseBranch}
+                        disabled={isSubmitting}
+                        currentLabel={t('worktree_picker.current_branch')}
+                        projectDefaultLabel={t('worktree_picker.project_default')}
+                      />
+                    )}
                     {visibleSections.local.length > 0 && (
                       <BranchSection
                         title={t('worktree_picker.local_branches')}
                         branches={visibleSections.local}
                         current={visibleSections.current}
+                        projectDefault={defaultRef}
                         selected={selectedBranch}
-                        onSelect={setSelectedBranch}
+                        onSelect={chooseBranch}
                         disabled={isSubmitting}
                         currentLabel={t('worktree_picker.current_branch')}
+                        projectDefaultLabel={t('worktree_picker.project_default')}
                       />
                     )}
                     {visibleSections.remote.length > 0 && (
@@ -482,10 +611,12 @@ export function WorktreeBaseBranchPicker({
                         title={t('worktree_picker.remote_branches')}
                         branches={visibleSections.remote}
                         current={visibleSections.current}
+                        projectDefault={defaultRef}
                         selected={selectedBranch}
-                        onSelect={setSelectedBranch}
+                        onSelect={chooseBranch}
                         disabled={isSubmitting}
                         currentLabel={t('worktree_picker.current_branch')}
+                        projectDefaultLabel={t('worktree_picker.project_default')}
                       />
                     )}
                   </div>
@@ -545,13 +676,15 @@ interface BranchSectionProps {
   title: string;
   branches: string[];
   current: string;
+  projectDefault: string;
   selected: string;
   onSelect: (branch: string) => void;
   disabled?: boolean;
   currentLabel: string;
+  projectDefaultLabel: string;
 }
 
-function BranchSection({ title, branches, current, selected, onSelect, disabled, currentLabel }: BranchSectionProps) {
+function BranchSection({ title, branches, current, projectDefault, selected, onSelect, disabled, currentLabel, projectDefaultLabel }: BranchSectionProps) {
   const sectionLabelId = `worktree-branch-section-${title.replace(/\s+/g, '-').toLowerCase()}`;
   return (
     <div className="worktree-base-branch-section" role="group" aria-labelledby={sectionLabelId}>
@@ -581,6 +714,14 @@ function BranchSection({ title, branches, current, selected, onSelect, disabled,
                 disabled={disabled}
               >
                 <span className="flex-1 truncate font-mono text-[12px]">{branch}</span>
+                {branch === projectDefault && (
+                  <span
+                    className="worktree-base-branch-project-default text-[10px] text-nim-muted"
+                    data-testid="worktree-base-branch-project-default"
+                  >
+                    {projectDefaultLabel}
+                  </span>
+                )}
                 {isCurrent && (
                   <span className="text-[10px] text-nim-muted" aria-label={currentLabel}>
                     {currentLabel}

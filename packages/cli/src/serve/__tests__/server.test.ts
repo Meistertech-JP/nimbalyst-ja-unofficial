@@ -38,13 +38,14 @@ async function serve(): Promise<{ root: string; wiki: LocalWiki; server: WikiSer
 }
 
 /** `fetch` will not send a custom Host header; plain http will. */
-function rawStatus(port: number, headers: Record<string, string>, path = '/api/snapshot'): Promise<number> {
+function rawStatus(port: number, headers: Record<string, string>, path = '/api/snapshot', method = 'GET'): Promise<number> {
   return new Promise((resolve, reject) => {
-    const req = request({ host: '127.0.0.1', port, path, headers }, (res) => {
+    const req = request({ host: '127.0.0.1', port, path, method, headers }, (res) => {
       res.resume();
       resolve(res.statusCode ?? 0);
     });
     req.on('error', reject);
+    req.setTimeout(5000, () => req.destroy(new Error('Local HTTP fixture timed out')));
     req.end();
   });
 }
@@ -156,7 +157,15 @@ describe('nim wiki serve', () => {
 
     // A cross-site form can only send simple content types; those never reach the wiki.
     expect((await upload('x.txt', png, 'text/plain')).status).toBe(415);
-    expect((await upload('big.bin', new Uint8Array(25 * 1024 * 1024 + 1))).status).toBe(413);
+    // Reject the declared size before receiving a body. A huge native fetch
+    // buffer can block Windows loopback before Node even receives the request.
+    // http.test.ts independently covers overflow while consuming a streamed body.
+    expect(await rawStatus(server.port, {
+      ...bearer,
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(25 * 1024 * 1024 + 1),
+      Connection: 'close',
+    }, `/api/pages/${id}/attachments?name=big.bin`, 'POST')).toBe(413);
 
     const file = (link: string) => fetch(`${server.origin}/api/pages/${id}/file?path=${encodeURIComponent(link)}`, { headers: bearer });
     const served = await file('Q3 Plan/.assets/shot one.png');

@@ -4,6 +4,7 @@ import {
   buildSessionTree,
   MAX_TREE_DEPTH,
   mergedTreeHeader,
+  rendersAsSessionTree,
   sessionMoveError,
   sessionTreeRootId,
   treeIndent,
@@ -35,6 +36,12 @@ describe('session tree projection', () => {
       row('child', 'wrapper'),
     ]);
     expect(mergedTreeHeader(wrapper).session.id).toBe('child');
+    // A workstream the user made keeps its row with one session or none.
+    for (const children of [[row('only', 'made')], []]) {
+      const [made] = buildSessionTree([row('made', null, { sessionType: 'workstream', userWorkstream: true }), ...children]);
+      expect(mergedTreeHeader(made)).toBe(made);
+      expect(visibleSessionTreeIds([made.session, ...children], () => true)).toEqual(['made', ...children.map((c) => c.id)]);
+    }
     const [ordinary] = buildSessionTree([row('root'), row('child', 'root')]);
     expect(mergedTreeHeader(ordinary)).toBe(ordinary);
     const roots = buildSessionTree([
@@ -45,6 +52,11 @@ describe('session tree projection', () => {
     ]);
     expect(roots.flatMap((n) => n.ids).sort()).toEqual(['a', 'b', 'foreign', 'orphan']);
     expect(treeIndent(8)).toEqual({ level: 3, rail: true });
+  });
+  it('renders an empty workstream container through the tree path, not as a plain session', () => {
+    expect(rendersAsSessionTree({ sessionType: 'workstream', childCount: 0 })).toBe(true);
+    expect(rendersAsSessionTree({ sessionType: 'session', childCount: 2 })).toBe(true);
+    expect(rendersAsSessionTree({ sessionType: 'session', childCount: 0 })).toBe(false);
   });
   it('range selection follows rendered sibling order and excludes collapsed descendants and merged wrappers', () => {
     const rows = [

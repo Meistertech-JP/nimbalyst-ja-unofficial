@@ -6,6 +6,10 @@
 
 v0.82.8-ja.1は、本家v0.82.8（`ab9da8f121e4e6fddebc523ced671863e8892ff6`）をベースとするWindows x64向けの通常正式リリースです。[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から、未署名NSIS、ポータブルZIP、対応ソースZIPと `SHA256SUMS.txt` を取得できます。公開品質判定は **GO WITH KNOWN LIMITATIONS** です。[リリースノート](../RELEASE_NOTES_v0.82.8-ja.1.md)と[既知制限](KNOWN_LIMITATIONS_v0.82.8-ja.1.md)を確認してください。[旧版v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)等のRelease・配布物・検証履歴は保持しています。
 
+## 次期版候補
+
+この開発ブランチのv0.84.0-ja.1は未公開候補です。本家v0.84.0はPrereleaseであり、現在の公開版v0.82.8-ja.1と混同しないでください。[候補の変更内容](../RELEASE_NOTES_v0.84.0-ja.1.md)と[既知制限](KNOWN_LIMITATIONS_v0.84.0-ja.1.md)を参照してください。候補のインストール・更新・認証検証は完了していません。既存データのバックアップを保持し、別バージョンのチェックサムを候補の検証に使用しないでください。
+
 ## 未署名と取得元の確認
 
 配布するアプリとインストーラーは未署名です。Windowsが証明書で確認する発行元はありません。設定やファイル情報の「発行元」文字列は、電子署名による本人性の証明ではありません。同梱される第三者プログラムに署名があっても、本版全体やインストーラーの署名にはなりません。
@@ -89,6 +93,10 @@ This guide covers an unsigned Windows x64 build. It is not an official product o
 ### Current availability
 
 v0.82.8-ja.1 is a regular Windows x64 release based on upstream v0.82.8 (`ab9da8f121e4e6fddebc523ced671863e8892ff6`). Download the unsigned NSIS installer, portable ZIP, matching source ZIP and `SHA256SUMS.txt` from the [versioned release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1). The publication decision is **GO WITH KNOWN LIMITATIONS**. See the [release notes](../RELEASE_NOTES_v0.82.8-ja.1.md) and [known limitations](KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english). Earlier releases, including [v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1), their assets and verification history are retained.
+
+### Next-version candidate
+
+This development branch's v0.84.0-ja.1 is unpublished. Upstream v0.84.0 is a prerelease; do not confuse it with the published v0.82.8-ja.1. Read the [candidate changes](../RELEASE_NOTES_v0.84.0-ja.1.en.md) and [limitations](KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english). Candidate installation, update and authentication verification is not yet complete. Retain backups and do not use another version's checksum to verify candidate files.
 
 ### Unsigned files and provenance
 

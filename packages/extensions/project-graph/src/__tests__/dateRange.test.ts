@@ -8,6 +8,16 @@ import { fitPxPerDay, keepMostRecentRows } from '../components/TimelineView';
 const HOUR = 60 * 60 * 1000;
 
 describe('timeline date ranges', () => {
+  it.each([30, 3])('uses the selected locale for day/month scales at %s pixels per day', pxPerDay => {
+    const start = new Date(2026, 7, 1).getTime();
+    const end = new Date(2026, 11, 1).getTime();
+    const english = buildRulerTicks(start, end, pxPerDay, 'en-US');
+    const japanese = buildRulerTicks(start, end, pxPerDay, 'ja-JP');
+    expect(english[0].label).toContain('Aug');
+    expect(japanese[0].label).toContain('8月');
+    expect(japanese.map(({ ms, x, major }) => ({ ms, x, major })))
+      .toEqual(english.map(({ ms, x, major }) => ({ ms, x, major })));
+  });
   it('turns date inputs into an inclusive local-day range', () => {
     const range = dateRangeFromInputs('2026-08-01', '2026-08-02');
 
@@ -55,7 +65,7 @@ describe('timeline date ranges', () => {
 
   it('labels a 24-hour ruler in hours, marking midnight with the date', () => {
     const start = new Date(2026, 7, 1, 12, 30, 0).getTime();
-    const ticks = buildRulerTicks(start, start + 24 * HOUR, fitPxPerDay(24 * HOUR, 1400));
+    const ticks = buildRulerTicks(start, start + 24 * HOUR, fitPxPerDay(24 * HOUR, 1400), 'en-US');
 
     expect(ticks.length).toBeGreaterThanOrEqual(8);
     expect(ticks.every(t => t.x >= 0)).toBe(true);

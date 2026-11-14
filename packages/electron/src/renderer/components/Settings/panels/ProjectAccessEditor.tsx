@@ -60,7 +60,12 @@ export function ProjectAccessEditor({ orgId, projectId }: { orgId: string; proje
                     surface: 'desktop',
                     action: role ? 'granted' : 'revoked',
                     callerRole: normalizeTeamAnalyticsCallerRole(callerRole),
-                    targetRole: role === 'project-admin' ? 'admin' : role === 'project-viewer' ? 'viewer' : 'member',
+                    // The analytics contract has no commenter value yet; report it
+                    // as unknown rather than miscount it as a member or viewer.
+                    targetRole: role === 'project-admin' ? 'admin'
+                      : role === 'project-viewer' ? 'viewer'
+                      : role === 'project-commenter' ? 'unknown'
+                      : 'member',
                   });
                   return refresh();
                 }).catch((error) => {
@@ -76,6 +81,7 @@ export function ProjectAccessEditor({ orgId, projectId }: { orgId: string; proje
             >
               <option value="">{t('organization_ui.no_project_access')}</option>
               <option value="project-viewer">{t('organization_ui.role_viewer')}</option>
+              <option value="project-commenter">{t('organization_ui.project_commenter')}</option>
               <option value="project-editor">{t('organization_ui.project_editor')}</option>
               <option value="project-admin">{t('organization_ui.project_admin')}</option>
             </select>

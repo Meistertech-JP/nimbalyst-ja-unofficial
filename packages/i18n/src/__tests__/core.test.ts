@@ -329,7 +329,7 @@ describe('UI language preference', () => {
     expect(resources.ja.aichat.plan_approval.deferred).toBe('新しいセッションに引き継ぎ');
     expect(resources.en.settings.agent_features.claude_in_chrome_description).toContain('Claude in Chrome');
     expect(resources.ja.settings.agent_features.claude_in_chrome_description).toContain('次のメッセージから有効');
-    expect(totalKeys).toBe(15401);
+    expect(totalKeys).toBe(15557);
   });
 
   it('contains localized browser sign-in results and callback refusals', async () => {

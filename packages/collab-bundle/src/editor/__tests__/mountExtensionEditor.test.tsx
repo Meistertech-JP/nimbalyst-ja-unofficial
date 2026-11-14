@@ -240,6 +240,28 @@ describe('the comments service the mount puts on the collaboration context', () 
     expect(seen).toEqual([true]);
     expect(comments.getCapabilities().comment).toBe(true);
   });
+
+  it('notifies an extension editor when refreshed host access changes body editability', async () => {
+    let mayEditBody = true;
+    const { handle, observed } = await mount({
+      comments: { ...SEAM, canEditBody: () => mayEditBody },
+    });
+    const readOnlyChanges: boolean[] = [];
+    observed.host!.onReadOnlyChanged?.((readOnly) => readOnlyChanges.push(readOnly));
+
+    expect(handle.getState().readOnly).toBe(false);
+    mayEditBody = false;
+    await act(async () => { handle.refreshCommentAccess(); });
+
+    expect(handle.getState().readOnly).toBe(true);
+    expect(readOnlyChanges).toEqual([true]);
+
+    mayEditBody = true;
+    await act(async () => { handle.refreshCommentAccess(); });
+
+    expect(handle.getState().readOnly).toBe(false);
+    expect(readOnlyChanges).toEqual([true, false]);
+  });
 });
 
 /**

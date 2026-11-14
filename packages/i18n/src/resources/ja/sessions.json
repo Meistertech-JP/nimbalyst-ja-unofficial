@@ -43,9 +43,28 @@
   "search_filter_tag": "セッションを検索またはタグで絞り込み",
   "move_picker": {
     "title": "セッションの移動先を選択",
+    "workstreams_title": "ワークストリームへセッションを移動",
     "search_label": "親セッションを検索",
+    "search_workstreams_label": "ワークストリームを検索",
+    "search_workstreams_placeholder": "ワークストリームを検索…",
     "available_parents": "移動可能な親セッション",
-    "no_matching_parents": "一致する親セッションがありません"
+    "available_workstreams": "移動可能なワークストリーム",
+    "no_matching_parents": "一致する親セッションがありません",
+    "no_matching_workstreams": "一致するワークストリームがありません",
+    "new_workstream": "新しいワークストリーム…",
+    "new_workstream_named": "新しいワークストリーム「{{name}}」"
+  },
+  "workstream_notifications": {
+    "create_failed_title": "ワークストリームを作成できませんでした",
+    "create_failed_message": "ワークストリームを作成できませんでした。もう一度お試しください。",
+    "none_moved_title": "セッションを移動できませんでした",
+    "none_moved_one_message": "「{{name}}」を作成しましたが、セッションを移動できなかったため空です。",
+    "none_moved_other_message": "「{{name}}」を作成しましたが、{{count}}件のセッションを移動できなかったため空です。",
+    "some_not_moved_title": "一部のセッションを移動できませんでした",
+    "some_not_moved_message": "{{total}}件中{{moved}}件を「{{name}}」に移動しました。{{failed}}件を移動できませんでした。",
+    "moved_title": "セッションを移動しました",
+    "moved_one_message": "セッションを「{{name}}」に移動しました",
+    "moved_other_message": "{{count}}件のセッションを「{{name}}」に移動しました"
   },
   "move": {
     "validation": {
@@ -66,9 +85,18 @@
       "rejected": "移動が拒否されました。リストを更新して再試行してください。",
       "success_title": "セッションを移動しました",
       "under": "「{{name}}」の下へ移動しました",
-      "top_level": "最上位へ移動しました"
+      "into": "「{{name}}」へ移動しました",
+      "top_level": "最上位へ移動しました",
+      "moved_sessions_one": "{{destination}}へ{{count}}件のセッションを移動しました",
+      "moved_sessions_other": "{{destination}}へ{{count}}件のセッションを移動しました",
+      "destination_under": "「{{name}}」の下",
+      "destination_into": "「{{name}}」",
+      "destination_top_level": "最上位",
+      "skipped": "（{{count}}件は移動できませんでした）",
+      "cannot_move_sessions": "セッションを移動できません",
+      "none_moved": "選択したセッションはどれも移動先に移動できません。"
     },
-    "hint": { "under": "「{{name}}」の下へ" },
+    "hint": { "under": "「{{name}}」の下へ", "into": "「{{name}}」へ" },
     "session": "セッション",
     "undo": "元に戻す"
   },

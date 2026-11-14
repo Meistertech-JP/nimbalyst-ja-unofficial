@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Prepare the v0.84.0-ja.1 candidate with upstream v0.83.0/v0.84.0 changes and Japanese UI updates; upstream v0.84.0 is a prerelease.
+
 ## [0.82.8-ja.1]
 
 - Integrate upstream v0.82.8 updates and extend Japanese UI resources.
@@ -75,6 +77,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented unsigned local packages and remaining Windows, authentication, and dynamic-translation verification limits in both languages.
 - Some unnamed collaborators may still appear as “Teammate”. Full-suite test failures remain under review.
 - See [the bilingual preview notes](RELEASE_NOTES_v0.81.7-ja.1.md) for limitations and distribution details.
+
+## [0.84.0] - 2026-11-14
+
+
+### Added
+<!-- New features go here -->
+- Switch branches from the Git panel, including remote-only branches and new branches.
+- Workstreams: a named folder in the session list that groups peer sessions.
+- `nim wiki publish` copies a local wiki into a team project for review, with a Commenter role (requires the updated sync server).
+
+### Changed
+<!-- Changes to existing functionality go here -->
+- Commit proposals can name a folder, which expands to its changed files for review.
+- New worktrees start from the remote's default branch instead of the main checkout's branch.
+- The open menu bar island can be resized by dragging its edges.
+- Daily tool-output cleanup now also replaces aged images and drops the duplicate result copy.
+- Team guests see only the projects they are granted (requires the updated sync server).
+
+### Fixed
+<!-- Bug fixes go here -->
+- "Create Branch..." in the Git panel's commit menu now opens a name form.
+- Files-mode chat "Context:" label clears when the file's tab is closed.
+- Moving a session under another no longer changes its manager unless it leaves the manager's tree.
+- SQLite backups keep rotating after the database shrinks to under half its size.
+- Tool-output cleanup no longer skips recent rows that age into the window later.
+- Agent edits next to a comment on part of bold or inline code no longer write broken markdown.
+
+### Removed
+<!-- Removed features go here -->
 
 ## [0.83.0] - 2026-11-09
 

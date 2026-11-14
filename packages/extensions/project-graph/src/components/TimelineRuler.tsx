@@ -9,6 +9,8 @@ export interface TimelineRulerProps {
   pxPerDay: number;
   /** Width of the content area in px (= span-in-days * pxPerDay). */
   contentWidth: number;
+  /** App-selected language; omitted callers retain system-locale formatting. */
+  locale?: string;
 }
 
 export interface Tick {
@@ -38,21 +40,21 @@ function startOfDay(ms: number): number {
   return d.getTime();
 }
 
-function fmtDay(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+function fmtDay(ms: number, locale?: string): string {
+  return new Date(ms).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
-function fmtHour(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric' });
+function fmtHour(ms: number, locale?: string): string {
+  return new Date(ms).toLocaleTimeString(locale, { hour: 'numeric' });
 }
-function fmtMonth(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, { month: 'short' });
+function fmtMonth(ms: number, locale?: string): string {
+  return new Date(ms).toLocaleDateString(locale, { month: 'short' });
 }
 
 /**
  * Ruler ticks for `[rangeMin, rangeMax]` at the given zoom. Hour ticks label
  * midnight with the date (as a major tick) so a 24-hour range stays anchored.
  */
-export function buildRulerTicks(rangeMin: number, rangeMax: number, pxPerDay: number): Tick[] {
+export function buildRulerTicks(rangeMin: number, rangeMax: number, pxPerDay: number, locale?: string): Tick[] {
   const span = rangeMax - rangeMin;
   if (span <= 0 || !Number.isFinite(span)) return [];
   const x = (ms: number) => ((ms - rangeMin) / DAY) * pxPerDay;
@@ -67,7 +69,7 @@ export function buildRulerTicks(rangeMin: number, rangeMax: number, pxPerDay: nu
     while (t < rangeMin) t += step;
     for (; t <= rangeMax; t += step) {
       const isMidnight = new Date(t).getHours() === 0;
-      out.push({ ms: t, x: x(t), label: isMidnight ? fmtDay(t) : fmtHour(t), major: isMidnight });
+      out.push({ ms: t, x: x(t), label: isMidnight ? fmtDay(t, locale) : fmtHour(t, locale), major: isMidnight });
       if (out.length > 400) break;
     }
   } else if (unit === 'day') {
@@ -76,7 +78,7 @@ export function buildRulerTicks(rangeMin: number, rangeMax: number, pxPerDay: nu
     for (; t <= rangeMax + step; t += step) {
       const year = new Date(t).getFullYear();
       const major = new Date(t).getDate() === 1;
-      const label = year !== lastYear ? `${fmtDay(t)} ${String(year).slice(2)}` : fmtDay(t);
+      const label = year !== lastYear ? `${fmtDay(t, locale)} ${String(year).slice(2)}` : fmtDay(t, locale);
       lastYear = year;
       out.push({ ms: t, x: x(t), label, major });
       if (out.length > 400) break;
@@ -88,7 +90,7 @@ export function buildRulerTicks(rangeMin: number, rangeMax: number, pxPerDay: nu
       const t = d.getTime();
       const year = d.getFullYear();
       const major = d.getMonth() === 0;
-      const label = year !== lastYear ? `${fmtMonth(t)} ${String(year).slice(2)}` : fmtMonth(t);
+      const label = year !== lastYear ? `${fmtMonth(t, locale)} ${String(year).slice(2)}` : fmtMonth(t, locale);
       lastYear = year;
       out.push({ ms: t, x: x(t), label, major });
       if (out.length > 400) break;
@@ -105,8 +107,8 @@ export function buildRulerTicks(rangeMin: number, rangeMax: number, pxPerDay: nu
   return out;
 }
 
-export function TimelineRuler({ rangeMin, rangeMax, pxPerDay, contentWidth }: TimelineRulerProps) {
-  const ticks = useMemo(() => buildRulerTicks(rangeMin, rangeMax, pxPerDay), [rangeMin, rangeMax, pxPerDay]);
+export function TimelineRuler({ rangeMin, rangeMax, pxPerDay, contentWidth, locale }: TimelineRulerProps) {
+  const ticks = useMemo(() => buildRulerTicks(rangeMin, rangeMax, pxPerDay, locale), [rangeMin, rangeMax, pxPerDay, locale]);
 
   return (
     <div className="pg-tl-ruler" style={{ width: contentWidth }} aria-hidden="true">

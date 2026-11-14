@@ -4,6 +4,10 @@
 
 Each release and tag identifies its source and available distributions.
 
+## v0.84.0-ja.1 (unpublished candidate)
+
+A candidate incorporating upstream v0.83.0/v0.84.0 changes at fixed v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a prerelease; a formal Japanese-edition release has not been decided. Japanese display covers updates such as Workstreams, Git branch switching, Wiki publishing and retention management. Final-source/Windows-artifact correspondence, CI, native verification and independent audit are not yet complete. Published distributions are described in the previous-version entries below.
+
 ## v0.82.8-ja.1
 
 Based on fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6`, this edition integrates changes to multiple projects and windows, file operations, sessions and question handling. New UI strings are connected to English and Japanese resources; static consistency was checked for 15,401 keys in each of 27 namespaces. Real Dictation behavior and live server connections remain unverified. See [Testing and Verification](Testing-and-Verification-English) for authentication and upgrade coverage.

@@ -14,16 +14,24 @@ import {
   useRole,
 } from '@floating-ui/react';
 import { sessionRegistryAtom } from '../../store/atoms/sessions';
-import { sessionMoveError } from './sessionTreeModel';
+import { isWorkstreamContainer, sessionMoveError } from './sessionTreeModel';
+
+const NEW_WORKSTREAM = '\0new-workstream';
 
 export function SessionMovePicker({
   sessionId,
   onMove,
   onClose,
+  mode = 'parent',
+  onCreateWorkstream,
 }: {
   sessionId: string;
   onMove: (parentId: string) => Promise<boolean>;
   onClose: () => void;
+  /** `workstreams` lists only workstream containers, for "Move to workstream...". */
+  mode?: 'parent' | 'workstreams';
+  /** Workstream mode: create a workstream (named by the search text, if any) and move into it. */
+  onCreateWorkstream?: (title: string) => Promise<boolean>;
 }) {
   const { t } = useTranslation('sessions');
   const { t: tCommon } = useTranslation('common');
@@ -31,17 +39,25 @@ export function SessionMovePicker({
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
   const [pending, setPending] = useState(false);
-  const candidates = useMemo(
-    () =>
-      [...registry.values()].filter(
-        (row) =>
-          !row.isArchived &&
-          row.id !== registry.get(sessionId)?.parentSessionId &&
-          !sessionMoveError(registry, sessionId, row.id) &&
-          row.title.toLowerCase().includes(query.toLowerCase())
-      ),
-    [registry, sessionId, query]
-  );
+  const workstreams = mode === 'workstreams';
+  const candidates = useMemo(() => {
+    const rows: { id: string; title: string }[] = [...registry.values()].filter(
+      (row) =>
+        !row.isArchived &&
+        (!workstreams || isWorkstreamContainer(row)) &&
+        row.id !== registry.get(sessionId)?.parentSessionId &&
+        !sessionMoveError(registry, sessionId, row.id) &&
+        row.title.toLowerCase().includes(query.toLowerCase())
+    );
+    return workstreams && onCreateWorkstream
+      ? [{
+          id: NEW_WORKSTREAM,
+          title: query.trim()
+            ? t('move_picker.new_workstream_named', { name: query.trim() })
+            : t('move_picker.new_workstream'),
+        }, ...rows]
+      : rows;
+  }, [registry, sessionId, query, workstreams, onCreateWorkstream, t]);
   const { refs, context, floatingStyles } = useFloating({
     elements: { reference: document.getElementById(`session-list-item-${sessionId}`) },
     placement: 'right-start',
@@ -56,7 +72,8 @@ export function SessionMovePicker({
   const choose = async (id: string) => {
     setPending(true);
     try {
-      if (await onMove(id)) onClose();
+      const done = id === NEW_WORKSTREAM ? await onCreateWorkstream!(query.trim()) : await onMove(id);
+      if (done) onClose();
     } finally {
       setPending(false);
     }
@@ -71,13 +88,13 @@ export function SessionMovePicker({
             onClick: (e: React.MouseEvent) => e.stopPropagation(),
             onKeyDown: (e: React.KeyboardEvent) => e.stopPropagation(),
           })}
-          aria-label={t('move_picker.title')}
+          aria-label={workstreams ? t('move_picker.workstreams_title') : t('move_picker.title')}
           className="session-move-picker z-[2000] w-96 max-w-[90vw] rounded-lg border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] p-3 shadow-xl"
         >
           <input
             autoFocus
-            aria-label={t('move_picker.search_label')}
-            placeholder={t('search_placeholder')}
+            aria-label={workstreams ? t('move_picker.search_workstreams_label') : t('move_picker.search_label')}
+            placeholder={workstreams ? t('move_picker.search_workstreams_placeholder') : t('search_placeholder')}
             value={query}
             disabled={pending}
             onChange={(e) => {
@@ -103,7 +120,7 @@ export function SessionMovePicker({
           <div
             id="session-move-options"
             role="listbox"
-            aria-label={t('move_picker.available_parents')}
+            aria-label={workstreams ? t('move_picker.available_workstreams') : t('move_picker.available_parents')}
             className="session-move-picker-results max-h-72 overflow-auto mt-2"
           >
             {candidates.map((row, i) => (
@@ -118,11 +135,11 @@ export function SessionMovePicker({
                   i === index ? 'bg-[var(--nim-bg-selected)]' : ''
                 }`}
               >
-                {row.title || t('untitled')}
+                {row.title || t(workstreams ? 'history.untitled_workstream' : 'history.untitled_session')}
               </button>
             ))}
             {!candidates.length && (
-              <p className="p-2 text-[var(--nim-text-muted)]">{t('move_picker.no_matching_parents')}</p>
+              <p className="p-2 text-[var(--nim-text-muted)]">{t(workstreams ? 'move_picker.no_matching_workstreams' : 'move_picker.no_matching_parents')}</p>
             )}
           </div>
           <button onClick={onClose} disabled={pending} className="mt-2 px-2 py-1">

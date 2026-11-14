@@ -7,9 +7,22 @@
 import { build } from 'esbuild';
 import { expect, it } from 'vitest';
 
-// No Node built-ins: this package typechecks without Node types.
-const docsDir = decodeURIComponent(new URL('..', import.meta.url).pathname);
+// Keep this browser-typed package free of Node ambient types. Esbuild accepts
+// forward slashes, including drive-qualified and UNC absolute paths.
+function fileUrlPath(url: URL): string {
+  const pathname = decodeURIComponent(url.pathname);
+  return url.hostname ? `//${url.hostname}${pathname}` : pathname.replace(/^\/(?=[A-Za-z]:\/)/, '');
+}
+const docsDir = fileUrlPath(new URL('..', import.meta.url));
 const FORBIDDEN = /(\.tsx$|\.css$|node_modules\/(react|react-dom|jotai|jotai-family)\/)/;
+
+it.each([
+  ['file:///tmp/work%20tree/docs/', '/tmp/work tree/docs/'],
+  ['file:///F:/work%20tree/docs/', 'F:/work tree/docs/'],
+  ['file://server/share/work%20tree/docs/', '//server/share/work tree/docs/'],
+])('converts the probe directory URL %s without platform-specific globals', (url, expected) => {
+  expect(fileUrlPath(new URL(url))).toBe(expected);
+});
 
 it('bundles with no React, Jotai or component module in its graph', async () => {
   const result = await build({

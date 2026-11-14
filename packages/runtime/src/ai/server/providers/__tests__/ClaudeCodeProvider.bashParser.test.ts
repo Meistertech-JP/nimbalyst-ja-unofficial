@@ -8,7 +8,8 @@ import { parseBashForFileOps } from '../../permissions/BashCommandAnalyzer';
  */
 
 describe('bashUtils - Bash Parser', () => {
-  const testWorkspace = '/test/workspace';
+  // Containment checks need a native absolute cwd, including its Windows drive.
+  const testWorkspace = path.resolve('/test/workspace');
 
   describe('Output Redirects', () => {
     it('should detect cat > file', () => {
