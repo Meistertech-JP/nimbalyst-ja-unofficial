@@ -38,7 +38,7 @@ Read the current-change and active-session notices before switching. The operati
 
 Ask the agent for a proposal covering the folder's changes. The confirmation view lists its changed files; select folders or individual files, review the diff, then approve. Creating a proposal does not immediately commit.
 
-The proposal is rejected for ignored paths, folders without changes, nested Git repositories, or more than 2,000 expanded files. Files edited only by other sessions are initially unselected. Check the selection and scope yourself.
+The proposal is rejected for ignored folders, folders without changes, nested Git repositories, or more than 2,000 expanded files. Ignored files within an otherwise eligible folder are excluded. Files edited only by other sessions are initially unselected. Check the selection and scope yourself.
 
 ### Edit nested Markdown lists
 
