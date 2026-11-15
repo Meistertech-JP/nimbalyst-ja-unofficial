@@ -10,19 +10,15 @@ This project is not affiliated with, endorsed by, or supported by Nimbalyst, Inc
 
 ## Availability
 
-The latest version, **v0.82.8-ja.1**, is an unsigned Windows x64 edition based on upstream v0.82.8 at `ab9da8f121e4e6fddebc523ced671863e8892ff6`. Download the NSIS installer, portable ZIP, corresponding source ZIP and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1).
+The latest edition, **v0.84.0-ja.1**, is an unofficial, unsigned Windows x64 build based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Download its NSIS installer, Portable ZIP, matching Source ZIP and SHA256SUMS.txt from the [formal release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1). Use that release’s tag for corresponding source. [Previous v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1) and earlier tags, releases and assets are retained.
 
-The source corresponding to these assets is tagged `v0.82.8-ja.1`. Use that release's tag and source ZIP rather than the continuously changing `main` branch. Earlier tags, releases and distributions, including [v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1), are retained. Features and fixes may differ from the latest official release.
+Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
 
-The publication quality decision is **GO WITH KNOWN LIMITATIONS**. This does not mean a completely successful Windows full-suite run or verification of every live integration and display path. Read the [release notes](RELEASE_NOTES_v0.82.8-ja.1.md) and [known limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
-
-## Next-version source
-
-This development branch targets **v0.84.0-ja.1**, based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a prerelease. This unofficial candidate is not yet published and is separate from the released version above. Read the [candidate changes](RELEASE_NOTES_v0.84.0-ja.1.en.md) and [limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english).
+The quality assessment is **GO WITH KNOWN LIMITATIONS**. Read the [release notes](RELEASE_NOTES_v0.84.0-ja.1.en.md) and [known limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english).
 
 ## Japanese interface
 
-Screenshots from the Windows application. Documents and tasks use sample data.
+Windows screenshots from v0.82.4-ja.1 illustrating the interface with sample documents and tasks. Some details differ in the latest edition.
 
 ### Document editing
 
@@ -38,7 +34,7 @@ Screenshots from the Windows application. Documents and tasks use sample data.
 
 ## Changes in this version
 
-This edition incorporates upstream v0.82.8 changes and adds Japanese display for updates including multiple projects, file operations and AI sessions. It retains earlier changes such as the SQLite migration introduced in v0.82.7. The [release notes](RELEASE_NOTES_v0.82.8-ja.1.md) distinguish upstream changes from behavior exercised during verification.
+Integrates upstream v0.83.0 and v0.84.0 changes since v0.82.8: Claude Fable 5.2 selection, batched queue delivery, Git-panel branch switching, Workstreams, folder-scoped commit proposals, nested Markdown list preservation, hidden-entry counts, Wiki publishing, SQLite backups and tool-output retention. Edition-specific changes add Japanese UI text and fix explicit profile boundaries and Windows file/path handling. Integration does not establish live verification of every feature.
 
 **Team recovery requires the updated sync server.** Other editing clients must also support recovery. Production-organization recovery and the complete procedure across independent clients have not been verified. Check server compatibility and the intended recovery target before attempting recovery of an existing organization.
 
@@ -46,7 +42,7 @@ This edition incorporates upstream v0.82.8 changes and adds Japanese display for
 
 Select System, English, or Japanese in display-language settings. This is independent of the agent response language. User documents and external service responses are not automatically translated. Some Tracker names and statuses remain in English.
 
-This development branch's shared resources contain 27 namespaces and 15,557 keys in each language, with zero key or interpolation differences. The sole whitespace-only Japanese value is the intentional formatting separator `common.local_wiki.export.note_separator`, which is also a single space in English. A static source audit found no missing references among 11,523 literal references. It also found 489 dynamic-call candidates; namespace scope could not be statically resolved for 211 references. These are not missing-key counts, but complete runtime verification of dynamic paths is still outstanding. Published v0.82.8-ja.1 contains 15,401 keys per language.
+Shared resources contain 27 namespaces and 15,557 keys in each language, with zero key or interpolation differences. The sole whitespace-only Japanese value is the intentional formatting separator `common.local_wiki.export.note_separator`, which is also a single space in English. A static source audit found no missing references among 11,523 literal references. It also found 489 dynamic-call candidates; namespace scope could not be statically resolved for 211 references. These are not missing-key counts, but complete runtime verification of dynamic paths is still outstanding. Previous v0.82.8-ja.1 contains 15,401 keys per language.
 
 The Windows application ID is `jp.meistertech.nimbalyst.ja.unofficial`; the default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official settings are not moved or deleted. Running alongside the official application is unsupported. This edition does not claim the default `nimbalyst://` handler; authentication uses an instance-specific, nonce-protected localhost callback. Open authentication email on the same Windows PC.
 
@@ -58,9 +54,15 @@ The [verification record](https://github.com/Meistertech-JP/nimbalyst-ja-unoffic
 
 Release assets are an unsigned Windows x64 NSIS installer, portable ZIP, corresponding source ZIP, and SHA256SUMS.txt. Do not disable warnings or protections; check the source, version, and SHA-256. Matching hashes are not publisher signatures or safety guarantees.
 
-An earlier version was observed retaining terminal resources after a shell/CLI exited naturally. In a single-host check of this edition, no child shell was observed three seconds after exit, but that does not establish a general resolution. If resource use grows, save work, quit normally and restart.
+An earlier version was observed retaining terminal resources after a shell/CLI exited naturally. In a single-host check of previous v0.82.8-ja.1, no child shell was observed three seconds after exit, but that does not establish a general resolution. If resource use grows, save work, quit normally and restart.
 
-The UI displayed 5,000 search results, but the large-document CPU issue is not considered resolved. Local Wiki session-start context under heavy load has not been compared. The Windows local full suite did not complete. Linux CI succeeded separately and is distinguished from Windows symlink-fixture setup failures. See the [limitations](docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english).
+The product-verification baseline is `29fdcc216f354cd1031dc9ef36672a5399bd6775` (product input `a7f82db90`, differing by one unit-test file). The Windows full Vitest run completed with 20,182 PASS / 108 FAIL / 37 SKIP and exit 1. All 108 remain unresolved. R22 has failures with the same path and test name for 99 cases, but names do not establish identical causes or harmlessness; neither all-new major regressions nor all-environment-only failures are established. All 39 workspace typechecks and seven existing size limits passed. Linux’s 20,296 PASS / 0 FAIL / 31 SKIP, Android Build SUCCESS (signed job skipped) and iOS 522 PASS / 0 FAIL / 6 SKIP are separate from Windows full-suite success.
+
+Startup, Japanese/English switching, normal shutdown and language retention after restart were observed with final Windows 07d win-unpacked, fully extracted Portable and NSIS products. Fresh NSIS installation and NSIS/Portable upgrades from v0.82.8-ja.1 retained settings, synthetic-document hashes and displayed Tracker data in dedicated environments. This does not guarantee migration of every real profile or database field. Normal NSIS uninstallation retained dedicated user data; Start Menu registration checks were limited to the isolated environment. Downgrades are unverified.
+
+Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
+
+High CPU use with long Markdown remains unresolved. Wiki context under load, general resolution of Windows terminal resource retention, all dynamic translations, DPI settings and external screen readers are not comprehensively verified. Windows symlink fixture EPERM leaves rejection behavior untested on that host. Real microphones, speech-recognition APIs, live sync/collaboration servers, real organizations and old/new server interoperability are unverified. Wiki publishing and team permissions require a compatible server. Unverified areas are not equivalent to confirmed defects or vulnerabilities.
 
 Google sign-in, special recovery paths, server-side session revocation, cross-user NTFS effective access, external screen readers and complete dynamic-translation coverage remain unverified. EPERM during Windows symlink-fixture setup leaves untested behavior; Linux success is recorded separately. See [limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Compatibility-and-Limitations-English).
 

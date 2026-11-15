@@ -2,13 +2,20 @@
 
 # 本家Nimbalystへの追従
 
+## v0.84.0-ja.1
+
+本家v0.82.8以降のv0.83.0・v0.84.0を取り込みました。Claude Fable 5.2選択、キューの一括配送、Gitパネルのブランチ切替、Workstreams、フォルダー単位のコミット提案、Markdownネストリスト保存、ファイルツリー省略件数表示、Wiki公開、SQLiteバックアップ・ツール出力保持処理などを含みます。日本語版では新しいUIの翻訳、明示的な隔離プロファイルの保存先境界、Windowsのファイル・パス処理を修正しました。統合した機能すべての実接続を確認したわけではありません。
+
+[Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)と[検証記録](Testing-and-Verification)を参照してください。以下の旧版基準は過去の追従履歴です。
+
+
 `v0.82.8-ja.1`は、本家の正式タグ `v0.82.8`（固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6`）を取り込み対象としました。本家mainを自動的に追従するものではありません。検証状態は[テストと品質検証](Testing-and-Verification)で以前の版と分けて記録します。
 
 v0.82.7-ja.1の[Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)は、本家v0.82.7の固定コミット[`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とします。前回の公開版v0.82.4-ja.1から本家の変更を取り込みつつ、両履歴と日本語版固有仕様を保持しています。本家の最新mainを自動的に取り込む構成ではありません。
 
 ## 作業の基準を固定する
 
-現在の開発対象v0.84.0-ja.1は、本家タグv0.84.0の固定コミット `dc5a0ef938cf495a0667d797f871d09d0c44246f` を基準とする未公開候補です。本家v0.84.0はPrereleaseで、日本語版の正式公開は未決定です。v0.83.0とv0.84.0の変更を順に取り込み、Workstreams、Git操作、Wiki公開、保持期間管理と日本語表示の互換性を確認しています。後続の本家mainは対象へ含めません。
+固定追従先は本家v0.84.0のコミット `dc5a0ef938cf495a0667d797f871d09d0c44246f`. 本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。 後続の本家mainは取り込んでいません。
 
 公開タグのソース、配布物、ハッシュ、検証記録を保全します。変更のある開発worktreeをreset・stashして流用せず、独立した作業ブランチとworktreeを作ります。作業開始時に対象の本家タグ・タグオブジェクト・参照コミットを照合し、今回の固定基準として記録します。作業中に更新された本家mainへ無断で対象を広げません。
 

@@ -2,8 +2,8 @@
 
 [Home](Home)
 
-- [v0.82.8-ja.1の制限事項](Compatibility-and-Limitations)
-- [v0.82.8-ja.1 ダウンロード](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
+- [v0.84.0-ja.1の制限事項](Compatibility-and-Limitations)
+- [v0.84.0-ja.1 ダウンロード](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)
 
 ### 利用者向け
 
@@ -31,8 +31,8 @@
 
 [Home](Home-English)
 
-- [v0.82.8-ja.1 limitations](Compatibility-and-Limitations-English)
-- [Download v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
+- [v0.84.0-ja.1 limitations](Compatibility-and-Limitations-English)
+- [Download v0.84.0-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)
 
 ### User Guide
 

@@ -2,20 +2,26 @@
 
 # テストと品質検証
 
-## v0.84.0-ja.1（未公開候補）
+## v0.84.0-ja.1
 
-固定対象は本家v0.84.0のPrereleaseタグとコミット `dc5a0ef938cf495a0667d797f871d09d0c44246f` です。候補はR25ブランチのコミット `08242017e3f04d1cc84812d74cd8863c11ff44d5` に対応します。これはローカル候補で、公開main・正式タグ・Release・Wikiには反映していません。
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
 
-- Linux CI [Run 43625305313](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305313): 20,238 PASS／0 FAIL／30 SKIP。2,428 test files PASS、7 SKIP。公開内容、Transcript bundle、39 workspace型検査を含みます。
-- Android [Run 43625305320](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305320): unsigned APK/AAB Build SUCCESS。条件付きSigned Release jobはSKIP。
-- iOS [Run 43625305325](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43625305325): Simulator buildとTranscript bundle確認PASS、Native tests 528実行／0失敗／6 SKIP。
-- 翻訳資源：27 namespace、英日各15,557キー。キー差・補間変数差0。単一スペース1件は英日共通の書式区切りです。静的監査では11,523リテラル参照の欠落0。489動的呼出し候補の全実行確認は未完了で、211参照のnamespace scopeを静的に確定できませんでした。これらは欠落キーの件数ではありません。
-- 39 workspace型検査と7 bundle容量予算はPASS。最終ソースの公開内容検査は9,963ファイルを対象にerrors 0、review 0、broken public-guide links 0。
-- Windows候補03はコミット `08242017...` から通常構成で生成。NSISは484,688,867 bytes（SHA-256 `C62B919CD6B53CC122D0CA11976B3079B582F839B58C9F8FE0DB7C10BC56A51F`）、Portable ZIPは671,428,953 bytes（`D7446F54E4AB93D15D5204734E5C0CFCB51D0B45DF19F4676AA8889C06C97A62`）。Portable 1,915ファイルのSHA照合とCRCはPASS。最終Git tree由来Source ZIP 9,963ファイルのraw blob照合・CRC・物理復元もPASS（SHA-256 `D86ABC7944C1DF2B4D2884A099226F3AB5909AABFA784C29FB0E19AB00DA5C1A`）。候補のNSIS・ZIPは未署名です。
-- 候補03を隔離プロファイルで起動し、日本語のProject Manager/Welcome表示を確認して終了しました。英語切替・再起動後保持は変更前の候補02でのみ確認し、候補03では再実施していません。候補03の本番認証・NSIS新規/更新導入は未実施です。
-- Windows全Vitestの修正前結果は20,026 PASS／183 FAIL／37 SKIPでした。Windowsのdirectory fsync `EPERM` 修正後は資格情報関連16テストとtypecheck/buildを通しましたが、Windows全Vitestは再実行していません。ローカルpre-pushのsymlink fixture 2件も作成時EPERMで未到達です。Linux CI成功とは分けて記録します。
+公開ソースは[対象タグ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/tree/v0.84.0-ja.1)に対応します。公開文書を確定したコミットの通常CI・Android・iOS Run IDと結果、最終配布物のSHA-256は[Release本文](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)に記録します。以下の製品検証基準29の結果と、文書確定後の最終CIは対象を分けて参照してください。
 
-長文Markdownの高CPU問題、動的翻訳の全実行経路、全85 divergent upstream pathの意味的監査、本番認証、実共同編集サーバー／組織、Bedrock・新規有料AI接続、実OS sleep/resume、非前面ブラウザーの全経路、全DPI・外部スクリーンリーダーは未解決またはNOT RUNです。本家v0.84.0がPrereleaseであるため、本結果は正式Release承認ではありません。
+製品検証基準は `29fdcc216f354cd1031dc9ef36672a5399bd6775`（製品入力 `a7f82db90`、差は単体試験1ファイル）です。Windows全Vitestは20,182 PASS／108 FAIL／37 SKIP、exit 1で完走しました。108件は継続未解決です。R22にも同じパス・テスト名の失敗が99件ありますが、同名は原因同一・無害の証明ではなく、全108件を新規の重大回帰とも全環境依存とも断定しません。39 workspace型検査と7容量上限はPASS。Linuxの20,296 PASS／0 FAIL／31 SKIP、Android Build SUCCESS（署名job SKIP）、iOS 522 PASS／0 FAIL／6 SKIPはWindows全成功とは別の結果です。
+
+製品検証基準29の固定CI証拠: [Linux43708311391](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43708311391)、[Android43708311340](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43708311340)、[iOS43708311334](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43708311334)。最終文書コミットのRun IDではありません。
+
+通常Windows製品07dのwin-unpacked・完全展開Portable・NSISで起動、日英切替、正常終了と再起動後の言語保持を確認しました。NSIS新規導入、前版v0.82.8-ja.1からのNSIS/Portable更新では、専用環境の設定・合成文書hash・Tracker表示の保持を確認しました。全実ユーザーデータ・全DBフィールドの移行保証ではありません。NSISの通常アンインストール後も専用ユーザーデータを保持しました。Start Menu登録は隔離した環境での限定確認です。旧版へのダウングレードは未検証です。
+
+最終Windows製品07dの通常win-unpackedと専用プロファイルで、本番メール認証、暗号化認証ファイルの生成、正常終了・再起動後の復元、通常サインアウト、認証ファイル削除、次回起動後の未認証保持を確認しました。NSIS専用プロファイル・別Portableでの新規認証、Google認証、サービス側セッション失効、特殊復旧は未確認です。Node資格情報ファイル試験とは別のElectronアカウント認証の観測です。
+
+共有翻訳資源は27名前空間、英語・日本語各15,557キー、キー差・補間差0です。単一スペース1件は英日共通の書式区切りです。489動的呼出し候補と211 namespace scope未確定は欠落訳・不具合の件数ではありません。全画面・全動的経路・全アクセシビリティ表示の翻訳保証ではなく、一部音声ボタンには英語ラベルが残ります。ユーザー文書やAIの回答・外部応答を自動翻訳しません。
+
+最終配布Windowsは通常07d（製品入力a7）を入力不変性の照合後に再利用しています。NSIS 484,693,329 bytes/SHA-256 `1df7a78d12e4ed1ba3cf17d85b22be2201a25bc5bf9922b2ced9d49dae3e9c66`、Portable 628,480,194 bytes/SHA-256 `2501d5337704bf5fb78a6eeada7860127627d4d69aec828223f6084b50ed4cb5`。Portable全1,915ファイル/CRC、ASAR・Worker・Native ABI・SQLite・PTY・ripgrep・LICENSE/NOTICEを照合しました。最終Source ZIPは文書確定後のタグから別に生成し、Git blob/mode/path/CRC/物理復元を照合します。文書更新後のWindows再ビルドと説明しません。
+
+長文Markdownの高CPU負荷は未解決です。高負荷Wiki文脈処理、Windows端末資源残留の一般的解消、動的翻訳全経路、全DPI・外部スクリーンリーダー条件は確認していません。Windows symlink fixture作成EPERMは拒否処理そのものの未検証範囲を残します。実マイク・実音声認識API、実同期・共同編集サーバー、実組織、旧新サーバー間相互運用は未検証です。Wiki公開・チーム権限等には対応サーバーが必要です。これらの未確認事項を確認済みの不具合・脆弱性と同一視しないでください。
+
 
 ## v0.82.8-ja.1
 

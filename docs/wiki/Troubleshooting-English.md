@@ -2,7 +2,16 @@
 
 # Troubleshooting
 
-This page applies to v0.82.8-ja.1. Possible causes below are starting points for diagnosis, not defects confirmed in every environment.
+## v0.84.0-ja.1
+
+An explicit isolated profile rejects inconsistent persistence paths rather than silently switching profiles. Do not delete or speculatively restore a profile/database; record the version, language and nonsecret error.
+
+Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
+
+High CPU use with long Markdown remains unresolved. Wiki context under load, general resolution of Windows terminal resource retention, all dynamic translations, DPI settings and external screen readers are not comprehensively verified. Windows symlink fixture EPERM leaves rejection behavior untested on that host. Real microphones, speech-recognition APIs, live sync/collaboration servers, real organizations and old/new server interoperability are unverified. Wiki publishing and team permissions require a compatible server. Unverified areas are not equivalent to confirmed defects or vulnerabilities.
+
+
+This page applies to v0.84.0-ja.1. Possible causes below are starting points for diagnosis, not defects confirmed in every environment.
 
 ## Memory increases after a terminal process exits naturally
 

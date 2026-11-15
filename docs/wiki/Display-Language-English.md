@@ -2,6 +2,13 @@
 
 # Display Language
 
+## v0.84.0-ja.1
+
+Japanese/English switching and selected-language retention after normal shutdown and restart were observed with regular Windows 07d win-unpacked, Portable and NSIS products.
+
+Shared resources contain 27 namespaces and 15,557 keys per language, with zero key or interpolation differences. One single-space value is an intentional shared formatting separator. The 489 dynamic-call candidates and 211 unresolved namespace scopes are not counts of missing translations or defects. This is not complete UI, dynamic-path or accessibility coverage; some dictation buttons still have English labels. User documents, AI answers and external responses are not automatically translated.
+
+
 ## v0.82.8-ja.1
 
 Japanese/English switching and persistence after restart were checked in the Windows product. Resources contain 27 namespaces and 15,401 keys per language. This does not cover every screen, dynamic display path, DPI setting or external screen reader.

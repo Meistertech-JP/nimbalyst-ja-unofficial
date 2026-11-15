@@ -2,6 +2,17 @@
 
 # Windows Installation and Updates
 
+## v0.84.0-ja.1
+
+Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+
+Download the [four release assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1) and follow the [Windows guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/docs/WINDOWS_JA_UNOFFICIAL.md#english), matching SHA-256 for the same filename. Extract the complete ZIP payload, not only its EXE; the default profile is not necessarily beside the EXE.
+
+Startup, Japanese/English switching, normal shutdown and language retention after restart were observed with final Windows 07d win-unpacked, fully extracted Portable and NSIS products. Fresh NSIS installation and NSIS/Portable upgrades from v0.82.8-ja.1 retained settings, synthetic-document hashes and displayed Tracker data in dedicated environments. This does not guarantee migration of every real profile or database field. Normal NSIS uninstallation retained dedicated user data; Start Menu registration checks were limited to the isolated environment. Downgrades are unverified.
+
+Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
+
+
 ## v0.82.8-ja.1
 
 Obtain the unsigned Windows x64 installer, portable ZIP, matching source ZIP and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1). Compare each file with the checksums from that release. This unofficial edition is based on upstream v0.82.8. See [verification scope](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English).

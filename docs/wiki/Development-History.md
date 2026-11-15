@@ -2,11 +2,16 @@
 
 # 開発履歴
 
+## v0.84.0-ja.1
+
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+
+本家v0.82.8以降のv0.83.0・v0.84.0を取り込みました。Claude Fable 5.2選択、キューの一括配送、Gitパネルのブランチ切替、Workstreams、フォルダー単位のコミット提案、Markdownネストリスト保存、ファイルツリー省略件数表示、Wiki公開、SQLiteバックアップ・ツール出力保持処理などを含みます。日本語版では新しいUIの翻訳、明示的な隔離プロファイルの保存先境界、Windowsのファイル・パス処理を修正しました。統合した機能すべての実接続を確認したわけではありません。
+
+[正式Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)は未署名Windows x64 NSIS・Portable ZIP・対応Source ZIP・checksumsを提供します。最終07dで日英再起動保持、認証・復元・サインアウト、NSIS新規/前版更新とPortable更新を限定確認しました。Windows全Vitestは20,182 PASS/108 FAIL/37 SKIP、Linux・Android・iOSとは区別します。[検証範囲](Testing-and-Verification)と[制限](Compatibility-and-Limitations)を参照してください。
+
+
 公開版の配布物と対象ソースは、各Releaseとタグで確認できます。
-
-## v0.84.0-ja.1（未公開候補）
-
-本家v0.84.0の固定コミット `dc5a0ef938cf495a0667d797f871d09d0c44246f` に基づき、v0.83.0・v0.84.0の変更を取り込む候補です。本家v0.84.0はPrereleaseであり、日本語版の正式公開は未決定です。Workstreams、Gitのブランチ切替、Wiki公開、保持期間管理などに対応する日本語表示を追加しています。最終ソースとWindows配布物の照合、Linux CI・Android・iOSは確認済みです。修正後のWindows全体テスト、本番認証、候補03の導入・更新、動的翻訳の全経路と全意味差分の監査は未完了です。公開済み配布物は以下の過去版の項目を参照してください。
 
 ## v0.82.8-ja.1
 

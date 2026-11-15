@@ -4,11 +4,11 @@
 
 ## 現在の提供状況
 
-v0.82.8-ja.1は、本家v0.82.8（`ab9da8f121e4e6fddebc523ced671863e8892ff6`）をベースとするWindows x64向けの通常正式リリースです。[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から、未署名NSIS、ポータブルZIP、対応ソースZIPと `SHA256SUMS.txt` を取得できます。公開品質判定は **GO WITH KNOWN LIMITATIONS** です。[リリースノート](../RELEASE_NOTES_v0.82.8-ja.1.md)と[既知制限](KNOWN_LIMITATIONS_v0.82.8-ja.1.md)を確認してください。[旧版v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)等のRelease・配布物・検証履歴は保持しています。
+最新版v0.84.0-ja.1は本家v0.84.0（`dc5a0ef938cf495a0667d797f871d09d0c44246f`）に基づくWindows x64向け通常Releaseです。[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)から未署名Setup EXE、Portable ZIP、対応Source ZIPとSHA256SUMS.txtを取得できます。[リリースノート](../RELEASE_NOTES_v0.84.0-ja.1.md)と[既知制限](KNOWN_LIMITATIONS_v0.84.0-ja.1.md)を確認してください。前版[v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)と旧配布物は保持しています。
 
-## 次期版候補
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
 
-この開発ブランチのv0.84.0-ja.1は未公開候補です。本家v0.84.0はPrereleaseであり、現在の公開版v0.82.8-ja.1と混同しないでください。[候補の変更内容](../RELEASE_NOTES_v0.84.0-ja.1.md)と[既知制限](KNOWN_LIMITATIONS_v0.84.0-ja.1.md)を参照してください。候補03のNSIS・Portable・Source ZIPは生成・照合済みですが、候補03の新規インストール、旧版からの更新、本番認証は未検証です。既存データのバックアップを保持し、別バージョンのチェックサムを候補の検証に使用しないでください。
+品質判定は **GO WITH KNOWN LIMITATIONS** です。Setup EXEは現在のユーザー向けインストーラー、Portable ZIPはインストール不要の全ファイル配置です。いずれも本版専用の既定ユーザーデータを使い、公式版とは別です。
 
 ## 未署名と取得元の確認
 
@@ -58,7 +58,7 @@ ZIPの全内容を新しい書込み可能なディレクトリへ展開し、�
 
 本版の認証フローは、その起動インスタンスのためのnonceを含むlocalhost callbackを使用します。ブラウザでの認証後に `http://127.0.0.1:<port>/auth/callback` へ戻ります。**認証メールはアプリを起動している同じPCで開いてください。** `127.0.0.1` はそのブラウザを実行している端末自身です。スマートフォンでメールを開くとスマートフォン自身へ接続するため、PCのアプリへ認証を返せません。使用済み・期限切れのリンクは、PCのアプリから新しいメールを送ってください。URLを書き換えたり、外部端末へ向けてポートを開放したりする必要はありません。
 
-認証リンクやトークンを共有、転載、診断レポートへ添付しないでください。ログインできない場合に別アプリのURL関連付けやセキュリティ設定を変更することも推奨しません。本版の展開済み製品と専用プロファイルで本番メール認証、暗号化された認証ファイルの生成、再起動後の復元と通常ログアウト後の削除を確認しました。最新の再ログイン後の再起動・ログアウト、およびNSIS専用プロファイルでの認証成功は未確認です。ログアウトはローカル状態の削除であり、サービス側失効を保証しません。Google認証、特殊復旧、他ユーザーの実効アクセス等も未検証です。
+認証リンクやトークンを共有・転載したり診断レポートへ添付したりしないでください。セキュリティ設定や別アプリのURL関連付けの変更を解決策としません。 最終Windows製品07dの通常win-unpackedと専用プロファイルで、本番メール認証、暗号化認証ファイルの生成、正常終了・再起動後の復元、通常サインアウト、認証ファイル削除、次回起動後の未認証保持を確認しました。NSIS専用プロファイル・別Portableでの新規認証、Google認証、サービス側セッション失効、特殊復旧は未確認です。Node資格情報ファイル試験とは別のElectronアカウント認証の観測です。
 
 公式Nimbalystとの同時利用はサポートしません。認証以外の `nimbalyst://` リンクは、現在そのプロトコルを登録しているアプリで開かれる場合があります。
 
@@ -68,9 +68,11 @@ ZIPの全内容を新しい書込み可能なディレクトリへ展開し、�
 
 更新前に作業を保存して本版を終了し、プロジェクト文書をバックアップします。対象Releaseの変更内容と既知の制限を読み、取得元とチェックサムを確認した新しい版を使用します。ZIP版は新しいディレクトリへ展開します。バージョンを戻したときのプロファイル互換性は保証しません。
 
+通常Windows製品07dのwin-unpacked・完全展開Portable・NSISで起動、日英切替、正常終了と再起動後の言語保持を確認しました。NSIS新規導入、前版v0.82.8-ja.1からのNSIS/Portable更新では、専用環境の設定・合成文書hash・Tracker表示の保持を確認しました。全実ユーザーデータ・全DBフィールドの移行保証ではありません。NSISの通常アンインストール後も専用ユーザーデータを保持しました。Start Menu登録は隔離した環境での限定確認です。旧版へのダウングレードは未検証です。
+
 本家v0.82.7ではPGLiteからSQLiteへの自動移行が導入されています。旧版では合成データで移行・再起動とデータ保持を確認しましたが、本版における実ユーザーデータ全量の移行保証ではありません。移行中にアプリを強制終了せず、旧版へのダウングレードを復旧手段として前提にしないでください。
 
-旧版で観測されたshell終了後の資源残留は、本版の単一ホストの確認では改善傾向が見られましたが、一般的な解消は未証明です。増加時は作業を保存して通常終了・再起動してください。長文高CPU、Wiki高負荷時の文脈処理、Windows全体試験の未完走も含め、[詳細な制限事項](KNOWN_LIMITATIONS_v0.82.8-ja.1.md)を参照してください。
+旧版で観測されたshell終了後の資源残留は、本版の単一ホストの確認では改善傾向が見られましたが、一般的な解消は未証明です。増加時は作業を保存して通常終了・再起動してください。長文高CPU、Wiki高負荷時の文脈処理、Windows全体試験の108 FAILも含め、[詳細な制限事項](KNOWN_LIMITATIONS_v0.84.0-ja.1.md)を参照してください。
 
 共有Typed PageやTrackerの一部の機能には対応する同期サーバーが必要です。実サーバー・実組織への接続、旧同期サーバーとの相互運用は未実施です。Bedrockへの実通信、新しいClaude有料セッション、実OSスリープ・復帰、非前面ブラウザーとバックエンド信頼再試行のライブ経路、動的翻訳の全経路、全DPI・スクリーンリーダー条件も網羅確認していません。これらは自動回帰試験や通常製品の限定的な実機観測と区別します。
 
@@ -92,11 +94,11 @@ This guide covers an unsigned Windows x64 build. It is not an official product o
 
 ### Current availability
 
-v0.82.8-ja.1 is a regular Windows x64 release based on upstream v0.82.8 (`ab9da8f121e4e6fddebc523ced671863e8892ff6`). Download the unsigned NSIS installer, portable ZIP, matching source ZIP and `SHA256SUMS.txt` from the [versioned release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1). The publication decision is **GO WITH KNOWN LIMITATIONS**. See the [release notes](../RELEASE_NOTES_v0.82.8-ja.1.md) and [known limitations](KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english). Earlier releases, including [v0.82.7-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1), their assets and verification history are retained.
+The latest v0.84.0-ja.1 is a regular Windows x64 Release based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Download its unsigned Setup EXE, Portable ZIP, corresponding Source ZIP and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1). Read the [release notes](../RELEASE_NOTES_v0.84.0-ja.1.en.md) and [limitations](KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english). [Previous v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1) and older assets are retained.
 
-### Next-version candidate
+Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
 
-This development branch's v0.84.0-ja.1 is unpublished. Upstream v0.84.0 is a prerelease; do not confuse it with the published v0.82.8-ja.1. Read the [candidate changes](../RELEASE_NOTES_v0.84.0-ja.1.en.md) and [limitations](KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english). Candidate installation, update and authentication verification is not yet complete. Retain backups and do not use another version's checksum to verify candidate files.
+The assessment is **GO WITH KNOWN LIMITATIONS**. Setup EXE installs for the current user; Portable ZIP is a complete payload needing no installer. Both default to this edition’s profile, separate from the official application.
 
 ### Unsigned files and provenance
 
@@ -146,7 +148,7 @@ The default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`, separa
 
 Authentication returns from the browser to `http://127.0.0.1:<port>/auth/callback` using a nonce for the current instance. **Open authentication email on the same PC running the application.** `127.0.0.1` refers to the device running that browser. Opening the email on a smartphone tries to connect to the phone itself, not the PC. Request a fresh email from the PC application if a link is consumed or expired. Do not rewrite the URL or expose the callback port to another device.
 
-Do not share, publish or attach authentication links or tokens to diagnostic reports. Changing protocol associations or bypassing security settings is not a sign-in remedy. Production email sign-in, encrypted credential-file creation, account restoration after restart and removal after normal logout were observed in an isolated profile with this edition's unpacked build. Restart and logout after the latest subsequent sign-in, and successful sign-in with the dedicated NSIS profile, were not reverified. Logout clears local state without guaranteeing service-side revocation. Google sign-in, special recovery and cross-user effective access remain unverified.
+Do not share, publish or attach authentication links or tokens to diagnostic reports. Changing protocol associations or bypassing security settings is not a sign-in remedy. Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
 
 Running alongside the official application is unsupported. Non-authentication `nimbalyst://` links may open in the application's current registered handler.
 
@@ -156,9 +158,11 @@ Automatic updates and manual update checks are disabled. Do not use an official-
 
 Before updating, save work, close the application, and back up project documents. Read the target release's changes and limitations, then verify its source and checksums. Extract ZIP updates into a new directory. Downgrade compatibility of a user profile is not guaranteed.
 
+Startup, Japanese/English switching, normal shutdown and language retention after restart were observed with final Windows 07d win-unpacked, fully extracted Portable and NSIS products. Fresh NSIS installation and NSIS/Portable upgrades from v0.82.8-ja.1 retained settings, synthetic-document hashes and displayed Tracker data in dedicated environments. This does not guarantee migration of every real profile or database field. Normal NSIS uninstallation retained dedicated user data; Start Menu registration checks were limited to the isolated environment. Downgrades are unverified.
+
 Upstream v0.82.7 introduced automatic migration from PGLite to SQLite. An earlier edition was checked with synthetic data for migration, restart and retention; this does not guarantee migration of every real profile in this edition. Do not force-close the app during migration or assume downgrade is a recovery procedure.
 
-Resource retention after shell exit, observed in an earlier version, showed signs of improvement in a single-host check of this edition; general resolution is not established. Save work and quit normally and restart if resource use grows. See [detailed limitations](KNOWN_LIMITATIONS_v0.82.8-ja.1.md#english), including long-document CPU use, Wiki context under load and the incomplete Windows full suite.
+Resource retention after shell exit, observed in an earlier version, showed signs of improvement in a single-host check of this edition; general resolution is not established. Save work and quit normally and restart if resource use grows. See [detailed limitations](KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english), including long-document CPU use, Wiki context under load and the 108 remaining Windows full-suite failures.
 
 Some shared Typed Page and Tracker features require a compatible sync server. Live server/organization connections and interoperability with older sync servers were not tested. Live Bedrock calls, new paid Claude sessions, actual OS sleep/resume, live nonforeground-browser and backend trust-retry paths, all dynamic translations, DPI settings and screen-reader conditions were not comprehensively exercised. These limits are distinct from automated regression tests and bounded observations of regular product builds.
 

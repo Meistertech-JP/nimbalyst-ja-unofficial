@@ -2,13 +2,18 @@
 
 # はじめに
 
+## v0.84.0-ja.1
+
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+
+
 Nimbalystは、ファイルの編集、AIエージェントとの作業、セッション管理、トラッカーを一つのワークスペースで扱うデスクトップアプリケーションです。Markdownだけでなく、コード、図、表などを扱う編集機能があります。これらは本家Nimbalystの機能です。
 
 日本語版（非公式）は、デスクトップUIの日本語表示と表示言語の設定を追加したフォークです。日本語化に加え、公式版とは別のWindowsアプリ識別子・保存先、公式更新の無効化、localhost認証などの配布上の変更があります。Nimbalyst, Inc.の承認・サポートは受けていません。
 
 ## 入手する版
 
-[v0.82.8-ja.1のRelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から取得します。本家v0.82.8の固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6` を基準とするWindows x64向け未署名版です。NSIS、ポータブルZIP、対応ソースZIPとSHA256SUMS.txtを提供します。インストーラーはWindowsのアプリ一覧とショートカットを使う配置、ポータブルZIPは展開したディレクトリから実行する配置です。ZIP版も設定をEXEの横に保存するわけではありません。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md)と[確認済み範囲・制限](Compatibility-and-Limitations)を参照してください。
+[v0.84.0-ja.1のRelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)から取得します。本家v0.84.0の固定コミット `dc5a0ef938cf495a0667d797f871d09d0c44246f` を基準とするWindows x64向け未署名版です。NSIS、ポータブルZIP、対応ソースZIPとSHA256SUMS.txtを提供します。インストーラーはWindowsのアプリ一覧とショートカットを使う配置、ポータブルZIPは展開したディレクトリから実行する配置です。ZIP版も設定をEXEの横に保存するわけではありません。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/RELEASE_NOTES_v0.84.0-ja.1.md)と[確認済み範囲・制限](Compatibility-and-Limitations)を参照してください。
 
 [Windowsへの導入と更新](Windows-Installation)で、取得するファイル名、チェックサム照合、配置方法を確認してください。SQLiteへの移行を含みますが、すべての実ユーザーデータの移行を保証するものではありません。
 

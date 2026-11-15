@@ -2,6 +2,11 @@
 
 # Account and Authentication
 
+## v0.84.0-ja.1
+
+Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests. Open authentication email on the same Windows PC running the app. Do not share authentication URLs or tokens.
+
+
 ## v0.82.8-ja.1
 
 Production email sign-in, encrypted credential-file creation, restart restoration and removal after normal logout were observed in an isolated profile using the unpacked Windows build. Restart and logout after the latest subsequent sign-in, and successful sign-in with the dedicated NSIS profile, were not reverified. Google sign-in, special recovery and service-side revocation remain unverified. See [details](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#authentication).

@@ -2,22 +2,18 @@
 
 # Nimbalyst — Unofficial Japanese Edition Wiki
 
-User and developer documentation for an unofficial fork that adds Japanese display to the Nimbalyst desktop UI. This is not an official product of Nimbalyst, Inc. and is not endorsed or supported by the company.
+An unofficial fork providing Japanese desktop UI, not developed, certified or supported by Nimbalyst, Inc. The latest **v0.84.0-ja.1** is an unsigned Windows x64 edition based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`.
 
-This edition is **v0.82.8-ja.1**, based on fixed upstream v0.82.8 commit [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6). It is an unsigned Windows x64 edition, with Japanese display for updates to multiple projects, file operations and AI sessions. Matching translation resources do not guarantee every screen or dynamic path is translated. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md), [Testing and Verification](Testing-and-Verification-English), and [Compatibility and Limitations](Compatibility-and-Limitations-English) for changes, observed scope, and limitations. It does not automatically translate user documents or responses from external services.
+Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
 
-- [Downloads and changes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
-- [Release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md)
-- [Source code and README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/LICENSE)
+- [Setup EXE, Portable ZIP, Source ZIP and checksums](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)
+- [Release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/RELEASE_NOTES_v0.84.0-ja.1.en.md)
+- [Source and README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
+- [Previous v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
 
-Official automatic updates and manual update checks are disabled. Update manually through this repository's Releases. This edition includes migration from PGLite to SQLite, but does not guarantee migration of every real user's data. Earlier releases remain available as previous versions.
+The assessment is **GO WITH KNOWN LIMITATIONS**. Integrates upstream v0.83.0 and v0.84.0 changes since v0.82.8: Claude Fable 5.2 selection, batched queue delivery, Git-panel branch switching, Workstreams, folder-scoped commit proposals, nested Markdown list preservation, hidden-entry counts, Wiki publishing, SQLite backups and tool-output retention. Edition-specific changes add Japanese UI text and fix explicit profile boundaries and Windows file/path handling. Integration does not establish live verification of every feature.
 
-This Wiki is documentation hosted on GitHub. It is separate from the application's Local Wiki and Team Wiki features.
-
-## Next version in development
-
-v0.84.0-ja.1 is an unpublished candidate based on fixed upstream v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. The upstream tag is a prerelease; a formal Japanese-edition release has not been decided. It integrates Git branch switching, Workstreams, Wiki publishing, retention management and Japanese display updates. Linux CI, Android, iOS and final-source/Windows-artifact correspondence are verified. A post-fix Windows full-suite run, candidate03 real authentication and installation/update flows, and complete dynamic-translation verification remain incomplete. This is separate from the published downloads above; see [Testing and Verification](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English).
+Read [verification](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English). Official updates are disabled; update manually. Previous tags, releases and history are retained. This GitHub Wiki is separate from the application’s Local Wiki and Team Wiki.
 
 ## User Guide
 

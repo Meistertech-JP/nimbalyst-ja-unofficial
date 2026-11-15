@@ -2,9 +2,16 @@
 
 # ソースからのビルド
 
-この手順はv0.82.8-ja.1のソースとスクリプトを対象とします。追従後の版ではpackage.jsonとlockfileを再確認してください。公開済みnpm CLIが、このフォークの全機能を含むことを意味しません。
+## v0.84.0-ja.1
 
-Windows配布物に対応するソースはタグ `v0.82.8-ja.1` です。継続的に更新される `main` ではなく、対象Releaseのタグを使用します。旧版を再現する場合は、その版のタグとロックファイルを使用してください。
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+
+配布ソースは対象タグを使用します。公開文書更新だけなら既存Windowsバイナリを入力不変性の照合後に再利用できるため、配布バイナリを最終文書コミットから再ビルドしたと説明しません。実行コード・依存・設定・同梱資源が変わる場合は再ビルドと再検証が必要です。
+
+
+この手順はv0.84.0-ja.1のソースとスクリプトを対象とします。追従後の版ではpackage.jsonとlockfileを再確認してください。公開済みnpm CLIが、このフォークの全機能を含むことを意味しません。
+
+Windows配布物に対応するソースはタグ `v0.84.0-ja.1` です。継続的に更新される `main` ではなく、対象Releaseのタグを使用します。旧版を再現する場合は、その版のタグとロックファイルを使用してください。
 
 ## 取得と依存関係
 
@@ -13,7 +20,7 @@ Node.js 24以降、pnpm 12以降を使用します。`packageManager`は`pnpm@12
 ```powershell
 git clone https://github.com/Meistertech-JP/nimbalyst-ja-unofficial.git
 Set-Location nimbalyst-ja-unofficial
-git switch --detach v0.82.8-ja.1
+git switch --detach v0.84.0-ja.1
 corepack pnpm install --frozen-lockfile
 corepack pnpm --filter @nimbalyst/i18n run build
 corepack pnpm run build:workspace-deps

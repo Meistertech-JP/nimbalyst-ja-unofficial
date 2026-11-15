@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.84.0-ja.1] — 2026-11-15
+
+- Integrate upstream v0.83.0/v0.84.0 and extend Japanese UI resources; upstream v0.84.0 is a prerelease.
 - Keep explicitly selected profiles isolated across launches and restarts.
-- Prepare the v0.84.0-ja.1 candidate with upstream v0.83.0/v0.84.0 changes and Japanese UI updates; upstream v0.84.0 is a prerelease.
+- Provide unsigned Windows x64 distributions with documented verification and limitations; see the [release notes](RELEASE_NOTES_v0.84.0-ja.1.en.md).
 - Normalize attached-folder paths consistently on Windows so trailing separators and case differences do not create duplicate roots or prevent detaching them.
 - Keep Windows paths portable when re-sending local files after a sync conflict.
 

@@ -2,6 +2,17 @@
 
 # Windowsへの導入と更新
 
+## v0.84.0-ja.1
+
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+
+[最新版の4配布物](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)を取得し、[Windows導入・更新ガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/docs/WINDOWS_JA_UNOFFICIAL.md)に従って同じファイル名のSHA-256を照合します。ZIPはEXEだけでなく全同梱ファイルを展開し、既定ユーザーデータはEXEの隣とは限りません。
+
+通常Windows製品07dのwin-unpacked・完全展開Portable・NSISで起動、日英切替、正常終了と再起動後の言語保持を確認しました。NSIS新規導入、前版v0.82.8-ja.1からのNSIS/Portable更新では、専用環境の設定・合成文書hash・Tracker表示の保持を確認しました。全実ユーザーデータ・全DBフィールドの移行保証ではありません。NSISの通常アンインストール後も専用ユーザーデータを保持しました。Start Menu登録は隔離した環境での限定確認です。旧版へのダウングレードは未検証です。
+
+最終Windows製品07dの通常win-unpackedと専用プロファイルで、本番メール認証、暗号化認証ファイルの生成、正常終了・再起動後の復元、通常サインアウト、認証ファイル削除、次回起動後の未認証保持を確認しました。NSIS専用プロファイル・別Portableでの新規認証、Google認証、サービス側セッション失効、特殊復旧は未確認です。Node資格情報ファイル試験とは別のElectronアカウント認証の観測です。
+
+
 ## v0.82.8-ja.1
 
 [対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から未署名のWindows x64インストーラー、ポータブルZIP、対応ソースZIPと `SHA256SUMS.txt` を取得できます。各ファイルを同じReleaseのチェックサムと照合してください。本家v0.82.8に基づく非公式版です。[確認範囲](Testing-and-Verification)と[制限事項](Compatibility-and-Limitations)も参照してください。

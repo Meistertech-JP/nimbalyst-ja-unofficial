@@ -2,13 +2,18 @@
 
 # Getting Started
 
+## v0.84.0-ja.1
+
+Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+
+
 Nimbalyst is a desktop application that brings file editing, work with AI agents, session management, and trackers together in one workspace. Its editing features cover code, diagrams, tables, and other formats as well as Markdown. These are features of upstream Nimbalyst.
 
 The Unofficial Japanese Edition is a fork that adds Japanese desktop UI and a display-language setting. Beyond localization, distribution changes include separate Windows application identifiers and storage locations, disabled official updates, and localhost authentication. It is not endorsed or supported by Nimbalyst, Inc.
 
 ## Choosing a distribution
 
-Download the unsigned Windows x64 edition based on fixed upstream v0.82.8 commit `ab9da8f121e4e6fddebc523ced671863e8892ff6` from the [v0.82.8-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1). It provides NSIS, portable ZIP, matching source and SHA256SUMS.txt. The installer provides Windows app-list entries and shortcuts; the portable ZIP runs from its extracted directory. The ZIP edition does not store settings next to the EXE. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md) and [verification limitations](Compatibility-and-Limitations-English) for package contents and scope.
+Download the unsigned Windows x64 edition based on fixed upstream v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f` from the [v0.84.0-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1). It provides NSIS, portable ZIP, matching source and SHA256SUMS.txt. The installer provides Windows app-list entries and shortcuts; the portable ZIP runs from its extracted directory. The ZIP edition does not store settings next to the EXE. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/RELEASE_NOTES_v0.84.0-ja.1.md) and [verification limitations](Compatibility-and-Limitations-English) for package contents and scope.
 
 See [Windows Installation and Updates](Windows-Installation-English) for filenames, checksum verification, and placement instructions. SQLite migration is included, but migration of every real user's data is not guaranteed.
 

@@ -2,22 +2,18 @@
 
 # Nimbalyst日本語版（非公式）Wiki
 
-NimbalystのデスクトップUIを日本語で利用するための、非公式フォークの利用・開発資料です。Nimbalyst, Inc.の公式製品ではなく、同社による承認・サポートを受けていません。
+NimbalystのデスクトップUIを日本語で利用するための非公式フォークです。Nimbalyst, Inc.による開発・認定・サポートを受けていません。最新版 **v0.84.0-ja.1** は本家v0.84.0（固定コミット `dc5a0ef938cf495a0667d797f871d09d0c44246f`）を基準とする未署名Windows x64版です。
 
-対象版は **v0.82.8-ja.1** です。本家v0.82.8の固定コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6) を基準とする、Windows x64向け未署名版です。複数プロジェクト、ファイル操作やAIセッション関連の更新に対応する日本語表示を追加しています。翻訳資源の一致は全画面・全動的経路の表示保証ではありません。主な更新は[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md)、確認済み範囲と制限は[テストと品質検証](Testing-and-Verification)および[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。ユーザー文書や外部サービスの応答を自動翻訳する機能ではありません。
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
 
-- [ダウンロードと変更内容](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
-- [Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/RELEASE_NOTES_v0.82.8-ja.1.md)
-- [ソースコード・README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [MIT License](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/LICENSE)
+- [最新版のSetup EXE・Portable ZIP・Source ZIP・checksums](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)
+- [Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/RELEASE_NOTES_v0.84.0-ja.1.md)
+- [ソース・README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
+- [前版v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
 
-公式版の自動更新・手動更新確認は無効です。本リポジトリのReleasesから手動で更新します。PGLiteからSQLiteへの自動移行を含みますが、すべての実ユーザーデータの移行を保証するものではありません。旧Releaseと配布物は過去版として保持しています。
+品質判定は **GO WITH KNOWN LIMITATIONS**。本家v0.82.8以降のv0.83.0・v0.84.0を取り込みました。Claude Fable 5.2選択、キューの一括配送、Gitパネルのブランチ切替、Workstreams、フォルダー単位のコミット提案、Markdownネストリスト保存、ファイルツリー省略件数表示、Wiki公開、SQLiteバックアップ・ツール出力保持処理などを含みます。日本語版では新しいUIの翻訳、明示的な隔離プロファイルの保存先境界、Windowsのファイル・パス処理を修正しました。統合した機能すべての実接続を確認したわけではありません。
 
-このWikiはGitHub上の文書です。アプリ内のLocal Wiki・Team Wikiとは別のものです。
-
-## 開発中の次期版
-
-v0.84.0-ja.1は未公開候補です。本家v0.84.0の固定コミット `dc5a0ef938cf495a0667d797f871d09d0c44246f` に基づきます。本家タグはPrereleaseであり、日本語版の正式公開は未決定です。Gitのブランチ切替、Workstreams、Wiki公開、保持期間管理などを統合しています。最終候補のLinux CI・Android・iOS検証とWindows候補の生成、ソースZIPのGit tree照合は完了しました。一方、修正後のWindows全体テスト、本番認証、インストール・更新の候補03での再検証、動的翻訳の全経路確認は未完了です。公開版のダウンロード案内と混同しないでください。[検証詳細](Testing-and-Verification)と[既知制限](Compatibility-and-Limitations)を参照してください。
+[確認済み範囲](Testing-and-Verification)と[既知制限](Compatibility-and-Limitations)を確認してください。公式更新は無効で手動更新します。旧タグ・Release・履歴は保持しています。このGitHub Wikiはアプリ内Local Wiki・Team Wikiとは別です。
 
 ## 利用する
 

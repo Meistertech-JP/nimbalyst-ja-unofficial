@@ -2,11 +2,16 @@
 
 # Development History
 
+## v0.84.0-ja.1
+
+Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+
+Integrates upstream v0.83.0 and v0.84.0 changes since v0.82.8: Claude Fable 5.2 selection, batched queue delivery, Git-panel branch switching, Workstreams, folder-scoped commit proposals, nested Markdown list preservation, hidden-entry counts, Wiki publishing, SQLite backups and tool-output retention. Edition-specific changes add Japanese UI text and fix explicit profile boundaries and Windows file/path handling. Integration does not establish live verification of every feature.
+
+The [formal release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1) supplies unsigned Windows x64 NSIS, Portable ZIP, corresponding Source ZIP and checksums. Final 07d checks covered language/restart retention, authentication/restoration/sign-out, fresh NSIS/previous-version upgrades and Portable upgrades within the stated scope. Windows full Vitest remains 20,182 PASS/108 FAIL/37 SKIP, separate from Linux/Android/iOS success. See [verification](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English).
+
+
 Each release and tag identifies its source and available distributions.
-
-## v0.84.0-ja.1 (unpublished candidate)
-
-A candidate incorporating upstream v0.83.0/v0.84.0 changes at fixed v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a prerelease; a formal Japanese-edition release has not been decided. Linux CI, Android, iOS and final-source/Windows-artifact correspondence have been verified. A post-fix Windows full-suite run, candidate03 real authentication and installation/update flows, complete dynamic-translation verification and full semantic review are not complete. Published distributions are described in the previous-version entries below.
 
 ## v0.82.8-ja.1
 

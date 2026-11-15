@@ -2,11 +2,18 @@
 
 # 日本語化アーキテクチャ
 
-対象は[v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)です。本家v0.82.8の固定コミット [`ab9da8f121e4e6fddebc523ced671863e8892ff6`](https://github.com/nimbalyst/nimbalyst/commit/ab9da8f121e4e6fddebc523ced671863e8892ff6)を基準とします。本家から更新されたUI表示を含みます。
+## v0.84.0-ja.1
+
+本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+
+通常製品の日英切替・再起動保持と、39型・7容量の検査範囲は[品質検証](Testing-and-Verification)を参照してください。
+
+
+対象は[v0.84.0-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)です。本家v0.84.0の固定コミット [`dc5a0ef938cf495a0667d797f871d09d0c44246f`](https://github.com/nimbalyst/nimbalyst/commit/dc5a0ef938cf495a0667d797f871d09d0c44246f)を基準とします。本家から更新されたUI表示を含みます。
 
 ## 共通資源とホストの責務
 
-翻訳資源は`packages/i18n/src/resources/en`と`ja`にあり、27名前空間・英日各15,401キーです。キー差・補間差・空の日本語訳は0件です。この静的整合は全画面・動的キー・外部応答の実行時表示を保証するものではありません。`common`を既定の名前空間、`en`をfallbackとします。`createI18nInstance`はホストごとにi18nextインスタンスを作ります。MainとRendererが同じプロセスのオブジェクトを共有するのではなく、共通の資源・ロケール解決方針を使います。
+共有翻訳資源は27名前空間、英語・日本語各15,557キー、キー差・補間差0です。単一スペース1件は英日共通の書式区切りです。489動的呼出し候補と211 namespace scope未確定は欠落訳・不具合の件数ではありません。全画面・全動的経路・全アクセシビリティ表示の翻訳保証ではなく、一部音声ボタンには英語ラベルが残ります。ユーザー文書やAIの回答・外部応答を自動翻訳しません。 資源は `packages/i18n/src/resources/en` と `ja` に置きます。`common` が既定、`en` がfallbackで、`createI18nInstance` はホストごとにinstanceを作ります。Main/Rendererは資源・言語方針を共有し、プロセス間で同じJS objectを共有するわけではありません。
 
 `@nimbalyst/i18n/locale`は資源を持たないロケール方針、`/core`は資源付きインスタンス作成、`/react`はReactへの接続を提供します。言語方針だけが必要なコードから資源全体をimportしないことが、初期依存を増やさないための境界になります。
 
@@ -17,15 +24,15 @@ app.uiLanguage（永続設定）
                                       └─ 独立エディタールートへ同じinstance
 ```
 
-Mainの制御は[mainI18n.ts](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/packages/electron/src/main/i18n/mainI18n.ts)にあります。`app.uiLanguage`を購読し、言語変更後にメニュー更新のコールバックを実行します。変更のrevisionとdispose状態を確認し、古い非同期完了による更新を避けます。メニュー・通知・ネイティブダイアログにはそれぞれの名前空間を使います。Electron Mainの静的import規則は維持します。
+Mainの制御は[mainI18n.ts](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/packages/electron/src/main/i18n/mainI18n.ts)にあります。`app.uiLanguage`を購読し、言語変更後にメニュー更新のコールバックを実行します。変更のrevisionとdispose状態を確認し、古い非同期完了による更新を避けます。メニュー・通知・ネイティブダイアログにはそれぞれの名前空間を使います。Electron Mainの静的import規則は維持します。
 
-Rendererの[UiLanguageProvider](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/packages/i18n/src/react.tsx)は、ホストから受け取った設定とシステムロケールを解決し、`changeLanguage`と`document.documentElement.lang`を更新します。永続化はProvider自体ではなくホスト側の設定機構の責務です。設定の伝達と画面の購読を区別します。
+Rendererの[UiLanguageProvider](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/packages/i18n/src/react.tsx)は、ホストから受け取った設定とシステムロケールを解決し、`changeLanguage`と`document.documentElement.lang`を更新します。永続化はProvider自体ではなくホスト側の設定機構の責務です。設定の伝達と画面の購読を区別します。
 
 ## Reactと独立ルート
 
 コンポーネントは`useTranslation`で表示用の`t`を取得します。HookはReactコンポーネントのトップレベルだけで呼び、callback・useEffectの本体・mapの内部へ置きません。関数へ渡す場合は、その関数が使う名前空間と`t`のスコープを確認します。title・aria-label・placeholder・tooltipも表示文字列です。
 
-タブ内のエディターは別の`createRoot`で描画される場合があり、親ReactツリーのContextを自動継承しません。[createTranslatedRoot](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/packages/electron/src/renderer/components/TabContent/translatedRoot.tsx)は、そのルートを`I18nextProvider`で包みます。
+タブ内のエディターは別の`createRoot`で描画される場合があり、親ReactツリーのContextを自動継承しません。[createTranslatedRoot](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/packages/electron/src/renderer/components/TabContent/translatedRoot.tsx)は、そのルートを`I18nextProvider`で包みます。
 
 react-i18next 17の`useTranslation().i18n`が持つ言語スナップショットを独立ルートへ渡すと、設定を変えても開いたエディターの入力案内が古い言語に残る場合があります。v0.81.7-ja.3の`TabContent`は`useContext(I18nContext)`からライブのインスタンスを取得します。独立ルートを生成して言語を変更する回帰テストで、この動作を検査しています。
 
@@ -35,7 +42,7 @@ react-i18next 17の`useTranslation().i18n`が持つ言語スナップショッ�
 
 docs-uiの初期容量は修正前92,295 gzip bytesで、上限92,000を295 bytes超過していました。作成・名前変更ダイアログを静的に参照すると、そのフォームと宛先ツリー構築などの依存が初期グラフへ入ります。画面表示時には不要なフォームを、操作時にだけ評価する境界へ移しました。
 
-[CollabSidebar](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/packages/collab-client/src/docs-ui/CollabSidebar.tsx)では`React.lazy`で`CollabCreateItemDialog`と`InputModal`を読みます。宛先生成を作成フォーム側へ留め、別の利用箇所には`@nimbalyst/collab-client/docs-ui/CollabCreateItemDialog`のdeep exportを使います。大きなbarrel経由で初期グラフへ戻す参照を避けるためです。型用importと実行時importも区別します。
+[CollabSidebar](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/packages/collab-client/src/docs-ui/CollabSidebar.tsx)では`React.lazy`で`CollabCreateItemDialog`と`InputModal`を読みます。宛先生成を作成フォーム側へ留め、別の利用箇所には`@nimbalyst/collab-client/docs-ui/CollabCreateItemDialog`のdeep exportを使います。大きなbarrel経由で初期グラフへ戻す参照を避けるためです。型用importと実行時importも区別します。
 
 遅延チャンクを作るだけでは、起動直後に必ず要求するなら初期転送量は減りません。この変更はダイアログを開くまでフォームをマウントしない必要時ロードです。失敗を`DialogLoadBoundary`で受け、ダイアログ内の翻訳済みエラーと「閉じる」を表示します。ワークスペース全体をエラー画面に置き換えません。
 
