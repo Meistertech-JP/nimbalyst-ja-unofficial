@@ -22,6 +22,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { assertDatabaseReference, assertPersistedDatabaseReferences } from '../../utils/profileReferences';
 
 import type { BackendState, DatabaseBackend } from './BackendSelector';
 import type { CutoverVerification } from './cutoverVerification';
@@ -174,6 +175,7 @@ export type CutoverJournalRead =
 
 export function readCutoverJournalStatus(userDataPath: string): CutoverJournalRead {
   const journalPath = getCutoverJournalPath(userDataPath);
+  assertDatabaseReference(userDataPath, journalPath);
   let raw: string;
   try {
     raw = fs.readFileSync(journalPath, 'utf-8');
@@ -199,6 +201,7 @@ export function readCutoverJournalStatus(userDataPath: string): CutoverJournalRe
   if (!parsed.source?.livePath || !parsed.source?.preservedPath || !parsed.target?.livePath) {
     return { status: 'unreadable', detail: 'journal does not name all of its paths' };
   }
+  assertPersistedDatabaseReferences(userDataPath, parsed);
   return { status: 'ok', journal: parsed };
 }
 

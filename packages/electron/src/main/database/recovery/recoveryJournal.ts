@@ -27,6 +27,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { assertDatabaseReference, assertPersistedDatabaseReferences } from '../../utils/profileReferences';
 import type { ActiveBackend } from './types';
 
 /**
@@ -138,6 +139,7 @@ export type RecoveryJournalRead =
   | { status: 'ok'; journal: RecoveryJournal };
 
 export function readRecoveryJournalStatus(userDataPath: string): RecoveryJournalRead {
+  assertDatabaseReference(userDataPath, getRecoveryJournalPath(userDataPath));
   let raw: string;
   try {
     raw = fs.readFileSync(getRecoveryJournalPath(userDataPath), 'utf-8');
@@ -166,6 +168,7 @@ export function readRecoveryJournalStatus(userDataPath: string): RecoveryJournal
   if (!parsed.paths?.livePath || !parsed.paths?.displacedPath || !parsed.paths?.stagingPath) {
     return { status: 'unreadable', detail: 'journal does not name all of its paths' };
   }
+  assertPersistedDatabaseReferences(userDataPath, parsed);
   return { status: 'ok', journal: parsed };
 }
 

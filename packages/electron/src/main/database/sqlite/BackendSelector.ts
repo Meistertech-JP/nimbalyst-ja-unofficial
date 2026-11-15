@@ -26,6 +26,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { assertDatabaseReference, assertPersistedDatabaseReferences } from '../../utils/profileReferences';
 
 // `cutoverJournal` imports only types from this module, so this is not a
 // runtime cycle -- the type import is erased.
@@ -156,11 +157,13 @@ export function getFlagPath(userDataPath: string): string {
 
 export function readBackendState(userDataPath: string): BackendState | null {
   const flagPath = getFlagPath(userDataPath);
+  assertDatabaseReference(userDataPath, flagPath);
   if (!fs.existsSync(flagPath)) return null;
   try {
     const raw = fs.readFileSync(flagPath, 'utf-8');
     const parsed = JSON.parse(raw) as BackendState;
     if (parsed.backend !== 'pglite' && parsed.backend !== 'sqlite') return null;
+    assertPersistedDatabaseReferences(userDataPath, parsed);
     return parsed;
   } catch {
     return null;
