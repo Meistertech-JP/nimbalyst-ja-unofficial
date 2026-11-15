@@ -17,6 +17,11 @@ const tree: Record<string, PathKind> = {
 const kindOf = (p: string): PathKind => tree[p] ?? null;
 
 describe('resolveLaunchTarget', () => {
+    it('never treats a forwarded split profile option as a project', () => {
+        expect(resolveLaunchTarget(['--user-data-dir', otherProjectPath], projectPath, kindOf)).toBeNull();
+        expect(resolveLaunchTarget(['--user-data-dir', otherProjectPath, 'src'], projectPath, kindOf))
+            .toEqual({ kind: 'directory', path: projectSourcePath });
+    });
     it('resolves `.` against the shell directory to the folder to open', () => {
         expect(resolveLaunchTarget(['.'], projectPath, kindOf)).toEqual({
             kind: 'directory',

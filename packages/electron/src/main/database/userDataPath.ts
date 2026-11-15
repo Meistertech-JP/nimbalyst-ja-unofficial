@@ -23,6 +23,7 @@
 
 import { app } from 'electron';
 import * as path from 'path';
+import { assertIsolatedProfilePath } from '../utils/profileBoundary';
 
 /**
  * Precedence, highest first:
@@ -35,6 +36,14 @@ import * as path from 'path';
  *      via `NIMBALYST_USER_DATA_DIR`.
  */
 export function resolveDatabaseUserDataPath(): string {
+  // An explicit isolated profile also owns the database, including Playwright.
+  // Do not silently switch to a shared temp database in this mode.
+  if (process.env.NIMBALYST_USER_DATA_DIR) {
+    const profile = path.resolve(process.env.NIMBALYST_USER_DATA_DIR);
+    const root = path.resolve(process.env.NIMBALYST_USER_DATA_PATH || profile);
+    assertIsolatedProfilePath(root);
+    return root;
+  }
   return (
     process.env.NIMBALYST_USER_DATA_PATH
     || (process.env.PLAYWRIGHT === '1' ? path.join(app.getPath('temp'), 'nimbalyst-test-db') : null)

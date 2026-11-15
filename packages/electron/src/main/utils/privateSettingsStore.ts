@@ -8,6 +8,7 @@ import {
   visitLegacyCredentials,
 } from "../services/credentials/legacyProviderCredentials";
 import { withCredentialLock } from "../services/credentials/credentialLock";
+import { assertIsolatedProfilePath } from "./profileBoundary";
 
 const EMPTY_READ_RETRIES = 3;
 const preservedUnreadable = new Set<string>();
@@ -59,6 +60,7 @@ export default class PrivateSettingsStore<
   // Mode, NIM-3963), and a `set` during that read writes `{ key }` over the
   // whole file. An empty result is only trusted when the file is really empty.
   override get store(): T {
+    assertIsolatedProfilePath(this.path);
     let value = super.store;
     for (let attempt = 1; attempt <= EMPTY_READ_RETRIES && isEmptyObject(value); attempt++) {
       const raw = readRaw(this.path);
@@ -72,6 +74,7 @@ export default class PrivateSettingsStore<
     return value;
   }
   override set store(value: T) {
+    assertIsolatedProfilePath(this.path);
     withCredentialLock(path.dirname(this.path), () => {
       super.store = value;
     });
@@ -82,6 +85,7 @@ export default class PrivateSettingsStore<
     if (path.basename(name) !== name || name === "..")
       throw new Error("Invalid settings name");
     const file = path.join(cwd, `${name}.${options.fileExtension ?? "json"}`);
+    assertIsolatedProfilePath(file);
     hardenPrivateFile(file);
     const serialize =
       options.serialize ?? ((value: T) => JSON.stringify(value, null, "\t"));
@@ -90,6 +94,7 @@ export default class PrivateSettingsStore<
       cwd,
       configFileMode: 0o600,
       serialize(value) {
+        assertIsolatedProfilePath(file);
         assertPrivateFileWritable(file);
         if (name === "ai-settings" || name === "workspace-settings") {
           const existing = readLegacySettings(cwd, name).credentials;
@@ -129,6 +134,7 @@ export default class PrivateSettingsStore<
 
 /** Repair dormant settings files too, before bootstrap opens any store. */
 export function hardenExistingSettings(directory: string): void {
+  assertIsolatedProfilePath(directory);
   for (const name of [
     "app-settings",
     "ai-settings",

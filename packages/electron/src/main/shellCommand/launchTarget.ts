@@ -62,7 +62,7 @@ export function resolveLaunchTarget(
     return null;
 }
 
-const FLAGS_WITH_VALUE = new Set(['--workspace', '--file', '--filter']);
+const FLAGS_WITH_VALUE = new Set(['--workspace', '--file', '--filter', '--user-data-dir']);
 
 function expandHome(arg: string): string {
     const home = process.env.HOME;
