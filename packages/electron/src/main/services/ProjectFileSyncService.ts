@@ -831,7 +831,9 @@ export class ProjectFileSyncService {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       const stat = await fs.stat(filePath);
-      const relativePath = path.relative(workspacePath, filePath);
+      // The sync protocol uses POSIX separators on every platform. Keep the
+      // deferred-delete re-push path consistent with normal save payloads.
+      const relativePath = path.relative(workspacePath, filePath).replace(/\\/g, '/');
       const title = projectSyncTitle(filePath);
       const outcome = await this.provider.pushFileContent(
         projectId,

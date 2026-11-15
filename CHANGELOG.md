@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Prepare the v0.84.0-ja.1 candidate with upstream v0.83.0/v0.84.0 changes and Japanese UI updates; upstream v0.84.0 is a prerelease.
 - Normalize attached-folder paths consistently on Windows so trailing separators and case differences do not create duplicate roots or prevent detaching them.
+- Keep Windows paths portable when re-sending local files after a sync conflict.
 
 ## [0.82.8-ja.1]
 

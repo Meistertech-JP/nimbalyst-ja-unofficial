@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as os from 'os';
 import * as path from 'path';
 import { createHash } from 'crypto';
-import { mkdtemp, writeFile, rm } from 'fs/promises';
+import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises';
 
 // SyncManager pulls in heavy main-process wiring; stub the only function the
 // service touches at import/runtime so the unit can construct in isolation.
@@ -937,6 +937,7 @@ describe('ProjectFileSyncService deferred remote delete', () => {
   async function deferDeleteFor(rel: string, content: string) {
     const filePath = path.join(tmpDir, rel);
     const syncId = syncIdFromPath(rel);
+    await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, content, 'utf-8');
     (service as any).projectStates.get('proj-enc').set(syncId, {
       syncId, contentHash: sha256(content), lastSyncedMtime: Date.now() - 60_000,
@@ -971,7 +972,7 @@ describe('ProjectFileSyncService deferred remote delete', () => {
 
   it('a saved local edit overrides the deferred delete (resurrect via re-push)', async () => {
     const fsp = await import('fs/promises');
-    const { filePath } = await deferDeleteFor('survive.md', '# Original\n');
+    const { filePath } = await deferDeleteFor('nested/survive.md', '# Original\n');
 
     // Simulate the user saving a real edit before the tab goes clean: disk now
     // diverges from the baseline.
@@ -988,6 +989,7 @@ describe('ProjectFileSyncService deferred remote delete', () => {
     // File preserved and re-pushed (resurrected on the server), not deleted.
     expect(await fsp.readFile(filePath, 'utf-8')).toBe(edited);
     expect(pushFileContent).toHaveBeenCalledTimes(1);
+    expect(pushFileContent.mock.calls[0][3]).toBe('nested/survive.md');
   });
 });
 
