@@ -7,6 +7,7 @@ export default defineConfig({ test: {
     'packages/electron/src/main/__tests__/instancePolicy.test.ts',
     'packages/electron/src/main/database/__tests__/pgliteProfileDeletion.test.ts',
     'packages/electron/src/main/database/__tests__/persistedProfileReferences.test.ts',
+    'packages/electron/src/__tests__/e2eUserDataIsolation.test.ts',
     'packages/electron/src/main/shellCommand/__tests__/launchTarget.test.ts',
   ],
   setupFiles: [], globalSetup: [],

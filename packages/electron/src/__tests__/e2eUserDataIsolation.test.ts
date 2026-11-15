@@ -106,7 +106,7 @@ describe('bootstrap import-time profile isolation', () => {
     const context = {
       require: (specifier: string) => specifier === 'electron' ? { app } : requireBuiltin(specifier),
       exports: {},
-      process: { env: { NODE_ENV: 'production', ...env }, argv, on() {} },
+      process: { env: { NODE_ENV: 'production', ...env }, argv, on() {}, exit(code: number) { throw new Error(`startup exited with ${code}`); } },
       observedAtIndex: undefined as undefined | { userData: string; name: string; anthropic?: string; openai?: string },
     };
     runInNewContext(output.outputFiles[0].text, context);
@@ -115,7 +115,7 @@ describe('bootstrap import-time profile isolation', () => {
 
   it('sets the explicit Main profile before index initialization and strips inherited provider keys', async () => {
     const profile = path.join(os.tmpdir(), 'bootstrap-scoped-profile');
-    const observed = await observeIndexInitialization({ NIMBALYST_USER_DATA_DIR: profile, ANTHROPIC_API_KEY: 'fixture-anthropic', OPENAI_API_KEY: 'fixture-openai' }, ['app.exe', '--user-data-dir=/unused-argument']);
+    const observed = await observeIndexInitialization({ NIMBALYST_USER_DATA_DIR: profile, ANTHROPIC_API_KEY: 'fixture-anthropic', OPENAI_API_KEY: 'fixture-openai' }, ['app.exe', `--user-data-dir=${profile}`]);
     expect(observed.userData).toBe(profile);
     expect(observed.name).toBe('Nimbalyst 日本語版（非公式）');
     expect(observed.anthropic).toBeUndefined();
@@ -126,6 +126,11 @@ describe('bootstrap import-time profile isolation', () => {
     const profile = path.join(os.tmpdir(), 'bootstrap-cli-profile');
     const observed = await observeIndexInitialization({}, ['app.exe', `--user-data-dir=${profile}`]);
     expect(observed.userData).toBe(profile);
+  });
+  it('aborts conflicting environment and CLI profiles before index initialization', async () => {
+    const profile = path.join(os.tmpdir(), 'bootstrap-env-profile');
+    const other = path.join(os.tmpdir(), 'bootstrap-other-profile');
+    await expect(observeIndexInitialization({ NIMBALYST_USER_DATA_DIR: profile }, ['app.exe', `--user-data-dir=${other}`])).rejects.toThrow('startup exited with 1');
   });
 
   it('chooses a distinct unofficial default before index initialization', async () => {
