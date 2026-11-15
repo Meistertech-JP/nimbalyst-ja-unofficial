@@ -21,11 +21,11 @@ function inside(root: string, target: string): boolean {
 }
 
 /** Worker-safe: do not import Electron into recovery/control-file readers. */
-export function assertDatabaseReference(root: string, target: string): void {
+export function assertDatabaseReference(root: string, target: unknown): void {
   const profile = process.env.NIMBALYST_USER_DATA_DIR;
   if (!profile) return;
   try {
-    if (!path.isAbsolute(target) || !inside(path.resolve(profile), path.resolve(root))
+    if (typeof target !== 'string' || !target || !path.isAbsolute(target) || !inside(path.resolve(profile), path.resolve(root))
       || !inside(physicalProfilePath(profile), physicalProfilePath(root))
       || !inside(path.resolve(root), path.resolve(target))
       || !inside(physicalProfilePath(root), physicalProfilePath(target))) {
@@ -44,6 +44,11 @@ export function assertDatabaseReference(root: string, target: string): void {
 
 export function assertPersistedDatabaseReferences(root: string, value: unknown, key = ''): void {
   if (!process.env.NIMBALYST_USER_DATA_DIR) return;
+  if (/(?:path|dir|root)$/i.test(key)) {
+    if (key === 'preRestoreSnapshotPath' && value === null) return;
+    assertDatabaseReference(root, value);
+    return;
+  }
   if (typeof value === 'string') {
     if (/(?:path|dir|root)$/i.test(key) || path.isAbsolute(value)) assertDatabaseReference(root, value);
   } else if (Array.isArray(value)) {
@@ -51,4 +56,9 @@ export function assertPersistedDatabaseReferences(root: string, value: unknown, 
   } else if (value && typeof value === 'object') {
     for (const [name, item] of Object.entries(value)) assertPersistedDatabaseReferences(root, item, name);
   }
+}
+
+export function assertRequiredDatabaseReferences(root: string, fields: unknown, names: string[]): void {
+  if (!process.env.NIMBALYST_USER_DATA_DIR) return;
+  for (const name of names) assertDatabaseReference(root, (fields as Record<string, unknown> | null)?.[name]);
 }

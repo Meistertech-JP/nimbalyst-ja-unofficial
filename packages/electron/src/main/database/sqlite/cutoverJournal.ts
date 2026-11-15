@@ -22,7 +22,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { assertDatabaseReference, assertPersistedDatabaseReferences } from '../../utils/profileReferences';
+import { assertDatabaseReference, assertPersistedDatabaseReferences, assertRequiredDatabaseReferences } from '../../utils/profileReferences';
 
 import type { BackendState, DatabaseBackend } from './BackendSelector';
 import type { CutoverVerification } from './cutoverVerification';
@@ -198,6 +198,8 @@ export function readCutoverJournalStatus(userDataPath: string): CutoverJournalRe
   if (!CUTOVER_PHASES.includes(parsed.phase)) {
     return { status: 'unreadable', detail: `journal phase ${String(parsed.phase)} is not a known phase` };
   }
+  assertRequiredDatabaseReferences(userDataPath, parsed.source, ['livePath', 'preservedPath']);
+  assertRequiredDatabaseReferences(userDataPath, parsed.target, ['livePath']);
   if (!parsed.source?.livePath || !parsed.source?.preservedPath || !parsed.target?.livePath) {
     return { status: 'unreadable', detail: 'journal does not name all of its paths' };
   }

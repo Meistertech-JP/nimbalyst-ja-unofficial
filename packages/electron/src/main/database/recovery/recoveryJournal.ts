@@ -27,7 +27,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { assertDatabaseReference, assertPersistedDatabaseReferences } from '../../utils/profileReferences';
+import { assertDatabaseReference, assertPersistedDatabaseReferences, assertRequiredDatabaseReferences } from '../../utils/profileReferences';
 import type { ActiveBackend } from './types';
 
 /**
@@ -165,6 +165,7 @@ export function readRecoveryJournalStatus(userDataPath: string): RecoveryJournal
   if (!RECOVERY_PHASES.includes(parsed.phase)) {
     return { status: 'unreadable', detail: `journal phase ${String(parsed.phase)} is not a known phase` };
   }
+  assertRequiredDatabaseReferences(userDataPath, parsed.paths, ['livePath', 'stagingPath', 'displacedPath', 'sourceArtifactPath']);
   if (!parsed.paths?.livePath || !parsed.paths?.displacedPath || !parsed.paths?.stagingPath) {
     return { status: 'unreadable', detail: 'journal does not name all of its paths' };
   }

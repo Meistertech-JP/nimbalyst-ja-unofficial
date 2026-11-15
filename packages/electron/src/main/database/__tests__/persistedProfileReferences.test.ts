@@ -18,6 +18,16 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 describe('persisted database references (all filesystem IO mocked)', () => {
+  it.each([{ reference: [] }, { reference: {} }, { reference: 123 }, { reference: null }])('rejects a non-string backend path $reference', ({ reference }) => {
+    mocks.read.mockReturnValue(JSON.stringify({ backend: 'pglite', pgliteMigratedDir: reference }));
+    readBackendState(root);
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+  it('rejects a recovery record missing its source artifact path', () => {
+    mocks.read.mockReturnValue(JSON.stringify({ version: 1, phase: 'prepared', paths: { livePath: path.join(root, 'pglite-db'), stagingPath: path.join(root, 'stage'), displacedPath: path.join(root, 'old') } }));
+    try { readRecoveryJournalStatus(root); } catch { /* exit stub */ }
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
   it('allows normal POSIX directory link counts for preserved database directories', () => {
     const preserved = path.join(root, 'pglite-db.old');
     mocks.stat.mockImplementation((v: string) => ({ nlink: v === preserved ? 2 : 1, isSymbolicLink: () => false, isDirectory: () => v === preserved }));
