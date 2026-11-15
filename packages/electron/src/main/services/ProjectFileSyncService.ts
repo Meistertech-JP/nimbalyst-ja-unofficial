@@ -293,7 +293,7 @@ export class ProjectFileSyncService {
     if (!isProjectSyncPath(filePath, workspacePath)) return;
 
     try {
-      const relativePath = path.relative(workspacePath, filePath);
+      const relativePath = path.relative(workspacePath, filePath).replace(/\\/g, '/');
       const syncId = this.syncIdFromPath(relativePath);
       const stat = await fs.stat(filePath);
       if (exceedsProjectSyncLimit(stat.size, relativePath)) {
@@ -466,7 +466,7 @@ export class ProjectFileSyncService {
         try {
           const content = await fs.readFile(filePath, 'utf-8');
           const stat = await fs.stat(filePath);
-          const relativePath = path.relative(cache.workspacePath, filePath);
+          const relativePath = path.relative(cache.workspacePath, filePath).replace(/\\/g, '/');
           const title = projectSyncTitle(filePath);
 
           filesToPush.push({

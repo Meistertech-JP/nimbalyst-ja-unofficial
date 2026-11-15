@@ -123,7 +123,7 @@ async function wikiFiles(root: string): Promise<Record<string, string>> {
       if (entry.name.startsWith('.') && entry.name !== '.nimbalyst-wiki.yaml') continue;
       const abs = path.join(dir, entry.name);
       if (entry.isDirectory()) await walk(abs);
-      else out[path.relative(root, abs).split(path.sep).join('/')] = await readFile(abs, 'utf-8');
+      else out[path.relative(root, abs).split(path.sep).join('/')] = (await readFile(abs, 'utf-8')).replace(/\r\n/g, '\n');
     }
   };
   await walk(root);
