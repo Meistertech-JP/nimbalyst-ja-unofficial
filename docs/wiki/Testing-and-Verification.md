@@ -6,7 +6,35 @@
 
 本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
 
-公開ソースは[対象タグ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/tree/v0.84.0-ja.1)に対応します。公開文書を確定したコミットの通常CI・Android・iOS Run IDと結果、最終配布物のSHA-256は[Release本文](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)に記録します。以下の製品検証基準29の結果と、文書確定後の最終CIは対象を分けて参照してください。
+### 公開済みソースと、公開後の文書改訂
+
+配布ソースのコミットは **a2f2fbccdb10c3542222851e07f945dbb774ca91**、Git treeは **b90b2ae82cd5b23e2a035189c02c0af48556a364** です。公開タグv0.84.0-ja.1・Windowsバイナリ・Source ZIP・SHA256SUMS.txtは固定したまま、2026-11-16にmainとWikiの説明文章を改訂しています。したがってmainのREADME等と、タグ・Source ZIP内の公開時文書は一致しません。実装・依存・ビルド設定は変更していません。
+
+以下は配布ソースa2に対する結果です。文書改訂後の新しいmainコミットで、製品の全試験を再実行したという意味ではありません。
+
+| 対象・環境 | Run ID | PASS / FAIL / SKIP・結果 |
+| --- | --- | --- |
+| main・Linux通常CI | [43723712039](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43723712039) | 20,296 / 0 / 31。全5 jobs SUCCESS |
+| main・Android | [43723712088](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43723712088) | unsigned APK/AAB・Gradle unit task SUCCESS。署名job SKIP、個別case数未出力 |
+| main・iOS | [43723712100](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43723712100) | 528実行、522 PASS / 0 FAIL / 6 SKIP。Simulator・Transcript検査SUCCESS |
+| 最終a2のPR・Linux | [43718950152](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43718950152) | 20,296 / 0 / 31、SUCCESS |
+| 最終a2のPR・Android | [43718950189](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43718950189) | SUCCESS、署名job SKIP |
+| 最終a2のPR・iOS | [43718950130](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/actions/runs/43718950130) | 528実行、522 PASS / 0 FAIL / 6 SKIP、SUCCESS |
+
+### 公開配布物と公開後照合
+
+2026-11-15 23:51:17 JSTにRelease ID446131556をDraft=false／Prerelease=false／Latest=trueで公開しました。タグobjectはd0a95c7ffb94ddb3539ba5f49c853da1a6282e59で、上記a2を指します。
+
+| ファイル | bytes | SHA-256 |
+| --- | ---: | --- |
+| nimbalyst-0.84.0-ja.1-windows-x64-setup.exe | 484,693,329 | `1df7a78d12e4ed1ba3cf17d85b22be2201a25bc5bf9922b2ced9d49dae3e9c66` |
+| nimbalyst-0.84.0-ja.1-windows-x64-portable.zip | 628,480,194 | `2501d5337704bf5fb78a6eeada7860127627d4d69aec828223f6084b50ed4cb5` |
+| nimbalyst-0.84.0-ja.1-source.zip | 56,381,300 | `f64950bd91b56808903156890cfcddc1e4ec88b162885957b811ce0e4b8788ba` |
+| SHA256SUMS.txt | 322 | `22c036c133181791c27333b23d315517a8cd6a38e7c3d40c749bb8f3e3d3a587` |
+
+4件すべてを認証情報なしで再取得し、原本・API digest・実ファイルhashを照合しました。Source ZIP全9,971件のGit blob/mode/pathとCRC、Portable ZIP全1,915ファイル（directoryを含む2,331 entries）のCRC・内容・安全なパスを照合しました。欠落・余剰・重複・危険パスは0。別担当も別取得ファイルと公開Git/API・Wikiを照合しました。NSIS内部payloadの別担当による抽出、GUI・認証の別担当による再実行は未実施です。旧タグ・旧Releaseの資産は保持しています。
+
+共有資源の静的監査は27名前空間、英日各15,557キー、キー差・補間差0。保持した静的記録の11,523リテラル参照に欠落0、動的489候補・scope未確定211は不具合件数でも全実行時確認でもありません。書式区切りの単一スペース1件は英日共通の意図した値です。
 
 製品検証基準は `29fdcc216f354cd1031dc9ef36672a5399bd6775`（製品入力 `a7f82db90`、差は単体試験1ファイル）です。Windows全Vitestは20,182 PASS／108 FAIL／37 SKIP、exit 1で完走しました。108件は継続未解決です。R22にも同じパス・テスト名の失敗が99件ありますが、同名は原因同一・無害の証明ではなく、全108件を新規の重大回帰とも全環境依存とも断定しません。39 workspace型検査と7容量上限はPASS。Linuxの20,296 PASS／0 FAIL／31 SKIP、Android Build SUCCESS（署名job SKIP）、iOS 522 PASS／0 FAIL／6 SKIPはWindows全成功とは別の結果です。
 
@@ -18,7 +46,7 @@
 
 共有翻訳資源は27名前空間、英語・日本語各15,557キー、キー差・補間差0です。単一スペース1件は英日共通の書式区切りです。489動的呼出し候補と211 namespace scope未確定は欠落訳・不具合の件数ではありません。全画面・全動的経路・全アクセシビリティ表示の翻訳保証ではなく、一部音声ボタンには英語ラベルが残ります。ユーザー文書やAIの回答・外部応答を自動翻訳しません。
 
-最終配布Windowsは通常07d（製品入力a7）を入力不変性の照合後に再利用しています。NSIS 484,693,329 bytes/SHA-256 `1df7a78d12e4ed1ba3cf17d85b22be2201a25bc5bf9922b2ced9d49dae3e9c66`、Portable 628,480,194 bytes/SHA-256 `2501d5337704bf5fb78a6eeada7860127627d4d69aec828223f6084b50ed4cb5`。Portable全1,915ファイル/CRC、ASAR・Worker・Native ABI・SQLite・PTY・ripgrep・LICENSE/NOTICEを照合しました。最終Source ZIPは文書確定後のタグから別に生成し、Git blob/mode/path/CRC/物理復元を照合します。文書更新後のWindows再ビルドと説明しません。
+最終配布Windowsは通常07d（製品入力a7）を入力不変性の照合後に再利用しています。NSIS 484,693,329 bytes/SHA-256 `1df7a78d12e4ed1ba3cf17d85b22be2201a25bc5bf9922b2ced9d49dae3e9c66`、Portable 628,480,194 bytes/SHA-256 `2501d5337704bf5fb78a6eeada7860127627d4d69aec828223f6084b50ed4cb5`。Portable全1,915ファイル/CRC、ASAR・Worker・Native ABI・SQLite・PTY・ripgrep・LICENSE/NOTICEを照合しました。最終Source ZIPは公開時の確定コミットから別に生成し、Git blob/mode/path/CRC/物理復元を照合しました。文書更新後のWindows再ビルドと説明しません。
 
 長文Markdownの高CPU負荷は未解決です。高負荷Wiki文脈処理、Windows端末資源残留の一般的解消、動的翻訳全経路、全DPI・外部スクリーンリーダー条件は確認していません。Windows symlink fixture作成EPERMは拒否処理そのものの未検証範囲を残します。実マイク・実音声認識API、実同期・共同編集サーバー、実組織、旧新サーバー間相互運用は未検証です。Wiki公開・チーム権限等には対応サーバーが必要です。これらの未確認事項を確認済みの不具合・脆弱性と同一視しないでください。
 
@@ -187,3 +215,163 @@ Linuxでの成功とWindowsでの未検証範囲は区別します。未検証�
 Windows配布物はASAR、Worker、Native ABI、PE情報、ライセンス、全ZIPファイルのハッシュと復元を検査します。実機結果を別の成果物へ適用する場合は、ソース・設定・バイナリの対応を確認します。全画面・全DPI・外部スクリーンリーダー・全認証経路を確認したとは扱いません。
 
 [制限事項](Compatibility-and-Limitations) · [ビルド](Building-from-Source) · [本家への追従](Following-Upstream)
+
+## 利用ガイドから集約した過去版の確認記録
+
+以下は旧利用ガイドに分散していた記録です。各版・母集団・未検証の扱いを保持し、上の試験件数と合算しません。
+
+### Windows-Installation — v0.82.8-ja.1
+
+
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から未署名のWindows x64インストーラー、ポータブルZIP、対応ソースZIPと `SHA256SUMS.txt` を取得できます。各ファイルを同じReleaseのチェックサムと照合してください。本家v0.82.8に基づく非公式版です。[確認範囲](Testing-and-Verification)と[制限事項](Compatibility-and-Limitations)も参照してください。
+
+### Windows-Installation — v0.82.7-ja.1
+
+
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)から、`nimbalyst-0.82.7-ja.1-windows-x64-setup.exe`、`nimbalyst-0.82.7-ja.1-windows-x64-portable.zip`、`nimbalyst-0.82.7-ja.1-source.zip`、`SHA256SUMS.txt`を取得します。本家v0.82.7を基準とする未署名Windows x64版です。ファイル名とハッシュは同じReleaseの一覧・チェックサムで照合してください。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)も参照してください。
+
+Windows版の新規導入・更新・Portable起動・言語切替と再起動後の保持・通常終了・アンインストール、および合成データでのPGLiteからSQLiteへの移行を確認しています。全ての実ユーザーデータの移行を保証するものではありません。Windows全体試験も正常完走していません。手順の詳細は[テストと品質検証](Testing-and-Verification)、制限事項は[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。
+
+### Windows-Installation — v0.82.4-ja.1
+
+
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)から `nimbalyst-0.82.4-ja.1-windows-x64-setup.exe`、`nimbalyst-0.82.4-ja.1-windows-x64-portable.zip`、`nimbalyst-0.82.4-ja.1-source.zip` と `SHA256SUMS.txt` を取得します。本家v0.82.4を基準とする、Windows x64向け未署名の通常正式版です。自動更新は行わず、以下の手順で手動更新します。
+
+通常製品で日英切替、明示的な日本語と英語の再起動保持、Systemの日本語解決、ファイル・検索・画像表示を確認しています。認証・起動処理に変更のない先行ビルドでは本番メール認証とサインアウト、新規導入を確認しました。最終配布ペイロードでは更新インストール、設定・文書・Tracker項目の保持、通常アンインストールとデータ保持を確認しました。全データの更新互換性やすべての認証経路を検証したものではありません。詳しい範囲は[テストと品質検証](Testing-and-Verification)に記載しています。
+
+### Windows-Installation — v0.82.3-ja.2
+
+
+[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)から `nimbalyst-0.82.3-ja.2-windows-x64-setup.exe`、`nimbalyst-0.82.3-ja.2-windows-x64-portable.zip`、対応ソースZIPと `SHA256SUMS.txt` を取得します。未署名の通常正式版です。修正した同梱ガイドを含む新しいパッケージであり、旧版を改名したものではありません。実機検証と未検証事項は[テストと品質検証](Testing-and-Verification)を参照してください。以下の旧版結果は履歴として保持します。
+
+### Windows-Installation — v0.82.3-ja.1
+
+
+v0.82.3-ja.1は未署名のWindows x64版です。NSISとポータブルZIPを製品修正から再生成し、ペイロードを照合しました。この版のインストール・更新・削除は実施していません。以前の製品での操作記録は、この版の検証結果ではありません。配布物は[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)を参照してください。以下はWindows配布物の一般的な手順です。
+
+### Windows-Installation — v0.82.1-ja.1
+
+
+[正式Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)からWindows x64用NSIS、ポータブルZIP、ソースZIP、SHA256SUMS.txtを取得します。ファイル名はReleaseの添付一覧に従ってください。未署名です。導入・照合・保存先・手動更新・削除の操作は以下の手順と共通です。
+
+v0.81.7-ja.3からの更新で英語設定、プロジェクト、テスト文書、SQLiteバックエンドの保持を確認しました。文書SHA-256は一致し、新規・更新の両インストールで通常アンインストール後もテストデータが残りました。関連付けは検査対象12項目で事前状態に戻っています。全レジストリの比較や旧版へのダウングレード互換性は確認していません。
+
+対象はWindows x64です。v0.82.1-ja.1は未署名の正式リリースです。公式Nimbalystとの同時利用はサポートしません。
+
+### Account-and-Authentication — v0.82.8-ja.1
+
+
+展開済みWindows製品の専用プロファイルで本番メール認証、暗号化認証ファイルの生成、再起動後の復元と通常ログアウト後の削除を確認しました。最新の再ログイン後の再起動・ログアウト、およびNSIS専用プロファイルでの認証成功は未確認です。Google認証、特殊復旧、サービス側失効も未検証です。[詳細](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md#認証)を参照してください。
+
+### Account-and-Authentication — v0.82.7-ja.1
+
+
+v0.82.7-ja.1では、Nimbalystアカウントのライブメール認証を新たに実施していません。Google認証、特殊復旧、サービス側セッション失効も未検証でした。以下の手順と過去版の観測は、この版での実認証成功を示すものではありません。[テストと品質検証](Testing-and-Verification)を参照してください。
+
+### Account-and-Authentication — v0.82.4-ja.1
+
+
+認証・起動処理に変更のない先行通常Windows製品で、本番メール認証、同じPCからのlocalhost callback、暗号化保存、再起動後の復元、通常サインアウト、次回起動後の未認証状態を確認しました。最終配布物自体で新しいメール認証を再実施したものではありません。nonce・保存失敗時のfail-closed・古い応答による復元防止は回帰試験で確認しています。実アカウントのcallback改変・再送、Google認証、特殊復旧、サーバー側セッション失効、他ユーザーのNTFS実効アクセスは未検証です。
+
+### Account-and-Authentication — v0.82.3-ja.2
+
+
+本版では本番認証を再実施していません。nonce付きlocalhost callback、暗号化保存、通常サインアウトの既存方針を維持しますが、関連ソースや契約テストの確認と通常製品の実認証は異なる検証です。過去版の認証結果はその版の履歴として扱います。Google認証、特殊復旧、サーバー側セッション失効、別ユーザーのNTFS実効アクセスは未検証です。
+
+### Account-and-Authentication — v0.82.3-ja.1
+
+
+通常製品での認証・NSIS導入・更新・削除操作はこの版では再実施していません。今回の製品変更では認証およびインストーラーの入力・設定を変更していませんが、これは実操作の確認に代わるものではありません。過去製品の認証結果はそれぞれの版に限定した履歴です。Google認証、特殊復旧、サーバー側セッション失効、別ユーザーのNTFS実効アクセスも未検証です。以下は実装上の手順・保存方針を説明します。
+
+### Account-and-Authentication — v0.82.1-ja.1
+
+
+メール認証は通常のWindows製品ビルドで確認しています。同じPCのブラウザーからlocalhost callbackを受理し、暗号化保存、正常終了後の認証復元、通常サインアウト、再起動後の未認証状態保持を確認しました。nonce不一致と再受理拒否は契約テストで検査しています。実アカウントのcallbackを改変・再送する試験は行っていません。Google認証、特殊な復旧経路、サービス側のセッション失効、他アカウントからのNTFS実効アクセスは未検証です。
+
+Nimbalystアカウントは正規のNimbalystサービスを利用します。このフォークが別の認証サーバーやアカウントを提供するわけではありません。Nimbalystへのログインと、Claude・Codex・Grokなど個々のエージェントの認証は別です。
+
+### Display-Language — v0.82.8-ja.1
+
+
+Windows製品で日本語・英語の切替と再起動後の保持を確認しました。翻訳資源は27名前空間・英日各15,401キーです。全画面・全動的表示・全DPI・外部スクリーンリーダーを確認したものではありません。
+
+### Display-Language — v0.82.7-ja.1
+
+
+Windows版の製品操作で日本語・英語の即時切替と、設定した言語の再起動後の保持を確認しました。これは全画面・全動的表示・全DPI・外部スクリーンリーダーの確認ではありません。翻訳資源は27名前空間・英日各15,321キーで、キー差・補間差・空の日本語訳は0件ですが、資源の整合だけで全UI表示を保証するものではありません。
+
+表示言語は日本語・英語・Systemに対応します。v0.82.4-ja.1では、通常Windows製品で日英双方向の切替、明示的な`en`・`ja`の再起動後の保持、System選択のja-JPホストでの日本語解決を確認しました。別のOS言語や全画面の条件を網羅するものではありません。版ごとの実機確認範囲は[テストと品質検証](Testing-and-Verification)に記載しています。
+
+v0.82.3-ja.1では通常製品で英語の設定・メニュー・Project Manager・Workspace表示と、英語設定後の再起動保持を確認しました。表示言語をSystemにした状態で、日本語Renderer・ネイティブメニューと、Ctrl+Qによる正常終了・再起動後の日本語保持も確認しました。同版での明示的な`ja`設定値の保持は未確認でした。修正後の補助エラー警告は日英DOM試験で確認していますが、通常製品での表示は未確認です。これらと以下のv0.82.1-ja.1の観測は先行版の履歴として区別します。
+
+アプリ設定を開き、「アプリ」内の「詳細設定」で表示言語を選択します。英語表示の場合はApplication Settings → Advancedです。選択肢は日本語、英語、システム設定です。
+
+### Compatibility-and-Limitations — v0.82.8-ja.1
+
+
+本版は本家v0.82.8の固定コミット `ab9da8f121e4e6fddebc523ced671863e8892ff6` に基づく未署名Windows x64版です。音声入力の実動作・実認識API、実共同編集サーバーや実組織との接続は未検証です。5,000件の検索結果表示は確認しましたが、長文Markdownの高CPU問題は解消と判定していません。高負荷Wiki文脈処理の同条件比較も未完了です。詳しい範囲は[既知制限](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.8-ja.1/docs/KNOWN_LIMITATIONS_v0.82.8-ja.1.md)を参照してください。
+
+### Compatibility-and-Limitations — v0.82.7-ja.1
+
+
+[v0.82.7-ja.1 Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)は、本家v0.82.7の固定コミット [`826adb4f93dbe86db35b76ce2502a3a33abe0489`](https://github.com/nimbalyst/nimbalyst/commit/826adb4f93dbe86db35b76ce2502a3a33abe0489)を基準とするWindows x64向け非公式・未署名版です。Nimbalyst, Inc.の公式製品ではなく、同社の承認・サポートを受けていません。品質判定は **GO WITH KNOWN LIMITATIONS** です。Windows全体試験のPASS、すべての経路の検証完了、PTY資源残留の根本修正を意味しません。更新はこのリポジトリのReleaseから手動で行います。
+
+翻訳資源は27名前空間・英日各15,321キーで、キー差・補間差・空の日本語訳は0件です。これは全画面・動的表示の完全な翻訳保証ではありません。PGLiteからSQLiteへの移行は合成データで確認していますが、すべての実ユーザーデータを移行できる保証ではありません。
+
+Windowsでは、shellまたはCLIプロセスが自然終了した後も、アプリが動作中は端末用資源が残る場合があります。本家と日本語版の双方で、自然終了20回後にMainプロセスのメモリがそれぞれ約156 MiB増え、MessagePortとConPTY関連資源が残ることを観測しました。通常コマンドを永続shell内で実行するたびに増えるという意味ではなく、20回を超えて線形に増えるとも断定できません。確認した範囲では次の端末を作れない状態・データ損失・通常終了不能は観測されず、アプリの通常終了後に追跡した資源は回収されました。根本修正は未実施です。使用中の端末は通常の閉じる操作を使い、メモリ増加時は作業を保存してアプリを通常終了・再起動してください。自然終了後にパネルを閉じるだけで回収される保証はありません。
+
+大きな編集可能文書でCPU使用率が高くなる場合があります。比較した範囲では本家より日本語版が大幅に悪化する傾向は確認されていませんが、原因と全条件での再現性は未確定です。アクセシビリティ機能を無効にすることは対処として推奨しません。
+
+高いシステム負荷のもとでは、ローカルWikiのセッション開始時に追加する文脈の生成が遅れたり省略されたりする場合があります。限られた負荷比較では本家・日本語版の各3回が成功しましたが、以前の単発約4,450 msの時間超過の原因は未確定です。データ損失や通常のWiki編集機能の破損が確認されたという意味ではありません。
+
+Windows全体試験は正常完走していません。同一プロセスのloopback通信停止、応答HTML/CSPの書換えによる試験失敗などがありました。一方、別プロセスの実サーバーを使った主要API試験は本家・日本語版の双方で成功しました。これをWindows全試験のPASSとは扱いません。
+
+Nimbalystアカウントのライブ認証、実際の共同編集サーバー・組織環境、一部の有料AIプロバイダーとの通信、Claude in Chromeの実接続、全ての動的翻訳経路、全DPI・アクセシビリティ条件、実ユーザーデータ全量の移行は未検証です。詳細な試験範囲は[テストと品質検証](Testing-and-Verification)を参照してください。
+
+### Compatibility-and-Limitations — v0.82.4-ja.1
+
+
+本家v0.82.4の固定コミット `031a6e6de0b7817bbdcd16e6e5e758e45dfdcdc7` を基準とする、未署名Windows x64の通常正式版です。公式版とは別の識別子・保存先、手動更新、nonce付きlocalhost認証を維持しています。通常Windows製品の日英切替・明示的な日本語と英語の再起動保持、Systemの日本語解決、主要なファイル・長文検索・画像表示、更新と通常アンインストールを確認しました。過去版とは別の結果として[テストと品質検証](Testing-and-Verification)に記録しています。
+
+共同編集の実サーバー・実組織、旧同期サーバーとの相互運用、本番組織の復旧は **NOT RUN** です。対応する同期サーバーが必要であり、ローカルの単体・統合試験はサービス接続の成功を証明しません。Bedrockへの実通信、新しいClaude有料セッション、実OSスリープ・復帰、非前面ブラウザー操作の全経路、バックエンド信頼設定後の実ライブ再試行も **NOT RUN** です。関連実装の自動回帰試験と区別します。
+
+翻訳資源は27名前空間・英日各15,254キーです。動的735候補・解析scope未確定451候補は欠落キーや不具合件数ではなく、全実行時経路を検証した値でもありません。全画面・全DPI・外部スクリーンリーダー、画像の全操作条件、別OS言語、既存Tracker本文の全更新経路は網羅していません。
+
+本番メール認証・暗号化保存・復元・通常サインアウトは、認証・起動処理に変更のない先行通常製品で確認しました。最終配布物そのもので新たに認証を繰り返したものではありません。Google認証、特殊復旧、サーバー側セッション失効、他ユーザーのNTFS実効アクセスも未検証です。
+
+Windowsではsymlink fixture作成のEPERM、Git worktreeパス表記、ホストの大容量loopback書込みで未通過・未完了の試験を記録しています。Linux候補の全体試験とsymlink拒否試験は成功しましたが、Windows固有動作の全成功とは扱いません。これらの未検証範囲は、確認済みの不具合や脆弱性という意味ではありません。
+
+旧v0.82.3-ja.2で観測した起動遅延やガイド表示の範囲は、以下の当該版の記録として保持しています。新しい版で再発しない保証でも、同一現象が確認されたという意味でもありません。旧版へのダウングレードは未検証です。
+
+### Compatibility-and-Limitations — v0.82.3-ja.2
+
+
+未署名Windows x64の通常正式版です。公開ソースの整理・訂正と同梱ガイド16件の更新を含み、本家基準・既存製品機能・保存先・手動更新方針は維持しています。旧版のタグ・Release・配布物・履歴は保持されるため、過去の内部資料がすべて消去されたわけではありません。
+
+このWindowsホストでの更新後の初回再起動に、最大約125秒のMain遅延と一時的な無応答を観測しました。応答は回復し、同じプロファイルの最終ZIP再試験では通常操作・終了とデータ保持を確認しましたが、約550msの遅延1件は残りました。新規プロファイル4回の起動では同じ長時間遅延を記録しませんでした。原因・再発条件は未確定であり、同時期に表示されたセキュリティ製品の通信確認が原因だったとも、恒久的に解消したとも断定していません。
+
+同梱ガイド16件は配置と全ファイルのSHA-256を検査し、SDKガイド1件と同じバイトのコピーを通常エディターで表示しています。ワークスペースを持たない「ファイル」→「開く」の試験では、日本語UIでも本文ではなく英語の「Open a workspace to get started」が表示されました。専用導線による全ガイドの直接表示は未確認です。
+
+本版では本番認証を再実施していません。Google認証、特殊復旧、サーバー側セッション失効、認証済み旧プロファイルの全更新経路、別ユーザーのNTFS実効アクセス、外部スクリーンリーダー、全DPI・全画面・全動的翻訳経路は未検証です。チーム復旧の実組織・独立実クライアントを使う完全な手順も未検証で、対応する同期サーバーが必要です。未検証であることを、確認済みの不具合や脆弱性とは扱いません。
+
+Windowsのsymlink fixture準備でEPERMとなるCLI 1件・sandbox 2件には未検証範囲があります。fixtureが作れず実行されなかった拒否動作を、Linuxの成功で確認済みにしません。版ごとの実機操作とCIの結果は[テストと品質検証](Testing-and-Verification)に区別します。
+
+### Compatibility-and-Limitations — v0.82.3-ja.1
+
+
+本家v0.82.3の固定コミット `84dcc00f3cd0abbb36eafc6bfad9389f960076db` を基準とする未署名Windows x64版です。英日各27名前空間・14,795キーで、動的672候補・scope未確定412候補・JSX英語378候補は不具合件数ではなく、全実行時経路を確認したものでもありません。
+
+通常製品で英語のSettings・メニュー・Project Manager・Workspace表示と、英語選択後の再起動保持を確認しました。表示言語をSystemにした状態で、日本語Renderer・ネイティブメニューと、Ctrl+Qによる正常終了後の再起動保持も確認しました。明示的な`ja`設定値の保持は未確認です。修正後の補助エラー警告は日英DOM試験で確認しましたが、通常製品での表示は未確認です。認証・NSIS導入/更新/削除の操作はこの版では未実施です。以前の製品での成功記録はそれぞれの版の履歴として区別します。Google認証・特殊復旧・サーバー側失効、旧認証済みプロファイル更新、別ユーザーACL、外部スクリーンリーダー、全DPI・WSL実環境の全経路も未検証です。
+
+旧暗号化方式のチーム復旧には更新された同期サーバーと対応クライアントが必要です。既存モック・DOM・単体・統合試験を評価しましたが、実組織での復旧フォーム表示、復旧開始、サーバー状態遷移、独立実クライアントの読戻し、本番チームデータの完全性、復旧後同期は未検証です。検証目的の実組織・ダミー組織の作成やサービス登録、本番復旧操作は行っていません。
+
+過去のCodex主要求は成功しましたが、自動セッション情報リマインダーはprovider報告のcapacityエラーを返しました。回帰試験で補助要求の終端失敗が主要求の失敗状態へ混入する問題と、RPC開始失敗時の通知購読解放漏れを特定して修正しました。主応答・完了を維持し、日英の利用者向け警告を表示するDOM試験は成功しています。通常製品での警告表示は未確認です。過去のprovider capacity事象が同一経路かは未確定であり、provider自身の容量制限を解消する修正ではありません。7つのバンドル容量上限は修正後もPASSです。Windows fixture作成EPERM3件は未通過で、拒否動作自体の未検証範囲を残しています。以下の旧版結果はそれぞれの版に限定した履歴です。
+
+### Compatibility-and-Limitations — v0.82.1-ja.1
+
+
+Windows x64向けの未署名正式版です。本家v0.82.1の固定コミット `583ae0244dae266667be579733d6c571fd74e037`を基準とします。識別子・保存先・手動更新・localhost認証の方針は以下の表と同じです。
+
+通常製品ビルドで日英表示と再起動保持、本番メール認証・暗号化状態の復元・ローカルログアウト、新規導入、v0.81.7-ja.3からの更新、通常アンインストールを確認しました。翻訳は27名前空間・英日各14,608キーです。動的653候補・スコープ未確定382件と全画面の実行時表示は完全には確認していません。Google認証、特殊な復旧経路、サービス側失効、NTFS実効アクセス、外部スクリーンリーダー、全DPI・端末構成は未検証です。
+
+すべてのWindowsバージョン・DPI・セキュリティ製品・端末構成を試験した結果ではありません。

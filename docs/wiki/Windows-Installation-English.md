@@ -2,89 +2,54 @@
 
 # Windows Installation and Updates
 
-## v0.84.0-ja.1
+Download **v0.84.0-ja.1 for Windows x64** from the [Release page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1). It is a separate, unofficial app with unsigned files. Upstream v0.84.0 is a prerelease; this edition's regular Release designation is not a stability guarantee.
 
-Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+## Choose a format
 
-Download the [four release assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1) and follow the [Windows guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/docs/WINDOWS_JA_UNOFFICIAL.md#english), matching SHA-256 for the same filename. Extract the complete ZIP payload, not only its EXE; the default profile is not necessarily beside the EXE.
+- **setup.exe:** a current-user installation with Windows app-list entries and shortcuts.
+- **Portable ZIP:** extract every file into a new folder and run it there. Do not take only the EXE or run it inside the archive.
 
-Startup, Japanese/English switching, normal shutdown and language retention after restart were observed with final Windows 07d win-unpacked, fully extracted Portable and NSIS products. Fresh NSIS installation and NSIS/Portable upgrades from v0.82.8-ja.1 retained settings, synthetic-document hashes and displayed Tracker data in dedicated environments. This does not guarantee migration of every real profile or database field. Normal NSIS uninstallation retained dedicated user data; Start Menu registration checks were limited to the isolated environment. Downgrades are unverified.
+ZIP does not mean a profile stored beside the EXE. By default it shares this edition's profile with an installed copy, so do not run both at once. Running alongside the official app is also unsupported.
 
-Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
+## Check the download
 
+Compare the SHA-256 with the entry for the same filename in the same Release's SHA256SUMS.txt. In PowerShell:
 
-## v0.82.8-ja.1
-
-Obtain the unsigned Windows x64 installer, portable ZIP, matching source ZIP and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1). Compare each file with the checksums from that release. This unofficial edition is based on upstream v0.82.8. See [verification scope](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English).
-
-## v0.82.7-ja.1
-
-Obtain `nimbalyst-0.82.7-ja.1-windows-x64-setup.exe`, `nimbalyst-0.82.7-ja.1-windows-x64-portable.zip`, `nimbalyst-0.82.7-ja.1-source.zip`, and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1). This is an unsigned Windows x64 edition based on upstream v0.82.7. Verify each filename and hash against the asset list and checksums from that same release. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md).
-
-Windows installation, upgrade, portable launch, language switching and restart persistence, normal shutdown, uninstall, and migration from PGLite to SQLite with synthetic data were checked. Migration of every real user's data is not guaranteed. The Windows full suite also did not complete successfully. See [Testing and Verification](Testing-and-Verification-English) for the scope and [Compatibility and Limitations](Compatibility-and-Limitations-English) for limitations.
-
-## v0.82.4-ja.1
-
-Download `nimbalyst-0.82.4-ja.1-windows-x64-setup.exe`, `nimbalyst-0.82.4-ja.1-windows-x64-portable.zip`, `nimbalyst-0.82.4-ja.1-source.zip` and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1). This is an unsigned Windows x64 regular stable release based on upstream v0.82.4. Automatic updates are disabled; follow the manual-update procedure below.
-
-The ordinary product was checked for Japanese/English switching, persistence of explicit Japanese and English settings after restart, Japanese resolved from System, and file, search and image display. An earlier build with matching relevant product code was used for production email sign-in, sign-out and clean installation. The final distribution payload was checked for upgrade installation, retained settings/documents/Tracker items, ordinary uninstall and retained data. This does not establish every data-upgrade or authentication path. See [Testing and Verification](Testing-and-Verification-English) for the scope.
-
-## v0.82.3-ja.2
-
-Download `nimbalyst-0.82.3-ja.2-windows-x64-setup.exe`, `nimbalyst-0.82.3-ja.2-windows-x64-portable.zip`, the matching source ZIP and `SHA256SUMS.txt` from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2). This is an unsigned regular stable release. Its new packages include corrected bundled guides; they are not renamed older binaries. See [Testing and Verification](Testing-and-Verification-English) for native observations and unverified areas. Earlier results below remain historical.
-
-## v0.82.3-ja.1
-
-v0.82.3-ja.1 is an unsigned Windows x64 edition. The NSIS and portable ZIP packages were rebuilt from the product fix and their payloads checked. Installation, upgrade and removal have not been performed on this version; earlier product observations do not qualify these operations. Refer to the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1) for distribution files. The procedures below describe general Windows installation and update operations.
-
-## v0.82.1-ja.1
-
-Obtain the Windows x64 NSIS installer, portable ZIP, source ZIP and SHA256SUMS.txt from the [stable release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1). Use the filenames listed in its assets. The application and installer are unsigned. The verification, installation, storage, manual-update and removal procedures below also apply.
-
-Upgrade from v0.81.7-ja.3 retained the English setting, project, test document and SQLite backend. The document SHA-256 was unchanged. Ordinary uninstall retained test data after both fresh and upgraded installations; the 12 sampled association entries returned to their prior state. This was not a whole-registry comparison or a test of downgrade compatibility.
-
-This distribution targets Windows x64. v0.82.1-ja.1 is an unsigned stable release. Running it alongside the official Nimbalyst application is not supported.
-
-## Downloading and verifying files
-
-Obtain the NSIS installer, Windows portable ZIP, matching source ZIP and SHA256SUMS.txt from the [release assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1).
-
-Compare filenames and hashes against the asset list and SHA256SUMS.txt from the same release.
-
-In PowerShell, specify the full path of the downloaded file.
-
-```powershell
-$artifact = Read-Host 'Full path of the file to verify'
+~~~powershell
+$artifact = Read-Host 'Full path of the downloaded file'
 Get-FileHash -LiteralPath $artifact -Algorithm SHA256
-```
+~~~
 
-Compare the displayed 64-digit hash with the value for the same filename in `SHA256SUMS.txt` from the same release. Letter case does not affect the value. If they differ, do not run or extract the file.
+Do not run or extract a mismatch. A matching hash is not a digital signature or safety guarantee. This guide does not instruct you to disable SmartScreen, antivirus or other protections. Stop if you cannot assess the file.
 
-The application and installer have no Authenticode signature. SmartScreen or other security products may display warnings. Instructions for disabling protection are not provided. SHA-256 confirms byte-for-byte correspondence with the distribution file; it is not a code signature that authenticates the publisher or proof of safety.
+## Install for the first time
 
-## Installer edition
+1. Save work and close both editions.
+2. For the installer, check the product name Nimbalyst 日本語版（非公式） and use a location separate from the official app. Launch from its shortcut after completion.
+3. For ZIP, extract the entire payload into a new writable folder and run Nimbalyst 日本語版（非公式）.exe.
+4. Follow the welcome screen and open the tutorial or a working folder. Continue with [Getting Started](Getting-Started-English).
 
-1. Save your edits and close both this edition and the official application.
-2. Run the verified setup.exe and confirm that the product name is “Nimbalyst 日本語版（非公式）”.
-3. Use an installation path separate from the official edition. This is a per-user configuration; an administrator installation is not provided.
-4. After installation, launch this edition from its shortcut. The installer is configured not to launch it automatically on completion.
+The installer is per-user and does not launch the app automatically. It adds a Markdown Open With entry but is not configured to replace the default app, UserChoice or the default `nimbalyst://` handler.
 
-The default installation path is `%LOCALAPPDATA%\Programs\nimbalyst-ja-unofficial`, and user data is stored at `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official-edition data is not automatically moved or deleted. This edition adds its own entry to Markdown's Open with options, but is configured not to change the default application, Explorer's UserChoice, or the default `nimbalyst://` registration.
+## Settings and documents
 
-## ZIP edition
+The default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official data is not automatically moved or deleted. Keep documents outside the application folder and do not share your whole profile.
 
-Extract the entire ZIP into a new writable directory and run `Nimbalyst 日本語版（非公式）.exe`. Do not extract only the EXE or run it directly from inside the ZIP. Keep the bundled DLLs, `resources`, and other contents together.
+See [Display Language](Display-Language-English) and [Account and Authentication](Account-and-Authentication-English).
 
-“Portable” means a distribution that does not use an installer. It does not mean that settings are saved next to the EXE. By default, it uses the same edition-specific profile as the installer edition. Moving or deleting the ZIP's extracted directory is separate from moving or deleting that profile.
+## Update from v0.82.8-ja.1
 
-## Quitting, updating, and removing
+Updates are manual. Do not use an official-edition installer to update this fork.
 
-Use Quit in the File menu and wait for shutdown to finish. Before updating, save documents, shut down this edition normally, and back up project documents. Automatic official updates and manual official-update checks are disabled. Read the changes and limitations for the target version in this fork's Releases, verify the new distribution, and update manually.
+1. Read the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/RELEASE_NOTES_v0.84.0-ja.1.en.md) and [limitations](Compatibility-and-Limitations-English).
+2. Save work, back up important documents and quit.
+3. Update the same unofficial installation with setup.exe, or extract the entire ZIP into a new folder rather than over the old copy.
+4. Check settings, documents and Tracker. Do not run different versions against the same profile simultaneously.
 
-For the ZIP edition, extract the full contents into a new directory rather than overwriting the old directory. Do not run different versions against the same profile simultaneously. Profile compatibility when reverting to an older version is not guaranteed.
+Dedicated upgrade checks retained settings, documents and displayed Tracker data, not every possible profile or database field. Do not force-quit during migration or assume downgrading is a recovery method. An older app may not understand newer session information.
 
-To remove the installer edition, select this edition in Windows's app list. The uninstaller is configured to remove registrations and shortcuts owned by the current installation while preserving user data. For the ZIP edition, its extracted directory can be deleted after normal shutdown. Distinguish application removal from deletion of documents, credentials, and settings.
+## Uninstall
 
-For v0.82.1-ja.1, production authentication, language switching and upgrade were checked in an ordinary build with matching product code. The rebuilt NSIS also passed clean installation, verification of every payload hash and ordinary uninstall. [Testing and Verification](Testing-and-Verification-English) describes the scope.
+Choose this edition in Windows' app list for an installed copy. Its own registrations are removed and user data is configured to remain. For ZIP, quit and remove its extracted folder. These operations are separate from deleting documents or a profile elsewhere.
 
-Continue to [Display Language](Display-Language-English) and [Account and Authentication](Account-and-Authentication-English). For problems, see [Troubleshooting](Troubleshooting-English) and [Compatibility and Limitations](Compatibility-and-Limitations-English).
+The [Windows guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/docs/WINDOWS_JA_UNOFFICIAL.md#english) has more detailed instructions and safety information. [Testing and Verification](Testing-and-Verification-English) retains results for each version.

@@ -2,123 +2,36 @@
 
 # Troubleshooting
 
-## v0.84.0-ja.1
+## Windows warns about the file, or the app will not start
 
-An explicit isolated profile rejects inconsistent persistence paths rather than silently switching profiles. Do not delete or speculatively restore a profile/database; record the version, language and nonsecret error.
+This edition is unsigned. Check the version, filename and SHA-256, and make sure the entire ZIP was extracted. This guide does not advise disabling warnings, antivirus or organizational protections. Stop if you cannot assess the file, and follow [Windows installation](Windows-Installation-English).
 
-Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
+## An email link returns to 127.0.0.1 and fails
 
-High CPU use with long Markdown remains unresolved. Wiki context under load, general resolution of Windows terminal resource retention, all dynamic translations, DPI settings and external screen readers are not comprehensively verified. Windows symlink fixture EPERM leaves rejection behavior untested on that host. Real microphones, speech-recognition APIs, live sync/collaboration servers, real organizations and old/new server interoperability are unverified. Wiki publishing and team permissions require a compatible server. Unverified areas are not equivalent to confirmed defects or vulnerabilities.
+Keep the app open and use the link on the same Windows PC. A phone cannot return to the application on that PC. For an expired or used link, request a new email from the PC app. Do not rewrite the URL or expose a port externally. See [Account and Authentication](Account-and-Authentication-English).
 
+## Some text is still English
 
-This page applies to v0.84.0-ja.1. Possible causes below are starting points for diagnosis, not defects confirmed in every environment.
+Check [Display Language](Display-Language-English). Documents, AI replies and external service errors are not automatically translated. Some interface text and dynamic paths remain untranslated or unverified too.
 
-## Memory increases after a terminal process exits naturally
+## A long Markdown document causes high CPU use
 
-Symptom: on Windows, terminal resources and memory may remain while the app stays open after a shell or CLI process exits naturally. In an earlier version, both upstream and the Japanese edition retained MessagePort and ConPTY resources and about 156 MiB of additional Main-process memory after 20 natural exits. In a single-host check of this edition, no child shell was observed three seconds after exit, but general resolution is not established.
+This remains unresolved. Save your work first. Normal shutdown and restart are available, but are not a confirmed fix for the underlying problem. Disabling accessibility or security protections is not recommended.
 
-Action: close a running terminal through the app's normal terminal control. If memory use increases after repeated natural exits, save your work, quit Nimbalyst normally, and restart it. Closing the terminal panel after the process has exited does not guarantee that resources will be recovered. See [Limitations](Compatibility-and-Limitations-English) and [Testing and Verification](Testing-and-Verification-English) for details.
+If memory or other resource use grows after terminal use, save and quit normally. A general fix for terminal-resource retention has not been established. See [Compatibility and Limitations](Compatibility-and-Limitations-English).
 
-## Windows warns about an unsigned application
+## Startup stops with a profile warning, or data seems missing after an update
 
-Symptom: SmartScreen or another protection feature displays an execution warning.
+When a profile path was explicitly supplied, the app may stop if settings and database locations disagree. Do not disable the boundary protection or delete real settings or databases to retry. Check the launch method and distribution version.
 
-Possible cause: this edition's EXE and installer are not Authenticode-signed, so Windows cannot verify the publisher through a certificate.
+Installed and ZIP copies use the same edition-specific profile by default. The ZIP's folder and the data location are different. Do not run versions simultaneously or assume downgrading is a recovery method. Follow the [update guide](Windows-Installation-English).
 
-Check: verify the downloaded Release, version, filename, and SHA-256.
+## Wiki or team features are unavailable
 
-Action: do not run the file if it cannot be verified. Instructions to disable protection or add exclusions are not provided. See [installation and verification](Windows-Installation-English).
+A compatible sync server and account access are required. CLI Wiki publishing is one-way team review, not a public website or two-way synchronization. This GitHub Wiki is also separate from the app's Local Wiki and Team Wiki. Live and older-server interoperability remain unverified.
 
-## SHA-256 does not match
+## Reporting a problem
 
-Symptom: the calculated value differs from SHA256SUMS.txt.
+Use [Issues](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/issues) with the app version, Windows environment, steps, expected result and actual result. Do not attach sign-in links, codes, cookies, tokens, whole profiles or private documents. Redact sensitive information from screenshots.
 
-Possible causes: comparison with a different version or package format, an interrupted download, or different file contents.
-
-Check: compare the same filename from the same Release.
-
-Action: do not run or extract the file. Download it again from [this fork's Releases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases). If the mismatch persists, record the filename and hash values in an issue.
-
-## The application does not start
-
-Symptom: running the EXE does not open the workspace.
-
-Possible causes: a partially extracted ZIP, missing bundled files, an existing process, or execution restrictions in the environment.
-
-Check: confirm that the package is for Windows x64, the entire ZIP was extracted, resources and DLLs are present, and another instance is not still running.
-
-Action: fully extract a verified ZIP into a new location. Do not delete existing data as a troubleshooting experiment. Read security-product warnings rather than bypassing them.
-
-## Login does not return to the application
-
-Symptom: the browser refuses a localhost connection, or the application's account display does not change.
-
-Possible causes: the link was opened on another device, the target application exited, or the link was already used or expired.
-
-Check: confirm that the link was opened on the same PC as the application and that the instance which started authentication is still running.
-
-Action: restart authentication from the application on that PC and open the newly delivered link on the same PC. Do not share the URL or authentication values. See [authentication](Account-and-Authentication-English).
-
-## An authentication link was opened on a phone, or expired
-
-Symptom: the phone cannot connect to 127.0.0.1, or the link is reported as invalid.
-
-Possible causes: 127.0.0.1 refers to the phone itself. Links also have expiration and usage limits.
-
-Check: perform the operation on the Windows PC running the target application.
-
-Action: request a new authentication email from the PC and open it in the PC's browser. Do not edit an old URL or expose the callback port externally.
-
-## The display does not switch to Japanese
-
-Symptom: menus or settings are not in the expected language.
-
-Possible causes: the system setting is selected, another edition or profile is running, or the display failed to refresh.
-
-Check: check the version in About and the display language corresponding to uiLanguage in settings. This is separate from the agent's response language.
-
-Action: select Japanese explicitly. If the issue persists after saving, a normal exit, and a restart, report the screen and operation sequence. See [display language](Display-Language-English).
-
-## Some content remains in English
-
-Symptom: only some documents, conversations, or notifications are in English.
-
-Possible causes: user documents, external responses, technical identifiers, and existing tutorials are not automatically translated. An unverified UI translation omission is also possible.
-
-Check: distinguish fixed UI generated by the application from saved content.
-
-Action: for fixed UI, report the screen name, version, language setting, reproduction steps, and English text in an issue. Do not rewrite documents in bulk merely because they contain English.
-
-## Settings appear to be missing after moving the ZIP
-
-Symptom: different settings or the first-run screen appear.
-
-Possible causes: a different Windows user, version, or explicitly selected test profile. “Portable” does not mean settings are stored beside the EXE.
-
-Check: this edition's default storage is under %APPDATA%. Check the running edition and Windows user.
-
-Action: check the original launch conditions rather than copying or deleting profiles indiscriminately. Do not send directories containing credentials to third parties.
-
-## A problem appeared after an update
-
-Symptom: an operation that worked in an earlier version fails in the new one.
-
-Possible causes: mixed distribution files, a regression, or profile compatibility.
-
-Check: record the versions before and after the update, the Release and hashes, and whether the package was fully extracted.
-
-Action: exit normally and preserve documents. If files are mixed, extract into a new directory. Compatibility when using the same profile with an older version is not guaranteed. Open an issue before deleting data.
-
-## Checking associations with the official edition
-
-Symptom: a nimbalyst:// link opens another application.
-
-Possible cause: an existing protocol registration is being used. This edition does not claim the default handler on Windows.
-
-Check: this edition's email authentication uses localhost; distinguish it from protocol links.
-
-Action: do not overwrite the official application's registration for authentication in this edition. Running alongside the official edition is unsupported. See [limitations](Compatibility-and-Limitations-English).
-
-## Information to include in a report
-
-Include the application version, Windows version and CPU architecture, package format, operation sequence, and expected and actual display. Remove email addresses, document contents, personal names in file paths, authentication URLs, cookies, and tokens from screenshots and logs. Do not post confidential information in a public issue.
+[Testing and Verification](Testing-and-Verification-English) retains exact results and earlier-version history.

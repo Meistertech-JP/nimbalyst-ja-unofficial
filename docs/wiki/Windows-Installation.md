@@ -2,89 +2,54 @@
 
 # Windowsへの導入と更新
 
-## v0.84.0-ja.1
+対象は **v0.84.0-ja.1・Windows x64** です。[Releaseページ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)から取得してください。公式Nimbalystとは別のアプリで、配布物は未署名です。本家v0.84.0はPrereleaseで、本版の通常Release指定も安定性保証ではありません。
 
-本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+## 形式を選ぶ
 
-[最新版の4配布物](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)を取得し、[Windows導入・更新ガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/docs/WINDOWS_JA_UNOFFICIAL.md)に従って同じファイル名のSHA-256を照合します。ZIPはEXEだけでなく全同梱ファイルを展開し、既定ユーザーデータはEXEの隣とは限りません。
+- **setup.exe**：Windowsのアプリ一覧・ショートカットを使う、現在のユーザー向けの配置です。
+- **Portable ZIP**：新しいフォルダーへ全ファイルを展開して起動します。EXEだけを取り出したりZIP内から直接起動したりしないでください。
 
-通常Windows製品07dのwin-unpacked・完全展開Portable・NSISで起動、日英切替、正常終了と再起動後の言語保持を確認しました。NSIS新規導入、前版v0.82.8-ja.1からのNSIS/Portable更新では、専用環境の設定・合成文書hash・Tracker表示の保持を確認しました。全実ユーザーデータ・全DBフィールドの移行保証ではありません。NSISの通常アンインストール後も専用ユーザーデータを保持しました。Start Menu登録は隔離した環境での限定確認です。旧版へのダウングレードは未検証です。
+ZIP版も設定をEXEの隣へ保存する方式ではありません。既定ではインストーラー版と同じ日本語版専用データを使うので、同時に起動しないでください。公式版との同時利用もサポートしません。
 
-最終Windows製品07dの通常win-unpackedと専用プロファイルで、本番メール認証、暗号化認証ファイルの生成、正常終了・再起動後の復元、通常サインアウト、認証ファイル削除、次回起動後の未認証保持を確認しました。NSIS専用プロファイル・別Portableでの新規認証、Google認証、サービス側セッション失効、特殊復旧は未確認です。Node資格情報ファイル試験とは別のElectronアカウント認証の観測です。
+## ダウンロードを確認する
 
+同じReleaseのSHA256SUMS.txtと、同じファイル名のSHA-256を照合します。PowerShellでは次を使えます。
 
-## v0.82.8-ja.1
-
-[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)から未署名のWindows x64インストーラー、ポータブルZIP、対応ソースZIPと `SHA256SUMS.txt` を取得できます。各ファイルを同じReleaseのチェックサムと照合してください。本家v0.82.8に基づく非公式版です。[確認範囲](Testing-and-Verification)と[制限事項](Compatibility-and-Limitations)も参照してください。
-
-## v0.82.7-ja.1
-
-[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)から、`nimbalyst-0.82.7-ja.1-windows-x64-setup.exe`、`nimbalyst-0.82.7-ja.1-windows-x64-portable.zip`、`nimbalyst-0.82.7-ja.1-source.zip`、`SHA256SUMS.txt`を取得します。本家v0.82.7を基準とする未署名Windows x64版です。ファイル名とハッシュは同じReleaseの一覧・チェックサムで照合してください。[Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.82.7-ja.1/RELEASE_NOTES_v0.82.7-ja.1.md)も参照してください。
-
-Windows版の新規導入・更新・Portable起動・言語切替と再起動後の保持・通常終了・アンインストール、および合成データでのPGLiteからSQLiteへの移行を確認しています。全ての実ユーザーデータの移行を保証するものではありません。Windows全体試験も正常完走していません。手順の詳細は[テストと品質検証](Testing-and-Verification)、制限事項は[対応環境と制限事項](Compatibility-and-Limitations)を参照してください。
-
-## v0.82.4-ja.1
-
-[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.4-ja.1)から `nimbalyst-0.82.4-ja.1-windows-x64-setup.exe`、`nimbalyst-0.82.4-ja.1-windows-x64-portable.zip`、`nimbalyst-0.82.4-ja.1-source.zip` と `SHA256SUMS.txt` を取得します。本家v0.82.4を基準とする、Windows x64向け未署名の通常正式版です。自動更新は行わず、以下の手順で手動更新します。
-
-通常製品で日英切替、明示的な日本語と英語の再起動保持、Systemの日本語解決、ファイル・検索・画像表示を確認しています。認証・起動処理に変更のない先行ビルドでは本番メール認証とサインアウト、新規導入を確認しました。最終配布ペイロードでは更新インストール、設定・文書・Tracker項目の保持、通常アンインストールとデータ保持を確認しました。全データの更新互換性やすべての認証経路を検証したものではありません。詳しい範囲は[テストと品質検証](Testing-and-Verification)に記載しています。
-
-## v0.82.3-ja.2
-
-[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.2)から `nimbalyst-0.82.3-ja.2-windows-x64-setup.exe`、`nimbalyst-0.82.3-ja.2-windows-x64-portable.zip`、対応ソースZIPと `SHA256SUMS.txt` を取得します。未署名の通常正式版です。修正した同梱ガイドを含む新しいパッケージであり、旧版を改名したものではありません。実機検証と未検証事項は[テストと品質検証](Testing-and-Verification)を参照してください。以下の旧版結果は履歴として保持します。
-
-## v0.82.3-ja.1
-
-v0.82.3-ja.1は未署名のWindows x64版です。NSISとポータブルZIPを製品修正から再生成し、ペイロードを照合しました。この版のインストール・更新・削除は実施していません。以前の製品での操作記録は、この版の検証結果ではありません。配布物は[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.3-ja.1)を参照してください。以下はWindows配布物の一般的な手順です。
-
-## v0.82.1-ja.1
-
-[正式Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.1-ja.1)からWindows x64用NSIS、ポータブルZIP、ソースZIP、SHA256SUMS.txtを取得します。ファイル名はReleaseの添付一覧に従ってください。未署名です。導入・照合・保存先・手動更新・削除の操作は以下の手順と共通です。
-
-v0.81.7-ja.3からの更新で英語設定、プロジェクト、テスト文書、SQLiteバックエンドの保持を確認しました。文書SHA-256は一致し、新規・更新の両インストールで通常アンインストール後もテストデータが残りました。関連付けは検査対象12項目で事前状態に戻っています。全レジストリの比較や旧版へのダウングレード互換性は確認していません。
-
-対象はWindows x64です。v0.82.1-ja.1は未署名の正式リリースです。公式Nimbalystとの同時利用はサポートしません。
-
-## ダウンロードと照合
-
-[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.7-ja.1)の添付一覧から、NSISインストーラー、WindowsポータブルZIP、対応ソースZIP、SHA256SUMS.txtを取得してください。
-
-ファイル名とハッシュは同じReleaseの添付一覧とSHA256SUMS.txtで照合します。
-
-PowerShellでダウンロードしたファイルのフルパスを指定します。
-
-```powershell
+~~~powershell
 $artifact = Read-Host '確認するファイルのフルパス'
 Get-FileHash -LiteralPath $artifact -Algorithm SHA256
-```
+~~~
 
-表示された64桁のHashを、同じReleaseの`SHA256SUMS.txt`にある同じファイル名の値と比較します。大文字・小文字は値に影響しません。不一致なら実行・展開を中止します。
+不一致なら実行・展開を中止します。hash一致は電子署名や安全性保証ではありません。SmartScreenやウイルス対策等を無効にする手順は提供しません。判断できない場合は実行しないでください。
 
-アプリとインストーラーはAuthenticode未署名です。SmartScreenなどの警告が出る場合があります。保護機能を無効にする手順は提供しません。SHA-256は配布ファイルとのバイト一致を確認するもので、発行元を認証するコード署名や安全性の証明ではありません。
+## 初回の導入
 
-## インストーラー版
+1. 作業を保存し、本版と公式版を終了します。
+2. インストーラーでは製品名「Nimbalyst 日本語版（非公式）」と、公式版とは別の配置先を確認します。完了後にショートカットから起動してください。
+3. ZIPでは全内容を新しい書き込み可能なフォルダーへ展開し、「Nimbalyst 日本語版（非公式）.exe」を起動します。
+4. 初回案内を確認し、チュートリアルや作業用フォルダーを開きます。[はじめに](Getting-Started)へ進んでください。
 
-1. 編集内容を保存し、本版と公式版を終了します。
-2. 照合済みのsetup.exeを実行し、製品名が「Nimbalyst 日本語版（非公式）」であることを確認します。
-3. 公式版とは別のインストール先を使用します。現在のユーザー向けの構成で、管理者向けのインストールは提供しません。
-4. 完了後、本版のショートカットから起動します。インストーラー完了時の自動起動は行わない構成です。
+管理者向けインストールではなく、完了時に自動起動しない構成です。Markdownの「プログラムから開く」に本版を追加しますが、既定アプリ・UserChoice・`nimbalyst://` の既定ハンドラーは変更しない構成です。
 
-既定の配置は`%LOCALAPPDATA%\Programs\nimbalyst-ja-unofficial`、ユーザーデータは`%APPDATA%\Nimbalyst 日本語版（非公式）`です。公式版のデータを自動移動・削除しません。Markdownの「プログラムから開く」へ本版専用の項目を追加しますが、既定アプリやExplorerのUserChoice、`nimbalyst://`の既定登録は変更しない構成です。
+## 設定・文書の保存場所
 
-## ZIP版
+既定のユーザーデータは `%APPDATA%\Nimbalyst 日本語版（非公式）`。公式版からデータを自動移動・削除しません。文書はアプリの配置先とは別の作業フォルダーで扱い、プロファイル全体を第三者へ送らないでください。
 
-新しい書込み可能なディレクトリへZIP全体を展開し、`Nimbalyst 日本語版（非公式）.exe`を実行します。EXEだけを取り出したり、ZIP内から直接実行したりしないでください。DLLと`resources`などの同梱内容を保持します。
+言語は[表示言語](Display-Language)、ログインは[アカウント認証](Account-and-Authentication)を参照してください。
 
-「ポータブル」はインストーラーを使わない配布形態です。設定がEXEの横へ保存される意味ではありません。既定ではインストーラー版と同じ本版専用プロファイルを使います。ZIPの移動や削除は、プロファイルの移動・削除とは別です。
+## 前版v0.82.8-ja.1から更新する
 
-## 終了・更新・削除
+更新は手動です。公式版のインストーラーを日本語版の更新として使わないでください。
 
-終了は「ファイル」メニューの「終了」を使い、終了処理が終わるまで待ちます。更新前は文書を保存し、本版を正常終了してプロジェクト文書をバックアップします。公式版の自動更新・手動更新確認は無効です。このフォークのReleasesで対象版の変更内容と制限を読み、新しい配布物を照合して手動更新します。
+1. [リリースノート](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/RELEASE_NOTES_v0.84.0-ja.1.md)と[既知制限](Compatibility-and-Limitations)を確認します。
+2. 作業を保存し、重要な文書をバックアップして本版を終了します。
+3. インストーラー版は同じ日本語版を更新します。ZIP版は旧版へ上書きせず、新しいフォルダーへ全内容を展開して起動します。
+4. 設定・文書・Trackerを確認します。異なる版を同じプロファイルで同時に使わないでください。
 
-ZIP版は旧ディレクトリへ上書きせず、新しいディレクトリへ完全展開します。異なる版を同じプロファイルで同時実行しないでください。古い版へ戻した際のプロファイル互換性は保証していません。
+専用環境では設定・文書・Tracker表示の保持を確認しましたが、全データの互換性保証ではありません。移行中に強制終了せず、旧版へのダウングレードを復旧方法として前提にしないでください。新しいセッション情報を旧版で読めない場合があります。
 
-インストーラー版の削除はWindowsのアプリ一覧で本版を選択します。アンインストーラーは現在の配置が所有する登録・ショートカットを対象とし、ユーザーデータを保持する構成です。ZIP版は正常終了後に展開先を削除できます。文書・認証情報・設定の削除とは区別してください。
+## アンインストール
 
-v0.82.1-ja.1は、製品コードが一致する通常ビルドで本番認証・言語切替・旧版更新を確認し、再生成NSISでも新規インストール・全ペイロードのハッシュ照合・通常アンインストールを確認しています。[テストと品質検証](Testing-and-Verification)に検証範囲を記載しています。
+インストーラー版はWindowsのアプリ一覧から本版を選びます。本版の登録を解除し、ユーザーデータは保持する構成です。ZIP版は終了後に展開先を削除します。文書・別の場所にあるプロファイルの削除とは別です。
 
-次の操作は[表示言語](Display-Language)と[アカウント認証](Account-and-Authentication)へ、問題がある場合は[トラブルシューティング](Troubleshooting)と[制限事項](Compatibility-and-Limitations)へ進んでください。
+詳しい操作と安全上の注意は[Windowsガイド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/docs/WINDOWS_JA_UNOFFICIAL.md)、版ごとの実証範囲は[テストと品質検証](Testing-and-Verification)にまとめています。

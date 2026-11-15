@@ -2,33 +2,56 @@
 
 # Getting Started
 
-## v0.84.0-ja.1
+Nimbalyst combines file editing, AI conversations and task management in one workspace. This guide introduces the unofficial v0.84.0-ja.1 edition and its new workflows.
 
-Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+## Your first three steps
 
+1. Get the Windows x64 installer or Portable ZIP from the [Release page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1) and follow the [installation guide](Windows-Installation-English).
+2. Choose a mode on the welcome screen and review the terms and privacy policy. Start with the tutorial or open a working folder as a project.
+3. Configure and authenticate an agent when you want to use it; you can defer this step initially. Check the provider's account terms and pricing.
 
-Nimbalyst is a desktop application that brings file editing, work with AI agents, session management, and trackers together in one workspace. Its editing features cover code, diagrams, tables, and other formats as well as Markdown. These are features of upstream Nimbalyst.
+Choose a document from the file list to edit it. Before asking an AI to make changes, check the open project and selected files. A separate practice folder or the tutorial lets you explore without changing original documents.
 
-The Unofficial Japanese Edition is a fork that adds Japanese desktop UI and a display-language setting. Beyond localization, distribution changes include separate Windows application identifiers and storage locations, disabled official updates, and localhost authentication. It is not endorsed or supported by Nimbalyst, Inc.
+See [Display Language](Display-Language-English) for Japanese/English settings. Nimbalyst sign-in is separate from Claude, Codex and other agent authentication; see [Account and Authentication](Account-and-Authentication-English).
 
-## Choosing a distribution
+## Use the new features
 
-Download the unsigned Windows x64 edition based on fixed upstream v0.84.0 commit `dc5a0ef938cf495a0667d797f871d09d0c44246f` from the [v0.84.0-ja.1 release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1). It provides NSIS, portable ZIP, matching source and SHA256SUMS.txt. The installer provides Windows app-list entries and shortcuts; the portable ZIP runs from its extracted directory. The ZIP edition does not store settings next to the EXE. See the [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/RELEASE_NOTES_v0.84.0-ja.1.md) and [verification limitations](Compatibility-and-Limitations-English) for package contents and scope.
+### Group related conversations
 
-See [Windows Installation and Updates](Windows-Installation-English) for filenames, checksum verification, and placement instructions. SQLite migration is included, but migration of every real user's data is not guaranteed.
+Switch to Agent Mode, open the session list's create menu and choose New Workstream…. Use Move to Workstream… in an existing session's menu to add it.
 
-## First launch
+A Workstream is a named folder for conversations. Sessions within it can use shared editor tabs for related files. It is not a Git worktree and does not establish an agent management relationship.
 
-The initial guidance offers operating modes and access to the tutorial. Read the terms and privacy policy before deciding whether to accept them. If an agent setup screen appears, it also offers an option to configure agents later. To use an agent, you must satisfy its provider's authentication requirements and terms of use.
+### Send follow-ups while an agent works
 
-Choose the display language under Advanced in application settings. Japanese, English, and the system setting are supported. See [Display Language](Display-Language-English). A new tutorial uses the display language selected when it is created, but changing languages does not rewrite existing documents or conversations.
+Send a message from the input field while an agent is busy to queue it. Supported paths combine consecutive ordinary messages with compatible document context into the next turn, preserving order and author labels.
 
-Signing in to a Nimbalyst account is separate from authenticating agents such as Claude or Codex. Nimbalyst email authentication is described in [Account and Authentication](Account-and-Authentication-English).
+Commands and messages with different context remain separate. The Claude Code CLI path handles messages individually. Interrupt and send now interrupts the current turn and advances the queue; it does not move the clicked row ahead of earlier messages.
 
-## Files and projects
+### Switch branches in the Git panel
 
-Open a working folder as a project and select documents from its file list. When asking an AI to make changes, check the target project and files as well. For an initial trial, a dedicated folder or tutorial can be used without changing original documents.
+Click the current branch name above the Git panel's Log and choose a branch or create one. Remote-only branches are supported too. This is separate from the filter that changes which branches the Log displays.
 
-Local Wiki and Team Wiki are in-app features. This GitHub Wiki documents usage and development of the distributed edition; its storage and purpose differ from the application's Wiki.
+Read the current-change and active-session notices before switching. The operation does not automatically stash, discard or force-overwrite uncommitted changes; Git may refuse it. A branch in use by another worktree instead offers a way to open the relevant session.
 
-For startup, display, or sign-in problems, see [Troubleshooting](Troubleshooting-English). For the verification scope, see [Compatibility and Limitations](Compatibility-and-Limitations-English).
+### Include a folder in a commit proposal
+
+Ask the agent for a proposal covering the folder's changes. The confirmation view lists its changed files; select folders or individual files, review the diff, then approve. Creating a proposal does not immediately commit.
+
+The proposal is rejected for ignored paths, folders without changes, nested Git repositories, or more than 2,000 expanded files. Files edited only by other sessions are initially unselected. Check the selection and scope yourself.
+
+### Edit nested Markdown lists
+
+Edit lists beneath numbered items and save as usual. Export now accounts for the width of the parent marker, helping other Markdown tools retain the hierarchy. A child list keeps its own starting number beneath a two-digit parent: a list written as `1.` under item 10 still starts at 1. This is not a guarantee for every Markdown dialect.
+
+### Publish a local Wiki for team review
+
+In an environment with the CLI installed, configure the destination with `nim wiki publish --init`, then use `nim wiki publish`. Use `nim wiki publish --dry-run` to preview the operation. Pages marked `export: false` and their descendants are excluded.
+
+Your local files remain the source of truth. Publishing goes one way to the team project; pages whose bodies were edited on the team side are reported rather than silently overwritten. You need a compatible server, team sign-in and access. The Windows distribution alone does not set up the CLI or server, and live server connections have not been verified. This is not a public website, two-way synchronization or an update to this GitHub Wiki.
+
+## Before use
+
+Upstream v0.84.0 is a prerelease. This edition is unsigned and updated manually; Windows full-suite failures and long-Markdown high CPU use remain unresolved. Read [Compatibility and Limitations](Compatibility-and-Limitations-English).
+
+[Release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/RELEASE_NOTES_v0.84.0-ja.1.en.md) · [Troubleshooting](Troubleshooting-English) · [Detailed verification](Testing-and-Verification-English)

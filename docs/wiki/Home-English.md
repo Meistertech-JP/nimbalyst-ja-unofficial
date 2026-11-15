@@ -1,39 +1,32 @@
 [日本語](Home) | English
 
-# Nimbalyst — Unofficial Japanese Edition Wiki
+# Welcome to the Unofficial Japanese Edition
 
-An unofficial fork providing Japanese desktop UI, not developed, certified or supported by Nimbalyst, Inc. The latest **v0.84.0-ja.1** is an unsigned Windows x64 edition based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`.
+Use Nimbalyst to work with AI agents such as Claude Code and Codex, edit documents and code, and manage tasks in one app. This edition adds Japanese interface text; it is not an official Nimbalyst, Inc. product.
 
-Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+## Start here
 
-- [Setup EXE, Portable ZIP, Source ZIP and checksums](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)
-- [Release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/RELEASE_NOTES_v0.84.0-ja.1.en.md)
-- [Source and README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [Previous v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
+The latest edition is **v0.84.0-ja.1 for Windows x64**. Choose an installer or Portable ZIP on the [Release page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1), then follow [Windows installation and updates](Windows-Installation-English). Files are unsigned and updates are manual.
 
-The assessment is **GO WITH KNOWN LIMITATIONS**. Integrates upstream v0.83.0 and v0.84.0 changes since v0.82.8: Claude Fable 5.2 selection, batched queue delivery, Git-panel branch switching, Workstreams, folder-scoped commit proposals, nested Markdown list preservation, hidden-entry counts, Wiki publishing, SQLite backups and tool-output retention. Edition-specific changes add Japanese UI text and fix explicit profile boundaries and Windows file/path handling. Integration does not establish live verification of every feature.
+- New to the app? [Getting Started](Getting-Started-English)
+- What's changed? [User-facing release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/RELEASE_NOTES_v0.84.0-ja.1.en.md)
+- Choose Japanese or English: [Display Language](Display-Language-English)
+- Sign in by email: [Account and Authentication](Account-and-Authentication-English)
 
-Read [verification](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English). Official updates are disabled; update manually. Previous tags, releases and history are retained. This GitHub Wiki is separate from the application’s Local Wiki and Team Wiki.
+## What's easier now?
 
-## User Guide
+Workstreams group related AI conversations, and the Git panel can now change the checked-out branch. Supported delivery paths combine queued follow-ups, while folder-based commit proposals let you review a set of changes together. Fixes also preserve nested Markdown lists on save and address formatting damage from agent edits near comments.
 
-- [Getting started](Getting-Started-English): first launch, files, and projects.
-- [Windows installation and updates](Windows-Installation-English): installer and ZIP, verification, updates, and removal.
-- [Display language](Display-Language-English): switching and saving Japanese or English, and content that is not translated.
-- [Account and authentication](Account-and-Authentication-English): email authentication on the same PC, localhost callbacks, storage, and logout.
-- [Troubleshooting](Troubleshooting-English): launch, login, display, and distribution issues.
-- [Compatibility and limitations](Compatibility-and-Limitations-English): verified scope and unverified paths.
+CLI Wiki publishing is a separate, one-way workflow for team review. It needs a compatible server and access; it does not update this GitHub Wiki or publish a public website. [Getting Started](Getting-Started-English#use-the-new-features) explains where to begin.
 
-## Developer Guide
+## Before use
 
-- [Localization architecture](Localization-Architecture-English): Main and Renderer, shared resources, independent React roots, and on-demand loading.
-- [Building from source](Building-from-Source-English): pnpm and Windows packages.
-- [Testing and verification](Testing-and-Verification-English): test populations and post-release CI.
-- [Following upstream Nimbalyst](Following-Upstream-English): fixed baselines, change classification, and fork behavior to preserve.
-- [Translation and contributing](Translation-and-Contributing-English): issues, translation keys, tests, and pull requests.
+Upstream v0.84.0 is a prerelease. This edition's regular GitHub Release and Latest designation is not upstream certification or a stability guarantee. Windows full-suite failures and high CPU use with long Markdown remain unresolved. Live team-server connections are also unverified. Read [Compatibility and Limitations](Compatibility-and-Limitations-English).
 
-## Project
+For help, see [Troubleshooting](Troubleshooting-English). The release tag and distribution files remain as published; these explanatory pages continue to improve.
 
-- [Development history](Development-History-English)
-- [License and attribution](License-and-Attribution-English)
-- [English overview entry](English-Overview)
+## Development and verification
+
+[Testing and Verification](Testing-and-Verification-English) records the exact source, PASS/FAIL/SKIP/NOT RUN results and archive checks. See also [Building](Building-from-Source-English), [Localization Architecture](Localization-Architecture-English), [Following Upstream](Following-Upstream-English) and [Translation and Contributing](Translation-and-Contributing-English).
+
+[Development History](Development-History-English) · [License and Attribution](License-and-Attribution-English)

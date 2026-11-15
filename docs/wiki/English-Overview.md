@@ -1,7 +1,11 @@
-[日本語](Home) | [English](Home-English)
+# English Guide
 
-# English Documentation
+[日本語Home](Home) · [English Home](Home-English)
 
-The current unsigned Windows x64 edition is [v0.84.0-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1), based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning. It provides NSIS, full Portable ZIP, corresponding Source ZIP and checksums; update manually. Shared resources contain 27 namespaces and 15,557 keys per language, with zero key or interpolation differences. One single-space value is an intentional shared formatting separator. The 489 dynamic-call candidates and 211 unresolved namespace scopes are not counts of missing translations or defects. This is not complete UI, dynamic-path or accessibility coverage; some dictation buttons still have English labels. User documents, AI answers and external responses are not automatically translated. See [Home-English](Home-English), [verification](Testing-and-Verification-English) and [limitations](Compatibility-and-Limitations-English). Previous releases are retained.
+This unofficial Japanese edition brings Nimbalyst's AI conversations, files and tasks together with Japanese interface text. It is not an official Nimbalyst, Inc. product.
 
-See [English Home](Home-English) for user and developer guides. Each article links to its Japanese counterpart.
+For **v0.84.0-ja.1 on Windows x64**, start at [English Home](Home-English) or [Getting Started](Getting-Started-English). The [release notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/RELEASE_NOTES_v0.84.0-ja.1.en.md) explain Workstreams, queued follow-ups, branch switching, folder commit proposals, Markdown fixes and team Wiki publishing.
+
+Use the [Release page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1) and [Windows guide](Windows-Installation-English) for downloads and manual updates. Files are unsigned. Upstream v0.84.0 is a prerelease; unresolved Windows test failures, long-Markdown CPU use and server requirements are explained in [Compatibility and Limitations](Compatibility-and-Limitations-English). Exact results remain in [Testing and Verification](Testing-and-Verification-English).
+
+Published tag and Source ZIP documents remain as originally released; main and this Wiki contain revised explanations.

@@ -1,31 +1,62 @@
-# Nimbalyst — Unofficial Japanese Edition v0.84.0-ja.1
+# v0.84.0-ja.1: Organize conversations and work with Git in the app
 
-An unsigned Windows x64 regular Release. [Assets](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1) are the Setup EXE, Portable ZIP, corresponding Source ZIP and SHA256SUMS.txt. This is not an official Nimbalyst, Inc. product.
+This unofficial Japanese edition for Windows x64 brings upstream v0.83.0 and v0.84.0 changes to users of v0.82.8-ja.1. The [Release page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1) provides an unsigned installer, Portable ZIP, corresponding source and checksums.
 
-Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+## Group related conversations with Workstreams
 
-## Upstream and edition-specific changes
+When a piece of work uses several AI sessions, choose New Workstream… in Agent Mode to create a named folder, then Move to Workstream… to collect existing conversations. These folders are called Workstreams. They organize conversations by task; they do not establish an agent management relationship.
 
-Integrates upstream v0.83.0 and v0.84.0 changes since v0.82.8: Claude Fable 5.2 selection, batched queue delivery, Git-panel branch switching, Workstreams, folder-scoped commit proposals, nested Markdown list preservation, hidden-entry counts, Wiki publishing, SQLite backups and tool-output retention. Edition-specific changes add Japanese UI text and fix explicit profile boundaries and Windows file/path handling. Integration does not establish live verification of every feature.
+## Deliver queued follow-ups together
 
-Retains Japanese/English/System selection, separate application identity/settings/data, nonce-protected localhost authentication, disabled official updates and manual updating. Explicit isolated profiles now validate CLI arguments and persistence paths across restart and second instances, rejecting inconsistent settings/database boundaries. This is not a guarantee across every OS state, link race or concurrent-use condition; running alongside the official edition remains unsupported.
+You can send follow-up instructions from the input field while an agent is working. Ordinary queued messages with the same document context now arrive together in the next turn, with their authors identified, rather than each requiring a separate turn. Slash commands and messages with different document contexts still receive separate turns. Sessions using the Claude Code CLI path continue to process queued messages individually.
 
-## Verification scope
+## Choose branches from the Git panel
 
-Startup, Japanese/English switching, normal shutdown and language retention after restart were observed with final Windows 07d win-unpacked, fully extracted Portable and NSIS products. Fresh NSIS installation and NSIS/Portable upgrades from v0.82.8-ja.1 retained settings, synthetic-document hashes and displayed Tracker data in dedicated environments. This does not guarantee migration of every real profile or database field. Normal NSIS uninstallation retained dedicated user data; Start Menu registration checks were limited to the isolated environment. Downgrades are unverified.
+Click the current branch name above the Git panel’s Log to switch to an existing branch, check out a remote-only branch, or create a new one. The commit menu's Create Branch action also now opens a name-entry form. Review your current changes before switching branches.
 
-Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
+## Propose a commit for a folder
 
-The product-verification baseline is `29fdcc216f354cd1031dc9ef36672a5399bd6775` (product input `a7f82db90`, differing by one unit-test file). The Windows full Vitest run completed with 20,182 PASS / 108 FAIL / 37 SKIP and exit 1. All 108 remain unresolved. R22 has failures with the same path and test name for 99 cases, but names do not establish identical causes or harmlessness; neither all-new major regressions nor all-environment-only failures are established. All 39 workspace typechecks and seven existing size limits passed. Linux’s 20,296 PASS / 0 FAIL / 31 SKIP, Android Build SUCCESS (signed job skipped) and iOS 522 PASS / 0 FAIL / 6 SKIP are separate from Windows full-suite success.
+Ask an agent for a commit proposal covering a folder rather than listing every file individually. Its changed files are expanded into the proposal for review, so you can check the scope and diff before approving. A fix also prevents folder proposals from pausing auto-commit because another session has already committed those edits.
 
-Windows binaries reuse verified07d after confirming unchanged product inputs; the Source ZIP is generated from the final publication tag after documentation updates. Windows was not rebuilt from that documentation commit. Final-source CI Run IDs and asset SHA-256 values are recorded in the [Release body](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1).
+## Preserve Markdown structure
 
-## Limitations and installation
+Nested lists beneath numbered items now keep their indentation when saved for use in other Markdown tools. They retain their own starting number even beneath a two-digit parent item: for example, a child list written as `1.` under item 10 still starts at 1.
 
-High CPU use with long Markdown remains unresolved. Wiki context under load, general resolution of Windows terminal resource retention, all dynamic translations, DPI settings and external screen readers are not comprehensively verified. Windows symlink fixture EPERM leaves rejection behavior untested on that host. Real microphones, speech-recognition APIs, live sync/collaboration servers, real organizations and old/new server interoperability are unverified. Wiki publishing and team permissions require a compatible server. Unverified areas are not equivalent to confirmed defects or vulnerabilities.
+Agent edits near a comment on part of bold text or inline code also no longer produce the broken Markdown addressed by this fix. Your normal editing and saving workflow stays the same.
 
-Shared resources contain 27 namespaces and 15,557 keys per language, with zero key or interpolation differences. One single-space value is an intentional shared formatting separator. The 489 dynamic-call candidates and 211 unresolved namespace scopes are not counts of missing translations or defects. This is not complete UI, dynamic-path or accessibility coverage; some dictation buttons still have English labels. User documents, AI answers and external responses are not automatically translated.
+## Publish a local Wiki for team review
 
-The assessment is **GO WITH KNOWN LIMITATIONS**. Read [known limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english) and [Windows installation/update](docs/WINDOWS_JA_UNOFFICIAL.md#english). Updates are manual. Extract the entire ZIP payload, not just its EXE. A matching SHA-256 is not a digital signature or safety guarantee. MIT and bundled third-party LICENSE/NOTICE files are retained.
+Configure a destination with `nim wiki publish --init`, then use `nim wiki publish` to copy a local Wiki into a team project, with a Commenter role for review. It requires an updated sync server and appropriate access. Downloading the Windows app alone does not set up the CLI or server.
 
-[日本語](RELEASE_NOTES_v0.84.0-ja.1.md)
+Local files remain the source of truth: this is one-way publishing, not a public website or two-way synchronization. It concerns the application's Local Wiki and Team Wiki, not this project's GitHub Wiki. Live server connections and interoperability with older servers remain unverified.
+
+## Other improvements
+
+- Claude Fable 5.2 is available in the model selector, alongside previous-generation Fable 5.1 and 5. Availability also depends on the service and account.
+- When a subfolder reaches the file tree's 200-entry display limit, it now shows how many entries are hidden.
+- SQLite backups continue rotating after the database has shrunk.
+- Retention cleanup now handles aged tool-output images and duplicate data, and correctly visits outputs that reach their retention limit later.
+
+## Changes in the Japanese edition
+
+New interface text has been localized. Japanese, English and System display-language options remain available, and this edition keeps its settings and data separate from the official app.
+
+Explicitly supplied profile locations are checked consistently across restart and second-instance launches. A conflicting location stops startup instead of silently writing elsewhere. Windows file/path handling has also been corrected. These changes are not a safety guarantee for every host or link race.
+
+## Before updating
+
+Upstream v0.84.0 is a GitHub prerelease. This edition is published as a regular GitHub Release and Latest, not as an upstream-certified or stability-guaranteed build.
+
+**The Windows full test run has 108 unresolved failures, and high CPU use with long Markdown remains unresolved.** Files are unsigned, updates are manual, and team features require a compatible server. Read the [known limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english) before use.
+
+Save your work, quit the app and follow the [Windows update guide](docs/WINDOWS_JA_UNOFFICIAL.md#english). Extract a ZIP update completely into a new folder. Downgrades are unverified.
+
+## Learn more
+
+- [Getting started and feature entry points](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Getting-Started-English)
+- [Testing and Verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English): exact counts, native observations and untested areas.
+- Upstream notes: [v0.83.0](https://github.com/nimbalyst/nimbalyst/releases/tag/v0.83.0) / [v0.84.0](https://github.com/nimbalyst/nimbalyst/releases/tag/v0.84.0).
+
+Integrating a feature is not the same as testing every live integration or operation. The published binaries, tag and Source ZIP are unchanged; this page is a post-publication documentation revision.
+
+[日本語](RELEASE_NOTES_v0.84.0-ja.1.md) · [MIT License](LICENSE)

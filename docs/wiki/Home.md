@@ -1,40 +1,32 @@
 日本語 | [English](Home-English)
 
-# Nimbalyst日本語版（非公式）Wiki
+# Nimbalyst 日本語版へようこそ
 
-NimbalystのデスクトップUIを日本語で利用するための非公式フォークです。Nimbalyst, Inc.による開発・認定・サポートを受けていません。最新版 **v0.84.0-ja.1** は本家v0.84.0（固定コミット `dc5a0ef938cf495a0667d797f871d09d0c44246f`）を基準とする未署名Windows x64版です。
+Claude CodeやCodexなどのAIエージェントとの会話、文書・コードの編集、タスクの管理を一つのアプリで行う、Nimbalystの非公式日本語版です。Nimbalyst, Inc.の公式製品ではありません。
 
-本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+## まず使ってみる
 
-- [最新版のSetup EXE・Portable ZIP・Source ZIP・checksums](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)
-- [Release Notes](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/v0.84.0-ja.1/RELEASE_NOTES_v0.84.0-ja.1.md)
-- [ソース・README](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial)
-- [前版v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)
+最新版は **v0.84.0-ja.1（Windows x64）**。[Releaseページ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)からインストーラーかPortable ZIPを選び、[Windowsへの導入と更新](Windows-Installation)を確認してください。配布物は未署名で、更新は手動です。
 
-品質判定は **GO WITH KNOWN LIMITATIONS**。本家v0.82.8以降のv0.83.0・v0.84.0を取り込みました。Claude Fable 5.2選択、キューの一括配送、Gitパネルのブランチ切替、Workstreams、フォルダー単位のコミット提案、Markdownネストリスト保存、ファイルツリー省略件数表示、Wiki公開、SQLiteバックアップ・ツール出力保持処理などを含みます。日本語版では新しいUIの翻訳、明示的な隔離プロファイルの保存先境界、Windowsのファイル・パス処理を修正しました。統合した機能すべての実接続を確認したわけではありません。
+- 初めて使う：[はじめに](Getting-Started)
+- 新版の変更：[利用者向けリリースノート](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/RELEASE_NOTES_v0.84.0-ja.1.md)
+- 日本語・英語を選ぶ：[表示言語の設定](Display-Language)
+- メールでログインする：[アカウント認証](Account-and-Authentication)
 
-[確認済み範囲](Testing-and-Verification)と[既知制限](Compatibility-and-Limitations)を確認してください。公式更新は無効で手動更新します。旧タグ・Release・履歴は保持しています。このGitHub Wikiはアプリ内Local Wiki・Team Wikiとは別です。
+## 新しく便利になったこと
 
-## 利用する
+関連するAIの会話をWorkstreamsでまとめたり、Gitパネルから実際にブランチを切り替えたりできます。対応する送信経路では作業中の追加指示をキューからまとめて渡し、フォルダーを指定したコミット提案もレビューできます。Markdownの入れ子リストの保存と、コメント周辺をAIが編集した際の書式も修正しました。
 
-- [はじめに](Getting-Started)：初回起動、ファイルとプロジェクトの扱い。
-- [Windowsへの導入と更新](Windows-Installation)：インストーラーとZIP、照合、更新、削除。
-- [表示言語の設定](Display-Language)：日本語・英語の切替と保存、翻訳しない内容。
-- [アカウント認証](Account-and-Authentication)：同じPCでのメール認証、localhostと保存・ログアウト。
-- [トラブルシューティング](Troubleshooting)：起動・ログイン・表示・配布物の問題。
-- [対応環境と制限事項](Compatibility-and-Limitations)：検証範囲と未検証の経路。
+CLIのWiki公開は、手元のWikiをチームのレビューへ一方向に反映する別機能です。対応サーバーと権限が必要で、このGitHub WikiやWebへの一般公開とは異なります。操作の入口は[はじめに](Getting-Started#新版の機能を使う)で説明します。
 
-## 開発する
+## 利用前の注意
 
-- [日本語化アーキテクチャ](Localization-Architecture)：MainとRenderer、共有資源、独立Reactルート、必要時ロード。
-- [ソースからのビルド](Building-from-Source)：pnpmとWindowsパッケージ。
-- [テストと品質検証](Testing-and-Verification)：検査の母集団と公開後CI。
-- [本家Nimbalystへの追従](Following-Upstream)：固定基準、差分分類、保持するフォーク仕様。
-- [翻訳と開発への参加](Translation-and-Contributing)：Issue、翻訳キー、テスト、PR。
+本家v0.84.0はPrereleaseです。日本語版の通常Release・Latest指定は、公式認定や安定性保証ではありません。Windows全テストの未解決FAIL、長文Markdownの高CPU負荷が残っています。チーム機能の実サーバー接続も未検証です。[対応環境と制限事項](Compatibility-and-Limitations)を確認してください。
 
-## プロジェクト
+問題があれば[トラブルシューティング](Troubleshooting)へ。正式タグ・配布ファイルは公開時のまま、ここにある説明だけを改善しています。
 
-- [開発履歴](Development-History)
-- [ライセンスと謝辞](License-and-Attribution)
-- [English Home](Home-English)
-- [English Overview（旧入口）](English-Overview)
+## 開発・検証を詳しく知る
+
+[テストと品質検証](Testing-and-Verification)に、対象コミット・PASS/FAIL/SKIP/NOT RUN・配布物照合をまとめています。[ビルド](Building-from-Source)、[日本語化の仕組み](Localization-Architecture)、[本家への追従](Following-Upstream)、[翻訳への参加](Translation-and-Contributing)も参照できます。
+
+[開発履歴](Development-History) · [ライセンスと謝辞](License-and-Attribution)

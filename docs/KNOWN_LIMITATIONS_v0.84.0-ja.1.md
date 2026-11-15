@@ -6,6 +6,16 @@
 
 品質判定は **GO WITH KNOWN LIMITATIONS** です。未検証事項を確認済みの不具合・脆弱性と読み替えず、以下の範囲と制限を確認してください。
 
+## 利用前に押さえたいこと
+
+- 長いMarkdown文書ではCPU使用率が高くなる問題が残っています。
+- Windows全テストには未解決FAILがあり、すべての検査に合格した版ではありません。Linuxの成功で代替しません。
+- 配布物は未署名です。更新は日本語版Releaseから手動で行います。公式版との同時利用はサポートしません。
+- チームへのWiki公開・共同編集等には、更新済みの対応サーバーと権限が必要です。実サーバー・旧サーバーとの互換性は未検証です。Wiki公開は一方向のチームレビュー用で、一般公開サイトや双方向同期ではありません。
+- 旧版へのダウングレードは未検証です。更新前に重要な文書をバックアップしてください。
+
+以下は、何を確認し、何を確認していないかを記録した技術的な詳細です。使い方は[Windowsガイド](WINDOWS_JA_UNOFFICIAL.md)、集計と公開後照合は[テストと品質検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)を参照してください。
+
 ## Windows全Vitest
 
 製品検証基準は `29fdcc216f354cd1031dc9ef36672a5399bd6775`（製品入力 `a7f82db90`、差は単体試験1ファイル）です。Windows全Vitestは20,182 PASS／108 FAIL／37 SKIP、exit 1で完走しました。108件は継続未解決です。R22にも同じパス・テスト名の失敗が99件ありますが、同名は原因同一・無害の証明ではなく、全108件を新規の重大回帰とも全環境依存とも断定しません。39 workspace型検査と7容量上限はPASS。Linuxの20,296 PASS／0 FAIL／31 SKIP、Android Build SUCCESS（署名job SKIP）、iOS 522 PASS／0 FAIL／6 SKIPはWindows全成功とは別の結果です。
@@ -34,11 +44,31 @@ Windowsのsymlink fixture作成EPERMと、実Electronで別途確認したjuncti
 
 共有翻訳資源は27名前空間、英語・日本語各15,557キー、キー差・補間差0です。単一スペース1件は英日共通の書式区切りです。489動的呼出し候補と211 namespace scope未確定は欠落訳・不具合の件数ではありません。全画面・全動的経路・全アクセシビリティ表示の翻訳保証ではなく、一部音声ボタンには英語ラベルが残ります。ユーザー文書やAIの回答・外部応答を自動翻訳しません。
 
+## 新機能を使う条件
+
+Workstreamsは会話の整理用で、Gitの独立チェックアウトを作る機能ではありません。キューの一括配送は文脈等が適合する連続分（最大20件）が対象で、Claude Code CLI経由は1件ずつ処理します。Gitパネルのブランチ切替は未コミット変更を自動で破棄・退避・強制上書きしません。
+
+フォルダーのコミット提案は、無視対象・変更のないフォルダー・入れ子の別Gitリポジトリを指定した場合や、展開後の対象が2,000ファイルを超える場合に拒否されます。除外指定はglobではなく文字どおりのパスです。チームWiki公開ではローカルを正本とし、チーム側で本文が変更されたページを黙って上書きしません。export: false のページとその配下は公開対象外です。実行前に公開範囲と権限を確認してください。
+
+## 文書改訂と配布ソースの関係
+
+本ページなどmain上の説明は公開後に改訂しています。公開済みタグv0.84.0-ja.1はコミットa2f2fbccdb10c3542222851e07f945dbb774ca91、Git tree b90b2ae82cd5b23e2a035189c02c0af48556a364のままです。Source ZIPも公開時の文書を含み、差し替えていません。説明の改訂を、実装の変更・再ビルド・新しい製品試験の成功とは扱いません。
+
 ## English
 
 Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
 
 The quality assessment is **GO WITH KNOWN LIMITATIONS**. Unverified areas are not confirmed defects or vulnerabilities.
+
+### What matters before use
+
+- High CPU use with long Markdown documents remains unresolved.
+- The Windows full test run has unresolved failures. This is not an all-tests-passing build, and Linux success does not replace Windows coverage.
+- Files are unsigned and updates are manual through this edition's Release. Running alongside the official app is unsupported.
+- Team Wiki publishing and collaboration require an updated compatible server and appropriate access. Live and older-server interoperability are unverified. Wiki publishing is one-way team review, not a public website or two-way synchronization.
+- Downgrades are unverified. Back up important documents before updating.
+
+The sections below record technical coverage and its limits. See the [Windows guide](WINDOWS_JA_UNOFFICIAL.md#english) for instructions and [Testing and Verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) for results and post-publication checks.
 
 ### Windows full Vitest
 
@@ -67,3 +97,13 @@ Windows distributions are unsigned; official automatic updates and manual update
 High CPU use with long Markdown remains unresolved. Wiki context under load, general resolution of Windows terminal resource retention, all dynamic translations, DPI settings and external screen readers are not comprehensively verified. Windows symlink fixture EPERM leaves rejection behavior untested on that host. Real microphones, speech-recognition APIs, live sync/collaboration servers, real organizations and old/new server interoperability are unverified. Wiki publishing and team permissions require a compatible server. Unverified areas are not equivalent to confirmed defects or vulnerabilities.
 
 Shared resources contain 27 namespaces and 15,557 keys per language, with zero key or interpolation differences. One single-space value is an intentional shared formatting separator. The 489 dynamic-call candidates and 211 unresolved namespace scopes are not counts of missing translations or defects. This is not complete UI, dynamic-path or accessibility coverage; some dictation buttons still have English labels. User documents, AI answers and external responses are not automatically translated.
+
+### Conditions on the new features
+
+Workstreams organize conversations; they do not create independent Git checkouts. Queue batching covers consecutive compatible messages, up to 20 at a time; the Claude Code CLI path processes them individually. Git-panel branch switching does not automatically stash, discard or force-overwrite uncommitted changes.
+
+Folder commit proposals are rejected for ignored paths, folders without changes, nested Git repositories, or more than 2,000 expanded files. Exclusions are literal paths, not globs. Team Wiki publishing treats local files as authoritative and does not silently overwrite pages whose bodies changed on the team side. Pages marked export: false and their descendants are excluded. Review publishing scope and permissions before running it.
+
+### Revised documentation and published source
+
+Documentation on main has been revised after publication. The v0.84.0-ja.1 tag still points to commit a2f2fbccdb10c3542222851e07f945dbb774ca91, tree b90b2ae82cd5b23e2a035189c02c0af48556a364. The Source ZIP retains its original documents and has not been replaced. Editorial changes are not implementation changes, a rebuild or evidence of new product-test success.

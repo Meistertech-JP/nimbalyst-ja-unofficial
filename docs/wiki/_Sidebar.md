@@ -7,7 +7,7 @@
 
 ### 利用者向け
 
-- [はじめに](Getting-Started)
+- [はじめに・新機能の使い方](Getting-Started)
 - [Windowsへの導入と更新](Windows-Installation)
 - [表示言語の設定](Display-Language)
 - [アカウント認証](Account-and-Authentication)
@@ -36,7 +36,7 @@
 
 ### User Guide
 
-- [Getting started](Getting-Started-English)
+- [Getting started and new features](Getting-Started-English)
 - [Windows installation and updates](Windows-Installation-English)
 - [Display language](Display-Language-English)
 - [Account and authentication](Account-and-Authentication-English)

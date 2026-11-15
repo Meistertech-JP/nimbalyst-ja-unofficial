@@ -1,175 +1,167 @@
-# Nimbalyst 日本語版（非公式） — Windows利用ガイド
+# Windowsへの導入と更新
 
-対象はWindows x64向けの未署名版です。本版はNimbalyst, Inc.の公式製品ではありません。[English](#english)
+[English](#english) · [最新版のRelease](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)
 
-## 現在の提供状況
+このガイドは、非公式日本語版 **v0.84.0-ja.1・Windows x64** を使う方向けです。Nimbalyst, Inc.の公式製品ではありません。本家v0.84.0はPrereleaseで、日本語版の通常Release・Latest指定も安定性保証を意味しません。
 
-最新版v0.84.0-ja.1は本家v0.84.0（`dc5a0ef938cf495a0667d797f871d09d0c44246f`）に基づくWindows x64向け通常Releaseです。[対象Release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)から未署名Setup EXE、Portable ZIP、対応Source ZIPとSHA256SUMS.txtを取得できます。[リリースノート](../RELEASE_NOTES_v0.84.0-ja.1.md)と[既知制限](KNOWN_LIMITATIONS_v0.84.0-ja.1.md)を確認してください。前版[v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1)と旧配布物は保持しています。
+## インストーラーとZIP、どちらを選ぶか
 
-本家v0.84.0はGitHub上でPrereleaseです。日本語版はGitHub上の通常Release・Latestとして配布しますが、本家による安定性保証や公式認定ではありません。`v0.84.0-ja.1` はSemVer上ではプレリリース識別子を含み、GitHubの分類はその意味を変更しません。
+- **インストーラー（setup.exe）**：Windowsのアプリ一覧やショートカットから起動・アンインストールしたい場合に選びます。現在のユーザー用で、管理者向けのインストールではありません。
+- **Portable ZIP**：インストーラーを使わず、展開したフォルダーから起動したい場合に選びます。EXEだけでなく同梱ファイル全体が必要です。
 
-品質判定は **GO WITH KNOWN LIMITATIONS** です。Setup EXEは現在のユーザー向けインストーラー、Portable ZIPはインストール不要の全ファイル配置です。いずれも本版専用の既定ユーザーデータを使い、公式版とは別です。
+どちらも既定では同じ日本語版専用の設定・データを使います。「Portable」は、設定もEXEの隣へ保存するという意味ではありません。インストーラー版とZIP版、公式版と本版を同時に起動しないでください。
 
-## 未署名と取得元の確認
+## ダウンロードしたファイルを確認する
 
-配布するアプリとインストーラーは未署名です。Windowsが証明書で確認する発行元はありません。設定やファイル情報の「発行元」文字列は、電子署名による本人性の証明ではありません。同梱される第三者プログラムに署名があっても、本版全体やインストーラーの署名にはなりません。
+[Releaseページ](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1)から、選んだWindows配布物とSHA256SUMS.txtを取得します。対応Source ZIPは、自分でビルドしたい方向けです。
 
-配布物は[このリポジトリのReleases](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases)の対象バージョンと照合してください。SmartScreen、ウイルス対策ソフト、組織のポリシーで実行が制限される場合があります。警告・保護機能を無効にしたり、除外設定を追加したりする手順は提供しません。判断できない場合は実行を中止してください。
+配布アプリとインストーラーは**未署名**です。Windowsやウイルス対策ソフトの警告・組織のルールを無効にする手順は提供しません。確認できない場合は実行を中止してください。ファイル情報の発行元文字列や、同梱第三者プログラムの署名は、本版全体の電子署名ではありません。
 
-## ソースZIP・Windows配布物のSHA-256
+PowerShellでダウンロードしたファイルのフルパスを指定します。
 
-ソースZIP、インストーラー、ポータブルZIPは、それぞれ対象ファイルのチェックサムと比較します。別バージョン、別形式のハッシュを使わないでください。配布の際に添付するチェックサムの対象は掲載されたファイルだけで、ソースから自分で再ビルドしたファイルが同じ値になる保証はありません。
-
-PowerShellで、ダウンロードしたファイルを指定して計算します。
-
-```powershell
+~~~powershell
 $artifact = Read-Host '確認するファイルのフルパス'
 Get-FileHash -LiteralPath $artifact -Algorithm SHA256
-```
+~~~
 
-表示されたHashの64桁の16進数を、同じReleaseのチェックサムに記載された**同じファイル名**の値と照合します。大文字・小文字の違いは値に影響しません。不一致なら展開・実行を行わないでください。
+表示された64桁のHashを、SHA256SUMS.txtの**同じファイル名**の値と比べます。大文字・小文字の違いは値に影響しません。不一致なら実行・展開をしないでください。
 
-SHA-256の一致で分かるのはファイルのバイト一致です。同じ配布元のファイルとチェックサムの両方が置き換わった場合を検出する署名ではなく、発行元の真正性、無害性、動作保証を証明しません。
+hash一致は配布物とのバイト一致を示すもので、電子署名や安全性保証ではありません。配布物とチェックサムが両方置き換わった場合の真正性を保証するものでもありません。自分で再ビルドしたファイルが同じhashになる保証はありません。
 
-ソースZIPは空の作業ディレクトリに展開し、既存プロジェクトへ上書きしないでください。公開ソースのタグ・コミット、ライセンス、ロックファイルと照合してからビルドします。Windows用ZIPも既存版へ上書き展開せず、新しいディレクトリへ完全に展開してください。
+## インストーラーで導入する
 
-## インストーラー
-
-1. 公式Nimbalystと本版を終了し、編集中の文書を保存します。公式版との同時利用はサポートしません。
-2. 配布対象バージョンとSHA-256を確認したインストーラーを起動します。表示された製品名が **Nimbalyst 日本語版（非公式）** であることを確認します。
-3. 公式版のインストール先とは別の場所を選択します。本版のインストーラーは現在のユーザー用で、管理者への昇格を提供しない構成です。
+1. 作業を保存して本版と公式版を終了します。
+2. 照合済みのsetup.exeを起動し、製品名が「Nimbalyst 日本語版（非公式）」であることを確認します。
+3. 公式版とは別のインストール先を使います。既定は `%LOCALAPPDATA%\Programs\nimbalyst-ja-unofficial` です。
 4. 完了後、作成された本版のショートカットから起動します。インストール完了時に自動起動しない構成です。
 
-インストーラーは `jp.meistertech.nimbalyst.ja.unofficial.Markdown` を使い、Markdownの「プログラムから開く」に本版を追加します。既定アプリやUserChoice、`nimbalyst://` の既定ハンドラーを変更しない構成です。
+本版はMarkdownの「プログラムから開く」に専用項目を追加しますが、既定アプリやUserChoice、`nimbalyst://` の既定ハンドラーは変更しない構成です。
 
-## ポータブルZIP
+## ZIPから起動する
 
-ZIPの全内容を新しい書込み可能なディレクトリへ展開し、含まれる `Nimbalyst 日本語版（非公式）.exe` を起動します。EXEだけを取り出さず、`resources`、DLL、その他の同梱ファイルをそのまま保持してください。ZIP内から直接起動しないでください。
+1. ZIPの全内容を、新しい書き込み可能なフォルダーへ展開します。ZIP内から直接起動しないでください。
+2. DLLやresourcesフォルダーをそのまま残し、「Nimbalyst 日本語版（非公式）.exe」を起動します。
 
-「ポータブル」はインストーラーを使わない配置を意味します。**ユーザーデータまでEXEの横に保存する意味ではありません。** 既定ではインストーラー版と同じ本版専用ユーザーデータを使うため、両方を同時起動したり異なるバージョンを同じプロファイルで同時使用したりしないでください。ZIPを移動してもユーザーデータは自動移動しません。
+EXEだけを別の場所へ取り出すと動作しません。ZIPのフォルダーを移動しても、設定・ユーザーデータが一緒に移動するわけではありません。
 
-## 表示言語とデータ
+## 最初の設定とログイン
 
-設定の表示言語でSystem、English、日本語を選びます。エージェントの回答言語とは別の設定です。旧版での観測と本版での確認は[テストと品質検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)に区別して記載しています。全画面・端末・DPIでの表示保証ではありません。
+表示言語は、設定 → アプリ → 詳細設定 → 表示言語で日本語・English・Systemから選べます。エージェントの回答言語や、自分の文書の言語とは別です。
 
-既定の保存先は `%APPDATA%\Nimbalyst 日本語版（非公式）` です。公式版の保存先とは分離しています。既存の公式版データを本版へ自動移動・コピーしません。認証情報を含むプロファイル全体を第三者へ送らないでください。
+既定のユーザーデータは `%APPDATA%\Nimbalyst 日本語版（非公式）` に保存します。公式版のデータを自動移動・削除しません。文書はアプリの配置先とは別の作業フォルダーに保存し、認証情報を含むプロファイル全体を第三者へ送らないでください。
 
-## ログインとlocalhost callback
+Nimbalystのメール認証は、設定のアカウント画面から開始します。**アプリを起動している同じWindows PCでメールのリンクを開いてください。** 認証後に戻る127.0.0.1は、そのブラウザーを動かしている端末自身を指すため、スマートフォンで開いてもPCのアプリへ結果を返せません。
 
-本版の認証フローは、その起動インスタンスのためのnonceを含むlocalhost callbackを使用します。ブラウザでの認証後に `http://127.0.0.1:<port>/auth/callback` へ戻ります。**認証メールはアプリを起動している同じPCで開いてください。** `127.0.0.1` はそのブラウザを実行している端末自身です。スマートフォンでメールを開くとスマートフォン自身へ接続するため、PCのアプリへ認証を返せません。使用済み・期限切れのリンクは、PCのアプリから新しいメールを送ってください。URLを書き換えたり、外部端末へ向けてポートを開放したりする必要はありません。
+使用済み・期限切れなら、PCのアプリから新しいメールを送ります。URLを書き換えたり、外部向けポートを開放したりする必要はありません。認証リンクやコードは共有しないでください。NimbalystのログインとClaude・Codex等の認証は別です。[認証の案内](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication)を参照してください。
 
-認証リンクやトークンを共有・転載したり診断レポートへ添付したりしないでください。セキュリティ設定や別アプリのURL関連付けの変更を解決策としません。 最終Windows製品07dの通常win-unpackedと専用プロファイルで、本番メール認証、暗号化認証ファイルの生成、正常終了・再起動後の復元、通常サインアウト、認証ファイル削除、次回起動後の未認証保持を確認しました。NSIS専用プロファイル・別Portableでの新規認証、Google認証、サービス側セッション失効、特殊復旧は未確認です。Node資格情報ファイル試験とは別のElectronアカウント認証の観測です。
+## v0.82.8-ja.1から手動で更新する
 
-公式Nimbalystとの同時利用はサポートしません。認証以外の `nimbalyst://` リンクは、現在そのプロトコルを登録しているアプリで開かれる場合があります。
+自動更新と公式版の更新確認は無効です。本リポジトリのReleaseを使い、公式版のインストーラーを日本語版の更新として実行しないでください。
 
-## 手動更新とアンインストール
+1. [リリースノート](../RELEASE_NOTES_v0.84.0-ja.1.md)と[既知制限](KNOWN_LIMITATIONS_v0.84.0-ja.1.md)を確認します。
+2. 作業を保存し、重要な文書をバックアップして本版を終了します。
+3. インストーラー版は、照合済みの新しいsetup.exeで同じ日本語版を更新します。ZIP版は新しいフォルダーへ完全に展開し、旧版へ上書き展開せず、新しいEXEから起動します。
+4. 設定・文書・Trackerを確認します。異なるバージョンを同じプロファイルで同時使用しないでください。
 
-自動更新と手動更新確認メニューは無効です。公式リポジトリのインストーラーを本版の更新として使用しないでください。
+専用環境では前版からの更新時の設定・文書・Tracker表示の保持を確認しましたが、すべての実ユーザーデータの互換性保証ではありません。データ移行中に強制終了せず、**旧版へのダウングレードを復旧方法として前提にしないでください**。旧版で新しいセッション情報を読めない場合があり、ダウングレードは未検証です。
 
-更新前に作業を保存して本版を終了し、プロジェクト文書をバックアップします。対象Releaseの変更内容と既知の制限を読み、取得元とチェックサムを確認した新しい版を使用します。ZIP版は新しいディレクトリへ展開します。バージョンを戻したときのプロファイル互換性は保証しません。
+長文Markdownの高CPU負荷とWindows全テストの未解決FAILは残っています。実サーバーを使うチーム機能にも制限があります。詳しい確認範囲は[検証記録](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)へ分けています。
 
-通常Windows製品07dのwin-unpacked・完全展開Portable・NSISで起動、日英切替、正常終了と再起動後の言語保持を確認しました。NSIS新規導入、前版v0.82.8-ja.1からのNSIS/Portable更新では、専用環境の設定・合成文書hash・Tracker表示の保持を確認しました。全実ユーザーデータ・全DBフィールドの移行保証ではありません。NSISの通常アンインストール後も専用ユーザーデータを保持しました。Start Menu登録は隔離した環境での限定確認です。旧版へのダウングレードは未検証です。
+## アンインストールする
 
-本家v0.82.7ではPGLiteからSQLiteへの自動移行が導入されています。旧版では合成データで移行・再起動とデータ保持を確認しましたが、本版における実ユーザーデータ全量の移行保証ではありません。移行中にアプリを強制終了せず、旧版へのダウングレードを復旧手段として前提にしないでください。
+インストーラー版はWindowsのアプリ一覧で「Nimbalyst 日本語版（非公式）」を選びます。本版の登録を解除し、ユーザーデータは保持する構成です。公式版や別の配置が所有する登録をまとめて削除するものではありません。
 
-旧版で観測されたshell終了後の資源残留は、本版の単一ホストの確認では改善傾向が見られましたが、一般的な解消は未証明です。増加時は作業を保存して通常終了・再起動してください。長文高CPU、Wiki高負荷時の文脈処理、Windows全体試験の108 FAILも含め、[詳細な制限事項](KNOWN_LIMITATIONS_v0.84.0-ja.1.md)を参照してください。
+ZIP版は本版を終了した後、その展開先を削除します。どちらも、文書や別の場所にあるプロファイルを削除する操作とは別です。
 
-共有Typed PageやTrackerの一部の機能には対応する同期サーバーが必要です。実サーバー・実組織への接続、旧同期サーバーとの相互運用は未実施です。Bedrockへの実通信、新しいClaude有料セッション、実OSスリープ・復帰、非前面ブラウザーとバックエンド信頼再試行のライブ経路、動的翻訳の全経路、全DPI・スクリーンリーダー条件も網羅確認していません。これらは自動回帰試験や通常製品の限定的な実機観測と区別します。
+## ソース・ライセンス・文書の版
 
-インストーラー版はWindowsのアプリ一覧から **Nimbalyst 日本語版（非公式）** を選んでアンインストールします。本版がまだ所有している登録を解除し、ユーザーデータは保持する構成です。公式版や別の配置が所有する登録を一括削除しません。ZIP版は終了後に、その展開先だけを削除できます。いずれも文書・プロファイルの削除とは別です。
+ソースをビルドする場合は[対象タグのソース](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/tree/v0.84.0-ja.1)と[ビルド手順](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source)を使います。Source ZIPは空の作業フォルダーへ展開し、既存プロジェクトへ上書きしないでください。
 
-## ビルドとライセンス
+[MIT License](../LICENSE)と元の著作権表示を保持しています。第三者ライセンスは[ソース内の一覧](../packages/electron/resources/generated/THIRD_PARTY_LICENSES.json)と配布物のresources/legalにあります。
 
-ソースのビルド手順は[README](../README.md#ソースからのビルド)を参照してください。`build:win` はNSISインストーラーを生成します。`build:unpack` は検査用の展開済みアプリを生成するスクリプトで、ポータブルZIPそのものの生成や公開ではありません。ZIP配布物は同梱ファイル全体と最終ソースとの対応を検証する必要があります。
-
-[MIT License](../LICENSE)と元の `Copyright (c) 2024-2026 Nimbalyst Inc.` を保持しています。第三者ライセンスと通知は[ソース内の一覧](../packages/electron/resources/generated/THIRD_PARTY_LICENSES.json)およびWindowsパッケージの `resources/legal` を参照してください。
+このmain上のガイドは公開後に改訂しています。公開済みタグ・Source ZIP内の旧文書や、Windows配布ファイルは差し替えていません。
 
 ---
 
 ## English
 
-# Nimbalyst — Unofficial Japanese Edition — Windows guide
+# Windows installation and updates
 
-This guide covers an unsigned Windows x64 build. It is not an official product of Nimbalyst, Inc.
+This guide covers the **unofficial v0.84.0-ja.1 edition for Windows x64**, not an official Nimbalyst, Inc. product. Upstream v0.84.0 is a prerelease; publishing this edition as a regular GitHub Release and Latest is not a stability guarantee.
 
-### Current availability
+### Choose an installer or ZIP
 
-The latest v0.84.0-ja.1 is a regular Windows x64 Release based on upstream v0.84.0 at `dc5a0ef938cf495a0667d797f871d09d0c44246f`. Download its unsigned Setup EXE, Portable ZIP, corresponding Source ZIP and SHA256SUMS.txt from the [release](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1). Read the [release notes](../RELEASE_NOTES_v0.84.0-ja.1.en.md) and [limitations](KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english). [Previous v0.82.8-ja.1](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.82.8-ja.1) and older assets are retained.
+- **Installer (setup.exe):** choose this for Windows app-list entries, shortcuts and uninstallation. It installs for the current user, not as an administrator-wide installation.
+- **Portable ZIP:** choose this to run from an extracted folder without an installer. You need the entire payload, not just the EXE.
 
-Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
+Both use the same edition-specific settings and data by default. Portable does not mean that settings are stored beside the EXE. Do not run the installer and ZIP editions simultaneously, or alongside the official app.
 
-The assessment is **GO WITH KNOWN LIMITATIONS**. Setup EXE installs for the current user; Portable ZIP is a complete payload needing no installer. Both default to this edition’s profile, separate from the official application.
+### Check your download
 
-### Unsigned files and provenance
+Get your chosen Windows distribution and SHA256SUMS.txt from the [Release page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases/tag/v0.84.0-ja.1). The corresponding Source ZIP is for users who want to build the application.
 
-Distributed application and installer files are unsigned and have no certificate-verified Windows publisher. Publisher metadata is not a digital signature. A signature on an included third-party executable does not sign this edition or its installer.
-
-Match the file to the version on [this repository's Releases page](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases). SmartScreen, antivirus software, or organizational policies may restrict execution. This guide does not provide steps to disable warnings, add security exclusions, or turn off protections. Do not proceed if you cannot assess the file.
-
-### SHA-256 for source and Windows archives
-
-Check each source ZIP, installer, or portable ZIP against its own entry in the release checksum file. A different version or format has a different hash. Checksums cover the listed assets; they do not promise that a locally rebuilt binary will be byte-identical.
+The app and installer are **unsigned**. Do not disable Windows warnings, antivirus protections or organizational policies to run them. Stop if you cannot assess the file. Publisher text in file properties, or a signature on a bundled third-party program, is not a signature on this edition.
 
 In PowerShell:
 
-```powershell
+~~~powershell
 $artifact = Read-Host 'Full path of the downloaded file'
 Get-FileHash -LiteralPath $artifact -Algorithm SHA256
-```
+~~~
 
-Compare the 64-digit hexadecimal Hash with the entry for the **same filename** in the same Release. Upper/lowercase is immaterial. Do not extract or run a mismatching file.
+Compare the 64-digit Hash with the entry for the **same filename** in SHA256SUMS.txt. Letter case does not change the value. Do not run or extract a mismatching download.
 
-A match proves byte equality, not publisher authenticity, safety, or correct operation. An unsigned checksum does not detect replacement of both the file and its checksum by the same compromised source.
+A matching hash establishes byte equality with the distribution, not a signature or safety guarantee. It does not establish authenticity if both the download and checksum have been replaced. Locally rebuilt files are not guaranteed to have the same hash.
 
-Extract source into a new empty working directory, not over an existing project. Check its published tag/commit, license, and lockfile before building. Extract a Windows ZIP fully into a new directory rather than overwriting an older installation.
+### Install
 
-### Installer
+1. Save work and close this edition and the official app.
+2. Run the verified setup.exe and check the product name: Nimbalyst 日本語版（非公式）.
+3. Use a location separate from the official app. The default is `%LOCALAPPDATA%\Programs\nimbalyst-ja-unofficial`.
+4. Start it from its new shortcut. The installer is configured not to launch the app automatically at completion.
 
-1. Save work and close both editions. Running alongside the official application is unsupported.
-2. Run the installer only after checking its version and SHA-256. Confirm the product name **Nimbalyst 日本語版（非公式）**.
-3. Choose a location separate from the official application. The installer is configured for the current user without an elevation offer.
-4. Start the application from its own shortcut. The installer is configured not to launch it automatically on completion.
+This edition adds its own Markdown Open With entry. It is not configured to replace the default app, Explorer UserChoice or the default `nimbalyst://` handler.
 
-The installer uses `jp.meistertech.nimbalyst.ja.unofficial.Markdown` for an edition-specific Markdown “Open with” entry. It is configured not to change extension defaults, Explorer UserChoice, or the default `nimbalyst://` handler.
+### Run from ZIP
 
-### Portable ZIP
+1. Extract the whole ZIP into a new writable folder. Do not launch it from inside the archive.
+2. Keep DLLs, resources and other files together, then run Nimbalyst 日本語版（非公式）.exe.
 
-Extract the entire ZIP into a new writable directory and run `Nimbalyst 日本語版（非公式）.exe`. Keep `resources`, DLLs, and all accompanying files together. Do not launch from inside the ZIP or copy only the EXE.
+Moving just the EXE breaks the installation. Moving its folder does not move your settings or user data.
 
-“Portable” means no installer is required; **it does not mean user data is stored beside the EXE**. By default, it shares this edition's user-data directory with the installer build. Do not run both simultaneously or concurrently use different versions with one profile. Moving the extracted application does not move its profile.
+### Set a language and sign in
 
-### Language and user data
+Open Settings → App → Advanced → Display language and select Japanese, English or System. This is separate from an agent's response language or the language of your documents.
 
-Select System, English or Japanese in display-language settings. This is separate from the agent response language. [Testing and Verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) distinguishes observations from older versions and checks performed on this edition. This is not coverage of every screen, device or DPI.
+The default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`. Official data is not automatically moved or deleted. Keep documents in a working folder separate from the application files, and do not send anyone your whole profile, which can include credentials.
 
-The default profile is `%APPDATA%\Nimbalyst 日本語版（非公式）`, separate from the official application. Official data is not automatically copied or moved. Do not send a profile containing authentication information to others.
+Start Nimbalyst email sign-in under Settings → Account. **Open the email link on the same Windows PC running the app.** The return address, 127.0.0.1, refers to the device running the browser. Opening the link on a phone cannot return the result to the app on your PC.
 
-### Login and localhost callback
+For an expired or used link, request a fresh email from the PC app. Do not rewrite the URL, expose a port externally or share links or codes. Nimbalyst sign-in is separate from Claude, Codex and other agent authentication. See [Account and Authentication](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Account-and-Authentication-English).
 
-Authentication returns from the browser to `http://127.0.0.1:<port>/auth/callback` using a nonce for the current instance. **Open authentication email on the same PC running the application.** `127.0.0.1` refers to the device running that browser. Opening the email on a smartphone tries to connect to the phone itself, not the PC. Request a fresh email from the PC application if a link is consumed or expired. Do not rewrite the URL or expose the callback port to another device.
+### Update manually from v0.82.8-ja.1
 
-Do not share, publish or attach authentication links or tokens to diagnostic reports. Changing protocol associations or bypassing security settings is not a sign-in remedy. Production email sign-in, encrypted credential-file creation, normal shutdown and restoration after restart, normal sign-out, credential-file removal and unauthenticated state after another restart were observed with the regular final Windows 07d win-unpacked product and a dedicated profile. New sign-in with the dedicated NSIS profile or a separate Portable profile, Google sign-in, service-side session revocation and special recovery remain unverified. These are Electron account observations, separate from Node credential-file tests.
+Automatic updates and official update checks are disabled. Use this repository's Release, not an official-edition installer.
 
-Running alongside the official application is unsupported. Non-authentication `nimbalyst://` links may open in the application's current registered handler.
+1. Read the [release notes](../RELEASE_NOTES_v0.84.0-ja.1.en.md) and [known limitations](KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english).
+2. Save work, back up important documents and quit this edition.
+3. For an installed copy, run the verified new setup.exe to update the same unofficial edition. For ZIP, extract completely into a new folder, rather than over an old copy, and launch the new EXE.
+4. Check your settings, documents and Tracker. Do not run different versions against the same profile simultaneously.
 
-### Manual updates and uninstall
+Settings, documents and displayed Tracker data were retained in dedicated upgrade checks, not every real profile or migration scenario. Do not force-quit during migration or assume that **downgrading is a recovery method**. An older app may not understand newer session information; downgrades remain unverified.
 
-Automatic updates and manual update checks are disabled. Do not use an official-repository installer as an update for this edition.
+Long-Markdown high CPU use and unresolved Windows full-suite failures remain. Team integrations also have server requirements. The detailed scope is in [Testing and Verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English).
 
-Before updating, save work, close the application, and back up project documents. Read the target release's changes and limitations, then verify its source and checksums. Extract ZIP updates into a new directory. Downgrade compatibility of a user profile is not guaranteed.
+### Remove the app
 
-Startup, Japanese/English switching, normal shutdown and language retention after restart were observed with final Windows 07d win-unpacked, fully extracted Portable and NSIS products. Fresh NSIS installation and NSIS/Portable upgrades from v0.82.8-ja.1 retained settings, synthetic-document hashes and displayed Tracker data in dedicated environments. This does not guarantee migration of every real profile or database field. Normal NSIS uninstallation retained dedicated user data; Start Menu registration checks were limited to the isolated environment. Downgrades are unverified.
+For an installed copy, choose Nimbalyst 日本語版（非公式） in Windows' app list. Its own registrations are removed and user data is configured to remain. This does not remove registrations belonging to the official app or another installation.
 
-Upstream v0.82.7 introduced automatic migration from PGLite to SQLite. An earlier edition was checked with synthetic data for migration, restart and retention; this does not guarantee migration of every real profile in this edition. Do not force-close the app during migration or assume downgrade is a recovery procedure.
+For a ZIP copy, quit the app and remove its extracted folder. Neither operation is the same as deleting documents or a profile stored elsewhere.
 
-Resource retention after shell exit, observed in an earlier version, showed signs of improvement in a single-host check of this edition; general resolution is not established. Save work and quit normally and restart if resource use grows. See [detailed limitations](KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english), including long-document CPU use, Wiki context under load and the 108 remaining Windows full-suite failures.
+### Source, licenses and documentation versions
 
-Some shared Typed Page and Tracker features require a compatible sync server. Live server/organization connections and interoperability with older sync servers were not tested. Live Bedrock calls, new paid Claude sessions, actual OS sleep/resume, live nonforeground-browser and backend trust-retry paths, all dynamic translations, DPI settings and screen-reader conditions were not comprehensively exercised. These limits are distinct from automated regression tests and bounded observations of regular product builds.
+Use the [release-tag source](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/tree/v0.84.0-ja.1) and [build guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source-English) when building. Extract the Source ZIP into an empty working folder, not over an existing project.
 
-For an installer build, select **Nimbalyst 日本語版（非公式）** in Windows' application list to uninstall. Uninstallation is configured to remove only registrations still owned by that installation and retain user data. It does not bulk-remove another edition's or placement's registrations. After closing a ZIP build, its extraction directory alone can be removed. Removing application files is separate from deleting documents or profiles.
+The [MIT License](../LICENSE) and upstream attribution are retained. See the [source inventory](../packages/electron/resources/generated/THIRD_PARTY_LICENSES.json) and resources/legal in the distribution for third-party licenses.
 
-### Building and licenses
-
-See [Build from source](../README.en.md#build-from-source). `build:win` creates the NSIS installer. `build:unpack` creates an unpacked application for inspection, not a published portable ZIP. A ZIP distribution requires verification of the entire payload against its final source.
-
-The [MIT License](../LICENSE) and original `Copyright (c) 2024-2026 Nimbalyst Inc.` are retained. See the [source license inventory](../packages/electron/resources/generated/THIRD_PARTY_LICENSES.json) and `resources/legal` in the Windows package for third-party notices.
+This guide on main has been revised after publication. Documents inside the published tag and Source ZIP, and the Windows distribution files, have not been replaced.

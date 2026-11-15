@@ -1,45 +1,23 @@
 [日本語](Display-Language) | English
 
-# Display Language
+# Change the Display Language
 
-## v0.84.0-ja.1
+Open Settings → App → Advanced → Display language. In Japanese, the path is 設定 → アプリ → 詳細設定 → 表示言語.
 
-Japanese/English switching and selected-language retention after normal shutdown and restart were observed with regular Windows 07d win-unpacked, Portable and NSIS products.
+- **Japanese:** choose Japanese interface text.
+- **English:** choose English interface text.
+- **System:** use Japanese for a Japanese OS locale, or English otherwise. This does not add support for other languages.
 
-Shared resources contain 27 namespaces and 15,557 keys per language, with zero key or interpolation differences. One single-space value is an intentional shared formatting separator. The 489 dynamic-call candidates and 211 unresolved namespace scopes are not counts of missing translations or defects. This is not complete UI, dynamic-path or accessibility coverage; some dictation buttons still have English labels. User documents, AI answers and external responses are not automatically translated.
+Supported screens and menus update when you change it. Japanese/English switching and retention after restart were observed with the regular Windows product; that does not cover every screen, DPI setting or screen reader.
 
+## Documents and AI replies are separate
 
-## v0.82.8-ja.1
+The setting does not translate or rewrite existing documents, filenames, conversations, external responses or error details. Brand names and model IDs remain unchanged. An agent's response-language preference is separate.
 
-Japanese/English switching and persistence after restart were checked in the Windows product. Resources contain 27 namespaces and 15,401 keys per language. This does not cover every screen, dynamic display path, DPI setting or external screen reader.
+New tutorials follow the language selected when they are created; existing or edited tutorials are not overwritten.
 
-## v0.82.7-ja.1
+## If English remains
 
-Windows product checks observed immediate switching between Japanese and English and persistence of the selected language after restart. This does not cover every screen, dynamic display path, DPI configuration, or external screen reader. Translation resources contain 27 namespaces and 15,321 keys per language, with zero key differences, interpolation differences, or empty Japanese translations; resource consistency alone does not guarantee complete UI coverage.
+Some interface text and dynamic paths remain untranslated or unverified, including labels on some dictation buttons. Distinguish interface text from your own documents and AI replies when using [Troubleshooting](Troubleshooting-English).
 
-The display-language choices are Japanese, English and System. v0.82.4-ja.1 was checked for switching both ways, persistence of explicit `en` and `ja` settings after restart, and Japanese resolved from System on a ja-JP host. This is not an exhaustive test of other OS languages or every screen configuration. [Testing and Verification](Testing-and-Verification-English) records verification scopes by version.
-
-In v0.82.3-ja.1, English was observed in Settings, menus, Project Manager and Workspace and remained selected after restart. With System selected, Japanese appeared in the Renderer and native menus and remained after a normal Ctrl+Q shutdown and restart. Persistence of an explicit `ja` setting was not checked on that version. The auxiliary-error warning passed English and Japanese DOM tests, but was not observed in the ordinary product. These results and the v0.82.1-ja.1 observations below are historical.
-
-Open application settings and select the display language under Advanced in the App section. In the English interface, the path is Application Settings → Advanced. The choices are Japanese, English, and the system setting.
-
-## What the system setting means
-
-The persisted `uiLanguage` value is one of `system`, `en`, or `ja`. With `system`, a system locale beginning with `ja` selects Japanese; other locales select English. This setting does not provide translations for every other language.
-
-Supported screens and the application menu update after a change. v0.82.4-ja.1 was checked for settings, menus and Tracker-reference language changes and restart persistence. Observations from v0.82.3-ja.1 and v0.82.1-ja.1 remain historical for those versions. External screen-reader output remains unverified.
-
-The same live i18n instance is also passed to independent React roots. See [Localization Architecture](Localization-Architecture-English) for the implementation.
-
-## Separate from the agent language
-
-`preferredAgentLanguage` instructs an AI agent about its response language. `uiLanguage` controls the application's own display language. Changing one does not make it equivalent to the other, nor does it guarantee that an external service will respond in the requested language.
-
-Changing the display language does not automatically translate or rewrite:
-
-- Files, page names, documents, and previous conversations written by you or collaborators
-- Responses and error details returned by external services
-- Brand names, model IDs, API identifiers, Git references, or protocol values
-- Tutorials that have already been created or edited
-
-A new tutorial follows the display language at creation time. Existing content is not overwritten to match the language. If English remains, use [Troubleshooting](Troubleshooting-English) to distinguish UI from content. Runtime verification of every screen has not been completed.
+Resource counts, static audits and historical coverage are in [Testing and Verification](Testing-and-Verification-English). [Localization Architecture](Localization-Architecture-English) describes the implementation.

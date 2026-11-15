@@ -2,6 +2,8 @@
 
 # Building from Source
 
+Documentation on main has been revised after publication. The published tag and Source ZIP retain their original documents; this editorial revision does not change runtime code, dependencies or distribution files.
+
 ## v0.84.0-ja.1
 
 Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
