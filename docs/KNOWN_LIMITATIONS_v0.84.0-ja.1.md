@@ -48,7 +48,7 @@ Windowsのsymlink fixture作成EPERMと、実Electronで別途確認したjuncti
 
 Workstreamsは会話の整理用で、Gitの独立チェックアウトを作る機能ではありません。キューの一括配送は文脈等が適合する連続分（最大20件）が対象で、Claude Code CLI経由は1件ずつ処理します。Gitパネルのブランチ切替は未コミット変更を自動で破棄・退避・強制上書きしません。
 
-フォルダーのコミット提案は、無視対象・変更のないフォルダー・入れ子の別Gitリポジトリを指定した場合や、展開後の対象が2,000ファイルを超える場合に拒否されます。除外指定はglobではなく文字どおりのパスです。チームWiki公開ではローカルを正本とし、チーム側で本文が変更されたページを黙って上書きしません。export: false のページとその配下は公開対象外です。実行前に公開範囲と権限を確認してください。
+フォルダーのコミット提案は、無視対象のフォルダー・変更のないフォルダー・入れ子の別Gitリポジトリを指定した場合や、展開後の対象が2,000ファイルを超える場合に拒否されます。通常のフォルダー内にある無視対象ファイルは除外されます。除外指定はglobではなく文字どおりのパスです。チームWiki公開ではローカルを正本とし、チーム側で本文が変更されたページを黙って上書きしません。export: false のページとその配下は公開対象外です。実行前に公開範囲と権限を確認してください。
 
 ## 文書改訂と配布ソースの関係
 
@@ -102,7 +102,7 @@ Shared resources contain 27 namespaces and 15,557 keys per language, with zero k
 
 Workstreams organize conversations; they do not create independent Git checkouts. Queue batching covers consecutive compatible messages, up to 20 at a time; the Claude Code CLI path processes them individually. Git-panel branch switching does not automatically stash, discard or force-overwrite uncommitted changes.
 
-Folder commit proposals are rejected for ignored paths, folders without changes, nested Git repositories, or more than 2,000 expanded files. Exclusions are literal paths, not globs. Team Wiki publishing treats local files as authoritative and does not silently overwrite pages whose bodies changed on the team side. Pages marked export: false and their descendants are excluded. Review publishing scope and permissions before running it.
+Folder commit proposals are rejected for ignored folders, folders without changes, nested Git repositories, or more than 2,000 expanded files. Ignored files within an otherwise eligible folder are excluded. Exclusions are literal paths, not globs. Team Wiki publishing treats local files as authoritative and does not silently overwrite pages whose bodies changed on the team side. Pages marked export: false and their descendants are excluded. Review publishing scope and permissions before running it.
 
 ### Revised documentation and published source
 
