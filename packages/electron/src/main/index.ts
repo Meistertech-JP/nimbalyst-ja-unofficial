@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, nativeImage, nativeTheme, session, shell } from 'electron';
-import { allowsMultipleInstances } from './utils/instancePolicy';
+import { allowsMultipleInstances, forwardedStartupArgv, startupInstanceContext } from './utils/instancePolicy';
 import {
     parseTrackerDeepLink,
     type TrackerDeepLinkTarget,
@@ -644,7 +644,7 @@ registerLinuxAppImageProtocolHandler();
 const allowMultipleInstances = allowsMultipleInstances();
 
 if (!allowMultipleInstances) {
-    const gotTheLock = app.requestSingleInstanceLock();
+    const gotTheLock = app.requestSingleInstanceLock(startupInstanceContext(process.argv, process.env.NIMBALYST_USER_DATA_DIR));
 
     if (!gotTheLock) {
         // Another instance holds the lock. On macOS, when the OS launches the
@@ -700,7 +700,8 @@ if (!allowMultipleInstances) {
     } else {
         // We are the primary instance. When a second instance tries to launch,
         // extract any deep link URL or file path and handle it here.
-        app.on('second-instance', (_event, argv, workingDirectory) => {
+        app.on('second-instance', (_event, nativeArgv, workingDirectory, additionalData) => {
+            const argv = forwardedStartupArgv(nativeArgv, additionalData, process.env.NIMBALYST_USER_DATA_DIR);
             logger.main.info('[SingleInstance] second-instance event, argv:', summarizeStartupArguments(argv));
 
             // On Windows the protocol URL is passed as the last argument
