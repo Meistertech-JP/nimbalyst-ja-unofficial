@@ -6,9 +6,6 @@
 
 Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
 
-Use the release tag for corresponding source. Documentation-only publication may reuse verified Windows binaries after proving unchanged inputs; do not describe them as rebuilt from the documentation commit. Changes to executable code, dependencies, configuration or bundled resources require rebuild and revalidation.
-
-
 These instructions apply to the source and scripts at v0.84.0-ja.1. Check `package.json` and the lockfile again for later upstream-following versions. The published npm CLI does not necessarily include every feature of this fork.
 
 Use the `v0.84.0-ja.1` tag for the source corresponding to its Windows assets, rather than the continuously changing `main` branch. To reproduce an older release, use that version's tag and lockfile.
