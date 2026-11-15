@@ -49,7 +49,7 @@ function configureProfile(): void {
   const customUserDataDir = envProfile
     ? path.resolve(envProfile)
     : cliProfiles[0];
-  if (cliProfiles.some((profile) => profile !== customUserDataDir)) {
+  if (cliProfiles.some((profile) => path.relative(profile, customUserDataDir!) !== '')) {
     throw new Error("Conflicting isolation profile arguments");
   }
 

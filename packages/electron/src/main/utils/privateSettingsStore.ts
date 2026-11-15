@@ -145,6 +145,7 @@ export function hardenExistingSettings(directory: string): void {
     "feature-tracking",
     "logger-config",
     "terminal-store",
+    "external-session-deletions",
   ]) {
     hardenPrivateFile(path.join(directory, `${name}.json`));
   }

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as path from 'node:path';
 
-const mocks = vi.hoisted(() => ({ getPath: vi.fn(), realpath: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getPath: vi.fn(), realpath: vi.fn(), readdir: vi.fn(), lstat: vi.fn() }));
 vi.mock('electron', () => ({ app: { getPath: mocks.getPath } }));
-vi.mock('node:fs', () => ({ realpathSync: { native: mocks.realpath } }));
+vi.mock('node:fs', () => ({ realpathSync: { native: mocks.realpath }, readdirSync: mocks.readdir, lstatSync: mocks.lstat }));
 import { assertIsolatedProfilePath } from '../utils/profileBoundary';
+import { resolveDatabaseUserDataPath } from '../database/userDataPath';
 
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.resetAllMocks(); });
 
@@ -22,7 +23,49 @@ describe('isolated storage boundary (no real filesystem or Electron)', () => {
     vi.stubEnv('NIMBALYST_USER_DATA_DIR', root);
     mocks.getPath.mockReturnValue(root);
     mocks.realpath.mockImplementation((value: string) => value);
+    mocks.readdir.mockReturnValue([]);
   }
+  it('rejects a database child junction before returning a usable DB root', () => {
+    prepare();
+    mocks.readdir.mockReturnValue(['pglite-db']);
+    mocks.realpath.mockImplementation((value: string) => value === path.join(root, 'pglite-db') ? path.resolve('outside-db') : value);
+    expect(resolveDatabaseUserDataPath).toThrow(/escapes/);
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+  it('checks nested SQLite sidecars, not just the sqlite-db directory', () => {
+    prepare();
+    const db = path.join(root, 'sqlite-db');
+    const wal = path.join(db, 'nimbalyst.sqlite-wal');
+    mocks.readdir.mockImplementation((value: string) => value === root ? ['sqlite-db'] : ['nimbalyst.sqlite-wal']);
+    mocks.lstat.mockReturnValue({ isSymbolicLink: () => false, isDirectory: () => true });
+    mocks.realpath.mockImplementation((value: string) => value === wal ? path.resolve('outside-wal') : value);
+    expect(resolveDatabaseUserDataPath).toThrow(/escapes/);
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+  it('checks mixed-case database directory names on Windows too', () => {
+    prepare();
+    const db = path.join(root, 'SQLITE-DB');
+    const wal = path.join(db, 'nimbalyst.sqlite-wal');
+    mocks.readdir.mockImplementation((value: string) => value === root ? ['SQLITE-DB'] : ['nimbalyst.sqlite-wal']);
+    mocks.lstat.mockReturnValue({ isSymbolicLink: () => false, isDirectory: () => true });
+    mocks.realpath.mockImplementation((value: string) => value === wal ? path.resolve('outside-wal') : value);
+    expect(resolveDatabaseUserDataPath).toThrow(/escapes/);
+  });
+  it('rejects a multiply-linked database file', () => {
+    prepare();
+    const db = path.join(root, 'sqlite-db');
+    mocks.readdir.mockImplementation((value: string) => value === root ? ['sqlite-db'] : ['nimbalyst.sqlite']);
+    mocks.lstat.mockImplementation((value: string) => ({ isSymbolicLink: () => false, isDirectory: () => value === db, nlink: value === db ? 1 : 2 }));
+    expect(resolveDatabaseUserDataPath).toThrow(/linked/i);
+  });
+  it('accepts an ordinary isolated database tree without reading its contents', () => {
+    prepare();
+    const db = path.join(root, 'sqlite-db');
+    mocks.readdir.mockImplementation((value: string) => value === root ? ['sqlite-db'] : ['nimbalyst.sqlite']);
+    mocks.lstat.mockImplementation((value: string) => ({ isSymbolicLink: () => false, isDirectory: () => value === db }));
+    expect(resolveDatabaseUserDataPath()).toBe(root);
+    expect(process.exit).not.toHaveBeenCalled();
+  });
   it('accepts settings and database descendants', () => {
     prepare();
     expect(() => assertIsolatedProfilePath(path.join(root, 'app-settings.json'))).not.toThrow();

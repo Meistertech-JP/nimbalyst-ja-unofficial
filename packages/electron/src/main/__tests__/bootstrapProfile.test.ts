@@ -71,6 +71,15 @@ describe('bootstrap profile path selection', () => {
     process.argv = ['app', '--user-data-dir', path.join(os.tmpdir(), 'profile-b')];
     await expect(import('../bootstrapProfile')).rejects.toThrow(/profile/i);
   });
+  it('accepts equivalent environment and CLI profile spellings', async () => {
+    const profile = path.join(os.tmpdir(), 'equivalent-profile');
+    process.env.NIMBALYST_USER_DATA_DIR = profile;
+    const equivalent = process.platform === 'win32' ? profile.toUpperCase() : path.join(profile, '..', 'equivalent-profile');
+    process.argv = ['app', `--user-data-dir=${equivalent}`];
+    await import('../bootstrapProfile');
+    expect(electronApp.getPath('userData')).toBe(profile);
+    expect(process.exit).not.toHaveBeenCalled();
+  });
 
   it('retains an inherited profile on a second bootstrap and binds the database to it', async () => {
     const profile = path.join(os.tmpdir(), 'bootstrap-isolated', 'profile');

@@ -336,7 +336,7 @@ export class PGLiteDatabaseWorker {
    * Delete the database directory for a fresh start
    */
   private async deleteDatabaseDirectory(): Promise<void> {
-    const dataDir = path.join(app.getPath('userData'), 'pglite-db');
+    const dataDir = path.join(resolveDatabaseUserDataPath(), 'pglite-db');
     if (fs.existsSync(dataDir)) {
       fs.rmSync(dataDir, { recursive: true, force: true });
       logger.main.info('[PGLite Worker] Deleted database directory');

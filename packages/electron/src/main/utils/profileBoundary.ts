@@ -32,6 +32,35 @@ function inside(root: string, target: string): boolean {
   );
 }
 
+/** Inspect storage descendants before backend selection or recovery reads. */
+export function assertIsolatedDatabasePaths(root: string): void {
+  if (!process.env.NIMBALYST_USER_DATA_DIR) return;
+  assertIsolatedProfilePath(root);
+  const visit = (target: string): void => {
+    assertIsolatedProfilePath(target);
+    const stat = fs.lstatSync(target);
+    // Do not follow even internal DB links: a second link below their target
+    // could otherwise evade traversal, or form a cycle.
+    if (stat.isSymbolicLink()) throw new Error('Linked isolated database storage is not supported');
+    if (!stat.isDirectory() && stat.nlink > 1) throw new Error('Hard-linked isolated database storage is not supported');
+    if (stat.isDirectory()) for (const name of fs.readdirSync(target)) visit(path.join(target, name));
+  };
+  try {
+    let names: string[];
+    try { names = fs.readdirSync(root); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
+    for (const name of names) {
+      const target = path.join(root, name);
+      assertIsolatedProfilePath(target);
+      if (/^(?:pglite|sqlite|db-backups|database-|\.?recovery|\.?cutover|\.displaced-|\.pre-restore-)/i.test(name)) visit(target);
+    }
+  } catch (error) {
+    console.error('[ProfileIsolation] Database storage boundary check failed; startup aborted');
+    process.exit(1);
+    throw error;
+  }
+}
+
 /** Fail before opening settings/database data if isolation has drifted. */
 export function assertIsolatedProfilePath(target: string): void {
   const configured = process.env.NIMBALYST_USER_DATA_DIR;

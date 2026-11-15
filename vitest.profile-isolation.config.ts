@@ -4,6 +4,8 @@ export default defineConfig({ test: {
   include: [
     'packages/electron/src/main/__tests__/bootstrapProfile.test.ts',
     'packages/electron/src/main/__tests__/profileBoundary.test.ts',
+    'packages/electron/src/main/__tests__/instancePolicy.test.ts',
+    'packages/electron/src/main/database/__tests__/pgliteProfileDeletion.test.ts',
     'packages/electron/src/main/shellCommand/__tests__/launchTarget.test.ts',
   ],
   setupFiles: [], globalSetup: [],

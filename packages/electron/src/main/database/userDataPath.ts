@@ -23,7 +23,7 @@
 
 import { app } from 'electron';
 import * as path from 'path';
-import { assertIsolatedProfilePath } from '../utils/profileBoundary';
+import { assertIsolatedDatabasePaths } from '../utils/profileBoundary';
 
 /**
  * Precedence, highest first:
@@ -41,7 +41,7 @@ export function resolveDatabaseUserDataPath(): string {
   if (process.env.NIMBALYST_USER_DATA_DIR) {
     const profile = path.resolve(process.env.NIMBALYST_USER_DATA_DIR);
     const root = path.resolve(process.env.NIMBALYST_USER_DATA_PATH || profile);
-    assertIsolatedProfilePath(root);
+    assertIsolatedDatabasePaths(root);
     return root;
   }
   return (

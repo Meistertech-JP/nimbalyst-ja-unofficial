@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, nativeImage, nativeTheme, session, shell } from 'electron';
+import { allowsMultipleInstances } from './utils/instancePolicy';
 import {
     parseTrackerDeepLink,
     type TrackerDeepLinkTarget,
@@ -639,8 +640,8 @@ registerLinuxAppImageProtocolHandler();
 // Single-instance lock
 // Ensures only one instance runs at a time. When a second instance launches
 // (e.g., from a file double-click), it forwards its context to the primary instance.
-// Skip for multi-instance dev mode and Playwright tests.
-const allowMultipleInstances = !!process.env.NIMBALYST_USER_DATA_DIR || !!process.env.PLAYWRIGHT;
+// Distinct profiles get distinct Electron locks; only Playwright bypasses it.
+const allowMultipleInstances = allowsMultipleInstances();
 
 if (!allowMultipleInstances) {
     const gotTheLock = app.requestSingleInstanceLock();
