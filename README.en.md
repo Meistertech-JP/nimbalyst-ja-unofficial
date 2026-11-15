@@ -74,8 +74,6 @@ Windows screenshots from v0.82.4-ja.1, with sample documents and tasks. They ill
 - [Building from source](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source-English)
 - [Previous v0.82.8-ja.1 and older distributions](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases)
 
-Documentation continues to improve after publication. The release tag and Source ZIP retain their original documents; distribution files have not been replaced. [Testing and Verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English) explains the distinction.
-
 ## License
 
 [MIT License](LICENSE). Upstream copyright notices and license text are retained. Bundled third-party software is covered by its own LICENSE and NOTICE files.

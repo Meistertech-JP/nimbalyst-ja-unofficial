@@ -50,10 +50,6 @@ Workstreamsは会話の整理用で、Gitの独立チェックアウトを作る
 
 フォルダーのコミット提案は、無視対象のフォルダー・変更のないフォルダー・入れ子の別Gitリポジトリを指定した場合や、展開後の対象が2,000ファイルを超える場合に拒否されます。通常のフォルダー内にある無視対象ファイルは除外されます。除外指定はglobではなく文字どおりのパスです。チームWiki公開ではローカルを正本とし、チーム側で本文が変更されたページを黙って上書きしません。export: false のページとその配下は公開対象外です。実行前に公開範囲と権限を確認してください。
 
-## 文書改訂と配布ソースの関係
-
-本ページなどmain上の説明は公開後に改訂しています。公開済みタグv0.84.0-ja.1はコミットa2f2fbccdb10c3542222851e07f945dbb774ca91、Git tree b90b2ae82cd5b23e2a035189c02c0af48556a364のままです。Source ZIPも公開時の文書を含み、差し替えていません。説明の改訂を、実装の変更・再ビルド・新しい製品試験の成功とは扱いません。
-
 ## English
 
 Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
@@ -103,7 +99,3 @@ Shared resources contain 27 namespaces and 15,557 keys per language, with zero k
 Workstreams organize conversations; they do not create independent Git checkouts. Queue batching covers consecutive compatible messages, up to 20 at a time; the Claude Code CLI path processes them individually. Git-panel branch switching does not automatically stash, discard or force-overwrite uncommitted changes.
 
 Folder commit proposals are rejected for ignored folders, folders without changes, nested Git repositories, or more than 2,000 expanded files. Ignored files within an otherwise eligible folder are excluded. Exclusions are literal paths, not globs. Team Wiki publishing treats local files as authoritative and does not silently overwrite pages whose bodies changed on the team side. Pages marked export: false and their descendants are excluded. Review publishing scope and permissions before running it.
-
-### Revised documentation and published source
-
-Documentation on main has been revised after publication. The v0.84.0-ja.1 tag still points to commit a2f2fbccdb10c3542222851e07f945dbb774ca91, tree b90b2ae82cd5b23e2a035189c02c0af48556a364. The Source ZIP retains its original documents and has not been replaced. Editorial changes are not implementation changes, a rebuild or evidence of new product-test success.

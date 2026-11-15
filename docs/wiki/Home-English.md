@@ -23,7 +23,7 @@ CLI Wiki publishing is a separate, one-way workflow for team review. It needs a 
 
 Upstream v0.84.0 is a prerelease. This edition's regular GitHub Release and Latest designation is not upstream certification or a stability guarantee. Windows full-suite failures and high CPU use with long Markdown remain unresolved. Live team-server connections are also unverified. Read [Compatibility and Limitations](Compatibility-and-Limitations-English).
 
-For help, see [Troubleshooting](Troubleshooting-English). The release tag and distribution files remain as published; these explanatory pages continue to improve.
+For help, see [Troubleshooting](Troubleshooting-English).
 
 ## Development and verification
 

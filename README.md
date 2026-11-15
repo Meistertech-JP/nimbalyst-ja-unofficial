@@ -74,8 +74,6 @@ Nimbalystは、Claude CodeやCodexなど、複数のAIエージェントを一�
 - [ソースからのビルド](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source)
 - [前版v0.82.8-ja.1と過去の配布物](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/releases)
 
-この説明文書は公開後も改善しています。配布済みタグとソースZIP内の文書は公開時のままで、配布ファイルは差し替えていません。違いは[検証記録](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)で説明しています。
-
 ## ライセンス
 
 [MIT License](LICENSE)。本家の著作権表記とライセンス本文を保持しています。同梱第三者ソフトウェアには、それぞれのLICENSE・NOTICEが適用されます。

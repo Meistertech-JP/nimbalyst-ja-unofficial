@@ -6,11 +6,9 @@
 
 Upstream v0.84.0 is a GitHub prerelease. This unofficial edition is distributed as a regular GitHub Release and Latest; this is not upstream certification or a stability guarantee. `v0.84.0-ja.1` still contains a SemVer prerelease identifier; GitHub classification does not change that meaning.
 
-### Published source and later documentation revisions
+### Verification target
 
-Distribution source remains **a2f2fbccdb10c3542222851e07f945dbb774ca91**, tree **b90b2ae82cd5b23e2a035189c02c0af48556a364**. On 2026-11-16 the explanatory documents on main and Wiki were revised, without replacing the v0.84.0-ja.1 tag, Windows binaries, Source ZIP or SHA256SUMS.txt. Main's README and other documents therefore differ from the original documents inside the tag and Source ZIP. Runtime code, dependencies and build settings are unchanged.
-
-The results below target distribution-source a2, not a new execution of all product tests on a later editorial commit.
+The results below cover the v0.84.0-ja.1 distribution. Its source commit is **a2f2fbccdb10c3542222851e07f945dbb774ca91**, tree **b90b2ae82cd5b23e2a035189c02c0af48556a364**.
 
 | Scope/environment | Run ID | PASS / FAIL / SKIP or result |
 | --- | --- | --- |

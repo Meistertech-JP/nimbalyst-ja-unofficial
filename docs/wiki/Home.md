@@ -23,7 +23,7 @@ CLIのWiki公開は、手元のWikiをチームのレビューへ一方向に反
 
 本家v0.84.0はPrereleaseです。日本語版の通常Release・Latest指定は、公式認定や安定性保証ではありません。Windows全テストの未解決FAIL、長文Markdownの高CPU負荷が残っています。チーム機能の実サーバー接続も未検証です。[対応環境と制限事項](Compatibility-and-Limitations)を確認してください。
 
-問題があれば[トラブルシューティング](Troubleshooting)へ。正式タグ・配布ファイルは公開時のまま、ここにある説明だけを改善しています。
+問題があれば[トラブルシューティング](Troubleshooting)を参照してください。
 
 ## 開発・検証を詳しく知る
 

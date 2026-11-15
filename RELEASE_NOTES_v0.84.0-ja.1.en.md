@@ -57,6 +57,4 @@ Save your work, quit the app and follow the [Windows update guide](docs/WINDOWS_
 - [Testing and Verification](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification-English): exact counts, native observations and untested areas.
 - Upstream notes: [v0.83.0](https://github.com/nimbalyst/nimbalyst/releases/tag/v0.83.0) / [v0.84.0](https://github.com/nimbalyst/nimbalyst/releases/tag/v0.84.0).
 
-Integrating a feature is not the same as testing every live integration or operation. The published binaries, tag and Source ZIP are unchanged; this page is a post-publication documentation revision.
-
 [日本語](RELEASE_NOTES_v0.84.0-ja.1.md) · [MIT License](LICENSE)

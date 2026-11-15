@@ -20,8 +20,4 @@ Some dictation labels remain English. Matching translation keys does not establi
 
 [Testing and Verification](Testing-and-Verification-English) retains exact populations, environments, PASS/FAIL/SKIP/NOT RUN and history. [Detailed known limitations](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english) covers profile boundaries, authentication and other technical scope.
 
-## Documentation versus distribution files
-
-These pages and main's documents have been revised after publication. The published tag and Source ZIP retain their original documents; Windows downloads and checksums are unchanged. Editorial revisions do not establish implementation changes or new product-test success.
-
 [Windows installation and updates](Windows-Installation-English) · [Troubleshooting](Troubleshooting-English)

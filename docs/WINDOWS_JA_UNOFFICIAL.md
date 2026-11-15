@@ -73,13 +73,11 @@ Nimbalystのメール認証は、設定のアカウント画面から開始し�
 
 ZIP版は本版を終了した後、その展開先を削除します。どちらも、文書や別の場所にあるプロファイルを削除する操作とは別です。
 
-## ソース・ライセンス・文書の版
+## ソースとライセンス
 
 ソースをビルドする場合は[対象タグのソース](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/tree/v0.84.0-ja.1)と[ビルド手順](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source)を使います。Source ZIPは空の作業フォルダーへ展開し、既存プロジェクトへ上書きしないでください。
 
 [MIT License](../LICENSE)と元の著作権表示を保持しています。第三者ライセンスは[ソース内の一覧](../packages/electron/resources/generated/THIRD_PARTY_LICENSES.json)と配布物のresources/legalにあります。
-
-このmain上のガイドは公開後に改訂しています。公開済みタグ・Source ZIP内の旧文書や、Windows配布ファイルは差し替えていません。
 
 ---
 
@@ -158,10 +156,8 @@ For an installed copy, choose Nimbalyst 日本語版（非公式） in Windows' 
 
 For a ZIP copy, quit the app and remove its extracted folder. Neither operation is the same as deleting documents or a profile stored elsewhere.
 
-### Source, licenses and documentation versions
+### Source and licenses
 
 Use the [release-tag source](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/tree/v0.84.0-ja.1) and [build guide](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Building-from-Source-English) when building. Extract the Source ZIP into an empty working folder, not over an existing project.
 
 The [MIT License](../LICENSE) and upstream attribution are retained. See the [source inventory](../packages/electron/resources/generated/THIRD_PARTY_LICENSES.json) and resources/legal in the distribution for third-party licenses.
-
-This guide on main has been revised after publication. Documents inside the published tag and Source ZIP, and the Windows distribution files, have not been replaced.

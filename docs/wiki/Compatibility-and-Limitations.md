@@ -20,8 +20,4 @@ v0.84.0-ja.1はWindows x64向けの非公式日本語版です。本家v0.84.0�
 
 正確な母集団・環境・PASS/FAIL/SKIP/NOT RUNと過去版の記録は[テストと品質検証](Testing-and-Verification)、保存先の境界・認証等の細部は[詳細な既知制限](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/blob/main/docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md)へまとめています。
 
-## 文書と配布ファイルの違い
-
-ここにある説明とmainの文書は公開後に改訂しています。公開済みタグ・Source ZIPには当時の旧文書が残り、Windows配布物・チェックサムも変更していません。説明の更新を、実装変更や新しい製品試験の成功として扱いません。
-
 [Windowsへの導入と更新](Windows-Installation) · [トラブルシューティング](Troubleshooting)

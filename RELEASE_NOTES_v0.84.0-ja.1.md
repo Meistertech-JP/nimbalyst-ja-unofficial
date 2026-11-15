@@ -57,6 +57,4 @@ CLIで `nim wiki publish --init` により公開先を設定してから `nim wi
 - [テストと品質検証](https://github.com/Meistertech-JP/nimbalyst-ja-unofficial/wiki/Testing-and-Verification)：正確な集計・実機確認範囲・未実施項目。
 - 本家の変更履歴：[v0.83.0](https://github.com/nimbalyst/nimbalyst/releases/tag/v0.83.0)／[v0.84.0](https://github.com/nimbalyst/nimbalyst/releases/tag/v0.84.0)。
 
-機能の統合と、すべての接続先・操作経路での実機検証は別です。配布バイナリと公開タグ・ソースZIPは変更していません。このページは公開後に改訂した説明文書です。
-
 [English](RELEASE_NOTES_v0.84.0-ja.1.en.md) · [MIT License](LICENSE)
