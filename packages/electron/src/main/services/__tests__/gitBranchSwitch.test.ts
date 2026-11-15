@@ -8,11 +8,64 @@ import {
   ConfirmTokenStore,
   createReadGit,
   listBranchesDetailed,
+  queryWorktreesByPaths,
   switchBranch,
   switchPreflight,
   type BranchSwitchDeps,
 } from '../gitBranchSwitch';
 import { assertGitSandbox, FIXTURE_IDENTITY_ARGS, gitSandboxEnv } from '../testSupport/gitTestSandbox';
+
+describe('queryWorktreesByPaths', () => {
+  it('matches a Git slash-delimited Windows path to the persisted backslash path', async () => {
+    const persistedPath = String.raw`C:\Users\tester\project-worktrees\quiet-fox`;
+    const gitPath = persistedPath.replace(/\\/g, '/');
+    let queriedPaths: unknown[] = [];
+    const db = {
+      query: async <T>(_sql: string, params: unknown[] = []) => {
+        queriedPaths = params;
+        const rows = params.includes(persistedPath)
+          ? [{ id: 'wt-1', name: 'quiet-fox', display_name: null, path: persistedPath }]
+          : [];
+        return { rows: rows as T[] };
+      },
+    };
+
+    await expect(queryWorktreesByPaths(db, [gitPath])).resolves.toEqual([
+      { id: 'wt-1', name: 'quiet-fox', path: persistedPath },
+    ]);
+    expect(queriedPaths).toContain(gitPath);
+    expect(queriedPaths).toContain(persistedPath);
+  });
+
+  it('matches Windows paths without relying on drive-letter or directory casing', async () => {
+    const persistedPath = String.raw`C:\Users\Tester\Project-Worktrees\quiet-fox`;
+    const gitPath = 'c:/users/tester/project-worktrees/quiet-fox';
+    const db = {
+      query: async <T>(sql: string, params: unknown[] = []) => {
+        return { rows: sql.includes('LOWER(path)') && params.includes(persistedPath.toLowerCase())
+          ? [{ id: 'wt-1', name: 'quiet-fox', display_name: null, path: persistedPath }] as T[]
+          : [] };
+      },
+    };
+
+    await expect(queryWorktreesByPaths(db, [gitPath])).resolves.toEqual([
+      { id: 'wt-1', name: 'quiet-fox', path: persistedPath },
+    ]);
+  });
+
+  it('does not add Windows aliases to POSIX-rooted fixture paths', async () => {
+    let queriedPaths: unknown[] = [];
+    const db = {
+      query: async <T>(_sql: string, params: unknown[] = []) => {
+        queriedPaths = params;
+        return { rows: [] as T[] };
+      },
+    };
+
+    await queryWorktreesByPaths(db, ['/fixture', '/wt/one']);
+    expect(queriedPaths).toEqual(['/fixture', '/wt/one']);
+  });
+});
 
 /**
  * #1959. Real repos under os.tmpdir(): a bare remote with `main`, `feature/x`
@@ -85,7 +138,10 @@ describe('gitBranchSwitch against real repositories', () => {
       }),
       lookupWorktrees: async (paths) => {
         lookupCalls.push([...paths]);
-        return paths.includes(worktree)
+        const pathKey = (candidate: string) => process.platform === 'win32'
+          ? path.win32.normalize(candidate).toLowerCase()
+          : path.resolve(candidate);
+        return paths.some(candidate => pathKey(candidate) === pathKey(worktree))
           ? [{ id: 'wt-1', name: 'wt', displayName: 'Fix the parser', path: worktree }]
           : [];
       },
@@ -104,14 +160,18 @@ describe('gitBranchSwitch against real repositories', () => {
   it('reports a branch checked out in another worktree as occupied before any switch', async () => {
     const list = await listBranchesDetailed(repo, deps);
     const occupied = list.local.find(b => b.name === 'occupied');
-    expect(occupied?.occupiedBy).toEqual({ path: worktree, worktreeId: 'wt-1', sessionTitle: 'Fix the parser' });
+    expect(occupied?.occupiedBy).toMatchObject({ worktreeId: 'wt-1', sessionTitle: 'Fix the parser' });
+    expect(path.win32.normalize(occupied!.occupiedBy!.path)).toBe(path.win32.normalize(worktree));
     expect(list.local.find(b => b.name === 'main')?.occupiedBy).toBeNull();
 
     const preflight = await switchPreflight(repo, { kind: 'local', branch: 'occupied' }, deps);
-    expect(preflight.blocked).toEqual({
+    expect(preflight.blocked).toMatchObject({
       reason: 'occupied',
-      occupiedBy: { path: worktree, worktreeId: 'wt-1', sessionTitle: 'Fix the parser' },
+      occupiedBy: { worktreeId: 'wt-1', sessionTitle: 'Fix the parser' },
     });
+    if (preflight.blocked?.reason === 'occupied') {
+      expect(path.win32.normalize(preflight.blocked.occupiedBy.path)).toBe(path.win32.normalize(worktree));
+    }
     expect(currentBranch(repo)).toBe('main');
   });
 
@@ -359,7 +419,10 @@ describe('gitBranchSwitch against real repositories', () => {
 
     await listBranchesDetailed(repo, deps);
     expect(lookupCalls).toHaveLength(1);
-    expect([...lookupCalls[0]].sort()).toEqual([repo, third, worktree].sort());
+    const pathKey = (candidate: string) => process.platform === 'win32'
+      ? path.win32.normalize(candidate).toLowerCase()
+      : path.resolve(candidate);
+    expect(lookupCalls[0].map(pathKey).sort()).toEqual([repo, third, worktree].map(pathKey).sort());
 
     lookupCalls = [];
     await switchPreflight(repo, { kind: 'local', branch: 'feature/x' }, deps);
@@ -421,12 +484,18 @@ describe('gitBranchSwitch against real repositories', () => {
     expect(currentBranch(repo)).toBe('main');
   });
 
-  it('reads the checkout of a repository whose path contains a newline', async () => {
+  it('parses a Git worktree path containing a newline without truncation', async () => {
     const odd = path.join(tmpDir, 'line\nbreak');
-    git(tmpDir, ['clone', '-q', remote, odd]);
-    assertGitSandbox(odd, tmpDir);
+    const readGit: BranchSwitchDeps['readGit'] = async (_cwd, args) => {
+      if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') return { ok: true, stdout: `${odd}\n`, stderr: '' };
+      if (args[0] === 'rev-parse' && args[1] === '--git-path') return { ok: true, stdout: '', stderr: '' };
+      if (args[0] === 'worktree') return { ok: true, stdout: `worktree ${odd}\0HEAD ${'a'.repeat(40)}\0branch refs/heads/main\0\0`, stderr: '' };
+      if (args[0] === 'for-each-ref') return { ok: true, stdout: 'refs/heads/main\0\0\0\0\0\n', stderr: '' };
+      if (args[0] === 'remote') return { ok: true, stdout: '', stderr: '' };
+      return { ok: false, stdout: '', stderr: `unexpected git args: ${args.join(' ')}` };
+    };
 
-    const list = await listBranchesDetailed(odd, deps);
+    const list = await listBranchesDetailed(repo, { readGit });
     expect(list.current).toMatchObject({ branch: 'main', detached: false });
     expect(list.local.find(b => b.name === 'main')?.isCurrent).toBe(true);
   });

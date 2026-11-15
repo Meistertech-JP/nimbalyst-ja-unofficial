@@ -910,7 +910,7 @@ function workspaceKey(workspacePath: string): string {
   // Normalize the path to ensure consistent storage keys:
   // 1. Use path.normalize to handle . and .. segments
   // 2. Remove trailing slashes to ensure consistent keys
-  const normalized = path.normalize(workspacePath).replace(/\/+$/, '');
+  const normalized = normalizeRootPath(workspacePath);
   const base64 = Buffer.from(normalized).toString('base64url');
   return `ws:${base64}`;
 }
@@ -927,7 +927,18 @@ export const MAX_ATTACHED_FOLDERS = 8;
  * and an attached folder that differ only by a trailing slash compare equal.
  */
 function normalizeRootPath(rootPath: string): string {
-  return path.normalize(rootPath).replace(/\/+$/, '');
+  const normalized = path.normalize(rootPath);
+  const root = path.parse(normalized).root;
+  // Preserve filesystem roots (/, C:\\, and UNC share roots) while removing
+  // either separator at the end of non-root paths. Windows paths may retain
+  // a trailing backslash after path.normalize, which must compare equal to
+  // the same path without it.
+  return normalized.length <= root.length ? normalized : normalized.replace(/[\\/]+$/, '');
+}
+
+function rootPathComparisonKey(rootPath: string): string {
+  const normalized = normalizeRootPath(rootPath);
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
 }
 
 /**
@@ -940,6 +951,7 @@ function sanitizeAttachedFolders(raw: unknown, workspacePath: string): string[] 
     return [];
   }
   const primary = normalizeRootPath(workspacePath);
+  const primaryKey = rootPathComparisonKey(primary);
   const seen = new Set<string>();
   const result: string[] = [];
   for (const entry of raw) {
@@ -947,10 +959,11 @@ function sanitizeAttachedFolders(raw: unknown, workspacePath: string): string[] 
       continue;
     }
     const normalized = normalizeRootPath(entry);
-    if (normalized === primary || seen.has(normalized)) {
+    const comparisonKey = rootPathComparisonKey(normalized);
+    if (comparisonKey === primaryKey || seen.has(comparisonKey)) {
       continue;
     }
-    seen.add(normalized);
+    seen.add(comparisonKey);
     result.push(normalized);
   }
   return result;
@@ -1429,10 +1442,10 @@ export function attachFolderToWorkspace(workspacePath: string, folderPath: strin
   const primary = normalizeRootPath(workspacePath);
   const current = getAttachedFolders(workspacePath);
 
-  if (normalized === primary) {
+  if (rootPathComparisonKey(normalized) === rootPathComparisonKey(primary)) {
     return { ok: false, reason: 'is-primary-root', attachedFolders: current };
   }
-  if (current.includes(normalized)) {
+  if (current.some(entry => rootPathComparisonKey(entry) === rootPathComparisonKey(normalized))) {
     return { ok: false, reason: 'already-attached', attachedFolders: current };
   }
   if (current.length >= MAX_ATTACHED_FOLDERS) {
@@ -1452,7 +1465,9 @@ export function attachFolderToWorkspace(workspacePath: string, folderPath: strin
 export function detachFolderFromWorkspace(workspacePath: string, folderPath: string): string[] {
   const normalized = normalizeRootPath(folderPath);
   const next = updateWorkspaceState(workspacePath, state => {
-    state.attachedFolders = (state.attachedFolders ?? []).filter(entry => entry !== normalized);
+    state.attachedFolders = (state.attachedFolders ?? []).filter(
+      entry => rootPathComparisonKey(entry) !== rootPathComparisonKey(normalized),
+    );
   });
   return next.attachedFolders ?? [];
 }

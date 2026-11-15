@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -10,6 +10,48 @@ import {
   secretFileName,
   writeSecretFile,
 } from '../fileUtils';
+
+const legacyFiles = vi.hoisted(() => new Map<string, Buffer>());
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  const path = await import('node:path');
+  const hasLegacyFilename = (name: string | Buffer | URL) => path.basename(String(name)).includes(':');
+  return {
+    ...actual,
+    existsSync: (name: string | Buffer | URL) => legacyFiles.has(String(name)) || actual.existsSync(name),
+    readFileSync: (name: string | Buffer | URL, options?: Parameters<typeof actual.readFileSync>[1]) => {
+      const contents = legacyFiles.get(String(name));
+      if (contents) {
+        if (typeof options === 'string') return contents.toString(options);
+        if (options && typeof options === 'object' && 'encoding' in options && options.encoding) {
+          return contents.toString(options.encoding);
+        }
+        return Buffer.from(contents);
+      }
+      return actual.readFileSync(name as any, options as any);
+    },
+    writeFileSync: (name: string | Buffer | URL, data: string | NodeJS.ArrayBufferView, options?: any) => {
+      if (hasLegacyFilename(name)) {
+        const encoding = typeof options === 'string' ? options : options?.encoding;
+        legacyFiles.set(String(name), Buffer.isBuffer(data) ? Buffer.from(data) : Buffer.from(String(data), encoding));
+        return;
+      }
+      return actual.writeFileSync(name as any, data as any, options);
+    },
+    copyFileSync: (source: string | Buffer | URL, destination: string | Buffer | URL, ...args: any[]) => {
+      const contents = legacyFiles.get(String(source));
+      if (contents) {
+        actual.writeFileSync(destination as any, contents);
+        return;
+      }
+      return actual.copyFileSync(source as any, destination as any, ...args);
+    },
+    unlinkSync: (name: string | Buffer | URL) => {
+      if (legacyFiles.delete(String(name))) return;
+      return actual.unlinkSync(name as any);
+    },
+  };
+});
 
 /**
  * #1408: scoped secret keys look like `nimbalyst:<extensionId>:<key>`. The old
@@ -83,11 +125,13 @@ describe('secret file storage', () => {
   let dir: string;
 
   beforeEach(() => {
+    legacyFiles.clear();
     dir = mkdtempSync(join(tmpdir(), 'nimbalyst-secrets-'));
   });
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
+    legacyFiles.clear();
   });
 
   const writeLegacy = (value: string) =>

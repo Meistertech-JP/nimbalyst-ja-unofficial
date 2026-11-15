@@ -15,6 +15,8 @@ These describe integrated source changes, not complete live verification of ever
 
 Adds Japanese text for new Workstreams, Git operations, settings and confirmation screens. Retains Japanese/English/System selection, independent application settings and data, nonce-protected localhost authentication, disabled official updates and manual updating.
 
+On Windows, fixes duplicate attached-folder roots and detach failures caused by trailing separators or path-case differences.
+
 Windows distributions are unsigned. This is not an official Nimbalyst, Inc. product. Final-candidate authentication and NSIS new-install/upgrade verification are not yet complete. See the [limitations](docs/KNOWN_LIMITATIONS_v0.84.0-ja.1.md#english).
 
 ## Verification status

@@ -20,7 +20,7 @@
 import { randomUUID } from 'crypto';
 import { execFile } from 'child_process';
 import { realpathSync, statSync } from 'fs';
-import { resolve, sep } from 'path';
+import { resolve, sep, win32 } from 'path';
 import { getGitSubprocessEnv } from './gitEnv';
 import { validateGitOperand } from './gitOperandValidation';
 import { parseWorktreeListPorcelain, type WorktreeListEntry } from './gitWorktreeList';
@@ -211,13 +211,47 @@ export interface WorktreeQueryDb {
   query<T = unknown>(sql: string, params?: unknown[]): Promise<{ rows: T[] }>;
 }
 
+function worktreePathLookupVariants(paths: string[]): string[] {
+  const variants = new Set<string>();
+  for (const path of paths) {
+    variants.add(path);
+    const hasDriveRoot = /^[a-zA-Z]:[\\/]/.test(path);
+    const hasUncRoot = /^(?:\\\\|\/\/)[^\\/]+[\\/][^\\/]+/.test(path);
+    if (!win32.isAbsolute(path) || (!hasDriveRoot && !hasUncRoot)) continue;
+
+    const windowsPath = win32.normalize(path);
+    variants.add(windowsPath);
+    variants.add(windowsPath.replace(/\\/g, '/'));
+  }
+  return [...variants];
+}
+
+function windowsPathLookupKeys(paths: string[]): string[] {
+  const keys = new Set<string>();
+  for (const path of paths) {
+    const hasDriveRoot = /^[a-zA-Z]:[\\/]/.test(path);
+    const hasUncRoot = /^(?:\\\\|\/\/)[^\\/]+[\\/][^\\/]+/.test(path);
+    if (!win32.isAbsolute(path) || (!hasDriveRoot && !hasUncRoot)) continue;
+    const windowsPath = win32.normalize(path);
+    keys.add(windowsPath.toLowerCase());
+    keys.add(windowsPath.replace(/\\/g, '/').toLowerCase());
+  }
+  return [...keys];
+}
+
 /** One query for every checkout path, so listing never does a lookup per worktree. */
 export async function queryWorktreesByPaths(db: WorktreeQueryDb, paths: string[]): Promise<ManagedWorktreeInfo[]> {
   if (paths.length === 0) return [];
-  const placeholders = paths.map((_, i) => `$${i + 1}`).join(', ');
+  const lookupPaths = worktreePathLookupVariants(paths);
+  const placeholders = lookupPaths.map((_, i) => `$${i + 1}`).join(', ');
+  const caseInsensitivePaths = windowsPathLookupKeys(paths);
+  const caseInsensitivePlaceholders = caseInsensitivePaths.map((_, i) => `$${lookupPaths.length + i + 1}`).join(', ');
+  const pathPredicate = caseInsensitivePlaceholders.length > 0
+    ? `path IN (${placeholders}) OR LOWER(path) IN (${caseInsensitivePlaceholders})`
+    : `path IN (${placeholders})`;
   const { rows } = await db.query<{ id: string; name: string; display_name: string | null; path: string }>(
-    `SELECT id, name, display_name, path FROM worktrees WHERE path IN (${placeholders})`,
-    paths,
+    `SELECT id, name, display_name, path FROM worktrees WHERE ${pathPredicate}`,
+    [...lookupPaths, ...caseInsensitivePaths],
   );
   return rows.map(row => ({ id: row.id, name: row.name, displayName: row.display_name ?? undefined, path: row.path }));
 }

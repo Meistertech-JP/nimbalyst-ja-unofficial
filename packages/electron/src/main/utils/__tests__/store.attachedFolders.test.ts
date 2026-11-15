@@ -8,6 +8,8 @@
  * different cap is preserved rather than truncated.
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+import * as os from 'os';
+import * as path from 'path';
 
 let backing: Record<string, unknown> = {};
 
@@ -30,8 +32,9 @@ vi.mock('electron-store', () => {
   return { default: FakeStore };
 });
 
-const PRIMARY = '/tmp/multi-root-primary';
-const ATTACHED = '/tmp/multi-root-attached';
+const fixtureRoot = (name: string) => path.join(os.tmpdir(), name);
+const PRIMARY = fixtureRoot('multi-root-primary');
+const ATTACHED = fixtureRoot('multi-root-attached');
 
 /** Mirrors `workspaceKey` in the store so fixtures can seed persisted state. */
 function keyFor(workspacePath: string): string {
@@ -73,8 +76,8 @@ describe('attached folders', () => {
 
     // Trailing slashes must normalize to the same root, or the explorer shows
     // the same folder twice and two watchers race on the same tree.
-    expect(attachFolderToWorkspace(PRIMARY, `${ATTACHED}/`).ok).toBe(false);
-    expect(attachFolderToWorkspace(PRIMARY, `${PRIMARY}/`)).toMatchObject({
+    expect(attachFolderToWorkspace(PRIMARY, `${ATTACHED}${path.sep}`).ok).toBe(false);
+    expect(attachFolderToWorkspace(PRIMARY, `${PRIMARY}${path.sep}`)).toMatchObject({
       ok: false,
       reason: 'is-primary-root',
     });
@@ -85,10 +88,10 @@ describe('attached folders', () => {
     const { attachFolderToWorkspace, getAttachedFolders, MAX_ATTACHED_FOLDERS } = await loadStore();
 
     for (let i = 0; i < MAX_ATTACHED_FOLDERS; i++) {
-      expect(attachFolderToWorkspace(PRIMARY, `/tmp/root-${i}`).ok).toBe(true);
+      expect(attachFolderToWorkspace(PRIMARY, fixtureRoot(`root-${i}`)).ok).toBe(true);
     }
 
-    expect(attachFolderToWorkspace(PRIMARY, '/tmp/root-overflow')).toMatchObject({
+    expect(attachFolderToWorkspace(PRIMARY, fixtureRoot('root-overflow'))).toMatchObject({
       ok: false,
       reason: 'cap-reached',
     });
@@ -99,14 +102,15 @@ describe('attached folders', () => {
     const { attachFolderToWorkspace, detachFolderFromWorkspace, getWorkspaceRoots } = await loadStore();
 
     attachFolderToWorkspace(PRIMARY, ATTACHED);
-    attachFolderToWorkspace(PRIMARY, '/tmp/multi-root-other');
+    const other = fixtureRoot('multi-root-other');
+    attachFolderToWorkspace(PRIMARY, other);
 
-    expect(detachFolderFromWorkspace(PRIMARY, `${ATTACHED}/`)).toEqual(['/tmp/multi-root-other']);
-    expect(getWorkspaceRoots(PRIMARY)).toEqual([PRIMARY, '/tmp/multi-root-other']);
+    expect(detachFolderFromWorkspace(PRIMARY, `${ATTACHED}${path.sep}`)).toEqual([other]);
+    expect(getWorkspaceRoots(PRIMARY)).toEqual([PRIMARY, other]);
   });
 
   it('preserves a persisted list longer than the current cap', async () => {
-    const overCap = Array.from({ length: 12 }, (_, i) => `/tmp/persisted-${i}`);
+    const overCap = Array.from({ length: 12 }, (_, i) => fixtureRoot(`persisted-${i}`));
     backing[keyFor(PRIMARY)] = { workspacePath: PRIMARY, attachedFolders: overCap };
 
     const { getAttachedFolders } = await loadStore();
@@ -123,5 +127,19 @@ describe('attached folders', () => {
     const { getAttachedFolders } = await loadStore();
 
     expect(getAttachedFolders(PRIMARY)).toEqual([ATTACHED]);
+  });
+
+  it.skipIf(process.platform !== 'win32')('matches Windows drive paths without case differences', async () => {
+    const windowsPrimary = path.join(os.tmpdir(), 'CaseSensitivePrimary');
+    const windowsAttached = path.join(os.tmpdir(), 'CaseSensitiveAttached');
+    const { attachFolderToWorkspace, detachFolderFromWorkspace, getAttachedFolders } = await loadStore();
+
+    expect(attachFolderToWorkspace(windowsPrimary, windowsAttached).ok).toBe(true);
+    expect(attachFolderToWorkspace(`${windowsPrimary}${path.sep}`, windowsAttached.toUpperCase())).toMatchObject({
+      ok: false,
+      reason: 'already-attached',
+    });
+    expect(detachFolderFromWorkspace(windowsPrimary, windowsAttached.toUpperCase())).toEqual([]);
+    expect(getAttachedFolders(windowsPrimary)).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,23 @@ import {
   writeCredentialFileAtomic,
   type NodeCredential,
 } from '../serve/credentials.js';
+
+const fsHooks = vi.hoisted(() => ({ events: null as string[] | null, failRename: false }));
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...actual,
+    fsyncSync: (fd: number) => {
+      fsHooks.events?.push('fsync');
+      return actual.fsyncSync(fd);
+    },
+    renameSync: (from: Parameters<typeof actual.renameSync>[0], to: Parameters<typeof actual.renameSync>[1]) => {
+      fsHooks.events?.push('rename');
+      if (fsHooks.failRename) throw new Error('simulated atomic replacement failure');
+      return actual.renameSync(from, to);
+    },
+  };
+});
 
 const BASE: NodeCredential = {
   nodeId: 'node-1',
@@ -53,6 +70,33 @@ describe('node credential refresh', () => {
       // failed credential rotation.
     } finally {
       if (descriptor) Object.defineProperty(process, 'platform', descriptor);
+    }
+  });
+
+  it('flushes file contents before the Windows atomic replacement', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(process, 'platform');
+    const order: string[] = [];
+    fsHooks.events = order;
+    try {
+      Object.defineProperty(process, 'platform', { ...descriptor, value: 'win32' });
+      writeCredentialFileAtomic(credentialPath, { ...BASE, refreshToken: 'replacement-token' });
+      expect(order).toEqual(['fsync', 'rename']);
+      expect(readCredentialFile(credentialPath).refreshToken).toBe('replacement-token');
+    } finally {
+      fsHooks.events = null;
+      if (descriptor) Object.defineProperty(process, 'platform', descriptor);
+    }
+  });
+
+  it('preserves the existing credential and removes the staged file when atomic rename fails', () => {
+    fsHooks.failRename = true;
+    try {
+      expect(() => writeCredentialFileAtomic(credentialPath, { ...BASE, refreshToken: 'replacement-token' }))
+        .toThrow('simulated atomic replacement failure');
+      expect(readCredentialFile(credentialPath)).toMatchObject(BASE);
+      expect(readdirSync(directory)).toEqual(['node-credential.json']);
+    } finally {
+      fsHooks.failRename = false;
     }
   });
 
