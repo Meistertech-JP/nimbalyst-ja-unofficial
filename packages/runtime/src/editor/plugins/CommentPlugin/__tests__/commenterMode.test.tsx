@@ -250,9 +250,10 @@ function mountClient(
   // Hydrate from the server the way a provider's sync step does.
   act(() => {
     Y.applyUpdate(clientDoc, Y.encodeStateAsUpdate(server), 'provider');
+    // Committing hydration also notifies the plugin's MarkNode listener and
+    // schedules React state. Flush both before leaving the act boundary.
+    (editor as LexicalEditor).read(() => {});
   });
-  // Commit the hydration update before tests read committed state.
-  (editor as LexicalEditor).read(() => {});
   return {
     clientDoc,
     editor: editor as LexicalEditor,
@@ -754,11 +755,16 @@ describe('marks whose thread was deleted elsewhere', () => {
   const unmounts: Array<() => void> = [];
 
   afterEach(() => {
-    for (const unmount of unmounts.splice(0)) unmount();
-    for (const pane of panes.splice(0)) pane.remove();
+    try {
+      for (const unmount of unmounts.splice(0)) unmount();
+      for (const pane of panes.splice(0)) pane.remove();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('are unwrapped by a client that may edit the body, after the grace period', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     // The mark is in the body; its thread is gone (deleted by a commenter).
     const server = serverDocWith(['Alpha beta gamma.'], { quote: 'beta', id: 'deleted-thread' });
     const client = mountClient(server, { read: true, comment: true });
@@ -766,10 +772,14 @@ describe('marks whose thread was deleted elsewhere', () => {
     unmounts.push(client.unmount);
     expect(collectMarkIds(client.editor).has('deleted-thread')).toBe(true);
 
-    await waitFor(
-      () => expect(collectMarkIds(client.editor).has('deleted-thread')).toBe(false),
-      { timeout: ORPHAN_MARK_GRACE_MS + 2000 },
-    );
+    // Drive the initial 250 ms orphan sweep and its grace deadline explicitly.
+    // Real wall-clock waits can expire while a loaded CI worker is descheduled.
+    await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(ORPHAN_MARK_GRACE_MS - 1); });
+    expect(collectMarkIds(client.editor).has('deleted-thread')).toBe(true);
+    expect(changedTypes(server, client.outgoing).changed.root).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(collectMarkIds(client.editor).has('deleted-thread')).toBe(false);
     expect(changedTypes(server, client.outgoing).changed.root).toBe(true);
     expect(
       client.editor.getEditorState().read(() => $getRoot().getTextContent()),
@@ -777,12 +787,13 @@ describe('marks whose thread was deleted elsewhere', () => {
   });
 
   it('are left alone by a commenter, who never writes the body', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     const server = serverDocWith(['Alpha beta gamma.'], { quote: 'beta', id: 'deleted-thread' });
     const client = mountClient(server, { read: true, comment: true, editBody: false });
     panes.push(client.pane);
     unmounts.push(client.unmount);
 
-    await new Promise((resolve) => setTimeout(resolve, ORPHAN_MARK_GRACE_MS + 600));
+    await act(async () => { await vi.advanceTimersByTimeAsync(ORPHAN_MARK_GRACE_MS + 600); });
     expect(collectMarkIds(client.editor).has('deleted-thread')).toBe(true);
     expect(changedTypes(server, client.outgoing).changed.root).toBe(false);
   });
