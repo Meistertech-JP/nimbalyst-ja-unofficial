@@ -80,8 +80,16 @@ const ackBatch = async (_projectId: string, files: Array<{ syncId: string }>) =>
 
 /** Deterministic syncId derivation -- must match ProjectFileSyncService.syncIdFromPath. */
 function syncIdFromPath(relativePath: string): string {
-  return createHash('sha256').update(relativePath).digest('hex');
+  return createHash('sha256').update(relativePath.replace(/\\/g, '/')).digest('hex');
 }
+
+describe('ProjectFileSyncService cross-platform path identity', () => {
+  it('derives the same sync ID for Windows and POSIX separators', () => {
+    const service = new ProjectFileSyncService();
+    expect((service as any).syncIdFromPath('docs\\guide.md')).toBe(syncIdFromPath('docs/guide.md'));
+    service.shutdown();
+  });
+});
 
 describe('ProjectFileSyncService.handleFileSaved', () => {
   let tmpDir: string;

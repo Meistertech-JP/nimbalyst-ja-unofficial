@@ -7,7 +7,7 @@
  */
 
 import { readFile, readdir, stat } from 'fs/promises';
-import { join, relative, isAbsolute, extname } from 'path';
+import { join, relative, isAbsolute, extname, sep } from 'path';
 import { glob } from 'glob';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -162,7 +162,10 @@ export class ElectronFileSystemService implements FileSystemService {
 
       if (options?.pattern && options?.recursive !== false) {
         // Use glob for pattern matching with centralized exclusion patterns
-        const pattern = join(basePath, options.pattern);
+        // glob patterns use `/` as their path separator. `join` emits `\\` on
+        // Windows, where glob can misread those separators as escapes and
+        // silently return no matches for brace patterns.
+        const pattern = join(basePath, options.pattern).split(sep).join('/');
         const files = await glob(pattern, {
           ignore: GLOB_EXCLUDE_PATTERNS,
           dot: options?.includeHidden,

@@ -971,7 +971,10 @@ export class ProjectFileSyncService {
 
   /** Deterministic sync ID from relative path -- no file modification needed. */
   private syncIdFromPath(relativePath: string): string {
-    return createHash('sha256').update(relativePath).digest('hex');
+    // The sync protocol is shared across Windows and POSIX clients. Hash a
+    // canonical separator form so the same workspace-relative file has the
+    // same identity on every platform.
+    return createHash('sha256').update(relativePath.replace(/\\/g, '/')).digest('hex');
   }
 
   private sha256(content: string): string {
